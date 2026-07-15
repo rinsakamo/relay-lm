@@ -2328,7 +2328,7 @@ An independent review of the initial green head (`3240bf6ad58fa1e5ec9cf75e01bc81
 
 ```yaml
 cutover_pr: 598
-merged_commit: pending
+merged_commit: 5d60433713574c042afe5ceab15b865a48824ae5
 record_count: 2
 cutover_recorded_on: 2026-07-15
 disposition: moved
@@ -2520,7 +2520,156 @@ The `v0.1` tag binding was independently reverified against the confirmed C1C34 
 
 An independent review of the initial green head (`842a3d6c60219e73547e8dbee9fe980e11088250`) found three accuracy and regression-coverage gaps, all corrected in this same entry by a further commit. First, `scripts/relaylm_docs_semantic_audit.py`'s `check_release_assessment()` did not directly assert the readiness document's `relaylm_status: current`, and its complete-only anchor set omitted the readiness body's own "tag binding verification: exact match" line (only the receipt body was checked for it); both were added, alongside an explicit rejected-anchor set that fails closed if either canonical document ever regresses to any of six known pending-state phrasings (`final main-HEAD validation: pending`, `v0.1 tag creation: pending`, `tag creation state: pending`, `frozen release receipt: not yet issued`, and the two literal stale sentences this same PR removed from `docs/PROJECT_STATUS.md` and `docs/architecture/project_execution_plan.md`). Second, `docs/architecture/post_v01_strategic_direction_vision.md` called the current `release`-typed readiness document "evidence," blurring current-release authority with frozen-evidence authority; corrected to "interpretation," with a second link added pointing to the separate frozen receipt so neither authority is implied to cover the other. Third, this ledger's own C1C35 receipt-record baseline inventory was wrong: the receipt record's `live_referrer_files_before_cutover` incorrectly named the post-cutover canonical path `docs/release/v0.1-release-readiness.md` as a frozen-baseline referrer, when that path did not exist until this PR — the actual second baseline referrer was the readiness record's own pre-cutover path, `docs/mvp/v0.1_release_readiness.md`; the `verification.live_dependency_referrer_files_at_frozen_baseline_list` had the identical error at its seventh entry; and `live_dependency_referrer_files_updated` was undercounted at 6 instead of 7, omitting that the readiness record's own front-matter and body link to the receipt also had to be retargeted. All three are fixed above, and the previously self-contradictory paragraph asserting both "six documents contained stale wording" and "only three needed correction" was rewritten to state the accurate 3-of-6 breakdown plus the readiness record's own self-referrer role.
 
-The correction commit `a994067ef903d77cf4ab623df2a7d00058147070` is the new `validated_content_head`: all 26 triggered GitHub Actions check runs completed successfully (including `validate-frozen-main`, and the `relaymem`, `runtime`, and `ui` consolidated-smoke groups again correctly reported `skipped`), and zero reviews, zero PR comments, and zero unresolved review threads were present at that head. Local revalidation (`compileall`, link check, semantic audit, current-boundary smoke, consolidated-smoke contract, `git diff --check`) all passed against the correction head, and the `v0.1` tag was independently reverified again to resolve to `522018e62d69bcbe89465d574bf2d1b377f10bd9`, an exact match. Per the `validated_content_head` / `receipt_finalization` pattern established in C1C33, this finalization is recorded in a further, separate commit after `a994067ef903d77cf4ab623df2a7d00058147070`, which remains the exact validated content head; the finalization commit itself is not claimed as a re-validated head. `merged_commit` for this record remains `pending`; C1C34 remains finalized to merge commit `d24408f5f1ec9b8eca6e63f5adb790663f1b3097`.
+The correction commit `a994067ef903d77cf4ab623df2a7d00058147070` is the new `validated_content_head`: all 26 triggered GitHub Actions check runs completed successfully (including `validate-frozen-main`, and the `relaymem`, `runtime`, and `ui` consolidated-smoke groups again correctly reported `skipped`), and zero reviews, zero PR comments, and zero unresolved review threads were present at that head. Local revalidation (`compileall`, link check, semantic audit, current-boundary smoke, consolidated-smoke contract, `git diff --check`) all passed against the correction head, and the `v0.1` tag was independently reverified again to resolve to `522018e62d69bcbe89465d574bf2d1b377f10bd9`, an exact match. Per the `validated_content_head` / `receipt_finalization` pattern established in C1C33, this finalization is recorded in a further, separate commit after `a994067ef903d77cf4ab623df2a7d00058147070`, which remains the exact validated content head; the finalization commit itself is not claimed as a re-validated head. `merged_commit` for this record is now finalized to `5d60433713574c042afe5ceab15b865a48824ae5` (PR #598, confirmed an ancestor of the working `main` before Cutover 1C-36 began); C1C34 remains finalized to merge commit `d24408f5f1ec9b8eca6e63f5adb790663f1b3097`.
+
+### C1C36-001 — Docs Execution Plan Consolidation completion report
+
+```yaml
+cutover_pr: 600
+merged_commit: pending
+record_count: 1
+cutover_recorded_on: 2026-07-15
+disposition: evidence_retained
+record:
+  record: Docs Execution Plan Consolidation completion report
+  recorded_on: 2026-06-27
+  source_pr: 422
+  source_pr_branch: docs-centralize-execution-plan
+  source_commit: ff255b47ca8b1ef87837f65aa185dac1fa3faf56
+  source_commit_date: 2026-06-27T09:03:44Z
+  source_origin_commit: ff255b47ca8b1ef87837f65aa185dac1fa3faf56
+  source_origin_commit_date: 2026-06-27T09:03:44Z
+  source_merge_strategy: squash_merge_source_and_origin_commit_identical
+  source_merge_strategy_note: pre_merge_branch_history_17_commits_including_the_files_original_addition_commit_32c29745_and_one_subsequent_completion_model_alignment_commit_066c76f_is_not_reachable_from_main_and_is_correctly_excluded_from_provenance
+  old_path: docs/mvp/wave4/docs_execution_plan_consolidation_completion_report.md
+  original_old_path: docs/mvp/wave4/docs_execution_plan_consolidation_completion_report.md
+  source_blob_sha: 65a8406add3ee86465b6862ba718e471870d209c
+  source_content_sha256: e5b14ffa11edeade756bc8ff9e64fae85d0d5ff783cb3f4adf44ba9635242010
+  post_source_modification_commits: []
+  pre_cutover_blob_sha: 65a8406add3ee86465b6862ba718e471870d209c
+  pre_cutover_content_sha256: e5b14ffa11edeade756bc8ff9e64fae85d0d5ff783cb3f4adf44ba9635242010
+  new_canonical_path: docs/evidence/implementation/docs_execution_plan_consolidation_completion_report.md
+  exact_source_snapshot: docs/evidence/implementation/docs_execution_plan_consolidation_completion_report-source.txt
+  exact_source_blob_sha: 65a8406add3ee86465b6862ba718e471870d209c
+  advisory_verification: advisory_pre_cutover_blob_sha256_confirmed_correct_matches_source_blob_and_todays_blob_exactly
+  last_live_wave_report: true
+  last_live_wave_report_verification_method: full_docs_mvp_tree_glob_walk_for_wave_slash_star_slash_star_completion_report_md_before_this_pr_returned_exactly_this_one_file
+verification:
+  old_path_removed_in_pr_tree: true
+  empty_wave4_directory_removed: true
+  exact_pre_cutover_blob_reused: true
+  canonical_evidence_wrapper_added: true
+  source_head_merge_and_pre_cutover_equal: true
+  source_to_pre_cutover_diff: none
+  post_source_modification_commits_total: 0
+  advisory_record_independently_reverified: true
+  advisory_record_confirmed_correct: true
+  advisory_record_corrected: false
+  full_path_bare_filename_and_glob_family_search_performed: true
+  full_path_bare_filename_and_glob_family_search_scope:
+    - docs/
+    - scripts/
+    - .github/workflows/
+    - relaylm/
+    - tests/
+    - README.md
+    - README_ja.md
+    - config.example.yaml
+  live_referrer_files_before_cutover: 0
+  live_referrer_files_before_cutover_note: the_report_was_never_indexed_by_docs_mvp_readme_md_or_docs_evidence_implementation_readme_md_before_this_pr_confirmed_by_exhaustive_grep
+  implementation_evidence_index_updated: true
+  mvp_index_updated: true
+  mvp_index_new_link_added: true
+  mvp_index_transitional_two_path_convention_replaced_with_canonical_only: true
+  mvp_index_template_link_path_unchanged: true
+  mvp_index_final_move_or_freeze_performed: false
+  legacy_wave_report_discovery_removed_from_completion_report_smoke: true
+  legacy_wave_report_discovery_removed_from_pr_link_smoke: true
+  completion_report_template_path_unchanged: true
+  completion_report_template_moved: false
+  execution_plan_itself_moved: false
+  consolidated_selector_obsolete_docs_mvp_wave4_glob_removed: true
+  consolidated_selector_replacement_added: false
+  consolidated_selector_replacement_rationale: canonical_report_is_docs_only_evidence_and_must_not_select_relaymem_runtime_or_ui_groups
+  consolidated_selector_contract_updated: true
+  consolidated_selector_contract_new_assertions:
+    - no_group_in_any_workflow_retains_a_pattern_matching_the_retired_docs_mvp_wave_digit_plus_slash_family_generalized_beyond_wave4_only_by_independent_review
+    - canonical_docs_execution_plan_report_selects_zero_relaymem_runtime_ui_groups_in_every_workflow
+  path_bound_dependency_files_inspected:
+    - scripts/relaylm_mvp_completion_report_smoke.py
+    - scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+    - scripts/relaylm_ci_consolidated_smoke.py
+    - scripts/relaylm_ci_consolidated_smoke_contract.py
+    - docs/mvp/README.md
+  path_bound_dependency_files_changed:
+    - scripts/relaylm_mvp_completion_report_smoke.py
+    - scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+    - scripts/relaylm_ci_consolidated_smoke.py
+    - scripts/relaylm_ci_consolidated_smoke_contract.py
+    - docs/mvp/README.md
+  evidence_and_migration_index_files_changed:
+    - docs/evidence/implementation/README.md
+    - docs/evidence/migrations/documentation-hard-cutover-receipt.md
+  workflow_files_inspected:
+    - .github/workflows/documentation-completion-report-model.yml
+    - .github/workflows/documentation-completion-report-files.yml
+    - .github/workflows/documentation-completion-report-link.yml
+    - .github/workflows/wave4-cross-slice-convergence.yml
+  workflow_files_changed: []
+  workflow_files_unchanged_reason:
+    ".github/workflows/documentation-completion-report-model.yml": generic_no_path_filter_no_legacy_wave_dependency
+    ".github/workflows/documentation-completion-report-files.yml": generic_no_path_filter_no_legacy_wave_dependency
+    ".github/workflows/documentation-completion-report-link.yml": generic_no_path_filter_no_legacy_wave_dependency
+    ".github/workflows/wave4-cross-slice-convergence.yml": only_broad_docs_slash_slash_star_star_and_named_canonical_report_paths_already_present_no_legacy_wave4_path_literal_present
+  legacy_wave_report_reintroduction_guard_added: true
+  legacy_wave_report_reintroduction_guard_location: scripts/relaylm_mvp_completion_report_smoke.py_assert_no_legacy_wave_reports_called_unconditionally_at_the_start_of_main
+  legacy_wave_report_reintroduction_guard_negative_path_proof: bounded_tempfile_directory_self_test_with_monkeypatched_root_constant_not_committed_to_the_repository_tree_confirmed_rejection_of_single_and_multiple_legacy_paths_across_different_wave_numbers_and_silence_on_a_clean_tree_and_on_the_real_current_repository_tree
+  no_compatibility_path_added: true
+  no_redirect_alias_symlink_fallback_dual_live_or_temp_workflow_added: true
+  no_runtime_config_schema_scheduler_memory_ui_or_packaging_change: true
+  relaylm_directory_unchanged: true
+  compileall: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  documentation_current_boundary_smoke: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  consolidated_selector_contract: passed
+  wave4_cross_slice_convergence_smoke: passed
+  focused_new_wrapper_smoke: passed
+  git_diff_check: passed
+  all_github_actions: passed
+  independent_review_findings_fixed:
+    - source_record_date_corrected_from_cutover_date_2026_07_15_to_source_report_date_2026_06_27_in_wrapper_front_matter_and_receipt_record
+    - fail_closed_legacy_wave_report_reintroduction_guard_added_to_completion_report_smoke_main
+    - consolidated_smoke_contract_legacy_selector_guard_generalized_from_wave4_only_to_the_full_wave_digit_plus_family
+    - receipt_workflows_inspected_changed_fields_renamed_to_distinguish_path_bound_dependency_files_evidence_index_files_and_actual_workflow_files
+  prior_validated_content_head_superseded: 23472fcaba751d7146f5c0f119aa17dae57bdd32
+  prior_validated_content_head_superseded_reason: independent_review_found_four_accuracy_and_coverage_gaps_after_this_head_requiring_a_substantive_correction_commit_source_date_legacy_reintroduction_guard_generalized_selector_family_guard_and_receipt_field_naming
+  prior_validated_content_head_triggered_check_runs: 44
+  prior_validated_content_head_all_github_actions: passed
+  validated_content_head_triggered_workflow_runs: 15
+  validated_content_head_triggered_check_runs: 44
+  validated_content_head_all_github_actions: passed
+  validated_content_head_relaymem_runtime_ui_group_note: scripts_relaylm_ci_consolidated_smoke_py_is_a_global_pattern_for_all_three_groups_so_editing_it_to_remove_the_obsolete_selector_correctly_triggered_full_relaymem_runtime_ui_runs_this_one_time_not_a_selection_regression
+  unresolved_review_threads: 0
+  validated_content_head: 8bfa4bcce1f94a931239d8d5999fa38994e78f2c
+  receipt_finalization: performed_after_validated_content_head
+```
+
+This single-record batch retires the last live `docs/mvp/wave<N>/*_completion_report.md` file. The record's `recorded_on` (2026-06-27) is the source report's own date — it matches both the source report's "Last reviewed: 2026-06-27 JST" line and PR #422's merge date — and is distinct from `cutover_recorded_on` (2026-07-15), the date this documentation cutover batch was executed; an earlier draft of this entry and the canonical wrapper's `relaylm_recorded_on` incorrectly used the cutover date for the source record and have been corrected. PR #422 ("docs: consolidate execution plan and roadmap") was squash-merged into `main`, so its source commit and origin/merge commit are identical (`ff255b47ca8b1ef87837f65aa185dac1fa3faf56`); the pre-merge branch (`docs-centralize-execution-plan`, 17 commits) is not reachable from `main` and is excluded from provenance, consistent with the MVP-47 squash-merge precedent recorded earlier in this ledger. Within that excluded branch history, the report was originally added by commit `32c29745c1846a398f5870eb29c9e348898d682e` ("docs: add execution plan consolidation completion report") and then aligned with the completion-report model by commit `066c76f1f01c49fecf094e9861eba86367fbd1f0` ("docs: align execution plan report with completion model") before the branch was squash-merged; both are recorded here for narrative completeness even though neither is an ancestor of `main`. The squash-merge blob `65a8406add3ee86465b6862ba718e471870d209c` (content SHA-256 `e5b14ffa11edeade756bc8ff9e64fae85d0d5ff783cb3f4adf44ba9635242010`) was independently recomputed via the GitHub API (`get_commit`, `get_file_contents`) and via local `git hash-object`/`sha256sum` on the working tree, and both agree with each other and with the advisory value supplied in the task brief. `git log --follow` and `git log --full-history` against the local working tree returned only two early merge commits for this path, both pre-dating a repository history squash/import boundary (confirmed by one of those commits having no recorded parent); the true, more granular provenance was therefore recovered from the GitHub API against PR #422 directly rather than from local history alone. No post-source modification commit exists: the source blob equals both the pre-cutover blob and today's blob exactly, so this file has had zero content drift since PR #422 merged on 2026-06-27.
+
+An exhaustive `git grep` for the exact old path, the bare filename, `docs/mvp/wave`, `docs/mvp/wave4`, and `legacy_wave_report` across `docs/`, `scripts/`, `.github/workflows/`, `relaylm/`, `tests/`, `README.md`, `README_ja.md`, and `config.example.yaml` found zero live referrers to this report anywhere before this cutover: it was never indexed by `docs/mvp/README.md` or `docs/evidence/implementation/README.md`, a stronger case than most prior records in this ledger. The only functional dependency found was the unrelated, over-broad `docs/mvp/wave4/*` glob inside `scripts/relaylm_ci_consolidated_smoke.py`'s `recall_correction_forget_pin` RelayMEM group, flagged as still-live in the C1C35 entry above; that glob is removed in this PR without a replacement selector, because the canonical docs-execution-plan report is docs-only evidence and must not select RelayMEM, runtime, or UI CI groups. `scripts/relaylm_ci_consolidated_smoke_contract.py` gained two new assertions pinning both halves of this: no remaining group in any workflow retains a pattern matching the retired `docs/mvp/wave<N>/` family (generalized by regex, not limited to `wave4` only), and the new canonical report path selects zero groups in every workflow (`relaymem`, `runtime`, `ui`).
+
+`scripts/relaylm_mvp_completion_report_smoke.py`'s `validate_report()` and `all_report_paths()` no longer accept or discover `docs/mvp/wave<N>/*_completion_report.md`; only `docs/evidence/implementation/*_completion_report.md` is now a valid completion-report location, and the fail-closed error message was updated accordingly. `scripts/relaylm_mvp_completion_report_pr_link_smoke.py` was updated the same way. The completion-report template (`docs/mvp/IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md`) and its model anchor were not moved or redesigned, per this batch's bounded scope. `docs/mvp/README.md`'s transitional "legacy/unmigrated" versus "canonical/migrated" two-path convention was replaced with a truthful canonical-only convention statement now that no completion report remains under `docs/mvp/wave<N>/`, and a new bounded link to the canonical report was added, explicitly noted as a separate docs-only convergence report rather than part of the W4-INT slice-implementation set already indexed in that section. `docs/mvp/README.md`'s final move, deletion, or freeze is out of this batch's scope and is left for a later cutover, per the task brief.
+
+The canonical wrapper follows the established `implementation_completion_report` / `historical_after_merge` / `frozen` convention already used by every other canonical completion report in this collection (matching, for example, the O1D2 and audit-trace-projection-boundary wrapper shape), not the plain `evidence` doc-type convention used by non-completion-report MVP notes; no new legacy type or status was introduced. It explicitly states that no production/runtime boundary was implemented by PR #422, that current repository status belongs to `docs/PROJECT_STATUS.md`, that current sequencing remains at `docs/architecture/project_execution_plan.md` until that document's own later cutover, and that the exact snapshot's statements are historical and do not make any compatibility stub or superseded wording current. The execution plan itself (`docs/architecture/project_execution_plan.md`) is unchanged and not moved in this PR; its later move to `docs/planning/project-execution.md` remains a separate authority cutover, as does `docs/mvp/README.md`'s own final disposition. No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, legacy report discovery, old-path workflow selector, or temporary finalizer workflow was added. No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed.
+
+An independent review of the initial green head (`23472fcaba751d7146f5c0f119aa17dae57bdd32`) found four accuracy and coverage gaps, all corrected in this same entry by a further commit. First, the canonical wrapper's `relaylm_recorded_on` and this record's `recorded_on` incorrectly used `2026-07-15` (the cutover execution date, correctly kept as `cutover_recorded_on`) instead of the source report's own date, `2026-06-27` (matching both the source body's "Last reviewed: 2026-06-27 JST" line and PR #422's merge date); both fields were corrected, and the narrative above now states the distinction explicitly. Second, `all_report_paths()` in `scripts/relaylm_mvp_completion_report_smoke.py` only discovers canonical reports, so a future accidental reintroduction of `docs/mvp/wave<N>/*_completion_report.md` would have silently passed every completion-report check; a new `assert_no_legacy_wave_reports()` fail-closed guard was added, called unconditionally at the start of `main()` (covering the default invocation, `--check-model`, `--check-all`, and explicit path validation alike), listing every offending path in its error message. Third, `scripts/relaylm_ci_consolidated_smoke_contract.py`'s guard against a reintroduced legacy selector matched only the literal `docs/mvp/wave4/` prefix, missing the full retired `docs/mvp/wave<N>/` family; it was generalized to a regex (`^docs/mvp/wave\d+/`) matching any wave number. Fourth, this record's own `workflows_inspected`/`workflows_changed` fields incorrectly labeled Python scripts and `docs/mvp/README.md` as workflows; they were split into `path_bound_dependency_files_inspected`/`path_bound_dependency_files_changed` (the four scripts plus the MVP index), `evidence_and_migration_index_files_changed` (the two index/ledger documents), and `workflow_files_inspected`/`workflow_files_changed`/`workflow_files_unchanged_reason` (the four workflow YAML files, none of which required a change) — the underlying facts are unchanged, only the field names now match what they actually list. The new fail-closed guard's negative path was proven with a bounded `tempfile.TemporaryDirectory` self-test that monkeypatches the smoke module's `ROOT` constant rather than touching the real repository tree: it confirmed rejection of both a single reintroduced legacy path and multiple reintroduced paths across different wave numbers (each listed by name in the raised error), confirmed silence on a clean synthetic tree, and confirmed the real current repository tree has zero legacy Wave reports today. `docs/mvp/README.md`'s heading was also reworded from "Canonical completion-report path after the documentation hard cutover" (which falsely implied the overall multi-batch cutover is complete) to "Current canonical completion-report path after Cutover 1C-36" (accurate: the ledger remains `current`, not `frozen`, and later batches remain pending). None of these four corrections changed the verified source/pre-cutover blobs, content SHA-256 values, the squash-merge source/origin convention, the canonical wrapper or snapshot paths, the completion-report template, `docs/mvp/README.md`'s final disposition, or `docs/architecture/project_execution_plan.md`.
+
+`cutover_pr` remains `600` (`rinsakamo/relay-lm#600`). `23472fcaba751d7146f5c0f119aa17dae57bdd32` was the prior `validated_content_head`; at that head all 44 triggered GitHub Actions check runs (job/check-run count) had completed successfully, including every RelayMEM/runtime/UI consolidated-smoke group, which ran in full rather than reporting `skipped` because `scripts/relaylm_ci_consolidated_smoke.py` is itself a `GLOBAL_PATTERNS` entry for all three groups — editing it correctly forces a full run, and does not indicate a selection regression (the underlying per-path selection behavior is what the consolidated-smoke-contract assertions pin). That head is now superseded by `8bfa4bcce1f94a931239d8d5999fa38994e78f2c`, the correction commit containing the four fixes above.
+
+`8bfa4bcce1f94a931239d8d5999fa38994e78f2c` is the new `validated_content_head`: 44 triggered GitHub Actions check runs (job/check-run count), spanning 15 distinct workflow runs (workflow-run count — a job/check-run count and a workflow-run count are not the same measure and are recorded separately in this entry), all completed successfully, including every RelayMEM/runtime/UI consolidated-smoke group (again running in full rather than `skipped`, for the same `GLOBAL_PATTERNS` reason as the superseded head). Zero reviews, zero PR comments, and zero unresolved review threads were present at that head. Per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, this finalization will be recorded in a further, separate commit after `8bfa4bcce1f94a931239d8d5999fa38994e78f2c`, which remains the exact validated content head and will not itself be re-claimed as re-validated. C1C35 remains finalized to merge commit `5d60433713574c042afe5ceab15b865a48824ae5`. This PR is not merged.
 
 ## Pending batches
 
