@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import yaml
@@ -10,6 +11,8 @@ import yaml
 from relaylm_ci_consolidated_smoke import COMMANDS, GROUPS, changed_outputs
 
 ROOT = Path(__file__).resolve().parents[1]
+
+RETIRED_WAVE_REPORT_FAMILY = re.compile(r"^docs/mvp/wave\d+/")
 
 PURE_UI_GROUPS = {
     "soul_lab_build",
@@ -104,8 +107,8 @@ def check_change_selection() -> None:
 
     for workflow, groups in GROUPS.items():
         for group, patterns in groups.items():
-            if any(pattern.startswith("docs/mvp/wave4/") for pattern in patterns):
-                fail(f"retired docs/mvp/wave4/ selector still present in {workflow}/{group}")
+            if any(RETIRED_WAVE_REPORT_FAMILY.match(pattern) for pattern in patterns):
+                fail(f"retired docs/mvp/wave<N>/ selector still present in {workflow}/{group}")
 
     for workflow in GROUPS:
         selected = changed_outputs(

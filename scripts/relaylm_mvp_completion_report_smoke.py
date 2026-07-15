@@ -114,6 +114,16 @@ def all_report_paths() -> tuple[str, ...]:
     return tuple(path.relative_to(ROOT).as_posix() for path in sorted(reports))
 
 
+def assert_no_legacy_wave_reports() -> None:
+    legacy = sorted((ROOT / "docs" / "mvp").glob("wave*/*_completion_report.md"))
+    if legacy:
+        paths = ", ".join(path.relative_to(ROOT).as_posix() for path in legacy)
+        raise AssertionError(
+            "legacy docs/mvp/wave<N>/*_completion_report.md path(s) reintroduced "
+            f"(retired by Cutover 1C-36; move to docs/evidence/implementation/ instead): {paths}"
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("paths", nargs="*")
@@ -125,6 +135,7 @@ def main() -> None:
         args.check_model = True
         args.check_all = True
 
+    assert_no_legacy_wave_reports()
     if args.check_model:
         validate_model()
     paths = list(args.paths)

@@ -29,7 +29,7 @@ This directory is the transitional index for MVP-focused implementation notes, r
 
 Declared parallel waves use unique completion reports as the handoff from each implementation PR to the later convergence/documentation thread.
 
-Canonical completion-report path after the documentation hard cutover:
+Current canonical completion-report path after Cutover 1C-36:
 
 ```text
 docs/evidence/implementation/<slice>_completion_report.md
