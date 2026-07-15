@@ -84,7 +84,7 @@ Current runtime writes pass `message_count` and `response_present` directly. The
 
 The compatibility properties `TraceRecord.messages` and `TraceRecord.response_text` return `[]` and `None` respectively. They exist only to prevent old readers from failing while making content recovery impossible.
 
-No raw messages, response text, full retrieval artifacts, or evidence envelopes are part of runtime trace wiring today. The legacy `messages`/`response_text` arguments and the compatibility properties are a permanent content-free compatibility shim, not a placeholder for a pending future removal.
+No raw messages, response text, full retrieval artifacts, or evidence envelopes are part of runtime trace wiring today. The legacy `messages`/`response_text` arguments and compatibility properties remain a content-free compatibility shim in current code. No active current document schedules their removal; this contract does not require them to remain forever.
 
 ## Legacy JSONL reads
 
