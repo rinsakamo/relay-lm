@@ -120,7 +120,7 @@ Docs Execution Plan Consolidation is a separate, docs-only convergence completio
 
 The cross-slice convergence record is [Wave 3 Cross-Slice Convergence Audit](../evidence/waves/wave3_cross_slice_convergence_audit.md). W3-INT is merged.
 
-A completion report is evidence for one PR only. It is not authoritative for repository-wide current status, other slice completion, next-wave readiness, or release/evaluation readiness. Use [the template](IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md) and validate reports with:
+A completion report is evidence for one PR only. It is not authoritative for repository-wide current status, other slice completion, next-wave readiness, or release/evaluation readiness. The template moved to the canonical templates collection in Cutover 1C-37; this directory no longer holds a live copy. Use [the template](../templates/implementation-completion-report.md) and validate reports with:
 
 ```bash
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e1_completion_report.md
