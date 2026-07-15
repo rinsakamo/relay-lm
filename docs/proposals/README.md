@@ -19,8 +19,9 @@ Documents in this directory are undecided proposals. They provide decision argum
 
 ## Active proposals
 
-- [Subjective MEM Formation, Consolidation, and Retrieval](subjective-memory-formation-consolidation-and-retrieval.md) — proposes reinforcement-first subjective memory formation, a hot current-session evidence overlay, SOUL-centered / SCN-grounded / EMO-decoupled deferred reflection, evidence-preserving consolidation, hybrid Retrieval, and production evaluation gates.
+- [Subjective MEM Formation, Consolidation, and Retrieval](subjective-memory-formation-consolidation-and-retrieval.md) — proposes reinforcement-first subjective memory formation, a hot current-session evidence overlay, bounded governed-ingress catch-up, SOUL-centered / SCN-grounded / EMO-decoupled deferred reflection, evidence-preserving consolidation, hybrid Retrieval, and production evaluation gates.
 
 ## Supporting implementation evidence
 
 - [RelayCTX Session Evidence Overlay (CTX-OVL) implementation feasibility](../evidence/implementation/session-evidence-overlay-feasibility.md) — records reusable runtime boundaries, missing cross-request and stream-finalization work, the SCN/EMO conditioning split, RelayCTX implementation slices, risks, and validation gates for provisional continuity before RelaySLP completion.
+- [RelayATN / CTX-OVL boundary review](../evidence/implementation/relayatn-ctx-ovl-boundary-review.md) — records accepted and revised RelayATN/CTX-OVL boundaries, catch-up limits, multi-user and scene-epoch failure behavior, and the exact non-authoritative counterpart checklist for the RelayATN-owned architecture document.
