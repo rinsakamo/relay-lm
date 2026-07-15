@@ -1,0 +1,107 @@
+name: PR 586 index sync
+
+on:
+  push:
+    branches:
+      - docs/subjective-memory-formation-proposal
+
+permissions:
+  contents: write
+
+jobs:
+  sync-indexes:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: docs/subjective-memory-formation-proposal
+          fetch-depth: 0
+
+      - name: Sync current main indexes and add PR 586 routes
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess
+
+          branch = "docs/subjective-memory-formation-proposal"
+          subprocess.run(["git", "fetch", "origin", "main"], check=True)
+
+          def from_main(path: str) -> str:
+              return subprocess.check_output(
+                  ["git", "show", f"origin/main:{path}"],
+                  text=True,
+                  encoding="utf-8",
+              )
+
+          root_path = Path("docs/README.md")
+          root = from_main(root_path.as_posix())
+          proposal_line = (
+              "- [Active proposals](proposals/README.md) — undecided design proposals "
+              "that do not override ADRs, architecture, contracts, or current status.\n"
+          )
+          if proposal_line not in root:
+              marker = (
+                  "- [Documentation model](DOCUMENTATION_MODEL.md) — document types, "
+                  "metadata, authority, AI reading rules, and the parallel "
+                  "implementation/convergence flow.\n"
+              )
+              if root.count(marker) != 1:
+                  raise SystemExit("docs/README.md insertion marker is not unique")
+              root = root.replace(marker, marker + proposal_line, 1)
+          root_path.write_text(root, encoding="utf-8")
+
+          evidence_path = Path("docs/evidence/implementation/README.md")
+          evidence = from_main(evidence_path.as_posix())
+          section = """
+
+          ## Proposal and boundary feasibility records
+
+          - [RelayCTX Session Evidence Overlay implementation feasibility](session-evidence-overlay-feasibility.md) — broad feasibility, missing implementation pieces, failure behavior, and evaluation gates for bounded current-session provisional continuity.
+          - [RelayATN / CTX-OVL boundary review](relayatn-ctx-ovl-boundary-review.md) — reviewed RelayATN, governed-ingress, multi-user partition, Reflex Snapshot, and scene-escalation recommendations; not accepted architecture authority.
+          - [CTX-OVL feasibility alignment with the current RelayCTX runtime contract](session-evidence-overlay-current-relayctx-alignment.md) — records which current request-local, default-off RelayCTX primitives are reusable and which cross-request CTX-OVL capabilities remain absent.
+          """.strip("\n")
+          if "## Proposal and boundary feasibility records" not in evidence:
+              marker = (
+                  "This collection preserves bounded implementation and smoke evidence "
+                  "after its active design or operational authority has moved elsewhere. "
+                  "Commands and expectations inside exact source snapshots describe their "
+                  "historical boundary and are not automatically current instructions.\n"
+              )
+              if evidence.count(marker) != 1:
+                  raise SystemExit("implementation evidence insertion marker is not unique")
+              evidence = evidence.replace(marker, marker + "\n" + section + "\n", 1)
+          evidence_path.write_text(evidence, encoding="utf-8")
+
+          workflow = Path(".github/workflows/pr586-index-sync.yml")
+          workflow.unlink()
+
+          subprocess.run(["git", "config", "user.name", "github-actions[bot]"], check=True)
+          subprocess.run(
+              [
+                  "git",
+                  "config",
+                  "user.email",
+                  "41898282+github-actions[bot]@users.noreply.github.com",
+              ],
+              check=True,
+          )
+          subprocess.run(
+              [
+                  "git",
+                  "add",
+                  "docs/README.md",
+                  "docs/evidence/implementation/README.md",
+                  ".github/workflows/pr586-index-sync.yml",
+              ],
+              check=True,
+          )
+          staged = subprocess.run(["git", "diff", "--cached", "--quiet"])
+          if staged.returncode == 0:
+              raise SystemExit("one-shot sync produced no changes")
+          subprocess.run(
+              ["git", "commit", "-m", "docs: route PR 586 proposal and evidence"],
+              check=True,
+          )
+          subprocess.run(["git", "push", "origin", f"HEAD:{branch}"], check=True)
