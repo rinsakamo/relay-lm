@@ -2835,10 +2835,16 @@ verification:
   wave4_cross_slice_convergence_smoke: passed
   wave5_cross_slice_convergence_smoke: passed
   git_diff_check: passed
-  all_github_actions: pending_recorded_at_finalization
-  unresolved_review_threads: pending_recorded_at_finalization
-  validated_content_head: pending_recorded_at_finalization
-  receipt_finalization: pending_recorded_in_a_separate_commit_after_validated_content_head
+  validated_content_head: 0ceb5ab454ed848e66f87f3fc0021dd3dd0a48a5
+  validated_content_head_triggered_check_runs: 25
+  validated_content_head_triggered_workflow_runs: 14
+  validated_content_head_all_github_actions: passed
+  validated_content_head_relaymem_runtime_ui_group_note: all_relaymem_runtime_ui_consolidated_smoke_groups_correctly_reported_skipped_this_pr_touches_only_docs_and_scripts_paths_matching_no_relaymem_runtime_or_ui_group_glob
+  all_github_actions: passed
+  unresolved_review_threads: 0
+  reviews: 0
+  pr_comments: 0
+  receipt_finalization: performed_after_validated_content_head
 ```
 
 This single-record batch canonicalizes the Implementation Completion Report template only. It is a template canonicalization, not an implementation-evidence migration: no `docs/evidence/implementation/*_completion_report.md` record is created, moved, or edited by this batch. `docs/mvp/README.md` remains temporarily live and is deliberately not moved, deleted, frozen, or substantially rewritten here; its wave grouping, handoff links, root links, audits, and path-bound smoke dependencies are explicitly deferred to Cutover 1C-38, along with the directory's final retirement. `docs/architecture/project_execution_plan.md` is unrelated to this batch and is not touched.
@@ -2855,7 +2861,9 @@ An exhaustive `git grep` for the exact old path, the bare filename, `implementat
 
 Both new fail-closed guards' negative paths were proven with a bounded `tempfile.TemporaryDirectory` self-test that monkeypatches each script module's `ROOT` constant rather than touching the real repository tree, following the precedent established in the C1C36 entry above: it confirmed rejection of a reintroduced old template path by both the smoke script and the semantic audit, confirmed the semantic audit rejects a canonical template missing `relaylm_doc_type: template` or missing the canonical evidence-destination instruction, confirmed silence on clean synthetic trees, and confirmed both guards pass silently against the real current repository tree (all 8 assertions passed). The self-test itself was not committed to the repository tree, per the task brief's requirement to use a bounded method that does not modify committed repository state.
 
-No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, old-path manifest, or temporary finalizer workflow was added. No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. C1C36 is finalized above to merge commit `037530a50cd4265bea4e64ac29563aa3532c44b7` (PR #600), confirmed an ancestor of the working `main` before this Cutover 1C-37 batch began. This PR is not merged.
+No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, old-path manifest, or temporary finalizer workflow was added. No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. C1C36 is finalized above to merge commit `037530a50cd4265bea4e64ac29563aa3532c44b7` (PR #600), confirmed an ancestor of the working `main` before this Cutover 1C-37 batch began.
+
+`cutover_pr` is `602` (`rinsakamo/relay-lm#602`), recorded once the pull request was created (the entry used a `pending` placeholder for the single commit between the initial push and PR creation). `0ceb5ab454ed848e66f87f3fc0021dd3dd0a48a5` — the content commit that also corrected the `cutover_pr` placeholder to `602` — is the `validated_content_head`: all 25 triggered GitHub Actions check runs (job/check-run count), spanning 14 distinct workflow runs (workflow-run count, recorded separately from the job/check-run count per the convention established in prior batches), completed successfully. Every RelayMEM, runtime, and UI consolidated-smoke group correctly reported `skipped`, because this PR touches only `docs/` and `scripts/` paths that match none of those groups' globs. Zero reviews, zero PR comments, and zero unresolved review threads were present at that head. Per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, this finalization is recorded in a further, separate commit after `0ceb5ab454ed848e66f87f3fc0021dd3dd0a48a5`, which remains the exact validated content head and is not itself re-claimed as re-validated. This PR is not merged.
 
 ## Pending batches
 
