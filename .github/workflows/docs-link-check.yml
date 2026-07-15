@@ -1,4 +1,4 @@
-# Trigger the one-shot RelayATN / CTX-OVL boundary update after the job exists on the branch.
+# Push-trigger the already-present one-shot boundary update.
 name: Documentation links
 
 on:
@@ -13,6 +13,7 @@ on:
   push:
     branches:
       - main
+      - docs/subjective-memory-formation-proposal
     paths:
       - README*.md
       - docs/**
@@ -29,7 +30,7 @@ concurrency:
 
 jobs:
   relayatn-ctx-ovl-boundary-update:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'docs/subjective-memory-formation-proposal'
+    if: (github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'docs/subjective-memory-formation-proposal') || (github.event_name == 'push' && github.ref == 'refs/heads/docs/subjective-memory-formation-proposal')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
