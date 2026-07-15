@@ -22,8 +22,8 @@ This directory is the transitional index for MVP-focused implementation notes, r
 
 ## Release readiness assessments
 
-- [v0.1 Release Readiness Assessment](v0.1_release_readiness.md) — content-free readiness assessment for the validated and tagged v0.1 boundary, including local human-reviewed durable-memory E2 value-smoke evidence handling and post-v0.1 decision debt.
-- [v0.1 Final Main-HEAD Validation and Tag Receipt](v0.1_final_validation_receipt.md) — frozen exact-commit validation and tag-binding evidence.
+- [v0.1 Release Readiness Assessment](../release/v0.1-release-readiness.md) — moved to the canonical release collection in Cutover 1C-35; current interpretation of the validated and tagged v0.1 boundary, including a content-free summary of the local human-reviewed durable-memory E2 value-smoke evidence handling and post-v0.1 decision debt. This directory no longer holds a live copy.
+- [v0.1 Final Main-HEAD Validation and Tag Receipt](../evidence/releases/v0.1-final-main-validation-tag-receipt.md) — moved to the canonical release-evidence collection in Cutover 1C-35; frozen exact-commit validation and tag-binding evidence. This directory no longer holds a live copy.
 
 ## Implementation completion reports
 
