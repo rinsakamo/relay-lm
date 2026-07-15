@@ -2525,7 +2525,7 @@ The correction commit `a994067ef903d77cf4ab623df2a7d00058147070` is the new `val
 ### C1C36-001 — Docs Execution Plan Consolidation completion report
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 600
 merged_commit: pending
 record_count: 1
 cutover_recorded_on: 2026-07-15
@@ -2644,7 +2644,7 @@ An exhaustive `git grep` for the exact old path, the bare filename, `docs/mvp/wa
 
 The canonical wrapper follows the established `implementation_completion_report` / `historical_after_merge` / `frozen` convention already used by every other canonical completion report in this collection (matching, for example, the O1D2 and audit-trace-projection-boundary wrapper shape), not the plain `evidence` doc-type convention used by non-completion-report MVP notes; no new legacy type or status was introduced. It explicitly states that no production/runtime boundary was implemented by PR #422, that current repository status belongs to `docs/PROJECT_STATUS.md`, that current sequencing remains at `docs/architecture/project_execution_plan.md` until that document's own later cutover, and that the exact snapshot's statements are historical and do not make any compatibility stub or superseded wording current. The execution plan itself (`docs/architecture/project_execution_plan.md`) is unchanged and not moved in this PR; its later move to `docs/planning/project-execution.md` remains a separate authority cutover, as does `docs/mvp/README.md`'s own final disposition. No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, legacy report discovery, old-path workflow selector, or temporary finalizer workflow was added. No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed.
 
-Per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, this entry's `all_github_actions`, `validated_content_head`, and `receipt_finalization` fields are recorded as `pending` until the substantive content commit is pushed, all required checks complete on that exact remote head, and a separate receipt-finalization-only commit records the validated head and confirms this PR is not merged. `cutover_pr` is recorded as `pending` until the pull request is created and its real number is known; both fields are corrected in this same entry once known, ahead of the `validated_content_head` wait. C1C35 remains finalized to merge commit `5d60433713574c042afe5ceab15b865a48824ae5`.
+`cutover_pr` is now `600` (`rinsakamo/relay-lm#600`), corrected in this same entry from its initial `pending` placeholder once the pull request was created; no reconciliation was needed beyond filling in the real number. Per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, this entry's `all_github_actions`, `validated_content_head`, and `receipt_finalization` fields remain `pending` until all required checks complete on this exact remote content head and a separate, later receipt-finalization-only commit records the validated head and confirms this PR is not merged. C1C35 remains finalized to merge commit `5d60433713574c042afe5ceab15b865a48824ae5`.
 
 ## Pending batches
 
