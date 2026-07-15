@@ -9,13 +9,15 @@ relaylm_update_trigger:
   - RelayCTX cross-request working-state storage is implemented
   - response finalization or RelaySLP reconciliation ownership changes
   - SCN or EMO conditioning boundaries change
+  - RelayATN, governed ingress, or multi-user partition boundaries change
 relaylm_not_authoritative_for:
   - accepted architecture
   - current runtime behavior
   - exact production schema or implementation sequence
   - durable MEM authority
 relaylm_current_status_source: ../../PROJECT_STATUS.md
-relaylm_source_commit: 103bc03f90c9fda089b5a9e0d5197607e96a303f
+relaylm_source_commit: 5d60433713574c042afe5ceab15b865a48824ae5
+relaylm_source_pr: 586
 relaylm_recorded_on: 2026-07-15
 relaylm_related_proposals:
   - ../../proposals/subjective-memory-formation-consolidation-and-retrieval.md
@@ -220,6 +222,54 @@ TTL / eviction / invalid scope
   -> drop overlay projection
   -> preserve Protected Source Evidence
 ```
+
+## RelayATN and governed-ingress feasibility boundary
+
+[RelayATN / CTX-OVL Boundary Review](relayatn-ctx-ovl-boundary-review.md) re-evaluates this proposal against current `main` at `5d60433713574c042afe5ceab15b865a48824ae5` and PR #586 head `707d81523b9eec8469f0e1a23f2842bd6da514dd`.
+
+The integration is feasible only through a directional boundary:
+
+```text
+raw ingress candidate
+  -> RelayATN admission scoring
+
+governed retained SourceEvent
+  -> bounded RelayCTX catch-up selection on a later admitted request
+
+CTX-OVL
+  -> content-free RelayCTX Reflex Snapshot
+  -> RelayATN advisory freshness signals
+
+RelayATN
+  -/-> CTX-OVL mutation
+  -/-> semantic sidecar repair
+  -/-> durable memory authority
+```
+
+The review accepts RelayATN non-write, evidence/turn-admission separation, multi-user partitioning, unknown-identity quarantine, private-to-group packing fences, and a content-free Reflex Snapshot.
+
+It revises the input in four important ways:
+
+1. RelayATN still reads the raw incoming candidate being scored; only CTX-derived state is snapshot-only.
+2. Rejected events are eligible for bounded catch-up consideration, not automatic semantic candidate creation.
+3. Pre-response catch-up may select unassessed governed evidence, but RelayCTX must not infer REL, SCN, EMO, INT, temporal-validity, shadow-target, or memory semantics from rejected raw text.
+4. RelayATN only flags escalation; RelaySCN classifies the scene and RelayCTX enforces the pre-pack quarantine or scene-epoch fence.
+
+The governed SourceEvent envelope, evidence-admission ownership, ingress sequence, coverage watermark, pre-node hydration point, Reflex Snapshot, multi-user partition schema, and scene-epoch handoff are missing contracts. This evidence record therefore supports contract design and evaluation only; it does not authorize implementation.
+
+Required failure behavior includes:
+
+- missing or expired SourceEvent -> no overlay mutation and no synthesized evidence;
+- budget exhaustion -> bounded stop with incomplete coverage;
+- stale revision or replay -> idempotent no-op or deferred retry;
+- missing/conflicting identity -> quarantine and no shadow;
+- unresolved private-to-group escalation -> no private partition packing;
+- stale/missing Reflex Snapshot -> no CTX-derived assumption;
+- RelayATN failure -> evidence admission and Protected Source Evidence unchanged;
+- CTX-OVL eviction/restart -> continuity loss only;
+- malformed sidecar -> visible response preserved, no ATN repair, evidence-only fallback or no update.
+
+The exact counterpart changes required in `RelayATN Reflex Layer Design` are listed in the review evidence rather than duplicated here as active architecture authority.
 
 ## Missing implementation pieces
 
@@ -472,11 +522,17 @@ Required cases include:
 - stream completion racing the next request;
 - character or namespace change under the same frontend session ID;
 - missing, malformed, or conflicting session identity;
-- process restart before or after RelaySLP enqueue.
+- process restart before or after RelaySLP enqueue;
+- missing or expired governed SourceEvent;
+- catch-up budget exhaustion or ingress gaps;
+- unknown participant identity;
+- private-to-group escalation with unresolved scene policy;
+- stale or absent Reflex Snapshot;
+- RelayATN process failure.
 
 Recommended rule:
 
-> Scope mismatch, stale revision, malformed candidate, or uncertain lineage produces no overlay mutation and never broadens authority.
+> Scope mismatch, stale revision, malformed candidate, uncertain lineage, unresolved identity, or unresolved disclosure scope produces no overlay mutation and never broadens authority.
 
 ## Performance assessment
 
@@ -489,11 +545,15 @@ The synchronous work is computationally small if bounded correctly:
 - revision-fenced RAM update;
 - bounded dynamic-suffix selection.
 
-It should not materially affect first-token latency because most work occurs at or after response finalization. The main risk is total response completion latency on streaming turns and contention under rapid same-session requests.
+Rejected-ingress catch-up adds a separate bounded cost envelope: event count, bytes or tokens, event age, wall time, per-participant share, quarantine capacity, and maximum lag must all be capped.
+
+It should not materially affect first-token latency because most work occurs at or after response finalization. The main risks are pre-node catch-up latency, total response completion latency on streaming turns, and contention under rapid same-session requests.
 
 Required measurements:
 
 - overlay parse/update p50 and p95;
+- catch-up selection p50 and p95;
+- catch-up budget saturation and incomplete-coverage rate;
 - lock or revision-conflict rate;
 - bytes and candidate count per active session;
 - stream terminal-chunk overhead;
@@ -517,9 +577,10 @@ Default diagnostics may include only:
 - acknowledgement outcome;
 - bounded reason IDs;
 - parse/update latency;
+- catch-up coverage and lag classes;
 - content-free apply status.
 
-They must not include raw user text, sidecar bodies, affect descriptions, entity values, session IDs, namespace values, or source-lineage fingerprints.
+They must not include raw user text, sidecar bodies, affect descriptions, entity values, session IDs, namespace values, SourceEvent IDs, or source-lineage fingerprints.
 
 ## Proposed RelayCTX implementation slices
 
@@ -541,6 +602,37 @@ They must not include raw user text, sidecar bodies, affect descriptions, entity
 - read on the next request;
 - pack one bounded provisional block;
 - no durable write.
+
+### Governed-ingress catch-up contract gate
+
+Before multi-user or rejected-input catch-up is implemented:
+
+- define SourceEvent identity and evidence-admission ownership;
+- define consent, retention, source-authority, and replay semantics;
+- define contiguous ingress coverage and late-event lineage handling;
+- define the RelayCTX-owned pre-node hydration boundary;
+- keep selected evidence unassessed until the normal semantic pipeline runs;
+- define bounded failure and incomplete-coverage behavior.
+
+### Multi-user partition contract gate
+
+Before CTX-OVL is enabled for multi-user scenes:
+
+- define shared-scene, participant, RelayREL-resolved relationship, and quarantine partitions;
+- require trusted participant and room/scene identity for personal partitions;
+- forbid unknown identity from shadowing or group-visible packing;
+- define private-to-group scene-epoch quarantine before packing;
+- define quarantine TTL and overflow behavior.
+
+### RelayCTX Reflex Snapshot contract gate
+
+Before RelayATN consumes CTX-derived state:
+
+- define a content-free read-only snapshot;
+- define revision, ingress-coverage, scene-epoch, count, and boolean fields;
+- exclude all semantic text, affect content, private REL content, durable MEM IDs, confidence, salience, and shadow targets;
+- define stale or missing snapshot fallback;
+- prohibit RelayATN Tier 3 from repairing sidecars or overlay state.
 
 ### CTX-OVL-2: Retrieval interaction
 
@@ -581,7 +673,9 @@ They must not include raw user text, sidecar bodies, affect descriptions, entity
 - an explicit correction shadows the earlier session candidate;
 - current-session state may shadow but not mutate durable MEM;
 - unrelated queries do not receive irrelevant overlay content;
-- SLP acknowledgement returns authority to durable MEM cleanly.
+- SLP acknowledgement returns authority to durable MEM cleanly;
+- rejected governed evidence has measured bounded catch-up recall;
+- immediate-continuity candidates have measured miss and unnecessary-wake rates.
 
 ### Conditioning correctness
 
@@ -601,11 +695,13 @@ The recommended model must improve scene, role-play, audience, and task-scope co
 - character isolation;
 - namespace isolation;
 - session isolation;
-- user, room, and scene fences when configured;
-- missing identity fail-closed behavior;
+- user, room, participant, relationship, and scene-epoch fences;
+- missing identity fail-closed quarantine;
 - no global fallback;
 - no content-bearing trace or header projection;
-- malformed sidecar cannot alter visible text or durable state.
+- malformed sidecar cannot alter visible text or durable state;
+- unknown identity cannot shadow participant/REL durable MEM;
+- private partitions cannot reach group-visible packing during escalation.
 
 ### Concurrency and replay
 
@@ -613,26 +709,32 @@ The recommended model must improve scene, role-play, audience, and task-scope co
 - stale revision rejection;
 - response replay;
 - duplicate source lineage;
+- out-of-order or delayed SourceEvents;
+- ingress coverage gaps and budget exhaustion;
 - stream-to-next-request race;
 - acknowledgement/update race;
 - eviction/read race;
+- scene-epoch rotation race;
 - process restart.
 
 ### Performance
 
-- no LLM, vector, fsync, SQLite, or RelaySLP work in the synchronous update;
-- bounded p50/p95 overlay latency;
+- no LLM, vector, fsync, SQLite, or RelaySLP work in the synchronous overlay update;
+- bounded p50/p95 overlay and catch-up latency;
 - bounded memory per session and globally;
 - bounded prompt overhead;
 - no material normal-conversation quality regression.
 
 ## Overall feasibility conclusion
 
-The design is implementable and fits RelayLM's target component boundaries.
+The design is implementable and fits RelayLM's target component boundaries after the RelayATN/ingress revisions recorded above.
 
 The key architectural distinction is:
 
 ```text
+RelayATN
+  = resident pre-request admission only
+
 RelayCTX Session Evidence Overlay (CTX-OVL)
   = RelayCTX-owned hot, affect- and scene-aware, provisional continuity
 
@@ -649,6 +751,8 @@ RelayMEM
   = durable governed authority
 ```
 
-This preserves the interesting property that the character's immediate emotional interpretation remains visible in the continuing conversation while preventing transient EMO or expression pressure from becoming durable truth.
+Turn admission, evidence admission, provisional continuity, and durable memory formation remain orthogonal. RelayATN may receive a content-free RelayCTX Reflex Snapshot, but it never mutates CTX-OVL, repairs semantic sidecars, or changes evidence or durable-memory authority.
 
-The implementation should proceed only through explicit CTX-OVL slices and evaluation gates. This evidence record does not itself accept the architecture or authorize production behavior.
+This preserves the interesting property that the character's immediate emotional interpretation remains visible in the continuing conversation while preventing transient EMO, expression pressure, or pre-request attention scores from becoming durable truth.
+
+The implementation should proceed only through explicit CTX-OVL slices, separate owning contracts, and evaluation gates. This evidence record does not itself accept the architecture or authorize production behavior.
