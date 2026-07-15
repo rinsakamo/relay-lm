@@ -1,3 +1,4 @@
+# Trigger the one-shot RelayATN / CTX-OVL boundary update after the job exists on the branch.
 name: Documentation links
 
 on:
