@@ -20,13 +20,636 @@ on:
       - .github/workflows/docs-link-check.yml
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: documentation-links-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  relayatn-ctx-ovl-boundary-update:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'docs/subjective-memory-formation-proposal'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: docs/subjective-memory-formation-proposal
+          fetch-depth: 0
+
+      - name: Merge current main and resolve proposal-index cutover conflict
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git fetch origin main
+          if ! git merge-base --is-ancestor origin/main HEAD; then
+            set +e
+            git merge --no-commit --no-ff origin/main
+            status=$?
+            set -e
+            if [ "$status" -ne 0 ]; then
+              for path in docs/proposals/README.md docs/proposals/subjective-memory-formation-consolidation-and-retrieval.md docs/evidence/implementation/session-evidence-overlay-feasibility.md; do
+                if git ls-files -u -- "$path" | grep -q .; then
+                  git checkout --ours -- "$path"
+                  git add "$path"
+                fi
+              done
+              unresolved="$(git diff --name-only --diff-filter=U)"
+              if [ -n "$unresolved" ]; then
+                printf 'Unresolved merge conflicts:\n%s\n' "$unresolved"
+                exit 1
+              fi
+            fi
+          fi
+
+      - name: Apply reviewed RelayATN and CTX-OVL boundary
+        shell: python
+        run: |
+          from pathlib import Path
+
+          proposal_path = Path("docs/proposals/subjective-memory-formation-consolidation-and-retrieval.md")
+          feasibility_path = Path("docs/evidence/implementation/session-evidence-overlay-feasibility.md")
+          review_path = Path("docs/evidence/implementation/relayatn-ctx-ovl-boundary-review.md")
+          index_path = Path("docs/proposals/README.md")
+
+          proposal = proposal_path.read_text(encoding="utf-8")
+          proposal = proposal.replace(
+              "relaylm_related_evidence:\n  - ../evidence/implementation/session-evidence-overlay-feasibility.md\n",
+              "relaylm_related_evidence:\n  - ../evidence/implementation/session-evidence-overlay-feasibility.md\n  - ../evidence/implementation/relayatn-ctx-ovl-boundary-review.md\n",
+          )
+          marker = "### SCN input split\n"
+          section = '### RelayATN, governed ingress, and catch-up boundary\n\nRelayATN remains a resident **pre-request admission** component. It may reject, hold, select, or attach content-free advisory flags, but it never creates, updates, retracts, collapses, acknowledges, or shadows a CTX-OVL candidate.\n\nThe following decisions are orthogonal:\n\n```text\nturn admission\n  -> RelayATN\n\nevidence admission and Protected Source Evidence retention\n  -> governed source domain\n\ncurrent-session continuity and CTX-OVL mutation\n  -> RelayCTX\n\nscene classification and scene policy\n  -> RelaySCN\n\ndurable assessment, relation, lifecycle, confidence, and persistence\n  -> RelaySLP / RelayMEM\n```\n\nA RelayATN `reject` means only that no RelayRUN turn starts from that candidate. It does not delete governed evidence, change evidence-admission results, forbid later bounded catch-up, or prohibit independent deferred processing.\n\n#### Bounded rejected-ingress catch-up\n\nTurn-rejected governed SourceEvents may be considered on the next admitted request through a bounded RelayCTX-owned ingress-coverage scan. Catch-up is **not** automatic semantic hydration:\n\n```text\nretained governed SourceEvent\n  -> bounded sequence / lineage coverage scan\n  -> consent, retention, source, identity, room, and scene fences\n  -> bounded unassessed recent-evidence selection\n  -> normal REL / SCN / EMO / INT / MEM / CTX pipeline\n  -> validated sidecar or explicit deterministic operation\n  -> optional CTX-OVL candidate\n```\n\nRelayCTX may select governed references, system-owned metadata, deterministic source classes, and policy-permitted bounded source text. It must not reparse rejected raw text into relationship, scene, affect, intent, temporal-validity, shadow-target, or memory authority.\n\nCoverage must be monotonic, revision-fenced, replay-safe, and bounded by events, bytes/tokens, age, and wall time. Budget exhaustion leaves catch-up incomplete; it does not advance past an unexamined gap or authorize a broad shadow. If no later admitted turn occurs, no CTX-OVL catch-up occurs.\n\nInputs identified through trusted metadata, deterministic rules, or RelayATN advisory detection as requiring immediate provisional continuity are not eligible for terminal reject. They route to policy-controlled select, bounded hold, or fail-safe escalation; final intent, scene, and memory semantics remain downstream authority.\n\n#### Multi-user partitions and identity fences\n\nMulti-user enablement requires separate:\n\n```text\nshared_scene\nparticipant:<trusted participant>\nrelationship:<RelayREL-resolved target>\nquarantine:<missing or conflicting identity/scope>\n```\n\nUnknown or conflicting participant identity enters quarantine only. It cannot be packed as participant/REL context, shadow participant- or REL-scoped durable MEM, increase participant-specific confidence, or create relationship interpretation.\n\nA relationship partition may use only a target resolved by RelayREL from trusted route/session identity. CTX-OVL does not infer a relationship target from text.\n\n#### Private-to-group escalation\n\nRelayATN may emit only a content-free possible-scope-escalation flag. RelaySCN retains authoritative scene classification and downgrade decisions. Before group-visible packing, RelayCTX excludes or quarantines prior private partitions, suspends participant/REL shadowing while scope is unresolved, and packs only content permitted by the resolved RelaySCN policy and compatible scene epoch.\n\nThe exact scene-epoch issuer is an open contract. RelayATN never issues the epoch or chooses disclosure policy.\n\n#### RelayCTX Reflex Snapshot\n\nRelayATN may consume a bounded content-free RelayCTX Reflex Snapshot for **CTX-derived session state**. The snapshot may expose revisions, covered ingress sequence or lag class, scene epoch, bounded counts, and booleans such as unresolved direct address, correction, scope escalation, or identity conflict.\n\nIt must not expose source text, semantic objects, subjective interpretation, affect content, sidecar bodies, durable MEM IDs, private REL content, confidence, salience, or shadow targets.\n\nThis does not remove RelayATN\'s existing bounded access to the raw incoming candidate required for admission scoring.\n\nRelayATN Tier 3 is not a semantic-sidecar repair path. CTX-OVL state, hot affect, provisional shadow state, and RelayATN scores must not directly update a resident attention profile, REL/SCN state, or any durable MEM property.\n\nCTX-OVL loss, eviction, catch-up failure, or restart may reduce short-term continuity. It must not delete or weaken Protected Source Evidence or durable MEM.\n\nThe detailed review and the non-authoritative counterpart checklist for the RelayATN-owned architecture document are recorded in [RelayATN / CTX-OVL Boundary Review](../evidence/implementation/relayatn-ctx-ovl-boundary-review.md).\n\n'
+          if "### RelayATN, governed ingress, and catch-up boundary" not in proposal:
+              if marker not in proposal:
+                  raise SystemExit("proposal insertion marker missing")
+              proposal = proposal.replace(marker, section + marker, 1)
+
+          seq_start = proposal.index("## Recommended implementation sequence\n")
+          seq_end = proposal.index("## Non-goals\n", seq_start)
+          proposal = proposal[:seq_start] + '## Recommended implementation sequence\n\n1. Accept or reject this direction through an ADR.\n2. Define governed SourceEvent identity, evidence-admission ownership, consent, retention, source authority, and ingress ordering before any rejected-input catch-up.\n3. Define the CTX evidence envelope, system-owned metadata, and bounded selected-recent-evidence projection.\n4. Implement CTX-OVL-0 only after contract acceptance: exact overlay contract and isolated in-memory store in dry-run/read-only form.\n5. Implement CTX-OVL-1: non-stream current-session continuity for admitted turns.\n6. Specify and evaluate bounded rejected-ingress coverage/catch-up without automatic semantic projection.\n7. Gate multi-user enablement on shared-scene, participant, RelayREL-resolved relationship, and quarantine partitions.\n8. Define the content-free RelayCTX Reflex Snapshot and update the RelayATN-owned architecture document through its own authority path.\n9. Implement CTX-OVL-2: Retrieval boost/shadow and dynamic-suffix packing after participant, scene, and identity fences are validated.\n10. Implement CTX-OVL-3: stream-safe finalization ordering.\n11. Run ATN + CTX-OVL + multi-user + stream concurrency and privacy evaluation.\n12. Implement CTX-OVL-4: RelaySLP source-lineage acknowledgement and overlay cleanup.\n13. Consider CTX-OVL-5 restart recovery only if measured user value justifies durable checkpoint complexity.\n14. Run the aggregation and Retrieval-scale spikes.\n15. Correct and extend the storage spike with final lifecycle semantics and complete crash tests.\n16. Define exact contracts and rehearse import, rebuild, backup, rollback, and migration.\n17. Perform one hard cutover without permanent dual-read or dual-write.\n\n' + proposal[seq_end:]
+          proposal = proposal.replace(
+              "- make Session Evidence Overlay a second durable memory store;\n",
+              "- make Session Evidence Overlay a second durable memory store;\n"
+              "- amend RelayATN architecture or authorize RelayATN implementation;\n"
+              "- convert every turn-rejected event into a CTX-OVL semantic candidate;\n",
+          )
+          proposal_path.write_text(proposal, encoding="utf-8")
+
+          feasibility = feasibility_path.read_text(encoding="utf-8")
+          feasibility = feasibility.replace(
+              "  - SCN or EMO conditioning boundaries change\n",
+              "  - SCN or EMO conditioning boundaries change\n"
+              "  - RelayATN, governed ingress, or multi-user partition boundaries change\n",
+          )
+          feasibility = feasibility.replace(
+              "relaylm_source_commit: 103bc03f90c9fda089b5a9e0d5197607e96a303f\n",
+              "relaylm_source_commit: 5d60433713574c042afe5ceab15b865a48824ae5\n"
+              "relaylm_source_pr: 586\n",
+          )
+          feas_marker = "## Missing implementation pieces\n"
+          feas_section = '## RelayATN and governed-ingress feasibility boundary\n\n[RelayATN / CTX-OVL Boundary Review](relayatn-ctx-ovl-boundary-review.md) re-evaluates this proposal against current `main` at `5d60433713574c042afe5ceab15b865a48824ae5` and PR #586 head `707d81523b9eec8469f0e1a23f2842bd6da514dd`.\n\nThe integration is feasible only through a directional boundary:\n\n```text\nraw ingress candidate\n  -> RelayATN admission scoring\n\ngoverned retained SourceEvent\n  -> bounded RelayCTX catch-up selection on a later admitted request\n\nCTX-OVL\n  -> content-free RelayCTX Reflex Snapshot\n  -> RelayATN advisory freshness signals\n\nRelayATN\n  -/-> CTX-OVL mutation\n  -/-> semantic sidecar repair\n  -/-> durable memory authority\n```\n\nThe review accepts RelayATN non-write, evidence/turn-admission separation, multi-user partitioning, unknown-identity quarantine, private-to-group packing fences, and a content-free Reflex Snapshot.\n\nIt revises the input in four important ways:\n\n1. RelayATN still reads the raw incoming candidate being scored; only CTX-derived state is snapshot-only.\n2. Rejected events are eligible for bounded catch-up consideration, not automatic semantic candidate creation.\n3. Pre-response catch-up may select unassessed governed evidence, but RelayCTX must not infer REL, SCN, EMO, INT, temporal-validity, shadow-target, or memory semantics from rejected raw text.\n4. RelayATN only flags escalation; RelaySCN classifies the scene and RelayCTX enforces the pre-pack quarantine or scene-epoch fence.\n\nThe governed SourceEvent envelope, evidence-admission ownership, ingress sequence, coverage watermark, pre-node hydration point, Reflex Snapshot, multi-user partition schema, and scene-epoch handoff are missing contracts. This evidence record therefore supports contract design and evaluation only; it does not authorize implementation.\n\nRequired failure behavior includes:\n\n- missing or expired SourceEvent -> no overlay mutation and no synthesized evidence;\n- budget exhaustion -> bounded stop with incomplete coverage;\n- stale revision or replay -> idempotent no-op or deferred retry;\n- missing/conflicting identity -> quarantine and no shadow;\n- unresolved private-to-group escalation -> no private partition packing;\n- stale/missing Reflex Snapshot -> no CTX-derived assumption;\n- RelayATN failure -> evidence admission and Protected Source Evidence unchanged;\n- CTX-OVL eviction/restart -> continuity loss only;\n- malformed sidecar -> visible response preserved, no ATN repair, evidence-only fallback or no update.\n\nThe exact counterpart changes required in `RelayATN Reflex Layer Design` are listed in the review evidence rather than duplicated here as active architecture authority.\n\n'
+          if "## RelayATN and governed-ingress feasibility boundary" not in feasibility:
+              if feas_marker not in feasibility:
+                  raise SystemExit("feasibility insertion marker missing")
+              feasibility = feasibility.replace(feas_marker, feas_section + feas_marker, 1)
+          feasibility_path.write_text(feasibility, encoding="utf-8")
+
+          review_path.write_text('''---
+relaylm_doc_type: evidence
+relaylm_authority: relayatn_ctx_ovl_boundary_review_record
+relaylm_status: historical
+relaylm_volatility: high
+relaylm_owner: architecture
+relaylm_update_trigger:
+  - the RelayATN or CTX-OVL boundary changes materially
+  - governed ingress or SourceEvent ownership is accepted
+  - multi-user scene or participant fencing changes
+relaylm_not_authoritative_for:
+  - accepted RelayATN architecture
+  - accepted CTX-OVL architecture
+  - exact runtime order, schema, or implementation sequence
+  - current runtime behavior or implementation completion
+relaylm_current_status_source: ../../PROJECT_STATUS.md
+relaylm_source_commit: 5d60433713574c042afe5ceab15b865a48824ae5
+relaylm_source_pr: 586
+relaylm_recorded_on: 2026-07-15
+relaylm_related_proposals:
+  - ../../proposals/subjective-memory-formation-consolidation-and-retrieval.md
+relaylm_related_authority:
+  - ../../architecture/relayatn_reflex_layer_design.md
+  - ../../architecture/pipeline_responsibility_design.md
+  - ../../architecture/safe_soul_scene_ctx_compile_chain.md
+  - ../../architecture/context_packing_design.md
+  - ../../architecture/relaymem_slp_execution_design.md
+---
+
+# RelayATN / CTX-OVL Boundary Review
+
+## Status and scope
+
+This record reviews the design input `relayatn_ctx_ovl_boundary_proposal.txt` against:
+
+- PR #586 head `707d81523b9eec8469f0e1a23f2842bd6da514dd`;
+- current `main` at `5d60433713574c042afe5ceab15b865a48824ae5`;
+- the current RelayATN, RelayCTX, RelaySCN, RelaySLP, and RelayMEM ownership documents.
+
+The input is treated as design evidence, not accepted authority. This record does not amend the authoritative RelayATN architecture document and does not authorize implementation.
+
+## Overall result
+
+The proposed separation is **sound after bounded revisions**.
+
+The central ownership model is retained:
+
+```text
+RelayATN
+  pre-request reject / hold / select / content-free flag only
+
+RelayCTX / CTX-OVL
+  admitted-request short-term continuity selection and non-durable overlay state
+
+RelaySCN
+  authoritative scene classification and scene policy
+
+RelaySLP
+  deferred assessment, relation decision, and subjective formation
+
+RelayMEM
+  durable canonical state, lifecycle, confidence, and persistence authority
+```
+
+The main corrections are:
+
+1. RelayATN still observes raw incoming candidates for admission scoring. It consumes only a content-free RelayCTX Reflex Snapshot **for CTX-OVL-derived session state**.
+2. Turn-rejected governed SourceEvents are eligible for bounded catch-up consideration; they are not automatically converted into CTX-OVL semantic candidates.
+3. Catch-up must preserve the canonical semantic pipeline. RelayCTX may select and pack bounded unassessed governed evidence, but it must not reparse rejected raw text into relationship, scene, affect, intent, or memory authority.
+4. Unknown participant evidence goes to quarantine, not the shared-scene partition.
+5. RelayATN may flag possible private-to-group escalation. RelaySCN classifies the scene, and RelayCTX enforces the pre-pack quarantine/epoch fence.
+6. The governed SourceEvent envelope, ingress sequence, evidence-admission owner, and pre-node hydration point do not yet exist as accepted contracts and remain prerequisites.
+
+## Accepted design decisions
+
+### RelayATN never writes CTX-OVL
+
+RelayATN must never create, update, retract, collapse, acknowledge, or shadow a CTX-OVL candidate.
+
+It may emit only its existing pre-request decisions and content-free advisory flags. RelayCTX remains the only owner of CTX-OVL mutation paths.
+
+### Turn admission and evidence admission are orthogonal
+
+```text
+turn admission
+  whether a RelayRUN request shell starts
+
+evidence admission
+  whether a governed SourceEvent is retained under consent,
+  retention, source-authority, and privacy policy
+
+provisional continuity
+  whether retained current-session evidence is selected into
+  RelayCTX working state or CTX-OVL
+
+durable formation
+  whether RelaySLP and RelayMEM form or update durable memory
+```
+
+A RelayATN `reject` means only that no turn starts from that candidate. It must not delete Protected Source Evidence, change evidence-admission results, prohibit later bounded catch-up, or prohibit independent RelaySLP processing.
+
+### Immediate-continuity candidates are not terminal-reject eligible
+
+A candidate identified through deterministic metadata, trusted ingress classification, or RelayATN advisory detection as requiring immediate continuity must not receive a terminal `reject`.
+
+Representative candidate classes include:
+
+- direct address;
+- explicit correction or retraction;
+- current-state change;
+- active question requiring continuity;
+- explicit stop, continue, or confirm signal;
+- possible participant or scene-scope escalation;
+- urgent or safety-relevant input.
+
+The allowed outcome is policy-controlled `select`, bounded `hold`, or a fail-safe escalation path. RelayATN does not authoritatively classify the final intent, scene, relationship, or memory semantics.
+
+### Hold state references governed source identity
+
+When a governed SourceEvent store exists, retained RelayATN hold state should contain:
+
+- opaque SourceEvent IDs;
+- expiry;
+- content-free reason classes;
+- ordering and grouping metadata.
+
+It should not duplicate raw bodies into durable or diagnostic ATN state. RelayATN may still use bounded transient raw buffers for admission scoring as already allowed by its architecture.
+
+### Multi-user CTX-OVL is partitioned
+
+Multi-user enablement requires, at minimum:
+
+```text
+shared_scene
+participant:<resolved participant>
+relationship:<RelayREL-resolved target>
+quarantine:<unresolved or conflicting identity/scope>
+```
+
+These partitions are a multi-user capability gate, not a requirement that the first trusted 1:1 CTX-OVL implementation carry all group-scene complexity.
+
+### Unknown identity cannot shadow durable personal state
+
+Evidence with missing, stale, or conflicting participant identity:
+
+- enters quarantine only;
+- is not group-visible prompt content;
+- cannot shadow participant-scoped or REL-scoped durable MEM;
+- cannot increase participant-specific confidence;
+- cannot create relationship interpretation;
+- cannot be promoted through participant or relationship partitions.
+
+### Private-to-group escalation is fail-closed
+
+RelayATN may emit `possible_scope_escalation` or the existing equivalent content-free flag. It must not classify the scene or authorize a downgrade.
+
+Before any group-visible packing:
+
+1. prior private partitions are excluded or quarantined;
+2. participant and relationship shadowing is suspended when scope is unresolved;
+3. RelaySCN performs authoritative scene classification and disclosure/persistence policy;
+4. RelayCTX packs only the partitions permitted by the resolved scene policy and current scene epoch.
+
+The exact component that issues the monotonic scene-epoch identifier remains an open contract. The stable ownership requirement is that RelaySCN owns classification and RelayCTX owns the packing fence.
+
+### RelayATN receives only a content-free CTX-derived snapshot
+
+RelayCTX may publish a bounded read-only projection such as `relayctx.reflex_snapshot.v0` containing only:
+
+- schema and revision identifiers;
+- covered ingress sequence or lag class;
+- scene epoch;
+- unresolved-direct-address, correction, scope-escalation, or identity-conflict booleans;
+- bounded counts;
+- content-free freshness flags.
+
+It must exclude source text, semantic objects, subjective interpretation, affect content, durable MEM IDs, private REL content, confidence, salience, and sidecar bodies.
+
+This restriction applies to **CTX-derived state**. It does not remove RelayATN's existing need to observe the raw incoming candidate being scored.
+
+### No silent memory authority
+
+RelayATN receives no `silent_select`, `memory_only_select`, CTX-OVL update, or RelaySLP trigger authority. Whether an admitted turn replies or observes without reply remains inside the normal deliberation and response-policy path.
+
+### No Tier 3 sidecar repair
+
+RelayATN Tier 3 may resolve only ambiguous pre-request admission. It must not repair, complete, regenerate, or validate semantic sidecars.
+
+Malformed or absent sidecars preserve visible output and fall back to evidence-only deferred handling or no overlay update.
+
+### No provisional-to-attention feedback loop
+
+Semantic sidecars, CTX-OVL interpretations, hot affect, provisional shadow state, and RelayATN scores must not directly update a resident `attention_profile`, durable MEM confidence, salience, subjective conviction, REL state, or scene policy.
+
+## Revised bounded catch-up model
+
+### Why the original wording is too broad
+
+The input proposed:
+
+```text
+rejected governed SourceEvent
+  -> RelayCTX semantic and temporal validation
+  -> CTX-OVL update
+  -> final context compile
+```
+
+As written, this would leak semantic parsing into RelayCTX and conflict with the canonical rule that RelayCTX does not reconstruct relationship, scene, affect, intent, or memory authority by reparsing raw user text.
+
+### Accepted two-stage model
+
+```text
+governed SourceEvent retained independently of RelayATN
+  -> next admitted request
+  -> bounded ingress coverage scan
+  -> consent / retention / source / identity / scene fences
+  -> bounded unassessed recent-evidence selection
+  -> normal REL / SCN / EMO / INT / MEM / CTX pipeline
+  -> Main LLM response and optional validated sidecar
+  -> RelayCTX-owned CTX-OVL update when a valid candidate exists
+```
+
+Before semantic validation, catch-up may contribute only:
+
+- governed source references;
+- system-owned speaker, time, room, participant, and sequence metadata;
+- deterministic source classes;
+- bounded source text when the client-authority and scene policy permit it;
+- content-free catch-up status.
+
+It may not immediately:
+
+- create a character projection;
+- choose a durable MEM shadow target;
+- resolve REL identity from text;
+- classify final scene or intent;
+- increase evidence confidence;
+- infer temporal validity beyond system-owned or explicitly encoded metadata.
+
+### Watermark requirements
+
+A single `last_hydrated_seq` is insufficient when events are skipped, delayed, quarantined, or arrive out of order.
+
+The contract should distinguish:
+
+```yaml
+ingress_coverage:
+  highest_contiguous_examined_seq: 179
+  current_ingress_seq: 184
+  catch_up_incomplete: true
+  scene_epoch: 14
+```
+
+Non-contiguous or late events require source-lineage idempotency in addition to the monotonic sequence.
+
+Rules:
+
+- advance coverage only through events actually examined under the applicable scope and epoch;
+- never advance past an unexamined gap merely because later events were processed;
+- record no raw content in diagnostics;
+- on budget exhaustion, leave `catch_up_incomplete: true`;
+- replay is an idempotent no-op by SourceEvent identity and source lineage;
+- a scene-epoch change invalidates or quarantines incompatible prior coverage.
+
+### Catch-up limits
+
+The exact budgets remain open, but the contract must bound:
+
+- events;
+- bytes or tokens;
+- wall time;
+- age;
+- per-participant contribution;
+- quarantine capacity;
+- maximum lag.
+
+If no later admitted turn occurs, CTX-OVL catch-up does not occur. That is an explicit limitation, not permission for RelayATN to create a silent memory turn.
+
+## Multi-user and scene failure behavior
+
+### Partition rules
+
+- `shared_scene` contains only group-safe scene facts and shared progression.
+- `participant:<id>` requires trusted participant identity and speaker lineage.
+- `relationship:<target>` requires a RelayREL-resolved target and scene-policy permission.
+- `quarantine` is non-shadowing and non-packable until identity and scope are resolved.
+
+Unknown identity must not be placed in `shared_scene` merely to preserve continuity.
+
+### Scope escalation
+
+On a trusted participant-roster change or RelayATN escalation flag:
+
+- old private CTX-OVL content is not packed into the potential group turn;
+- the request carries a conservative scope-escalation marker;
+- RelaySCN reclassifies the scene;
+- RelayCTX applies a new or quarantined scene epoch before packing;
+- only group-safe partitions may be selected;
+- downgrade is never inferred by RelayATN.
+
+## Required failure behavior
+
+| Failure | Required result |
+|---|---|
+| SourceEvent body/reference unavailable | no overlay mutation; content-free diagnostic; continue with safe current input |
+| evidence retention expired before catch-up | accept loss of provisional continuity; do not synthesize evidence |
+| catch-up budget exhausted | stop at bounded coverage; set incomplete; no broad shadow |
+| stale or conflicting watermark | revision-fenced no-op or retry outside the visible critical path |
+| duplicate or replayed SourceEvent | idempotent no-op |
+| missing/conflicting participant identity | quarantine; no participant/REL shadow or packing |
+| private-to-group escalation unresolved | block private partitions; fail closed |
+| Reflex Snapshot missing or stale | no CTX-derived assumption; use conservative admission policy |
+| RelayATN process failure | evidence admission and Protected Source Evidence remain unchanged |
+| CTX-OVL eviction or restart loss | short-term continuity may degrade; Protected Source Evidence and durable MEM remain intact |
+| malformed semantic sidecar | preserve visible response; no ATN repair; evidence-only fallback or no overlay update |
+| RelaySLP acknowledgement race | source-lineage and revision-fenced idempotent reconciliation |
+
+## Exact counterpart changes required in RelayATN Reflex Layer Design
+
+These are **required future changes to the RelayATN-owned architecture document** if the proposal is accepted. They are listed here for review traceability and are not active RelayATN authority.
+
+### Purpose and dual-loop boundary
+
+Add:
+
+> Turn admission, evidence admission, RelayCTX provisional continuity, and RelaySLP/MEM durable formation are orthogonal. RelayATN decides only whether and on what a turn starts.
+
+### Relationship to RelayCTX
+
+Add a dedicated subsection stating:
+
+- RelayATN never writes, retracts, collapses, acknowledges, or shadows CTX-OVL;
+- RelayATN may consume only a content-free RelayCTX Reflex Snapshot for CTX-derived session state;
+- RelayATN still observes the bounded raw ingress candidate required for admission scoring;
+- CTX-OVL and semantic sidecar bodies are forbidden ATN inputs;
+- RelayCTX owns catch-up selection and overlay mutation;
+- RelayCTX does not grant ATN durable or provisional semantic authority.
+
+### Authority constraints
+
+Extend the `must not` list:
+
+- no CTX-OVL mutation;
+- no semantic sidecar repair;
+- no temporal, participant, relationship, lifecycle, or shadow-target normalization;
+- no MEM confidence, salience, conviction, or lifecycle effect;
+- no attention-profile update from provisional state;
+- no evidence-admission or Protected Source Evidence retention effect.
+
+### Decision semantics
+
+Clarify:
+
+- `reject` means no RelayRUN turn and no immediate CTX-OVL guarantee;
+- `reject` does not delete or de-authorize governed evidence;
+- immediate-continuity candidates are not terminal-reject eligible;
+- `hold` retains SourceEvent IDs and content-free metadata when the governed source store exists;
+- RelayATN receives no silent or memory-only turn verb.
+
+### Self-report freshness
+
+Replace the self-report-only interaction with a bounded session-state freshness rule:
+
+- consume snapshot revisions, ingress coverage, scene epoch, and content-free lag flags;
+- never inspect raw CTX-OVL or repair stale state;
+- a stale or missing snapshot does not authorize unsafe select or disclosure;
+- freshness flags remain advisory.
+
+### Relationship to RelaySCN
+
+Clarify:
+
+- `possible_scope_escalation` tightens caution only;
+- RelaySCN retains authoritative classification and downgrade;
+- RelayCTX enforces the private-partition packing fence;
+- RelayATN does not issue scene epochs or disclosure policy.
+
+### Content and hold boundary
+
+Clarify:
+
+- transient raw input remains bounded and non-durable for scoring;
+- retained hold state references governed SourceEvent IDs rather than duplicating bodies;
+- candidate IDs remain opaque and non-reversible;
+- SourceEvent storage and evidence admission are external prerequisites.
+
+### Tier 3 boundary
+
+Add:
+
+> Tier 3 is an admission fallback only. It is not a semantic sidecar, CTX-OVL, RelaySCN, RelayINT, RelaySLP, or RelayMEM fallback.
+
+### Failure behavior
+
+Add:
+
+- ATN failure never changes evidence-admission or Protected Source Evidence outcomes;
+- unavailable/stale Reflex Snapshot falls back to conservative admission without CTX interpretation;
+- held SourceEvent expiry is explicit and must not synthesize missing evidence;
+- private/group ambiguity fails closed.
+
+### Preconditions
+
+Append:
+
+```text
+P6  governed SourceEvent identity, evidence admission, consent, retention,
+    and source-authority ownership are contractually defined
+P7  held SourceEvent IDs have bounded availability and expiry semantics
+P8  multi-user CTX-OVL has participant, room, scene, and relationship fencing
+P9  turn-rejected governed evidence has an explicit bounded catch-up or
+    accepted no-provisional-continuity rule
+P10 a content-free RelayCTX Reflex Snapshot contract exists
+P11 ingress coverage and source-lineage replay rules are monotonic,
+    revision-fenced, and idempotent
+P12 private-to-group escalation blocks private packing until RelaySCN
+    classification and a compatible scene epoch
+P13 identity conflicts fail closed to quarantine and cannot authorize shadow
+```
+
+## Required counterpart contracts outside PR #586
+
+Acceptance would require separate owning documents for:
+
+1. governed SourceEvent envelope and evidence-admission ownership;
+2. ingress sequence, coverage watermark, replay, retention, and out-of-order semantics;
+3. RelayCTX catch-up hydration and selected-recent-evidence schema;
+4. CTX-OVL multi-user partition and quarantine schema;
+5. RelayCTX Reflex Snapshot schema;
+6. scene epoch issuance and RelaySCN-to-RelayCTX packing-fence handoff;
+7. RelayATN hold record and decision semantics;
+8. RelaySLP source-lineage acknowledgement.
+
+PR #586 may name these required contracts but must not define their exact production schemas as accepted authority.
+
+## Remaining open decisions
+
+1. Which component issues and persists the monotonic ingress sequence.
+2. Which component invokes the RelayCTX-owned pre-node catch-up hydration and where it appears in canonical runtime order.
+3. Whether bounded raw governed events may be exposed to RelaySCN/RelayINT before RelayCTX Repack, or whether a separate typed recent-evidence projection is required.
+4. Exact event/byte/time/age and per-participant catch-up budgets.
+5. Contiguous coverage versus late-event lineage representation.
+6. Scene-epoch issuer and restart persistence.
+7. Quarantine TTL, overflow, and inspection policy.
+8. Whether relationship partitions exist in the first multi-user release or follow participant partitioning.
+9. Exact immediate-continuity detection inputs and false-positive policy.
+10. Reflex Snapshot freshness and failure thresholds.
+11. Whether evidence-authorized rejected events may trigger RelaySLP independently when no later admitted turn occurs.
+12. Privacy and retention policy for SourceEvent bodies used by catch-up.
+
+## Conclusion
+
+RelayATN and CTX-OVL may be integrated only through a narrow, directional boundary:
+
+```text
+raw ingress candidate
+  -> RelayATN admission decision
+
+governed retained SourceEvent
+  -> bounded RelayCTX catch-up selection on a later admitted request
+
+CTX-OVL
+  -> content-free RelayCTX Reflex Snapshot
+  -> RelayATN advisory freshness and attention flags
+
+RelayATN
+  -/-> CTX-OVL mutation
+  -/-> semantic sidecar repair
+  -/-> durable memory authority
+```
+
+This preserves RelayATN as pre-request admission, CTX-OVL as RelayCTX-owned non-durable continuity, RelaySCN as scene authority, and RelaySLP/MEM as the only durable interpretation and persistence path.
+''', encoding="utf-8")
+
+          index = index_path.read_text(encoding="utf-8")
+          index = index.replace(
+              "a hot current-session evidence overlay, SOUL-centered / SCN-grounded / EMO-decoupled deferred reflection,",
+              "a hot current-session evidence overlay, bounded governed-ingress catch-up, SOUL-centered / SCN-grounded / EMO-decoupled deferred reflection,",
+          )
+          review_bullet = (
+              "- [RelayATN / CTX-OVL boundary review]"
+              "(../evidence/implementation/relayatn-ctx-ovl-boundary-review.md)"
+              " — records accepted and revised RelayATN/CTX-OVL boundaries, catch-up limits,"
+              " multi-user and scene-epoch failure behavior, and the exact non-authoritative"
+              " counterpart checklist for the RelayATN-owned architecture document.\n"
+          )
+          if "relayatn-ctx-ovl-boundary-review.md" not in index:
+              index = index.rstrip() + "\n" + review_bullet
+          index_path.write_text(index, encoding="utf-8")
+
+          # Content and authority assertions.
+          checks = {
+              proposal_path: [
+                  "RelayATN remains a resident **pre-request admission** component.",
+                  "bounded unassessed recent-evidence selection",
+                  "Unknown or conflicting participant identity enters quarantine only.",
+                  "RelayATN Tier 3 is not a semantic-sidecar repair path.",
+              ],
+              feasibility_path: [
+                  "## RelayATN and governed-ingress feasibility boundary",
+                  "Rejected events are eligible for bounded catch-up consideration",
+                  "RelayATN only flags escalation",
+              ],
+              review_path: [
+                  "## Exact counterpart changes required in RelayATN Reflex Layer Design",
+                  "P13 identity conflicts fail closed to quarantine",
+                  "RelayATN still observes the bounded raw ingress candidate",
+              ],
+          }
+          for path, needles in checks.items():
+              body = path.read_text(encoding="utf-8")
+              for needle in needles:
+                  if needle not in body:
+                      raise SystemExit(f"missing expected boundary in {path}: {needle}")
+
+          if proposal.count("### RelayATN, governed ingress, and catch-up boundary") != 1:
+              raise SystemExit("proposal boundary section count is not one")
+          if feasibility.count("## RelayATN and governed-ingress feasibility boundary") != 1:
+              raise SystemExit("feasibility boundary section count is not one")
+
+      - name: Restore workflow authority and validate documentation
+        run: |
+          git checkout origin/main -- .github/workflows/docs-link-check.yml
+          git add docs/proposals/README.md docs/proposals/subjective-memory-formation-consolidation-and-retrieval.md docs/evidence/implementation/session-evidence-overlay-feasibility.md docs/evidence/implementation/relayatn-ctx-ovl-boundary-review.md .github/workflows/docs-link-check.yml
+          git diff --cached --check
+          python scripts/relaylm_docs_link_check_smoke.py
+          python scripts/relaylm_docs_link_check.py
+          python scripts/relaylm_documentation_current_boundary_smoke.py
+          test "$(grep -RFn 'RelayATN never writes CTX-OVL' docs/evidence/implementation/relayatn-ctx-ovl-boundary-review.md | wc -l)" -eq 1
+          test "$(grep -RFn 'RelayATN, governed ingress, and catch-up boundary' docs/proposals/subjective-memory-formation-consolidation-and-retrieval.md | wc -l)" -eq 1
+
+      - name: Commit and push reviewed boundary
+        run: |
+          git commit -m 'docs: align CTX-OVL with RelayATN admission boundary'
+          git push origin HEAD:docs/subjective-memory-formation-proposal
+
   docs-link-check:
     runs-on: ubuntu-latest
     timeout-minutes: 10
