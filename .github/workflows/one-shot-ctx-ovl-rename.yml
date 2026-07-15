@@ -1,3 +1,4 @@
+# Trigger the one-shot correction after the workflow is present on the branch.
 name: One-shot CTX-OVL terminology correction
 
 on:
