@@ -1,4 +1,4 @@
-# Push-trigger the already-present one-shot boundary update.
+# Execute the branch-scoped one-shot boundary update; the resulting commit restores this file from main.
 name: Documentation links
 
 on:
@@ -606,7 +606,6 @@ This preserves RelayATN as pre-request admission, CTX-OVL as RelayCTX-owned non-
               index = index.rstrip() + "\n" + review_bullet
           index_path.write_text(index, encoding="utf-8")
 
-          # Content and authority assertions.
           checks = {
               proposal_path: [
                   "RelayATN remains a resident **pre-request admission** component.",
