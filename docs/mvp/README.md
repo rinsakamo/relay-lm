@@ -155,6 +155,7 @@ The source PR number must be concrete before final review. The convergence threa
 - [MVP-46 clarification preflight](../evidence/implementation/mvp46_relayint_quick_clarification_preflight.md) — moved to canonical implementation evidence in Cutover 1C-33; historical preflight-schema evidence only, not current RelayINT quick-clarification chain authority.
 - [MVP-47 clarification apply plan](../evidence/implementation/mvp47_relayint_quick_clarification_apply_plan.md) — moved to canonical implementation evidence in Cutover 1C-33; historical plan-only apply evidence only, not current RelayINT quick-clarification chain authority.
 - [MVP-48 node result scaffold](../evidence/implementation/mvp48_pipeline_node_result_scaffold.md) — moved to canonical implementation evidence in Cutover 1C-33; historical scaffold evidence only (known-superseded RelayREF compatibility section), not current PipelineNodeResult authority.
+- [MVP audit trace projection boundary](../evidence/implementation/audit_trace_projection_boundary.md) — moved to canonical implementation evidence in Cutover 1C-34; historical typed-projection-boundary evidence only, not current audit-trace, projector-registry, or trace-persistence authority.
 
 The redundant MVP-1 through MVP-33 and MVP-37 milestone summary snapshots were removed from the active tree in Cutover 1B. Their old paths and blob digests are recorded in [the deletion appendix](../evidence/migrations/cutover-1b-mvp-snapshot-deletions.tsv), and their contents remain recoverable from Git history and the frozen `v0.1` tag.
 

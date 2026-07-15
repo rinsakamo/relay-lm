@@ -11,6 +11,22 @@ from relaylm.audit_projection import project_audit_metadata
 
 UUID = "a1234567-89ab-4def-8123-abcdefabcdef"
 
+# Values every URL/path-rejecting validator (`_bounded_token`, `_lower_token`,
+# `_opaque_id`) must reject through `_looks_like_url_or_path()`, probed only
+# through public projected fields, never the private validator functions.
+URL_OR_PATH_REJECTED_VALUES = (
+    "https://example.invalid/a",
+    "//example.invalid/a",
+    "www.example.invalid",
+    "/absolute",
+    "./relative",
+    "../relative",
+    "~/home",
+    "C:\\windows",
+    "a/b",
+    "a\\b",
+)
+
 
 def require(condition: bool, detail: object) -> None:
     if not condition:
@@ -37,6 +53,160 @@ def compile_artifact(state: str) -> dict[str, object]:
         "diagnostics_only": state == "COMPILE_DRY_RUN",
         "content_free": True,
     }
+
+
+def assert_finite_non_negative_numeric_boundary() -> None:
+    valid_int = project_audit_metadata({"latency_ms": 5})
+    require(valid_int.metadata.get("latency_ms") == 5, valid_int)
+    require(valid_int.dropped_field_count == 0, valid_int)
+
+    valid_float = project_audit_metadata({"latency_ms": 1.25})
+    require(valid_float.metadata.get("latency_ms") == 1.25, valid_float)
+    require(valid_float.dropped_field_count == 0, valid_float)
+
+    rejected = [-1, -0.5, True, False, float("nan"), float("inf"), float("-inf")]
+    for value in rejected:
+        result = project_audit_metadata({"latency_ms": value})
+        require("latency_ms" not in result.metadata, (value, result))
+        require(result.dropped_field_count == 1, (value, result))
+    print("ok latency_ms (_non_negative_number) accepts finite non-negative int/float and rejects negative/bool/NaN/+inf/-inf")
+
+
+def assert_opaque_identifier_boundary() -> None:
+    def probe(value: object) -> object:
+        return project_audit_metadata({"memory_selection_summary": {"character_id": value}})
+
+    valid = probe("default-character_1")
+    require(
+        valid.metadata["memory_selection_summary"].get("character_id") == "default-character_1",
+        valid,
+    )
+    require(valid.dropped_field_count == 0, valid)
+
+    rejected = ["", "x" * 257, *URL_OR_PATH_REJECTED_VALUES]
+    for value in rejected:
+        result = probe(value)
+        require(
+            "character_id" not in result.metadata.get("memory_selection_summary", {}),
+            (value, result),
+        )
+        require(result.dropped_field_count == 1, (value, result))
+    print(
+        "ok memory_selection_summary.character_id (_opaque_id) accepts a valid bounded identifier "
+        "and rejects empty/over-length/slash/backslash/URL/path-shaped values"
+    )
+
+
+def assert_sha256_boundary() -> None:
+    valid_hash = "a" * 64
+    result = project_audit_metadata({"stable_prefix_hash": valid_hash})
+    require(result.metadata.get("stable_prefix_hash") == valid_hash, result)
+    require(result.dropped_field_count == 0, result)
+
+    malformed = [
+        "a" * 63,
+        "a" * 65,
+        "g" * 64,
+        "sha256:" + "a" * 57,
+        "https://example.invalid/" + "a" * 39,
+        ("a" * 63) + "/",
+    ]
+    for value in malformed:
+        result = project_audit_metadata({"stable_prefix_hash": value})
+        require("stable_prefix_hash" not in result.metadata, (value, result))
+        require(result.dropped_field_count == 1, (value, result))
+    print(
+        "ok stable_prefix_hash (_sha256) accepts exactly 64 hex characters and rejects "
+        "short/long/non-hex/prefixed/URL-path-shaped values"
+    )
+
+
+def assert_content_type_boundary() -> None:
+    valid_cases = [
+        "application/json",
+        "text/plain;charset=utf-8",
+        "text/plain; charset=utf-8",
+    ]
+    for value in valid_cases:
+        result = project_audit_metadata({"content_type": value})
+        require(result.metadata.get("content_type") == value, (value, result))
+        require(result.dropped_field_count == 0, (value, result))
+
+    invalid_cases: list[object] = [
+        "not-a-content-type",
+        "application/json; boundary=1234",
+        "text/plain; charset=utf 8",
+        "https://example.invalid/type",
+        ("a" * 65) + "/json",
+        "text/" + ("b" * 65),
+        123,
+    ]
+    for value in invalid_cases:
+        result = project_audit_metadata({"content_type": value})
+        require("content_type" not in result.metadata, (value, result))
+        require(result.dropped_field_count == 1, (value, result))
+    print(
+        "ok content_type (_content_type) accepts exact media-type grammar including the supported "
+        "optional charset form and rejects malformed/unsupported-parameter/whitespace-invalid/"
+        "URL-path-shaped/overlong/non-string values"
+    )
+
+
+def assert_bounded_and_lower_token_path_rejection() -> None:
+    valid_token = "memory_candidate_selection"
+    result = project_audit_metadata({"memory_source": valid_token})
+    require(result.metadata.get("memory_source") == valid_token, result)
+    require(result.dropped_field_count == 0, result)
+
+    for value in URL_OR_PATH_REJECTED_VALUES:
+        result = project_audit_metadata({"memory_source": value})
+        require("memory_source" not in result.metadata, (value, result))
+        require(result.dropped_field_count == 1, (value, result))
+    print("ok memory_source (_bounded_token) accepts a plain token and rejects every URL/path-shaped category")
+
+    valid_lower = "memory_disabled"
+    lower_result = project_audit_metadata(
+        {"compile_decision_dry_run": {"fallback_reason": valid_lower}}
+    )
+    require(
+        lower_result.metadata["compile_decision_dry_run"].get("fallback_reason") == valid_lower,
+        lower_result,
+    )
+    require(lower_result.dropped_field_count == 0, lower_result)
+
+    for value in URL_OR_PATH_REJECTED_VALUES:
+        result = project_audit_metadata(
+            {"compile_decision_dry_run": {"fallback_reason": value}}
+        )
+        require(
+            "fallback_reason" not in result.metadata.get("compile_decision_dry_run", {}),
+            (value, result),
+        )
+        require(result.dropped_field_count == 1, (value, result))
+    print(
+        "ok compile_decision_dry_run.fallback_reason (_lower_token) accepts a plain lower-case "
+        "token and rejects every URL/path-shaped category"
+    )
+
+
+def assert_exact_nested_projection_drops_unknown_fields() -> None:
+    result = project_audit_metadata(
+        {
+            "memory_selection_summary": {
+                "total_candidates": 4,
+                "eligible_count": 3,
+                "unknown_nested_field": "must-not-project",
+                "another_unknown_field": {"nested": "also-must-not-project"},
+            }
+        }
+    )
+    summary = result.metadata["memory_selection_summary"]
+    require(summary.get("total_candidates") == 4, summary)
+    require(summary.get("eligible_count") == 3, summary)
+    require("unknown_nested_field" not in summary, summary)
+    require("another_unknown_field" not in summary, summary)
+    require(result.dropped_field_count == 2, result)
+    print("ok unknown nested fields are dropped with an exact counter while known valid siblings are retained")
 
 
 def main() -> int:
@@ -247,6 +417,13 @@ def main() -> int:
     require("forwarded_payload" not in apply_artifact, apply_artifact)
     require("decision" not in apply_nodes[1], apply_nodes[1])
     print("ok history apply node and artifact use exact content-free projections")
+
+    assert_finite_non_negative_numeric_boundary()
+    assert_opaque_identifier_boundary()
+    assert_sha256_boundary()
+    assert_content_type_boundary()
+    assert_bounded_and_lower_token_path_rejection()
+    assert_exact_nested_projection_drops_unknown_fields()
     return 0
 
 
