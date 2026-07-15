@@ -21,7 +21,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../PROJECT_STATUS.md
-  - ../mvp/v0.1_release_readiness.md
+  - ../release/v0.1-release-readiness.md
   - project_execution_plan.md
   - soul_lab_runtime_mvp.md
   - ai_vtuber_pipeline_profile.md
@@ -37,7 +37,7 @@ Last reviewed: 2026-07-09 JST
 
 This document captures RelayLM's strategic direction beyond the v0.1 release boundary. It records long-horizon bets, design principles, and vocabulary recommendations so that near-term slices can be shaped without foreclosing future directions.
 
-This is a vision document. It authorizes no implementation, changes no contracts, registers no scene classes, and defers current-state claims to [Project Status](../PROJECT_STATUS.md). v0.1 release-readiness evidence belongs to [v0.1 Release Readiness](../mvp/v0.1_release_readiness.md). Committed sequencing remains owned by [RelayLM Project Execution Plan](project_execution_plan.md).
+This is a vision document. It authorizes no implementation, changes no contracts, registers no scene classes, and defers current-state claims to [Project Status](../PROJECT_STATUS.md). v0.1 release-readiness evidence belongs to [v0.1 Release Readiness](../release/v0.1-release-readiness.md). Committed sequencing remains owned by [RelayLM Project Execution Plan](project_execution_plan.md).
 
 ## Near-term strategic sequence after v0.1
 

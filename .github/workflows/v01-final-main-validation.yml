@@ -6,8 +6,8 @@ on:
     paths:
       - "scripts/relaylm_v01_final_validation.py"
       - ".github/workflows/v01-final-main-validation.yml"
-      - "docs/mvp/v0.1_final_validation_receipt.md"
-      - "docs/mvp/v0.1_release_readiness.md"
+      - "docs/evidence/releases/v0.1-final-main-validation-tag-receipt.md"
+      - "docs/release/v0.1-release-readiness.md"
 
 permissions:
   contents: read

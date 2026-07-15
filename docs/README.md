@@ -21,7 +21,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 ## Start here
 
 - [Current project status](PROJECT_STATUS.md) — the single current implementation status authority.
-- [v0.1 Release Readiness Assessment](mvp/v0.1_release_readiness.md) — current readiness assessment and pending final main-HEAD validation; not a completed tag receipt.
+- [v0.1 Release Readiness Assessment](release/v0.1-release-readiness.md) — current readiness assessment for the validated and tagged v0.1 boundary; the frozen tag receipt is [v0.1 Final Main-HEAD Validation and Tag Receipt](evidence/releases/v0.1-final-main-validation-tag-receipt.md).
 - [Project execution plan](architecture/project_execution_plan.md) — the single MVP execution plan and post-MVP roadmap authority.
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md) — the current product direction reset target: editable Markdown character sources compiled into runtime projections.
 - [CW-A1 File-first Source Tree and Parser Contracts](architecture/cw_a1_file_first_source_tree_parser_contracts.md) — the current read-only source tree/parser contract slice for the file-first Character Workspace reset.

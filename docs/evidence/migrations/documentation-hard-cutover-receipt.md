@@ -2170,7 +2170,7 @@ An independent review of the initial green head found that neither new contract 
 
 ```yaml
 cutover_pr: 597
-merged_commit: pending
+merged_commit: d24408f5f1ec9b8eca6e63f5adb790663f1b3097
 record_count: 1
 cutover_recorded_on: 2026-07-15
 disposition: evidence_retained
@@ -2322,7 +2322,189 @@ All five statements in the source were independently verified against current co
 
 One accuracy correction, independent of this file's retirement, was made to the existing current authority: `docs/architecture/audit_trace_content_free_contract.md`'s "P0-A1 compatibility boundary" section used "During P0-A1..." and "P0-A2 removes ... entirely" present/future-tense phase language for a phase pair that has no separate tracked existence anywhere else in the repository (`docs/PROJECT_STATUS.md` records no P0-A1/P0-A2 entries) and for behavior current code has already fully achieved (no raw content is ever persisted). The section was reworded to present tense to state this already-complete current behavior, and the contract's validation command list was extended to name the two contract smokes wired into CI by this cutover. Two pre-existing, already-passing registry/validator contract smokes (`scripts/relaylm_audit_projection_contract_smoke.py`, `scripts/relaylm_audit_projection_exact_contract_smoke.py`) were found to already pin the exact top-level and pipeline-node projector sets, golden projection output, and registry hygiene, plus representative numeric/enum/URL-path spot checks — but were not referenced by any workflow, path filter, or documentation before this cutover. Rather than duplicate this coverage with a new script, both were wired into `.github/workflows/documentation-current-boundary-smoke.yml` (path filters, `compileall`, and the validation step), matching the existing RelayCTX/RelayINT/PipelineNodeResult contract-smoke precedent. The consolidated-selector contract (`scripts/relaylm_ci_consolidated_smoke.py`) was verified, not modified: every path changed by this PR was checked directly against its `GROUPS` dict and matches no `relaymem`, `runtime`, or `ui` glob, so this evidence-wrapper-and-accuracy-correction change correctly selects zero unrelated runtime groups. No compatibility path, redirect, or runtime behavior change is introduced. `scripts/relaylm_pipeline_node_results_runtime_smoke.py` fails locally with a pre-existing `starlette`/`httpx2` dependency gap in this sandbox, independently confirmed to fail identically on the unmodified base commit before this cutover's changes — not a regression introduced by this PR.
 
-An independent review of the initial green head (`3240bf6ad58fa1e5ec9cf75e01bc8131ccc8615b`) found two blockers, both corrected in this same entry. First, the claim that the two wired smokes already pinned the validator boundary "precisely" was not yet true: `scripts/relaylm_audit_projection_exact_contract_smoke.py` did not directly regression-test finite/non-negative numeric rejection of bools, negative values, NaN, or infinities; the complete bounded opaque-identifier boundary (empty, over-length, and every URL/path-shaped rejection category); exact SHA-256 grammar; or exact content-type grammar (including its supported optional-charset form and its unsupported-parameter, whitespace-invalid, URL/path-shaped, overlong-component, and non-string rejection cases). The script was extended with probes against the public `project_audit_metadata()` boundary (not private validator functions) for all of the above, plus an exact-nested-projection probe (unknown nested fields dropped with an exact counter, known valid siblings retained), each asserting exact `dropped_field_count` values rather than boolean presence alone. Second, the corrected contract wording still overstated what current code proves: `build_trace_record()`'s acceptance of the legacy `messages`/`response_text` arguments and the `TraceRecord.messages`/`TraceRecord.response_text` compatibility properties returning `[]`/`None` are current, verified behavior, but no current architecture decision commits to keeping them forever — the "permanent compatibility shim" wording was replaced with current-state wording that makes no future guarantee, applied consistently across `docs/architecture/audit_trace_content_free_contract.md`, the evidence wrapper, this receipt, and the PR body. Neither fix touched `relaylm/` or changed runtime behavior. The correction commit `18cb3ad4996fcc13435e192c4f359f71addfcade` is the new `validated_content_head`: all 25 triggered GitHub Actions check runs completed successfully (the `relaymem`, `runtime`, and `ui` consolidated-smoke groups again correctly reported `skipped`), zero reviews, zero PR comments, and zero unresolved review threads were present at that head. The `documentation-current-boundary-smoke.yml` job log for that exact head (workflow run `29406302079`, job `87322466853`) was independently fetched and confirmed to print all six of the expanded smoke's new assertion lines (finite-numeric, opaque-identifier, SHA-256, content-type, bounded/lower-token path-rejection, and exact-nested-projection), proving the expanded validator coverage actually executed in CI and not only locally. Per the `validated_content_head` / `receipt_finalization` pattern established in C1C33, this finalization is recorded in a further, separate commit after `18cb3ad4996fcc13435e192c4f359f71addfcade`, which remains the exact validated content head; the finalization commit itself is not claimed as a re-validated head. `merged_commit` for this record remains `pending`; C1C33 remains finalized to merge commit `103bc03f90c9fda089b5a9e0d5197607e96a303f`.
+An independent review of the initial green head (`3240bf6ad58fa1e5ec9cf75e01bc8131ccc8615b`) found two blockers, both corrected in this same entry. First, the claim that the two wired smokes already pinned the validator boundary "precisely" was not yet true: `scripts/relaylm_audit_projection_exact_contract_smoke.py` did not directly regression-test finite/non-negative numeric rejection of bools, negative values, NaN, or infinities; the complete bounded opaque-identifier boundary (empty, over-length, and every URL/path-shaped rejection category); exact SHA-256 grammar; or exact content-type grammar (including its supported optional-charset form and its unsupported-parameter, whitespace-invalid, URL/path-shaped, overlong-component, and non-string rejection cases). The script was extended with probes against the public `project_audit_metadata()` boundary (not private validator functions) for all of the above, plus an exact-nested-projection probe (unknown nested fields dropped with an exact counter, known valid siblings retained), each asserting exact `dropped_field_count` values rather than boolean presence alone. Second, the corrected contract wording still overstated what current code proves: `build_trace_record()`'s acceptance of the legacy `messages`/`response_text` arguments and the `TraceRecord.messages`/`TraceRecord.response_text` compatibility properties returning `[]`/`None` are current, verified behavior, but no current architecture decision commits to keeping them forever — the "permanent compatibility shim" wording was replaced with current-state wording that makes no future guarantee, applied consistently across `docs/architecture/audit_trace_content_free_contract.md`, the evidence wrapper, this receipt, and the PR body. Neither fix touched `relaylm/` or changed runtime behavior. The correction commit `18cb3ad4996fcc13435e192c4f359f71addfcade` is the new `validated_content_head`: all 25 triggered GitHub Actions check runs completed successfully (the `relaymem`, `runtime`, and `ui` consolidated-smoke groups again correctly reported `skipped`), zero reviews, zero PR comments, and zero unresolved review threads were present at that head. The `documentation-current-boundary-smoke.yml` job log for that exact head (workflow run `29406302079`, job `87322466853`) was independently fetched and confirmed to print all six of the expanded smoke's new assertion lines (finite-numeric, opaque-identifier, SHA-256, content-type, bounded/lower-token path-rejection, and exact-nested-projection), proving the expanded validator coverage actually executed in CI and not only locally. Per the `validated_content_head` / `receipt_finalization` pattern established in C1C33, this finalization is recorded in a further, separate commit after `18cb3ad4996fcc13435e192c4f359f71addfcade`, which remains the exact validated content head; the finalization commit itself is not claimed as a re-validated head. `merged_commit` for this record is finalized to `d24408f5f1ec9b8eca6e63f5adb790663f1b3097` (PR #597, confirmed an ancestor of the working `main` before Cutover 1C-35 began); C1C33 remains finalized to merge commit `103bc03f90c9fda089b5a9e0d5197607e96a303f`.
+
+### C1C35-001 — v0.1 release-readiness authority and frozen validation/tag receipt
+
+```yaml
+cutover_pr: 598
+merged_commit: pending
+record_count: 2
+cutover_recorded_on: 2026-07-15
+disposition: moved
+disposition_note: two_independent_pre_existing_documents_each_moved_to_one_new_canonical_path_not_a_single_source_split_current_release_authority_and_frozen_release_evidence_kept_as_two_separate_documents_per_one_document_one_primary_authority
+records:
+  - record: v0.1 Release Readiness Assessment
+    recorded_on: 2026-07-09
+    source_pr: 513
+    source_commit: 9b6c995a38b46db1f666e8083621bca91de14810
+    source_commit_date: 2026-07-09T00:13:46+09:00
+    source_origin_commit: 9b6c995a38b46db1f666e8083621bca91de14810
+    source_merge_strategy: squash_merge_source_and_origin_commit_identical
+    old_path: docs/mvp/v0.1_release_readiness.md
+    original_old_path: docs/mvp/v0.1_release_readiness.md
+    source_blob_sha: 432b53743719a443d0550e3120f92d351191b2c7
+    source_content_sha256: e44e33c044bbee7d84de43a1287353f1ef2e8eda64893f7468205304e9117cff
+    post_source_modification_commits:
+      - commit: 66453cf015f62e3e7d71fbf46d0edf5cefb2a74b
+        source_pr: 546
+        recorded_on: 2026-07-11T08:55:58+09:00
+        change: repair_release_evidence_indexing
+      - commit: 6c42d9ee3a8f9ccaa04a0ddf0bf08b856c8284e8
+        source_pr: 553
+        recorded_on: 2026-07-11T13:57:51+09:00
+        change: added_final_main_head_validation_state_and_final_receipt_fields_section
+      - commit: 1397a65c8e5f049b6e498f6db70a1a7da32ab151
+        source_pr: 554
+        recorded_on: 2026-07-11T14:50:50+09:00
+        change: recorded_verified_v0.1_tag_binding_completion
+      - commit: 2d9fc3aa26145cf80cdbfa5d2ccb84261d7d963e
+        source_pr: 571
+        recorded_on: 2026-07-12T18:21:45+09:00
+        change: cross_linked_e2_value_smoke_harness_completion_report_unrelated_evidence_move
+    pre_cutover_blob_sha: 3ee968997a44e672faa9edeb94250a916f28a4cc
+    pre_cutover_content_sha256: a958b256ddcdfc753c56c342a0ebbfe57dbfd9f836ab67b7a90c6c9bd7ec6465
+    new_canonical_path: docs/release/v0.1-release-readiness.md
+    exact_source_snapshot: none
+    exact_source_snapshot_rationale: pure_canonical_move_of_an_already_readable_current_release_document_task_brief_explicitly_states_no_automatic_snapshot_requirement_for_this_case_git_history_and_the_migration_receipt_already_preserve_every_prior_revision
+    advisory_verification: advisory_blob_sha256_confirmed_correct_matches_pre_cutover_blob_exactly
+    type_normalization: release_readiness_assessment_to_release
+    status_normalization: current_to_current_unchanged
+    stale_wording_correction: none_required_body_already_stated_final_main_head_validation_complete_and_v0.1_tag_creation_complete_before_this_move
+    live_referrers_before_cutover: 6
+    live_referrer_files_before_cutover:
+      - docs/PROJECT_STATUS.md
+      - docs/README.md
+      - docs/architecture/post_v01_strategic_direction_vision.md
+      - docs/architecture/project_execution_plan.md
+      - docs/evidence/implementation/e2_value_smoke_harness_completion_report.md
+      - docs/mvp/README.md
+  - record: v0.1 Final Main-HEAD Validation and Tag Receipt
+    recorded_on: 2026-07-11
+    source_pr: 553
+    source_commit: 6c42d9ee3a8f9ccaa04a0ddf0bf08b856c8284e8
+    source_commit_date: 2026-07-11T13:57:51+09:00
+    source_origin_commit: 6c42d9ee3a8f9ccaa04a0ddf0bf08b856c8284e8
+    source_merge_strategy: squash_merge_source_and_origin_commit_identical
+    old_path: docs/mvp/v0.1_final_validation_receipt.md
+    original_old_path: docs/mvp/v0.1_final_validation_receipt.md
+    source_blob_sha: e104477f56dcf7cec4158889a8f32dc05fb8a6c2
+    source_content_sha256: 00d88410127859f342cdf11a149b97f3dad1ba1979073dc69d0faa24b1b3ee45
+    post_source_modification_commits:
+      - commit: 1397a65c8e5f049b6e498f6db70a1a7da32ab151
+        source_pr: 554
+        recorded_on: 2026-07-11T14:50:50+09:00
+        change: recorded_verified_v0.1_tag_binding_replaced_pending_tag_candidate_wording_with_complete_exact_match_wording
+    pre_cutover_blob_sha: b8fe628159990321d798db0c94b881aa86ddc5bf
+    pre_cutover_content_sha256: 647fadea5fe1acab7faab0a3151617948d2125e5aed86821075e2ee3dd78e9d9
+    new_canonical_path: docs/evidence/releases/v0.1-final-main-validation-tag-receipt.md
+    exact_source_snapshot: none
+    exact_source_snapshot_rationale: pure_canonical_move_of_an_already_frozen_receipt_task_brief_explicitly_states_no_automatic_snapshot_requirement_for_this_case_git_history_and_the_migration_receipt_already_preserve_the_pre_tag_binding_revision
+    advisory_verification: advisory_blob_sha256_confirmed_correct_matches_pre_cutover_blob_exactly
+    type_normalization: validation_receipt_to_evidence
+    status_normalization: frozen_to_frozen_unchanged
+    relative_path_depth_correction: relaylm_current_status_source_and_relaylm_verified_by_front_matter_links_corrected_for_the_new_three_segment_docs_evidence_releases_directory_depth_versus_the_old_two_segment_docs_mvp_depth
+    stale_wording_correction: none_required_body_already_stated_tag_creation_state_complete_and_tag_binding_verification_exact_match_before_this_move
+    live_referrers_before_cutover: 2
+    live_referrer_files_before_cutover:
+      - docs/mvp/README.md
+      - docs/release/v0.1-release-readiness.md
+validated_main_commit_cross_check:
+  value: 522018e62d69bcbe89465d574bf2d1b377f10bd9
+  present_in_both_canonical_bodies: true
+  matches_v0.1_tag: true
+v0.1_tag_binding_independent_reverification:
+  tag: v0.1
+  resolved_commit: 522018e62d69bcbe89465d574bf2d1b377f10bd9
+  expected_commit: 522018e62d69bcbe89465d574bf2d1b377f10bd9
+  result: exact_match
+  method: git_rev_parse_refs_tags_v0.1_caret_brace_commit
+retired_old_paths_absent_from_pr_tree: true
+retired_old_paths:
+  - docs/mvp/v0.1_release_readiness.md
+  - docs/mvp/v0.1_final_validation_receipt.md
+verification:
+  old_paths_removed_in_pr_tree: true
+  exact_pre_cutover_blobs_reused: true
+  canonical_documents_created: 2
+  canonical_indexes_created: 2
+  canonical_indexes_created_paths:
+    - docs/release/README.md
+    - docs/evidence/releases/README.md
+  evidence_readme_link_repaired: true
+  source_head_merge_and_pre_cutover_equal_records: 0
+  source_to_pre_cutover_diff_records: 2
+  post_source_modification_commits_total: 5
+  advisory_records_independently_reverified: 2
+  advisory_records_confirmed_correct: 2
+  advisory_records_corrected: 0
+  source_pr_newly_established_not_previously_recorded: 2
+  live_dependency_referrer_files_at_frozen_baseline: 7
+  live_dependency_referrer_files_at_frozen_baseline_list:
+    - docs/PROJECT_STATUS.md
+    - docs/README.md
+    - docs/architecture/post_v01_strategic_direction_vision.md
+    - docs/architecture/project_execution_plan.md
+    - docs/evidence/implementation/e2_value_smoke_harness_completion_report.md
+    - docs/mvp/README.md
+    - docs/release/v0.1-release-readiness.md
+  live_dependency_link_occurrences_at_frozen_baseline: 13
+  live_dependency_referrer_files_updated: 6
+  live_dependency_link_occurrences_retargeted: 13
+  path_bound_tooling_files_updated: 2
+  path_bound_tooling_files_updated_list:
+    - scripts/relaylm_docs_semantic_audit.py
+    - .github/workflows/v01-final-main-validation.yml
+  path_bound_tooling_occurrences_retargeted: 8
+  mvp_index_entries_updated: 2
+  mvp_index_presents_old_files_as_live: false
+  shared_index_files_updated: 4
+  new_canonical_contracts_created: 0
+  absorbed_verbatim_blocks: 0
+  code_derived_absorbed_blocks: 0
+  historical_old_path_string_occurrences_preserved_in_exact_snapshots: 0
+  historical_old_path_string_occurrences_preserved_as_migration_identifiers_in_wrappers: 0
+  historical_old_path_string_occurrences_preserved_in_this_ledger: 4
+  semantic_audit_script_updated: true
+  semantic_audit_script_changes:
+    - required_metadata_paths_repointed_to_canonical_release_and_release_evidence_paths_plus_two_new_collection_indexes
+    - legacy_pre_cutover_type_requirement_removed_release_and_evidence_canonical_types_now_required_instead
+    - check_release_assessment_rewritten_for_canonical_paths_release_and_evidence_frozen_types_and_complete_only_tag_wording_pending_tag_dead_branch_removed
+    - reject_retired_release_paths_guard_added_fails_closed_if_either_old_path_is_reintroduced
+    - check_referenced_repository_paths_repointed_to_canonical_paths
+  workflow_updated: true
+  workflow_path_filters_updated:
+    - .github/workflows/v01-final-main-validation.yml
+  workflow_path_filters_repointed_to_canonical_paths: true
+  workflow_validates_frozen_commit_not_pr_head: true
+  documentation_current_boundary_smoke_workflow_change_required: false
+  documentation_current_boundary_smoke_workflow_reason: already_uses_a_docs_slash_double_star_wildcard_path_filter_covering_the_new_paths_automatically
+  consolidated_selector_contract_change_required: false
+  consolidated_selector_contract_verification_method: relaylm_ci_consolidated_smoke_py_groups_dict_and_workflow_path_requirements_directly_inspected_neither_canonical_release_nor_release_evidence_path_matches_any_relaymem_runtime_or_ui_glob
+  no_canonical_record_selects_unrelated_runtime_group: true
+  compileall: pending_local_validation
+  documentation_link_check: pending_local_validation
+  documentation_semantic_audit: pending_local_validation
+  documentation_current_boundary_smoke: pending_local_validation
+  consolidated_smoke_contract: pending_local_validation
+  git_diff_check: pending_local_validation
+  all_github_actions: pending_validated_content_head
+  codex_review: pending_validated_content_head
+  unresolved_review_threads: pending_validated_content_head
+  receipt_finalization: pending_validated_content_head
+```
+
+This batch's two records are pre-existing independent documents at the confirmed C1C34 boundary, not a single source split apart: `docs/mvp/v0.1_release_readiness.md` (current release-readiness interpretation) and `docs/mvp/v0.1_final_validation_receipt.md` (frozen exact-commit validation and tag-binding evidence) already had different primary authorities before this PR and remain two separate canonical documents after it, per the documentation model's "one document, one primary authority" rule and Placement Decision D10 ("receipts are evidence... active criteria and pending readiness belong in release; completed validation belongs in evidence/releases"). Both advisory pre-cutover blob hashes supplied with the task brief were independently recomputed from the confirmed C1C34 merge boundary (`git ls-tree`, `git cat-file`, `sha256sum`) and confirmed to match exactly, not copied.
+
+Provenance required correcting an initial first-parent-log misread for the readiness record. `git log --first-parent main -- docs/mvp/v0.1_release_readiness.md` surfaced the PR #542 integration-branch merge commit (`69ab6d98f64c073a8f7b20c2103f63f46a6c6c77`) as the file's earliest first-parent appearance, but a blob-level check showed that merge was tree-same to its own first parent for this path (`git diff` empty, identical blob `432b53743719a443d0550e3120f92d351191b2c7`) — a false positive caused by this repository's stacked-integration-branch merge history, not a real content change. Walking the merge's actual second parent found the true content-introducing commit was already an ancestor of the merge's first parent: `9b6c995a38b46db1f666e8083621bca91de14810`, "Document v0.1 release readiness (#513)", a single-parent squash-style commit dated 2026-07-09T00:13:46+09:00, confirmed via `git merge-base --is-ancestor` and direct blob comparison at every intermediate commit. This is recorded explicitly so a later audit does not pair the later PR #542 integration-merge date with the true PR #513 source blob as if they were the same revision. The readiness record then received four genuine post-source content modifications (PR #546 evidence-indexing repair, PR #553 final-validation-state addition, PR #554 tag-binding completion, and PR #571's unrelated cross-link update when the E2 harness report moved) before reaching the pre-cutover blob that exactly matches both the supplied advisory hash and this PR's starting HEAD. The receipt record has a simpler, single-parent squash-merge provenance (PR #553, source commit equals origin commit) with exactly one post-source modification (PR #554, replacing "tag creation state: pending" wording with "tag creation state: complete" / "tag binding verification: exact match" once the tag was actually pushed).
+
+Both canonical documents already stated complete, non-pending validation and tag-binding wording before this move (added by PR #553/#554/#571), so no stale "final validation pending" or "tag creation pending" language required correction inside either moved document itself. Six other current documents did contain stale "pending final main-HEAD validation" / "remains pending" / "still required before tagging" wording pointing at the old readiness path: `docs/PROJECT_STATUS.md`, `docs/README.md`, and `docs/architecture/project_execution_plan.md` were corrected in the same PR alongside their path retargeting; `docs/architecture/post_v01_strategic_direction_vision.md`, `docs/evidence/implementation/e2_value_smoke_harness_completion_report.md`, and `docs/mvp/README.md` needed only path retargeting since their prose did not itself assert a pending state. `docs/mvp/README.md`'s "Release readiness assessments" section was reworded to state both documents moved to their canonical collections and that the directory "no longer holds a live copy," rather than silently repointing the links while still presenting the entries as this directory's own content.
+
+The receipt's `relaylm_current_status_source` and `relaylm_verified_by` front-matter link depths were corrected for the directory-depth change: `docs/mvp/` and `docs/release/` are both exactly one segment below `docs/`, so the readiness record's existing relative links needed no depth change, but `docs/evidence/releases/` is two segments below `docs/`, so the receipt's links to `../PROJECT_STATUS.md` and `../../.github/workflows/v01-final-main-validation.yml` were corrected to `../../PROJECT_STATUS.md` and `../../../.github/workflows/v01-final-main-validation.yml` respectively.
+
+`scripts/relaylm_docs_semantic_audit.py`'s `check_release_assessment` function was rewritten rather than only path-repointed: the dead pending-receipt branch (unreachable now that the receipt always exists post-cutover) was removed, the required-anchor set was extended to include exact tag-binding wording (`tag creation state: complete`, `tag binding verification: exact match`) alongside the existing validated-commit cross-check between both canonical bodies, and a new guard fails closed if either retired `docs/mvp/` path is ever reintroduced. `check_metadata`'s hardcoded requirement that `docs/DOCUMENTATION_MODEL.md` list the legacy `release_readiness_assessment`/`validation_receipt` types was replaced with a requirement that it list the canonical `release`/`evidence` types instead, since those are the types the moved documents now use and the legacy types remain listed in the model's existing pre-cutover table for other, still-unmigrated documents, unaffected by this PR. `.github/workflows/v01-final-main-validation.yml`'s two `pull_request.paths` filter entries were repointed from the retired paths to the two canonical paths; its frozen-worktree validation mechanics (`VALIDATED_MAIN_SHA` materialized in a detached worktree, checklist executed against that frozen commit rather than the PR head) are unchanged. `.github/workflows/documentation-current-boundary-smoke.yml` needed no change: it already matches `docs/**`, which covers the new canonical paths automatically. The consolidated-selector contract (`scripts/relaylm_ci_consolidated_smoke.py` and its `WORKFLOW_PATH_REQUIREMENTS`) was inspected, not modified: neither canonical path appears in any `relaymem`, `runtime`, or `ui` group glob (the sole `docs/mvp/` pattern remaining there is the unrelated, still-live `docs/mvp/wave4/*`), so this move correctly selects zero unrelated CI groups.
+
+The `v0.1` tag binding was independently reverified against the confirmed C1C34 boundary rather than trusted from the task brief: `git rev-parse 'refs/tags/v0.1^{commit}'` resolves to `522018e62d69bcbe89465d574bf2d1b377f10bd9`, an exact match to both the brief's stated value and the commit recorded throughout both canonical documents. No `-source.txt` byte-exact snapshot was created for either record: the task brief states this is not automatically required for a pure canonical move of an already-readable current release document or an already-frozen receipt, and neither record's pre-cutover revision differs from what a snapshot would preserve beyond what Git history and this ledger's own recorded blob/content-SHA-256 table already capture without creating a second, potentially-drifting copy of the same authority. No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, legacy workflow selector, or old-path manifest was added. No file under `relaylm/` changed. Local validation, GitHub Actions results, review-thread state, and the `validated_content_head` / `receipt_finalization` split remain to be recorded once the substantive content commit is green on its exact pushed head, per the established pattern in this ledger; `cutover_pr` above is the number of the PR expected to be opened for this branch and must be reconciled against the actual created PR number before finalization if it differs.
 
 ## Pending batches
 

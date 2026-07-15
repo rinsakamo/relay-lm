@@ -23,7 +23,7 @@ relaylm_exact_source_snapshot: e2_value_smoke_harness_completion_report-source.t
 
 ## Status and authority
 
-This document is frozen implementation evidence for the E2 comparison-transcript harness introduced by PR #481 and merged as `51d678dfb0a10899db424e59c08af70865b8333f`. Current repository status belongs to [Project Status](../../PROJECT_STATUS.md). The later durable-memory E2 human review and release-readiness conclusion belong to [v0.1 Release Readiness Assessment](../../mvp/v0.1_release_readiness.md), not this harness implementation record.
+This document is frozen implementation evidence for the E2 comparison-transcript harness introduced by PR #481 and merged as `51d678dfb0a10899db424e59c08af70865b8333f`. Current repository status belongs to [Project Status](../../PROJECT_STATUS.md). The later durable-memory E2 human review and release-readiness conclusion belong to [v0.1 Release Readiness Assessment](../../release/v0.1-release-readiness.md), not this harness implementation record.
 
 The exact pre-cutover report is retained byte-for-byte as [e2_value_smoke_harness_completion_report-source.txt](e2_value_smoke_harness_completion_report-source.txt). Statements below describe the source PR boundary unless explicitly qualified.
 
