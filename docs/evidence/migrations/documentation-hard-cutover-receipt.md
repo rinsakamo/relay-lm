@@ -2526,7 +2526,7 @@ The correction commit `a994067ef903d77cf4ab623df2a7d00058147070` is the new `val
 
 ```yaml
 cutover_pr: 600
-merged_commit: pending
+merged_commit: 037530a50cd4265bea4e64ac29563aa3532c44b7
 record_count: 1
 cutover_recorded_on: 2026-07-15
 disposition: evidence_retained
@@ -2669,7 +2669,193 @@ An independent review of the initial green head (`23472fcaba751d7146f5c0f119aa17
 
 `cutover_pr` remains `600` (`rinsakamo/relay-lm#600`). `23472fcaba751d7146f5c0f119aa17dae57bdd32` was the prior `validated_content_head`; at that head all 44 triggered GitHub Actions check runs (job/check-run count) had completed successfully, including every RelayMEM/runtime/UI consolidated-smoke group, which ran in full rather than reporting `skipped` because `scripts/relaylm_ci_consolidated_smoke.py` is itself a `GLOBAL_PATTERNS` entry for all three groups — editing it correctly forces a full run, and does not indicate a selection regression (the underlying per-path selection behavior is what the consolidated-smoke-contract assertions pin). That head is now superseded by `8bfa4bcce1f94a931239d8d5999fa38994e78f2c`, the correction commit containing the four fixes above.
 
-`8bfa4bcce1f94a931239d8d5999fa38994e78f2c` is the new `validated_content_head`: 44 triggered GitHub Actions check runs (job/check-run count), spanning 15 distinct workflow runs (workflow-run count — a job/check-run count and a workflow-run count are not the same measure and are recorded separately in this entry), all completed successfully, including every RelayMEM/runtime/UI consolidated-smoke group (again running in full rather than `skipped`, for the same `GLOBAL_PATTERNS` reason as the superseded head). Zero reviews, zero PR comments, and zero unresolved review threads were present at that head. Per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, this finalization will be recorded in a further, separate commit after `8bfa4bcce1f94a931239d8d5999fa38994e78f2c`, which remains the exact validated content head and will not itself be re-claimed as re-validated. C1C35 remains finalized to merge commit `5d60433713574c042afe5ceab15b865a48824ae5`. This PR is not merged.
+`8bfa4bcce1f94a931239d8d5999fa38994e78f2c` is the new `validated_content_head`: 44 triggered GitHub Actions check runs (job/check-run count), spanning 15 distinct workflow runs (workflow-run count — a job/check-run count and a workflow-run count are not the same measure and are recorded separately in this entry), all completed successfully, including every RelayMEM/runtime/UI consolidated-smoke group (again running in full rather than `skipped`, for the same `GLOBAL_PATTERNS` reason as the superseded head). Zero reviews, zero PR comments, and zero unresolved review threads were present at that head. Per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, this finalization was recorded in a further, separate commit after `8bfa4bcce1f94a931239d8d5999fa38994e78f2c`, which remains the exact validated content head and is not itself re-claimed as re-validated. C1C35 remains finalized to merge commit `5d60433713574c042afe5ceab15b865a48824ae5`. `merged_commit` for this record is now finalized to `037530a50cd4265bea4e64ac29563aa3532c44b7` (PR #600, confirmed an ancestor of the working `main` before Cutover 1C-37 began).
+
+### C1C37-001 — Implementation Completion Report template
+
+```yaml
+cutover_pr: pending
+merged_commit: pending
+record_count: 1
+cutover_recorded_on: 2026-07-15
+disposition: template_canonicalized
+record:
+  record: Implementation Completion Report template
+  recorded_on: 2026-06-27
+  source_pr: 410
+  source_pr_branch: docs/parallel-implementation-reports
+  source_commit: 0da3633aee5a026c3016c65bfdedb4cbda1f0bde
+  source_commit_date: 2026-06-27T00:42:10+09:00
+  source_origin_commit: 4d31f45cfba967e23bd50f01f3c3d7ce9a8d0a33
+  source_origin_commit_date: 2026-06-27T01:05:27+09:00
+  source_merge_strategy: real_merge_source_commit_preserved_distinct_from_origin_merge_commit
+  source_merge_strategy_note: genuine_non_squash_github_merge_both_commits_independently_reachable_from_main_branch_side_second_parent_carried_12_commits_from_merge_base_67a9a9c_including_the_templates_original_addition_commit_0da3633_no_subsequent_edit_commit_to_the_template_exists_in_that_branch_history
+  old_path: docs/mvp/IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md
+  original_old_path: docs/mvp/IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md
+  source_blob_sha: cfcc0baee0a27fe8de2e8711260b956c0b91f7fa
+  source_content_sha256: 094cf007068c31bc55789c60f01c4e863ce1bd494158968c355dee31c03663cf
+  post_source_modification_commits: []
+  pre_cutover_blob_sha: cfcc0baee0a27fe8de2e8711260b956c0b91f7fa
+  pre_cutover_content_sha256: 094cf007068c31bc55789c60f01c4e863ce1bd494158968c355dee31c03663cf
+  new_canonical_path: docs/templates/implementation-completion-report.md
+  exact_source_snapshot: none
+  advisory_verification: advisory_pre_cutover_blob_sha256_confirmed_correct_matches_source_blob_and_todays_blob_exactly
+  type_status_normalization:
+    old_relaylm_doc_type: implementation_completion_report
+    old_relaylm_status: historical_after_merge
+    old_relaylm_volatility: frozen
+    new_relaylm_doc_type: template
+    new_relaylm_status: target
+    new_relaylm_volatility: medium
+    new_relaylm_authority: non_authoritative_implementation_completion_report_template
+    normalization_reason: the_old_metadata_misclassified_a_reusable_non_authoritative_template_as_frozen_pr_scoped_historical_evidence_the_canonical_templates_collection_convention_uses_template_and_target_for_every_reusable_starting_point
+snapshot_decision:
+  snapshot_created: false
+  rationale:
+    - the_old_file_was_a_reusable_non_authoritative_template_not_historical_implementation_evidence_for_one_merged_pr
+    - the_useful_section_structure_scope_through_source_pull_request_is_preserved_verbatim_in_the_canonical_template
+    - the_legacy_misclassification_historical_after_merge_frozen_carried_no_authority_that_needs_a_second_live_evidence_file_to_preserve
+    - git_history_plus_the_recorded_source_and_pre_cutover_blob_and_content_sha256_values_above_preserve_the_exact_old_revision_without_a_second_copy
+mvp_readme_deferral:
+  docs_mvp_readme_md_remains_live: true
+  docs_mvp_readme_md_deferred_to: C1C38
+  docs_mvp_readme_md_change_in_this_batch: retargeted_the_template_link_to_the_canonical_path_and_added_one_sentence_noting_the_move_no_move_deletion_freeze_or_wave_grouping_change
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_pre_cutover_blob_reused: false
+  exact_pre_cutover_blob_reused_note: no_exact_snapshot_created_per_snapshot_decision_above_git_history_and_recorded_blob_content_sha256_values_preserve_the_old_revision
+  canonical_template_wrapper_added: true
+  source_head_merge_and_pre_cutover_equal: true
+  source_to_pre_cutover_diff: none
+  post_source_modification_commits_total: 0
+  advisory_record_independently_reverified: true
+  advisory_record_confirmed_correct: true
+  advisory_record_corrected: false
+  full_path_bare_filename_and_glob_family_search_performed: true
+  full_path_bare_filename_and_glob_family_search_scope:
+    - docs/
+    - scripts/
+    - .github/workflows/
+    - relaylm/
+    - tests/
+    - README.md
+    - README_ja.md
+    - config.example.yaml
+  live_referrer_files_before_cutover: 3
+  live_referrer_files_before_cutover_list:
+    - docs/mvp/README.md
+    - docs/evidence/migrations/documentation-hard-cutover-receipt.md
+    - scripts/relaylm_mvp_completion_report_smoke.py
+  live_referrer_files_before_cutover_note: documentation-hard-cutover-receipt.md_only_contains_the_old_path_as_a_historical_migration_identifier_inside_the_c1c36_narrative_prose_and_is_left_unchanged_as_a_historical_record_the_other_two_referrers_are_updated_in_this_batch
+  templates_index_updated: true
+  templates_index_new_link_added: true
+  mvp_index_updated: true
+  mvp_index_link_retargeted: true
+  mvp_index_final_move_or_freeze_performed: false
+  mvp_index_wave_grouping_absorbed_or_removed: false
+  execution_plan_itself_moved: false
+  completion_report_smoke_model_anchor_key_updated: true
+  completion_report_smoke_template_anchors_replaced: true
+  completion_report_smoke_old_path_reintroduction_guard_added: true
+  completion_report_smoke_old_path_reintroduction_guard_location: scripts/relaylm_mvp_completion_report_smoke.py_assert_old_template_path_absent_called_unconditionally_at_the_start_of_main_alongside_assert_no_legacy_wave_reports
+  semantic_audit_template_guard_added: true
+  semantic_audit_template_guard_location: scripts/relaylm_docs_semantic_audit.py_check_completion_report_template_wired_into_main_checks_tuple
+  semantic_audit_template_guard_coverage:
+    - retired_old_template_path_rejected_if_reintroduced
+    - canonical_template_missing_relaylm_doc_type_template_rejected
+    - canonical_template_missing_relaylm_status_target_rejected
+    - canonical_template_missing_canonical_evidence_destination_instruction_rejected
+    - docs_templates_readme_md_must_list_the_canonical_template
+    - docs_mvp_readme_md_must_not_still_link_the_retired_old_path
+    - docs_mvp_readme_md_must_link_the_canonical_template
+  negative_path_proof_method: bounded_tempfile_temporarydirectory_self_test_monkeypatching_each_scripts_root_constant_not_committed_to_the_repository_tree
+  negative_path_proof_assertions_run: 8
+  negative_path_proof_assertions_passed: 8
+  negative_path_proof_coverage:
+    - smoke_rejects_reintroduced_old_template_path
+    - smoke_silent_on_clean_synthetic_tree
+    - audit_rejects_reintroduced_old_template_path
+    - audit_rejects_canonical_template_missing_doc_type_template
+    - audit_rejects_canonical_template_missing_evidence_destination
+    - audit_passes_on_clean_synthetic_canonical_tree
+    - smoke_all_real_canonical_evidence_reports_still_pass
+    - audit_passes_on_real_repository_tree
+  path_bound_dependency_files_inspected:
+    - scripts/relaylm_mvp_completion_report_smoke.py
+    - scripts/relaylm_docs_semantic_audit.py
+    - scripts/relaylm_documentation_current_boundary_smoke.py
+    - scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+    - scripts/relaylm_wave3_cross_slice_convergence_smoke.py
+    - scripts/relaylm_wave4_cross_slice_convergence_smoke.py
+    - scripts/relaylm_wave5_cross_slice_convergence_smoke.py
+    - docs/DOCUMENTATION_MODEL.md
+    - docs/README.md
+    - README.md
+    - README_ja.md
+    - config.example.yaml
+    - docs/mvp/README.md
+    - docs/templates/README.md
+  path_bound_dependency_files_changed:
+    - scripts/relaylm_mvp_completion_report_smoke.py
+    - scripts/relaylm_docs_semantic_audit.py
+    - docs/mvp/README.md
+    - docs/templates/README.md
+  path_bound_dependency_files_unchanged_reason:
+    "scripts/relaylm_documentation_current_boundary_smoke.py": no_anchor_or_path_reference_to_the_template_file_itself_only_to_docs_mvp_readme_md_content_unrelated_to_the_template_link
+    "scripts/relaylm_mvp_completion_report_pr_link_smoke.py": globs_only_docs_evidence_implementation_star_completion_report_md_never_referenced_the_template
+    "scripts/relaylm_wave3_cross_slice_convergence_smoke.py": no_reference_to_the_template_path_or_filename
+    "scripts/relaylm_wave4_cross_slice_convergence_smoke.py": no_reference_to_the_template_path_or_filename
+    "scripts/relaylm_wave5_cross_slice_convergence_smoke.py": no_reference_to_the_template_path_or_filename
+    "docs/DOCUMENTATION_MODEL.md": no_reference_to_the_template_path_or_filename
+    "docs/README.md": links_only_docs_mvp_readme_md_and_individual_evidence_reports_never_the_template_directly
+    "README.md": links_only_docs_mvp_readme_md_never_the_template_directly
+    "README_ja.md": links_only_docs_mvp_readme_md_never_the_template_directly
+    "config.example.yaml": no_reference_to_completion_reports_or_the_template
+  workflow_files_inspected:
+    - .github/workflows/documentation-completion-report-model.yml
+    - .github/workflows/documentation-completion-report-files.yml
+    - .github/workflows/documentation-completion-report-link.yml
+  workflow_files_changed: []
+  workflow_files_unchanged_reason:
+    ".github/workflows/documentation-completion-report-model.yml": generic_invocation_of_relaylm_mvp_completion_report_smoke_py_check_model_no_path_literal_in_the_workflow_itself
+    ".github/workflows/documentation-completion-report-files.yml": generic_invocation_of_relaylm_mvp_completion_report_smoke_py_check_all_no_path_literal_in_the_workflow_itself
+    ".github/workflows/documentation-completion-report-link.yml": generic_invocation_of_relaylm_mvp_completion_report_pr_link_smoke_py_no_path_literal_in_the_workflow_itself
+  no_compatibility_path_added: true
+  no_redirect_alias_symlink_fallback_dual_live_or_temp_workflow_added: true
+  no_runtime_config_schema_scheduler_memory_ui_or_packaging_change: true
+  relaylm_directory_unchanged: true
+  compileall: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  documentation_current_boundary_smoke: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  consolidated_selector_contract: passed
+  wave3_cross_slice_convergence_smoke: passed
+  wave4_cross_slice_convergence_smoke: passed
+  wave5_cross_slice_convergence_smoke: passed
+  git_diff_check: passed
+  all_github_actions: pending_recorded_at_finalization
+  unresolved_review_threads: pending_recorded_at_finalization
+  validated_content_head: pending_recorded_at_finalization
+  receipt_finalization: pending_recorded_in_a_separate_commit_after_validated_content_head
+```
+
+This single-record batch canonicalizes the Implementation Completion Report template only. It is a template canonicalization, not an implementation-evidence migration: no `docs/evidence/implementation/*_completion_report.md` record is created, moved, or edited by this batch. `docs/mvp/README.md` remains temporarily live and is deliberately not moved, deleted, frozen, or substantially rewritten here; its wave grouping, handoff links, root links, audits, and path-bound smoke dependencies are explicitly deferred to Cutover 1C-38, along with the directory's final retirement. `docs/architecture/project_execution_plan.md` is unrelated to this batch and is not touched.
+
+The true content-introducing source commit was independently recomputed rather than trusted from the advisory value: `git log --follow` against a shallow clone initially returned only one grafted merge commit (`167bc884223b5c6c4b1bb0e9c0086efcac80e814`) with no recorded parent, the same repository-history-squash/import boundary artifact seen in earlier batches of this ledger; after `git fetch --unshallow`, `git log --follow --diff-filter=A` resolved to the true addition commit `0da3633aee5a026c3016c65bfdedb4cbda1f0bde` ("docs: add implementation completion report template", 2026-06-27T00:42:10+09:00). Walking the single-parent child chain forward from that commit (`git log --all --format='%H %P'` cross-referenced for children) found no further edits to the file and terminated at the real, non-squash merge commit `4d31f45cfba967e23bd50f01f3c3d7ce9a8d0a33` ("Merge pull request #410 from rinsakamo/docs/parallel-implementation-reports", 2026-06-27T01:05:27+09:00), whose first parent (`67a9a9cbf76d6f7dbc07c3cf0ef83adc1be12e7d`) is the pre-merge `main` tip and whose second parent (`dedd543ab6f0a6d2fc81805e9ca192900099a08f`) is the 12-commit branch tip; both merge parents and all 12 intervening branch commits, including `0da3633`, are independently reachable ancestors of the current `main`, confirming a genuine GitHub merge rather than a squash or a direct push. No commit between `0da3633` and today's tree ever touched this file again: the source blob (`cfcc0baee0a27fe8de2e8711260b956c0b91f7fa`) equals both the advisory pre-cutover blob and today's working-tree blob exactly, and its content SHA-256 (`094cf007068c31bc55789c60f01c4e863ce1bd494158968c355dee31c03663cf`) was independently recomputed via `git cat-file -p <blob> | sha256sum` and confirmed to match the advisory value with zero drift since the PR #410 merge.
+
+The old front matter (`relaylm_doc_type: implementation_completion_report`, `relaylm_status: historical_after_merge`, `relaylm_volatility: frozen`, `relaylm_authority: wave_slice_implementation_evidence`) was structurally wrong for a reusable template: it presented a non-authoritative starting point as frozen, PR-scoped historical evidence for one already-merged PR, when in fact no PR ever consumed this file as its own evidence record. The canonical wrapper now uses `relaylm_doc_type: template`, `relaylm_status: target`, `relaylm_volatility: medium`, and `relaylm_authority: non_authoritative_implementation_completion_report_template`, matching the convention already used by every other file in `docs/templates/` (for example `adr.md` and `contract.md`), and explicitly lists five `relaylm_not_authoritative_for` entries (any implementation result, current runtime behavior, repository-wide implementation status, cross-slice sequencing, release or evaluation readiness) rather than the old three-entry list. The full section structure (`Scope` through `Source pull request`) is preserved verbatim inside a fenced template block, matching the style already used by `adr.md` and `contract.md`.
+
+No `-source.txt` byte-exact snapshot was created. Rationale: the old file was a reusable non-authoritative template, not historical implementation evidence for one merged PR; the useful section structure is preserved verbatim in the canonical template; the legacy misclassification (`historical_after_merge` / `frozen`) carried no authority that needs a second live evidence file to protect; and Git history plus the recorded source/pre-cutover blob and content SHA-256 values above already preserve the exact old revision without creating a second, potentially-drifting copy. This differs from the byte-exact-snapshot convention used for `docs/evidence/implementation/*_completion_report.md` records, which are frozen evidence for one specific already-merged PR rather than a reusable starting point.
+
+An exhaustive `git grep` for the exact old path, the bare filename, `implementation-completion-report.md`, `Slice Implementation Completion Report`, and `completion report template` across `docs/`, `scripts/`, `.github/workflows/`, `relaylm/`, `tests/`, `README.md`, `README_ja.md`, and `config.example.yaml` found exactly three live referrers before this cutover: `docs/mvp/README.md` (the "Use the template" link, retargeted to `../templates/implementation-completion-report.md` with a one-sentence move note), `scripts/relaylm_mvp_completion_report_smoke.py` (the `MODEL_ANCHORS` dictionary key and its validated anchors, replaced with the canonical path and template-specific anchors), and this receipt (the old path appears only as a historical migration identifier inside the C1C36 narrative prose describing that batch's own bounded scope, and is left unchanged as an accurate historical record of what was true at that time). `docs/templates/README.md` did not previously reference the file at all and gained one new list entry. None of `docs/DOCUMENTATION_MODEL.md`, `docs/README.md`, root `README.md`, `README_ja.md`, `config.example.yaml`, `scripts/relaylm_documentation_current_boundary_smoke.py`, `scripts/relaylm_mvp_completion_report_pr_link_smoke.py`, the three wave cross-slice convergence smokes, or the three completion-report workflow YAML files referenced the template path, filename, or title; each was inspected and confirmed to have no live dependency, and none were changed.
+
+`scripts/relaylm_mvp_completion_report_smoke.py`'s `MODEL_ANCHORS` key changed from the old path to `docs/templates/implementation-completion-report.md`, and its validated anchors changed from a plain section-heading tuple to a new `TEMPLATE_ANCHORS` tuple requiring `relaylm_doc_type: template`, `relaylm_status: target`, the non-authoritative authority key, the canonical evidence-destination path fragment, and the same eight section headings. A new `assert_old_template_path_absent()` fail-closed guard was added and is called unconditionally at the start of `main()`, alongside the existing `assert_no_legacy_wave_reports()` guard, covering the default invocation, `--check-model`, `--check-all`, and explicit path validation alike. `scripts/relaylm_docs_semantic_audit.py` gained a new `check_completion_report_template()` check, wired into `main()`'s `checks` tuple, that independently rejects a reintroduced old path, a canonical template missing `relaylm_doc_type: template` or `relaylm_status: target`, a canonical template missing the canonical evidence-destination instruction, `docs/templates/README.md` missing the template link, and `docs/mvp/README.md` either still linking the old path or missing the new one. `docs/evidence/implementation/README.md`, `docs/evidence/implementation/*_completion_report.md`, and `scripts/relaylm_mvp_completion_report_pr_link_smoke.py` were confirmed unaffected: none reference the template.
+
+Both new fail-closed guards' negative paths were proven with a bounded `tempfile.TemporaryDirectory` self-test that monkeypatches each script module's `ROOT` constant rather than touching the real repository tree, following the precedent established in the C1C36 entry above: it confirmed rejection of a reintroduced old template path by both the smoke script and the semantic audit, confirmed the semantic audit rejects a canonical template missing `relaylm_doc_type: template` or missing the canonical evidence-destination instruction, confirmed silence on clean synthetic trees, and confirmed both guards pass silently against the real current repository tree (all 8 assertions passed). The self-test itself was not committed to the repository tree, per the task brief's requirement to use a bounded method that does not modify committed repository state.
+
+No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, old-path manifest, or temporary finalizer workflow was added. No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. C1C36 is finalized above to merge commit `037530a50cd4265bea4e64ac29563aa3532c44b7` (PR #600), confirmed an ancestor of the working `main` before this Cutover 1C-37 batch began. This PR is not merged.
 
 ## Pending batches
 

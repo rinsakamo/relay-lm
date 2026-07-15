@@ -24,6 +24,7 @@ These files are non-authoritative starting points. A generated document acquires
 - [Subsystem architecture](subsystem-architecture.md)
 - [Concept or policy design](concept-policy-design.md)
 - [Contract](contract.md)
+- [Implementation completion report](implementation-completion-report.md)
 
 ## Use rules
 

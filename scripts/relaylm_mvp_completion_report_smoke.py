@@ -8,6 +8,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MAX_BYTES = 131072
 
+OLD_TEMPLATE_PATH = "docs/mvp/IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md"
+CANONICAL_TEMPLATE_PATH = "docs/templates/implementation-completion-report.md"
+
 REPORT_ANCHORS = (
     "relaylm_doc_type: implementation_completion_report",
     "relaylm_status: historical_after_merge",
@@ -22,6 +25,13 @@ REPORT_ANCHORS = (
     "## Shared documentation update inputs",
     "## Source pull request",
 )
+
+TEMPLATE_ANCHORS = (
+    "relaylm_doc_type: template",
+    "relaylm_status: target",
+    "non_authoritative_implementation_completion_report_template",
+    "docs/evidence/implementation/",
+) + REPORT_ANCHORS[4:]
 
 MODEL_ANCHORS = {
     "docs/DOCUMENTATION_MODEL.md": (
@@ -43,7 +53,7 @@ MODEL_ANCHORS = {
         "I-7A/B completion report",
         "The wave convergence PR links the merged reports",
     ),
-    "docs/mvp/IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md": REPORT_ANCHORS[4:],
+    CANONICAL_TEMPLATE_PATH: TEMPLATE_ANCHORS,
 }
 
 
@@ -124,6 +134,14 @@ def assert_no_legacy_wave_reports() -> None:
         )
 
 
+def assert_old_template_path_absent() -> None:
+    if (ROOT / OLD_TEMPLATE_PATH).exists():
+        raise AssertionError(
+            f"retired template path reintroduced (moved to {CANONICAL_TEMPLATE_PATH} by "
+            f"Cutover 1C-37): {OLD_TEMPLATE_PATH}"
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("paths", nargs="*")
@@ -136,6 +154,7 @@ def main() -> None:
         args.check_all = True
 
     assert_no_legacy_wave_reports()
+    assert_old_template_path_absent()
     if args.check_model:
         validate_model()
     paths = list(args.paths)
