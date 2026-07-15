@@ -77,14 +77,14 @@ Unknown top-level metadata is dropped. Nested values are retained only when a re
 
 Trace construction, sanitization, and writing remain best-effort. A trace failure must not change request handling behavior.
 
-## P0-A1 compatibility boundary
+## Compatibility argument boundary
 
-During P0-A1, `build_trace_record()` still accepts the legacy `messages` and `response_text` arguments so runtime call sites do not need to change in the same PR.
-New runtime writes pass `message_count` and `response_present` directly. The legacy helper arguments remain for older tests/readers only; their content is reduced immediately and is not stored on `TraceRecord`.
+`build_trace_record()` accepts the legacy `messages` and `response_text` arguments so older call sites and tests do not need to change.
+Current runtime writes pass `message_count` and `response_present` directly. The legacy arguments are accepted for compatibility only; their content is reduced immediately and is never stored on `TraceRecord`.
 
 The compatibility properties `TraceRecord.messages` and `TraceRecord.response_text` return `[]` and `None` respectively. They exist only to prevent old readers from failing while making content recovery impossible.
 
-P0-A2 removes raw messages, response text, full retrieval artifacts, and evidence envelopes from runtime trace wiring entirely.
+No raw messages, response text, full retrieval artifacts, or evidence envelopes are part of runtime trace wiring today. The legacy `messages`/`response_text` arguments and the compatibility properties are a permanent content-free compatibility shim, not a placeholder for a pending future removal.
 
 ## Legacy JSONL reads
 
@@ -121,6 +121,8 @@ python scripts/relaylm_trace_success_smoke.py
 python scripts/relaylm_hardening_smoke.py
 python scripts/relaylm_pipeline_node_results_runtime_smoke.py
 python scripts/relaylm_relayctx_unpack_runtime_app_smoke.py
+python scripts/relaylm_audit_projection_contract_smoke.py
+python scripts/relaylm_audit_projection_exact_contract_smoke.py
 ```
 
 The secret sentinel used by the contract smoke must not appear anywhere in the generated JSONL record.

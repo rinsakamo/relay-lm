@@ -1889,7 +1889,7 @@ Because the audit found the current four-stage contract fragmented across `docs/
 
 ```yaml
 cutover_pr: 596
-merged_commit: pending
+merged_commit: 103bc03f90c9fda089b5a9e0d5197607e96a303f
 record_count: 4
 cutover_recorded_on: 2026-07-14
 disposition: split
