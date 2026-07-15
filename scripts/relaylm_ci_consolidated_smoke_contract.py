@@ -102,6 +102,23 @@ def check_change_selection() -> None:
             f"{[g for g, v in selected.items() if v]!r}"
         )
 
+    for workflow, groups in GROUPS.items():
+        for group, patterns in groups.items():
+            if any(pattern.startswith("docs/mvp/wave4/") for pattern in patterns):
+                fail(f"retired docs/mvp/wave4/ selector still present in {workflow}/{group}")
+
+    for workflow in GROUPS:
+        selected = changed_outputs(
+            workflow,
+            ["docs/evidence/implementation/docs_execution_plan_consolidation_completion_report.md"],
+            False,
+        )
+        if any(selected.values()):
+            fail(
+                "canonical docs-execution-plan report unexpectedly selected a "
+                f"{workflow} group: {[g for g, v in selected.items() if v]!r}"
+            )
+
     selected = changed_outputs(
         "relaymem",
         ["relaylm/relaymem_primary_page_writer.py"],

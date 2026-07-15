@@ -4,10 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-reports = list((ROOT / "docs" / "mvp").glob("wave*/*_completion_report.md"))
-reports.extend(
-    (ROOT / "docs" / "evidence" / "implementation").glob("*_completion_report.md")
-)
+reports = list((ROOT / "docs" / "evidence" / "implementation").glob("*_completion_report.md"))
 
 for report in sorted(reports):
     lines = report.read_text(encoding="utf-8").splitlines()

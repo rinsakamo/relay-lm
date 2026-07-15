@@ -29,12 +29,13 @@ This directory is the transitional index for MVP-focused implementation notes, r
 
 Declared parallel waves use unique completion reports as the handoff from each implementation PR to the later convergence/documentation thread.
 
-Path conventions during the documentation hard cutover:
+Canonical completion-report path after the documentation hard cutover:
 
 ```text
-legacy/unmigrated: docs/mvp/wave<N>/<slice>_completion_report.md
-canonical/migrated: docs/evidence/implementation/<slice>_completion_report.md
+docs/evidence/implementation/<slice>_completion_report.md
 ```
+
+No completion report remains under `docs/mvp/wave<N>/`; that legacy path is retired.
 
 Each implementation PR creates only its own report. It must not edit this central index, another slice's report, or shared current-state documents merely to mark completion. The wave convergence PR links the merged reports here after verifying the source PRs and merge commits.
 
@@ -107,6 +108,10 @@ W4-INT verified the source PR numbers, merge commits, and dedicated handoffs for
 
 The Wave 4 cross-slice convergence record is [Wave 4 Cross-Slice Convergence Audit](../evidence/waves/wave4_cross_slice_convergence_audit.md). W4-INT is merged.
 
+Docs Execution Plan Consolidation is a separate, docs-only convergence completion report whose legacy path was also under `docs/mvp/wave4/`. It is not part of the W4-INT slice-implementation set above and does not mark any of those slices complete:
+
+- [Docs Execution Plan Consolidation completion report](../evidence/implementation/docs_execution_plan_consolidation_completion_report.md) — source PR #422; consolidated execution-plan and roadmap documentation authority only, no production boundary.
+
 ### Wave 3 merged completion reports
 
 - [I1-GE completion report](../evidence/implementation/i1ge_completion_report.md) — source PR #411, merge `e2caa1bdb53468ca282e8f374ba8ceebf839c976`.
@@ -133,6 +138,7 @@ python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementati
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e2_value_smoke_harness_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/twin_extraction_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/lat1_latency_measurement_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/docs_execution_plan_consolidation_completion_report.md
 ```
 
 The source PR number must be concrete before final review. The convergence thread records the merge commit from GitHub; the report does not need a self-referential head SHA.
