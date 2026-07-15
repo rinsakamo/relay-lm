@@ -7,8 +7,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-import yaml
-
 ROOT = Path(__file__).resolve().parents[1]
 MAX_BYTES = 131072
 
@@ -147,6 +145,37 @@ def forbid_anchors(relative_path: str, anchors: tuple[str, ...]) -> None:
         raise AssertionError(f"{relative_path}: forbidden anchors present: {present!r}")
 
 
+def _parse_flat_front_matter(relative_path: str, raw: str) -> dict:
+    """Parse the flat `key: value` / `key:` + `- item` front matter used throughout this
+    repository's documents. Deliberately dependency-free (no PyYAML): this script is invoked
+    directly by several CI workflows that install no project dependencies, and every front
+    matter block in this repository is a flat mapping of plain scalars and one-level lists,
+    never nested mappings, anchors, or multi-line scalars.
+    """
+    metadata: dict = {}
+    current_list_key: str | None = None
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        if line.startswith(" ") and line.strip().startswith("- "):
+            if current_list_key is None:
+                raise AssertionError(f"{relative_path}: list item with no preceding key: {line!r}")
+            metadata[current_list_key].append(line.strip()[2:].strip())
+            continue
+        if ":" not in line:
+            raise AssertionError(f"{relative_path}: unparseable front matter line: {line!r}")
+        key, _, value = line.partition(":")
+        key = key.strip()
+        value = value.strip()
+        if value:
+            metadata[key] = value
+            current_list_key = None
+        else:
+            metadata[key] = []
+            current_list_key = key
+    return metadata
+
+
 def parse_front_matter(relative_path: str) -> tuple[dict, str]:
     text = read_text(relative_path)
     lines = text.splitlines()
@@ -157,9 +186,7 @@ def parse_front_matter(relative_path: str) -> tuple[dict, str]:
     except StopIteration as exc:
         raise AssertionError(f"{relative_path}: unterminated YAML front matter") from exc
     raw = "\n".join(lines[1:end])
-    metadata = yaml.safe_load(raw)
-    if not isinstance(metadata, dict):
-        raise AssertionError(f"{relative_path}: front matter must be a mapping")
+    metadata = _parse_flat_front_matter(relative_path, raw)
     body = "\n".join(lines[end + 1 :])
     return metadata, body
 
