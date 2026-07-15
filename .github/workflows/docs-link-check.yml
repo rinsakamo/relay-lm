@@ -20,7 +20,7 @@ on:
       - .github/workflows/docs-link-check.yml
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: documentation-links-${{ github.workflow }}-${{ github.ref }}
@@ -50,96 +50,3 @@ jobs:
           name: documentation-link-diagnostics
           path: docs-link-check.log
           if-no-files-found: error
-
-  ctx-ovl-terminology-correction:
-    if: github.event_name == 'pull_request' && github.head_ref == 'docs/subjective-memory-formation-proposal'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: docs/subjective-memory-formation-proposal
-          fetch-depth: 0
-      - name: Apply CTX-OVL terminology and remove temporary workflow changes
-        shell: python
-        run: |
-          from pathlib import Path
-
-          proposal_path = Path('docs/proposals/subjective-memory-formation-consolidation-and-retrieval.md')
-          evidence_path = Path('docs/evidence/implementation/session-evidence-overlay-feasibility.md')
-          index_path = Path('docs/proposals/README.md')
-
-          proposal = proposal_path.read_text(encoding='utf-8')
-          proposal = proposal.replace(
-              '3. RelayCTX may keep that provisional interpretation in a bounded Session Evidence Overlay before RelaySLP completes.',
-              '3. RelayCTX may keep that provisional interpretation in a bounded **RelayCTX Session Evidence Overlay (CTX-OVL)** before RelaySLP completes.',
-          )
-          proposal = proposal.replace(
-              '  -> Session Evidence Overlay\n',
-              '  -> RelayCTX Session Evidence Overlay (CTX-OVL)\n',
-              1,
-          )
-          proposal = proposal.replace(
-              '### Session Evidence Overlay\n\nA character/namespace/session-scoped, bounded, rebuildable working projection used before RelaySLP publication.',
-              '### RelayCTX Session Evidence Overlay (CTX-OVL)\n\nCTX-OVL is a RelayCTX-owned, character/namespace/session-scoped, bounded, rebuildable working projection used before RelaySLP publication. It is part of RelayCTX short-term continuity, not a RelayMEM store.',
-          )
-          proposal = proposal.replace('  -> Session Evidence Overlay update\n', '  -> CTX-OVL update\n')
-          proposal = proposal.replace('### Session Evidence Overlay store\n', '### RelayCTX Session Evidence Overlay (CTX-OVL) store\n')
-          proposal = proposal.replace('### Session Evidence Overlay\n\nEvaluate:', '### RelayCTX Session Evidence Overlay (CTX-OVL)\n\nEvaluate:')
-          proposal = proposal.replace('4. Exact Session Evidence Overlay schema, composite scope key, TTL, and revision protocol.', '4. Exact CTX-OVL schema, composite scope key, TTL, and revision protocol.')
-          proposal = proposal.replace('  -> bounded Session Evidence Overlay\n', '  -> bounded RelayCTX Session Evidence Overlay (CTX-OVL)\n')
-          proposal = proposal.replace('SEO-', 'CTX-OVL-')
-          proposal_path.write_text(proposal, encoding='utf-8')
-
-          evidence = evidence_path.read_text(encoding='utf-8')
-          evidence = evidence.replace('# Session Evidence Overlay Implementation Feasibility', '# RelayCTX Session Evidence Overlay (CTX-OVL) Implementation Feasibility')
-          evidence = evidence.replace(
-              "A Session Evidence Overlay is implementable within RelayLM's existing component boundaries. It does not require a second durable MEM authority or synchronous RelaySLP execution.",
-              "The **RelayCTX Session Evidence Overlay (CTX-OVL)** is implementable within RelayLM's existing component boundaries as a RelayCTX short-term continuity function. It does not require a second durable MEM authority or synchronous RelaySLP execution.",
-          )
-          evidence = evidence.replace('  -> Session Evidence Overlay\n', '  -> RelayCTX Session Evidence Overlay (CTX-OVL)\n', 1)
-          evidence = evidence.replace(
-              'The current compiler does not yet consume them. A Session Evidence Overlay fits the target architecture but depends on the target compiler or an equivalent dynamic-suffix injection boundary.',
-              'The current compiler does not yet consume them. CTX-OVL fits the target RelayCTX architecture but depends on the target compiler or an equivalent dynamic-suffix injection boundary.',
-          )
-          evidence = evidence.replace(
-              'The memory sidecar and Session Evidence Overlay need separate schemas because they have different consumers, validation rules, authority, retention, and reconciliation.',
-              'The memory sidecar and CTX-OVL need separate schemas because they have different consumers, validation rules, authority, retention, and reconciliation.',
-          )
-          evidence = evidence.replace('## Proposed implementation slices', '## Proposed RelayCTX implementation slices')
-          evidence = evidence.replace('SEO-', 'CTX-OVL-')
-          evidence = evidence.replace(
-              'Session Evidence Overlay\n  = hot, affect- and scene-aware, provisional continuity',
-              'RelayCTX Session Evidence Overlay (CTX-OVL)\n  = RelayCTX-owned hot, affect- and scene-aware, provisional continuity',
-          )
-          evidence = evidence.replace('The implementation should proceed only through explicit SEO slices and evaluation gates.', 'The implementation should proceed only through explicit CTX-OVL slices and evaluation gates.')
-          evidence_path.write_text(evidence, encoding='utf-8')
-
-          index = index_path.read_text(encoding='utf-8')
-          index = index.replace('[Session Evidence Overlay implementation feasibility]', '[RelayCTX Session Evidence Overlay (CTX-OVL) implementation feasibility]')
-          index = index.replace(
-              'records the existing reusable boundaries, missing cross-request and stream-finalization work, proposed implementation slices, risks, and validation gates for provisional continuity before RelaySLP completion.',
-              'records the existing reusable boundaries, missing cross-request and stream-finalization work, proposed RelayCTX implementation slices, risks, and validation gates for provisional continuity before RelaySLP completion.',
-          )
-          index_path.write_text(index, encoding='utf-8')
-
-          for path in (proposal_path, evidence_path, index_path):
-              text = path.read_text(encoding='utf-8')
-              if 'SEO-' in text:
-                  raise SystemExit(f'legacy SEO phase label remains in {path}')
-      - name: Restore workflow files, validate, and push
-        run: |
-          git fetch origin main
-          git checkout origin/main -- .github/workflows/docs-link-check.yml
-          git rm -f .github/workflows/one-shot-ctx-ovl-rename.yml
-          git diff --check
-          grep -RFn 'CTX-OVL-' docs/proposals docs/evidence/implementation
-          ! grep -RFn 'SEO-' docs/proposals docs/evidence/implementation
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add docs/proposals/subjective-memory-formation-consolidation-and-retrieval.md \
-                  docs/evidence/implementation/session-evidence-overlay-feasibility.md \
-                  docs/proposals/README.md \
-                  .github/workflows/docs-link-check.yml
-          git commit -m 'docs: clarify RelayCTX overlay ownership'
-          git push origin HEAD:docs/subjective-memory-formation-proposal

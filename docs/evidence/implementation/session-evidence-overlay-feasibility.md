@@ -31,11 +31,11 @@ relaylm_related_contracts:
   - ../../contracts/context_compiler_contract.md
 ---
 
-# Session Evidence Overlay Implementation Feasibility
+# RelayCTX Session Evidence Overlay (CTX-OVL) Implementation Feasibility
 
 ## Result
 
-A Session Evidence Overlay is implementable within RelayLM's existing component boundaries. It does not require a second durable MEM authority or synchronous RelaySLP execution.
+The **RelayCTX Session Evidence Overlay (CTX-OVL)** is implementable within RelayLM's existing component boundaries as a RelayCTX short-term continuity function. It does not require a second durable MEM authority or synchronous RelaySLP execution.
 
 It is not, however, an existing feature waiting to be enabled. The repository already contains most request-local and finalized-turn primitives, but it does not yet contain the cross-request session store, deterministic overlay reconciliation, next-turn lookup and packing, stream-completion ordering, or RelaySLP acknowledgement needed for production behavior.
 
@@ -60,7 +60,7 @@ This does not mean that SCN or EMO disappears from the system.
 online response and provisional continuity
   SOUL + REL + current SCN + current EMO
   -> hot provisional interpretation
-  -> Session Evidence Overlay
+  -> RelayCTX Session Evidence Overlay (CTX-OVL)
 
 deferred Shared Assessment
   Protected Source Evidence
@@ -150,7 +150,7 @@ The overlay can therefore remain a rebuildable working projection whose eventual
 
 The context compiler contract already defines `RelayCTX-selected short-term context` and `selected_recent_context` as target managed-compiler inputs.
 
-The current compiler does not yet consume them. A Session Evidence Overlay fits the target architecture but depends on the target compiler or an equivalent dynamic-suffix injection boundary.
+The current compiler does not yet consume them. CTX-OVL fits the target RelayCTX architecture but depends on the target compiler or an equivalent dynamic-suffix injection boundary.
 
 ## Proposed runtime model
 
@@ -250,7 +250,7 @@ Required properties:
 
 `relayctx_working_update.v0` should remain the current short-term task/topic contract.
 
-The memory sidecar and Session Evidence Overlay need separate schemas because they have different consumers, validation rules, authority, retention, and reconciliation.
+The memory sidecar and CTX-OVL need separate schemas because they have different consumers, validation rules, authority, retention, and reconciliation.
 
 Suggested separation:
 
@@ -521,9 +521,9 @@ Default diagnostics may include only:
 
 They must not include raw user text, sidecar bodies, affect descriptions, entity values, session IDs, namespace values, or source-lineage fingerprints.
 
-## Proposed implementation slices
+## Proposed RelayCTX implementation slices
 
-### SEO-0: contract and isolated store
+### CTX-OVL-0: contract and isolated store
 
 - exact schema and typed models;
 - app-scoped bounded RAM store;
@@ -533,7 +533,7 @@ They must not include raw user text, sidecar bodies, affect descriptions, entity
 - no prompt injection or Retrieval influence;
 - unit and security tests.
 
-### SEO-1: non-stream continuity
+### CTX-OVL-1: non-stream continuity
 
 - validate semantic sidecar after non-stream response;
 - bind protected source lineage;
@@ -542,7 +542,7 @@ They must not include raw user text, sidecar bodies, affect descriptions, entity
 - pack one bounded provisional block;
 - no durable write.
 
-### SEO-2: Retrieval interaction
+### CTX-OVL-2: Retrieval interaction
 
 - query-facet assistance;
 - compatible boost;
@@ -550,7 +550,7 @@ They must not include raw user text, sidecar bodies, affect descriptions, entity
 - correction and uncertainty reasons;
 - deterministic fallback to durable Retrieval.
 
-### SEO-3: stream-safe finalization
+### CTX-OVL-3: stream-safe finalization
 
 - terminal-stream callback;
 - finalized-turn source availability;
@@ -558,7 +558,7 @@ They must not include raw user text, sidecar bodies, affect descriptions, entity
 - next-request race tests;
 - cancellation and client-disconnect behavior.
 
-### SEO-4: RelaySLP acknowledgement
+### CTX-OVL-4: RelaySLP acknowledgement
 
 - lineage-bound receipts;
 - replay-safe removal/replacement;
@@ -566,7 +566,7 @@ They must not include raw user text, sidecar bodies, affect descriptions, entity
 - stale acknowledgement protection;
 - no text-similarity-only cleanup.
 
-### SEO-5: optional restart recovery
+### CTX-OVL-5: optional restart recovery
 
 - implement only if measured value justifies it;
 - derived checkpoint with expiry;
@@ -633,8 +633,8 @@ The design is implementable and fits RelayLM's target component boundaries.
 The key architectural distinction is:
 
 ```text
-Session Evidence Overlay
-  = hot, affect- and scene-aware, provisional continuity
+RelayCTX Session Evidence Overlay (CTX-OVL)
+  = RelayCTX-owned hot, affect- and scene-aware, provisional continuity
 
 RelaySLP Shared Assessment
   = character-independent, normalized-scene-grounded evidence reconciliation
@@ -651,4 +651,4 @@ RelayMEM
 
 This preserves the interesting property that the character's immediate emotional interpretation remains visible in the continuing conversation while preventing transient EMO or expression pressure from becoming durable truth.
 
-The implementation should proceed only through explicit SEO slices and evaluation gates. This evidence record does not itself accept the architecture or authorize production behavior.
+The implementation should proceed only through explicit CTX-OVL slices and evaluation gates. This evidence record does not itself accept the architecture or authorize production behavior.

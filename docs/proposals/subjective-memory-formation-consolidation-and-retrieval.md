@@ -31,7 +31,7 @@ The requested decision is whether RelayLM should adopt this post-v0.1 direction:
 
 1. Protected Source Evidence remains immutable or append-only and character-independent.
 2. The online main LLM may emit a bounded, optional, non-authoritative semantic sidecar and a current-session provisional interpretation.
-3. RelayCTX may keep that provisional interpretation in a bounded Session Evidence Overlay before RelaySLP completes.
+3. RelayCTX may keep that provisional interpretation in a bounded **RelayCTX Session Evidence Overlay (CTX-OVL)** before RelaySLP completes.
 4. RelaySLP uses the character's main LLM to form **subjective MEM** through a **SOUL-centered, SCN-grounded, EMO-decoupled** process.
 5. Strongly similar semantic evidence normally reinforces, refines, or reinterprets an existing MEM instead of creating a near-duplicate retrieval-visible MEM.
 6. Retrieval searches canonical subjective MEM rather than every supporting observation.
@@ -66,7 +66,7 @@ current turn
   + current EMO
   + bounded REL state
   -> hot provisional interpretation
-  -> Session Evidence Overlay
+  -> RelayCTX Session Evidence Overlay (CTX-OVL)
 ```
 
 The hot interpretation may guide the ongoing conversation, but it is not automatically copied into durable MEM.
@@ -255,9 +255,9 @@ temporal_resolution:
 
 The original temporal expression remains available. Resolution may stay partial or unknown. `observed_at` must not be silently reused as `valid_from`.
 
-### Session Evidence Overlay
+### RelayCTX Session Evidence Overlay (CTX-OVL)
 
-A character/namespace/session-scoped, bounded, rebuildable working projection used before RelaySLP publication.
+CTX-OVL is a RelayCTX-owned, character/namespace/session-scoped, bounded, rebuildable working projection used before RelaySLP publication. It is part of RelayCTX short-term continuity, not a RelayMEM store.
 
 It may retain:
 
@@ -399,7 +399,7 @@ Main LLM online response
   -> optional hot provisional interpretation
 RelayCTX
   -> source validation and system metadata
-  -> Session Evidence Overlay update
+  -> CTX-OVL update
   -> relative-time resolution where possible
 RelaySLP deferred
   -> character-independent Shared Assessment
@@ -616,7 +616,7 @@ The same explicit-facet approach applies beyond time. Retrieval and consolidatio
 
 Owns content-bearing evidence, speaker, timestamp, import provenance, correction origin, scene/audience references, and independence grouping. Subjective formation cannot rewrite it.
 
-### Session Evidence Overlay store
+### RelayCTX Session Evidence Overlay (CTX-OVL) store
 
 The first implementation should be app-scoped RAM state with strict composite isolation and revision fencing. It is a rebuildable short-term projection, not a second MEM authority.
 
@@ -852,7 +852,7 @@ Measure:
 
 No online sidecar design is eligible if it materially degrades normal conversation or requires synchronous retries.
 
-### Session Evidence Overlay
+### RelayCTX Session Evidence Overlay (CTX-OVL)
 
 Evaluate:
 
@@ -918,12 +918,12 @@ Validate Linux, WSL Linux filesystem, supported Windows paths, rename/fsync beha
 
 1. Accept or reject this direction through an ADR.
 2. Run a semantic-sidecar and conditioning-ablation spike.
-3. Implement SEO-0: exact overlay contract and isolated in-memory store in dry-run/read-only form.
-4. Implement SEO-1: non-stream current-session continuity with bounded local update.
-5. Implement SEO-2: Retrieval boost/shadow and dynamic-suffix packing.
-6. Implement SEO-3: stream-safe finalization ordering.
-7. Implement SEO-4: RelaySLP source-lineage acknowledgement and overlay cleanup.
-8. Consider SEO-5 restart recovery only if measured user value justifies durable checkpoint complexity.
+3. Implement CTX-OVL-0: exact overlay contract and isolated in-memory store in dry-run/read-only form.
+4. Implement CTX-OVL-1: non-stream current-session continuity with bounded local update.
+5. Implement CTX-OVL-2: Retrieval boost/shadow and dynamic-suffix packing.
+6. Implement CTX-OVL-3: stream-safe finalization ordering.
+7. Implement CTX-OVL-4: RelaySLP source-lineage acknowledgement and overlay cleanup.
+8. Consider CTX-OVL-5 restart recovery only if measured user value justifies durable checkpoint complexity.
 9. Run the aggregation and Retrieval-scale spikes.
 10. Correct and extend the storage spike with final lifecycle semantics and complete crash tests.
 11. Define exact contracts and rehearse import, rebuild, backup, rollback, and migration.
@@ -957,7 +957,7 @@ This proposal does not:
 1. Exact bounded semantic sidecar schema and token/item budget.
 2. Whether the sidecar is same-generation, constrained secondary output, deferred re-analysis, or a measured hybrid.
 3. Exact CTX evidence-envelope and relative-time-resolution contract.
-4. Exact Session Evidence Overlay schema, composite scope key, TTL, and revision protocol.
+4. Exact CTX-OVL schema, composite scope key, TTL, and revision protocol.
 5. Exact normalized SCN facts and scene persistence/disclosure policy schemas.
 6. Whether provisional reaction evidence is stored only in protected source, the overlay, episodic MEM metadata, or a bounded combination.
 7. Exact Shared Assessment schema.
@@ -982,7 +982,7 @@ natural response
   + optional semantic sidecar
   + hot SCN/EMO-conditioned provisional interpretation
   -> CTX-owned evidence normalization
-  -> bounded Session Evidence Overlay
+  -> bounded RelayCTX Session Evidence Overlay (CTX-OVL)
   -> immutable evidence
   -> Shared Assessment using normalized scene facts
   -> deterministic semantic and temporal candidate ranking
