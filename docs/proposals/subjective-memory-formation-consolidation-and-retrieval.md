@@ -31,10 +31,12 @@ The requested decision is whether RelayLM should adopt this post-v0.1 direction:
 2. RelaySLP uses the character's main LLM, conditioned by SOUL and bounded character state, to form **subjective MEM**;
 3. strongly similar semantic evidence normally reinforces, refines, or reinterprets an existing MEM instead of creating a near-duplicate MEM;
 4. retrieval searches canonical subjective MEM rather than every supporting observation;
-5. Markdown remains the human-readable steady-state representation while SQLite provides rebuildable retrieval projections and durable operation state;
-6. production adoption is gated by aggregation-quality, retrieval-scale, lifecycle, migration, and platform validation.
+5. the online main LLM may emit a bounded, non-authoritative semantic memory sidecar while CTX and RelaySLP retain authority for evidence, normalization, candidate selection, and durable decisions;
+6. explicit semantic facets, temporal validity, lifecycle, and typed relations may influence deterministic filtering and ranking before bounded candidates reach the main LLM;
+7. Markdown remains the human-readable steady-state representation while SQLite provides rebuildable retrieval projections and durable operation state;
+8. production adoption is gated by aggregation-quality, retrieval-scale, sidecar-quality, main-LLM burden, lifecycle, migration, and platform validation.
 
-If accepted, the durable decision belongs in an ADR. Exact formation, storage, lifecycle, and retrieval contracts should then be split into their owning documents.
+If accepted, the durable decision belongs in an ADR. Exact formation, handoff, storage, lifecycle, and retrieval contracts should then be split into their owning documents.
 
 ## Recommendation
 
@@ -75,6 +77,8 @@ It does not yet solve:
 - character subjectivity without source corruption;
 - similar memories occupying retrieval slots;
 - retrieval quality at tens of thousands of MEM;
+- temporal, entity, polarity, modality, project, and relationship compatibility in Retrieval;
+- a safe low-burden handoff from the online main LLM into deferred memory work;
 - explainable evidence-to-memory inspection in SOUL Lab.
 
 Tracks A-D provide evidence for these questions but are not accepted architecture.
@@ -113,7 +117,7 @@ Subjective MEM is a durable governed result of character-conditioned interpretat
 
 [RelayMEM SLP execution design](../architecture/relaymem_slp_execution_design.md) already defines existing-MEM lookup followed by merge, update, hold, or reject, with relations such as `supports`, `refines`, `supersedes`, and `contradicts`.
 
-This proposal defines how candidate retrieval, main-LLM judgment, evidence reinforcement, subjective writing, and retrieval collapse should connect.
+This proposal defines how candidate retrieval, bounded online semantic hints, CTX-owned evidence metadata, main-LLM judgment, evidence reinforcement, subjective writing, and retrieval collapse should connect.
 
 ### Lifecycle
 
@@ -138,6 +142,8 @@ Purge   = separate irreversible operation
 3. **Track D does not prove final Forget semantics.** Its current experiment branch physically removes the Markdown block. It validates useful storage mechanics, not hidden-successor/Restore behavior.
 4. **Current Retrieval is bounded, not large-scale semantic Retrieval.** Scan and read caps protect latency but do not prove recall quality at scale.
 5. **No embedding model is selected.** Japanese thresholds and models require RelayLM-specific evaluation.
+6. **The online main-LLM sidecar is advisory, bounded, and optional.** It must not authorize writes, invent system metadata, select canonical MEM, or degrade the natural response path when absent or invalid.
+7. **Recency is not temporal compatibility.** Retrieval should prefer the MEM valid for the question's referenced time, not merely the newest file or observation.
 
 ## Concepts and ownership
 
@@ -160,6 +166,84 @@ explicitness: explicit
 source_refs:
   - source:conversation:...
 ```
+
+### Bounded semantic memory sidecar
+
+The online main LLM may return a small sidecar beside its natural-language answer. The sidecar is a semantic hint for later CTX and RelaySLP processing, not a durable assessment or write instruction.
+
+It should contain only values that materially benefit from understanding the conversation:
+
+```yaml
+memory_disposition: possible
+claims:
+  - subject_hint: user
+    predicate_hint: prefers
+    object_text: light-roast Ethiopian coffee
+    polarity_hint: positive
+    modality_hint: asserted_state
+    temporal_kind_hint: current_state
+    temporal_expression: recently
+    change_signal: possible_change
+    explicitness_hint: explicit
+    evidence_span:
+      source: user_turn
+      quote: "Recently I prefer light-roast Ethiopian coffee."
+    subjective_significance_hint:
+      text: may matter to focused morning routines
+      grounded: false
+```
+
+The schema should generalize beyond time to bounded semantic facets such as:
+
+- subject and entity;
+- predicate or relation;
+- polarity;
+- modality, including fact, preference, intention, hypothetical, quotation, joke, and correction;
+- temporal kind and original temporal expression;
+- project, relationship, scene, and topic scope;
+- change, correction, contradiction, and retraction signals;
+- explicitness and evidence span;
+- possible subjective significance.
+
+The online main LLM must not decide or fabricate:
+
+```yaml
+target_mem_id: forbidden_online_authority
+canonical_mem_id: forbidden_online_authority
+final_relation: forbidden_online_authority
+observed_at: system_owned
+valid_from: unresolved_without_evidence
+valid_until: unresolved_without_evidence
+evidence_confidence: slp_owned
+stability: slp_owned
+```
+
+Unknown values remain absent or `null`; schema completion must not encourage invention.
+
+### CTX evidence envelope
+
+CTX attaches values known by the system and validates sidecar references before deferred memory work:
+
+```yaml
+evidence_context:
+  observed_at: system_clock
+  conversation_id: system_owned
+  turn_id: system_owned
+  speaker: system_owned
+  character_id: system_owned
+  namespace: system_owned
+  timezone: system_owned
+  source_digest: system_owned
+  independence_group: system_owned
+
+temporal_resolution:
+  original_expression: last autumn
+  normalized_start: 2025-09-01
+  normalized_end: 2025-11-30
+  resolution_confidence: medium
+```
+
+The original expression remains available. Resolution may stay partial or unknown. `observed_at` must not be silently reused as `valid_from`.
 
 ### Subjective MEM
 
@@ -189,11 +273,44 @@ episodes
 
 A typed link from evidence or Shared Assessment to MEM: `supports`, `refines`, `contradicts`, `supersedes`, or `derived_from`.
 
+## Online handoff and main-LLM burden
+
+The natural-language response is primary. The sidecar must not consume enough reasoning, tokens, or retry behavior to materially reduce conversational quality.
+
+```text
+Main LLM
+  -> natural response
+  -> optional bounded semantic memory sidecar
+CTX
+  -> source validation and system metadata
+  -> relative-time resolution where possible
+RelaySLP
+  -> character-independent Shared Assessment
+  -> existing-MEM candidate lookup and relation decision
+  -> character-conditioned subjective formation
+```
+
+Required safeguards:
+
+- `memory_disposition` gates detailed claims as `none`, `possible`, or `explicit`;
+- ordinary turns may return no claims;
+- the sidecar has a strict item and token budget;
+- malformed or absent sidecars do not trigger response-path retries;
+- schema validation failure falls back to evidence-only deferred processing or no memory work;
+- the sidecar cannot block or rewrite the natural response;
+- evidence spans are verified against the referenced turn;
+- system-owned values are added by CTX, never generated by the model;
+- relation, canonical identity, lifecycle, and durable write decisions remain RelaySLP/MEM authority;
+- detailed analysis and subjective formation remain deferred outside the latency-critical response path.
+
+A later implementation may produce the sidecar in the same generation, through a constrained secondary output channel, or through deferred re-analysis. The architecture decision should be based on measured response quality and latency, not on assuming that one-pass structured output is free.
+
 ## Formation pipeline
 
 ```text
 Protected Source Evidence
   -> evidence admission and independence grouping
+  -> validated CTX evidence envelope and optional semantic sidecar
   -> character-independent Shared Assessment
   -> exact-key and scoped candidate lookup
   -> FTS / vector / metadata candidate generation
@@ -207,7 +324,7 @@ Protected Source Evidence
   -> durable receipt
 ```
 
-This is deferred RelaySLP work. It may use the main character model because it is outside the latency-critical answer path.
+This is deferred RelaySLP work. It may use the main character model because it is outside the latency-critical answer path. The online sidecar may guide attention but must not replace this deferred assessment.
 
 ### Pass 1: grounded understanding
 
@@ -233,7 +350,8 @@ Provide the validated assessment, bounded related MEM, SOUL, target-specific REL
 Check that:
 
 - grounded claims map to evidence or prior accepted MEM;
-- subject, speaker, polarity, time, and quantity are preserved;
+- sidecar evidence spans map to the referenced source turn;
+- subject, speaker, polarity, modality, time, quantity, and scope are preserved;
 - character and namespace match;
 - sensitive or weak inference is not promoted;
 - relation choice passes deterministic gates;
@@ -279,19 +397,20 @@ Reject merge candidates that differ materially in:
 - character or namespace;
 - subject or entity;
 - polarity;
-- time scope;
+- modality, such as fact versus intention or hypothetical;
+- temporal validity or time scope;
 - memory kind;
-- relationship target;
+- project, relationship, or scene scope;
 - lifecycle state;
 - correction or tombstone authority.
 
-Thus, similar text must not merge different actors or past and current preferences.
+Thus, similar text must not merge different actors, preferences with actions, intentions with completed events, or past and current states.
 
 ### Main-LLM judgment
 
 After hard gating, the main LLM decides whether the character experiences the evidence as confirmation, refinement, reinterpretation, successor, contradiction, relation, new memory, or non-memory.
 
-It receives only a bounded neighborhood, never the full corpus.
+It receives only a bounded neighborhood, never the full corpus. The online sidecar is an input hint, not a substitute for this decision.
 
 ### Conservative policy
 
@@ -323,6 +442,22 @@ one user message
 
 These share one `independence_group`. A later independent statement may increase stability.
 
+## Temporal and semantic facets
+
+Temporal data should distinguish evidence time from validity time:
+
+```yaml
+observed_at: when RelayLM received the evidence
+valid_from: when the represented state became true, if known
+valid_until: when it stopped being true, if known
+first_observed_at: first supporting observation
+last_confirmed_at: latest independent confirmation
+```
+
+Unknown validity does not default to the observation time. File modification time is not semantic validity.
+
+The same explicit-facet approach applies beyond time. Retrieval and consolidation may use subject, entity, predicate, polarity, modality, project, relationship, scene, correction authority, and lifecycle as explainable compatibility signals.
+
 ## Authority and storage
 
 ### Protected source domain
@@ -335,7 +470,7 @@ Subjective MEM should have a human-readable Markdown steady-state form for inspe
 
 Use human-scale pages, not one file per memory. Stable MEM IDs should survive page movement and title changes.
 
-Possible visible fields include grounded content, subjective meaning, kind, lifecycle, representative provenance, strength dimensions, first observed, last confirmed, and typed relations. Exact syntax remains undecided.
+Possible visible fields include grounded content, subjective meaning, kind, lifecycle, representative provenance, semantic facets, temporal validity, strength dimensions, first observed, last confirmed, and typed relations. Exact syntax remains undecided.
 
 ### Rebuildable `memory-cache.db`
 
@@ -344,12 +479,12 @@ Possible projections:
 - parsed MEM blocks;
 - FTS;
 - vector references or embeddings;
-- tags and entities;
+- semantic facets, temporal intervals, tags, and entities;
 - typed relations;
 - canonical-MEM membership;
 - lifecycle;
 - page and block digests;
-- retrieval features.
+- retrieval features and explainable ranking reasons.
 
 Deleting this database must not destroy durable MEM or evidence.
 
@@ -387,24 +522,42 @@ Ordinary conversation retrieves Subjective MEM, not every supporting evidence it
 ### Multi-stage path
 
 ```text
-1. character / namespace / lifecycle filter
-2. exact / FTS / metadata candidates
-3. vector candidates
-4. deterministic rank fusion
-5. canonical-MEM collapse
-6. bounded typed-relation expansion
-7. bounded rerank
-8. token-aware context packing
+1. resolve bounded query facets, including temporal intent when present
+2. character / namespace / lifecycle filter
+3. exact / FTS / metadata candidates
+4. vector candidates
+5. deterministic rank fusion and facet compatibility
+6. canonical-MEM collapse
+7. bounded typed-relation expansion
+8. bounded rerank
+9. token-aware context packing
 ```
 
 ### Hybrid retrieval
 
 - exact search handles IDs, names, and precise terms;
 - FTS handles lexical relevance;
-- metadata handles scoped facts;
+- metadata handles entity, scope, modality, lifecycle, and temporal validity;
 - vectors handle Japanese paraphrase and semantic similarity.
 
-Vector-only retrieval is insufficient for negation, actor identity, temporal change, quantities, exact terms, and preference-versus-action distinctions.
+Vector-only retrieval is insufficient for negation, actor identity, temporal change, quantities, exact terms, scope, and preference-versus-action distinctions.
+
+### Temporal compatibility
+
+Retrieval should rank by compatibility with the query's referenced time, not by recency alone.
+
+```text
+current-state query
+  -> active successor and currently valid MEM first
+historical query
+  -> MEM whose validity overlaps the requested period first
+transition query
+  -> bounded supersedes / contradicts / correction chain
+unspecified time
+  -> current authority first, with bounded historical diversity when relevant
+```
+
+A query may carry a bounded temporal intent such as `current`, `historical`, `point_in_time`, `range`, `transition`, or `unspecified`. Failure to resolve it falls back to ordinary hybrid Retrieval.
 
 ### Collapse and relations
 
@@ -415,15 +568,16 @@ Supporting evidence for one current MEM occupies one retrieval slot. Only a boun
 ```text
 query relevance
   > character / namespace / entity scope
-  > lifecycle authority
+  > temporal, polarity, modality, and project compatibility
+  > lifecycle and correction authority
   > evidence confidence
-  > stability and salience
-  > recency and usage
+  > stability and bounded salience
+  > recency and bounded usage
 ```
 
-Usage must have bounded weight to prevent popularity feedback loops.
+Recency must not outrank a known validity mismatch. Usage must have bounded weight to prevent popularity feedback loops.
 
-A reranker may select only existing IDs from a bounded top set. It may not invent memory.
+A reranker may select only existing IDs from a bounded top set. It may not invent memory. Candidates passed to the main LLM should include compact ranking reasons and relevant temporal or semantic facets so the model can distinguish current, historical, hypothetical, corrected, and contradictory states.
 
 ## Obsidian-inspired cues
 
@@ -446,7 +600,7 @@ Do not adopt as defaults:
 
 ## SOUL Lab implications
 
-Future Memory Explorer needs stable identity, scope, grounded/subjective distinction, lifecycle, tags, provenance, evidence count, timestamps, usage, relations, operation status, Correct, Forget, Restore, and Pin.
+Future Memory Explorer needs stable identity, scope, grounded/subjective distinction, lifecycle, tags, semantic facets, provenance, evidence count, observation and validity times, usage, relations, operation status, Correct, Forget, Restore, and Pin.
 
 It remains an exploration and curation surface, not a mandatory approval queue, raw database editor, independent authority, or source-evidence rewriter.
 
@@ -470,15 +624,18 @@ Validates product needs for search, provenance, tags, correction, lifecycle, rel
 
 Supports deterministic Markdown parse/render, rebuildable FTS, incremental projection, intent/digest/receipt recovery, idempotency, stale-snapshot protection, and schema versioning. It also reveals SQLite write-lock unfairness, page-level serialization, and fsync-limited writes.
 
-It remains an isolated experiment. Its current Forget implementation physically removes the block, so it does not validate hidden-successor/Restore semantics. It also does not validate vector retrieval, semantic consolidation, Windows/WSL behavior, backup, migration, or large-scale quality.
+It remains an isolated experiment. Its current Forget implementation physically removes the block, so it does not validate hidden-successor/Restore semantics. It also does not validate vector retrieval, semantic consolidation, semantic-sidecar quality, Windows/WSL behavior, backup, migration, or large-scale quality.
 
 ## Main risks and safeguards
 
 | Risk | Required safeguard |
 |---|---|
 | hallucinated subjective meaning | Shared Assessment first; unsupported-inference output; grounding validator; abstention |
+| online answer degradation | minimal optional sidecar; strict budget; no response-path retry; deferred detailed analysis |
+| sidecar fabrication | verified evidence spans; system-owned metadata; nullable fields; sidecar remains advisory |
 | over-merge | hard semantic gates; conservative threshold; revision/evidence preservation |
 | under-merge | scheduled consolidation; Retrieval collapse; duplicate-rate monitoring |
+| temporal misranking | explicit validity and temporal intent; recency cannot override known mismatch |
 | identity drift | MEM cannot mutate SOUL; SOUL change remains separate approval path |
 | cross-character contamination | shared evidence may be reused; subjective MEM is always character-scoped |
 | popularity feedback | relevance first; bounded usage weight; diversity and collapse |
@@ -495,7 +652,8 @@ Build a labeled Japanese and mixed-language set covering:
 - temporal successor;
 - contradiction;
 - related but distinct;
-- different subject, relationship, or project;
+- different subject, relationship, project, modality, and scene;
+- fact versus preference, intention, hypothetical, quotation, and joke;
 - separate episodes with similar wording;
 - user correction and tombstone;
 - raw/summary/extracted derivatives of one source.
@@ -504,6 +662,29 @@ Primary safety metric: **false merge rate**.
 
 Also measure relation accuracy, abstention, unsupported inference, lineage preservation, subjectivity consistency, and cross-character leakage.
 
+### Semantic sidecar quality and main-LLM burden
+
+Compare:
+
+- natural response with no sidecar;
+- natural response plus minimal sidecar in one generation;
+- natural response plus a constrained secondary output channel;
+- natural response followed by deferred re-analysis.
+
+Measure:
+
+- natural-response quality and character consistency;
+- time to first token and total response latency;
+- output token overhead;
+- malformed-sidecar rate and retry rate;
+- evidence-span precision and claim recall;
+- subject, polarity, modality, temporal-kind, scope, correction, and change-signal accuracy;
+- unsupported-field invention;
+- `none` / `possible` / `explicit` disposition accuracy;
+- downstream formation quality with and without the sidecar.
+
+No online sidecar design is eligible if it materially degrades the normal conversation or requires synchronous retries to satisfy the schema.
+
 ### Retrieval scale
 
 Evaluate at 10,000, 50,000, and 100,000 MEM:
@@ -511,11 +692,12 @@ Evaluate at 10,000, 50,000, and 100,000 MEM:
 - FTS only;
 - vector only;
 - hybrid fusion;
+- hybrid plus semantic-facet and temporal ranking;
 - hybrid plus collapse;
 - hybrid plus relation expansion;
 - optional bounded reranking.
 
-Measure recall@k, precision@k, duplicate rate@k, relevant-fact coverage, contradiction visibility, p50/p95 latency, CPU/RAM, build/rebuild time, incremental update, and token-pack quality.
+Measure recall@k, precision@k, duplicate rate@k, relevant-fact coverage, contradiction visibility, current-state accuracy, historical-period accuracy, transition-chain accuracy, p50/p95 latency, CPU/RAM, build/rebuild time, incremental update, explainability, and token-pack quality.
 
 ### Subjective value
 
@@ -530,38 +712,46 @@ Validate Linux, WSL Linux filesystem, supported Windows paths, rename/fsync beha
 ## Recommended sequence
 
 1. Accept or reject this direction through an ADR.
-2. Run an aggregation spike for Shared Assessment, bounded candidates, hard gates, main-LLM relation decisions, evidence linking, and abstention.
-3. Run a Retrieval-scale spike with FTS, a selected embedding, fusion, collapse, relations, and machine-readable evaluation.
-4. Correct and extend the storage spike with hidden-successor Forget, Restore, evidence links, subjective revisions, independence groups, and complete crash tests.
-5. Define formation, schema, evidence-link, storage, Retrieval, operation, and Memory Explorer contracts.
-6. Rehearse import, rebuild, backup, rollback, lifecycle, and provenance migration.
-7. Perform one hard cutover: update callers, import durable state once, switch authority, and remove obsolete readers/writers without permanent dual-read or dual-write.
+2. Run a semantic-sidecar spike that measures main-LLM response quality, latency, evidence-span grounding, schema failure, and deferred fallback.
+3. Run an aggregation spike for Shared Assessment, bounded candidates, hard gates, main-LLM relation decisions, evidence linking, semantic facets, and abstention.
+4. Run a Retrieval-scale spike with FTS, a selected static embedding, deterministic facet and temporal ranking, fusion, collapse, relations, and machine-readable evaluation.
+5. Correct and extend the storage spike with hidden-successor Forget, Restore, evidence links, subjective revisions, semantic facets, temporal validity, independence groups, and complete crash tests.
+6. Define sidecar, CTX envelope, formation, schema, evidence-link, storage, Retrieval, operation, and Memory Explorer contracts.
+7. Rehearse import, rebuild, backup, rollback, lifecycle, and provenance migration.
+8. Perform one hard cutover: update callers, import durable state once, switch authority, and remove obsolete readers/writers without permanent dual-read or dual-write.
 
 ## Non-goals
 
-This proposal does not change current runtime behavior, require per-memory approval, authorize MEM-to-SOUL mutation, make subjective MEM shared truth, expose full source evidence by default, select an embedding or vector database, require a graph database, require one file per memory, adopt Obsidian as a dependency, approve Track D for production, claim Windows/WSL validation, define Purge, or authorize automatic sensitive inference.
+This proposal does not change current runtime behavior, require a full structured answer on every turn, require response-path retries for sidecar validity, make the online main LLM the authority for MEM writes or system metadata, require per-memory approval, authorize MEM-to-SOUL mutation, make subjective MEM shared truth, expose full source evidence by default, select an embedding or vector database, require a graph database, require one file per memory, adopt Obsidian as a dependency, approve Track D for production, claim Windows/WSL validation, define Purge, or authorize automatic sensitive inference.
 
 ## Open decisions
 
-1. Exact Shared Assessment schema.
-2. Required SOUL/REL/SCN/EMO slices and prompt contract.
-3. When to regenerate wording versus update strength only.
-4. Reconciliation of user Markdown edits with grounding.
-5. Japanese embedding and vector index.
-6. Automatic `reinforce_memory` precision threshold.
-7. Held versus evidence-only conditions.
-8. Representation of confidence, stability, salience, and conviction.
-9. Relation-expansion budget.
-10. Reinterpretation after approved SOUL revision.
-11. Usage-event retention and privacy.
+1. Exact bounded semantic sidecar schema and token/item budget.
+2. Whether the sidecar is same-generation, a constrained secondary channel, deferred re-analysis, or a measured hybrid.
+3. Exact CTX evidence-envelope and relative-time-resolution contract.
+4. Exact Shared Assessment schema.
+5. Required SOUL/REL/SCN/EMO slices and prompt contract.
+6. When to regenerate wording versus update strength only.
+7. Reconciliation of user Markdown edits with grounding.
+8. Japanese static embedding and vector index.
+9. Automatic `reinforce_memory` precision threshold.
+10. Held versus evidence-only conditions.
+11. Representation of confidence, stability, salience, and conviction.
+12. Relation-expansion budget.
+13. Reinterpretation after approved SOUL revision.
+14. Usage-event retention and privacy.
+15. Accepted main-LLM response-quality and latency regression thresholds.
 
 ## Final conclusion
 
-RelayLM should adopt **reinforcement-first subjective memory formation** as the target direction:
+RelayLM should adopt **reinforcement-first subjective memory formation** with a bounded semantic handoff as the target direction:
 
 ```text
-immutable evidence
+natural response + optional semantic sidecar
+  -> CTX-owned evidence and temporal normalization
+  -> immutable evidence
   -> shared factual assessment
+  -> deterministic semantic and temporal candidate ranking
   -> SOUL-conditioned subjective reflection
   -> reinforce / refine / reinterpret / supersede /
      contradict / relate / create / leave as evidence
@@ -571,4 +761,6 @@ immutable evidence
 
 This preserves the factual safety of the existing observation model while adding RelayLM's distinctive value: a character does not merely store what happened; it develops a grounded, character-specific memory of what the experience meant.
 
-The storage evidence supports continuing to ADR and evaluation. It does not justify production adoption by itself. Aggregation quality and Retrieval scale are co-equal gates with durability and migration safety.
+The sidecar is useful only when it improves deferred memory work without reducing normal conversation quality. It remains advisory; CTX owns evidence metadata, RelaySLP owns relation and subjective formation, and MEM owns durable state.
+
+The storage evidence supports continuing to ADR and evaluation. It does not justify production adoption by itself. Aggregation quality, sidecar quality, main-LLM burden, and Retrieval scale are co-equal gates with durability and migration safety.
