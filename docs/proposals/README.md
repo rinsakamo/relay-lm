@@ -23,4 +23,4 @@ Documents in this directory are undecided proposals. They provide decision argum
 
 ## Supporting implementation evidence
 
-- [RelayCTX Session Evidence Overlay (CTX-OVL) implementation feasibility](../evidence/implementation/session-evidence-overlay-feasibility.md) — records reusable runtime boundaries, missing cross-request and stream-finalization work, the SCN/EMO conditioning split, implementation slices, risks, and validation gates for provisional continuity before RelaySLP completion.
+- [RelayCTX Session Evidence Overlay (CTX-OVL) implementation feasibility](../evidence/implementation/session-evidence-overlay-feasibility.md) — records reusable runtime boundaries, missing cross-request and stream-finalization work, the SCN/EMO conditioning split, RelayCTX implementation slices, risks, and validation gates for provisional continuity before RelaySLP completion.
