@@ -2166,6 +2166,140 @@ Because the audit found the RelayINT quick-clarification chain's exact candidate
 
 An independent review of the initial green head found that neither new contract was directly pinned against the implementation, and identified five inaccuracies corrected in this same entry: the compatibility-gate vocabulary was undercounted as 13 names instead of the actual 18 (missing the easily-overlooked `token_limit_requested` reason, and treating several genuinely-distinct reason pairs as single entries); the complete apply-plan vocabulary was undercounted as 19 instead of the actual 29; the contract's "Enablement and artifact presence" section described Stage 2 and Stage 3 as sharing the same missing-upstream-input behavior, when Stage 2 (`build_relayint_quick_clarification_preflight()`) actually returns bare `None` on a missing Stage 1 artifact while Stage 3 (`build_relayint_quick_clarification_apply_plan()`) still produces an artifact carrying `preflight_missing` when enabled without a Stage 2 artifact; and the contract's response-template-metadata wording could be read as implying the returned apply-plan artifact carries the 25/19-character candidate template metadata directly, when in current code that metadata is only an internal pre-block-evaluation candidate and the artifact's actual returned `generated_response_kind`/`response_template_id`/`response_chars` are always `"none"`/`"none"`/`0`, because `apply_allowed` is unconditionally forced `False` by the always-appended `phase4_plan_only` reason. All four corrections were fixed directly in `docs/contracts/relayint_quick_clarification_runtime_contract.md`. Two focused contract-smoke scripts were added — `scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py` and `scripts/relaylm_pipeline_node_result_contract_smoke.py` — using AST inspection, source-regex extraction, and actual builder calls to set-compare (not merely count-compare) every enumerated vocabulary and structural claim in both new contracts, and were wired into `.github/workflows/documentation-current-boundary-smoke.yml` alongside the existing RelayCTX contract smoke. The `PIPELINE_NODE_PROJECTORS` node-name set was independently recomputed from `relaylm/audit_projection.py` via AST rather than trusted from the contract's own prose, and remained exactly the 16 names already recorded. The consolidated-selector contract (`scripts/relaylm_ci_consolidated_smoke.py`) was verified, not modified: neither new script path matches any existing `GROUPS` glob in the `runtime`, `relaymem`, or `ui` workflows, so both new contract-smoke additions correctly select zero unrelated runtime/relaymem/ui groups, matching the existing RelayCTX contract-smoke precedent, and no compatibility selector was added for the retired paths.
 
+### C1C34-001 — audit-trace projection boundary
+
+```yaml
+cutover_pr: 597
+merged_commit: pending
+record_count: 1
+cutover_recorded_on: 2026-07-15
+disposition: evidence_retained
+record:
+  record: MVP audit trace projection boundary
+  recorded_on: 2026-06-14
+  source_pr: 264
+  source_pr_branch: rinsakamo/p0-a1-content-free-trace-contract
+  source_origin_commit: 44da3d98ae43c05dfb64ab8e1a7c555aa9c25190
+  source_origin_commit_date: 2026-06-17T20:36:27+09:00
+  source_commit: 28f3500c9208e6a686b27478b0ea4948f64aa15b
+  source_commit_date: 2026-06-14T07:31:27+00:00
+  source_merge_strategy: real_merge_source_commit_preserved_distinct_from_origin_merge_commit
+  source_merge_strategy_note: genuine_non_squash_github_merge_both_commits_independently_reachable_unlike_prior_squash_and_direct_push_precedents
+  old_path: docs/mvp/audit_trace_projection_boundary.md
+  original_old_path: docs/mvp/audit_trace_projection_boundary.md
+  source_blob_sha: bc042c8370d88d995df8a454c920f80503ae558d
+  source_content_sha256: 11278cb325dea1ba97b7fd006d0267d038a006df601f6b3edd24b204e0d0683c
+  post_source_modification_commits: []
+  pre_cutover_blob_sha: bc042c8370d88d995df8a454c920f80503ae558d
+  pre_cutover_content_sha256: 11278cb325dea1ba97b7fd006d0267d038a006df601f6b3edd24b204e0d0683c
+  new_canonical_path: docs/evidence/implementation/audit_trace_projection_boundary.md
+  exact_source_snapshot: docs/evidence/implementation/audit_trace_projection_boundary-source.txt
+  exact_source_blob_sha: bc042c8370d88d995df8a454c920f80503ae558d
+  advisory_verification: advisory_blob_sha256_confirmed_correct
+  block_disposition:
+    typed_projection_not_heuristic_sanitization: current_already_covered
+    top_level_projector_registration_before_persistence: current_already_covered
+    pipeline_node_projector_registration_fail_closed_unknown_nodes: current_already_covered
+    legacy_suffix_forbidden_token_cross_field_taint_no_longer_primary: historical_evidence
+    remaining_defense_in_depth_validation_checks: current_already_covered
+  absorption_required: false
+  absorption_destination: none
+  unrelated_current_authority_correction: true
+  unrelated_current_authority_correction_target: docs/architecture/audit_trace_content_free_contract.md
+  unrelated_current_authority_correction_summary: reworded_stale_p0_a1_p0_a2_present_future_tense_phase_language_to_present_tense_permanent_compatibility_shim
+  live_referrers_before_cutover: 0
+  unindexed_claim_verified: true
+current_top_level_projector_names_independently_recomputed:
+  - bytes_avoided
+  - bytes_in
+  - bytes_out
+  - compile_decision_dry_run
+  - content_type
+  - error_class
+  - error_type
+  - event
+  - latency_ms
+  - memory_block_assembly
+  - memory_selection_summary
+  - memory_source
+  - pipeline_node_results
+  - projection_dropped_field_count
+  - projection_unsupported_artifact_count
+  - relaymem_primary_recall_projection
+  - relayrun_artifact
+  - runtime_ctx_injection_result
+  - runtime_snippet_injection_result
+  - stable_prefix_block_ids
+  - stable_prefix_hash
+  - status_code
+  - stream_timing
+  - token_memory_dry_run
+current_top_level_projector_count: 24
+current_top_level_projector_verification_method: live_code_call_plus_ast_derivation_plus_existing_smoke_literal_set_cross_checked_three_ways
+current_pipeline_node_projector_cross_reference: matches_c1c33_recorded_16_name_set_exactly_no_drift_since_2026-07-14
+current_pipeline_node_projector_count: 16
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_pre_cutover_blob_reused: true
+  canonical_evidence_wrapper_added: true
+  source_head_merge_and_pre_cutover_equal: true
+  source_to_pre_cutover_diff: none
+  post_source_modification_commits_total: 0
+  advisory_record_independently_reverified: true
+  advisory_record_confirmed_correct: true
+  advisory_record_corrected: false
+  source_pr_newly_established_not_previously_recorded: true
+  live_dependency_referrer_files_at_frozen_baseline: 0
+  live_dependency_link_occurrences_at_frozen_baseline: 0
+  live_dependency_referrer_files_updated: 0
+  implementation_evidence_index_files_updated: 1
+  new_evidence_index_entries_added: 1
+  mvp_index_entries_updated: 1
+  contracts_index_files_updated: 0
+  new_contract_files_added: 0
+  shared_index_files_updated: 2
+  new_canonical_contracts_created: 0
+  absorbed_verbatim_blocks: 0
+  code_derived_absorbed_blocks: 0
+  unrelated_current_authority_files_corrected: 1
+  historical_old_path_string_occurrences_preserved_in_exact_snapshots: 0
+  historical_old_path_string_occurrences_preserved_as_migration_identifiers_in_wrappers: 1
+  compileall: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  documentation_current_boundary_smoke: passed
+  trace_content_free_contract_smoke: passed
+  jsonl_trace_smoke: passed
+  trace_success_smoke: passed
+  hardening_smoke: passed
+  pipeline_node_result_contract_smoke: passed
+  pipeline_node_results_runtime_smoke: pre_existing_local_fixture_failure_verified_against_base_httpx2_missing_in_local_sandbox
+  audit_projection_contract_smoke: passed
+  audit_projection_exact_contract_smoke: passed
+  audit_projection_contract_smoke_wired_into_ci: true
+  audit_projection_exact_contract_smoke_wired_into_ci: true
+  workflow_integration: documentation-current-boundary-smoke.yml
+  workflow_integration_note: both_previously_unwired_scripts_added_to_path_filters_compileall_and_validation_step
+  consolidated_selector_contract_change_required: false
+  consolidated_selector_contract_verification_method: changed_paths_checked_against_relaylm_ci_consolidated_smoke_py_groups_dict_directly_selects_zero_relaymem_runtime_ui_groups
+  consolidated_smoke_contract: passed
+  git_diff_check: passed
+  no_canonical_record_selects_unrelated_runtime_group: true
+  focused_contract_smokes_added: 0
+  focused_contract_smokes_wired: 2
+  all_github_actions: pending_final_head
+  codex_review: pending_final_head
+  unresolved_review_threads: pending_final_head
+  validated_content_head: pending
+  receipt_finalization: pending_after_validated_content_head
+```
+
+This record's zero live referrers before cutover is a stronger case than every prior record in this ledger: the file was never indexed by `docs/mvp/README.md` or `docs/evidence/implementation/README.md`, confirmed by an exhaustive path and bare-filename `git grep` across `docs/`, `scripts/`, `.github/workflows/`, `relaylm/`, and `tests/` finding zero occurrences anywhere outside the file's own single historical commit. Provenance required unshallowing the working clone first (a shallow `git log --follow` initially made unrelated merge commits look like content modifications and hid the true 26-commits-earlier source); after unshallowing, the file's full history is exactly one commit, `28f3500c9208e6a686b27478b0ea4948f64aa15b`, brought in by a genuine (non-squash) GitHub merge, `44da3d98ae43c05dfb64ab8e1a7c555aa9c25190` (PR #264). This is a new provenance shape distinct from both prior precedents in this ledger: unlike the squash-merge case (MVP-47, source and origin commit identical) and the direct-push case (MVP-48, no PR at all), here the source commit and origin/merge commit are two distinct, independently reachable commits, confirmed by walking the merge commit's two parents and by `git merge-base --is-ancestor`. The advisory pre-cutover blob hash supplied with the task brief was independently recomputed via `git rev-parse`, `git cat-file`, `git hash-object`, and `sha256sum` (all four agree) and confirmed correct, not copied. Source and pre-cutover blobs are identical; there is zero content drift since introduction.
+
+All five statements in the source were independently verified against current code rather than trusted at face value. The `TOP_LEVEL_PROJECTORS` registry (24 keys) and `PIPELINE_NODE_PROJECTORS` registry (16 keys) were both independently recomputed by a live call into `relaylm.audit_projection` and cross-checked against the literal expected sets already asserted by `scripts/relaylm_audit_projection_contract_smoke.py::assert_registry_hygiene()` and against `docs/contracts/pipeline_node_result_contract.md`'s documented node-name authority — all three sources agree exactly, and the pipeline-node set shows no drift from the set already recorded in the C1C33 entry above. The source's "legacy suffix/forbidden-token/cross-field-taint logic" phrase was traced through git history to specific now-removed code (`_is_forbidden_key`, `_SAFE_KEY_SUFFIXES`, and cross-field taint tracking introduced by `bca93d8f945fcef43585f70621f67a6a1aaa34ca` and fully replaced by the current typed-projector system in `809ea32371281779488dc2f5aa4d33b334ad25fd`, with residual taint-context scaffolding removed by a later commit); the literal phrase never existed verbatim in code and is confirmed to be a gloss over genuinely removed logic, not a quotation. All five statements were found to be already covered by [Audit Trace Content-Free Contract](../../architecture/audit_trace_content_free_contract.md) and [PipelineNodeResult Contract](../../contracts/pipeline_node_result_contract.md); no unique rule was orphaned by this file's retirement, no absorption was required, and no new contract was created, consistent with the task's preferred outcome.
+
+One accuracy correction, independent of this file's retirement, was made to the existing current authority: `docs/architecture/audit_trace_content_free_contract.md`'s "P0-A1 compatibility boundary" section used "During P0-A1..." and "P0-A2 removes ... entirely" present/future-tense phase language for a phase pair that has no separate tracked existence anywhere else in the repository (`docs/PROJECT_STATUS.md` records no P0-A1/P0-A2 entries) and for behavior current code has already fully achieved (no raw content is ever persisted; the compatibility arguments and properties are a permanent, deliberate shim, not an in-progress removal). The section was reworded to present tense to state this already-complete, permanent behavior, and the contract's validation command list was extended to name the two contract smokes wired into CI by this cutover. Two pre-existing, already-passing registry/validator contract smokes (`scripts/relaylm_audit_projection_contract_smoke.py`, `scripts/relaylm_audit_projection_exact_contract_smoke.py`) were found to already pin the exact top-level and pipeline-node projector sets, golden projection output, numeric/enum/URL-path validator behavior, and registry hygiene precisely — but were not referenced by any workflow, path filter, or documentation before this cutover. Rather than duplicate this coverage with a new script, both were wired into `.github/workflows/documentation-current-boundary-smoke.yml` (path filters, `compileall`, and the validation step), matching the existing RelayCTX/RelayINT/PipelineNodeResult contract-smoke precedent. The consolidated-selector contract (`scripts/relaylm_ci_consolidated_smoke.py`) was verified, not modified: every path changed by this PR was checked directly against its `GROUPS` dict and matches no `relaymem`, `runtime`, or `ui` glob, so this evidence-wrapper-and-accuracy-correction change correctly selects zero unrelated runtime groups. No compatibility path, redirect, or runtime behavior change is introduced. `scripts/relaylm_pipeline_node_results_runtime_smoke.py` fails locally with a pre-existing `starlette`/`httpx2` dependency gap in this sandbox, independently confirmed to fail identically on the unmodified base commit before this cutover's changes — not a regression introduced by this PR. Final review will fill in `validated_content_head`, CI results, Codex review outcome, and unresolved-review-thread count once the exact final remote head is confirmed green, following the corrected `validated_content_head` / `receipt_finalization` pattern established in C1C33.
+
 ## Pending batches
 
 - Cutover 1C: remaining implementation, wave, evaluation, and release evidence migration.
