@@ -380,6 +380,8 @@ Parallel implementation slices may continue to create unique slice-owned evidenc
 
 An implementation PR owns code, directly coupled tests, exact contract changes that must ship atomically, and unique slice-owned completion evidence. It does not update shared status or sequencing documents merely to mark completion.
 
+A newly created Stage-1 completion report is canonical `evidence`, created directly under `docs/evidence/implementation/`, using canonical status and metadata (`relaylm_doc_type: evidence`, `relaylm_status: frozen`) rather than the legacy `implementation_completion_report` / `historical_after_merge` aliases. Existing completion reports already migrated under the legacy profile may retain it until a separate family-normalization cutover; Cutover 1C-37 normalizes only the completion-report template, not the existing report family.
+
 ### Stage 2: convergence and shared-documentation PR
 
 The convergence PR reads the merged slice evidence, verifies cross-slice boundaries, updates shared current-state documents and indexes, and keeps the next wave or release gate closed until convergence is green and merged.

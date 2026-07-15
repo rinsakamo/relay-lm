@@ -266,8 +266,39 @@ def check_completion_report_template(errors: list[str]) -> None:
         errors.append(f"{canonical_path}: relaylm_doc_type must be 'template'")
     if metadata.get("relaylm_status") != "target":
         errors.append(f"{canonical_path}: relaylm_status must be 'target'")
+    if metadata.get("relaylm_authority") != "non_authoritative_implementation_completion_report_template":
+        errors.append(f"{canonical_path}: relaylm_authority must be the non-authoritative template key")
     if "docs/evidence/implementation/" not in body:
         errors.append(f"{canonical_path}: must instruct the canonical evidence destination")
+
+    retired_generated_profile_anchors = (
+        "relaylm_doc_type: implementation_completion_report",
+        "relaylm_status: historical_after_merge",
+    )
+    present_retired = [anchor for anchor in retired_generated_profile_anchors if anchor in body]
+    if present_retired:
+        errors.append(
+            f"{canonical_path}: generated-report example must not reintroduce the retired "
+            f"implementation_completion_report/historical_after_merge profile: {present_retired!r}"
+        )
+
+    migration_only_provenance_anchors = (
+        "relaylm_source_origin_commit:",
+        "relaylm_source_blob:",
+        "relaylm_source_content_sha256:",
+        "relaylm_pre_cutover_blob:",
+        "relaylm_pre_cutover_content_sha256:",
+        "relaylm_exact_source_snapshot:",
+    )
+    present_migration_only = [anchor for anchor in migration_only_provenance_anchors if anchor in body]
+    if present_migration_only:
+        errors.append(
+            f"{canonical_path}: generated-report example must not require migration-only "
+            f"provenance fields for a natively canonical report: {present_migration_only!r}"
+        )
+
+    if "relaylm_doc_type: evidence" not in body or "relaylm_status: frozen" not in body:
+        errors.append(f"{canonical_path}: generated-report example must use the canonical evidence/frozen profile")
 
     templates_index = read_text("docs/templates/README.md")
     if "implementation-completion-report.md" not in templates_index:

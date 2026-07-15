@@ -24,7 +24,9 @@ Copy this file to:
 docs/evidence/implementation/<slice>_completion_report.md
 ```
 
-The generated report must use the completion-report evidence metadata convention already established in that collection (`relaylm_doc_type: implementation_completion_report`, `relaylm_status: historical_after_merge`, `relaylm_volatility: frozen`, plus the recorded source/provenance keys shown below), not this template's own `template` / `target` metadata. This template supplies structure only; it never supplies project facts, authority, or status.
+The generated report must use the canonical completion-evidence metadata convention shown below (`relaylm_doc_type: evidence`, `relaylm_status: frozen`, `relaylm_volatility: low`), not this template's own `template` / `target` metadata. This template supplies structure only; it never supplies project facts, authority, or status.
+
+Migration-only fields — `relaylm_source_origin_commit`, `relaylm_source_blob`, `relaylm_source_content_sha256`, `relaylm_pre_cutover_blob`, `relaylm_pre_cutover_content_sha256`, and `relaylm_exact_source_snapshot` — belong to hard-cutover evidence wrappers whose provenance is independently fixed at migration time (an already-existing file being moved into canonical placement). They are not universal requirements for a natively canonical Stage-1 completion report created directly inside its own implementation PR: that report cannot self-referentially record its own not-yet-created commit or blob. Do not add them here. The wave convergence thread records the merge commit externally, from GitHub, after the PR merges; no self-referential commit or blob is required in the source PR's own report.
 
 ## Use rules
 
@@ -32,15 +34,15 @@ The generated report must use the completion-report evidence metadata convention
 - The report does not open the next wave and does not open the release or evaluation gate.
 - Current repository status remains [Project Status](../PROJECT_STATUS.md)-owned; do not restate it here as if this report were authoritative for it.
 - Shared cross-slice sequencing remains owned by the current planning authority; do not restate or override it here.
-- The source pull request number and URL must be concrete before final review — replace every `<number>` and `TBD` placeholder. No self-referential final-head SHA is required; the wave convergence thread obtains and records the merge commit from GitHub.
+- The source pull request number and URL must be concrete before final review — replace every `<number>` and `TBD` placeholder. No self-referential final-head SHA, source commit, or source blob is required; the wave convergence thread obtains and records the merge commit from GitHub after merge.
 - Do not record protected content, raw traces, credentials, or other runtime-private values anywhere in the report.
 
 ```markdown
 ---
-relaylm_doc_type: implementation_completion_report
-relaylm_authority: <slice>_evidence
-relaylm_status: historical_after_merge
-relaylm_volatility: frozen
+relaylm_doc_type: evidence
+relaylm_authority: <slice>_implementation_evidence
+relaylm_status: frozen
+relaylm_volatility: low
 relaylm_owner: implementation
 relaylm_update_trigger:
   - metadata or link repair only
@@ -51,15 +53,8 @@ relaylm_not_authoritative_for:
   - other slice completion
   - next-wave readiness
   - release or evaluation readiness
-relaylm_source_commit: <40-character source commit SHA>
-relaylm_source_origin_commit: <40-character source or origin/merge commit SHA>
 relaylm_source_pr: <number>
 relaylm_recorded_on: <YYYY-MM-DD>
-relaylm_source_blob: <40-character source blob SHA>
-relaylm_source_content_sha256: <64-character source content SHA-256>
-relaylm_pre_cutover_blob: <40-character pre-cutover blob SHA>
-relaylm_pre_cutover_content_sha256: <64-character pre-cutover content SHA-256>
-relaylm_exact_source_snapshot: <slice>_completion_report-source.txt
 ---
 # <Slice> Completion Report
 
