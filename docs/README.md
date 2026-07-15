@@ -21,7 +21,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 ## Start here
 
 - [Current project status](PROJECT_STATUS.md) — the single current implementation status authority.
-- [v0.1 Release Readiness Assessment](mvp/v0.1_release_readiness.md) — current readiness assessment and pending final main-HEAD validation; not a completed tag receipt.
+- [v0.1 Release Readiness Assessment](release/v0.1-release-readiness.md) — current readiness assessment for the validated and tagged v0.1 boundary; the frozen tag receipt is [v0.1 Final Main-HEAD Validation and Tag Receipt](evidence/releases/v0.1-final-main-validation-tag-receipt.md).
 - [Project execution plan](architecture/project_execution_plan.md) — the single MVP execution plan and post-MVP roadmap authority.
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md) — the current product direction reset target: editable Markdown character sources compiled into runtime projections.
 - [CW-A1 File-first Source Tree and Parser Contracts](architecture/cw_a1_file_first_source_tree_parser_contracts.md) — the current read-only source tree/parser contract slice for the file-first Character Workspace reset.
@@ -31,6 +31,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [RelayREL relationship design](architecture/relayrel_relationship_design.md) — target-specific relationship state, relationship-conditioned interaction policy, and `RELATIONSHIP.md` / `relationships/<target>.md` ownership.
 - [Character template creation flow](architecture/character_template_creation_flow.md) — no-character startup, Quick/Advanced Create, template import, and showcase policy.
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, AI reading rules, and the parallel implementation/convergence flow.
+- [Active proposals](proposals/README.md) — undecided design proposals that do not override ADRs, architecture, contracts, or current status.
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) — compatibility interpretation.
 - [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md) — current E1 evidence inventory and completed E1-R1 through E1-R5 quality work.
@@ -135,6 +136,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 - [I-7C completion report](evidence/implementation/i7c_completion_report.md)
 - [E1-R1 completion report](evidence/implementation/e1r1_completion_report.md)
 - [E1-R2 completion report](evidence/implementation/e1r2_completion_report.md)
+- [Docs Horizontal Status Sweep completion report](evidence/implementation/docs_horizontal_status_sweep_completion_report.md)
 - [O1F operational validation](architecture/o1f_operational_validation.md)
 - [Phase I-5B Pin / Unpin apply and ranking behavior](architecture/phase_i5b_pin_unpin_apply.md)
 - [Phase I-7C Held Apply / Discard runtime governance](architecture/phase_i7c_held_apply_discard_runtime.md)
@@ -144,9 +146,9 @@ Current runtime and implementation status is intentionally not summarized here. 
 ## Wave 5 / E1 evaluation evidence
 
 - [Wave 5 Cross-Slice Convergence Audit](evidence/waves/wave5_cross_slice_convergence_audit.md)
-- [O1E completion report](mvp/wave5/o1e_completion_report.md)
-- [I-4F completion report](mvp/wave5/i4f_completion_report.md)
-- [E1 completion report](mvp/wave5/e1_completion_report.md)
+- [O1E completion report](evidence/implementation/o1e_completion_report.md)
+- [I-4F completion report](evidence/implementation/i4f_completion_report.md)
+- [E1 completion report](evidence/implementation/e1_completion_report.md)
 - [O1E scheduler operational controls](architecture/o1e_scheduler_operational_controls.md)
 - [Phase I-4F Forget product validation](architecture/phase_i4f_forget_validation.md)
 - [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md)
@@ -155,11 +157,11 @@ Current runtime and implementation status is intentionally not summarized here. 
 ## Wave 4 implementation evidence
 
 - [Wave 4 Cross-Slice Convergence Audit](evidence/waves/wave4_cross_slice_convergence_audit.md)
-- [O1D2 completion report](mvp/wave4/o1d2_completion_report.md)
-- [I-4E completion report](mvp/wave4/i4e_completion_report.md)
-- [UI-B1A completion report](mvp/wave4/ui_b1a_completion_report.md)
-- [I-5A completion report](mvp/wave4/i5a_completion_report.md)
-- [I-7A/B completion report](mvp/wave4/i7ab_completion_report.md)
+- [O1D2 completion report](evidence/implementation/o1d2_completion_report.md)
+- [I-4E completion report](evidence/implementation/i4e_completion_report.md)
+- [UI-B1A completion report](evidence/implementation/ui_b1a_completion_report.md)
+- [I-5A completion report](evidence/implementation/i5a_completion_report.md)
+- [I-7A/B completion report](evidence/implementation/i7ab_completion_report.md)
 
 ## Offline tooling and runbooks
 
