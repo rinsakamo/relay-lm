@@ -3234,7 +3234,7 @@ This batch completes only the active `docs/mvp/` family retirement — the C1C38
 ### C1C39-001 — LAT-1 retrieval scaling method/template split
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 604
 merged_commit: pending
 record_count: 1
 cutover_recorded_on: 2026-07-16
@@ -3345,19 +3345,28 @@ local_validation:
   cutover_prepare_self_test: passed
 docs_mvp_family_touched: false
 runtime_files_changed: 0
-validated_content_head: pending
+validated_content_head: c065eea20536385743cee16afef988bf95d7bd73
 validated_content_head_actions:
-  workflow_runs_total: pending
-  workflow_runs_by_trigger: {pull_request: pending, push: pending, other: pending}
-  job_or_check_runs_total: pending
-  success: pending
+  workflow_runs_total: 16
+  workflow_runs_by_trigger: {pull_request: 15, push: 1, other: 0}
+  workflow_runs_by_trigger_note: verified_individually_via_github_actions_get_workflow_run_event_field_for_all_16_distinct_run_ids_at_this_head_not_inferred_from_timing_the_single_push_run_is_the_phase_i4a_forget_hide_contract_smoke_workflow_which_declares_both_push_and_pull_request_triggers_on_docs_star_star_paths_matching_the_same_pattern_observed_at_cutover_1c38
+  job_or_check_runs_total: 26
+  success: 17
   failure: 0
-  skipped: pending
+  skipped: 9
+validated_content_head_changed_files: 14
+validated_content_head_net_diff:
+  insertions: 776
+  deletions: 133
+non_receipt_content_files: 13
+non_receipt_content_net_diff:
+  insertions: 623
+  deletions: 130
 final_pr_changed_files: pending
 final_pr_net_diff: {insertions: pending, deletions: pending}
-reviews: pending
-pr_comments: pending
-unresolved_review_threads: pending
+reviews: 0
+pr_comments: 0
+unresolved_review_threads: 0
 receipt_finalization: pending
 ```
 
@@ -3379,7 +3388,7 @@ No LAT-1 evaluation evidence was fabricated. `docs/evidence/evaluations/README.m
 
 No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. The LAT-1 bench commands, CLI flags, runtime behavior, search algorithm, ranking, candidate limit, and measurement schema are all unchanged. `docs/mvp/` remains fully absent and untouched by this batch; this batch's own retired-scaffold guards are new and independent of the `docs/mvp/` guards. No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, `.gitkeep`, or old-path manifest was added.
 
-`cutover_pr`, `validated_content_head`, its Actions totals, the final PR-level diff totals, and the review/comment/thread state are all pending until the content commit is pushed and its exact remote head's GitHub Actions complete, per the `validated_content_head` / `receipt_finalization` pattern established in prior batches. `merged_commit` remains `pending`; this task does not merge the PR.
+`cutover_pr` is `604` (`rinsakamo/relay-lm#604`). `c065eea20536385743cee16afef988bf95d7bd73` is the `validated_content_head`: all 26 triggered GitHub Actions check runs (job/check-run count), spanning 16 distinct workflow runs (workflow-run count), completed successfully with zero failures (17 success, 9 correctly `skipped` since this batch's diff does not touch the RelayMEM/runtime/UI consolidated-smoke groups' path triggers). The 16 runs were individually fetched by run ID via `get_workflow_run` and their `event` field read directly, confirming exactly 15 `pull_request`-triggered and 1 `push`-triggered run — the same `phase-i4-forget-hide-contract-smoke.yml` dual-trigger pattern observed at the Cutover 1C-38 validated head. Zero reviews, zero PR comments, and zero unresolved review threads were present at that head. The `documentation-cutover-preparation` workflow (which runs `scripts/relaylm_docs_cutover_prepare.py` against the pinned baseline commit `22981c3b26b2ec0141093d1ec23592d304f1a053`, a commit that already contains `docs/evaluation/lat1_retrieval_scaling_report.md`) is included in this head's green runs, confirming the new `target_records` schema extension classifies correctly against the real pinned baseline in CI, not only against the local synthetic self-test fixture. `validated_content_head_changed_files`/`validated_content_head_net_diff` (14 files, +776/-133) and `non_receipt_content_files`/`non_receipt_content_net_diff` (13 files, +623/-130, everything except this receipt's own diff) are the exact GitHub-reported and independently `git diff --stat`-recomputed totals at this head. Per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, finalization (the final PR-level diff totals and `receipt_finalization` state) is recorded in a further, separate commit after `c065eea20536385743cee16afef988bf95d7bd73`, which remains the exact validated content head and is not itself re-claimed as re-validated. `merged_commit` remains `pending`; this task does not merge the PR.
 
 ## Pending batches
 
