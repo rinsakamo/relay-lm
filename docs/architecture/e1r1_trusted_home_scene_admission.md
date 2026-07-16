@@ -6,7 +6,7 @@ relaylm_owner: evaluation
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - e1_evaluation_consolidation.md
-  - e1_local_runtime_evaluation_2026_06_25.md
+  - ../evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md
   - soul_lab_ui_b0_real_home_conversation.md
   - phase6_i1b_runtime_enqueue_source_capture_handoff.md
 ---

@@ -10,7 +10,7 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/e1r2_character_store_bootstrap.md
   - ../../architecture/e1_evaluation_consolidation.md
-  - ../../architecture/e1_local_runtime_evaluation_2026_06_25.md
+  - ../evaluations/e1_local_runtime_evaluation_2026_06_25.md
 relaylm_not_authoritative_for:
   - current repository-wide implementation status
   - current character-store bootstrap command, CLI, or store-layout behavior

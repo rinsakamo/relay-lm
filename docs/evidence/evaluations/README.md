@@ -20,6 +20,7 @@ This collection contains dated or bounded validation and evaluation results. Use
 ## Records
 
 - [Phase I-3 branch validation receipt](phase_i3_validation_receipt.md) — frozen content-free verification evidence for PR #379.
+- [E1 Local Runtime Evaluation — 2026-06-25](e1_local_runtime_evaluation_2026_06_25.md) — frozen first hands-on local workstation evaluation evidence connecting SOUL Lab Home, RelayLM, LM Studio, RelaySLP, O0, and Primary MEM formation/recall; moved here from `docs/architecture/` in Cutover 1C-40.
 
 No LAT-1 retrieval-scaling result exists here yet. A completed run is
 filled in from

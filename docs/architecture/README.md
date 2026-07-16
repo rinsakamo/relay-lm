@@ -219,8 +219,7 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 
 ## Evaluation evidence
 
-- [E1 MVP Evaluation Evidence Consolidation](e1_evaluation_consolidation.md) records implemented E1-R1/E1-R2/E1-R3/E1-R4/E1-R5 evidence and the current conditional non-E1 remaining work.
-- [E1 Local Runtime Evaluation](e1_local_runtime_evaluation_2026_06_25.md) records explicit trusted-scene formation through O0, separate real Home recall, and the original evidence inventory.
+- [E1 MVP Evaluation Evidence Consolidation](e1_evaluation_consolidation.md) records implemented E1-R1/E1-R2/E1-R3/E1-R4/E1-R5 evidence and the current conditional non-E1 remaining work. The dated 2026-06-25 local runtime evaluation record it consolidates moved to [Evaluation Evidence](../evidence/evaluations/README.md) in Cutover 1C-40.
 
 ## Character cognition and RelaySOUL targets
 

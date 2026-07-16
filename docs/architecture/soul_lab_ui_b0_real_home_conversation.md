@@ -13,7 +13,7 @@ relaylm_related_authority:
   - docs/PROJECT_STATUS.md
   - docs/architecture/pipeline_implementation_plan.md
   - docs/architecture/post_i3_evaluation_work_roadmap.md
-  - docs/architecture/e1_local_runtime_evaluation_2026_06_25.md
+  - docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md
   - docs/architecture/soul_lab_ui_mvp.md
   - docs/architecture/soul_lab_ui_a7_management_projection_handoff.md
   - docs/architecture/integration_i1_primary_mem_two_turn_recall.md
@@ -265,7 +265,7 @@ Home real request
 
 Home never displays raw prompts, compiled context, SOUL, MEM pages, or traces. Phase I-2 remains the evidence surface for actual backend-bound memory inclusion. Phase I-3 remains the correction authority.
 
-The 2026-06-25 workstation evaluation confirmed that a Primary MEM formed through the existing worker path could later influence a Home answer under the exact character and namespace scope. The answer recalled the core user fact, but also exposed separate formation-provenance and response-grounding quality gaps documented in [E1 Local Runtime Evaluation](e1_local_runtime_evaluation_2026_06_25.md).
+The 2026-06-25 workstation evaluation confirmed that a Primary MEM formed through the existing worker path could later influence a Home answer under the exact character and namespace scope. The answer recalled the core user fact, but also exposed separate formation-provenance and response-grounding quality gaps documented in [E1 Local Runtime Evaluation](../evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md).
 
 ## Validation
 

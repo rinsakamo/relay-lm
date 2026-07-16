@@ -239,6 +239,26 @@ path_overrides:
       family rules below for this one path, since neither alone can
       represent a single source splitting into two different target
       document types.
+  docs/architecture/e1_local_runtime_evaluation_2026_06_25.md:
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_paths:
+      - docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md
+    deletion_reason: >-
+      Cutover 1C-40: this source was a completed, dated local-runtime
+      evaluation record carrying the legacy evaluation_record doc type
+      under docs/architecture/, a noncanonical location for a bounded
+      dated result. Moved verbatim (no content rewrite) to
+      docs/evidence/evaluations/ with canonical evidence/frozen front
+      matter and source provenance fields; every live path-bound
+      dependency (the E1 evaluation consolidation smoke script's
+      EVIDENCE_PATHS tuple and every referencing document's
+      relaylm_related_authority/inline link) was updated in the same PR.
+      This override matches what the generic architecture-validation-
+      evaluation family rule below would already compute for this path;
+      it is made an explicit, truthful, single-target override now that
+      the move is complete, rather than left as an implicit future
+      prediction.
 
 family_rules:
   - id: canonical-target-collections

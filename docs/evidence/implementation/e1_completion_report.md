@@ -9,7 +9,7 @@ relaylm_update_trigger:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/e1_evaluation_consolidation.md
-  - ../../architecture/e1_local_runtime_evaluation_2026_06_25.md
+  - ../evaluations/e1_local_runtime_evaluation_2026_06_25.md
   - ../waves/wave5_cross_slice_convergence_audit.md
 relaylm_not_authoritative_for:
   - current E1 runtime or evaluation behavior
