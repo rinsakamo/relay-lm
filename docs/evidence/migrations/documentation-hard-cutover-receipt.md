@@ -3506,33 +3506,42 @@ local_validation:
 docs_mvp_family_touched: false
 lat1_family_touched: false
 runtime_files_changed: 0
-prior_validated_content_head_superseded: 8c990082afd62f7da74bb9b36ab19ee1c1e49ac9
-prior_validated_content_head_superseded_reason: independent_review_found_the_relative_reference_fail_open_defect_in_check_no_live_e1_local_runtime_architecture_path_described_in_fail_closed_guard_correction_above_all_27_of_this_heads_own_github_actions_check_runs_had_passed_and_its_diff_and_review_accounting_remain_accurate_as_historical_record_of_that_now_superseded_state
-prior_validated_content_head_triggered_check_runs: 27
-prior_validated_content_head_triggered_workflow_runs: 16
-prior_validated_content_head_all_github_actions: passed
-prior_receipt_only_tail_superseded:
-  - 48e460f603efa1a12e5ee71ccb72441babf95ce9
-  - 7541954efbb4ec6fb325755aa55bdc32dd94ff32
-prior_receipt_only_tail_superseded_reason: recorded_actions_and_diff_accounting_for_the_now_superseded_validated_content_head_a_new_receipt_only_tail_follows_the_new_substantive_correction_head_below_once_its_own_github_actions_complete
-validated_content_head: d81cf6de069db1510746bf9d9ca7ed95c6864a2e
-validated_content_head_actions:
-  workflow_runs_total: 16
-  workflow_runs_by_trigger: {pull_request: 15, push: 1, other: 0}
-  job_or_check_runs_total: 27
-  success: 18
-  failure: 0
-  skipped: 9
-validated_content_head_changed_files: 15
-validated_content_head_net_diff: {insertions: 691, deletions: 30}
-non_receipt_content_files: 14
-non_receipt_content_net_diff: {insertions: 538, deletions: 28}
-final_pr_changed_files: 15
-final_pr_net_diff: {insertions: 699, deletions: 30}
+superseded_validated_content_heads:
+  - head: 8c990082afd62f7da74bb9b36ab19ee1c1e49ac9
+    reason: independent_review_found_the_relative_reference_fail_open_defect_in_check_no_live_e1_local_runtime_architecture_path_described_in_fail_closed_guard_correction_above_all_27_of_this_heads_own_github_actions_check_runs_had_passed_and_its_diff_and_review_accounting_remain_accurate_as_historical_record_of_that_now_superseded_state
+    triggered_check_runs: 27
+    triggered_workflow_runs: 16
+    all_github_actions: passed
+    receipt_only_tail_superseded:
+      - 48e460f603efa1a12e5ee71ccb72441babf95ce9
+      - 7541954efbb4ec6fb325755aa55bdc32dd94ff32
+  - head: d81cf6de069db1510746bf9d9ca7ed95c6864a2e
+    reason: pr_owner_review_requested_rebasing_this_branch_onto_current_main_which_had_advanced_to_cd49c75e29e9ab4802c9ddabfe28ee3904b4cf6c_via_pr_599_merging_during_this_prs_correction_rounds_no_code_or_content_defect_motivated_this_supersession_it_is_purely_a_rebase_for_main_freshness_all_27_of_this_heads_own_github_actions_check_runs_had_passed_and_its_diff_and_review_accounting_remain_accurate_as_historical_record_of_that_now_superseded_pre_rebase_state
+    triggered_check_runs: 27
+    triggered_workflow_runs: 16
+    all_github_actions: passed
+    receipt_only_tail_superseded:
+      - 85b12f0488755ac197a1f710d2b6e60dc2398cbb
+      - 37074c20e656571043bd7e4689628108cb9523dd
+rebase_performed:
+  reason: pr_owner_review_requested_the_branch_be_rebased_onto_current_main_since_main_had_advanced_via_the_disjoint_merged_pr_599_during_this_prs_correction_rounds_the_cutover_tasks_own_open_pr_isolation_requirement_names_current_main_as_the_only_starting_authority
+  old_merge_base: 3d51fe0b19fd1591a1f6cc6bcd73efccb7c5f4ea
+  new_merge_base: cd49c75e29e9ab4802c9ddabfe28ee3904b4cf6c
+  disjoint_files_confirmed: pr_599_docs_define_showcase_starter_and_product_knowledge_ownership_changed_exactly_three_files_docs_strategy_showcase_starter_product_knowledge_md_new_docs_relaysoul_readme_md_docs_strategy_rin_relm_character_vision_md_new_none_of_which_overlap_with_this_batchs_fifteen_files_independently_confirmed_via_git_show_dash_dash_stat_and_git_diff_dash_dash_name_only_before_rebasing_not_merely_trusted_from_the_review_comment
+  method: git_rebase_origin_slash_main_followed_by_force_dash_with_dash_lease_push_all_seven_pre_rebase_commits_replayed_cleanly_with_zero_conflicts_every_commits_content_and_message_unchanged_only_the_parent_commit_and_resulting_hash_changed
+  no_content_change: true
+validated_content_head: pending
+validated_content_head_actions: pending
+validated_content_head_changed_files: pending
+validated_content_head_net_diff: pending
+non_receipt_content_files: pending
+non_receipt_content_net_diff: pending
+final_pr_changed_files: pending
+final_pr_net_diff: pending
 reviews: 0
 pr_comments: 0
 unresolved_review_threads: 0
-receipt_finalization: performed_after_validated_content_head
+receipt_finalization: pending
 ```
 
 This single atomic batch migrates one record: `docs/architecture/e1_local_runtime_evaluation_2026_06_25.md`, a completed, dated, bounded local-workstation evaluation record carrying the legacy `evaluation_record` doc type under `docs/architecture/` — a noncanonical location for a dated result per `docs/DOCUMENTATION_MODEL.md`'s required cutover destination (`evidence`, canonical location `docs/evidence/evaluations/`). Unlike the Cutover 1C-39 LAT-1 scaffold, this source was never a mixed method/template scaffold and never a stale `evidence_retained` assumption: it genuinely records one hands-on local workstation experiment (SOUL Lab Home real conversation through RelayLM, LM Studio, durable RelaySLP publication, O0 one-job execution, Primary MEM formation, and later-turn recall) with four concrete observed findings and gaps, and its own body states plainly that it "records observed evidence and discovered gaps" and "does not upgrade any component contract or claim production readiness." `evidence_retained` is therefore the correct disposition for this record, not a correction of a prior stale claim.
@@ -3559,7 +3568,9 @@ No file under `relaylm/` changed, and no runtime, configuration, schema, schedul
 
 `cutover_pr` is `605` (`rinsakamo/relay-lm#605`). `8c990082afd62f7da74bb9b36ab19ee1c1e49ac9` was the prior `validated_content_head`: all 27 triggered GitHub Actions check runs (job/check-run count), spanning 16 distinct workflow runs (workflow-run count: 15 `pull_request`, 1 `push` from `phase-i4-forget-hide-contract-smoke.yml`), had completed successfully with zero failures, and its receipt-only tail (`48e460f603efa1a12e5ee71ccb72441babf95ce9`, then `7541954efbb4ec6fb325755aa55bdc32dd94ff32`) had recorded that head's Actions and diff totals (15 changed files, +383/-30 final). Independent review of that head found the relative-reference fail-open defect in `check_no_live_e1_local_runtime_architecture_path()` described above, corrected in this same entry by a further substantive commit that changes only `scripts/relaylm_docs_semantic_audit.py`; the underlying E1 evidence migration, its provenance, and every live path update recorded above are unchanged by this correction.
 
-`d81cf6de069db1510746bf9d9ca7ed95c6864a2e` is now recorded as `validated_content_head`: all 27 triggered GitHub Actions check runs, spanning 16 distinct workflow runs (15 `pull_request`, 1 `push`), completed with 18 successes, 9 skips (the same runtime-path-gated jobs correctly skipping for this documentation-only diff), and zero failures. There are 0 reviews, 0 PR comments, and 0 unresolved review threads on the PR at this head. The PR-level diff at this head is 15 changed files, +691/-30, of which 14 files (+538/-28) are non-receipt content — `scripts/relaylm_docs_semantic_audit.py` alone accounts for 482 of those insertions, since the corrected guard, its resolver helper, and its 14 self-test assertions replace and extend the prior 6-assertion implementation — and 1 file (this receipt, +153/-2) is the receipt-only accounting; both subtotals were independently recomputed via `git diff --numstat` against the merge-base with `main` and sum exactly to the head total. This receipt-only tail (`85b12f0488755ac197a1f710d2b6e60dc2398cbb`) recorded that head's Actions and diff totals; its own 16 triggered GitHub Actions workflow runs (15 `pull_request`, 1 `push`) completed with 18 successes, 9 skips, and zero failures across 27 check runs, and the PR remained at 0 reviews, 0 comments, 0 unresolved threads. `final_pr_changed_files`/`final_pr_net_diff` are now finalized at 15 changed files, +699/-30 — the exact GitHub-reported PR-level totals, independently confirmed via `pull_request_read get_files` rather than trusted from local `git diff`; the receipt-only bookkeeping edit itself added 8 further lines to the receipt file (+161/-2 at this head versus +153/-2 at the prior head), so the full-head total grew from +691/-30 to +699/-30 while the non-receipt content total (14 files, +538/-28) is unchanged. `receipt_finalization` is recorded as `performed_after_validated_content_head`. `merged_commit` remains `pending`; this task does not merge the PR.
+`d81cf6de069db1510746bf9d9ca7ed95c6864a2e` was then recorded as `validated_content_head`: all 27 triggered GitHub Actions check runs, spanning 16 distinct workflow runs (15 `pull_request`, 1 `push`), completed with 18 successes, 9 skips (the same runtime-path-gated jobs correctly skipping for this documentation-only diff), and zero failures. There were 0 reviews, 0 PR comments, and 0 unresolved review threads on the PR at this head. The PR-level diff at this head was 15 changed files, +691/-30, of which 14 files (+538/-28) were non-receipt content — `scripts/relaylm_docs_semantic_audit.py` alone accounts for 482 of those insertions, since the corrected guard, its resolver helper, and its 14 self-test assertions replace and extend the prior 6-assertion implementation — and 1 file (this receipt, +153/-2) was the receipt-only accounting; both subtotals were independently recomputed via `git diff --numstat` against the merge-base with `main` and summed exactly to the head total. Its receipt-only tail (`85b12f0488755ac197a1f710d2b6e60dc2398cbb`, then `37074c20e656571043bd7e4689628108cb9523dd`) recorded that head's Actions and diff totals and finalized `final_pr_changed_files`/`final_pr_net_diff` at 15 changed files, +699/-30 (the exact GitHub-reported PR-level totals, independently confirmed via `pull_request_read get_files`).
+
+**Rebase for main freshness.** A PR review from the repository owner requested rebasing this branch onto current `main`, which had advanced to `cd49c75e29e9ab4802c9ddabfe28ee3904b4cf6c` via the disjoint PR #599 ("docs: define showcase, starter, and product-knowledge ownership") merging during this PR's correction rounds. Two of the review's six numbered items (the C1C40 receipt content-head sequence and the PR body) were already resolved by the commits immediately above, before the review was submitted — independently confirmed by grepping this file's own `validated_content_head`/`final_pr_changed_files`/`receipt_finalization` fields and by reading the live PR body via the GitHub API, both already showing the finalized (non-`pending`) state at the time this correction began. The rebase request itself was verified rather than assumed: `git show --stat` on `cd49c75e` confirmed PR #599 changed exactly three files (`docs/strategy/showcase-starter-product-knowledge.md`, `docs/relaysoul/README.md`, `docs/strategy/rin-relm-character-vision.md`), none overlapping this batch's fifteen files. `git rebase origin/main` replayed all seven pre-rebase commits cleanly with zero conflicts — every commit's content and message unchanged, only its parent and resulting hash changed — followed by a `--force-with-lease` push. The full local validation suite was rerun and passed unchanged (70 self-test assertions, zero non-allowlisted retired-path references) before pushing. `8c990082...` and `d81cf6d...` are recorded in `superseded_validated_content_heads` above as historical fact: both heads genuinely existed, were pushed, and had real, fully-green GitHub Actions runs; the rebase does not retroactively make that false, it only changes which commits are reachable from the branch's current tip. `merged_commit` remains `pending`; this task does not merge the PR.
 
 ## Pending batches
 
