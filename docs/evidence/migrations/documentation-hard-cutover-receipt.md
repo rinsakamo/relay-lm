@@ -3189,25 +3189,14 @@ non_receipt_content_files: 24
 non_receipt_content_net_diff:
   insertions: 621
   deletions: 266
-finalization_head: pending
-finalization_head_actions:
-  workflow_runs_total: pending
-  workflow_runs_by_trigger:
-    pull_request: pending
-    push: pending
-    other: pending
-  job_or_check_runs_total: pending
-  success: pending
-  failure: 0
-  skipped: pending
-final_pr_changed_files: pending
+final_pr_changed_files: 25
 final_pr_net_diff:
-  insertions: pending
-  deletions: pending
-reviews: pending
-pr_comments: pending
-unresolved_review_threads: pending
-receipt_finalization: pending
+  insertions: 934
+  deletions: 269
+reviews: 0
+pr_comments: 0
+unresolved_review_threads: 0
+receipt_finalization: performed_after_validated_content_head
 ```
 
 This single atomic batch retires two records from the final transitional `docs/mvp/` tree. Independent recomputation of the exact current `docs/mvp/` tree inventory before any edit found **two** live files, not the one named in the task brief: `docs/mvp/README.md` (174 lines) and `docs/mvp/wave7/e1r3_durable_replay_residual_followup.md` (27 lines, under the `docs/mvp/wave7/` subdirectory). The second file was discovered only by independently enumerating the full tree (`find docs/mvp -type f`) rather than trusting the task brief's "expected remaining live source" framing; it had to be resolved to satisfy the "no live `docs/mvp/` directory at all" requirement and is recorded as its own record above.
@@ -3240,7 +3229,7 @@ This batch completes only the active `docs/mvp/` family retirement — the C1C38
 
 `cutover_pr` is `603` (`rinsakamo/relay-lm#603`). `af8153d056b864e89578266984cd2da4d626f11b` was the prior `validated_content_head`: all 45 triggered GitHub Actions check runs (job/check-run count), spanning 16 distinct workflow runs (workflow-run count, not independently split by trigger class at that time), had completed successfully with zero failures. Independent review of that head found four defects, all corrected in this same entry by a further commit: (1) `check_no_live_mvp_tree()` in `scripts/relaylm_docs_semantic_audit.py` scanned only five router files and only a narrow `](docs/mvp/` markdown-link-syntax substring, insufficient to catch a script `read()`, a workflow `docs/mvp/**` path selector, an HTML/reference-style/autolink form, or a dormant dependency outside those five files — replaced with a bounded, deterministic, repository-wide active-reference scan (`README.md`, `README_ja.md`, `docs/**/*.md`, `scripts/**/*.py`, `.github/workflows/**/*.{yml,yaml}`, `relaylm/**/*.py`, `tests/**/*.py`, `config.example.yaml`, `pyproject.toml`) with an explicit whole-file allowlist for files whose entire content is historical/migration record-keeping by construction, a front-matter-status-driven allowlist for documents that declare themselves `frozen`/`historical_after_merge`/`historical`, and a line-bounded allowlist (exact reviewed substrings, not whole-file suppression) for the one pinned historical-baseline workflow assertion and the small number of guard-code/self-test occurrences inside the retirement's own implementation scripts; four genuinely stale live placement instructions this new scan surfaced (`docs/relaysoul/README.md`, `docs/smoke/README.md` twice, `docs/contracts/README.md`, `docs/architecture/e2_value_smoke_harness.md`) were corrected to point at `docs/evidence/implementation/` instead of being merely allowlisted; a new `--self-test` mode with 13 bounded, deterministic assertions (5 negative-path rejections, 4 positive-path allowances, 2 real-repository silences, 2 cutover-rule-target-type checks) was added and wired into `documentation-current-boundary-smoke.yml`. (2) `docs/planning/documentation-cutover-rules.yaml`'s `docs/mvp/README.md` override recorded `target_doc_type: evidence` while the actual destination (`docs/evidence/implementation/README.md`) declares `relaylm_doc_type: documentation_index`; corrected to `documentation_index`, and a new `check_cutover_rule_target_types()` check now fails closed if any `path_overrides` entry's declared type drifts from an existing target's real front matter (skipping overrides whose target does not yet exist, since this planning document also records an unadopted proposed future layout). (3) The receipt's `changed_file_count`/`net_diff` fields silently excluded the receipt's own diff without saying so, and the narrative said "single-record batch" while `record_count: 2` — corrected to explicit `non_receipt_content_*`, `validated_content_head_*`, and `final_pr_*` field triplets (recomputed fresh below, not copied from the superseded head), and the narrative now reads "single atomic batch retires two records." (4) Workflow-run counts were not split by GitHub Actions trigger class; the schema now records `workflow_runs_by_trigger` (`pull_request`/`push`/`other`) alongside the job/check-run total for both the new validated content head and the finalization head, verified rather than inferred.
 
-`validated_content_head` is now pending on the correction commit described above; per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, it will be recorded here once every required GitHub Actions run on that exact remote head completes, followed by a further, separate finalization-only commit recording the exact `final_pr_changed_files`/`final_pr_net_diff` totals, the finalization-head Actions split by trigger class, and the exact review/comment/unresolved-thread state. This PR is not merged.
+`f2b414d986593057dd6176ceff9bc3ce6364fb63` is the new `validated_content_head`: all 45 triggered GitHub Actions check runs (job/check-run count), spanning 16 distinct workflow runs (workflow-run count), had completed successfully with zero failures; the 16 runs were individually fetched by run ID via `get_workflow_run` and their `event` field read directly (not inferred from timing), confirming exactly 15 `pull_request`-triggered and 1 `push`-triggered run — the single push run is `phase-i4-forget-hide-contract-smoke.yml`, which declares both `push` and `pull_request` triggers on `docs/**` paths and so fires twice for the same head. Zero reviews, zero PR comments, and zero unresolved review threads were present at that head, and remained so through this receipt-recording commit. Per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, this finalization is recorded in a further, separate commit after `f2b414d986593057dd6176ceff9bc3ce6364fb63`, which remains the exact validated content head and is not itself re-claimed as re-validated — a commit cannot record its own resulting hash inside its own committed content, so no `finalization_head` field is kept; the finalization commit is identified relationally, via `git log`/PR history, as the commit immediately following the recorded `validated_content_head`. `final_pr_changed_files`/`final_pr_net_diff` above are the exact GitHub-reported PR-level totals (25 files, +934/-269) at the point this finalization commit was prepared, one insertion ahead of `validated_content_head_net_diff` for the one-line receipt edit made in the intervening bookkeeping commit that first recorded `validated_content_head`'s own Actions results. This PR is not merged.
 
 ## Pending batches
 
