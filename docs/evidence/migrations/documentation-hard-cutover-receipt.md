@@ -3548,17 +3548,23 @@ rebase_performed:
   disjoint_files_confirmed: pr_599_docs_define_showcase_starter_and_product_knowledge_ownership_changed_exactly_three_files_docs_strategy_showcase_starter_product_knowledge_md_new_docs_relaysoul_readme_md_docs_strategy_rin_relm_character_vision_md_new_none_of_which_overlap_with_this_batchs_fifteen_files_independently_confirmed_via_git_show_dash_dash_stat_and_git_diff_dash_dash_name_only_before_rebasing_not_merely_trusted_from_the_review_comment
   method: git_rebase_origin_slash_main_followed_by_force_dash_with_dash_lease_push_all_seven_pre_rebase_commits_replayed_cleanly_with_zero_conflicts_every_commits_content_and_message_unchanged_only_the_parent_commit_and_resulting_hash_changed
   no_content_change: true
-validated_content_head: pending
-validated_content_head_actions: pending
-validated_content_head_changed_files: pending
-validated_content_head_net_diff: pending
-non_receipt_content_files: pending
-non_receipt_content_net_diff: pending
+validated_content_head: 23b37d377ec14591ea04569569786ae125ad0524
+validated_content_head_actions:
+  workflow_runs_total: 16
+  workflow_runs_by_trigger: {pull_request: 15, push: 1, other: 0}
+  job_or_check_runs_total: 27
+  success: 18
+  failure: 0
+  skipped: 9
+validated_content_head_changed_files: 15
+validated_content_head_net_diff: {insertions: 732, deletions: 30}
+non_receipt_content_files: 14
+non_receipt_content_net_diff: {insertions: 538, deletions: 28}
 final_pr_changed_files: pending
 final_pr_net_diff: pending
-reviews: pending
-pr_comments: pending
-unresolved_review_threads: pending
+reviews: 1
+pr_comments: 1
+unresolved_review_threads: 0
 receipt_finalization: pending
 ```
 
@@ -3592,7 +3598,9 @@ No file under `relaylm/` changed, and no runtime, configuration, schema, schedul
 
 `11c83dfab6e1ded3dd3a2d1cea421666ced26cf1` was recorded as `validated_content_head`: all 27 triggered GitHub Actions check runs, spanning 16 distinct workflow runs (15 `pull_request`, 1 `push`), completed with 18 successes, 9 skips, and zero failures — identical counts to the pre-rebase head, as expected for a content-preserving rebase. The PR-level diff at this head was 15 changed files, +710/-30, of which 14 files (+538/-28) were non-receipt content (unchanged from the pre-rebase totals, confirming the rebase changed no file content) and 1 file (this receipt, +172/-2) was the receipt-only accounting; both subtotals were independently recomputed via `git diff --numstat` against the new merge-base with `origin/main`. Its receipt-only tail (`d4f5b9ce135a1696436fba6ebc0661900cd32c0d`, then `2043275410ca19a4d5c5e8abb81d7662887c14be`) finalized `final_pr_changed_files`/`final_pr_net_diff` at 15 changed files, +718/-30 (independently confirmed via `pull_request_read get_files`); its own GitHub Actions across both commits remained fully green.
 
-**Reviews accounting correction.** This head and its entire receipt-only tail incorrectly recorded `reviews: 0`. Review `4714901958` (state `COMMENTED`, author `rinsakamo`, `OWNER`) was submitted at `2026-07-16T14:46:13Z` — strictly before `11c83df`'s own rebase committer timestamp (`2026-07-16T14:49:12Z`, the moment `git rebase` actually ran, as opposed to the author timestamps git rebase preserves from the original pre-rebase commits) and before every subsequent commit in the rebase round. The `reviews: 0` value was a stale carry-forward from the guard-fix round, before that review existed, never re-verified against a fresh `get_reviews` call during the rebase round. `unresolved_review_threads: 0` was and remains correct (`get_review_comments` `totalCount: 0` throughout — a review submission with no inline comment threads does not create an unresolved thread), and `pr_comments: 0` was correct for these three heads' own timestamps (the PR's first conversation comment, this session's own reply to the review, was posted afterward at `2026-07-16T15:03:19Z`). Only the top-level `reviews` submission count was wrong. `superseded_validated_content_heads` above records `11c83df` a third time with this correction as the reason; its diff totals remain accurate and are not disturbed by this fix. `merged_commit` remains `pending`; this task does not merge the PR.
+**Reviews accounting correction.** This head and its entire receipt-only tail incorrectly recorded `reviews: 0`. Review `4714901958` (state `COMMENTED`, author `rinsakamo`, `OWNER`) was submitted at `2026-07-16T14:46:13Z` — strictly before `11c83df`'s own rebase committer timestamp (`2026-07-16T14:49:12Z`, the moment `git rebase` actually ran, as opposed to the author timestamps git rebase preserves from the original pre-rebase commits) and before every subsequent commit in the rebase round. The `reviews: 0` value was a stale carry-forward from the guard-fix round, before that review existed, never re-verified against a fresh `get_reviews` call during the rebase round. `unresolved_review_threads: 0` was and remains correct (`get_review_comments` `totalCount: 0` throughout — a review submission with no inline comment threads does not create an unresolved thread), and `pr_comments: 0` was correct for these three heads' own timestamps (the PR's first conversation comment, this session's own reply to the review, was posted afterward at `2026-07-16T15:03:19Z`). Only the top-level `reviews` submission count was wrong. `superseded_validated_content_heads` above records `11c83df` a third time with this correction as the reason; its diff totals remain accurate and are not disturbed by this fix.
+
+`23b37d377ec14591ea04569569786ae125ad0524` is now recorded as `validated_content_head`: all 27 triggered GitHub Actions check runs, spanning 16 distinct workflow runs (15 `pull_request`, 1 `push`), completed with 18 successes, 9 skips, and zero failures — identical counts to every prior head in this PR, as expected for a receipt-only correction that changes no code. Freshly re-verified at this head (not carried forward): 1 review (`4714901958`), 1 PR comment (this session's own reply, `4993422159`), 0 unresolved review threads. The PR-level diff at this head is 15 changed files, +732/-30, of which 14 files (+538/-28) are non-receipt content (unchanged throughout the entire rebase round, confirming no code or migrated-content file was touched by either the rebase or this accounting fix) and 1 file (this receipt, +194/-2) is the receipt-only accounting; both subtotals were independently recomputed via `git diff --numstat` against `origin/main`. `merged_commit` remains `pending`; this task does not merge the PR.
 
 ## Pending batches
 
