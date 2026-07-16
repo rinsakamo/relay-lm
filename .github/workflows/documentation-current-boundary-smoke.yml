@@ -64,6 +64,8 @@ jobs:
           set +e
           python scripts/relaylm_docs_semantic_audit.py 2>&1 | tee documentation-current-boundary.log
           semantic_status=${PIPESTATUS[0]}
+          python scripts/relaylm_docs_semantic_audit.py --self-test 2>&1 | tee -a documentation-current-boundary.log
+          semantic_self_test_status=${PIPESTATUS[0]}
           python scripts/relaylm_documentation_current_boundary_smoke.py 2>&1 | tee -a documentation-current-boundary.log
           boundary_status=${PIPESTATUS[0]}
           python scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py 2>&1 | tee -a documentation-current-boundary.log
@@ -76,7 +78,7 @@ jobs:
           audit_projection_contract_status=${PIPESTATUS[0]}
           python scripts/relaylm_audit_projection_exact_contract_smoke.py 2>&1 | tee -a documentation-current-boundary.log
           audit_projection_exact_contract_status=${PIPESTATUS[0]}
-          if [ "$semantic_status" -ne 0 ] || [ "$boundary_status" -ne 0 ] || [ "$relayctx_contract_status" -ne 0 ] || [ "$relayint_contract_status" -ne 0 ] || [ "$pipeline_node_result_contract_status" -ne 0 ] || [ "$audit_projection_contract_status" -ne 0 ] || [ "$audit_projection_exact_contract_status" -ne 0 ]; then
+          if [ "$semantic_status" -ne 0 ] || [ "$semantic_self_test_status" -ne 0 ] || [ "$boundary_status" -ne 0 ] || [ "$relayctx_contract_status" -ne 0 ] || [ "$relayint_contract_status" -ne 0 ] || [ "$pipeline_node_result_contract_status" -ne 0 ] || [ "$audit_projection_contract_status" -ne 0 ] || [ "$audit_projection_exact_contract_status" -ne 0 ]; then
             exit 1
           fi
       - name: Upload documentation boundary diagnostics

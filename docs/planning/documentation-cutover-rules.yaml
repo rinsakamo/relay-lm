@@ -94,7 +94,7 @@ path_overrides:
     requires_manual_section_map: true
   docs/mvp/README.md:
     disposition: absorbed
-    target_doc_type: evidence
+    target_doc_type: documentation_index
     target_paths:
       - docs/evidence/implementation/README.md
     deletion_reason: >-

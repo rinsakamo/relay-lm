@@ -2,8 +2,10 @@
 """Validate cross-document authority and semantic documentation invariants."""
 from __future__ import annotations
 
+import argparse
 import re
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -315,29 +317,209 @@ def check_completion_report_template(errors: list[str]) -> None:
         )
 
 
+MVP_REFERENCE_PATTERN = re.compile(r"docs/mvp(?:/|\b)")
+
+# Files whose *entire* content is historical/migration record-keeping by
+# construction, never live current navigation. Kept short and explicit
+# deliberately: this is not a place to hide a file merely because it is
+# inconvenient to line-allowlist.
+MVP_REFERENCE_ALLOWLISTED_FILES = frozenset(
+    {
+        "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
+        "docs/planning/documentation-cutover-rules.yaml",
+        "docs/planning/documentation-cutover-tooling.md",
+        # This guard's own implementation necessarily names the retired
+        # literal it detects; excluding it is the same self-reference every
+        # signature-based detector requires for its own signature database.
+        "scripts/relaylm_docs_semantic_audit.py",
+    }
+)
+
+# Statuses that mark a Markdown document's own body as a frozen/historical
+# point-in-time record rather than current navigation. A retired-path mention
+# inside such a document is historical by the document's own declared
+# metadata, not something that needs per-line enumeration.
+MVP_REFERENCE_HISTORICAL_STATUSES = frozenset({"frozen", "historical_after_merge", "historical"})
+
+# Exact, reviewed line-content substrings that are legitimate occurrences of
+# the retired docs/mvp/ literal inside otherwise-active/current files: guard
+# code naming the path it rejects, committed self-test fixtures, and the one
+# pinned historical-baseline workflow assertion. Any occurrence of the
+# pattern NOT covered by a whole-file allowlist entry above and NOT matching
+# one of these exact substrings fails closed.
+MVP_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
+    "docs/evidence/implementation/README.md": (
+        "no `docs/mvp/wave*/` path exists to route through",
+    ),
+    ".github/workflows/documentation-cutover-preparation.yml": (
+        '"docs/mvp/mvp10_summary.md=docs/mvp/README.md"',
+    ),
+    "scripts/relaylm_ci_consolidated_smoke_contract.py": (
+        'RETIRED_WAVE_REPORT_FAMILY = re.compile(r"^docs/mvp/wave\\d+/")',
+        '["docs/mvp/wave3/i4d_completion_report.md"],',
+        'fail(f"retired docs/mvp/wave<N>/ selector still present in {workflow}/{group}")',
+    ),
+    "scripts/relaylm_docs_cutover_prepare.py": (
+        '"relative_after_mvp": path.removeprefix("docs/mvp/"),',
+        'values = template_values("docs/mvp/wave9/example_completion_report.md")',
+    ),
+    "scripts/relaylm_docs_relative_link_inventory.py": (
+        '"docs/mvp/README.md", "mvp10_summary.md"',
+        ') == "docs/mvp/mvp10_summary.md"',
+        '"docs/mvp/README.md", "../architecture/example.md#section"',
+        '"docs/mvp/README.md", "https://example.com/x.md"',
+    ),
+    "scripts/relaylm_documentation_current_boundary_smoke.py": (
+        "docs/mvp/wave6/e1r2_completion_report.md",
+        '"retired docs/mvp/ tree reintroduced (retired by Cutover 1C-38)"',
+    ),
+    "scripts/relaylm_mvp_completion_report_smoke.py": (
+        'OLD_TEMPLATE_PATH = "docs/mvp/IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md"',
+        '"legacy docs/mvp/wave<N>/*_completion_report.md path(s) reintroduced "',
+        '"retired docs/mvp/ tree reintroduced (retired by Cutover 1C-38; canonical "',
+        'check("real repository: docs/mvp/ tree is absent", assert_no_mvp_tree)',
+        "A synthetic reintroduced docs/mvp/README.md is rejected.",
+        '"reintroduced docs/mvp/README.md is rejected",',
+        '"retired docs/mvp/ tree reintroduced",',
+        "A synthetic file anywhere below docs/mvp/ is rejected.",
+        '"reintroduced file anywhere below docs/mvp/ is rejected",',
+        "A clean synthetic tree with no docs/mvp/ directory at all is silent.",
+        'check("clean synthetic tree with no docs/mvp/ directory is silent", _no_mvp_dir_silent)',
+    ),
+}
+
+# Directories/suffixes making up the repository-wide active-reference scan
+# scope. README.md, README_ja.md, config.example.yaml, and pyproject.toml are
+# scanned individually below since they live at the repository root.
+MVP_REFERENCE_SCAN_DIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("docs", (".md",)),
+    ("scripts", (".py",)),
+    (".github/workflows", (".yml", ".yaml")),
+    ("relaylm", (".py",)),
+    ("tests", (".py",)),
+)
+MVP_REFERENCE_SCAN_ROOT_FILES = ("README.md", "README_ja.md", "config.example.yaml", "pyproject.toml")
+
+
+def _mvp_reference_scanned_files(root: Path) -> list[Path]:
+    files: list[Path] = []
+    for name in MVP_REFERENCE_SCAN_ROOT_FILES:
+        candidate = root / name
+        if candidate.is_file():
+            files.append(candidate)
+    for directory, suffixes in MVP_REFERENCE_SCAN_DIRS:
+        base = root / directory
+        if not base.is_dir():
+            continue
+        for suffix in suffixes:
+            files.extend(sorted(base.rglob(f"*{suffix}")))
+    return files
+
+
+def _mvp_reference_file_allowlisted(relative_path: str) -> bool:
+    if relative_path in MVP_REFERENCE_ALLOWLISTED_FILES:
+        return True
+    if relative_path.startswith("docs/evidence/") and relative_path.endswith("-source.txt"):
+        return True
+    if relative_path.startswith("docs/evidence/migrations/") and relative_path.endswith(".tsv"):
+        return True
+    return False
+
+
+def _mvp_reference_status_allowlisted(root: Path, relative_path: str) -> bool:
+    if not relative_path.endswith(".md"):
+        return False
+    try:
+        text = (root / relative_path).read_text(encoding="utf-8")
+        lines = text.splitlines()
+        if not lines or lines[0].strip() != "---":
+            return False
+        end = next(index for index, line in enumerate(lines[1:], 1) if line.strip() == "---")
+        metadata = yaml.safe_load("\n".join(lines[1:end]))
+    except (OSError, UnicodeError, StopIteration, yaml.YAMLError):
+        return False
+    if not isinstance(metadata, dict):
+        return False
+    return metadata.get("relaylm_status") in MVP_REFERENCE_HISTORICAL_STATUSES
+
+
 def check_no_live_mvp_tree(errors: list[str]) -> None:
-    if (ROOT / RETIRED_MVP_TREE).exists():
+    mvp_root = ROOT / RETIRED_MVP_TREE
+    if mvp_root.exists():
         offenders = sorted(
-            path.relative_to(ROOT).as_posix()
-            for path in (ROOT / RETIRED_MVP_TREE).rglob("*")
-            if path.is_file()
+            path.relative_to(ROOT).as_posix() for path in mvp_root.rglob("*") if path.is_file()
         )
         errors.append(
             f"{RETIRED_MVP_TREE}: retired transitional index tree reintroduced (retired by "
             f"Cutover 1C-38): {offenders or [RETIRED_MVP_TREE]}"
         )
 
-    scanned = (
-        "README.md",
-        "README_ja.md",
-        "docs/README.md",
-        "docs/evidence/implementation/README.md",
-        "docs/evidence/waves/README.md",
-    )
-    for relative_path in scanned:
-        text = read_text(relative_path)
-        if "](docs/mvp/" in text or "](mvp/README.md)" in text or "](mvp/README.md#" in text:
-            errors.append(f"{relative_path}: retains a live link into the retired docs/mvp/ tree")
+    for path in _mvp_reference_scanned_files(ROOT):
+        relative_path = path.relative_to(ROOT).as_posix()
+        if _mvp_reference_file_allowlisted(relative_path):
+            continue
+        if _mvp_reference_status_allowlisted(ROOT, relative_path):
+            continue
+        allowed_lines = MVP_REFERENCE_LINE_ALLOWLIST.get(relative_path, ())
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            if MVP_REFERENCE_PATTERN.search(line) is None:
+                continue
+            stripped = line.strip()
+            if any(allowed in stripped for allowed in allowed_lines):
+                continue
+            errors.append(
+                f"{relative_path}:{line_number}: active reference to retired docs/mvp/ tree: "
+                f"{stripped!r}"
+            )
+
+
+CUTOVER_RULES_PATH = "docs/planning/documentation-cutover-rules.yaml"
+
+
+def check_cutover_rule_target_types(errors: list[str]) -> None:
+    """Every `path_overrides` entry's declared `target_doc_type` must match the
+    actual `relaylm_doc_type` of its target file(s), whenever that target
+    exists in the live tree. This planning document also records overrides
+    for a proposed future architecture layout that has not been adopted, so
+    an override whose target does not yet exist is skipped rather than
+    treated as an error; only a real, existing destination can silently
+    drift out of sync with its recorded type.
+    """
+    rules_path = ROOT / CUTOVER_RULES_PATH
+    try:
+        rules = yaml.safe_load(rules_path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as exc:
+        errors.append(f"{CUTOVER_RULES_PATH}: could not parse: {exc}")
+        return
+    overrides = rules.get("path_overrides") if isinstance(rules, dict) else None
+    if not isinstance(overrides, dict):
+        errors.append(f"{CUTOVER_RULES_PATH}: missing or malformed path_overrides mapping")
+        return
+
+    for old_path, entry in overrides.items():
+        if not isinstance(entry, dict):
+            errors.append(f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}] is not a mapping")
+            continue
+        declared_type = entry.get("target_doc_type")
+        for target_path in entry.get("target_paths", []) or []:
+            target_file = ROOT / str(target_path)
+            if not target_file.is_file():
+                continue
+            try:
+                metadata, _ = parse_front_matter(str(target_path))
+            except AssertionError:
+                continue
+            actual_type = metadata.get("relaylm_doc_type")
+            if actual_type is not None and actual_type != declared_type:
+                errors.append(
+                    f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_doc_type "
+                    f"{declared_type!r} does not match {target_path}'s actual "
+                    f"relaylm_doc_type {actual_type!r}"
+                )
 
 
 def check_implementation_evidence_index(errors: list[str]) -> None:
@@ -395,7 +577,247 @@ def check_referenced_repository_paths(errors: list[str]) -> None:
                 errors.append(f"{relative_path}: referenced repository path does not exist: {clean}")
 
 
+def _mvp_write(base: Path, relative: str, content: str) -> None:
+    target = base / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(content, encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Self-test for the retired docs/mvp/ active-reference guard: bounded,
+# deterministic, committed. Builds synthetic temp trees and monkeypatches the
+# module-level ROOT rather than touching the real repository tree. Run with
+# `--self-test`; wired into the documentation-current-boundary-smoke workflow.
+# ---------------------------------------------------------------------------
+def self_test() -> None:
+    global ROOT
+    real_root = ROOT
+    results: list[tuple[str, bool, str]] = []
+
+    def check(name: str, fn) -> None:
+        try:
+            fn()
+            results.append((name, True, ""))
+        except AssertionError as exc:
+            results.append((name, False, str(exc)))
+
+    def check_rejects(name: str, fn, expected_substring: str) -> None:
+        errors: list[str] = []
+        fn(errors)
+        ok = any(expected_substring in error for error in errors)
+        results.append((name, ok, "" if ok else f"no matching error in: {errors!r}"))
+
+    def check_silent(name: str, fn) -> None:
+        errors: list[str] = []
+        fn(errors)
+        ok = not errors
+        results.append((name, ok, "" if ok else f"unexpected errors: {errors!r}"))
+
+    # 1. The real repository has zero active references to docs/mvp/.
+    with_real = []
+    check_no_live_mvp_tree(with_real)
+    results.append(("real repository: no active docs/mvp/ reference", not with_real, "" if not with_real else repr(with_real)))
+
+    # 2. A script reading docs/mvp/README.md is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, "scripts/example_bad_script.py", 'text = read_text("docs/mvp/README.md")\n')
+        check_rejects(
+            "a script reading docs/mvp/README.md is rejected",
+            check_no_live_mvp_tree,
+            "active reference to retired docs/mvp/ tree",
+        )
+    ROOT = real_root
+
+    # 3. A workflow path selector containing docs/mvp/** is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, ".github/workflows/example.yml", 'on:\n  push:\n    paths:\n      - "docs/mvp/**"\n')
+        check_rejects(
+            "a workflow docs/mvp/** path selector is rejected",
+            check_no_live_mvp_tree,
+            "active reference to retired docs/mvp/ tree",
+        )
+    ROOT = real_root
+
+    # 4. A current Markdown document linking into docs/mvp/ (inline markdown-link form) is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\nSee [old index](docs/mvp/README.md).\n",
+        )
+        check_rejects(
+            "a current Markdown link into docs/mvp/ is rejected",
+            check_no_live_mvp_tree,
+            "active reference to retired docs/mvp/ tree",
+        )
+    ROOT = real_root
+
+    # 5. A current document with an HTML link and a reference-style/autolink into docs/mvp/ is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_html.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            'See <a href="docs/mvp/README.md">the old index</a>.\n\n'
+            "[ref]: docs/mvp/README.md\n",
+        )
+        check_rejects(
+            "a current HTML/reference-style link into docs/mvp/ is rejected",
+            check_no_live_mvp_tree,
+            "active reference to retired docs/mvp/ tree",
+        )
+    ROOT = real_root
+
+    # 6. An unallowlisted plain old-path literal (no link markup at all) in a current file is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_plain.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            "Historical notes remain under docs/mvp/ for now.\n",
+        )
+        check_rejects(
+            "an unallowlisted plain docs/mvp/ literal in a current document is rejected",
+            check_no_live_mvp_tree,
+            "active reference to retired docs/mvp/ tree",
+        )
+    ROOT = real_root
+
+    # 7. The migration receipt's whole-file historical allowlist entry is recognized.
+    def _receipt_allowlisted() -> None:
+        assert _mvp_reference_file_allowlisted(
+            "docs/evidence/migrations/documentation-hard-cutover-receipt.md"
+        ), "migration receipt not allowlisted"
+
+    check("migration receipt historical literal is allowlisted", _receipt_allowlisted)
+
+    # 8. An exact -source.txt snapshot literal is allowlisted by filename pattern.
+    def _source_snapshot_allowlisted() -> None:
+        assert _mvp_reference_file_allowlisted(
+            "docs/evidence/implementation/example_completion_report-source.txt"
+        ), "-source.txt snapshot not allowlisted"
+
+    check("exact -source.txt snapshot literal is allowlisted", _source_snapshot_allowlisted)
+
+    # 9. The pinned historical-baseline workflow assertion in
+    # documentation-cutover-preparation.yml remains allowed (line-bounded, not whole-file).
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            ".github/workflows/documentation-cutover-preparation.yml",
+            "run: |\n"
+            "  python scripts/relaylm_docs_relative_link_inventory.py \\\n"
+            '    --assert-dependency "docs/mvp/mvp10_summary.md=docs/mvp/README.md" \\\n'
+            "    --strict\n",
+        )
+        check_silent(
+            "pinned historical-baseline workflow assertion remains allowed",
+            check_no_live_mvp_tree,
+        )
+    ROOT = real_root
+
+    # 10. A frozen/historical_after_merge evidence document's own retired-path
+    # mention is allowed by its declared front-matter status, without being
+    # individually line-allowlisted.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_completion_report.md",
+            "---\nrelaylm_doc_type: implementation_completion_report\nrelaylm_status: historical_after_merge\n---\n\n"
+            "At the time of this PR, docs/mvp/README.md indexed this report.\n",
+        )
+        check_silent(
+            "a frozen/historical_after_merge document's own retired-path mention is allowed",
+            check_no_live_mvp_tree,
+        )
+    ROOT = real_root
+
+    # 11. The same mention in a document declared `current` is NOT allowed by status alone.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_current_doc.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            "At the time of this PR, docs/mvp/README.md indexed this report.\n",
+        )
+        check_rejects(
+            "a current-status document's retired-path mention is not status-allowlisted",
+            check_no_live_mvp_tree,
+            "active reference to retired docs/mvp/ tree",
+        )
+    ROOT = real_root
+
+    # 12. The real repository's cutover-rules path_overrides target types all match
+    # their actual destination metadata.
+    check_silent(
+        "real repository: cutover-rules path_overrides target types match",
+        check_cutover_rule_target_types,
+    )
+
+    # 13. A path_overrides entry whose declared target_doc_type does not match its
+    # existing target file's real relaylm_doc_type is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/planning/documentation-cutover-rules.yaml",
+            "path_overrides:\n"
+            "  docs/example/old.md:\n"
+            "    disposition: absorbed\n"
+            "    target_doc_type: evidence\n"
+            "    target_paths:\n"
+            "      - docs/example/new.md\n",
+        )
+        _mvp_write(
+            base,
+            "docs/example/new.md",
+            "---\nrelaylm_doc_type: documentation_index\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "a path_overrides entry with a drifted target_doc_type is rejected",
+            check_cutover_rule_target_types,
+            "does not match",
+        )
+    ROOT = real_root
+
+    failed = [(name, message) for name, ok, message in results if not ok]
+    for name, ok, message in results:
+        status = "PASS" if ok else "FAIL"
+        suffix = f" ({message})" if message and not ok else ""
+        print(f"{status}: {name}{suffix}")
+
+    if failed:
+        print(f"\nSELF-TEST FAILED: {len(failed)}/{len(results)} assertions failed", file=sys.stderr)
+        raise SystemExit(1)
+    print(f"\nRelayLM docs semantic audit self-test passed: {len(results)} assertions")
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--self-test", action="store_true")
+    args = parser.parse_args()
+
+    if args.self_test:
+        self_test()
+        return 0
+
     errors: list[str] = []
     checks = (
         check_metadata,
@@ -405,6 +827,7 @@ def main() -> int:
         check_completion_report_template,
         check_implementation_evidence_index,
         check_no_live_mvp_tree,
+        check_cutover_rule_target_types,
         check_operations_docs,
         check_referenced_repository_paths,
     )

@@ -18,7 +18,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 
 This directory indexes manual smoke runbooks, recorded smoke results, troubleshooting guides, consolidated CI maintenance guidance, and local behavior evaluation documents.
 
-MVP-specific implementation notes remain under `docs/mvp/`. Executable smoke scripts remain under `scripts/`.
+Implementation evidence remains under `docs/evidence/implementation/`. Executable smoke scripts remain under `scripts/`.
 
 ## Consolidated CI maintenance
 
@@ -49,4 +49,4 @@ MVP-specific implementation notes remain under `docs/mvp/`. Executable smoke scr
 
 ## Placement rule
 
-Create cross-cutting manual smoke, result, troubleshooting, consolidated CI maintenance, and local evaluation docs directly under `docs/smoke/`. Keep MVP milestone notes under `docs/mvp/`, architecture docs under `docs/architecture/`, contract docs under `docs/contracts/`, offline tooling docs under `docs/tools/`, and evaluation templates or run records under `docs/evaluation/`.
+Create cross-cutting manual smoke, result, troubleshooting, consolidated CI maintenance, and local evaluation docs directly under `docs/smoke/`. Keep implementation evidence under `docs/evidence/implementation/`, architecture docs under `docs/architecture/`, contract docs under `docs/contracts/`, offline tooling docs under `docs/tools/`, and evaluation templates or run records under `docs/evaluation/`.

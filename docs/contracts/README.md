@@ -70,4 +70,4 @@ The `mvp-soul-0` five-file allowlist is current compatibility behavior, not the 
 
 ## Placement rule
 
-Create new contract, artifact, schema, approval, and gate docs directly under `docs/contracts/`. Keep MVP summaries under `docs/mvp/`, architecture documents under `docs/architecture/`, and smoke/manual runbooks under `docs/smoke/`.
+Create new contract, artifact, schema, approval, and gate docs directly under `docs/contracts/`. Keep implementation evidence under `docs/evidence/implementation/`, architecture documents under `docs/architecture/`, and smoke/manual runbooks under `docs/smoke/`.

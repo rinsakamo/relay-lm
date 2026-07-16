@@ -3147,8 +3147,10 @@ relaylm_directory_unchanged: true
 architecture_files_unmoved:
   - docs/architecture/project_execution_plan.md
   - docs/architecture/current_target_migration_guide.md
-changed_file_count: 19
-net_diff: 190 insertions, 260 deletions
+non_receipt_content_files: pending
+non_receipt_content_net_diff:
+  insertions: pending
+  deletions: pending
 compileall: passed
 documentation_link_check: passed
 documentation_semantic_audit: passed
@@ -3166,18 +3168,48 @@ git_diff_check: passed
 docs_mvp_absent: true
 c1c37_finalized_merged_commit: 3e88b182e5ecd55040cf74e0094978bb22c3e840
 scope_statement: this_batch_completes_only_the_active_docs_mvp_family_retirement_not_the_whole_documentation_hard_cutover
-validated_content_head: af8153d056b864e89578266984cd2da4d626f11b
-validated_content_head_triggered_check_runs: 45
-validated_content_head_triggered_workflow_runs: 16
-validated_content_head_all_github_actions: passed
-validated_content_head_note: every_relaymem_runtime_and_ui_consolidated_smoke_group_ran_for_real_rather_than_skipped_because_this_batch_touches_docs_evidence_implementation_readme_md_and_broad_docs_star_star_path_triggers_shared_with_those_workflows_not_a_selection_regression
-reviews: 0
-pr_comments: 0
-unresolved_review_threads: 0
-receipt_finalization: performed_after_validated_content_head
+prior_validated_content_head_superseded: af8153d056b864e89578266984cd2da4d626f11b
+prior_validated_content_head_superseded_reason: independent_review_found_the_check_no_live_mvp_tree_guard_insufficient_a_cutover_rule_target_doc_type_mismatch_a_diff_accounting_field_naming_gap_and_a_record_count_versus_single_record_prose_contradiction_all_fixed_by_this_correction_commit
+prior_validated_content_head_triggered_check_runs: 45
+prior_validated_content_head_triggered_workflow_runs: 16
+prior_validated_content_head_all_github_actions: passed
+validated_content_head: pending
+validated_content_head_actions:
+  workflow_runs_total: pending
+  workflow_runs_by_trigger:
+    pull_request: pending
+    push: pending
+    other: pending
+  job_or_check_runs_total: pending
+  success: pending
+  failure: 0
+  skipped: pending
+finalization_head: pending
+finalization_head_actions:
+  workflow_runs_total: pending
+  workflow_runs_by_trigger:
+    pull_request: pending
+    push: pending
+    other: pending
+  job_or_check_runs_total: pending
+  success: pending
+  failure: 0
+  skipped: pending
+validated_content_head_changed_files: pending
+validated_content_head_net_diff:
+  insertions: pending
+  deletions: pending
+final_pr_changed_files: pending
+final_pr_net_diff:
+  insertions: pending
+  deletions: pending
+reviews: pending
+pr_comments: pending
+unresolved_review_threads: pending
+receipt_finalization: pending
 ```
 
-This single-record batch retires the final transitional `docs/mvp/` navigation index. Independent recomputation of the exact current `docs/mvp/` tree inventory before any edit found **two** live files, not the one named in the task brief: `docs/mvp/README.md` (174 lines) and `docs/mvp/wave7/e1r3_durable_replay_residual_followup.md` (27 lines, under the `docs/mvp/wave7/` subdirectory). The second file was discovered only by independently enumerating the full tree (`find docs/mvp -type f`) rather than trusting the task brief's "expected remaining live source" framing; it had to be resolved to satisfy the "no live `docs/mvp/` directory at all" requirement and is recorded as its own record above.
+This single atomic batch retires two records from the final transitional `docs/mvp/` tree. Independent recomputation of the exact current `docs/mvp/` tree inventory before any edit found **two** live files, not the one named in the task brief: `docs/mvp/README.md` (174 lines) and `docs/mvp/wave7/e1r3_durable_replay_residual_followup.md` (27 lines, under the `docs/mvp/wave7/` subdirectory). The second file was discovered only by independently enumerating the full tree (`find docs/mvp -type f`) rather than trusting the task brief's "expected remaining live source" framing; it had to be resolved to satisfy the "no live `docs/mvp/` directory at all" requirement and is recorded as its own record above.
 
 Provenance recomputation for `docs/mvp/README.md` initially hit the same repository-history-squash/import boundary artifact seen in the C1C37 entry above: `git log --follow` against the (at that point still shallow) working clone resolved the addition to `bc7fbfb6c2332dd00fae35aebfeaf581312c14fd` ("docs: align current implementation authority (#545)"), which appeared to have no parent. Unlike prior batches, this one was independently cross-checked against the GitHub API before being trusted: `get_commit` for that exact SHA returned only 3 changed files (`docs/architecture/current_target_migration_guide.md`, `docs/contracts/README.md`, `docs/contracts/client_instruction_target_artifact_contract.md`, totaling 126 insertions/59 deletions) — no `docs/mvp/README.md` at all — flatly contradicting the shallow-clone diff. `git fetch --unshallow` resolved the contradiction: `bc7fbfb` genuinely has parent `167bc884223b5c6c4b1bb0e9c0086efcac80e814` (confirmed identical on GitHub, matching PR #545's own recorded base and 3-file diff exactly), and the true, independently-verified addition commit is `404bee53853acf74015ae721385e512f36fc3a23` ("docs: add MVP summary index", 2026-06-11T21:48:36+09:00) — over a month earlier than `bc7fbfb`. `get_commit` against `404bee5` on GitHub confirms an exact match with the local object (author and committer both `rinsakamo`, one file added, 68 insertions), and the author/committer identity (as opposed to a `web-flow`/`GitHub` committer) confirms a **direct push to `main`, not a pull request** — the advisory brief's implicit PR-based framing is not assumed; this is independently recomputed, not copied. `git log --follow` after unshallowing found 63 total commits touching this path from source to the confirmed C1C37 boundary (62 post-source modifications); the full chronological list, extracted with `git log --follow --format='%H|%ad|%s'`, is: `404bee5` (2026-06-11, add index) → `5d6cac5`, `22898ba`, `03b87db`, `b6cccb5`, `a13ede1`, `d5d613f`, `a3c0c55` (2026-06-11, seven same-day expansion/repoint commits) → `d74a5ed` (2026-06-12) → `a12be37` (#272, 2026-06-15) → `1bfdbe9` (2026-06-15) → `b09139f`, `394ea16` (#415), `815ded4`, `b936498`, `a8d6a3d`, `d0197ff`, `668d0e4` (2026-06-27, seven Wave-3/4/5 convergence commits) → `6a0a384`, `497ee31` (#435), `66899f5`, `f87e8b1`, `cc1417f`, `e3dd686` (PR #441, adds the residual-followup file above), `851af61` (2026-06-28–29, Wave-6/7/E1-R5 convergence and the residual fix) → `b19cc29`, `276656a`, `30d4d83`, `9b6c995` (#513), `66453cf` (#546), `982d119` (#556, Cutover 1B) (2026-07-04–11) → `4dc1519` (#562), `294d7a3`, `cfe55b5`, `f4a3206` (#565), `82ce2e7`, `92c8969` (#569), `81a6b00` (#570), `2d9fc3a` (#571), `4c0e7d6` (#572), `bd6effa` (#573), `c9e440c` (#574), `82d959e` (#575), `91c2108` (#576) (2026-07-11–12, Cutover 1C-5 through 1C-18) → `be3cf9f` (#581), `ca1a921`, `ff7f5ba`, `4cc36a9`, `c068a6a` (#585), `aa40f19` (#587), `ba991a1` (#588), `087631f` (#589), `34739fd` (#590), `4e37234` (#591) (2026-07-13, Cutover 1C-19 through 1C-28) → `aa6ccee`, `a7669fc` (#593), `37140d4` (#594), `c529435` (2026-07-14, Cutover 1C-29 through 1C-32) → `103bc03`, `d24408f` (#597), `5d60433` (#598) (2026-07-15, Cutover 1C-33 through 1C-35) → `037530a` (#600, 2026-07-16, Cutover 1C-36) → `3e88b18` (Cutover 1C-37, the confirmed pre-cutover boundary). No commit paired an earlier hash with a later blob: every hash above was walked in strict `git log --follow` chronological order against the unshallowed history, and the final entry's blob (`d7d32099606b05013666d5604d0da9a3f7390ab2`) matches the confirmed C1C37 boundary exactly.
 
@@ -3201,11 +3233,13 @@ No byte-exact `-source.txt` snapshot was created for either retired file, per th
 
 `docs/mvp/README.md` and `docs/mvp/wave7/e1r3_durable_replay_residual_followup.md` were deleted, and `git rm -r docs/mvp/` confirmed no other file remained under the directory. `test ! -e docs/mvp` passes on the final tree. An exhaustive `git grep -nE 'docs/mvp/README\.md|docs/mvp/wave|MVP summaries and milestone history|MVP概要とマイルストーン履歴'` across `README.md`, `README_ja.md`, `docs/`, `scripts/`, `.github/workflows/`, `relaylm/`, `tests/`, `config.example.yaml`, and `pyproject.toml` found zero occurrences in `relaylm/`, `tests/`, `config.example.yaml`, or `pyproject.toml`, and a further `git grep -nE '\]\(.*docs/mvp/'` restricted to actual markdown link syntax found zero live links anywhere outside this batch's own guard-code string literals; every remaining textual occurrence is inside a `-source.txt` exact snapshot, a frozen `implementation_completion_report`/`frozen`-status completion report's own historical "changed files" list, a frozen wave cross-slice convergence audit's own historical process narrative, this receipt, the deletion TSV, or the pinned-baseline cutover-preparation tooling described above — each independently confirmed non-live by inspection, not assumed.
 
-No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, `.gitkeep`, old-path manifest, or temporary finalizer workflow was added. No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/architecture/project_execution_plan.md` and `docs/architecture/current_target_migration_guide.md` were inspected per the task brief's explicit prohibition and confirmed unmoved and unedited. This batch changed 19 files with a net diff of 190 insertions and 260 deletions (2 files, 201 lines, deleted outright; 17 files modified, 190 insertions and 59 deletions).
+No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, `.gitkeep`, old-path manifest, or temporary finalizer workflow was added. No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/architecture/project_execution_plan.md` and `docs/architecture/current_target_migration_guide.md` were inspected per the task brief's explicit prohibition and confirmed unmoved and unedited. Exact recomputed changed-file and net-diff counts (full-head and non-receipt) are recorded in the `non_receipt_content_files`/`non_receipt_content_net_diff` fields above and in the `validated_content_head`/`final_pr` accounting in the closing paragraph below, recomputed fresh at each head rather than carried forward from an earlier draft.
 
 This batch completes only the active `docs/mvp/` family retirement — the C1C38 disposition above — and explicitly does not complete the whole documentation hard cutover: remaining implementation, wave, evaluation, and release evidence migration, architecture synthesis, exact contract reconstruction, and final invariant enforcement remain open in the sections below, unchanged by this batch. C1C37 is finalized above to merge commit `3e88b182e5ecd55040cf74e0094978bb22c3e840` (PR #602), confirmed an ancestor of the working `main` before this Cutover 1C-38 batch began.
 
-`cutover_pr` is `603` (`rinsakamo/relay-lm#603`). `af8153d056b864e89578266984cd2da4d626f11b` is the `validated_content_head` — the PR's only substantive content commit, pushed directly (no correction commits were required): all 45 triggered GitHub Actions check runs (job/check-run count), spanning 16 distinct workflow runs (workflow-run count), completed successfully with zero failures on the first push. Every RelayMEM/runtime/UI consolidated-smoke group ran for real rather than reporting `skipped`, because this batch's diff touches `docs/evidence/implementation/README.md` and other broad `docs/**` path triggers shared with those workflows — not a selection regression. Zero reviews, zero PR comments, and zero unresolved review threads were present at this head. Per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, this finalization is recorded in a further, separate commit after `af8153d056b864e89578266984cd2da4d626f11b`, which remains the exact validated content head and is not itself re-claimed as re-validated. This PR is not merged.
+`cutover_pr` is `603` (`rinsakamo/relay-lm#603`). `af8153d056b864e89578266984cd2da4d626f11b` was the prior `validated_content_head`: all 45 triggered GitHub Actions check runs (job/check-run count), spanning 16 distinct workflow runs (workflow-run count, not independently split by trigger class at that time), had completed successfully with zero failures. Independent review of that head found four defects, all corrected in this same entry by a further commit: (1) `check_no_live_mvp_tree()` in `scripts/relaylm_docs_semantic_audit.py` scanned only five router files and only a narrow `](docs/mvp/` markdown-link-syntax substring, insufficient to catch a script `read()`, a workflow `docs/mvp/**` path selector, an HTML/reference-style/autolink form, or a dormant dependency outside those five files — replaced with a bounded, deterministic, repository-wide active-reference scan (`README.md`, `README_ja.md`, `docs/**/*.md`, `scripts/**/*.py`, `.github/workflows/**/*.{yml,yaml}`, `relaylm/**/*.py`, `tests/**/*.py`, `config.example.yaml`, `pyproject.toml`) with an explicit whole-file allowlist for files whose entire content is historical/migration record-keeping by construction, a front-matter-status-driven allowlist for documents that declare themselves `frozen`/`historical_after_merge`/`historical`, and a line-bounded allowlist (exact reviewed substrings, not whole-file suppression) for the one pinned historical-baseline workflow assertion and the small number of guard-code/self-test occurrences inside the retirement's own implementation scripts; four genuinely stale live placement instructions this new scan surfaced (`docs/relaysoul/README.md`, `docs/smoke/README.md` twice, `docs/contracts/README.md`, `docs/architecture/e2_value_smoke_harness.md`) were corrected to point at `docs/evidence/implementation/` instead of being merely allowlisted; a new `--self-test` mode with 13 bounded, deterministic assertions (5 negative-path rejections, 4 positive-path allowances, 2 real-repository silences, 2 cutover-rule-target-type checks) was added and wired into `documentation-current-boundary-smoke.yml`. (2) `docs/planning/documentation-cutover-rules.yaml`'s `docs/mvp/README.md` override recorded `target_doc_type: evidence` while the actual destination (`docs/evidence/implementation/README.md`) declares `relaylm_doc_type: documentation_index`; corrected to `documentation_index`, and a new `check_cutover_rule_target_types()` check now fails closed if any `path_overrides` entry's declared type drifts from an existing target's real front matter (skipping overrides whose target does not yet exist, since this planning document also records an unadopted proposed future layout). (3) The receipt's `changed_file_count`/`net_diff` fields silently excluded the receipt's own diff without saying so, and the narrative said "single-record batch" while `record_count: 2` — corrected to explicit `non_receipt_content_*`, `validated_content_head_*`, and `final_pr_*` field triplets (recomputed fresh below, not copied from the superseded head), and the narrative now reads "single atomic batch retires two records." (4) Workflow-run counts were not split by GitHub Actions trigger class; the schema now records `workflow_runs_by_trigger` (`pull_request`/`push`/`other`) alongside the job/check-run total for both the new validated content head and the finalization head, verified rather than inferred.
+
+`validated_content_head` is now pending on the correction commit described above; per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, it will be recorded here once every required GitHub Actions run on that exact remote head completes, followed by a further, separate finalization-only commit recording the exact `final_pr_changed_files`/`final_pr_net_diff` totals, the finalization-head Actions split by trigger class, and the exact review/comment/unresolved-thread state. This PR is not merged.
 
 ## Pending batches
 
