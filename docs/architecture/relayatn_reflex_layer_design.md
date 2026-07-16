@@ -8,15 +8,25 @@ relaylm_update_trigger:
   - reflex-layer component naming or charter decisions
   - continuous-input / multi-user admission design decisions
   - RelayRUN pre-request boundary decisions
+  - RelayCTX-to-RelayATN content-free input boundary decisions
+  - evidence-admission boundary decisions that affect pre-request admission
   - O3 always-on operation scoping
 relaylm_not_authoritative_for:
   - current implementation status
+  - governed SourceEvent exact schema or ingress sequencing contract
+  - evidence admission, retention, consent, or source authority
+  - RelayCTX Session Evidence Overlay exact schema, catch-up state machine, or partition contract
+  - RelayCTX Reflex Snapshot exact schema
+  - scene-epoch identifier issuance or transition protocol
+  - persistent character-conditioned attention-policy compilation
   - RelayRUN checkpoint/recovery contract
   - RelayINT intra-turn intent ownership
   - RelaySCN scene classification ownership
+  - RelaySLP or RelayMEM formation, consolidation, retrieval, lifecycle, or strength semantics
   - v0.1 release scope and committed sequencing
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
+  - ../adr/relayatn_pre_request_authority_separation.md
   - relayrun_runtime_checkpoint_design.md
   - relayint_mvp_design.md
   - relayscn_mvp_scene_policy.md
@@ -28,217 +38,361 @@ relaylm_related_authority:
 ---
 # RelayATN Reflex Layer Design (Target)
 
-Last reviewed: 2026-07-09 JST
+Last reviewed: 2026-07-15 JST
 
 ## Status of this document
 
-This is a **target design boundary** for a component that does not exist. It authorizes no implementation, changes no current contracts, and defers all current-state claims to [Project Status](../PROJECT_STATUS.md). Implementation is explicitly sequenced after voice-out (SOUL Lab Runtime MVP); see [Project Execution Plan](project_execution_plan.md).
+This is a **target design boundary** for a component that does not exist. Its stable authority separation is fixed by [ADR: RelayATN pre-request authority separation](../adr/relayatn_pre_request_authority_separation.md). It authorizes no implementation, changes no current contracts, and defers current-state claims to [Project Status](../PROJECT_STATUS.md).
 
-`RelayATN` (Relay Attention) is a **provisional working name**. Registering it as canonical component vocabulary is a separate decision.
+Implementation is explicitly sequenced after voice-out (SOUL Lab Runtime MVP); see [Project Execution Plan](project_execution_plan.md). `RelayATN` (Relay Attention) remains a provisional working name.
+
+The open subjective-memory and RelayCTX Session Evidence Overlay (`CTX-OVL`) work is a design input, not accepted authority for this document. This document owns only RelayATN's stable side of the boundary:
+
+```text
+turn admission
+  != evidence admission
+  != RelayCTX provisional continuity
+  != durable memory formation
+```
+
+Exact governed-ingress, catch-up, CTX-OVL, multi-user partition, scene-epoch, and content-free CTX snapshot contracts belong to their owning future documents.
 
 ## Purpose
 
-RelayATN is a resident pre-request reflex layer for continuous-input environments (streaming chat, group voice, always-listening contexts). It decides **whether and on what to start a turn** before any RelayRUN request shell exists.
+RelayATN is a resident pre-request reflex layer for continuous-input environments such as streaming chat, group voice, and always-listening contexts. It decides **whether and on what to start a turn** before a RelayRUN request shell exists.
+
+RelayATN does not decide:
+
+- whether an observation becomes governed evidence;
+- whether governed evidence contributes to RelayCTX working state or CTX-OVL;
+- how provisional state affects durable Retrieval candidates;
+- how a scene is authoritatively classified;
+- what response mode an admitted turn uses;
+- whether evidence forms or changes durable MEM.
 
 ## Motivating limits of the current single-call architecture
 
-The current architecture is a single Main-LLM call per turn over a RelayCTX-compiled context, with the model's own structured self-report (working-state update) feeding the next turn's parameters. This is latency-optimal and should be preserved. It has two structural limits that continuous input exposes:
-
 ```text
-L1  Self-report staleness
-      Input-side judgment for turn N depends on the model's
-      self-assessment produced at turn N-1. In turn-based 1:1
-      conversation this one-turn lag is noise. Under continuous
-      input, "the situation changed since the last report" is
-      the steady state.
+L1  Session-state staleness
+      State compiled for the previous turn may become stale as new
+      inputs, held candidates, participant changes, or scope changes
+      arrive between Main-LLM calls.
 
 L2  Nobody watches between turns
-      A single-call design has judgment only while the Main LLM
-      is awake. Under continuous input, the decisions "should
-      anything wake at all" and "which input deserves a turn"
-      must exist outside the turn cycle.
+      Continuous input needs a bounded decision outside the normal turn:
+      should anything wake, and which candidate deserves the turn?
 ```
 
-## Dual-loop structure
+## Dual-loop and evidence structure
 
 ```text
 Reflex loop (RelayATN)              Deliberation loop (existing)
   resident, CPU-side                  turn-based, GPU-side
   content-light                       full pipeline + Main LLM
-  continuous cadence                  single-call per admitted turn
-  reject / hold / select only         full semantic authority
+  continuous cadence                  one call per admitted turn
+  reject / hold / select / flag       full semantic authority
 ```
 
-The reflex loop runs independently of the turn cycle. The deliberation loop is the existing canonical pipeline, unchanged, invoked only for inputs the reflex loop admits.
+The deliberation loop remains the existing canonical pipeline. Once a candidate is admitted, semantic interpretation, scene classification, context selection, safety, provisional continuity, memory, and response decisions remain inside their existing owners.
 
-RelayATN is not a shortcut around the deliberation loop. It may reduce how often the deliberation loop is invoked, but once an input is admitted, all semantic, safety, scene, memory, and response decisions remain inside the existing pipeline.
+Continuous ingress also has an independent governed-evidence path:
+
+```text
+observed input
+  ├─ evidence-admission path
+  │    -> consent / retention / source-authority decision
+  │    -> Protected Source Evidence when authorized
+  │
+  └─ RelayATN turn-admission path
+       -> reject / hold / select / flag
+       -> RelayRUN only when selected
+```
+
+Turn admission does not authorize, prohibit, create, rewrite, or delete governed evidence.
 
 ## Position relative to existing components
 
-### Why not inside RelayRUN (charter conflict)
+### RelayRUN
 
-The [RelayRUN Runtime Checkpoint Design](relayrun_runtime_checkpoint_design.md) contract states that RelayRUN owns orchestration, checkpoint, recovery, and idempotency state, and **must not make semantic decisions**. Attention scoring, interruption-value judgment, and wake decisions are semantic decisions. Additionally, the canonical flow begins at `User input -> RelayRUN request shell`: RelayRUN is per-request, while the reflex loop exists **before a request exists** — it decides whether to create one.
+[RelayRUN Runtime Checkpoint Design](relayrun_runtime_checkpoint_design.md) owns orchestration, checkpoint, recovery, and idempotency, and must not make semantic decisions. RelayATN operates before the request shell exists and is orchestrated by, not owned by, the runtime.
 
-Therefore RelayATN is a **new component**, orchestrated by (not owned by) the runtime. RelayRUN's charter is unchanged: once RelayATN admits an input as a turn, RelayRUN owns that turn's orchestration exactly as today. RelayRUN may additionally record content-free admission summaries (counts, decision classes) as run-shell metadata.
+Once RelayATN selects a candidate, RelayRUN owns the normal turn exactly as today. RelayRUN may record only content-free admission summaries.
 
-### Relationship to RelayINT
-
-RelayINT retains intra-turn ownership: intent, ambiguity, continue/confirm/stop **for an admitted input**. RelayATN owns pre-turn admission: whether an input becomes a turn at all, and which input when several compete. The boundary sentence:
+### RelayINT
 
 ```text
 RelayATN decides IF and ON WHAT a turn starts.
-RelayINT decides WHAT TO DO with the turn's input.
+RelayINT decides WHAT TO DO with the admitted turn input.
 ```
 
-RelayATN must not resolve references, classify intent, or select response modes.
+RelayATN must not perform full intent classification, resolve references, choose `observe_without_reply`, or select response modes. It receives no separate `silent_select` or memory-only-turn verb.
 
-### Relationship to RelaySCN
+### RelaySCN
 
-RelaySCN retains scene classification and scene-policy ownership. RelayATN may perform cheap **scene-change detection** (e.g. "a new participant joined") as a signal, which it forwards as a candidate trigger; the resulting scene classification and policy decision remain RelaySCN's, executed inside the admitted turn. Scene-change detection in RelayATN follows the fail-closed transition rule: detected escalation (private -> group) may emit a conservative `scene_escalation_detected` flag. The runtime may treat the next admitted turn as requiring RelaySCN re-evaluation before any relaxed scene policy is applied. RelayATN itself does not classify the scene or select the policy. Downgrade is never inferred by RelayATN.
+RelaySCN retains authoritative scene classification and scene-policy ownership. RelayATN may perform cheap scene-change detection and emit a content-free escalation signal.
 
-### Relationship to O3 and the bounded scheduler
+- RelayATN may flag possible escalation.
+- RelaySCN classifies the admitted scene.
+- RelayCTX applies the owning packing and disclosure fence.
+- RelayATN never infers a downgrade.
+- RelayATN never authorizes private-to-group disclosure or partition migration.
 
-The `O3 always-on local operation` lane in [Project Execution Plan](project_execution_plan.md) is the natural home for RelayATN's resident-process concerns (supervision, lifecycle). RelayATN's judgment charter is defined here; its process/operational model belongs to the O2/O3 decision when that lane opens. The O1D2 bounded scheduler pattern (bounded, preemptible background work) is the reference for GPU-yielding behavior: reflex-triggered deliberation must be able to preempt SLP/off-turn work.
+The owner that issues or rotates a scene-epoch identifier remains an open contract decision. Possible escalation must not relax policy before authoritative reclassification and packing fences complete.
 
-## RelayATN responsibilities
+### RelayCTX and CTX-OVL
+
+CTX-OVL is RelayCTX-owned current-session working state. RelayATN is outside its semantic interpretation and mutation path.
+
+RelayATN must never:
+
+- write, retract, collapse, acknowledge, evict, or mutate CTX-OVL;
+- decide which durable MEM candidate is boosted or shadowed;
+- consume raw semantic-sidecar or CTX-OVL candidate content;
+- repair or regenerate a semantic sidecar;
+- normalize temporal, participant, relationship, lifecycle, or scene facets.
+
+RelayATN may consume only bounded, content-free state conforming to a future RelayCTX-owned contract. It may expose admission-relevant classes, counts, revision/freshness state, and conservative scope-change signals. It must not expose raw user content, provisional interpretation, private REL content, durable MEM identities, evidence confidence, salience, or reversible identifiers.
+
+Turn-rejected governed evidence may affect a later admitted turn only through a future RelayCTX-owned catch-up contract. That contract must preserve the normal interpretation path and must not hydrate rejected raw text directly into CTX-OVL as authoritative semantic state:
+
+```text
+governed recent evidence
+  -> bounded coverage and identity / consent / scene fences
+  -> bounded unassessed evidence selection
+  -> normal REL / SCN / EMO / INT / MEM / CTX pipeline
+  -> validated sidecar or deterministic owning operation
+  -> optional CTX-OVL update
+```
+
+Exact cursors, sequence fields, gap handling, truncation, replay, and idempotency belong to ingress and RelayCTX contracts. RelayATN neither performs catch-up nor advances coverage.
+
+### Evidence admission, RelaySLP, and RelayMEM
+
+Evidence admission owns consent, retention, source authority, source identity, speaker, timing, and correction origin.
+
+RelaySLP and RelayMEM own Shared Assessment, subjective formation, existing-MEM relation decisions, evidence confidence, lifecycle, canonical identity, persistence, and durable Retrieval authority.
+
+RelayATN scores and flags can never become evidence confidence, MEM salience, subjective conviction, CTX-OVL interpretation, or durable relation authority.
+
+### O3 and the bounded scheduler
+
+The O3 always-on lane in [Project Execution Plan](project_execution_plan.md) is the natural home for RelayATN supervision and lifecycle. Admitted user turns must be able to preempt SLP or other off-turn work. RelayATN never runs on the Main-LLM GPU.
+
+## Responsibilities
 
 RelayATN may own:
 
-- attention scoring over continuous input (which comment/utterance candidates matter),
-- wake decision (whether to invoke the deliberation loop at all),
-- interruption-value judgment (whether an input justifies interrupting in-progress speech; RelayATN may only emit an interruption candidate or flag, while interruption *execution* remains RelayRUN/runtime-adapter territory),
-- input aggregation (e.g. collapsing "five viewers asked the same question" into one turn candidate),
-- coarse, transient affect/urgency estimation as an admission signal (not as RelayEMO's expression input),
-- scene-change **detection** signals (not classification),
-- **self-report freshness check**: cheaply judging whether the previous turn's structured self-report still holds given inputs seen since, and flagging divergence for input-side correction — closing limit L1 without additional Main-LLM calls.
+- attention scoring over continuous input;
+- wake decision;
+- interruption-value judgment as an advisory candidate or flag;
+- bounded input aggregation for one response candidate;
+- coarse, transient urgency or affect estimation used only for admission;
+- scene-change detection signals, not classification;
+- content-free session-state freshness detection;
+- bounded backpressure, rate-limited hold, and overload admission behavior under an owning policy contract.
 
-## Authority constraints (fail-closed)
+## Authority constraints
 
 RelayATN's permitted verbs are exactly:
 
 ```text
-reject   drop an input candidate
-hold     defer an input candidate
-select   admit an input candidate as a turn
-flag     attach content-free signals (staleness, scene-change,
-         aggregation grouping) to an admitted turn
+reject   do not start a turn for the candidate
+hold     defer the candidate using bounded transient references
+select   admit the candidate as a normal turn
+flag     attach content-free advisory signals
 ```
 
-RelayATN flags are advisory and content-free. A RelayATN flag may cause downstream components to re-check their own inputs or choose a more conservative default, but it never overrides RelaySCN, RelayINT, RelayMEM disclosure, RelayEMO expression, or safety decisions.
+RelayATN flags may cause downstream owners to re-check their own inputs or choose conservative defaults. They never override RelaySCN, RelayINT, RelayCTX, RelaySLP, RelayMEM, RelayEMO, disclosure, or safety decisions.
 
 RelayATN must not:
 
-- authorize disclosure of any memory, at any tier, ever,
-- mutate MEM / SOUL / REL / SCN state or emit persistence candidates,
-- generate user-visible text,
-- bypass, reorder, or pre-empt any safety gate in the deliberation loop,
-- treat its own scores as scene policy, disclosure policy, or expression policy,
-- stop audio, cancel generation, truncate visible output, or commit any interruption side effect.
+- authorize disclosure of memory;
+- own evidence admission or delete governed evidence;
+- mutate MEM, SOUL, REL, SCN, RelayCTX working state, or CTX-OVL;
+- emit persistence candidates or durable relation decisions;
+- generate user-visible text;
+- bypass, reorder, or pre-empt a safety gate;
+- perform interruption side effects such as stopping audio or cancelling generation;
+- learn or mutate persistent attention policy from sidecars, CTX-OVL, current EMO, or its own scores.
 
-Error asymmetry is the design principle: a wrong `reject`/`hold` degrades experience (a missed reply); RelayATN structurally cannot make the accident-class error (wrong disclosure), because it holds no disclosure verbs. Cheap models are allowed to be wrong only in the direction that fails closed.
+A character-conditioned persistent attention profile is a separate proposal or architecture decision and is not adopted here.
+
+## Decision semantics and continuity classes
+
+### `select`
+
+Creates a normal RelayRUN request shell. All later context, scene, sidecar, CTX-OVL, memory, and response behavior remains owned by the admitted-turn pipeline.
+
+### `hold`
+
+Retains bounded opaque references and content-free scheduling metadata. It must not create a second durable raw-input store. The exact SourceEvent reference envelope belongs to the ingress contract.
+
+### `reject`
+
+Means only that RelayATN does not start a turn. It does not change evidence admission, retention, later RelayCTX processing eligibility, or RelaySLP processing.
+
+### Hard non-reject classes
+
+The following require a trusted owning signal and are not eligible for ordinary reject:
+
+- authenticated control signals;
+- trusted direct-address metadata;
+- explicit continuation of an active transaction or protocol state.
+
+They remain subject to safety shutdown, invalid scope, and system-wide overload policy owned outside RelayATN.
+
+### Soft non-reject candidates
+
+The following classifier detections are important but not authoritative:
+
+- possible correction or retraction;
+- urgency estimate;
+- possible current-state change;
+- possible direct address inferred only from content;
+- possible scene escalation.
+
+They are not forced to `select`. The owning policy may use rate-limited `hold`, aggregation, prioritization, or explicit backpressure. They must not cause unbounded wake amplification in multi-user scenes.
+
+## Input aggregation boundary
+
+RelayATN aggregation exists only to reduce redundant wake-ups and construct one bounded response candidate. It is not evidence consolidation, CTX-OVL reconciliation, or MEM consolidation.
+
+Aggregation must preserve or reference enough source identity for downstream owners to reconstruct distinctions. At minimum it preserves:
+
+- member SourceEvent references;
+- speaker identity when known;
+- event order;
+- trusted address-target metadata when available.
+
+RelayATN may emit a content-free disagreement-present flag. It must not authoritatively normalize polarity, modality, temporal validity, relationship scope, scene scope, or evidence independence.
+
+Aggregation must not rewrite Protected Source Evidence, reconcile CTX-OVL, declare independent corroboration, decide semantic-MEM identity, emit a durable relation, or reuse a response-grouping threshold as a memory-consolidation threshold.
 
 ## Implementation tiers
 
-The reflex loop is a three-tier cascade; most traffic should terminate in the first two tiers. The latency figures below are target-order guidance, not contractual guarantees:
-
 ```text
-Tier 1  heuristics / regex / rate rules            (~µs, deterministic)
-Tier 2  embedding model + light classifier         (CPU, ~ms–tens of ms)
-Tier 3  small LLM fallback (0.5–2B Q4, CPU)        (ambiguous cases only)
+Tier 1  heuristics / regex / rate rules            deterministic
+Tier 2  embedding model + light classifier         CPU
+Tier 3  small LLM fallback                         rare ambiguous cases
 ```
 
-Tier 3 inputs must be short (single candidate + minimal state) because CPU-side small-LLM prefill is the dominant cost. A generative model is expected to be *rarely* necessary; attention scoring and change detection are primarily embedding/classifier problems. Tier placement per job is an implementation decision, not contract.
+Tier 3 inputs and outputs remain bounded. Tier 3 may output only RelayATN verbs and flags. It may not repair sidecars, create CTX-OVL candidates, resolve identity from durable memory, normalize semantic facets, or choose durable-MEM boosts, shadows, or relations.
 
-GPU contention rule: RelayATN never runs on the Main-LLM GPU. Its entire value proposition is judgment that does not serialize behind (or steal prefill from) the deliberation loop.
+## Session-state freshness
 
-## Self-report interaction
+The Main-LLM structured self-report remains owned by the Main LLM and RelayCTX Unpack. RelayATN never writes it.
 
-The existing structured self-report remains owned by the Main LLM / RelayCTX Unpack path. RelayATN interacts with it in two bounded ways:
+RelayATN may perform a read-only freshness check using only content-free state exposed by owners, such as revision comparisons, bounded counts, coverage completeness, and conservative scene-change status.
 
-1. **Freshness check** (above): read-only comparison of the last report against subsequent observed input; divergence produces a content-free `stale_report` flag consumed by input-side nodes of the next admitted turn.
-2. **Thinning pressure**: state that becomes observable by the reflex layer (e.g. who was addressed, collective activity level) should migrate *out* of the self-report over time. The self-report trends toward "internal state only the Main LLM can know," keeping its decode cost from growing with multi-user scale. This document only records the architectural pressure; any actual migration out of the self-report requires a separate RelayCTX / self-report schema decision.
+The exact snapshot and catch-up cursor are future contracts. RelayATN may emit only stale, unknown, or advisory flags. It must not infer missing semantic content, repair CTX state, or block a turn solely because freshness information is unavailable.
 
-RelayATN never writes to the self-report.
+Missing, invalid, or incomplete freshness input resolves to `unknown`, not a false claim of freshness.
 
 ## Content boundary
 
-RelayATN observes raw incoming input (it must, to score it), but its **outputs** are content-free: decision classes, scores, candidate IDs, flags. Admission decisions, traces, and diagnostics carry no input bodies, consistent with the content-free trace principle. Retained reflex-loop state is bounded and transient; RelayATN is not a memory store and its buffers are not MEM/SLP evidence.
+RelayATN observes raw incoming input because it must score candidates. Its outputs remain decision classes, scores, opaque transient references, and content-free flags.
 
-Raw input buffers used by RelayATN are transient, bounded, and non-durable. They must not be written to persistent traces, diagnostics, queue records, or MEM/SLP evidence. Candidate IDs must not be reversible encodings of the input body.
+Default traces and diagnostics must not contain input bodies, sidecar or CTX-OVL bodies, private REL content, raw scoped identifiers, source-lineage fingerprints, or reversible content encodings.
+
+Retained reflex state is bounded, transient, and non-durable. RelayATN is not a memory store, evidence store, or CTX-OVL replica. Loss of RelayATN state must not delete evidence owned elsewhere.
 
 ## Failure behavior
 
-- RelayATN process failure must not break turn-based operation: the runtime falls back to "every input is admitted" degraded mode only in trusted 1:1 scenes, and to "no admission" (fail-closed) in `broadcast`-class scenes. The trusted 1:1 fallback is allowed only when the current scene classification was established by RelaySCN before the RelayATN failure and the input channel is not multi-source. Unknown, stale, or multi-source scenes fail closed.
+- RelayATN failure must not break ordinary turn-based operation.
+- Every-input-admitted fallback is allowed only when RelaySCN established a trusted 1:1 scene before failure and the channel is not multi-source.
+- Unknown, stale, broadcast-class, or multi-source scenes fail closed to no admission.
+- Failure must not authorize, prohibit, erase, or rewrite evidence capture.
+- Failure must not mutate or clear RelayCTX working state or CTX-OVL.
 - Tier 3 timeout resolves as `hold`, never `select`.
-- Freshness-check failure resolves as `stale_report` unset (the deliberation loop trusts its own input-side nodes), never as blocking a turn.
+- Freshness-input failure resolves to `unknown`; it does not block a turn or authorize downgrade.
+- Aggregation failure resolves to separate candidates or bounded `hold`; member references are not silently dropped.
+- Hold-state loss may lose scheduling state but not governed evidence.
+- Missing participant identity cannot be repaired from durable memory by RelayATN.
+- Possible private-to-group escalation tightens caution until RelaySCN and RelayCTX complete their owning work.
+- RelayCTX catch-up failure is not repaired by RelayATN.
+
+## Validation requirements
+
+Measure direct-address and control-signal misses, unnecessary wakes, soft-candidate backpressure, false aggregation, hold expiry, escalation recall, freshness accuracy, CPU p50/p95, resident RAM, GPU interference, and trace leakage.
+
+The structural target is zero for:
+
+```text
+Protected Source Evidence lost because RelayATN rejected a turn
+RelayATN mutation of RelayCTX working state or CTX-OVL
+Raw sidecar or CTX-OVL candidate content exposed to RelayATN
+RelayATN selection of a durable-MEM boost or shadow target
+Tier 3 repair or regeneration of a semantic sidecar
+Authenticated hard non-reject signal treated as ordinary reject
+Aggregation member SourceEvent reference silently dropped
+RelayATN declaration of evidence independence
+RelayATN durable relation or consolidation decision
+RelayATN score directly updating CTX-OVL interpretation or MEM strength
+Unknown-participant input shadowing participant- or REL-scoped durable MEM
+Private context packed group-visible before owning fences
+```
+
+Exact gap, cursor, replay, partition, and scene-epoch validation belongs to later owning contract PRs.
 
 ## Non-goals
 
-RelayATN does not:
+RelayATN does not own multi-user policy content, SourceEvent schema, evidence admission, CTX-OVL schema, catch-up state machine, partition model, scene-epoch issuance, semantic-sidecar validation, temporal normalization, Shared Assessment, memory formation, consolidation, Retrieval, persistent attention policy, ASR, audio capture, speech execution, disclosure matrices, or REL scaling.
 
-- implement the multi-user Attention/Selection *policy content* (per-scene admission policy belongs with scene design),
-- own ASR, audio capture, or full-duplex speech execution,
-- own broadcast scene classes, disclosure matrices, or REL scaling,
-- replace RelayINT, RelaySCN, or RelayRUN responsibilities,
-- exist in v0.1 scope or in any currently committed lane.
+It does not replace RelayINT, RelayCTX, RelaySCN, RelaySLP, RelayMEM, or RelayRUN and is not in v0.1 scope or a currently committed lane.
 
 ## Implementation-plan placement
 
-RelayATN should enter the project execution plan only as a **post-v0.1 / post-voice-out candidate lane**, not as committed v0.1 scope. The first execution-plan change should be planning-only: list the component as a gated future lane under the O3 always-on operation track, with this document as its target-boundary reference and with no implementation tasks enabled until the preconditions below are satisfied.
-
-Recommended sequencing in the implementation plan:
+RelayATN may enter the execution plan only as a **post-v0.1 / post-voice-out candidate lane** under O3. The first change is planning-only and authorizes no runtime work.
 
 ```text
-ATN-0  Planning registration only
-       - register RelayATN as provisional vocabulary or decide to fold it elsewhere
-       - link this target-boundary document from the O3 / post-v0.1 section
-       - state explicitly that no runtime behavior changes are authorized
-
-ATN-1  Measurement prerequisites
-       - complete voice-out / SOUL Lab Runtime MVP
-       - collect first-audio and per-node latency baselines via content-free trace
-       - document single-primary-user vs multi-input assumptions
-
-ATN-2  Contract-only slice
-       - define content-free admission record schema
-       - define failure fallback modes and trusted 1:1 preconditions
-       - define advisory flag consumption rules for RelaySCN / RelayINT / RelayCTX
-
-ATN-3  Disabled implementation skeleton
-       - resident-process lifecycle behind a disabled-by-default feature flag
-       - deterministic Tier 1 only, no model dependency
-       - no persisted raw input and no user-visible behavior change
-
-ATN-4  Experimental admission path
-       - trusted local/dev scenes only
-       - content-free traces only
-       - compare every-input-admitted baseline vs reject/hold/select outcomes
-
-ATN-5  Tier 2 / Tier 3 experiments
-       - CPU-only classifier / small-LLM fallback behind explicit opt-in
-       - benchmark latency and false-hold / false-reject behavior before any default enablement
+ATN-0  planning registration only
+ATN-1  voice-out and latency measurement prerequisites
+ATN-2  contract-only admission and failure boundaries
+ATN-3  disabled deterministic Tier-1 skeleton
+ATN-4  trusted local/dev experimental admission
+ATN-5  opt-in CPU classifier / small-LLM experiments
 ```
 
-The execution plan should avoid scheduling RelayATN before voice-out because RelayATN's value depends on continuous input, interruption timing, and first-audio latency measurements. Before those exist, implementation would mostly create resident-process scaffolding without measurable user value.
+Exact catch-up, content-free CTX snapshot, multi-user CTX-OVL partition, scene-epoch, and persistent attention-policy contracts are separate follow-up PRs.
 
 ## Preconditions before implementation
 
 ```text
 P1  voice-out (SOUL Lab Runtime MVP) functional
-P2  latency baseline measured (per-node, first-audio distribution) via content-free trace
+P2  latency baseline measured through content-free per-node and first-audio trace
 P3  component name registered in canonical vocabulary
-    (or an explicit decision to fold the charter elsewhere)
-P4  single-primary-user assumption documented in contracts (hedge H1),
-    since RelayATN is the first component whose reason to exist is multi-input
+    or an explicit decision made to fold the charter elsewhere
+P4  single-primary-user assumption documented in current contracts
 P5  execution plan lists RelayATN only as a gated post-v0.1 / O3 candidate
     before any implementation PR is cut
+P6  turn admission and evidence admission are contractually separated
+P7  RelayATN receives only future contract-defined content-free CTX state
+P8  RelayCTX-owned catch-up preserves the normal interpretation pipeline
+    and defines bounded gap and replay behavior
+P9  multi-user identity, room, scene, quarantine, and packing fences exist
+P10 hard/soft continuity classes, rate limits, aggregation, backpressure,
+    and overload behavior are defined
+P11 failure fallback retains strict trusted-1:1 prerequisites
+P12 cross-boundary invariants are covered by machine-readable tests
 ```
 
 ## Design decision record
 
-Four placements were considered for the reflex charter:
+Four placements were considered:
 
-1. **Amend RelayRUN's charter** to own pre-request admission — rejected: violates RelayRUN's "no semantic decisions" principle and bloats the orchestration layer into a judgment layer.
-2. **New component (RelayATN)** — adopted: preserves existing charters, expresses the reject/hold/select/flag authority constraint as a component boundary, and gives the O3 lane a concrete tenant.
-3. **Extend RelayINT** to pre-turn — rejected: closest existing charter, but RelayINT is implemented as an in-turn node; residency would be a structural rewrite, and admission-vs-intent is a cleaner seam than a stretched INT.
-4. **Extend RelaySCN** to own admission — rejected: scene classification and scene policy are not the same as continuous pre-request attention selection; merging them would make scene policy depend on resident input buffering and wake mechanics.
+1. **Amend RelayRUN** — rejected because it violates RelayRUN's no-semantic-decisions principle.
+2. **New component, RelayATN** — adopted because it preserves existing charters and expresses the narrow verb boundary.
+3. **Extend RelayINT to pre-turn** — rejected because RelayINT is an in-turn node and admission versus intent is the cleaner seam.
+4. **Extend RelaySCN to own admission** — rejected because scene classification and policy are not continuous attention selection.
+
+CTX-OVL and subjective-memory work do not change this placement decision:
+
+```text
+RelayATN  owns pre-request turn admission only.
+RelayCTX  owns current-session context and CTX-OVL.
+RelaySCN  owns authoritative scene classification and policy.
+RelaySLP  owns deferred assessment and subjective formation.
+RelayMEM  owns durable governed memory authority.
+```
+
+Turn admission, evidence admission, provisional continuity, and durable reflection have different error costs and remain separate authorities.
