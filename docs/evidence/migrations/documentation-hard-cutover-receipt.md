@@ -3515,12 +3515,18 @@ prior_receipt_only_tail_superseded:
   - 48e460f603efa1a12e5ee71ccb72441babf95ce9
   - 7541954efbb4ec6fb325755aa55bdc32dd94ff32
 prior_receipt_only_tail_superseded_reason: recorded_actions_and_diff_accounting_for_the_now_superseded_validated_content_head_a_new_receipt_only_tail_follows_the_new_substantive_correction_head_below_once_its_own_github_actions_complete
-validated_content_head: pending
-validated_content_head_actions: pending
-validated_content_head_changed_files: pending
-validated_content_head_net_diff: pending
-non_receipt_content_files: pending
-non_receipt_content_net_diff: pending
+validated_content_head: d81cf6de069db1510746bf9d9ca7ed95c6864a2e
+validated_content_head_actions:
+  workflow_runs_total: 16
+  workflow_runs_by_trigger: {pull_request: 15, push: 1, other: 0}
+  job_or_check_runs_total: 27
+  success: 18
+  failure: 0
+  skipped: 9
+validated_content_head_changed_files: 15
+validated_content_head_net_diff: {insertions: 691, deletions: 30}
+non_receipt_content_files: 14
+non_receipt_content_net_diff: {insertions: 538, deletions: 28}
 final_pr_changed_files: pending
 final_pr_net_diff: pending
 reviews: 0
@@ -3551,7 +3557,9 @@ Fourteen deterministic `--self-test` assertions now cover this guard (up from si
 
 No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/mvp/` and the retired LAT-1 scaffold path both remain fully absent and untouched by this batch; this batch's own retired-path guard is new and independent of both prior guards. No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, `.gitkeep`, or old-path manifest was added. No open PR's content was imported, rebased, or partially copied; the `mobile_dogfood_*` family (independently reviewed and excluded above) and every other listed open-PR-governed file were left untouched.
 
-`cutover_pr` is `605` (`rinsakamo/relay-lm#605`). `8c990082afd62f7da74bb9b36ab19ee1c1e49ac9` was the prior `validated_content_head`: all 27 triggered GitHub Actions check runs (job/check-run count), spanning 16 distinct workflow runs (workflow-run count: 15 `pull_request`, 1 `push` from `phase-i4-forget-hide-contract-smoke.yml`), had completed successfully with zero failures, and its receipt-only tail (`48e460f603efa1a12e5ee71ccb72441babf95ce9`, then `7541954efbb4ec6fb325755aa55bdc32dd94ff32`) had recorded that head's Actions and diff totals (15 changed files, +383/-30 final). Independent review of that head found the relative-reference fail-open defect in `check_no_live_e1_local_runtime_architecture_path()` described above, corrected in this same entry by a further substantive commit that changes only `scripts/relaylm_docs_semantic_audit.py`; the underlying E1 evidence migration, its provenance, and every live path update recorded above are unchanged by this correction. `merged_commit` remains `pending`; this task does not merge the PR.
+`cutover_pr` is `605` (`rinsakamo/relay-lm#605`). `8c990082afd62f7da74bb9b36ab19ee1c1e49ac9` was the prior `validated_content_head`: all 27 triggered GitHub Actions check runs (job/check-run count), spanning 16 distinct workflow runs (workflow-run count: 15 `pull_request`, 1 `push` from `phase-i4-forget-hide-contract-smoke.yml`), had completed successfully with zero failures, and its receipt-only tail (`48e460f603efa1a12e5ee71ccb72441babf95ce9`, then `7541954efbb4ec6fb325755aa55bdc32dd94ff32`) had recorded that head's Actions and diff totals (15 changed files, +383/-30 final). Independent review of that head found the relative-reference fail-open defect in `check_no_live_e1_local_runtime_architecture_path()` described above, corrected in this same entry by a further substantive commit that changes only `scripts/relaylm_docs_semantic_audit.py`; the underlying E1 evidence migration, its provenance, and every live path update recorded above are unchanged by this correction.
+
+`d81cf6de069db1510746bf9d9ca7ed95c6864a2e` is now recorded as `validated_content_head`: all 27 triggered GitHub Actions check runs, spanning 16 distinct workflow runs (15 `pull_request`, 1 `push`), completed with 18 successes, 9 skips (the same runtime-path-gated jobs correctly skipping for this documentation-only diff), and zero failures. There are 0 reviews, 0 PR comments, and 0 unresolved review threads on the PR at this head. The PR-level diff at this head is 15 changed files, +691/-30, of which 14 files (+538/-28) are non-receipt content — `scripts/relaylm_docs_semantic_audit.py` alone accounts for 482 of those insertions, since the corrected guard, its resolver helper, and its 14 self-test assertions replace and extend the prior 6-assertion implementation — and 1 file (this receipt, +153/-2) is the receipt-only accounting; both subtotals were independently recomputed via `git diff --numstat` against the merge-base with `main` and sum exactly to the head total. `merged_commit` remains `pending`; this task does not merge the PR.
 
 ## Pending batches
 
