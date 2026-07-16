@@ -3405,7 +3405,7 @@ No file under `relaylm/` changed, and no runtime, configuration, schema, schedul
 ### C1C40-001 — E1 local runtime evaluation record migration
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 605
 merged_commit: pending
 record_count: 1
 cutover_recorded_on: 2026-07-16
@@ -3534,7 +3534,7 @@ A new fail-closed guard, `check_no_live_e1_local_runtime_architecture_path()` in
 
 No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/mvp/` and the retired LAT-1 scaffold path both remain fully absent and untouched by this batch; this batch's own retired-path guard is new and independent of both prior guards. No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, `.gitkeep`, or old-path manifest was added. No open PR's content was imported, rebased, or partially copied; the `mobile_dogfood_*` family (independently reviewed and excluded above) and every other listed open-PR-governed file were left untouched.
 
-`cutover_pr`, `validated_content_head`, `final_pr_changed_files`, `final_pr_net_diff`, `reviews`, `pr_comments`, `unresolved_review_threads`, and `merged_commit` remain `pending` above pending PR creation, GitHub Actions confirmation on the exact validated head, and the receipt-only bookkeeping/finalization commits that follow, per the established content-head procedure. This task does not merge the PR.
+`cutover_pr` is `605` (`rinsakamo/relay-lm#605`). `validated_content_head`, `final_pr_changed_files`, `final_pr_net_diff`, `reviews`, `pr_comments`, `unresolved_review_threads`, and `merged_commit` remain `pending` above pending GitHub Actions confirmation on the exact validated head and the receipt-only bookkeeping/finalization commits that follow, per the established content-head procedure. This task does not merge the PR.
 
 ## Pending batches
 
