@@ -32,6 +32,12 @@ The file-first workspace target supersedes the older three-file persona target. 
 
 The target migration must update patch, revision, approval, apply, rollback, storage, examples, and smoke tests atomically. A file-first target statement does not change the current `mvp-soul-0` wire contract by itself.
 
+## Showcase character sources and related policy
+
+- [ReLM File-first Source Set Draft](relm_file_first_source_set_draft.md) — portable ReLM-authored source candidate; not private maker-side intent and not the default public starter.
+- [Showcase, Public Starter, and Product Knowledge Ownership](../architecture/character-workspace/showcase-starter-product-knowledge.md) — target ownership split between developer showcase characters, the unnamed public starter, user-authored characters, and versioned RelayLM product-help knowledge.
+- [Rin / ReLM Character Vision](../strategy/rin-relm-character-vision.md) — non-runtime maker-side creative direction for the developer-owned showcase pair and the public starter's visual lineage.
+
 ## Core design
 
 - [RelaySOUL persona source calibration design](relaysoul_design.md)
