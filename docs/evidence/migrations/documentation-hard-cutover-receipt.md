@@ -3147,10 +3147,6 @@ relaylm_directory_unchanged: true
 architecture_files_unmoved:
   - docs/architecture/project_execution_plan.md
   - docs/architecture/current_target_migration_guide.md
-non_receipt_content_files: pending
-non_receipt_content_net_diff:
-  insertions: pending
-  deletions: pending
 compileall: passed
 documentation_link_check: passed
 documentation_semantic_audit: passed
@@ -3173,17 +3169,26 @@ prior_validated_content_head_superseded_reason: independent_review_found_the_che
 prior_validated_content_head_triggered_check_runs: 45
 prior_validated_content_head_triggered_workflow_runs: 16
 prior_validated_content_head_all_github_actions: passed
-validated_content_head: pending
+validated_content_head: f2b414d986593057dd6176ceff9bc3ce6364fb63
 validated_content_head_actions:
-  workflow_runs_total: pending
+  workflow_runs_total: 16
   workflow_runs_by_trigger:
-    pull_request: pending
-    push: pending
-    other: pending
-  job_or_check_runs_total: pending
-  success: pending
+    pull_request: 15
+    push: 1
+    other: 0
+  workflow_runs_by_trigger_note: verified_individually_via_github_actions_get_workflow_run_event_field_for_all_16_distinct_run_ids_at_this_head_not_inferred_from_timing_the_single_push_run_is_the_phase_i4a_forget_hide_contract_smoke_workflow_which_declares_both_push_and_pull_request_triggers_on_docs_star_star_paths
+  job_or_check_runs_total: 45
+  success: 45
   failure: 0
-  skipped: pending
+  skipped: 0
+validated_content_head_changed_files: 25
+validated_content_head_net_diff:
+  insertions: 933
+  deletions: 269
+non_receipt_content_files: 24
+non_receipt_content_net_diff:
+  insertions: 621
+  deletions: 266
 finalization_head: pending
 finalization_head_actions:
   workflow_runs_total: pending
@@ -3195,10 +3200,6 @@ finalization_head_actions:
   success: pending
   failure: 0
   skipped: pending
-validated_content_head_changed_files: pending
-validated_content_head_net_diff:
-  insertions: pending
-  deletions: pending
 final_pr_changed_files: pending
 final_pr_net_diff:
   insertions: pending
