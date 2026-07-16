@@ -1,29 +1,35 @@
 ---
-relaylm_doc_type: evaluation_record
+relaylm_doc_type: evidence
 relaylm_authority: observed_local_runtime_evidence
-relaylm_status: current
+relaylm_status: frozen
 relaylm_volatility: low
 relaylm_owner: evaluation
 relaylm_update_trigger:
-  - the documented local E1 path changes
-  - a finding is fixed or invalidated
-  - a later workstation evaluation supersedes this evidence
+  - metadata or link repair only
 relaylm_not_authoritative_for:
   - production reliability claims
   - exact implementation contracts
   - future UI or memory-formation design
+  - repository-wide implementation status
+  - repeatable evaluation methodology
+relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../PROJECT_STATUS.md
-  - soul_lab_ui_b0_real_home_conversation.md
-  - post_i3_evaluation_work_roadmap.md
-  - integration_i1_primary_mem_two_turn_recall.md
-  - phase_i2_real_soul_lab_observation.md
-  - phase_i3_auditable_primary_mem_correct.md
-  - o0_local_one_job_runner.md
-  - phase6_i1b_runtime_enqueue_source_capture_handoff.md
-  - phase6c1_durable_protected_source_persistence.md
-  - phase6c2_one_queued_primary_worker_integration.md
-  - i1g_pre_enqueue_durable_finalization_contract.md
+  - ../../PROJECT_STATUS.md
+  - ../../architecture/soul_lab_ui_b0_real_home_conversation.md
+  - ../../architecture/post_i3_evaluation_work_roadmap.md
+  - ../../architecture/integration_i1_primary_mem_two_turn_recall.md
+  - ../../architecture/phase_i2_real_soul_lab_observation.md
+  - ../../architecture/phase_i3_auditable_primary_mem_correct.md
+  - ../../architecture/o0_local_one_job_runner.md
+  - ../../architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md
+  - ../../architecture/phase6c1_durable_protected_source_persistence.md
+  - ../../architecture/phase6c2_one_queued_primary_worker_integration.md
+  - ../../architecture/i1g_pre_enqueue_durable_finalization_contract.md
+relaylm_source_commit: 961af79e4b7c4afdbdebadb4af443bfc30923b86
+relaylm_source_pr: 390
+relaylm_recorded_on: 2026-06-25
+relaylm_source_blob: bf109bb1d35290274b43fbeb287edbb9d9dd0074
+relaylm_source_content_sha256: ea5760d567a6a073d411a4edfc3ccacbd7c81f67f224aa3b2adcb9c2262a2472
 ---
 # E1 Local Runtime Evaluation — 2026-06-25
 

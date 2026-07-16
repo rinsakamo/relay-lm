@@ -151,7 +151,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 - [O1E scheduler operational controls](architecture/o1e_scheduler_operational_controls.md)
 - [Phase I-4F Forget product validation](architecture/phase_i4f_forget_validation.md)
 - [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md)
-- [E1 local runtime evaluation](architecture/e1_local_runtime_evaluation_2026_06_25.md)
+- [E1 local runtime evaluation](evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md)
 
 ## Wave 4 implementation evidence
 

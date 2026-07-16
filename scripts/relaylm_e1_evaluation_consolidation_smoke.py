@@ -165,7 +165,7 @@ REQUIRED = {
 }
 
 EVIDENCE_PATHS = (
-    "docs/architecture/e1_local_runtime_evaluation_2026_06_25.md",
+    "docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md",
     "docs/architecture/e1r1_trusted_home_scene_admission.md",
     "docs/architecture/e1r2_character_store_bootstrap.md",
     "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md",

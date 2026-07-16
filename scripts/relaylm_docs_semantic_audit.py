@@ -752,6 +752,96 @@ def check_lat1_evaluation_split(errors: list[str]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Cutover 1C-40: docs/architecture/e1_local_runtime_evaluation_2026_06_25.md
+# retired, moved verbatim to docs/evidence/evaluations/. Narrow, reviewed
+# guard mirroring check_no_live_lat1_scaffold above, scoped to this one
+# retired path.
+# ---------------------------------------------------------------------------
+E1_LOCAL_RUNTIME_RETIRED_PATH = "docs/architecture/e1_local_runtime_evaluation_2026_06_25.md"
+E1_LOCAL_RUNTIME_CANONICAL_PATH = "docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md"
+# Deliberately the full repository-root-qualified old path, not a bare
+# filename or stable-stem pattern: unlike the LAT-1 scaffold, the canonical
+# target keeps the exact same basename as the retired source (only the
+# directory changed), so a bare-filename or stem-only pattern would also
+# match every legitimate live reference to the new docs/evidence/evaluations/
+# location. Only the old directory-qualified literal is unambiguous.
+E1_LOCAL_RUNTIME_REFERENCE_PATTERN = re.compile(
+    r"docs/architecture/e1_local_runtime_evaluation_2026_06_25\.md"
+)
+
+# Files whose entire content is historical/migration record-keeping by
+# construction and may legitimately name the retired literal without
+# per-line review. This guard's own implementation necessarily names the
+# pattern it detects.
+E1_LOCAL_RUNTIME_REFERENCE_ALLOWLISTED_FILES = frozenset(
+    {
+        "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
+        "scripts/relaylm_docs_semantic_audit.py",
+    }
+)
+
+# The exact, reviewed frozen source snapshots that legitimately contain the
+# retired literal as byte-for-byte historical evidence of the PRs that
+# originally referenced the pre-move path. A closed set of exact paths, not
+# a generic "*-source.txt" suffix rule.
+E1_LOCAL_RUNTIME_REFERENCE_EXACT_SNAPSHOT_ALLOWLIST = frozenset(
+    {
+        "docs/evidence/implementation/e1_completion_report-source.txt",
+        "docs/evidence/implementation/e1r2_completion_report-source.txt",
+    }
+)
+
+# Exact, reviewed line-content substrings that are legitimate occurrences of
+# the retired literal inside otherwise-active/current files. No generic
+# frozen/historical_after_merge/historical whole-file status bypass: every
+# legitimate historical occurrence is allowed by its own exact file and
+# line, so a genuinely new stale reference cannot hide behind a document's
+# status.
+E1_LOCAL_RUNTIME_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
+    "docs/planning/documentation-architecture-inventory.md": (
+        "(Cutover 1C-40: `moved` to `docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md`",
+    ),
+    "docs/planning/documentation-cutover-rules.yaml": (
+        "docs/architecture/e1_local_runtime_evaluation_2026_06_25.md:",
+    ),
+}
+
+
+def check_no_live_e1_local_runtime_architecture_path(errors: list[str]) -> None:
+    if (ROOT / E1_LOCAL_RUNTIME_RETIRED_PATH).exists():
+        errors.append(
+            f"{E1_LOCAL_RUNTIME_RETIRED_PATH}: retired dated evaluation record reintroduced "
+            "under docs/architecture/ (moved to docs/evidence/evaluations/ by Cutover 1C-40)"
+        )
+
+    for path in _mvp_reference_scanned_files(ROOT):
+        relative_path = path.relative_to(ROOT).as_posix()
+        if relative_path == E1_LOCAL_RUNTIME_RETIRED_PATH:
+            continue
+        if relative_path == E1_LOCAL_RUNTIME_CANONICAL_PATH:
+            continue
+        if relative_path in E1_LOCAL_RUNTIME_REFERENCE_ALLOWLISTED_FILES:
+            continue
+        if relative_path in E1_LOCAL_RUNTIME_REFERENCE_EXACT_SNAPSHOT_ALLOWLIST:
+            continue
+        allowed_lines = E1_LOCAL_RUNTIME_REFERENCE_LINE_ALLOWLIST.get(relative_path, ())
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            if E1_LOCAL_RUNTIME_REFERENCE_PATTERN.search(line) is None:
+                continue
+            stripped = line.strip()
+            if any(allowed in stripped for allowed in allowed_lines):
+                continue
+            errors.append(
+                f"{relative_path}:{line_number}: active reference to retired "
+                f"{E1_LOCAL_RUNTIME_RETIRED_PATH}: {stripped!r}"
+            )
+
+
+# ---------------------------------------------------------------------------
 # Cutover 1C-39 correction: fail closed on a completed LAT-1 retrieval-scaling
 # evidence record (docs/evidence/evaluations/lat1-retrieval-scaling-*.md) that
 # is incomplete, unfilled, provenance-weak, or content-bearing. No such
@@ -2205,6 +2295,100 @@ def self_test() -> None:
         )
     ROOT = real_root
 
+    # 50. The real repository has no live reference to the retired E1 local
+    # runtime evaluation architecture path.
+    check_silent(
+        "real repository: no active reference to the retired E1 local runtime evaluation path",
+        check_no_live_e1_local_runtime_architecture_path,
+    )
+
+    # 51. A reintroduced retired E1 local runtime evaluation file is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/architecture/e1_local_runtime_evaluation_2026_06_25.md",
+            "---\nrelaylm_doc_type: evaluation_record\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "a reintroduced retired E1 local runtime evaluation file is rejected",
+            check_no_live_e1_local_runtime_architecture_path,
+            "retired dated evaluation record reintroduced",
+        )
+    ROOT = real_root
+
+    # 52. A current document with an active reference to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_e1.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            "See [old record](docs/architecture/e1_local_runtime_evaluation_2026_06_25.md).\n",
+        )
+        check_rejects(
+            "a current document referencing the retired E1 local runtime evaluation path is rejected",
+            check_no_live_e1_local_runtime_architecture_path,
+            "active reference to retired docs/architecture/e1_local_runtime_evaluation_2026_06_25.md",
+        )
+    ROOT = real_root
+
+    # 53. A frozen/historical_after_merge document's own retired-path mention is
+    # REJECTED when it has no exact line-allowlist entry: this guard does not
+    # fall back to a generic whole-document status bypass.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_e1_report.md",
+            "---\nrelaylm_doc_type: implementation_completion_report\nrelaylm_status: historical_after_merge\n---\n\n"
+            "This slice added docs/architecture/e1_local_runtime_evaluation_2026_06_25.md.\n",
+        )
+        check_rejects(
+            "a frozen-status document's retired-E1-path mention is rejected without an exact line allowance",
+            check_no_live_e1_local_runtime_architecture_path,
+            "active reference to retired docs/architecture/e1_local_runtime_evaluation_2026_06_25.md",
+        )
+    ROOT = real_root
+
+    # 54. The exact reviewed frozen source snapshots are allowed.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/e1_completion_report-source.txt",
+            "  - ../../architecture/e1_local_runtime_evaluation_2026_06_25.md\n",
+        )
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/e1r2_completion_report-source.txt",
+            "  - ../../architecture/e1_local_runtime_evaluation_2026_06_25.md\n",
+        )
+        check_silent(
+            "the exact reviewed frozen source snapshots are allowed",
+            check_no_live_e1_local_runtime_architecture_path,
+        )
+    ROOT = real_root
+
+    # 55. The canonical migrated document's own filename does not self-trigger the guard.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md",
+            "---\nrelaylm_doc_type: evidence\nrelaylm_status: frozen\n---\n\nBody.\n",
+        )
+        check_silent(
+            "the canonical migrated document at its new path does not self-trigger the guard",
+            check_no_live_e1_local_runtime_architecture_path,
+        )
+    ROOT = real_root
+
     failed = [(name, message) for name, ok, message in results if not ok]
     for name, ok, message in results:
         status = "PASS" if ok else "FAIL"
@@ -2239,6 +2423,7 @@ def main() -> int:
         check_no_live_lat1_scaffold,
         check_lat1_evaluation_split,
         check_lat1_evaluation_evidence_records,
+        check_no_live_e1_local_runtime_architecture_path,
         check_operations_docs,
         check_referenced_repository_paths,
     )

@@ -16,7 +16,7 @@ relaylm_not_authoritative_for:
   - evidence-grounded recall response behavior
 relaylm_related_authority:
   - e1_evaluation_consolidation.md
-  - e1_local_runtime_evaluation_2026_06_25.md
+  - ../evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase6c1_primary_mem_worker_contract.md
   - phase6c1_relaymem_primary_pipeline_compose.md

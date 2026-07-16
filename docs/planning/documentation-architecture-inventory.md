@@ -251,6 +251,8 @@ Target collections:
 
 `e1_evaluation_consolidation.md` is split: repeatable evaluation interpretation goes to `docs/evaluation/`, while dated or completed result inventory goes to evidence.
 
+`docs/architecture/e1_local_runtime_evaluation_2026_06_25.md` (Cutover 1C-40: `moved` to `docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md`, `evidence`/`frozen`, verbatim content) was the first concrete instance of the `e1*_evaluation*.md` family above to actually move; `e1_evaluation_consolidation.md`'s own split, and the remaining `e1r1`-`e1r5` architecture-handoff records this document consolidates, remain open for a later batch.
+
 ## M. Archive and obsolete material
 
 - `docs/architecture/archive/` is not retained as a parallel historical architecture tree.
