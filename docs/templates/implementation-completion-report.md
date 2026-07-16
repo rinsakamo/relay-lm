@@ -30,7 +30,7 @@ Migration-only fields — `relaylm_source_origin_commit`, `relaylm_source_blob`,
 
 ## Use rules
 
-- One implementation pull request owns exactly one uniquely named report. Do not edit this template, `docs/mvp/README.md`, `docs/evidence/implementation/README.md`, another slice's report, or shared current-state documents merely to record completion.
+- One implementation pull request owns exactly one uniquely named report. Do not edit this template, `docs/evidence/implementation/README.md`, another slice's report, or shared current-state documents merely to record completion.
 - The report does not open the next wave and does not open the release or evaluation gate.
 - Current repository status remains [Project Status](../PROJECT_STATUS.md)-owned; do not restate it here as if this report were authoritative for it.
 - Shared cross-slice sequencing remains owned by the current planning authority; do not restate or override it here.

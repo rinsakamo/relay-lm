@@ -15,7 +15,7 @@ relaylm_decision_source: ../../adr/0002-documentation-information-architecture.m
 ---
 # Wave Convergence Evidence
 
-This collection preserves frozen cross-slice convergence records after their implementation wave has merged. A wave record describes the integrated boundary at that historical point; current status and exact lower-level contracts remain authoritative elsewhere.
+This collection preserves frozen cross-slice convergence records after their implementation wave has merged. A wave record describes the integrated boundary at that historical point; current status and exact lower-level contracts remain authoritative elsewhere. Per-slice completion reports live in [Implementation Evidence](../implementation/README.md).
 
 ## Records
 

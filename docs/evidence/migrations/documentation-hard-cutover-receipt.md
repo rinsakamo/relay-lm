@@ -2675,7 +2675,7 @@ An independent review of the initial green head (`23472fcaba751d7146f5c0f119aa17
 
 ```yaml
 cutover_pr: 602
-merged_commit: pending
+merged_commit: 3e88b182e5ecd55040cf74e0094978bb22c3e840
 record_count: 1
 cutover_recorded_on: 2026-07-15
 disposition: template_canonicalized
@@ -2912,7 +2912,7 @@ No `-source.txt` byte-exact snapshot was created. Rationale: the old file was a 
 
 An exhaustive `git grep` for the exact old path, the bare filename, `implementation-completion-report.md`, `Slice Implementation Completion Report`, and `completion report template` across `docs/`, `scripts/`, `.github/workflows/`, `relaylm/`, `tests/`, `README.md`, `README_ja.md`, and `config.example.yaml` found exactly two live referrers before this cutover, plus one frozen historical reference that is not a live referrer: `docs/mvp/README.md` (the "Use the template" link, retargeted to `../templates/implementation-completion-report.md` with a one-sentence move note) and `scripts/relaylm_mvp_completion_report_smoke.py` (the `MODEL_ANCHORS` dictionary key and its validated anchors, replaced with the canonical path and template-specific anchors) are live referrers; this receipt is a historical reference only (the old path appears solely as a historical migration identifier inside the already-frozen C1C36 narrative prose describing that batch's own bounded scope, and is left unchanged as an accurate historical record of what was true at that time — a frozen historical occurrence inside this ledger's own prose is not a live dependency on the old path). An earlier draft of this entry incorrectly counted the receipt as a third live referrer, conflating a historical reference with a live one; independent review caught this and it is corrected here. `docs/templates/README.md` did not previously reference the file at all and gained one new list entry. None of `docs/DOCUMENTATION_MODEL.md`, `docs/README.md`, root `README.md`, `README_ja.md`, `config.example.yaml`, `scripts/relaylm_documentation_current_boundary_smoke.py`, `scripts/relaylm_mvp_completion_report_pr_link_smoke.py`, the three wave cross-slice convergence smokes, or the three completion-report workflow YAML files referenced the template path, filename, or title; each was inspected and confirmed to have no live dependency to the *path*, though `docs/DOCUMENTATION_MODEL.md` and one workflow file (`documentation-completion-report-model.yml`) were separately changed below for reasons unrelated to the path move.
 
-`scripts/relaylm_mvp_completion_report_smoke.py`'s `MODEL_ANCHORS` key changed from the old path to `docs/templates/implementation-completion-report.md`. The template's own front matter is now validated structurally: `validate_template_front_matter()` parses the file with PyYAML and checks exact key/value equality for `relaylm_doc_type`, `relaylm_authority`, `relaylm_status`, `relaylm_volatility`, `relaylm_owner`, `relaylm_decision_source`, a non-empty `relaylm_update_trigger`, and the exact five-entry `relaylm_not_authoritative_for` set, replacing the earlier raw-substring-only check. A new `assert_old_template_path_absent()` fail-closed guard was added and is called unconditionally at the start of `main()`, alongside the existing `assert_no_legacy_wave_reports()` guard, covering the default invocation, `--check-model`, `--check-all`, and explicit path validation alike. `scripts/relaylm_docs_semantic_audit.py` gained a matching `check_completion_report_template()` check, wired into `main()`'s `checks` tuple, that independently rejects a reintroduced old path, a canonical template missing `relaylm_doc_type: template`, `relaylm_status: target`, or the exact non-authoritative authority key, a canonical template missing the canonical evidence-destination instruction, and `docs/templates/README.md`/`docs/mvp/README.md` reference errors. `docs/evidence/implementation/README.md`, `docs/evidence/implementation/*_completion_report.md`, and `scripts/relaylm_mvp_completion_report_pr_link_smoke.py` were confirmed unaffected: none reference the template.
+`scripts/relaylm_mvp_completion_report_smoke.py`'s `MODEL_ANCHORS` key changed from the old path to `docs/templates/implementation-completion-report.md`. The template's own front matter is now validated structurally: `validate_template_front_matter()` parses the file with the dependency-free flat front-matter parser (`_parse_flat_front_matter()`, adopted after the intermediate PyYAML-based head broke five workflows with no project-dependency install step, corrected below) and checks exact key/value equality for `relaylm_doc_type`, `relaylm_authority`, `relaylm_status`, `relaylm_volatility`, `relaylm_owner`, `relaylm_decision_source`, a non-empty `relaylm_update_trigger`, and the exact five-entry `relaylm_not_authoritative_for` set, replacing the earlier raw-substring-only check. A new `assert_old_template_path_absent()` fail-closed guard was added and is called unconditionally at the start of `main()`, alongside the existing `assert_no_legacy_wave_reports()` guard, covering the default invocation, `--check-model`, `--check-all`, and explicit path validation alike. `scripts/relaylm_docs_semantic_audit.py` gained a matching `check_completion_report_template()` check, wired into `main()`'s `checks` tuple, that independently rejects a reintroduced old path, a canonical template missing `relaylm_doc_type: template`, `relaylm_status: target`, or the exact non-authoritative authority key, a canonical template missing the canonical evidence-destination instruction, and `docs/templates/README.md`/`docs/mvp/README.md` reference errors. `docs/evidence/implementation/README.md`, `docs/evidence/implementation/*_completion_report.md`, and `scripts/relaylm_mvp_completion_report_pr_link_smoke.py` were confirmed unaffected: none reference the template.
 
 Independent review of the initial green head (`0ceb5ab454ed848e66f87f3fc0021dd3dd0a48a5`) found four defects, all corrected in this same entry by a further commit.
 
@@ -2930,7 +2930,273 @@ None of these four corrections touched the verified source/pre-cutover blobs, co
 
 No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, old-path manifest, or temporary finalizer workflow was added. No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. C1C36 is finalized above to merge commit `037530a50cd4265bea4e64ac29563aa3532c44b7` (PR #600), confirmed an ancestor of the working `main` before this Cutover 1C-37 batch began.
 
-`cutover_pr` remains `602` (`rinsakamo/relay-lm#602`). `0ceb5ab454ed848e66f87f3fc0021dd3dd0a48a5` was the prior `validated_content_head`: all 25 triggered GitHub Actions check runs (job/check-run count), spanning 14 distinct workflow runs (workflow-run count), had completed successfully, with every RelayMEM/runtime/UI consolidated-smoke group correctly reporting `skipped`. That head was superseded by the four-fix correction commit `6060b52a28e8469b6e151b4898aed6c1e681ec9f`, which itself introduced a PyYAML dependency that immediately failed CI on five workflows (`ModuleNotFoundError: No module named 'yaml'`) — that intermediate head was never fully green and is recorded above only for provenance continuity, not as a validated head. The follow-up commit `3e0f97d2c94983a19ab2316821322e9c02f50b1b` replaced the PyYAML dependency with a dependency-free front-matter parser and is the new `validated_content_head`: all 25 triggered GitHub Actions check runs (job/check-run count), spanning 15 distinct workflow runs (workflow-run count), completed successfully, including `wave4-cross-slice-convergence` and `wave5-cross-slice-convergence` (both of which had failed at the intermediate head) now passing, and every RelayMEM/runtime/UI consolidated-smoke group correctly reporting `skipped`. Zero reviews, zero PR comments, and zero unresolved review threads were present at that head. Per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, this finalization is recorded in a further, separate commit after `3e0f97d2c94983a19ab2316821322e9c02f50b1b`, which remains the exact validated content head and is not itself re-claimed as re-validated. This PR is not merged.
+`cutover_pr` remains `602` (`rinsakamo/relay-lm#602`). `0ceb5ab454ed848e66f87f3fc0021dd3dd0a48a5` was the prior `validated_content_head`: all 25 triggered GitHub Actions check runs (job/check-run count), spanning 14 distinct workflow runs (workflow-run count), had completed successfully, with every RelayMEM/runtime/UI consolidated-smoke group correctly reporting `skipped`. That head was superseded by the four-fix correction commit `6060b52a28e8469b6e151b4898aed6c1e681ec9f`, which itself introduced a PyYAML dependency that immediately failed CI on five workflows (`ModuleNotFoundError: No module named 'yaml'`) — that intermediate head was never fully green and is recorded above only for provenance continuity, not as a validated head. The follow-up commit `3e0f97d2c94983a19ab2316821322e9c02f50b1b` replaced the PyYAML dependency with a dependency-free front-matter parser and is the new `validated_content_head`: all 25 triggered GitHub Actions check runs (job/check-run count), spanning 15 distinct workflow runs (workflow-run count), completed successfully, including `wave4-cross-slice-convergence` and `wave5-cross-slice-convergence` (both of which had failed at the intermediate head) now passing, and every RelayMEM/runtime/UI consolidated-smoke group correctly reporting `skipped`. Zero reviews, zero PR comments, and zero unresolved review threads were present at that head. Per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, this finalization is recorded in a further, separate commit after `3e0f97d2c94983a19ab2316821322e9c02f50b1b`, which remains the exact validated content head and is not itself re-claimed as re-validated. PR #602 was subsequently squash-merged to `main` as `3e88b182e5ecd55040cf74e0094978bb22c3e840`, now recorded above as `merged_commit` and confirmed an ancestor of the working `main` before Cutover 1C-38 began.
+
+### C1C38-001 — MVP transitional index retirement
+
+```yaml
+cutover_pr: pending
+merged_commit: pending
+record_count: 2
+cutover_recorded_on: 2026-07-16
+disposition: absorbed_and_deleted_git_history_only
+pre_cutover_docs_mvp_inventory:
+  - path: docs/mvp/README.md
+    lines: 174
+  - path: docs/mvp/wave7/e1r3_durable_replay_residual_followup.md
+    lines: 27
+docs_mvp_other_live_files: none
+records:
+  - record: MVP transitional navigation index
+    recorded_on: 2026-06-11
+    old_path: docs/mvp/README.md
+    disposition: absorbed
+    source_pr: none
+    source_pr_note: direct_push_to_main_no_pull_request_author_and_committer_both_rinsakamo_confirmed_via_github_get_commit_not_web_flow_or_github
+    source_commit: 404bee53853acf74015ae721385e512f36fc3a23
+    source_commit_date: 2026-06-11T21:48:36+09:00
+    source_commit_message: "docs: add MVP summary index"
+    source_origin_commit: 404bee53853acf74015ae721385e512f36fc3a23
+    source_origin_commit_note: direct_push_source_and_origin_commit_identical_no_merge_commit_exists
+    source_blob_sha: 0ddf48d643eac84c66bec90f527f79da0d4c63fa
+    source_content_sha256: bf18f05202ab5ede4a2ba21d24e18059118a6490bdc8a47df1c46980a734017c
+    pre_cutover_blob_sha: d7d32099606b05013666d5604d0da9a3f7390ab2
+    pre_cutover_content_sha256: 51bf80dfca9eb6a20306e47ae083f18448283b4ab3fcc6a0dfce2e1c20c6bc75
+    advisory_pre_cutover_blob_supplied: d7d32099606b05013666d5604d0da9a3f7390ab2
+    advisory_verification: advisory_pre_cutover_blob_confirmed_correct_matches_independently_recomputed_pre_cutover_blob_and_sha256_exactly
+    post_source_modification_commits_total: 62
+    post_source_modification_commits_note: full_chronological_list_recorded_in_narrative_prose_below_this_yaml_block_every_hash_independently_recomputed_via_git_log_dash_dash_follow_after_confirming_the_working_clone_is_not_shallow
+    new_canonical_path: docs/evidence/implementation/README.md
+    exact_source_snapshot: none
+  - record: E1-R3 durable replay residual follow-up note
+    recorded_on: 2026-06-29
+    old_path: docs/mvp/wave7/e1r3_durable_replay_residual_followup.md
+    disposition: deleted_git_history_only
+    deletion_reason: unlinked_superseded_historical_review_residual_note_current_authority_already_stated_in_docs_config_schema_md_formation_summary_artifact_and_i1_gc_durable_finalization_replay_completion_paragraph_the_specific_patch_module_and_smoke_script_it_describes_no_longer_exist_in_the_current_tree
+    source_pr: 441
+    source_pr_title: "fix: close review residuals from #354 #435 #436"
+    source_commit: e3dd6862cc54ca72290257cb1c63c9323ab44dc6
+    source_commit_date: 2026-06-28T22:35:17Z
+    source_origin_commit: e3dd6862cc54ca72290257cb1c63c9323ab44dc6
+    source_origin_commit_note: squash_merged_pr_source_and_origin_commit_identical_committer_field_is_github_confirming_squash_merge
+    source_blob_sha: 4b036ffc9276d850f017316139361054bf0facf2
+    source_content_sha256: 7b03811564914f64371b1140bc967861de08be0fdb40df29db0413201ca67b21
+    pre_cutover_blob_sha: 4b036ffc9276d850f017316139361054bf0facf2
+    pre_cutover_content_sha256: 7b03811564914f64371b1140bc967861de08be0fdb40df29db0413201ca67b21
+    post_source_modification_commits_total: 0
+    post_source_modification_commits_note: single_commit_only_blob_unchanged_since_pr_441_merged_confirmed_by_git_log_dash_dash_follow_returning_exactly_one_entry_after_unshallowing
+    new_canonical_path: none
+    exact_source_snapshot: none
+    discovered_not_in_task_brief: true
+    discovery_note: task_brief_named_only_docs_mvp_readme_md_as_the_remaining_live_source_this_second_file_was_found_by_independently_enumerating_the_full_docs_mvp_tree_before_editing_and_had_to_be_resolved_to_satisfy_the_no_live_docs_mvp_directory_at_all_requirement
+section_level_disposition_map:
+  - section: front matter and transitional authority statement
+    disposition: REDUNDANT_DELETE
+    reason: self_describing_transitional_wrapper_metadata_declaring_its_own_directory_current_no_external_consumer_needs_it_docs_readme_md_is_the_canonical_entrypoint
+  - section: release readiness links
+    disposition: ALREADY_CANONICAL
+    reason: both_entries_already_state_this_directory_no_longer_holds_a_live_copy_and_point_at_docs_release_v0_1_release_readiness_md_and_docs_evidence_releases_v0_1_final_main_validation_tag_receipt_md_both_already_linked_directly_from_docs_readme_md_docs_release_readme_md_and_docs_evidence_releases_readme_md
+  - section: completion-report path/lifecycle instructions
+    disposition: ABSORB_MINIMALLY
+    reason: stage_1_destination_and_non_authority_rule_absorbed_into_a_new_creating_a_new_completion_report_section_in_docs_evidence_implementation_readme_md_and_the_existing_parallel_implementation_documentation_rule_in_docs_readme_md_corrected_off_the_retired_path
+  - section: Wave 8 grouped completion reports and limitation wording
+    disposition: ALREADY_CANONICAL
+    reason: identical_grouping_and_limitation_wording_already_present_verbatim_in_docs_readme_md_wave_8_implementation_evidence_section
+  - section: Wave 7 grouped reports and dedicated handoffs
+    disposition: ALREADY_CANONICAL
+    reason: docs_readme_md_wave_7_implementation_evidence_section_plus_docs_evidence_waves_readme_md_wave_7_cross_slice_convergence_audit_link_already_cover_every_report_and_handoff
+  - section: Wave 6 grouped reports and dedicated handoffs
+    disposition: ALREADY_CANONICAL
+    reason: docs_readme_md_wave_6_implementation_evidence_section_already_covers_every_report_and_handoff
+  - section: Wave 5 grouped reports
+    disposition: ALREADY_CANONICAL
+    reason: docs_readme_md_wave_5_slash_e1_evaluation_evidence_section_already_covers_every_report
+  - section: Wave 4 grouped reports and docs-execution-plan distinction
+    disposition: ALREADY_CANONICAL
+    reason: docs_readme_md_wave_4_implementation_evidence_section_covers_every_report_the_docs_execution_plan_consolidation_non_membership_distinction_is_preserved_in_its_own_docs_evidence_implementation_readme_md_catalog_entry_wording
+  - section: Wave 3 grouped reports
+    disposition: ALREADY_CANONICAL
+    reason: docs_evidence_implementation_readme_md_flat_catalog_already_lists_i1_ge_i_4d_and_o1d1_and_docs_evidence_waves_readme_md_already_links_the_wave_3_cross_slice_convergence_audit_no_docs_readme_md_wave_3_heading_exists_but_the_underlying_records_remain_fully_discoverable_through_the_two_canonical_routers_satisfying_the_task_briefs_only_if_not_already_discoverable_carve_out
+  - section: template link and validation command list
+    disposition: ABSORB_MINIMALLY_and_REDUNDANT_DELETE
+    reason: the_template_link_is_absorbed_into_the_new_docs_evidence_implementation_readme_md_section_the_16_line_per_report_dash_dash_check_all_validation_command_list_is_redundant_delete_because_every_line_is_mechanically_reproducible_from_relaylm_mvp_completion_report_smoke_py_dash_dash_check_all_and_re_typing_16_near_duplicate_commands_in_a_new_home_would_be_redundant_prose_not_information_loss
+  - section: retained focused historical notes
+    disposition: ALREADY_CANONICAL
+    reason: all_sixteen_links_already_point_at_docs_evidence_implementation_star_each_with_its_own_moved_to_canonical_implementation_evidence_in_cutover_1c_3x_note
+  - section: Cutover 1B deletion-appendix link
+    disposition: ALREADY_CANONICAL
+    reason: docs_evidence_migrations_readme_md_already_links_cutover_1b_mvp_snapshot_deletions_tsv_directly
+  - section: maintenance rules
+    disposition: mixed_REDUNDANT_DELETE_and_ABSORB_MINIMALLY_and_ALREADY_CANONICAL
+    reason: do_not_add_new_snapshots_under_docs_mvp_is_redundant_delete_moot_once_the_directory_is_gone_the_parallel_pr_creates_one_report_and_the_wave_convergence_pr_links_reports_rules_are_absorb_minimally_already_substantially_present_in_docs_readme_mds_parallel_implementation_rule_now_path_corrected_use_project_status_for_current_state_is_already_canonical_docs_readme_mds_start_here_section_already_links_project_status_first
+canonical_absorption_destinations:
+  - docs/README.md
+  - docs/evidence/implementation/README.md
+  - docs/evidence/waves/README.md
+  - README.md
+  - README_ja.md
+snapshot_decision:
+  snapshot_created: false
+  applies_to:
+    - docs/mvp/README.md
+    - docs/mvp/wave7/e1r3_durable_replay_residual_followup.md
+  rationale:
+    - docs_mvp_readme_md_is_a_non_authoritative_transitional_router_not_frozen_implementation_evidence_for_one_merged_pr
+    - its_actual_target_records_already_exist_in_canonical_collections_confirmed_section_by_section_above
+    - useful_navigation_is_absorbed_into_canonical_routers_per_the_disposition_map_above
+    - exact_historical_wording_remains_available_from_git_history_and_this_migration_receipt
+    - a_second_live_snapshot_would_preserve_a_superseded_navigation_surface_and_risk_being_mistaken_for_a_current_index
+    - the_residual_followup_note_has_zero_live_referrers_and_its_current_authoritative_statement_already_lives_in_docs_config_schema_md_a_snapshot_would_preserve_redundant_superseded_prose_not_irreplaceable_evidence
+live_and_historical_reference_classification:
+  LIVE_MIGRATE:
+    - README.md
+    - README_ja.md
+    - docs/README.md
+    - docs/evidence/implementation/README.md
+    - docs/evidence/waves/README.md
+    - docs/templates/implementation-completion-report.md
+    - scripts/relaylm_mvp_completion_report_smoke.py
+    - scripts/relaylm_docs_semantic_audit.py
+    - scripts/relaylm_documentation_current_boundary_smoke.py
+    - scripts/relaylm_wave3_cross_slice_convergence_smoke.py
+    - scripts/relaylm_wave4_cross_slice_convergence_smoke.py
+    - scripts/relaylm_wave5_cross_slice_convergence_smoke.py
+    - scripts/relaylm_e1_evaluation_consolidation_smoke.py
+    - .github/workflows/smoke-runtime.yml
+    - .github/workflows/smoke-ui.yml
+    - .github/workflows/smoke-relaymem.yml
+    - docs/planning/documentation-cutover-rules.yaml
+  CANONICAL_ALREADY_ABSORBED:
+    - docs/release/README.md
+    - docs/evidence/releases/README.md
+    - docs/templates/README.md
+    - docs/evidence/migrations/README.md
+  HISTORICAL_KEEP:
+    - docs/evidence/waves/wave3_cross_slice_convergence_audit.md
+    - docs/evidence/waves/wave4_cross_slice_convergence_audit.md
+    - docs/evidence/implementation/e1_completion_report.md
+    - docs/evidence/implementation/e1r3_completion_report.md
+    - docs/evidence/implementation/docs_horizontal_status_sweep_completion_report.md
+    - docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report.md
+    - docs/evidence/implementation/audit_trace_projection_boundary.md
+  EXACT_SNAPSHOT_KEEP: every_docs_evidence_implementation_star_dash_source_txt_and_docs_evidence_waves_star_dash_source_txt_file_mentioning_the_old_path_in_its_own_frozen_body
+  MIGRATION_RULE_KEEP:
+    - docs/planning/documentation-cutover-rules.yaml_existing_mvp_dash_star_family_rules_kept_as_historical_migration_classification_two_new_path_overrides_added_ahead_of_them
+    - .github/workflows/documentation-cutover-preparation.yml_pinned_historical_baseline_dependency_assertion_operates_against_fixed_historical_commit_22981c3b_not_the_live_tree_unchanged
+    - docs/planning/documentation-cutover-tooling.md_description_of_that_same_pinned_check_unchanged
+  DELETE_WITH_SOURCE:
+    - docs/mvp/README.md
+    - docs/mvp/wave7/e1r3_durable_replay_residual_followup.md
+  NO_CHANGE_REQUIRED:
+    - scripts/relaylm_docs_relative_link_inventory.py
+    - scripts/relaylm_docs_cutover_prepare.py
+    - scripts/relaylm_ci_consolidated_smoke_contract.py
+    - scripts/relaylm_ci_consolidated_smoke.py
+    - docs/architecture/project_execution_plan.md
+    - docs/architecture/current_target_migration_guide.md
+path_bound_files_inspected:
+  - scripts/relaylm_mvp_completion_report_smoke.py
+  - scripts/relaylm_docs_semantic_audit.py
+  - scripts/relaylm_documentation_current_boundary_smoke.py
+  - scripts/relaylm_wave3_cross_slice_convergence_smoke.py
+  - scripts/relaylm_wave3_cross_slice_security_smoke.py
+  - scripts/relaylm_wave4_cross_slice_convergence_smoke.py
+  - scripts/relaylm_wave5_cross_slice_convergence_smoke.py
+  - scripts/relaylm_e1_evaluation_consolidation_smoke.py
+  - scripts/relaylm_docs_relative_link_inventory.py
+  - scripts/relaylm_docs_cutover_prepare.py
+  - scripts/relaylm_ci_consolidated_smoke.py
+  - scripts/relaylm_ci_consolidated_smoke_contract.py
+  - docs/planning/documentation-cutover-rules.yaml
+  - .github/workflows/smoke-runtime.yml
+  - .github/workflows/smoke-ui.yml
+  - .github/workflows/smoke-relaymem.yml
+  - .github/workflows/documentation-cutover-preparation.yml
+path_bound_files_changed:
+  - scripts/relaylm_mvp_completion_report_smoke.py
+  - scripts/relaylm_docs_semantic_audit.py
+  - scripts/relaylm_documentation_current_boundary_smoke.py
+  - scripts/relaylm_wave3_cross_slice_convergence_smoke.py
+  - scripts/relaylm_wave4_cross_slice_convergence_smoke.py
+  - scripts/relaylm_wave5_cross_slice_convergence_smoke.py
+  - scripts/relaylm_e1_evaluation_consolidation_smoke.py
+  - docs/planning/documentation-cutover-rules.yaml
+  - .github/workflows/smoke-runtime.yml
+  - .github/workflows/smoke-ui.yml
+  - .github/workflows/smoke-relaymem.yml
+path_bound_files_unchanged_reason:
+  "scripts/relaylm_wave3_cross_slice_security_smoke.py": no_reference_to_docs_mvp_at_all_confirmed_by_grep
+  "scripts/relaylm_docs_relative_link_inventory.py": docs_mvp_readme_md_appears_only_as_a_synthetic_self_test_fixture_string_for_the_generic_relative_path_resolver_never_reads_the_real_repository_tree
+  "scripts/relaylm_docs_cutover_prepare.py": docs_mvp_slash_prefix_appears_only_inside_a_generic_removeprefix_based_template_values_helper_and_a_synthetic_self_test_fixture_neither_depends_on_the_real_docs_mvp_tree_existing
+  "scripts/relaylm_ci_consolidated_smoke.py": no_reference_to_docs_mvp_at_all_confirmed_by_grep
+  "scripts/relaylm_ci_consolidated_smoke_contract.py": existing_retired_docs_mvp_wave_slash_d_plus_slash_regex_guard_and_synthetic_test_paths_are_already_generic_and_require_no_change_to_keep_passing_with_the_tree_fully_removed
+  ".github/workflows/documentation-cutover-preparation.yml": assert_dependency_docs_mvp_mvp10_summary_md_equals_docs_mvp_readme_md_check_targets_the_pinned_historical_baseline_commit_22981c3b_via_relaylm_docs_relative_link_inventory_py_dash_dash_baseline_never_the_live_working_tree_confirmed_by_reading_the_scripts_git_show_based_implementation
+fail_closed_old_tree_guards_added:
+  - location: scripts/relaylm_mvp_completion_report_smoke.py_assert_no_mvp_tree_called_unconditionally_at_the_start_of_main_alongside_the_existing_assert_no_legacy_wave_reports_and_assert_old_template_path_absent_guards
+    negative_path_proof: bounded_tempfile_temporarydirectory_self_test_confirmed_rejection_of_a_reintroduced_docs_mvp_readme_md_rejection_of_a_synthetic_file_anywhere_below_docs_mvp_wave9_and_silence_on_both_a_clean_tree_with_no_docs_mvp_directory_and_the_real_current_repository_tree
+  - location: scripts/relaylm_docs_semantic_audit.py_check_no_live_mvp_tree_wired_into_main_checks_tuple
+    negative_path_proof: fails_closed_if_the_docs_mvp_directory_exists_or_if_any_of_readme_md_readme_ja_md_docs_readme_md_docs_evidence_implementation_readme_md_or_docs_evidence_waves_readme_md_contains_a_markdown_link_into_docs_mvp
+  - location: scripts/relaylm_documentation_current_boundary_smoke.py_assert_no_mvp_tree_called_at_the_start_of_main
+    negative_path_proof: asserts_docs_mvp_does_not_exist_on_the_real_repository_tree_every_run
+no_compatibility_path_added: true
+no_redirect_alias_symlink_fallback_dual_live_or_temp_workflow_added: true
+no_gitkeep_added: true
+no_old_path_manifest_added: true
+no_runtime_config_schema_scheduler_memory_ui_or_packaging_change: true
+relaylm_directory_unchanged: true
+architecture_files_unmoved:
+  - docs/architecture/project_execution_plan.md
+  - docs/architecture/current_target_migration_guide.md
+changed_file_count: 19
+net_diff: 190 insertions, 260 deletions
+compileall: passed
+documentation_link_check: passed
+documentation_semantic_audit: passed
+documentation_current_boundary_smoke: passed
+completion_report_model_and_file_checks: passed
+completion_report_validator_self_test: passed
+completion_report_pr_link_check: passed
+consolidated_selector_contract: passed
+wave3_cross_slice_convergence_smoke: passed
+wave3_cross_slice_security_smoke: passed
+wave4_cross_slice_convergence_smoke: passed
+wave5_cross_slice_convergence_smoke: passed
+e1_evaluation_consolidation_smoke: passed
+git_diff_check: passed
+docs_mvp_absent: true
+c1c37_finalized_merged_commit: 3e88b182e5ecd55040cf74e0094978bb22c3e840
+scope_statement: this_batch_completes_only_the_active_docs_mvp_family_retirement_not_the_whole_documentation_hard_cutover
+validated_content_head: pending
+receipt_finalization: pending
+```
+
+This single-record batch retires the final transitional `docs/mvp/` navigation index. Independent recomputation of the exact current `docs/mvp/` tree inventory before any edit found **two** live files, not the one named in the task brief: `docs/mvp/README.md` (174 lines) and `docs/mvp/wave7/e1r3_durable_replay_residual_followup.md` (27 lines, under the `docs/mvp/wave7/` subdirectory). The second file was discovered only by independently enumerating the full tree (`find docs/mvp -type f`) rather than trusting the task brief's "expected remaining live source" framing; it had to be resolved to satisfy the "no live `docs/mvp/` directory at all" requirement and is recorded as its own record above.
+
+Provenance recomputation for `docs/mvp/README.md` initially hit the same repository-history-squash/import boundary artifact seen in the C1C37 entry above: `git log --follow` against the (at that point still shallow) working clone resolved the addition to `bc7fbfb6c2332dd00fae35aebfeaf581312c14fd` ("docs: align current implementation authority (#545)"), which appeared to have no parent. Unlike prior batches, this one was independently cross-checked against the GitHub API before being trusted: `get_commit` for that exact SHA returned only 3 changed files (`docs/architecture/current_target_migration_guide.md`, `docs/contracts/README.md`, `docs/contracts/client_instruction_target_artifact_contract.md`, totaling 126 insertions/59 deletions) — no `docs/mvp/README.md` at all — flatly contradicting the shallow-clone diff. `git fetch --unshallow` resolved the contradiction: `bc7fbfb` genuinely has parent `167bc884223b5c6c4b1bb0e9c0086efcac80e814` (confirmed identical on GitHub, matching PR #545's own recorded base and 3-file diff exactly), and the true, independently-verified addition commit is `404bee53853acf74015ae721385e512f36fc3a23` ("docs: add MVP summary index", 2026-06-11T21:48:36+09:00) — over a month earlier than `bc7fbfb`. `get_commit` against `404bee5` on GitHub confirms an exact match with the local object (author and committer both `rinsakamo`, one file added, 68 insertions), and the author/committer identity (as opposed to a `web-flow`/`GitHub` committer) confirms a **direct push to `main`, not a pull request** — the advisory brief's implicit PR-based framing is not assumed; this is independently recomputed, not copied. `git log --follow` after unshallowing found 63 total commits touching this path from source to the confirmed C1C37 boundary (62 post-source modifications); the full chronological list, extracted with `git log --follow --format='%H|%ad|%s'`, is: `404bee5` (2026-06-11, add index) → `5d6cac5`, `22898ba`, `03b87db`, `b6cccb5`, `a13ede1`, `d5d613f`, `a3c0c55` (2026-06-11, seven same-day expansion/repoint commits) → `d74a5ed` (2026-06-12) → `a12be37` (#272, 2026-06-15) → `1bfdbe9` (2026-06-15) → `b09139f`, `394ea16` (#415), `815ded4`, `b936498`, `a8d6a3d`, `d0197ff`, `668d0e4` (2026-06-27, seven Wave-3/4/5 convergence commits) → `6a0a384`, `497ee31` (#435), `66899f5`, `f87e8b1`, `cc1417f`, `e3dd686` (PR #441, adds the residual-followup file above), `851af61` (2026-06-28–29, Wave-6/7/E1-R5 convergence and the residual fix) → `b19cc29`, `276656a`, `30d4d83`, `9b6c995` (#513), `66453cf` (#546), `982d119` (#556, Cutover 1B) (2026-07-04–11) → `4dc1519` (#562), `294d7a3`, `cfe55b5`, `f4a3206` (#565), `82ce2e7`, `92c8969` (#569), `81a6b00` (#570), `2d9fc3a` (#571), `4c0e7d6` (#572), `bd6effa` (#573), `c9e440c` (#574), `82d959e` (#575), `91c2108` (#576) (2026-07-11–12, Cutover 1C-5 through 1C-18) → `be3cf9f` (#581), `ca1a921`, `ff7f5ba`, `4cc36a9`, `c068a6a` (#585), `aa40f19` (#587), `ba991a1` (#588), `087631f` (#589), `34739fd` (#590), `4e37234` (#591) (2026-07-13, Cutover 1C-19 through 1C-28) → `aa6ccee`, `a7669fc` (#593), `37140d4` (#594), `c529435` (2026-07-14, Cutover 1C-29 through 1C-32) → `103bc03`, `d24408f` (#597), `5d60433` (#598) (2026-07-15, Cutover 1C-33 through 1C-35) → `037530a` (#600, 2026-07-16, Cutover 1C-36) → `3e88b18` (Cutover 1C-37, the confirmed pre-cutover boundary). No commit paired an earlier hash with a later blob: every hash above was walked in strict `git log --follow` chronological order against the unshallowed history, and the final entry's blob (`d7d32099606b05013666d5604d0da9a3f7390ab2`) matches the confirmed C1C37 boundary exactly.
+
+Provenance for the second file, `docs/mvp/wave7/e1r3_durable_replay_residual_followup.md`, resolved cleanly on the first unshallowed attempt: exactly one commit, `e3dd6862cc54ca72290257cb1c63c9323ab44dc6`, adds it (27 lines) and simultaneously modifies `docs/mvp/README.md` (+32/-1, one of the 62 post-source commits counted above). `search_pull_requests` on GitHub found the exact source PR by title match: **#441**, "fix: close review residuals from #354 #435 #436," merged `2026-06-28T22:35:17Z` — identical to the commit's own timestamp, and `get_commit` independently confirms the file list matches exactly (both `docs/mvp/README.md` and the new residual file, plus five `relaylm/`/`scripts/`/workflow files unrelated to this cutover). The blob has never changed since: `git log --follow` for this path returns exactly one entry, and the blob (`4b036ffc9276d850f017316139361054bf0facf2`) is identical between the source commit and the confirmed pre-cutover boundary. Its content is superseded, not merely old: `docs/config_schema.md` already states, in current authoritative prose, "Current finalized-source mappings must include `formation_summary_artifact`; older local durable-finalization artifacts without that field are no longer supported and should be regenerated. I1-GC one-record replay/completion... [is] complete" — and the specific files the residual note describes (`relaylm/relaymem_durable_finalization_formation_replay_patch.py`, `scripts/relaylm_i1gc_durable_finalization_formation_replay_smoke.py`) no longer exist anywhere in the current tree, confirming this note documents work that was later folded in or refactored elsewhere. `git grep` for the exact path, the bare filename, and `e1r3_durable_replay_residual_followup` across the full tree found zero live referrers — it was never linked from `docs/mvp/README.md`, `docs/evidence/implementation/README.md`, or any other index. Disposition: `deleted_git_history_only`, recoverable from Git history and this receipt; no snapshot created, for the same reasons given in the snapshot-decision block above.
+
+The section-level disposition map above covers every section named in the task brief. The dominant finding is that `docs/mvp/README.md` had already been almost entirely hollowed out by Cutover 1C-30 through 1C-37: every completion-report link, every historical-note link, the release-readiness links, and the template link already point at their canonical `docs/evidence/`/`docs/release/`/`docs/templates/` destinations with "moved to canonical... in Cutover 1C-N" notes; the file's remaining content was overwhelmingly `ALREADY_CANONICAL` confirmation prose rather than the last live copy of anything. Only the front matter/transitional-authority statement, the maintenance rule's "do not add new snapshots" line, and the 16-line per-report validation command list were judged `REDUNDANT_DELETE` outright; the Stage-1 completion-report destination/non-authority rule and the template link were `ABSORB_MINIMALLY`'d into a new "Creating a new completion report" section added to `docs/evidence/implementation/README.md`, and `docs/README.md`'s pre-existing "Parallel implementation documentation rule" and "Canonical precedence" lines were corrected off the retired `docs/mvp/wave*/` and bare `docs/mvp/` path literals rather than duplicated. Wave 3 grouping — the one section the task brief flagged as potentially needing explicit re-creation — was confirmed `ALREADY_CANONICAL`: `docs/evidence/implementation/README.md`'s flat catalog already lists all three Wave 3 reports (I1-GE, I-4D, O1D1) and `docs/evidence/waves/README.md` already links the Wave 3 cross-slice convergence audit, so no new Wave 3 heading was added anywhere, per the task brief's own "only if not already discoverable" instruction.
+
+`docs/evidence/implementation/README.md` gained one new section, "Creating a new completion report," stating the canonical Stage-1 destination path, a link to the canonical template, the non-authority rule, and the canonical (`evidence`/`frozen`/`low`) versus legacy (`implementation_completion_report`/`historical_after_merge`/`frozen`) metadata-profile note (already-migrated legacy-profile reports remain readable until a separate family-normalization cutover, which this batch does not perform) — no report body, exact contract detail, or repository-wide status was duplicated into it. `docs/evidence/waves/README.md` gained one cross-link sentence to the implementation-evidence collection; no completion report or architecture handoff was copied into it, and it remains historical evidence, not current sequencing authority. `docs/release/README.md`, `docs/evidence/releases/README.md`, `docs/templates/README.md`, and `docs/evidence/migrations/README.md` were inspected and confirmed to already cover every link and reading rule the old index carried (release readiness, frozen tag receipt, the completion-report template, and the Cutover 1B deletion appendix respectively); none required a change. `docs/templates/implementation-completion-report.md`'s own "Use rules" section named the now-retired `docs/mvp/README.md` as a path future authors must not edit merely to record completion; that stale live reference was corrected to name only `docs/evidence/implementation/README.md`, the one remaining canonical index with that rule.
+
+Root `README.md` and `README_ja.md` each replaced their single `docs/mvp/README.md` "MVP summaries and milestone history"/"MVP概要とマイルストーン履歴" link with a direct link to the canonical Implementation Evidence collection (`docs/evidence/implementation/README.md`), keeping the existing "Documentation index" (`docs/README.md`) link as the umbrella entry point already present in both files; no other product-README link changed, and the internal migration/disposition detail recorded in this receipt is not exposed in either root README.
+
+No byte-exact `-source.txt` snapshot was created for either retired file, per the snapshot-decision rationale above. This differs from the byte-exact-snapshot convention used for `docs/evidence/implementation/*_completion_report.md` records (frozen evidence for one specific already-merged PR); `docs/mvp/README.md` was a non-authoritative, continuously-rewritten transitional router whose every target already exists canonically elsewhere, and the residual-followup note is superseded prose with zero live referrers — neither is irreplaceable evidence that a second live copy would protect.
+
+`scripts/relaylm_mvp_completion_report_smoke.py`'s `MODEL_ANCHORS` dropped the `docs/mvp/README.md` key (whose anchors asserted Wave-4-specific prose that no longer has a live home) and gained two new entries anchoring `docs/evidence/implementation/README.md` (the new "Creating a new completion report" section plus the O1D2/I-4E/UI-B1A/I-5A/I-7A-B report titles already catalogued there) and `docs/evidence/waves/README.md` (the Wave 4 audit link). A new `assert_no_mvp_tree()` fail-closed guard — listing every offending file if the retired tree is reintroduced — was added and is called unconditionally at the start of `main()`, alongside the pre-existing `assert_no_legacy_wave_reports()` and `assert_old_template_path_absent()` guards. The committed `--self-test` mode gained four new assertions: the real repository has no `docs/mvp/` tree; a synthetic reintroduced `docs/mvp/README.md` is rejected; a synthetic file anywhere below `docs/mvp/` (a `wave9/example_completion_report.md` fixture) is rejected; and a clean synthetic tree with no `docs/mvp/` directory at all stays silent. All prior legacy/canonical profile-split, structural-template, and old-Wave/old-template-path assertions are unchanged. `scripts/relaylm_docs_semantic_audit.py` dropped `docs/mvp/README.md` from `REQUIRED_METADATA_PATHS` and gained `docs/evidence/implementation/README.md` and `docs/evidence/waves/README.md` in its place (both already carry the required `relaylm_doc_type`/`relaylm_authority`/`relaylm_status`/`relaylm_volatility`/`relaylm_owner` keys). `check_completion_report_template()` now reads and asserts against `docs/evidence/implementation/README.md` instead of the retired index. The obsolete `check_wave8_index()` (which scanned `docs/mvp/wave8/*_completion_report.md` against the old index) was replaced by `check_implementation_evidence_index()`, which asserts every `docs/evidence/implementation/*_completion_report.md` record is named somewhere in that collection's own index — the canonical, tree-wide successor check, not a Wave-8-only one. A new `check_no_live_mvp_tree()` fails closed if `docs/mvp/` exists on disk, or if any of `README.md`, `README_ja.md`, `docs/README.md`, `docs/evidence/implementation/README.md`, or `docs/evidence/waves/README.md` still contains a markdown link into `docs/mvp/` (matched on the `](docs/mvp/` link-syntax prefix specifically, so the new "no `docs/mvp/wave*/` path exists to route through" explanatory sentence added to `docs/evidence/implementation/README.md` itself is correctly not flagged as a live link). The success message no longer counts Wave 8 reports; it now counts the full `docs/evidence/implementation/*_completion_report.md` family (26 at this boundary).
+
+`scripts/relaylm_documentation_current_boundary_smoke.py` dropped `docs/mvp/README.md` from `CURRENT_DOCS` and its `REQUIRED` anchor dictionary, adding `docs/evidence/implementation/README.md`, `docs/evidence/waves/README.md`, `docs/release/README.md`, `docs/evidence/releases/README.md`, and `docs/templates/README.md` to `CURRENT_DOCS`, and replacing the removed `REQUIRED["docs/mvp/README.md"]` entry with anchors against the new implementation-evidence "Creating a new completion report" section and the Wave 7 audit link in the waves index. A new `assert_no_mvp_tree()` is called at the start of `main()` on every run. `scripts/relaylm_wave3_cross_slice_convergence_smoke.py`, `relaylm_wave4_cross_slice_convergence_smoke.py`, `relaylm_wave5_cross_slice_convergence_smoke.py`, and `relaylm_e1_evaluation_consolidation_smoke.py` each replaced their `docs/mvp/README.md` anchor/combined-link checks with equivalent checks against `docs/evidence/implementation/README.md` (and, where the wave audit itself was being verified, `docs/evidence/waves/README.md`); none weakened source-PR/merge/audit validation, and no substantive boundary check was removed, only retargeted. `scripts/relaylm_wave3_cross_slice_security_smoke.py` required no change: it never referenced `docs/mvp` at all. `scripts/relaylm_docs_relative_link_inventory.py` and `scripts/relaylm_docs_cutover_prepare.py` required no change: their `docs/mvp/README.md`/`docs/mvp/` occurrences are generic self-test fixture strings and a generic `removeprefix`-based path-templating helper, never a read of the real repository tree. `scripts/relaylm_ci_consolidated_smoke.py` and `scripts/relaylm_ci_consolidated_smoke_contract.py` required no change: the former has no `docs/mvp` reference at all, and the latter's existing `RETIRED_WAVE_REPORT_FAMILY` regex guard and synthetic test paths are already generic and continue to hold with the tree fully removed.
+
+`.github/workflows/smoke-runtime.yml`, `smoke-ui.yml`, and `smoke-relaymem.yml` each had their `"docs/mvp/**"` `push`/`pull_request` path-trigger line removed (two occurrences per file, six total); each workflow retains its other path triggers (`relaylm/**`, `scripts/**`, `docs/architecture/**`, `docs/evidence/implementation/**`, etc.) unchanged. `.github/workflows/documentation-cutover-preparation.yml` required no change: its `--assert-dependency "docs/mvp/mvp10_summary.md=docs/mvp/README.md"` check runs `scripts/relaylm_docs_relative_link_inventory.py --baseline 22981c3b26b2ec0141093d1ec23592d304f1a053`, which reconstructs the dependency graph from the pinned historical baseline commit via `git show`/`git cat-file`, never the live working tree — confirmed by reading the script's own implementation before deciding not to touch this workflow. `docs/planning/documentation-cutover-tooling.md`'s description of that same pinned check is likewise unchanged, as it accurately describes tooling behavior that has not changed.
+
+`docs/planning/documentation-cutover-rules.yaml` gained two new `path_overrides` entries, checked before the generic `family_rules` (confirmed by reading `classify()`'s own precedence: `path_overrides` is checked first, `family_rules` only as a fallback), so the generic `mvp-other-evidence` rule (`^docs/mvp/`, which would otherwise imply the whole transitional index should be copied wholesale into `docs/evidence/implementation/README.md`) never applies to either retired path: one for `docs/mvp/README.md` (`disposition: absorbed`, target `docs/evidence/implementation/README.md`, matching what the pre-existing generic rule already computed via its template, now made an explicit, truthful, single-target override rather than an implicit fallthrough) and one for `docs/mvp/wave7/e1r3_durable_replay_residual_followup.md` (`disposition: deleted_git_history_only`). The existing `mvp-snapshot-delete`, `mvp-completion-evidence`, `mvp-release-readiness`, `mvp-template`, and `mvp-other-evidence` family rules are unchanged and are kept as historical migration classification rules for interpreting already-completed migration receipts, not as live placement permissions for a tree that no longer exists.
+
+`docs/mvp/README.md` and `docs/mvp/wave7/e1r3_durable_replay_residual_followup.md` were deleted, and `git rm -r docs/mvp/` confirmed no other file remained under the directory. `test ! -e docs/mvp` passes on the final tree. An exhaustive `git grep -nE 'docs/mvp/README\.md|docs/mvp/wave|MVP summaries and milestone history|MVP概要とマイルストーン履歴'` across `README.md`, `README_ja.md`, `docs/`, `scripts/`, `.github/workflows/`, `relaylm/`, `tests/`, `config.example.yaml`, and `pyproject.toml` found zero occurrences in `relaylm/`, `tests/`, `config.example.yaml`, or `pyproject.toml`, and a further `git grep -nE '\]\(.*docs/mvp/'` restricted to actual markdown link syntax found zero live links anywhere outside this batch's own guard-code string literals; every remaining textual occurrence is inside a `-source.txt` exact snapshot, a frozen `implementation_completion_report`/`frozen`-status completion report's own historical "changed files" list, a frozen wave cross-slice convergence audit's own historical process narrative, this receipt, the deletion TSV, or the pinned-baseline cutover-preparation tooling described above — each independently confirmed non-live by inspection, not assumed.
+
+No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, `.gitkeep`, old-path manifest, or temporary finalizer workflow was added. No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/architecture/project_execution_plan.md` and `docs/architecture/current_target_migration_guide.md` were inspected per the task brief's explicit prohibition and confirmed unmoved and unedited. This batch changed 19 files with a net diff of 190 insertions and 260 deletions (2 files, 201 lines, deleted outright; 17 files modified, 190 insertions and 59 deletions).
+
+This batch completes only the active `docs/mvp/` family retirement — the C1C38 disposition above — and explicitly does not complete the whole documentation hard cutover: remaining implementation, wave, evaluation, and release evidence migration, architecture synthesis, exact contract reconstruction, and final invariant enforcement remain open in the sections below, unchanged by this batch. C1C37 is finalized above to merge commit `3e88b182e5ecd55040cf74e0094978bb22c3e840` (PR #602), confirmed an ancestor of the working `main` before this Cutover 1C-38 batch began.
 
 ## Pending batches
 

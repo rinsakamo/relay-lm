@@ -271,7 +271,7 @@ For authoritative ownership and order, see the [Pipeline Responsibility Design](
 - 📜 [Contracts](docs/contracts/README.md)
 - 🧪 [Smoke tests and validation](docs/smoke/README.md)
 - 🧬 [RelaySOUL design and gates](docs/relaysoul/README.md)
-- 🗃️ [MVP summaries and milestone history](docs/mvp/README.md)
+- 🗃️ [Implementation evidence](docs/evidence/implementation/README.md)
 
 ## 🔗 Backend cache boundary
 

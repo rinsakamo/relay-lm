@@ -99,7 +99,8 @@ TOUCHED_DOCS = (
     "docs/PROJECT_STATUS.md",
     "docs/README.md",
     "docs/architecture/README.md",
-    "docs/mvp/README.md",
+    "docs/evidence/implementation/README.md",
+    "docs/evidence/waves/README.md",
     "docs/architecture/project_execution_plan.md",
     "docs/architecture/current_target_migration_guide.md",
     "docs/architecture/relaymem_slp_current_target.md",
@@ -133,7 +134,10 @@ def validate_source_inventory() -> None:
 
 
 def validate_links() -> None:
-    combined = "\n".join(read(path) for path in ("docs/README.md", "docs/architecture/README.md", "docs/mvp/README.md"))
+    combined = "\n".join(
+        read(path)
+        for path in ("docs/README.md", "docs/architecture/README.md", "docs/evidence/implementation/README.md")
+    )
     for required in REQUIRED_LINKS:
         assert required in combined, f"index links missing {required}"
 

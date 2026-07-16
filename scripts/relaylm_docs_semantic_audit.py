@@ -20,7 +20,8 @@ REQUIRED_METADATA_PATHS = (
     "docs/architecture/current_target_migration_guide.md",
     "docs/contracts/README.md",
     "docs/contracts/client_instruction_target_artifact_contract.md",
-    "docs/mvp/README.md",
+    "docs/evidence/implementation/README.md",
+    "docs/evidence/waves/README.md",
     "docs/release/README.md",
     "docs/release/v0.1-release-readiness.md",
     "docs/evidence/releases/README.md",
@@ -60,6 +61,7 @@ RETIRED_RELEASE_PATHS = (
 
 RETIRED_TEMPLATE_PATHS = ("docs/mvp/IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md",)
 CANONICAL_COMPLETION_REPORT_TEMPLATE_PATH = "docs/templates/implementation-completion-report.md"
+RETIRED_MVP_TREE = "docs/mvp"
 
 
 def read_text(relative_path: str) -> str:
@@ -304,20 +306,47 @@ def check_completion_report_template(errors: list[str]) -> None:
     if "implementation-completion-report.md" not in templates_index:
         errors.append("docs/templates/README.md: missing canonical completion-report template link")
 
-    mvp_index = read_text("docs/mvp/README.md")
-    if "IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md" in mvp_index:
-        errors.append("docs/mvp/README.md: still links the retired template path")
-    if "../templates/implementation-completion-report.md" not in mvp_index:
-        errors.append("docs/mvp/README.md: missing link to the canonical completion-report template")
+    implementation_index = read_text("docs/evidence/implementation/README.md")
+    if "IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md" in implementation_index:
+        errors.append("docs/evidence/implementation/README.md: still links the retired template path")
+    if "../../templates/implementation-completion-report.md" not in implementation_index:
+        errors.append(
+            "docs/evidence/implementation/README.md: missing link to the canonical completion-report template"
+        )
 
 
-def check_wave8_index(errors: list[str]) -> None:
-    index_path = "docs/mvp/README.md"
+def check_no_live_mvp_tree(errors: list[str]) -> None:
+    if (ROOT / RETIRED_MVP_TREE).exists():
+        offenders = sorted(
+            path.relative_to(ROOT).as_posix()
+            for path in (ROOT / RETIRED_MVP_TREE).rglob("*")
+            if path.is_file()
+        )
+        errors.append(
+            f"{RETIRED_MVP_TREE}: retired transitional index tree reintroduced (retired by "
+            f"Cutover 1C-38): {offenders or [RETIRED_MVP_TREE]}"
+        )
+
+    scanned = (
+        "README.md",
+        "README_ja.md",
+        "docs/README.md",
+        "docs/evidence/implementation/README.md",
+        "docs/evidence/waves/README.md",
+    )
+    for relative_path in scanned:
+        text = read_text(relative_path)
+        if "](docs/mvp/" in text or "](mvp/README.md)" in text or "](mvp/README.md#" in text:
+            errors.append(f"{relative_path}: retains a live link into the retired docs/mvp/ tree")
+
+
+def check_implementation_evidence_index(errors: list[str]) -> None:
+    index_path = "docs/evidence/implementation/README.md"
     index = read_text(index_path)
-    reports = sorted((ROOT / "docs" / "mvp" / "wave8").glob("*_completion_report.md"))
+    reports = sorted((ROOT / "docs" / "evidence" / "implementation").glob("*_completion_report.md"))
     missing = [path.name for path in reports if path.name not in index]
     if missing:
-        errors.append(f"{index_path}: unindexed Wave 8 completion reports {missing!r}")
+        errors.append(f"{index_path}: unindexed implementation completion reports {missing!r}")
 
 
 def check_operations_docs(errors: list[str]) -> None:
@@ -374,7 +403,8 @@ def main() -> int:
         check_client_instruction_boundary,
         check_release_assessment,
         check_completion_report_template,
-        check_wave8_index,
+        check_implementation_evidence_index,
+        check_no_live_mvp_tree,
         check_operations_docs,
         check_referenced_repository_paths,
     )
@@ -393,8 +423,8 @@ def main() -> int:
     print(
         "RelayLM documentation semantic audit passed "
         f"({len(REQUIRED_METADATA_PATHS)} metadata documents, "
-        f"{len(tuple((ROOT / 'docs' / 'mvp' / 'wave8').glob('*_completion_report.md')))} "
-        "Wave 8 reports)"
+        f"{len(tuple((ROOT / 'docs' / 'evidence' / 'implementation').glob('*_completion_report.md')))} "
+        "implementation completion reports)"
     )
     return 0
 

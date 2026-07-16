@@ -11,7 +11,11 @@ CURRENT_DOCS = (
     "docs/PROJECT_STATUS.md",
     "docs/README.md",
     "docs/architecture/README.md",
-    "docs/mvp/README.md",
+    "docs/evidence/implementation/README.md",
+    "docs/evidence/waves/README.md",
+    "docs/release/README.md",
+    "docs/evidence/releases/README.md",
+    "docs/templates/README.md",
     "docs/DOCUMENTATION_MODEL.md",
     "docs/smoke/README.md",
     "docs/smoke/o1_manual_one_round_runbook.md",
@@ -154,27 +158,26 @@ REQUIRED = {
         "E1-R5 Post-Wave-7 Correction Convergence Audit",
         "implemented E1-R1/E1-R2/E1-R3/E1-R4/E1-R5 evidence",
     ),
-    "docs/mvp/README.md": (
-        "Wave 8 merged completion reports",
+    "docs/evidence/implementation/README.md": (
+        "## Creating a new completion report",
         "MVP eval runner completion report",
-        "source PR #451",
         "O2/O3 and PM-D5-D7 docs convergence completion report",
         "Twin Extraction Tooling completion report",
-        "source PR #503; offline runtime-non-contact preprocessing/extraction tooling only.",
         "LAT-1 Latency Measurement completion report",
-        "source PR #505; measurement-only evidence, no optimization or behavior change.",
-        "docs/evidence/implementation/mvp_eval_runner_completion_report.md",
-        "docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report.md",
-        "docs/evidence/implementation/e2_value_smoke_harness_completion_report.md",
-        "docs/evidence/implementation/twin_extraction_completion_report.md",
-        "docs/evidence/implementation/lat1_latency_measurement_completion_report.md",
-        "Wave 7 merged completion reports",
-        "source PR #436, merge `7bb2525cb000e893146408065f1aa5976f2b54ab`",
-        "docs/evidence/implementation/e1r3_completion_report.md",
-        "source PR #437, merge `e6e5b32cd489dda493ff0171a260dd561a91765c`",
-        "docs/evidence/implementation/e1r4_completion_report.md",
-        "source PR #439",
-        "docs/evidence/implementation/e1r5_completion_report.md",
+        "frozen implementation evidence from PR #451",
+        "frozen documentation-convergence evidence from PR #490",
+        "frozen offline-tooling implementation evidence from PR #503",
+        "frozen measurement-implementation evidence from PR #505",
+        "E1-R3 completion report",
+        "frozen provenance-preserving formation-summary implementation evidence from PR #436",
+        "E1-R4 completion report",
+        "frozen retrieval-response grounding implementation evidence from PR #437",
+        "E1-R5 completion report",
+        "frozen bounded Primary recall candidate-discovery implementation evidence from PR #439",
+    ),
+    "docs/evidence/waves/README.md": (
+        "Wave 7 cross-slice convergence audit",
+        "merged as W7-INT",
     ),
     "docs/DOCUMENTATION_MODEL.md": (
         "`architecture_handoff`",
@@ -697,7 +700,14 @@ def forbid_current_stale(path: str) -> None:
     assert not stale, f"{path}: stale anchors: {stale!r}"
 
 
+def assert_no_mvp_tree() -> None:
+    assert not (ROOT / "docs" / "mvp").exists(), (
+        "retired docs/mvp/ tree reintroduced (retired by Cutover 1C-38)"
+    )
+
+
 def main() -> None:
+    assert_no_mvp_tree()
     for path, anchors in REQUIRED.items():
         require(path, anchors)
     for path in CURRENT_DOCS:

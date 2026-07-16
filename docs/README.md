@@ -34,13 +34,13 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) — compatibility interpretation.
 - [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md) — current E1 evidence inventory and completed E1-R1 through E1-R5 quality work.
-- [MVP evidence index](mvp/README.md) — historical snapshots and per-PR implementation completion reports.
+- [Implementation evidence](evidence/implementation/README.md) — per-PR implementation completion reports and focused historical MVP evidence.
 
 The current product target is no longer only a memory-governance proxy. The MVP direction is a Markdown/file-first Character Workspace plus governed runtime behavior for relationship-, scene-, emotion-, memory-, and context-aware conversation.
 
 ## Parallel implementation documentation rule
 
-Implementation PRs add or update their own slice handoff and `docs/mvp/wave*/<slice>_completion_report.md` only. Shared current-status and execution-plan documents may receive the minimum anchors needed to keep active validation green, but the wave convergence PR remains responsible for repository-wide synthesis. The next wave and release/evaluation gate remain closed until the convergence PR links the merged reports and updates shared current-status documents.
+Implementation PRs add or update their own slice handoff and `docs/evidence/implementation/<slice>_completion_report.md` only. Shared current-status and execution-plan documents may receive the minimum anchors needed to keep active validation green, but the wave convergence PR remains responsible for repository-wide synthesis. The next wave and release/evaluation gate remain closed until the convergence PR links the merged reports and updates shared current-status documents.
 
 ## Product-critical boundaries
 
@@ -191,7 +191,7 @@ These documents are target architecture unless explicitly listed as a current co
 3. `pipeline_responsibility_design.md` owns component responsibility and canonical target order.
 4. Dedicated current contracts own exact bounded behavior.
 5. `current_target_migration_guide.md` owns current/target/compatibility interpretation.
-6. `docs/mvp/` and `docs/architecture/` evaluation records are historical or bounded evidence unless listed as current authorities above.
+6. `docs/evidence/` and `docs/architecture/` evaluation records are historical or bounded evidence unless listed as current authorities above.
 
 ## Placement rules
 
