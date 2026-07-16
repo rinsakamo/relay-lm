@@ -10,6 +10,7 @@ import sys
 import tempfile
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlsplit
 
 import yaml
 
@@ -756,18 +757,43 @@ def check_lat1_evaluation_split(errors: list[str]) -> None:
 # retired, moved verbatim to docs/evidence/evaluations/. Narrow, reviewed
 # guard mirroring check_no_live_lat1_scaffold above, scoped to this one
 # retired path.
+#
+# Review correction: an initial version of this guard matched only the full
+# repository-root-qualified literal (docs/architecture/e1_local_runtime_...).
+# It missed relative references -- a same-directory bare filename, "../",
+# "../../", or a relaylm_related_authority front-matter entry -- that
+# resolve to the exact same retired file. Both frozen -source.txt snapshots
+# legitimately use the "../../architecture/..." relative form, which the
+# prior literal-only pattern never even matched, making their allowlist
+# entries untested. The guard now resolves candidate references (Markdown
+# link targets and relaylm_related_authority list entries) against the
+# referring file's own directory -- the same resolution model already used
+# and independently tested by scripts/relaylm_docs_link_check.py's
+# _resolve_local_target() -- and compares the *resolved* repository-relative
+# path, not the raw text, against the retired path. It deliberately does not
+# match on bare basename alone: the canonical target keeps the identical
+# basename (only the directory changed), so a basename-only pattern would
+# false-positive on every legitimate live reference to the new
+# docs/evidence/evaluations/ location.
 # ---------------------------------------------------------------------------
 E1_LOCAL_RUNTIME_RETIRED_PATH = "docs/architecture/e1_local_runtime_evaluation_2026_06_25.md"
 E1_LOCAL_RUNTIME_CANONICAL_PATH = "docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md"
-# Deliberately the full repository-root-qualified old path, not a bare
-# filename or stable-stem pattern: unlike the LAT-1 scaffold, the canonical
-# target keeps the exact same basename as the retired source (only the
-# directory changed), so a bare-filename or stem-only pattern would also
-# match every legitimate live reference to the new docs/evidence/evaluations/
-# location. Only the old directory-qualified literal is unambiguous.
+
+# Repository-root-qualified literal scan: catches occurrences that are not
+# phrased as a Markdown link or a relaylm_related_authority entry at all
+# (backtick code spans, table cells, script string literals).
 E1_LOCAL_RUNTIME_REFERENCE_PATTERN = re.compile(
     r"docs/architecture/e1_local_runtime_evaluation_2026_06_25\.md"
 )
+
+# Same external-scheme set _resolve_local_target() in
+# relaylm_docs_link_check.py treats as non-local and skips.
+E1_LOCAL_RUNTIME_EXTERNAL_SCHEMES = frozenset(
+    {"data", "file", "ftp", "http", "https", "javascript", "mailto", "sandbox", "tel"}
+)
+E1_LOCAL_RUNTIME_MD_LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
+E1_LOCAL_RUNTIME_RELATED_AUTHORITY_KEY_RE = re.compile(r"^relaylm_related_authority:\s*$")
+E1_LOCAL_RUNTIME_LIST_ITEM_RE = re.compile(r"^\s+-\s+(.+?)\s*$")
 
 # Files whose entire content is historical/migration record-keeping by
 # construction and may legitimately name the retired literal without
@@ -781,9 +807,15 @@ E1_LOCAL_RUNTIME_REFERENCE_ALLOWLISTED_FILES = frozenset(
 )
 
 # The exact, reviewed frozen source snapshots that legitimately contain the
-# retired literal as byte-for-byte historical evidence of the PRs that
-# originally referenced the pre-move path. A closed set of exact paths, not
-# a generic "*-source.txt" suffix rule.
+# retired reference (in its original relative form) as byte-for-byte
+# historical evidence of the PRs that originally referenced the pre-move
+# path. A closed set of exact paths, not a generic "*-source.txt" suffix
+# rule. These are the two files that make the resolver above necessary: both
+# use "../../architecture/e1_local_runtime_evaluation_2026_06_25.md" inside
+# their own relaylm_related_authority front matter, not the repository-root
+# literal. They carry a .txt extension (excluded from the standard
+# docs/**/*.md scan scope), so they are explicitly added to the scan list
+# below rather than relying on a broadened directory-wide *.txt walk.
 E1_LOCAL_RUNTIME_REFERENCE_EXACT_SNAPSHOT_ALLOWLIST = frozenset(
     {
         "docs/evidence/implementation/e1_completion_report-source.txt",
@@ -807,6 +839,48 @@ E1_LOCAL_RUNTIME_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
 }
 
 
+def _e1_local_runtime_scanned_files(root: Path) -> list[Path]:
+    files = list(_mvp_reference_scanned_files(root))
+    existing = set(files)
+    for extra in sorted(E1_LOCAL_RUNTIME_REFERENCE_EXACT_SNAPSHOT_ALLOWLIST):
+        candidate = root / extra
+        if candidate.is_file() and candidate not in existing:
+            files.append(candidate)
+            existing.add(candidate)
+    return files
+
+
+def _e1_local_runtime_resolve(source: Path, raw_target: str) -> str | None:
+    """Resolve a Markdown link target or related-authority entry to a
+    repository-relative POSIX path, mirroring
+    relaylm_docs_link_check._resolve_local_target(): external schemes and
+    root-relative web links are not local file references, and a target
+    starting with "docs/" is treated as repository-root-qualified (the
+    convention this repository's own relaylm_related_authority lists use)
+    rather than relative to the referring file's own directory."""
+    target = raw_target.strip()
+    if not target:
+        return None
+    if target.startswith("<") and target.endswith(">") and len(target) >= 2:
+        target = target[1:-1].strip()
+    if not target:
+        return None
+    parsed = urlsplit(target)
+    if parsed.scheme.lower() in E1_LOCAL_RUNTIME_EXTERNAL_SCHEMES or parsed.netloc:
+        return None
+    path_text = unquote(parsed.path)
+    if not path_text or path_text.startswith("/"):
+        return None
+    try:
+        if path_text.startswith("docs/"):
+            candidate = (ROOT / path_text).resolve()
+        else:
+            candidate = (source.parent / path_text).resolve()
+        return candidate.relative_to(ROOT.resolve()).as_posix()
+    except (ValueError, OSError):
+        return None
+
+
 def check_no_live_e1_local_runtime_architecture_path(errors: list[str]) -> None:
     if (ROOT / E1_LOCAL_RUNTIME_RETIRED_PATH).exists():
         errors.append(
@@ -814,7 +888,7 @@ def check_no_live_e1_local_runtime_architecture_path(errors: list[str]) -> None:
             "under docs/architecture/ (moved to docs/evidence/evaluations/ by Cutover 1C-40)"
         )
 
-    for path in _mvp_reference_scanned_files(ROOT):
+    for path in _e1_local_runtime_scanned_files(ROOT):
         relative_path = path.relative_to(ROOT).as_posix()
         if relative_path == E1_LOCAL_RUNTIME_RETIRED_PATH:
             continue
@@ -829,15 +903,74 @@ def check_no_live_e1_local_runtime_architecture_path(errors: list[str]) -> None:
             text = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             continue
+
+        resolve_references = path.suffix in (".md", ".txt")
+        in_front_matter = False
+        front_matter_seen = False
+        in_related_authority = False
+
         for line_number, line in enumerate(text.splitlines(), start=1):
-            if E1_LOCAL_RUNTIME_REFERENCE_PATTERN.search(line) is None:
-                continue
             stripped = line.strip()
+
+            # Pass 1: repository-root-qualified literal, anywhere in the line.
+            if E1_LOCAL_RUNTIME_REFERENCE_PATTERN.search(line) is not None:
+                if not any(allowed in stripped for allowed in allowed_lines):
+                    errors.append(
+                        f"{relative_path}:{line_number}: active reference to retired "
+                        f"{E1_LOCAL_RUNTIME_RETIRED_PATH}: {stripped!r}"
+                    )
+
+            if not resolve_references:
+                continue
+
+            # Track the first "---"-delimited front-matter block so
+            # relaylm_related_authority entries are only read from there,
+            # not from a coincidental "- " bullet later in the document body.
+            if stripped == "---":
+                if not front_matter_seen:
+                    in_front_matter = True
+                    front_matter_seen = True
+                elif in_front_matter:
+                    in_front_matter = False
+                    in_related_authority = False
+                continue
+
+            # Pass 2: Markdown link targets, resolved against this file's
+            # own directory (or the repository root for a "docs/"-qualified
+            # target).
+            for match in E1_LOCAL_RUNTIME_MD_LINK_RE.finditer(line):
+                raw_target = match.group(1).strip()
+                resolved = _e1_local_runtime_resolve(path, raw_target)
+                if resolved != E1_LOCAL_RUNTIME_RETIRED_PATH:
+                    continue
+                if any(allowed in stripped for allowed in allowed_lines):
+                    continue
+                errors.append(
+                    f"{relative_path}:{line_number}: active reference to retired "
+                    f"{E1_LOCAL_RUNTIME_RETIRED_PATH}: markdown link target {raw_target!r}"
+                )
+
+            # Pass 3: relaylm_related_authority front-matter list entries.
+            if not in_front_matter:
+                continue
+            if E1_LOCAL_RUNTIME_RELATED_AUTHORITY_KEY_RE.match(line) is not None:
+                in_related_authority = True
+                continue
+            if not in_related_authority:
+                continue
+            item_match = E1_LOCAL_RUNTIME_LIST_ITEM_RE.match(line)
+            if item_match is None:
+                in_related_authority = False
+                continue
+            raw_target = item_match.group(1).strip()
+            resolved = _e1_local_runtime_resolve(path, raw_target)
+            if resolved != E1_LOCAL_RUNTIME_RETIRED_PATH:
+                continue
             if any(allowed in stripped for allowed in allowed_lines):
                 continue
             errors.append(
                 f"{relative_path}:{line_number}: active reference to retired "
-                f"{E1_LOCAL_RUNTIME_RETIRED_PATH}: {stripped!r}"
+                f"{E1_LOCAL_RUNTIME_RETIRED_PATH}: relaylm_related_authority entry {raw_target!r}"
             )
 
 
@@ -2318,7 +2451,7 @@ def self_test() -> None:
         )
     ROOT = real_root
 
-    # 52. A current document with an active reference to the retired path is rejected.
+    # 52. A current document with the full repository-root-qualified old path is rejected.
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
@@ -2329,13 +2462,107 @@ def self_test() -> None:
             "See [old record](docs/architecture/e1_local_runtime_evaluation_2026_06_25.md).\n",
         )
         check_rejects(
-            "a current document referencing the retired E1 local runtime evaluation path is rejected",
+            "a current document with the full root-qualified old path is rejected",
             check_no_live_e1_local_runtime_architecture_path,
             "active reference to retired docs/architecture/e1_local_runtime_evaluation_2026_06_25.md",
         )
     ROOT = real_root
 
-    # 53. A frozen/historical_after_merge document's own retired-path mention is
+    # 53. A same-directory bare-filename reference from another file under
+    # docs/architecture/ resolves to the retired path and is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/architecture/example_sibling.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            "See [old record](e1_local_runtime_evaluation_2026_06_25.md) for background.\n",
+        )
+        check_rejects(
+            "a same-directory bare-filename reference resolving to the retired path is rejected",
+            check_no_live_e1_local_runtime_architecture_path,
+            "active reference to retired docs/architecture/e1_local_runtime_evaluation_2026_06_25.md",
+        )
+    ROOT = real_root
+
+    # 54. A "../architecture/..." reference from a sibling directory of
+    # docs/architecture/ resolves to the retired path and is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evaluation/example_other.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            "See [old record](../architecture/e1_local_runtime_evaluation_2026_06_25.md).\n",
+        )
+        check_rejects(
+            "a ../architecture/... reference resolving to the retired path is rejected",
+            check_no_live_e1_local_runtime_architecture_path,
+            "active reference to retired docs/architecture/e1_local_runtime_evaluation_2026_06_25.md",
+        )
+    ROOT = real_root
+
+    # 55. A "../../architecture/..." Markdown link reference from
+    # docs/evidence/implementation/, in a file that is NOT one of the two
+    # exact allowlisted snapshots, resolves to the retired path and is
+    # rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_other_report.md",
+            "---\nrelaylm_doc_type: implementation_completion_report\nrelaylm_status: current\n---\n\n"
+            "See [old record](../../architecture/e1_local_runtime_evaluation_2026_06_25.md).\n",
+        )
+        check_rejects(
+            "a ../../architecture/... reference in a non-snapshot file is rejected",
+            check_no_live_e1_local_runtime_architecture_path,
+            "active reference to retired docs/architecture/e1_local_runtime_evaluation_2026_06_25.md",
+        )
+    ROOT = real_root
+
+    # 56. A relaylm_related_authority front-matter entry that resolves to the
+    # retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_related_authority.md",
+            "---\nrelaylm_doc_type: implementation_completion_report\nrelaylm_status: current\n"
+            "relaylm_related_authority:\n"
+            "  - ../../architecture/e1_local_runtime_evaluation_2026_06_25.md\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a relaylm_related_authority entry resolving to the retired path is rejected",
+            check_no_live_e1_local_runtime_architecture_path,
+            "relaylm_related_authority entry",
+        )
+    ROOT = real_root
+
+    # 57. A Markdown link with a trailing anchor still resolves (ignoring the
+    # anchor) to the retired path and is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_anchor.md",
+            "---\nrelaylm_doc_type: implementation_completion_report\nrelaylm_status: current\n---\n\n"
+            "See [findings](../../architecture/e1_local_runtime_evaluation_2026_06_25.md#observed-findings).\n",
+        )
+        check_rejects(
+            "a Markdown link with a trailing anchor resolving to the retired path is rejected",
+            check_no_live_e1_local_runtime_architecture_path,
+            "markdown link target",
+        )
+    ROOT = real_root
+
+    # 58. A frozen/historical_after_merge document's own retired-path mention is
     # REJECTED when it has no exact line-allowlist entry: this guard does not
     # fall back to a generic whole-document status bypass.
     with tempfile.TemporaryDirectory() as td:
@@ -2354,27 +2581,7 @@ def self_test() -> None:
         )
     ROOT = real_root
 
-    # 54. The exact reviewed frozen source snapshots are allowed.
-    with tempfile.TemporaryDirectory() as td:
-        base = Path(td)
-        ROOT = base
-        _mvp_write(
-            base,
-            "docs/evidence/implementation/e1_completion_report-source.txt",
-            "  - ../../architecture/e1_local_runtime_evaluation_2026_06_25.md\n",
-        )
-        _mvp_write(
-            base,
-            "docs/evidence/implementation/e1r2_completion_report-source.txt",
-            "  - ../../architecture/e1_local_runtime_evaluation_2026_06_25.md\n",
-        )
-        check_silent(
-            "the exact reviewed frozen source snapshots are allowed",
-            check_no_live_e1_local_runtime_architecture_path,
-        )
-    ROOT = real_root
-
-    # 55. The canonical migrated document's own filename does not self-trigger the guard.
+    # 59. The canonical migrated document's own filename does not self-trigger the guard.
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
@@ -2385,6 +2592,96 @@ def self_test() -> None:
         )
         check_silent(
             "the canonical migrated document at its new path does not self-trigger the guard",
+            check_no_live_e1_local_runtime_architecture_path,
+        )
+    ROOT = real_root
+
+    # 60. A repository-root-qualified Markdown link to the canonical target is allowed.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md",
+            "---\nrelaylm_doc_type: evidence\nrelaylm_status: frozen\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            "docs/example_root_qualified_link.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            "See [record](docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md).\n",
+        )
+        check_silent(
+            "a repository-root-qualified link to the canonical target is allowed",
+            check_no_live_e1_local_runtime_architecture_path,
+        )
+    ROOT = real_root
+
+    # 61. A relative Markdown link to the canonical target, from a sibling
+    # document in the same directory, is allowed.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md",
+            "---\nrelaylm_doc_type: evidence\nrelaylm_status: frozen\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            "docs/evidence/evaluations/example_index.md",
+            "---\nrelaylm_doc_type: documentation_index\nrelaylm_status: current\n---\n\n"
+            "- [record](e1_local_runtime_evaluation_2026_06_25.md)\n",
+        )
+        check_silent(
+            "a relative link to the canonical target from a sibling document is allowed",
+            check_no_live_e1_local_runtime_architecture_path,
+        )
+    ROOT = real_root
+
+    # 62. The exact reviewed frozen source snapshots are allowed ONLY because
+    # of the exact-path allowlist: the identical historical relative-form
+    # relaylm_related_authority entry is first proven to be REJECTED in a
+    # non-allowlisted file (proving the resolver and rejection path actually
+    # fire for this exact content), then proven SILENT only at each of the
+    # two exact allowlisted snapshot paths.
+    snapshot_related_authority = (
+        "---\nrelaylm_doc_type: implementation_completion_report\nrelaylm_status: historical_after_merge\n"
+        "relaylm_related_authority:\n"
+        "  - ../../architecture/e1_evaluation_consolidation.md\n"
+        "  - ../../architecture/e1_local_runtime_evaluation_2026_06_25.md\n"
+        "---\n\nBody.\n"
+    )
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_not_allowlisted_report.md",
+            snapshot_related_authority,
+        )
+        check_rejects(
+            "the exact historical snapshot content is rejected in a non-allowlisted file",
+            check_no_live_e1_local_runtime_architecture_path,
+            "relaylm_related_authority entry",
+        )
+    ROOT = real_root
+
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/e1_completion_report-source.txt",
+            snapshot_related_authority,
+        )
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/e1r2_completion_report-source.txt",
+            snapshot_related_authority,
+        )
+        check_silent(
+            "the identical content is silent only at the two exact allowlisted snapshot paths",
             check_no_live_e1_local_runtime_architecture_path,
         )
     ROOT = real_root
