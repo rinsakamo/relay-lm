@@ -3523,6 +3523,24 @@ superseded_validated_content_heads:
     receipt_only_tail_superseded:
       - 85b12f0488755ac197a1f710d2b6e60dc2398cbb
       - 37074c20e656571043bd7e4689628108cb9523dd
+  - head: 11c83dfab6e1ded3dd3a2d1cea421666ced26cf1
+    reason: reviews_accounting_error_found_by_re_verification_reviews_was_recorded_as_0_at_this_head_and_throughout_its_receipt_only_tail_but_a_review_submission_id_4714901958_state_commented_author_rinsakamo_author_association_owner_had_already_been_submitted_at_2026_07_16t14_46_13z_strictly_before_this_heads_own_rebase_committer_date_2026_07_16t14_49_12z_and_before_every_subsequent_commit_in_this_round_the_error_was_a_stale_carry_forward_of_the_pre_review_reviews_0_value_from_the_prior_correction_round_rather_than_a_fresh_get_reviews_recheck_at_each_step_all_27_of_this_heads_own_github_actions_check_runs_had_passed_and_its_diff_totals_remain_accurate_as_historical_record_only_the_reviews_and_pr_comments_fields_were_wrong_no_code_or_content_defect_motivated_this_supersession
+    triggered_check_runs: 27
+    triggered_workflow_runs: 16
+    all_github_actions: passed
+    receipt_only_tail_superseded:
+      - d4f5b9ce135a1696436fba6ebc0661900cd32c0d
+      - 2043275410ca19a4d5c5e8abb81d7662887c14be
+reviews_accounting_correction:
+  error_found: reviews_recorded_as_0_in_the_11c83df_through_2043275_head_and_tail_when_review_id_4714901958_already_existed
+  review_submission_details:
+    id: 4714901958
+    state: COMMENTED
+    author: rinsakamo
+    author_association: OWNER
+    submitted_at: 2026-07-16T14:46:13Z
+  root_cause: the_reviews_field_was_carried_forward_from_the_pre_review_guard_fix_round_without_a_fresh_get_reviews_api_call_at_each_subsequent_bookkeeping_and_finalization_step_of_the_rebase_round
+  correction_method: independently_recalled_get_reviews_get_review_comments_and_get_comments_immediately_before_writing_this_correction_reviews_is_the_count_of_top_level_review_submissions_get_reviews_distinct_from_unresolved_review_threads_get_review_comments_totalcount_which_was_and_remains_correctly_0_and_distinct_from_pr_comments_get_comments_top_level_issue_conversation_comments
 rebase_performed:
   reason: pr_owner_review_requested_the_branch_be_rebased_onto_current_main_since_main_had_advanced_via_the_disjoint_merged_pr_599_during_this_prs_correction_rounds_the_cutover_tasks_own_open_pr_isolation_requirement_names_current_main_as_the_only_starting_authority
   old_merge_base: 3d51fe0b19fd1591a1f6cc6bcd73efccb7c5f4ea
@@ -3530,24 +3548,18 @@ rebase_performed:
   disjoint_files_confirmed: pr_599_docs_define_showcase_starter_and_product_knowledge_ownership_changed_exactly_three_files_docs_strategy_showcase_starter_product_knowledge_md_new_docs_relaysoul_readme_md_docs_strategy_rin_relm_character_vision_md_new_none_of_which_overlap_with_this_batchs_fifteen_files_independently_confirmed_via_git_show_dash_dash_stat_and_git_diff_dash_dash_name_only_before_rebasing_not_merely_trusted_from_the_review_comment
   method: git_rebase_origin_slash_main_followed_by_force_dash_with_dash_lease_push_all_seven_pre_rebase_commits_replayed_cleanly_with_zero_conflicts_every_commits_content_and_message_unchanged_only_the_parent_commit_and_resulting_hash_changed
   no_content_change: true
-validated_content_head: 11c83dfab6e1ded3dd3a2d1cea421666ced26cf1
-validated_content_head_actions:
-  workflow_runs_total: 16
-  workflow_runs_by_trigger: {pull_request: 15, push: 1, other: 0}
-  job_or_check_runs_total: 27
-  success: 18
-  failure: 0
-  skipped: 9
-validated_content_head_changed_files: 15
-validated_content_head_net_diff: {insertions: 710, deletions: 30}
-non_receipt_content_files: 14
-non_receipt_content_net_diff: {insertions: 538, deletions: 28}
-final_pr_changed_files: 15
-final_pr_net_diff: {insertions: 718, deletions: 30}
-reviews: 0
-pr_comments: 0
-unresolved_review_threads: 0
-receipt_finalization: performed_after_validated_content_head
+validated_content_head: pending
+validated_content_head_actions: pending
+validated_content_head_changed_files: pending
+validated_content_head_net_diff: pending
+non_receipt_content_files: pending
+non_receipt_content_net_diff: pending
+final_pr_changed_files: pending
+final_pr_net_diff: pending
+reviews: pending
+pr_comments: pending
+unresolved_review_threads: pending
+receipt_finalization: pending
 ```
 
 This single atomic batch migrates one record: `docs/architecture/e1_local_runtime_evaluation_2026_06_25.md`, a completed, dated, bounded local-workstation evaluation record carrying the legacy `evaluation_record` doc type under `docs/architecture/` — a noncanonical location for a dated result per `docs/DOCUMENTATION_MODEL.md`'s required cutover destination (`evidence`, canonical location `docs/evidence/evaluations/`). Unlike the Cutover 1C-39 LAT-1 scaffold, this source was never a mixed method/template scaffold and never a stale `evidence_retained` assumption: it genuinely records one hands-on local workstation experiment (SOUL Lab Home real conversation through RelayLM, LM Studio, durable RelaySLP publication, O0 one-job execution, Primary MEM formation, and later-turn recall) with four concrete observed findings and gaps, and its own body states plainly that it "records observed evidence and discovered gaps" and "does not upgrade any component contract or claim production readiness." `evidence_retained` is therefore the correct disposition for this record, not a correction of a prior stale claim.
@@ -3578,7 +3590,9 @@ No file under `relaylm/` changed, and no runtime, configuration, schema, schedul
 
 **Rebase for main freshness.** A PR review from the repository owner requested rebasing this branch onto current `main`, which had advanced to `cd49c75e29e9ab4802c9ddabfe28ee3904b4cf6c` via the disjoint PR #599 ("docs: define showcase, starter, and product-knowledge ownership") merging during this PR's correction rounds. Two of the review's six numbered items (the C1C40 receipt content-head sequence and the PR body) were already resolved by the commits immediately above, before the review was submitted — independently confirmed by grepping this file's own `validated_content_head`/`final_pr_changed_files`/`receipt_finalization` fields and by reading the live PR body via the GitHub API, both already showing the finalized (non-`pending`) state at the time this correction began. The rebase request itself was verified rather than assumed: `git show --stat` on `cd49c75e` confirmed PR #599 changed exactly three files (`docs/strategy/showcase-starter-product-knowledge.md`, `docs/relaysoul/README.md`, `docs/strategy/rin-relm-character-vision.md`), none overlapping this batch's fifteen files. `git rebase origin/main` replayed all seven pre-rebase commits cleanly with zero conflicts — every commit's content and message unchanged, only its parent and resulting hash changed — followed by a `--force-with-lease` push. The full local validation suite was rerun and passed unchanged (70 self-test assertions, zero non-allowlisted retired-path references) before pushing. `8c990082...` and `d81cf6d...` are recorded in `superseded_validated_content_heads` above as historical fact: both heads genuinely existed, were pushed, and had real, fully-green GitHub Actions runs; the rebase does not retroactively make that false, it only changes which commits are reachable from the branch's current tip.
 
-`11c83dfab6e1ded3dd3a2d1cea421666ced26cf1` was recorded as `validated_content_head`: all 27 triggered GitHub Actions check runs, spanning 16 distinct workflow runs (15 `pull_request`, 1 `push`), completed with 18 successes, 9 skips, and zero failures — identical counts to the pre-rebase head, as expected for a content-preserving rebase. There were 0 reviews, 0 PR comments, and 0 unresolved review threads on the PR at this head. The PR-level diff at this head was 15 changed files, +710/-30, of which 14 files (+538/-28) were non-receipt content (unchanged from the pre-rebase totals, confirming the rebase changed no file content) and 1 file (this receipt, +172/-2) was the receipt-only accounting; both subtotals were independently recomputed via `git diff --numstat` against the new merge-base with `origin/main`. Its receipt-only tail (`d4f5b9ce135a1696436fba6ebc0661900cd32c0d`) recorded that head's Actions and diff totals; its own 16 triggered GitHub Actions workflow runs completed with 18 successes, 9 skips, and zero failures across 27 check runs, and the PR remained at 0 reviews, 0 comments, 0 unresolved threads. `final_pr_changed_files`/`final_pr_net_diff` are now finalized at 15 changed files, +718/-30 — the exact GitHub-reported PR-level totals, independently confirmed via `pull_request_read get_files`; the receipt-only bookkeeping edit itself added 8 further lines to the receipt (+180/-2 at this head versus +172/-2 at the prior head), so the full-head total grew from +710/-30 to +718/-30 while the non-receipt content total (14 files, +538/-28) remains unchanged throughout the entire rebase round. `receipt_finalization` is recorded as `performed_after_validated_content_head`. `merged_commit` remains `pending`; this task does not merge the PR.
+`11c83dfab6e1ded3dd3a2d1cea421666ced26cf1` was recorded as `validated_content_head`: all 27 triggered GitHub Actions check runs, spanning 16 distinct workflow runs (15 `pull_request`, 1 `push`), completed with 18 successes, 9 skips, and zero failures — identical counts to the pre-rebase head, as expected for a content-preserving rebase. The PR-level diff at this head was 15 changed files, +710/-30, of which 14 files (+538/-28) were non-receipt content (unchanged from the pre-rebase totals, confirming the rebase changed no file content) and 1 file (this receipt, +172/-2) was the receipt-only accounting; both subtotals were independently recomputed via `git diff --numstat` against the new merge-base with `origin/main`. Its receipt-only tail (`d4f5b9ce135a1696436fba6ebc0661900cd32c0d`, then `2043275410ca19a4d5c5e8abb81d7662887c14be`) finalized `final_pr_changed_files`/`final_pr_net_diff` at 15 changed files, +718/-30 (independently confirmed via `pull_request_read get_files`); its own GitHub Actions across both commits remained fully green.
+
+**Reviews accounting correction.** This head and its entire receipt-only tail incorrectly recorded `reviews: 0`. Review `4714901958` (state `COMMENTED`, author `rinsakamo`, `OWNER`) was submitted at `2026-07-16T14:46:13Z` — strictly before `11c83df`'s own rebase committer timestamp (`2026-07-16T14:49:12Z`, the moment `git rebase` actually ran, as opposed to the author timestamps git rebase preserves from the original pre-rebase commits) and before every subsequent commit in the rebase round. The `reviews: 0` value was a stale carry-forward from the guard-fix round, before that review existed, never re-verified against a fresh `get_reviews` call during the rebase round. `unresolved_review_threads: 0` was and remains correct (`get_review_comments` `totalCount: 0` throughout — a review submission with no inline comment threads does not create an unresolved thread), and `pr_comments: 0` was correct for these three heads' own timestamps (the PR's first conversation comment, this session's own reply to the review, was posted afterward at `2026-07-16T15:03:19Z`). Only the top-level `reviews` submission count was wrong. `superseded_validated_content_heads` above records `11c83df` a third time with this correction as the reason; its diff totals remain accurate and are not disturbed by this fix. `merged_commit` remains `pending`; this task does not merge the PR.
 
 ## Pending batches
 
