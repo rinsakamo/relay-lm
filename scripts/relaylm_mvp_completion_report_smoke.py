@@ -110,15 +110,18 @@ MODEL_ANCHORS = {
         "## Parallel implementation documentation rule",
         "The next wave and release/evaluation gate remain closed",
     ),
-    "docs/mvp/README.md": (
-        "## Implementation completion reports",
-        "Wave 4 merged completion reports",
+    "docs/evidence/implementation/README.md": (
+        "## Creating a new completion report",
+        "docs/evidence/implementation/<slice>_completion_report.md",
+        "../../templates/implementation-completion-report.md",
         "O1D2 completion report",
         "I-4E completion report",
         "UI-B1A completion report",
         "I-5A completion report",
         "I-7A/B completion report",
-        "The wave convergence PR links the merged reports",
+    ),
+    "docs/evidence/waves/README.md": (
+        "Wave 4 cross-slice convergence audit",
     ),
 }
 
@@ -309,6 +312,19 @@ def assert_old_template_path_absent() -> None:
         )
 
 
+def assert_no_mvp_tree() -> None:
+    mvp_root = ROOT / "docs" / "mvp"
+    if mvp_root.exists():
+        offenders = sorted(
+            path.relative_to(ROOT).as_posix() for path in mvp_root.rglob("*") if path.is_file()
+        )
+        raise AssertionError(
+            "retired docs/mvp/ tree reintroduced (retired by Cutover 1C-38; canonical "
+            f"routers are docs/evidence/implementation/README.md and docs/evidence/waves/README.md): "
+            f"{offenders or [str(mvp_root.relative_to(ROOT))]}"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Self-test: bounded, deterministic, committed. Builds synthetic temp trees and
 # monkeypatches ROOT rather than touching the real repository tree. Run with
@@ -472,11 +488,13 @@ def self_test() -> None:
     def _real_reports_pass():
         assert_no_legacy_wave_reports()
         assert_old_template_path_absent()
+        assert_no_mvp_tree()
         validate_template_front_matter()
         for report_path in all_report_paths():
             validate_report(report_path)
 
     check("real repository: all migrated reports and template pass", _real_reports_pass)
+    check("real repository: docs/mvp/ tree is absent", assert_no_mvp_tree)
 
     # 2 & 5. A synthetic canonical evidence/frozen report passes and requires no snapshot fields.
     with tempfile.TemporaryDirectory() as td:
@@ -597,6 +615,54 @@ def self_test() -> None:
         check("clean synthetic tree has no old template path", _clean_tree_silent)
     ROOT = real_root
 
+    # A synthetic reintroduced docs/mvp/README.md is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        (base / "docs" / "mvp").mkdir(parents=True)
+        (base / "docs" / "mvp" / "README.md").write_text("reintroduced index", encoding="utf-8")
+
+        def _rejects_reintroduced_mvp_readme():
+            assert_no_mvp_tree()
+
+        check_rejects(
+            "reintroduced docs/mvp/README.md is rejected",
+            _rejects_reintroduced_mvp_readme,
+            "retired docs/mvp/ tree reintroduced",
+        )
+    ROOT = real_root
+
+    # A synthetic file anywhere below docs/mvp/ is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        (base / "docs" / "mvp" / "wave9").mkdir(parents=True)
+        (base / "docs" / "mvp" / "wave9" / "example_completion_report.md").write_text(
+            "reintroduced report", encoding="utf-8"
+        )
+
+        def _rejects_reintroduced_mvp_subtree_file():
+            assert_no_mvp_tree()
+
+        check_rejects(
+            "reintroduced file anywhere below docs/mvp/ is rejected",
+            _rejects_reintroduced_mvp_subtree_file,
+            "retired docs/mvp/ tree reintroduced",
+        )
+    ROOT = real_root
+
+    # A clean synthetic tree with no docs/mvp/ directory at all is silent.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        (base / "docs").mkdir(parents=True)
+
+        def _no_mvp_dir_silent():
+            assert_no_mvp_tree()
+
+        check("clean synthetic tree with no docs/mvp/ directory is silent", _no_mvp_dir_silent)
+    ROOT = real_root
+
     # 8. A canonical template reintroducing the retired generated-report profile is rejected.
     real_template_text = (real_root / CANONICAL_TEMPLATE_PATH).read_text(encoding="utf-8")
     with tempfile.TemporaryDirectory() as td:
@@ -648,6 +714,7 @@ def main() -> None:
 
     assert_no_legacy_wave_reports()
     assert_old_template_path_absent()
+    assert_no_mvp_tree()
     if args.check_model:
         validate_model()
     paths = list(args.paths)

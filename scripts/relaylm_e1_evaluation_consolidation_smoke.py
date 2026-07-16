@@ -96,8 +96,7 @@ REQUIRED = {
         "E1-R5 Primary MEM Recall Candidate Discovery Bridge",
         "Wave 7 Cross-Slice Convergence Audit",
     ),
-    "docs/mvp/README.md": (
-        "Wave 7 merged completion reports",
+    "docs/evidence/implementation/README.md": (
         "E1-R1 completion report",
         "E1-R2 completion report",
         "E1-R3 completion report",
@@ -259,7 +258,7 @@ def validate_indexes_reference_e1() -> None:
         for path in (
             "docs/README.md",
             "docs/architecture/README.md",
-            "docs/mvp/README.md",
+            "docs/evidence/implementation/README.md",
         )
     )
     for required in (

@@ -50,11 +50,9 @@ REQUIRED = {
         "bounded scheduler operational controls            complete as O1E",
         "operational validation hardening                  complete as O1F",
     ),
-    "docs/mvp/README.md": (
-        "Wave 5 merged completion reports",
+    "docs/evidence/implementation/README.md": (
         "O1E completion report",
         "I-4F completion report",
-        "W5-INT is merged",
     ),
 }
 
@@ -93,7 +91,8 @@ def main() -> None:
         "docs/architecture/relaymem_slp_current_target.md",
         "docs/README.md",
         "docs/architecture/README.md",
-        "docs/mvp/README.md",
+        "docs/evidence/implementation/README.md",
+        "docs/evidence/waves/README.md",
     ):
         if path in FROZEN_ALLOWLIST:
             continue

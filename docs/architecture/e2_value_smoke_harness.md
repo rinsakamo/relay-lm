@@ -84,7 +84,7 @@ is a deliberate, contained exception to the content-free principle:
   any RelayLM-internal gate; it behaves exclusively as an HTTP client of
   the public chat completion endpoints.
 
-Anything later published under `docs/mvp/` is a hand-written judgment
+Anything later published under `docs/evidence/implementation/` is a hand-written judgment
 summary without body quotes; producing that summary is outside this
 slice.
 

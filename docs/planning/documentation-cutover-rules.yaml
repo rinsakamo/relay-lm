@@ -92,6 +92,25 @@ path_overrides:
     target_paths:
       - docs/architecture/README.md
     requires_manual_section_map: true
+  docs/mvp/README.md:
+    disposition: absorbed
+    target_doc_type: documentation_index
+    target_paths:
+      - docs/evidence/implementation/README.md
+    deletion_reason: >-
+      Cutover 1C-38: transitional navigation index retired. Its target records already
+      exist in canonical collections; useful routing was minimally absorbed into
+      docs/README.md, docs/evidence/implementation/README.md, and
+      docs/evidence/waves/README.md. No live snapshot was retained; exact historical
+      wording remains available from Git history and the migration receipt.
+  docs/mvp/wave7/e1r3_durable_replay_residual_followup.md:
+    disposition: deleted_git_history_only
+    target_doc_type: evidence
+    deletion_reason: >-
+      Cutover 1C-38: unlinked historical review-residual note (source PR #441) with zero
+      live referrers; its current authoritative statement already lives in
+      docs/config_schema.md (formation_summary_artifact / I1-GC durable-finalization
+      replay completion). Recoverable via Git history.
   docs/proposals/documentation_restructure_proposal.md:
     disposition: moved
     target_doc_type: evidence

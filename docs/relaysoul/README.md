@@ -18,7 +18,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 
 This directory indexes RelaySOUL persona-source calibration, update cadence, dry-run/preflight chains, persistence design, execution-gate documentation, and explicitly post-MVP experimental SOUL replacement work.
 
-RelaySOUL artifact schemas and content-free contracts remain under `docs/contracts/`. MVP milestone summaries remain under `docs/mvp/`.
+RelaySOUL artifact schemas and content-free contracts remain under `docs/contracts/`. Implementation evidence remains under `docs/evidence/implementation/`.
 
 The RelaySOUL design, cadence, chain, persistence architecture, execution-gate, and experimental replacement documents tracked by this index are housed in this directory.
 

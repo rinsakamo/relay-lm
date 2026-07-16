@@ -270,7 +270,7 @@ Out-of-band after-turn path:
 - 📜 [契約文書](docs/contracts/README.md)
 - 🧪 [Smoke testと検証](docs/smoke/README.md)
 - 🧬 [RelaySOUL設計とゲート](docs/relaysoul/README.md)
-- 🗃️ [MVP概要とマイルストーン履歴](docs/mvp/README.md)
+- 🗃️ [実装エビデンス](docs/evidence/implementation/README.md)
 
 ## 🔗 バックエンドキャッシュ境界
 

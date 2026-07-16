@@ -197,11 +197,14 @@ def check_shared_docs() -> None:
         "I-4E loopback API and SOUL Lab Forget UI",
     )
     require(
-        "docs/mvp/README.md",
-        "Wave 3 merged completion reports",
+        "docs/evidence/implementation/README.md",
         "I1-GE completion report",
         "I-4D completion report",
         "O1D1 completion report",
+    )
+    require(
+        "docs/evidence/waves/README.md",
+        "Wave 3 cross-slice convergence audit",
     )
     require(
         "docs/README.md",
