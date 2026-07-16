@@ -2935,7 +2935,7 @@ No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy
 ### C1C38-001 — MVP transitional index retirement
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 603
 merged_commit: pending
 record_count: 2
 cutover_recorded_on: 2026-07-16
@@ -3166,8 +3166,15 @@ git_diff_check: passed
 docs_mvp_absent: true
 c1c37_finalized_merged_commit: 3e88b182e5ecd55040cf74e0094978bb22c3e840
 scope_statement: this_batch_completes_only_the_active_docs_mvp_family_retirement_not_the_whole_documentation_hard_cutover
-validated_content_head: pending
-receipt_finalization: pending
+validated_content_head: af8153d056b864e89578266984cd2da4d626f11b
+validated_content_head_triggered_check_runs: 45
+validated_content_head_triggered_workflow_runs: 16
+validated_content_head_all_github_actions: passed
+validated_content_head_note: every_relaymem_runtime_and_ui_consolidated_smoke_group_ran_for_real_rather_than_skipped_because_this_batch_touches_docs_evidence_implementation_readme_md_and_broad_docs_star_star_path_triggers_shared_with_those_workflows_not_a_selection_regression
+reviews: 0
+pr_comments: 0
+unresolved_review_threads: 0
+receipt_finalization: performed_after_validated_content_head
 ```
 
 This single-record batch retires the final transitional `docs/mvp/` navigation index. Independent recomputation of the exact current `docs/mvp/` tree inventory before any edit found **two** live files, not the one named in the task brief: `docs/mvp/README.md` (174 lines) and `docs/mvp/wave7/e1r3_durable_replay_residual_followup.md` (27 lines, under the `docs/mvp/wave7/` subdirectory). The second file was discovered only by independently enumerating the full tree (`find docs/mvp -type f`) rather than trusting the task brief's "expected remaining live source" framing; it had to be resolved to satisfy the "no live `docs/mvp/` directory at all" requirement and is recorded as its own record above.
@@ -3197,6 +3204,8 @@ No byte-exact `-source.txt` snapshot was created for either retired file, per th
 No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, `.gitkeep`, old-path manifest, or temporary finalizer workflow was added. No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/architecture/project_execution_plan.md` and `docs/architecture/current_target_migration_guide.md` were inspected per the task brief's explicit prohibition and confirmed unmoved and unedited. This batch changed 19 files with a net diff of 190 insertions and 260 deletions (2 files, 201 lines, deleted outright; 17 files modified, 190 insertions and 59 deletions).
 
 This batch completes only the active `docs/mvp/` family retirement — the C1C38 disposition above — and explicitly does not complete the whole documentation hard cutover: remaining implementation, wave, evaluation, and release evidence migration, architecture synthesis, exact contract reconstruction, and final invariant enforcement remain open in the sections below, unchanged by this batch. C1C37 is finalized above to merge commit `3e88b182e5ecd55040cf74e0094978bb22c3e840` (PR #602), confirmed an ancestor of the working `main` before this Cutover 1C-38 batch began.
+
+`cutover_pr` is `603` (`rinsakamo/relay-lm#603`). `af8153d056b864e89578266984cd2da4d626f11b` is the `validated_content_head` — the PR's only substantive content commit, pushed directly (no correction commits were required): all 45 triggered GitHub Actions check runs (job/check-run count), spanning 16 distinct workflow runs (workflow-run count), completed successfully with zero failures on the first push. Every RelayMEM/runtime/UI consolidated-smoke group ran for real rather than reporting `skipped`, because this batch's diff touches `docs/evidence/implementation/README.md` and other broad `docs/**` path triggers shared with those workflows — not a selection regression. Zero reviews, zero PR comments, and zero unresolved review threads were present at this head. Per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, this finalization is recorded in a further, separate commit after `af8153d056b864e89578266984cd2da4d626f11b`, which remains the exact validated content head and is not itself re-claimed as re-validated. This PR is not merged.
 
 ## Pending batches
 
