@@ -76,7 +76,9 @@ is sensitive to hardware, filesystem, and concurrent load:
 - Machine / CPU
 - Filesystem (e.g. local SSD, network mount, container overlay)
 - Python version
-- `relaylm` commit / branch
+- Exact RelayLM commit SHA (mandatory; a full 40-character lowercase SHA,
+  not a branch name -- branches move, a commit does not)
+- Branch or tag (optional context only)
 - `--repeat`
 - `--max-candidates` (bench flag; mirrors `config.memory.candidate_limit`)
 - Concurrent load on the machine during the run
@@ -120,9 +122,13 @@ described in
 
 A completed run is evidence, not method, and does not live here. Use
 [LAT-1 Retrieval Scaling Report Template](../templates/evaluation/lat1-retrieval-scaling-report.md)
-to fill in a dated record, then commit it under
-`docs/evidence/evaluations/` using a deterministic dated name. This
-document is not updated with per-run results.
+to fill in a dated record -- including replacing the template's own front
+matter with the canonical evidence front matter it documents -- then commit
+it under `docs/evidence/evaluations/` using the deterministic,
+collision-safe `lat1-retrieval-scaling-YYYY-MM-DD-HHMMSSZ-<short-commit>.md`
+naming convention (never a date-only name, which could collide with a
+second run performed on the same date). This document is not updated with
+per-run results.
 
 ## Non-goals
 

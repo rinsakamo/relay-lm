@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import re
 import sys
 import tempfile
@@ -392,7 +393,7 @@ MVP_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
 # scope. README.md, README_ja.md, config.example.yaml, and pyproject.toml are
 # scanned individually below since they live at the repository root.
 MVP_REFERENCE_SCAN_DIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("docs", (".md",)),
+    ("docs", (".md", ".yaml", ".yml")),
     ("scripts", (".py",)),
     (".github/workflows", (".yml", ".yaml")),
     ("relaylm", (".py",)),
@@ -529,20 +530,67 @@ def check_cutover_rule_target_types(errors: list[str]) -> None:
             errors.append(f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}] is not a mapping")
             continue
 
-        target_records = entry.get("target_records")
-        if isinstance(target_records, list) and target_records:
+        has_target_records = "target_records" in entry
+        has_legacy_shape = "target_paths" in entry or "target_doc_type" in entry
+        if has_target_records and has_legacy_shape:
+            errors.append(
+                f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}] mixes target_records with "
+                "legacy target_paths/target_doc_type; use exactly one shape"
+            )
+            continue
+
+        if has_target_records:
+            target_records = entry["target_records"]
+            if not isinstance(target_records, list) or not target_records:
+                errors.append(
+                    f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_records must be a "
+                    "non-empty list"
+                )
+                continue
+            seen_types: dict[str, str] = {}
             for record in target_records:
-                if (
-                    not isinstance(record, dict)
-                    or not isinstance(record.get("target_path"), str)
-                    or not isinstance(record.get("target_doc_type"), str)
-                ):
+                if not isinstance(record, dict):
                     errors.append(
-                        f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_records "
-                        f"has a malformed entry: {record!r}"
+                        f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_records has a "
+                        f"non-mapping entry: {record!r}"
                     )
                     continue
-                check_one(old_path, record["target_path"], record["target_doc_type"])
+                target_path = record.get("target_path")
+                target_type = record.get("target_doc_type")
+                if not isinstance(target_path, str) or not target_path:
+                    errors.append(
+                        f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_records entry is "
+                        f"missing a non-empty target_path: {record!r}"
+                    )
+                    continue
+                if not isinstance(target_type, str) or not target_type:
+                    errors.append(
+                        f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_records entry is "
+                        f"missing a non-empty target_doc_type: {record!r}"
+                    )
+                    continue
+                if target_path in seen_types:
+                    if seen_types[target_path] != target_type:
+                        errors.append(
+                            f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_records has "
+                            f"conflicting document types for target_path {target_path!r}: "
+                            f"{seen_types[target_path]!r} vs {target_type!r}"
+                        )
+                    else:
+                        errors.append(
+                            f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_records has a "
+                            f"duplicate target_path: {target_path!r}"
+                        )
+                    continue
+                seen_types[target_path] = target_type
+                check_one(old_path, target_path, target_type)
+            continue
+
+        if not has_legacy_shape:
+            errors.append(
+                f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}] must declare either "
+                "target_records or target_doc_type"
+            )
             continue
 
         declared_type = entry.get("target_doc_type")
@@ -557,31 +605,64 @@ def check_cutover_rule_target_types(errors: list[str]) -> None:
 # to this one retired path rather than a whole tree.
 # ---------------------------------------------------------------------------
 LAT1_RETIRED_SCAFFOLD_PATH = "docs/evaluation/lat1_retrieval_scaling_report.md"
-LAT1_REFERENCE_PATTERN = re.compile(r"docs/evaluation/lat1_retrieval_scaling_report\.md")
+# Matches the full retired path, the bare filename, and the stable underscore
+# stem without an extension (e.g. an anchor or a script literal that never
+# spells out ".md"), anywhere in a scanned file. Deliberately underscore-only:
+# the canonical template's own filename is the *hyphenated* form of a similar
+# stem (docs/templates/evaluation/lat1-retrieval-scaling-report.md), which is
+# a live, current path, not a retired one -- flagging that hyphenated stem
+# generically would make this guard reject the template's own legitimate
+# name. Only the underscored stem ever identifies the retired source.
+LAT1_REFERENCE_PATTERN = re.compile(r"\blat1_retrieval_scaling_report\b")
 LAT1_METHOD_PATH = "docs/evaluation/lat1-retrieval-scaling.md"
 LAT1_TEMPLATE_PATH = "docs/templates/evaluation/lat1-retrieval-scaling-report.md"
 
-# Files whose entire content is historical/migration record-keeping and may
-# legitimately name the retired literal without per-line review. This guard's
-# own implementation necessarily names the pattern it detects.
+# Files whose entire content is historical/migration record-keeping by
+# construction and may legitimately name the retired literal without
+# per-line review. Kept short and explicit: `documentation-cutover-rules.yaml`
+# is deliberately NOT here -- it is an active planning authority, not a
+# historical record, so its one legitimate occurrence is line-allowlisted
+# below instead of exempting the whole file. This guard's own implementation
+# necessarily names the pattern it detects.
 LAT1_REFERENCE_ALLOWLISTED_FILES = frozenset(
     {
         "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
-        "docs/planning/documentation-cutover-rules.yaml",
         "scripts/relaylm_docs_semantic_audit.py",
     }
 )
 
+# The one exact, reviewed frozen source snapshot that legitimately contains
+# the retired literal as byte-for-byte historical evidence. Deliberately a
+# closed set of exact paths, not a generic "*-source.txt" suffix rule: a
+# future -source.txt snapshot must be individually reviewed and added here,
+# not silently exempted by filename pattern alone.
+LAT1_REFERENCE_EXACT_SNAPSHOT_ALLOWLIST = frozenset(
+    {"docs/evidence/implementation/lat1_latency_measurement_completion_report-source.txt"}
+)
+
 # Exact, reviewed line-content substrings that are legitimate occurrences of
-# the retired LAT-1 scaffold literal inside otherwise-active/current files:
-# the planning inventory's own corrected-disposition record, and this
-# guard's counterpart existence check naming the path it rejects.
+# the retired LAT-1 scaffold literal inside otherwise-active/current files.
+# This check deliberately does NOT fall back to the generic
+# frozen/historical_after_merge/historical whole-file status bypass used by
+# the docs/mvp/ guard: every legitimate historical occurrence here is
+# allowed by its own exact file and line, not by a document-wide status flag,
+# so a genuinely new stale reference inside an otherwise-historical file
+# cannot hide behind that document's status.
 LAT1_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
     "docs/planning/documentation-architecture-inventory.md": (
         "| `docs/evaluation/lat1_retrieval_scaling_report.md` |",
     ),
     "scripts/relaylm_documentation_current_boundary_smoke.py": (
+        'assert not (ROOT / "docs" / "evaluation" / "lat1_retrieval_scaling_report.md").exists(), (',
         '"retired docs/evaluation/lat1_retrieval_scaling_report.md reintroduced "',
+    ),
+    "docs/planning/documentation-cutover-rules.yaml": (
+        "docs/evaluation/lat1_retrieval_scaling_report.md:",
+    ),
+    "docs/evidence/implementation/lat1_latency_measurement_completion_report.md": (
+        "- `docs/evaluation/lat1_retrieval_scaling_report.md`: report template with",
+        "- `docs/evaluation/lat1_retrieval_scaling_report.md`",
+        "- The retrieval scaling report (`docs/evaluation/lat1_retrieval_scaling_report.md`)",
     ),
 }
 
@@ -599,9 +680,7 @@ def check_no_live_lat1_scaffold(errors: list[str]) -> None:
             continue
         if relative_path in LAT1_REFERENCE_ALLOWLISTED_FILES:
             continue
-        if relative_path.startswith("docs/evidence/") and relative_path.endswith("-source.txt"):
-            continue
-        if _mvp_reference_status_allowlisted(ROOT, relative_path):
+        if relative_path in LAT1_REFERENCE_EXACT_SNAPSHOT_ALLOWLIST:
             continue
         allowed_lines = LAT1_REFERENCE_LINE_ALLOWLIST.get(relative_path, ())
         try:
@@ -669,6 +748,207 @@ def check_lat1_evaluation_split(errors: list[str]) -> None:
         )
     if re.search(r"felt limit n:\s*\d", method_body, re.IGNORECASE):
         errors.append(f"{LAT1_METHOD_PATH}: must not claim a real scaling result has been recorded")
+
+
+# ---------------------------------------------------------------------------
+# Cutover 1C-39 correction: fail closed on a completed LAT-1 retrieval-scaling
+# evidence record (docs/evidence/evaluations/lat1-retrieval-scaling-*.md) that
+# is incomplete, unfilled, provenance-weak, or content-bearing. No such
+# record exists in this repository yet; this check exists so the first one
+# that is ever added cannot silently be a copy-with-blanks-left-in.
+# ---------------------------------------------------------------------------
+LAT1_EVIDENCE_DIR = "docs/evidence/evaluations"
+LAT1_EVIDENCE_FILENAME_RE = re.compile(
+    r"^lat1-retrieval-scaling-(?P<date>\d{4}-\d{2}-\d{2})-(?P<time>\d{6})Z-(?P<short_commit>[0-9a-f]{7,40})\.md$"
+)
+LAT1_EVIDENCE_UNFILLED_MARKERS = ("<placeholder>", "tbd", "not yet measured")
+LAT1_EVIDENCE_FORBIDDEN_CONTENT_MARKERS = (
+    "-----begin",
+    "authorization:",
+    "bearer ",
+    "api_key",
+    "apikey",
+    "password",
+    "secret_key",
+)
+LAT1_EVIDENCE_STORE_SIZES = ("100", "500", "2000", "5000")
+LAT1_EVIDENCE_NUMERIC_FIELDS = ("query_count", "repeat", "p50_ms", "p95_ms", "avg_selected_count")
+LAT1_EVIDENCE_REQUIRED_ENV_FIELDS = (
+    "Date",
+    "Machine / CPU",
+    "Filesystem (e.g. local SSD, network mount, container overlay)",
+    "Python version",
+    "Exact RelayLM commit SHA",
+    "--repeat",
+    "--max-candidates (bench flag; mirrors config.memory.candidate_limit)",
+    "Concurrent load on the machine during the run",
+)
+LAT1_EVIDENCE_JUDGMENT_MARKERS = (
+    "- Estimated slope (ms per additional 1000 store pages):",
+    "- Does `p50_ms`/`p95_ms` continue increasing beyond the internal discovery",
+    "- If it plateaus, at approximately which N does it plateau?",
+    "- Felt limit N:",
+    "- Basis for this judgment:",
+    "- Implication for candidate-limit (K), ANN adoption, or Secondary MEM",
+)
+
+
+def _lat1_evidence_files(root: Path) -> list[Path]:
+    directory = root / LAT1_EVIDENCE_DIR
+    if not directory.is_dir():
+        return []
+    return sorted(p for p in directory.glob("lat1-retrieval-scaling-*.md") if p.is_file())
+
+
+def _parse_markdown_table(body: str, heading: str) -> list[dict[str, str]]:
+    try:
+        section = section_body(body, heading)
+    except AssertionError:
+        return []
+    lines = [line for line in section.splitlines() if line.strip().startswith("|")]
+    if len(lines) < 2:
+        return []
+    header = [cell.strip().strip("`") for cell in lines[0].strip().strip("|").split("|")]
+    rows: list[dict[str, str]] = []
+    for line in lines[2:]:
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) != len(header):
+            continue
+        rows.append(dict(zip(header, cells)))
+    return rows
+
+
+def _bullet_value(body: str, marker: str) -> str:
+    marker_index = body.find(marker)
+    if marker_index < 0:
+        return ""
+    remainder = body[marker_index + len(marker) :]
+    end_candidates = [i for i in (remainder.find("\n- "), remainder.find("\n## ")) if i >= 0]
+    end = min(end_candidates) if end_candidates else len(remainder)
+    return re.sub(r"^[\s:?]+", "", remainder[:end]).strip()
+
+
+def check_lat1_evaluation_evidence_records(errors: list[str]) -> None:
+    for path in _lat1_evidence_files(ROOT):
+        relative_path = path.relative_to(ROOT).as_posix()
+        match = LAT1_EVIDENCE_FILENAME_RE.match(path.name)
+        if match is None:
+            errors.append(
+                f"{relative_path}: filename does not match the deterministic collision-safe "
+                "lat1-retrieval-scaling-YYYY-MM-DD-HHMMSSZ-<short-commit>.md convention"
+            )
+            continue
+
+        try:
+            metadata, body = parse_front_matter(relative_path)
+        except AssertionError as exc:
+            errors.append(str(exc))
+            continue
+
+        if metadata.get("relaylm_doc_type") != "evidence":
+            errors.append(f"{relative_path}: relaylm_doc_type must be 'evidence'")
+        if metadata.get("relaylm_status") not in {"frozen", "historical"}:
+            errors.append(f"{relative_path}: relaylm_status must be 'frozen' or 'historical'")
+        if metadata.get("relaylm_owner") != "evaluation":
+            errors.append(f"{relative_path}: relaylm_owner must be 'evaluation'")
+
+        authority = metadata.get("relaylm_authority")
+        if (
+            not isinstance(authority, str)
+            or not authority
+            or authority
+            in {
+                "lat1_retrieval_scaling_bench_method",
+                "non_authoritative_lat1_retrieval_scaling_report_template",
+            }
+        ):
+            errors.append(
+                f"{relative_path}: relaylm_authority must be a record-specific evaluation authority, "
+                "not shared with the method or template"
+            )
+
+        recorded_on = metadata.get("relaylm_recorded_on")
+        if isinstance(recorded_on, datetime.date) and not isinstance(recorded_on, datetime.datetime):
+            # YAML parses an unquoted YYYY-MM-DD scalar as a date object.
+            recorded_on = recorded_on.isoformat()
+        if not isinstance(recorded_on, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", recorded_on):
+            errors.append(f"{relative_path}: relaylm_recorded_on must be a concrete ISO date")
+            recorded_on = None
+
+        source_commit = metadata.get("relaylm_source_commit")
+        if not isinstance(source_commit, str) or FULL_SHA_RE.fullmatch(source_commit) is None:
+            errors.append(
+                f"{relative_path}: relaylm_source_commit must be a full 40-character lowercase "
+                "commit SHA, not a branch name"
+            )
+            source_commit = None
+
+        if recorded_on is not None and match.group("date") != recorded_on:
+            errors.append(
+                f"{relative_path}: filename date {match.group('date')!r} does not match "
+                f"relaylm_recorded_on {recorded_on!r}"
+            )
+        if source_commit is not None and not source_commit.startswith(match.group("short_commit")):
+            errors.append(
+                f"{relative_path}: filename short-commit {match.group('short_commit')!r} is not a "
+                f"prefix of relaylm_source_commit {source_commit!r}"
+            )
+
+        lowered_body = body.lower()
+        for marker in LAT1_EVIDENCE_UNFILLED_MARKERS:
+            if marker in lowered_body:
+                errors.append(
+                    f"{relative_path}: unfilled placeholder marker {marker!r} present in a "
+                    "completed record"
+                )
+        for marker in LAT1_EVIDENCE_FORBIDDEN_CONTENT_MARKERS:
+            if marker in lowered_body:
+                errors.append(
+                    f"{relative_path}: forbidden content-bearing/credential marker {marker!r} present"
+                )
+
+        env_rows = _parse_markdown_table(body, "Execution environment")
+        env_fields = {
+            row.get("Field", "").replace("`", "").strip(): row.get("Value", "") for row in env_rows
+        }
+        for field in LAT1_EVIDENCE_REQUIRED_ENV_FIELDS:
+            value = env_fields.get(field)
+            if not value or not value.strip() or value.strip() in {"-", "`<placeholder>`"}:
+                errors.append(f"{relative_path}: execution environment field {field!r} is not populated")
+
+        repeat_value = env_fields.get("--repeat", "").strip()
+        if repeat_value and not re.fullmatch(r"\d+", repeat_value):
+            errors.append(f"{relative_path}: --repeat must be a concrete integer value")
+        max_candidates_value = env_fields.get(
+            "--max-candidates (bench flag; mirrors config.memory.candidate_limit)", ""
+        ).strip()
+        if max_candidates_value and not re.fullmatch(r"\d+", max_candidates_value):
+            errors.append(f"{relative_path}: --max-candidates must be a concrete integer value")
+
+        result_rows = _parse_markdown_table(body, "Results by store size (N)")
+        rows_by_n = {row.get("N (store size)"): row for row in result_rows}
+        for size in LAT1_EVIDENCE_STORE_SIZES:
+            row = rows_by_n.get(size)
+            if row is None:
+                errors.append(f"{relative_path}: missing results row for N={size}")
+                continue
+            parsed: dict[str, float] = {}
+            for field in LAT1_EVIDENCE_NUMERIC_FIELDS:
+                raw_value = row.get(field, "")
+                try:
+                    parsed[field] = float(raw_value)
+                except ValueError:
+                    errors.append(f"{relative_path}: N={size} field {field!r} is not numeric: {raw_value!r}")
+                    continue
+                if parsed[field] < 0:
+                    errors.append(f"{relative_path}: N={size} field {field!r} must be non-negative")
+            if "p50_ms" in parsed and "p95_ms" in parsed and parsed["p95_ms"] < parsed["p50_ms"]:
+                errors.append(f"{relative_path}: N={size} p95_ms must be >= p50_ms")
+
+        for marker in LAT1_EVIDENCE_JUDGMENT_MARKERS:
+            value = _bullet_value(body, marker)
+            if not value or "<placeholder>" in value.lower():
+                errors.append(f"{relative_path}: judgment field {marker!r} is missing a populated value")
 
 
 def check_implementation_evidence_index(errors: list[str]) -> None:
@@ -985,8 +1265,10 @@ def self_test() -> None:
         )
     ROOT = real_root
 
-    # 17. A frozen historical document's own mention of the retired LAT-1 scaffold
-    # path is allowed by its declared front-matter status.
+    # 17. A frozen/historical_after_merge document's own retired-path mention is
+    # REJECTED when it has no exact line-allowlist entry: this guard does not
+    # fall back to a generic whole-document status bypass the way the docs/mvp/
+    # guard does, so status alone cannot hide a stale reference.
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
@@ -996,11 +1278,89 @@ def self_test() -> None:
             "---\nrelaylm_doc_type: implementation_completion_report\nrelaylm_status: historical_after_merge\n---\n\n"
             "This slice added docs/evaluation/lat1_retrieval_scaling_report.md.\n",
         )
+        check_rejects(
+            "a frozen-status document's retired-LAT1-path mention is rejected without an exact line allowance",
+            check_no_live_lat1_scaffold,
+            "active reference to retired docs/evaluation/lat1_retrieval_scaling_report.md",
+        )
+    ROOT = real_root
+
+    # 17a. A bare relative filename reference (no docs/evaluation/ prefix) is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evaluation/example_sibling.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            "See [old report](lat1_retrieval_scaling_report.md) for background.\n",
+        )
+        check_rejects(
+            "a bare relative filename reference to the retired LAT-1 scaffold is rejected",
+            check_no_live_lat1_scaffold,
+            "active reference to retired docs/evaluation/lat1_retrieval_scaling_report.md",
+        )
+    ROOT = real_root
+
+    # 17b. A stable underscore stem reference without a .md extension is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_stem.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            "See the historical lat1_retrieval_scaling_report discussion for context.\n",
+        )
+        check_rejects(
+            "a stable underscore-stem reference (no .md extension) is rejected",
+            check_no_live_lat1_scaffold,
+            "active reference to retired docs/evaluation/lat1_retrieval_scaling_report.md",
+        )
+    ROOT = real_root
+
+    # 17c. An unallowlisted occurrence in the active cutover-rules planning file is
+    # rejected: that file is no longer whole-file allowlisted, only its one
+    # exact reviewed override-key line is.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/planning/documentation-cutover-rules.yaml",
+            "path_overrides:\n"
+            "  docs/evaluation/lat1_retrieval_scaling_report.md:\n"
+            "    disposition: split\n"
+            "# stray unreviewed mention: lat1_retrieval_scaling_report\n",
+        )
+        check_rejects(
+            "an unallowlisted occurrence in the active cutover-rules file is rejected",
+            check_no_live_lat1_scaffold,
+            "active reference to retired docs/evaluation/lat1_retrieval_scaling_report.md",
+        )
+    ROOT = real_root
+
+    # 17d. The exact reviewed frozen source snapshot is allowed.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/lat1_latency_measurement_completion_report-source.txt",
+            "- `docs/evaluation/lat1_retrieval_scaling_report.md`: report template with\n",
+        )
         check_silent(
-            "a frozen historical document's own retired-LAT1-path mention is allowed",
+            "the exact reviewed frozen source snapshot is allowed",
             check_no_live_lat1_scaffold,
         )
     ROOT = real_root
+
+    # 17e. The exact receipt and guard-implementation self-reference occurrences
+    # are allowed (real repository, no synthetic fixture needed).
+    check_silent(
+        "real repository: receipt and guard-implementation occurrences are allowed",
+        check_no_live_lat1_scaffold,
+    )
 
     # 18. The real repository's LAT-1 method/template split is structurally valid.
     check_silent(
@@ -1052,6 +1412,312 @@ def self_test() -> None:
         )
     ROOT = real_root
 
+    # 21. An empty target_records list in the cutover rules is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/planning/documentation-cutover-rules.yaml",
+            "path_overrides:\n  docs/example/old.md:\n    disposition: split\n    target_records: []\n",
+        )
+        check_rejects(
+            "an empty target_records list is rejected",
+            check_cutover_rule_target_types,
+            "must be a non-empty list",
+        )
+    ROOT = real_root
+
+    # 22. A target_records entry mixing legacy target_doc_type is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/planning/documentation-cutover-rules.yaml",
+            "path_overrides:\n"
+            "  docs/example/old.md:\n"
+            "    disposition: split\n"
+            "    target_doc_type: evidence\n"
+            "    target_records:\n"
+            "      - target_path: docs/example/new.md\n"
+            "        target_doc_type: evidence\n",
+        )
+        check_rejects(
+            "target_records mixed with legacy target_doc_type is rejected",
+            check_cutover_rule_target_types,
+            "mixes target_records with legacy",
+        )
+    ROOT = real_root
+
+    # 23. Duplicate target_path entries with conflicting document types are rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/planning/documentation-cutover-rules.yaml",
+            "path_overrides:\n"
+            "  docs/example/old.md:\n"
+            "    disposition: split\n"
+            "    target_records:\n"
+            "      - target_path: docs/example/new.md\n"
+            "        target_doc_type: evidence\n"
+            "      - target_path: docs/example/new.md\n"
+            "        target_doc_type: template\n",
+        )
+        check_rejects(
+            "duplicate target_path entries with conflicting document types are rejected",
+            check_cutover_rule_target_types,
+            "conflicting document types",
+        )
+    ROOT = real_root
+
+    # ------------------------------------------------------------------
+    # check_lat1_evaluation_evidence_records: a fully valid synthetic
+    # completed record, then bounded mutations proving each fail-closed
+    # requirement.
+    # ------------------------------------------------------------------
+    _LAT1_EVIDENCE_FRONT_MATTER = (
+        "---\n"
+        "relaylm_doc_type: {doc_type}\n"
+        "relaylm_authority: {authority}\n"
+        "relaylm_status: {status}\n"
+        "relaylm_volatility: low\n"
+        "relaylm_owner: {owner}\n"
+        "relaylm_update_trigger:\n"
+        "  - metadata or link repair only\n"
+        "relaylm_not_authoritative_for:\n"
+        "  - current runtime implementation status\n"
+        "relaylm_current_status_source: ../../PROJECT_STATUS.md\n"
+        "relaylm_source_commit: {source_commit}\n"
+        "relaylm_recorded_on: {recorded_on}\n"
+        "---\n\n"
+    )
+    _LAT1_EVIDENCE_BODY = (
+        "# LAT-1 Retrieval Scaling Report\n\n"
+        "## Execution environment\n\n"
+        "| Field | Value |\n"
+        "|---|---|\n"
+        "| Date | {recorded_on} |\n"
+        "| Machine / CPU | {machine} |\n"
+        "| Filesystem (e.g. local SSD, network mount, container overlay) | local NVMe SSD |\n"
+        "| Python version | 3.11.9 |\n"
+        "| Exact RelayLM commit SHA | {source_commit} |\n"
+        "| Branch or tag (optional context only) | main |\n"
+        "| `--repeat` | {repeat_value} |\n"
+        "| `--max-candidates` (bench flag; mirrors `config.memory.candidate_limit`) | 128 |\n"
+        "| Concurrent load on the machine during the run | idle |\n\n"
+        "## Results by store size (N)\n\n"
+        "| N (store size) | query_count | repeat | p50_ms | p95_ms | avg_selected_count |\n"
+        "|---|---|---|---|---|---|\n"
+        "{result_rows}"
+        "\n## Linear scaling coefficient estimate\n\n"
+        "- Estimated slope (ms per additional 1000 store pages): 0.5\n"
+        "- Does `p50_ms`/`p95_ms` continue increasing beyond the internal discovery\n"
+        "  cap, or plateau? Plateaus above N=2000.\n"
+        "- If it plateaus, at approximately which N does it plateau? 2000\n\n"
+        "## Felt limit N judgment\n\n"
+        "- Felt limit N: 2000\n"
+        "- Basis for this judgment: retrieval_ms exceeds 10% of the response budget at N=2000\n"
+        "- Implication for candidate-limit (K), ANN adoption, or Secondary MEM\n"
+        "  integration priority (design decision only; not made in this report):\n"
+        "  consider ANN adoption above N=2000\n"
+    )
+    _LAT1_EVIDENCE_VALID_ROWS = (
+        "| 100 | 20 | 5 | 5.0 | 6.0 | 10 |\n"
+        "| 500 | 20 | 5 | 8.0 | 9.0 | 12 |\n"
+        "| 2000 | 20 | 5 | 15.0 | 18.0 | 12 |\n"
+        "| 5000 | 20 | 5 | 16.0 | 19.0 | 12 |\n"
+    )
+
+    def _lat1_evidence_write(
+        base: Path,
+        filename: str = "lat1-retrieval-scaling-2026-07-16-120000Z-abc1234a.md",
+        doc_type: str = "evidence",
+        authority: str = "lat1_retrieval_scaling_run_2026-07-16_abc1234a",
+        status: str = "frozen",
+        owner: str = "evaluation",
+        source_commit: str = "abc1234a" + "0" * 32,
+        recorded_on: str = "2026-07-16",
+        machine: str = "Ryzen 9 5900X",
+        repeat_value: str = "5",
+        result_rows: str = _LAT1_EVIDENCE_VALID_ROWS,
+        extra_body: str = "",
+    ) -> None:
+        content = _LAT1_EVIDENCE_FRONT_MATTER.format(
+            doc_type=doc_type,
+            authority=authority,
+            status=status,
+            owner=owner,
+            source_commit=source_commit,
+            recorded_on=recorded_on,
+        ) + _LAT1_EVIDENCE_BODY.format(
+            recorded_on=recorded_on,
+            machine=machine,
+            source_commit=source_commit,
+            repeat_value=repeat_value,
+            result_rows=result_rows,
+        ) + extra_body
+        _mvp_write(base, f"{LAT1_EVIDENCE_DIR}/{filename}", content)
+
+    # 24. A fully valid completed record is accepted.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(base)
+        check_silent(
+            "a fully valid completed LAT-1 evidence record is accepted",
+            check_lat1_evaluation_evidence_records,
+        )
+    ROOT = real_root
+
+    # 25. Retained placeholders are rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(base, machine="`<placeholder>`")
+        check_rejects(
+            "a record with a retained placeholder is rejected",
+            check_lat1_evaluation_evidence_records,
+            "unfilled placeholder marker",
+        )
+    ROOT = real_root
+
+    # 26. A missing/invalid exact commit SHA is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(base, source_commit="not-a-real-sha")
+        check_rejects(
+            "a record with an invalid commit SHA is rejected",
+            check_lat1_evaluation_evidence_records,
+            "must be a full 40-character lowercase",
+        )
+    ROOT = real_root
+
+    # 27. Branch-only provenance (no exact commit SHA at all) is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(base, source_commit="main")
+        check_rejects(
+            "branch-only provenance without an exact commit SHA is rejected",
+            check_lat1_evaluation_evidence_records,
+            "must be a full 40-character lowercase",
+        )
+    ROOT = real_root
+
+    # 28. Missing environment values are rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(base, machine="-")
+        check_rejects(
+            "a record with a missing execution-environment value is rejected",
+            check_lat1_evaluation_evidence_records,
+            "execution environment field",
+        )
+    ROOT = real_root
+
+    # 29. Missing N rows are rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(
+            base,
+            result_rows=(
+                "| 100 | 20 | 5 | 5.0 | 6.0 | 10 |\n"
+                "| 500 | 20 | 5 | 8.0 | 9.0 | 12 |\n"
+                "| 2000 | 20 | 5 | 15.0 | 18.0 | 12 |\n"
+            ),
+        )
+        check_rejects(
+            "a record missing an N=5000 results row is rejected",
+            check_lat1_evaluation_evidence_records,
+            "missing results row for N=5000",
+        )
+    ROOT = real_root
+
+    # 30. Non-numeric measurements are rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(
+            base,
+            result_rows=(
+                "| 100 | 20 | 5 | not-a-number | 6.0 | 10 |\n"
+                "| 500 | 20 | 5 | 8.0 | 9.0 | 12 |\n"
+                "| 2000 | 20 | 5 | 15.0 | 18.0 | 12 |\n"
+                "| 5000 | 20 | 5 | 16.0 | 19.0 | 12 |\n"
+            ),
+        )
+        check_rejects(
+            "a record with a non-numeric measurement is rejected",
+            check_lat1_evaluation_evidence_records,
+            "is not numeric",
+        )
+    ROOT = real_root
+
+    # 31. p95_ms < p50_ms is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(
+            base,
+            result_rows=(
+                "| 100 | 20 | 5 | 9.0 | 6.0 | 10 |\n"
+                "| 500 | 20 | 5 | 8.0 | 9.0 | 12 |\n"
+                "| 2000 | 20 | 5 | 15.0 | 18.0 | 12 |\n"
+                "| 5000 | 20 | 5 | 16.0 | 19.0 | 12 |\n"
+            ),
+        )
+        check_rejects(
+            "p95_ms < p50_ms is rejected",
+            check_lat1_evaluation_evidence_records,
+            "p95_ms must be >= p50_ms",
+        )
+    ROOT = real_root
+
+    # 32. The wrong document type is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(base, doc_type="evaluation_record")
+        check_rejects(
+            "the retired evaluation_record document type is rejected",
+            check_lat1_evaluation_evidence_records,
+            "relaylm_doc_type must be 'evidence'",
+        )
+    ROOT = real_root
+
+    # 33. A filename/date mismatch is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(
+            base,
+            filename="lat1-retrieval-scaling-2026-07-17-120000Z-abc1234a.md",
+        )
+        check_rejects(
+            "a filename date not matching relaylm_recorded_on is rejected",
+            check_lat1_evaluation_evidence_records,
+            "does not match relaylm_recorded_on",
+        )
+    ROOT = real_root
+
+    # 34. A same-day, date-only, collision-prone filename is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(base, filename="lat1-retrieval-scaling-2026-07-16.md")
+        check_rejects(
+            "a same-day date-only collision-prone filename is rejected",
+            check_lat1_evaluation_evidence_records,
+            "does not match the deterministic collision-safe",
+        )
+    ROOT = real_root
+
     failed = [(name, message) for name, ok, message in results if not ok]
     for name, ok, message in results:
         status = "PASS" if ok else "FAIL"
@@ -1085,6 +1751,7 @@ def main() -> int:
         check_cutover_rule_target_types,
         check_no_live_lat1_scaffold,
         check_lat1_evaluation_split,
+        check_lat1_evaluation_evidence_records,
         check_operations_docs,
         check_referenced_repository_paths,
     )

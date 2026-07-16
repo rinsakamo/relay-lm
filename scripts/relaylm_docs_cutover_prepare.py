@@ -244,14 +244,55 @@ def classify(
     overrides = rules.get("path_overrides", {})
     if path in overrides:
         raw = overrides[path]
-        target_records = raw.get("target_records")
-        if isinstance(target_records, list) and target_records:
+        has_target_records = "target_records" in raw
+        has_legacy_shape = "target_paths" in raw or "target_doc_type" in raw
+        if has_target_records:
+            if has_legacy_shape:
+                raise CutoverError(
+                    f"path_overrides[{path!r}] mixes target_records with legacy "
+                    "target_paths/target_doc_type; use exactly one shape"
+                )
+            target_records = raw["target_records"]
+            if not isinstance(target_records, list) or not target_records:
+                raise CutoverError(f"path_overrides[{path!r}].target_records must be a non-empty list")
+
             target_doc_types: dict[str, str] = {}
             for record in target_records:
-                if not isinstance(record, dict) or not isinstance(record.get("target_path"), str) or not isinstance(record.get("target_doc_type"), str):
-                    raise CutoverError(f"path_overrides[{path!r}].target_records has a malformed entry: {record!r}")
-                target_doc_types[record["target_path"]] = record["target_doc_type"]
+                if not isinstance(record, dict):
+                    raise CutoverError(
+                        f"path_overrides[{path!r}].target_records has a non-mapping entry: {record!r}"
+                    )
+                target_path = record.get("target_path")
+                target_type = record.get("target_doc_type")
+                if not isinstance(target_path, str) or not target_path:
+                    raise CutoverError(
+                        f"path_overrides[{path!r}].target_records entry is missing a non-empty "
+                        f"target_path: {record!r}"
+                    )
+                if not isinstance(target_type, str) or not target_type:
+                    raise CutoverError(
+                        f"path_overrides[{path!r}].target_records entry is missing a non-empty "
+                        f"target_doc_type: {record!r}"
+                    )
+                if target_path in target_doc_types:
+                    if target_doc_types[target_path] != target_type:
+                        raise CutoverError(
+                            f"path_overrides[{path!r}].target_records has conflicting document types "
+                            f"for target_path {target_path!r}: {target_doc_types[target_path]!r} vs "
+                            f"{target_type!r}"
+                        )
+                    raise CutoverError(
+                        f"path_overrides[{path!r}].target_records has a duplicate target_path: "
+                        f"{target_path!r}"
+                    )
+                target_doc_types[target_path] = target_type
+
             targets = normalize_targets(target_doc_types.keys())
+            if set(targets) != set(target_doc_types.keys()):
+                raise CutoverError(
+                    f"path_overrides[{path!r}].target_records mapping does not exactly cover the "
+                    "normalized target list"
+                )
             # Deterministic display-only summary; never treated downstream as
             # the one authoritative type for every target.
             display_type = "+".join(sorted(set(target_doc_types.values())))
@@ -264,6 +305,11 @@ def classify(
                 deletion_reason=raw.get("deletion_reason"),
                 normative_decision=raw.get("normative_decision"),
                 target_doc_types=target_doc_types,
+            )
+
+        if "target_doc_type" not in raw:
+            raise CutoverError(
+                f"path_overrides[{path!r}] must declare either target_records or target_doc_type"
             )
         targets = normalize_targets(raw.get("target_paths", []))
         single_type = str(raw["target_doc_type"])
@@ -599,6 +645,99 @@ def self_test() -> None:
 
     single_type_classification = classify("docs/other.md", {}, "", split_rules)
     assert single_type_classification.target_doc_types == {"docs/other.md": "guide"}
+
+    def expect_cutover_error(path: str, override: dict[str, Any], expected_substring: str) -> None:
+        rules = {
+            "path_overrides": {path: override},
+            "family_rules": [{"id": "docs-generic", "path_regex": "^docs/", "disposition": "moved", "target_doc_type": "guide"}],
+        }
+        try:
+            classify(path, {}, "", rules)
+        except CutoverError as exc:
+            assert expected_substring in str(exc), f"expected {expected_substring!r} in {exc}"
+        else:
+            raise AssertionError(f"classify() did not raise CutoverError for {override!r}")
+
+    # Empty target_records list.
+    expect_cutover_error(
+        "docs/bad/empty.md",
+        {"disposition": "split", "target_records": []},
+        "must be a non-empty list",
+    )
+    # Non-list target_records.
+    expect_cutover_error(
+        "docs/bad/nonlist.md",
+        {"disposition": "split", "target_records": {"target_path": "docs/x.md", "target_doc_type": "guide"}},
+        "must be a non-empty list",
+    )
+    # Duplicate target_path entries (same type).
+    expect_cutover_error(
+        "docs/bad/dup_same.md",
+        {
+            "disposition": "split",
+            "target_records": [
+                {"target_path": "docs/x.md", "target_doc_type": "guide"},
+                {"target_path": "docs/x.md", "target_doc_type": "guide"},
+            ],
+        },
+        "duplicate target_path",
+    )
+    # Duplicate target paths with conflicting document types.
+    expect_cutover_error(
+        "docs/bad/dup_conflict.md",
+        {
+            "disposition": "split",
+            "target_records": [
+                {"target_path": "docs/x.md", "target_doc_type": "guide"},
+                {"target_path": "docs/x.md", "target_doc_type": "evidence"},
+            ],
+        },
+        "conflicting document types",
+    )
+    # Entry mixing target_records with legacy target_paths.
+    expect_cutover_error(
+        "docs/bad/mixed_paths.md",
+        {
+            "disposition": "split",
+            "target_records": [{"target_path": "docs/x.md", "target_doc_type": "guide"}],
+            "target_paths": ["docs/x.md"],
+        },
+        "mixes target_records with legacy",
+    )
+    # Entry mixing target_records with legacy target_doc_type.
+    expect_cutover_error(
+        "docs/bad/mixed_type.md",
+        {
+            "disposition": "split",
+            "target_records": [{"target_path": "docs/x.md", "target_doc_type": "guide"}],
+            "target_doc_type": "guide",
+        },
+        "mixes target_records with legacy",
+    )
+    # A target path without a document type.
+    expect_cutover_error(
+        "docs/bad/no_type.md",
+        {"disposition": "split", "target_records": [{"target_path": "docs/x.md"}]},
+        "missing a non-empty target_doc_type",
+    )
+    # A document type without a target path.
+    expect_cutover_error(
+        "docs/bad/no_path.md",
+        {"disposition": "split", "target_records": [{"target_doc_type": "guide"}]},
+        "missing a non-empty target_path",
+    )
+    # An entry that is not a mapping at all.
+    expect_cutover_error(
+        "docs/bad/non_mapping_entry.md",
+        {"disposition": "split", "target_records": ["docs/x.md"]},
+        "non-mapping entry",
+    )
+    # Neither target_records nor target_doc_type declared.
+    expect_cutover_error(
+        "docs/bad/no_shape.md",
+        {"disposition": "split"},
+        "must declare either target_records or target_doc_type",
+    )
 
     print("RelayLM documentation cutover preparation self-test passed")
 

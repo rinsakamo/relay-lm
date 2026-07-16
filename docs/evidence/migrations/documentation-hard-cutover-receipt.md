@@ -3243,7 +3243,7 @@ no_fabricated_evidence: true
 records:
   - record: LAT-1 retrieval scaling mixed method/template scaffold
     old_path: docs/evaluation/lat1_retrieval_scaling_report.md
-    old_path_lines: 102
+    old_path_lines: 101
     disposition: split
     recorded_on: 2026-07-07
     source_pr: 505
@@ -3310,15 +3310,17 @@ canonical_absorption_destinations:
 cutover_rule_schema_extension:
   reason: a_single_target_doc_type_field_cannot_represent_one_source_splitting_into_targets_of_different_document_types_without_silently_misrepresenting_at_least_one_target
   change: added_an_optional_target_records_list_of_target_path_slash_target_doc_type_pairs_to_path_overrides_entries_as_an_alternative_to_the_existing_single_target_doc_type_plus_target_paths_shape_existing_single_type_overrides_are_unchanged
+  hardening_correction: independent_review_found_the_first_implementation_silently_overwrote_duplicate_target_path_entries_through_a_plain_python_dict_and_accepted_an_empty_target_records_list_a_non_list_target_records_value_and_an_entry_mixing_target_records_with_legacy_target_paths_slash_target_doc_type_all_now_fail_closed_in_both_classify_and_check_cutover_rule_target_types_duplicate_target_path_entries_are_rejected_outright_even_when_the_duplicated_type_is_identical_and_duplicates_with_conflicting_types_are_rejected_with_a_distinct_message
   validators_updated:
     - scripts/relaylm_docs_cutover_prepare.py classify() and validate_records()
     - scripts/relaylm_docs_semantic_audit.py check_cutover_rule_target_types()
-  self_tests_added: 4
+  self_tests_added: 13
 fail_closed_guards_added:
-  - scripts/relaylm_docs_semantic_audit.py check_no_live_lat1_scaffold (existence plus repository-wide active-reference scan, mirroring check_no_live_mvp_tree)
+  - scripts/relaylm_docs_semantic_audit.py check_no_live_lat1_scaffold (existence plus repository-wide active-reference scan, mirroring check_no_live_mvp_tree; hardened this correction to detect the bare filename and stable underscore stem in addition to the full path, to scan .yaml/.yml files under docs/ so the cutover-rules planning file is actually scanned rather than silently whole-file-allowlisted without ever being read, and to require an exact line allowance for every legitimate historical occurrence instead of falling back to the generic frozen/historical_after_merge/historical whole-document status bypass)
   - scripts/relaylm_docs_semantic_audit.py check_lat1_evaluation_split (target existence, exact doc types, no shared authority, no legacy evaluation_record metadata, template states it is not evidence, template routes completed runs to docs/evidence/evaluations/, method does not itself carry a filled felt-limit result)
+  - scripts/relaylm_docs_semantic_audit.py check_lat1_evaluation_evidence_records (new this correction: fails closed on any completed docs/evidence/evaluations/lat1-retrieval-scaling-*.md record that is not relaylm_doc_type evidence, not frozen/historical status, not evaluation-owned with a record-specific authority, missing a concrete ISO relaylm_recorded_on date, missing a full 40-character lowercase relaylm_source_commit SHA, still contains a placeholder/TBD/not-yet-measured marker, is missing a required execution-environment field or a concrete --repeat/--max-candidates value, is missing an N=100/500/2000/5000 results row, has a non-numeric or negative measurement, has p95_ms < p50_ms, is missing a populated slope/plateau/felt-limit/basis/implication judgment, contains a bounded set of content-bearing/credential markers, or does not use the deterministic collision-safe lat1-retrieval-scaling-YYYY-MM-DD-HHMMSSZ-<short-commit>.md filename convention; no completed record exists in this repository yet, so this check is currently silent by construction)
   - scripts/relaylm_documentation_current_boundary_smoke.py assert_no_lat1_scaffold (existence-only, mirroring assert_no_mvp_tree)
-self_test_assertions_added: 7
+self_test_assertions_added: 19
 no_evaluation_evidence_created: true
 no_evaluation_evidence_created_note: docs_evidence_evaluations_directory_gained_only_a_pointer_paragraph_no_dated_lat1_record_was_created_no_placeholder_environment_date_commit_or_measurement_value_was_fabricated_a_completed_record_is_created_only_when_a_real_bounded_run_exists
 local_validation:
@@ -3336,38 +3338,43 @@ local_validation:
   wave4_cross_slice_convergence_smoke: passed
   wave5_cross_slice_convergence_smoke: passed
   e1_evaluation_consolidation_smoke: passed
-  lat1_timing_smoke: environment_gap_module_not_found_fastapi_reproduced_identically_on_pre_change_main_via_git_stash_not_caused_by_this_batch_authoritative_result_is_github_actions
-  lat1_timing_security_smoke: environment_gap_module_not_found_pydantic_reproduced_identically_on_pre_change_main_via_git_stash_not_caused_by_this_batch_authoritative_result_is_github_actions
-  lat1_bench_smoke: environment_gap_module_not_found_pydantic_reproduced_identically_on_pre_change_main_via_git_stash_not_caused_by_this_batch_authoritative_result_is_github_actions
+  lat1_timing_smoke: passed_for_real_in_a_clean_venv_with_pip_install_dash_e_dot_installing_fastapi_pydantic_and_every_project_dependency_not_merely_claimed_from_a_skipped_github_actions_runtime_matrix
+  lat1_timing_security_smoke: passed_for_real_in_the_same_clean_venv
+  lat1_bench_smoke: passed_for_real_in_the_same_clean_venv
+  lat1_smoke_correction_note: independent_review_correctly_found_that_the_relaylm_runtime_code_smokes_workflows_matrix_job_is_skipped_for_a_documentation_only_diff_so_github_actions_had_never_actually_executed_these_three_commands_the_prior_pr_body_claim_that_it_had_was_wrong_and_is_corrected_this_correction_actually_ran_all_three_commands_locally_against_a_freshly_created_venv_with_pip_install_dash_e_dot_before_recomputing_the_new_validated_content_head
   git_diff_check: passed
   docs_mvp_absent: true
   lat1_scaffold_absent: true
   cutover_prepare_self_test: passed
 docs_mvp_family_touched: false
 runtime_files_changed: 0
-validated_content_head: c065eea20536385743cee16afef988bf95d7bd73
+prior_validated_content_head_superseded: c065eea20536385743cee16afef988bf95d7bd73
+prior_validated_content_head_superseded_reason: independent_review_found_ten_substantive_defects_no_fail_closed_validation_existed_for_a_future_completed_lat1_evidence_record_the_report_template_did_not_explain_or_provide_the_canonical_evidence_front_matter_a_completed_copy_must_use_the_retired_path_detector_relied_on_a_generic_whole_file_allowlist_entry_for_the_active_cutover_rules_planning_file_a_generic_blanket_dash_source_txt_suffix_allowance_and_a_generic_frozen_slash_historical_after_merge_slash_historical_whole_document_status_bypass_instead_of_exact_reviewed_line_allowances_the_target_records_schema_extension_silently_overwrote_duplicate_target_path_entries_through_a_plain_python_dict_and_accepted_empty_non_list_and_mixed_legacy_shapes_the_receipt_recorded_old_path_lines_102_instead_of_the_correct_101_and_the_pr_body_incorrectly_claimed_a_skipped_github_actions_runtime_matrix_had_validated_the_three_lat1_smoke_scripts_all_ten_fixed_by_this_correction_commit
+prior_validated_content_head_triggered_check_runs: 26
+prior_validated_content_head_triggered_workflow_runs: 16
+prior_validated_content_head_all_github_actions: passed
+prior_receipt_only_tail_superseded:
+  - e37c46c503e35f0cf598c74b8e27f1772992fa04
+  - a6c3d42a95f7af10c273e62c368fae48626c1950
+prior_receipt_only_tail_superseded_reason: recorded_actions_and_diff_accounting_for_the_now_superseded_validated_content_head_a_new_receipt_only_tail_follows_the_new_substantive_correction_head_below_once_its_own_github_actions_complete
+validated_content_head: pending
 validated_content_head_actions:
-  workflow_runs_total: 16
-  workflow_runs_by_trigger: {pull_request: 15, push: 1, other: 0}
-  workflow_runs_by_trigger_note: verified_individually_via_github_actions_get_workflow_run_event_field_for_all_16_distinct_run_ids_at_this_head_not_inferred_from_timing_the_single_push_run_is_the_phase_i4a_forget_hide_contract_smoke_workflow_which_declares_both_push_and_pull_request_triggers_on_docs_star_star_paths_matching_the_same_pattern_observed_at_cutover_1c38
-  job_or_check_runs_total: 26
-  success: 17
+  workflow_runs_total: pending
+  workflow_runs_by_trigger: {pull_request: pending, push: pending, other: pending}
+  job_or_check_runs_total: pending
+  success: pending
   failure: 0
-  skipped: 9
-validated_content_head_changed_files: 14
-validated_content_head_net_diff:
-  insertions: 776
-  deletions: 133
-non_receipt_content_files: 13
-non_receipt_content_net_diff:
-  insertions: 623
-  deletions: 130
-final_pr_changed_files: 14
-final_pr_net_diff: {insertions: 785, deletions: 133}
-reviews: 0
-pr_comments: 0
-unresolved_review_threads: 0
-receipt_finalization: performed_after_validated_content_head
+  skipped: pending
+validated_content_head_changed_files: pending
+validated_content_head_net_diff: {insertions: pending, deletions: pending}
+non_receipt_content_files: pending
+non_receipt_content_net_diff: {insertions: pending, deletions: pending}
+final_pr_changed_files: pending
+final_pr_net_diff: {insertions: pending, deletions: pending}
+reviews: pending
+pr_comments: pending
+unresolved_review_threads: pending
+receipt_finalization: pending
 ```
 
 This single atomic batch splits the mixed LAT-1 retrieval-scaling evaluation scaffold at `docs/evaluation/lat1_retrieval_scaling_report.md` into two canonical documents. The source mixed two different lifecycles under one legacy `evaluation_record` metadata profile: a repeatable evaluation method (reproduction commands, execution-environment requirements, measurement fields, interpretation guidance, plateau/felt-limit judgment method) and a blank, non-authoritative report template (every environment/result cell unfilled, no real N=100/500/2000/5000 run recorded, no dated result or human judgment). The source's own body explicitly said its results were blank; it was never itself measured evaluation evidence, and its filename containing `report` and its legacy `evaluation_record` doc type did not make it one.
@@ -3388,7 +3395,7 @@ No LAT-1 evaluation evidence was fabricated. `docs/evidence/evaluations/README.m
 
 No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. The LAT-1 bench commands, CLI flags, runtime behavior, search algorithm, ranking, candidate limit, and measurement schema are all unchanged. `docs/mvp/` remains fully absent and untouched by this batch; this batch's own retired-scaffold guards are new and independent of the `docs/mvp/` guards. No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, `.gitkeep`, or old-path manifest was added.
 
-`cutover_pr` is `604` (`rinsakamo/relay-lm#604`). `c065eea20536385743cee16afef988bf95d7bd73` is the `validated_content_head`: all 26 triggered GitHub Actions check runs (job/check-run count), spanning 16 distinct workflow runs (workflow-run count), completed successfully with zero failures (17 success, 9 correctly `skipped` since this batch's diff does not touch the RelayMEM/runtime/UI consolidated-smoke groups' path triggers). The 16 runs were individually fetched by run ID via `get_workflow_run` and their `event` field read directly, confirming exactly 15 `pull_request`-triggered and 1 `push`-triggered run — the same `phase-i4-forget-hide-contract-smoke.yml` dual-trigger pattern observed at the Cutover 1C-38 validated head. Zero reviews, zero PR comments, and zero unresolved review threads were present at that head. The `documentation-cutover-preparation` workflow (which runs `scripts/relaylm_docs_cutover_prepare.py` against the pinned baseline commit `22981c3b26b2ec0141093d1ec23592d304f1a053`, a commit that already contains `docs/evaluation/lat1_retrieval_scaling_report.md`) is included in this head's green runs, confirming the new `target_records` schema extension classifies correctly against the real pinned baseline in CI, not only against the local synthetic self-test fixture. `validated_content_head_changed_files`/`validated_content_head_net_diff` (14 files, +776/-133) and `non_receipt_content_files`/`non_receipt_content_net_diff` (13 files, +623/-130, everything except this receipt's own diff) are the exact GitHub-reported and independently `git diff --stat`-recomputed totals at this head. Per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, finalization was recorded in a further, separate receipt-only commit (`e37c46c503e35f0cf598c74b8e27f1772992fa04`) after `c065eea20536385743cee16afef988bf95d7bd73`, which remains the exact validated content head and is not itself re-claimed as re-validated; that receipt-only commit's own 26 triggered check runs (17 success, 9 skipped, 0 failures) also completed successfully, with reviews, PR comments, and unresolved review threads all reconfirmed at zero. `final_pr_changed_files`/`final_pr_net_diff` (14 files, +785/-133) are the exact GitHub-reported PR-level totals at that finalization head — 9 insertions ahead of `validated_content_head_net_diff`, matching the finalization commit's own small receipt edit exactly, with `changed_files` and `deletions` unchanged. `merged_commit` remains `pending`; this task does not merge the PR.
+`cutover_pr` is `604` (`rinsakamo/relay-lm#604`). `c065eea20536385743cee16afef988bf95d7bd73` was the prior `validated_content_head`: all 26 triggered GitHub Actions check runs (job/check-run count), spanning 16 distinct workflow runs (workflow-run count), had completed successfully with zero failures, and its receipt-only tail (`e37c46c503e35f0cf598c74b8e27f1772992fa04`, then `a6c3d42a95f7af10c273e62c368fae48626c1950`) had recorded that head's Actions and diff totals. Independent review of that head found ten defects, all corrected in this same entry by a further commit: (1) no fail-closed validation existed for a future completed LAT-1 evidence record under `docs/evidence/evaluations/` — added `check_lat1_evaluation_evidence_records()`, described in full in `fail_closed_guards_added` above, with 11 new bounded self-test assertions (one fully valid synthetic record, ten negative mutations). (2) The report template explained the use rules for filling in cells but never told a completed copy what canonical front matter to adopt in place of its own `template`/`target` front matter — the template now includes a full canonical evidence front-matter block (`relaylm_doc_type: evidence`, a record-specific `relaylm_authority`, `frozen` status, `evaluation` owner, `relaylm_recorded_on`, `relaylm_source_commit`) and states explicitly that filling in the body alone is not sufficient. (3) `check_no_live_lat1_scaffold()` relied on a generic whole-file allowlist entry for the active `documentation-cutover-rules.yaml` planning file, a blanket `*-source.txt` suffix allowance, and the generic frozen/`historical_after_merge`/historical whole-document status bypass; it also only scanned `.md` files under `docs/`, so the cutover-rules file (a `.yaml` file) was never actually scanned and that allowlist entry was silently inert. The guard is corrected to: broaden `MVP_REFERENCE_SCAN_DIRS` to also scan `.yaml`/`.yml` under `docs/`; detect the bare filename and the stable underscore stem in addition to the full path (deliberately underscore-only, since the hyphenated form of a similar stem is now the template's own live filename); remove the cutover-rules whole-file allowlist entry in favor of one exact reviewed line allowance; replace the blanket `-source.txt` suffix rule with an exact allowlist of the one reviewed frozen snapshot; and replace the generic status bypass with exact file-and-line allowances for every legitimate historical occurrence, so status alone can no longer hide a stale reference. Six new/replaced self-test assertions cover this. (4) The `target_records` schema extension silently overwrote duplicate `target_path` entries through a plain Python dict and accepted an empty `target_records` list, a non-list value, and an entry mixing `target_records` with legacy `target_paths`/`target_doc_type`; `classify()` and `check_cutover_rule_target_types()` now fail closed on all of these, with duplicate-same-type and duplicate-conflicting-type reported as distinct errors — 13 new deterministic self-test assertions cover every malformed shape. (5) The receipt recorded `old_path_lines: 102`; the true count, confirmed via GitHub `get_commit` and `git show`, is 101 — corrected. (6) The prior PR body incorrectly stated that GitHub Actions was authoritative for `relaylm_lat1_timing_smoke.py`/`_security_smoke.py`/`_bench_smoke.py`; independent review correctly observed that the "RelayLM runtime code smokes" workflow's matrix job is `skipped` for a documentation-only diff, so GitHub Actions had never actually executed these three commands. This correction created a clean venv, ran `pip install -e .`, and executed all three commands for real; all three passed (recorded in `local_validation` above), and the PR body is corrected to state this accurately rather than attributing the result to a skipped job. None of these six corrections touched the underlying LAT-1 evaluation-method/template split content, the independently recomputed provenance, or the C1C38 receipt-accounting correction already recorded in this entry, all of which remain as originally verified. `validated_content_head` is now pending on the correction commit described above; per the established pattern, it will be recorded here once every required GitHub Actions run on that exact remote head completes, followed by a further, separate receipt-only finalization tail. `merged_commit` remains `pending`; this task does not merge the PR.
 
 ## Pending batches
 
