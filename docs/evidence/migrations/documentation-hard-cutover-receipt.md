@@ -3504,17 +3504,23 @@ local_validation:
 docs_mvp_family_touched: false
 lat1_family_touched: false
 runtime_files_changed: 0
-validated_content_head: pending
-validated_content_head_actions: pending
-validated_content_head_changed_files: pending
-validated_content_head_net_diff: pending
-non_receipt_content_files: pending
-non_receipt_content_net_diff: pending
+validated_content_head: 8c990082afd62f7da74bb9b36ab19ee1c1e49ac9
+validated_content_head_actions:
+  workflow_runs_total: 16
+  workflow_runs_by_trigger: {pull_request: 15, push: 1, other: 0}
+  job_or_check_runs_total: 27
+  success: 18
+  failure: 0
+  skipped: 9
+validated_content_head_changed_files: 15
+validated_content_head_net_diff: {insertions: 377, deletions: 30}
+non_receipt_content_files: 14
+non_receipt_content_net_diff: {insertions: 241, deletions: 28}
 final_pr_changed_files: pending
 final_pr_net_diff: pending
-reviews: pending
-pr_comments: pending
-unresolved_review_threads: pending
+reviews: 0
+pr_comments: 0
+unresolved_review_threads: 0
 receipt_finalization: pending
 ```
 
@@ -3534,7 +3540,7 @@ A new fail-closed guard, `check_no_live_e1_local_runtime_architecture_path()` in
 
 No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/mvp/` and the retired LAT-1 scaffold path both remain fully absent and untouched by this batch; this batch's own retired-path guard is new and independent of both prior guards. No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, `.gitkeep`, or old-path manifest was added. No open PR's content was imported, rebased, or partially copied; the `mobile_dogfood_*` family (independently reviewed and excluded above) and every other listed open-PR-governed file were left untouched.
 
-`cutover_pr` is `605` (`rinsakamo/relay-lm#605`). `validated_content_head`, `final_pr_changed_files`, `final_pr_net_diff`, `reviews`, `pr_comments`, `unresolved_review_threads`, and `merged_commit` remain `pending` above pending GitHub Actions confirmation on the exact validated head and the receipt-only bookkeeping/finalization commits that follow, per the established content-head procedure. This task does not merge the PR.
+`cutover_pr` is `605` (`rinsakamo/relay-lm#605`). `8c990082afd62f7da74bb9b36ab19ee1c1e49ac9` is the `validated_content_head`: all 27 triggered GitHub Actions check runs (job/check-run count), spanning 16 distinct workflow runs (workflow-run count: 15 `pull_request`, 1 `push` from `phase-i4-forget-hide-contract-smoke.yml`, each confirmed via the run's own `event` field), completed with 18 successes, 9 skips (the runtime-code-smokes matrix job and other runtime-path-gated jobs correctly skipping for this documentation-only diff), and zero failures. The PR-level diff at this head is 15 changed files, +377/-30, of which 14 files (+241/-28) are this batch's non-receipt content and 1 file (this receipt, +136/-2) is the receipt-only accounting itself; both subtotals were independently recomputed via `git diff --numstat` against `main` and sum exactly to the head total. There are 0 reviews, 0 PR comments, and 0 unresolved review threads on the PR at this head. `merged_commit` remains `pending`; this task does not merge the PR.
 
 ## Pending batches
 
