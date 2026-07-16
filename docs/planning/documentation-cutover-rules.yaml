@@ -221,6 +221,24 @@ path_overrides:
     target_paths:
       - docs/architecture/runtime/compile-and-checkpoint.md
     requires_manual_section_map: true
+  docs/evaluation/lat1_retrieval_scaling_report.md:
+    disposition: split
+    target_records:
+      - target_path: docs/evaluation/lat1-retrieval-scaling.md
+        target_doc_type: evaluation_method
+      - target_path: docs/templates/evaluation/lat1-retrieval-scaling-report.md
+        target_doc_type: template
+    deletion_reason: >-
+      Cutover 1C-39: this source mixed a repeatable evaluation method with a
+      blank, non-authoritative report template under one file and one
+      legacy evaluation_record metadata profile. Split into a canonical
+      evaluation_method and a canonical template; no measured evidence was
+      fabricated for either target, and no evidence_retained disposition
+      applies since the source was never itself a measured result. This
+      override supersedes the generic evaluation-result/evaluation-method
+      family rules below for this one path, since neither alone can
+      represent a single source splitting into two different target
+      document types.
 
 family_rules:
   - id: canonical-target-collections

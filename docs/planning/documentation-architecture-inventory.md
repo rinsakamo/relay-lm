@@ -184,7 +184,7 @@ Browser non-authority, loopback mutation ownership, and content-free diagnostic 
 |---|---|---|
 | `phase55a_*`, `phase55b1_*`, `phase55c0_*` through `phase55c4_*` | `architecture/voice/streaming-and-tts.md` plus exact transport contracts | synthesized/rebuilt/evidence_retained |
 | `lat2_mobile_perceived_latency.md` | `architecture/performance/perceived-latency.md` if it contains durable design; dated measurements to evidence | split |
-| `docs/evaluation/lat1_retrieval_scaling_report.md` | `docs/evidence/evaluations/` | evidence_retained |
+| `docs/evaluation/lat1_retrieval_scaling_report.md` | `docs/evaluation/lat1-retrieval-scaling.md` (method) + `docs/templates/evaluation/lat1-retrieval-scaling-report.md` (template) | split (Cutover 1C-39: this source mixed a repeatable method with a blank, unfilled template; it was never itself measured evaluation evidence, so `evidence_retained` was a stale assumption. No evidence exists until a real run is filled in and added to `docs/evidence/evaluations/`.) |
 | `ai_vtuber_pipeline_profile.md`, `vtuber_memory_proxy_design.md` | strategy/reference unless a current independently owned subsystem exists | moved or absorbed; not automatically core architecture |
 
 ## J. Planning, reference, and strategy sources

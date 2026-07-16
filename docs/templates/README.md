@@ -25,6 +25,7 @@ These files are non-authoritative starting points. A generated document acquires
 - [Concept or policy design](concept-policy-design.md)
 - [Contract](contract.md)
 - [Implementation completion report](implementation-completion-report.md)
+- [LAT-1 Retrieval Scaling Report](evaluation/lat1-retrieval-scaling-report.md) — subject-specific fillable template for a dated LAT-1 retrieval scaling run; see [LAT-1 Retrieval Scaling Method](../evaluation/lat1-retrieval-scaling.md) for the repeatable method it fills in.
 
 ## Use rules
 

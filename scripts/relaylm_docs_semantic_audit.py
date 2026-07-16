@@ -481,13 +481,21 @@ CUTOVER_RULES_PATH = "docs/planning/documentation-cutover-rules.yaml"
 
 
 def check_cutover_rule_target_types(errors: list[str]) -> None:
-    """Every `path_overrides` entry's declared `target_doc_type` must match the
-    actual `relaylm_doc_type` of its target file(s), whenever that target
-    exists in the live tree. This planning document also records overrides
-    for a proposed future architecture layout that has not been adopted, so
-    an override whose target does not yet exist is skipped rather than
-    treated as an error; only a real, existing destination can silently
-    drift out of sync with its recorded type.
+    """Every `path_overrides` entry's declared target document type(s) must
+    match the actual `relaylm_doc_type` of its target file(s), whenever that
+    target exists in the live tree. This planning document also records
+    overrides for a proposed future architecture layout that has not been
+    adopted, so an override whose target does not yet exist is skipped
+    rather than treated as an error; only a real, existing destination can
+    silently drift out of sync with its recorded type.
+
+    An entry may declare either a single `target_doc_type` shared by every
+    `target_paths` entry, or a `target_records` list of
+    `{target_path, target_doc_type}` mappings for a source that splits into
+    targets of different document types. A split entry must use
+    `target_records`, never a single `target_doc_type` applied to every
+    target, since that would silently misrepresent at least one target's
+    real type.
     """
     rules_path = ROOT / CUTOVER_RULES_PATH
     try:
@@ -500,26 +508,167 @@ def check_cutover_rule_target_types(errors: list[str]) -> None:
         errors.append(f"{CUTOVER_RULES_PATH}: missing or malformed path_overrides mapping")
         return
 
+    def check_one(old_path: str, target_path: str, declared_type: Any) -> None:
+        target_file = ROOT / str(target_path)
+        if not target_file.is_file():
+            return
+        try:
+            metadata, _ = parse_front_matter(str(target_path))
+        except AssertionError:
+            return
+        actual_type = metadata.get("relaylm_doc_type")
+        if actual_type is not None and actual_type != declared_type:
+            errors.append(
+                f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}] target {target_path!r}'s "
+                f"declared target_doc_type {declared_type!r} does not match its actual "
+                f"relaylm_doc_type {actual_type!r}"
+            )
+
     for old_path, entry in overrides.items():
         if not isinstance(entry, dict):
             errors.append(f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}] is not a mapping")
             continue
+
+        target_records = entry.get("target_records")
+        if isinstance(target_records, list) and target_records:
+            for record in target_records:
+                if (
+                    not isinstance(record, dict)
+                    or not isinstance(record.get("target_path"), str)
+                    or not isinstance(record.get("target_doc_type"), str)
+                ):
+                    errors.append(
+                        f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_records "
+                        f"has a malformed entry: {record!r}"
+                    )
+                    continue
+                check_one(old_path, record["target_path"], record["target_doc_type"])
+            continue
+
         declared_type = entry.get("target_doc_type")
         for target_path in entry.get("target_paths", []) or []:
-            target_file = ROOT / str(target_path)
-            if not target_file.is_file():
+            check_one(old_path, str(target_path), declared_type)
+
+
+# ---------------------------------------------------------------------------
+# Cutover 1C-39: docs/evaluation/lat1_retrieval_scaling_report.md retired,
+# split into a canonical evaluation_method and a canonical template. Narrow,
+# reviewed guard mirroring the docs/mvp/ active-reference scan above, scoped
+# to this one retired path rather than a whole tree.
+# ---------------------------------------------------------------------------
+LAT1_RETIRED_SCAFFOLD_PATH = "docs/evaluation/lat1_retrieval_scaling_report.md"
+LAT1_REFERENCE_PATTERN = re.compile(r"docs/evaluation/lat1_retrieval_scaling_report\.md")
+LAT1_METHOD_PATH = "docs/evaluation/lat1-retrieval-scaling.md"
+LAT1_TEMPLATE_PATH = "docs/templates/evaluation/lat1-retrieval-scaling-report.md"
+
+# Files whose entire content is historical/migration record-keeping and may
+# legitimately name the retired literal without per-line review. This guard's
+# own implementation necessarily names the pattern it detects.
+LAT1_REFERENCE_ALLOWLISTED_FILES = frozenset(
+    {
+        "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
+        "docs/planning/documentation-cutover-rules.yaml",
+        "scripts/relaylm_docs_semantic_audit.py",
+    }
+)
+
+# Exact, reviewed line-content substrings that are legitimate occurrences of
+# the retired LAT-1 scaffold literal inside otherwise-active/current files:
+# the planning inventory's own corrected-disposition record, and this
+# guard's counterpart existence check naming the path it rejects.
+LAT1_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
+    "docs/planning/documentation-architecture-inventory.md": (
+        "| `docs/evaluation/lat1_retrieval_scaling_report.md` |",
+    ),
+    "scripts/relaylm_documentation_current_boundary_smoke.py": (
+        '"retired docs/evaluation/lat1_retrieval_scaling_report.md reintroduced "',
+    ),
+}
+
+
+def check_no_live_lat1_scaffold(errors: list[str]) -> None:
+    if (ROOT / LAT1_RETIRED_SCAFFOLD_PATH).exists():
+        errors.append(
+            f"{LAT1_RETIRED_SCAFFOLD_PATH}: retired mixed method/template scaffold "
+            "reintroduced (retired by Cutover 1C-39)"
+        )
+
+    for path in _mvp_reference_scanned_files(ROOT):
+        relative_path = path.relative_to(ROOT).as_posix()
+        if relative_path == LAT1_RETIRED_SCAFFOLD_PATH:
+            continue
+        if relative_path in LAT1_REFERENCE_ALLOWLISTED_FILES:
+            continue
+        if relative_path.startswith("docs/evidence/") and relative_path.endswith("-source.txt"):
+            continue
+        if _mvp_reference_status_allowlisted(ROOT, relative_path):
+            continue
+        allowed_lines = LAT1_REFERENCE_LINE_ALLOWLIST.get(relative_path, ())
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            if LAT1_REFERENCE_PATTERN.search(line) is None:
                 continue
-            try:
-                metadata, _ = parse_front_matter(str(target_path))
-            except AssertionError:
+            stripped = line.strip()
+            if any(allowed in stripped for allowed in allowed_lines):
                 continue
-            actual_type = metadata.get("relaylm_doc_type")
-            if actual_type is not None and actual_type != declared_type:
-                errors.append(
-                    f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_doc_type "
-                    f"{declared_type!r} does not match {target_path}'s actual "
-                    f"relaylm_doc_type {actual_type!r}"
-                )
+            errors.append(
+                f"{relative_path}:{line_number}: active reference to retired "
+                f"{LAT1_RETIRED_SCAFFOLD_PATH}: {stripped!r}"
+            )
+
+
+def check_lat1_evaluation_split(errors: list[str]) -> None:
+    method_file = ROOT / LAT1_METHOD_PATH
+    template_file = ROOT / LAT1_TEMPLATE_PATH
+    if not method_file.is_file():
+        errors.append(f"{LAT1_METHOD_PATH}: canonical LAT-1 evaluation method is missing")
+    if not template_file.is_file():
+        errors.append(f"{LAT1_TEMPLATE_PATH}: canonical LAT-1 report template is missing")
+    if not method_file.is_file() or not template_file.is_file():
+        return
+
+    try:
+        method_metadata, method_body = parse_front_matter(LAT1_METHOD_PATH)
+    except AssertionError as exc:
+        errors.append(str(exc))
+        return
+    try:
+        template_metadata, template_body = parse_front_matter(LAT1_TEMPLATE_PATH)
+    except AssertionError as exc:
+        errors.append(str(exc))
+        return
+
+    if method_metadata.get("relaylm_doc_type") != "evaluation_method":
+        errors.append(f"{LAT1_METHOD_PATH}: relaylm_doc_type must be 'evaluation_method'")
+    if template_metadata.get("relaylm_doc_type") != "template":
+        errors.append(f"{LAT1_TEMPLATE_PATH}: relaylm_doc_type must be 'template'")
+
+    for path, metadata in ((LAT1_METHOD_PATH, method_metadata), (LAT1_TEMPLATE_PATH, template_metadata)):
+        if metadata.get("relaylm_doc_type") == "evaluation_record":
+            errors.append(f"{path}: must not carry the retired legacy evaluation_record doc type")
+
+    method_authority = method_metadata.get("relaylm_authority")
+    template_authority = template_metadata.get("relaylm_authority")
+    if method_authority and method_authority == template_authority:
+        errors.append(
+            f"{LAT1_METHOD_PATH}/{LAT1_TEMPLATE_PATH}: method and template must not share one "
+            f"primary authority ({method_authority!r})"
+        )
+
+    if "not evidence" not in template_body.lower() and "non-authoritative" not in template_body.lower():
+        errors.append(f"{LAT1_TEMPLATE_PATH}: must state that the template itself is not evidence")
+    if "docs/evidence/evaluations/" not in template_body:
+        errors.append(f"{LAT1_TEMPLATE_PATH}: must route a completed real run to docs/evidence/evaluations/")
+
+    if "felt limit n:" in method_body.lower():
+        errors.append(
+            f"{LAT1_METHOD_PATH}: evaluation method must not itself carry result-recording cells"
+        )
+    if re.search(r"felt limit n:\s*\d", method_body, re.IGNORECASE):
+        errors.append(f"{LAT1_METHOD_PATH}: must not claim a real scaling result has been recorded")
 
 
 def check_implementation_evidence_index(errors: list[str]) -> None:
@@ -797,6 +946,112 @@ def self_test() -> None:
         )
     ROOT = real_root
 
+    # 14. The real repository has no live reference to the retired LAT-1 scaffold.
+    check_silent(
+        "real repository: no active reference to the retired LAT-1 scaffold",
+        check_no_live_lat1_scaffold,
+    )
+
+    # 15. A reintroduced retired LAT-1 scaffold file is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evaluation/lat1_retrieval_scaling_report.md",
+            "---\nrelaylm_doc_type: evaluation_record\nrelaylm_status: target\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "a reintroduced retired LAT-1 scaffold file is rejected",
+            check_no_live_lat1_scaffold,
+            "retired mixed method/template scaffold reintroduced",
+        )
+    ROOT = real_root
+
+    # 16. A current document with an active reference to the retired LAT-1 scaffold path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_lat1.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            "See [old report](docs/evaluation/lat1_retrieval_scaling_report.md).\n",
+        )
+        check_rejects(
+            "a current document referencing the retired LAT-1 scaffold path is rejected",
+            check_no_live_lat1_scaffold,
+            "active reference to retired docs/evaluation/lat1_retrieval_scaling_report.md",
+        )
+    ROOT = real_root
+
+    # 17. A frozen historical document's own mention of the retired LAT-1 scaffold
+    # path is allowed by its declared front-matter status.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_lat1_report.md",
+            "---\nrelaylm_doc_type: implementation_completion_report\nrelaylm_status: historical_after_merge\n---\n\n"
+            "This slice added docs/evaluation/lat1_retrieval_scaling_report.md.\n",
+        )
+        check_silent(
+            "a frozen historical document's own retired-LAT1-path mention is allowed",
+            check_no_live_lat1_scaffold,
+        )
+    ROOT = real_root
+
+    # 18. The real repository's LAT-1 method/template split is structurally valid.
+    check_silent(
+        "real repository: LAT-1 evaluation method/template split is valid",
+        check_lat1_evaluation_split,
+    )
+
+    # 19. A template missing the canonical `template` doc type is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evaluation/lat1-retrieval-scaling.md",
+            "---\nrelaylm_doc_type: evaluation_method\nrelaylm_authority: lat1_method\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            "docs/templates/evaluation/lat1-retrieval-scaling-report.md",
+            "---\nrelaylm_doc_type: evaluation_record\nrelaylm_authority: lat1_method\n---\n\n"
+            "This is not evidence. Route completed runs to docs/evidence/evaluations/.\n",
+        )
+        check_rejects(
+            "a drifted LAT-1 template doc type is rejected",
+            check_lat1_evaluation_split,
+            "relaylm_doc_type must be 'template'",
+        )
+    ROOT = real_root
+
+    # 20. Shared method/template authority is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evaluation/lat1-retrieval-scaling.md",
+            "---\nrelaylm_doc_type: evaluation_method\nrelaylm_authority: shared_key\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            "docs/templates/evaluation/lat1-retrieval-scaling-report.md",
+            "---\nrelaylm_doc_type: template\nrelaylm_authority: shared_key\n---\n\n"
+            "This is not evidence. Route completed runs to docs/evidence/evaluations/.\n",
+        )
+        check_rejects(
+            "a shared method/template authority is rejected",
+            check_lat1_evaluation_split,
+            "must not share one primary authority",
+        )
+    ROOT = real_root
+
     failed = [(name, message) for name, ok, message in results if not ok]
     for name, ok, message in results:
         status = "PASS" if ok else "FAIL"
@@ -828,6 +1083,8 @@ def main() -> int:
         check_implementation_evidence_index,
         check_no_live_mvp_tree,
         check_cutover_rule_target_types,
+        check_no_live_lat1_scaffold,
+        check_lat1_evaluation_split,
         check_operations_docs,
         check_referenced_repository_paths,
     )

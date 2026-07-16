@@ -2936,7 +2936,7 @@ No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy
 
 ```yaml
 cutover_pr: 603
-merged_commit: pending
+merged_commit: 639c38931e0289690f3161fcfc2dc9d98a3fd970
 record_count: 2
 cutover_recorded_on: 2026-07-16
 disposition: absorbed_and_deleted_git_history_only
@@ -3191,7 +3191,7 @@ non_receipt_content_net_diff:
   deletions: 266
 final_pr_changed_files: 25
 final_pr_net_diff:
-  insertions: 934
+  insertions: 923
   deletions: 269
 reviews: 0
 pr_comments: 0
@@ -3229,7 +3229,157 @@ This batch completes only the active `docs/mvp/` family retirement — the C1C38
 
 `cutover_pr` is `603` (`rinsakamo/relay-lm#603`). `af8153d056b864e89578266984cd2da4d626f11b` was the prior `validated_content_head`: all 45 triggered GitHub Actions check runs (job/check-run count), spanning 16 distinct workflow runs (workflow-run count, not independently split by trigger class at that time), had completed successfully with zero failures. Independent review of that head found four defects, all corrected in this same entry by a further commit: (1) `check_no_live_mvp_tree()` in `scripts/relaylm_docs_semantic_audit.py` scanned only five router files and only a narrow `](docs/mvp/` markdown-link-syntax substring, insufficient to catch a script `read()`, a workflow `docs/mvp/**` path selector, an HTML/reference-style/autolink form, or a dormant dependency outside those five files — replaced with a bounded, deterministic, repository-wide active-reference scan (`README.md`, `README_ja.md`, `docs/**/*.md`, `scripts/**/*.py`, `.github/workflows/**/*.{yml,yaml}`, `relaylm/**/*.py`, `tests/**/*.py`, `config.example.yaml`, `pyproject.toml`) with an explicit whole-file allowlist for files whose entire content is historical/migration record-keeping by construction, a front-matter-status-driven allowlist for documents that declare themselves `frozen`/`historical_after_merge`/`historical`, and a line-bounded allowlist (exact reviewed substrings, not whole-file suppression) for the one pinned historical-baseline workflow assertion and the small number of guard-code/self-test occurrences inside the retirement's own implementation scripts; four genuinely stale live placement instructions this new scan surfaced (`docs/relaysoul/README.md`, `docs/smoke/README.md` twice, `docs/contracts/README.md`, `docs/architecture/e2_value_smoke_harness.md`) were corrected to point at `docs/evidence/implementation/` instead of being merely allowlisted; a new `--self-test` mode with 13 bounded, deterministic assertions (5 negative-path rejections, 4 positive-path allowances, 2 real-repository silences, 2 cutover-rule-target-type checks) was added and wired into `documentation-current-boundary-smoke.yml`. (2) `docs/planning/documentation-cutover-rules.yaml`'s `docs/mvp/README.md` override recorded `target_doc_type: evidence` while the actual destination (`docs/evidence/implementation/README.md`) declares `relaylm_doc_type: documentation_index`; corrected to `documentation_index`, and a new `check_cutover_rule_target_types()` check now fails closed if any `path_overrides` entry's declared type drifts from an existing target's real front matter (skipping overrides whose target does not yet exist, since this planning document also records an unadopted proposed future layout). (3) The receipt's `changed_file_count`/`net_diff` fields silently excluded the receipt's own diff without saying so, and the narrative said "single-record batch" while `record_count: 2` — corrected to explicit `non_receipt_content_*`, `validated_content_head_*`, and `final_pr_*` field triplets (recomputed fresh below, not copied from the superseded head), and the narrative now reads "single atomic batch retires two records." (4) Workflow-run counts were not split by GitHub Actions trigger class; the schema now records `workflow_runs_by_trigger` (`pull_request`/`push`/`other`) alongside the job/check-run total for both the new validated content head and the finalization head, verified rather than inferred.
 
-`f2b414d986593057dd6176ceff9bc3ce6364fb63` is the new `validated_content_head`: all 45 triggered GitHub Actions check runs (job/check-run count), spanning 16 distinct workflow runs (workflow-run count), had completed successfully with zero failures; the 16 runs were individually fetched by run ID via `get_workflow_run` and their `event` field read directly (not inferred from timing), confirming exactly 15 `pull_request`-triggered and 1 `push`-triggered run — the single push run is `phase-i4-forget-hide-contract-smoke.yml`, which declares both `push` and `pull_request` triggers on `docs/**` paths and so fires twice for the same head. Zero reviews, zero PR comments, and zero unresolved review threads were present at that head, and remained so through this receipt-recording commit. Per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, this finalization is recorded in a further, separate commit after `f2b414d986593057dd6176ceff9bc3ce6364fb63`, which remains the exact validated content head and is not itself re-claimed as re-validated — a commit cannot record its own resulting hash inside its own committed content, so no `finalization_head` field is kept; the finalization commit is identified relationally, via `git log`/PR history, as the commit immediately following the recorded `validated_content_head`. `final_pr_changed_files`/`final_pr_net_diff` above are the exact GitHub-reported PR-level totals (25 files, +934/-269) at the point this finalization commit was prepared, one insertion ahead of `validated_content_head_net_diff` for the one-line receipt edit made in the intervening bookkeeping commit that first recorded `validated_content_head`'s own Actions results. This PR is not merged.
+`f2b414d986593057dd6176ceff9bc3ce6364fb63` is the `validated_content_head`: all 45 triggered GitHub Actions check runs (job/check-run count), spanning 16 distinct workflow runs (workflow-run count), had completed successfully with zero failures; the 16 runs were individually fetched by run ID via `get_workflow_run` and their `event` field read directly (not inferred from timing), confirming exactly 15 `pull_request`-triggered and 1 `push`-triggered run — the single push run is `phase-i4-forget-hide-contract-smoke.yml`, which declares both `push` and `pull_request` triggers on `docs/**` paths and so fires twice for the same head. Zero reviews, zero PR comments, and zero unresolved review threads were present at that head, and remained so through both commits that followed it. A commit cannot record its own resulting hash inside its own committed content, so no `finalization_head` field is kept; per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, finalization was instead recorded as a **two-commit receipt-only tail**, identified relationally via `git log`/PR history rather than by a predicted hash: `5826223b19c2cbbf514a2557e48f3f0e1c8e8c08` first recorded `validated_content_head`'s own Actions/diff data (`validated_content_head_changed_files`, `validated_content_head_net_diff`, `non_receipt_content_files`, `non_receipt_content_net_diff` above), and `750fccd121bdee198477e7e0c48122e8bb69cce1` then recorded the true finalization data (`final_pr_changed_files`, `final_pr_net_diff`, `reviews`, `pr_comments`, `unresolved_review_threads`, `receipt_finalization` above) — not one commit "immediately following," as an earlier draft of this entry stated, but two. `final_pr_changed_files`/`final_pr_net_diff` above (25 files, +923/-269) are the exact GitHub-reported PR-level totals at the `750fccd` head, independently reconfirmed after the PR merged; the previously recorded `934` insertion figure was stale intermediate bookkeeping captured mid-sequence (before the finalization commit's own small trim of placeholder text) and has been corrected here, not carried forward. PR #603 was subsequently squash-merged to `main` as `639c38931e0289690f3161fcfc2dc9d98a3fd970`, now recorded above as `merged_commit` and confirmed an ancestor of the working `main` before Cutover 1C-39 began. This receipt-accounting correction changes no claim about the underlying C1C38 cutover content or its validated boundary, which remain as originally recorded.
+
+### C1C39-001 — LAT-1 retrieval scaling method/template split
+
+```yaml
+cutover_pr: pending
+merged_commit: pending
+record_count: 1
+cutover_recorded_on: 2026-07-16
+disposition: split
+no_fabricated_evidence: true
+records:
+  - record: LAT-1 retrieval scaling mixed method/template scaffold
+    old_path: docs/evaluation/lat1_retrieval_scaling_report.md
+    old_path_lines: 102
+    disposition: split
+    recorded_on: 2026-07-07
+    source_pr: 505
+    source_pr_title: "Add LAT-1 RelayRUN node timing and offline retrieval scaling bench"
+    source_commit: 2d89fd88523e8e64a727066e7f42ba345c2c6a83
+    source_commit_date: 2026-07-07T09:03:01Z
+    source_origin_commit: c77cf8e37a3f52c67c523004cf2a37b4c28f62f8
+    source_origin_commit_note: real_github_merge_commit_author_rinsakamo_committer_web_flow_confirmed_via_github_get_commit_not_a_direct_push_and_not_a_squash_merge
+    source_blob_sha: ea70fe983d0834f3ce801dd3ed432180b0beb767
+    source_content_sha256: 5344f1e8ee1b286d5666daa2be472510bc962561f3a4aeb7e058aa5fb4cdc2e5
+    pre_cutover_blob_sha: ea70fe983d0834f3ce801dd3ed432180b0beb767
+    pre_cutover_content_sha256: 5344f1e8ee1b286d5666daa2be472510bc962561f3a4aeb7e058aa5fb4cdc2e5
+    pre_cutover_blob_note: identical_to_source_blob_zero_post_source_modification_commits_confirmed_via_git_log_dash_dash_follow_returning_exactly_one_entry_against_the_unshallowed_working_clone
+    post_source_modification_commits_total: 0
+    legacy_metadata_type: evaluation_record
+    legacy_metadata_note: existing_only_pre_cutover_type_per_docs_documentation_model_md_dated_or_bounded_evaluation_evidence_required_cutover_destination_evidence_this_source_was_never_itself_a_dated_or_bounded_measured_result_it_was_a_mixed_method_plus_blank_template_scaffold_so_neither_new_target_retains_this_type
+    new_canonical_paths:
+      - target_path: docs/evaluation/lat1-retrieval-scaling.md
+        target_doc_type: evaluation_method
+      - target_path: docs/templates/evaluation/lat1-retrieval-scaling-report.md
+        target_doc_type: template
+    exact_source_snapshot: none
+    exact_source_snapshot_reason: the_source_was_a_non_authoritative_transitional_scaffold_never_a_measured_dated_result_the_documentation_architecture_inventorys_prior_evidence_retained_assumption_for_this_path_was_itself_the_stale_claim_this_batch_corrects_git_history_plus_the_source_commit_blob_and_content_sha256_recorded_above_already_preserve_the_exact_pre_cutover_revision
+section_level_disposition_map:
+  - section: front matter (relaylm_doc_type evaluation_record)
+    disposition: NO_CONTINUING_VALUE
+    reason: legacy_pre_cutover_type_replaced_by_two_canonical_profiles_evaluation_method_and_template_neither_new_target_carries_evaluation_record
+  - section: title paragraph and How to reproduce
+    disposition: SPLIT
+    reason: reproduction_commands_and_what_they_measure_moved_to_the_method_document_the_template_cross_links_the_method_rather_than_duplicating_the_commands
+  - section: Execution environment table
+    disposition: SPLIT
+    reason: field_definitions_and_why_they_matter_documented_in_the_method_the_blank_fillable_table_itself_moved_to_the_template
+  - section: Results by store size table
+    disposition: SPLIT
+    reason: expected_generated_artifact_and_field_meanings_documented_in_the_method_the_blank_fillable_table_moved_to_the_template
+  - section: Linear scaling coefficient estimate
+    disposition: SPLIT
+    reason: interpretation_method_moved_to_the_method_document_the_fillable_answer_cells_moved_to_the_template
+  - section: Felt limit N judgment
+    disposition: SPLIT
+    reason: plateau_and_felt_limit_evaluation_method_moved_to_the_method_document_the_fillable_judgment_cells_moved_to_the_template
+live_reference_inventory:
+  - referrer: docs/README.md
+    kind: documentation_index
+    action: retargeted_to_both_new_canonical_paths
+  - referrer: docs/architecture/lat1_latency_measurement.md
+    kind: architecture_handoff
+    action: retargeted_three_occurrences_implemented_files_listing_reproduction_step_pointer_and_interpretation_note
+  - referrer: docs/evidence/implementation/lat1_latency_measurement_completion_report.md
+    kind: frozen_implementation_completion_report
+    action: link_repair_only_one_live_current_status_pointer_retargeted_to_the_method_document_the_reports_own_historical_scope_implemented_files_and_known_limitations_prose_describing_the_retired_path_as_it_existed_at_pr_505_merge_left_unchanged_as_accurate_frozen_history
+  - referrer: docs/planning/documentation-architecture-inventory.md
+    kind: planning
+    action: corrected_stale_evidence_retained_assumption_to_the_actual_split_disposition
+  - referrer: docs/evidence/implementation/lat1_latency_measurement_completion_report-source.txt
+    kind: exact_historical_snapshot
+    action: byte_for_byte_unchanged_legitimately_retains_the_retired_path_literal_as_frozen_source_evidence_verified_via_sha256_before_and_after_this_batch
+script_and_workflow_dependencies_found: none
+script_and_workflow_dependencies_note: an_exhaustive_search_across_readme_md_readme_ja_md_docs_star_star_scripts_star_star_dot_github_workflows_star_star_relaylm_star_star_tests_star_star_config_example_yaml_and_pyproject_toml_found_zero_script_or_workflow_files_referencing_the_exact_old_path_bare_filename_or_stable_stem_before_this_batch_unlike_the_docs_mvp_family_this_source_was_never_a_script_or_workflow_selector_dependency
+canonical_absorption_destinations:
+  - docs/evaluation/lat1-retrieval-scaling.md
+  - docs/templates/evaluation/lat1-retrieval-scaling-report.md
+cutover_rule_schema_extension:
+  reason: a_single_target_doc_type_field_cannot_represent_one_source_splitting_into_targets_of_different_document_types_without_silently_misrepresenting_at_least_one_target
+  change: added_an_optional_target_records_list_of_target_path_slash_target_doc_type_pairs_to_path_overrides_entries_as_an_alternative_to_the_existing_single_target_doc_type_plus_target_paths_shape_existing_single_type_overrides_are_unchanged
+  validators_updated:
+    - scripts/relaylm_docs_cutover_prepare.py classify() and validate_records()
+    - scripts/relaylm_docs_semantic_audit.py check_cutover_rule_target_types()
+  self_tests_added: 4
+fail_closed_guards_added:
+  - scripts/relaylm_docs_semantic_audit.py check_no_live_lat1_scaffold (existence plus repository-wide active-reference scan, mirroring check_no_live_mvp_tree)
+  - scripts/relaylm_docs_semantic_audit.py check_lat1_evaluation_split (target existence, exact doc types, no shared authority, no legacy evaluation_record metadata, template states it is not evidence, template routes completed runs to docs/evidence/evaluations/, method does not itself carry a filled felt-limit result)
+  - scripts/relaylm_documentation_current_boundary_smoke.py assert_no_lat1_scaffold (existence-only, mirroring assert_no_mvp_tree)
+self_test_assertions_added: 7
+no_evaluation_evidence_created: true
+no_evaluation_evidence_created_note: docs_evidence_evaluations_directory_gained_only_a_pointer_paragraph_no_dated_lat1_record_was_created_no_placeholder_environment_date_commit_or_measurement_value_was_fabricated_a_completed_record_is_created_only_when_a_real_bounded_run_exists
+local_validation:
+  compileall: passed
+  docs_link_check: passed
+  docs_semantic_audit: passed
+  docs_semantic_audit_self_test: passed
+  documentation_current_boundary_smoke: passed
+  mvp_completion_report_smoke_check_model_check_all: passed
+  mvp_completion_report_smoke_self_test: passed
+  mvp_completion_report_pr_link_smoke: passed
+  ci_consolidated_smoke_contract: passed
+  wave3_cross_slice_convergence_smoke: passed
+  wave3_cross_slice_security_smoke: passed
+  wave4_cross_slice_convergence_smoke: passed
+  wave5_cross_slice_convergence_smoke: passed
+  e1_evaluation_consolidation_smoke: passed
+  lat1_timing_smoke: environment_gap_module_not_found_fastapi_reproduced_identically_on_pre_change_main_via_git_stash_not_caused_by_this_batch_authoritative_result_is_github_actions
+  lat1_timing_security_smoke: environment_gap_module_not_found_pydantic_reproduced_identically_on_pre_change_main_via_git_stash_not_caused_by_this_batch_authoritative_result_is_github_actions
+  lat1_bench_smoke: environment_gap_module_not_found_pydantic_reproduced_identically_on_pre_change_main_via_git_stash_not_caused_by_this_batch_authoritative_result_is_github_actions
+  git_diff_check: passed
+  docs_mvp_absent: true
+  lat1_scaffold_absent: true
+  cutover_prepare_self_test: passed
+docs_mvp_family_touched: false
+runtime_files_changed: 0
+validated_content_head: pending
+validated_content_head_actions:
+  workflow_runs_total: pending
+  workflow_runs_by_trigger: {pull_request: pending, push: pending, other: pending}
+  job_or_check_runs_total: pending
+  success: pending
+  failure: 0
+  skipped: pending
+final_pr_changed_files: pending
+final_pr_net_diff: {insertions: pending, deletions: pending}
+reviews: pending
+pr_comments: pending
+unresolved_review_threads: pending
+receipt_finalization: pending
+```
+
+This single atomic batch splits the mixed LAT-1 retrieval-scaling evaluation scaffold at `docs/evaluation/lat1_retrieval_scaling_report.md` into two canonical documents. The source mixed two different lifecycles under one legacy `evaluation_record` metadata profile: a repeatable evaluation method (reproduction commands, execution-environment requirements, measurement fields, interpretation guidance, plateau/felt-limit judgment method) and a blank, non-authoritative report template (every environment/result cell unfilled, no real N=100/500/2000/5000 run recorded, no dated result or human judgment). The source's own body explicitly said its results were blank; it was never itself measured evaluation evidence, and its filename containing `report` and its legacy `evaluation_record` doc type did not make it one.
+
+Independently recomputed provenance: the true source commit is `2d89fd88523e8e64a727066e7f42ba345c2c6a83` ("Add LAT-1 RelayRUN node timing and offline retrieval scaling bench", 2026-07-07T09:03:01Z), landed on `main` by the real GitHub merge commit `c77cf8e37a3f52c67c523004cf2a37b4c28f62f8` (PR #505; author `rinsakamo`, committer `web-flow`, confirmed via GitHub `get_commit` — a genuine merge, not a direct push and not a squash). Both facts match the file list and blob already recorded in `docs/evidence/implementation/lat1_latency_measurement_completion_report.md`'s own front matter, independently reconfirmed here rather than trusted from that report. `git log --follow` against the fully unshallowed working clone returns exactly one entry for this path: zero post-source modification commits. Source blob `ea70fe983d0834f3ce801dd3ed432180b0beb767` (content SHA-256 `5344f1e8ee1b286d5666daa2be472510bc962561f3a4aeb7e058aa5fb4cdc2e5`) is identical to the pre-cutover blob, independently recomputed via `git rev-parse` and `git cat-file`/`sha256sum` against both the introducing commit and the pre-cutover `HEAD`.
+
+Live incoming references were independently re-enumerated across `README.md`, `README_ja.md`, `docs/**`, `scripts/**`, `.github/workflows/**`, `relaylm/**`, `tests/**`, `config.example.yaml`, and `pyproject.toml` by exact path, bare filename, and stable stem, rather than trusting the task brief's named list alone: exactly four live Markdown referrers were found (`docs/README.md`, `docs/architecture/lat1_latency_measurement.md` at three separate lines, `docs/evidence/implementation/lat1_latency_measurement_completion_report.md` at one live current-status pointer, and `docs/planning/documentation-architecture-inventory.md`), plus the frozen exact snapshot `docs/evidence/implementation/lat1_latency_measurement_completion_report-source.txt`, which legitimately retains the retired path literal as byte-for-byte historical evidence and was left untouched (its SHA-256 was independently reconfirmed unchanged before and after this batch). No script, test, or workflow file referenced the exact path, bare filename, or stable stem before this batch — unlike the `docs/mvp/` family retired in Cutover 1C-38, this source was never a script or workflow selector dependency, so no `.github/workflows/**` or `scripts/**` retargeting was required.
+
+`docs/evidence/implementation/lat1_latency_measurement_completion_report.md` received link repair only, per its own frozen/`historical_after_merge` status: the one sentence stating where *current* retrieval-scaling observations belong was retargeted from the retired scaffold to the new method document; the report's own historical "Implemented files," "Changed files," and "Known limitations" sections, which describe the scaffold exactly as it existed at PR #505's merge, were left unchanged as accurate frozen history, not rewritten to pretend the old path never existed. The exact source snapshot `lat1_latency_measurement_completion_report-source.txt` was not touched.
+
+`docs/planning/documentation-architecture-inventory.md`'s prior row claimed this source's disposition was `evidence_retained` into `docs/evidence/evaluations/`. That was a stale assumption this batch corrects: the source was never a dated or bounded measured result, so nothing was ever eligible to be "retained" as evidence: the row now records the actual `split` disposition into the two new canonical targets and states explicitly that no evidence exists until a real run is filled in.
+
+The cutover-rule schema previously could only express one `target_doc_type` per source. Since this source splits into an `evaluation_method` and a `template` — two different canonical document types — a single shared `target_doc_type` would have silently misrepresented at least one target's real type, which the task brief explicitly forbids. `docs/planning/documentation-cutover-rules.yaml` gained a minimal, deterministic schema extension: `path_overrides` entries may now declare an optional `target_records` list of `{target_path, target_doc_type}` pairs instead of a single `target_doc_type` plus `target_paths`; existing single-type overrides are unchanged. `scripts/relaylm_docs_cutover_prepare.py`'s `Classification` dataclass gained a `target_doc_types` mapping (populated for every classification, single-type or split) as the structurally authoritative per-target type source, its `classify()` was extended to build that mapping from either shape, and `validate_records()` gained a new invariant: targets with more than one distinct declared document type now require `disposition: split`, failing closed rather than silently allowing a mismatched disposition. `scripts/relaylm_docs_semantic_audit.py`'s `check_cutover_rule_target_types()` was extended to validate every `target_records` entry against its own target's real front-matter `relaylm_doc_type`, independently of the legacy single-type path. Three new deterministic self-test assertions were added to `relaylm_docs_cutover_prepare.py --self-test` covering the split-classification path and the single-type path unaffected by the change.
+
+Two new fail-closed guards were added, both narrow and reviewed rather than blanket suppressions, mirroring the docs/mvp/ guards from Cutover 1C-38 but scoped to this one retired path: `check_no_live_lat1_scaffold()` in `scripts/relaylm_docs_semantic_audit.py` fails closed if the retired scaffold file is reintroduced, or if any non-allowlisted, non-historical-status file anywhere in the same nine-location repository-wide scan scope contains an active reference to the exact retired path (a whole-file allowlist covers this receipt, the cutover-rules planning file, and the guard's own implementation; a front-matter-status allowlist covers documents that declare themselves `frozen`/`historical_after_merge`/`historical`; a line-bounded allowlist covers the planning inventory's own corrected-disposition table row and the boundary smoke's counterpart guard-code string, not whole-file suppression). `check_lat1_evaluation_split()` fails closed if either new target is missing, has the wrong `relaylm_doc_type`, carries the retired `evaluation_record` type, shares one `relaylm_authority` value between method and template, if the template does not state it is not evidence or does not route a completed run to `docs/evidence/evaluations/`, or if the method document itself carries a filled-in felt-limit-N result. `scripts/relaylm_documentation_current_boundary_smoke.py` gained a matching `assert_no_lat1_scaffold()` existence-only check, called unconditionally at the start of `main()` alongside the existing `assert_no_mvp_tree()`. Seven new self-test assertions were added to `relaylm_docs_semantic_audit.py --self-test` across both new guards (positive silences, negative rejections, and the frozen-status allowance).
+
+No LAT-1 evaluation evidence was fabricated. `docs/evidence/evaluations/README.md` gained only a pointer paragraph stating that no result exists yet and naming the future dated-record convention (`docs/evidence/evaluations/lat1-retrieval-scaling-YYYY-MM-DD.md`); no placeholder environment, date, commit, or measurement value was written anywhere, and no file was created under `docs/evidence/evaluations/` by this batch. `docs/templates/evaluation/lat1-retrieval-scaling-report.md` is explicitly a non-authoritative template whose every cell reads `<placeholder>`, states plainly that it is not evidence, and instructs that a completed run becomes a distinct dated evidence record saved under `docs/evidence/evaluations/` rather than edited in place. `docs/evaluation/lat1-retrieval-scaling.md` is the canonical repeatable method: it owns only the reproduction procedure, measurement field definitions, interpretation method, prerequisites, and expected generated artifact, and explicitly states that no real scaling result has been recorded through it.
+
+No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. The LAT-1 bench commands, CLI flags, runtime behavior, search algorithm, ranking, candidate limit, and measurement schema are all unchanged. `docs/mvp/` remains fully absent and untouched by this batch; this batch's own retired-scaffold guards are new and independent of the `docs/mvp/` guards. No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, `.gitkeep`, or old-path manifest was added.
+
+`cutover_pr`, `validated_content_head`, its Actions totals, the final PR-level diff totals, and the review/comment/thread state are all pending until the content commit is pushed and its exact remote head's GitHub Actions complete, per the `validated_content_head` / `receipt_finalization` pattern established in prior batches. `merged_commit` remains `pending`; this task does not merge the PR.
 
 ## Pending batches
 

@@ -706,8 +706,17 @@ def assert_no_mvp_tree() -> None:
     )
 
 
+def assert_no_lat1_scaffold() -> None:
+    assert not (ROOT / "docs" / "evaluation" / "lat1_retrieval_scaling_report.md").exists(), (
+        "retired docs/evaluation/lat1_retrieval_scaling_report.md reintroduced "
+        "(retired by Cutover 1C-39; split into docs/evaluation/lat1-retrieval-scaling.md "
+        "and docs/templates/evaluation/lat1-retrieval-scaling-report.md)"
+    )
+
+
 def main() -> None:
     assert_no_mvp_tree()
+    assert_no_lat1_scaffold()
     for path, anchors in REQUIRED.items():
         require(path, anchors)
     for path in CURRENT_DOCS:
