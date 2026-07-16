@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import math
 import re
 import sys
 import tempfile
@@ -772,15 +773,24 @@ LAT1_EVIDENCE_FORBIDDEN_CONTENT_MARKERS = (
     "secret_key",
 )
 LAT1_EVIDENCE_STORE_SIZES = ("100", "500", "2000", "5000")
-LAT1_EVIDENCE_NUMERIC_FIELDS = ("query_count", "repeat", "p50_ms", "p95_ms", "avg_selected_count")
+# query_count and repeat must be strict positive integers (no zero, no
+# negative, no decimal, no exponent notation, no NaN/Infinity); p50_ms,
+# p95_ms, and avg_selected_count remain finite non-negative numbers.
+LAT1_EVIDENCE_INTEGER_ROW_FIELDS = ("query_count", "repeat")
+LAT1_EVIDENCE_FLOAT_ROW_FIELDS = ("p50_ms", "p95_ms", "avg_selected_count")
+LAT1_EVIDENCE_POSITIVE_INT_RE = re.compile(r"^[1-9][0-9]*$")
+LAT1_EVIDENCE_ENV_FIELD_REPEAT = "--repeat"
+LAT1_EVIDENCE_ENV_FIELD_MAX_CANDIDATES = "--max-candidates (bench flag; mirrors config.memory.candidate_limit)"
+LAT1_EVIDENCE_ENV_FIELD_COMMIT = "Exact RelayLM commit SHA"
+LAT1_EVIDENCE_ENV_FIELD_DATE = "Date"
 LAT1_EVIDENCE_REQUIRED_ENV_FIELDS = (
-    "Date",
+    LAT1_EVIDENCE_ENV_FIELD_DATE,
     "Machine / CPU",
     "Filesystem (e.g. local SSD, network mount, container overlay)",
     "Python version",
-    "Exact RelayLM commit SHA",
-    "--repeat",
-    "--max-candidates (bench flag; mirrors config.memory.candidate_limit)",
+    LAT1_EVIDENCE_ENV_FIELD_COMMIT,
+    LAT1_EVIDENCE_ENV_FIELD_REPEAT,
+    LAT1_EVIDENCE_ENV_FIELD_MAX_CANDIDATES,
     "Concurrent load on the machine during the run",
 )
 LAT1_EVIDENCE_JUDGMENT_MARKERS = (
@@ -791,6 +801,9 @@ LAT1_EVIDENCE_JUDGMENT_MARKERS = (
     "- Basis for this judgment:",
     "- Implication for candidate-limit (K), ANN adoption, or Secondary MEM",
 )
+LAT1_EVIDENCE_SEPARATOR_CELL_RE = re.compile(r"^:?-+:?$")
+LAT1_EVIDENCE_METHOD_AUTHORITY = "lat1_retrieval_scaling_bench_method"
+LAT1_EVIDENCE_TEMPLATE_AUTHORITY = "non_authoritative_lat1_retrieval_scaling_report_template"
 
 
 def _lat1_evidence_files(root: Path) -> list[Path]:
@@ -800,19 +813,59 @@ def _lat1_evidence_files(root: Path) -> list[Path]:
     return sorted(p for p in directory.glob("lat1-retrieval-scaling-*.md") if p.is_file())
 
 
-def _parse_markdown_table(body: str, heading: str) -> list[dict[str, str]]:
+def _parse_iso_date(value: str | None) -> datetime.date | None:
+    if not value:
+        return None
+    try:
+        return datetime.date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _parse_utc_hhmmss(value: str) -> bool:
+    try:
+        datetime.datetime.strptime(value, "%H%M%S")
+    except ValueError:
+        return False
+    return True
+
+
+def _parse_markdown_table(
+    body: str, heading: str, relative_path: str, errors: list[str]
+) -> list[dict[str, str]]:
+    """Fails closed: a missing heading, malformed header/separator, a row with
+    the wrong cell count, or a duplicate header field name each append an
+    exact error and return no rows for that table, rather than silently
+    skipping the offending line and returning a partial, plausible-looking
+    result."""
     try:
         section = section_body(body, heading)
     except AssertionError:
+        errors.append(f"{relative_path}: missing required section '## {heading}'")
         return []
     lines = [line for line in section.splitlines() if line.strip().startswith("|")]
     if len(lines) < 2:
+        errors.append(f"{relative_path}: '## {heading}' table is missing a header or separator row")
         return []
-    header = [cell.strip().strip("`") for cell in lines[0].strip().strip("|").split("|")]
+    header = [cell.strip().replace("`", "") for cell in lines[0].strip().strip("|").split("|")]
+    if not header or any(not cell for cell in header):
+        errors.append(f"{relative_path}: '## {heading}' table header is malformed: {lines[0]!r}")
+        return []
+    if len(set(header)) != len(header):
+        errors.append(f"{relative_path}: '## {heading}' table header has duplicate field names: {header!r}")
+        return []
+    separator = [cell.strip() for cell in lines[1].strip().strip("|").split("|")]
+    if len(separator) != len(header) or not all(LAT1_EVIDENCE_SEPARATOR_CELL_RE.fullmatch(cell) for cell in separator):
+        errors.append(f"{relative_path}: '## {heading}' table separator row is malformed: {lines[1]!r}")
+        return []
     rows: list[dict[str, str]] = []
-    for line in lines[2:]:
+    for offset, line in enumerate(lines[2:]):
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
         if len(cells) != len(header):
+            errors.append(
+                f"{relative_path}: '## {heading}' table row {offset + 1} has {len(cells)} cell(s), "
+                f"expected {len(header)}: {line.strip()!r}"
+            )
             continue
         rows.append(dict(zip(header, cells)))
     return rows
@@ -829,7 +882,31 @@ def _bullet_value(body: str, marker: str) -> str:
 
 
 def check_lat1_evaluation_evidence_records(errors: list[str]) -> None:
-    for path in _lat1_evidence_files(ROOT):
+    files = _lat1_evidence_files(ROOT)
+
+    # Pass 1: collect relaylm_authority across every completed record so reuse
+    # (of the method's, the template's, or another record's authority) fails
+    # closed even though each file is otherwise parsed independently below.
+    authority_owners: dict[str, list[str]] = {}
+    for path in files:
+        relative_path = path.relative_to(ROOT).as_posix()
+        try:
+            metadata, _ = parse_front_matter(relative_path)
+        except (AssertionError, ValueError):
+            continue
+        authority = metadata.get("relaylm_authority")
+        if isinstance(authority, str) and authority:
+            authority_owners.setdefault(authority, []).append(relative_path)
+    for authority, owners in authority_owners.items():
+        if len(owners) > 1:
+            for relative_path in owners:
+                others = sorted(set(owners) - {relative_path})
+                errors.append(
+                    f"{relative_path}: relaylm_authority {authority!r} is not unique across completed "
+                    f"LAT-1 evidence records (also used by {others!r})"
+                )
+
+    for path in files:
         relative_path = path.relative_to(ROOT).as_posix()
         match = LAT1_EVIDENCE_FILENAME_RE.match(path.name)
         if match is None:
@@ -841,8 +918,13 @@ def check_lat1_evaluation_evidence_records(errors: list[str]) -> None:
 
         try:
             metadata, body = parse_front_matter(relative_path)
-        except AssertionError as exc:
-            errors.append(str(exc))
+        except (AssertionError, ValueError) as exc:
+            # A calendar-invalid unquoted date scalar (e.g. relaylm_recorded_on:
+            # 2026-99-99) makes PyYAML's timestamp constructor raise a bare
+            # ValueError during front-matter parsing itself, before any
+            # field-level check below ever runs; fail closed here instead of
+            # letting it propagate.
+            errors.append(f"{relative_path}: front matter is invalid or contains an impossible date: {exc}")
             continue
 
         if metadata.get("relaylm_doc_type") != "evidence":
@@ -856,24 +938,36 @@ def check_lat1_evaluation_evidence_records(errors: list[str]) -> None:
         if (
             not isinstance(authority, str)
             or not authority
-            or authority
-            in {
-                "lat1_retrieval_scaling_bench_method",
-                "non_authoritative_lat1_retrieval_scaling_report_template",
-            }
+            or authority in {LAT1_EVIDENCE_METHOD_AUTHORITY, LAT1_EVIDENCE_TEMPLATE_AUTHORITY}
         ):
             errors.append(
                 f"{relative_path}: relaylm_authority must be a record-specific evaluation authority, "
                 "not shared with the method or template"
             )
 
-        recorded_on = metadata.get("relaylm_recorded_on")
-        if isinstance(recorded_on, datetime.date) and not isinstance(recorded_on, datetime.datetime):
-            # YAML parses an unquoted YYYY-MM-DD scalar as a date object.
-            recorded_on = recorded_on.isoformat()
-        if not isinstance(recorded_on, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", recorded_on):
-            errors.append(f"{relative_path}: relaylm_recorded_on must be a concrete ISO date")
-            recorded_on = None
+        # --- filename date/time: real calendar date, real UTC HHMMSS time ---
+        filename_date_str = match.group("date")
+        filename_date = _parse_iso_date(filename_date_str)
+        if filename_date is None:
+            errors.append(f"{relative_path}: filename date {filename_date_str!r} is not a real calendar date")
+        filename_time_str = match.group("time")
+        if not _parse_utc_hhmmss(filename_time_str):
+            errors.append(f"{relative_path}: filename time {filename_time_str!r} is not a valid UTC HHMMSS time")
+
+        # --- relaylm_recorded_on: real calendar date ---
+        recorded_on_raw = metadata.get("relaylm_recorded_on")
+        if isinstance(recorded_on_raw, datetime.date) and not isinstance(recorded_on_raw, datetime.datetime):
+            # YAML parses an unquoted, calendar-valid YYYY-MM-DD scalar as a
+            # date object; an invalid one (e.g. 2026-99-99) instead raises
+            # ValueError inside parse_front_matter, already caught above.
+            recorded_on_str: str | None = recorded_on_raw.isoformat()
+        elif isinstance(recorded_on_raw, str):
+            recorded_on_str = recorded_on_raw
+        else:
+            recorded_on_str = None
+        recorded_on_date = _parse_iso_date(recorded_on_str)
+        if recorded_on_date is None:
+            errors.append(f"{relative_path}: relaylm_recorded_on must be a real, concrete ISO calendar date")
 
         source_commit = metadata.get("relaylm_source_commit")
         if not isinstance(source_commit, str) or FULL_SHA_RE.fullmatch(source_commit) is None:
@@ -883,11 +977,6 @@ def check_lat1_evaluation_evidence_records(errors: list[str]) -> None:
             )
             source_commit = None
 
-        if recorded_on is not None and match.group("date") != recorded_on:
-            errors.append(
-                f"{relative_path}: filename date {match.group('date')!r} does not match "
-                f"relaylm_recorded_on {recorded_on!r}"
-            )
         if source_commit is not None and not source_commit.startswith(match.group("short_commit")):
             errors.append(
                 f"{relative_path}: filename short-commit {match.group('short_commit')!r} is not a "
@@ -907,43 +996,141 @@ def check_lat1_evaluation_evidence_records(errors: list[str]) -> None:
                     f"{relative_path}: forbidden content-bearing/credential marker {marker!r} present"
                 )
 
-        env_rows = _parse_markdown_table(body, "Execution environment")
-        env_fields = {
-            row.get("Field", "").replace("`", "").strip(): row.get("Value", "") for row in env_rows
-        }
+        env_rows = _parse_markdown_table(body, "Execution environment", relative_path, errors)
+        env_fields: dict[str, str] = {}
+        seen_env_field_names: set[str] = set()
+        for row in env_rows:
+            field_name = row.get("Field", "").replace("`", "").strip()
+            if field_name in seen_env_field_names:
+                errors.append(f"{relative_path}: duplicate execution-environment field {field_name!r}")
+                continue
+            seen_env_field_names.add(field_name)
+            env_fields[field_name] = row.get("Value", "")
+
         for field in LAT1_EVIDENCE_REQUIRED_ENV_FIELDS:
             value = env_fields.get(field)
             if not value or not value.strip() or value.strip() in {"-", "`<placeholder>`"}:
                 errors.append(f"{relative_path}: execution environment field {field!r} is not populated")
 
-        repeat_value = env_fields.get("--repeat", "").strip()
-        if repeat_value and not re.fullmatch(r"\d+", repeat_value):
-            errors.append(f"{relative_path}: --repeat must be a concrete integer value")
-        max_candidates_value = env_fields.get(
-            "--max-candidates (bench flag; mirrors config.memory.candidate_limit)", ""
-        ).strip()
-        if max_candidates_value and not re.fullmatch(r"\d+", max_candidates_value):
-            errors.append(f"{relative_path}: --max-candidates must be a concrete integer value")
+        # --- execution environment Date: real calendar date, cross-checked ---
+        env_date_str = env_fields.get(LAT1_EVIDENCE_ENV_FIELD_DATE, "").strip()
+        env_date = _parse_iso_date(env_date_str) if env_date_str else None
+        if env_date_str and env_date is None:
+            errors.append(
+                f"{relative_path}: execution environment 'Date' {env_date_str!r} is not a real calendar date"
+            )
 
-        result_rows = _parse_markdown_table(body, "Results by store size (N)")
-        rows_by_n = {row.get("N (store size)"): row for row in result_rows}
+        known_dates = {
+            "filename": filename_date,
+            "relaylm_recorded_on": recorded_on_date,
+            "execution environment Date": env_date,
+        }
+        distinct_known_dates = {d for d in known_dates.values() if d is not None}
+        if len(distinct_known_dates) > 1:
+            detail = ", ".join(f"{name}={d.isoformat()}" for name, d in known_dates.items() if d is not None)
+            errors.append(
+                f"{relative_path}: filename date, relaylm_recorded_on, and execution environment "
+                f"Date must all match exactly: {detail}"
+            )
+
+        # --- execution environment exact commit SHA: cross-checked, not just non-empty ---
+        env_commit = env_fields.get(LAT1_EVIDENCE_ENV_FIELD_COMMIT, "").strip()
+        if env_commit and env_commit not in {"-", "`<placeholder>`"}:
+            if FULL_SHA_RE.fullmatch(env_commit) is None:
+                errors.append(
+                    f"{relative_path}: execution environment {LAT1_EVIDENCE_ENV_FIELD_COMMIT!r} must be a "
+                    "full 40-character lowercase commit SHA, not a branch name"
+                )
+            else:
+                if source_commit is not None and env_commit != source_commit:
+                    errors.append(
+                        f"{relative_path}: execution environment {LAT1_EVIDENCE_ENV_FIELD_COMMIT!r} "
+                        f"{env_commit!r} does not match relaylm_source_commit {source_commit!r}"
+                    )
+                if not env_commit.startswith(match.group("short_commit")):
+                    errors.append(
+                        f"{relative_path}: execution environment {LAT1_EVIDENCE_ENV_FIELD_COMMIT!r} "
+                        f"{env_commit!r} does not match the filename short-commit "
+                        f"{match.group('short_commit')!r}"
+                    )
+
+        # --- --repeat / --max-candidates: strict positive integers ---
+        env_repeat_str = env_fields.get(LAT1_EVIDENCE_ENV_FIELD_REPEAT, "").strip()
+        env_repeat_int: int | None = None
+        if env_repeat_str and env_repeat_str not in {"-", "`<placeholder>`"}:
+            if LAT1_EVIDENCE_POSITIVE_INT_RE.fullmatch(env_repeat_str) is None:
+                errors.append(
+                    f"{relative_path}: execution environment {LAT1_EVIDENCE_ENV_FIELD_REPEAT!r} must be a "
+                    f"positive integer, got {env_repeat_str!r}"
+                )
+            else:
+                env_repeat_int = int(env_repeat_str)
+
+        max_candidates_str = env_fields.get(LAT1_EVIDENCE_ENV_FIELD_MAX_CANDIDATES, "").strip()
+        if max_candidates_str and max_candidates_str not in {"-", "`<placeholder>`"}:
+            if LAT1_EVIDENCE_POSITIVE_INT_RE.fullmatch(max_candidates_str) is None:
+                errors.append(
+                    f"{relative_path}: execution environment {LAT1_EVIDENCE_ENV_FIELD_MAX_CANDIDATES!r} "
+                    f"must be a positive integer, got {max_candidates_str!r}"
+                )
+
+        # --- results table: exactly one row per required N, no duplicates, no extras ---
+        result_rows = _parse_markdown_table(body, "Results by store size (N)", relative_path, errors)
+        rows_by_n: dict[str, dict[str, str]] = {}
+        size_occurrences: dict[str, int] = {}
+        for row in result_rows:
+            size = row.get("N (store size)", "").strip()
+            size_occurrences[size] = size_occurrences.get(size, 0) + 1
+            if size in rows_by_n:
+                errors.append(f"{relative_path}: duplicate results row for N={size!r}")
+                continue
+            rows_by_n[size] = row
+        for size in size_occurrences:
+            if size not in LAT1_EVIDENCE_STORE_SIZES:
+                errors.append(
+                    f"{relative_path}: unexpected results row for N={size!r}; only "
+                    f"{LAT1_EVIDENCE_STORE_SIZES!r} are allowed"
+                )
+
         for size in LAT1_EVIDENCE_STORE_SIZES:
             row = rows_by_n.get(size)
             if row is None:
                 errors.append(f"{relative_path}: missing results row for N={size}")
                 continue
             parsed: dict[str, float] = {}
-            for field in LAT1_EVIDENCE_NUMERIC_FIELDS:
-                raw_value = row.get(field, "")
+            for field in LAT1_EVIDENCE_INTEGER_ROW_FIELDS:
+                raw_value = row.get(field, "").strip()
+                if LAT1_EVIDENCE_POSITIVE_INT_RE.fullmatch(raw_value) is None:
+                    errors.append(
+                        f"{relative_path}: N={size} field {field!r} must be a positive integer, "
+                        f"got {raw_value!r}"
+                    )
+                    continue
+                parsed[field] = int(raw_value)
+            for field in LAT1_EVIDENCE_FLOAT_ROW_FIELDS:
+                raw_value = row.get(field, "").strip()
                 try:
-                    parsed[field] = float(raw_value)
+                    value = float(raw_value)
                 except ValueError:
                     errors.append(f"{relative_path}: N={size} field {field!r} is not numeric: {raw_value!r}")
                     continue
-                if parsed[field] < 0:
+                if not math.isfinite(value):
+                    errors.append(
+                        f"{relative_path}: N={size} field {field!r} must be a finite number, "
+                        f"got {raw_value!r}"
+                    )
+                    continue
+                if value < 0:
                     errors.append(f"{relative_path}: N={size} field {field!r} must be non-negative")
+                    continue
+                parsed[field] = value
             if "p50_ms" in parsed and "p95_ms" in parsed and parsed["p95_ms"] < parsed["p50_ms"]:
                 errors.append(f"{relative_path}: N={size} p95_ms must be >= p50_ms")
+            if "repeat" in parsed and env_repeat_int is not None and parsed["repeat"] != env_repeat_int:
+                errors.append(
+                    f"{relative_path}: N={size} repeat {parsed['repeat']} does not match execution "
+                    f"environment --repeat {env_repeat_int}"
+                )
 
         for marker in LAT1_EVIDENCE_JUDGMENT_MARKERS:
             value = _bullet_value(body, marker)
@@ -1499,14 +1686,14 @@ def self_test() -> None:
         "## Execution environment\n\n"
         "| Field | Value |\n"
         "|---|---|\n"
-        "| Date | {recorded_on} |\n"
+        "| Date | {env_date} |\n"
         "| Machine / CPU | {machine} |\n"
         "| Filesystem (e.g. local SSD, network mount, container overlay) | local NVMe SSD |\n"
         "| Python version | 3.11.9 |\n"
-        "| Exact RelayLM commit SHA | {source_commit} |\n"
+        "| Exact RelayLM commit SHA | {env_commit} |\n"
         "| Branch or tag (optional context only) | main |\n"
         "| `--repeat` | {repeat_value} |\n"
-        "| `--max-candidates` (bench flag; mirrors `config.memory.candidate_limit`) | 128 |\n"
+        "| `--max-candidates` (bench flag; mirrors `config.memory.candidate_limit`) | {max_candidates} |\n"
         "| Concurrent load on the machine during the run | idle |\n\n"
         "## Results by store size (N)\n\n"
         "| N (store size) | query_count | repeat | p50_ms | p95_ms | avg_selected_count |\n"
@@ -1542,7 +1729,10 @@ def self_test() -> None:
         recorded_on: str = "2026-07-16",
         machine: str = "Ryzen 9 5900X",
         repeat_value: str = "5",
+        max_candidates: str = "128",
         result_rows: str = _LAT1_EVIDENCE_VALID_ROWS,
+        env_date: str | None = None,
+        env_commit: str | None = None,
         extra_body: str = "",
     ) -> None:
         content = _LAT1_EVIDENCE_FRONT_MATTER.format(
@@ -1553,10 +1743,11 @@ def self_test() -> None:
             source_commit=source_commit,
             recorded_on=recorded_on,
         ) + _LAT1_EVIDENCE_BODY.format(
-            recorded_on=recorded_on,
+            env_date=env_date if env_date is not None else recorded_on,
             machine=machine,
-            source_commit=source_commit,
+            env_commit=env_commit if env_commit is not None else source_commit,
             repeat_value=repeat_value,
+            max_candidates=max_candidates,
             result_rows=result_rows,
         ) + extra_body
         _mvp_write(base, f"{LAT1_EVIDENCE_DIR}/{filename}", content)
@@ -1702,7 +1893,7 @@ def self_test() -> None:
         check_rejects(
             "a filename date not matching relaylm_recorded_on is rejected",
             check_lat1_evaluation_evidence_records,
-            "does not match relaylm_recorded_on",
+            "must all match exactly",
         )
     ROOT = real_root
 
@@ -1715,6 +1906,302 @@ def self_test() -> None:
             "a same-day date-only collision-prone filename is rejected",
             check_lat1_evaluation_evidence_records,
             "does not match the deterministic collision-safe",
+        )
+    ROOT = real_root
+
+    # 35. An impossible metadata date (relaylm_recorded_on) is rejected without crashing.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(base, recorded_on="2026-99-99")
+        check_rejects(
+            "an impossible relaylm_recorded_on metadata date is rejected",
+            check_lat1_evaluation_evidence_records,
+            "front matter is invalid or contains an impossible date",
+        )
+    ROOT = real_root
+
+    # 36. An impossible filename date is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(base, filename="lat1-retrieval-scaling-2026-02-30-120000Z-abc1234a.md")
+        check_rejects(
+            "an impossible filename date is rejected",
+            check_lat1_evaluation_evidence_records,
+            "is not a real calendar date",
+        )
+    ROOT = real_root
+
+    # 37. An impossible filename UTC time is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(base, filename="lat1-retrieval-scaling-2026-07-16-246000Z-abc1234a.md")
+        check_rejects(
+            "an impossible filename UTC time is rejected",
+            check_lat1_evaluation_evidence_records,
+            "is not a valid UTC HHMMSS time",
+        )
+    ROOT = real_root
+
+    # 38. An execution-environment Date mismatch (filename/recorded_on agree, env differs) is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(base, env_date="2026-07-17")
+        check_rejects(
+            "an execution-environment Date mismatch is rejected",
+            check_lat1_evaluation_evidence_records,
+            "must all match exactly",
+        )
+    ROOT = real_root
+
+    # 39. An execution-environment commit SHA mismatch (valid SHA, but not the recorded one) is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(base, env_commit="b" * 40)
+        check_rejects(
+            "an execution-environment commit SHA mismatch is rejected",
+            check_lat1_evaluation_evidence_records,
+            "does not match relaylm_source_commit",
+        )
+    ROOT = real_root
+
+    # 39a. A branch name in the execution-environment commit SHA cell is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(base, env_commit="main")
+        check_rejects(
+            "a branch name in the execution-environment commit SHA cell is rejected",
+            check_lat1_evaluation_evidence_records,
+            "must be a full 40-character lowercase commit SHA, not a branch name",
+        )
+    ROOT = real_root
+
+    # 39b. A filename short-commit not matching the execution-environment SHA is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(
+            base,
+            filename="lat1-retrieval-scaling-2026-07-16-120000Z-bbbbbbbb.md",
+            env_commit="abc1234a" + "0" * 32,
+            source_commit="abc1234a" + "0" * 32,
+        )
+        check_rejects(
+            "a filename short-commit not matching the execution-environment SHA is rejected",
+            check_lat1_evaluation_evidence_records,
+            "does not match the filename short-commit",
+        )
+    ROOT = real_root
+
+    # 40. NaN is rejected as a non-finite measurement.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(
+            base,
+            result_rows=(
+                "| 100 | 20 | 5 | NaN | 6.0 | 10 |\n"
+                "| 500 | 20 | 5 | 8.0 | 9.0 | 12 |\n"
+                "| 2000 | 20 | 5 | 15.0 | 18.0 | 12 |\n"
+                "| 5000 | 20 | 5 | 16.0 | 19.0 | 12 |\n"
+            ),
+        )
+        check_rejects(
+            "NaN is rejected as a non-finite measurement",
+            check_lat1_evaluation_evidence_records,
+            "must be a finite number",
+        )
+    ROOT = real_root
+
+    # 41. Infinity is rejected as a non-finite measurement.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(
+            base,
+            result_rows=(
+                "| 100 | 20 | 5 | 5.0 | Infinity | 10 |\n"
+                "| 500 | 20 | 5 | 8.0 | 9.0 | 12 |\n"
+                "| 2000 | 20 | 5 | 15.0 | 18.0 | 12 |\n"
+                "| 5000 | 20 | 5 | 16.0 | 19.0 | 12 |\n"
+            ),
+        )
+        check_rejects(
+            "Infinity is rejected as a non-finite measurement",
+            check_lat1_evaluation_evidence_records,
+            "must be a finite number",
+        )
+    ROOT = real_root
+
+    # 42. A zero-valued integer field (query_count) is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(
+            base,
+            result_rows=(
+                "| 100 | 0 | 5 | 5.0 | 6.0 | 10 |\n"
+                "| 500 | 20 | 5 | 8.0 | 9.0 | 12 |\n"
+                "| 2000 | 20 | 5 | 15.0 | 18.0 | 12 |\n"
+                "| 5000 | 20 | 5 | 16.0 | 19.0 | 12 |\n"
+            ),
+        )
+        check_rejects(
+            "a zero-valued integer field is rejected",
+            check_lat1_evaluation_evidence_records,
+            "must be a positive integer",
+        )
+    ROOT = real_root
+
+    # 43. A decimal value in an integer field (repeat) is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(
+            base,
+            result_rows=(
+                "| 100 | 20 | 5.5 | 5.0 | 6.0 | 10 |\n"
+                "| 500 | 20 | 5 | 8.0 | 9.0 | 12 |\n"
+                "| 2000 | 20 | 5 | 15.0 | 18.0 | 12 |\n"
+                "| 5000 | 20 | 5 | 16.0 | 19.0 | 12 |\n"
+            ),
+        )
+        check_rejects(
+            "a decimal value in an integer field is rejected",
+            check_lat1_evaluation_evidence_records,
+            "must be a positive integer",
+        )
+    ROOT = real_root
+
+    # 44. A per-row repeat value not matching execution environment --repeat is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(
+            base,
+            result_rows=(
+                "| 100 | 20 | 7 | 5.0 | 6.0 | 10 |\n"
+                "| 500 | 20 | 5 | 8.0 | 9.0 | 12 |\n"
+                "| 2000 | 20 | 5 | 15.0 | 18.0 | 12 |\n"
+                "| 5000 | 20 | 5 | 16.0 | 19.0 | 12 |\n"
+            ),
+        )
+        check_rejects(
+            "a per-row repeat mismatched against --repeat is rejected",
+            check_lat1_evaluation_evidence_records,
+            "does not match execution environment --repeat",
+        )
+    ROOT = real_root
+
+    # 45. A duplicate N row is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(
+            base,
+            result_rows=(
+                "| 100 | 20 | 5 | 5.0 | 6.0 | 10 |\n"
+                "| 100 | 20 | 5 | 5.0 | 6.0 | 10 |\n"
+                "| 500 | 20 | 5 | 8.0 | 9.0 | 12 |\n"
+                "| 2000 | 20 | 5 | 15.0 | 18.0 | 12 |\n"
+                "| 5000 | 20 | 5 | 16.0 | 19.0 | 12 |\n"
+            ),
+        )
+        check_rejects(
+            "a duplicate N row is rejected",
+            check_lat1_evaluation_evidence_records,
+            "duplicate results row for N='100'",
+        )
+    ROOT = real_root
+
+    # 46. An unexpected extra N row is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(
+            base,
+            result_rows=(
+                "| 100 | 20 | 5 | 5.0 | 6.0 | 10 |\n"
+                "| 500 | 20 | 5 | 8.0 | 9.0 | 12 |\n"
+                "| 2000 | 20 | 5 | 15.0 | 18.0 | 12 |\n"
+                "| 5000 | 20 | 5 | 16.0 | 19.0 | 12 |\n"
+                "| 9999 | 20 | 5 | 16.0 | 19.0 | 12 |\n"
+            ),
+        )
+        check_rejects(
+            "an unexpected extra N row is rejected",
+            check_lat1_evaluation_evidence_records,
+            "unexpected results row for N='9999'",
+        )
+    ROOT = real_root
+
+    # 47. A malformed table row (wrong cell count) is rejected, not silently skipped.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(
+            base,
+            result_rows=(
+                "| 100 | 20 | 5 | 5.0 | 6.0 |\n"
+                "| 500 | 20 | 5 | 8.0 | 9.0 | 12 |\n"
+                "| 2000 | 20 | 5 | 15.0 | 18.0 | 12 |\n"
+                "| 5000 | 20 | 5 | 16.0 | 19.0 | 12 |\n"
+            ),
+        )
+        check_rejects(
+            "a malformed table row with the wrong cell count is rejected",
+            check_lat1_evaluation_evidence_records,
+            "has 5 cell(s), expected 6",
+        )
+    ROOT = real_root
+
+    # 48. A duplicate execution-environment field is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(base, extra_body="")
+        # Inject a duplicate "Date" row directly, since the helper always
+        # writes a well-formed single-Date table.
+        target = base / LAT1_EVIDENCE_DIR / "lat1-retrieval-scaling-2026-07-16-120000Z-abc1234a.md"
+        text = target.read_text(encoding="utf-8")
+        text = text.replace(
+            "| Date | 2026-07-16 |\n",
+            "| Date | 2026-07-16 |\n| Date | 2026-07-16 |\n",
+            1,
+        )
+        target.write_text(text, encoding="utf-8")
+        check_rejects(
+            "a duplicate execution-environment field is rejected",
+            check_lat1_evaluation_evidence_records,
+            "duplicate execution-environment field",
+        )
+    ROOT = real_root
+
+    # 49. Two otherwise-valid records sharing one relaylm_authority are both rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _lat1_evidence_write(
+            base,
+            filename="lat1-retrieval-scaling-2026-07-16-120000Z-abc1234a.md",
+            authority="lat1_retrieval_scaling_run_shared",
+        )
+        _lat1_evidence_write(
+            base,
+            filename="lat1-retrieval-scaling-2026-07-17-130000Z-def5678a.md",
+            authority="lat1_retrieval_scaling_run_shared",
+            source_commit="def5678a" + "0" * 32,
+            recorded_on="2026-07-17",
+        )
+        check_rejects(
+            "a duplicate authority reused across two completed records is rejected",
+            check_lat1_evaluation_evidence_records,
+            "is not unique across completed LAT-1 evidence records",
         )
     ROOT = real_root
 
