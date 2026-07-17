@@ -3865,10 +3865,10 @@ non_receipt_content_net_diff: {insertions: 1046, deletions: 34}
 reviews: 0
 pr_comments: 0
 unresolved_review_threads: 0
-final_pr_changed_files: pending
-final_pr_net_diff: pending
-receipt_bookkeeping_commit: pending
-receipt_finalization: pending
+final_pr_changed_files: 12
+final_pr_net_diff: {insertions: 1339, deletions: 36}
+receipt_bookkeeping_commit: 3e4064c4f4f67554a44dafc85f83680bf8b2f5ca
+receipt_finalization: performed_after_validated_content_head
 prior_receipt_finalization_superseded:
   head: 85e6a3eea1be9df9b11d1f0e20341864fdf84cf2
   head_all_github_actions: passed
@@ -3902,7 +3902,9 @@ No file under `relaylm/` changed, and no runtime, configuration, schema, schedul
 
 `43ca6a0a684ebd19f1dd50bd45c0d82866cf3fcd` was then recorded as `validated_content_head`: all 27 triggered GitHub Actions check runs, spanning 17 distinct workflow runs (16 `pull_request`, 1 `push`), completed with 17 successes, 10 skips, and zero failures, and 0 reviews/comments/unresolved threads freshly re-verified rather than carried forward. The PR-level diff at this head was 12 changed files, +1331/-36, of which 11 files (+1046/-34) were non-receipt content and 1 file (this receipt, +285/-2) was the receipt-only accounting; both subtotals were independently recomputed via `git diff --numstat` against the merge-base with `main`. Its receipt-only tail (`f466f8d04224e972365a104519c1c3d27e194441`) recorded that head's Actions and diff totals across its own 27 green check runs, with reviews/comments/unresolved threads freshly re-verified again at 0/0/0, followed by a receipt-only finalization commit (`85e6a3eea1be9df9b11d1f0e20341864fdf84cf2`) that finalized `final_pr_changed_files`/`final_pr_net_diff` at 12 changed files, +1337/-36.
 
-**Final diff accounting correction.** Independent final review found the `85e6a3e` finalization's `final_pr_net_diff` insertion count was undercounted by two lines: an independent per-file `git diff --numstat` summation of `base 200addae127d6c93a2ac07bc2f9c718de9688ea0` against `head 85e6a3eea1be9df9b11d1f0e20341864fdf84cf2` sums to 12 changed files, +1339/-36, matching the live GitHub PR metadata exactly (`changed_files: 12`, `additions: 1339`, `deletions: 36`). This is a receipt-accounting defect only, recorded above in `prior_receipt_finalization_superseded`: it does not alter, reinterpret, or imply any defect in the migration, the fail-closed guard, the 100-assertion self-test suite, or any of the green CI results already recorded for `43ca6a0`, `f466f8d`, or `85e6a3e` above. `final_pr_changed_files`/`final_pr_net_diff`/`receipt_bookkeeping_commit`/`receipt_finalization` are reset to `pending` above pending a new truthful receipt-only finalization commit. `merged_commit` remains `pending`; this task does not merge the PR.
+**Final diff accounting correction.** Independent final review found the `85e6a3e` finalization's `final_pr_net_diff` insertion count was undercounted by two lines: an independent per-file `git diff --numstat` summation of `base 200addae127d6c93a2ac07bc2f9c718de9688ea0` against `head 85e6a3eea1be9df9b11d1f0e20341864fdf84cf2` sums to 12 changed files, +1339/-36, matching the live GitHub PR metadata exactly (`changed_files: 12`, `additions: 1339`, `deletions: 36`). This is a receipt-accounting defect only, recorded above in `prior_receipt_finalization_superseded`: it does not alter, reinterpret, or imply any defect in the migration, the fail-closed guard, the 100-assertion self-test suite, or any of the green CI results already recorded for `43ca6a0`, `f466f8d`, or `85e6a3e` above.
+
+The receipt-only accounting-correction commit `3e4064c4f4f67554a44dafc85f83680bf8b2f5ca` was pushed and independently verified: all 27 triggered GitHub Actions check runs, spanning 17 distinct workflow runs (16 `pull_request`, 1 `push`), completed with 17 successes, 10 skips, and zero failures, and reviews/comments/unresolved review threads were freshly re-verified at 0/0/0 rather than carried forward; `mergeable_state` was `clean`. `final_pr_changed_files`/`final_pr_net_diff`/`receipt_bookkeeping_commit`/`receipt_finalization` are now finalized above at 12 changed files, +1339/-36, `receipt_bookkeeping_commit: 3e4064c4f4f67554a44dafc85f83680bf8b2f5ca`. `merged_commit` remains `pending`; this task does not merge the PR.
 
 - Cutover 1C: remaining implementation, wave, evaluation, and release evidence migration.
 - Later cutovers: architecture synthesis, exact contract reconstruction, old-tree removal, and final invariant enforcement.
