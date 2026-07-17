@@ -3850,17 +3850,23 @@ superseded_validated_content_heads:
     receipt_only_tail_superseded:
       - 134cf7ca5c3b58d8859a6f18882a753a779759e4
       - db4757a7aa738e2ab014aed635f635836ab0bb9e
-validated_content_head: pending
-validated_content_head_actions: pending
-validated_content_head_changed_files: pending
-validated_content_head_net_diff: pending
-non_receipt_content_files: pending
-non_receipt_content_net_diff: pending
+validated_content_head: 43ca6a0a684ebd19f1dd50bd45c0d82866cf3fcd
+validated_content_head_actions:
+  workflow_runs_total: 17
+  workflow_runs_by_trigger: {pull_request: 16, push: 1, other: 0}
+  job_or_check_runs_total: 27
+  success: 17
+  failure: 0
+  skipped: 10
+validated_content_head_changed_files: 12
+validated_content_head_net_diff: {insertions: 1331, deletions: 36}
+non_receipt_content_files: 11
+non_receipt_content_net_diff: {insertions: 1046, deletions: 34}
 final_pr_changed_files: pending
 final_pr_net_diff: pending
-reviews: pending
-pr_comments: pending
-unresolved_review_threads: pending
+reviews: 0
+pr_comments: 0
+unresolved_review_threads: 0
 receipt_bookkeeping_commit: pending
 receipt_finalization: pending
 ```
