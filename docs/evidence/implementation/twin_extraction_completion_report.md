@@ -24,7 +24,7 @@ relaylm_exact_source_snapshot: twin_extraction_completion_report-source.txt
 
 ## Status and authority
 
-This document is frozen implementation evidence for the offline Twin Extraction tooling introduced by PR #503, merged as `2e484f9aea04425285e9c5ce690b38a8beb87e82`, and last textually corrected by `fc7e77ef52f137c2a9224b20dff1e8e4711ba0f3`. Current repository status belongs to [Project Status](../../PROJECT_STATUS.md); current execution and review-import behavior belongs to the [Twin Extraction runbook](../../tools/twin_extraction_runbook.md).
+This document is frozen implementation evidence for the offline Twin Extraction tooling introduced by PR #503, merged as `2e484f9aea04425285e9c5ce690b38a8beb87e82`, and last textually corrected by `fc7e77ef52f137c2a9224b20dff1e8e4711ba0f3`. Current repository status belongs to [Project Status](../../PROJECT_STATUS.md); current execution and review-import behavior belongs to the [Twin Extraction runbook](../../operations/twin-extraction.md).
 
 The exact pre-cutover report is retained byte-for-byte as [twin_extraction_completion_report-source.txt](twin_extraction_completion_report-source.txt). Statements below describe the source boundary unless explicitly qualified.
 

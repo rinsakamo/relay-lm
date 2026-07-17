@@ -190,7 +190,7 @@ The exact machine-checkable schema and publication gate are separate future cont
 
 - [Showcase, Public Starter, and Product Knowledge Ownership](../architecture/character-workspace/showcase-starter-product-knowledge.md)
 - [ReLM File-first Source Set Draft](../relaysoul/relm_file_first_source_set_draft.md)
-- [Twin Extraction Prompts](../tools/twin_extraction_prompts.md)
+- [Twin Extraction Prompts](../operations/twin-extraction-prompts.md)
 - [Post-v0.1 Strategic Direction Vision](../architecture/post_v01_strategic_direction_vision.md)
 
 ## Non-goals

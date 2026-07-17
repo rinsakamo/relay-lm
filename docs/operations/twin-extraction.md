@@ -1,12 +1,12 @@
 ---
-relaylm_doc_type: runbook
+relaylm_doc_type: operations
 relaylm_authority: twin_extraction_offline_tooling_operations
 relaylm_status: current
 relaylm_volatility: medium
 relaylm_owner: offline_tooling
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - twin_extraction_prompts.md
+  - twin-extraction-prompts.md
 relaylm_not_authoritative_for:
   - MEM/SOUL bootstrap ingestion
   - RelaySLP or RelayMEM runtime behavior
@@ -16,7 +16,7 @@ relaylm_not_authoritative_for:
 
 ## 適用範囲
 
-このランブックは `scripts/relaylm_twin_extraction_preprocess.py` / `scripts/relaylm_twin_extraction_batch_runner.py` / `scripts/relaylm_twin_extraction_merge.py` の実行手順を扱う。抽出プロンプト仕様の正は [Twin Extraction プロンプト仕様](twin_extraction_prompts.md) であり、本ランブックはその実行手順のみを記録する。
+このランブックは `scripts/relaylm_twin_extraction_preprocess.py` / `scripts/relaylm_twin_extraction_batch_runner.py` / `scripts/relaylm_twin_extraction_merge.py` の実行手順を扱う。抽出プロンプト仕様の正は [Twin Extraction プロンプト仕様](twin-extraction-prompts.md) であり、本ランブックはその実行手順のみを記録する。
 
 これらのツールは caller-invoked で有界なオフライン前処理ツールであり、RelayLMランタイム(`relaylm/` パッケージ)には接続しない。daemon化・ポーリング・スケジューラは持たない。MEM/SOULへの書き込みやbootstrap投入は行わない(このツールが作るのはレビュー用の単一JSONまで)。
 
@@ -114,7 +114,7 @@ PYTHONPATH=.:scripts python scripts/relaylm_twin_extraction_merge.py \
 
 ### 5. 本人レビューと後続経路
 
-このツールが作るのは `twin_extraction_review.json` まで。MEM/SOULへの書き込み・bootstrap投入・SLP経路への接続は行わない。[Twin Extraction プロンプト仕様](twin_extraction_prompts.md) の「集約・レビュー手順」に従って手動レビューし、承認された素材のみを別途CW-A1形式・MEM bootstrap経路に反映する。
+このツールが作るのは `twin_extraction_review.json` まで。MEM/SOULへの書き込み・bootstrap投入・SLP経路への接続は行わない。[Twin Extraction プロンプト仕様](twin-extraction-prompts.md) の「集約・レビュー手順」に従って手動レビューし、承認された素材のみを別途CW-A1形式・MEM bootstrap経路に反映する。
 
 <a id="6-review-import-bridge-p1出力--cw-a4-governed-import-source"></a>
 
@@ -143,7 +143,7 @@ PYTHONPATH=.:scripts python scripts/relaylm_twin_review_import_bridge.py \
 
 `private_only` のfact_candidatesは既定では出力されず、このbridgeに自動昇格経路もない。`style_observations` は本リビジョンではdry-run projection/カウントのみで、ファイルへは書き出さない(`--approved-styles` は `none` のみ受け付ける)。stdoutは常にcontent-freeなJSON集計(件数とreason_idsのみ)で、statement/description本文・絶対パス・生の例外テキストは出力されない。書き込み先ファイル名は内容から決定されるstableなハッシュで、timestamp/UUIDは使わない。既存ファイルが同一内容ならidempotent、異なる内容ならfail-closedでconflictエラーになる(exit code非0、部分書き込みなし)。
 
-書き出された `.relaylm/sources/imports/twin-extraction/fact-<hash>.json` は `role: "user"` を持つため、CW-A4(`plan_character_workspace_slp_candidates` の dry-run)がuser assertion evidenceとして読み、memory/scene/relationship候補のdry-run projectionに使える。CW-A4への書き込み(`write_candidates=True`)や後続のMEM/SOUL反映は、このbridgeの範囲外であり別途明示的に実行する。CW-A4 dry-run/write-candidatesの具体的な連携手順・生成物確認・人間レビュー手順は [Twin Review Import -> CW-A4 Workspace Candidate Flow](twin_review_to_workspace_candidates.md) を参照。
+書き出された `.relaylm/sources/imports/twin-extraction/fact-<hash>.json` は `role: "user"` を持つため、CW-A4(`plan_character_workspace_slp_candidates` の dry-run)がuser assertion evidenceとして読み、memory/scene/relationship候補のdry-run projectionに使える。CW-A4への書き込み(`write_candidates=True`)や後続のMEM/SOUL反映は、このbridgeの範囲外であり別途明示的に実行する。CW-A4 dry-run/write-candidatesの具体的な連携手順・生成物確認・人間レビュー手順は [Twin Review Import -> CW-A4 Workspace Candidate Flow](twin-review-to-workspace-candidates.md) を参照。
 
 #### metadataの安全性
 
