@@ -3608,7 +3608,7 @@ No file under `relaylm/` changed, and no runtime, configuration, schema, schedul
 
 ```yaml
 cutover_pr: 607
-merged_commit: pending
+merged_commit: 5245206c8063b9e9c4c5b1772078405016c0c3ec
 record_count: 5
 cutover_recorded_on: 2026-07-17
 disposition: split
@@ -3909,6 +3909,274 @@ The receipt-only accounting-correction commit `3e4064c4f4f67554a44dafc85f83680bf
 
 - Cutover 1C: remaining implementation, wave, evaluation, and release evidence migration.
 - Later cutovers: architecture synthesis, exact contract reconstruction, old-tree removal, and final invariant enforcement.
+
+### C1C42-001 — twin extraction offline tooling family cutover
+
+```yaml
+cutover_pr: 608
+merged_commit: pending
+record_count: 3
+cutover_recorded_on: 2026-07-17
+disposition: moved
+no_fabricated_evidence: true
+records:
+  - record: Twin Extraction Prompt Specification
+    old_path: docs/tools/twin_extraction_prompts.md
+    old_path_lines: 182
+    disposition: moved
+    legacy_metadata_type: runbook
+    legacy_metadata_note: existing_only_pre_cutover_type_per_docs_documentation_model_md_required_cutover_destination_operations_docs_tools_is_an_explicitly_temporary_pre_cutover_anchor
+    introducing_pr: 503
+    introducing_pr_title: "Add Twin Extraction offline material-extraction tooling"
+    introducing_commit: 2e484f9aea04425285e9c5ce690b38a8beb87e82
+    introducing_commit_date: 2026-07-07T08:04:27Z
+    intermediate_modifications:
+      - commit: 43c28f46bdb88ceca1bb47e32a063b0d3991ee5f
+        commit_date: 2026-07-07T12:41:30Z
+        origin: direct_push_no_pr
+        committer: rinsakamo
+      - commit: 1ba2306c316778bb1f59da53f7e97f48308d9b8f
+        commit_date: 2026-07-07T12:47:13Z
+        origin: direct_push_no_pr
+        committer: rinsakamo
+    final_content_pr: 520
+    final_content_pr_title: "Add Twin Extraction review import bridge (P1 -> CW-A4 governed import source)"
+    final_content_commit: 9fda34938baca6f2d81c47168561b4c932a44f27
+    final_content_commit_date: 2026-07-09T09:54:36Z
+    source_blob_sha: 797f539a63a62ada5d49c74b2b321c19503ecc00
+    source_content_sha256: 64d6386c2ed15701ccc3556fbcd48dbde61e90955f77972784dd19cdbf362ed0
+    pre_cutover_blob_sha: 797f539a63a62ada5d49c74b2b321c19503ecc00
+    pre_cutover_content_sha256: 64d6386c2ed15701ccc3556fbcd48dbde61e90955f77972784dd19cdbf362ed0
+    pre_cutover_blob_note: identical_to_the_final_content_commit_blob_independently_confirmed_via_git_diff_between_9fda349_and_this_cutovers_pre_cutover_head_zero_modification_commits_between_them
+    new_canonical_path: docs/operations/twin-extraction-prompts.md
+    new_doc_type: operations
+  - record: Twin Extraction Runbook
+    old_path: docs/tools/twin_extraction_runbook.md
+    old_path_lines: 179
+    disposition: moved
+    legacy_metadata_type: runbook
+    legacy_metadata_note: existing_only_pre_cutover_type_per_docs_documentation_model_md_required_cutover_destination_operations_docs_tools_is_an_explicitly_temporary_pre_cutover_anchor
+    introducing_pr: 503
+    introducing_pr_title: "Add Twin Extraction offline material-extraction tooling"
+    introducing_commit: 2e484f9aea04425285e9c5ce690b38a8beb87e82
+    introducing_commit_date: 2026-07-07T08:04:27Z
+    intermediate_modifications:
+      - commit: 5d7d471111597c44edc05c38b75e5f537dccc8b9
+        commit_date: 2026-07-07T12:47:41Z
+        origin: direct_push_no_pr
+        committer: rinsakamo
+      - commit: 9fda34938baca6f2d81c47168561b4c932a44f27
+        commit_date: 2026-07-09T09:54:36Z
+        origin: pr_520_squash_merge
+      - commit: e82a43ca22454825d40244fe978062d095e300a6
+        commit_date: 2026-07-09T11:08:46Z
+        origin: pr_522_squash_merge
+      - commit: fe8f4652390b6a4c3f0c1a81e6051f09e8cb4ae5
+        commit_date: 2026-07-10T23:59:24Z
+        origin: pr_548_squash_merge
+    final_content_pr: 572
+    final_content_pr_title: "docs: move Twin Extraction report in cutover 1C-14"
+    final_content_commit: 4c0e7d64110c9e2df37398ee0cda4678d4143e1c
+    final_content_commit_date: 2026-07-12T09:44:12Z
+    source_blob_sha: c303eb05862e6674697891c497e695c02687b16b
+    source_content_sha256: dc510d2002aa674005f8d9275eca746bc8a3898714214e3775f3702474932b7f
+    pre_cutover_blob_sha: c303eb05862e6674697891c497e695c02687b16b
+    pre_cutover_content_sha256: dc510d2002aa674005f8d9275eca746bc8a3898714214e3775f3702474932b7f
+    pre_cutover_blob_note: identical_to_the_final_content_commit_blob_independently_confirmed_via_git_diff_between_4c0e7d6_and_this_cutovers_pre_cutover_head_zero_modification_commits_between_them
+    new_canonical_path: docs/operations/twin-extraction.md
+    new_doc_type: operations
+    naming_note: redundant_runbook_name_suffix_dropped_per_cutover_1c_41_mobile_dogfood_observation_runbook_to_mobile_dogfood_observation_precedent
+  - record: Twin Review Import -> CW-A4 Workspace Candidate Flow
+    old_path: docs/tools/twin_review_to_workspace_candidates.md
+    old_path_lines: 175
+    disposition: moved
+    legacy_metadata_type: runbook
+    legacy_metadata_note: existing_only_pre_cutover_type_per_docs_documentation_model_md_required_cutover_destination_operations_docs_tools_is_an_explicitly_temporary_pre_cutover_anchor
+    introducing_pr: 522
+    introducing_pr_title: "Add Twin Review -> CW-A4 workspace candidate flow runbook and smoke"
+    introducing_commit: e82a43ca22454825d40244fe978062d095e300a6
+    introducing_commit_date: 2026-07-09T11:08:46Z
+    intermediate_modifications: []
+    final_content_pr: 522
+    final_content_pr_title: "Add Twin Review -> CW-A4 workspace candidate flow runbook and smoke"
+    final_content_commit: e82a43ca22454825d40244fe978062d095e300a6
+    final_content_commit_date: 2026-07-09T11:08:46Z
+    source_blob_sha: 5b0a209c60cce35548e4796c3f032a07e446c984
+    source_content_sha256: 9be2b4190f52d110aeee819c4997f0a66fc891cd854ec11f48c1ac28bc2a0d41
+    pre_cutover_blob_sha: 5b0a209c60cce35548e4796c3f032a07e446c984
+    pre_cutover_content_sha256: 9be2b4190f52d110aeee819c4997f0a66fc891cd854ec11f48c1ac28bc2a0d41
+    pre_cutover_blob_note: introducing_commit_and_final_content_commit_are_the_same_commit_this_file_was_never_modified_after_introduction_independently_confirmed_via_git_diff_between_e82a43c_and_this_cutovers_pre_cutover_head
+    new_canonical_path: docs/operations/twin-review-to-workspace-candidates.md
+    new_doc_type: operations
+provenance_correction_note: the_tasks_stated_last_textual_correction_commit_fc7e77ef52f137c2a9224b20dff1e8e4711ba0f3_was_independently_checked_via_get_commit_and_found_to_touch_only_docs_mvp_wave8_twin_extraction_completion_report_md_the_completion_report_a_separate_provenance_chain_not_any_of_the_three_family_files_recorded_here_the_local_shallow_clones_git_log_dash_dash_follow_stops_at_commit_3fd9b6d_a_known_shallow_clone_artifact_and_was_not_used_as_provenance_true_provenance_above_was_independently_reconstructed_via_github_list_commits_path_filtered_get_commit_and_search_pull_requests
+source_snapshot_requirement: none_needed_all_three_are_moves_of_actively_maintained_current_documents_not_evidence_freezes_no_source_snapshot_was_created
+non_link_body_changes:
+  - file: docs/operations/twin-extraction-prompts.md
+    change: >-
+      Front matter relaylm_doc_type corrected runbook -> operations;
+      relaylm_related_authority entry twin_extraction_runbook.md ->
+      twin-extraction.md. relaylm_status remains current. No Japanese body
+      prose, heading, or prompt text changed.
+  - file: docs/operations/twin-extraction.md
+    change: >-
+      Front matter relaylm_doc_type corrected runbook -> operations;
+      relaylm_related_authority entry twin_extraction_prompts.md ->
+      twin-extraction-prompts.md. relaylm_status remains current. No
+      Japanese body prose, heading, verification command, or the
+      Japanese-heading anchor id changed; only same-directory cross-links
+      to the other two moved family members were retargeted to their new
+      hyphenated basenames.
+  - file: docs/operations/twin-review-to-workspace-candidates.md
+    change: >-
+      Front matter relaylm_doc_type corrected runbook -> operations;
+      relaylm_related_authority entries twin_extraction_prompts.md /
+      twin_extraction_runbook.md -> twin-extraction-prompts.md /
+      twin-extraction.md (the third relaylm_related_authority entry,
+      ../architecture/cw_a4_slp_workspace_maintenance_candidates.md,
+      unchanged since docs/operations/ is the same depth as docs/tools/).
+      relaylm_status remains current. No Japanese body prose, heading, or
+      non-goal changed; only cross-links to the other two moved family
+      members were retargeted, including two occurrences of the anchored
+      link to the runbook's review-import-bridge section.
+  - file: docs/tools/relm_showcase_fixture_template.md
+    change: >-
+      Front matter relaylm_related_authority entry twin_extraction_prompts.md
+      -> ../operations/twin-extraction-prompts.md. relaylm_doc_type remains
+      runbook (this document is a distinct CW-A5 authority, not part of the
+      twin extraction family, and is not retyped by this cutover). No body
+      change.
+old_path_retirement_confirmed:
+  - docs/tools/twin_extraction_prompts.md
+  - docs/tools/twin_extraction_runbook.md
+  - docs/tools/twin_review_to_workspace_candidates.md
+dependency_and_reference_inventory:
+  - referrer: docs/README.md
+    kind: documentation_index
+    action: retargeted_three_links_tools_twin_star_to_operations_twin_star_under_the_offline_tooling_and_runbooks_section
+  - referrer: docs/PROJECT_STATUS.md
+    kind: status
+    action: retargeted_two_links_tools_twin_extraction_runbook_and_tools_twin_review_to_workspace_candidates_to_their_operations_targets
+  - referrer: docs/strategy/rin-relm-character-vision.md
+    kind: current_strategy_document
+    action: retargeted_the_one_link_dot_dot_slash_tools_twin_extraction_prompts_md_to_dot_dot_slash_operations_twin_extraction_prompts_md
+  - referrer: docs/tools/relm_showcase_fixture_template.md
+    kind: distinct_cw_a5_authority_front_matter_only
+    action: retargeted_the_relaylm_related_authority_entry_to_the_new_operations_path_no_body_or_type_change
+  - referrer: docs/evidence/implementation/twin_extraction_completion_report.md
+    kind: frozen_completion_report_one_live_link_only
+    action: retargeted_the_one_live_markdown_link_on_line_27_dot_dot_slash_dot_dot_slash_tools_twin_extraction_runbook_md_to_dot_dot_slash_dot_dot_slash_operations_twin_extraction_md_preserved_the_required_current_execution_and_review_import_behavior_belongs_to_the_phrase_verbatim_left_every_backtick_literal_historical_mention_at_lines_45_47_77_78_and_111_byte_for_byte_unchanged_and_left_the_dash_source_dot_txt_snapshot_untouched
+  - referrer: scripts/relaylm_twin_extraction_preprocess.py
+    kind: offline_tooling_script_module_docstring_only
+    action: retargeted_the_one_docstring_path_reference_on_line_5_from_docs_tools_twin_extraction_prompts_md_to_docs_operations_twin_extraction_prompts_md_comment_only_zero_behavior_change_individually_justified_as_the_sole_scripts_tooling_exception_in_this_cutover
+  - referrer: (family-internal links)
+    kind: mutual_family_references
+    action: retargeted_every_cross_link_among_the_three_family_members_including_the_two_occurrences_of_the_anchored_link_to_twin_extractions_review_import_bridge_section_the_japanese_heading_anchor_fragment_itself_was_carried_forward_unchanged_and_re_verified_present_at_the_new_path
+script_dependencies_found:
+  - file: scripts/relaylm_twin_extraction_preprocess.py
+    consumer: module_docstring_path_reference
+    old_path: docs/tools/twin_extraction_prompts.md
+    new_path: docs/operations/twin-extraction-prompts.md
+    action: retargeted_comment_only_zero_behavior_change_individually_justified
+  - file: scripts/relaylm_docs_semantic_audit.py
+    consumer: TWIN_EXTRACTION_RETIRED_TO_CANONICAL_new_guard_constant
+    old_path: docs/tools/twin_extraction_prompts.md,docs/tools/twin_extraction_runbook.md,docs/tools/twin_review_to_workspace_candidates.md
+    new_path: docs/operations/twin-extraction-prompts.md,docs/operations/twin-extraction.md,docs/operations/twin-review-to-workspace-candidates.md
+    action: new_fail_closed_guard_added_in_this_cutover_not_a_retargeted_pre_existing_dependency
+workflow_dependencies_found: []
+script_and_workflow_dependencies_note: independent_inventory_search_across_readme_md_readme_ja_md_docs_star_star_scripts_star_star_dot_github_workflows_star_star_relaylm_star_star_tests_star_star_config_example_yaml_and_pyproject_toml_confirms_zero_dot_github_workflows_file_references_any_of_the_three_old_paths_by_exact_path_bare_filename_or_stem_and_no_path_selector_gates_on_docs_tools_twin_star_the_only_scripts_star_star_dependency_found_beyond_the_new_guard_itself_is_the_one_individually_justified_preprocess_py_docstring_reference_above_no_other_twin_tooling_script_relaylm_twin_extraction_smoke_py_relaylm_twin_extraction_batch_runner_py_relaylm_twin_extraction_merge_py_relaylm_twin_review_import_bridge_py_references_either_docs_path_relaylm_twin_extraction_smoke_py_instead_references_scripts_twin_extraction_prompts_star_txt_prompt_files_a_distinct_unmoved_path_not_part_of_this_cutover
+canonical_absorption_destinations:
+  - docs/operations/twin-extraction-prompts.md
+  - docs/operations/twin-extraction.md
+  - docs/operations/twin-review-to-workspace-candidates.md
+fail_closed_guards_added:
+  - "scripts/relaylm_docs_semantic_audit.py check_no_live_twin_extraction_retired_paths (a retired -> canonical map for the three twin-extraction path pairs, reusing the mobile-dogfood guard's (Cutover 1C-41) generic resolution helpers -- _mobile_dogfood_resolve, _mobile_dogfood_front_matter_path_values, _mobile_dogfood_locate, _mobile_dogfood_scanned_files -- directly rather than redefining them a third time. For .md/.txt referrers: resolves Markdown link targets (root-qualified, bare same-directory, ./, ../, ../../, and anchored spellings, including the family's own Japanese-heading anchor fragment) and every supported front-matter path-bearing key (relaylm_current_status_source, relaylm_decision_source, relaylm_related_authority, relaylm_related_contracts, relaylm_related_decisions, relaylm_related_proposal, relaylm_code_sources, relaylm_verified_by). For non-Markdown path-bearing referrers (.yaml/.yml/.py), where Markdown link syntax and YAML front matter don't apply, a literal repository-root-qualified match is used instead -- this is a deliberate design departure from the mobile-dogfood guard's Pass 1 (which runs its literal scan unconditionally across every file, including inside Markdown backtick code spans): restricting the literal scan to non-Markdown files means the frozen completion report's several backtick-literal historical mentions of the retired paths are never matched and need no allowance, while documentation-cutover-rules.yaml's three path_overrides keys and this guard's own dict-key entries -- both non-Markdown-link occurrences -- remain detectable and require their own narrow exact-line allowances. No generic frozen/historical/status bypass and no generic *-source.txt allowance were added; the only allowlists are the receipt (whole-file), the three exact documentation-cutover-rules.yaml path_overrides key lines (exact-line), and this guard's own implementation file restricted to its TWIN_EXTRACTION_RETIRED_TO_CANONICAL dict-key entries (exact-line, not whole-file))"
+  - "scripts/relaylm_docs_semantic_audit.py check_twin_extraction_family_types (asserts all three canonical targets declare relaylm_doc_type=operations, never the retired runbook type)"
+self_test_assertions_added: 19
+self_test_assertions_added_note: nineteen_deterministic_self_test_assertions_for_the_twin_extraction_family_guard_pair_bringing_relaylm_docs_semantic_audit_py_dash_dash_self_test_to_119_total_assertions_up_from_100_before_this_cutover_covering_a_silent_real_repository_check_reintroduction_rejection_for_all_three_retired_paths_in_one_combined_assertion_root_qualified_same_directory_dot_dot_slash_dot_dot_slash_dot_dot_slash_and_anchored_markdown_link_rejection_including_the_familys_own_japanese_heading_anchor_fragment_specifically_relaylm_related_authority_and_relaylm_current_status_source_front_matter_rejection_a_frozen_status_no_bypass_assertion_root_qualified_and_relative_canonical_target_acceptance_a_reject_then_allow_pairing_for_the_documentation_cutover_rules_yaml_exact_line_allowlist_a_duplicate_live_copy_rejection_a_reject_then_allow_pairing_for_check_twin_extraction_family_types_and_a_reject_then_allow_pairing_for_the_self_files_own_exact_line_dict_key_allowance_every_self_test_fixture_that_spells_a_retired_path_literal_as_python_source_text_derives_it_at_runtime_from_twin_extraction_retired_paths_via_next_lookups_by_basename_suffix_rather_than_hardcoding_it_since_the_corrected_guards_own_literal_scan_pass_now_covers_its_own_dot_py_source_file
+local_validation:
+  compileall: passed
+  docs_link_check: passed
+  docs_semantic_audit: passed
+  docs_semantic_audit_self_test: passed_119_assertions
+  documentation_current_boundary_smoke: passed
+  cutover_prepare_self_test: passed
+  mvp_completion_report_smoke_check_model_check_all: passed
+  mvp_completion_report_smoke_self_test: passed
+  mvp_completion_report_pr_link_smoke: passed
+  ci_consolidated_smoke_contract: passed
+  e1_evaluation_consolidation_smoke: passed
+  wave3_cross_slice_convergence_smoke: passed
+  wave3_cross_slice_security_smoke: passed
+  wave4_cross_slice_convergence_smoke: passed
+  wave5_cross_slice_convergence_smoke: passed
+  showcase_fixture_gate_smoke: passed
+  twin_extraction_smoke: passed
+  twin_review_to_cw_a4_flow_smoke: passed
+  repo_inventory_cli_self_test: passed
+  git_diff_check: passed
+  docs_mvp_absent: true
+  twin_extraction_legacy_paths_absent: true
+  showcase_fixture_template_present_and_unretyped: true
+  focused_non_allowlisted_reference_search: clean_zero_violations
+docs_mvp_family_touched: false
+lat1_family_touched: false
+e1_family_touched: false
+mobile_dogfood_family_touched: false
+runtime_files_changed: 0
+open_pr_isolation:
+  checked_open_prs: [586, 578, 567]
+  shared_file_overlaps:
+    - pr: 586
+      file: docs/README.md
+      resolution: edited_only_the_current_main_version_of_the_three_twin_extraction_bullet_links_did_not_import_or_rebase_onto_any_content_from_the_still_open_pr_586_subjective_mem_proposal_router_edits
+  no_content_imported: true
+validated_content_head: cbf35a5c48661a7430f85039960887353c7c02ce
+validated_content_head_actions:
+  workflow_runs_total: 17
+  workflow_runs_by_trigger: {pull_request: 16, push: 1, other: 0}
+  job_or_check_runs_total: 27
+  success: 17
+  failure: 0
+  skipped: 10
+validated_content_head_changed_files: 11
+validated_content_head_net_diff: {insertions: 649, deletions: 27}
+reviews: 0
+pr_comments: 0
+unresolved_review_threads: 0
+final_pr_changed_files: pending
+final_pr_net_diff: pending
+receipt_bookkeeping_commit: pending
+receipt_finalization: pending
+prior_c1c41_merged_state_correction:
+  pr: 607
+  merged_commit: 5245206c8063b9e9c4c5b1772078405016c0c3ec
+  merged_by: rinsakamo
+  merged_at: 2026-07-17T12:35:19Z
+  merged_head: bc7325a0689a96cd237ed326617cccb6f4e0ca53
+  merged_changed_files: 12
+  merged_additions: 1351
+  merged_deletions: 36
+```
+
+This batch performs an inventory-first hard cutover of the Twin Extraction offline tooling family flagged in the task brief as the Cutover 1C-42 authority family: the prompt specification, the execution runbook, and the review-import-to-CW-A4 workspace-candidate connective flow, all three currently typed `runbook` inside the explicitly temporary `docs/tools/` pre-cutover anchor. Starting boundary independently reverified: `origin/main` matched the task's stated boundary `5245206c8063b9e9c4c5b1772078405016c0c3ec` exactly (the squash-merge of PR #607, Cutover 1C-41) -- zero intervening commits, so no changed-boundary report was required.
+
+Independent repository inventory (`docs/**`, `scripts/**`, `.github/workflows/**`, `relaylm/**`, `tests/**`, `config.example.yaml`, `pyproject.toml`, every spelling variant of the three old paths, bare basenames, and the hyphenated target names) confirms the three files named in the task brief are the complete live family; `docs/tools/relm_showcase_fixture_template.md` is a distinct CW-A5 authority correctly excluded from the family per the task brief, receiving only a bounded front-matter link repair. `docs/planning/documentation-cutover-rules.yaml` had zero prior entries for this family; this batch adds the family's first three `path_overrides` entries. `docs/planning/documentation-architecture-inventory.md` and `docs/planning/documentation-placement-decisions.md` were independently checked and contain zero mentions of "twin"; both are left untouched, since neither has ever had coverage of this family (unlike some earlier families with partial prior coverage) and their own stated scopes (architecture/relaysoul/contracts; placement precedent records) do not cover this one either.
+
+Each of the three documents shares one placement disposition -- unlike the Cutover 1C-41 mobile-dogfood family, which required three distinct dispositions across evaluation_method/operations/template -- because all three are genuinely operator-facing tooling-operation procedures (a prompt specification, an execution runbook, and a connective flow runbook), not evaluation methods or blank templates. Applying the placement tie-breaker in `docs/DOCUMENTATION_MODEL.md` independently to each of the three confirmed `operations` as the correct destination in every case (rule 6: "Procedure and troubleshooting flow -> guides/ or operations/ depending on operator scope"; these are bounded offline-tooling operator procedures, not durable architecture, exact contracts, or dated evidence), so no conflict with the task brief's expected disposition table was found and no deviation is recorded.
+
+Provenance for each file was independently reconstructed via GitHub `list_commits` (path-filtered), `get_commit`, and `search_pull_requests` -- not from the local shallow clone's `git log --follow`, which stops at commit `3fd9b6d` (a known shallow-clone artifact, consistent with the warning already recorded in the Cutover 1C-40 and 1C-41 entries above). The prompt specification and runbook were both introduced together in PR #503 ("Add Twin Extraction offline material-extraction tooling"), then each independently modified by two direct-push commits (`43c28f4`/`1ba2306` for the prompt spec; `5d7d471` for the runbook) with no associated PR (committer `rinsakamo`, not `GitHub`/`web-flow`, confirming genuine direct pushes rather than squash merges), then further modified through PR #520 (both files, the review-import-bridge addition), PR #522 (runbook only, forward-link to the new workspace-candidate flow document, which PR #522 also introduces as a new file), and PR #548 (runbook only, an anchor-id addition unrelated to this family's own content). The runbook's true final content commit is PR #572's squash-merge (a completion-report path retarget during Cutover 1C-14), not PR #503 or PR #522. The workspace-candidate-flow document was introduced by PR #522 and never modified again -- its introducing and final-content commits are identical. Each file's current pre-cutover blob was independently confirmed byte-identical to its blob at its own final-content-defining commit via `git diff` between that commit and the pre-cutover working tree, so the recorded `source_blob_sha`/`source_content_sha256` values are the exact bytes moved verbatim in this batch. The task's own stated provenance caveat about `fc7e77ef52f137c2a9224b20dff1e8e4711ba0f3` ("last textual correction") was independently checked and found to belong to a different provenance chain entirely -- the completion report, not any of these three files -- and is recorded as such in `provenance_correction_note` above rather than silently repeated.
+
+Live dependency search across the full inventory scope found six documentation/script referrers beyond the family's own internal cross-links: `docs/README.md` (three links), `docs/PROJECT_STATUS.md` (two links), `docs/strategy/rin-relm-character-vision.md` (one link), `docs/tools/relm_showcase_fixture_template.md` (one front-matter entry, no body change, type unchanged since it is not part of this family), `docs/evidence/implementation/twin_extraction_completion_report.md` (one live link on line 27, repaired; its backtick-literal historical mentions at lines 45-47, 77-78, and 111, and its byte-identical `-source.txt` snapshot, are untouched, per its own frozen/link-repair-only update trigger), and `scripts/relaylm_twin_extraction_preprocess.py` (one module-docstring path reference on line 5, comment-only, zero-behavior change, individually justified as the sole `scripts/` tooling exception in this cutover). Zero `.github/workflows/**` file references any of the three old paths by exact path, bare filename, or stem, and no workflow path selector gates on `docs/tools/twin_*`. No other twin-tooling script (`relaylm_twin_extraction_batch_runner.py`, `relaylm_twin_extraction_merge.py`, `relaylm_twin_review_import_bridge.py`, `relaylm_twin_extraction_smoke.py`, and related security/flow smokes) references either docs path; `relaylm_twin_extraction_smoke.py` instead references `scripts/twin_extraction_prompts/*.txt` prompt files, a distinct, unmoved path outside this cutover's scope.
+
+Open-PR isolation: the three currently open PRs (`#586`, `#578`, `#567`) were independently re-enumerated and their changed files inspected. Exactly one shared-file overlap was found: PR #586 (`docs: propose subjective MEM formation and retrieval model`, still open, non-authoritative proposal) touches `docs/README.md`. This batch edited only the current-`main` version of `docs/README.md`'s three twin-extraction bullet links and imported no content from PR #586's own router edits. PR #578 (experiment, draft, do-not-merge) and PR #567 (proposal) touch no file in this batch's scope.
+
+A new fail-closed guard pair was added to `scripts/relaylm_docs_semantic_audit.py`: `check_no_live_twin_extraction_retired_paths()` and `check_twin_extraction_family_types()`, both described in full in `fail_closed_guards_added` above, including the deliberate design departure from the mobile-dogfood guard's unconditional literal-scan Pass 1 (this guard's literal scan is restricted to non-Markdown `.yaml`/`.yml`/`.py` referrers, so the frozen completion report's backtick-literal historical mentions are never matched and need no allowance). Nineteen new deterministic `--self-test` assertions cover both, bringing `relaylm_docs_semantic_audit.py --self-test` to **119 total assertions** (up from 100), including reject-then-allow pairings proving the `documentation-cutover-rules.yaml` exact-line allowlist, the family-type check, and the self-file's own exact-line dict-key allowance are all genuinely exercised, not vacuous.
+
+No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/mvp/` remains fully absent. No compatibility path, redirect, alias, symlink, fallback lookup, duplicate live copy, or old-path manifest was added. No open-PR content was imported, rebased, or partially copied.
+
+**Mandatory merged-state accounting correction (Cutover 1C-41).** PR #607 has since merged. Independently reverified from GitHub before recording any value: `pull_request_read get` reports `merged: true`, `merged_by: rinsakamo`, `merged_at: 2026-07-17T12:35:19Z`, head `bc7325a0689a96cd237ed326617cccb6f4e0ca53`, `changed_files: 12`, `additions: 1351`, `deletions: 36` -- matching the C1C41 entry's already-recorded `validated_content_head`/`final_pr_changed_files`/`final_pr_net_diff` exactly, confirming no further commit landed between finalization and merge. `git show`/`get_commit` against `5245206c8063b9e9c4c5b1772078405016c0c3ec` independently confirms the squash-merge commit on `main` carries the identical PR #607 title ("docs: canonicalize mobile dogfood family in cutover 1C-41 (#607)") and is (trivially, since it is this batch's own exact starting `main`) an ancestor of the working `main`. `get_reviews` and `get_comments` were independently re-run against the merged PR: 0 reviews, 0 PR comments -- unchanged from the `23b37d3`/pre-merge finalization state. `get_check_runs` was independently re-run: 27 check runs across 17 distinct workflow runs (16 `pull_request`, 1 `push` from `phase-i4-forget-hide-contract-smoke.yml`), all `completed`, matching the entry's already-recorded totals exactly, since a merge commit does not itself re-trigger the PR's own checks. `merged_commit: 5245206c8063b9e9c4c5b1772078405016c0c3ec` is now recorded in the C1C41 entry above. This is a merged-state accounting correction only: it does not alter, reinterpret, or imply any defect in the accepted C1C41 evidence migration, its guard, or its self-test suite, all of which remain exactly as recorded above.
+
+`cutover_pr` is `608` (`rinsakamo/relay-lm#608`). `cbf35a5c48661a7430f85039960887353c7c02ce` is recorded above as `validated_content_head`: all 27 triggered GitHub Actions check runs, spanning 17 distinct workflow runs, individually fetched by run ID via `get_workflow_run` and their `event` field read directly (not inferred from timing) -- confirming exactly 16 `pull_request`-triggered runs and 1 `push`-triggered run (`phase-i4-forget-hide-contract-smoke.yml`, which declares both `push` and `pull_request` triggers on `docs/**` paths and so fires twice for the same head) -- completed successfully with 17 successes, 10 skips, and zero failures. Zero reviews, zero PR comments, and zero unresolved review threads were present at this head (independently confirmed via `get_reviews`/`get_comments`/`get_review_comments`). The PR-level diff at this head is 11 changed files, +649/-27 (independently confirmed via `pull_request_read get`), matching `validated_content_head_changed_files`/`validated_content_head_net_diff` above exactly, since this is the PR's first and only substantive commit so far -- no non-receipt-content/receipt-only split applies yet. `mergeable_state` was `clean`. `final_pr_changed_files`/`final_pr_net_diff`/`receipt_bookkeeping_commit`/`receipt_finalization` remain `pending` above, to be recorded by the receipt-only bookkeeping and finalization commits that follow this one, per the required procedure. `merged_commit` for this record remains `pending`; this task does not merge the PR.
 
 ## Freeze boundary
 
