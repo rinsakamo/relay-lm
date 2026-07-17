@@ -259,6 +259,65 @@ path_overrides:
       it is made an explicit, truthful, single-target override now that
       the move is complete, rather than left as an implicit future
       prediction.
+  docs/evaluation/mobile_dogfood_observation_runbook.md:
+    disposition: moved
+    target_doc_type: evaluation_method
+    target_paths:
+      - docs/evaluation/mobile-dogfood-observation.md
+    deletion_reason: >-
+      Cutover 1C-41: this source was a legacy runbook-typed document under
+      docs/evaluation/ describing a repeatable single-owner observation
+      procedure, not completed evidence. Moved and retyped to the canonical
+      evaluation_method profile; body content preserved except for
+      front-matter, self-reference wording ("runbook" -> "observation
+      method"), and link repair for the family's other four moved members.
+  docs/tools/mobile_dogfood_entry.md:
+    disposition: moved
+    target_doc_type: operations
+    target_paths:
+      - docs/operations/mobile-dogfood-entry.md
+    deletion_reason: >-
+      Cutover 1C-41: this source was a legacy runbook-typed document under
+      docs/tools/, an existing-only pre-cutover collection whose required
+      cutover destination is operations. Moved verbatim (front matter
+      relaylm_doc_type corrected from runbook to operations; relaylm_status
+      remains target, since the dedicated chat-only public origin this
+      document gates remains unimplemented) to docs/operations/, the
+      canonical location for operator runbooks and tooling operations.
+  docs/evaluation/mobile_dogfood_summary_report_template.md:
+    disposition: moved
+    target_doc_type: template
+    target_paths:
+      - docs/templates/evaluation/mobile-dogfood-summary-report.md
+    deletion_reason: >-
+      Cutover 1C-41: this source was an empty, unfilled summary stub
+      incorrectly carrying the legacy evaluation_record doc type. It has
+      never held a real observation result and is not evidence. Moved and
+      retyped to the canonical template profile under
+      docs/templates/evaluation/; remains explicitly content-free.
+  docs/evaluation/templates/mobile_dogfood_daily_note_template.md:
+    disposition: moved
+    target_doc_type: template
+    target_paths:
+      - docs/templates/evaluation/mobile-dogfood-daily-note.md
+    deletion_reason: >-
+      Cutover 1C-41: this source was a blank, reusable local-only note
+      template incorrectly carrying the legacy evaluation_record doc type.
+      Moved and retyped to the canonical template profile under
+      docs/templates/evaluation/; the old docs/evaluation/templates/
+      subdirectory is retired with no replacement, since the canonical
+      template collection is docs/templates/evaluation/.
+  docs/evaluation/templates/mobile_dogfood_weekly_review_template.md:
+    disposition: moved
+    target_doc_type: template
+    target_paths:
+      - docs/templates/evaluation/mobile-dogfood-weekly-review.md
+    deletion_reason: >-
+      Cutover 1C-41: this source was a blank, reusable local-only review
+      template incorrectly carrying the legacy evaluation_record doc type.
+      Moved and retyped to the canonical template profile under
+      docs/templates/evaluation/; the old docs/evaluation/templates/
+      subdirectory is retired with no replacement.
 
 family_rules:
   - id: canonical-target-collections

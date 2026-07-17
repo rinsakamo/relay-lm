@@ -1,6 +1,6 @@
 ---
-relaylm_doc_type: evaluation_record
-relaylm_authority: mobile_dogfood_observation
+relaylm_doc_type: template
+relaylm_authority: non_authoritative_mobile_dogfood_daily_note_template
 relaylm_status: current
 relaylm_volatility: medium
 relaylm_owner: evaluation
@@ -9,12 +9,15 @@ relaylm_not_authoritative_for:
   - MEM/SOUL mutation authority
   - production benchmark claims
   - content-bearing local artifacts
+relaylm_related_authority:
+  - ../../evaluation/mobile-dogfood-observation.md
 ---
 # Mobile Dogfood Daily Note Template
 
-Copy this template into a local, gitignored path (e.g. `local/dogfood/`) before
-filling it in. Do not commit filled-in copies to this repository — see the
-[Mobile Dogfood Observation Runbook](../mobile_dogfood_observation_runbook.md)
+This is a **non-authoritative template**, not evidence. Copy this template
+into a local, gitignored path (e.g. `local/dogfood/`) before filling it in.
+Do not commit filled-in copies to this repository — see the
+[Mobile Dogfood Observation Method](../../evaluation/mobile-dogfood-observation.md)
 local-only artifact policy. This template intentionally contains no actual
 conversation content.
 
