@@ -3607,7 +3607,7 @@ No file under `relaylm/` changed, and no runtime, configuration, schema, schedul
 ### C1C41-001 — mobile dogfood method/template/operations family cutover
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 607
 merged_commit: pending
 record_count: 5
 cutover_recorded_on: 2026-07-17
@@ -3829,17 +3829,23 @@ open_pr_isolation:
       file: docs/README.md
       resolution: edited_only_the_current_main_version_of_the_two_mobile_dogfood_bullets_did_not_import_or_rebase_onto_any_content_from_the_still_open_pr_586_subjective_mem_proposal_router_edits
   no_content_imported: true
-validated_content_head: pending
-validated_content_head_actions: pending
-validated_content_head_changed_files: pending
-validated_content_head_net_diff: pending
-non_receipt_content_files: pending
-non_receipt_content_net_diff: pending
+validated_content_head: fd0b71fed5c22f872e76ec77a870f44beb375c1d
+validated_content_head_actions:
+  workflow_runs_total: 17
+  workflow_runs_by_trigger: {pull_request: 16, push: 1, other: 0}
+  job_or_check_runs_total: 27
+  success: 17
+  failure: 0
+  skipped: 10
+validated_content_head_changed_files: 12
+validated_content_head_net_diff: {insertions: 895, deletions: 36}
+non_receipt_content_files: 11
+non_receipt_content_net_diff: {insertions: 633, deletions: 34}
 final_pr_changed_files: pending
 final_pr_net_diff: pending
-reviews: pending
-pr_comments: pending
-unresolved_review_threads: pending
+reviews: 0
+pr_comments: 0
+unresolved_review_threads: 0
 receipt_bookkeeping_commit: pending
 receipt_finalization: pending
 ```
