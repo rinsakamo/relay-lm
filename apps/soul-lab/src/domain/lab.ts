@@ -11,6 +11,7 @@ export type LabRoute =
   | "scenes"
   | "relationships"
   | "memory"
+  | "explorer"
   | "runtime"
   | "advanced"
   | "observation"

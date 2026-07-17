@@ -78,6 +78,7 @@ http://127.0.0.1:5173/lab/#/character
 http://127.0.0.1:5173/lab/#/scenes
 http://127.0.0.1:5173/lab/#/relationships
 http://127.0.0.1:5173/lab/#/memory
+http://127.0.0.1:5173/lab/#/explorer
 http://127.0.0.1:5173/lab/#/runtime
 http://127.0.0.1:5173/lab/#/advanced
 ```
@@ -100,6 +101,7 @@ Legacy SOUL Lab hashes are absorbed instead of becoming new authority:
 - **Scenes** separates SCENE.md, active scene pages, and scene inbox candidates without ACG-6 runtime classifier execution or auto-merge.
 - **Relationships** separates RELATIONSHIP.md vocabulary, target-specific relationship pages, and pending REL proposals without browser-owned role assignment.
 - **Memory Wiki** shows memory policy, pages, blocks, retrieval chunks, inbox, archive, and forgotten items using user-friendly vocabulary.
+- **Memory Explorer** is a browser-local, mock-data-only Memory Explorer: natural-language search (keyword / semantic / hybrid mock modes with a human-readable search-plan preview), filters and sorting, result and detail views, user-tag editing distinct from read-only system tags, and an explicit Forget (hide) confirmation with immediate exclusion from ordinary search. It validates product UX and state transitions only; it does not call a backend API, mutate RelayMEM/RelaySLP, or decide a production storage contract.
 - **Runtime** shows content-free latest used scene/emotion/relationship/memory/context and CW-A2 tier summaries.
 - **Advanced** collects internal governance labels, queue/worker/audit diagnostics, and existing explicit loopback controls without increasing browser authority.
 
@@ -138,6 +140,7 @@ npm run smoke:pin-unpin-ui
 npm run smoke:held-governance-ui
 npm run smoke:character-workspace
 npm run smoke:character-creation
+npm run smoke:memory-explorer
 npm run build
 ```
 
