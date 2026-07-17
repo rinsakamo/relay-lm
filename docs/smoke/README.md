@@ -22,7 +22,7 @@ Implementation evidence remains under `docs/evidence/implementation/`. Executabl
 
 ## Consolidated CI maintenance
 
-- [Consolidated smoke workflow maintenance](consolidated_workflow_maintenance.md) — current RelayMEM, Runtime, and UI workflow grouping, contract validation, and generated inventory procedure.
+- [Consolidated smoke workflow maintenance](../operations/consolidated-smoke-workflow-maintenance.md) — current RelayMEM, Runtime, and UI workflow grouping, contract validation, and generated inventory procedure.
 - [Scripts inventory summary](scripts_inventory.md) — latest audited summary and the authoritative generated-artifact regeneration path.
 
 ## OpenWebUI / LM Studio manual smoke
