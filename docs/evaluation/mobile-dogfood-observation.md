@@ -1,5 +1,5 @@
 ---
-relaylm_doc_type: runbook
+relaylm_doc_type: evaluation_method
 relaylm_authority: mobile_dogfood_observation
 relaylm_status: current
 relaylm_volatility: medium
@@ -12,14 +12,21 @@ relaylm_not_authoritative_for:
   - production benchmark claims
   - public release readiness
   - content-bearing local artifacts
+relaylm_related_authority:
+  - ../operations/mobile-dogfood-entry.md
+  - ../templates/evaluation/mobile-dogfood-daily-note.md
+  - ../templates/evaluation/mobile-dogfood-weekly-review.md
+  - ../templates/evaluation/mobile-dogfood-summary-report.md
+  - ../architecture/lat1_latency_measurement.md
+  - ../architecture/lat2_mobile_perceived_latency.md
 ---
-# Mobile Dogfood Observation Runbook
+# Mobile Dogfood Observation Method
 
 ## 適用範囲
 
-このランブックは、[P0 Mobile Dogfood Entry](../tools/mobile_dogfood_entry.md) で確立した single-owner モバイル到達構成を前提に、運用者本人が日常的にReLMと会話する中で会話品質・応答速度・MEM挙動・記憶の気持ち悪さ/自然さを継続観測するための手順と記録テンプレートを扱う。
+この評価手順は、[Mobile Dogfood Entry](../operations/mobile-dogfood-entry.md) で確立した single-owner モバイル到達構成を前提に、運用者本人が日常的にReLMと会話する中で会話品質・応答速度・MEM挙動・記憶の気持ち悪さ/自然さを継続観測するための手順と記録テンプレートを扱う。
 
-このランブックはRelayLM runtimeの挙動、Cloudflare設定の自動化、MEM/SOUL/REL mutation、P1/P2 importパイプラインのいずれも変更しない。観測運用の整備のみを目的とする。
+この評価手順はRelayLM runtimeの挙動、Cloudflare設定の自動化、MEM/SOUL/REL mutation、P1/P2 importパイプラインのいずれも変更しない。観測運用の整備のみを目的とする。
 
 ## 目的
 
@@ -87,7 +94,7 @@ streamingリクエストの「最初のchunkが届くまでの体感待ち時間
 - 応答が遅いと感じた場面
 - 明日見るべき仮説
 
-日次記録には [Mobile Dogfood Daily Note Template](templates/mobile_dogfood_daily_note_template.md) をlocalへコピーして使う。
+日次記録には [Mobile Dogfood Daily Note Template](../templates/evaluation/mobile-dogfood-daily-note.md) をlocalへコピーして使う。
 
 ## 週次レビュー項目
 
@@ -97,7 +104,7 @@ streamingリクエストの「最初のchunkが届くまでの体感待ち時間
 - SOUL/REL/SCN/EMOを複雑化する価値が見えたか
 - 削るべき記憶/候補/設定はあるか
 
-週次記録には [Mobile Dogfood Weekly Review Template](templates/mobile_dogfood_weekly_review_template.md) をlocalへコピーして使う。
+週次記録には [Mobile Dogfood Weekly Review Template](../templates/evaluation/mobile-dogfood-weekly-review.md) をlocalへコピーして使う。
 
 ## local-only artifact policy
 
@@ -121,4 +128,4 @@ streamingリクエストの「最初のchunkが届くまでの体感待ち時間
 
 ## 関連文書
 
-このランブックは新しいruntime実装やMEM/SOUL挙動を追加しない。RelayLMランタイム自体の現在の実装境界は[Project Status](../PROJECT_STATUS.md)を参照すること。外部到達構成そのものは[P0 Mobile Dogfood Entry](../tools/mobile_dogfood_entry.md)を参照し、本書はその上に乗る観測運用のみを扱う。latency指標の定義は[LAT-1 Latency Measurement](../architecture/lat1_latency_measurement.md)および[LAT-2 Mobile Perceived Latency](../architecture/lat2_mobile_perceived_latency.md)を参照すること。
+この評価手順は新しいruntime実装やMEM/SOUL挙動を追加しない。RelayLMランタイム自体の現在の実装境界は[Project Status](../PROJECT_STATUS.md)を参照すること。外部到達構成そのものは[Mobile Dogfood Entry](../operations/mobile-dogfood-entry.md)を参照し、本書はその上に乗る観測運用のみを扱う。latency指標の定義は[LAT-1 Latency Measurement](../architecture/lat1_latency_measurement.md)および[LAT-2 Mobile Perceived Latency](../architecture/lat2_mobile_perceived_latency.md)を参照すること。

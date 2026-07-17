@@ -1,5 +1,5 @@
 ---
-relaylm_doc_type: runbook
+relaylm_doc_type: operations
 relaylm_authority: p0_mobile_dogfood_entry_target_boundary
 relaylm_status: target
 relaylm_volatility: high
@@ -184,7 +184,7 @@ After safe access exists, observe:
 - perceived response latency;
 - robustness to short and rough smartphone input.
 
-Use the [Mobile Dogfood Observation Runbook](../evaluation/mobile_dogfood_observation_runbook.md) for local-only daily and weekly records. Content-bearing transcripts remain outside the repository.
+Use the [Mobile Dogfood Observation Method](../evaluation/mobile-dogfood-observation.md) for local-only daily and weekly records. Content-bearing transcripts remain outside the repository.
 
 ## Non-goals
 

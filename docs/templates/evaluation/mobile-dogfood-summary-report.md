@@ -1,21 +1,25 @@
 ---
-relaylm_doc_type: evaluation_record
-relaylm_authority: mobile_dogfood_observation
-relaylm_status: target
-relaylm_volatility: high
+relaylm_doc_type: template
+relaylm_authority: non_authoritative_mobile_dogfood_summary_report_template
+relaylm_status: current
+relaylm_volatility: medium
 relaylm_owner: evaluation
 relaylm_update_trigger:
-  - a real content-free mobile dogfood summary is recorded here
+  - the Mobile Dogfood Observation Method's content-free summary fields change
 relaylm_not_authoritative_for:
   - current runtime implementation status
   - repository-wide completion status
   - public release/benchmark claims
-relaylm_current_status_source: ../PROJECT_STATUS.md
+  - any specific dated mobile dogfood observation result
+relaylm_current_status_source: ../../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../../evaluation/mobile-dogfood-observation.md
 ---
 # Mobile Dogfood Summary Report Template
 
-This is a content-free summary stub for the
-[Mobile Dogfood Observation Runbook](mobile_dogfood_observation_runbook.md).
+This is a **non-authoritative template**, not evidence. It is a
+content-free summary stub for the
+[Mobile Dogfood Observation Method](../../evaluation/mobile-dogfood-observation.md).
 It holds no actual conversation content, no real transcripts, and no
 performance claims until a maintainer fills it in from real, locally-run
 observation. This template does not update v0.1 readiness or any release

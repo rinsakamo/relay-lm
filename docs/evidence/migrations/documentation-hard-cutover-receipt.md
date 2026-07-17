@@ -3406,7 +3406,7 @@ No file under `relaylm/` changed, and no runtime, configuration, schema, schedul
 
 ```yaml
 cutover_pr: 605
-merged_commit: pending
+merged_commit: 09e28fae0b4bb919eed65a5e484081088f343cc4
 record_count: 1
 cutover_recorded_on: 2026-07-16
 disposition: evidence_retained
@@ -3602,7 +3602,267 @@ No file under `relaylm/` changed, and no runtime, configuration, schema, schedul
 
 `23b37d377ec14591ea04569569786ae125ad0524` was recorded as `validated_content_head`: all 27 triggered GitHub Actions check runs, spanning 16 distinct workflow runs (15 `pull_request`, 1 `push`), completed with 18 successes, 9 skips, and zero failures — identical counts to every prior head in this PR, as expected for a receipt-only correction that changes no code. Freshly re-verified at this head (not carried forward): 1 review (`4714901958`), 1 PR comment (this session's own reply, `4993422159`), 0 unresolved review threads. The PR-level diff at this head was 15 changed files, +732/-30, of which 14 files (+538/-28) were non-receipt content (unchanged throughout the entire rebase round, confirming no code or migrated-content file was touched by either the rebase or this accounting fix) and 1 file (this receipt, +194/-2) was the receipt-only accounting; both subtotals were independently recomputed via `git diff --numstat` against `origin/main`. Its receipt-only tail (`19ba999b35c4e637fdd3586531d4811e5895bfd5`) recorded that head's Actions, diff, and review/comment/thread totals — freshly re-verified again rather than carried forward, unchanged at 1/1/0 — across its own 27 green check runs. `final_pr_changed_files`/`final_pr_net_diff` are now finalized at 15 changed files, +740/-30 — the exact GitHub-reported PR-level totals, independently confirmed via `pull_request_read get_files`. `merged_commit` remains `pending`; this task does not merge the PR.
 
-## Pending batches
+**Merged-state accounting correction (Cutover 1C-41).** PR #605 has since merged. Independently reverified from GitHub before recording any value: `pull_request_read get` reports `merged: true`, `merged_by: rinsakamo`, `merged_at: 2026-07-16T21:46:30Z`, head `7124c9efbf639435289268a56253c1a26ed83c73`, `changed_files: 15`, `additions: 740`, `deletions: 30` — matching this entry's already-recorded `validated_content_head`/`final_pr_changed_files`/`final_pr_net_diff` exactly, confirming no further commit landed between finalization and merge. `git show --stat` against this repository's own history independently confirms the squash-merge commit `09e28fae0b4bb919eed65a5e484081088f343cc4` on `main` carries the identical PR title and head content. `get_reviews`, `get_review_comments`, and `get_check_runs` were independently re-run against the merged PR: 1 review (`4714901958`), 0 unresolved review threads, and all 27 check runs across 16 workflow runs completed (18 success, 9 skipped, 0 failure) — unchanged from the `23b37d3` finalization head, since a merge commit does not itself re-trigger the PR's own checks. `merged_commit: 09e28fae0b4bb919eed65a5e484081088f343cc4` is now recorded above. This is a merged-state accounting correction only: it does not alter, reinterpret, or imply any defect in the accepted C1C40 evidence migration, its provenance, or its fail-closed guard, all of which remain exactly as recorded above.
+
+### C1C41-001 — mobile dogfood method/template/operations family cutover
+
+```yaml
+cutover_pr: pending
+merged_commit: pending
+record_count: 5
+cutover_recorded_on: 2026-07-17
+disposition: split
+no_fabricated_evidence: true
+records:
+  - record: Mobile Dogfood Observation Runbook
+    old_path: docs/evaluation/mobile_dogfood_observation_runbook.md
+    old_path_lines: 124
+    disposition: moved
+    legacy_metadata_type: runbook
+    legacy_metadata_note: existing_only_pre_cutover_type_per_docs_documentation_model_md_required_cutover_destination_operations_however_independent_review_found_this_document_is_a_repeatable_observation_procedure_not_runtime_operations_so_its_canonical_destination_is_evaluation_method_docs_evaluation_not_operations
+    introducing_pr: 523
+    introducing_pr_title: "docs: add mobile dogfood observation runbook and local-only templates"
+    introducing_commit: 4d3c416728fcfa353a83cd8223cb6f40e9e106de
+    introducing_commit_date: 2026-07-09T11:10:22Z
+    final_content_pr: 526
+    final_content_pr_title: "docs: align mobile dogfood templates with LAT-2 timing"
+    final_content_commit: a3d50f6d043fa9a2802ffb029b0123f827180a00
+    final_content_commit_date: 2026-07-09T12:22:17Z
+    source_blob_sha: b1785531c17f171cd8eb3374bbd58ed229d41674
+    source_content_sha256: ecf80b7292928beddfee24e66a7925c36dca429ae680c77349215a02d5cf7165
+    pre_cutover_blob_sha: b1785531c17f171cd8eb3374bbd58ed229d41674
+    pre_cutover_content_sha256: ecf80b7292928beddfee24e66a7925c36dca429ae680c77349215a02d5cf7165
+    pre_cutover_blob_note: identical_to_the_final_content_commit_blob_independently_confirmed_via_git_rev_parse_at_both_commits_zero_modification_commits_between_a3d50f6_and_this_cutovers_pre_cutover_head
+    new_canonical_path: docs/evaluation/mobile-dogfood-observation.md
+    new_doc_type: evaluation_method
+  - record: P0 Mobile Dogfood Entry
+    old_path: docs/tools/mobile_dogfood_entry.md
+    old_path_lines: 201
+    disposition: moved
+    legacy_metadata_type: runbook
+    legacy_metadata_note: existing_only_pre_cutover_type_per_docs_documentation_model_md_required_cutover_destination_operations_this_one_is_the_correct_operations_disposition_since_it_describes_an_external_reachability_target_boundary_not_a_repeatable_evaluation_method
+    introducing_pr: 521
+    introducing_pr_title: "docs: add P0 mobile dogfood entry runbook"
+    introducing_commit: c1f4cf14811d464a3f7cc6cf140067b92c89c20d
+    introducing_commit_date: 2026-07-09T09:20:50Z
+    final_content_pr: 547
+    final_content_pr_title: "docs: repair user and operations guidance"
+    final_content_commit: 16e4387eac1777b3d06fd483569748f2d2e9d1dc
+    final_content_commit_date: 2026-07-10T23:57:58Z
+    source_blob_sha: 414f2866c7d6aae150cad14e7a6c4d6031f8baf5
+    source_content_sha256: ef7f5cd96fa4d36666114ba27ac6ce2e37a2b74bde377b07e55e89d4446c69f9
+    pre_cutover_blob_sha: 414f2866c7d6aae150cad14e7a6c4d6031f8baf5
+    pre_cutover_content_sha256: ef7f5cd96fa4d36666114ba27ac6ce2e37a2b74bde377b07e55e89d4446c69f9
+    pre_cutover_blob_note: identical_to_the_final_content_commit_blob_independently_confirmed_via_git_rev_parse_at_both_commits_zero_modification_commits_between_16e4387_and_this_cutovers_pre_cutover_head
+    new_canonical_path: docs/operations/mobile-dogfood-entry.md
+    new_doc_type: operations
+    target_state_preserved: true
+    target_state_note: relaylm_status_remains_target_the_dedicated_chat_only_public_origin_this_document_gates_remains_unimplemented_or_unidentified_in_this_repository_no_cloudflare_deployment_validation_is_invented_no_v1_lab_api_lm_studio_or_vite_development_endpoint_exposure_is_authorized
+  - record: Mobile Dogfood Summary Report Template
+    old_path: docs/evaluation/mobile_dogfood_summary_report_template.md
+    old_path_lines: 51
+    disposition: moved
+    legacy_metadata_type: evaluation_record
+    legacy_metadata_note: retired_existing_only_pre_cutover_type_this_document_is_an_empty_unfilled_blank_stub_never_a_measured_dated_result_so_evidence_retained_would_be_a_stale_assumption_the_correct_disposition_is_template_not_evidence
+    introducing_pr: 523
+    introducing_pr_title: "docs: add mobile dogfood observation runbook and local-only templates"
+    introducing_commit: 4d3c416728fcfa353a83cd8223cb6f40e9e106de
+    introducing_commit_date: 2026-07-09T11:10:22Z
+    final_content_pr: 526
+    final_content_pr_title: "docs: align mobile dogfood templates with LAT-2 timing"
+    final_content_commit: a3d50f6d043fa9a2802ffb029b0123f827180a00
+    final_content_commit_date: 2026-07-09T12:22:17Z
+    source_blob_sha: 1ee31b5e8301e18c7debc5870490b0582ebedb93
+    source_content_sha256: a902d2369fc9a8f8e659dfe72fbfe665b3e4332f50c411aa74aec00ba9c53b3c
+    pre_cutover_blob_sha: 1ee31b5e8301e18c7debc5870490b0582ebedb93
+    pre_cutover_content_sha256: a902d2369fc9a8f8e659dfe72fbfe665b3e4332f50c411aa74aec00ba9c53b3c
+    pre_cutover_blob_note: identical_to_the_final_content_commit_blob_independently_confirmed_via_git_rev_parse_at_both_commits
+    new_canonical_path: docs/templates/evaluation/mobile-dogfood-summary-report.md
+    new_doc_type: template
+  - record: Mobile Dogfood Daily Note Template
+    old_path: docs/evaluation/templates/mobile_dogfood_daily_note_template.md
+    old_path_lines: 59
+    disposition: moved
+    legacy_metadata_type: evaluation_record
+    legacy_metadata_note: retired_existing_only_pre_cutover_type_this_document_is_a_blank_reusable_local_only_note_template_never_a_measured_dated_result_the_correct_disposition_is_template_not_evidence
+    introducing_pr: 523
+    introducing_pr_title: "docs: add mobile dogfood observation runbook and local-only templates"
+    introducing_commit: 4d3c416728fcfa353a83cd8223cb6f40e9e106de
+    introducing_commit_date: 2026-07-09T11:10:22Z
+    final_content_pr: 526
+    final_content_pr_title: "docs: align mobile dogfood templates with LAT-2 timing"
+    final_content_commit: a3d50f6d043fa9a2802ffb029b0123f827180a00
+    final_content_commit_date: 2026-07-09T12:22:17Z
+    source_blob_sha: ef84a7f62f54acdb2d0c4ffc311f894a54110fd5
+    source_content_sha256: 67ad581959f366ceefbdd0927fe3a708a8188000e5e7b9b97fe2fc21e431662f
+    pre_cutover_blob_sha: ef84a7f62f54acdb2d0c4ffc311f894a54110fd5
+    pre_cutover_content_sha256: 67ad581959f366ceefbdd0927fe3a708a8188000e5e7b9b97fe2fc21e431662f
+    pre_cutover_blob_note: identical_to_the_final_content_commit_blob_independently_confirmed_via_git_rev_parse_at_both_commits
+    new_canonical_path: docs/templates/evaluation/mobile-dogfood-daily-note.md
+    new_doc_type: template
+  - record: Mobile Dogfood Weekly Review Template
+    old_path: docs/evaluation/templates/mobile_dogfood_weekly_review_template.md
+    old_path_lines: 59
+    disposition: moved
+    legacy_metadata_type: evaluation_record
+    legacy_metadata_note: retired_existing_only_pre_cutover_type_this_document_is_a_blank_reusable_local_only_review_template_never_a_measured_dated_result_the_correct_disposition_is_template_not_evidence
+    introducing_pr: 523
+    introducing_pr_title: "docs: add mobile dogfood observation runbook and local-only templates"
+    introducing_commit: 4d3c416728fcfa353a83cd8223cb6f40e9e106de
+    introducing_commit_date: 2026-07-09T11:10:22Z
+    final_content_pr: 526
+    final_content_pr_title: "docs: align mobile dogfood templates with LAT-2 timing"
+    final_content_commit: a3d50f6d043fa9a2802ffb029b0123f827180a00
+    final_content_commit_date: 2026-07-09T12:22:17Z
+    source_blob_sha: 9803f8452e194b9cf03c31dd29840ebe29ef4e4e
+    source_content_sha256: de4fa1390c88ea7c9934b8828d4565c397575e64178027c2d7bfb2391cda8538
+    pre_cutover_blob_sha: 9803f8452e194b9cf03c31dd29840ebe29ef4e4e
+    pre_cutover_content_sha256: de4fa1390c88ea7c9934b8828d4565c397575e64178027c2d7bfb2391cda8538
+    pre_cutover_blob_note: identical_to_the_final_content_commit_blob_independently_confirmed_via_git_rev_parse_at_both_commits
+    new_canonical_path: docs/templates/evaluation/mobile-dogfood-weekly-review.md
+    new_doc_type: template
+non_link_body_changes:
+  - file: docs/evaluation/mobile-dogfood-observation.md
+    change: >-
+      Front matter relaylm_doc_type corrected runbook -> evaluation_method;
+      relaylm_related_authority list added pointing to the operations entry,
+      both templates, and the LAT-1/LAT-2 architecture documents; H1 title
+      changed "Mobile Dogfood Observation Runbook" -> "Mobile Dogfood
+      Observation Method"; two self-referential Japanese body sentences
+      ("このランブックは..." / "このランブックは新しいruntime実装や...")
+      reworded to "この評価手順は..." so the body does not call itself a
+      runbook while typed evaluation_method. No operational step, privacy
+      policy, observation axis, or non-goal was added, removed, or
+      reinterpreted.
+  - file: docs/operations/mobile-dogfood-entry.md
+    change: >-
+      Front matter relaylm_doc_type corrected runbook -> operations; no other
+      front-matter field changed (relaylm_status remains target). No body
+      change beyond the one link-repair line pointing to the observation
+      method's new title and path.
+  - file: docs/templates/evaluation/mobile-dogfood-summary-report.md
+    change: >-
+      Front matter relaylm_doc_type corrected evaluation_record -> template;
+      relaylm_status corrected target -> current; relaylm_authority renamed
+      to a non_authoritative_* key matching this repository's established
+      template-authority naming (see the LAT-1 report template); added
+      relaylm_related_authority pointing to the observation method; intro
+      paragraph gained one clause ("This is a non-authoritative template, not
+      evidence.") preceding the existing content-free-stub description. Every
+      table, field label, and caveat is unchanged.
+  - file: docs/templates/evaluation/mobile-dogfood-daily-note.md
+    change: >-
+      Front matter relaylm_doc_type corrected evaluation_record -> template;
+      relaylm_authority renamed to a non_authoritative_* key; added
+      relaylm_related_authority pointing to the observation method; intro
+      paragraph gained the same one-clause non-authoritative-template
+      statement. The fenced example note body is byte-identical.
+  - file: docs/templates/evaluation/mobile-dogfood-weekly-review.md
+    change: >-
+      Identical shape of change to the daily note template above: doc type,
+      authority key, relaylm_related_authority, and intro-paragraph clause.
+      The fenced example review body is byte-identical.
+old_path_retirement_confirmed:
+  - docs/evaluation/mobile_dogfood_observation_runbook.md
+  - docs/tools/mobile_dogfood_entry.md
+  - docs/evaluation/mobile_dogfood_summary_report_template.md
+  - docs/evaluation/templates/mobile_dogfood_daily_note_template.md
+  - docs/evaluation/templates/mobile_dogfood_weekly_review_template.md
+dependency_and_reference_inventory:
+  - referrer: docs/README.md
+    kind: documentation_index
+    action: retargeted_the_operations_entry_and_observation_method_bullet_including_the_three_inline_template_links_relabeled_p0_mobile_dogfood_entry_to_mobile_dogfood_entry_and_mobile_dogfood_observation_runbook_to_mobile_dogfood_observation_method
+  - referrer: docs/PROJECT_STATUS.md
+    kind: status
+    action: retargeted_both_paragraphs_relabeling_target_runbook_to_target_operations_document_and_runbook_to_method_in_prose
+  - referrer: docs/architecture/lat2_mobile_perceived_latency.md
+    kind: current_architecture_document
+    action: retargeted_the_one_inline_code_span_reference_to_the_moved_observation_method_path
+  - referrer: docs/templates/README.md
+    kind: documentation_index
+    action: added_one_new_bullet_listing_the_three_moved_templates_alongside_the_existing_lat1_report_template_entry
+  - referrer: (family-internal links)
+    kind: mutual_family_references
+    action: retargeted_every_cross_link_among_the_five_family_members_the_observation_methods_links_to_both_templates_and_the_operations_entry_the_operations_entrys_link_to_the_observation_method_and_each_templates_link_back_to_the_observation_method
+script_and_workflow_dependencies_found: []
+script_and_workflow_dependencies_note: an_exhaustive_search_across_readme_md_readme_ja_md_docs_star_star_scripts_star_star_dot_github_workflows_star_star_relaylm_star_star_tests_star_star_config_example_yaml_and_pyproject_toml_found_zero_script_or_workflow_dependencies_on_any_of_the_five_old_paths_no_dot_github_workflows_file_references_any_of_them_by_exact_path_bare_filename_or_stem_and_no_path_selector_gates_on_docs_tools_star_star_or_docs_evaluation_templates_star_star
+canonical_absorption_destinations:
+  - docs/evaluation/mobile-dogfood-observation.md
+  - docs/operations/mobile-dogfood-entry.md
+  - docs/templates/evaluation/mobile-dogfood-summary-report.md
+  - docs/templates/evaluation/mobile-dogfood-daily-note.md
+  - docs/templates/evaluation/mobile-dogfood-weekly-review.md
+fail_closed_guards_added:
+  - "scripts/relaylm_docs_semantic_audit.py check_no_live_mobile_dogfood_retired_paths (generalizes check_no_live_e1_local_runtime_architecture_path's single-path relative-reference resolution model to a dict of five retired -> canonical path pairs sharing one resolver and one scan pass -- existence checks for all five retired paths, a repository-wide literal scan for each full repository-root-qualified old path, and reference-aware resolution of Markdown link targets and relaylm_related_authority front-matter entries, resolved against the referring file's own directory or the repository root for a docs/-qualified target -- so a same-directory bare filename, ./, ../, ../../, Markdown anchor, or related-authority entry that resolves to any of the five retired paths is rejected regardless of the literal text used. No generic frozen/historical_after_merge/historical whole-document status bypass and no generic *-source.txt allowance were added; the only allowlists are the receipt and this guard's own implementation (whole-file) and the five exact documentation-cutover-rules.yaml path_overrides key lines (exact-line))"
+  - "scripts/relaylm_docs_semantic_audit.py check_mobile_dogfood_family_types (asserts the three canonical templates declare relaylm_doc_type=template, never the retired evaluation_record; the canonical observation document declares evaluation_method; the canonical operations document declares operations)"
+self_test_assertions_added: 16
+self_test_assertions_added_note: sixteen_deterministic_self_test_assertions_for_the_two_new_checks_bringing_relaylm_docs_semantic_audit_py_dash_dash_self_test_to_86_total_assertions_up_from_70_before_this_cutover_covering_the_real_repositorys_current_silence_a_combined_reintroduction_check_across_all_five_retired_files_a_root_qualified_link_rejection_a_same_directory_bare_filename_rejection_a_dot_dot_slash_evaluation_slash_templates_rejection_a_dot_dot_slash_dot_dot_slash_evaluation_rejection_a_markdown_link_with_an_anchor_rejection_a_relaylm_related_authority_entry_rejection_a_frozen_status_documents_unallowlisted_mention_rejection_confirming_no_generic_status_bypass_root_qualified_links_to_all_five_canonical_targets_being_allowed_a_relative_link_to_the_canonical_observation_method_being_allowed_a_reject_then_allow_pairing_proving_the_cutover_rules_yaml_exact_line_allowlist_is_genuinely_exercised_a_duplicate_live_copy_rejection_a_reject_then_allow_pairing_proving_the_family_type_check_actually_fires_and_a_real_repository_type_correctness_assertion
+local_validation:
+  compileall: passed
+  docs_link_check: passed
+  docs_semantic_audit: passed
+  docs_semantic_audit_self_test: passed_86_assertions
+  documentation_current_boundary_smoke: passed
+  cutover_prepare_self_test: passed
+  mvp_completion_report_smoke_check_model_check_all: passed
+  mvp_completion_report_smoke_self_test: passed
+  mvp_completion_report_pr_link_smoke: passed
+  ci_consolidated_smoke_contract: passed
+  e1_evaluation_consolidation_smoke: passed
+  wave4_cross_slice_convergence_smoke: passed
+  wave5_cross_slice_convergence_smoke: passed
+  repo_inventory_cli_self_test: passed
+  git_diff_check: passed
+  docs_mvp_absent: true
+  lat1_scaffold_absent: true
+  old_e1_architecture_path_absent: true
+  mobile_dogfood_legacy_paths_absent: true
+  focused_non_allowlisted_reference_search: clean_zero_violations
+docs_mvp_family_touched: false
+lat1_family_touched: false
+e1_family_touched: false
+runtime_files_changed: 0
+open_pr_isolation:
+  checked_open_prs: [586, 578, 567]
+  shared_file_overlaps:
+    - pr: 586
+      file: docs/README.md
+      resolution: edited_only_the_current_main_version_of_the_two_mobile_dogfood_bullets_did_not_import_or_rebase_onto_any_content_from_the_still_open_pr_586_subjective_mem_proposal_router_edits
+  no_content_imported: true
+validated_content_head: pending
+validated_content_head_actions: pending
+validated_content_head_changed_files: pending
+validated_content_head_net_diff: pending
+non_receipt_content_files: pending
+non_receipt_content_net_diff: pending
+final_pr_changed_files: pending
+final_pr_net_diff: pending
+reviews: pending
+pr_comments: pending
+unresolved_review_threads: pending
+receipt_bookkeeping_commit: pending
+receipt_finalization: pending
+```
+
+This batch performs an inventory-first hard cutover of the remaining `mobile_dogfood_*` method, template, and operator-document family flagged as open work in the Cutover 1C-40 entry above. Starting boundary independently reverified: `origin/main` had advanced one merge past the task's stated `6b16b06f...` boundary to `200addae127d6c93a2ac07bc2f9c718de9688ea0` via PR #580 ("feat(soul-lab): add browser-local Memory Explorer mock"), which touches only `apps/soul-lab/**` UI files with zero overlap with this family; `200addae...` is treated as the live boundary for this batch.
+
+Independent repository inventory (`docs/**`, `scripts/**`, `.github/workflows/**`, `relaylm/**`, `tests/**`, `config.example.yaml`, `pyproject.toml`, every spelling variant of "mobile dogfood") confirms the five files named in the task brief are the complete live family; no sixth file or additional path-bound consumer exists. `docs/planning/documentation-cutover-rules.yaml` and `docs/planning/documentation-architecture-inventory.md` had zero prior entries for this family (unlike the LAT-1 and E1 families, which already had partial coverage before their own cutover batches); this batch adds the family's first five `path_overrides` entries to the former and leaves the latter untouched, since its own stated primary scope is `docs/architecture/**`, `docs/relaysoul/**`, and `docs/contracts/**`, none of which this family touches.
+
+Each of the five documents received an independent disposition rather than one shared authority, per the Cutover 1C-40 entry's own review: `docs/evaluation/mobile_dogfood_observation_runbook.md` (a repeatable observation procedure, legacy `runbook` type) becomes `evaluation_method` under `docs/evaluation/`, not `operations`, since its primary authority is a reusable evaluation method rather than a runtime/external-reachability procedure; `docs/tools/mobile_dogfood_entry.md` (an external-reachability target boundary, legacy `runbook` type) becomes `operations` under `docs/operations/`, the correct destination for this one; the three blank stubs (`docs/evaluation/mobile_dogfood_summary_report_template.md`, `docs/evaluation/templates/mobile_dogfood_daily_note_template.md`, `docs/evaluation/templates/mobile_dogfood_weekly_review_template.md`), all incorrectly carrying the retired `evaluation_record` type, become `template` under `docs/templates/evaluation/`. No template was left as, or converted into, an evidence record: none has ever held a real dated observation result, so `evidence_retained` would be a stale assumption, exactly as this receipt's own Cutover 1C-39 LAT-1 entry established for a structurally similar blank-template case.
+
+The P0 entry's `target`-state boundary is preserved unchanged: `relaylm_status` remains `target`, the dedicated chat-only public origin it gates remains unimplemented or unidentified in this repository, and no Cloudflare deployment validation, `/v1`/`/lab/api`/LM Studio/Vite exposure authorization, or production readiness claim was added. The observation method retains its operational steps, local-only privacy policy, observation axes, daily/weekly use, and latency interpretation; only its front matter and two self-referential body sentences were reworded so the document does not call itself a "runbook" while typed `evaluation_method` (recorded verbatim in `non_link_body_changes` above). No evidence-provenance field (`relaylm_source_commit`, `relaylm_source_pr`, `relaylm_recorded_on`, `relaylm_source_blob`, `relaylm_source_content_sha256`) was added to any of the five active documents; those fields belong to evidence records, not active methods, operations documents, or templates, and none of these five is evidence.
+
+Provenance for each file was independently reconstructed from `git log --follow` (after discovering and correcting for a shallow-clone artifact via `git fetch --unshallow`, exactly as the Cutover 1C-40 entry above warns) and cross-checked against GitHub `get_commit`/`search_pull_requests`: the runbook and three templates were introduced together in PR #523 and last modified in PR #526 (both squash-merged, committer `GitHub`/`web-flow` confirming genuine squash merges); the P0 entry was introduced in PR #521 and last substantively rewritten in PR #547. Each file's current pre-cutover blob is independently confirmed byte-identical to its blob at that final content-defining commit (`git rev-parse <commit>:<path>`), so the recorded `source_blob_sha`/`source_content_sha256` values are the exact bytes moved verbatim in this batch.
+
+Live dependency search across the full inventory scope found four referrers beyond the family's own internal cross-links: `docs/README.md`, `docs/PROJECT_STATUS.md`, `docs/architecture/lat2_mobile_perceived_latency.md`, and `docs/templates/README.md` (which gained one new entry rather than being retargeted, since it never referenced this family before). Zero script or workflow dependency was found anywhere in the inventory scope. `docs/tools/twin_review_to_workspace_candidates.md` contains the bare Japanese prose phrase "Cloudflare/mobile dogfood入口" with no path reference of any kind and required no change.
+
+Open-PR isolation: the three currently open PRs (`#586`, `#578`, `#567`; `#580` merged into the boundary above during this check) were independently re-enumerated and their changed files inspected. Exactly one shared-file overlap was found: PR #586 (`docs: propose subjective MEM formation and retrieval model`, still open, non-authoritative proposal) touches `docs/README.md`. This batch edited only the current-`main` version of `docs/README.md`'s two mobile-dogfood bullets and imported no content from PR #586's own router edits. PR #578 (experiment, draft, do-not-merge) and PR #567 (proposal) touch no file in this batch's scope.
+
+A new fail-closed guard pair was added to `scripts/relaylm_docs_semantic_audit.py`: `check_no_live_mobile_dogfood_retired_paths()` (the reference-resolution guard, generalizing the E1 single-path model to five retired -> canonical pairs) and `check_mobile_dogfood_family_types()` (asserts the three templates are `template` and never the retired `evaluation_record`, the observation document is `evaluation_method`, and the operations document is `operations`). Sixteen new deterministic `--self-test` assertions cover both, bringing `relaylm_docs_semantic_audit.py --self-test` to **86 total assertions** (up from 70), including reject-then-allow pairings proving both the `documentation-cutover-rules.yaml` exact-line allowlist and the family-type check are genuinely exercised, not vacuous.
+
+No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/mvp/`, the retired LAT-1 scaffold, and the retired E1 local-runtime-evaluation path all remain fully absent and untouched by this batch. No compatibility path, redirect, alias, symlink, fallback lookup, duplicate live copy, or old-path manifest was added. No open-PR content was imported, rebased, or partially copied.
+
+`cutover_pr` is pending PR creation. `merged_commit` remains `pending`; this task does not merge the PR.
 
 - Cutover 1C: remaining implementation, wave, evaluation, and release evidence migration.
 - Later cutovers: architecture synthesis, exact contract reconstruction, old-tree removal, and final invariant enforcement.
