@@ -3784,8 +3784,19 @@ dependency_and_reference_inventory:
   - referrer: (family-internal links)
     kind: mutual_family_references
     action: retargeted_every_cross_link_among_the_five_family_members_the_observation_methods_links_to_both_templates_and_the_operations_entry_the_operations_entrys_link_to_the_observation_method_and_each_templates_link_back_to_the_observation_method
-script_and_workflow_dependencies_found: []
-script_and_workflow_dependencies_note: an_exhaustive_search_across_readme_md_readme_ja_md_docs_star_star_scripts_star_star_dot_github_workflows_star_star_relaylm_star_star_tests_star_star_config_example_yaml_and_pyproject_toml_found_zero_script_or_workflow_dependencies_on_any_of_the_five_old_paths_no_dot_github_workflows_file_references_any_of_them_by_exact_path_bare_filename_or_stem_and_no_path_selector_gates_on_docs_tools_star_star_or_docs_evaluation_templates_star_star
+script_dependencies_found:
+  - file: scripts/relaylm_docs_semantic_audit.py
+    consumer: REQUIRED_METADATA_PATHS
+    old_path: docs/tools/mobile_dogfood_entry.md
+    new_path: docs/operations/mobile-dogfood-entry.md
+    action: retargeted_existing_required_metadata_path
+  - file: scripts/relaylm_docs_semantic_audit.py
+    consumer: check_operations_docs
+    old_path: docs/tools/mobile_dogfood_entry.md
+    new_path: docs/operations/mobile-dogfood-entry.md
+    action: retargeted_the_mobile_path_local_variable_this_check_reads_front_matter_and_body_anchors_from
+workflow_dependencies_found: []
+script_and_workflow_dependencies_note: independent_review_found_the_original_c1c41_entry_incorrectly_recorded_script_and_workflow_dependencies_found_as_an_empty_list_and_claimed_zero_script_dependencies_existed_that_was_factually_wrong_scripts_relaylm_docs_semantic_audit_py_is_itself_a_live_path_bound_consumer_of_the_moved_p0_entry_file_both_its_required_metadata_paths_tuple_and_its_check_operations_docs_function_named_the_old_docs_tools_mobile_dogfood_entry_md_path_and_were_retargeted_to_the_new_docs_operations_mobile_dogfood_entry_md_path_in_the_same_substantive_commit_that_originally_moved_the_file_this_correction_records_that_true_dependency_explicitly_above_rather_than_omitting_it_a_separate_exhaustive_search_across_readme_md_readme_ja_md_docs_star_star_scripts_star_star_dot_github_workflows_star_star_relaylm_star_star_tests_star_star_config_example_yaml_and_pyproject_toml_confirms_the_one_fact_the_original_entry_got_right_zero_dot_github_workflows_file_references_any_of_the_five_old_paths_by_exact_path_bare_filename_or_stem_and_no_path_selector_gates_on_docs_tools_star_star_or_docs_evaluation_templates_star_star_that_workflow_finding_is_retained_unchanged
 canonical_absorption_destinations:
   - docs/evaluation/mobile-dogfood-observation.md
   - docs/operations/mobile-dogfood-entry.md
@@ -3793,15 +3804,16 @@ canonical_absorption_destinations:
   - docs/templates/evaluation/mobile-dogfood-daily-note.md
   - docs/templates/evaluation/mobile-dogfood-weekly-review.md
 fail_closed_guards_added:
-  - "scripts/relaylm_docs_semantic_audit.py check_no_live_mobile_dogfood_retired_paths (generalizes check_no_live_e1_local_runtime_architecture_path's single-path relative-reference resolution model to a dict of five retired -> canonical path pairs sharing one resolver and one scan pass -- existence checks for all five retired paths, a repository-wide literal scan for each full repository-root-qualified old path, and reference-aware resolution of Markdown link targets and relaylm_related_authority front-matter entries, resolved against the referring file's own directory or the repository root for a docs/-qualified target -- so a same-directory bare filename, ./, ../, ../../, Markdown anchor, or related-authority entry that resolves to any of the five retired paths is rejected regardless of the literal text used. No generic frozen/historical_after_merge/historical whole-document status bypass and no generic *-source.txt allowance were added; the only allowlists are the receipt and this guard's own implementation (whole-file) and the five exact documentation-cutover-rules.yaml path_overrides key lines (exact-line))"
+  - "scripts/relaylm_docs_semantic_audit.py check_no_live_mobile_dogfood_retired_paths (generalizes check_no_live_e1_local_runtime_architecture_path's single-path relative-reference resolution model to a dict of five retired -> canonical path pairs sharing one resolver and one scan pass -- existence checks for all five retired paths; a repository-wide literal scan for each full repository-root-qualified old path across every non-allowlisted file; Markdown link target resolution; and generic path-bearing front-matter resolution via the actual parsed first-block YAML mapping across every key docs/DOCUMENTATION_MODEL.md and established repository usage define as path-bearing (relaylm_current_status_source, relaylm_decision_source, relaylm_related_authority, relaylm_related_contracts, relaylm_related_decisions, relaylm_related_proposal, relaylm_code_sources, relaylm_verified_by) -- resolved against the referring file's own directory or the repository root for a docs/-qualified target, with URL fragments/queries stripped before comparison -- so a same-directory bare filename, ./, ../, ../../, Markdown anchor, or any supported front-matter key entry that resolves to any of the five retired paths is rejected regardless of the literal text or metadata key used. No generic frozen/historical_after_merge/historical whole-document status bypass and no generic *-source.txt allowance were added; the only allowlists are the receipt (whole-file), the five exact documentation-cutover-rules.yaml path_overrides key lines (exact-line), and this guard's own implementation file restricted to its MOBILE_DOGFOOD_RETIRED_TO_CANONICAL dict-key entries (exact-line, not whole-file))"
   - "scripts/relaylm_docs_semantic_audit.py check_mobile_dogfood_family_types (asserts the three canonical templates declare relaylm_doc_type=template, never the retired evaluation_record; the canonical observation document declares evaluation_method; the canonical operations document declares operations)"
-self_test_assertions_added: 16
-self_test_assertions_added_note: sixteen_deterministic_self_test_assertions_for_the_two_new_checks_bringing_relaylm_docs_semantic_audit_py_dash_dash_self_test_to_86_total_assertions_up_from_70_before_this_cutover_covering_the_real_repositorys_current_silence_a_combined_reintroduction_check_across_all_five_retired_files_a_root_qualified_link_rejection_a_same_directory_bare_filename_rejection_a_dot_dot_slash_evaluation_slash_templates_rejection_a_dot_dot_slash_dot_dot_slash_evaluation_rejection_a_markdown_link_with_an_anchor_rejection_a_relaylm_related_authority_entry_rejection_a_frozen_status_documents_unallowlisted_mention_rejection_confirming_no_generic_status_bypass_root_qualified_links_to_all_five_canonical_targets_being_allowed_a_relative_link_to_the_canonical_observation_method_being_allowed_a_reject_then_allow_pairing_proving_the_cutover_rules_yaml_exact_line_allowlist_is_genuinely_exercised_a_duplicate_live_copy_rejection_a_reject_then_allow_pairing_proving_the_family_type_check_actually_fires_and_a_real_repository_type_correctness_assertion
+fail_closed_guard_correction: independent_review_found_two_substantive_gaps_in_the_first_implementation_of_check_no_live_mobile_dogfood_retired_paths_first_front_matter_path_detection_resolved_only_markdown_link_targets_and_relaylm_related_authority_list_entries_via_a_hand_rolled_per_key_line_state_parser_so_a_stale_reference_under_relaylm_current_status_source_relaylm_related_contracts_relaylm_related_decisions_relaylm_decision_source_relaylm_code_sources_or_relaylm_verified_by_could_resolve_to_a_retired_path_without_being_rejected_second_the_guard_whole_file_exempted_its_own_implementation_scripts_relaylm_docs_semantic_audit_py_via_mobile_dogfood_reference_allowlisted_files_making_it_blind_to_a_regression_in_its_own_live_path_bound_consumers_such_as_the_required_metadata_paths_tuple_being_changed_back_to_the_retired_docs_tools_mobile_dogfood_entry_md_path_the_corrected_guard_replaces_the_hardcoded_relaylm_related_authority_special_case_with_mobile_dogfood_front_matter_path_values_which_parses_the_first_yaml_front_matter_block_with_the_real_yaml_loader_and_checks_every_supported_path_bearing_key_generically_and_replaces_the_whole_file_self_exemption_with_mobile_dogfood_self_file_exact_lines_an_exact_stripped_line_equality_allowlist_covering_only_the_retired_path_constants_own_dict_key_entries_this_is_limited_to_the_retired_path_enforcement_guard_and_its_tests_the_underlying_five_document_migrations_their_destinations_their_provenance_and_every_live_path_update_already_recorded_above_remain_valid_and_unchanged
+self_test_assertions_added: 30
+self_test_assertions_added_note: thirty_deterministic_self_test_assertions_for_the_mobile_dogfood_family_guard_pair_bringing_relaylm_docs_semantic_audit_py_dash_dash_self_test_to_100_total_assertions_up_from_70_before_this_cutover_16_from_the_original_implementation_plus_14_added_by_this_correction_the_14_new_assertions_cover_rejection_of_a_relaylm_current_status_source_scalar_a_relaylm_related_contracts_entry_a_relaylm_related_decisions_entry_a_relaylm_decision_source_scalar_a_relaylm_code_sources_entry_a_relaylm_verified_by_entry_a_relaylm_verified_by_entry_carrying_a_url_fragment_and_a_frozen_documents_stale_relaylm_related_authority_path_confirming_no_status_bypass_for_front_matter_keys_either_plus_a_reject_then_allow_pairing_proving_the_self_file_required_metadata_paths_regression_is_caught_a_rejection_of_a_retired_literal_inside_an_unrelated_non_allowlisted_python_constant_in_the_self_file_a_silent_check_proving_the_retired_path_constants_own_dict_key_entries_remain_allowed_in_the_self_file_and_two_consolidated_acceptance_assertions_proving_every_supported_path_bearing_key_accepts_the_canonical_target_in_both_root_qualified_and_relative_form_every_self_test_fixture_that_previously_hardcoded_a_retired_path_literal_as_python_source_text_was_also_rewritten_to_derive_the_literal_at_runtime_from_mobile_dogfood_retired_paths_slash_mobile_dogfood_retired_to_canonical_instead_since_the_corrected_guard_now_scans_its_own_source_file_a_hardcoded_fixture_literal_would_make_this_file_fail_its_own_audit
 local_validation:
   compileall: passed
   docs_link_check: passed
   docs_semantic_audit: passed
-  docs_semantic_audit_self_test: passed_86_assertions
+  docs_semantic_audit_self_test: passed_100_assertions
   documentation_current_boundary_smoke: passed
   cutover_prepare_self_test: passed
   mvp_completion_report_smoke_check_model_check_all: passed
@@ -3829,25 +3841,28 @@ open_pr_isolation:
       file: docs/README.md
       resolution: edited_only_the_current_main_version_of_the_two_mobile_dogfood_bullets_did_not_import_or_rebase_onto_any_content_from_the_still_open_pr_586_subjective_mem_proposal_router_edits
   no_content_imported: true
-validated_content_head: fd0b71fed5c22f872e76ec77a870f44beb375c1d
-validated_content_head_actions:
-  workflow_runs_total: 17
-  workflow_runs_by_trigger: {pull_request: 16, push: 1, other: 0}
-  job_or_check_runs_total: 27
-  success: 17
-  failure: 0
-  skipped: 10
-validated_content_head_changed_files: 12
-validated_content_head_net_diff: {insertions: 895, deletions: 36}
-non_receipt_content_files: 11
-non_receipt_content_net_diff: {insertions: 633, deletions: 34}
-final_pr_changed_files: 12
-final_pr_net_diff: {insertions: 901, deletions: 36}
-reviews: 0
-pr_comments: 0
-unresolved_review_threads: 0
-receipt_bookkeeping_commit: 134cf7ca5c3b58d8859a6f18882a753a779759e4
-receipt_finalization: performed_after_validated_content_head
+superseded_validated_content_heads:
+  - head: fd0b71fed5c22f872e76ec77a870f44beb375c1d
+    reason: independent_review_found_the_front_matter_and_self_file_fail_open_defects_described_in_fail_closed_guard_correction_above_all_27_of_this_heads_own_github_actions_check_runs_had_passed_and_its_diff_and_dependency_accounting_remain_accurate_as_historical_record_of_that_now_superseded_state
+    triggered_check_runs: 27
+    triggered_workflow_runs: 17
+    all_github_actions: passed
+    receipt_only_tail_superseded:
+      - 134cf7ca5c3b58d8859a6f18882a753a779759e4
+      - db4757a7aa738e2ab014aed635f635836ab0bb9e
+validated_content_head: pending
+validated_content_head_actions: pending
+validated_content_head_changed_files: pending
+validated_content_head_net_diff: pending
+non_receipt_content_files: pending
+non_receipt_content_net_diff: pending
+final_pr_changed_files: pending
+final_pr_net_diff: pending
+reviews: pending
+pr_comments: pending
+unresolved_review_threads: pending
+receipt_bookkeeping_commit: pending
+receipt_finalization: pending
 ```
 
 This batch performs an inventory-first hard cutover of the remaining `mobile_dogfood_*` method, template, and operator-document family flagged as open work in the Cutover 1C-40 entry above. Starting boundary independently reverified: `origin/main` had advanced one merge past the task's stated `6b16b06f...` boundary to `200addae127d6c93a2ac07bc2f9c718de9688ea0` via PR #580 ("feat(soul-lab): add browser-local Memory Explorer mock"), which touches only `apps/soul-lab/**` UI files with zero overlap with this family; `200addae...` is treated as the live boundary for this batch.
@@ -3860,7 +3875,9 @@ The P0 entry's `target`-state boundary is preserved unchanged: `relaylm_status` 
 
 Provenance for each file was independently reconstructed from `git log --follow` (after discovering and correcting for a shallow-clone artifact via `git fetch --unshallow`, exactly as the Cutover 1C-40 entry above warns) and cross-checked against GitHub `get_commit`/`search_pull_requests`: the runbook and three templates were introduced together in PR #523 and last modified in PR #526 (both squash-merged, committer `GitHub`/`web-flow` confirming genuine squash merges); the P0 entry was introduced in PR #521 and last substantively rewritten in PR #547. Each file's current pre-cutover blob is independently confirmed byte-identical to its blob at that final content-defining commit (`git rev-parse <commit>:<path>`), so the recorded `source_blob_sha`/`source_content_sha256` values are the exact bytes moved verbatim in this batch.
 
-Live dependency search across the full inventory scope found four referrers beyond the family's own internal cross-links: `docs/README.md`, `docs/PROJECT_STATUS.md`, `docs/architecture/lat2_mobile_perceived_latency.md`, and `docs/templates/README.md` (which gained one new entry rather than being retargeted, since it never referenced this family before). Zero script or workflow dependency was found anywhere in the inventory scope. `docs/tools/twin_review_to_workspace_candidates.md` contains the bare Japanese prose phrase "Cloudflare/mobile dogfood入口" with no path reference of any kind and required no change.
+Live dependency search across the full inventory scope found four documentation referrers beyond the family's own internal cross-links: `docs/README.md`, `docs/PROJECT_STATUS.md`, `docs/architecture/lat2_mobile_perceived_latency.md`, and `docs/templates/README.md` (which gained one new entry rather than being retargeted, since it never referenced this family before). `docs/tools/twin_review_to_workspace_candidates.md` contains the bare Japanese prose phrase "Cloudflare/mobile dogfood入口" with no path reference of any kind and required no change.
+
+**Dependency-inventory correction.** Independent review found the original entry's `script_and_workflow_dependencies_found: []` and its accompanying claim of zero script dependencies were factually wrong: `scripts/relaylm_docs_semantic_audit.py` is itself a live path-bound consumer of the moved P0 entry document. Both its `REQUIRED_METADATA_PATHS` tuple and its `check_operations_docs()` function's `mobile_path` local variable named the old `docs/tools/mobile_dogfood_entry.md` path and were retargeted to `docs/operations/mobile-dogfood-entry.md` in the same substantive commit that originally moved the file — a real, correctly-executed script dependency update that the receipt simply failed to record truthfully. This is now corrected in `script_dependencies_found` above, which distinguishes script dependencies from workflow dependencies rather than conflating them into one always-empty field. Zero `.github/workflows/**` file dependency was found anywhere in the inventory scope, and that finding is retained unchanged.
 
 Open-PR isolation: the three currently open PRs (`#586`, `#578`, `#567`; `#580` merged into the boundary above during this check) were independently re-enumerated and their changed files inspected. Exactly one shared-file overlap was found: PR #586 (`docs: propose subjective MEM formation and retrieval model`, still open, non-authoritative proposal) touches `docs/README.md`. This batch edited only the current-`main` version of `docs/README.md`'s two mobile-dogfood bullets and imported no content from PR #586's own router edits. PR #578 (experiment, draft, do-not-merge) and PR #567 (proposal) touch no file in this batch's scope.
 
@@ -3868,7 +3885,7 @@ A new fail-closed guard pair was added to `scripts/relaylm_docs_semantic_audit.p
 
 No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/mvp/`, the retired LAT-1 scaffold, and the retired E1 local-runtime-evaluation path all remain fully absent and untouched by this batch. No compatibility path, redirect, alias, symlink, fallback lookup, duplicate live copy, or old-path manifest was added. No open-PR content was imported, rebased, or partially copied.
 
-`cutover_pr` is `607` (`rinsakamo/relay-lm#607`). `fd0b71fed5c22f872e76ec77a870f44beb375c1d` was recorded as `validated_content_head`: all 27 triggered GitHub Actions check runs (job/check-run count), spanning 17 distinct workflow runs (workflow-run count: 16 `pull_request`, 1 `push`), completed successfully with 17 successes, 10 skips, and zero failures, and 0 reviews/comments/unresolved threads. Its receipt-only bookkeeping commit `134cf7ca5c3b58d8859a6f18882a753a779759e4` recorded that head's Actions and diff totals (12 changed files, +895/-36 full head; 11 files, +633/-34 non-receipt content). That bookkeeping commit's own GitHub Actions were independently re-verified: all 27 check runs across 17 workflow runs (16 `pull_request`, 1 `push`) completed successfully, 17 success / 10 skipped / 0 failure, and 0 reviews/comments/unresolved threads remained on the PR at this head. `final_pr_changed_files`/`final_pr_net_diff` are now finalized at 12 changed files, +901/-36 — the exact GitHub-reported PR-level totals, independently confirmed via `pull_request_read get`. `merged_commit` remains `pending`; this task does not merge the PR.
+`cutover_pr` is `607` (`rinsakamo/relay-lm#607`). `fd0b71fed5c22f872e76ec77a870f44beb375c1d` was the original `validated_content_head`: all 27 triggered GitHub Actions check runs, spanning 17 distinct workflow runs (16 `pull_request`, 1 `push`), had completed successfully with 17 successes, 10 skips, and zero failures, and its receipt-only tail (`134cf7ca5c3b58d8859a6f18882a753a779759e4`, then `db4757a7aa738e2ab014aed635f635836ab0bb9e`) had recorded that head's Actions and diff totals (12 changed files, +901/-36 final). Independent review found the front-matter-detection and self-file-exemption gaps described in `fail_closed_guard_correction` above, plus the incorrect `script_and_workflow_dependencies_found: []` claim described in the dependency-inventory correction above, corrected in this same entry by a further substantive commit that changes only `scripts/relaylm_docs_semantic_audit.py` and this receipt; the underlying five-document migration, its provenance, and every live path update already recorded above are unchanged by this correction. `merged_commit` remains `pending`; this task does not merge the PR.
 
 - Cutover 1C: remaining implementation, wave, evaluation, and release evidence migration.
 - Later cutovers: architecture synthesis, exact contract reconstruction, old-tree removal, and final invariant enforcement.

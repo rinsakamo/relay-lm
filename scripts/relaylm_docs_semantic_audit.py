@@ -990,6 +990,22 @@ def check_no_live_e1_local_runtime_architecture_path(errors: list[str]) -> None:
 # directory), so a same-directory bare-filename or ../ reference is only
 # ever produced by genuinely stale content, never by a legitimate live
 # reference to the new canonical name.
+#
+# Review correction: the first implementation resolved only Markdown link
+# targets and relaylm_related_authority list entries via a hand-rolled
+# per-key line-state parser, and whole-file-exempted this guard's own
+# implementation file. Both were fail-open gaps. The corrected guard (1)
+# parses the first YAML front-matter block with the real YAML loader and
+# checks every path-bearing metadata key the documentation model uses
+# (relaylm_current_status_source, relaylm_decision_source,
+# relaylm_related_authority, relaylm_related_contracts,
+# relaylm_related_decisions, relaylm_related_proposal, relaylm_code_sources,
+# relaylm_verified_by) rather than one hardcoded key, and (2) replaces the
+# whole-file self-exemption with an exact-line allowlist covering only the
+# MOBILE_DOGFOOD_RETIRED_TO_CANONICAL constant's own dict-key entries -- the
+# one place this file's source text must legitimately spell out a retired
+# literal -- so a regression anywhere else in this file (including
+# REQUIRED_METADATA_PATHS) is still caught.
 # ---------------------------------------------------------------------------
 MOBILE_DOGFOOD_RETIRED_TO_CANONICAL: dict[str, str] = {
     "docs/evaluation/mobile_dogfood_observation_runbook.md": "docs/evaluation/mobile-dogfood-observation.md",
@@ -1010,18 +1026,38 @@ MOBILE_DOGFOOD_REFERENCE_PATTERN = re.compile(
 
 MOBILE_DOGFOOD_EXTERNAL_SCHEMES = E1_LOCAL_RUNTIME_EXTERNAL_SCHEMES
 MOBILE_DOGFOOD_MD_LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
-MOBILE_DOGFOOD_RELATED_AUTHORITY_KEY_RE = re.compile(r"^relaylm_related_authority:\s*$")
-MOBILE_DOGFOOD_LIST_ITEM_RE = re.compile(r"^\s+-\s+(.+?)\s*$")
+
+# Parses only the first "---"-delimited YAML front-matter block, mirroring
+# relaylm_docs_cutover_prepare.py's own FRONT_MATTER_RE (\A-anchored: a later
+# "---" inside the document body is never mistaken for a second block).
+MOBILE_DOGFOOD_FRONT_MATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*(?:\n|\Z)", re.DOTALL)
+
+# Every path-bearing front-matter key docs/DOCUMENTATION_MODEL.md and
+# established repository usage define: single-value keys hold one relative
+# or docs/-qualified path, list keys hold zero or more. This replaces the
+# prior relaylm_related_authority-only special case; a stale reference under
+# any of these keys is now caught.
+MOBILE_DOGFOOD_PATH_BEARING_SCALAR_KEYS = (
+    "relaylm_current_status_source",
+    "relaylm_decision_source",
+)
+MOBILE_DOGFOOD_PATH_BEARING_LIST_KEYS = (
+    "relaylm_related_authority",
+    "relaylm_related_contracts",
+    "relaylm_related_decisions",
+    "relaylm_related_proposal",
+    "relaylm_code_sources",
+    "relaylm_verified_by",
+)
 
 # Files whose entire content is historical/migration record-keeping by
 # construction and may legitimately name a retired literal without per-line
 # review: this receipt's own Cutover 1C-40 entry narrates why the family was
-# left open at the time, and this guard's own implementation necessarily
-# names the paths it rejects.
+# left open at the time. This guard's own implementation file is
+# deliberately NOT whole-file-exempted (see MOBILE_DOGFOOD_SELF_FILE below).
 MOBILE_DOGFOOD_REFERENCE_ALLOWLISTED_FILES = frozenset(
     {
         "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
-        "scripts/relaylm_docs_semantic_audit.py",
     }
 )
 
@@ -1036,15 +1072,30 @@ MOBILE_DOGFOOD_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
     ),
 }
 
+# This guard's own implementation file. Narrow, exact-line self-allowance
+# only -- not a whole-file exemption. The only lines in this file that may
+# legitimately spell out a retired literal are the
+# MOBILE_DOGFOOD_RETIRED_TO_CANONICAL dict's own key: value entries (the
+# guard's source of truth necessarily names the paths it rejects). Matched
+# by exact stripped-line equality, not substring, so it cannot silently
+# absorb an unrelated stale reference elsewhere in the file.
+MOBILE_DOGFOOD_SELF_FILE = "scripts/relaylm_docs_semantic_audit.py"
+MOBILE_DOGFOOD_SELF_FILE_EXACT_LINES = frozenset(
+    f'"{retired_path}": "{canonical_path}",'
+    for retired_path, canonical_path in MOBILE_DOGFOOD_RETIRED_TO_CANONICAL.items()
+)
+
 
 def _mobile_dogfood_scanned_files(root: Path) -> list[Path]:
     return _mvp_reference_scanned_files(root)
 
 
 def _mobile_dogfood_resolve(source: Path, raw_target: str) -> str | None:
-    """Resolve a Markdown link target or related-authority entry to a
+    """Resolve a Markdown link target or front-matter path-bearing value to a
     repository-relative POSIX path, mirroring _e1_local_runtime_resolve()
-    and relaylm_docs_link_check.py's _resolve_local_target()."""
+    and relaylm_docs_link_check.py's _resolve_local_target(). A URL fragment
+    (anchor) or query component is stripped by urlsplit() before comparison,
+    exactly as the established link resolver does."""
     target = raw_target.strip()
     if not target:
         return None
@@ -1068,6 +1119,52 @@ def _mobile_dogfood_resolve(source: Path, raw_target: str) -> str | None:
         return None
 
 
+def _mobile_dogfood_front_matter_path_values(text: str) -> list[tuple[str, str]]:
+    """Return (metadata_key, raw_path_value) pairs for every supported
+    path-bearing front-matter key present in the first YAML front-matter
+    block only. Uses the actual parsed YAML mapping -- not per-key line
+    parsing -- so every supported key is covered by one code path instead of
+    a hardcoded special case for a single key. A value of the wrong shape
+    (e.g. a scalar key holding a list, or a list item that is not a string)
+    is skipped here rather than raised: this guard checks path references,
+    it does not police front-matter shape, which is check_metadata's job."""
+    match = MOBILE_DOGFOOD_FRONT_MATTER_RE.match(text)
+    if match is None:
+        return []
+    try:
+        metadata = yaml.safe_load(match.group(1))
+    except yaml.YAMLError:
+        return []
+    if not isinstance(metadata, dict):
+        return []
+
+    pairs: list[tuple[str, str]] = []
+    for key in MOBILE_DOGFOOD_PATH_BEARING_SCALAR_KEYS:
+        value = metadata.get(key)
+        if isinstance(value, str):
+            pairs.append((key, value))
+    for key in MOBILE_DOGFOOD_PATH_BEARING_LIST_KEYS:
+        value = metadata.get(key)
+        if isinstance(value, list):
+            for item in value:
+                if isinstance(item, str):
+                    pairs.append((key, item))
+    return pairs
+
+
+def _mobile_dogfood_locate(lines: list[str], raw_value: str) -> tuple[int, str]:
+    """Best-effort line lookup for diagnostics only: a front-matter path
+    value parsed from YAML appears verbatim in the source text, either after
+    "key: value" (scalar) or as its own "- value" list line. Falls back to
+    line 1 if not found verbatim (e.g. quoted/escaped in a way the plain
+    substring search misses), which only affects the reported line number,
+    never whether the reference is rejected."""
+    for line_number, line in enumerate(lines, start=1):
+        if raw_value and raw_value in line:
+            return line_number, line.strip()
+    return 1, ""
+
+
 def check_no_live_mobile_dogfood_retired_paths(errors: list[str]) -> None:
     for retired_path, canonical_path in MOBILE_DOGFOOD_RETIRED_TO_CANONICAL.items():
         if (ROOT / retired_path).exists():
@@ -1084,79 +1181,65 @@ def check_no_live_mobile_dogfood_retired_paths(errors: list[str]) -> None:
             continue
         if relative_path in MOBILE_DOGFOOD_REFERENCE_ALLOWLISTED_FILES:
             continue
+        is_self_file = relative_path == MOBILE_DOGFOOD_SELF_FILE
         allowed_lines = MOBILE_DOGFOOD_REFERENCE_LINE_ALLOWLIST.get(relative_path, ())
         try:
             text = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             continue
 
-        resolve_references = path.suffix in (".md", ".txt")
-        in_front_matter = False
-        front_matter_seen = False
-        in_related_authority = False
+        lines = text.splitlines()
 
-        for line_number, line in enumerate(text.splitlines(), start=1):
+        def _is_allowed(stripped_line: str) -> bool:
+            if is_self_file:
+                return stripped_line in MOBILE_DOGFOOD_SELF_FILE_EXACT_LINES
+            return any(allowed in stripped_line for allowed in allowed_lines)
+
+        # Pass 1: any of the five repository-root-qualified retired literals,
+        # anywhere in the line (backtick spans, table cells, script string
+        # literals, YAML mapping keys) -- independent of Markdown link or
+        # front-matter syntax.
+        for line_number, line in enumerate(lines, start=1):
             stripped = line.strip()
-
-            # Pass 1: any of the five repository-root-qualified retired
-            # literals, anywhere in the line.
             literal_match = MOBILE_DOGFOOD_REFERENCE_PATTERN.search(line)
-            if literal_match is not None:
-                if not any(allowed in stripped for allowed in allowed_lines):
-                    errors.append(
-                        f"{relative_path}:{line_number}: active reference to retired "
-                        f"{literal_match.group(0)}: {stripped!r}"
-                    )
-
-            if not resolve_references:
+            if literal_match is None or _is_allowed(stripped):
                 continue
+            errors.append(
+                f"{relative_path}:{line_number}: active reference to retired "
+                f"{literal_match.group(0)}: {stripped!r}"
+            )
 
-            # Track the first "---"-delimited front-matter block so
-            # relaylm_related_authority entries are only read from there.
-            if stripped == "---":
-                if not front_matter_seen:
-                    in_front_matter = True
-                    front_matter_seen = True
-                elif in_front_matter:
-                    in_front_matter = False
-                    in_related_authority = False
-                continue
+        if path.suffix not in (".md", ".txt"):
+            continue
 
-            # Pass 2: Markdown link targets, resolved against this file's own
-            # directory (or the repository root for a "docs/"-qualified target).
+        # Pass 2: Markdown link targets, resolved against this file's own
+        # directory (or the repository root for a "docs/"-qualified target).
+        for line_number, line in enumerate(lines, start=1):
+            stripped = line.strip()
             for link_match in MOBILE_DOGFOOD_MD_LINK_RE.finditer(line):
                 raw_target = link_match.group(1).strip()
                 resolved = _mobile_dogfood_resolve(path, raw_target)
                 if resolved not in MOBILE_DOGFOOD_RETIRED_TO_CANONICAL:
                     continue
-                if any(allowed in stripped for allowed in allowed_lines):
+                if _is_allowed(stripped):
                     continue
                 errors.append(
                     f"{relative_path}:{line_number}: active reference to retired "
                     f"{resolved}: markdown link target {raw_target!r}"
                 )
 
-            # Pass 3: relaylm_related_authority front-matter list entries.
-            if not in_front_matter:
-                continue
-            if MOBILE_DOGFOOD_RELATED_AUTHORITY_KEY_RE.match(line) is not None:
-                in_related_authority = True
-                continue
-            if not in_related_authority:
-                continue
-            item_match = MOBILE_DOGFOOD_LIST_ITEM_RE.match(line)
-            if item_match is None:
-                in_related_authority = False
-                continue
-            raw_target = item_match.group(1).strip()
+        # Pass 3: every supported path-bearing front-matter key, resolved
+        # via the actual parsed first-block YAML mapping.
+        for key, raw_target in _mobile_dogfood_front_matter_path_values(text):
             resolved = _mobile_dogfood_resolve(path, raw_target)
             if resolved not in MOBILE_DOGFOOD_RETIRED_TO_CANONICAL:
                 continue
-            if any(allowed in stripped for allowed in allowed_lines):
+            line_number, stripped = _mobile_dogfood_locate(lines, raw_target)
+            if _is_allowed(stripped):
                 continue
             errors.append(
                 f"{relative_path}:{line_number}: active reference to retired "
-                f"{resolved}: relaylm_related_authority entry {raw_target!r}"
+                f"{resolved}: {key} entry {raw_target!r}"
             )
 
 
@@ -2903,8 +2986,34 @@ def self_test() -> None:
         )
     ROOT = real_root
 
+    # Lookups for the five retired paths, resolved dynamically from the
+    # module-level constant rather than spelled out as source-code literals:
+    # every full retired-path literal in this file's own source text is now
+    # itself subject to Pass 1 (see the self-file exact-line allowance
+    # correction above), so a hardcoded literal in a self-test fixture would
+    # make this file fail its own audit. Each lookup marker below is a
+    # substring shorter than the full retired path, so it is never itself
+    # matched by MOBILE_DOGFOOD_REFERENCE_PATTERN.
+    mobile_dogfood_entry_retired = next(p for p in MOBILE_DOGFOOD_RETIRED_PATHS if p.startswith("docs/tools/"))
+    mobile_dogfood_observation_retired = next(
+        p for p in MOBILE_DOGFOOD_RETIRED_PATHS if p.endswith("observation_runbook.md")
+    )
+    mobile_dogfood_summary_retired = next(
+        p for p in MOBILE_DOGFOOD_RETIRED_PATHS if p.endswith("summary_report_template.md")
+    )
+    mobile_dogfood_daily_retired = next(
+        p for p in MOBILE_DOGFOOD_RETIRED_PATHS if p.endswith("daily_note_template.md")
+    )
+    mobile_dogfood_weekly_retired = next(
+        p for p in MOBILE_DOGFOOD_RETIRED_PATHS if p.endswith("weekly_review_template.md")
+    )
+
     # 63. The real repository has no live reference to any retired
-    # mobile-dogfood family path (Cutover 1C-41).
+    # mobile-dogfood family path (Cutover 1C-41). Since the self-file
+    # whole-file exemption was removed, this also proves that this file's
+    # own MOBILE_DOGFOOD_RETIRED_TO_CANONICAL constant entries and every
+    # self-test fixture below are silent under the guard's real-repository
+    # scan -- not merely under a synthetic tree.
     check_silent(
         "real repository: no active reference to any retired mobile-dogfood path",
         check_no_live_mobile_dogfood_retired_paths,
@@ -2936,7 +3045,7 @@ def self_test() -> None:
         )
     ROOT = real_root
 
-    # 65. A root-qualified Markdown link to the retired docs/tools/mobile_dogfood_entry.md is rejected.
+    # 65. A root-qualified Markdown link to the retired P0 entry path is rejected.
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
@@ -2944,12 +3053,12 @@ def self_test() -> None:
             base,
             "docs/example_mobile_dogfood_root_link.md",
             "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
-            "See [old entry](docs/tools/mobile_dogfood_entry.md).\n",
+            f"See [old entry]({mobile_dogfood_entry_retired}).\n",
         )
         check_rejects(
-            "a root-qualified link to the retired docs/tools/mobile_dogfood_entry.md is rejected",
+            "a root-qualified link to the retired P0 mobile-dogfood entry path is rejected",
             check_no_live_mobile_dogfood_retired_paths,
-            "active reference to retired docs/tools/mobile_dogfood_entry.md",
+            f"active reference to retired {mobile_dogfood_entry_retired}",
         )
     ROOT = real_root
 
@@ -2962,12 +3071,12 @@ def self_test() -> None:
             base,
             "docs/evaluation/example_sibling.md",
             "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
-            "See [old runbook](mobile_dogfood_observation_runbook.md).\n",
+            f"See [old runbook]({mobile_dogfood_observation_retired.rsplit('/', 1)[-1]}).\n",
         )
         check_rejects(
             "a same-directory bare-filename reference resolving to a retired mobile-dogfood path is rejected",
             check_no_live_mobile_dogfood_retired_paths,
-            "active reference to retired docs/evaluation/mobile_dogfood_observation_runbook.md",
+            f"active reference to retired {mobile_dogfood_observation_retired}",
         )
     ROOT = real_root
 
@@ -2980,12 +3089,12 @@ def self_test() -> None:
             base,
             "docs/tools/example_other.md",
             "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
-            "See [old daily note](../evaluation/templates/mobile_dogfood_daily_note_template.md).\n",
+            f"See [old daily note](../evaluation/templates/{mobile_dogfood_daily_retired.rsplit('/', 1)[-1]}).\n",
         )
         check_rejects(
             "a ../evaluation/templates/... reference resolving to a retired mobile-dogfood path is rejected",
             check_no_live_mobile_dogfood_retired_paths,
-            "active reference to retired docs/evaluation/templates/mobile_dogfood_daily_note_template.md",
+            f"active reference to retired {mobile_dogfood_daily_retired}",
         )
     ROOT = real_root
 
@@ -2997,12 +3106,12 @@ def self_test() -> None:
             base,
             "docs/templates/evaluation/example_other_template.md",
             "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
-            "See [old summary](../../evaluation/mobile_dogfood_summary_report_template.md).\n",
+            f"See [old summary](../../evaluation/{mobile_dogfood_summary_retired.rsplit('/', 1)[-1]}).\n",
         )
         check_rejects(
             "a ../../evaluation/... reference resolving to a retired mobile-dogfood path is rejected",
             check_no_live_mobile_dogfood_retired_paths,
-            "active reference to retired docs/evaluation/mobile_dogfood_summary_report_template.md",
+            f"active reference to retired {mobile_dogfood_summary_retired}",
         )
     ROOT = real_root
 
@@ -3015,7 +3124,7 @@ def self_test() -> None:
             base,
             "docs/example_anchor_mobile_dogfood.md",
             "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
-            "See [old runbook](docs/evaluation/mobile_dogfood_observation_runbook.md#daily-review).\n",
+            f"See [old runbook]({mobile_dogfood_observation_retired}#daily-review).\n",
         )
         check_rejects(
             "a Markdown link with an anchor resolving to a retired mobile-dogfood path is rejected",
@@ -3034,7 +3143,7 @@ def self_test() -> None:
             "docs/evaluation/example_related_authority.md",
             "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n"
             "relaylm_related_authority:\n"
-            "  - mobile_dogfood_observation_runbook.md\n"
+            f"  - {mobile_dogfood_observation_retired.rsplit('/', 1)[-1]}\n"
             "---\n\nBody.\n",
         )
         check_rejects(
@@ -3054,12 +3163,12 @@ def self_test() -> None:
             base,
             "docs/evidence/implementation/example_mobile_dogfood_report.md",
             "---\nrelaylm_doc_type: implementation_completion_report\nrelaylm_status: historical_after_merge\n---\n\n"
-            "This slice added docs/tools/mobile_dogfood_entry.md.\n",
+            f"This slice added {mobile_dogfood_entry_retired}.\n",
         )
         check_rejects(
             "a frozen-status document's unallowlisted retired mobile-dogfood mention is rejected without an exact line allowance",
             check_no_live_mobile_dogfood_retired_paths,
-            "active reference to retired docs/tools/mobile_dogfood_entry.md",
+            f"active reference to retired {mobile_dogfood_entry_retired}",
         )
     ROOT = real_root
 
@@ -3115,7 +3224,7 @@ def self_test() -> None:
     # key line is allowed ONLY because of the exact-line allowlist: the
     # identical literal is first proven REJECTED in a non-allowlisted file,
     # then proven SILENT only at the one exact allowlisted path.
-    override_key_line = "  docs/tools/mobile_dogfood_entry.md:\n    disposition: moved\n"
+    override_key_line = f"  {mobile_dogfood_entry_retired}:\n    disposition: moved\n"
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
@@ -3123,7 +3232,7 @@ def self_test() -> None:
         check_rejects(
             "the exact cutover-rules.yaml override key literal is rejected in a non-allowlisted file",
             check_no_live_mobile_dogfood_retired_paths,
-            "active reference to retired docs/tools/mobile_dogfood_entry.md",
+            f"active reference to retired {mobile_dogfood_entry_retired}",
         )
     ROOT = real_root
 
@@ -3144,7 +3253,7 @@ def self_test() -> None:
         ROOT = base
         _mvp_write(
             base,
-            "docs/tools/mobile_dogfood_entry.md",
+            mobile_dogfood_entry_retired,
             "---\nrelaylm_doc_type: runbook\nrelaylm_status: target\n---\n\nBody.\n",
         )
         _mvp_write(
@@ -3205,6 +3314,310 @@ def self_test() -> None:
         "the real repository's mobile-dogfood family declares the correct canonical types",
         check_mobile_dogfood_family_types,
     )
+
+    # 78. relaylm_current_status_source scalar resolving to a retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evaluation/example_status_source.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n"
+            f"relaylm_current_status_source: {mobile_dogfood_entry_retired}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a relaylm_current_status_source scalar resolving to a retired mobile-dogfood path is rejected",
+            check_no_live_mobile_dogfood_retired_paths,
+            "relaylm_current_status_source entry",
+        )
+    ROOT = real_root
+
+    # 79. relaylm_related_contracts list entry resolving to a retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/contracts/example_contract.md",
+            "---\nrelaylm_doc_type: contract\nrelaylm_status: current\n"
+            "relaylm_related_contracts:\n"
+            f"  - {mobile_dogfood_summary_retired}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a relaylm_related_contracts entry resolving to a retired mobile-dogfood path is rejected",
+            check_no_live_mobile_dogfood_retired_paths,
+            "relaylm_related_contracts entry",
+        )
+    ROOT = real_root
+
+    # 80. relaylm_related_decisions list entry resolving to a retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/adr/example_decision.md",
+            "---\nrelaylm_doc_type: adr\nrelaylm_status: target\n"
+            "relaylm_related_decisions:\n"
+            f"  - {mobile_dogfood_daily_retired}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a relaylm_related_decisions entry resolving to a retired mobile-dogfood path is rejected",
+            check_no_live_mobile_dogfood_retired_paths,
+            "relaylm_related_decisions entry",
+        )
+    ROOT = real_root
+
+    # 81. relaylm_decision_source scalar resolving to a retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/adr/example_decision_source.md",
+            "---\nrelaylm_doc_type: adr\nrelaylm_status: target\n"
+            f"relaylm_decision_source: {mobile_dogfood_weekly_retired}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a relaylm_decision_source scalar resolving to a retired mobile-dogfood path is rejected",
+            check_no_live_mobile_dogfood_retired_paths,
+            "relaylm_decision_source entry",
+        )
+    ROOT = real_root
+
+    # 82. relaylm_code_sources list entry resolving to a retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/architecture/example_code_sources.md",
+            "---\nrelaylm_doc_type: subsystem_architecture\nrelaylm_status: current\n"
+            "relaylm_code_sources:\n"
+            f"  - {mobile_dogfood_observation_retired}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a relaylm_code_sources entry resolving to a retired mobile-dogfood path is rejected",
+            check_no_live_mobile_dogfood_retired_paths,
+            "relaylm_code_sources entry",
+        )
+    ROOT = real_root
+
+    # 83. relaylm_verified_by list entry resolving to a retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/architecture/example_verified_by.md",
+            "---\nrelaylm_doc_type: subsystem_architecture\nrelaylm_status: current\n"
+            "relaylm_verified_by:\n"
+            f"  - {mobile_dogfood_entry_retired}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a relaylm_verified_by entry resolving to a retired mobile-dogfood path is rejected",
+            check_no_live_mobile_dogfood_retired_paths,
+            "relaylm_verified_by entry",
+        )
+    ROOT = real_root
+
+    # 84. A supported path-bearing metadata value with a URL fragment still
+    # resolves (ignoring the fragment) to a retired path and is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/architecture/example_fragment.md",
+            "---\nrelaylm_doc_type: subsystem_architecture\nrelaylm_status: current\n"
+            "relaylm_verified_by:\n"
+            f"  - {mobile_dogfood_observation_retired}#some-anchor\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a relaylm_verified_by entry with a URL fragment still resolving to a retired path is rejected",
+            check_no_live_mobile_dogfood_retired_paths,
+            "relaylm_verified_by entry",
+        )
+    ROOT = real_root
+
+    # 85. A frozen/historical document's own stale relative metadata path is
+    # REJECTED: proves the generic front-matter path check does not fall
+    # back to a whole-document status bypass either.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_frozen_metadata.md",
+            "---\nrelaylm_doc_type: evidence\nrelaylm_status: frozen\n"
+            "relaylm_related_authority:\n"
+            f"  - ../../{mobile_dogfood_weekly_retired.split('docs/', 1)[1]}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a frozen document's stale relaylm_related_authority path is rejected without a status bypass",
+            check_no_live_mobile_dogfood_retired_paths,
+            "relaylm_related_authority entry",
+        )
+    ROOT = real_root
+
+    # 86. A synthetic copy of this guard's own self-file containing a stale
+    # path reintroduced into a REQUIRED_METADATA_PATHS-shaped tuple is
+    # REJECTED: proves removing the whole-file exemption actually catches a
+    # regression in this file's own live path-bound consumers.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            MOBILE_DOGFOOD_SELF_FILE,
+            "REQUIRED_METADATA_PATHS = (\n"
+            f'    "{mobile_dogfood_entry_retired}",\n'
+            ")\n",
+        )
+        check_rejects(
+            "a synthetic self-file REQUIRED_METADATA_PATHS entry reintroducing a retired path is rejected",
+            check_no_live_mobile_dogfood_retired_paths,
+            f"active reference to retired {mobile_dogfood_entry_retired}",
+        )
+    ROOT = real_root
+
+    # 87. The same synthetic self-file, with REQUIRED_METADATA_PATHS instead
+    # using the canonical target, is silent -- the reject-then-allow pairing
+    # proving the self-file scan is genuinely exercised, not merely absent.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            MOBILE_DOGFOOD_SELF_FILE,
+            "REQUIRED_METADATA_PATHS = (\n"
+            f'    "{MOBILE_DOGFOOD_RETIRED_TO_CANONICAL[mobile_dogfood_entry_retired]}",\n'
+            ")\n",
+        )
+        check_silent(
+            "a synthetic self-file REQUIRED_METADATA_PATHS entry using the canonical target is silent",
+            check_no_live_mobile_dogfood_retired_paths,
+        )
+    ROOT = real_root
+
+    # 88. A retired literal appearing in an UNRELATED, non-allowlisted Python
+    # constant inside a synthetic self-file is REJECTED: the exact-line
+    # allowance is scoped to the MOBILE_DOGFOOD_RETIRED_TO_CANONICAL dict's
+    # own lines specifically, not to "any constant in this file."
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            MOBILE_DOGFOOD_SELF_FILE,
+            "SOME_UNRELATED_CONSTANT = (\n"
+            f'    "{mobile_dogfood_entry_retired}",\n'
+            ")\n",
+        )
+        check_rejects(
+            "a retired literal in an unrelated, non-allowlisted Python constant is rejected in the self-file",
+            check_no_live_mobile_dogfood_retired_paths,
+            f"active reference to retired {mobile_dogfood_entry_retired}",
+        )
+    ROOT = real_root
+
+    # 89. The MOBILE_DOGFOOD_RETIRED_TO_CANONICAL constant's own dict-key
+    # entries, in isolation, remain narrowly allowed in the self-file --
+    # paired against 88 above to prove the allowance is scoped to exactly
+    # these lines, not a broad substring or the whole file.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            MOBILE_DOGFOOD_SELF_FILE,
+            "MOBILE_DOGFOOD_RETIRED_TO_CANONICAL: dict[str, str] = {\n"
+            + "".join(
+                f'    "{retired_path}": "{canonical_path}",\n'
+                for retired_path, canonical_path in MOBILE_DOGFOOD_RETIRED_TO_CANONICAL.items()
+            )
+            + "}\n",
+        )
+        check_silent(
+            "the retired-path mapping constant's own dict-key entries remain allowed in the self-file",
+            check_no_live_mobile_dogfood_retired_paths,
+        )
+    ROOT = real_root
+
+    # 90. Root-qualified canonical values for every supported path-bearing
+    # front-matter key are allowed.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        canonical_list = sorted(MOBILE_DOGFOOD_CANONICAL_PATHS)
+        front_matter = (
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n"
+            f"relaylm_current_status_source: {canonical_list[0]}\n"
+            f"relaylm_decision_source: {canonical_list[1]}\n"
+            "relaylm_related_authority:\n"
+            f"  - {canonical_list[2]}\n"
+            "relaylm_related_contracts:\n"
+            f"  - {canonical_list[3]}\n"
+            "relaylm_related_decisions:\n"
+            f"  - {canonical_list[4]}\n"
+            "relaylm_related_proposal:\n"
+            f"  - {canonical_list[0]}\n"
+            "relaylm_code_sources:\n"
+            f"  - {canonical_list[1]}\n"
+            "relaylm_verified_by:\n"
+            f"  - {canonical_list[2]}\n"
+            "---\n\nBody.\n"
+        )
+        _mvp_write(base, "docs/example_all_keys_root_qualified.md", front_matter)
+        check_silent(
+            "root-qualified canonical values for every supported path-bearing front-matter key are allowed",
+            check_no_live_mobile_dogfood_retired_paths,
+        )
+    ROOT = real_root
+
+    # 91. Relative canonical values (from a sibling document in the same
+    # directory) for every supported path-bearing front-matter key are
+    # allowed.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evaluation/mobile-dogfood-observation.md",
+            "---\nrelaylm_doc_type: evaluation_method\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        front_matter = (
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n"
+            "relaylm_current_status_source: mobile-dogfood-observation.md\n"
+            "relaylm_decision_source: mobile-dogfood-observation.md\n"
+            "relaylm_related_authority:\n"
+            "  - mobile-dogfood-observation.md\n"
+            "relaylm_related_contracts:\n"
+            "  - mobile-dogfood-observation.md\n"
+            "relaylm_related_decisions:\n"
+            "  - mobile-dogfood-observation.md\n"
+            "relaylm_related_proposal:\n"
+            "  - mobile-dogfood-observation.md\n"
+            "relaylm_code_sources:\n"
+            "  - mobile-dogfood-observation.md\n"
+            "relaylm_verified_by:\n"
+            "  - mobile-dogfood-observation.md\n"
+            "---\n\nBody.\n"
+        )
+        _mvp_write(base, "docs/evaluation/example_all_keys_relative.md", front_matter)
+        check_silent(
+            "relative canonical values for every supported path-bearing front-matter key are allowed",
+            check_no_live_mobile_dogfood_retired_paths,
+        )
+    ROOT = real_root
 
     failed = [(name, message) for name, ok, message in results if not ok]
     for name, ok, message in results:
