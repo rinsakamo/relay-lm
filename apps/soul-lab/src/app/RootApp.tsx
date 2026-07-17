@@ -3,6 +3,7 @@ import type { ChangeEvent } from "react";
 import type { CharacterSummary, LabRoute, Language, Theme } from "../domain/lab";
 import { CharacterCreationPage } from "../features/creation/CharacterCreationPage";
 import { ConnectedLifecycleLabObservationPage } from "../features/lifecycle/ConnectedLifecycleLabObservationPage";
+import { MemoryExplorerPage } from "../features/memory-explorer/MemoryExplorerPage";
 import {
   loadLabManagementProjections,
   type LabCharacterProjection,
@@ -20,6 +21,7 @@ const navigation: Array<{ route: LabRoute; label: MessageKey; marker: string }> 
   { route: "scenes", label: "nav.scenes", marker: "▦" },
   { route: "relationships", label: "nav.relationships", marker: "⇄" },
   { route: "memory", label: "nav.memory", marker: "◎" },
+  { route: "explorer", label: "nav.explorer", marker: "⌕" },
   { route: "runtime", label: "nav.runtime", marker: "◉" },
   { route: "advanced", label: "nav.advanced", marker: "⚙" },
 ];
@@ -39,6 +41,7 @@ const footerLabels: Record<LabRoute, string> = {
   scenes: "CW-A3 · SCENE policy / active scenes / scene inbox",
   relationships: "CW-A3 · RELATIONSHIP vocabulary / target context / proposals",
   memory: "CW-A3 · Memory Wiki pages, blocks, links, archive, forgotten",
+  explorer: "Memory Explorer mock · browser-local search, tags, correction, forget preview",
   runtime: "CW-A3 · content-free context projection and used-memory evidence",
   advanced: "CW-A3 · developer diagnostics / internal governance / existing loopback controls",
   observation: "CW-A3 · legacy route mapped to Runtime",
@@ -187,6 +190,11 @@ export function RootApp() {
     [updateNavigationLock],
   );
 
+  const handleExplorerLockChange = useCallback(
+    (locked: boolean) => updateNavigationLock("explorer", locked),
+    [updateNavigationLock],
+  );
+
   function navigate(nextRoute: LabRoute) {
     const canonicalRoute = legacyRouteAliases[nextRoute] ?? nextRoute;
     if (navigationLock && canonicalRoute !== navigationLock) return;
@@ -292,6 +300,14 @@ export function RootApp() {
           {!noRuntimeCharacter && route === "scenes" && <CharacterWorkspacePage surface="scenes" {...workspacePageProps} />}
           {!noRuntimeCharacter && route === "relationships" && <CharacterWorkspacePage surface="relationships" {...workspacePageProps} />}
           {!noRuntimeCharacter && route === "memory" && <CharacterWorkspacePage surface="memory" {...workspacePageProps} />}
+          {!noRuntimeCharacter && route === "explorer" && (
+            <MemoryExplorerPage
+              key={activeCharacter.characterId}
+              language={language}
+              activeCharacter={activeCharacter}
+              onExplorerLockChange={handleExplorerLockChange}
+            />
+          )}
           {!noRuntimeCharacter && route === "runtime" && <CharacterWorkspacePage surface="runtime" {...workspacePageProps} />}
           {!noRuntimeCharacter && route === "advanced" && (
             <div className="advanced-stack">

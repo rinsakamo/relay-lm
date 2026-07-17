@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && npm run smoke:memory-explorer && vite build",
     "typecheck": "tsc --noEmit --pretty false",
     "smoke:home-conversation": "node scripts/homeConversationSmoke.mjs",
     "smoke:lifecycle-visibility": "node scripts/lifecycleVisibilitySmoke.mjs",
@@ -14,6 +14,7 @@
     "smoke:pin-unpin-ui": "node scripts/pinUnpinUiSmoke.mjs",
     "smoke:character-workspace": "node scripts/characterWorkspaceSmoke.mjs",
     "smoke:character-creation": "node scripts/characterCreationSmoke.mjs",
+    "smoke:memory-explorer": "node scripts/memoryExplorerSmoke.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "engines": {
