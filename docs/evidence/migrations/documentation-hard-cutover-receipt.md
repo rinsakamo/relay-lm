@@ -3862,13 +3862,13 @@ validated_content_head_changed_files: 12
 validated_content_head_net_diff: {insertions: 1331, deletions: 36}
 non_receipt_content_files: 11
 non_receipt_content_net_diff: {insertions: 1046, deletions: 34}
-final_pr_changed_files: pending
-final_pr_net_diff: pending
+final_pr_changed_files: 12
+final_pr_net_diff: {insertions: 1337, deletions: 36}
 reviews: 0
 pr_comments: 0
 unresolved_review_threads: 0
-receipt_bookkeeping_commit: pending
-receipt_finalization: pending
+receipt_bookkeeping_commit: f466f8d04224e972365a104519c1c3d27e194441
+receipt_finalization: performed_after_validated_content_head
 ```
 
 This batch performs an inventory-first hard cutover of the remaining `mobile_dogfood_*` method, template, and operator-document family flagged as open work in the Cutover 1C-40 entry above. Starting boundary independently reverified: `origin/main` had advanced one merge past the task's stated `6b16b06f...` boundary to `200addae127d6c93a2ac07bc2f9c718de9688ea0` via PR #580 ("feat(soul-lab): add browser-local Memory Explorer mock"), which touches only `apps/soul-lab/**` UI files with zero overlap with this family; `200addae...` is treated as the live boundary for this batch.
@@ -3891,7 +3891,9 @@ A new fail-closed guard pair was added to `scripts/relaylm_docs_semantic_audit.p
 
 No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/mvp/`, the retired LAT-1 scaffold, and the retired E1 local-runtime-evaluation path all remain fully absent and untouched by this batch. No compatibility path, redirect, alias, symlink, fallback lookup, duplicate live copy, or old-path manifest was added. No open-PR content was imported, rebased, or partially copied.
 
-`cutover_pr` is `607` (`rinsakamo/relay-lm#607`). `fd0b71fed5c22f872e76ec77a870f44beb375c1d` was the original `validated_content_head`: all 27 triggered GitHub Actions check runs, spanning 17 distinct workflow runs (16 `pull_request`, 1 `push`), had completed successfully with 17 successes, 10 skips, and zero failures, and its receipt-only tail (`134cf7ca5c3b58d8859a6f18882a753a779759e4`, then `db4757a7aa738e2ab014aed635f635836ab0bb9e`) had recorded that head's Actions and diff totals (12 changed files, +901/-36 final). Independent review found the front-matter-detection and self-file-exemption gaps described in `fail_closed_guard_correction` above, plus the incorrect `script_and_workflow_dependencies_found: []` claim described in the dependency-inventory correction above, corrected in this same entry by a further substantive commit that changes only `scripts/relaylm_docs_semantic_audit.py` and this receipt; the underlying five-document migration, its provenance, and every live path update already recorded above are unchanged by this correction. `merged_commit` remains `pending`; this task does not merge the PR.
+`cutover_pr` is `607` (`rinsakamo/relay-lm#607`). `fd0b71fed5c22f872e76ec77a870f44beb375c1d` was the original `validated_content_head`: all 27 triggered GitHub Actions check runs, spanning 17 distinct workflow runs (16 `pull_request`, 1 `push`), had completed successfully with 17 successes, 10 skips, and zero failures, and its receipt-only tail (`134cf7ca5c3b58d8859a6f18882a753a779759e4`, then `db4757a7aa738e2ab014aed635f635836ab0bb9e`) had recorded that head's Actions and diff totals (12 changed files, +901/-36 final). Independent review found the front-matter-detection and self-file-exemption gaps described in `fail_closed_guard_correction` above, plus the incorrect `script_and_workflow_dependencies_found: []` claim described in the dependency-inventory correction above, corrected in this same entry by a further substantive commit that changes only `scripts/relaylm_docs_semantic_audit.py` and this receipt; the underlying five-document migration, its provenance, and every live path update already recorded above are unchanged by this correction.
+
+`43ca6a0a684ebd19f1dd50bd45c0d82866cf3fcd` was then recorded as `validated_content_head`: all 27 triggered GitHub Actions check runs, spanning 17 distinct workflow runs (16 `pull_request`, 1 `push`), completed with 17 successes, 10 skips, and zero failures, and 0 reviews/comments/unresolved threads freshly re-verified rather than carried forward. The PR-level diff at this head was 12 changed files, +1331/-36, of which 11 files (+1046/-34) were non-receipt content and 1 file (this receipt, +285/-2) was the receipt-only accounting; both subtotals were independently recomputed via `git diff --numstat` against the merge-base with `main`. Its receipt-only tail (`f466f8d04224e972365a104519c1c3d27e194441`) recorded that head's Actions and diff totals across its own 27 green check runs, with reviews/comments/unresolved threads freshly re-verified again at 0/0/0. `final_pr_changed_files`/`final_pr_net_diff` are now finalized at 12 changed files, +1337/-36 — the exact GitHub-reported PR-level totals, independently confirmed via `pull_request_read get`. `merged_commit` remains `pending`; this task does not merge the PR.
 
 - Cutover 1C: remaining implementation, wave, evaluation, and release evidence migration.
 - Later cutovers: architecture synthesis, exact contract reconstruction, old-tree removal, and final invariant enforcement.
