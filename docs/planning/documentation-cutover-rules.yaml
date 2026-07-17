@@ -318,6 +318,49 @@ path_overrides:
       Moved and retyped to the canonical template profile under
       docs/templates/evaluation/; the old docs/evaluation/templates/
       subdirectory is retired with no replacement.
+  docs/tools/twin_extraction_prompts.md:
+    disposition: moved
+    target_doc_type: operations
+    target_paths:
+      - docs/operations/twin-extraction-prompts.md
+    deletion_reason: >-
+      Cutover 1C-42: this source was a legacy runbook-typed document under
+      docs/tools/, an existing-only pre-cutover collection whose required
+      cutover destination is operations. Moved and retyped to the canonical
+      operations profile (relaylm_doc_type corrected from runbook to
+      operations; relaylm_status remains current); body content preserved
+      except for front matter and same-directory cross-link repair to the
+      other two moved family members' new hyphenated basenames.
+  docs/tools/twin_extraction_runbook.md:
+    disposition: moved
+    target_doc_type: operations
+    target_paths:
+      - docs/operations/twin-extraction.md
+    deletion_reason: >-
+      Cutover 1C-42: this source was a legacy runbook-typed document under
+      docs/tools/, an existing-only pre-cutover collection whose required
+      cutover destination is operations. Moved and retyped to the canonical
+      operations profile (relaylm_doc_type corrected from runbook to
+      operations; relaylm_status remains current), dropping the redundant
+      "runbook" name suffix per the Cutover 1C-41
+      mobile_dogfood_observation_runbook -> mobile-dogfood-observation
+      precedent; body content preserved except for front matter and
+      cross-link repair, including the Japanese-heading anchor fragment
+      (#6-review-import-bridge-p1出力--cw-a4-governed-import-source)
+      carried forward unchanged to the new path.
+  docs/tools/twin_review_to_workspace_candidates.md:
+    disposition: moved
+    target_doc_type: operations
+    target_paths:
+      - docs/operations/twin-review-to-workspace-candidates.md
+    deletion_reason: >-
+      Cutover 1C-42: this source was a legacy runbook-typed document under
+      docs/tools/, an existing-only pre-cutover collection whose required
+      cutover destination is operations. Moved and retyped to the canonical
+      operations profile (relaylm_doc_type corrected from runbook to
+      operations; relaylm_status remains current); body content preserved
+      except for front matter and cross-link repair to the other two moved
+      family members' new hyphenated basenames.
 
 family_rules:
   - id: canonical-target-collections

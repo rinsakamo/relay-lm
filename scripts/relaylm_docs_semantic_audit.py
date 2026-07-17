@@ -1275,6 +1275,226 @@ def check_mobile_dogfood_family_types(errors: list[str]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Cutover 1C-42: the Twin Extraction offline tooling family (prompt
+# specification, execution runbook, and the PR2 review-import-bridge -> CW-A4
+# workspace-candidate connective flow) retired from docs/tools/. Three source
+# paths move to three canonical docs/operations/ destinations, retyped
+# runbook -> operations.
+#
+# This reuses the same generic helpers the mobile-dogfood guard (Cutover
+# 1C-41) already defined -- _mobile_dogfood_resolve(),
+# _mobile_dogfood_front_matter_path_values(), _mobile_dogfood_locate(), and
+# _mobile_dogfood_scanned_files() are parameterized only by the retired-path
+# argument(s) passed to them and this module's shared external-scheme /
+# path-bearing-key constants, not by anything mobile-dogfood-specific, so
+# this guard calls them directly instead of redefining a third copy of the
+# same resolution logic.
+#
+# Every scanned file is checked, including the three canonical Twin
+# Extraction destination documents themselves -- a retired-path reference
+# reintroduced inside one of them (e.g. a stale self-link surviving a
+# copy/paste) is exactly as much a live violation as one in any other
+# document, so there is no canonical-path scan bypass. A link or
+# front-matter value that resolves to *another* canonical Twin Extraction
+# path remains accepted; only a reference that resolves to one of the three
+# *retired* paths is rejected.
+#
+# Unlike the mobile-dogfood guard, this guard does NOT run its
+# repository-root-qualified literal scan (mobile-dogfood's Pass 1, which
+# matches a retired path's literal text anywhere in a line, including inside
+# backtick code spans) against Markdown/text documents. The twin family's own
+# frozen completion report
+# (docs/evidence/implementation/twin_extraction_completion_report.md)
+# preserves several backtick-literal exact historical records of what source
+# PR #503 did (e.g. its "Changed files" bullet list spells out each retired
+# doc path verbatim in inline code, not as a Markdown link) that are
+# historical record text, not live references, and must not be rewritten or
+# allowlisted merely because a literal scan would flag them.
+#
+# For `.md`/`.txt` documents, detection is restricted to resolved Markdown
+# link targets (covering root-qualified, bare same-directory, ./, ../, and
+# ../../ spellings, with anchors and query strings stripped) and front-matter
+# path-bearing keys -- the two syntactic forms that are actually live,
+# followable references in prose. This means the frozen report needs no
+# allowance beyond its one live link (repaired in this same cutover; see
+# TWIN_EXTRACTION_REFERENCE_ALLOWLISTED_FILES below, which deliberately does
+# NOT include the completion report).
+#
+# For every other scanned file -- i.e. every non-`.md`/`.txt` suffix the
+# shared scanner returns, determined by branching on the negative condition
+# rather than maintaining a fixed positive suffix allowlist -- neither
+# Markdown link syntax nor a YAML front-matter block is the applicable
+# reference form, so this guard instead runs the literal
+# repository-root-qualified pattern match there. This is what makes
+# `documentation-cutover-rules.yaml`'s three `path_overrides` mapping keys
+# (plain YAML keys, not links), this guard's own
+# TWIN_EXTRACTION_RETIRED_TO_CANONICAL dict-key entries in its own `.py`
+# source (plain Python string literals, not links), and a retired literal in
+# a root-scanned file with no dedicated suffix entry such as
+# `pyproject.toml` all detectable, and is exactly why each legitimate
+# occurrence needs its own narrow, exact-stripped-line allowance below
+# (matched by exact equality, never substring containment) rather than
+# being silently invisible to the guard or wrongly allowed by mere
+# containment.
+# ---------------------------------------------------------------------------
+TWIN_EXTRACTION_RETIRED_TO_CANONICAL: dict[str, str] = {
+    "docs/tools/twin_extraction_prompts.md": "docs/operations/twin-extraction-prompts.md",
+    "docs/tools/twin_extraction_runbook.md": "docs/operations/twin-extraction.md",
+    "docs/tools/twin_review_to_workspace_candidates.md": "docs/operations/twin-review-to-workspace-candidates.md",
+}
+TWIN_EXTRACTION_RETIRED_PATHS = tuple(sorted(TWIN_EXTRACTION_RETIRED_TO_CANONICAL))
+TWIN_EXTRACTION_CANONICAL_PATHS = frozenset(TWIN_EXTRACTION_RETIRED_TO_CANONICAL.values())
+
+# Reuses the mobile-dogfood guard's Markdown link regex: it is a generic
+# `[text](target)` matcher, not specific to that family.
+TWIN_EXTRACTION_MD_LINK_RE = MOBILE_DOGFOOD_MD_LINK_RE
+
+# Repository-root-qualified literal scan, applied to every scanned file
+# whose suffix is not `.md`/`.txt` (see the module comment above) -- matches
+# any of the three retired paths anywhere in a line (YAML mapping keys,
+# Python string literals, TOML keys/values, and any other non-Markdown/text
+# suffix the shared scanner returns), independent of Markdown link or
+# front-matter syntax.
+TWIN_EXTRACTION_REFERENCE_PATTERN = re.compile(
+    "(?:" + "|".join(re.escape(path) for path in TWIN_EXTRACTION_RETIRED_PATHS) + ")"
+)
+
+# Files whose entire content is historical/migration record-keeping by
+# construction: the migration receipt's own Cutover 1C-42 entry narrates the
+# three retired paths by design. The frozen completion report is
+# deliberately NOT here -- see the module comment above; its one live link is
+# repaired instead of allowlisted.
+TWIN_EXTRACTION_REFERENCE_ALLOWLISTED_FILES = frozenset(
+    {
+        "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
+    }
+)
+
+# Exact, reviewed whole-line contents that are legitimate occurrences of a
+# retired literal inside an otherwise-active/current file: the three
+# path_overrides mapping keys in documentation-cutover-rules.yaml, each
+# naming its own retired source path once. Matched by exact stripped-line
+# equality, never substring containment -- a line that merely contains one
+# of these strings as a fragment (extra prefix/suffix text on the same
+# line, or a second, unrelated reference tacked onto the same line) is not
+# allowed. No generic frozen/historical/status bypass and no generic
+# allowance beyond these exact lines.
+TWIN_EXTRACTION_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
+    "docs/planning/documentation-cutover-rules.yaml": tuple(
+        f"{retired_path}:" for retired_path in TWIN_EXTRACTION_RETIRED_PATHS
+    ),
+}
+
+# This guard's own implementation file. Narrow, exact-line self-allowance
+# only -- not a whole-file exemption, following the
+# MOBILE_DOGFOOD_SELF_FILE_EXACT_LINES precedent. The only lines in this
+# file that may legitimately spell out a retired literal are the
+# TWIN_EXTRACTION_RETIRED_TO_CANONICAL dict's own key: value entries.
+# Matched by exact stripped-line equality, not substring.
+TWIN_EXTRACTION_SELF_FILE = "scripts/relaylm_docs_semantic_audit.py"
+TWIN_EXTRACTION_SELF_FILE_EXACT_LINES = frozenset(
+    f'"{retired_path}": "{canonical_path}",'
+    for retired_path, canonical_path in TWIN_EXTRACTION_RETIRED_TO_CANONICAL.items()
+)
+
+
+def check_no_live_twin_extraction_retired_paths(errors: list[str]) -> None:
+    for retired_path, canonical_path in TWIN_EXTRACTION_RETIRED_TO_CANONICAL.items():
+        if (ROOT / retired_path).exists():
+            errors.append(
+                f"{retired_path}: retired twin-extraction family path reintroduced "
+                f"(moved to {canonical_path} by Cutover 1C-42)"
+            )
+
+    for path in _mobile_dogfood_scanned_files(ROOT):
+        relative_path = path.relative_to(ROOT).as_posix()
+        if relative_path in TWIN_EXTRACTION_RETIRED_TO_CANONICAL:
+            continue
+        if relative_path in TWIN_EXTRACTION_REFERENCE_ALLOWLISTED_FILES:
+            continue
+        is_self_file = relative_path == TWIN_EXTRACTION_SELF_FILE
+        allowed_lines = TWIN_EXTRACTION_REFERENCE_LINE_ALLOWLIST.get(relative_path, ())
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+
+        lines = text.splitlines()
+
+        def _is_allowed(stripped_line: str) -> bool:
+            if is_self_file:
+                return stripped_line in TWIN_EXTRACTION_SELF_FILE_EXACT_LINES
+            return stripped_line in allowed_lines
+
+        if path.suffix not in (".md", ".txt"):
+            # Every other scanned suffix (`.yaml`, `.yml`, `.py`, `.toml`,
+            # and any further suffix the shared scanner returns): neither
+            # Markdown link syntax nor a YAML front-matter block is the
+            # applicable reference form here, so use a literal
+            # repository-root-qualified match instead (see the module
+            # comment above). Branching on the negative condition, rather
+            # than maintaining a fixed positive suffix allowlist, is what
+            # makes a retired literal in `pyproject.toml` (or any other
+            # non-Markdown/text file the scanner returns) detectable.
+            for line_number, line in enumerate(lines, start=1):
+                stripped = line.strip()
+                literal_match = TWIN_EXTRACTION_REFERENCE_PATTERN.search(line)
+                if literal_match is None or _is_allowed(stripped):
+                    continue
+                errors.append(
+                    f"{relative_path}:{line_number}: active reference to retired "
+                    f"{literal_match.group(0)}: {stripped!r}"
+                )
+            continue
+
+        # `.md`/`.txt` document -- including the three canonical Twin
+        # Extraction destination documents themselves; there is no
+        # canonical-path scan bypass (see the module comment above).
+
+        # Pass 1: Markdown link targets, resolved against this file's own
+        # directory (or the repository root for a "docs/"-qualified target).
+        # Covers root-qualified, bare same-directory, ./, ../, ../../, and
+        # anchored spellings via the shared resolver.
+        for line_number, line in enumerate(lines, start=1):
+            stripped = line.strip()
+            for link_match in TWIN_EXTRACTION_MD_LINK_RE.finditer(line):
+                raw_target = link_match.group(1).strip()
+                resolved = _mobile_dogfood_resolve(path, raw_target)
+                if resolved not in TWIN_EXTRACTION_RETIRED_TO_CANONICAL:
+                    continue
+                if _is_allowed(stripped):
+                    continue
+                errors.append(
+                    f"{relative_path}:{line_number}: active reference to retired "
+                    f"{resolved}: markdown link target {raw_target!r}"
+                )
+
+        # Pass 2: every supported path-bearing front-matter key, resolved
+        # via the actual parsed first-block YAML mapping.
+        for key, raw_target in _mobile_dogfood_front_matter_path_values(text):
+            resolved = _mobile_dogfood_resolve(path, raw_target)
+            if resolved not in TWIN_EXTRACTION_RETIRED_TO_CANONICAL:
+                continue
+            line_number, stripped = _mobile_dogfood_locate(lines, raw_target)
+            if _is_allowed(stripped):
+                continue
+            errors.append(
+                f"{relative_path}:{line_number}: active reference to retired "
+                f"{resolved}: {key} entry {raw_target!r}"
+            )
+
+
+def check_twin_extraction_family_types(errors: list[str]) -> None:
+    for canonical_path in sorted(TWIN_EXTRACTION_CANONICAL_PATHS):
+        meta, _ = parse_front_matter(canonical_path)
+        if meta.get("relaylm_doc_type") != "operations":
+            errors.append(
+                f"{canonical_path}: must declare relaylm_doc_type: operations, not "
+                f"{meta.get('relaylm_doc_type')!r} (never the retired runbook type)"
+            )
+
+
+# ---------------------------------------------------------------------------
 # Cutover 1C-39 correction: fail closed on a completed LAT-1 retrieval-scaling
 # evidence record (docs/evidence/evaluations/lat1-retrieval-scaling-*.md) that
 # is incomplete, unfilled, provenance-weak, or content-bearing. No such
@@ -3619,6 +3839,556 @@ def self_test() -> None:
         )
     ROOT = real_root
 
+    # ------------------------------------------------------------------
+    # Cutover 1C-42: Twin Extraction family retired-path guard self-tests.
+    # ------------------------------------------------------------------
+    # Derived at runtime from the constant, not hardcoded as Python source
+    # text: this guard's literal-scan pass now covers its own .py source
+    # file (every scanned suffix other than `.md`/`.txt`; see
+    # check_no_live_twin_extraction_retired_paths above), so a hardcoded
+    # retired-path fixture literal here would make this file fail its own
+    # audit, exactly as the mobile-dogfood guard correction established.
+    twin_prompts_retired = next(p for p in TWIN_EXTRACTION_RETIRED_PATHS if p.endswith("_prompts.md"))
+    twin_runbook_retired = next(p for p in TWIN_EXTRACTION_RETIRED_PATHS if p.endswith("_runbook.md"))
+    twin_workspace_retired = next(p for p in TWIN_EXTRACTION_RETIRED_PATHS if p.endswith("_candidates.md"))
+    twin_prompts_canonical = TWIN_EXTRACTION_RETIRED_TO_CANONICAL[twin_prompts_retired]
+    twin_runbook_canonical = TWIN_EXTRACTION_RETIRED_TO_CANONICAL[twin_runbook_retired]
+    twin_workspace_canonical = TWIN_EXTRACTION_RETIRED_TO_CANONICAL[twin_workspace_retired]
+    twin_anchor = "6-review-import-bridge-p1出力--cw-a4-governed-import-source"
+
+    # 92. The real repository has no live reference to any retired
+    # twin-extraction family path. Proves this file's own
+    # TWIN_EXTRACTION_RETIRED_TO_CANONICAL dict-key entries and every
+    # self-test fixture below are silent under the guard's real scan.
+    check_silent(
+        "real repository: no active reference to any retired twin-extraction path",
+        check_no_live_twin_extraction_retired_paths,
+    )
+
+    # 93. Each of the three retired twin-extraction files being reintroduced
+    # is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        for retired_path in TWIN_EXTRACTION_RETIRED_PATHS:
+            _mvp_write(
+                base,
+                retired_path,
+                "---\nrelaylm_doc_type: runbook\nrelaylm_status: current\n---\n\nBody.\n",
+            )
+        reintroduced_errors = []
+        check_no_live_twin_extraction_retired_paths(reintroduced_errors)
+        missing = [
+            retired_path
+            for retired_path in TWIN_EXTRACTION_RETIRED_PATHS
+            if not any(retired_path in error and "reintroduced" in error for error in reintroduced_errors)
+        ]
+        results.append(
+            (
+                "each of the three reintroduced retired twin-extraction files is rejected",
+                not missing,
+                "" if not missing else f"missing rejection for: {missing!r}",
+            )
+        )
+    ROOT = real_root
+
+    # 94. A root-qualified Markdown link to a retired twin-extraction path is
+    # rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_twin_extraction_root_link.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [old runbook]({twin_runbook_retired}).\n",
+        )
+        check_rejects(
+            "a root-qualified link to a retired twin-extraction path is rejected",
+            check_no_live_twin_extraction_retired_paths,
+            f"active reference to retired {twin_runbook_retired}",
+        )
+    ROOT = real_root
+
+    # 95. A same-directory bare-filename reference to a retired path (from
+    # another file that was also under docs/tools/) is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/tools/example_sibling.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [old prompts]({twin_prompts_retired.rsplit('/', 1)[-1]}).\n",
+        )
+        check_rejects(
+            "a same-directory bare-filename reference resolving to a retired twin-extraction path is rejected",
+            check_no_live_twin_extraction_retired_paths,
+            f"active reference to retired {twin_prompts_retired}",
+        )
+    ROOT = real_root
+
+    # 96. A "../tools/..." reference from a sibling directory resolving to a
+    # retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/operations/example_other.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [old workspace flow](../tools/{twin_workspace_retired.rsplit('/', 1)[-1]}).\n",
+        )
+        check_rejects(
+            "a ../tools/... reference resolving to a retired twin-extraction path is rejected",
+            check_no_live_twin_extraction_retired_paths,
+            f"active reference to retired {twin_workspace_retired}",
+        )
+    ROOT = real_root
+
+    # 97. A "../../tools/..." reference from a deeper directory resolving to a
+    # retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_other_twin.md",
+            "---\nrelaylm_doc_type: implementation_completion_report\nrelaylm_status: current\n---\n\n"
+            f"See [old prompts](../../tools/{twin_prompts_retired.rsplit('/', 1)[-1]}).\n",
+        )
+        check_rejects(
+            "a ../../tools/... reference resolving to a retired twin-extraction path is rejected",
+            check_no_live_twin_extraction_retired_paths,
+            f"active reference to retired {twin_prompts_retired}",
+        )
+    ROOT = real_root
+
+    # 98. A Markdown link carrying the family's real Japanese-heading anchor
+    # fragment still resolves (ignoring the anchor) to the retired runbook
+    # path and is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_anchor_twin_extraction.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [bridge section]({twin_runbook_retired}#{twin_anchor}).\n",
+        )
+        check_rejects(
+            "a Markdown link with the family's Japanese-heading anchor resolving to a retired path is rejected",
+            check_no_live_twin_extraction_retired_paths,
+            "markdown link target",
+        )
+    ROOT = real_root
+
+    # 99. A relaylm_related_authority front-matter entry resolving to a
+    # retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/tools/example_related_authority.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n"
+            "relaylm_related_authority:\n"
+            f"  - {twin_runbook_retired.rsplit('/', 1)[-1]}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a relaylm_related_authority entry resolving to a retired twin-extraction path is rejected",
+            check_no_live_twin_extraction_retired_paths,
+            "relaylm_related_authority entry",
+        )
+    ROOT = real_root
+
+    # 100. A relaylm_current_status_source scalar front-matter entry
+    # resolving to a retired path is rejected: proves the generic
+    # multi-key front-matter coverage reused from the mobile-dogfood guard
+    # (Cutover 1C-41) also applies to this guard, not only
+    # relaylm_related_authority.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_current_status_source.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n"
+            f"relaylm_current_status_source: {twin_prompts_retired}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a relaylm_current_status_source scalar resolving to a retired twin-extraction path is rejected",
+            check_no_live_twin_extraction_retired_paths,
+            "relaylm_current_status_source entry",
+        )
+    ROOT = real_root
+
+    # 101. A frozen/historical_after_merge document's own unallowlisted
+    # mention of a retired twin-extraction path is REJECTED: this guard does
+    # not fall back to a generic whole-document status bypass.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_twin_extraction_report.md",
+            "---\nrelaylm_doc_type: implementation_completion_report\nrelaylm_status: historical_after_merge\n---\n\n"
+            f"See [old runbook]({twin_runbook_retired}).\n",
+        )
+        check_rejects(
+            "a frozen-status document's unallowlisted retired twin-extraction link is rejected without an exact line allowance",
+            check_no_live_twin_extraction_retired_paths,
+            f"active reference to retired {twin_runbook_retired}",
+        )
+    ROOT = real_root
+
+    # 102. Root-qualified Markdown links to all three canonical
+    # twin-extraction targets are allowed.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        for canonical_path in TWIN_EXTRACTION_CANONICAL_PATHS:
+            _mvp_write(
+                base,
+                canonical_path,
+                "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
+            )
+        _mvp_write(
+            base,
+            "docs/example_root_qualified_twin_extraction_links.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            + "\n".join(
+                f"- [target]({canonical_path})" for canonical_path in sorted(TWIN_EXTRACTION_CANONICAL_PATHS)
+            )
+            + "\n",
+        )
+        check_silent(
+            "root-qualified links to all three canonical twin-extraction targets are allowed",
+            check_no_live_twin_extraction_retired_paths,
+        )
+    ROOT = real_root
+
+    # 103. A relative link to a canonical target from a sibling document in
+    # the same (docs/operations/) directory is allowed.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            twin_runbook_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            "docs/operations/example_index.md",
+            "---\nrelaylm_doc_type: documentation_index\nrelaylm_status: current\n---\n\n"
+            f"- [runbook]({twin_runbook_canonical.rsplit('/', 1)[-1]})\n",
+        )
+        check_silent(
+            "a relative link to the canonical twin-extraction.md target is allowed",
+            check_no_live_twin_extraction_retired_paths,
+        )
+    ROOT = real_root
+
+    # 104/105. The exact reviewed documentation-cutover-rules.yaml
+    # path_overrides key line is allowed ONLY because of the exact-line
+    # allowlist: the identical literal is first proven REJECTED in a
+    # non-allowlisted file, then proven SILENT only at the one exact
+    # allowlisted path.
+    twin_override_key_line = f"  {twin_runbook_retired}:\n    disposition: moved\n"
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, "docs/planning/example_not_allowlisted_rules.yaml", twin_override_key_line)
+        check_rejects(
+            "the exact twin-extraction cutover-rules.yaml override key literal is rejected in a non-allowlisted file",
+            check_no_live_twin_extraction_retired_paths,
+            f"active reference to retired {twin_runbook_retired}",
+        )
+    ROOT = real_root
+
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, "docs/planning/documentation-cutover-rules.yaml", twin_override_key_line)
+        check_silent(
+            "the identical override key literal is silent only at the exact allowlisted cutover-rules.yaml path",
+            check_no_live_twin_extraction_retired_paths,
+        )
+    ROOT = real_root
+
+    # 106. Zero duplicate live copies: a retired path coexisting with its
+    # own already-created canonical target is still rejected for the
+    # retired path.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            twin_workspace_retired,
+            "---\nrelaylm_doc_type: runbook\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            twin_workspace_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "a retired twin-extraction file coexisting with its own canonical target (duplicate live copy) is rejected",
+            check_no_live_twin_extraction_retired_paths,
+            "retired twin-extraction family path reintroduced",
+        )
+    ROOT = real_root
+
+    # 107. The real repository's twin-extraction family declares the correct
+    # canonical operations doc type on all three targets.
+    check_silent(
+        "the real repository's twin-extraction family declares relaylm_doc_type: operations",
+        check_twin_extraction_family_types,
+    )
+
+    # 108. A twin-extraction canonical target synthetically typed as the
+    # retired runbook type is rejected: reject-then-allow pairing proving
+    # check_twin_extraction_family_types actually fires.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            twin_prompts_canonical,
+            "---\nrelaylm_doc_type: runbook\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            twin_runbook_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            twin_workspace_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "a twin-extraction canonical target synthetically typed as the retired runbook type is rejected",
+            check_twin_extraction_family_types,
+            "must declare relaylm_doc_type: operations",
+        )
+    ROOT = real_root
+
+    # 109. This guard's own implementation file: the retired-path mapping
+    # constant's own dict-key entries remain narrowly allowed (exact-line
+    # equality, not a whole-file exemption), mirroring
+    # MOBILE_DOGFOOD_SELF_FILE_EXACT_LINES.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            TWIN_EXTRACTION_SELF_FILE,
+            "TWIN_EXTRACTION_RETIRED_TO_CANONICAL: dict[str, str] = {\n"
+            + "".join(
+                f'    "{retired_path}": "{canonical_path}",\n'
+                for retired_path, canonical_path in TWIN_EXTRACTION_RETIRED_TO_CANONICAL.items()
+            )
+            + "}\n",
+        )
+        check_silent(
+            "the twin-extraction retired-path mapping constant's own dict-key entries remain allowed in the self-file",
+            check_no_live_twin_extraction_retired_paths,
+        )
+    ROOT = real_root
+
+    # 110. A retired twin-extraction literal appearing in an UNRELATED,
+    # non-allowlisted Python constant inside this guard's own implementation
+    # file is still rejected: the self-file allowance is exact-line, not
+    # whole-file.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            TWIN_EXTRACTION_SELF_FILE,
+            "SOME_OTHER_CONSTANT = (\n"
+            f'    "{twin_prompts_retired}",\n'
+            ")\n",
+        )
+        check_rejects(
+            "a retired twin-extraction literal in an unrelated self-file constant is rejected",
+            check_no_live_twin_extraction_retired_paths,
+            f"active reference to retired {twin_prompts_retired}",
+        )
+    ROOT = real_root
+
+    # 111. A retired-path Markdown link written INSIDE one of the three
+    # canonical Twin Extraction documents themselves is rejected: proves
+    # there is no canonical-path scan bypass (Cutover 1C-42 correction).
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            twin_runbook_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\n"
+            f"See [old prompts]({twin_prompts_retired}).\n",
+        )
+        check_rejects(
+            "a retired-path Markdown link written inside a canonical twin-extraction document is rejected",
+            check_no_live_twin_extraction_retired_paths,
+            f"active reference to retired {twin_prompts_retired}",
+        )
+    ROOT = real_root
+
+    # 112. A retired-path front-matter path-bearing value written INSIDE a
+    # canonical Twin Extraction document is rejected: same bypass-proof as
+    # #111 but through the front-matter pass rather than the Markdown-link
+    # pass.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            twin_workspace_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n"
+            "relaylm_related_authority:\n"
+            f"  - {twin_runbook_retired}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a retired-path front-matter value written inside a canonical twin-extraction document is rejected",
+            check_no_live_twin_extraction_retired_paths,
+            f"active reference to retired {twin_runbook_retired}",
+        )
+    ROOT = real_root
+
+    # 113. A valid link FROM one canonical Twin Extraction document TO
+    # another canonical Twin Extraction document remains accepted: scanning
+    # canonical documents (#111/#112) does not turn legitimate inter-family
+    # links into false positives.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            twin_prompts_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\n"
+            f"See [runbook]({twin_runbook_canonical}).\n",
+        )
+        _mvp_write(
+            base,
+            twin_runbook_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\n"
+            f"See [workspace flow]({twin_workspace_canonical}).\n",
+        )
+        _mvp_write(
+            base,
+            twin_workspace_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        check_silent(
+            "a valid link from one canonical twin-extraction document to another remains accepted",
+            check_no_live_twin_extraction_retired_paths,
+        )
+    ROOT = real_root
+
+    # 114. The exact allowlisted cutover-rules.yaml override key line with an
+    # extra LEADING prefix on the same physical line is rejected: proves the
+    # allowlist match is exact stripped-line equality, not substring
+    # containment (Cutover 1C-42 correction).
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/planning/documentation-cutover-rules.yaml",
+            f"# see also {twin_runbook_retired}:\n",
+        )
+        check_rejects(
+            "an allowlisted-path line with an extra leading prefix is rejected, not allowed by substring containment",
+            check_no_live_twin_extraction_retired_paths,
+            f"active reference to retired {twin_runbook_retired}",
+        )
+    ROOT = real_root
+
+    # 115. The exact allowlisted cutover-rules.yaml override key line with an
+    # extra TRAILING suffix on the same physical line is rejected: same
+    # exact-equality proof as #114 from the other side.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/planning/documentation-cutover-rules.yaml",
+            f"  {twin_runbook_retired}:  # temporary note\n",
+        )
+        check_rejects(
+            "an allowlisted-path line with an extra trailing suffix is rejected, not allowed by substring containment",
+            check_no_live_twin_extraction_retired_paths,
+            f"active reference to retired {twin_runbook_retired}",
+        )
+    ROOT = real_root
+
+    # 116. A line at the allowlisted cutover-rules.yaml path that names the
+    # approved retired path plus a second, unrelated retired-path reference
+    # on the same physical line is rejected: the allowlist covers only its
+    # own exact single-path line, not any line that happens to contain it.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/planning/documentation-cutover-rules.yaml",
+            f"  {twin_runbook_retired}: {twin_prompts_retired}:\n",
+        )
+        check_rejects(
+            "a line combining the approved retired path with an unrelated second retired-path reference is rejected",
+            check_no_live_twin_extraction_retired_paths,
+            "active reference to retired",
+        )
+    ROOT = real_root
+
+    # 117. A retired twin-extraction path literal in pyproject.toml is
+    # rejected: pyproject.toml is returned by the shared reference scanner
+    # but carries no `.md`/`.txt` suffix, so it is only covered because the
+    # literal-scan branch now applies to every non-`.md`/`.txt` suffix
+    # rather than a fixed positive suffix allowlist (Cutover 1C-42
+    # correction; previously `.toml` was silently excluded).
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "pyproject.toml",
+            "[tool.example]\n" f'note = "{twin_workspace_retired}"\n',
+        )
+        check_rejects(
+            "a retired twin-extraction path literal in pyproject.toml is rejected",
+            check_no_live_twin_extraction_retired_paths,
+            f"active reference to retired {twin_workspace_retired}",
+        )
+    ROOT = real_root
+
+    # 118. A retired twin-extraction path literal in config.example.yaml (a
+    # second root-scanned non-Markdown file, distinct from pyproject.toml)
+    # is also rejected: confirms the restructured suffix branch generalizes
+    # to every non-`.md`/`.txt` file the scanner returns, not only the one
+    # previously-missing `.toml` case.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "config.example.yaml",
+            f"# note: {twin_prompts_retired}\n",
+        )
+        check_rejects(
+            "a retired twin-extraction path literal in config.example.yaml is rejected",
+            check_no_live_twin_extraction_retired_paths,
+            f"active reference to retired {twin_prompts_retired}",
+        )
+    ROOT = real_root
+
     failed = [(name, message) for name, ok, message in results if not ok]
     for name, ok, message in results:
         status = "PASS" if ok else "FAIL"
@@ -3656,6 +4426,8 @@ def main() -> int:
         check_no_live_e1_local_runtime_architecture_path,
         check_no_live_mobile_dogfood_retired_paths,
         check_mobile_dogfood_family_types,
+        check_no_live_twin_extraction_retired_paths,
+        check_twin_extraction_family_types,
         check_operations_docs,
         check_referenced_repository_paths,
     )

@@ -1,13 +1,13 @@
 ---
-relaylm_doc_type: runbook
+relaylm_doc_type: operations
 relaylm_authority: twin_review_to_cw_a4_workspace_candidate_flow
 relaylm_status: current
 relaylm_volatility: medium
 relaylm_owner: offline_tooling
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - twin_extraction_prompts.md
-  - twin_extraction_runbook.md
+  - twin-extraction-prompts.md
+  - twin-extraction.md
   - ../architecture/cw_a4_slp_workspace_maintenance_candidates.md
 relaylm_not_authoritative_for:
   - Twin Extraction P1 preprocessing/batch-runner/merge tool execution steps
@@ -24,9 +24,9 @@ relaylm_not_authoritative_for:
 
 各ツール自体の詳細な実行手順の正はそれぞれ以下にある。本書はそれらを繋ぐ全体フローと確認手順のみを記録し、重複しては説明しない:
 
-- P1前処理・バッチ実行・マージの詳細手順: [Twin Extraction 運用ランブック](twin_extraction_runbook.md)
-- 抽出プロンプト仕様: [Twin Extraction プロンプト仕様](twin_extraction_prompts.md)
-- review import bridge の書き込み境界・安全性の詳細: [Twin Extraction 運用ランブック 6章](twin_extraction_runbook.md#6-review-import-bridge-p1出力--cw-a4-governed-import-source)
+- P1前処理・バッチ実行・マージの詳細手順: [Twin Extraction 運用ランブック](twin-extraction.md)
+- 抽出プロンプト仕様: [Twin Extraction プロンプト仕様](twin-extraction-prompts.md)
+- review import bridge の書き込み境界・安全性の詳細: [Twin Extraction 運用ランブック 6章](twin-extraction.md#6-review-import-bridge-p1出力--cw-a4-governed-import-source)
 - CW-A4 candidate/proposal planningの契約: [CW-A4 SLP Workspace Maintenance Candidates](../architecture/cw_a4_slp_workspace_maintenance_candidates.md)
 
 このランブックが**行わないこと**は [非ゴール](#非ゴール) の通り。特に、MEM/SOUL/RELへの直接適用・Primary MEM semantic page作成・uppercase source (`SOUL.md` など) の直接書き換えはこのフローのどの段階でも行われない。
@@ -66,7 +66,7 @@ MEM/SOUL/RELへの反映は、この図のどのステップにも含まれな�
 
 ### 1. P1前処理・バッチ実行・マージ
 
-[Twin Extraction 運用ランブック](twin_extraction_runbook.md) の「実行手順」1〜4節に従い、X archive / ChatGPT export から `twin_extraction_review.json` を作る。この段階はローカル前処理・オフラインLLM呼び出しのみで、`relaylm` パッケージにもRelayLMランタイムにも接続しない。
+[Twin Extraction 運用ランブック](twin-extraction.md) の「実行手順」1〜4節に従い、X archive / ChatGPT export から `twin_extraction_review.json` を作る。この段階はローカル前処理・オフラインLLM呼び出しのみで、`relaylm` パッケージにもRelayLMランタイムにも接続しない。
 
 ### 2. 本人レビュー
 
@@ -95,7 +95,7 @@ PYTHONPATH=.:scripts python scripts/relaylm_twin_review_import_bridge.py \
   --approved-facts general-only
 ```
 
-書き込み先は `runtime/characters/relm/.relaylm/sources/imports/twin-extraction/fact-<hash>.json`。この段階の書き込み・安全性の詳細([O_EXCL]/no-clobber commit/all-or-nothingロールバック/metadata検証など)は [Twin Extraction 運用ランブック 6章](twin_extraction_runbook.md#6-review-import-bridge-p1出力--cw-a4-governed-import-source) を参照。stdoutは常にcontent-freeな件数集計のみ。
+書き込み先は `runtime/characters/relm/.relaylm/sources/imports/twin-extraction/fact-<hash>.json`。この段階の書き込み・安全性の詳細([O_EXCL]/no-clobber commit/all-or-nothingロールバック/metadata検証など)は [Twin Extraction 運用ランブック 6章](twin-extraction.md#6-review-import-bridge-p1出力--cw-a4-governed-import-source) を参照。stdoutは常にcontent-freeな件数集計のみ。
 
 ### 4. CW-A4 dry-run
 

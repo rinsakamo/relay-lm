@@ -2,8 +2,8 @@
 """Twin Extraction offline preprocessing CLI.
 
 Caller-invoked, bounded, offline preprocessing for the Twin Extraction
-material tooling described in docs/tools/twin_extraction_prompts.md. This
-script is not part of the RelayLM runtime and does not import the
+material tooling described in docs/operations/twin-extraction-prompts.md.
+This script is not part of the RelayLM runtime and does not import the
 `relaylm` package.
 
 Sources:

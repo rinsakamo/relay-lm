@@ -6,7 +6,7 @@ relaylm_volatility: medium
 relaylm_owner: offline_tooling
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - twin_extraction_prompts.md
+  - ../operations/twin-extraction-prompts.md
   - ../architecture/cw_a5_character_creation_templates_showcase_import.md
   - ../architecture/character_template_creation_flow.md
 relaylm_not_authoritative_for:
