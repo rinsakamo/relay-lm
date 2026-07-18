@@ -4318,10 +4318,10 @@ validated_content_head_actions:
 reviews: 0
 pr_comments: 0
 unresolved_review_threads: 0
-final_pr_changed_files: pending
-final_pr_net_diff: pending
-receipt_bookkeeping_commit: pending
-receipt_finalization: pending
+final_pr_changed_files: 5
+final_pr_net_diff: {insertions: 911, deletions: 10}
+receipt_bookkeeping_commit: 6cbc67737b4bd8e8906ec42dbd7a94cfabdd2b24
+receipt_finalization: performed_after_validated_content_head
 ```
 
 **Selection-provenance record (sequencing deviation, accepted by the parent review).** The originally expected Cutover 1C-43 candidate was the O1 manual one-round authority (source `docs/smoke/o1_manual_one_round_runbook.md`, expected target `docs/operations/o1-manual-one-round.md`). Independent current-main inventory instead identified the single-document Consolidated Smoke Workflow Maintenance authority as a distinct, lower-overlap atomic authority suitable for this batch, and the parent review accepted it as Cutover 1C-43. This is a sequencing deviation only -- it is not a reinterpretation or rejection of the O1 manual one-round authority, which remains fully untouched in this PR and is explicitly deferred to the next cutover candidate, expected as Cutover 1C-44. No content from the future O1 cutover is imported into this batch. This batch performs an inventory-first hard cutover of the single-document Consolidated Smoke Workflow Maintenance authority: the CI-maintenance runbook describing the RelayMEM/Runtime/UI consolidated smoke workflow surfaces, changed-path classification, contract validation, and generated scripts-inventory procedure, currently typed `runbook` inside the explicitly temporary `docs/smoke/` pre-cutover anchor. Starting boundary independently reverified: `origin/main` matched the task's stated boundary `980dcaab0f7004ee449302706dfbb427c8d3422e` exactly (the squash-merge of PR #608, Cutover 1C-42) -- zero intervening commits, so no changed-boundary report was required. The required branch `claude/pr607-cutover-handoff-t5rdnj` was independently verified to hold only already-merged history before being force-reset: `git diff` between its existing head `30ce855018a2491f5720d94db493eb71c276cd9e` and the target starting main returned zero changes (identical tree `6621b270c3da2dd40c30923f608b6b9b996cf600`), the correct verification for a branch whose only prior content was itself later squash-merged (a literal `git merge-base --is-ancestor` check does not hold across a squash merge, since the squash creates a new commit object on `main` rather than fast-forwarding the branch's own commits).
