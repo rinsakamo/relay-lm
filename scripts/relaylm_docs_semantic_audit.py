@@ -1739,6 +1739,37 @@ O1_MANUAL_ONE_ROUND_SELF_FILE_EXACT_LINES = frozenset(
 )
 
 
+def _o1_manual_one_round_scanned_files(root: Path) -> list[Path]:
+    """This guard's scan universe: the shared `_mobile_dogfood_scanned_files`
+    file set, plus every `docs/**/*.txt` file.
+
+    The shared `MVP_REFERENCE_SCAN_DIRS` constant (reused by the
+    mobile-dogfood, twin-extraction, and smoke-maintenance guards) only lists
+    `.md`/`.yaml`/`.yml` suffixes for `docs/`, so no `.txt` file is currently
+    part of that shared scan universe even though `docs/evidence/**/*.txt`
+    (`-source.txt`) files exist and already carry a dedicated allowlist
+    exemption elsewhere in this module. The Codex review correction for this
+    guard requires `.txt` coverage; rather than widen the shared constant
+    (which would also change what the mobile-dogfood/twin-extraction/
+    smoke-maintenance guards scan -- an out-of-scope redesign per the
+    accepted correction scope), this helper adds `docs/**/*.txt` locally, for
+    this guard only.
+    """
+    files = list(_mobile_dogfood_scanned_files(root))
+    seen = {file_path.resolve() for file_path in files}
+    docs_root = root / "docs"
+    if docs_root.is_dir():
+        for candidate in sorted(docs_root.rglob("*.txt")):
+            if not candidate.is_file():
+                continue
+            resolved = candidate.resolve()
+            if resolved in seen:
+                continue
+            files.append(candidate)
+            seen.add(resolved)
+    return files
+
+
 def check_no_live_o1_manual_one_round_retired_paths(errors: list[str]) -> None:
     for retired_path, canonical_path in O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL.items():
         if (ROOT / retired_path).exists():
@@ -1747,7 +1778,7 @@ def check_no_live_o1_manual_one_round_retired_paths(errors: list[str]) -> None:
                 f"(moved to {canonical_path} by Cutover 1C-44)"
             )
 
-    for path in _mobile_dogfood_scanned_files(ROOT):
+    for path in _o1_manual_one_round_scanned_files(ROOT):
         relative_path = path.relative_to(ROOT).as_posix()
         if relative_path in O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL:
             continue
@@ -1785,6 +1816,7 @@ def check_no_live_o1_manual_one_round_retired_paths(errors: list[str]) -> None:
 
         # `.md`/`.txt` document -- including the canonical destination
         # document itself; there is no canonical-path scan bypass.
+        reported_line_numbers: set[int] = set()
 
         # Pass 1: Markdown link targets, resolved against this file's own
         # directory (or the repository root for a "docs/"-qualified target).
@@ -1803,6 +1835,7 @@ def check_no_live_o1_manual_one_round_retired_paths(errors: list[str]) -> None:
                     f"{relative_path}:{line_number}: active reference to retired "
                     f"{resolved}: markdown link target {raw_target!r}"
                 )
+                reported_line_numbers.add(line_number)
 
         # Pass 2: every supported path-bearing front-matter key, resolved via
         # the actual parsed first-block YAML mapping.
@@ -1816,6 +1849,27 @@ def check_no_live_o1_manual_one_round_retired_paths(errors: list[str]) -> None:
             errors.append(
                 f"{relative_path}:{line_number}: active reference to retired "
                 f"{resolved}: {key} entry {raw_target!r}"
+            )
+            reported_line_numbers.add(line_number)
+
+        # Pass 3 (Codex review correction): literal retired-path mentions in
+        # Markdown/text prose or inline code (backticks) that are not
+        # expressed as a Markdown link or a front-matter path value -- e.g. a
+        # plain-prose or backtick-quoted mention of the old path in running
+        # text. Uses the same repository-root-qualified literal pattern as
+        # the non-Markdown branch above. Lines already reported by Pass 1 or
+        # Pass 2 are skipped here so a link or front-matter value that also
+        # happens to contain the literal is not double-reported.
+        for line_number, line in enumerate(lines, start=1):
+            if line_number in reported_line_numbers:
+                continue
+            stripped = line.strip()
+            literal_match = O1_MANUAL_ONE_ROUND_REFERENCE_PATTERN.search(line)
+            if literal_match is None or _is_allowed(stripped):
+                continue
+            errors.append(
+                f"{relative_path}:{line_number}: active reference to retired "
+                f"{literal_match.group(0)}: {stripped!r}"
             )
 
 
@@ -5864,6 +5918,116 @@ def self_test() -> None:
             f"active reference to retired {o1_retired}",
         )
     ROOT = real_root
+
+    # ------------------------------------------------------------------
+    # Codex review correction (PR #610, commit 8426a0d): the Markdown-link
+    # and front-matter passes alone were silent on a plain-prose or
+    # backtick-quoted mention of the retired path inside an active `.md`
+    # document (not expressed as a Markdown link or front-matter value).
+    # These assertions cover the added Pass 3 literal scan for `.md`/`.txt`
+    # files.
+    # ------------------------------------------------------------------
+
+    # 186. A prose/backtick mention of the root-qualified retired path in a
+    # non-allowlisted .md file (no Markdown link syntax) is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_o1_prose_mention.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See the retired `{o1_retired}` path for historical context.\n",
+        )
+        check_rejects(
+            "a prose/backtick mention of the retired o1-manual-one-round path in a non-allowlisted .md file is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 187. A backtick mention of the retired path in a frozen-status .md
+    # document is still rejected: no generic frozen/historical bypass for
+    # prose mentions, matching the existing no-generic-status-bypass proof
+    # for the link form (test #168).
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_o1_frozen_prose.md",
+            "---\nrelaylm_doc_type: evidence\nrelaylm_status: frozen\n---\n\n"
+            f"Historical note mentioning `{o1_retired}` in passing.\n",
+        )
+        check_rejects(
+            "a backtick mention of the retired o1-manual-one-round path in a frozen-status .md document is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 188. The exact same prose/backtick literal at the whole-file
+    # allowlisted migration receipt path is accepted: rejection-then-
+    # acceptance pair proving the receipt allowlist covers the new literal
+    # scan too, not only the pre-existing link/front-matter passes.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
+            "---\nrelaylm_doc_type: evidence\nrelaylm_status: current\n---\n\n"
+            f"Receipt narrative mentioning `{o1_retired}` many times: "
+            f"{o1_retired}, {o1_retired}.\n",
+        )
+        check_silent(
+            "the same retired o1-manual-one-round literal is accepted at the exact whole-file-allowlisted migration receipt path",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 189. A .txt file carrying the literal (not covered by the shared
+    # scanner's suffix list, so scanned only via this guard's own
+    # docs/**/*.txt extension) is rejected when not allowlisted.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_o1_mention-source.txt",
+            f"Frozen source text mentioning {o1_retired} verbatim.\n",
+        )
+        check_rejects(
+            "a .txt file carrying the retired o1-manual-one-round literal is rejected when not allowlisted",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 190. The canonical target path literal in prose is accepted: the
+    # literal scan distinguishes the canonical hyphenated path from the
+    # retired underscored path rather than flagging any O1-related mention.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_o1_canonical_prose_mention.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See the canonical `{o1_canonical}` path for current guidance.\n",
+        )
+        check_silent(
+            "the canonical o1-manual-one-round target path literal in prose is accepted, distinguished from the retired path",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 191. The real repository passes the corrected guard (including the new
+    # Pass 3 literal scan and the docs/**/*.txt extension) with zero errors.
+    check_silent(
+        "real repository: no active reference to the retired o1-manual-one-round path after the Codex review correction",
+        check_no_live_o1_manual_one_round_retired_paths,
+    )
 
     failed = [(name, message) for name, ok, message in results if not ok]
     for name, ok, message in results:

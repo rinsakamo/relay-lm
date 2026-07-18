@@ -4427,7 +4427,7 @@ local_validation:
   compileall: passed
   docs_link_check: passed
   docs_semantic_audit: passed
-  docs_semantic_audit_self_test: passed_188_assertions
+  docs_semantic_audit_self_test: passed_194_assertions
   documentation_current_boundary_smoke: passed
   cutover_prepare_self_test: passed
   mvp_completion_report_smoke_check_model_check_all: passed
@@ -4456,11 +4456,20 @@ open_pr_isolation:
   shared_file_overlaps: ["586 touches docs/README.md, disjoint sections; nothing imported"]
   no_content_imported: true
 validated_content_head: pending
+prior_validated_content_head_superseded: 8426a0d534203443c5096e03b25cddbb68893477
 final_pr_changed_files: pending
 final_pr_net_diff: pending
 receipt_bookkeeping_commit: pending
 receipt_finalization: pending
 ```
+
+**Codex review correction (PR #610).** Independent GitHub Codex review of the initial substantive commit `8426a0d534203443c5096e03b25cddbb68893477` posted one actionable P2 inline comment on `scripts/relaylm_docs_semantic_audit.py` (review thread `PRRT_kwDOSh2R-s6R9t_k`, comment `discussion_r3607868765`): `check_no_live_o1_manual_one_round_retired_paths()` sent every `.md`/`.txt` file straight to the Markdown-link/front-matter passes, so a plain-prose or backtick-quoted mention of the retired path (not expressed as a Markdown link or front-matter value) would pass silently. The finding was verified independently before fixing: a repository-wide grep confirmed the only legitimate `.md` carrier of the bare retired-path literal was this migration receipt (whole-file allowlisted).
+
+Fixed in the substantive correction commit that supersedes `8426a0d` as `validated_content_head` (recorded below): `check_no_live_o1_manual_one_round_retired_paths()` gained a third scan pass applying the same repository-root-qualified literal pattern used for non-Markdown suffixes to `.md`/`.txt` files as well, using the exact existing allowlists (migration receipt whole-file; the one exact `documentation-cutover-rules.yaml` path_overrides key line; this guard's own dict-key line), with exact stripped-line equality preserved (no substring containment). Lines already reported by the Markdown-link pass or the front-matter pass are tracked and skipped in the new literal pass, so a link or front-matter value that also contains the literal is never double-reported. Because the shared `MVP_REFERENCE_SCAN_DIRS` scanner (reused by the mobile-dogfood, twin-extraction, and smoke-maintenance guards) does not include the `.txt` suffix for `docs/` at all, a new guard-local helper `_o1_manual_one_round_scanned_files()` adds `docs/**/*.txt` to this guard's own scan universe only, without touching the shared constant or any other guard's scan scope -- an explicit, narrow correction-scope decision, not a retrofit of the mobile-dogfood/twin-extraction/smoke-maintenance guards.
+
+Six new deterministic `--self-test` assertions cover the correction: a prose/backtick mention of the retired path in a non-allowlisted `.md` file is rejected; the same mention in a frozen-status `.md` document is rejected (no generic frozen bypass); the identical literal is accepted at the exact whole-file-allowlisted receipt path (rejection-then-acceptance pair); a `.txt` file carrying the literal is rejected when not allowlisted; the canonical target path literal in prose is accepted (canonical-vs-retired distinction in the new literal pass); and the real repository passes the corrected guard. These bring `relaylm_docs_semantic_audit.py --self-test` from 188 to **194 total assertions**, recorded above.
+
+The Codex review thread is not resolved by this task; a factual reply naming the fixing commit is left on the thread instead, per the required procedure. This correction does not reinterpret, weaken, or alter the disposition, provenance, or status-preservation rationale recorded below; it only closes the prose/backtick detection gap the review identified.
 
 **Selection-provenance record (accepted deferral, not a new selection).** This family was the originally expected Cutover 1C-43 candidate (source `docs/smoke/o1_manual_one_round_runbook.md`, expected target `docs/operations/o1-manual-one-round.md`), deferred by the accepted sequencing deviation recorded in the C1C43 entry above, and is now executed as Cutover 1C-44 as required. It was not newly selected by this task's own inventory; the C1C43 entry's selection-provenance record already named it as the deferred candidate. Starting boundary independently reverified: `origin/main` matched the task's stated boundary `7544ce164f4bc69618a287581f0f1af9686f0eab` exactly (the squash-merge of PR #609, Cutover 1C-43) -- zero intervening commits.
 
