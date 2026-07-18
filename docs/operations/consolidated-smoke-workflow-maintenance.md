@@ -1,5 +1,5 @@
 ---
-relaylm_doc_type: runbook
+relaylm_doc_type: operations
 relaylm_authority: consolidated_smoke_workflow_maintenance
 relaylm_status: current
 relaylm_volatility: medium

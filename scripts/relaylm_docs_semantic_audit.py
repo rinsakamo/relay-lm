@@ -33,9 +33,9 @@ REQUIRED_METADATA_PATHS = (
     "docs/evidence/releases/v0.1-final-main-validation-tag-receipt.md",
     "docs/relaysoul/README.md",
     "docs/smoke/README.md",
-    "docs/smoke/consolidated_workflow_maintenance.md",
     "docs/smoke/scripts_inventory.md",
     "docs/operations/mobile-dogfood-entry.md",
+    "docs/operations/consolidated-smoke-workflow-maintenance.md",
 )
 
 REQUIRED_METADATA_KEYS = (
@@ -1495,6 +1495,176 @@ def check_twin_extraction_family_types(errors: list[str]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Cutover 1C-43: retirement guard for the single-document Consolidated Smoke
+# Workflow Maintenance authority, following the CORRECTED Cutover 1C-42
+# twin-extraction guard pattern (post-`81d173a` state) as the binding
+# precedent: canonical documents are scanned like any other document (no
+# canonical-target skip), the reference-line allowlist is exact
+# stripped-line equality (never substring containment), and the
+# non-Markdown literal scan applies to every scanned file whose suffix is
+# not `.md`/`.txt` (no fixed positive suffix allowlist, so a retired
+# literal in e.g. `pyproject.toml` remains detectable).
+#
+# This family has exactly one retired->canonical pair, unlike the
+# three-member mobile-dogfood and twin-extraction families, but reuses the
+# same shared scanning/resolution helpers (`_mobile_dogfood_scanned_files`,
+# `_mobile_dogfood_resolve`, `_mobile_dogfood_front_matter_path_values`,
+# `_mobile_dogfood_locate`, `MOBILE_DOGFOOD_MD_LINK_RE`) rather than pasting
+# a third bespoke copy of the scanning machinery.
+#
+# `docs/smoke/scripts_inventory.md` is a distinct, unmoved authority (a
+# frozen `evaluation_record`/`historical` summary, not `operations`); it is
+# deliberately absent from this guard's retired-to-canonical map. The
+# `check_operations_docs` maintenance/inventory pairing check above
+# continues to read the maintenance document at its new canonical path
+# while `scripts_inventory.md` stays at its own unmoved path.
+# ---------------------------------------------------------------------------
+SMOKE_MAINTENANCE_RETIRED_TO_CANONICAL: dict[str, str] = {
+    "docs/smoke/consolidated_workflow_maintenance.md": "docs/operations/consolidated-smoke-workflow-maintenance.md",
+}
+SMOKE_MAINTENANCE_RETIRED_PATHS = tuple(sorted(SMOKE_MAINTENANCE_RETIRED_TO_CANONICAL))
+SMOKE_MAINTENANCE_CANONICAL_PATHS = frozenset(SMOKE_MAINTENANCE_RETIRED_TO_CANONICAL.values())
+
+# Reuses the mobile-dogfood guard's generic `[text](target)` Markdown link
+# matcher.
+SMOKE_MAINTENANCE_MD_LINK_RE = MOBILE_DOGFOOD_MD_LINK_RE
+
+# Repository-root-qualified literal scan, applied to every scanned file
+# whose suffix is not `.md`/`.txt` -- matches the one retired path anywhere
+# in a line (YAML mapping keys, Python string literals, TOML keys/values,
+# and any other non-Markdown/text suffix the shared scanner returns),
+# independent of Markdown link or front-matter syntax.
+SMOKE_MAINTENANCE_REFERENCE_PATTERN = re.compile(
+    "(?:" + "|".join(re.escape(path) for path in SMOKE_MAINTENANCE_RETIRED_PATHS) + ")"
+)
+
+# The migration receipt's own Cutover 1C-43 entry narrates the retired path
+# by design; whole-file allowlisted, matching the established
+# mobile-dogfood/twin-extraction precedent.
+SMOKE_MAINTENANCE_REFERENCE_ALLOWLISTED_FILES = frozenset(
+    {
+        "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
+    }
+)
+
+# Exact, reviewed whole-line contents that are legitimate occurrences of the
+# retired literal inside an otherwise-active/current file: the one
+# path_overrides mapping key in documentation-cutover-rules.yaml. Matched by
+# exact stripped-line equality, never substring containment.
+SMOKE_MAINTENANCE_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
+    "docs/planning/documentation-cutover-rules.yaml": tuple(
+        f"{retired_path}:" for retired_path in SMOKE_MAINTENANCE_RETIRED_PATHS
+    ),
+}
+
+# This guard's own implementation file. Narrow, exact-line self-allowance
+# only -- not a whole-file exemption. The only line in this file that may
+# legitimately spell out the retired literal is the
+# SMOKE_MAINTENANCE_RETIRED_TO_CANONICAL dict's own key: value entry.
+# Matched by exact stripped-line equality, not substring.
+SMOKE_MAINTENANCE_SELF_FILE = "scripts/relaylm_docs_semantic_audit.py"
+SMOKE_MAINTENANCE_SELF_FILE_EXACT_LINES = frozenset(
+    f'"{retired_path}": "{canonical_path}",'
+    for retired_path, canonical_path in SMOKE_MAINTENANCE_RETIRED_TO_CANONICAL.items()
+)
+
+
+def check_no_live_smoke_maintenance_retired_paths(errors: list[str]) -> None:
+    for retired_path, canonical_path in SMOKE_MAINTENANCE_RETIRED_TO_CANONICAL.items():
+        if (ROOT / retired_path).exists():
+            errors.append(
+                f"{retired_path}: retired smoke-workflow-maintenance path reintroduced "
+                f"(moved to {canonical_path} by Cutover 1C-43)"
+            )
+
+    for path in _mobile_dogfood_scanned_files(ROOT):
+        relative_path = path.relative_to(ROOT).as_posix()
+        if relative_path in SMOKE_MAINTENANCE_RETIRED_TO_CANONICAL:
+            continue
+        if relative_path in SMOKE_MAINTENANCE_REFERENCE_ALLOWLISTED_FILES:
+            continue
+        is_self_file = relative_path == SMOKE_MAINTENANCE_SELF_FILE
+        allowed_lines = SMOKE_MAINTENANCE_REFERENCE_LINE_ALLOWLIST.get(relative_path, ())
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+
+        lines = text.splitlines()
+
+        def _is_allowed(stripped_line: str) -> bool:
+            if is_self_file:
+                return stripped_line in SMOKE_MAINTENANCE_SELF_FILE_EXACT_LINES
+            return stripped_line in allowed_lines
+
+        if path.suffix not in (".md", ".txt"):
+            # Every other scanned suffix (`.yaml`, `.yml`, `.py`, `.toml`,
+            # and any further suffix the shared scanner returns): use a
+            # literal repository-root-qualified match, not Markdown link
+            # syntax or a YAML front-matter block.
+            for line_number, line in enumerate(lines, start=1):
+                stripped = line.strip()
+                literal_match = SMOKE_MAINTENANCE_REFERENCE_PATTERN.search(line)
+                if literal_match is None or _is_allowed(stripped):
+                    continue
+                errors.append(
+                    f"{relative_path}:{line_number}: active reference to retired "
+                    f"{literal_match.group(0)}: {stripped!r}"
+                )
+            continue
+
+        # `.md`/`.txt` document -- including the canonical destination
+        # document itself; there is no canonical-path scan bypass.
+
+        # Pass 1: Markdown link targets, resolved against this file's own
+        # directory (or the repository root for a "docs/"-qualified
+        # target). Covers root-qualified, bare same-directory, ./, ../,
+        # ../../, and anchored spellings via the shared resolver.
+        for line_number, line in enumerate(lines, start=1):
+            stripped = line.strip()
+            for link_match in SMOKE_MAINTENANCE_MD_LINK_RE.finditer(line):
+                raw_target = link_match.group(1).strip()
+                resolved = _mobile_dogfood_resolve(path, raw_target)
+                if resolved not in SMOKE_MAINTENANCE_RETIRED_TO_CANONICAL:
+                    continue
+                if _is_allowed(stripped):
+                    continue
+                errors.append(
+                    f"{relative_path}:{line_number}: active reference to retired "
+                    f"{resolved}: markdown link target {raw_target!r}"
+                )
+
+        # Pass 2: every supported path-bearing front-matter key, resolved
+        # via the actual parsed first-block YAML mapping.
+        for key, raw_target in _mobile_dogfood_front_matter_path_values(text):
+            resolved = _mobile_dogfood_resolve(path, raw_target)
+            if resolved not in SMOKE_MAINTENANCE_RETIRED_TO_CANONICAL:
+                continue
+            line_number, stripped = _mobile_dogfood_locate(lines, raw_target)
+            if _is_allowed(stripped):
+                continue
+            errors.append(
+                f"{relative_path}:{line_number}: active reference to retired "
+                f"{resolved}: {key} entry {raw_target!r}"
+            )
+
+
+def check_smoke_maintenance_family_types(errors: list[str]) -> None:
+    for canonical_path in sorted(SMOKE_MAINTENANCE_CANONICAL_PATHS):
+        meta, _ = parse_front_matter(canonical_path)
+        if meta.get("relaylm_doc_type") != "operations":
+            errors.append(
+                f"{canonical_path}: must declare relaylm_doc_type: operations, not "
+                f"{meta.get('relaylm_doc_type')!r} (never the retired runbook type)"
+            )
+        if meta.get("relaylm_status") != "current":
+            errors.append(
+                f"{canonical_path}: must declare relaylm_status: current, not "
+                f"{meta.get('relaylm_status')!r}"
+            )
+
+
+# ---------------------------------------------------------------------------
 # Cutover 1C-39 correction: fail closed on a completed LAT-1 retrieval-scaling
 # evidence record (docs/evidence/evaluations/lat1-retrieval-scaling-*.md) that
 # is incomplete, unfilled, provenance-weak, or content-bearing. No such
@@ -1903,7 +2073,7 @@ def check_operations_docs(errors: list[str]) -> None:
         if anchor not in mobile:
             errors.append(f"{mobile_path}: missing public-exposure guard {anchor!r}")
 
-    maintenance_path = "docs/smoke/consolidated_workflow_maintenance.md"
+    maintenance_path = "docs/operations/consolidated-smoke-workflow-maintenance.md"
     maintenance = read_text(maintenance_path)
     inventory = read_text("docs/smoke/scripts_inventory.md")
     for relative_path, text in (
@@ -1925,7 +2095,7 @@ def check_referenced_repository_paths(errors: list[str]) -> None:
         "apps/soul-lab/README.md",
         "docs/release/v0.1-release-readiness.md",
         "docs/evidence/releases/v0.1-final-main-validation-tag-receipt.md",
-        "docs/smoke/consolidated_workflow_maintenance.md",
+        "docs/operations/consolidated-smoke-workflow-maintenance.md",
     )
     for relative_path in paths:
         text = read_text(relative_path)
@@ -4389,6 +4559,561 @@ def self_test() -> None:
         )
     ROOT = real_root
 
+    # ------------------------------------------------------------------
+    # Cutover 1C-43: Consolidated Smoke Workflow Maintenance retired-path
+    # guard self-tests, following the CORRECTED Cutover 1C-42 twin-extraction
+    # pattern for a single-member family (no canonical-path scan bypass,
+    # exact stripped-line allowlist equality, non-Markdown literal scan on
+    # every non-`.md`/`.txt` suffix).
+    # ------------------------------------------------------------------
+    smoke_maintenance_retired = SMOKE_MAINTENANCE_RETIRED_PATHS[0]
+    smoke_maintenance_canonical = SMOKE_MAINTENANCE_RETIRED_TO_CANONICAL[smoke_maintenance_retired]
+    smoke_maintenance_anchor = "validation"
+
+    # 119. The real repository has no live reference to the retired
+    # smoke-workflow-maintenance path.
+    check_silent(
+        "real repository: no active reference to the retired smoke-workflow-maintenance path",
+        check_no_live_smoke_maintenance_retired_paths,
+    )
+
+    # 120. The retired smoke-workflow-maintenance file being reintroduced is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            smoke_maintenance_retired,
+            "---\nrelaylm_doc_type: runbook\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "the reintroduced retired smoke-workflow-maintenance file is rejected",
+            check_no_live_smoke_maintenance_retired_paths,
+            f"{smoke_maintenance_retired}: retired smoke-workflow-maintenance path reintroduced",
+        )
+    ROOT = real_root
+
+    # 121. A root-qualified Markdown link to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_smoke_maintenance_root_link.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [old maintenance doc]({smoke_maintenance_retired}).\n",
+        )
+        check_rejects(
+            "a root-qualified link to the retired smoke-workflow-maintenance path is rejected",
+            check_no_live_smoke_maintenance_retired_paths,
+            f"active reference to retired {smoke_maintenance_retired}",
+        )
+    ROOT = real_root
+
+    # 122. A same-directory bare-filename reference (from another file still
+    # under docs/smoke/) is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/smoke/example_sibling.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [old maintenance doc]({smoke_maintenance_retired.rsplit('/', 1)[-1]}).\n",
+        )
+        check_rejects(
+            "a same-directory bare-filename reference resolving to the retired smoke-workflow-maintenance path is rejected",
+            check_no_live_smoke_maintenance_retired_paths,
+            f"active reference to retired {smoke_maintenance_retired}",
+        )
+    ROOT = real_root
+
+    # 123. A "../smoke/..." reference from a sibling directory (docs/operations/)
+    # resolving to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/operations/example_other.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [old maintenance doc](../smoke/{smoke_maintenance_retired.rsplit('/', 1)[-1]}).\n",
+        )
+        check_rejects(
+            "a ../smoke/... reference resolving to the retired smoke-workflow-maintenance path is rejected",
+            check_no_live_smoke_maintenance_retired_paths,
+            f"active reference to retired {smoke_maintenance_retired}",
+        )
+    ROOT = real_root
+
+    # 124. A "../../smoke/..." reference from a deeper directory resolving to
+    # the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_other_smoke_maintenance.md",
+            "---\nrelaylm_doc_type: implementation_completion_report\nrelaylm_status: current\n---\n\n"
+            f"See [old maintenance doc](../../smoke/{smoke_maintenance_retired.rsplit('/', 1)[-1]}).\n",
+        )
+        check_rejects(
+            "a ../../smoke/... reference resolving to the retired smoke-workflow-maintenance path is rejected",
+            check_no_live_smoke_maintenance_retired_paths,
+            f"active reference to retired {smoke_maintenance_retired}",
+        )
+    ROOT = real_root
+
+    # 125. A Markdown link carrying a heading anchor fragment still resolves
+    # (ignoring the anchor) to the retired path and is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_anchor_smoke_maintenance.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [validation section]({smoke_maintenance_retired}#{smoke_maintenance_anchor}).\n",
+        )
+        check_rejects(
+            "a Markdown link with a heading anchor resolving to the retired smoke-workflow-maintenance path is rejected",
+            check_no_live_smoke_maintenance_retired_paths,
+            "markdown link target",
+        )
+    ROOT = real_root
+
+    # 126. A relaylm_related_authority front-matter entry resolving to the
+    # retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/smoke/example_related_authority.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n"
+            "relaylm_related_authority:\n"
+            f"  - {smoke_maintenance_retired.rsplit('/', 1)[-1]}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a relaylm_related_authority entry resolving to the retired smoke-workflow-maintenance path is rejected",
+            check_no_live_smoke_maintenance_retired_paths,
+            "relaylm_related_authority entry",
+        )
+    ROOT = real_root
+
+    # 127. A relaylm_current_status_source scalar front-matter entry
+    # resolving to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_current_status_source_smoke_maintenance.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n"
+            f"relaylm_current_status_source: {smoke_maintenance_retired}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a relaylm_current_status_source scalar resolving to the retired smoke-workflow-maintenance path is rejected",
+            check_no_live_smoke_maintenance_retired_paths,
+            "relaylm_current_status_source entry",
+        )
+    ROOT = real_root
+
+    # 128. A frozen/historical_after_merge document's own unallowlisted
+    # mention of the retired path is REJECTED: no generic whole-document
+    # status bypass.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_smoke_maintenance_report.md",
+            "---\nrelaylm_doc_type: implementation_completion_report\nrelaylm_status: historical_after_merge\n---\n\n"
+            f"See [old maintenance doc]({smoke_maintenance_retired}).\n",
+        )
+        check_rejects(
+            "a frozen-status document's unallowlisted retired smoke-workflow-maintenance link is rejected without an exact line allowance",
+            check_no_live_smoke_maintenance_retired_paths,
+            f"active reference to retired {smoke_maintenance_retired}",
+        )
+    ROOT = real_root
+
+    # 129. A root-qualified Markdown link to the canonical target is allowed.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            smoke_maintenance_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            "docs/example_root_qualified_smoke_maintenance_link.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"- [target]({smoke_maintenance_canonical})\n",
+        )
+        check_silent(
+            "a root-qualified link to the canonical smoke-workflow-maintenance target is allowed",
+            check_no_live_smoke_maintenance_retired_paths,
+        )
+    ROOT = real_root
+
+    # 130. A relative link to the canonical target from a sibling document in
+    # the same (docs/operations/) directory is allowed.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            smoke_maintenance_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            "docs/operations/example_index.md",
+            "---\nrelaylm_doc_type: documentation_index\nrelaylm_status: current\n---\n\n"
+            f"- [maintenance]({smoke_maintenance_canonical.rsplit('/', 1)[-1]})\n",
+        )
+        check_silent(
+            "a relative link to the canonical smoke-workflow-maintenance target is allowed",
+            check_no_live_smoke_maintenance_retired_paths,
+        )
+    ROOT = real_root
+
+    # 131/132. The exact reviewed documentation-cutover-rules.yaml
+    # path_overrides key line is allowed ONLY because of the exact-line
+    # allowlist: rejected in a non-allowlisted file first, then silent only
+    # at the one exact allowlisted path.
+    smoke_maintenance_override_key_line = f"  {smoke_maintenance_retired}:\n    disposition: moved\n"
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, "docs/planning/example_not_allowlisted_rules.yaml", smoke_maintenance_override_key_line)
+        check_rejects(
+            "the exact smoke-workflow-maintenance cutover-rules.yaml override key literal is rejected in a non-allowlisted file",
+            check_no_live_smoke_maintenance_retired_paths,
+            f"active reference to retired {smoke_maintenance_retired}",
+        )
+    ROOT = real_root
+
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, "docs/planning/documentation-cutover-rules.yaml", smoke_maintenance_override_key_line)
+        check_silent(
+            "the identical override key literal is silent only at the exact allowlisted cutover-rules.yaml path",
+            check_no_live_smoke_maintenance_retired_paths,
+        )
+    ROOT = real_root
+
+    # 133. Zero duplicate live copies: the retired path coexisting with its
+    # own already-created canonical target is still rejected for the retired
+    # path.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            smoke_maintenance_retired,
+            "---\nrelaylm_doc_type: runbook\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            smoke_maintenance_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "the retired smoke-workflow-maintenance file coexisting with its own canonical target (duplicate live copy) is rejected",
+            check_no_live_smoke_maintenance_retired_paths,
+            "retired smoke-workflow-maintenance path reintroduced",
+        )
+    ROOT = real_root
+
+    # 134. The real repository's canonical smoke-workflow-maintenance target
+    # declares both the correct operations doc type AND relaylm_status: current.
+    check_silent(
+        "the real repository's smoke-workflow-maintenance canonical target declares relaylm_doc_type: operations and relaylm_status: current",
+        check_smoke_maintenance_family_types,
+    )
+
+    # 135a. Wrong doc type + correct status ("runbook" + "current") is rejected
+    # for the doc-type mismatch: reject-then-allow pairing proving
+    # check_smoke_maintenance_family_types actually fires on relaylm_doc_type.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            smoke_maintenance_canonical,
+            "---\nrelaylm_doc_type: runbook\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "a smoke-workflow-maintenance canonical target synthetically typed as the retired runbook type (correct status) is rejected",
+            check_smoke_maintenance_family_types,
+            "must declare relaylm_doc_type: operations",
+        )
+    ROOT = real_root
+
+    # 135b. Correct doc type + wrong status ("operations" + "target") is
+    # rejected for the status mismatch: proves check_smoke_maintenance_family_types
+    # also fires on relaylm_status independently of relaylm_doc_type.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            smoke_maintenance_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: target\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "a smoke-workflow-maintenance canonical target with the correct doc type but a wrong relaylm_status is rejected",
+            check_smoke_maintenance_family_types,
+            "must declare relaylm_status: current",
+        )
+    ROOT = real_root
+
+    # 135c. Wrong doc type AND wrong status ("runbook" + "target") produces
+    # both independent diagnostics in the same run: proves the two checks are
+    # independent, not short-circuiting on the first mismatch.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            smoke_maintenance_canonical,
+            "---\nrelaylm_doc_type: runbook\nrelaylm_status: target\n---\n\nBody.\n",
+        )
+        both_errors: list[str] = []
+        check_smoke_maintenance_family_types(both_errors)
+        has_type_error = any("must declare relaylm_doc_type: operations" in error for error in both_errors)
+        has_status_error = any("must declare relaylm_status: current" in error for error in both_errors)
+        ok = has_type_error and has_status_error
+        results.append(
+            (
+                "a smoke-workflow-maintenance canonical target with both a wrong doc type and a wrong status produces both independent diagnostics",
+                ok,
+                "" if ok else f"errors: {both_errors!r}",
+            )
+        )
+    ROOT = real_root
+
+    # 135d. The correct operations/current profile is accepted (reject-then-allow
+    # completion: 135a-c proved rejection, this proves acceptance at the exact
+    # correct profile).
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            smoke_maintenance_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        check_silent(
+            "a smoke-workflow-maintenance canonical target with the correct operations/current profile is accepted",
+            check_smoke_maintenance_family_types,
+        )
+    ROOT = real_root
+
+    # 136. This guard's own implementation file: the retired-path mapping
+    # constant's own dict-key entry remains narrowly allowed (exact-line
+    # equality, not a whole-file exemption).
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            SMOKE_MAINTENANCE_SELF_FILE,
+            "SMOKE_MAINTENANCE_RETIRED_TO_CANONICAL: dict[str, str] = {\n"
+            f'    "{smoke_maintenance_retired}": "{smoke_maintenance_canonical}",\n'
+            "}\n",
+        )
+        check_silent(
+            "the smoke-workflow-maintenance retired-path mapping constant's own dict-key entry remains allowed in the self-file",
+            check_no_live_smoke_maintenance_retired_paths,
+        )
+    ROOT = real_root
+
+    # 137. A retired smoke-workflow-maintenance literal appearing in an
+    # UNRELATED, non-allowlisted Python constant inside this guard's own
+    # implementation file is still rejected: the self-file allowance is
+    # exact-line, not whole-file.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            SMOKE_MAINTENANCE_SELF_FILE,
+            "SOME_OTHER_CONSTANT = (\n" f'    "{smoke_maintenance_retired}",\n' ")\n",
+        )
+        check_rejects(
+            "a retired smoke-workflow-maintenance literal in an unrelated self-file constant is rejected",
+            check_no_live_smoke_maintenance_retired_paths,
+            f"active reference to retired {smoke_maintenance_retired}",
+        )
+    ROOT = real_root
+
+    # 138. A retired-path Markdown link written INSIDE the canonical
+    # smoke-workflow-maintenance document itself is rejected: proves there is
+    # no canonical-path scan bypass.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            smoke_maintenance_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\n"
+            f"See [old self-link]({smoke_maintenance_retired}).\n",
+        )
+        check_rejects(
+            "a retired-path Markdown link written inside the canonical smoke-workflow-maintenance document is rejected",
+            check_no_live_smoke_maintenance_retired_paths,
+            f"active reference to retired {smoke_maintenance_retired}",
+        )
+    ROOT = real_root
+
+    # 139. A retired-path front-matter path-bearing value written INSIDE the
+    # canonical document is rejected: same bypass-proof as #138 through the
+    # front-matter pass rather than the Markdown-link pass.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            smoke_maintenance_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n"
+            "relaylm_related_authority:\n"
+            f"  - {smoke_maintenance_retired}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a retired-path front-matter value written inside the canonical smoke-workflow-maintenance document is rejected",
+            check_no_live_smoke_maintenance_retired_paths,
+            f"active reference to retired {smoke_maintenance_retired}",
+        )
+    ROOT = real_root
+
+    # 140. A valid link FROM the canonical smoke-workflow-maintenance document
+    # TO an unrelated canonical document (mobile-dogfood-entry.md) remains
+    # accepted: scanning the canonical document (#138/#139) does not turn a
+    # legitimate, unrelated link into a false positive.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            smoke_maintenance_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\n"
+            "See [mobile dogfood entry](mobile-dogfood-entry.md).\n",
+        )
+        _mvp_write(
+            base,
+            "docs/operations/mobile-dogfood-entry.md",
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: target\n---\n\nBody.\n",
+        )
+        check_silent(
+            "a valid link from the canonical smoke-workflow-maintenance document to an unrelated document remains accepted",
+            check_no_live_smoke_maintenance_retired_paths,
+        )
+    ROOT = real_root
+
+    # 141. The exact allowlisted cutover-rules.yaml override key line with an
+    # extra LEADING prefix on the same physical line is rejected: proves the
+    # allowlist match is exact stripped-line equality, not substring
+    # containment.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/planning/documentation-cutover-rules.yaml",
+            f"# see also {smoke_maintenance_retired}:\n",
+        )
+        check_rejects(
+            "an allowlisted-path line with an extra leading prefix is rejected, not allowed by substring containment",
+            check_no_live_smoke_maintenance_retired_paths,
+            f"active reference to retired {smoke_maintenance_retired}",
+        )
+    ROOT = real_root
+
+    # 142. The exact allowlisted cutover-rules.yaml override key line with an
+    # extra TRAILING suffix on the same physical line is rejected: same
+    # exact-equality proof as #141 from the other side.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/planning/documentation-cutover-rules.yaml",
+            f"  {smoke_maintenance_retired}:  # temporary note\n",
+        )
+        check_rejects(
+            "an allowlisted-path line with an extra trailing suffix is rejected, not allowed by substring containment",
+            check_no_live_smoke_maintenance_retired_paths,
+            f"active reference to retired {smoke_maintenance_retired}",
+        )
+    ROOT = real_root
+
+    # 143. A line at the allowlisted cutover-rules.yaml path that names the
+    # approved retired path twice on the same physical line is rejected: the
+    # allowlist covers only its own exact single-mention line, not any line
+    # that happens to contain the literal.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/planning/documentation-cutover-rules.yaml",
+            f"  {smoke_maintenance_retired}: {smoke_maintenance_retired}:\n",
+        )
+        check_rejects(
+            "a line combining the approved retired path with a second mention on the same line is rejected",
+            check_no_live_smoke_maintenance_retired_paths,
+            "active reference to retired",
+        )
+    ROOT = real_root
+
+    # 144. A retired smoke-workflow-maintenance path literal in
+    # pyproject.toml is rejected: pyproject.toml is returned by the shared
+    # reference scanner but carries no `.md`/`.txt` suffix, so it is only
+    # covered because the literal-scan branch applies to every
+    # non-`.md`/`.txt` suffix rather than a fixed positive suffix allowlist.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "pyproject.toml",
+            "[tool.example]\n" f'note = "{smoke_maintenance_retired}"\n',
+        )
+        check_rejects(
+            "a retired smoke-workflow-maintenance path literal in pyproject.toml is rejected",
+            check_no_live_smoke_maintenance_retired_paths,
+            f"active reference to retired {smoke_maintenance_retired}",
+        )
+    ROOT = real_root
+
+    # 145. A retired smoke-workflow-maintenance path literal in
+    # config.example.yaml (a second root-scanned non-Markdown file, distinct
+    # from pyproject.toml) is also rejected: confirms the suffix branch
+    # generalizes to every non-`.md`/`.txt` file the scanner returns.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "config.example.yaml",
+            f"# note: {smoke_maintenance_retired}\n",
+        )
+        check_rejects(
+            "a retired smoke-workflow-maintenance path literal in config.example.yaml is rejected",
+            check_no_live_smoke_maintenance_retired_paths,
+            f"active reference to retired {smoke_maintenance_retired}",
+        )
+    ROOT = real_root
+
     failed = [(name, message) for name, ok, message in results if not ok]
     for name, ok, message in results:
         status = "PASS" if ok else "FAIL"
@@ -4428,6 +5153,8 @@ def main() -> int:
         check_mobile_dogfood_family_types,
         check_no_live_twin_extraction_retired_paths,
         check_twin_extraction_family_types,
+        check_no_live_smoke_maintenance_retired_paths,
+        check_smoke_maintenance_family_types,
         check_operations_docs,
         check_referenced_repository_paths,
     )

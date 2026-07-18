@@ -361,6 +361,23 @@ path_overrides:
       operations; relaylm_status remains current); body content preserved
       except for front matter and cross-link repair to the other two moved
       family members' new hyphenated basenames.
+  docs/smoke/consolidated_workflow_maintenance.md:
+    disposition: moved
+    target_doc_type: operations
+    target_paths:
+      - docs/operations/consolidated-smoke-workflow-maintenance.md
+    deletion_reason: >-
+      Cutover 1C-43: this source was a legacy runbook-typed document under
+      docs/smoke/, an existing-only pre-cutover collection whose required
+      cutover destination is operations. Moved and retyped to the canonical
+      operations profile (relaylm_doc_type corrected from runbook to
+      operations; relaylm_status remains current, hyphenated canonical
+      basename per the Cutover 1C-41/1C-42 precedent); body content
+      preserved byte-exactly except for front matter, since docs/operations/
+      is the same relative depth as docs/smoke/ and the document carries no
+      other path-bearing relative link. docs/smoke/ is not retired by this
+      cutover: docs/smoke/scripts_inventory.md (a distinct evaluation_record
+      authority) and the thirteen other docs/smoke/ files remain in place.
 
 family_rules:
   - id: canonical-target-collections

@@ -3914,7 +3914,7 @@ The receipt-only accounting-correction commit `3e4064c4f4f67554a44dafc85f83680bf
 
 ```yaml
 cutover_pr: 608
-merged_commit: pending
+merged_commit: 980dcaab0f7004ee449302706dfbb427c8d3422e
 record_count: 3
 cutover_recorded_on: 2026-07-17
 disposition: moved
@@ -4191,6 +4191,163 @@ The receipt-only bookkeeping commit `a662c7816e85c0699769a93ffda2ac4cbfa0234d` (
 
 The receipt-only bookkeeping commit `c15e9edb6eb5a25137bb10b65591bc3b60add9de` ("docs: record corrected validated content head for cutover 1C-42") was pushed and independently verified: all 27 triggered GitHub Actions check runs, spanning 17 distinct workflow runs (individually fetched by run ID via `get_workflow_run` and their `event` field read directly), completed with 17 successes, 10 skips, and zero failures. Zero reviews, zero PR comments, and zero unresolved review threads were freshly re-verified at this head (not carried forward), and `mergeable_state` was `clean`. The PR-level diff at this head was 12 changed files, +1124/-28, of which 11 files (+842/-27) are the substantive non-receipt content (unchanged from `81d173a`, confirming this commit touched no migrated-content or guard-code file) and 1 file (this receipt, +282/-1) is the receipt-only addition; both subtotals independently confirmed via `pull_request_read get` and `git diff --numstat` against base `main`. `final_pr_changed_files`/`final_pr_net_diff`/`receipt_bookkeeping_commit`/`receipt_finalization` are now finalized above at these exact totals: 12 changed files, +1124/-28, `receipt_bookkeeping_commit: c15e9edb6eb5a25137bb10b65591bc3b60add9de`, `receipt_finalization: performed_after_validated_content_head`. A commit cannot record its own resulting hash inside its own committed content, so this finalization is recorded in the present, separate commit that follows `c15e9ed`, rather than predicting a hash inside `c15e9ed` itself. `merged_commit` for the C1C42 record remains `pending`; this task does not merge the PR.
 
+**Mandatory merged-state accounting correction (Cutover 1C-42).** PR #608 has since merged. Independently reverified from GitHub before recording any value: `pull_request_read get` reports `merged: true`, `merged_by: rinsakamo`, `merged_at: 2026-07-17T17:09:43Z`, head at merge `30ce855018a2491f5720d94db493eb71c276cd9e`, `changed_files: 12`, `additions: 1124`, `deletions: 28` -- matching the C1C42 entry's already-recorded `final_pr_changed_files`/`final_pr_net_diff` exactly, confirming no further commit landed between finalization and merge. `get_commit` against `980dcaab0f7004ee449302706dfbb427c8d3422e` independently confirms the squash-merge commit on `main` carries the identical PR #608 title ("docs: canonicalize twin extraction family in cutover 1C-42 (#608)") and is this batch's own exact starting `main` (trivially an ancestor of the working `main`; squash-merge mechanics mean `30ce855` itself -- the pre-squash PR branch head -- is not a git-ancestor of `980dcaa`, but its tree `6621b270c3da2dd40c30923f608b6b9b996cf600` is byte-identical to `980dcaa`'s tree, independently confirmed via `git diff 30ce855 980dcaa --stat` returning no changes, which is the correct verification for a squash-merged branch). `get_reviews`, `get_comments`, and `get_review_comments` were independently re-run against the merged PR: 0 reviews, 0 PR comments, 0 unresolved review threads -- unchanged from the `c15e9ed` pre-merge finalization state. `get_check_runs` was independently re-run: 27 check runs across 17 distinct workflow runs, all `completed` (17 `success`, 10 `skipped`, 0 `failure`), matching the entry's already-recorded totals exactly, since a merge commit does not itself re-trigger the PR's own checks. `merged_commit: 980dcaab0f7004ee449302706dfbb427c8d3422e` is now recorded in the C1C42 entry above. This is a merged-state accounting correction only: it does not alter, reinterpret, or imply any defect in the accepted C1C42 evidence migration, its guard, or its self-test suite, all of which remain exactly as recorded above.
+
+### C1C43-001 — consolidated smoke workflow maintenance authority cutover
+
+```yaml
+cutover_pr: 609
+merged_commit: pending
+record_count: 1
+cutover_recorded_on: 2026-07-17
+disposition: moved
+no_fabricated_evidence: true
+records:
+  - record: Consolidated Smoke Workflow Maintenance
+    old_path: docs/smoke/consolidated_workflow_maintenance.md
+    old_path_lines: 71
+    disposition: moved
+    legacy_metadata_type: runbook
+    legacy_metadata_note: existing_only_pre_cutover_type_per_docs_documentation_model_md_required_cutover_destination_operations_docs_smoke_is_an_explicitly_temporary_pre_cutover_anchor_and_is_not_retired_by_this_cutover
+    introducing_commit: 62f2ae6a37d0dc1838659d8b21a996e8133d90de
+    introducing_commit_date: 2026-07-10T14:22:28Z
+    introducing_commit_origin: direct_push_no_pr
+    introducing_commit_committer: rinsakamo
+    final_content_pr: 547
+    final_content_pr_title: "docs: repair user and operations guidance (#547)"
+    final_content_commit: 16e4387eac1777b3d06fd483569748f2d2e9d1dc
+    final_content_commit_date: 2026-07-10T23:57:58Z
+    source_blob_sha: 211a66bd42c90334dc28dcf56acaad75722411fe
+    source_content_sha256: dc0574d2205b27029189738359e99287d7a2c69b7d90e829fe742ede9ec4044a
+    pre_cutover_blob_sha: 211a66bd42c90334dc28dcf56acaad75722411fe
+    pre_cutover_content_sha256: dc0574d2205b27029189738359e99287d7a2c69b7d90e829fe742ede9ec4044a
+    pre_cutover_blob_note: identical_to_the_final_content_commit_blob_independently_confirmed_by_comparing_git_rev_parse_16e4387_docs_smoke_consolidated_workflow_maintenance_md_against_this_cutovers_pre_cutover_head_zero_modification_commits_between_them
+    new_canonical_path: docs/operations/consolidated-smoke-workflow-maintenance.md
+    new_doc_type: operations
+provenance_reconstruction_note: >-
+  the local shallow clone's `git log --follow` for this file is truncated at
+  commit 3fd9b6d (PR #555), a known shallow-clone artifact consistent with the
+  warning already recorded in the Cutover 1C-40/1C-41/1C-42 entries above.
+  Provenance was independently reconstructed via GitHub `list_commits`
+  (path-filtered), `get_commit`, and `search_pull_requests`, not from the
+  local truncated history: the file was introduced by a direct push (no PR)
+  at `62f2ae6a`, then modified once more by the PR #547 squash-merge
+  (`16e4387e`), whose blob is independently confirmed byte-identical (via
+  `git rev-parse 16e4387e:docs/smoke/consolidated_workflow_maintenance.md`)
+  to the file's pre-cutover blob on this cutover's starting main, so no
+  modification occurred between PR #547 and this cutover. `search_pull_requests`
+  for a body mention of the old filename returned zero results, confirming no
+  further PR touched this path.
+old_path_retirement_confirmed:
+  - docs/smoke/consolidated_workflow_maintenance.md
+dependency_and_reference_inventory:
+  - referrer: docs/smoke/README.md
+    kind: documentation_index
+    action: retargeted_the_consolidated_ci_maintenance_index_link_from_consolidated_workflow_maintenance_md_to_operations_consolidated_smoke_workflow_maintenance_md_kept_the_entry_indexed_from_this_collection_index_rather_than_removing_it_as_a_cross_collection_pointer_to_the_canonical_operations_ci_maintenance_authority_since_docs_smoke_remains_the_live_collection_for_manual_smoke_and_troubleshooting_navigation
+  - referrer: scripts/relaylm_docs_semantic_audit.py
+    kind: documentation_validation_script
+    action: updated_three_path_constants_the_required_metadata_paths_tuple_entry_the_check_operations_docs_maintenance_path_local_and_the_check_referenced_repository_paths_tuple_entry_the_maintenance_slash_inventory_pairing_check_continues_to_assert_both_documents_contain_generated_scripts_inventory_md_and_reject_output_docs_smoke_scripts_inventory_md_now_reading_the_maintenance_document_at_its_canonical_path_while_docs_smoke_scripts_inventory_md_itself_is_unmoved
+non_family_exclusions:
+  - path: docs/smoke/scripts_inventory.md
+    reason: >-
+      distinct evaluation_record/historical authority, a frozen audited
+      summary with a different lifecycle and owner profile than this current
+      operational runbook; the parent child-task's semantic-audit pairing check
+      couples the two documents functionally (both must reference
+      generated/scripts_inventory.md) without merging their authority or
+      disposition. Stays at docs/smoke/scripts_inventory.md, unmoved by this
+      cutover.
+  - path: docs/smoke/o1_manual_one_round_runbook.md
+    reason: >-
+      distinct authority o1_manual_one_round_compatibility_validation, owner
+      relaymem_slp_operations, status compatibility; unrelated to the
+      consolidated-CI-maintenance authority. Unmoved by this cutover.
+  - path: docs/smoke/README.md
+    reason: >-
+      the docs/smoke/ collection index; receives the bounded index-link repair
+      recorded above and the correction-round placement-rule rewording
+      (consolidated CI maintenance is canonical under docs/operations/ and is
+      indexed here only as a cross-collection pointer), not a move or retype.
+  - path: every other docs/smoke/** file
+    reason: >-
+      mostly metadata-less legacy manual smoke/troubleshooting/evaluation
+      docs, out of scope for this single-authority cutover; left for a future
+      cutover.
+local_validation:
+  compileall: passed
+  docs_link_check: passed
+  docs_semantic_audit: passed
+  docs_semantic_audit_self_test: passed_157_assertions
+  documentation_current_boundary_smoke: passed
+  cutover_prepare_self_test: passed
+  mvp_completion_report_smoke_check_model_check_all: passed
+  mvp_completion_report_smoke_self_test: passed
+  mvp_completion_report_pr_link_smoke: passed
+  ci_consolidated_smoke_contract: passed
+  e1_evaluation_consolidation_smoke: passed
+  wave3_cross_slice_convergence_smoke: passed
+  wave3_cross_slice_security_smoke: passed
+  wave4_cross_slice_convergence_smoke: passed
+  wave5_cross_slice_convergence_smoke: passed
+  repo_inventory_cli_self_test: passed
+  git_diff_check: passed
+  docs_mvp_absent: true
+  docs_smoke_retains_15_files: true
+  focused_non_allowlisted_reference_search: clean_zero_violations
+docs_mvp_family_touched: false
+lat1_family_touched: false
+e1_family_touched: false
+mobile_dogfood_family_touched: false
+twin_extraction_family_touched: false
+runtime_files_changed: 0
+open_pr_isolation:
+  checked_open_prs: [586, 578, 567]
+  shared_file_overlaps: []
+  no_content_imported: true
+validated_content_head: f297feb9238b086b7b52f8df9ee56b21693870c2
+prior_validated_content_head_superseded: 9b5357e09fdac260766f77ef480939d4592cec40
+validated_content_head_changed_files: 4
+validated_content_head_net_diff: {insertions: 753, deletions: 9}
+validated_content_head_actions:
+  workflow_runs_total: 17
+  workflow_runs_by_trigger: {pull_request: 16, push: 1, other: 0}
+  job_or_check_runs_total: 27
+  success: 18
+  skipped: 9
+  failure: 0
+reviews: 0
+pr_comments: 0
+unresolved_review_threads: 0
+final_pr_changed_files: 5
+final_pr_net_diff: {insertions: 911, deletions: 10}
+receipt_bookkeeping_commit: 6cbc67737b4bd8e8906ec42dbd7a94cfabdd2b24
+receipt_finalization: performed_after_validated_content_head
+```
+
+**Selection-provenance record (sequencing deviation, accepted by the parent review).** The originally expected Cutover 1C-43 candidate was the O1 manual one-round authority (source `docs/smoke/o1_manual_one_round_runbook.md`, expected target `docs/operations/o1-manual-one-round.md`). Independent current-main inventory instead identified the single-document Consolidated Smoke Workflow Maintenance authority as a distinct, lower-overlap atomic authority suitable for this batch, and the parent review accepted it as Cutover 1C-43. This is a sequencing deviation only -- it is not a reinterpretation or rejection of the O1 manual one-round authority, which remains fully untouched in this PR and is explicitly deferred to the next cutover candidate, expected as Cutover 1C-44. No content from the future O1 cutover is imported into this batch. This batch performs an inventory-first hard cutover of the single-document Consolidated Smoke Workflow Maintenance authority: the CI-maintenance runbook describing the RelayMEM/Runtime/UI consolidated smoke workflow surfaces, changed-path classification, contract validation, and generated scripts-inventory procedure, currently typed `runbook` inside the explicitly temporary `docs/smoke/` pre-cutover anchor. Starting boundary independently reverified: `origin/main` matched the task's stated boundary `980dcaab0f7004ee449302706dfbb427c8d3422e` exactly (the squash-merge of PR #608, Cutover 1C-42) -- zero intervening commits, so no changed-boundary report was required. The required branch `claude/pr607-cutover-handoff-t5rdnj` was independently verified to hold only already-merged history before being force-reset: `git diff` between its existing head `30ce855018a2491f5720d94db493eb71c276cd9e` and the target starting main returned zero changes (identical tree `6621b270c3da2dd40c30923f608b6b9b996cf600`), the correct verification for a branch whose only prior content was itself later squash-merged (a literal `git merge-base --is-ancestor` check does not hold across a squash merge, since the squash creates a new commit object on `main` rather than fast-forwarding the branch's own commits).
+
+Independent repository inventory (`docs/**`, `scripts/**`, `.github/workflows/**`, `relaylm/**`, `tests/**`, `config.example.yaml`, `pyproject.toml`, every spelling variant of the old path, the bare basename, and the hyphenated target name) confirms exactly two live referrers: `docs/smoke/README.md` (one index link) and `scripts/relaylm_docs_semantic_audit.py` (three path constants), both recorded in `dependency_and_reference_inventory` above. Zero `.github/workflows/**` references, zero `docs/evidence/**` references, and zero `docs/README.md` references were found, matching the parent child-task's stated inventory expectation. `docs/smoke/scripts_inventory.md`, `docs/smoke/o1_manual_one_round_runbook.md`, `docs/smoke/README.md` (beyond its one bounded link repair), and every other `docs/smoke/**` file are independently confirmed excluded from this cutover's scope, recorded in `non_family_exclusions` above; `docs/smoke/` itself remains a live, non-retired collection retaining 15 files after this move (confirmed by directory listing), so the `docs/smoke/` pre-cutover anchor lines in `docs/DOCUMENTATION_MODEL.md` and `scripts/relaylm_documentation_current_boundary_smoke.py` were left unchanged, as required.
+
+Applying the placement tie-breaker in `docs/DOCUMENTATION_MODEL.md` independently confirms `operations` as the correct destination (rule 6: "Procedure and troubleshooting flow -> guides/ or operations/ depending on operator scope"; this is a bounded operator/maintainer CI procedure, not durable architecture, an exact contract, or dated evidence), matching the parent child-task's expected disposition table. `docs/operations/` is confirmed the same relative depth as `docs/smoke/` (both one level under `docs/`), so the document's only status-source front-matter path (`relaylm_current_status_source: ../PROJECT_STATUS.md`) requires no rewrite; the body carries no relative links, so no in-body link repair was needed beyond the front-matter `relaylm_doc_type` correction. Content is preserved byte-exactly except for the one front-matter field change.
+
+Provenance was independently reconstructed via GitHub `list_commits` (path-filtered), `get_commit`, and `search_pull_requests` -- not from the local shallow clone's `git log --follow`, which stops at commit `3fd9b6d` (a known shallow-clone artifact, consistent with the warning already recorded in the Cutover 1C-40/1C-41/1C-42 entries above), per `provenance_reconstruction_note` above. The file was introduced by a direct push (`62f2ae6a`, no associated PR, committer `rinsakamo`), then modified once more by the PR #547 squash-merge (`16e4387e`, "docs: repair user and operations guidance"). The file's blob at `16e4387e` is independently confirmed byte-identical, via `git rev-parse 16e4387e:docs/smoke/consolidated_workflow_maintenance.md`, to the file's blob on this cutover's own pre-cutover starting main, so `16e4387e` is the true final-content commit and no further modification occurred in the interval. `search_pull_requests` for the old filename in PR bodies returned zero results, confirming no later PR touched this path. The recorded `source_blob_sha`/`source_content_sha256` values are therefore the exact bytes moved verbatim in this batch.
+
+Open-PR isolation: the three currently open PRs (`#586`, `#578`, `#567`) were independently re-enumerated and their changed files inspected. `#586` touches `docs/README.md`, `docs/proposals/**`, and `docs/evidence/implementation/**`; `#578` (experiment, draft, do-not-merge) touches `experiment/**` only; `#567` (proposal) touches `docs/proposals/repository-simplification.md` only. None of the three touches `docs/smoke/**`, `docs/operations/**`, `docs/planning/documentation-cutover-rules.yaml`, or `scripts/relaylm_docs_semantic_audit.py`. Zero shared-file overlap was found; zero content was imported, rebased, or partially copied from any open PR.
+
+A new fail-closed guard pair was added to `scripts/relaylm_docs_semantic_audit.py`: `check_no_live_smoke_maintenance_retired_paths()` and `check_smoke_maintenance_family_types()`, following the CORRECTED Cutover 1C-42 twin-extraction guard pattern as the binding precedent (no canonical-path scan bypass; exact stripped-line allowlist equality, not substring containment; the non-Markdown literal scan applies to every scanned file whose suffix is not `.md`/`.txt`, not a fixed positive suffix allowlist), adapted to a single retired-to-canonical pair rather than pasting a third bespoke copy of the scanning machinery -- both new checks reuse the existing shared resolution helpers (`_mobile_dogfood_scanned_files`, `_mobile_dogfood_resolve`, `_mobile_dogfood_front_matter_path_values`, `_mobile_dogfood_locate`, `MOBILE_DOGFOOD_MD_LINK_RE`) introduced by the Cutover 1C-41 mobile-dogfood guard. Allowlists: the migration receipt (whole-file, established precedent), the one exact `documentation-cutover-rules.yaml` path_overrides key line (exact stripped-line equality), and this guard's own implementation file restricted to its `SMOKE_MAINTENANCE_RETIRED_TO_CANONICAL` dict-key entry (exact-line, not whole-file). Neither the existing mobile-dogfood guard nor the twin-extraction guard was weakened; both remain unchanged except for being joined by this third, independent guard in the `main()` check list. Following the external-review correction round, `check_smoke_maintenance_family_types()` enforces the full canonical metadata profile -- both `relaylm_doc_type: operations` and `relaylm_status: current` -- emitting an independent fail-closed diagnostic for each mismatch rather than checking the doc type alone.
+
+Thirty new deterministic `--self-test` assertions cover both new checks, bringing `relaylm_docs_semantic_audit.py --self-test` to **157 total assertions** (up from 127; 27 from the original batch plus 3 from the external-review correction round), including reject-then-allow pairings proving every allowlist is genuinely exercised and not vacuous: the retired file being reintroduced; root-qualified, same-directory bare-filename, `../`, `../../`, and anchored Markdown link forms; `relaylm_related_authority` and `relaylm_current_status_source` front-matter entries; a frozen/historical document's own unallowlisted mention (no generic status bypass); root-qualified and relative links to the canonical target being allowed; the exact `documentation-cutover-rules.yaml` override key line rejected in a non-allowlisted file and then silent only at the exact allowlisted path (plus two exact-equality-not-substring variants: extra leading prefix, extra trailing suffix, and a two-mentions-on-one-line case); a duplicate-live-copy rejection; the family-type check's own reject-then-allow pairing; the self-file's own exact-line dict-key allowance versus an unrelated non-allowlisted self-file constant; a retired-path Markdown link and a retired-path front-matter value written *inside* the canonical document itself, both rejected (no canonical-path scan bypass); a valid link from the canonical document to an unrelated document remaining accepted; and non-Markdown literal-scan rejection in both `pyproject.toml` and `config.example.yaml`. The correction round added the full canonical-profile coverage: a correct-type/wrong-status document is rejected independently, a wrong-type/wrong-status document produces both independent diagnostics in a single run, the exact operations/current profile is accepted, and the real repository canonical document passes.
+
+No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/mvp/` remains fully absent. No compatibility path, redirect, alias, symlink, fallback lookup, duplicate live copy, or old-path manifest was added. No open-PR content was imported, rebased, or partially copied.
+
+`cutover_pr` is `609` (`rinsakamo/relay-lm#609`). `9b5357e09fdac260766f77ef480939d4592cec40` is recorded above as `validated_content_head`: all 27 triggered GitHub Actions check runs, spanning 17 distinct workflow runs, individually confirmed via `get_check_runs` and cross-checked against the parsed `list_workflow_runs` output for their own `event` field (not inferred from timing) -- confirming exactly 16 `pull_request`-triggered runs and 1 `push`-triggered run (`phase-i4-forget-hide-contract-smoke.yml`, which declares both `push` and `pull_request` triggers on `docs/**` paths and so fires twice for the same head) -- completed successfully with 18 successes, 9 skips, and zero failures. Zero reviews, zero PR comments, and zero unresolved review threads were present at this head (independently confirmed via `get_reviews`/`get_comments`/`get_review_comments`). The PR-level diff at this head is 4 changed files, +684/-5 (independently confirmed via `pull_request_read get`), matching `validated_content_head_changed_files`/`validated_content_head_net_diff` above exactly, since this is the PR's first and only substantive commit so far -- no non-receipt-content/receipt-only split applies yet. `mergeable_state` was `clean`.
+
+The receipt-only bookkeeping commit `1c162a618bef712c1d443a5deca7f974df935834` ("docs: record validated content head for cutover 1C-43") was pushed and independently verified: all 27 triggered GitHub Actions check runs, spanning the same 17 distinct workflow runs (16 `pull_request`, 1 `push`), completed with 18 successes, 9 skips, and zero failures -- identical counts to `9b5357e`, as expected for a receipt-only commit that changes no code. Zero reviews, zero PR comments, and zero unresolved review threads were freshly re-verified at this head (not carried forward). The PR-level diff at this head was 5 changed files, +833/-6, of which 4 files (+684/-5) are the substantive non-receipt content (unchanged from `9b5357e`, confirming this commit touched no migrated-content or guard-code file) and 1 file (this receipt, +149/-1) is the receipt-only addition; both subtotals were independently confirmed via `pull_request_read get`. `mergeable_state` was `clean`. `final_pr_changed_files`/`final_pr_net_diff`/`receipt_bookkeeping_commit`/`receipt_finalization` are now finalized above at these exact totals: 5 changed files, +835/-6, `receipt_bookkeeping_commit: 1c162a618bef712c1d443a5deca7f974df935834`, `receipt_finalization: performed_after_validated_content_head`. A commit cannot record its own resulting hash inside its own committed content, so this finalization is recorded in the present, separate commit that follows `1c162a6`, rather than predicting a hash inside `1c162a6` itself. **Correction (finalization mechanism).** The finalization commit `91f8838021db65deb0c95f69b885d52ca67e7bcf` itself was NOT a zero-line-count-change edit: it replaced five already-added placeholder lines (the four `pending` YAML fields and their one-sentence explanatory paragraph) with seven lines -- the four resolved YAML fields plus a three-sentence closing paragraph -- i.e. +7/-5 on this receipt file, two net new lines, independently confirmed via `git show --stat 91f8838` and `git diff --numstat` against the immediately prior head `1c162a6`. The recorded `final_pr_changed_files`/`final_pr_net_diff` above were finalized at the measured post-edit value: the bookkeeping head's own PR-level total of 5 changed files, +833/-6, plus this commit's two net insertions, equals exactly 5 changed files, +835/-6 -- independently confirmed via `git diff --numstat` against base `main` and cross-checked against live `pull_request_read get` PR metadata after pushing. The present correction paragraph is itself the strict zero-line-count in-place edit (a single existing line's content replaced, nothing added or removed elsewhere in the file), which is why +835/-6 remains true and stable at its own head without a further correction, consistent with the C1C41/C1C42 convergence mechanism. `merged_commit` for the C1C43 record remains `pending`; this task does not merge the PR.
+
 ## Freeze boundary
 
 This ledger remains `current` while cutover PRs are being merged. At final cutover completion it must be changed to `frozen`, all `pending` fields must be resolved, and every baseline Markdown source must have a final disposition.
+
+**Substantive external-review correction round.** Independent external review of the initial batch found three defects, all fixed in the substantive correction commit `f297feb9238b086b7b52f8df9ee56b21693870c2` ("docs: apply external review corrections for cutover 1C-43"), which supersedes `9b5357e09fdac260766f77ef480939d4592cec40` as `validated_content_head` (recorded above as `prior_validated_content_head_superseded`; the `1c162a6`/`91f8838`/`76e3c53` receipt-only tail commits layered on `9b5357e` remain accurate historical record for their own heads). First, `docs/smoke/README.md` still described consolidated CI maintenance guidance as owned by `docs/smoke/` in its introduction and its Placement rule even though this batch moved that authority to `docs/operations/`; the index now describes the entry as a cross-collection pointer to the canonical operations authority, and the Placement rule no longer directs consolidated CI maintenance documents into `docs/smoke/`. Second, `check_smoke_maintenance_family_types()` enforced only `relaylm_doc_type: operations`; it now also enforces `relaylm_status: current` with an independent fail-closed diagnostic per mismatch, proven by three new self-test assertions (correct-type/wrong-status rejection, wrong-type/wrong-status dual diagnostics in one run, and exact operations/current acceptance), bringing the suite to 157 total assertions as recorded above. Third, the entry's opening claim that this family was "flagged in the task brief as the Cutover 1C-43 authority family" was not accurate selection provenance; it is replaced by the selection-provenance record above (original expected candidate: the O1 manual one-round authority, deferred untouched to expected Cutover 1C-44). At `f297feb`, all 27 triggered GitHub Actions check runs, spanning 17 distinct workflow runs (16 `pull_request`, 1 `push` from `phase-i4-forget-hide-contract-smoke.yml`, each run's own `event` field read directly), completed with 18 successes, 9 skips, and zero failures. The PR-level diff at this head is 5 changed files, +906/-10, of which 4 files (+753/-9) are the substantive non-receipt content (recorded above as `validated_content_head_changed_files`/`validated_content_head_net_diff`) and 1 file (this receipt, +153/-1) is the cumulative receipt-only accounting. `final_pr_changed_files`/`final_pr_net_diff`/`receipt_bookkeeping_commit`/`receipt_finalization` are reset to `pending` above, to be recorded by the receipt-only bookkeeping and finalization commits that follow. `merged_commit` for the C1C43 record remains `pending`; this task does not merge the PR.
+
+**Intermediate-head episode (provenance record only; neither head validated).** Between `76e3c53` and `f297feb`, two intermediate commits briefly appeared on the PR branch: `8039e4f1c0477e6a4451ca74daa3cf798e828fd9` ("chore: stage bounded PR 609 correction") and `e906beaf0ee0b8016af0a3b5df3005a7f5b423ef` ("chore: expose PR 609 correction run"). They added a temporary `.github/workflows/pr609-bounded-self-fix.yml` automation workflow that was intended to apply the review corrections from inside GitHub Actions and push the result back to the branch with `contents: write` permissions -- a deviation from the required in-session correction procedure and outside the documentation-only boundary, and not an authorized part of this cutover. The `documentation-current-boundary-smoke` job failed at both heads because this batch's own fail-closed guard rejected the retired-path literal carried inside the added workflow file (`active reference to retired docs/smoke/consolidated_workflow_maintenance.md`), which is the guard operating exactly as designed on its first real trigger. Because that validation failed, the workflow's own commit-and-push step never executed; no `github-actions[bot]` commit ever landed on the branch. The branch was force-reset to the verified-green `76e3c53` head, the temporary workflow file was discarded entirely (independently confirmed absent from every subsequent head), and the correction was then implemented in-session as `f297feb`. The two orphaned heads are recorded here for provenance continuity only.
