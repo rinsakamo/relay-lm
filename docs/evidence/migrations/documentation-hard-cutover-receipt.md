@@ -4350,7 +4350,7 @@ The receipt-only bookkeeping commit `1c162a618bef712c1d443a5deca7f974df935834` (
 
 ```yaml
 cutover_pr: 610
-merged_commit: pending
+merged_commit: 43fd272c3a99180646ad73b6c2edc12435a87812
 record_count: 1
 cutover_recorded_on: 2026-07-18
 disposition: moved
@@ -4542,3 +4542,78 @@ This ledger remains `current` while cutover PRs are being merged. At final cutov
 **Substantive external-review correction round.** Independent external review of the initial batch found three defects, all fixed in the substantive correction commit `f297feb9238b086b7b52f8df9ee56b21693870c2` ("docs: apply external review corrections for cutover 1C-43"), which supersedes `9b5357e09fdac260766f77ef480939d4592cec40` as `validated_content_head` (recorded above as `prior_validated_content_head_superseded`; the `1c162a6`/`91f8838`/`76e3c53` receipt-only tail commits layered on `9b5357e` remain accurate historical record for their own heads). First, `docs/smoke/README.md` still described consolidated CI maintenance guidance as owned by `docs/smoke/` in its introduction and its Placement rule even though this batch moved that authority to `docs/operations/`; the index now describes the entry as a cross-collection pointer to the canonical operations authority, and the Placement rule no longer directs consolidated CI maintenance documents into `docs/smoke/`. Second, `check_smoke_maintenance_family_types()` enforced only `relaylm_doc_type: operations`; it now also enforces `relaylm_status: current` with an independent fail-closed diagnostic per mismatch, proven by three new self-test assertions (correct-type/wrong-status rejection, wrong-type/wrong-status dual diagnostics in one run, and exact operations/current acceptance), bringing the suite to 157 total assertions as recorded above. Third, the entry's opening claim that this family was "flagged in the task brief as the Cutover 1C-43 authority family" was not accurate selection provenance; it is replaced by the selection-provenance record above (original expected candidate: the O1 manual one-round authority, deferred untouched to expected Cutover 1C-44). At `f297feb`, all 27 triggered GitHub Actions check runs, spanning 17 distinct workflow runs (16 `pull_request`, 1 `push` from `phase-i4-forget-hide-contract-smoke.yml`, each run's own `event` field read directly), completed with 18 successes, 9 skips, and zero failures. The PR-level diff at this head is 5 changed files, +906/-10, of which 4 files (+753/-9) are the substantive non-receipt content (recorded above as `validated_content_head_changed_files`/`validated_content_head_net_diff`) and 1 file (this receipt, +153/-1) is the cumulative receipt-only accounting. `final_pr_changed_files`/`final_pr_net_diff`/`receipt_bookkeeping_commit`/`receipt_finalization` are reset to `pending` above, to be recorded by the receipt-only bookkeeping and finalization commits that follow. `merged_commit` for the C1C43 record remains `pending`; this task does not merge the PR.
 
 **Intermediate-head episode (provenance record only; neither head validated).** Between `76e3c53` and `f297feb`, two intermediate commits briefly appeared on the PR branch: `8039e4f1c0477e6a4451ca74daa3cf798e828fd9` ("chore: stage bounded PR 609 correction") and `e906beaf0ee0b8016af0a3b5df3005a7f5b423ef` ("chore: expose PR 609 correction run"). They added a temporary `.github/workflows/pr609-bounded-self-fix.yml` automation workflow that was intended to apply the review corrections from inside GitHub Actions and push the result back to the branch with `contents: write` permissions -- a deviation from the required in-session correction procedure and outside the documentation-only boundary, and not an authorized part of this cutover. The `documentation-current-boundary-smoke` job failed at both heads because this batch's own fail-closed guard rejected the retired-path literal carried inside the added workflow file (`active reference to retired docs/smoke/consolidated_workflow_maintenance.md`), which is the guard operating exactly as designed on its first real trigger. Because that validation failed, the workflow's own commit-and-push step never executed; no `github-actions[bot]` commit ever landed on the branch. The branch was force-reset to the verified-green `76e3c53` head, the temporary workflow file was discarded entirely (independently confirmed absent from every subsequent head), and the correction was then implemented in-session as `f297feb`. The two orphaned heads are recorded here for provenance continuity only.
+
+
+### C1C45-001 — OpenWebUI / LM Studio manual-validation family cutover
+
+```yaml
+cutover_id: C1C45-001
+family: openwebui_lmstudio_manual_validation
+base_main: 43fd272c3a99180646ad73b6c2edc12435a87812
+origin_main_tip_verified: 43fd272c3a99180646ad73b6c2edc12435a87812
+source_inventory:
+  - source_path: docs/smoke/openwebui_lmstudio_manual_smoke.md
+    source_blob: b23f6d9e5f7c99ac5ff9e0bb91ee08c0fa04f53c
+    normalized_sha256: dd66845a96fbdda6f7b0521dedb24c1da44c7ebe54beb6a2dbe92f35ef360bd0
+    target_path: docs/operations/openwebui-lmstudio-manual-smoke.md
+    target_doc_type: operations
+    target_status: current
+  - source_path: docs/smoke/client_history_exclusion_manual_smoke.md
+    source_blob: 5801ccbd712a8f162f28ea85776b13a4f102ddeb
+    normalized_sha256: b3620054488d32a953b24b578d1af8cc0da3cb14988b831499b297bbe5f504ca
+    target_path: docs/operations/client-history-exclusion-manual-smoke.md
+    target_doc_type: operations
+    target_status: current
+  - source_path: docs/smoke/relayrun_recovery_diagnostics_manual_smoke.md
+    source_blob: 12f2d878e321f3720ce746b988a9c0706b1dfeef
+    normalized_sha256: 4b95b30f5a93d955f578afb76b42914e4fbf96cd22192a85affec5b08cccaf56
+    target_path: docs/operations/relayrun-recovery-diagnostics-manual-smoke.md
+    target_doc_type: operations
+    target_status: current
+  - source_path: docs/smoke/openwebui_lmstudio_manual_smoke_results_template.md
+    source_blob: e71b48fa0283e62e2876356f75a1b8d9bb87be34
+    normalized_sha256: 3983e3b9dc6a90a9c48396c3ca5a01497f3a8aaf4c4c241af9eff1a576f95cce
+    target_path: docs/templates/evaluation/openwebui-lmstudio-manual-smoke-results.md
+    target_doc_type: template
+    target_status: target
+  - source_path: docs/smoke/openwebui_lmstudio_manual_smoke_result_2026_05_26.md
+    source_blob: b19679e01ddbc9c30986bf6912edcb6b04cb8e7c
+    normalized_sha256: 8d903842533fe69aff177f9f9cdacdda7e8174f958ac4e8a063b615dd7d3a97d
+    target_path: docs/evidence/evaluations/openwebui-lmstudio-manual-smoke-2026-05-26.md
+    target_doc_type: evidence
+    target_status: frozen
+source_provenance: current-main source blobs at base_main; evidence record additionally records source path/blob/content digest in front matter
+status_type_decisions:
+  manual_procedures: operations/current repeatable operator manual validation
+  blank_results_template: template/target non-authoritative and content-free for real measurements
+  dated_result: evidence/frozen historical completed local validation result
+complete_dependency_inventory:
+  live_absolute_references: recomputed from current main and repaired to canonical paths
+  relative_markdown_links: same-family links repaired; out-of-scope smoke/troubleshooting links retargeted by relative path where needed
+  html_href_src_targets: semantic-audit guard covers retired exact target resolution
+  reference_definition_targets: semantic-audit guard covers retired exact target resolution
+  workflow_script_dependencies: scripts/relaylm_docs_semantic_audit.py guard added; no runtime dependencies changed
+  target_path_collisions: none at current-main boundary
+non_family_exclusions:
+  - docs/smoke/openwebui_model_preset_checklist.md
+  - docs/smoke/openwebui_response_differentiation_checks.md
+  - docs/smoke/openwebui_lmstudio_troubleshooting.md
+  - docs/smoke/e2_value_smoke_runbook.md
+  - docs/smoke/relaymem_runtime_payload_eval.md
+  - docs/smoke/relaymem_local_llm_eval_guide.md
+  - docs/smoke/relaymem_local_response_comparison.md
+  - docs/smoke/scripts_inventory.md
+runtime_files_changed: 0
+open_pr_isolation:
+  checked_open_prs: [586, 578, 567]
+  shared_file_overlaps: []
+  no_content_imported: true
+validation_results: pending_until_exact_head_validation
+semantic_audit_self_test_assertions: pending
+validated_content_head: pending
+receipt_bookkeeping_commit: pending
+receipt_finalization: pending
+merged_commit: pending
+```
+
+Cutover 1C-45 starts from the exact current-main boundary `43fd272c3a99180646ad73b6c2edc12435a87812`, independently verified as both local `HEAD` and `origin/main`. The family boundary is limited to three repeatable manual-validation procedures, one blank reusable results template, and one completed dated local validation result. The procedures move to `docs/operations/`, the blank template moves to `docs/templates/evaluation/`, and the completed 2026-05-26 result moves to `docs/evidence/evaluations/` with frozen evidence metadata and source provenance. No `relaylm/**` files are changed and no runtime behavior is changed. The C1C45 PR remains open and unmerged; `merged_commit` remains pending.

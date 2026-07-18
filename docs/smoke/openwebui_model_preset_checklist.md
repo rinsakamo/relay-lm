@@ -81,6 +81,6 @@ Verify:
 
 ## Manual record
 
-Use [OpenWebUI + LM Studio manual smoke results template](openwebui_lmstudio_manual_smoke_results_template.md).
+Use [OpenWebUI + LM Studio manual smoke results template](../templates/evaluation/openwebui-lmstudio-manual-smoke-results.md).
 
 Record OpenWebUI version, connection protocol, route mode, history-exclusion flags, response differentiation, and any authority/fallback issue.

@@ -8,7 +8,7 @@ Local setup troubleshooting for:
 OpenWebUI -> RelayLM -> LM Studio
 ```
 
-See [manual smoke runbook](openwebui_lmstudio_manual_smoke.md).
+See [manual smoke runbook](../operations/openwebui-lmstudio-manual-smoke.md).
 
 ## Connectivity
 

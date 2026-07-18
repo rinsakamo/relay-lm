@@ -1991,6 +1991,143 @@ def check_no_live_o1_manual_one_round_retired_paths(errors: list[str]) -> None:
                 break
 
 
+
+# Cutover 1C-45: OpenWebUI / LM Studio manual-validation family retired paths.
+OPENWEBUI_MANUAL_VALIDATION_RETIRED_TO_CANONICAL: dict[str, str] = {
+    "docs/smoke/openwebui_lmstudio_manual_smoke.md": "docs/operations/openwebui-lmstudio-manual-smoke.md",
+    "docs/smoke/client_history_exclusion_manual_smoke.md": "docs/operations/client-history-exclusion-manual-smoke.md",
+    "docs/smoke/relayrun_recovery_diagnostics_manual_smoke.md": "docs/operations/relayrun-recovery-diagnostics-manual-smoke.md",
+    "docs/smoke/openwebui_lmstudio_manual_smoke_results_template.md": "docs/templates/evaluation/openwebui-lmstudio-manual-smoke-results.md",
+    "docs/smoke/openwebui_lmstudio_manual_smoke_result_2026_05_26.md": "docs/evidence/evaluations/openwebui-lmstudio-manual-smoke-2026-05-26.md",
+}
+OPENWEBUI_MANUAL_VALIDATION_RETIRED_PATHS = tuple(sorted(OPENWEBUI_MANUAL_VALIDATION_RETIRED_TO_CANONICAL))
+OPENWEBUI_MANUAL_VALIDATION_CANONICAL_TYPES = {
+    "docs/operations/openwebui-lmstudio-manual-smoke.md": ("operations", "current"),
+    "docs/operations/client-history-exclusion-manual-smoke.md": ("operations", "current"),
+    "docs/operations/relayrun-recovery-diagnostics-manual-smoke.md": ("operations", "current"),
+    "docs/templates/evaluation/openwebui-lmstudio-manual-smoke-results.md": ("template", "target"),
+    "docs/evidence/evaluations/openwebui-lmstudio-manual-smoke-2026-05-26.md": ("evidence", "frozen"),
+}
+OPENWEBUI_MANUAL_VALIDATION_REFERENCE_PATTERN = re.compile(
+    "(?:" + "|".join(re.escape(path) for path in OPENWEBUI_MANUAL_VALIDATION_RETIRED_PATHS) + ")"
+)
+OPENWEBUI_MANUAL_VALIDATION_BASENAMES = tuple(sorted({Path(path).name for path in OPENWEBUI_MANUAL_VALIDATION_RETIRED_PATHS}))
+OPENWEBUI_MANUAL_VALIDATION_PROSE_PATH_TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9_.-])((?:(?:\.\.?/|[A-Za-z0-9_.-]+/){0,8})(?:"
+    + "|".join(re.escape(name) for name in OPENWEBUI_MANUAL_VALIDATION_BASENAMES)
+    + r"))(?:[?#][A-Za-z0-9_.~/%=&:-]+)?(?![A-Za-z0-9_.-])"
+)
+OPENWEBUI_MANUAL_VALIDATION_HTML_LINK_RE = re.compile(r"\b(?:href|src)\s*=\s*([\"'])([^\"'<>\s][^\"'<>]*)\1", re.IGNORECASE)
+OPENWEBUI_MANUAL_VALIDATION_REFERENCE_DEFINITION_RE = re.compile(r"^[ \t]{0,3}\[[^\]\n]+\]:[ \t]*(?:<([^>\n]+)>|([^ \t\n]+))")
+OPENWEBUI_MANUAL_VALIDATION_ALLOWLISTED_FILES = frozenset({"docs/evidence/migrations/documentation-hard-cutover-receipt.md"})
+OPENWEBUI_MANUAL_VALIDATION_LINE_ALLOWLIST = {
+    "docs/planning/documentation-cutover-rules.yaml": tuple(f"{path}:" for path in OPENWEBUI_MANUAL_VALIDATION_RETIRED_PATHS),
+}
+OPENWEBUI_MANUAL_VALIDATION_SELF_FILE = "scripts/relaylm_docs_semantic_audit.py"
+OPENWEBUI_MANUAL_VALIDATION_SELF_LINES = frozenset(
+    f'"{retired_path}": "{canonical_path}",'
+    for retired_path, canonical_path in OPENWEBUI_MANUAL_VALIDATION_RETIRED_TO_CANONICAL.items()
+)
+
+
+def _openwebui_manual_validation_scanned_files(root: Path) -> list[Path]:
+    files = list(_mobile_dogfood_scanned_files(root))
+    seen = {file_path.resolve() for file_path in files}
+    docs_root = root / "docs"
+    if docs_root.is_dir():
+        for candidate in sorted(docs_root.rglob("*.txt")):
+            if candidate.is_file() and candidate.resolve() not in seen:
+                files.append(candidate)
+                seen.add(candidate.resolve())
+    return files
+
+
+def check_no_live_openwebui_manual_validation_retired_paths(errors: list[str]) -> None:
+    for retired_path, canonical_path in OPENWEBUI_MANUAL_VALIDATION_RETIRED_TO_CANONICAL.items():
+        if (ROOT / retired_path).exists():
+            errors.append(f"{retired_path}: retired OpenWebUI manual-validation path reintroduced (moved to {canonical_path} by Cutover 1C-45)")
+    for path in _openwebui_manual_validation_scanned_files(ROOT):
+        relative_path = path.relative_to(ROOT).as_posix()
+        if relative_path in OPENWEBUI_MANUAL_VALIDATION_RETIRED_TO_CANONICAL or relative_path in OPENWEBUI_MANUAL_VALIDATION_ALLOWLISTED_FILES:
+            continue
+        is_self = relative_path == OPENWEBUI_MANUAL_VALIDATION_SELF_FILE
+        allowed = OPENWEBUI_MANUAL_VALIDATION_LINE_ALLOWLIST.get(relative_path, ())
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        lines = text.splitlines()
+        def ok(stripped: str) -> bool:
+            return stripped in OPENWEBUI_MANUAL_VALIDATION_SELF_LINES if is_self else stripped in allowed
+        reported: set[int] = set()
+        def outside_external_href(line: str, start: int, end: int) -> bool:
+            for m in OPENWEBUI_MANUAL_VALIDATION_HTML_LINK_RE.finditer(line):
+                if m.start(2) <= start and end <= m.end(2):
+                    parsed = urlsplit(m.group(2).strip())
+                    if parsed.scheme.lower() in MOBILE_DOGFOOD_EXTERNAL_SCHEMES or parsed.netloc:
+                        return False
+            for m in MOBILE_DOGFOOD_MD_LINK_RE.finditer(line):
+                if m.start(1) <= start and end <= m.end(1):
+                    parsed = urlsplit(m.group(1).strip())
+                    if parsed.scheme.lower() in MOBILE_DOGFOOD_EXTERNAL_SCHEMES or parsed.netloc:
+                        return False
+            return True
+        if path.suffix not in (".md", ".txt"):
+            for line_number, line in enumerate(lines, 1):
+                stripped = line.strip(); m = OPENWEBUI_MANUAL_VALIDATION_REFERENCE_PATTERN.search(line)
+                if m and not ok(stripped):
+                    errors.append(f"{relative_path}:{line_number}: active reference to retired {m.group(0)}: {stripped!r}")
+            continue
+        for line_number, line in enumerate(lines, 1):
+            stripped = line.strip()
+            if ok(stripped):
+                continue
+            for m in MOBILE_DOGFOOD_MD_LINK_RE.finditer(line):
+                raw = m.group(1).strip()
+                parsed_raw = urlsplit(raw)
+                if parsed_raw.scheme.lower() in MOBILE_DOGFOOD_EXTERNAL_SCHEMES or parsed_raw.netloc:
+                    continue
+                resolved = _mobile_dogfood_resolve(path, raw)
+                if resolved in OPENWEBUI_MANUAL_VALIDATION_RETIRED_TO_CANONICAL:
+                    errors.append(f"{relative_path}:{line_number}: active reference to retired {resolved}: markdown link target {raw!r}"); reported.add(line_number); break
+            if line_number in reported: continue
+            for m in OPENWEBUI_MANUAL_VALIDATION_HTML_LINK_RE.finditer(line):
+                raw = m.group(2).strip(); resolved = _mobile_dogfood_resolve(path, raw)
+                if resolved in OPENWEBUI_MANUAL_VALIDATION_RETIRED_TO_CANONICAL:
+                    errors.append(f"{relative_path}:{line_number}: active reference to retired {resolved}: HTML href/src {raw!r}: {stripped!r}"); reported.add(line_number); break
+            if line_number in reported: continue
+            rm = OPENWEBUI_MANUAL_VALIDATION_REFERENCE_DEFINITION_RE.match(line)
+            if rm:
+                raw = (rm.group(1) or rm.group(2) or "").strip(); resolved = _mobile_dogfood_resolve(path, raw)
+                if resolved in OPENWEBUI_MANUAL_VALIDATION_RETIRED_TO_CANONICAL:
+                    errors.append(f"{relative_path}:{line_number}: active reference to retired {resolved}: reference definition {raw!r}: {stripped!r}"); reported.add(line_number)
+            if line_number in reported: continue
+            lm = OPENWEBUI_MANUAL_VALIDATION_REFERENCE_PATTERN.search(line)
+            if lm and outside_external_href(line, lm.start(), lm.end()):
+                errors.append(f"{relative_path}:{line_number}: active reference to retired {lm.group(0)}: {stripped!r}"); reported.add(line_number); continue
+            for tm in OPENWEBUI_MANUAL_VALIDATION_PROSE_PATH_TOKEN_RE.finditer(line):
+                if not outside_external_href(line, tm.start(1), tm.end(1)):
+                    continue
+                raw = tm.group(1); resolved = _mobile_dogfood_resolve(path, raw)
+                if resolved in OPENWEBUI_MANUAL_VALIDATION_RETIRED_TO_CANONICAL:
+                    errors.append(f"{relative_path}:{line_number}: active reference to retired {resolved}: prose path token {raw!r}: {stripped!r}"); reported.add(line_number); break
+        for key, raw_target in _mobile_dogfood_front_matter_path_values(text):
+            resolved = _mobile_dogfood_resolve(path, raw_target)
+            if resolved in OPENWEBUI_MANUAL_VALIDATION_RETIRED_TO_CANONICAL:
+                line_number, stripped = _mobile_dogfood_locate(lines, raw_target)
+                if not ok(stripped) and line_number not in reported:
+                    errors.append(f"{relative_path}:{line_number}: active reference to retired {resolved}: {key} entry {raw_target!r}")
+
+
+def check_openwebui_manual_validation_family_types(errors: list[str]) -> None:
+    for canonical_path, (doc_type, status) in sorted(OPENWEBUI_MANUAL_VALIDATION_CANONICAL_TYPES.items()):
+        meta, _ = parse_front_matter(canonical_path)
+        if meta.get("relaylm_doc_type") != doc_type:
+            errors.append(f"{canonical_path}: must declare relaylm_doc_type: {doc_type}, not {meta.get('relaylm_doc_type')!r}")
+        if meta.get("relaylm_status") != status:
+            errors.append(f"{canonical_path}: must declare relaylm_status: {status}, not {meta.get('relaylm_status')!r}")
+
+
 def check_o1_manual_one_round_family_types(errors: list[str]) -> None:
     for canonical_path in sorted(O1_MANUAL_ONE_ROUND_CANONICAL_PATHS):
         meta, _ = parse_front_matter(canonical_path)
@@ -6478,6 +6615,67 @@ def self_test() -> None:
         "real repository: no active reference to the retired o1-manual-one-round path after both Codex review correction rounds",
         check_no_live_o1_manual_one_round_retired_paths,
     )
+
+
+
+    # Cutover 1C-45: OpenWebUI / LM Studio manual-validation retired-path guard self-tests.
+    openwebui_pairs = OPENWEBUI_MANUAL_VALIDATION_RETIRED_TO_CANONICAL
+    openwebui_retired = "docs/smoke/" + "openwebui_lmstudio_manual_smoke.md"
+    openwebui_canonical = openwebui_pairs[openwebui_retired]
+    check_silent(
+        "real repository: no active reference to the retired OpenWebUI manual-validation paths",
+        check_no_live_openwebui_manual_validation_retired_paths,
+    )
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td); ROOT = base
+        _mvp_write(base, openwebui_retired, "# old\n")
+        check_rejects("a reintroduced retired OpenWebUI source file is rejected", check_no_live_openwebui_manual_validation_retired_paths, "retired OpenWebUI manual-validation path reintroduced")
+    ROOT = real_root
+    carriers = [
+        ("root-qualified markdown link", f"[old]({openwebui_retired})"),
+        ("relative markdown link with query and fragment", "[old](../smoke/openwebui_lmstudio_manual_smoke.md?x=1#scope)"),
+        ("same-directory bare basename", "See `openwebui_lmstudio_manual_smoke.md`"),
+        ("HTML href", "<a href='../smoke/openwebui_lmstudio_manual_smoke.md#scope'>old</a>"),
+        ("HTML src", "<img src='../smoke/openwebui_lmstudio_manual_smoke.md?x=1' />"),
+        ("reference definition", "[old]: ../smoke/openwebui_lmstudio_manual_smoke.md#scope"),
+        ("front matter path", f"---\nrelaylm_source_path: {openwebui_retired}\n---\n"),
+        ("non-Markdown literal", f"note: {openwebui_retired}\n"),
+    ]
+    for name, body in carriers:
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td); ROOT = base
+            file_path = "docs/smoke/carrier.md" if name != "non-Markdown literal" else "config.example.yaml"
+            _mvp_write(base, file_path, body + "\n")
+            check_rejects(f"OpenWebUI retired path in {name} is rejected", check_no_live_openwebui_manual_validation_retired_paths, f"active reference to retired {openwebui_retired}")
+        ROOT = real_root
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td); ROOT = base
+        _mvp_write(base, "docs/planning/documentation-cutover-rules.yaml", f"{openwebui_retired}:\n")
+        check_silent("OpenWebUI retired path exact cutover-rules key is allowlisted", check_no_live_openwebui_manual_validation_retired_paths)
+    ROOT = real_root
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td); ROOT = base
+        _mvp_write(base, "docs/example.md", f"[canonical](../operations/{Path(openwebui_canonical).name})\n")
+        check_silent("OpenWebUI canonical target link is accepted", check_no_live_openwebui_manual_validation_retired_paths)
+    ROOT = real_root
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td); ROOT = base
+        _mvp_write(base, "docs/example.md", "[external](https://example.com/docs/smoke/" + "openwebui_lmstudio_manual_smoke.md)\n")
+        check_silent("OpenWebUI external URL containing retired literal is accepted", check_no_live_openwebui_manual_validation_retired_paths)
+    ROOT = real_root
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td); ROOT = base
+        _mvp_write(base, "docs/other/openwebui_lmstudio_manual_smoke.md", "# unrelated\n")
+        _mvp_write(base, "docs/example.md", "See [unrelated](other/openwebui_lmstudio_manual_smoke.md).\n")
+        check_silent("OpenWebUI unrelated same basename in different directory is accepted", check_no_live_openwebui_manual_validation_retired_paths)
+    ROOT = real_root
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td); ROOT = base
+        _mvp_write(base, "docs/smoke/dup.md", f"[old]({openwebui_retired}) and {openwebui_retired}\n")
+        errors: list[str] = []
+        check_no_live_openwebui_manual_validation_retired_paths(errors)
+        check("OpenWebUI duplicate diagnostics on one line are suppressed", lambda: len(errors) == 1)
+    ROOT = real_root
 
     failed = [(name, message) for name, ok, message in results if not ok]
     for name, ok, message in results:

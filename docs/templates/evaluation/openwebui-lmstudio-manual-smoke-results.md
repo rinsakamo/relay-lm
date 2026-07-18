@@ -1,3 +1,19 @@
+---
+relaylm_doc_type: template
+relaylm_authority: non_authoritative_openwebui_lmstudio_manual_smoke_results_template
+relaylm_status: target
+relaylm_volatility: medium
+relaylm_owner: evaluation
+relaylm_update_trigger:
+  - OpenWebUI manual-smoke result fields change
+relaylm_not_authoritative_for:
+  - any specific dated OpenWebUI / LM Studio validation result
+  - repeatable operations procedure
+  - current runtime behavior
+relaylm_decision_source: ../../adr/0002-documentation-information-architecture.md
+relaylm_related_authority:
+  - ../../operations/openwebui-lmstudio-manual-smoke.md
+---
 # OpenWebUI + LM Studio Manual Smoke Results Template
 
 ## Scope
@@ -6,10 +22,10 @@ Use this template for a real local OpenWebUI -> RelayLM -> LM Studio validation 
 
 Detailed procedures:
 
-- [Client history exclusion manual smoke](client_history_exclusion_manual_smoke.md)
-- [RelayRUN recovery diagnostics manual smoke](relayrun_recovery_diagnostics_manual_smoke.md)
+- [Client history exclusion manual smoke](../../operations/client-history-exclusion-manual-smoke.md)
+- [RelayRUN recovery diagnostics manual smoke](../../operations/relayrun-recovery-diagnostics-manual-smoke.md)
 
-Latest historical filled sample: [2026-05-26 result](openwebui_lmstudio_manual_smoke_result_2026_05_26.md).
+Latest historical filled sample: [2026-05-26 result](../../evidence/evaluations/openwebui-lmstudio-manual-smoke-2026-05-26.md).
 
 ## Environment
 

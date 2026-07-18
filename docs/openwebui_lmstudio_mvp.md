@@ -209,9 +209,9 @@ Copy-ready profiles use `scene_state` as the only current scene file field.
 
 Use:
 
-- [OpenWebUI + LM Studio manual smoke](smoke/openwebui_lmstudio_manual_smoke.md)
-- [Client history exclusion manual smoke](smoke/client_history_exclusion_manual_smoke.md)
-- [Manual smoke results template](smoke/openwebui_lmstudio_manual_smoke_results_template.md)
+- [OpenWebUI + LM Studio manual smoke](smoke/../operations/openwebui-lmstudio-manual-smoke.md)
+- [Client history exclusion manual smoke](smoke/../operations/client-history-exclusion-manual-smoke.md)
+- [Manual smoke results template](smoke/../templates/evaluation/openwebui-lmstudio-manual-smoke-results.md)
 - [OpenWebUI model preset/avatar checklist](smoke/openwebui_model_preset_checklist.md)
 - [OpenWebUI route response differentiation checks](smoke/openwebui_response_differentiation_checks.md)
 - [Troubleshooting](smoke/openwebui_lmstudio_troubleshooting.md)
