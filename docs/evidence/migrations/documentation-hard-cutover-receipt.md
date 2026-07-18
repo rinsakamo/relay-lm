@@ -4349,7 +4349,7 @@ The receipt-only bookkeeping commit `1c162a618bef712c1d443a5deca7f974df935834` (
 ### C1C44-001 — O1 manual one-round authority cutover
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 610
 merged_commit: pending
 record_count: 1
 cutover_recorded_on: 2026-07-18
@@ -4455,8 +4455,20 @@ open_pr_isolation:
   checked_open_prs: [586, 578, 567]
   shared_file_overlaps: ["586 touches docs/README.md, disjoint sections; nothing imported"]
   no_content_imported: true
-validated_content_head: pending
+validated_content_head: 6399defc1ebee9e3df688d01d14a26665a60578b
 prior_validated_content_head_superseded: 8426a0d534203443c5096e03b25cddbb68893477
+validated_content_head_changed_files: 7
+validated_content_head_net_diff: {insertions: 1102, deletions: 7}
+validated_content_head_actions:
+  workflow_runs_total: 16
+  workflow_runs_by_trigger: {pull_request: 15, push: 1, other: 0}
+  job_or_check_runs_total: 27
+  success: 20
+  skipped: 7
+  failure: 0
+reviews: 2
+pr_comments: 0
+unresolved_review_threads: 1
 final_pr_changed_files: pending
 final_pr_net_diff: pending
 receipt_bookkeeping_commit: pending
@@ -4470,6 +4482,8 @@ Fixed in the substantive correction commit that supersedes `8426a0d` as `validat
 Six new deterministic `--self-test` assertions cover the correction: a prose/backtick mention of the retired path in a non-allowlisted `.md` file is rejected; the same mention in a frozen-status `.md` document is rejected (no generic frozen bypass); the identical literal is accepted at the exact whole-file-allowlisted receipt path (rejection-then-acceptance pair); a `.txt` file carrying the literal is rejected when not allowlisted; the canonical target path literal in prose is accepted (canonical-vs-retired distinction in the new literal pass); and the real repository passes the corrected guard. These bring `relaylm_docs_semantic_audit.py --self-test` from 188 to **194 total assertions**, recorded above.
 
 The Codex review thread is not resolved by this task; a factual reply naming the fixing commit is left on the thread instead, per the required procedure. This correction does not reinterpret, weaken, or alter the disposition, provenance, or status-preservation rationale recorded below; it only closes the prose/backtick detection gap the review identified.
+
+`cutover_pr` is `610` (`rinsakamo/relay-lm#610`). `6399defc1ebee9e3df688d01d14a26665a60578b` ("docs: apply Codex review correction for cutover 1C-44") is recorded above as `validated_content_head`, superseding `8426a0d534203443c5096e03b25cddbb68893477`: all 27 triggered GitHub Actions check runs, spanning 16 distinct workflow runs, individually confirmed via `get_check_runs` and cross-checked against each run's own `event` field via `actions_get get_workflow_run` (not inferred from timing) -- confirming exactly 15 `pull_request`-triggered runs and 1 `push`-triggered run (`phase-i4-forget-hide-contract-smoke.yml`, which declares both `push` and `pull_request` triggers on `docs/**` paths and so fires twice for the same head) -- completed successfully with 20 successes, 7 skips, and zero failures. Two reviews are present (the Codex automated review on `8426a0d`, and the owner's own factual reply-review on `6399def` created by `add_reply_to_pull_request_comment`); one review thread (`PRRT_kwDOSh2R-s6R9t_k`) remains open/unresolved by design, since resolving it is not part of the required procedure; zero top-level PR comments. The PR-level diff at this head is 7 changed files, +1102/-7 (independently confirmed via `git diff --numstat origin/main 6399def` and cross-checked against live `pull_request_read get` PR metadata), matching `validated_content_head_changed_files`/`validated_content_head_net_diff` above exactly -- this is the PR's second commit, and no non-receipt-content/receipt-only split applies yet since both commits so far are substantive. `mergeable_state` was `unstable` (a non-required-check/review-state artifact of the still-open Codex review thread, not a failing check -- all 27 check runs are green).
 
 **Selection-provenance record (accepted deferral, not a new selection).** This family was the originally expected Cutover 1C-43 candidate (source `docs/smoke/o1_manual_one_round_runbook.md`, expected target `docs/operations/o1-manual-one-round.md`), deferred by the accepted sequencing deviation recorded in the C1C43 entry above, and is now executed as Cutover 1C-44 as required. It was not newly selected by this task's own inventory; the C1C43 entry's selection-provenance record already named it as the deferred candidate. Starting boundary independently reverified: `origin/main` matched the task's stated boundary `7544ce164f4bc69618a287581f0f1af9686f0eab` exactly (the squash-merge of PR #609, Cutover 1C-43) -- zero intervening commits.
 
