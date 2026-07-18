@@ -70,7 +70,7 @@ python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
 python scripts/relaylm_client_history_exclusion_apply_runtime_smoke.py
 python scripts/relaylm_client_history_exclusion_apply_forward_gate_smoke.py
 python scripts/relaylm_profile_loading_smoke.py
-python scripts/relaylm_config_room_scene_compat_smoke.py
+python scripts/relaylm_config_scene_state_smoke.py
 ```
 
 - config coverage and copy-ready config:
