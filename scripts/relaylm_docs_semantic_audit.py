@@ -1725,6 +1725,21 @@ O1_MANUAL_ONE_ROUND_RETIRED_DIRECTORIES = frozenset(
     Path(path).parent.as_posix() for path in O1_MANUAL_ONE_ROUND_RETIRED_PATHS
 )
 
+# Bounded Markdown/text prose path-token matcher for plain prose and inline-code
+# mentions that are not Markdown links or front-matter values. It intentionally
+# matches path-like tokens ending in the exact retired basename and then resolves
+# each candidate against the referring file with `_mobile_dogfood_resolve()`; it
+# is not a global basename substring rejection. The optional leading relative
+# path is bounded to avoid pathological prose scans while still covering the
+# documented same-directory, `./`, and additional `../` spellings.
+O1_MANUAL_ONE_ROUND_PROSE_PATH_TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9_.-])"
+    r"((?:(?:\.\.?/|[A-Za-z0-9_.-]+/){0,8})"
+    r"(?:" + "|".join(re.escape(name) for name in O1_MANUAL_ONE_ROUND_RETIRED_BASENAMES) + r"))"
+    r"(?:#[A-Za-z0-9_.~/%:-]+)?"
+    r"(?![A-Za-z0-9_.-])"
+)
+
 # The migration receipt's own Cutover 1C-44 entry (and the C1C43 entry's
 # selection-provenance record) narrates the retired path by design;
 # whole-file allowlisted, matching the established precedent.
@@ -1890,32 +1905,34 @@ def check_no_live_o1_manual_one_round_retired_paths(errors: list[str]) -> None:
             )
             reported_line_numbers.add(line_number)
 
-        # Pass 4 (Codex review correction, second round): a bare retired
-        # basename (no directory prefix) in plain prose or backticks, scoped
-        # to `.md`/`.txt` files located in the retired path's own directory
-        # (`docs/smoke/`). Pass 3's root-qualified pattern does not match a
-        # bare basename with no path prefix; Codex demonstrated that a
-        # synthetic `docs/smoke/` document mentioning only
-        # `` `o1_manual_one_round_runbook.md` `` (no `docs/smoke/` prefix)
-        # passed silently. The canonical target's hyphenated basename
-        # (`o1-manual-one-round.md`) never matches this underscore-only
-        # pattern, so canonical mentions are never falsely flagged. Lines
-        # already reported by Pass 3 (a root-qualified match necessarily also
-        # contains the bare basename as a substring) are skipped here.
-        relative_directory = Path(relative_path).parent.as_posix()
-        if relative_directory in O1_MANUAL_ONE_ROUND_RETIRED_DIRECTORIES:
-            for line_number, line in enumerate(lines, start=1):
-                if line_number in reported_line_numbers:
-                    continue
-                stripped = line.strip()
-                bare_match = O1_MANUAL_ONE_ROUND_BARE_BASENAME_PATTERN.search(line)
-                if bare_match is None or _is_allowed(stripped):
+        # Pass 4 (Codex review correction, second round): bounded
+        # Markdown/text prose path tokens in plain prose or backticks, not
+        # expressed as Markdown links or front-matter values. Each candidate
+        # is resolved exactly like a Markdown link/front-matter path via
+        # `_mobile_dogfood_resolve()`, and only candidates resolving to the
+        # retired repository path are rejected. This catches bare same-
+        # directory, `./`, `../smoke/`, and bounded additional relative
+        # spellings without using a global basename substring check or
+        # rejecting the same basename in unrelated directories. Lines already
+        # reported by earlier passes are skipped to avoid duplicate
+        # diagnostics.
+        for line_number, line in enumerate(lines, start=1):
+            if line_number in reported_line_numbers:
+                continue
+            stripped = line.strip()
+            if _is_allowed(stripped):
+                continue
+            for token_match in O1_MANUAL_ONE_ROUND_PROSE_PATH_TOKEN_RE.finditer(line):
+                raw_target = token_match.group(1)
+                resolved = _mobile_dogfood_resolve(path, raw_target)
+                if resolved not in O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL:
                     continue
                 errors.append(
                     f"{relative_path}:{line_number}: active reference to retired "
-                    f"bare basename {bare_match.group(0)}: {stripped!r}"
+                    f"{resolved}: prose path token {raw_target!r}: {stripped!r}"
                 )
                 reported_line_numbers.add(line_number)
+                break
 
 
 def check_o1_manual_one_round_family_types(errors: list[str]) -> None:
@@ -6087,7 +6104,75 @@ def self_test() -> None:
         check_rejects(
             "a bare retired o1-manual-one-round basename in docs/smoke/ backtick prose is rejected (Codex second-round repro)",
             check_no_live_o1_manual_one_round_retired_paths,
-            "active reference to retired bare basename",
+            "prose path token",
+        )
+    ROOT = real_root
+
+    # 193. A bare retired basename in plain prose under docs/smoke/ is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/smoke/example_plain.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See {o1_retired.rsplit('/', 1)[-1]} for background.\n",
+        )
+        check_rejects(
+            "a bare retired o1-manual-one-round basename in docs/smoke/ plain prose is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "prose path token",
+        )
+    ROOT = real_root
+
+    # 194. A ./ retired basename in plain prose under docs/smoke/ is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/smoke/example_dot_plain.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See ./{o1_retired.rsplit('/', 1)[-1]} for background.\n",
+        )
+        check_rejects(
+            "a ./ retired o1-manual-one-round basename in docs/smoke/ plain prose is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "prose path token",
+        )
+    ROOT = real_root
+
+    # 195. A ../smoke/ retired path token in prose from docs/operations/ is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/operations/example_plain.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See ../smoke/{o1_retired.rsplit('/', 1)[-1]} for background.\n",
+        )
+        check_rejects(
+            "a ../smoke/ retired o1-manual-one-round prose token from another docs collection is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "prose path token",
+        )
+    ROOT = real_root
+
+    # 196. A bounded additional relative spelling resolving to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_plain.md",
+            "---\nrelaylm_doc_type: evidence\nrelaylm_status: current\n---\n\n"
+            f"See ../../smoke/{o1_retired.rsplit('/', 1)[-1]} for background.\n",
+        )
+        check_rejects(
+            "a bounded additional relative retired o1-manual-one-round prose token is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "prose path token",
         )
     ROOT = real_root
 
@@ -6129,12 +6214,10 @@ def self_test() -> None:
         )
     ROOT = real_root
 
-    # 195. A bare-basename mention outside docs/smoke/ (the bare-basename
-    # pass is scoped to the retired path's own directory only) is not
-    # flagged by Pass 4 -- this is expected scope, not a gap: any such
-    # mention elsewhere without a resolvable link/front-matter/root-qualified
-    # form is out of this correction's minimal-fix scope, matching Codex's
-    # suggested fix ("at minimum apply... to docs/smoke/").
+    # 199. The same basename in a directory where it does not resolve to the
+    # retired path is accepted. This proves the prose scanner resolves bounded
+    # path tokens relative to the referring file rather than using a global
+    # basename substring check.
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
@@ -6146,12 +6229,12 @@ def self_test() -> None:
         )
         errors_outside_scope: list[str] = []
         check_no_live_o1_manual_one_round_retired_paths(errors_outside_scope)
-        ok = not any("bare basename" in error for error in errors_outside_scope)
+        ok = not errors_outside_scope
         results.append(
             (
-                "a bare basename mention outside docs/smoke/ is out of the Pass 4 minimal-fix scope (documented, not a regression)",
+                "the same retired basename in a directory where it does not resolve to the retired path is accepted",
                 ok,
-                "" if ok else f"unexpected bare-basename errors: {errors_outside_scope!r}",
+                "" if ok else f"unexpected errors: {errors_outside_scope!r}",
             )
         )
     ROOT = real_root

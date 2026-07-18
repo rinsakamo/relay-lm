@@ -4427,7 +4427,7 @@ local_validation:
   compileall: passed
   docs_link_check: passed
   docs_semantic_audit: passed
-  docs_semantic_audit_self_test: passed_198_assertions
+  docs_semantic_audit_self_test: passed_202_assertions
   documentation_current_boundary_smoke: passed
   cutover_prepare_self_test: passed
   mvp_completion_report_smoke_check_model_check_all: passed
@@ -4455,20 +4455,14 @@ open_pr_isolation:
   checked_open_prs: [586, 578, 567]
   shared_file_overlaps: ["586 touches docs/README.md, disjoint sections; nothing imported"]
   no_content_imported: true
-validated_content_head: 08187a0501f790ec512417eb42c9a9e8520d8aac
-prior_validated_content_head_superseded: 6399defc1ebee9e3df688d01d14a26665a60578b
-validated_content_head_changed_files: 7
-validated_content_head_net_diff: {insertions: 1261, deletions: 7}
-validated_content_head_actions:
-  workflow_runs_total: 17
-  workflow_runs_by_trigger: {pull_request: 16, push: 1, other: 0}
-  job_or_check_runs_total: 27
-  success: 20
-  skipped: 7
-  failure: 0
-reviews: 5
-pr_comments: 0
-unresolved_review_threads: 0
+validated_content_head: pending
+prior_validated_content_head_superseded: 08187a0501f790ec512417eb42c9a9e8520d8aac
+validated_content_head_changed_files: pending
+validated_content_head_net_diff: pending
+validated_content_head_actions: pending
+reviews: pending
+pr_comments: pending
+unresolved_review_threads: pending
 final_pr_changed_files: pending
 final_pr_net_diff: pending
 receipt_bookkeeping_commit: pending
@@ -4497,9 +4491,13 @@ Finding 1 (review thread `PRRT_kwDOSh2R-s6R-ku5`, `scripts/relaylm_docs_semantic
 
 Finding 2 (review thread `PRRT_kwDOSh2R-s6R-ku6`, this receipt file's closing sentence): the C1C44 entry's closing sentence claimed `cutover_pr`, `validated_content_head`, the final diff fields, and the receipt bookkeeping fields "remain pending... to be recorded by the Actions polling sequence that follows," even though the YAML block above already held concrete values for all of them except `merged_commit` at that point. This was an accuracy defect in the prose, not the YAML data; verified independently by comparing the closing sentence against the YAML block's actual field values before fixing. The closing sentence below is corrected to state accurately that `cutover_pr` is resolved and only `merged_commit` remains pending at each point in the narrative where it appears true, and the four bookkeeping fields are explicitly described as reset (not merely "still pending from the start") when the second Codex round reopens them.
 
-Fixed in the substantive correction commit that supersedes `6399def` as `validated_content_head` (recorded below, once known): `check_no_live_o1_manual_one_round_retired_paths()` gained a fourth scan pass applying a bare-basename-only literal pattern (no directory prefix) to `.md`/`.txt` files located in the retired path's own directory (`docs/smoke/`), reusing the existing whole-file/exact-line allowlists; lines already reported by Pass 3 are skipped to avoid double-reporting. The receipt's closing sentence (Finding 2) is corrected in the same commit.
+Fixed in the substantive correction commit `08187a0501f790ec512417eb42c9a9e8520d8aac`, later superseded by the third-round correction recorded next: `check_no_live_o1_manual_one_round_retired_paths()` gained a fourth scan pass applying a bare-basename-only literal pattern (no directory prefix) to `.md`/`.txt` files located in the retired path's own directory (`docs/smoke/`), reusing the existing whole-file/exact-line allowlists; lines already reported by Pass 3 are skipped to avoid double-reporting. The receipt's closing sentence (Finding 2) was corrected in the same commit.
 
-Four new deterministic `--self-test` assertions cover Finding 1: Codex's exact repro (a bare backtick basename in a `docs/smoke/` document, no directory prefix) is rejected; the canonical hyphenated basename mentioned the same way in the same location is accepted (underscore-vs-hyphen distinction); the identical bare-basename literal is accepted at the exact whole-file-allowlisted migration receipt path (rejection-then-acceptance pair); and a bare-basename mention outside `docs/smoke/` is confirmed out of this minimal-fix's scope (documented behavior, not a gap) rather than silently untested. A fifth assertion reconfirms the real repository passes both correction rounds. These bring `relaylm_docs_semantic_audit.py --self-test` from 194 to **198 total assertions**, recorded above.
+Four deterministic `--self-test` assertions covered Finding 1 at `08187a0`: Codex's exact repro (a bare backtick basename in a `docs/smoke/` document, no directory prefix) was rejected; the canonical hyphenated basename mentioned the same way in the same location was accepted (underscore-vs-hyphen distinction); the identical bare-basename literal was accepted at the exact whole-file-allowlisted migration receipt path (rejection-then-acceptance pair); and a bare-basename mention outside `docs/smoke/` was confirmed out of that minimal-fix scope. A fifth assertion reconfirmed the real repository passed both correction rounds. These brought `relaylm_docs_semantic_audit.py --self-test` from 194 to **198 total assertions** at that head.
+
+**Third Codex review correction (PR #610, current round).** The second-round bare-basename pass was still too narrow: it did not resolve all bounded prose/backtick path-token spellings relative to the referring file, so prose forms such as `./o1_manual_one_round_runbook.md`, `../smoke/o1_manual_one_round_runbook.md`, and additional bounded relative spellings could remain fail-open. The new substantive correction replaces that scoped basename pass with a bounded Markdown/text path-token matcher for tokens ending in the retired basename, resolves each candidate using the existing `_mobile_dogfood_resolve()` semantics, and reports only when the resolved repository-relative path is exactly `docs/smoke/o1_manual_one_round_runbook.md`. This avoids a global basename substring check and accepts the same basename in unrelated directories when it does not resolve to the retired path. Lines already reported by Markdown-link, front-matter, or root-qualified literal passes remain skipped to avoid duplicate diagnostics. The existing whole-file receipt allowance, exact cutover-rules line allowance, exact self-file dict-entry allowance, no generic frozen/historical bypass, and no canonical-target scan bypass are preserved.
+
+New deterministic self-tests cover the requested cases: bare basename in prose under `docs/smoke/`; bare basename in backticks under `docs/smoke/`; `./o1_manual_one_round_runbook.md` in prose under `docs/smoke/`; `../smoke/o1_manual_one_round_runbook.md` from `docs/operations/`; another bounded relative spelling from `docs/evidence/implementation/`; the same basename from an unrelated directory that does not resolve to the retired path; canonical `o1-manual-one-round.md`; the existing allowlists' reject-then-allow proofs; and the real repository passing. These bring `relaylm_docs_semantic_audit.py --self-test` to **202 total assertions**. This third round supersedes `08187a0`; `validated_content_head` and associated exact-head Actions/review/diff fields are reset to `pending` above until this correction commit is created and validated. At this in-progress state, `cutover_pr` is resolved and `merged_commit` remains `pending`; final diff totals and receipt bookkeeping/finalization commits are intentionally pending because this round has reopened the receipt sequence.
 
 Both second-round review threads received a factual reply naming the fixing commit and are now resolved, alongside the first-round thread, since all three findings are genuinely fixed and independently re-verified (not resolved merely to close them out).
 
