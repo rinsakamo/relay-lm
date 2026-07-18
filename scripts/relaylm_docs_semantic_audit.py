@@ -1708,23 +1708,12 @@ O1_MANUAL_ONE_ROUND_REFERENCE_PATTERN = re.compile(
     "(?:" + "|".join(re.escape(path) for path in O1_MANUAL_ONE_ROUND_RETIRED_PATHS) + ")"
 )
 
-# Second-round Codex review correction: a bare retired basename (no
-# directory prefix) scan, scoped to `.md`/`.txt` files located in the
-# retired path's own directory. `docs/smoke/` and `docs/operations/` are
-# siblings at the same depth, and the retired basename
-# (`o1_manual_one_round_runbook.md`, underscore-separated) never collides
-# with the canonical basename (`o1-manual-one-round.md`, hyphen-separated),
-# so this pattern cannot false-positive on a legitimate canonical mention.
+# Retired basenames are used as the terminal component for bounded prose-token
+# detection. Candidates are resolved before rejection, so the basename alone is
+# never treated as a global substring ban.
 O1_MANUAL_ONE_ROUND_RETIRED_BASENAMES = tuple(
     sorted({Path(path).name for path in O1_MANUAL_ONE_ROUND_RETIRED_PATHS})
 )
-O1_MANUAL_ONE_ROUND_BARE_BASENAME_PATTERN = re.compile(
-    "(?:" + "|".join(re.escape(name) for name in O1_MANUAL_ONE_ROUND_RETIRED_BASENAMES) + ")"
-)
-O1_MANUAL_ONE_ROUND_RETIRED_DIRECTORIES = frozenset(
-    Path(path).parent.as_posix() for path in O1_MANUAL_ONE_ROUND_RETIRED_PATHS
-)
-
 # Bounded Markdown/text prose path-token matcher for plain prose and inline-code
 # mentions that are not Markdown links or front-matter values. It intentionally
 # matches path-like tokens ending in the exact retired basename and then resolves
@@ -1738,6 +1727,20 @@ O1_MANUAL_ONE_ROUND_PROSE_PATH_TOKEN_RE = re.compile(
     r"(?:" + "|".join(re.escape(name) for name in O1_MANUAL_ONE_ROUND_RETIRED_BASENAMES) + r"))"
     r"(?:#[A-Za-z0-9_.~/%:-]+)?"
     r"(?![A-Za-z0-9_.-])"
+)
+
+# Bounded Markdown-visible navigation carriers not handled by the inline
+# Markdown-link regex: local HTML href attributes and reference-style link
+# definitions. Each extracted destination is still resolved through
+# `_mobile_dogfood_resolve()`, so external URLs, root-absolute paths, empty
+# anchors, query strings, fragments, and %-encoding follow the same behavior as
+# the existing link/front-matter passes.
+O1_MANUAL_ONE_ROUND_HTML_HREF_RE = re.compile(
+    r"\bhref\s*=\s*([\"'])([^\"'<>\s][^\"'<>]*)\1",
+    re.IGNORECASE,
+)
+O1_MANUAL_ONE_ROUND_REFERENCE_DEFINITION_RE = re.compile(
+    r"^[ \t]{0,3}\[[^\]\n]+\]:[ \t]*(?:<([^>\n]+)>|([^ \t\n]+))"
 )
 
 # The migration receipt's own Cutover 1C-44 entry (and the C1C43 entry's
@@ -1830,6 +1833,16 @@ def check_no_live_o1_manual_one_round_retired_paths(errors: list[str]) -> None:
                 return stripped_line in O1_MANUAL_ONE_ROUND_SELF_FILE_EXACT_LINES
             return stripped_line in allowed_lines
 
+        def _is_inside_external_html_href(line_text: str, start: int, end: int) -> bool:
+            for href_match in O1_MANUAL_ONE_ROUND_HTML_HREF_RE.finditer(line_text):
+                value_start, value_end = href_match.span(2)
+                if not (value_start <= start and end <= value_end):
+                    continue
+                parsed = urlsplit(href_match.group(2).strip())
+                if parsed.scheme.lower() in MOBILE_DOGFOOD_EXTERNAL_SCHEMES or parsed.netloc:
+                    return True
+            return False
+
         if path.suffix not in (".md", ".txt"):
             # Every other scanned suffix (`.yaml`, `.yml`, `.py`, `.toml`,
             # and any further suffix the shared scanner returns): use a
@@ -1899,23 +1912,64 @@ def check_no_live_o1_manual_one_round_retired_paths(errors: list[str]) -> None:
             literal_match = O1_MANUAL_ONE_ROUND_REFERENCE_PATTERN.search(line)
             if literal_match is None or _is_allowed(stripped):
                 continue
+            if _is_inside_external_html_href(line, literal_match.start(), literal_match.end()):
+                continue
             errors.append(
                 f"{relative_path}:{line_number}: active reference to retired "
                 f"{literal_match.group(0)}: {stripped!r}"
             )
             reported_line_numbers.add(line_number)
 
-        # Pass 4 (Codex review correction, second round): bounded
+        # Pass 4 (Codex review correction, fourth round): Markdown-visible
+        # navigation carriers not covered by Pass 1's inline Markdown-link
+        # syntax: HTML `href` attributes and reference-style link
+        # definitions. Extracted targets are resolved with the same helper as
+        # inline links/front-matter values and only the exact retired path is
+        # rejected. Lines already reported by earlier passes are skipped to
+        # avoid duplicate diagnostics.
+        for line_number, line in enumerate(lines, start=1):
+            if line_number in reported_line_numbers:
+                continue
+            stripped = line.strip()
+            if _is_allowed(stripped):
+                continue
+            for href_match in O1_MANUAL_ONE_ROUND_HTML_HREF_RE.finditer(line):
+                raw_target = href_match.group(2).strip()
+                resolved = _mobile_dogfood_resolve(path, raw_target)
+                if resolved not in O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL:
+                    continue
+                errors.append(
+                    f"{relative_path}:{line_number}: active reference to retired "
+                    f"{resolved}: HTML href {raw_target!r}: {stripped!r}"
+                )
+                reported_line_numbers.add(line_number)
+                break
+            if line_number in reported_line_numbers:
+                continue
+            reference_match = O1_MANUAL_ONE_ROUND_REFERENCE_DEFINITION_RE.match(line)
+            if reference_match is None:
+                continue
+            raw_target = (reference_match.group(1) or reference_match.group(2) or "").strip()
+            resolved = _mobile_dogfood_resolve(path, raw_target)
+            if resolved not in O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL:
+                continue
+            errors.append(
+                f"{relative_path}:{line_number}: active reference to retired "
+                f"{resolved}: reference definition {raw_target!r}: {stripped!r}"
+            )
+            reported_line_numbers.add(line_number)
+
+        # Pass 5 (Codex review correction, second round): bounded
         # Markdown/text prose path tokens in plain prose or backticks, not
-        # expressed as Markdown links or front-matter values. Each candidate
-        # is resolved exactly like a Markdown link/front-matter path via
-        # `_mobile_dogfood_resolve()`, and only candidates resolving to the
-        # retired repository path are rejected. This catches bare same-
-        # directory, `./`, `../smoke/`, and bounded additional relative
-        # spellings without using a global basename substring check or
-        # rejecting the same basename in unrelated directories. Lines already
-        # reported by earlier passes are skipped to avoid duplicate
-        # diagnostics.
+        # expressed as Markdown links, front-matter values, HTML hrefs, or
+        # reference definitions. Each candidate is resolved exactly like a
+        # Markdown link/front-matter path via `_mobile_dogfood_resolve()`, and
+        # only candidates resolving to the retired repository path are
+        # rejected. This catches bare same-directory, `./`, `../smoke/`, and
+        # bounded additional relative spellings without using a global
+        # basename substring check or rejecting the same basename in unrelated
+        # directories. Lines already reported by earlier passes are skipped to
+        # avoid duplicate diagnostics.
         for line_number, line in enumerate(lines, start=1):
             if line_number in reported_line_numbers:
                 continue
@@ -1924,6 +1978,8 @@ def check_no_live_o1_manual_one_round_retired_paths(errors: list[str]) -> None:
                 continue
             for token_match in O1_MANUAL_ONE_ROUND_PROSE_PATH_TOKEN_RE.finditer(line):
                 raw_target = token_match.group(1)
+                if _is_inside_external_html_href(line, token_match.start(1), token_match.end(1)):
+                    continue
                 resolved = _mobile_dogfood_resolve(path, raw_target)
                 if resolved not in O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL:
                     continue
@@ -6173,6 +6229,182 @@ def self_test() -> None:
             "a bounded additional relative retired o1-manual-one-round prose token is rejected",
             check_no_live_o1_manual_one_round_retired_paths,
             "prose path token",
+        )
+    ROOT = real_root
+
+    # 197. A double-quoted relative HTML href from docs/README.md resolving
+    # to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"<a href=\"smoke/{o1_retired.rsplit('/', 1)[-1]}\">old authority</a>\n",
+        )
+        check_rejects(
+            "a double-quoted relative HTML href resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "HTML href",
+        )
+    ROOT = real_root
+
+    # 198. A single-quoted relative HTML href from docs/README.md resolving
+    # to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"<a href='smoke/{o1_retired.rsplit('/', 1)[-1]}'>old authority</a>\n",
+        )
+        check_rejects(
+            "a single-quoted relative HTML href resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "HTML href",
+        )
+    ROOT = real_root
+
+    # 199. A Markdown reference-style definition from docs/README.md resolving
+    # to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"[old]: smoke/{o1_retired.rsplit('/', 1)[-1]}\n\n[old O1][old]\n",
+        )
+        check_rejects(
+            "a Markdown reference definition resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "reference definition",
+        )
+    ROOT = real_root
+
+    # 200. A Markdown reference-style definition using angle brackets is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"[old]: <smoke/{o1_retired.rsplit('/', 1)[-1]}> \"old title\"\n",
+        )
+        check_rejects(
+            "an angle-bracket Markdown reference definition resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "reference definition",
+        )
+    ROOT = real_root
+
+    # 201. Query/fragment normalization still resolves to and rejects the retired path.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"<a href=\"smoke/{o1_retired.rsplit('/', 1)[-1]}?old=1#purpose\">old authority</a>\n",
+        )
+        check_rejects(
+            "an HTML href with query and fragment still resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "HTML href",
+        )
+    ROOT = real_root
+
+    # 202. A canonical target HTML href is accepted.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"<a href=\"{o1_canonical}\">current authority</a>\n",
+        )
+        check_silent(
+            "a canonical o1-manual-one-round HTML href is accepted",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 203. A canonical target reference-style definition is accepted.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"[current]: {o1_canonical} \"current title\"\n",
+        )
+        check_silent(
+            "a canonical o1-manual-one-round reference definition is accepted",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 204. An external HTML href is ignored by the shared resolver and accepted.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"<a href=\"https://example.invalid/{o1_retired}\">external</a>\n",
+        )
+        check_silent(
+            "an external HTML href mentioning the retired o1-manual-one-round path is accepted",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 205. Unrelated relative HTML/reference targets are accepted.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            "<a href=\"smoke/unrelated.md\">unrelated</a>\n"
+            "[unrelated]: smoke/unrelated.md\n",
+        )
+        check_silent(
+            "unrelated relative HTML href and reference-definition targets are accepted",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 206. A line already caught by an existing pass is not double-reported by
+    # the HTML/reference/prose passes.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [old]({o1_retired}) and <a href=\"{o1_retired}\">old</a>.\n",
+        )
+        errors_no_duplicates: list[str] = []
+        check_no_live_o1_manual_one_round_retired_paths(errors_no_duplicates)
+        ok = len(errors_no_duplicates) == 1 and "markdown link target" in errors_no_duplicates[0]
+        results.append(
+            (
+                "a line already reported by the Markdown-link pass is not double-reported by later O1 passes",
+                ok,
+                "" if ok else f"unexpected diagnostics: {errors_no_duplicates!r}",
+            )
         )
     ROOT = real_root
 
