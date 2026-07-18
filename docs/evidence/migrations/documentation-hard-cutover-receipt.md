@@ -4455,14 +4455,20 @@ open_pr_isolation:
   checked_open_prs: [586, 578, 567]
   shared_file_overlaps: ["586 touches docs/README.md, disjoint sections; nothing imported"]
   no_content_imported: true
-validated_content_head: pending
+validated_content_head: 08187a0501f790ec512417eb42c9a9e8520d8aac
 prior_validated_content_head_superseded: 6399defc1ebee9e3df688d01d14a26665a60578b
-validated_content_head_changed_files: pending
-validated_content_head_net_diff: pending
-validated_content_head_actions: pending
-reviews: pending
-pr_comments: pending
-unresolved_review_threads: pending
+validated_content_head_changed_files: 7
+validated_content_head_net_diff: {insertions: 1261, deletions: 7}
+validated_content_head_actions:
+  workflow_runs_total: 17
+  workflow_runs_by_trigger: {pull_request: 16, push: 1, other: 0}
+  job_or_check_runs_total: 27
+  success: 20
+  skipped: 7
+  failure: 0
+reviews: 5
+pr_comments: 0
+unresolved_review_threads: 0
 final_pr_changed_files: pending
 final_pr_net_diff: pending
 receipt_bookkeeping_commit: pending
@@ -4495,6 +4501,10 @@ Fixed in the substantive correction commit that supersedes `6399def` as `validat
 
 Four new deterministic `--self-test` assertions cover Finding 1: Codex's exact repro (a bare backtick basename in a `docs/smoke/` document, no directory prefix) is rejected; the canonical hyphenated basename mentioned the same way in the same location is accepted (underscore-vs-hyphen distinction); the identical bare-basename literal is accepted at the exact whole-file-allowlisted migration receipt path (rejection-then-acceptance pair); and a bare-basename mention outside `docs/smoke/` is confirmed out of this minimal-fix's scope (documented behavior, not a gap) rather than silently untested. A fifth assertion reconfirms the real repository passes both correction rounds. These bring `relaylm_docs_semantic_audit.py --self-test` from 194 to **198 total assertions**, recorded above.
 
+Both second-round review threads received a factual reply naming the fixing commit and are now resolved, alongside the first-round thread, since all three findings are genuinely fixed and independently re-verified (not resolved merely to close them out).
+
+`08187a0501f790ec512417eb42c9a9e8520d8aac` ("docs: apply second Codex review round for cutover 1C-44") is recorded above as `validated_content_head`, superseding `6399defc1ebee9e3df688d01d14a26665a60578b`: all 27 triggered GitHub Actions check runs, spanning 17 distinct workflow runs, individually confirmed via `actions_list list_workflow_runs` filtered to this exact head SHA and cross-checked against each run's own `event` field (not inferred from timing) -- confirming exactly 16 `pull_request`-triggered runs and 1 `push`-triggered run (`phase-i4-forget-hide-contract-smoke.yml`) -- completed successfully with 20 successes, 7 skips, and zero failures. Five reviews are present (the two Codex automated reviews on `8426a0d` and `78715d3`, and three owner factual reply-reviews on `6399def` and `08187a0` created by `add_reply_to_pull_request_comment`); zero PR comments; zero unresolved review threads (all three resolved above). The PR-level diff at this head is 7 changed files, +1261/-7 (independently confirmed via `git diff --numstat origin/main 08187a0`), matching `validated_content_head_changed_files`/`validated_content_head_net_diff` above exactly -- this is the PR's fifth commit, and no non-receipt-content/receipt-only split applies yet since all commits so far are substantive or narrative-correction. `mergeable_state` was `clean`.
+
 **Selection-provenance record (accepted deferral, not a new selection).** This family was the originally expected Cutover 1C-43 candidate (source `docs/smoke/o1_manual_one_round_runbook.md`, expected target `docs/operations/o1-manual-one-round.md`), deferred by the accepted sequencing deviation recorded in the C1C43 entry above, and is now executed as Cutover 1C-44 as required. It was not newly selected by this task's own inventory; the C1C43 entry's selection-provenance record already named it as the deferred candidate. Starting boundary independently reverified: `origin/main` matched the task's stated boundary `7544ce164f4bc69618a287581f0f1af9686f0eab` exactly (the squash-merge of PR #609, Cutover 1C-43) -- zero intervening commits.
 
 Independent repository inventory (`docs/**`, `scripts/**`, `.github/workflows/**`, `relaylm/**`, `tests/**`, `config.example.yaml`, `pyproject.toml`, every spelling variant of the old path, the bare basename, and the hyphenated target name) confirms exactly three live referrers: `docs/README.md` (one index link), `docs/smoke/README.md` (one index entry), and `scripts/relaylm_documentation_current_boundary_smoke.py` (two path/marker entries), all recorded in `dependency_and_reference_inventory` above. Zero `.github/workflows/**` references and zero live `docs/evidence/**` references (beyond this receipt's own historical mentions) were found. The source document's line count was independently re-measured at 62 lines (`awk 'END{print NR}'` and the Read tool both agree); this corrects the task brief's stated 63 to the true measured value.
@@ -4511,7 +4521,7 @@ Thirty-one new deterministic `--self-test` assertions cover both new checks, bri
 
 No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/mvp/` remains fully absent. No compatibility path, redirect, alias, symlink, fallback lookup, duplicate live copy, or old-path manifest was added. No open-PR content was imported, rebased, or partially copied.
 
-`cutover_pr` is resolved above (`610`). Following the second Codex review round recorded above, `validated_content_head`, `validated_content_head_changed_files`, `validated_content_head_net_diff`, `validated_content_head_actions`, `reviews`, `pr_comments`, `unresolved_review_threads`, `final_pr_changed_files`, `final_pr_net_diff`, `receipt_bookkeeping_commit`, and `receipt_finalization` are reset to `pending` above, to be recorded by the substantive correction, bookkeeping, and finalization commits that follow. `merged_commit` for the C1C44 record remains `pending`; this task does not merge the PR.
+`cutover_pr`, `validated_content_head`, and its associated diff/Actions/review fields are all resolved above, following the second Codex review round and its own validated head `08187a0`. `final_pr_changed_files`, `final_pr_net_diff`, `receipt_bookkeeping_commit`, and `receipt_finalization` remain `pending` above, to be recorded by the receipt-only bookkeeping and finalization commits that follow. `merged_commit` for the C1C44 record remains `pending`; this task does not merge the PR.
 
 ## Freeze boundary
 
