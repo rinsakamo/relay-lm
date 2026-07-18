@@ -25,6 +25,10 @@ Implementation evidence remains under `docs/evidence/implementation/`. Executabl
 - [Consolidated smoke workflow maintenance](../operations/consolidated-smoke-workflow-maintenance.md) — canonical under `docs/operations/`; current RelayMEM, Runtime, and UI workflow grouping, contract validation, and generated inventory procedure. Indexed here only as a cross-collection pointer, not owned content.
 - [Scripts inventory summary](scripts_inventory.md) — latest audited summary and the authoritative generated-artifact regeneration path; a distinct, unmoved `docs/smoke/` authority with its own lifecycle.
 
+## O1 manual one-round validation (cross-collection link)
+
+- [O1 manual one-round operations runbook](../operations/o1-manual-one-round.md) — canonical under `docs/operations/`; lower-level compatibility/manual validation for one O1D1-style round; not O2/O3 service operation. Indexed here only as a cross-collection pointer, not owned content.
+
 ## OpenWebUI / LM Studio manual smoke
 
 - [OpenWebUI + LM Studio manual smoke runbook](openwebui_lmstudio_manual_smoke.md)
@@ -41,7 +45,6 @@ Implementation evidence remains under `docs/evidence/implementation/`. Executabl
 
 ## RelayMEM and local behavior evaluation
 
-- [O1 manual one-round operations runbook](o1_manual_one_round_runbook.md) — lower-level compatibility/manual validation for one O1D1-style round; not O2/O3 service operation.
 - [E2 value smoke runbook](e2_value_smoke_runbook.md)
 - [RelayMEM runtime payload diff evaluation](relaymem_runtime_payload_eval.md)
 - [RelayMEM local LLM evaluation guide](relaymem_local_llm_eval_guide.md)

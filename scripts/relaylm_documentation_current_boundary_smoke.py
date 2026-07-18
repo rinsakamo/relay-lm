@@ -18,7 +18,7 @@ CURRENT_DOCS = (
     "docs/templates/README.md",
     "docs/DOCUMENTATION_MODEL.md",
     "docs/smoke/README.md",
-    "docs/smoke/o1_manual_one_round_runbook.md",
+    "docs/operations/o1-manual-one-round.md",
     "docs/architecture/current_target_migration_guide.md",
     "docs/architecture/project_execution_plan.md",
     "docs/architecture/relaymem_slp_current_target.md",
@@ -195,11 +195,12 @@ REQUIRED = {
     "docs/smoke/README.md": (
         "O1 manual one-round operations runbook",
         "lower-level compatibility/manual validation for one O1D1-style round; not O2/O3 service operation.",
+        "Indexed here only as a cross-collection pointer, not owned content.",
         "offline tooling docs under `docs/tools/`",
         "evaluation templates or run records under `docs/evaluation/`",
     ),
-    "docs/smoke/o1_manual_one_round_runbook.md": (
-        "relaylm_doc_type: runbook",
+    "docs/operations/o1-manual-one-round.md": (
+        "relaylm_doc_type: operations",
         "relaylm_status: compatibility",
         "This runbook remains a compatibility/manual-validation guide for explicitly invoking one O1D1-style scheduler round.",
         "For current opt-in local service/always-on wrapper operation, read [O2 Supervised Scheduler Service]",

@@ -378,6 +378,35 @@ path_overrides:
       other path-bearing relative link. docs/smoke/ is not retired by this
       cutover: docs/smoke/scripts_inventory.md (a distinct evaluation_record
       authority) and the thirteen other docs/smoke/ files remain in place.
+  docs/smoke/o1_manual_one_round_runbook.md:
+    disposition: moved
+    target_doc_type: operations
+    target_paths:
+      - docs/operations/o1-manual-one-round.md
+    deletion_reason: >-
+      Cutover 1C-44: this source was a legacy runbook-typed document under
+      docs/smoke/, an existing-only pre-cutover collection whose required
+      cutover destination is operations. Moved and retyped to the canonical
+      operations profile (relaylm_doc_type corrected from runbook to
+      operations; relaylm_status remains compatibility, since
+      docs/DOCUMENTATION_MODEL.md defines compatibility as an existing-only
+      pre-cutover status with no normalize-during-cutover rule, unlike
+      historical_after_merge, and this document's lower-level O1D1
+      manual-one-round compatibility/manual-validation boundary and its
+      O2/O3 non-authoritative-for scope are unchanged by the move),
+      hyphenated canonical basename per the Cutover 1C-41/1C-42/1C-43
+      precedent; body content preserved byte-exactly except for front
+      matter, since docs/operations/ is the same relative depth as
+      docs/smoke/ and every one of the document's `../` relative references
+      (../PROJECT_STATUS.md, ../architecture/*, ../evidence/waves/*) remains
+      valid unchanged. docs/smoke/ is not retired by this cutover:
+      docs/smoke/scripts_inventory.md (a distinct evaluation_record
+      authority), the already-moved Cutover 1C-43 consolidated-workflow-
+      maintenance successor, and the other docs/smoke/ files remain in
+      place.
+      This authority was the originally expected Cutover 1C-43 candidate,
+      deferred by the accepted sequencing deviation recorded in the C1C43
+      receipt entry, and is executed here as Cutover 1C-44 as required.
 
 family_rules:
   - id: canonical-target-collections

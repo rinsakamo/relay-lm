@@ -72,7 +72,7 @@ Implementation PRs add or update their own slice handoff and `docs/evidence/impl
 - [O1F operational validation](architecture/o1f_operational_validation.md)
 - [O2 supervised scheduler service](architecture/o2_supervised_scheduler_service.md)
 - [O3 always-on local scheduler](architecture/o3_always_on_local_scheduler.md)
-- [O1 manual one-round runbook](smoke/o1_manual_one_round_runbook.md)
+- [O1 manual one-round operations runbook](operations/o1-manual-one-round.md)
 - [PM-D5 RelayMEM flat-store compatibility removal](architecture/pm_d5_relaymem_flat_store_compatibility_removal.md)
 - [PM-D6 RelayINT native artifact / RelayREF wrapper removal](architecture/pm_d6_relayint_native_artifact_relayref_wrapper_removal.md)
 - [PM-D7 runtime install hook fold-in](architecture/pm_d7_runtime_install_hook_fold_in.md)
