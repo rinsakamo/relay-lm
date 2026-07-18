@@ -246,7 +246,7 @@ verification:
   documentation_semantic_audit: passed
   affected_current_boundary_checks: passed
   all_github_actions: passed
-  unresolved_review_threads: 0
+  unresolved_review_threads: pending
 ```
 
 The canonical evidence document preserves the complete Wave 4 convergence account while correcting relative links for its new collection. The exact pre-cutover source remains available as the original Git blob. The frozen and current-tree sweeps identified one repository-root literal in a later completion record, four hard-coded script occurrences across two smoke files, four Markdown relative links across three referrer files, and one `relaylm_related_authority` YAML reference. These dependency classes remain separately recorded; the old path below is only the historical migration identifier for this receipt.
@@ -2151,7 +2151,7 @@ verification:
     - stage3_candidate_vs_final_response_metadata_previously_conflated_now_distinguished
     - two_focused_contract_smokes_added_where_none_existed
   validated_content_head: d2163f2daf74381c3f5d12f3d49ab116ec9609c0
-  receipt_finalization: performed_after_validated_content_head
+  receipt_finalization: pending
   validated_content_head_triggered_check_runs: 25
   validated_content_head_all_github_actions: passed
   validated_content_head_runtime_group_selection: correctly_skipped_new_contract_smoke_scripts_match_no_existing_group_glob
@@ -2897,8 +2897,8 @@ verification:
   validated_content_head_wave4_wave5_cross_slice_convergence_note: both_now_pass_confirming_the_dependency_free_parser_fix_resolved_the_modulenotfounderror_seen_at_the_intermediate_correction_head
   all_github_actions: passed
   unresolved_review_threads: 0
-  reviews: 0
-  pr_comments: 0
+  reviews: pending
+  pr_comments: pending
   receipt_finalization: performed_after_validated_content_head
 ```
 
@@ -4608,20 +4608,20 @@ open_pr_isolation:
   checked_open_prs: [586, 578, 567]
   shared_file_overlaps: []
   no_content_imported: true
-validation_results: local_required_validation_passed_and_exact_head_actions_passed
-semantic_audit_self_test_assertions: 227
-validated_content_head: be21fba855c194c66fa2219874b2ab23dcee38d7
-receipt_bookkeeping_commit: d109aee8d6204ffb99cd9753f58cfab1cdb37ba1
+validation_results: pending_after_substantive_correction
+semantic_audit_self_test_assertions: pending
+validated_content_head: pending
+receipt_bookkeeping_commit: pending
 receipt_finalization: performed_after_validated_content_head
 merged_commit: pending
-exact_head_actions: {total: 27, success: 18, skipped: 9, failure: 0}
+exact_head_actions: pending
 reviews: 0
 pr_comments: 0
 unresolved_review_threads: 0
-final_pr_changed_files: 17
-final_pr_net_diff: {insertions: 465, deletions: 33}
+final_pr_changed_files: pending
+final_pr_net_diff: pending
 ```
 
 Cutover 1C-45 starts from the exact current-main boundary `43fd272c3a99180646ad73b6c2edc12435a87812`, independently verified as both local `HEAD` and `origin/main`. The family boundary is limited to three repeatable manual-validation procedures, one blank reusable results template, and one completed dated local validation result. The procedures move to `docs/operations/`, the blank template moves to `docs/templates/evaluation/`, and the completed 2026-05-26 result moves to `docs/evidence/evaluations/` with frozen evidence metadata and source provenance. No `relaylm/**` files are changed and no runtime behavior is changed. The C1C45 PR remains open and unmerged; `merged_commit` remains pending.
 
-The receipt bookkeeping commit `d109aee8d6204ffb99cd9753f58cfab1cdb37ba1` was pushed and verified at its exact head with 27 completed checks (18 success, 9 skipped, 0 failure). This finalization commit records that bookkeeping validation and keeps `merged_commit: pending`; the PR remains open and unmerged.
+**C1C45 correction round for PR #611.** Independent review found four unresolved threads requiring a substantive correction before re-finalization. `PRRT_kwDOSh2R-s6SAE0D` covered the frozen evidence source path; replay against base/main confirms the true source is `docs/smoke/openwebui_lmstudio_manual_smoke_result_2026_05_26.md`, with source blob `b19679e01ddbc9c30986bf6912edcb6b04cb8e7c` and normalized SHA-256 `8d903842533fe69aff177f9f9cdacdda7e8174f958ac4e8a063b615dd7d3a97d`. `PRRT_kwDOSh2R-s6SAE0F` found that `check_no_live_openwebui_manual_validation_retired_paths` and `check_openwebui_manual_validation_family_types` were self-tested but omitted from the default production semantic-audit registry, making default execution fail open; this correction registers both checks after the C1C44 O1 checks and adds production-registry self-test coverage. `PRRT_kwDOSh2R-s6SAJ3e` found stale receipt accounting: `be21fba855c194c66fa2219874b2ab23dcee38d7`, real historical bookkeeping commit `d109aeed20afdef3026b5c1fde3b4011d9762882`, and finalization head `0adea1cd2b1b13f10c6bb969c4d4adf835424613` are now preserved only as superseded historical narrative, while the current accounting fields above are reset to `pending` for the new validated-content sequence. `PRRT_kwDOSh2R-s6SAJ3f` found stale final diff totals: the reviewed `0adea1c` head was 17 files, +472/-29 rather than the previously recorded +465/-33; final diff totals are reset to `pending` and must be freshly recomputed after this correction. The prior finalization is superseded because substantive audit-registration and accounting corrections occurred after it; `merged_commit` remains `pending` and no runtime files changed.

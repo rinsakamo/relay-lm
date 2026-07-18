@@ -6686,6 +6686,51 @@ def self_test() -> None:
         check("OpenWebUI duplicate diagnostics on one line are suppressed", lambda: len(errors) == 1)
     ROOT = real_root
 
+
+
+    # Cutover 1C-45 production-registry coverage: direct helper tests above are
+    # insufficient unless the default semantic-audit path also runs the checks.
+    check(
+        "OpenWebUI retired-path guard is registered in the production semantic-audit tuple",
+        lambda: check_no_live_openwebui_manual_validation_retired_paths
+        in DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS,
+    )
+    check(
+        "OpenWebUI family type guard is registered in the production semantic-audit tuple",
+        lambda: check_openwebui_manual_validation_family_types
+        in DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS,
+    )
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, openwebui_retired, "# reintroduced retired source\n")
+        errors: list[str] = []
+        if check_no_live_openwebui_manual_validation_retired_paths in DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS:
+            check_no_live_openwebui_manual_validation_retired_paths(errors)
+        check(
+            "production semantic-audit tuple rejects a reintroduced OpenWebUI retired source",
+            lambda: any("retired OpenWebUI manual-validation path reintroduced" in error for error in errors),
+        )
+    ROOT = real_root
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        for canonical_path, (doc_type, status) in OPENWEBUI_MANUAL_VALIDATION_CANONICAL_TYPES.items():
+            wrong_type = "guide" if doc_type != "guide" else "operations"
+            _mvp_write(
+                base,
+                canonical_path,
+                f"---\nrelaylm_doc_type: {wrong_type}\nrelaylm_status: {status}\n---\n# bad metadata\n",
+            )
+        errors: list[str] = []
+        if check_openwebui_manual_validation_family_types in DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS:
+            check_openwebui_manual_validation_family_types(errors)
+        check(
+            "production semantic-audit tuple rejects incorrect OpenWebUI canonical metadata",
+            lambda: any("must declare relaylm_doc_type" in error for error in errors),
+        )
+    ROOT = real_root
+
     failed = [(name, message) for name, ok, message in results if not ok]
     for name, ok, message in results:
         status = "PASS" if ok else "FAIL"
@@ -6698,6 +6743,35 @@ def self_test() -> None:
     print(f"\nRelayLM docs semantic audit self-test passed: {len(results)} assertions")
 
 
+
+DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS = (
+    check_metadata,
+    check_e2_boundary,
+    check_client_instruction_boundary,
+    check_release_assessment,
+    check_completion_report_template,
+    check_implementation_evidence_index,
+    check_no_live_mvp_tree,
+    check_cutover_rule_target_types,
+    check_no_live_lat1_scaffold,
+    check_lat1_evaluation_split,
+    check_lat1_evaluation_evidence_records,
+    check_no_live_e1_local_runtime_architecture_path,
+    check_no_live_mobile_dogfood_retired_paths,
+    check_mobile_dogfood_family_types,
+    check_no_live_twin_extraction_retired_paths,
+    check_twin_extraction_family_types,
+    check_no_live_smoke_maintenance_retired_paths,
+    check_smoke_maintenance_family_types,
+    check_no_live_o1_manual_one_round_retired_paths,
+    check_o1_manual_one_round_family_types,
+    check_no_live_openwebui_manual_validation_retired_paths,
+    check_openwebui_manual_validation_family_types,
+    check_operations_docs,
+    check_referenced_repository_paths,
+)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--self-test", action="store_true")
@@ -6708,30 +6782,7 @@ def main() -> int:
         return 0
 
     errors: list[str] = []
-    checks = (
-        check_metadata,
-        check_e2_boundary,
-        check_client_instruction_boundary,
-        check_release_assessment,
-        check_completion_report_template,
-        check_implementation_evidence_index,
-        check_no_live_mvp_tree,
-        check_cutover_rule_target_types,
-        check_no_live_lat1_scaffold,
-        check_lat1_evaluation_split,
-        check_lat1_evaluation_evidence_records,
-        check_no_live_e1_local_runtime_architecture_path,
-        check_no_live_mobile_dogfood_retired_paths,
-        check_mobile_dogfood_family_types,
-        check_no_live_twin_extraction_retired_paths,
-        check_twin_extraction_family_types,
-        check_no_live_smoke_maintenance_retired_paths,
-        check_smoke_maintenance_family_types,
-        check_no_live_o1_manual_one_round_retired_paths,
-        check_o1_manual_one_round_family_types,
-        check_operations_docs,
-        check_referenced_repository_paths,
-    )
+    checks = DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS
     for check in checks:
         try:
             check(errors)
