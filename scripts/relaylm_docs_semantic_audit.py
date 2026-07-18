@@ -2028,8 +2028,13 @@ OPENWEBUI_MANUAL_VALIDATION_LINE_ALLOWLIST = {
 }
 OPENWEBUI_MANUAL_VALIDATION_SELF_FILE = "scripts/relaylm_docs_semantic_audit.py"
 OPENWEBUI_MANUAL_VALIDATION_SELF_LINES = frozenset(
-    f'"{retired_path}": "{canonical_path}",'
-    for retired_path, canonical_path in OPENWEBUI_MANUAL_VALIDATION_RETIRED_TO_CANONICAL.items()
+    [
+        *(
+            f'"{retired_path}": "{canonical_path}",'
+            for retired_path, canonical_path in OPENWEBUI_MANUAL_VALIDATION_RETIRED_TO_CANONICAL.items()
+        ),
+        '"relaylm_source_path: docs/smoke/openwebui_lmstudio_manual_smoke_result_2026_05_26.md",',
+    ]
 )
 
 
