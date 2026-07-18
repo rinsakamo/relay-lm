@@ -14,7 +14,7 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../operations/openwebui-lmstudio-manual-smoke.md
 relaylm_source_commit: 43fd272c3a99180646ad73b6c2edc12435a87812
-relaylm_source_path: docs/smoke/openwebui-lmstudio-manual-smoke-2026-05-26.md
+relaylm_source_path: docs/smoke/openwebui_lmstudio_manual_smoke_result_2026_05_26.md
 relaylm_recorded_on: 2026-05-26
 relaylm_source_blob: b19679e01ddbc9c30986bf6912edcb6b04cb8e7c
 relaylm_source_content_sha256: 8d903842533fe69aff177f9f9cdacdda7e8174f958ac4e8a063b615dd7d3a97d
