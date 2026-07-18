@@ -4611,15 +4611,17 @@ open_pr_isolation:
 validation_results: local_required_validation_passed_and_exact_head_actions_passed
 semantic_audit_self_test_assertions: 227
 validated_content_head: be21fba855c194c66fa2219874b2ab23dcee38d7
-receipt_bookkeeping_commit: pending_this_commit
-receipt_finalization: pending_after_bookkeeping_validation
+receipt_bookkeeping_commit: d109aee8d6204ffb99cd9753f58cfab1cdb37ba1
+receipt_finalization: performed_after_validated_content_head
 merged_commit: pending
 exact_head_actions: {total: 27, success: 18, skipped: 9, failure: 0}
 reviews: 0
 pr_comments: 0
 unresolved_review_threads: 0
 final_pr_changed_files: 17
-final_pr_net_diff: {insertions: 454, deletions: 28}
+final_pr_net_diff: {insertions: 465, deletions: 33}
 ```
 
 Cutover 1C-45 starts from the exact current-main boundary `43fd272c3a99180646ad73b6c2edc12435a87812`, independently verified as both local `HEAD` and `origin/main`. The family boundary is limited to three repeatable manual-validation procedures, one blank reusable results template, and one completed dated local validation result. The procedures move to `docs/operations/`, the blank template moves to `docs/templates/evaluation/`, and the completed 2026-05-26 result moves to `docs/evidence/evaluations/` with frozen evidence metadata and source provenance. No `relaylm/**` files are changed and no runtime behavior is changed. The C1C45 PR remains open and unmerged; `merged_commit` remains pending.
+
+The receipt bookkeeping commit `d109aee8d6204ffb99cd9753f58cfab1cdb37ba1` was pushed and verified at its exact head with 27 completed checks (18 success, 9 skipped, 0 failure). This finalization commit records that bookkeeping validation and keeps `merged_commit: pending`; the PR remains open and unmerged.
