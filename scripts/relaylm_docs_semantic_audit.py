@@ -2022,6 +2022,9 @@ OPENWEBUI_MANUAL_VALIDATION_REFERENCE_DEFINITION_RE = re.compile(r"^[ \t]{0,3}\[
 OPENWEBUI_MANUAL_VALIDATION_ALLOWLISTED_FILES = frozenset({"docs/evidence/migrations/documentation-hard-cutover-receipt.md"})
 OPENWEBUI_MANUAL_VALIDATION_LINE_ALLOWLIST = {
     "docs/planning/documentation-cutover-rules.yaml": tuple(f"{path}:" for path in OPENWEBUI_MANUAL_VALIDATION_RETIRED_PATHS),
+    "docs/evidence/evaluations/openwebui-lmstudio-manual-smoke-2026-05-26.md": (
+        "relaylm_source_path: docs/smoke/openwebui_lmstudio_manual_smoke_result_2026_05_26.md",
+    ),
 }
 OPENWEBUI_MANUAL_VALIDATION_SELF_FILE = "scripts/relaylm_docs_semantic_audit.py"
 OPENWEBUI_MANUAL_VALIDATION_SELF_LINES = frozenset(
