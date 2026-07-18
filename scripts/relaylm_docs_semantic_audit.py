@@ -1665,6 +1665,348 @@ def check_smoke_maintenance_family_types(errors: list[str]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Cutover 1C-44: retirement guard for the single-document O1 Manual One-Round
+# authority, following the CORRECTED Cutover 1C-43 smoke-maintenance guard
+# pattern as the binding precedent: canonical documents are scanned like any
+# other document (no canonical-target skip), the reference-line allowlist is
+# exact stripped-line equality (never substring containment), and the
+# non-Markdown literal scan applies to every scanned file whose suffix is not
+# `.md`/`.txt` (no fixed positive suffix allowlist).
+#
+# This family has exactly one retired->canonical pair and reuses the same
+# shared scanning/resolution helpers (`_mobile_dogfood_scanned_files`,
+# `_mobile_dogfood_resolve`, `_mobile_dogfood_front_matter_path_values`,
+# `_mobile_dogfood_locate`, `MOBILE_DOGFOOD_MD_LINK_RE`) rather than pasting a
+# fourth bespoke copy of the scanning machinery.
+#
+# Unlike the Cutover 1C-43 smoke-maintenance family, this moved document's
+# canonical `relaylm_status` is `compatibility`, not `current`:
+# docs/DOCUMENTATION_MODEL.md's "Status values" section defines `compatibility`
+# as an existing-only pre-cutover status with no normalize-during-cutover rule
+# (unlike `historical_after_merge`), so a moved existing document retains it.
+# `check_o1_manual_one_round_family_types()` below enforces the full profile
+# (`relaylm_doc_type: operations` AND `relaylm_status: compatibility`) with an
+# independent fail-closed diagnostic per mismatch, per the C1C43 correction
+# round's established precedent that type-only enforcement is a defect.
+# ---------------------------------------------------------------------------
+O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL: dict[str, str] = {
+    "docs/smoke/o1_manual_one_round_runbook.md": "docs/operations/o1-manual-one-round.md",
+}
+O1_MANUAL_ONE_ROUND_RETIRED_PATHS = tuple(sorted(O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL))
+O1_MANUAL_ONE_ROUND_CANONICAL_PATHS = frozenset(O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL.values())
+
+# Reuses the mobile-dogfood guard's generic `[text](target)` Markdown link
+# matcher.
+O1_MANUAL_ONE_ROUND_MD_LINK_RE = MOBILE_DOGFOOD_MD_LINK_RE
+
+# Repository-root-qualified literal scan, applied to every scanned file whose
+# suffix is not `.md`/`.txt` -- matches the one retired path anywhere in a
+# line (YAML mapping keys, Python string literals, TOML keys/values, and any
+# other non-Markdown/text suffix the shared scanner returns), independent of
+# Markdown link or front-matter syntax.
+O1_MANUAL_ONE_ROUND_REFERENCE_PATTERN = re.compile(
+    "(?:" + "|".join(re.escape(path) for path in O1_MANUAL_ONE_ROUND_RETIRED_PATHS) + ")"
+)
+
+# Retired basenames are used as the terminal component for bounded prose-token
+# detection. Candidates are resolved before rejection, so the basename alone is
+# never treated as a global substring ban.
+O1_MANUAL_ONE_ROUND_RETIRED_BASENAMES = tuple(
+    sorted({Path(path).name for path in O1_MANUAL_ONE_ROUND_RETIRED_PATHS})
+)
+# Bounded Markdown/text prose path-token matcher for plain prose and inline-code
+# mentions that are not Markdown links or front-matter values. It intentionally
+# matches path-like tokens ending in the exact retired basename and then resolves
+# each candidate against the referring file with `_mobile_dogfood_resolve()`; it
+# is not a global basename substring rejection. The optional leading relative
+# path is bounded to avoid pathological prose scans while still covering the
+# documented same-directory, `./`, and additional `../` spellings.
+O1_MANUAL_ONE_ROUND_PROSE_PATH_TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9_.-])"
+    r"((?:(?:\.\.?/|[A-Za-z0-9_.-]+/){0,8})"
+    r"(?:" + "|".join(re.escape(name) for name in O1_MANUAL_ONE_ROUND_RETIRED_BASENAMES) + r"))"
+    r"(?:#[A-Za-z0-9_.~/%:-]+)?"
+    r"(?![A-Za-z0-9_.-])"
+)
+
+# Bounded Markdown-visible navigation carriers not handled by the inline
+# Markdown-link regex: local HTML href attributes and reference-style link
+# definitions. Each extracted destination is still resolved through
+# `_mobile_dogfood_resolve()`, so external URLs, root-absolute paths, empty
+# anchors, query strings, fragments, and %-encoding follow the same behavior as
+# the existing link/front-matter passes.
+O1_MANUAL_ONE_ROUND_HTML_HREF_RE = re.compile(
+    r"\bhref\s*=\s*([\"'])([^\"'<>\s][^\"'<>]*)\1",
+    re.IGNORECASE,
+)
+O1_MANUAL_ONE_ROUND_REFERENCE_DEFINITION_RE = re.compile(
+    r"^[ \t]{0,3}\[[^\]\n]+\]:[ \t]*(?:<([^>\n]+)>|([^ \t\n]+))"
+)
+
+# The migration receipt's own Cutover 1C-44 entry (and the C1C43 entry's
+# selection-provenance record) narrates the retired path by design;
+# whole-file allowlisted, matching the established precedent.
+O1_MANUAL_ONE_ROUND_REFERENCE_ALLOWLISTED_FILES = frozenset(
+    {
+        "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
+    }
+)
+
+# Exact, reviewed whole-line contents that are legitimate occurrences of the
+# retired literal inside an otherwise-active/current file: the one
+# path_overrides mapping key in documentation-cutover-rules.yaml. Matched by
+# exact stripped-line equality, never substring containment.
+O1_MANUAL_ONE_ROUND_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
+    "docs/planning/documentation-cutover-rules.yaml": tuple(
+        f"{retired_path}:" for retired_path in O1_MANUAL_ONE_ROUND_RETIRED_PATHS
+    ),
+}
+
+# This guard's own implementation file. Narrow, exact-line self-allowance
+# only -- not a whole-file exemption. The only line in this file that may
+# legitimately spell out the retired literal is the
+# O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL dict's own key: value entry.
+# Matched by exact stripped-line equality, not substring.
+O1_MANUAL_ONE_ROUND_SELF_FILE = "scripts/relaylm_docs_semantic_audit.py"
+O1_MANUAL_ONE_ROUND_SELF_FILE_EXACT_LINES = frozenset(
+    f'"{retired_path}": "{canonical_path}",'
+    for retired_path, canonical_path in O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL.items()
+)
+
+
+def _o1_manual_one_round_scanned_files(root: Path) -> list[Path]:
+    """This guard's scan universe: the shared `_mobile_dogfood_scanned_files`
+    file set, plus every `docs/**/*.txt` file.
+
+    The shared `MVP_REFERENCE_SCAN_DIRS` constant (reused by the
+    mobile-dogfood, twin-extraction, and smoke-maintenance guards) only lists
+    `.md`/`.yaml`/`.yml` suffixes for `docs/`, so no `.txt` file is currently
+    part of that shared scan universe even though `docs/evidence/**/*.txt`
+    (`-source.txt`) files exist and already carry a dedicated allowlist
+    exemption elsewhere in this module. The Codex review correction for this
+    guard requires `.txt` coverage; rather than widen the shared constant
+    (which would also change what the mobile-dogfood/twin-extraction/
+    smoke-maintenance guards scan -- an out-of-scope redesign per the
+    accepted correction scope), this helper adds `docs/**/*.txt` locally, for
+    this guard only.
+    """
+    files = list(_mobile_dogfood_scanned_files(root))
+    seen = {file_path.resolve() for file_path in files}
+    docs_root = root / "docs"
+    if docs_root.is_dir():
+        for candidate in sorted(docs_root.rglob("*.txt")):
+            if not candidate.is_file():
+                continue
+            resolved = candidate.resolve()
+            if resolved in seen:
+                continue
+            files.append(candidate)
+            seen.add(resolved)
+    return files
+
+
+def check_no_live_o1_manual_one_round_retired_paths(errors: list[str]) -> None:
+    for retired_path, canonical_path in O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL.items():
+        if (ROOT / retired_path).exists():
+            errors.append(
+                f"{retired_path}: retired o1-manual-one-round path reintroduced "
+                f"(moved to {canonical_path} by Cutover 1C-44)"
+            )
+
+    for path in _o1_manual_one_round_scanned_files(ROOT):
+        relative_path = path.relative_to(ROOT).as_posix()
+        if relative_path in O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL:
+            continue
+        if relative_path in O1_MANUAL_ONE_ROUND_REFERENCE_ALLOWLISTED_FILES:
+            continue
+        is_self_file = relative_path == O1_MANUAL_ONE_ROUND_SELF_FILE
+        allowed_lines = O1_MANUAL_ONE_ROUND_REFERENCE_LINE_ALLOWLIST.get(relative_path, ())
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+
+        lines = text.splitlines()
+
+        def _is_allowed(stripped_line: str) -> bool:
+            if is_self_file:
+                return stripped_line in O1_MANUAL_ONE_ROUND_SELF_FILE_EXACT_LINES
+            return stripped_line in allowed_lines
+
+        def _is_inside_external_html_href(line_text: str, start: int, end: int) -> bool:
+            for href_match in O1_MANUAL_ONE_ROUND_HTML_HREF_RE.finditer(line_text):
+                value_start, value_end = href_match.span(2)
+                if not (value_start <= start and end <= value_end):
+                    continue
+                parsed = urlsplit(href_match.group(2).strip())
+                if parsed.scheme.lower() in MOBILE_DOGFOOD_EXTERNAL_SCHEMES or parsed.netloc:
+                    return True
+            return False
+
+        if path.suffix not in (".md", ".txt"):
+            # Every other scanned suffix (`.yaml`, `.yml`, `.py`, `.toml`,
+            # and any further suffix the shared scanner returns): use a
+            # literal repository-root-qualified match, not Markdown link
+            # syntax or a YAML front-matter block.
+            for line_number, line in enumerate(lines, start=1):
+                stripped = line.strip()
+                literal_match = O1_MANUAL_ONE_ROUND_REFERENCE_PATTERN.search(line)
+                if literal_match is None or _is_allowed(stripped):
+                    continue
+                errors.append(
+                    f"{relative_path}:{line_number}: active reference to retired "
+                    f"{literal_match.group(0)}: {stripped!r}"
+                )
+            continue
+
+        # `.md`/`.txt` document -- including the canonical destination
+        # document itself; there is no canonical-path scan bypass.
+        reported_line_numbers: set[int] = set()
+
+        # Pass 1: Markdown link targets, resolved against this file's own
+        # directory (or the repository root for a "docs/"-qualified target).
+        # Covers root-qualified, bare same-directory, ./, ../, ../../, and
+        # anchored spellings via the shared resolver.
+        for line_number, line in enumerate(lines, start=1):
+            stripped = line.strip()
+            for link_match in O1_MANUAL_ONE_ROUND_MD_LINK_RE.finditer(line):
+                raw_target = link_match.group(1).strip()
+                resolved = _mobile_dogfood_resolve(path, raw_target)
+                if resolved not in O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL:
+                    continue
+                if _is_allowed(stripped):
+                    continue
+                errors.append(
+                    f"{relative_path}:{line_number}: active reference to retired "
+                    f"{resolved}: markdown link target {raw_target!r}"
+                )
+                reported_line_numbers.add(line_number)
+
+        # Pass 2: every supported path-bearing front-matter key, resolved via
+        # the actual parsed first-block YAML mapping.
+        for key, raw_target in _mobile_dogfood_front_matter_path_values(text):
+            resolved = _mobile_dogfood_resolve(path, raw_target)
+            if resolved not in O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL:
+                continue
+            line_number, stripped = _mobile_dogfood_locate(lines, raw_target)
+            if _is_allowed(stripped):
+                continue
+            errors.append(
+                f"{relative_path}:{line_number}: active reference to retired "
+                f"{resolved}: {key} entry {raw_target!r}"
+            )
+            reported_line_numbers.add(line_number)
+
+        # Pass 3 (Codex review correction, first round): literal retired-path
+        # mentions in Markdown/text prose or inline code (backticks) that are
+        # not expressed as a Markdown link or a front-matter path value --
+        # e.g. a plain-prose or backtick-quoted mention of the old path in
+        # running text. Uses the same repository-root-qualified literal
+        # pattern as the non-Markdown branch above. Lines already reported by
+        # Pass 1 or Pass 2 are skipped here so a link or front-matter value
+        # that also happens to contain the literal is not double-reported.
+        for line_number, line in enumerate(lines, start=1):
+            if line_number in reported_line_numbers:
+                continue
+            stripped = line.strip()
+            literal_match = O1_MANUAL_ONE_ROUND_REFERENCE_PATTERN.search(line)
+            if literal_match is None or _is_allowed(stripped):
+                continue
+            if _is_inside_external_html_href(line, literal_match.start(), literal_match.end()):
+                continue
+            errors.append(
+                f"{relative_path}:{line_number}: active reference to retired "
+                f"{literal_match.group(0)}: {stripped!r}"
+            )
+            reported_line_numbers.add(line_number)
+
+        # Pass 4 (Codex review correction, fourth round): Markdown-visible
+        # navigation carriers not covered by Pass 1's inline Markdown-link
+        # syntax: HTML `href` attributes and reference-style link
+        # definitions. Extracted targets are resolved with the same helper as
+        # inline links/front-matter values and only the exact retired path is
+        # rejected. Lines already reported by earlier passes are skipped to
+        # avoid duplicate diagnostics.
+        for line_number, line in enumerate(lines, start=1):
+            if line_number in reported_line_numbers:
+                continue
+            stripped = line.strip()
+            if _is_allowed(stripped):
+                continue
+            for href_match in O1_MANUAL_ONE_ROUND_HTML_HREF_RE.finditer(line):
+                raw_target = href_match.group(2).strip()
+                resolved = _mobile_dogfood_resolve(path, raw_target)
+                if resolved not in O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL:
+                    continue
+                errors.append(
+                    f"{relative_path}:{line_number}: active reference to retired "
+                    f"{resolved}: HTML href {raw_target!r}: {stripped!r}"
+                )
+                reported_line_numbers.add(line_number)
+                break
+            if line_number in reported_line_numbers:
+                continue
+            reference_match = O1_MANUAL_ONE_ROUND_REFERENCE_DEFINITION_RE.match(line)
+            if reference_match is None:
+                continue
+            raw_target = (reference_match.group(1) or reference_match.group(2) or "").strip()
+            resolved = _mobile_dogfood_resolve(path, raw_target)
+            if resolved not in O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL:
+                continue
+            errors.append(
+                f"{relative_path}:{line_number}: active reference to retired "
+                f"{resolved}: reference definition {raw_target!r}: {stripped!r}"
+            )
+            reported_line_numbers.add(line_number)
+
+        # Pass 5 (Codex review correction, second round): bounded
+        # Markdown/text prose path tokens in plain prose or backticks, not
+        # expressed as Markdown links, front-matter values, HTML hrefs, or
+        # reference definitions. Each candidate is resolved exactly like a
+        # Markdown link/front-matter path via `_mobile_dogfood_resolve()`, and
+        # only candidates resolving to the retired repository path are
+        # rejected. This catches bare same-directory, `./`, `../smoke/`, and
+        # bounded additional relative spellings without using a global
+        # basename substring check or rejecting the same basename in unrelated
+        # directories. Lines already reported by earlier passes are skipped to
+        # avoid duplicate diagnostics.
+        for line_number, line in enumerate(lines, start=1):
+            if line_number in reported_line_numbers:
+                continue
+            stripped = line.strip()
+            if _is_allowed(stripped):
+                continue
+            for token_match in O1_MANUAL_ONE_ROUND_PROSE_PATH_TOKEN_RE.finditer(line):
+                raw_target = token_match.group(1)
+                if _is_inside_external_html_href(line, token_match.start(1), token_match.end(1)):
+                    continue
+                resolved = _mobile_dogfood_resolve(path, raw_target)
+                if resolved not in O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL:
+                    continue
+                errors.append(
+                    f"{relative_path}:{line_number}: active reference to retired "
+                    f"{resolved}: prose path token {raw_target!r}: {stripped!r}"
+                )
+                reported_line_numbers.add(line_number)
+                break
+
+
+def check_o1_manual_one_round_family_types(errors: list[str]) -> None:
+    for canonical_path in sorted(O1_MANUAL_ONE_ROUND_CANONICAL_PATHS):
+        meta, _ = parse_front_matter(canonical_path)
+        if meta.get("relaylm_doc_type") != "operations":
+            errors.append(
+                f"{canonical_path}: must declare relaylm_doc_type: operations, not "
+                f"{meta.get('relaylm_doc_type')!r} (never the retired runbook type)"
+            )
+        if meta.get("relaylm_status") != "compatibility":
+            errors.append(
+                f"{canonical_path}: must declare relaylm_status: compatibility, not "
+                f"{meta.get('relaylm_status')!r}"
+            )
+
+
+# ---------------------------------------------------------------------------
 # Cutover 1C-39 correction: fail closed on a completed LAT-1 retrieval-scaling
 # evidence record (docs/evidence/evaluations/lat1-retrieval-scaling-*.md) that
 # is incomplete, unfilled, provenance-weak, or content-bearing. No such
@@ -5114,6 +5456,1029 @@ def self_test() -> None:
         )
     ROOT = real_root
 
+    # ------------------------------------------------------------------
+    # Cutover 1C-44: O1 Manual One-Round retired-path guard self-tests,
+    # following the CORRECTED Cutover 1C-43 smoke-maintenance pattern for a
+    # single-member family (no canonical-path scan bypass, exact
+    # stripped-line allowlist equality, non-Markdown literal scan on every
+    # non-`.md`/`.txt` suffix), adapted for this family's canonical
+    # `relaylm_status: compatibility` profile (not `current`).
+    # ------------------------------------------------------------------
+    o1_retired = O1_MANUAL_ONE_ROUND_RETIRED_PATHS[0]
+    o1_canonical = O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL[o1_retired]
+    o1_anchor = "purpose"
+
+    # 158. The real repository has no live reference to the retired
+    # o1-manual-one-round path.
+    check_silent(
+        "real repository: no active reference to the retired o1-manual-one-round path",
+        check_no_live_o1_manual_one_round_retired_paths,
+    )
+
+    # 159. The retired o1-manual-one-round file being reintroduced is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            o1_retired,
+            "---\nrelaylm_doc_type: runbook\nrelaylm_status: compatibility\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "the reintroduced retired o1-manual-one-round file is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"{o1_retired}: retired o1-manual-one-round path reintroduced",
+        )
+    ROOT = real_root
+
+    # 160. A root-qualified Markdown link to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_o1_root_link.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [old O1 runbook]({o1_retired}).\n",
+        )
+        check_rejects(
+            "a root-qualified link to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 161. A same-directory bare-filename reference (from another file still
+    # under docs/smoke/) is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/smoke/example_o1_sibling.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [old O1 runbook]({o1_retired.rsplit('/', 1)[-1]}).\n",
+        )
+        check_rejects(
+            "a same-directory bare-filename reference resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 162. A "./..." same-directory reference (explicit current-directory
+    # prefix, distinct from the bare-filename form in #161) resolving to the
+    # retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/smoke/example_o1_dot_slash.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [old O1 runbook](./{o1_retired.rsplit('/', 1)[-1]}).\n",
+        )
+        check_rejects(
+            "a ./... same-directory reference resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 163. A "../smoke/..." reference from a sibling directory
+    # (docs/operations/) resolving to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/operations/example_o1_other.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [old O1 runbook](../smoke/{o1_retired.rsplit('/', 1)[-1]}).\n",
+        )
+        check_rejects(
+            "a ../smoke/... reference resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 164. A "../../smoke/..." reference from a deeper directory resolving to
+    # the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_other_o1.md",
+            "---\nrelaylm_doc_type: implementation_completion_report\nrelaylm_status: current\n---\n\n"
+            f"See [old O1 runbook](../../smoke/{o1_retired.rsplit('/', 1)[-1]}).\n",
+        )
+        check_rejects(
+            "a ../../smoke/... reference resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 165. A Markdown link carrying a heading anchor fragment still resolves
+    # (ignoring the anchor) to the retired path and is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_anchor_o1.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [purpose section]({o1_retired}#{o1_anchor}).\n",
+        )
+        check_rejects(
+            "a Markdown link with a heading anchor resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "markdown link target",
+        )
+    ROOT = real_root
+
+    # 166. A relaylm_related_authority front-matter entry resolving to the
+    # retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/smoke/example_o1_related_authority.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n"
+            "relaylm_related_authority:\n"
+            f"  - {o1_retired.rsplit('/', 1)[-1]}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a relaylm_related_authority entry resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "relaylm_related_authority entry",
+        )
+    ROOT = real_root
+
+    # 167. A relaylm_current_status_source scalar front-matter entry
+    # resolving to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_current_status_source_o1.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n"
+            f"relaylm_current_status_source: {o1_retired}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a relaylm_current_status_source scalar resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "relaylm_current_status_source entry",
+        )
+    ROOT = real_root
+
+    # 168. A frozen/historical_after_merge document's own unallowlisted
+    # mention of the retired path is REJECTED: no generic whole-document
+    # status bypass.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_o1_report.md",
+            "---\nrelaylm_doc_type: implementation_completion_report\nrelaylm_status: historical_after_merge\n---\n\n"
+            f"See [old O1 runbook]({o1_retired}).\n",
+        )
+        check_rejects(
+            "a frozen-status document's unallowlisted retired o1-manual-one-round link is rejected without an exact line allowance",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 169. A root-qualified Markdown link to the canonical target is allowed.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            o1_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: compatibility\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            "docs/example_root_qualified_o1_link.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"- [target]({o1_canonical})\n",
+        )
+        check_silent(
+            "a root-qualified link to the canonical o1-manual-one-round target is allowed",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 170. A relative link to the canonical target from a sibling document in
+    # the same (docs/operations/) directory is allowed: also proves the
+    # canonical name (o1-manual-one-round.md) is distinguished from the
+    # retired name (o1_manual_one_round_runbook.md) rather than fuzzy-matched.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            o1_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: compatibility\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            "docs/operations/example_o1_index.md",
+            "---\nrelaylm_doc_type: documentation_index\nrelaylm_status: current\n---\n\n"
+            f"- [o1 runbook]({o1_canonical.rsplit('/', 1)[-1]})\n",
+        )
+        check_silent(
+            "a relative link to the canonical o1-manual-one-round target is allowed",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 171/172. The exact reviewed documentation-cutover-rules.yaml
+    # path_overrides key line is allowed ONLY because of the exact-line
+    # allowlist: rejected in a non-allowlisted file first, then silent only
+    # at the one exact allowlisted path.
+    o1_override_key_line = f"  {o1_retired}:\n    disposition: moved\n"
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, "docs/planning/example_not_allowlisted_rules.yaml", o1_override_key_line)
+        check_rejects(
+            "the exact o1-manual-one-round cutover-rules.yaml override key literal is rejected in a non-allowlisted file",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, "docs/planning/documentation-cutover-rules.yaml", o1_override_key_line)
+        check_silent(
+            "the identical override key literal is silent only at the exact allowlisted cutover-rules.yaml path",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 173. Zero duplicate live copies: the retired path coexisting with its
+    # own already-created canonical target is still rejected for the retired
+    # path.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            o1_retired,
+            "---\nrelaylm_doc_type: runbook\nrelaylm_status: compatibility\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            o1_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: compatibility\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "the retired o1-manual-one-round file coexisting with its own canonical target (duplicate live copy) is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "retired o1-manual-one-round path reintroduced",
+        )
+    ROOT = real_root
+
+    # 174. The real repository's canonical o1-manual-one-round target
+    # declares both the correct operations doc type AND
+    # relaylm_status: compatibility.
+    check_silent(
+        "the real repository's o1-manual-one-round canonical target declares relaylm_doc_type: operations and relaylm_status: compatibility",
+        check_o1_manual_one_round_family_types,
+    )
+
+    # 175a. Wrong doc type + correct status ("runbook" + "compatibility") is
+    # rejected for the doc-type mismatch: reject-then-allow pairing proving
+    # check_o1_manual_one_round_family_types actually fires on
+    # relaylm_doc_type.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            o1_canonical,
+            "---\nrelaylm_doc_type: runbook\nrelaylm_status: compatibility\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "an o1-manual-one-round canonical target synthetically typed as the retired runbook type (correct status) is rejected",
+            check_o1_manual_one_round_family_types,
+            "must declare relaylm_doc_type: operations",
+        )
+    ROOT = real_root
+
+    # 175b. Correct doc type + wrong status ("operations" + "current") is
+    # rejected for the status mismatch: proves
+    # check_o1_manual_one_round_family_types also fires on relaylm_status
+    # independently of relaylm_doc_type.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            o1_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "an o1-manual-one-round canonical target with the correct doc type but a wrong relaylm_status is rejected",
+            check_o1_manual_one_round_family_types,
+            "must declare relaylm_status: compatibility",
+        )
+    ROOT = real_root
+
+    # 175c. Wrong doc type AND wrong status ("runbook" + "current") produces
+    # both independent diagnostics in the same run: proves the two checks are
+    # independent, not short-circuiting on the first mismatch.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            o1_canonical,
+            "---\nrelaylm_doc_type: runbook\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        both_o1_errors: list[str] = []
+        check_o1_manual_one_round_family_types(both_o1_errors)
+        has_o1_type_error = any("must declare relaylm_doc_type: operations" in error for error in both_o1_errors)
+        has_o1_status_error = any("must declare relaylm_status: compatibility" in error for error in both_o1_errors)
+        ok = has_o1_type_error and has_o1_status_error
+        results.append(
+            (
+                "an o1-manual-one-round canonical target with both a wrong doc type and a wrong status produces both independent diagnostics",
+                ok,
+                "" if ok else f"errors: {both_o1_errors!r}",
+            )
+        )
+    ROOT = real_root
+
+    # 175d. The correct operations/compatibility profile is accepted
+    # (reject-then-allow completion: 175a-c proved rejection, this proves
+    # acceptance at the exact correct profile).
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            o1_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: compatibility\n---\n\nBody.\n",
+        )
+        check_silent(
+            "an o1-manual-one-round canonical target with the correct operations/compatibility profile is accepted",
+            check_o1_manual_one_round_family_types,
+        )
+    ROOT = real_root
+
+    # 176. This guard's own implementation file: the retired-path mapping
+    # constant's own dict-key entry remains narrowly allowed (exact-line
+    # equality, not a whole-file exemption).
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            O1_MANUAL_ONE_ROUND_SELF_FILE,
+            "O1_MANUAL_ONE_ROUND_RETIRED_TO_CANONICAL: dict[str, str] = {\n"
+            f'    "{o1_retired}": "{o1_canonical}",\n'
+            "}\n",
+        )
+        check_silent(
+            "the o1-manual-one-round retired-path mapping constant's own dict-key entry remains allowed in the self-file",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 177. A retired o1-manual-one-round literal appearing in an UNRELATED,
+    # non-allowlisted Python constant inside this guard's own implementation
+    # file is still rejected: the self-file allowance is exact-line, not
+    # whole-file.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            O1_MANUAL_ONE_ROUND_SELF_FILE,
+            "SOME_OTHER_O1_CONSTANT = (\n" f'    "{o1_retired}",\n' ")\n",
+        )
+        check_rejects(
+            "a retired o1-manual-one-round literal in an unrelated self-file constant is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 178. A retired-path Markdown link written INSIDE the canonical
+    # o1-manual-one-round document itself is rejected: proves there is no
+    # canonical-path scan bypass.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            o1_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: compatibility\n---\n\n"
+            f"See [old self-link]({o1_retired}).\n",
+        )
+        check_rejects(
+            "a retired-path Markdown link written inside the canonical o1-manual-one-round document is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 179. A retired-path front-matter path-bearing value written INSIDE the
+    # canonical document is rejected: same bypass-proof as #178 through the
+    # front-matter pass rather than the Markdown-link pass.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            o1_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: compatibility\n"
+            "relaylm_related_authority:\n"
+            f"  - {o1_retired}\n"
+            "---\n\nBody.\n",
+        )
+        check_rejects(
+            "a retired-path front-matter value written inside the canonical o1-manual-one-round document is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 180. A valid link FROM the canonical o1-manual-one-round document TO an
+    # unrelated canonical document (mobile-dogfood-entry.md) remains
+    # accepted: scanning the canonical document (#178/#179) does not turn a
+    # legitimate, unrelated link into a false positive.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            o1_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: compatibility\n---\n\n"
+            "See [mobile dogfood entry](mobile-dogfood-entry.md).\n",
+        )
+        _mvp_write(
+            base,
+            "docs/operations/mobile-dogfood-entry.md",
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: target\n---\n\nBody.\n",
+        )
+        check_silent(
+            "a valid link from the canonical o1-manual-one-round document to an unrelated document remains accepted",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 181. The exact allowlisted cutover-rules.yaml override key line with an
+    # extra LEADING prefix on the same physical line is rejected: proves the
+    # allowlist match is exact stripped-line equality, not substring
+    # containment.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/planning/documentation-cutover-rules.yaml",
+            f"# see also {o1_retired}:\n",
+        )
+        check_rejects(
+            "an allowlisted-path line with an extra leading prefix is rejected, not allowed by substring containment",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 182. The exact allowlisted cutover-rules.yaml override key line with an
+    # extra TRAILING suffix on the same physical line is rejected: same
+    # exact-equality proof as #181 from the other side.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/planning/documentation-cutover-rules.yaml",
+            f"  {o1_retired}:  # temporary note\n",
+        )
+        check_rejects(
+            "an allowlisted-path line with an extra trailing suffix is rejected, not allowed by substring containment",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 183. A line at the allowlisted cutover-rules.yaml path that names the
+    # approved retired path twice on the same physical line is rejected: the
+    # allowlist covers only its own exact single-mention line, not any line
+    # that happens to contain the literal.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/planning/documentation-cutover-rules.yaml",
+            f"  {o1_retired}: {o1_retired}:\n",
+        )
+        check_rejects(
+            "a line combining the approved retired path with a second mention on the same line is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "active reference to retired",
+        )
+    ROOT = real_root
+
+    # 184. A retired o1-manual-one-round path literal in pyproject.toml is
+    # rejected: pyproject.toml is returned by the shared reference scanner
+    # but carries no `.md`/`.txt` suffix, so it is only covered because the
+    # literal-scan branch applies to every non-`.md`/`.txt` suffix rather
+    # than a fixed positive suffix allowlist.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "pyproject.toml",
+            "[tool.example]\n" f'note = "{o1_retired}"\n',
+        )
+        check_rejects(
+            "a retired o1-manual-one-round path literal in pyproject.toml is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 185. A retired o1-manual-one-round path literal in config.example.yaml
+    # (a second root-scanned non-Markdown file, distinct from
+    # pyproject.toml's `.toml` suffix used in #184) is also rejected:
+    # confirms the suffix branch generalizes to every non-`.md`/`.txt` file
+    # the scanner returns, not just one fixture suffix.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "config.example.yaml",
+            f"# note: {o1_retired}\n",
+        )
+        check_rejects(
+            "a retired o1-manual-one-round path literal in config.example.yaml is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # ------------------------------------------------------------------
+    # Codex review correction (PR #610, commit 8426a0d): the Markdown-link
+    # and front-matter passes alone were silent on a plain-prose or
+    # backtick-quoted mention of the retired path inside an active `.md`
+    # document (not expressed as a Markdown link or front-matter value).
+    # These assertions cover the added Pass 3 literal scan for `.md`/`.txt`
+    # files.
+    # ------------------------------------------------------------------
+
+    # 186. A prose/backtick mention of the root-qualified retired path in a
+    # non-allowlisted .md file (no Markdown link syntax) is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_o1_prose_mention.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See the retired `{o1_retired}` path for historical context.\n",
+        )
+        check_rejects(
+            "a prose/backtick mention of the retired o1-manual-one-round path in a non-allowlisted .md file is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 187. A backtick mention of the retired path in a frozen-status .md
+    # document is still rejected: no generic frozen/historical bypass for
+    # prose mentions, matching the existing no-generic-status-bypass proof
+    # for the link form (test #168).
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_o1_frozen_prose.md",
+            "---\nrelaylm_doc_type: evidence\nrelaylm_status: frozen\n---\n\n"
+            f"Historical note mentioning `{o1_retired}` in passing.\n",
+        )
+        check_rejects(
+            "a backtick mention of the retired o1-manual-one-round path in a frozen-status .md document is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 188. The exact same prose/backtick literal at the whole-file
+    # allowlisted migration receipt path is accepted: rejection-then-
+    # acceptance pair proving the receipt allowlist covers the new literal
+    # scan too, not only the pre-existing link/front-matter passes.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
+            "---\nrelaylm_doc_type: evidence\nrelaylm_status: current\n---\n\n"
+            f"Receipt narrative mentioning `{o1_retired}` many times: "
+            f"{o1_retired}, {o1_retired}.\n",
+        )
+        check_silent(
+            "the same retired o1-manual-one-round literal is accepted at the exact whole-file-allowlisted migration receipt path",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 189. A .txt file carrying the literal (not covered by the shared
+    # scanner's suffix list, so scanned only via this guard's own
+    # docs/**/*.txt extension) is rejected when not allowlisted.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_o1_mention-source.txt",
+            f"Frozen source text mentioning {o1_retired} verbatim.\n",
+        )
+        check_rejects(
+            "a .txt file carrying the retired o1-manual-one-round literal is rejected when not allowlisted",
+            check_no_live_o1_manual_one_round_retired_paths,
+            f"active reference to retired {o1_retired}",
+        )
+    ROOT = real_root
+
+    # 190. The canonical target path literal in prose is accepted: the
+    # literal scan distinguishes the canonical hyphenated path from the
+    # retired underscored path rather than flagging any O1-related mention.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_o1_canonical_prose_mention.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See the canonical `{o1_canonical}` path for current guidance.\n",
+        )
+        check_silent(
+            "the canonical o1-manual-one-round target path literal in prose is accepted, distinguished from the retired path",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # ------------------------------------------------------------------
+    # Second Codex review round (PR #610, reviewed head 78715d3): bare
+    # retired-basename detection in docs/smoke/ prose/backticks (Pass 4).
+    # ------------------------------------------------------------------
+
+    # 192. Codex's exact repro: a synthetic docs/smoke/ document mentioning
+    # only the bare backtick basename (no directory prefix, not a Markdown
+    # link) is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/smoke/example.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See `{o1_retired.rsplit('/', 1)[-1]}` for background.\n",
+        )
+        check_rejects(
+            "a bare retired o1-manual-one-round basename in docs/smoke/ backtick prose is rejected (Codex second-round repro)",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "prose path token",
+        )
+    ROOT = real_root
+
+    # 193. A bare retired basename in plain prose under docs/smoke/ is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/smoke/example_plain.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See {o1_retired.rsplit('/', 1)[-1]} for background.\n",
+        )
+        check_rejects(
+            "a bare retired o1-manual-one-round basename in docs/smoke/ plain prose is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "prose path token",
+        )
+    ROOT = real_root
+
+    # 194. A ./ retired basename in plain prose under docs/smoke/ is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/smoke/example_dot_plain.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See ./{o1_retired.rsplit('/', 1)[-1]} for background.\n",
+        )
+        check_rejects(
+            "a ./ retired o1-manual-one-round basename in docs/smoke/ plain prose is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "prose path token",
+        )
+    ROOT = real_root
+
+    # 195. A ../smoke/ retired path token in prose from docs/operations/ is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/operations/example_plain.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See ../smoke/{o1_retired.rsplit('/', 1)[-1]} for background.\n",
+        )
+        check_rejects(
+            "a ../smoke/ retired o1-manual-one-round prose token from another docs collection is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "prose path token",
+        )
+    ROOT = real_root
+
+    # 196. A bounded additional relative spelling resolving to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_plain.md",
+            "---\nrelaylm_doc_type: evidence\nrelaylm_status: current\n---\n\n"
+            f"See ../../smoke/{o1_retired.rsplit('/', 1)[-1]} for background.\n",
+        )
+        check_rejects(
+            "a bounded additional relative retired o1-manual-one-round prose token is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "prose path token",
+        )
+    ROOT = real_root
+
+    # 197. A double-quoted relative HTML href from docs/README.md resolving
+    # to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"<a href=\"smoke/{o1_retired.rsplit('/', 1)[-1]}\">old authority</a>\n",
+        )
+        check_rejects(
+            "a double-quoted relative HTML href resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "HTML href",
+        )
+    ROOT = real_root
+
+    # 198. A single-quoted relative HTML href from docs/README.md resolving
+    # to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"<a href='smoke/{o1_retired.rsplit('/', 1)[-1]}'>old authority</a>\n",
+        )
+        check_rejects(
+            "a single-quoted relative HTML href resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "HTML href",
+        )
+    ROOT = real_root
+
+    # 199. A Markdown reference-style definition from docs/README.md resolving
+    # to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"[old]: smoke/{o1_retired.rsplit('/', 1)[-1]}\n\n[old O1][old]\n",
+        )
+        check_rejects(
+            "a Markdown reference definition resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "reference definition",
+        )
+    ROOT = real_root
+
+    # 200. A Markdown reference-style definition using angle brackets is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"[old]: <smoke/{o1_retired.rsplit('/', 1)[-1]}> \"old title\"\n",
+        )
+        check_rejects(
+            "an angle-bracket Markdown reference definition resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "reference definition",
+        )
+    ROOT = real_root
+
+    # 201. Query/fragment normalization still resolves to and rejects the retired path.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"<a href=\"smoke/{o1_retired.rsplit('/', 1)[-1]}?old=1#purpose\">old authority</a>\n",
+        )
+        check_rejects(
+            "an HTML href with query and fragment still resolving to the retired o1-manual-one-round path is rejected",
+            check_no_live_o1_manual_one_round_retired_paths,
+            "HTML href",
+        )
+    ROOT = real_root
+
+    # 202. A canonical target HTML href is accepted.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"<a href=\"{o1_canonical}\">current authority</a>\n",
+        )
+        check_silent(
+            "a canonical o1-manual-one-round HTML href is accepted",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 203. A canonical target reference-style definition is accepted.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"[current]: {o1_canonical} \"current title\"\n",
+        )
+        check_silent(
+            "a canonical o1-manual-one-round reference definition is accepted",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 204. An external HTML href is ignored by the shared resolver and accepted.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"<a href=\"https://example.invalid/{o1_retired}\">external</a>\n",
+        )
+        check_silent(
+            "an external HTML href mentioning the retired o1-manual-one-round path is accepted",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 205. Unrelated relative HTML/reference targets are accepted.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            "<a href=\"smoke/unrelated.md\">unrelated</a>\n"
+            "[unrelated]: smoke/unrelated.md\n",
+        )
+        check_silent(
+            "unrelated relative HTML href and reference-definition targets are accepted",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 206. A line already caught by an existing pass is not double-reported by
+    # the HTML/reference/prose passes.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/README.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [old]({o1_retired}) and <a href=\"{o1_retired}\">old</a>.\n",
+        )
+        errors_no_duplicates: list[str] = []
+        check_no_live_o1_manual_one_round_retired_paths(errors_no_duplicates)
+        ok = len(errors_no_duplicates) == 1 and "markdown link target" in errors_no_duplicates[0]
+        results.append(
+            (
+                "a line already reported by the Markdown-link pass is not double-reported by later O1 passes",
+                ok,
+                "" if ok else f"unexpected diagnostics: {errors_no_duplicates!r}",
+            )
+        )
+    ROOT = real_root
+
+    # 193. The canonical target's hyphenated basename mentioned the same way,
+    # in the same docs/smoke/ location, is accepted: proves the bare-basename
+    # pattern is underscore-only and never collides with the canonical
+    # hyphenated name.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/smoke/example2.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See `{o1_canonical.rsplit('/', 1)[-1]}` for background.\n",
+        )
+        check_silent(
+            "the canonical o1-manual-one-round hyphenated basename in docs/smoke/ backtick prose is accepted, distinguished from the retired underscored basename",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 194. The identical bare-basename literal is silent at the exact
+    # whole-file-allowlisted migration receipt path (rejection-then-
+    # acceptance pair, reusing the existing receipt allowlist for the new
+    # bare-basename pass too).
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
+            "---\nrelaylm_doc_type: evidence\nrelaylm_status: current\n---\n\n"
+            f"Receipt narrative mentioning the bare basename `{o1_retired.rsplit('/', 1)[-1]}`.\n",
+        )
+        check_silent(
+            "the bare retired o1-manual-one-round basename is accepted at the exact whole-file-allowlisted migration receipt path",
+            check_no_live_o1_manual_one_round_retired_paths,
+        )
+    ROOT = real_root
+
+    # 199. The same basename in a directory where it does not resolve to the
+    # retired path is accepted. This proves the prose scanner resolves bounded
+    # path tokens relative to the referring file rather than using a global
+    # basename substring check.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_outside_smoke.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"Unrelated mention of `{o1_retired.rsplit('/', 1)[-1]}` outside docs/smoke/.\n",
+        )
+        errors_outside_scope: list[str] = []
+        check_no_live_o1_manual_one_round_retired_paths(errors_outside_scope)
+        ok = not errors_outside_scope
+        results.append(
+            (
+                "the same retired basename in a directory where it does not resolve to the retired path is accepted",
+                ok,
+                "" if ok else f"unexpected errors: {errors_outside_scope!r}",
+            )
+        )
+    ROOT = real_root
+
+    # 196. The real repository passes the corrected guard (including the new
+    # Pass 3 literal scan, the docs/**/*.txt extension, and the new Pass 4
+    # bare-basename scan) with zero errors.
+    check_silent(
+        "real repository: no active reference to the retired o1-manual-one-round path after both Codex review correction rounds",
+        check_no_live_o1_manual_one_round_retired_paths,
+    )
+
     failed = [(name, message) for name, ok, message in results if not ok]
     for name, ok, message in results:
         status = "PASS" if ok else "FAIL"
@@ -5155,6 +6520,8 @@ def main() -> int:
         check_twin_extraction_family_types,
         check_no_live_smoke_maintenance_retired_paths,
         check_smoke_maintenance_family_types,
+        check_no_live_o1_manual_one_round_retired_paths,
+        check_o1_manual_one_round_family_types,
         check_operations_docs,
         check_referenced_repository_paths,
     )

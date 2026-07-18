@@ -1,5 +1,5 @@
 ---
-relaylm_doc_type: runbook
+relaylm_doc_type: operations
 relaylm_authority: o1_manual_one_round_compatibility_validation
 relaylm_status: compatibility
 relaylm_volatility: medium
