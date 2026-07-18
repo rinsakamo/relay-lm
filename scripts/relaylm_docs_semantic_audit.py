@@ -1657,6 +1657,11 @@ def check_smoke_maintenance_family_types(errors: list[str]) -> None:
                 f"{canonical_path}: must declare relaylm_doc_type: operations, not "
                 f"{meta.get('relaylm_doc_type')!r} (never the retired runbook type)"
             )
+        if meta.get("relaylm_status") != "current":
+            errors.append(
+                f"{canonical_path}: must declare relaylm_status: current, not "
+                f"{meta.get('relaylm_status')!r}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -4828,15 +4833,15 @@ def self_test() -> None:
     ROOT = real_root
 
     # 134. The real repository's canonical smoke-workflow-maintenance target
-    # declares the correct operations doc type.
+    # declares both the correct operations doc type AND relaylm_status: current.
     check_silent(
-        "the real repository's smoke-workflow-maintenance canonical target declares relaylm_doc_type: operations",
+        "the real repository's smoke-workflow-maintenance canonical target declares relaylm_doc_type: operations and relaylm_status: current",
         check_smoke_maintenance_family_types,
     )
 
-    # 135. The canonical target synthetically typed as the retired runbook
-    # type is rejected: reject-then-allow pairing proving
-    # check_smoke_maintenance_family_types actually fires.
+    # 135a. Wrong doc type + correct status ("runbook" + "current") is rejected
+    # for the doc-type mismatch: reject-then-allow pairing proving
+    # check_smoke_maintenance_family_types actually fires on relaylm_doc_type.
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
@@ -4846,9 +4851,69 @@ def self_test() -> None:
             "---\nrelaylm_doc_type: runbook\nrelaylm_status: current\n---\n\nBody.\n",
         )
         check_rejects(
-            "a smoke-workflow-maintenance canonical target synthetically typed as the retired runbook type is rejected",
+            "a smoke-workflow-maintenance canonical target synthetically typed as the retired runbook type (correct status) is rejected",
             check_smoke_maintenance_family_types,
             "must declare relaylm_doc_type: operations",
+        )
+    ROOT = real_root
+
+    # 135b. Correct doc type + wrong status ("operations" + "target") is
+    # rejected for the status mismatch: proves check_smoke_maintenance_family_types
+    # also fires on relaylm_status independently of relaylm_doc_type.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            smoke_maintenance_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: target\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "a smoke-workflow-maintenance canonical target with the correct doc type but a wrong relaylm_status is rejected",
+            check_smoke_maintenance_family_types,
+            "must declare relaylm_status: current",
+        )
+    ROOT = real_root
+
+    # 135c. Wrong doc type AND wrong status ("runbook" + "target") produces
+    # both independent diagnostics in the same run: proves the two checks are
+    # independent, not short-circuiting on the first mismatch.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            smoke_maintenance_canonical,
+            "---\nrelaylm_doc_type: runbook\nrelaylm_status: target\n---\n\nBody.\n",
+        )
+        both_errors: list[str] = []
+        check_smoke_maintenance_family_types(both_errors)
+        has_type_error = any("must declare relaylm_doc_type: operations" in error for error in both_errors)
+        has_status_error = any("must declare relaylm_status: current" in error for error in both_errors)
+        ok = has_type_error and has_status_error
+        results.append(
+            (
+                "a smoke-workflow-maintenance canonical target with both a wrong doc type and a wrong status produces both independent diagnostics",
+                ok,
+                "" if ok else f"errors: {both_errors!r}",
+            )
+        )
+    ROOT = real_root
+
+    # 135d. The correct operations/current profile is accepted (reject-then-allow
+    # completion: 135a-c proved rejection, this proves acceptance at the exact
+    # correct profile).
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            smoke_maintenance_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        check_silent(
+            "a smoke-workflow-maintenance canonical target with the correct operations/current profile is accepted",
+            check_smoke_maintenance_family_types,
         )
     ROOT = real_root
 

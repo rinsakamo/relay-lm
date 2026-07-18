@@ -16,14 +16,14 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 ---
 # RelayLM Smoke and Validation Docs
 
-This directory indexes manual smoke runbooks, recorded smoke results, troubleshooting guides, consolidated CI maintenance guidance, and local behavior evaluation documents.
+This directory indexes manual smoke runbooks, recorded smoke results, troubleshooting guides, local behavior evaluation documents, and other retained smoke-related records not yet separately cut over. Cross-cutting consolidated CI maintenance procedures are canonical under `docs/operations/`, not `docs/smoke/`; this index carries a cross-collection link to that authority for discoverability only.
 
 Implementation evidence remains under `docs/evidence/implementation/`. Executable smoke scripts remain under `scripts/`.
 
-## Consolidated CI maintenance
+## Consolidated CI maintenance (cross-collection link)
 
-- [Consolidated smoke workflow maintenance](../operations/consolidated-smoke-workflow-maintenance.md) — current RelayMEM, Runtime, and UI workflow grouping, contract validation, and generated inventory procedure.
-- [Scripts inventory summary](scripts_inventory.md) — latest audited summary and the authoritative generated-artifact regeneration path.
+- [Consolidated smoke workflow maintenance](../operations/consolidated-smoke-workflow-maintenance.md) — canonical under `docs/operations/`; current RelayMEM, Runtime, and UI workflow grouping, contract validation, and generated inventory procedure. Indexed here only as a cross-collection pointer, not owned content.
+- [Scripts inventory summary](scripts_inventory.md) — latest audited summary and the authoritative generated-artifact regeneration path; a distinct, unmoved `docs/smoke/` authority with its own lifecycle.
 
 ## OpenWebUI / LM Studio manual smoke
 
@@ -49,4 +49,4 @@ Implementation evidence remains under `docs/evidence/implementation/`. Executabl
 
 ## Placement rule
 
-Create cross-cutting manual smoke, result, troubleshooting, consolidated CI maintenance, and local evaluation docs directly under `docs/smoke/`. Keep implementation evidence under `docs/evidence/implementation/`, architecture docs under `docs/architecture/`, contract docs under `docs/contracts/`, offline tooling docs under `docs/tools/`, and evaluation templates or run records under `docs/evaluation/`.
+Create cross-cutting manual smoke, result, troubleshooting, and local evaluation docs directly under `docs/smoke/`. Keep implementation evidence under `docs/evidence/implementation/`, architecture docs under `docs/architecture/`, contract docs under `docs/contracts/`, offline tooling docs under `docs/tools/`, evaluation templates or run records under `docs/evaluation/`, and operator runbooks or cross-cutting CI maintenance procedures under `docs/operations/`.
