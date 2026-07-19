@@ -11,11 +11,18 @@ relaylm_update_trigger:
   - ordinary-runtime worker integration changes
   - I1-G or O1/O2/O3 boundary changes
   - E1 evaluation evidence boundary changes
+  - accepted Subjective MEM target timing changes
 relaylm_not_authoritative_for:
   - repository-wide phase sequencing
   - exact RelayMEM or RelaySLP schemas
   - RelaySOUL approval contracts
 relaylm_related_authority:
+  - ../adr/0003-subjective-mem-direction.md
+  - ../adr/0004-single-call-interactive-runtime-deferred-formation.md
+  - runtime_dataflow_modes.md
+  - subjective_mem_deferred_formation_design.md
+  - relayrun_resource_scheduling_design.md
+  - relayref_output_observation_design.md
   - o1f_operational_validation.md
   - o2_supervised_scheduler_service.md
   - o3_always_on_local_scheduler.md
@@ -37,7 +44,7 @@ relaylm_related_authority:
 ---
 # RelayMEM / RelaySLP Current / Target Boundary
 
-Last reviewed: 2026-07-06 JST
+Last reviewed: 2026-07-19 JST
 
 ## Current implemented boundary
 
@@ -67,6 +74,40 @@ I2 real SOUL Lab observation is complete. It is read-only evidence only and cann
 E1 evaluation consolidation is current as an evidence/documentation boundary. E1-R1 route-owned trusted Home scene admission is current implemented. E1-R2 dry-run-first character-store bootstrap is current implemented. E1-R3 provenance-preserving summary formation is current implemented. E1-R4 request-side evidence-grounded recall behavior is current implemented. E1-R5 scoped Primary recall candidate fallback is current implemented.
 
 PM-D5, PM-D6, PM-D7, and PM-D8 are complete as post-MVP compatibility/debt fold-in slices. PM-D5 removes legacy flat-store runtime discovery. PM-D6 makes the input-side RelayINT artifact native instead of RelayREF-wrapper-shaped. PM-D7 adds the explicit dry-run-first runtime install/preflight command. PM-D8 folds the bounded E1-R5 fallback into canonical Primary recall.
+
+## Accepted target boundary after ADR 0004
+
+The accepted target does not require Shared Assessment or Subjective MEM formation to complete inside the current conversation turn.
+
+```text
+ordinary managed response path
+  -> one Main LLM response-generation call
+  -> RelayREF / return-side EMO / output-side SCN
+  -> user-visible response
+
+out-of-band formation path
+  -> governed Evidence references
+  -> RelaySLP episode or bounded evidence-group formation
+  -> Shared Assessment
+  -> SOUL-conditioned Subjective MEM proposal
+  -> gated RelayMEM / workspace commit or hold
+```
+
+The current Primary worker and queue implementation is implementation evidence and a migration base; it does not, by itself, define the final Subjective MEM, Shared Assessment, episode grouping, or storage-authority schema.
+
+Target invariants:
+
+- Protected Source Evidence remains durable independently of response and formation success.
+- RelayCTX owns current/session continuity and temporary correction or recall-suppression overlays, not durable pending MEM.
+- RelayMEM Retrieval remains read-only in the interactive path.
+- RelaySLP preferably groups several related turns before formation when later qualification or correction is likely to improve coherence.
+- One structured SLP call may initially emit a character-independent Shared Assessment section and a Subjective MEM proposal section, provided validators preserve the authority boundary.
+- Additional LLM adjudication is an optional deferred SLP exception and never blocks the conversation.
+- Natural-language conversational “forget” defaults to session-local suppression when durable management authority was not invoked.
+- Durable Forget remains the implemented loopback UI/API lifecycle operation or an equivalent governed canonical-edit path.
+- RelayRUN owns formation timing, defer, busy-skip, retry, cancellation, and job coalescing; semantic fallback remains owned by RelaySLP and RelayMEM.
+
+Current implementation status remains exactly as recorded below and in Project Status. This accepted target is not a claim that the target schema or runtime migration is already implemented.
 
 ## I1-G durable-finalization boundary
 
