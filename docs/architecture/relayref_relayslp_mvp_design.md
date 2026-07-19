@@ -25,4 +25,4 @@ Use these current documents:
 - [RelayMEM SLP Execution Design](relaymem_slp_execution_design.md)
 - [RelayRUN Runtime Checkpoint Design](relayrun_runtime_checkpoint_design.md)
 - [RelaySCN MVP Scene Policy](relayscn_mvp_scene_policy.md)
-- [RelayEMO MVP Initial Design](relayemo_mvp_initial_design.md)
+- [RelayEMO MVP Initial Design](../relayemo_mvp_initial_design.md)
