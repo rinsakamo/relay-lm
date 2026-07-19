@@ -4634,12 +4634,31 @@ validated_content_head_github_observation:
     deletions: 57
   relaylm_changed_files: 0
   later_review_comment_activity_does_not_retroactively_mutate_this_observation: true
-receipt_bookkeeping_commit: pending_this_commit
-receipt_finalization: pending_after_bookkeeping_validation
-receipt_finalization_pre_codex_observation: pending
+receipt_bookkeeping_commit: d478cf670a261f83790fd7d74bc3099c91704251
+receipt_finalization: performed_after_validated_content_head
+receipt_finalization_pre_codex_observation:
+  observed_head: d478cf670a261f83790fd7d74bc3099c91704251
+  phase: pre_exact_head_codex_review
+  actions_workflow_runs:
+    total: 17
+    success: 17
+    failure: 0
+  check_runs:
+    total: 27
+    success: 18
+    skipped: 9
+    failure: 0
+  review_count: 14
+  top_level_pr_comment_count: 18
+  unresolved_review_thread_count: 0
+  exact_diff:
+    changed_files: 17
+    insertions: 579
+    deletions: 57
+  note: later comments and reviews do not mutate this head-scoped observation
 merged_commit: pending
-final_pr_changed_files: pending
-final_pr_net_diff: pending
+final_pr_changed_files: 17
+final_pr_net_diff: +598/-57
 post_finalization_codex_review:
   authority: live_github_pr_state
   required_before_merge: exact_finalization_head_no_actionable_findings
