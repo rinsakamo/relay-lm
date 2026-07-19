@@ -4624,7 +4624,7 @@ validated_content_head_github_observation:
     success: 18
     skipped: 9
     failure: 0
-  review_count: 14
+  review_count: 12
   top_level_pr_comment_count: 13
   unresolved_review_thread_count: 0
   mergeability: MERGEABLE
