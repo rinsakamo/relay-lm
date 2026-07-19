@@ -18,11 +18,10 @@ relaylm_not_authoritative_for:
   - RelaySOUL approval contracts
 relaylm_related_authority:
   - ../adr/0003-subjective-mem-direction.md
-  - ../adr/0004-single-call-interactive-runtime-deferred-formation.md
-  - runtime_dataflow_modes.md
-  - subjective_mem_deferred_formation_design.md
-  - relayrun_resource_scheduling_design.md
-  - relayref_output_observation_design.md
+  - ../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md
+  - runtime/request-response-pipeline.md
+  - runtime/scheduler.md
+  - memory/formation.md
   - o1f_operational_validation.md
   - o2_supervised_scheduler_service.md
   - o3_always_on_local_scheduler.md
@@ -80,16 +79,16 @@ PM-D5, PM-D6, PM-D7, and PM-D8 are complete as post-MVP compatibility/debt fold-
 The accepted target does not require Shared Assessment or Subjective MEM formation to complete inside the current conversation turn.
 
 ```text
-ordinary managed response path
+ordinary managed no-tool response path
   -> one Main LLM response-generation call
-  -> RelayREF / return-side EMO / output-side SCN
-  -> user-visible response
+  -> streaming user / TTS / avatar output
+  -> response-complete assistant Evidence and RelayREF observation
 
-out-of-band formation path
+out-of-band reference formation path
   -> governed Evidence references
-  -> RelaySLP episode or bounded evidence-group formation
-  -> Shared Assessment
-  -> SOUL-conditioned Subjective MEM proposal
+  -> RelaySLP episode or bounded evidence-group Assessment Pass
+  -> validated character-independent Shared Assessment
+  -> RelaySLP Subjective Formation Pass with SOUL / MEMORY / BOUNDARY
   -> gated RelayMEM / workspace commit or hold
 ```
 
@@ -98,14 +97,18 @@ The current Primary worker and queue implementation is implementation evidence a
 Target invariants:
 
 - Protected Source Evidence remains durable independently of response and formation success.
+- Finalized assistant-origin Evidence remains distinct from RelayREF response observation and never becomes user-origin fact through retention.
 - RelayCTX owns current/session continuity and temporary correction or recall-suppression overlays, not durable pending MEM.
 - RelayMEM Retrieval remains read-only in the interactive path.
 - RelaySLP preferably groups several related turns before formation when later qualification or correction is likely to improve coherence.
-- One structured SLP call may initially emit a character-independent Shared Assessment section and a Subjective MEM proposal section, provided validators preserve the authority boundary.
-- Additional LLM adjudication is an optional deferred SLP exception and never blocks the conversation.
+- The reference path validates a SOUL-independent Shared Assessment before SOUL-conditioned Subjective Formation.
+- A fused SLP call is evaluation-gated optimization only and must fail closed to the split path when equivalence or SOUL-contamination boundaries are not met.
+- Additional LLM adjudication is an optional deferred SLP exception and never blocks conversation.
+- Current-conversation correction is best-effort CTX input control; it is not a guarantee about probabilistic Main LLM output.
 - Natural-language conversational “forget” defaults to session-local suppression when durable management authority was not invoked.
 - Durable Forget remains the implemented loopback UI/API lifecycle operation or an equivalent governed canonical-edit path.
-- RelayRUN owns formation timing, defer, busy-skip, retry, cancellation, and job coalescing; semantic fallback remains owned by RelaySLP and RelayMEM.
+- RelayRUN separates control-plane mutation fences from compute/resource priority; semantic fallback remains owned by RelaySLP and RelayMEM.
+- Explicit pass-through disables managed memory behavior by default unless a separate route contract opts in.
 
 Current implementation status remains exactly as recorded below and in Project Status. This accepted target is not a claim that the target schema or runtime migration is already implemented.
 
