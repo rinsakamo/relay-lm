@@ -4608,7 +4608,8 @@ open_pr_isolation:
   checked_open_prs: [586, 578, 567]
   shared_file_overlaps: []
   no_content_imported: true
-validation_results: full applicable suite passed before validated-content bookkeeping
+<<<<<<< HEAD
+validation_results: full_applicable_suite_passed_for_validated_content_head
 semantic_audit_self_test_assertions: 231
 validated_content_head: f678e5512a62d76c060dae2470270aaccfa270fc
 validated_content_head_github_observation:
@@ -4624,14 +4625,15 @@ validated_content_head_github_observation:
     success: 18
     skipped: 9
     failure: 0
-  reviews: 12
-  top_level_pr_comments: 13
-  unresolved_review_threads: 0
+  review_count: 14
+  top_level_pr_comment_count: 13
+  unresolved_review_thread_count: 0
+  mergeability: MERGEABLE
   exact_diff:
     changed_files: 17
     insertions: 558
     deletions: 57
-  relaylm_changes: 0
+  relaylm_changed_files: 0
 receipt_bookkeeping_commit: pending_this_commit
 receipt_finalization: pending_after_bookkeeping_validation
 receipt_finalization_pre_codex_observation: pending
