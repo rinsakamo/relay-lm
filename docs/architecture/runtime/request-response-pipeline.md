@@ -1,5 +1,5 @@
 ---
-relaylm_doc_type: system_architecture
+relaylm_doc_type: subsystem_architecture
 relaylm_authority: managed_request_response_pipeline_modes_and_response_finalization
 relaylm_status: target
 relaylm_volatility: medium
