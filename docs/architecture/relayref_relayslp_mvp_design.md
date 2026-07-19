@@ -8,20 +8,19 @@ Current architecture fixes the timing boundary as:
 
 ```text
 RelayINT = before action
-RelayREF = after the generated response exists
+RelayREF = response-complete observation after generated output exists
 RelaySLP = out of band after the current user-visible answer
 ```
 
-The ordinary managed conversation path uses one Main LLM response-generation call. Shared Assessment and Subjective MEM formation run later through RelaySLP, preferably across an episode or bounded related-evidence group. Additional adjudication is an optional RelaySLP exception and never blocks the interactive response.
+The ordinary managed no-tool conversation path requires one Main LLM response-generation call. Streaming output does not wait for response-complete RelayREF observation. Shared Assessment and Subjective MEM formation run later through the split RelaySLP reference path, preferably across an episode or bounded related-evidence group. Additional adjudication is an optional RelaySLP exception and never blocks the interactive response.
 
 Use these current documents:
 
-- [ADR 0004: Single-call interactive runtime and deferred subjective formation](../adr/0004-single-call-interactive-runtime-deferred-formation.md)
+- [ADR 0004: Single-response-call ordinary conversation and deferred subjective formation](../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md)
 - [Pipeline Responsibility Design](pipeline_responsibility_design.md)
-- [Runtime Dataflow Modes](runtime_dataflow_modes.md)
-- [RelayREF Output Observation Design](relayref_output_observation_design.md)
-- [RelayRUN Resource Scheduling Design](relayrun_resource_scheduling_design.md)
-- [Subjective MEM Deferred Formation Design](subjective_mem_deferred_formation_design.md)
+- [Request / Response Pipeline](runtime/request-response-pipeline.md)
+- [Runtime Scheduler](runtime/scheduler.md)
+- [Subjective Memory Formation](memory/formation.md)
 - [RelayMEM SLP Execution Design](relaymem_slp_execution_design.md)
 - [RelayRUN Runtime Checkpoint Design](relayrun_runtime_checkpoint_design.md)
 - [RelaySCN MVP Scene Policy](relayscn_mvp_scene_policy.md)
