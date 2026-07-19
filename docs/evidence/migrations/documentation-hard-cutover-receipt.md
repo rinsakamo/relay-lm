@@ -4608,24 +4608,27 @@ open_pr_isolation:
   checked_open_prs: [586, 578, 567]
   shared_file_overlaps: []
   no_content_imported: true
-validation_results: local_required_validation_passed_and_exact_head_actions_passed_after_registry_correction
-semantic_audit_self_test_assertions: 231
-validated_content_head: 106ef81d6fc97ac4f252b69670eef8a368d519c3
-receipt_bookkeeping_commit: 27c7752415fb5165983f69aa79cc1e330c61ffe0
-receipt_finalization: performed_after_validated_content_head
+validation_results: pending
+semantic_audit_self_test_assertions: pending
+validated_content_head: pending
+validated_content_head_github_observation: pending
+receipt_bookkeeping_commit: pending
+receipt_finalization: pending
+receipt_finalization_pre_codex_observation: pending
 merged_commit: pending
-exact_head_actions: {total: 27, success: 18, skipped: 9, failure: 0}
-reviews: 0
-pr_comments: 0
-unresolved_review_threads: 0
-final_pr_changed_files: 17
-final_pr_net_diff: {insertions: 555, deletions: 57}
+exact_head_actions: pending
+final_pr_changed_files: pending
+final_pr_net_diff: pending
+post_finalization_codex_review:
+  authority: live_github_pr_state
+  required_before_merge: exact_finalization_head_no_actionable_findings
+  recorded_in_receipt: false
 ```
 
 Cutover 1C-45 starts from the exact current-main boundary `43fd272c3a99180646ad73b6c2edc12435a87812`, independently verified as both local `HEAD` and `origin/main`. The family boundary is limited to three repeatable manual-validation procedures, one blank reusable results template, and one completed dated local validation result. The procedures move to `docs/operations/`, the blank template moves to `docs/templates/evaluation/`, and the completed 2026-05-26 result moves to `docs/evidence/evaluations/` with frozen evidence metadata and source provenance. No `relaylm/**` files are changed and no runtime behavior is changed. The C1C45 PR remains open and unmerged; `merged_commit` remains pending.
 
 **C1C45 correction round for PR #611.** Independent review found four unresolved threads requiring a substantive correction before re-finalization. `PRRT_kwDOSh2R-s6SAE0D` covered the frozen evidence source path; replay against base/main confirms the true source is `docs/smoke/openwebui_lmstudio_manual_smoke_result_2026_05_26.md`, with source blob `b19679e01ddbc9c30986bf6912edcb6b04cb8e7c` and normalized SHA-256 `8d903842533fe69aff177f9f9cdacdda7e8174f958ac4e8a063b615dd7d3a97d`. `PRRT_kwDOSh2R-s6SAE0F` found that `check_no_live_openwebui_manual_validation_retired_paths` and `check_openwebui_manual_validation_family_types` were self-tested but omitted from the default production semantic-audit registry, making default execution fail open; this correction registers both checks after the C1C44 O1 checks and adds production-registry self-test coverage. `PRRT_kwDOSh2R-s6SAJ3e` found stale receipt accounting: `be21fba855c194c66fa2219874b2ab23dcee38d7`, real historical bookkeeping commit `d109aeed20afdef3026b5c1fde3b4011d9762882`, and finalization head `0adea1cd2b1b13f10c6bb969c4d4adf835424613` are now preserved only as superseded historical narrative, while the current accounting fields above are reset to `pending` for the new validated-content sequence. `PRRT_kwDOSh2R-s6SAJ3f` found stale final diff totals: the reviewed `0adea1c` head was 17 files, +472/-29 rather than the previously recorded +465/-33; final diff totals are reset to `pending` and must be freshly recomputed after this correction. The prior finalization is superseded because substantive audit-registration and accounting corrections occurred after it; `merged_commit` remains `pending` and no runtime files changed.
 
-The substantive correction commit `106ef81d6fc97ac4f252b69670eef8a368d519c3` is now the validated C1C45 content head. Exact-head GitHub checks completed with 27 total checks (18 success, 9 skipped, 0 failure); live PR diff was 17 changed files, +551/-57; review/comment/thread accounting was 6 reviews, 1 top-level PR comment, and 0 unresolved review threads after replying to and resolving `PRRT_kwDOSh2R-s6SAE0D`, `PRRT_kwDOSh2R-s6SAE0F`, `PRRT_kwDOSh2R-s6SAJ3e`, and `PRRT_kwDOSh2R-s6SAJ3f`. `runtime_files_changed: 0` remains true and `merged_commit` remains pending.
+The historical C1C45 accounting sequence with validated content head `106ef81d6fc97ac4f252b69670eef8a368d519c3`, receipt bookkeeping commit `27c7752415fb5165983f69aa79cc1e330c61ffe0`, and finalization head `f38036d92587e492b346ce578a7bb30bd92aacd2` is superseded by this substantive post-finalization receipt correction. At those exact historical heads, GitHub observations were recorded as immutable snapshots: exact-head checks completed with 27 total checks (18 success, 9 skipped, 0 failure); the finalization diff was 17 changed files, +555/-57; the post-resolution PR accounting narrative recorded 6 reviews, 2 top-level PR comments, and 0 unresolved review threads. Those values describe only the named historical heads and phases; later review, comment, or thread activity does not retroactively alter a head-scoped observation.
 
-The receipt bookkeeping commit `27c7752415fb5165983f69aa79cc1e330c61ffe0` was pushed and verified at its exact head with 27 checks (18 success, 9 skipped, 0 failure). This finalization commit records that verified bookkeeping head, keeps `receipt_finalization: performed_after_validated_content_head`, and keeps `merged_commit: pending`; the PR remains open and unmerged.
+This correction addresses duplicate accounting-cycle threads `PRRT_kwDOSh2R-s6SCKje` and `PRRT_kwDOSh2R-s6SCYUf`. The defect was treating `reviews`, `pr_comments`, and `unresolved_review_threads` as indefinitely current final PR totals inside the C1C45 YAML record: every new `@codex review`, reply, or thread resolution could immediately change those live totals and make the receipt stale again. The current receipt fields are therefore reset to `pending`, the ambiguous live-total fields are removed, and future population must use immutable head-scoped GitHub observations. Each populated observation must name its exact `observed_head`, phase, Actions totals, review count, top-level PR-comment count, and unresolved-thread count measured at that named head. The post-finalization Codex result remains live GitHub PR state requiring an exact-finalization-head review with no actionable findings before merge, not a self-referential receipt total.
