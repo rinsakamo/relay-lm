@@ -4608,17 +4608,42 @@ open_pr_isolation:
   checked_open_prs: [586, 578, 567]
   shared_file_overlaps: []
   no_content_imported: true
-validation_results: pending
-semantic_audit_self_test_assertions: pending
-validated_content_head: pending
-validated_content_head_github_observation: pending
-receipt_bookkeeping_commit: pending
-receipt_finalization: pending
+validation_results: full applicable suite passed before validated-content bookkeeping
+semantic_audit_self_test_assertions: 231
+validated_content_head: f678e5512a62d76c060dae2470270aaccfa270fc
+validated_content_head_github_observation:
+  observed_head: f678e5512a62d76c060dae2470270aaccfa270fc
+  phase: validated_content_head_after_accounting_model_correction
+  base_sha: 43fd272c3a99180646ad73b6c2edc12435a87812
+  actions_workflow_runs:
+    total: 17
+    success: 17
+    failure: 0
+  check_runs:
+    total: 27
+    success: 18
+    skipped: 9
+    failure: 0
+  reviews: 12
+  top_level_pr_comments: 13
+  unresolved_review_threads: 0
+  exact_diff:
+    changed_files: 17
+    insertions: 558
+    deletions: 57
+  relaylm_changes: 0
+receipt_bookkeeping_commit: pending_this_commit
+receipt_finalization: pending_after_bookkeeping_validation
 receipt_finalization_pre_codex_observation: pending
 merged_commit: pending
-exact_head_actions: pending
-final_pr_changed_files: pending
-final_pr_net_diff: pending
+exact_head_actions:
+  observed_head: f678e5512a62d76c060dae2470270aaccfa270fc
+  check_runs_total: 27
+  check_runs_success: 18
+  check_runs_skipped: 9
+  check_runs_failure: 0
+final_pr_changed_files: 17
+final_pr_net_diff: +558/-57
 post_finalization_codex_review:
   authority: live_github_pr_state
   required_before_merge: exact_finalization_head_no_actionable_findings
