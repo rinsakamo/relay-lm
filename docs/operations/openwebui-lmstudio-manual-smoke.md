@@ -1,3 +1,15 @@
+---
+relaylm_doc_type: operations
+relaylm_authority: openwebui_lmstudio_manual_smoke_validation
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: validation
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_not_authoritative_for:
+  - runtime behavior
+  - exact runtime contracts
+  - measured validation results
+---
 # OpenWebUI + LM Studio Manual Smoke Runbook
 
 ## Scope
@@ -6,13 +18,13 @@ This runbook verifies the real local connection path and the current managed-his
 
 Related docs:
 
-- [Client history exclusion manual smoke](client_history_exclusion_manual_smoke.md)
-- [RelayRUN recovery diagnostics manual smoke](relayrun_recovery_diagnostics_manual_smoke.md)
-- [OpenWebUI model preset/avatar checklist](openwebui_model_preset_checklist.md)
-- [OpenWebUI route response differentiation checks](openwebui_response_differentiation_checks.md)
-- [Manual smoke results template](openwebui_lmstudio_manual_smoke_results_template.md)
-- [Troubleshooting guide](openwebui_lmstudio_troubleshooting.md)
-- [Latest filled result: 2026-05-26](openwebui_lmstudio_manual_smoke_result_2026_05_26.md)
+- [Client history exclusion manual smoke](client-history-exclusion-manual-smoke.md)
+- [RelayRUN recovery diagnostics manual smoke](relayrun-recovery-diagnostics-manual-smoke.md)
+- [OpenWebUI model preset/avatar checklist](../smoke/openwebui_model_preset_checklist.md)
+- [OpenWebUI route response differentiation checks](../smoke/openwebui_response_differentiation_checks.md)
+- [Manual smoke results template](../templates/evaluation/openwebui-lmstudio-manual-smoke-results.md)
+- [Troubleshooting guide](../smoke/openwebui_lmstudio_troubleshooting.md)
+- [Latest filled result: 2026-05-26](../evidence/evaluations/openwebui-lmstudio-manual-smoke-2026-05-26.md)
 
 This is manual validation only. It does not change runtime behavior.
 
@@ -198,11 +210,11 @@ Expected:
 - no dependency on heavy OpenWebUI system prompts,
 - no invented memory required for a pass.
 
-Use the controlled prompts in [response differentiation checks](openwebui_response_differentiation_checks.md).
+Use the controlled prompts in [response differentiation checks](../smoke/openwebui_response_differentiation_checks.md).
 
 ## Step 7: managed history authority
 
-Run and record the dedicated [client history exclusion smoke](client_history_exclusion_manual_smoke.md).
+Run and record the dedicated [client history exclusion smoke](client-history-exclusion-manual-smoke.md).
 
 It separates:
 
@@ -216,7 +228,7 @@ A successful LM Studio response alone does not establish the exact backend-bound
 
 ## Step 8: RelayRUN recovery diagnostics
 
-Run and record the dedicated [RelayRUN recovery diagnostics smoke](relayrun_recovery_diagnostics_manual_smoke.md).
+Run and record the dedicated [RelayRUN recovery diagnostics smoke](relayrun-recovery-diagnostics-manual-smoke.md).
 
 It preserves:
 

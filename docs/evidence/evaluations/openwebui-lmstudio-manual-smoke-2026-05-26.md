@@ -1,3 +1,24 @@
+---
+relaylm_doc_type: evidence
+relaylm_authority: observed_openwebui_lmstudio_manual_smoke_evidence
+relaylm_status: frozen
+relaylm_volatility: low
+relaylm_owner: evaluation
+relaylm_update_trigger:
+  - metadata or link repair only
+relaylm_not_authoritative_for:
+  - current runtime behavior
+  - production reliability claims
+  - repeatable operations procedure
+relaylm_current_status_source: ../../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../../operations/openwebui-lmstudio-manual-smoke.md
+relaylm_source_commit: 43fd272c3a99180646ad73b6c2edc12435a87812
+relaylm_source_path: docs/smoke/openwebui_lmstudio_manual_smoke_result_2026_05_26.md
+relaylm_recorded_on: 2026-05-26
+relaylm_source_blob: b19679e01ddbc9c30986bf6912edcb6b04cb8e7c
+relaylm_source_content_sha256: 8d903842533fe69aff177f9f9cdacdda7e8174f958ac4e8a063b615dd7d3a97d
+---
 # OpenWebUI + RelayLM + LM Studio Manual Smoke Result (2026-05-26)
 
 ## Scope
@@ -72,7 +93,7 @@ Verdict: pass
 
 ## Failure / troubleshooting notes
 
-Troubleshooting guide: [OpenWebUI + RelayLM + LM Studio troubleshooting](openwebui_lmstudio_troubleshooting.md).
+Troubleshooting guide: [OpenWebUI + RelayLM + LM Studio troubleshooting](../../smoke/openwebui_lmstudio_troubleshooting.md).
 
 - Windows Firewall can block WSL -> Windows LM Studio connectivity.
 - `host.docker.internal` may not reach WSL RelayLM depending on environment; WSL IP may be required.

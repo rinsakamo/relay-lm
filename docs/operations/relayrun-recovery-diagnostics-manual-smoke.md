@@ -1,3 +1,15 @@
+---
+relaylm_doc_type: operations
+relaylm_authority: relayrun_recovery_diagnostics_manual_smoke_validation
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: validation
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_not_authoritative_for:
+  - runtime behavior
+  - exact runtime contracts
+  - measured validation results
+---
 # RelayRUN Recovery Diagnostics Manual Smoke
 
 ## Purpose

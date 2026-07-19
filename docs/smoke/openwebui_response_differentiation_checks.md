@@ -99,7 +99,7 @@ P5 must be sent in the same frontend conversation only when intentionally testin
 ## References
 
 - [OpenWebUI + LM Studio MVP](../openwebui_lmstudio_mvp.md)
-- [Manual smoke runbook](openwebui_lmstudio_manual_smoke.md)
+- [Manual smoke runbook](../operations/openwebui-lmstudio-manual-smoke.md)
 - [Preset/avatar checklist](openwebui_model_preset_checklist.md)
-- [Manual smoke results template](openwebui_lmstudio_manual_smoke_results_template.md)
-- [Historical filled result: 2026-05-26](openwebui_lmstudio_manual_smoke_result_2026_05_26.md)
+- [Manual smoke results template](../templates/evaluation/openwebui-lmstudio-manual-smoke-results.md)
+- [Historical filled result: 2026-05-26](../evidence/evaluations/openwebui-lmstudio-manual-smoke-2026-05-26.md)

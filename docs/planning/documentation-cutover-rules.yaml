@@ -407,6 +407,31 @@ path_overrides:
       This authority was the originally expected Cutover 1C-43 candidate,
       deferred by the accepted sequencing deviation recorded in the C1C43
       receipt entry, and is executed here as Cutover 1C-44 as required.
+  docs/smoke/openwebui_lmstudio_manual_smoke.md:
+    disposition: moved
+    target_doc_type: operations
+    target_paths:
+      - docs/operations/openwebui-lmstudio-manual-smoke.md
+  docs/smoke/client_history_exclusion_manual_smoke.md:
+    disposition: moved
+    target_doc_type: operations
+    target_paths:
+      - docs/operations/client-history-exclusion-manual-smoke.md
+  docs/smoke/relayrun_recovery_diagnostics_manual_smoke.md:
+    disposition: moved
+    target_doc_type: operations
+    target_paths:
+      - docs/operations/relayrun-recovery-diagnostics-manual-smoke.md
+  docs/smoke/openwebui_lmstudio_manual_smoke_results_template.md:
+    disposition: moved
+    target_doc_type: template
+    target_paths:
+      - docs/templates/evaluation/openwebui-lmstudio-manual-smoke-results.md
+  docs/smoke/openwebui_lmstudio_manual_smoke_result_2026_05_26.md:
+    disposition: moved
+    target_doc_type: evidence
+    target_paths:
+      - docs/evidence/evaluations/openwebui-lmstudio-manual-smoke-2026-05-26.md
 
 family_rules:
   - id: canonical-target-collections

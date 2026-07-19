@@ -31,11 +31,11 @@ Implementation evidence remains under `docs/evidence/implementation/`. Executabl
 
 ## OpenWebUI / LM Studio manual smoke
 
-- [OpenWebUI + LM Studio manual smoke runbook](openwebui_lmstudio_manual_smoke.md)
-- [Client history exclusion manual smoke](client_history_exclusion_manual_smoke.md)
-- [RelayRUN recovery diagnostics manual smoke](relayrun_recovery_diagnostics_manual_smoke.md)
-- [Manual smoke results template](openwebui_lmstudio_manual_smoke_results_template.md)
-- [Manual smoke result: 2026-05-26](openwebui_lmstudio_manual_smoke_result_2026_05_26.md)
+- [OpenWebUI + LM Studio manual smoke runbook](../operations/openwebui-lmstudio-manual-smoke.md)
+- [Client history exclusion manual smoke](../operations/client-history-exclusion-manual-smoke.md)
+- [RelayRUN recovery diagnostics manual smoke](../operations/relayrun-recovery-diagnostics-manual-smoke.md)
+- [Manual smoke results template](../templates/evaluation/openwebui-lmstudio-manual-smoke-results.md)
+- [Manual smoke result: 2026-05-26](../evidence/evaluations/openwebui-lmstudio-manual-smoke-2026-05-26.md)
 
 ## Setup checks and troubleshooting
 
