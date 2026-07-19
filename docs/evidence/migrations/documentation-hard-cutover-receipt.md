@@ -4619,7 +4619,7 @@ reviews: 0
 pr_comments: 0
 unresolved_review_threads: 0
 final_pr_changed_files: 17
-final_pr_net_diff: {insertions: 553, deletions: 55}
+final_pr_net_diff: {insertions: 555, deletions: 57}
 ```
 
 Cutover 1C-45 starts from the exact current-main boundary `43fd272c3a99180646ad73b6c2edc12435a87812`, independently verified as both local `HEAD` and `origin/main`. The family boundary is limited to three repeatable manual-validation procedures, one blank reusable results template, and one completed dated local validation result. The procedures move to `docs/operations/`, the blank template moves to `docs/templates/evaluation/`, and the completed 2026-05-26 result moves to `docs/evidence/evaluations/` with frozen evidence metadata and source provenance. No `relaylm/**` files are changed and no runtime behavior is changed. The C1C45 PR remains open and unmerged; `merged_commit` remains pending.
