@@ -22,7 +22,7 @@ relaylm_related_authority:
   - runtime_dataflow_modes.md
   - context_packing_design.md
   - relayscn_mvp_scene_policy.md
-  - relayemo_mvp_initial_design.md
+  - ../relayemo_mvp_initial_design.md
   - relaymem_slp_execution_design.md
 ---
 # RelayREF Output Observation Design
