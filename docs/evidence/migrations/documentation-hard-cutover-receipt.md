@@ -4633,12 +4633,35 @@ validated_content_head_github_observation:
     insertions: 558
     deletions: 57
   relaylm_changed_files: 0
-receipt_bookkeeping_commit: pending_this_commit
-receipt_finalization: pending_after_bookkeeping_validation
-receipt_finalization_pre_codex_observation: pending
+  later_review_comment_activity_does_not_retroactively_mutate_this_observation: true
+receipt_bookkeeping_commit: 8f398aa3021f9245965996b390223ff6bf986bc9
+receipt_finalization: performed_after_validated_content_head
+receipt_finalization_pre_codex_observation:
+  observed_head: 8f398aa3021f9245965996b390223ff6bf986bc9
+  phase: pre_exact_head_codex_review
+  bookkeeping_head: 8f398aa3021f9245965996b390223ff6bf986bc9
+  bookkeeping_head_check_runs:
+    total: 27
+    success: 18
+    skipped: 9
+    failure: 0
+  review_count: 14
+  top_level_pr_comment_count: 15
+  unresolved_review_thread_count: 0
+  exact_diff_before_final_codex_trigger:
+    changed_files: 17
+    insertions: 578
+    deletions: 57
+  later_activity_mutates_observation: false
 merged_commit: pending
-final_pr_changed_files: pending
-final_pr_net_diff: pending
+exact_head_actions:
+  observed_head: 8f398aa3021f9245965996b390223ff6bf986bc9
+  check_runs_total: 27
+  check_runs_success: 18
+  check_runs_skipped: 9
+  check_runs_failure: 0
+final_pr_changed_files: 17
+final_pr_net_diff: +601/-57
 post_finalization_codex_review:
   authority: live_github_pr_state
   required_before_merge: exact_finalization_head_no_actionable_findings
