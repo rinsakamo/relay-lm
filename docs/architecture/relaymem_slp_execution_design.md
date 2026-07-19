@@ -8,7 +8,25 @@ It reads governed evidence, extracts memory candidates, classifies safety, auton
 
 RelaySLP improves future memory. It does not produce the current answer.
 
-Current implementation phase and sequencing live in [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md). Memory lifecycle semantics live in [Memory Lifecycle Design](memory_lifecycle_design.md).
+Current implementation phase and sequencing live in [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md). Memory lifecycle semantics live in [Memory Lifecycle Design](memory_lifecycle_design.md). The accepted target timing and Subjective MEM formation path live in [ADR 0004](../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md) and [Subjective Memory Formation](memory/formation.md).
+
+## Target interpretation after ADR 0004
+
+The ordinary managed no-tool conversational path requires one Main LLM response-generation call. RelaySLP runs out of band and preferably groups related governed evidence by episode or bounded evidence group.
+
+The reference Subjective MEM path is split:
+
+```text
+governed Evidence
+  -> SOUL-independent Assessment Pass
+  -> validated Shared Assessment
+  -> SOUL-conditioned Subjective Formation Pass
+  -> governed persistence or hold
+```
+
+A fused assessment/formation call is evaluation-gated optimization only, not the reference path.
+
+Natural-language conversational “forget this for now” defaults to RelayINT/RelayCTX session-local suppression when no durable management authority was invoked. References to a Forget operation in this document mean a governed Character Workspace / SOUL Lab / loopback API or equivalent canonical management operation.
 
 ## Core principle
 
@@ -33,15 +51,16 @@ RelaySLP consumes governed evidence rather than arbitrary runtime dumps:
 
 - approved raw event references,
 - explicit user memory requests,
+- finalized assistant-origin Evidence and bounded RelayREF observations,
 - detached RelayCTX Unpack/update candidates after validation,
 - RelayINT intent/clarification summaries,
 - RelaySCN state/policy summaries,
-- RelayEMO salience/expression evidence in bounded form,
+- RelayEMO salience/expression evidence in bounded non-authoritative form,
 - RelayRUN checkpoint and recovery metadata,
 - RelayMEM retrieval summaries,
 - existing MEM pages/index/log,
-- approved RelaySOUL constraints,
-- user corrections or memory operation requests.
+- approved RelaySOUL constraints for the Subjective Formation pass only,
+- user corrections or governed memory-operation requests.
 
 Content-bearing source material remains in the protected memory/source domain. Default runtime trace projections are not sufficient SLP source data by themselves.
 
@@ -49,6 +68,7 @@ Content-bearing source material remains in the protected memory/source domain. D
 
 RelaySLP may produce:
 
+- Shared Assessment candidates through the SOUL-independent assessment stage,
 - memory candidates,
 - proposed page updates,
 - held or rejected candidates,
@@ -63,9 +83,13 @@ RelaySLP never emits user-visible answer, sleep, recovery, or resume text direct
 
 ## Execution flow
 
+Target Subjective MEM formation uses the split path defined above. The following compiler flow applies after valid governed input exists:
+
 ```text
 governed source append/reference
-  -> candidate extraction
+  -> episode / evidence-group selection
+  -> Shared Assessment production and validation
+  -> subjective candidate extraction
   -> memory_kind classification
   -> safety_scope classification
   -> existing MEM lookup
@@ -192,13 +216,15 @@ RelaySLP lint checks:
 
 ### Explicit/manual SLP
 
-Triggered by an explicit request to remember, organize, consolidate, document, forget, or review memory.
+Triggered by an explicit request to remember, organize, consolidate, document, or review memory, or by an explicit governed management-surface Forget/Correct/Pin/Merge operation.
 
-### Turn-end deferred SLP
+A natural-language conversational “forget this” request does not by itself authorize durable Forget or direct SLP mutation. RelayINT first classifies conversational versus management scope; conversational scope remains RelayCTX-local.
 
-Runs after the normal response path and may produce diagnostics, held candidates, or autonomous ordinary memory updates without delaying first response/streaming.
+### Turn-end deferred SLP eligibility
 
-Turn-end SLP should not ask the user to approve every normal memory. It should write only what policy classifies as safe, source-backed, scoped, and idempotent. Held or blocked memory remains visible later in Lab.
+A finalized turn may create durable source coverage or an eligible deferred job without delaying first response/streaming. Turn end is an eligibility boundary, not a requirement to form a separate memory for every turn.
+
+RelaySLP should prefer episode or bounded related-evidence grouping where later qualification, correction, or temporal change is likely to improve coherence. It should write only what policy classifies as safe, source-backed, scoped, and idempotent. Held or blocked memory remains visible later in Lab.
 
 ### Scheduled/background SLP
 
@@ -269,10 +295,10 @@ Lab should expose:
 - held or uncertain memories,
 - blocked memory operations,
 - memories used in the latest response,
-- correction / forget / pin / merge controls,
+- correction / Forget / pin / merge controls,
 - escalation to Pod / SOUL Intervention for identity-level changes.
 
-A user correction, forget request, or pin/unpin action is an explicit memory operation and may trigger SLP. It does not imply that all ordinary SLP writes require prior approval.
+A governed user correction, management-surface Forget request, or pin/unpin action is an explicit memory operation and may trigger SLP or RelayMEM mutation processing. A conversational suppression request is not the same operation. None of these boundaries imply that all ordinary SLP writes require prior approval.
 
 ## Runtime-private artifact
 
@@ -351,9 +377,13 @@ When apply is enabled and all gates pass:
 SLP failure must not invalidate an already valid visible response.
 
 ```text
-candidate extraction failure
-  -> no apply
-  -> content-free blocked projection
+Assessment Pass failure
+  -> no Shared Assessment
+  -> no Subjective Formation
+
+subjective candidate extraction failure
+  -> no MEM apply
+  -> valid Shared Assessment may remain under its owning contract
 
 page/index/log apply failure
   -> preserve previous durable state
@@ -376,16 +406,21 @@ RelaySLP does not:
 - inspect output as RelayREF,
 - generate user-visible recovery/sleep text,
 - require per-turn approval for ordinary memory formation,
+- require per-turn memory formation,
 - auto-apply review-required or approval-required candidates,
 - directly mutate RelaySOUL,
+- expose SOUL to the reference Shared Assessment pass,
 - persist raw affect estimates as durable facts,
+- interpret conversational suppression as durable Forget,
 - expose content-bearing candidates through default trace projections.
 
 ## Summary
 
 ```text
 governed evidence
-  -> RelaySLP candidate extraction
+  -> episode / evidence-group selection
+  -> SOUL-independent Shared Assessment
+  -> SOUL-conditioned Subjective MEM formation
   -> safety/scope/lineage classification
   -> autonomous ordinary merge/update or held/rejected/proposal path
   -> gated idempotent MEM apply

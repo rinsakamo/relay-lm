@@ -26,6 +26,13 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 4. Dedicated current contracts and handoffs
 5. [Current / Target / Migration Guide](current_target_migration_guide.md)
 
+## Accepted target runtime and memory architecture
+
+- [ADR 0004: Single-response-call ordinary conversation and deferred subjective formation](../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md) records the accepted timing and authority decision; it is not proof of implementation.
+- [Request / Response Pipeline](runtime/request-response-pipeline.md) defines target managed-mode dataflow, streaming/finalization separation, RelayREF, corrections, session transitions, and pass-through defaults.
+- [Runtime Scheduler](runtime/scheduler.md) defines Resource Provider observation, RelayRUN compute scheduling, and separate control-plane mutation fences.
+- [Subjective Memory Formation](memory/formation.md) defines episode grouping and the split Shared Assessment then Subjective Formation reference path.
+
 ## Character workspace target architecture
 
 - [File-first Character Workspace Design](file_first_character_workspace_design.md) defines the target Markdown source tree, RelayREL boundary, SLP-maintained scene/memory wiki model, and KV-cache-friendly context tiers.
@@ -124,6 +131,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [RelayREL Relationship Design](relayrel_relationship_design.md)
 - [Pinned Normal Memory Pages](pinned_normal_memory_pages.md)
 - [Memory Lifecycle Design](memory_lifecycle_design.md)
+- [Subjective Memory Formation](memory/formation.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
 - [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — compatibility stub
 - [PM-D5 RelayMEM Flat-store Compatibility Removal](pm_d5_relaymem_flat_store_compatibility_removal.md)

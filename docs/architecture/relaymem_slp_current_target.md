@@ -11,11 +11,17 @@ relaylm_update_trigger:
   - ordinary-runtime worker integration changes
   - I1-G or O1/O2/O3 boundary changes
   - E1 evaluation evidence boundary changes
+  - accepted Subjective MEM target timing changes
 relaylm_not_authoritative_for:
   - repository-wide phase sequencing
   - exact RelayMEM or RelaySLP schemas
   - RelaySOUL approval contracts
 relaylm_related_authority:
+  - ../adr/0003-subjective-mem-direction.md
+  - ../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md
+  - runtime/request-response-pipeline.md
+  - runtime/scheduler.md
+  - memory/formation.md
   - o1f_operational_validation.md
   - o2_supervised_scheduler_service.md
   - o3_always_on_local_scheduler.md
@@ -37,7 +43,7 @@ relaylm_related_authority:
 ---
 # RelayMEM / RelaySLP Current / Target Boundary
 
-Last reviewed: 2026-07-06 JST
+Last reviewed: 2026-07-19 JST
 
 ## Current implemented boundary
 
@@ -67,6 +73,44 @@ I2 real SOUL Lab observation is complete. It is read-only evidence only and cann
 E1 evaluation consolidation is current as an evidence/documentation boundary. E1-R1 route-owned trusted Home scene admission is current implemented. E1-R2 dry-run-first character-store bootstrap is current implemented. E1-R3 provenance-preserving summary formation is current implemented. E1-R4 request-side evidence-grounded recall behavior is current implemented. E1-R5 scoped Primary recall candidate fallback is current implemented.
 
 PM-D5, PM-D6, PM-D7, and PM-D8 are complete as post-MVP compatibility/debt fold-in slices. PM-D5 removes legacy flat-store runtime discovery. PM-D6 makes the input-side RelayINT artifact native instead of RelayREF-wrapper-shaped. PM-D7 adds the explicit dry-run-first runtime install/preflight command. PM-D8 folds the bounded E1-R5 fallback into canonical Primary recall.
+
+## Accepted target boundary after ADR 0004
+
+The accepted target does not require Shared Assessment or Subjective MEM formation to complete inside the current conversation turn.
+
+```text
+ordinary managed no-tool response path
+  -> one Main LLM response-generation call
+  -> streaming user / TTS / avatar output
+  -> response-complete assistant Evidence and RelayREF observation
+
+out-of-band reference formation path
+  -> governed Evidence references
+  -> RelaySLP episode or bounded evidence-group Assessment Pass
+  -> validated character-independent Shared Assessment
+  -> RelaySLP Subjective Formation Pass with SOUL / MEMORY / BOUNDARY
+  -> gated RelayMEM / workspace commit or hold
+```
+
+The current Primary worker and queue implementation is implementation evidence and a migration base; it does not, by itself, define the final Subjective MEM, Shared Assessment, episode grouping, or storage-authority schema.
+
+Target invariants:
+
+- Protected Source Evidence remains durable independently of response and formation success.
+- Finalized assistant-origin Evidence remains distinct from RelayREF response observation and never becomes user-origin fact through retention.
+- RelayCTX owns current/session continuity and temporary correction or recall-suppression overlays, not durable pending MEM.
+- RelayMEM Retrieval remains read-only in the interactive path.
+- RelaySLP preferably groups several related turns before formation when later qualification or correction is likely to improve coherence.
+- The reference path validates a SOUL-independent Shared Assessment before SOUL-conditioned Subjective Formation.
+- A fused SLP call is evaluation-gated optimization only and must fail closed to the split path when equivalence or SOUL-contamination boundaries are not met.
+- Additional LLM adjudication is an optional deferred SLP exception and never blocks conversation.
+- Current-conversation correction is best-effort CTX input control; it is not a guarantee about probabilistic Main LLM output.
+- Natural-language conversational “forget” defaults to session-local suppression when durable management authority was not invoked.
+- Durable Forget remains the implemented loopback UI/API lifecycle operation or an equivalent governed canonical-edit path.
+- RelayRUN separates control-plane mutation fences from compute/resource priority; semantic fallback remains owned by RelaySLP and RelayMEM.
+- Explicit pass-through disables managed memory behavior by default unless a separate route contract opts in.
+
+Current implementation status remains exactly as recorded below and in Project Status. This accepted target is not a claim that the target schema or runtime migration is already implemented.
 
 ## I1-G durable-finalization boundary
 
