@@ -4608,7 +4608,6 @@ open_pr_isolation:
   checked_open_prs: [586, 578, 567]
   shared_file_overlaps: []
   no_content_imported: true
-<<<<<<< HEAD
 validation_results: full_applicable_suite_passed_for_validated_content_head
 semantic_audit_self_test_assertions: 231
 validated_content_head: f678e5512a62d76c060dae2470270aaccfa270fc
