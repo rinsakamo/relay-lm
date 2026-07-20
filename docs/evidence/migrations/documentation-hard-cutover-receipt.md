@@ -4856,10 +4856,34 @@ validated_content_head_github_observation:
 reviews: 1
 pr_comments: 0
 unresolved_review_threads: 0
-final_pr_changed_files: pending
-final_pr_net_diff: pending
-receipt_bookkeeping_commit: pending
-receipt_finalization: pending
+receipt_bookkeeping_commit: 81a7195f8433743130bb9a9116196265bd0896b9
+receipt_bookkeeping_github_observation:
+  observed_head: 81a7195f8433743130bb9a9116196265bd0896b9
+  phase: post_correction_review_confirmation
+  base_sha: 2e046607dbf05ce0d2b6e87b66e15537f026e71a
+  check_runs:
+    total: 27
+    success: 19
+    skipped: 8
+    failure: 0
+  review_count: 2
+  review_disposition: >-
+    2_commented_reviews_first_review_at_9166c3e_found_the_three_substantive
+    defects_this_batch_corrected_second_review_at_this_exact_head_81a7195
+    independently_confirmed_all_three_findings_substantively_resolved_and_no
+    new_defect_found_explicitly_names_this_head_as_the_post_correction
+    validated_content_bookkeeping_head_not_yet_the_final_receipt_head
+  top_level_pr_comment_count: 0
+  unresolved_review_thread_count: 0
+  mergeable_state: clean
+  exact_diff:
+    changed_files: 9
+    insertions: 880
+    deletions: 14
+  relaylm_changed_files: 0
+final_pr_changed_files: 9
+final_pr_net_diff: {insertions: 906, deletions: 14}
+receipt_finalization: performed_after_validated_content_head
 ```
 
 Cutover 1C-46 starts from the exact current-main boundary `2e046607dbf05ce0d2b6e87b66e15537f026e71a` ("docs: define governed evidence contract family (#613)"), independently reverified as `origin/main` immediately before editing. The family is a single document: `docs/tools/relm_showcase_fixture_template.md`, the last remaining occupant of the `docs/tools/` pre-cutover anchor (its two other former occupants, the Twin Extraction prompt specification and the Mobile Dogfood entry runbook, were already retired by Cutover 1C-42 and Cutover 1C-41 respectively). Applying `docs/DOCUMENTATION_MODEL.md`'s doc-type mapping table (`runbook` -> `operations`) and the identical Cutover 1C-41/1C-42/1C-43/1C-44 `docs/tools`|`docs/smoke` -> `docs/operations` precedent, the document moves to `docs/operations/relm-showcase-fixture-authoring.md` with `relaylm_doc_type` corrected from `runbook` to `operations`; `relaylm_status` remains `current`. This is not a `docs/templates/` candidate: the document supplies authoritative, machine-checkable constraints (the G1-G5 public gate conditions and the `world_refs` allowlist enforced by `scripts/relaylm_showcase_fixture_gate_smoke.py`) and authoring guidance for a repeatable operator task, not a blank/content-free fill-in-the-blank starting point of the kind `docs/templates/README.md` requires ("the template never supplies project facts"; "replace every placeholder before review"). Body content is preserved byte-exactly except for the `relaylm_doc_type` front-matter correction and the one same-directory relative-link repair (`../operations/twin-extraction-prompts.md` -> `twin-extraction-prompts.md`, since both documents now live in `docs/operations/`); the two `../architecture/` front-matter references are unchanged, since `docs/operations/` and `docs/tools/` are the same relative depth under `docs/`.
@@ -4881,3 +4905,5 @@ No file under `relaylm/` changed, and no runtime, configuration, schema, schedul
 **Superseded validated-content-head observation (pre-correction).** `cutover_pr: 615` (`rinsakamo/relay-lm#615`). `9166c3e9d59912d2b9833c8d803bd336d43922d9` -- this batch's original substantive commit, before the Codex review round 1 correction -- was recorded as `validated_content_head`: all 27 triggered check runs, independently confirmed via `get_check_runs`, completed with 19 successes, 8 skips (the always-skipped RelayMEM/UI/runtime matrix jobs unaffected by a documentation-only change, matching the established pattern in prior entries), and 0 failures. `get_reviews`, `get_comments`, and `get_review_comments` independently confirmed 0 reviews, 0 top-level PR comments, and 0 unresolved review threads at that head. `pull_request_read get` confirmed `mergeable_state: clean` and a PR-level diff of 9 changed files, +554/-13 at that head. The receipt-only bookkeeping commit `5c12239` recorded this observation; both `9166c3e` and `5c12239` are now superseded per `prior_validated_content_head_superseded` above, since the Codex review found substantive defects (guard coverage gap, open-PR accounting error, stale C1C45 sentence) requiring correction before finalization. `validated_content_head`, `receipt_bookkeeping_commit`, and `receipt_finalization` are reset to `pending` above, to be recorded fresh from the corrected head.
 
 **Validated-content-head observation (post-correction).** `924bf16534a22e8702f00fdf049a014986565b2f` -- the correction commit that rewrote the retired-path guard to the corrected Cutover 1C-45 OpenWebUI pattern, fixed the open-PR shared-file accounting, and rewrote the stale C1C45 sentence -- is recorded above as `validated_content_head`: all 27 triggered check runs, independently confirmed via `get_check_runs`, completed with the identical 19 successes, 8 skips, 0 failures as the pre-correction head (a documentation/tooling-only change does not alter which jobs run). `get_reviews` confirms exactly 1 review (`rinsakamo`, `COMMENTED`, submitted against `9166c3e` -- the correction this batch performed), `get_comments` confirms 0 top-level PR comments, and `get_review_comments` confirms 0 unresolved review threads: both review threads (`PRRT_kwDOSh2R-s6SKtks` on the guard, `PRRT_kwDOSh2R-s6SKtkw` on the receipt) were independently resolved via `pull_request_review_write` after the corrections were pushed. `pull_request_read get` confirms `mergeable_state: clean` and a PR-level diff of 9 changed files, +858/-14 at this head (three commits total: the original substantive commit, the superseded bookkeeping commit, and this correction commit). `final_pr_changed_files`/`final_pr_net_diff`/`receipt_bookkeeping_commit`/`receipt_finalization` remain `pending`, to be recorded by the receipt-only bookkeeping and finalization commits that follow.
+
+**Receipt bookkeeping and finalization.** `81a7195f8433743130bb9a9116196265bd0896b9` -- the receipt-only commit that recorded the post-correction `validated_content_head` observation above -- is recorded as `receipt_bookkeeping_commit`. Independently reverified via `get_check_runs`: all 27 triggered check runs at this exact head completed with the same 19 successes, 8 skips, 0 failures. A second review was submitted by `rinsakamo` directly against this exact head (`commit_id: 81a7195f8433743130bb9a9116196265bd0896b9`), independently confirming via `get_reviews` that all three Codex-review-round-1 findings are substantively resolved -- the retired-path guard covers Markdown/text prose and backticks, adds guard-local `docs/**/*.txt` coverage, preserves exact allowlists, deduplicates line diagnostics, and remains registered in the production audit tuple; the PR body and receipt record the `docs/README.md`/`#586` overlap factually as disjoint; and the C1C45 open/unmerged wording is explicitly historical -- with no new substantive defect found, while explicitly naming this head as the bookkeeping head rather than the final receipt head. `review_count: 2` at this head (both `COMMENTED`, the first at `9166c3e` finding the three defects this batch corrected, the second at `81a7195` confirming the correction); `get_comments` confirms 0 top-level PR comments; `get_review_comments` confirms 0 unresolved review threads (both prior threads independently resolved). `pull_request_read get` confirms `mergeable_state: clean` and a PR-level diff of 9 changed files, +880/-14 at this head. This present commit -- the one containing this paragraph -- is the receipt-finalization commit: it adds the `receipt_bookkeeping_github_observation` block and resolves `final_pr_changed_files`/`final_pr_net_diff`/`receipt_finalization` above at the exact post-edit total, independently confirmed via `git diff origin/main --numstat`: **9 changed files, +906/-14** (the pre-edit `81a7195` total of +880/-14 plus this finalization commit's own net +26 lines, converged by direct measurement after staging -- including a second iteration after this converging paragraph's own text added two more lines -- rather than predicted in advance, matching the established C1C41/C1C42/C1C43 convergence method). `receipt_finalization: performed_after_validated_content_head`. `merged_commit` for the C1C46 record remains `pending` -- this task does not merge the PR, which remains **draft and unmerged**, left for final independent review and merge per the working-role convention.
