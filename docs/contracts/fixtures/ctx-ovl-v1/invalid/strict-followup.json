@@ -1,0 +1,1181 @@
+{
+  "cases": [
+    {
+      "name": "candidate_envelope_artifact_kind_mismatch",
+      "records": [
+        {
+          "schema": "relaylm.ctx_ovl_partition_epoch.v1",
+          "partition_epoch_descriptor_id": "pe-s1-participant-p1-1",
+          "session_id": "s1",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "scene_epoch_id_or_null": null,
+          "epoch_sequence": 1,
+          "epoch_status": "active",
+          "established_by_operation": "ctx_pipeline_bootstrap",
+          "established_at": "2026-07-20T00:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_candidate_artifact.v1",
+          "artifact_id": "art1",
+          "artifact_kind": "deterministic_operation_result",
+          "authority_domain": "relayctx_candidate_artifact",
+          "producer_component": "relayctx_pipeline",
+          "session_id": "s1",
+          "source_event_id": "src1",
+          "evidence_space_id": "es1",
+          "content_kind": "opaque_structured_reference",
+          "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "actual_bytes": 128,
+          "immutable": true
+        },
+        {
+          "schema": "relaylm.ctx_ovl_overlay_record.v1",
+          "overlay_record_id": "ov1",
+          "session_id": "s1",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "partition_epoch_ref": {
+            "partition_epoch_descriptor_id": "pe-s1-participant-p1-1",
+            "epoch_sequence": 1
+          },
+          "participant_ref": {
+            "participant_id_or_null": "u1",
+            "identity_status": "known"
+          },
+          "source_provenance": {
+            "source_event_id": "src1",
+            "evidence_space_id": "es1",
+            "capture_stream_id_or_null": "stream1",
+            "source_access_state_at_admission": "admitted"
+          },
+          "contract1_binding": {
+            "evidence_space_id": "es1",
+            "source_event_id": "src1",
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "last_validated_authorization": {
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "highest_observed_partition_sequence": 10,
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "watermark_freshness": "current",
+            "validated_access_state": "admitted",
+            "validated_at": "2026-07-20T00:00:30Z"
+          },
+          "candidate_envelope": {
+            "envelope_kind": "validated_sidecar_envelope",
+            "content_kind": "opaque_structured_reference",
+            "envelope_version": 1,
+            "producer_artifact_ref": {
+              "artifact_id": "art1",
+              "artifact_kind": "deterministic_operation_result",
+              "authority_domain": "relayctx_candidate_artifact",
+              "producer_component": "relayctx_pipeline",
+              "session_id": "s1",
+              "source_event_id": "src1",
+              "evidence_space_id": "es1",
+              "content_kind": "opaque_structured_reference",
+              "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "content_address_space": "ctx_ovl_candidate_artifact",
+            "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "raw_source_content_present": false,
+            "size_bound": {
+              "bounded": true,
+              "max_bytes": 512,
+              "actual_bytes": 128
+            }
+          },
+          "admission_origin": "normal_pipeline",
+          "created_by_actor": "relayctx_pipeline",
+          "candidate_basis": "validated_sidecar",
+          "visibility_scope": "participant_private",
+          "lifecycle_state": "active",
+          "superseded_by_overlay_record_id_or_null": null,
+          "non_shadowing": false,
+          "quarantine_shadow_target_overlay_record_id_or_null": null,
+          "rebuildable": true,
+          "durable": false,
+          "ttl_expires_at": "2026-07-20T02:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_context_selection.v1",
+          "selection_id": "sel1",
+          "session_id": "s1",
+          "evaluated_at": "2026-07-20T01:00:00Z",
+          "selected_overlay_record_ids": [
+            "ov1"
+          ],
+          "resolved_candidate_artifact_ids": [
+            "art1"
+          ],
+          "rendered_hint_count": 1,
+          "stores_rendered_hint": false
+        }
+      ],
+      "expected_error_ids": [
+        "CTX_OVL_E_CANDIDATE_ARTIFACT_KIND_MISMATCH"
+      ]
+    },
+    {
+      "name": "candidate_artifact_producer_mismatch",
+      "records": [
+        {
+          "schema": "relaylm.ctx_ovl_partition_epoch.v1",
+          "partition_epoch_descriptor_id": "pe-s1-participant-p1-1",
+          "session_id": "s1",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "scene_epoch_id_or_null": null,
+          "epoch_sequence": 1,
+          "epoch_status": "active",
+          "established_by_operation": "ctx_pipeline_bootstrap",
+          "established_at": "2026-07-20T00:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_candidate_artifact.v1",
+          "artifact_id": "art1",
+          "artifact_kind": "validated_sidecar",
+          "authority_domain": "relayctx_candidate_artifact",
+          "producer_component": "relayctx_pipeline",
+          "session_id": "s1",
+          "source_event_id": "src1",
+          "evidence_space_id": "es1",
+          "content_kind": "opaque_structured_reference",
+          "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "actual_bytes": 128,
+          "immutable": true
+        },
+        {
+          "schema": "relaylm.ctx_ovl_overlay_record.v1",
+          "overlay_record_id": "ov1",
+          "session_id": "s1",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "partition_epoch_ref": {
+            "partition_epoch_descriptor_id": "pe-s1-participant-p1-1",
+            "epoch_sequence": 1
+          },
+          "participant_ref": {
+            "participant_id_or_null": "u1",
+            "identity_status": "known"
+          },
+          "source_provenance": {
+            "source_event_id": "src1",
+            "evidence_space_id": "es1",
+            "capture_stream_id_or_null": "stream1",
+            "source_access_state_at_admission": "admitted"
+          },
+          "contract1_binding": {
+            "evidence_space_id": "es1",
+            "source_event_id": "src1",
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "last_validated_authorization": {
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "highest_observed_partition_sequence": 10,
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "watermark_freshness": "current",
+            "validated_access_state": "admitted",
+            "validated_at": "2026-07-20T00:00:30Z"
+          },
+          "candidate_envelope": {
+            "envelope_kind": "validated_sidecar_envelope",
+            "content_kind": "opaque_structured_reference",
+            "envelope_version": 1,
+            "producer_artifact_ref": {
+              "artifact_id": "art1",
+              "artifact_kind": "validated_sidecar",
+              "authority_domain": "relayctx_candidate_artifact",
+              "producer_component": "ctx_ovl_rebuild_process",
+              "session_id": "s1",
+              "source_event_id": "src1",
+              "evidence_space_id": "es1",
+              "content_kind": "opaque_structured_reference",
+              "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "content_address_space": "ctx_ovl_candidate_artifact",
+            "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "raw_source_content_present": false,
+            "size_bound": {
+              "bounded": true,
+              "max_bytes": 512,
+              "actual_bytes": 128
+            }
+          },
+          "admission_origin": "normal_pipeline",
+          "created_by_actor": "relayctx_pipeline",
+          "candidate_basis": "validated_sidecar",
+          "visibility_scope": "participant_private",
+          "lifecycle_state": "active",
+          "superseded_by_overlay_record_id_or_null": null,
+          "non_shadowing": false,
+          "quarantine_shadow_target_overlay_record_id_or_null": null,
+          "rebuildable": true,
+          "durable": false,
+          "ttl_expires_at": "2026-07-20T02:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_context_selection.v1",
+          "selection_id": "sel1",
+          "session_id": "s1",
+          "evaluated_at": "2026-07-20T01:00:00Z",
+          "selected_overlay_record_ids": [
+            "ov1"
+          ],
+          "resolved_candidate_artifact_ids": [
+            "art1"
+          ],
+          "rendered_hint_count": 1,
+          "stores_rendered_hint": false
+        }
+      ],
+      "expected_error_ids": [
+        "CTX_OVL_E_CANDIDATE_ARTIFACT_PRODUCER_MISMATCH"
+      ]
+    },
+    {
+      "name": "selection_non_active_overlay",
+      "records": [
+        {
+          "schema": "relaylm.ctx_ovl_partition_epoch.v1",
+          "partition_epoch_descriptor_id": "pe-s1-participant-p1-1",
+          "session_id": "s1",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "scene_epoch_id_or_null": null,
+          "epoch_sequence": 1,
+          "epoch_status": "active",
+          "established_by_operation": "ctx_pipeline_bootstrap",
+          "established_at": "2026-07-20T00:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_candidate_artifact.v1",
+          "artifact_id": "art1",
+          "artifact_kind": "validated_sidecar",
+          "authority_domain": "relayctx_candidate_artifact",
+          "producer_component": "relayctx_pipeline",
+          "session_id": "s1",
+          "source_event_id": "src1",
+          "evidence_space_id": "es1",
+          "content_kind": "opaque_structured_reference",
+          "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "actual_bytes": 128,
+          "immutable": true
+        },
+        {
+          "schema": "relaylm.ctx_ovl_overlay_record.v1",
+          "overlay_record_id": "ov1",
+          "session_id": "s1",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "partition_epoch_ref": {
+            "partition_epoch_descriptor_id": "pe-s1-participant-p1-1",
+            "epoch_sequence": 1
+          },
+          "participant_ref": {
+            "participant_id_or_null": "u1",
+            "identity_status": "known"
+          },
+          "source_provenance": {
+            "source_event_id": "src1",
+            "evidence_space_id": "es1",
+            "capture_stream_id_or_null": "stream1",
+            "source_access_state_at_admission": "admitted"
+          },
+          "contract1_binding": {
+            "evidence_space_id": "es1",
+            "source_event_id": "src1",
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "last_validated_authorization": {
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "highest_observed_partition_sequence": 10,
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "watermark_freshness": "current",
+            "validated_access_state": "admitted",
+            "validated_at": "2026-07-20T00:00:30Z"
+          },
+          "candidate_envelope": {
+            "envelope_kind": "validated_sidecar_envelope",
+            "content_kind": "opaque_structured_reference",
+            "envelope_version": 1,
+            "producer_artifact_ref": {
+              "artifact_id": "art1",
+              "artifact_kind": "validated_sidecar",
+              "authority_domain": "relayctx_candidate_artifact",
+              "producer_component": "relayctx_pipeline",
+              "session_id": "s1",
+              "source_event_id": "src1",
+              "evidence_space_id": "es1",
+              "content_kind": "opaque_structured_reference",
+              "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "content_address_space": "ctx_ovl_candidate_artifact",
+            "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "raw_source_content_present": false,
+            "size_bound": {
+              "bounded": true,
+              "max_bytes": 512,
+              "actual_bytes": 128
+            }
+          },
+          "admission_origin": "normal_pipeline",
+          "created_by_actor": "relayctx_pipeline",
+          "candidate_basis": "validated_sidecar",
+          "visibility_scope": "participant_private",
+          "lifecycle_state": "removed",
+          "superseded_by_overlay_record_id_or_null": null,
+          "non_shadowing": false,
+          "quarantine_shadow_target_overlay_record_id_or_null": null,
+          "rebuildable": true,
+          "durable": false,
+          "ttl_expires_at": "2026-07-20T02:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_context_selection.v1",
+          "selection_id": "sel1",
+          "session_id": "s1",
+          "evaluated_at": "2026-07-20T01:00:00Z",
+          "selected_overlay_record_ids": [
+            "ov1"
+          ],
+          "resolved_candidate_artifact_ids": [
+            "art1"
+          ],
+          "rendered_hint_count": 1,
+          "stores_rendered_hint": false
+        }
+      ],
+      "expected_error_ids": [
+        "CTX_OVL_E_OPERATION_NON_ACTIVE_OVERLAY"
+      ]
+    },
+    {
+      "name": "selection_resolution_mismatch",
+      "records": [
+        {
+          "schema": "relaylm.ctx_ovl_partition_epoch.v1",
+          "partition_epoch_descriptor_id": "pe-s1-participant-p1-1",
+          "session_id": "s1",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "scene_epoch_id_or_null": null,
+          "epoch_sequence": 1,
+          "epoch_status": "active",
+          "established_by_operation": "ctx_pipeline_bootstrap",
+          "established_at": "2026-07-20T00:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_candidate_artifact.v1",
+          "artifact_id": "art1",
+          "artifact_kind": "validated_sidecar",
+          "authority_domain": "relayctx_candidate_artifact",
+          "producer_component": "relayctx_pipeline",
+          "session_id": "s1",
+          "source_event_id": "src1",
+          "evidence_space_id": "es1",
+          "content_kind": "opaque_structured_reference",
+          "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "actual_bytes": 128,
+          "immutable": true
+        },
+        {
+          "schema": "relaylm.ctx_ovl_overlay_record.v1",
+          "overlay_record_id": "ov1",
+          "session_id": "s1",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "partition_epoch_ref": {
+            "partition_epoch_descriptor_id": "pe-s1-participant-p1-1",
+            "epoch_sequence": 1
+          },
+          "participant_ref": {
+            "participant_id_or_null": "u1",
+            "identity_status": "known"
+          },
+          "source_provenance": {
+            "source_event_id": "src1",
+            "evidence_space_id": "es1",
+            "capture_stream_id_or_null": "stream1",
+            "source_access_state_at_admission": "admitted"
+          },
+          "contract1_binding": {
+            "evidence_space_id": "es1",
+            "source_event_id": "src1",
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "last_validated_authorization": {
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "highest_observed_partition_sequence": 10,
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "watermark_freshness": "current",
+            "validated_access_state": "admitted",
+            "validated_at": "2026-07-20T00:00:30Z"
+          },
+          "candidate_envelope": {
+            "envelope_kind": "validated_sidecar_envelope",
+            "content_kind": "opaque_structured_reference",
+            "envelope_version": 1,
+            "producer_artifact_ref": {
+              "artifact_id": "art1",
+              "artifact_kind": "validated_sidecar",
+              "authority_domain": "relayctx_candidate_artifact",
+              "producer_component": "relayctx_pipeline",
+              "session_id": "s1",
+              "source_event_id": "src1",
+              "evidence_space_id": "es1",
+              "content_kind": "opaque_structured_reference",
+              "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "content_address_space": "ctx_ovl_candidate_artifact",
+            "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "raw_source_content_present": false,
+            "size_bound": {
+              "bounded": true,
+              "max_bytes": 512,
+              "actual_bytes": 128
+            }
+          },
+          "admission_origin": "normal_pipeline",
+          "created_by_actor": "relayctx_pipeline",
+          "candidate_basis": "validated_sidecar",
+          "visibility_scope": "participant_private",
+          "lifecycle_state": "active",
+          "superseded_by_overlay_record_id_or_null": null,
+          "non_shadowing": false,
+          "quarantine_shadow_target_overlay_record_id_or_null": null,
+          "rebuildable": true,
+          "durable": false,
+          "ttl_expires_at": "2026-07-20T02:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_context_selection.v1",
+          "selection_id": "sel1",
+          "session_id": "s1",
+          "evaluated_at": "2026-07-20T01:00:00Z",
+          "selected_overlay_record_ids": [
+            "ov1"
+          ],
+          "resolved_candidate_artifact_ids": [
+            "art1",
+            "ghost-artifact"
+          ],
+          "rendered_hint_count": 2,
+          "stores_rendered_hint": false
+        }
+      ],
+      "expected_error_ids": [
+        "CTX_OVL_E_SELECTION_RESOLUTION_MISMATCH"
+      ]
+    },
+    {
+      "name": "overlay_creator_origin_mismatch",
+      "records": [
+        {
+          "schema": "relaylm.ctx_ovl_partition_epoch.v1",
+          "partition_epoch_descriptor_id": "pe-s1-participant-p1-1",
+          "session_id": "s1",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "scene_epoch_id_or_null": null,
+          "epoch_sequence": 1,
+          "epoch_status": "active",
+          "established_by_operation": "ctx_pipeline_bootstrap",
+          "established_at": "2026-07-20T00:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_candidate_artifact.v1",
+          "artifact_id": "art1",
+          "artifact_kind": "validated_sidecar",
+          "authority_domain": "relayctx_candidate_artifact",
+          "producer_component": "relayctx_pipeline",
+          "session_id": "s1",
+          "source_event_id": "src1",
+          "evidence_space_id": "es1",
+          "content_kind": "opaque_structured_reference",
+          "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "actual_bytes": 128,
+          "immutable": true
+        },
+        {
+          "schema": "relaylm.ctx_ovl_overlay_record.v1",
+          "overlay_record_id": "ov1",
+          "session_id": "s1",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "partition_epoch_ref": {
+            "partition_epoch_descriptor_id": "pe-s1-participant-p1-1",
+            "epoch_sequence": 1
+          },
+          "participant_ref": {
+            "participant_id_or_null": "u1",
+            "identity_status": "known"
+          },
+          "source_provenance": {
+            "source_event_id": "src1",
+            "evidence_space_id": "es1",
+            "capture_stream_id_or_null": "stream1",
+            "source_access_state_at_admission": "admitted"
+          },
+          "contract1_binding": {
+            "evidence_space_id": "es1",
+            "source_event_id": "src1",
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "last_validated_authorization": {
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "highest_observed_partition_sequence": 10,
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "watermark_freshness": "current",
+            "validated_access_state": "admitted",
+            "validated_at": "2026-07-20T00:00:30Z"
+          },
+          "candidate_envelope": {
+            "envelope_kind": "validated_sidecar_envelope",
+            "content_kind": "opaque_structured_reference",
+            "envelope_version": 1,
+            "producer_artifact_ref": {
+              "artifact_id": "art1",
+              "artifact_kind": "validated_sidecar",
+              "authority_domain": "relayctx_candidate_artifact",
+              "producer_component": "relayctx_pipeline",
+              "session_id": "s1",
+              "source_event_id": "src1",
+              "evidence_space_id": "es1",
+              "content_kind": "opaque_structured_reference",
+              "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "content_address_space": "ctx_ovl_candidate_artifact",
+            "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "raw_source_content_present": false,
+            "size_bound": {
+              "bounded": true,
+              "max_bytes": 512,
+              "actual_bytes": 128
+            }
+          },
+          "admission_origin": "normal_pipeline",
+          "created_by_actor": "ctx_ovl_rebuild_process",
+          "candidate_basis": "validated_sidecar",
+          "visibility_scope": "participant_private",
+          "lifecycle_state": "active",
+          "superseded_by_overlay_record_id_or_null": null,
+          "non_shadowing": false,
+          "quarantine_shadow_target_overlay_record_id_or_null": null,
+          "rebuildable": true,
+          "durable": false,
+          "ttl_expires_at": "2026-07-20T02:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_context_selection.v1",
+          "selection_id": "sel1",
+          "session_id": "s1",
+          "evaluated_at": "2026-07-20T01:00:00Z",
+          "selected_overlay_record_ids": [
+            "ov1"
+          ],
+          "resolved_candidate_artifact_ids": [
+            "art1"
+          ],
+          "rendered_hint_count": 1,
+          "stores_rendered_hint": false
+        }
+      ],
+      "expected_error_ids": [
+        "CTX_OVL_E_ADMISSION_CREATOR_MISMATCH"
+      ]
+    },
+    {
+      "name": "projection_different_active_partition_epoch",
+      "records": [
+        {
+          "schema": "relaylm.ctx_ovl_partition_epoch.v1",
+          "partition_epoch_descriptor_id": "pe-s2-shared_scene-scene1-1",
+          "session_id": "s2",
+          "partition_kind": "shared_scene",
+          "partition_id": "scene1",
+          "scene_epoch_id_or_null": "scene-epoch-1",
+          "epoch_sequence": 1,
+          "epoch_status": "active",
+          "established_by_operation": "relayscn_reclassification",
+          "established_at": "2026-07-20T00:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_partition_epoch.v1",
+          "partition_epoch_descriptor_id": "pe-s2-shared_scene-scene2-1",
+          "session_id": "s2",
+          "partition_kind": "shared_scene",
+          "partition_id": "scene2",
+          "scene_epoch_id_or_null": "scene-epoch-1",
+          "epoch_sequence": 1,
+          "epoch_status": "active",
+          "established_by_operation": "relayscn_reclassification",
+          "established_at": "2026-07-20T00:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_candidate_artifact.v1",
+          "artifact_id": "art3",
+          "artifact_kind": "validated_sidecar",
+          "authority_domain": "relayctx_candidate_artifact",
+          "producer_component": "relayctx_pipeline",
+          "session_id": "s2",
+          "source_event_id": "src2",
+          "evidence_space_id": "es1",
+          "content_kind": "opaque_structured_reference",
+          "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "actual_bytes": 128,
+          "immutable": true
+        },
+        {
+          "schema": "relaylm.ctx_ovl_overlay_record.v1",
+          "overlay_record_id": "ov3",
+          "session_id": "s2",
+          "partition_kind": "shared_scene",
+          "partition_id": "scene2",
+          "partition_epoch_ref": {
+            "partition_epoch_descriptor_id": "pe-s2-shared_scene-scene2-1",
+            "epoch_sequence": 1
+          },
+          "participant_ref": {
+            "participant_id_or_null": "u1",
+            "identity_status": "known"
+          },
+          "source_provenance": {
+            "source_event_id": "src2",
+            "evidence_space_id": "es1",
+            "capture_stream_id_or_null": "stream1",
+            "source_access_state_at_admission": "admitted"
+          },
+          "contract1_binding": {
+            "evidence_space_id": "es1",
+            "source_event_id": "src2",
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "last_validated_authorization": {
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "highest_observed_partition_sequence": 10,
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "watermark_freshness": "current",
+            "validated_access_state": "admitted",
+            "validated_at": "2026-07-20T00:00:30Z"
+          },
+          "candidate_envelope": {
+            "envelope_kind": "validated_sidecar_envelope",
+            "content_kind": "opaque_structured_reference",
+            "envelope_version": 1,
+            "producer_artifact_ref": {
+              "artifact_id": "art3",
+              "artifact_kind": "validated_sidecar",
+              "authority_domain": "relayctx_candidate_artifact",
+              "producer_component": "relayctx_pipeline",
+              "session_id": "s2",
+              "source_event_id": "src2",
+              "evidence_space_id": "es1",
+              "content_kind": "opaque_structured_reference",
+              "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "content_address_space": "ctx_ovl_candidate_artifact",
+            "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "raw_source_content_present": false,
+            "size_bound": {
+              "bounded": true,
+              "max_bytes": 512,
+              "actual_bytes": 128
+            }
+          },
+          "admission_origin": "normal_pipeline",
+          "created_by_actor": "relayctx_pipeline",
+          "candidate_basis": "validated_sidecar",
+          "visibility_scope": "shared_scene_visible",
+          "lifecycle_state": "active",
+          "superseded_by_overlay_record_id_or_null": null,
+          "non_shadowing": false,
+          "quarantine_shadow_target_overlay_record_id_or_null": null,
+          "rebuildable": true,
+          "durable": false,
+          "ttl_expires_at": "2026-07-20T02:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_shared_scene_projection.v1",
+          "shared_scene_projection_id": "pr1",
+          "session_id": "s2",
+          "evaluated_at": "2026-07-20T01:00:00Z",
+          "scene_epoch_id": "scene-epoch-1",
+          "partition_id": "scene1",
+          "partition_epoch_ref": {
+            "partition_epoch_descriptor_id": "pe-s2-shared_scene-scene1-1",
+            "epoch_sequence": 1
+          },
+          "visible_participant_ids": [
+            "u1"
+          ],
+          "included_overlay_record_ids": [
+            "ov3"
+          ],
+          "authorization_ref": {
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "highest_observed_partition_sequence": 10,
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "watermark_freshness": "current",
+            "validated_access_state": "admitted",
+            "validated_at": "2026-07-20T00:30:00Z",
+            "authorized_participant_ids": [
+              "u1"
+            ]
+          }
+        }
+      ],
+      "expected_error_ids": [
+        "CTX_OVL_E_PROJECTION_PARTITION_EPOCH_MISMATCH"
+      ]
+    },
+    {
+      "name": "catch_up_fail_closed_with_output",
+      "records": [
+        {
+          "schema": "relaylm.ctx_ovl_partition_epoch.v1",
+          "partition_epoch_descriptor_id": "pe-s3-participant-p1-1",
+          "session_id": "s3",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "scene_epoch_id_or_null": null,
+          "epoch_sequence": 1,
+          "epoch_status": "active",
+          "established_by_operation": "ctx_pipeline_bootstrap",
+          "established_at": "2026-07-20T00:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_candidate_artifact.v1",
+          "artifact_id": "art4",
+          "artifact_kind": "validated_sidecar",
+          "authority_domain": "relayctx_candidate_artifact",
+          "producer_component": "relayctx_pipeline",
+          "session_id": "s3",
+          "source_event_id": "src3",
+          "evidence_space_id": "es1",
+          "content_kind": "opaque_structured_reference",
+          "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "actual_bytes": 128,
+          "immutable": true
+        },
+        {
+          "schema": "relaylm.ctx_ovl_overlay_record.v1",
+          "overlay_record_id": "ov4",
+          "session_id": "s3",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "partition_epoch_ref": {
+            "partition_epoch_descriptor_id": "pe-s3-participant-p1-1",
+            "epoch_sequence": 1
+          },
+          "participant_ref": {
+            "participant_id_or_null": "u1",
+            "identity_status": "known"
+          },
+          "source_provenance": {
+            "source_event_id": "src3",
+            "evidence_space_id": "es1",
+            "capture_stream_id_or_null": "stream1",
+            "source_access_state_at_admission": "admitted"
+          },
+          "contract1_binding": {
+            "evidence_space_id": "es1",
+            "source_event_id": "src3",
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "last_validated_authorization": {
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "highest_observed_partition_sequence": 10,
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "watermark_freshness": "current",
+            "validated_access_state": "admitted",
+            "validated_at": "2026-07-20T00:00:30Z"
+          },
+          "candidate_envelope": {
+            "envelope_kind": "validated_sidecar_envelope",
+            "content_kind": "opaque_structured_reference",
+            "envelope_version": 1,
+            "producer_artifact_ref": {
+              "artifact_id": "art4",
+              "artifact_kind": "validated_sidecar",
+              "authority_domain": "relayctx_candidate_artifact",
+              "producer_component": "relayctx_pipeline",
+              "session_id": "s3",
+              "source_event_id": "src3",
+              "evidence_space_id": "es1",
+              "content_kind": "opaque_structured_reference",
+              "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "content_address_space": "ctx_ovl_candidate_artifact",
+            "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "raw_source_content_present": false,
+            "size_bound": {
+              "bounded": true,
+              "max_bytes": 512,
+              "actual_bytes": 128
+            }
+          },
+          "admission_origin": "catch_up_pipeline",
+          "created_by_actor": "relayctx_pipeline",
+          "candidate_basis": "validated_sidecar",
+          "visibility_scope": "participant_private",
+          "lifecycle_state": "active",
+          "superseded_by_overlay_record_id_or_null": null,
+          "non_shadowing": false,
+          "quarantine_shadow_target_overlay_record_id_or_null": null,
+          "rebuildable": true,
+          "durable": false,
+          "ttl_expires_at": "2026-07-20T02:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_catch_up_attempt.v1",
+          "catch_up_attempt_id": "cu1",
+          "session_id": "s3",
+          "triggering_admitted_request_id": "req2",
+          "evaluated_at": "2026-07-20T01:00:00Z",
+          "pipeline_path_confirmation": "normal_rel_scn_emo_int_mem_retrieval_ctx_pipeline",
+          "completeness_claimed_from": "coverage_checkpoint",
+          "coverage_checkpoint_ref": {
+            "change_coverage_checkpoint_id": "cov1",
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "derived_coverage_status": "open_contiguous"
+          },
+          "authorization_watermark_ref": {
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "highest_observed_partition_sequence": 10,
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "watermark_freshness": "current"
+          },
+          "eligible_selection_bound": {
+            "bounded": true,
+            "max_events": 4,
+            "max_total_candidate_bytes": 4096
+          },
+          "outcome": "fail_closed_gap",
+          "produced_overlay_record_ids": [
+            "ov4"
+          ],
+          "budget_policy_ref": {
+            "policy_id": "ctx_ovl_budget_policy_v1",
+            "policy_version": 1,
+            "authority_domain": "relayctx_contract"
+          }
+        }
+      ],
+      "expected_error_ids": [
+        "CTX_OVL_E_CATCH_UP_OUTCOME_OUTPUT_MISMATCH"
+      ]
+    },
+    {
+      "name": "catch_up_coverage_authorization_mismatch",
+      "records": [
+        {
+          "schema": "relaylm.ctx_ovl_partition_epoch.v1",
+          "partition_epoch_descriptor_id": "pe-s3-participant-p1-1",
+          "session_id": "s3",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "scene_epoch_id_or_null": null,
+          "epoch_sequence": 1,
+          "epoch_status": "active",
+          "established_by_operation": "ctx_pipeline_bootstrap",
+          "established_at": "2026-07-20T00:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_candidate_artifact.v1",
+          "artifact_id": "art4",
+          "artifact_kind": "validated_sidecar",
+          "authority_domain": "relayctx_candidate_artifact",
+          "producer_component": "relayctx_pipeline",
+          "session_id": "s3",
+          "source_event_id": "src3",
+          "evidence_space_id": "es1",
+          "content_kind": "opaque_structured_reference",
+          "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "actual_bytes": 128,
+          "immutable": true
+        },
+        {
+          "schema": "relaylm.ctx_ovl_overlay_record.v1",
+          "overlay_record_id": "ov4",
+          "session_id": "s3",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "partition_epoch_ref": {
+            "partition_epoch_descriptor_id": "pe-s3-participant-p1-1",
+            "epoch_sequence": 1
+          },
+          "participant_ref": {
+            "participant_id_or_null": "u1",
+            "identity_status": "known"
+          },
+          "source_provenance": {
+            "source_event_id": "src3",
+            "evidence_space_id": "es1",
+            "capture_stream_id_or_null": "stream1",
+            "source_access_state_at_admission": "admitted"
+          },
+          "contract1_binding": {
+            "evidence_space_id": "es1",
+            "source_event_id": "src3",
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "last_validated_authorization": {
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "highest_observed_partition_sequence": 10,
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "watermark_freshness": "current",
+            "validated_access_state": "admitted",
+            "validated_at": "2026-07-20T00:00:30Z"
+          },
+          "candidate_envelope": {
+            "envelope_kind": "validated_sidecar_envelope",
+            "content_kind": "opaque_structured_reference",
+            "envelope_version": 1,
+            "producer_artifact_ref": {
+              "artifact_id": "art4",
+              "artifact_kind": "validated_sidecar",
+              "authority_domain": "relayctx_candidate_artifact",
+              "producer_component": "relayctx_pipeline",
+              "session_id": "s3",
+              "source_event_id": "src3",
+              "evidence_space_id": "es1",
+              "content_kind": "opaque_structured_reference",
+              "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "content_address_space": "ctx_ovl_candidate_artifact",
+            "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "raw_source_content_present": false,
+            "size_bound": {
+              "bounded": true,
+              "max_bytes": 512,
+              "actual_bytes": 128
+            }
+          },
+          "admission_origin": "catch_up_pipeline",
+          "created_by_actor": "relayctx_pipeline",
+          "candidate_basis": "validated_sidecar",
+          "visibility_scope": "participant_private",
+          "lifecycle_state": "active",
+          "superseded_by_overlay_record_id_or_null": null,
+          "non_shadowing": false,
+          "quarantine_shadow_target_overlay_record_id_or_null": null,
+          "rebuildable": true,
+          "durable": false,
+          "ttl_expires_at": "2026-07-20T02:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_catch_up_attempt.v1",
+          "catch_up_attempt_id": "cu1",
+          "session_id": "s3",
+          "triggering_admitted_request_id": "req2",
+          "evaluated_at": "2026-07-20T01:00:00Z",
+          "pipeline_path_confirmation": "normal_rel_scn_emo_int_mem_retrieval_ctx_pipeline",
+          "completeness_claimed_from": "coverage_checkpoint",
+          "coverage_checkpoint_ref": {
+            "change_coverage_checkpoint_id": "cov1",
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "derived_coverage_status": "open_contiguous"
+          },
+          "authorization_watermark_ref": {
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "other-contract1-epoch",
+            "highest_observed_partition_sequence": 10,
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "watermark_freshness": "current"
+          },
+          "eligible_selection_bound": {
+            "bounded": true,
+            "max_events": 4,
+            "max_total_candidate_bytes": 4096
+          },
+          "outcome": "bounded_catch_up_applied",
+          "produced_overlay_record_ids": [
+            "ov4"
+          ],
+          "budget_policy_ref": {
+            "policy_id": "ctx_ovl_budget_policy_v1",
+            "policy_version": 1,
+            "authority_domain": "relayctx_contract"
+          }
+        }
+      ],
+      "expected_error_ids": [
+        "CTX_OVL_E_COVERAGE_AUTHORIZATION_PARTITION_MISMATCH"
+      ]
+    },
+    {
+      "name": "rebuild_operation_stale_authorization",
+      "records": [
+        {
+          "schema": "relaylm.ctx_ovl_partition_epoch.v1",
+          "partition_epoch_descriptor_id": "pe-s4-participant-p1-1",
+          "session_id": "s4",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "scene_epoch_id_or_null": null,
+          "epoch_sequence": 1,
+          "epoch_status": "active",
+          "established_by_operation": "ctx_pipeline_bootstrap",
+          "established_at": "2026-07-20T00:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_candidate_artifact.v1",
+          "artifact_id": "art5",
+          "artifact_kind": "validated_sidecar",
+          "authority_domain": "relayctx_candidate_artifact",
+          "producer_component": "ctx_ovl_rebuild_process",
+          "session_id": "s4",
+          "source_event_id": "src4",
+          "evidence_space_id": "es1",
+          "content_kind": "opaque_structured_reference",
+          "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "actual_bytes": 128,
+          "immutable": true
+        },
+        {
+          "schema": "relaylm.ctx_ovl_overlay_record.v1",
+          "overlay_record_id": "ov5",
+          "session_id": "s4",
+          "partition_kind": "participant",
+          "partition_id": "p1",
+          "partition_epoch_ref": {
+            "partition_epoch_descriptor_id": "pe-s4-participant-p1-1",
+            "epoch_sequence": 1
+          },
+          "participant_ref": {
+            "participant_id_or_null": "u1",
+            "identity_status": "known"
+          },
+          "source_provenance": {
+            "source_event_id": "src4",
+            "evidence_space_id": "es1",
+            "capture_stream_id_or_null": "stream1",
+            "source_access_state_at_admission": "admitted"
+          },
+          "contract1_binding": {
+            "evidence_space_id": "es1",
+            "source_event_id": "src4",
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "last_validated_authorization": {
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "highest_observed_partition_sequence": 10,
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "watermark_freshness": "current",
+            "validated_access_state": "admitted",
+            "validated_at": "2026-07-20T00:00:30Z"
+          },
+          "candidate_envelope": {
+            "envelope_kind": "validated_sidecar_envelope",
+            "content_kind": "opaque_structured_reference",
+            "envelope_version": 1,
+            "producer_artifact_ref": {
+              "artifact_id": "art5",
+              "artifact_kind": "validated_sidecar",
+              "authority_domain": "relayctx_candidate_artifact",
+              "producer_component": "ctx_ovl_rebuild_process",
+              "session_id": "s4",
+              "source_event_id": "src4",
+              "evidence_space_id": "es1",
+              "content_kind": "opaque_structured_reference",
+              "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "content_address_space": "ctx_ovl_candidate_artifact",
+            "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "raw_source_content_present": false,
+            "size_bound": {
+              "bounded": true,
+              "max_bytes": 512,
+              "actual_bytes": 128
+            }
+          },
+          "admission_origin": "rebuild_pipeline",
+          "created_by_actor": "ctx_ovl_rebuild_process",
+          "candidate_basis": "validated_sidecar",
+          "visibility_scope": "participant_private",
+          "lifecycle_state": "active",
+          "superseded_by_overlay_record_id_or_null": null,
+          "non_shadowing": false,
+          "quarantine_shadow_target_overlay_record_id_or_null": null,
+          "rebuildable": true,
+          "durable": false,
+          "ttl_expires_at": "2026-07-20T02:00:00Z"
+        },
+        {
+          "schema": "relaylm.ctx_ovl_rebuild_event.v1",
+          "rebuild_event_id": "rb1",
+          "session_id": "s4",
+          "evaluated_at": "2026-07-20T01:00:00Z",
+          "triggered_by": "session_restart",
+          "source_basis": "current_authorized_governed_evidence",
+          "coverage_checkpoint_ref": {
+            "change_coverage_checkpoint_id": "cov1",
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "derived_coverage_status": "open_contiguous"
+          },
+          "authorization_ref": {
+            "change_partition_id": "cp1",
+            "partition_epoch_id": "ce1",
+            "highest_observed_partition_sequence": 10,
+            "authority_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "watermark_freshness": "stale",
+            "validated_access_state": "admitted",
+            "validated_at": "2026-07-20T00:30:00Z"
+          },
+          "durable_state_claimed": false,
+          "produced_overlay_record_ids": [
+            "ov5"
+          ],
+          "excluded_reason_codes": [],
+          "rebuild_bound": {
+            "bounded": true,
+            "max_overlay_records": 16,
+            "max_total_candidate_bytes": 16384
+          },
+          "budget_policy_ref": {
+            "policy_id": "ctx_ovl_budget_policy_v1",
+            "policy_version": 1,
+            "authority_domain": "relayctx_contract"
+          }
+        }
+      ],
+      "expected_error_ids": [
+        "CTX_OVL_E_REBUILD_AUTHORIZATION_NOT_CURRENT"
+      ]
+    }
+  ]
+}
