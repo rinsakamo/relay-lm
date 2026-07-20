@@ -4948,3 +4948,46 @@ verification:
 ```
 
 PR #616 removed the completed handoff from the live architecture collection and preserved it as frozen implementation evidence. The source-time implementation claims remain historical; current Stream Unpack architecture and runtime behavior remain owned by the parent architecture document and implementation. This bookkeeping-only follow-up records the merged state in the central append-only ledger and adds the exact path override without changing the accepted cutover content.
+
+### C1C48-001 — Phase 5.5-B1 stream suppression gate handoff
+
+```yaml
+cutover_pr: 619
+merged_commit: pending
+base_main: 534f71e0043819f0ee16e035c9f0e100ae99fa1d
+validated_content_head: 2f9305279b94477319b99c9d7955b5f7e83ee62a
+old_path: docs/architecture/phase55b1_stream_suppression_gate_handoff.md
+old_blob_sha: c9e16c751aad890102d8378e83b5b0de129be6e1
+old_content_sha256: 91686383c3a62921e23c60999750e957a7d78fe4ed636b393b02b4a256d68f04
+source_commit: 062d597fbff32a9d3a68bc3d1f10ff6850113451
+source_pr: 312
+recorded_on: 2026-06-20
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/phase55b1-stream-suppression-gate-handoff.md
+local_receipt: docs/evidence/migrations/cutover-1c48-phase55b1.md
+verification:
+  old_path_removed: true
+  canonical_evidence_metadata_added: true
+  current_sequence_authority_retained_by: docs/architecture/phase5_5_stream_unpack_bounded_slice.md
+  current_runtime_authority_retained_by: docs/architecture/phase55b2_stream_suppression_runtime_handoff.md
+  parent_architecture_link_updated: true
+  lat1_stale_reference_removed: true
+  lat2_reference_corrected_to_c2_c4: true
+  implementation_evidence_index_updated: true
+  fail_closed_guard: scripts/relaylm_phase55b1_handoff_cutover_guard.py
+  guard_integrated_into_existing_documentation_boundary_workflow: true
+  guard_self_test_assertions: 23
+  final_pr_changed_files: 10
+  final_pr_insertions: 586
+  final_pr_deletions: 12
+  exact_head_workflow_runs: 16
+  exact_head_workflow_success: 16
+  exact_head_workflow_failure: 0
+  unresolved_review_threads: 0
+  runtime_files_changed: 0
+  relaylm_changed_files: 0
+  open_pr_content_imported: false
+  open_pr_shared_path_reconciliation: ["#617:preserve B1 guard when temporary workflow assembly is rebased/finalized", "#586:preserve B1 implementation-evidence index entry when rebased"]
+```
+
+PR #619 preserves the completed B1 helper handoff as frozen implementation evidence. The source-time helper facts remain historical; current Stream Unpack sequencing remains parent-owned and current request-runtime suppression behavior remains B2/code-owned.

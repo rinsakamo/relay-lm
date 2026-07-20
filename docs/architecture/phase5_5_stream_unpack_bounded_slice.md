@@ -116,7 +116,7 @@ Implemented:
 - invalid chunk fail-closed behavior,
 - content-free node result and direct smoke coverage.
 
-See [Phase 5.5-B1 Stream Suppression Gate Handoff](phase55b1_stream_suppression_gate_handoff.md).
+See [Phase 5.5-B1 Stream Suppression Gate Evidence](../evidence/implementation/phase55b1-stream-suppression-gate-handoff.md).
 
 ### Phase 5.5-B2: request-runtime SSE suppression wiring — complete
 

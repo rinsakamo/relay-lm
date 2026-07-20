@@ -1,17 +1,26 @@
 ---
-relaylm_doc_type: implementation_handoff
-relaylm_authority: bounded_slice_record
-relaylm_status: historical_after_merge
+relaylm_doc_type: evidence
+relaylm_authority: historical_phase5_5_b1_stream_suppression_gate_implementation
+relaylm_status: frozen
 relaylm_volatility: frozen
 relaylm_owner: implementation
-relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_source_commit: 062d597fbff32a9d3a68bc3d1f10ff6850113451
+relaylm_source_pr: 312
+relaylm_recorded_on: 2026-06-20
+relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_not_authoritative_for:
   - canonical architecture
-  - future request-runtime SSE wiring
+  - current request-runtime SSE wiring
+  - current diagnostics or configuration schema
   - TTS execution
   - RelaySOUL persistence
+relaylm_related_authority:
+  - ../../architecture/phase5_5_stream_unpack_bounded_slice.md
+  - ../../architecture/phase55b2_stream_suppression_runtime_handoff.md
 ---
 # Phase 5.5-B1 Stream Suppression Gate Handoff
+
+> **Historical implementation evidence.** This frozen record describes the helper-only B1 boundary merged in PR #312. Current Stream Unpack sequencing is owned by the Phase 5.5 parent document, and current request-runtime suppression behavior is owned by the B2 handoff and implementation.
 
 ## Summary
 
