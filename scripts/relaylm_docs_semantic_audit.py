@@ -2153,6 +2153,308 @@ def check_o1_manual_one_round_family_types(errors: list[str]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Cutover 1C-46: retirement guard for the single-document ReLM Showcase
+# Fixture Authoring guide, following the CORRECTED Cutover 1C-45 OpenWebUI
+# guard pattern as the binding precedent (the most recently corrected
+# single/multi-member family guard): canonical documents are scanned like any
+# other document (no canonical-target skip); the reference-line allowlist is
+# exact stripped-line equality (never substring containment); and, for
+# `.md`/`.txt` referrers, retired-path detection covers Markdown links, HTML
+# `href`/`src` attributes, Markdown reference-style link definitions, bare
+# repository-root-qualified literal mentions (plain prose or backtick-quoted,
+# not only inside a Markdown link), bounded prose path tokens ending in a
+# retired basename, and path-bearing front-matter values -- not only Markdown
+# links and front matter. A Codex review on this cutover's own PR found the
+# earlier Cutover 1C-42/1C-43/1C-44(pre-correction) `.md`/`.txt` branch
+# (Markdown links + front matter only) repeats the exact P2 gap the Cutover
+# 1C-44 correction round fixed for the O1 guard: a plain-prose or
+# backtick-quoted retired-path mention in a `.md`/`.txt` file was silently
+# accepted. This guard is written with the full corrected coverage from the
+# start rather than needing its own later correction round.
+#
+# The shared `_mobile_dogfood_scanned_files()` file set (reused by the
+# mobile-dogfood/twin-extraction/smoke-maintenance/O1 guards) does not
+# include `.txt` files under `docs/`; `_showcase_fixture_scanned_files()`
+# adds `docs/**/*.txt` locally, matching the Cutover 1C-44/1C-45 `.txt`
+# coverage fix, without widening the shared constant those other guards use.
+#
+# This family has exactly one retired->canonical pair and otherwise reuses
+# the shared resolution helpers (`_mobile_dogfood_resolve`,
+# `_mobile_dogfood_front_matter_path_values`, `_mobile_dogfood_locate`,
+# `MOBILE_DOGFOOD_MD_LINK_RE`, `MOBILE_DOGFOOD_EXTERNAL_SCHEMES`) rather than
+# pasting a further bespoke copy of the resolution machinery.
+#
+# docs/tools/ held no other live file at the time of this cutover (its two
+# prior occupants were already retired by Cutover 1C-41 and 1C-42), so its
+# full retirement is also covered independently by
+# scripts/relaylm_documentation_current_boundary_smoke.py's
+# assert_no_docs_tools_tree().
+# ---------------------------------------------------------------------------
+SHOWCASE_FIXTURE_RETIRED_TO_CANONICAL: dict[str, str] = {
+    "docs/tools/relm_showcase_fixture_template.md": "docs/operations/relm-showcase-fixture-authoring.md",
+}
+SHOWCASE_FIXTURE_RETIRED_PATHS = tuple(sorted(SHOWCASE_FIXTURE_RETIRED_TO_CANONICAL))
+SHOWCASE_FIXTURE_CANONICAL_PATHS = frozenset(SHOWCASE_FIXTURE_RETIRED_TO_CANONICAL.values())
+
+# Reuses the mobile-dogfood guard's generic `[text](target)` Markdown link
+# matcher.
+SHOWCASE_FIXTURE_MD_LINK_RE = MOBILE_DOGFOOD_MD_LINK_RE
+
+# Repository-root-qualified literal scan: matches the one retired path
+# anywhere in a line (YAML mapping keys, Python string literals, plain prose,
+# backtick-quoted inline code, table cells), independent of Markdown link or
+# front-matter syntax.
+SHOWCASE_FIXTURE_REFERENCE_PATTERN = re.compile(
+    "(?:" + "|".join(re.escape(path) for path in SHOWCASE_FIXTURE_RETIRED_PATHS) + ")"
+)
+
+# Retired basenames are used as the terminal component for bounded prose-token
+# detection. Candidates are resolved before rejection, so the basename alone
+# is never treated as a global substring ban.
+SHOWCASE_FIXTURE_BASENAMES = tuple(sorted({Path(path).name for path in SHOWCASE_FIXTURE_RETIRED_PATHS}))
+SHOWCASE_FIXTURE_PROSE_PATH_TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9_.-])((?:(?:\.\.?/|[A-Za-z0-9_.-]+/){0,8})(?:"
+    + "|".join(re.escape(name) for name in SHOWCASE_FIXTURE_BASENAMES)
+    + r"))(?:[?#][A-Za-z0-9_.~/%=&:-]+)?(?![A-Za-z0-9_.-])"
+)
+
+# Bounded Markdown-visible navigation carriers not handled by the inline
+# Markdown-link regex: local HTML `href`/`src` attributes and reference-style
+# link definitions.
+SHOWCASE_FIXTURE_HTML_LINK_RE = re.compile(r"\b(?:href|src)\s*=\s*([\"'])([^\"'<>\s][^\"'<>]*)\1", re.IGNORECASE)
+SHOWCASE_FIXTURE_REFERENCE_DEFINITION_RE = re.compile(r"^[ \t]{0,3}\[[^\]\n]+\]:[ \t]*(?:<([^>\n]+)>|([^ \t\n]+))")
+
+# The migration receipt's own Cutover 1C-46 entry (and its earlier Cutover
+# 1C-42 twin-extraction entry, which historically narrates this same file's
+# then-current docs/tools/ path before this cutover moved it) narrate the
+# retired path by design; whole-file allowlisted, matching the established
+# mobile-dogfood/twin-extraction/smoke-maintenance/O1/openwebui precedent.
+SHOWCASE_FIXTURE_REFERENCE_ALLOWLISTED_FILES = frozenset(
+    {
+        "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
+    }
+)
+
+# Exact, reviewed whole-line contents that are legitimate occurrences of the
+# retired literal inside an otherwise-active/current file: the one
+# path_overrides mapping key in documentation-cutover-rules.yaml. Matched by
+# exact stripped-line equality, never substring containment.
+SHOWCASE_FIXTURE_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
+    "docs/planning/documentation-cutover-rules.yaml": tuple(
+        f"{retired_path}:" for retired_path in SHOWCASE_FIXTURE_RETIRED_PATHS
+    ),
+}
+
+# This guard's own implementation file. Narrow, exact-line self-allowance
+# only -- not a whole-file exemption. The only line in this file that may
+# legitimately spell out the retired literal is the
+# SHOWCASE_FIXTURE_RETIRED_TO_CANONICAL dict's own key: value entry.
+SHOWCASE_FIXTURE_SELF_FILE = "scripts/relaylm_docs_semantic_audit.py"
+SHOWCASE_FIXTURE_SELF_FILE_EXACT_LINES = frozenset(
+    f'"{retired_path}": "{canonical_path}",'
+    for retired_path, canonical_path in SHOWCASE_FIXTURE_RETIRED_TO_CANONICAL.items()
+)
+
+
+def _showcase_fixture_scanned_files(root: Path) -> list[Path]:
+    """This guard's scan universe: the shared `_mobile_dogfood_scanned_files`
+    file set, plus every `docs/**/*.txt` file (the shared scan universe does
+    not include `.txt`, matching the Cutover 1C-44/1C-45 `.txt`-coverage
+    fix), added locally so the shared constant other guards reuse is
+    unaffected."""
+    files = list(_mobile_dogfood_scanned_files(root))
+    seen = {file_path.resolve() for file_path in files}
+    docs_root = root / "docs"
+    if docs_root.is_dir():
+        for candidate in sorted(docs_root.rglob("*.txt")):
+            if not candidate.is_file():
+                continue
+            resolved = candidate.resolve()
+            if resolved in seen:
+                continue
+            files.append(candidate)
+            seen.add(resolved)
+    return files
+
+
+def check_no_live_showcase_fixture_retired_paths(errors: list[str]) -> None:
+    for retired_path, canonical_path in SHOWCASE_FIXTURE_RETIRED_TO_CANONICAL.items():
+        if (ROOT / retired_path).exists():
+            errors.append(
+                f"{retired_path}: retired showcase-fixture-authoring path reintroduced "
+                f"(moved to {canonical_path} by Cutover 1C-46)"
+            )
+
+    for path in _showcase_fixture_scanned_files(ROOT):
+        relative_path = path.relative_to(ROOT).as_posix()
+        if relative_path in SHOWCASE_FIXTURE_RETIRED_TO_CANONICAL:
+            continue
+        if relative_path in SHOWCASE_FIXTURE_REFERENCE_ALLOWLISTED_FILES:
+            continue
+        is_self_file = relative_path == SHOWCASE_FIXTURE_SELF_FILE
+        allowed_lines = SHOWCASE_FIXTURE_REFERENCE_LINE_ALLOWLIST.get(relative_path, ())
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+
+        lines = text.splitlines()
+
+        def _is_allowed(stripped_line: str) -> bool:
+            if is_self_file:
+                return stripped_line in SHOWCASE_FIXTURE_SELF_FILE_EXACT_LINES
+            return stripped_line in allowed_lines
+
+        def _outside_external_href(line_text: str, start: int, end: int) -> bool:
+            """True unless [start, end) sits inside an external-scheme/netloc
+            href or src attribute value or Markdown link target -- i.e. true
+            for a genuine local retired-path mention, false for e.g. a
+            retired basename that happens to appear inside an external URL's
+            query string."""
+            for href_match in SHOWCASE_FIXTURE_HTML_LINK_RE.finditer(line_text):
+                if href_match.start(2) <= start and end <= href_match.end(2):
+                    parsed = urlsplit(href_match.group(2).strip())
+                    if parsed.scheme.lower() in MOBILE_DOGFOOD_EXTERNAL_SCHEMES or parsed.netloc:
+                        return False
+            for link_match in MOBILE_DOGFOOD_MD_LINK_RE.finditer(line_text):
+                if link_match.start(1) <= start and end <= link_match.end(1):
+                    parsed = urlsplit(link_match.group(1).strip())
+                    if parsed.scheme.lower() in MOBILE_DOGFOOD_EXTERNAL_SCHEMES or parsed.netloc:
+                        return False
+            return True
+
+        if path.suffix not in (".md", ".txt"):
+            # Every other scanned suffix: use a literal repository-root-
+            # qualified match, not Markdown link syntax or a YAML
+            # front-matter block.
+            for line_number, line in enumerate(lines, start=1):
+                stripped = line.strip()
+                literal_match = SHOWCASE_FIXTURE_REFERENCE_PATTERN.search(line)
+                if literal_match is None or _is_allowed(stripped):
+                    continue
+                errors.append(
+                    f"{relative_path}:{line_number}: active reference to retired "
+                    f"{literal_match.group(0)}: {stripped!r}"
+                )
+            continue
+
+        # `.md`/`.txt` document -- including the canonical destination
+        # document itself; there is no canonical-path scan bypass. Each line
+        # is reported at most once (`reported_line_numbers`) even if it
+        # matches more than one pass.
+        reported_line_numbers: set[int] = set()
+
+        for line_number, line in enumerate(lines, start=1):
+            stripped = line.strip()
+            if _is_allowed(stripped):
+                continue
+
+            # Pass 1: Markdown link targets, resolved against this file's own
+            # directory (or the repository root for a "docs/"-qualified
+            # target).
+            for link_match in SHOWCASE_FIXTURE_MD_LINK_RE.finditer(line):
+                raw_target = link_match.group(1).strip()
+                resolved = _mobile_dogfood_resolve(path, raw_target)
+                if resolved in SHOWCASE_FIXTURE_RETIRED_TO_CANONICAL:
+                    errors.append(
+                        f"{relative_path}:{line_number}: active reference to retired "
+                        f"{resolved}: markdown link target {raw_target!r}"
+                    )
+                    reported_line_numbers.add(line_number)
+                    break
+            if line_number in reported_line_numbers:
+                continue
+
+            # Pass 2: local HTML `href`/`src` attributes.
+            for href_match in SHOWCASE_FIXTURE_HTML_LINK_RE.finditer(line):
+                raw_target = href_match.group(2).strip()
+                resolved = _mobile_dogfood_resolve(path, raw_target)
+                if resolved in SHOWCASE_FIXTURE_RETIRED_TO_CANONICAL:
+                    errors.append(
+                        f"{relative_path}:{line_number}: active reference to retired "
+                        f"{resolved}: HTML href/src {raw_target!r}: {stripped!r}"
+                    )
+                    reported_line_numbers.add(line_number)
+                    break
+            if line_number in reported_line_numbers:
+                continue
+
+            # Pass 3: Markdown reference-style link definitions.
+            reference_match = SHOWCASE_FIXTURE_REFERENCE_DEFINITION_RE.match(line)
+            if reference_match is not None:
+                raw_target = (reference_match.group(1) or reference_match.group(2) or "").strip()
+                resolved = _mobile_dogfood_resolve(path, raw_target)
+                if resolved in SHOWCASE_FIXTURE_RETIRED_TO_CANONICAL:
+                    errors.append(
+                        f"{relative_path}:{line_number}: active reference to retired "
+                        f"{resolved}: reference definition {raw_target!r}: {stripped!r}"
+                    )
+                    reported_line_numbers.add(line_number)
+            if line_number in reported_line_numbers:
+                continue
+
+            # Pass 4: bare repository-root-qualified literal mentions --
+            # plain prose or backtick-quoted, not expressed as a Markdown
+            # link, HTML attribute, or reference definition.
+            literal_match = SHOWCASE_FIXTURE_REFERENCE_PATTERN.search(line)
+            if literal_match is not None and _outside_external_href(
+                line, literal_match.start(), literal_match.end()
+            ):
+                errors.append(
+                    f"{relative_path}:{line_number}: active reference to retired "
+                    f"{literal_match.group(0)}: {stripped!r}"
+                )
+                reported_line_numbers.add(line_number)
+                continue
+
+            # Pass 5: bounded Markdown/text prose path tokens ending in a
+            # retired basename (bare same-directory, `./`, `../tools/`, and
+            # bounded additional relative spellings), resolved exactly like a
+            # Markdown link/front-matter path.
+            for token_match in SHOWCASE_FIXTURE_PROSE_PATH_TOKEN_RE.finditer(line):
+                if not _outside_external_href(line, token_match.start(1), token_match.end(1)):
+                    continue
+                raw_target = token_match.group(1)
+                resolved = _mobile_dogfood_resolve(path, raw_target)
+                if resolved in SHOWCASE_FIXTURE_RETIRED_TO_CANONICAL:
+                    errors.append(
+                        f"{relative_path}:{line_number}: active reference to retired "
+                        f"{resolved}: prose path token {raw_target!r}: {stripped!r}"
+                    )
+                    reported_line_numbers.add(line_number)
+                    break
+
+        # Pass 6: every supported path-bearing front-matter key, resolved via
+        # the actual parsed first-block YAML mapping.
+        for key, raw_target in _mobile_dogfood_front_matter_path_values(text):
+            resolved = _mobile_dogfood_resolve(path, raw_target)
+            if resolved not in SHOWCASE_FIXTURE_RETIRED_TO_CANONICAL:
+                continue
+            line_number, stripped = _mobile_dogfood_locate(lines, raw_target)
+            if _is_allowed(stripped) or line_number in reported_line_numbers:
+                continue
+            errors.append(
+                f"{relative_path}:{line_number}: active reference to retired "
+                f"{resolved}: {key} entry {raw_target!r}"
+            )
+
+
+def check_showcase_fixture_family_types(errors: list[str]) -> None:
+    for canonical_path in sorted(SHOWCASE_FIXTURE_CANONICAL_PATHS):
+        meta, _ = parse_front_matter(canonical_path)
+        if meta.get("relaylm_doc_type") != "operations":
+            errors.append(
+                f"{canonical_path}: must declare relaylm_doc_type: operations, not "
+                f"{meta.get('relaylm_doc_type')!r} (never the retired runbook type)"
+            )
+        if meta.get("relaylm_status") != "current":
+            errors.append(
+                f"{canonical_path}: must declare relaylm_status: current, not "
+                f"{meta.get('relaylm_status')!r}"
+            )
+
+
+# ---------------------------------------------------------------------------
 # Cutover 1C-39 correction: fail closed on a completed LAT-1 retrieval-scaling
 # evidence record (docs/evidence/evaluations/lat1-retrieval-scaling-*.md) that
 # is incomplete, unfilled, provenance-weak, or content-bearing. No such
@@ -6731,6 +7033,342 @@ def self_test() -> None:
         )
     ROOT = real_root
 
+    # ------------------------------------------------------------------
+    # Cutover 1C-46: ReLM Showcase Fixture Authoring retired-path guard
+    # self-tests, following the CORRECTED Cutover 1C-43 smoke-maintenance
+    # pattern for a single-member family (no canonical-path scan bypass,
+    # exact stripped-line allowlist equality, non-Markdown literal scan on
+    # every non-`.md`/`.txt` suffix).
+    # ------------------------------------------------------------------
+    showcase_fixture_retired = SHOWCASE_FIXTURE_RETIRED_PATHS[0]
+    showcase_fixture_canonical = SHOWCASE_FIXTURE_RETIRED_TO_CANONICAL[showcase_fixture_retired]
+
+    # The real repository has no live reference to the retired
+    # showcase-fixture-authoring path.
+    check_silent(
+        "real repository: no active reference to the retired showcase-fixture-authoring path",
+        check_no_live_showcase_fixture_retired_paths,
+    )
+
+    # The retired showcase-fixture file being reintroduced is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            showcase_fixture_retired,
+            "---\nrelaylm_doc_type: runbook\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "the reintroduced retired showcase-fixture-authoring file is rejected",
+            check_no_live_showcase_fixture_retired_paths,
+            f"{showcase_fixture_retired}: retired showcase-fixture-authoring path reintroduced",
+        )
+    ROOT = real_root
+
+    # A root-qualified Markdown link to the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_showcase_fixture_root_link.md",
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n\n"
+            f"See [old fixture template]({showcase_fixture_retired}).\n",
+        )
+        check_rejects(
+            "a root-qualified link to the retired showcase-fixture-authoring path is rejected",
+            check_no_live_showcase_fixture_retired_paths,
+            f"active reference to retired {showcase_fixture_retired}",
+        )
+    ROOT = real_root
+
+    # A path-bearing front-matter entry (e.g. relaylm_related_authority)
+    # referencing the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/operations/example_showcase_fixture_related_authority.md",
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n"
+            "relaylm_related_authority:\n"
+            f"  - {showcase_fixture_retired}\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "a front-matter relaylm_related_authority entry resolving to the retired "
+            "showcase-fixture-authoring path is rejected",
+            check_no_live_showcase_fixture_retired_paths,
+            f"active reference to retired {showcase_fixture_retired}",
+        )
+    ROOT = real_root
+
+    # An unrelated file with the same basename in a different directory is
+    # accepted (no false positive from bare-filename resolution).
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, "docs/other/relm_showcase_fixture_template.md", "# unrelated\n")
+        _mvp_write(
+            base,
+            "docs/example.md",
+            "See [unrelated](other/relm_showcase_fixture_template.md).\n",
+        )
+        check_silent(
+            "showcase-fixture-authoring unrelated same basename in a different directory is accepted",
+            check_no_live_showcase_fixture_retired_paths,
+        )
+    ROOT = real_root
+
+    # Duplicate references to the retired path on one line produce exactly
+    # one diagnostic, not one per occurrence.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_showcase_fixture_dup.md",
+            f"[old]({showcase_fixture_retired}) and {showcase_fixture_retired}\n",
+        )
+        errors: list[str] = []
+        check_no_live_showcase_fixture_retired_paths(errors)
+        check(
+            "showcase-fixture-authoring duplicate diagnostics on one line are suppressed",
+            lambda: len(errors) == 1,
+        )
+    ROOT = real_root
+
+    # A plain-prose mention of the retired path (not a Markdown link, HTML
+    # attribute, reference definition, or front-matter value) is rejected --
+    # the exact P2 gap the Cutover 1C-44 correction round fixed for the O1
+    # guard, now covered from the start for this family.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_showcase_fixture_prose.md",
+            f"See {showcase_fixture_retired} for the old schema.\n",
+        )
+        check_rejects(
+            "a plain-prose mention of the retired showcase-fixture-authoring path is rejected",
+            check_no_live_showcase_fixture_retired_paths,
+            f"active reference to retired {showcase_fixture_retired}",
+        )
+    ROOT = real_root
+
+    # A backtick-quoted inline-code mention of the retired path is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_showcase_fixture_backtick.md",
+            f"The old file was `{showcase_fixture_retired}`.\n",
+        )
+        check_rejects(
+            "a backtick-quoted mention of the retired showcase-fixture-authoring path is rejected",
+            check_no_live_showcase_fixture_retired_paths,
+            f"active reference to retired {showcase_fixture_retired}",
+        )
+    ROOT = real_root
+
+    # A bounded same-directory prose path token (bare basename, no directory
+    # prefix, not a Markdown link, resolved from a sibling file in the same
+    # directory as the retired path) is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/tools/example_sibling.md",
+            f"formerly {showcase_fixture_retired.rsplit('/', 1)[-1]} in this directory\n",
+        )
+        check_rejects(
+            "a bounded prose path token resolving to the retired showcase-fixture-authoring path is rejected",
+            check_no_live_showcase_fixture_retired_paths,
+            f"active reference to retired {showcase_fixture_retired}",
+        )
+    ROOT = real_root
+
+    # A frozen/historical Markdown document (not the receipt, not
+    # allowlisted) mentioning the retired path in prose is still rejected --
+    # no generic frozen/historical status bypass.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/implementation/example_frozen_showcase_fixture.md",
+            "---\nrelaylm_doc_type: implementation_completion_report\n"
+            "relaylm_status: historical_after_merge\n---\n\n"
+            f"Historically the fixture lived at {showcase_fixture_retired}.\n",
+        )
+        check_rejects(
+            "a frozen/historical document's unallowlisted mention of the retired "
+            "showcase-fixture-authoring path is rejected",
+            check_no_live_showcase_fixture_retired_paths,
+            f"active reference to retired {showcase_fixture_retired}",
+        )
+    ROOT = real_root
+
+    # A retired-path literal inside a `docs/**/*.txt` file is rejected,
+    # proving the guard-local `.txt` scan-universe extension actually runs
+    # (the shared `_mobile_dogfood_scanned_files()` set excludes `.txt`).
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/evidence/example_showcase_fixture_note.txt",
+            f"source: {showcase_fixture_retired}\n",
+        )
+        check_rejects(
+            "a retired showcase-fixture-authoring path literal inside a docs/**/*.txt file is rejected",
+            check_no_live_showcase_fixture_retired_paths,
+            f"active reference to retired {showcase_fixture_retired}",
+        )
+    ROOT = real_root
+
+    # A Markdown link to the canonical (moved) path is accepted, while a
+    # Markdown link to the retired path in the same file is rejected --
+    # proving the retired-basename match is resolved, not a global substring
+    # ban that would also flag the canonical destination.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/example_showcase_fixture_canonical_vs_retired.md",
+            f"[canonical]({showcase_fixture_canonical}) and [retired]({showcase_fixture_retired})\n",
+        )
+        errors: list[str] = []
+        check_no_live_showcase_fixture_retired_paths(errors)
+        check(
+            "a link to the canonical showcase-fixture-authoring path is accepted while the "
+            "retired path in the same file is rejected",
+            lambda: len(errors) == 1 and f"retired {showcase_fixture_retired}" in errors[0],
+        )
+    ROOT = real_root
+
+    # An exact allowlisted `documentation-cutover-rules.yaml` path_overrides
+    # key line is silent, while a non-allowlisted line in the same file
+    # (extra trailing text after the retired path, not exact-equal to the
+    # allowlisted line) is still rejected -- proving the allowlist is exact
+    # stripped-line equality, not substring containment.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            "docs/planning/documentation-cutover-rules.yaml",
+            f"path_overrides:\n  {showcase_fixture_retired}:  # trailing comment\n"
+            "    disposition: moved\n",
+        )
+        check_rejects(
+            "a documentation-cutover-rules.yaml line with extra trailing text beyond the "
+            "allowlisted key is rejected (exact-line, not substring)",
+            check_no_live_showcase_fixture_retired_paths,
+            f"active reference to retired {showcase_fixture_retired}",
+        )
+    ROOT = real_root
+
+    # The real canonical destination document declares the correct profile.
+    check_silent(
+        "real repository: canonical showcase-fixture-authoring document has the correct profile",
+        check_showcase_fixture_family_types,
+    )
+
+    # A canonical path carrying the retired runbook doc type is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            showcase_fixture_canonical,
+            "---\nrelaylm_doc_type: runbook\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "a canonical showcase-fixture-authoring document with the retired runbook doc type is rejected",
+            check_showcase_fixture_family_types,
+            "must declare relaylm_doc_type: operations",
+        )
+    ROOT = real_root
+
+    # A canonical path with the wrong status is rejected.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            showcase_fixture_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: target\n---\n\nBody.\n",
+        )
+        check_rejects(
+            "a canonical showcase-fixture-authoring document with the wrong status is rejected",
+            check_showcase_fixture_family_types,
+            "must declare relaylm_status: current",
+        )
+    ROOT = real_root
+
+    # A canonical path with the correct profile is accepted.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            showcase_fixture_canonical,
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
+        )
+        check_silent(
+            "a canonical showcase-fixture-authoring document with the correct profile is accepted",
+            check_showcase_fixture_family_types,
+        )
+    ROOT = real_root
+
+    # Cutover 1C-46 production-registry coverage: direct helper tests above
+    # are insufficient unless the default semantic-audit path also runs the
+    # checks (this is exactly the class of defect the C1C45 correction round
+    # found and fixed for the OpenWebUI family).
+    check(
+        "showcase-fixture-authoring retired-path guard is registered in the production semantic-audit tuple",
+        lambda: check_no_live_showcase_fixture_retired_paths
+        in DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS,
+    )
+    check(
+        "showcase-fixture-authoring family type guard is registered in the production semantic-audit tuple",
+        lambda: check_showcase_fixture_family_types
+        in DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS,
+    )
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, showcase_fixture_retired, "# reintroduced retired source\n")
+        errors: list[str] = []
+        if check_no_live_showcase_fixture_retired_paths in DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS:
+            check_no_live_showcase_fixture_retired_paths(errors)
+        check(
+            "production semantic-audit tuple rejects a reintroduced showcase-fixture-authoring retired source",
+            lambda: any("retired showcase-fixture-authoring path reintroduced" in error for error in errors),
+        )
+    ROOT = real_root
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(
+            base,
+            showcase_fixture_canonical,
+            "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n---\n# bad metadata\n",
+        )
+        errors: list[str] = []
+        if check_showcase_fixture_family_types in DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS:
+            check_showcase_fixture_family_types(errors)
+        check(
+            "production semantic-audit tuple rejects incorrect showcase-fixture-authoring canonical metadata",
+            lambda: any("must declare relaylm_doc_type" in error for error in errors),
+        )
+    ROOT = real_root
+
     failed = [(name, message) for name, ok, message in results if not ok]
     for name, ok, message in results:
         status = "PASS" if ok else "FAIL"
@@ -6767,6 +7405,8 @@ DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS = (
     check_o1_manual_one_round_family_types,
     check_no_live_openwebui_manual_validation_retired_paths,
     check_openwebui_manual_validation_family_types,
+    check_no_live_showcase_fixture_retired_paths,
+    check_showcase_fixture_family_types,
     check_operations_docs,
     check_referenced_repository_paths,
 )

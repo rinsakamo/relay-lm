@@ -52,4 +52,4 @@ Implementation evidence remains under `docs/evidence/implementation/`. Executabl
 
 ## Placement rule
 
-Create cross-cutting manual smoke, result, troubleshooting, and local evaluation docs directly under `docs/smoke/`. Keep implementation evidence under `docs/evidence/implementation/`, architecture docs under `docs/architecture/`, contract docs under `docs/contracts/`, offline tooling docs under `docs/tools/`, evaluation templates or run records under `docs/evaluation/`, and operator runbooks or cross-cutting CI maintenance procedures under `docs/operations/`.
+Create cross-cutting manual smoke, result, troubleshooting, and local evaluation docs directly under `docs/smoke/`. Keep implementation evidence under `docs/evidence/implementation/`, architecture docs under `docs/architecture/`, contract docs under `docs/contracts/`, evaluation templates or run records under `docs/evaluation/`, and operator runbooks or cross-cutting CI maintenance procedures under `docs/operations/`.

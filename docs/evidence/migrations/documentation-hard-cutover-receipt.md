@@ -4659,7 +4659,7 @@ receipt_finalization_pre_codex_observation:
     deletions: 57
   relaylm_changed_files: 0
   later_review_comment_activity_does_not_retroactively_mutate_this_observation: true
-merged_commit: pending
+merged_commit: 09bbdb1ecc0b25b89cfc9680849eb52c1399de09
 final_pr_diff:
   authority: live_github_pr_state
   required_head: receipt_finalization_head
@@ -4670,10 +4670,240 @@ post_finalization_codex_review:
   recorded_in_receipt: false
 ```
 
-Cutover 1C-45 starts from the exact current-main boundary `43fd272c3a99180646ad73b6c2edc12435a87812`, independently verified as both local `HEAD` and `origin/main`. The family boundary is limited to three repeatable manual-validation procedures, one blank reusable results template, and one completed dated local validation result. The procedures move to `docs/operations/`, the blank template moves to `docs/templates/evaluation/`, and the completed 2026-05-26 result moves to `docs/evidence/evaluations/` with frozen evidence metadata and source provenance. No `relaylm/**` files are changed and no runtime behavior is changed. The C1C45 PR remains open and unmerged; `merged_commit` remains pending.
+**C1C45 merge-commit finalization (performed during Cutover 1C-46 bookkeeping).** Current `main` proves the merge SHA: `09bbdb1ecc0b25b89cfc9680849eb52c1399de09` is `docs: canonicalize OpenWebUI manual validation family in cutover 1C-45 (#611)`, its sole parent is `43fd272c3a99180646ad73b6c2edc12435a87812` (this entry's recorded `base_main`), and the GitHub PR record for #611 confirms `merged: true`, `merged_commit_sha` head `0f8446138d75def08bd42b7fd70acf17431cb604`, and a final diff of 17 changed files (+603/-57). `merged_commit` above is finalized from `pending` to `09bbdb1ecc0b25b89cfc9680849eb52c1399de09` accordingly. `final_pr_diff` and `post_finalization_codex_review` remain pointers to live GitHub PR state rather than duplicated totals, consistent with this receipt's established self-reference-avoidance rule.
+
+Cutover 1C-45 starts from the exact current-main boundary `43fd272c3a99180646ad73b6c2edc12435a87812`, independently verified as both local `HEAD` and `origin/main`. The family boundary is limited to three repeatable manual-validation procedures, one blank reusable results template, and one completed dated local validation result. The procedures move to `docs/operations/`, the blank template moves to `docs/templates/evaluation/`, and the completed 2026-05-26 result moves to `docs/evidence/evaluations/` with frozen evidence metadata and source provenance. No `relaylm/**` files are changed and no runtime behavior is changed. At the time this paragraph was originally authored, the C1C45 PR remained open and unmerged and `merged_commit` was `pending`; this is a historical initial-state observation, superseded by the "C1C45 merge-commit finalization" paragraph below, which records that PR #611 has since merged and `merged_commit` is finalized to `09bbdb1ecc0b25b89cfc9680849eb52c1399de09`.
 
 **C1C45 correction round for PR #611.** Independent review found four unresolved threads requiring a substantive correction before re-finalization. `PRRT_kwDOSh2R-s6SAE0D` covered the frozen evidence source path; replay against base/main confirms the true source is `docs/smoke/openwebui_lmstudio_manual_smoke_result_2026_05_26.md`, with source blob `b19679e01ddbc9c30986bf6912edcb6b04cb8e7c` and normalized SHA-256 `8d903842533fe69aff177f9f9cdacdda7e8174f958ac4e8a063b615dd7d3a97d`. `PRRT_kwDOSh2R-s6SAE0F` found that `check_no_live_openwebui_manual_validation_retired_paths` and `check_openwebui_manual_validation_family_types` were self-tested but omitted from the default production semantic-audit registry, making default execution fail open; this correction registers both checks after the C1C44 O1 checks and adds production-registry self-test coverage. `PRRT_kwDOSh2R-s6SAJ3e` found stale receipt accounting: `be21fba855c194c66fa2219874b2ab23dcee38d7`, real historical bookkeeping commit `d109aeed20afdef3026b5c1fde3b4011d9762882`, and finalization head `0adea1cd2b1b13f10c6bb969c4d4adf835424613` are now preserved only as superseded historical narrative, while the current accounting fields above are reset to `pending` for the new validated-content sequence. `PRRT_kwDOSh2R-s6SAJ3f` found stale final diff totals: the reviewed `0adea1c` head was 17 files, +472/-29 rather than the previously recorded +465/-33; final diff totals are reset to `pending` and must be freshly recomputed after this correction. The prior finalization is superseded because substantive audit-registration and accounting corrections occurred after it; `merged_commit` remains `pending` and no runtime files changed.
 
 The historical C1C45 accounting sequence with validated content head `106ef81d6fc97ac4f252b69670eef8a368d519c3`, receipt bookkeeping commit `27c7752415fb5165983f69aa79cc1e330c61ffe0`, and finalization head `f38036d92587e492b346ce578a7bb30bd92aacd2` is superseded by this substantive post-finalization receipt correction. `6b7f01ceb8663fed1ddb135576ed1a541a223d18` is the verified clean bookkeeping head after the validated content head `f678e5512a62d76c060dae2470270aaccfa270fc`. Later bookkeeping attempts `1171f4f3410a788d6746834bc78faf5ae460ecfa` and malformed `e0a3411fe2d6c395fcadfc1cce7349a5c4a56b1a` are superseded bookkeeping attempts; `e0a3411f` is specifically superseded because it introduced a literal unresolved merge-conflict marker before `validation_results` and prematurely copied the validated-content diff into top-level final-PR diff fields. At those exact historical heads, GitHub observations were recorded as immutable snapshots: exact-head checks completed with 27 total checks (18 success, 9 skipped, 0 failure); the finalization diff was 17 changed files, +555/-57; the post-resolution PR accounting narrative recorded 6 reviews, 2 top-level PR comments, and 0 unresolved review threads. Those values describe only the named historical heads and phases; later review, comment, or thread activity does not retroactively alter a head-scoped observation. The validated-content and bookkeeping diffs are retained only under their head-scoped observations; the finalization-head diff and Codex review remain live GitHub state to avoid receipt self-reference.
 
 This correction addresses duplicate accounting-cycle threads `PRRT_kwDOSh2R-s6SCKje` and `PRRT_kwDOSh2R-s6SCYUf`. The defect was treating `reviews`, `pr_comments`, and `unresolved_review_threads` as indefinitely current final PR totals inside the C1C45 YAML record: every new `@codex review`, reply, or thread resolution could immediately change those live totals and make the receipt stale again. The ambiguous live-total fields are removed and the populated values use immutable head-scoped GitHub observations. Each populated observation must name its exact `observed_head`, phase, Actions totals, review count, top-level PR-comment count, and unresolved-thread count measured at that named head. The finalization-head diff and post-finalization Codex result remain live GitHub PR state requiring exact-finalization-head verification before merge, not self-referential receipt totals.
+
+### C1C46-001 — ReLM showcase fixture authoring guide cutover
+
+```yaml
+cutover_pr: 615
+merged_commit: pending
+record_count: 1
+cutover_recorded_on: 2026-07-20
+disposition: moved
+no_fabricated_evidence: true
+records:
+  - record: ReLM Showcase Fixture Authoring Guide
+    old_path: docs/tools/relm_showcase_fixture_template.md
+    old_path_lines: 186
+    disposition: moved
+    legacy_metadata_type: runbook
+    legacy_metadata_note: existing_only_pre_cutover_type_per_docs_documentation_model_md_required_cutover_destination_operations_docs_tools_was_the_last_remaining_pre_cutover_anchor_occupant_and_is_fully_retired_by_this_cutover
+    introducing_pr: 517
+    introducing_pr_title: "Add ReLM showcase fixture template"
+    introducing_commit: cd0b34f24abd42d912244703b70439968380efe8
+    introducing_commit_date: 2026-07-08T15:51:50Z
+    introducing_commit_origin: squash_merged_pr_517_via_chatgpt_codex_connector_app
+    final_content_pr: 608
+    final_content_pr_title: "docs: canonicalize twin extraction family in cutover 1C-42"
+    final_content_commit: 980dcaab0f7004ee449302706dfbb427c8d3422e
+    final_content_commit_date: 2026-07-17T17:09:43Z
+    final_content_commit_note: only_the_relaylm_related_authority_link_to_the_twin_extraction_prompt_specification_was_repaired_in_this_commit_body_unchanged
+    source_blob_sha: 40c5569252ac03cc4d8e71c1f45cedd20826bf31
+    source_content_sha256: 6569fdaf3bb948440f73deac4a9bdf71eabc00d4f5dabb49abd16cfeb46703ca
+    pre_cutover_blob_sha: 40c5569252ac03cc4d8e71c1f45cedd20826bf31
+    pre_cutover_content_sha256: 6569fdaf3bb948440f73deac4a9bdf71eabc00d4f5dabb49abd16cfeb46703ca
+    pre_cutover_blob_note: independently_confirmed_byte_identical_via_git_rev_parse_at_final_content_commit_980dcaa_and_at_this_cutovers_base_main_2e04660_zero_modification_commits_between_them
+    new_canonical_path: docs/operations/relm-showcase-fixture-authoring.md
+    new_doc_type: operations
+provenance_reconstruction_note: >-
+  Reconstructed via GitHub `list_commits` (path-filtered) and
+  `search_pull_requests`, not from the local shallow clone's `git log
+  --follow`, which stops at commit `980dcaa` (the C1C42 front-matter
+  repair), a known shallow-clone artifact consistent with the warning
+  already recorded in the Cutover 1C-40/1C-41/1C-42/1C-43 entries above.
+  `list_commits` for this exact path returns exactly two commits across
+  the full unshallowed history: the introducing squash merge of PR #517
+  (`cd0b34f2`) and the C1C42 front-matter repair (`980dcaa`); no other
+  commit ever touched this path.
+old_path_retirement_confirmed:
+  - docs/tools/relm_showcase_fixture_template.md
+docs_tools_directory_retired: true
+dependency_and_reference_inventory:
+  - referrer: docs/README.md
+    kind: documentation_index
+    action: retargeted_the_offline_tooling_index_link_from_tools_relm_showcase_fixture_template_md_to_operations_relm_showcase_fixture_authoring_md_kept_the_entry_under_the_existing_offline_tooling_and_runbooks_section_alongside_the_other_operations_family_members_no_wording_change_beyond_the_path
+  - referrer: docs/DOCUMENTATION_MODEL.md
+    kind: documentation_model
+    action: removed_the_now_vacuous_offline_tooling_specifications_and_runbooks_docs_tools_pre_cutover_anchor_bullet_since_this_was_docs_tools_last_live_occupant_matching_the_established_cutover_1c_38_docs_mvp_anchor_removal_precedent
+  - referrer: docs/smoke/README.md
+    kind: documentation_index
+    action: removed_the_offline_tooling_docs_under_docs_tools_clause_from_the_placement_rule_sentence_the_remaining_clauses_evidence_architecture_contracts_evaluation_operations_are_unchanged
+  - referrer: docs/README.md (Placement rules section)
+    kind: documentation_index
+    action: removed_the_now_vacuous_offline_tooling_specifications_and_runbooks_docs_tools_bullet_distinct_from_the_offline_tooling_and_runbooks_link_section_edit_above
+  - referrer: scripts/relaylm_documentation_current_boundary_smoke.py
+    kind: documentation_validation_script
+    action: removed_the_two_retired_docs_tools_anchor_substrings_from_the_docs_documentation_model_md_and_docs_smoke_readme_md_required_anchor_tuples_and_added_assert_no_docs_tools_tree_called_from_main_mirroring_assert_no_mvp_tree
+  - referrer: scripts/relaylm_showcase_fixture_gate_smoke.py
+    kind: documentation_validation_script
+    action: updated_doc_path_and_module_docstring_to_the_new_canonical_path_zero_parsing_logic_change
+  - referrer: docs/planning/documentation-cutover-rules.yaml
+    kind: cutover_rules
+    action: added_one_path_overrides_entry_recording_the_disposition_the_pre_existing_generic_tools_operations_family_rule_nested_docs_operations_tools_target_template_was_left_unchanged_since_the_explicit_path_overrides_entry_takes_precedence_per_relaylm_docs_cutover_prepare_pys_own_lookup_order_and_it_remains_a_dormant_fallback_for_any_future_docs_tools_file
+non_family_exclusions:
+  - path: docs/operations/twin-extraction-prompts.md
+    reason: >-
+      distinct, already-canonical Twin Extraction authority moved by
+      Cutover 1C-42; only referenced here via the front-matter
+      relaylm_related_authority same-directory link repair
+      (../operations/twin-extraction-prompts.md -> twin-extraction-prompts.md),
+      not moved or retyped again by this cutover.
+  - path: docs/architecture/cw_a5_character_creation_templates_showcase_import.md
+    reason: >-
+      distinct CW-A5 implementation_handoff authority; only referenced via
+      an unchanged ../architecture/ front-matter relaylm_related_authority
+      entry (same relative depth before and after the move, no repair
+      needed).
+  - path: docs/architecture/character_template_creation_flow.md
+    reason: >-
+      distinct target-architecture authority; only referenced via an
+      unchanged ../architecture/ front-matter relaylm_related_authority
+      entry, same reasoning as above.
+local_validation:
+  compileall: passed
+  docs_link_check: passed
+  docs_semantic_audit: passed
+  docs_semantic_audit_self_test: passed_252_assertions
+  documentation_current_boundary_smoke: passed
+  cutover_prepare_self_test: passed
+  showcase_fixture_gate_smoke: passed
+  mvp_completion_report_smoke_check_model_check_all: passed
+  mvp_completion_report_smoke_self_test: passed
+  mvp_completion_report_pr_link_smoke: passed
+  ci_consolidated_smoke_contract: passed
+  e1_evaluation_consolidation_smoke: passed
+  wave3_cross_slice_convergence_smoke: passed
+  wave3_cross_slice_security_smoke: passed
+  wave4_cross_slice_convergence_smoke: passed
+  wave5_cross_slice_convergence_smoke: passed
+  repo_inventory_cli_self_test: passed
+  git_diff_check: passed
+  conflict_marker_scan: clean
+  docs_mvp_absent: true
+  docs_tools_absent: true
+  focused_non_allowlisted_reference_search: clean_zero_violations
+docs_mvp_family_touched: false
+lat1_family_touched: false
+e1_family_touched: false
+mobile_dogfood_family_touched: false
+twin_extraction_family_touched: false
+smoke_maintenance_family_touched: false
+o1_manual_one_round_family_touched: false
+openwebui_manual_validation_family_touched: false
+contracts_family_touched: false
+runtime_files_changed: 0
+open_pr_isolation:
+  checked_open_prs: [614, 586, 578, 567]
+  shared_file_overlaps: ["586 touches docs/README.md, disjoint sections; nothing imported"]
+  no_content_imported: true
+c1c45_merged_commit_finalized_in_this_batch: 09bbdb1ecc0b25b89cfc9680849eb52c1399de09
+prior_validated_content_head_superseded: 9166c3e9d59912d2b9833c8d803bd336d43922d9
+prior_validated_content_head_superseded_reason: >-
+  superseded by the Codex review round 1 correction (retired-path guard
+  rewrite, open-PR shared-file accounting fix, C1C45 stale-sentence fix);
+  the historical observation at 9166c3e remains recorded below as an
+  immutable head-scoped fact, it is simply no longer the current
+  validated_content_head
+superseded_validated_content_head_github_observation:
+  observed_head: 9166c3e9d59912d2b9833c8d803bd336d43922d9
+  phase: validated_content_head_pre_correction
+  base_sha: 2e046607dbf05ce0d2b6e87b66e15537f026e71a
+  check_runs:
+    total: 27
+    success: 19
+    skipped: 8
+    failure: 0
+  review_count: 0
+  top_level_pr_comment_count: 0
+  unresolved_review_thread_count: 0
+  mergeable_state: clean
+  exact_diff:
+    changed_files: 9
+    insertions: 554
+    deletions: 13
+  relaylm_changed_files: 0
+  later_review_comment_activity_does_not_retroactively_mutate_this_observation: true
+superseded_receipt_bookkeeping_commit: 5c12239
+validated_content_head: 924bf16534a22e8702f00fdf049a014986565b2f
+validated_content_head_github_observation:
+  observed_head: 924bf16534a22e8702f00fdf049a014986565b2f
+  phase: validated_content_head_after_codex_review_round_1_correction
+  base_sha: 2e046607dbf05ce0d2b6e87b66e15537f026e71a
+  check_runs:
+    total: 27
+    success: 19
+    skipped: 8
+    failure: 0
+  review_count: 1
+  review_disposition: 1_commented_review_addressed_both_threads_resolved
+  top_level_pr_comment_count: 0
+  unresolved_review_thread_count: 0
+  mergeable_state: clean
+  exact_diff:
+    changed_files: 9
+    insertions: 858
+    deletions: 14
+  relaylm_changed_files: 0
+  later_review_comment_activity_does_not_retroactively_mutate_this_observation: true
+reviews: 1
+pr_comments: 0
+unresolved_review_threads: 0
+receipt_bookkeeping_commit: 81a7195f8433743130bb9a9116196265bd0896b9
+receipt_bookkeeping_github_observation:
+  observed_head: 81a7195f8433743130bb9a9116196265bd0896b9
+  phase: post_correction_review_confirmation
+  base_sha: 2e046607dbf05ce0d2b6e87b66e15537f026e71a
+  check_runs:
+    total: 27
+    success: 19
+    skipped: 8
+    failure: 0
+  review_count: 2
+  review_disposition: >-
+    2_commented_reviews_first_review_at_9166c3e_found_the_three_substantive
+    defects_this_batch_corrected_second_review_at_this_exact_head_81a7195
+    independently_confirmed_all_three_findings_substantively_resolved_and_no
+    new_defect_found_explicitly_names_this_head_as_the_post_correction
+    validated_content_bookkeeping_head_not_yet_the_final_receipt_head
+  top_level_pr_comment_count: 0
+  unresolved_review_thread_count: 0
+  mergeable_state: clean
+  exact_diff:
+    changed_files: 9
+    insertions: 880
+    deletions: 14
+  relaylm_changed_files: 0
+final_pr_changed_files: 9
+final_pr_net_diff: {insertions: 906, deletions: 14}
+receipt_finalization: performed_after_validated_content_head
+```
+
+Cutover 1C-46 starts from the exact current-main boundary `2e046607dbf05ce0d2b6e87b66e15537f026e71a` ("docs: define governed evidence contract family (#613)"), independently reverified as `origin/main` immediately before editing. The family is a single document: `docs/tools/relm_showcase_fixture_template.md`, the last remaining occupant of the `docs/tools/` pre-cutover anchor (its two other former occupants, the Twin Extraction prompt specification and the Mobile Dogfood entry runbook, were already retired by Cutover 1C-42 and Cutover 1C-41 respectively). Applying `docs/DOCUMENTATION_MODEL.md`'s doc-type mapping table (`runbook` -> `operations`) and the identical Cutover 1C-41/1C-42/1C-43/1C-44 `docs/tools`|`docs/smoke` -> `docs/operations` precedent, the document moves to `docs/operations/relm-showcase-fixture-authoring.md` with `relaylm_doc_type` corrected from `runbook` to `operations`; `relaylm_status` remains `current`. This is not a `docs/templates/` candidate: the document supplies authoritative, machine-checkable constraints (the G1-G5 public gate conditions and the `world_refs` allowlist enforced by `scripts/relaylm_showcase_fixture_gate_smoke.py`) and authoring guidance for a repeatable operator task, not a blank/content-free fill-in-the-blank starting point of the kind `docs/templates/README.md` requires ("the template never supplies project facts"; "replace every placeholder before review"). Body content is preserved byte-exactly except for the `relaylm_doc_type` front-matter correction and the one same-directory relative-link repair (`../operations/twin-extraction-prompts.md` -> `twin-extraction-prompts.md`, since both documents now live in `docs/operations/`); the two `../architecture/` front-matter references are unchanged, since `docs/operations/` and `docs/tools/` are the same relative depth under `docs/`.
+
+Since this cutover empties `docs/tools/` of its last live file, the now-vacuous pre-cutover-anchor bullet is removed from `docs/DOCUMENTATION_MODEL.md`'s "Pre-cutover current placement anchors" list, `docs/smoke/README.md`'s placement-rule sentence, and `docs/README.md`'s "Placement rules" list, matching the established Cutover 1C-38 `docs/mvp/` anchor-removal precedent (that anchor was silently dropped from the same three kinds of prose once `docs/mvp/` was fully retired, and no residual mention remains anywhere in the current tree). `scripts/relaylm_documentation_current_boundary_smoke.py`'s required-anchor tuples for those two files are updated in the same commit to match, and a new `assert_no_docs_tools_tree()` function (mirroring `assert_no_mvp_tree()`) is added and called from `main()` so a reintroduced `docs/tools/` tree fails closed independently of the semantic-audit guard below.
+
+A new fail-closed guard pair was added to `scripts/relaylm_docs_semantic_audit.py`: `check_no_live_showcase_fixture_retired_paths()` and `check_showcase_fixture_family_types()`. **Correction (Codex review round 1).** The guard was originally written following the Cutover 1C-43 smoke-maintenance pattern (Markdown links + front matter only for `.md`/`.txt` referrers), which repeats the exact prose/backtick literal gap the Cutover 1C-44 correction round already fixed for the O1 guard: a plain-prose or backtick-quoted retired-path mention in a `.md`/`.txt` file was silently accepted, and the shared `_mobile_dogfood_scanned_files()` scan universe excludes `docs/**/*.txt`. The guard was rewritten to follow the CORRECTED Cutover 1C-45 OpenWebUI guard pattern instead -- the most recently corrected precedent -- covering, for every `.md`/`.txt` referrer: Markdown links, HTML `href`/`src` attributes, Markdown reference-style link definitions, bare repository-root-qualified literal mentions (plain prose or backtick-quoted), bounded prose path tokens ending in a retired basename, and path-bearing front-matter values, each line reported at most once. A guard-local `_showcase_fixture_scanned_files()` helper extends the shared scan universe with `docs/**/*.txt`, matching the Cutover 1C-44/1C-45 `.txt`-coverage fix, without widening the shared constant the other guards reuse. No canonical-path scan bypass; exact stripped-line allowlist equality, not substring containment. Both checks reuse the existing shared resolution helpers (`_mobile_dogfood_resolve`, `_mobile_dogfood_front_matter_path_values`, `_mobile_dogfood_locate`, `MOBILE_DOGFOOD_MD_LINK_RE`, `MOBILE_DOGFOOD_EXTERNAL_SCHEMES`) rather than pasting a further bespoke copy of the resolution machinery. Allowlists: the migration receipt (whole-file, established precedent, since this entry and the historical C1C42 entry both narrate the retired path by design), the one exact `documentation-cutover-rules.yaml` path_overrides key line (exact stripped-line equality), and this guard's own implementation file restricted to its `SHOWCASE_FIXTURE_RETIRED_TO_CANONICAL` dict-key entry (exact-line, not whole-file). Both new checks are registered directly in `DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS`, not merely self-tested, per the C1C45 correction round's binding lesson that self-test-only coverage without production registration fails open.
+
+Twenty-one new deterministic `--self-test` assertions cover both new checks, bringing `relaylm_docs_semantic_audit.py --self-test` to **252 total assertions** (up from 231): the real repository having zero active references; the retired file being reintroduced; a root-qualified Markdown link; a front-matter `relaylm_related_authority` entry; an unrelated same-basename file in a different directory remaining accepted (no false positive); duplicate references on one line producing exactly one diagnostic; a plain-prose mention; a backtick-quoted mention; a bounded same-directory prose path token; a frozen/historical document's unallowlisted mention (no generic status bypass); a retired-path literal inside a `docs/**/*.txt` file (proving the guard-local scan-universe extension actually runs); a link to the canonical path being accepted while the retired path in the same file is rejected (proving resolved-basename matching, not a global substring ban); a `documentation-cutover-rules.yaml` line with extra trailing text beyond the allowlisted key being rejected (exact-line, not substring); the real canonical document passing the family-type check; the retired `runbook` doc type being rejected; the wrong `relaylm_status` being rejected; the correct `operations`/`current` profile being accepted; both guards' production-tuple registration; and the production tuple actually rejecting a reintroduced retired source and incorrect canonical metadata when exercised through it, not merely through the direct helper calls.
+
+**Correction (Codex review round 1, continued).** The same review also found: (1) the open-PR isolation accounting incorrectly claimed zero shared-file overlap when `#586` and this batch both touch `docs/README.md` in disjoint sections -- corrected above and in the PR body using the established Cutover 1C-44 `"586 touches docs/README.md, disjoint sections; nothing imported"` wording; (2) the C1C45 entry's original "PR remains open and unmerged; `merged_commit` remains pending" sentence was left uncorrected as live-sounding prose immediately preceding this batch's own C1C45 finalization paragraph -- rewritten above as an explicit historical initial-state observation, cross-referencing the finalization paragraph that supersedes it. No content-selection, disposition, or type-classification defect was found; the review confirmed the cutover direction, `operations`/`current` profile, and narrow body-move scope are sound. `validated_content_head`, receipt bookkeeping, and finalization are restarted from this corrected head.
+
+Open-PR isolation: the four currently open PRs (`#614`, `#586`, `#578`, `#567`) were independently re-enumerated and their changed files inspected. `#614` (draft, CTX-OVL contract) touches only `docs/contracts/**`, `docs/contracts/README.md`, `docs/contracts/schemas/ctx-ovl-v1/**`, `docs/contracts/fixtures/ctx-ovl-v1/**`, `scripts/relaylm_ctx_ovl_v1_*.py`, and `.github/workflows/documentation-current-boundary-smoke.yml`. `#586` touches `docs/README.md` (five disjoint hunks near lines 21-27, 31-37, 135-142, and 146-165 of its own base -- the "Start here" release-readiness link, an "Active proposals" index addition, a Wave 5/Wave 4 completion-report link-path catch-up, and a docs-horizontal-status-sweep link addition -- independently confirmed via `pull_request_read get_files`' patch for `docs/README.md`, whose 11 additions/9 deletions match the printed hunks exactly), `docs/proposals/**`, and `docs/evidence/implementation/**`. `#578` (draft experiment, do-not-merge) touches only `experiments/markdown_sqlite_memory/**` and its own workflow. `#567` touches only `docs/proposals/repository-simplification.md`. None of the four touches `docs/tools/**`, `docs/operations/**`, `docs/DOCUMENTATION_MODEL.md`, `docs/smoke/README.md`, `docs/planning/documentation-cutover-rules.yaml`, `scripts/relaylm_docs_semantic_audit.py`, `scripts/relaylm_documentation_current_boundary_smoke.py`, or `scripts/relaylm_showcase_fixture_gate_smoke.py`. The one shared file (`docs/README.md`, touched by `#586`) is a disjoint-section overlap only: this batch's two `docs/README.md` edits are the "Offline tooling and runbooks" section's ReLM Showcase link (line ~172) and the "Placement rules" list (line ~196-205), both well below every hunk `#586` touches; zero content was imported, rebased, or partially copied from any open PR. `#614`'s workflow-file edit was independently reviewed and confirmed to touch only its own three new CTX-OVL scripts, entirely separate from this batch's `docs/tools/` retirement.
+
+As part of this batch's receipt bookkeeping, the immediately prior Cutover 1C-45 entry's `merged_commit` is finalized from `pending` to `09bbdb1ecc0b25b89cfc9680849eb52c1399de09`, independently proven by current `main` (see the finalization paragraph appended to the C1C45 entry above); this is bookkeeping only and does not alter the accepted C1C45 evidence migration.
+
+No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/mvp/` and `docs/tools/` are both fully absent. No compatibility path, redirect, alias, symlink, fallback lookup, duplicate live copy, or old-path manifest was added. No open-PR content was imported, rebased, or partially copied. `merged_commit` for the C1C46 record itself remains `pending` -- this task does not merge the PR.
+
+**Superseded validated-content-head observation (pre-correction).** `cutover_pr: 615` (`rinsakamo/relay-lm#615`). `9166c3e9d59912d2b9833c8d803bd336d43922d9` -- this batch's original substantive commit, before the Codex review round 1 correction -- was recorded as `validated_content_head`: all 27 triggered check runs, independently confirmed via `get_check_runs`, completed with 19 successes, 8 skips (the always-skipped RelayMEM/UI/runtime matrix jobs unaffected by a documentation-only change, matching the established pattern in prior entries), and 0 failures. `get_reviews`, `get_comments`, and `get_review_comments` independently confirmed 0 reviews, 0 top-level PR comments, and 0 unresolved review threads at that head. `pull_request_read get` confirmed `mergeable_state: clean` and a PR-level diff of 9 changed files, +554/-13 at that head. The receipt-only bookkeeping commit `5c12239` recorded this observation; both `9166c3e` and `5c12239` are now superseded per `prior_validated_content_head_superseded` above, since the Codex review found substantive defects (guard coverage gap, open-PR accounting error, stale C1C45 sentence) requiring correction before finalization. `validated_content_head`, `receipt_bookkeeping_commit`, and `receipt_finalization` are reset to `pending` above, to be recorded fresh from the corrected head.
+
+**Validated-content-head observation (post-correction).** `924bf16534a22e8702f00fdf049a014986565b2f` -- the correction commit that rewrote the retired-path guard to the corrected Cutover 1C-45 OpenWebUI pattern, fixed the open-PR shared-file accounting, and rewrote the stale C1C45 sentence -- is recorded above as `validated_content_head`: all 27 triggered check runs, independently confirmed via `get_check_runs`, completed with the identical 19 successes, 8 skips, 0 failures as the pre-correction head (a documentation/tooling-only change does not alter which jobs run). `get_reviews` confirms exactly 1 review (`rinsakamo`, `COMMENTED`, submitted against `9166c3e` -- the correction this batch performed), `get_comments` confirms 0 top-level PR comments, and `get_review_comments` confirms 0 unresolved review threads: both review threads (`PRRT_kwDOSh2R-s6SKtks` on the guard, `PRRT_kwDOSh2R-s6SKtkw` on the receipt) were independently resolved via `pull_request_review_write` after the corrections were pushed. `pull_request_read get` confirms `mergeable_state: clean` and a PR-level diff of 9 changed files, +858/-14 at this head (three commits total: the original substantive commit, the superseded bookkeeping commit, and this correction commit). `final_pr_changed_files`/`final_pr_net_diff`/`receipt_bookkeeping_commit`/`receipt_finalization` remain `pending`, to be recorded by the receipt-only bookkeeping and finalization commits that follow.
+
+**Receipt bookkeeping and finalization.** `81a7195f8433743130bb9a9116196265bd0896b9` -- the receipt-only commit that recorded the post-correction `validated_content_head` observation above -- is recorded as `receipt_bookkeeping_commit`. Independently reverified via `get_check_runs`: all 27 triggered check runs at this exact head completed with the same 19 successes, 8 skips, 0 failures. A second review was submitted by `rinsakamo` directly against this exact head (`commit_id: 81a7195f8433743130bb9a9116196265bd0896b9`), independently confirming via `get_reviews` that all three Codex-review-round-1 findings are substantively resolved -- the retired-path guard covers Markdown/text prose and backticks, adds guard-local `docs/**/*.txt` coverage, preserves exact allowlists, deduplicates line diagnostics, and remains registered in the production audit tuple; the PR body and receipt record the `docs/README.md`/`#586` overlap factually as disjoint; and the C1C45 open/unmerged wording is explicitly historical -- with no new substantive defect found, while explicitly naming this head as the bookkeeping head rather than the final receipt head. `review_count: 2` at this head (both `COMMENTED`, the first at `9166c3e` finding the three defects this batch corrected, the second at `81a7195` confirming the correction); `get_comments` confirms 0 top-level PR comments; `get_review_comments` confirms 0 unresolved review threads (both prior threads independently resolved). `pull_request_read get` confirms `mergeable_state: clean` and a PR-level diff of 9 changed files, +880/-14 at this head. This present commit -- the one containing this paragraph -- is the receipt-finalization commit: it adds the `receipt_bookkeeping_github_observation` block and resolves `final_pr_changed_files`/`final_pr_net_diff`/`receipt_finalization` above at the exact post-edit total, independently confirmed via `git diff origin/main --numstat`: **9 changed files, +906/-14** (the pre-edit `81a7195` total of +880/-14 plus this finalization commit's own net +26 lines, converged by direct measurement after staging -- including a second iteration after this converging paragraph's own text added two more lines -- rather than predicted in advance, matching the established C1C41/C1C42/C1C43 convergence method). `receipt_finalization: performed_after_validated_content_head`. `merged_commit` for the C1C46 record remains `pending` -- this task does not merge the PR, which remains **draft and unmerged**, left for final independent review and merge per the working-role convention.

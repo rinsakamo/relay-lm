@@ -1,12 +1,12 @@
 ---
-relaylm_doc_type: runbook
+relaylm_doc_type: operations
 relaylm_authority: relm_showcase_fixture_template
 relaylm_status: current
 relaylm_volatility: medium
 relaylm_owner: offline_tooling
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../operations/twin-extraction-prompts.md
+  - twin-extraction-prompts.md
   - ../architecture/cw_a5_character_creation_templates_showcase_import.md
   - ../architecture/character_template_creation_flow.md
 relaylm_not_authoritative_for:

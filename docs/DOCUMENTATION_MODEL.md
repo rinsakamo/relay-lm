@@ -258,7 +258,6 @@ If multiple primary authorities remain after this test, split the document.
 Until the hard cutover begins, existing path-bound CI continues to interpret these current placements:
 
 - manual smoke, troubleshooting, and local behavior validation docs -> `docs/smoke/`
-- offline tooling specifications and runbooks -> `docs/tools/`
 - evaluation templates and run records -> `docs/evaluation/`
 
 These are temporary current-path anchors, not target placement rules. Each move updates the corresponding audit and workflow in the same PR. Evaluation templates remain non-authoritative starting points; blank templates are not measured evidence.
