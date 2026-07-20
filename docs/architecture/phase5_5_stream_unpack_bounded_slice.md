@@ -101,7 +101,7 @@ Implemented:
 - default-off/dry-run-only config fields,
 - direct smoke and dedicated CI workflow.
 
-See [Phase 5.5-A Stream Sentinel Buffer Dry-Run Handoff](phase55a_stream_sentinel_buffer_dry_run_handoff.md).
+See [Phase 5.5-A Stream Sentinel Buffer Dry-Run Evidence](../evidence/implementation/phase55a-stream-sentinel-buffer-dry-run-handoff.md).
 
 ### Phase 5.5-B1: stream suppression gate helper — complete
 

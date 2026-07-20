@@ -1,17 +1,32 @@
 ---
-relaylm_doc_type: implementation_handoff
-relaylm_authority: bounded_slice_record
-relaylm_status: historical_after_merge
-relaylm_volatility: frozen
-relaylm_owner: implementation
-relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_doc_type: evidence
+relaylm_authority: phase55a_stream_sentinel_buffer_dry_run_implementation_evidence
+relaylm_status: frozen
+relaylm_volatility: low
+relaylm_owner: documentation
+relaylm_update_trigger:
+  - metadata or link repair only
 relaylm_not_authoritative_for:
-  - canonical architecture
+  - current runtime behavior
+  - canonical Stream Unpack architecture
   - future Stream Unpack apply behavior
   - TTS execution
   - RelaySOUL persistence
+  - implementation sequencing
+relaylm_current_status_source: ../../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../../architecture/phase5_5_stream_unpack_bounded_slice.md
+relaylm_source_commit: c0135a9547ef2eda6d58bf87a274cc009239b8aa
+relaylm_source_pr: 311
+relaylm_recorded_on: 2026-06-20
+relaylm_source_blob: 95481903cd5cb43bc2444a8647fd44b919f7d9e7
+relaylm_source_content_sha256: d46295251db3365fef805056a192278674ec09b043ace4bfec672b0dcedf8a5b
+relaylm_pre_cutover_blob: 95481903cd5cb43bc2444a8647fd44b919f7d9e7
+relaylm_pre_cutover_content_sha256: d46295251db3365fef805056a192278674ec09b043ace4bfec672b0dcedf8a5b
 ---
-# Phase 5.5-A Stream Sentinel Buffer Dry-Run Handoff
+# Phase 5.5-A Stream Sentinel Buffer Dry-Run Evidence
+
+This frozen record preserves the bounded implementation handoff merged by PR #311 on 2026-06-20. The statements below describe that source-time Phase 5.5-A slice; current Stream Unpack architecture and runtime status remain owned by [Phase 5.5 Stream Unpack Bounded Slice](../../architecture/phase5_5_stream_unpack_bounded_slice.md), [Project Status](../../PROJECT_STATUS.md), and the implementation.
 
 ## Summary
 
