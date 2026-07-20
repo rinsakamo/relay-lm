@@ -451,6 +451,21 @@ path_overrides:
       docs/tools/ is fully retired by this cutover: it held no other live
       file.
 
+  docs/architecture/phase55a_stream_sentinel_buffer_dry_run_handoff.md:
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_paths:
+      - docs/evidence/implementation/phase55a-stream-sentinel-buffer-dry-run-handoff.md
+    deletion_reason: >-
+      Cutover 1C-47: this completed Phase 5.5-A implementation handoff was
+      mislocated in the live architecture collection with the legacy
+      implementation_handoff / historical_after_merge profile. PR #616 moved
+      it to frozen implementation evidence, normalized the metadata to
+      evidence / frozen, preserved source and pre-cutover provenance, repaired
+      the parent architecture and evidence-index links, and retained current
+      Stream Unpack authority in
+      docs/architecture/phase5_5_stream_unpack_bounded_slice.md.
+
 family_rules:
   - id: canonical-target-collections
     path_regex: '^docs/(planning|reference|templates)/'
