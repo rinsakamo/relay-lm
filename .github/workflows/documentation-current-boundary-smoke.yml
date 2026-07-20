@@ -11,12 +11,17 @@ on:
       - "docs/**"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
       - "scripts/relaylm_docs_semantic_audit.py"
+      - "scripts/relaylm_contract1_v7_validate.py"
+      - "scripts/relaylm_contract1_v7_equivalence.py"
+      - "scripts/relaylm_contract1_v7_regression_guard.py"
+      - "scripts/relaylm_contract1_v7_fixture_registry_guard.py"
       - "scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py"
       - "scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py"
       - "scripts/relaylm_pipeline_node_result_contract_smoke.py"
       - "scripts/relaylm_audit_projection_contract_smoke.py"
       - "scripts/relaylm_audit_projection_exact_contract_smoke.py"
       - ".github/workflows/documentation-current-boundary-smoke.yml"
+      - "pyproject.toml"
   push:
     branches:
       - main
@@ -28,12 +33,17 @@ on:
       - "docs/**"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
       - "scripts/relaylm_docs_semantic_audit.py"
+      - "scripts/relaylm_contract1_v7_validate.py"
+      - "scripts/relaylm_contract1_v7_equivalence.py"
+      - "scripts/relaylm_contract1_v7_regression_guard.py"
+      - "scripts/relaylm_contract1_v7_fixture_registry_guard.py"
       - "scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py"
       - "scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py"
       - "scripts/relaylm_pipeline_node_result_contract_smoke.py"
       - "scripts/relaylm_audit_projection_contract_smoke.py"
       - "scripts/relaylm_audit_projection_exact_contract_smoke.py"
       - ".github/workflows/documentation-current-boundary-smoke.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read
@@ -48,12 +58,16 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install semantic audit and contract-smoke dependencies
-        run: python -m pip install -e .
+        run: python -m pip install -e ".[test]"
       - name: Compile documentation validation scripts
         run: |
           python -m compileall -q \
             scripts/relaylm_documentation_current_boundary_smoke.py \
             scripts/relaylm_docs_semantic_audit.py \
+            scripts/relaylm_contract1_v7_validate.py \
+            scripts/relaylm_contract1_v7_equivalence.py \
+            scripts/relaylm_contract1_v7_regression_guard.py \
+            scripts/relaylm_contract1_v7_fixture_registry_guard.py \
             scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py \
             scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py \
             scripts/relaylm_pipeline_node_result_contract_smoke.py \
@@ -68,6 +82,18 @@ jobs:
           semantic_self_test_status=${PIPESTATUS[0]}
           python scripts/relaylm_documentation_current_boundary_smoke.py 2>&1 | tee -a documentation-current-boundary.log
           boundary_status=${PIPESTATUS[0]}
+          python scripts/relaylm_contract1_v7_validate.py 2>&1 | tee -a documentation-current-boundary.log
+          contract1_validation_status=${PIPESTATUS[0]}
+          python scripts/relaylm_contract1_v7_equivalence.py 2>&1 | tee -a documentation-current-boundary.log
+          contract1_equivalence_status=${PIPESTATUS[0]}
+          python scripts/relaylm_contract1_v7_regression_guard.py 2>&1 | tee -a documentation-current-boundary.log
+          contract1_regression_status=${PIPESTATUS[0]}
+          python scripts/relaylm_contract1_v7_regression_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
+          contract1_regression_self_test_status=${PIPESTATUS[0]}
+          python scripts/relaylm_contract1_v7_fixture_registry_guard.py 2>&1 | tee -a documentation-current-boundary.log
+          contract1_fixture_registry_status=${PIPESTATUS[0]}
+          python scripts/relaylm_contract1_v7_fixture_registry_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
+          contract1_fixture_registry_self_test_status=${PIPESTATUS[0]}
           python scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py 2>&1 | tee -a documentation-current-boundary.log
           relayctx_contract_status=${PIPESTATUS[0]}
           python scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py 2>&1 | tee -a documentation-current-boundary.log
@@ -78,7 +104,7 @@ jobs:
           audit_projection_contract_status=${PIPESTATUS[0]}
           python scripts/relaylm_audit_projection_exact_contract_smoke.py 2>&1 | tee -a documentation-current-boundary.log
           audit_projection_exact_contract_status=${PIPESTATUS[0]}
-          if [ "$semantic_status" -ne 0 ] || [ "$semantic_self_test_status" -ne 0 ] || [ "$boundary_status" -ne 0 ] || [ "$relayctx_contract_status" -ne 0 ] || [ "$relayint_contract_status" -ne 0 ] || [ "$pipeline_node_result_contract_status" -ne 0 ] || [ "$audit_projection_contract_status" -ne 0 ] || [ "$audit_projection_exact_contract_status" -ne 0 ]; then
+          if [ "$semantic_status" -ne 0 ] || [ "$semantic_self_test_status" -ne 0 ] || [ "$boundary_status" -ne 0 ] || [ "$contract1_validation_status" -ne 0 ] || [ "$contract1_equivalence_status" -ne 0 ] || [ "$contract1_regression_status" -ne 0 ] || [ "$contract1_regression_self_test_status" -ne 0 ] || [ "$contract1_fixture_registry_status" -ne 0 ] || [ "$contract1_fixture_registry_self_test_status" -ne 0 ] || [ "$relayctx_contract_status" -ne 0 ] || [ "$relayint_contract_status" -ne 0 ] || [ "$pipeline_node_result_contract_status" -ne 0 ] || [ "$audit_projection_contract_status" -ne 0 ] || [ "$audit_projection_exact_contract_status" -ne 0 ]; then
             exit 1
           fi
       - name: Upload documentation boundary diagnostics
