@@ -188,7 +188,6 @@ REQUIRED = {
         "`evaluation_record`",
         "`evaluation_consolidation`",
         "manual smoke, troubleshooting, and local behavior validation docs -> `docs/smoke/`",
-        "offline tooling specifications and runbooks -> `docs/tools/`",
         "evaluation templates and run records -> `docs/evaluation/`",
         "blank templates are not measured evidence",
     ),
@@ -196,7 +195,6 @@ REQUIRED = {
         "O1 manual one-round operations runbook",
         "lower-level compatibility/manual validation for one O1D1-style round; not O2/O3 service operation.",
         "Indexed here only as a cross-collection pointer, not owned content.",
-        "offline tooling docs under `docs/tools/`",
         "evaluation templates or run records under `docs/evaluation/`",
     ),
     "docs/operations/o1-manual-one-round.md": (
@@ -707,6 +705,13 @@ def assert_no_mvp_tree() -> None:
     )
 
 
+def assert_no_docs_tools_tree() -> None:
+    assert not (ROOT / "docs" / "tools").exists(), (
+        "retired docs/tools/ tree reintroduced (retired by Cutover 1C-46; its "
+        "last occupant moved to docs/operations/relm-showcase-fixture-authoring.md)"
+    )
+
+
 def assert_no_lat1_scaffold() -> None:
     assert not (ROOT / "docs" / "evaluation" / "lat1_retrieval_scaling_report.md").exists(), (
         "retired docs/evaluation/lat1_retrieval_scaling_report.md reintroduced "
@@ -717,6 +722,7 @@ def assert_no_lat1_scaffold() -> None:
 
 def main() -> None:
     assert_no_mvp_tree()
+    assert_no_docs_tools_tree()
     assert_no_lat1_scaffold()
     for path, anchors in REQUIRED.items():
         require(path, anchors)

@@ -2,9 +2,9 @@
 """Validate the ReLM showcase fixture template public gate.
 
 This smoke intentionally validates the authored public sample fixture in
-``docs/tools/relm_showcase_fixture_template.md`` without importing RelayLM
-runtime code. The fixture is synthetic/showcase-only and must remain separate
-from private Twin Extraction evidence paths.
+``docs/operations/relm-showcase-fixture-authoring.md`` without importing
+RelayLM runtime code. The fixture is synthetic/showcase-only and must remain
+separate from private Twin Extraction evidence paths.
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-DOC_PATH = ROOT / "docs" / "tools" / "relm_showcase_fixture_template.md"
+DOC_PATH = ROOT / "docs" / "operations" / "relm-showcase-fixture-authoring.md"
 
 ENTRY_ID_RE = re.compile(r"^relm_fx_[0-9]{4}$")
 REQUIRED_ENTRY_KEYS = {

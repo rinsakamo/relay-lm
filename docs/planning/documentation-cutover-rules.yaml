@@ -432,6 +432,24 @@ path_overrides:
     target_doc_type: evidence
     target_paths:
       - docs/evidence/evaluations/openwebui-lmstudio-manual-smoke-2026-05-26.md
+  docs/tools/relm_showcase_fixture_template.md:
+    disposition: moved
+    target_doc_type: operations
+    target_paths:
+      - docs/operations/relm-showcase-fixture-authoring.md
+    deletion_reason: >-
+      Cutover 1C-46: this source was a legacy runbook-typed document under
+      docs/tools/, the last remaining occupant of that existing-only
+      pre-cutover collection. Moved and retyped to the canonical operations
+      profile (relaylm_doc_type corrected from runbook to operations;
+      relaylm_status remains current) per docs/DOCUMENTATION_MODEL.md's
+      doc-type mapping table (runbook -> operations) and the Cutover
+      1C-41/1C-42/1C-43/1C-44 docs/tools|docs/smoke -> docs/operations
+      precedent; body content preserved byte-exactly except for front
+      matter and the one same-directory relative-link repair
+      (../operations/twin-extraction-prompts.md -> twin-extraction-prompts.md).
+      docs/tools/ is fully retired by this cutover: it held no other live
+      file.
 
 family_rules:
   - id: canonical-target-collections
