@@ -139,8 +139,7 @@ sending bytes to the client. Because of this, LAT-1 cannot observe "first
 token sent" or "stream fully drained" without either delaying the response
 (a behavior change) or wrapping the stream generator and reporting the
 result in a second, later trace event (out of scope for this
-measurement-only slice; see `docs/architecture/phase55b1_stream_suppression_gate_handoff.md`
-for the existing ASGI-level "response fully sent" pattern this might reuse).
+measurement-only slice).
 
 **LAT-2 does exactly that, as a separate trace.** See
 [LAT-2 Mobile Perceived Latency](lat2_mobile_perceived_latency.md) for

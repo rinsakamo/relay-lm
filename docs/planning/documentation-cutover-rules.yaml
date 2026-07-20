@@ -466,6 +466,19 @@ path_overrides:
       Stream Unpack authority in
       docs/architecture/phase5_5_stream_unpack_bounded_slice.md.
 
+  docs/architecture/phase55b1_stream_suppression_gate_handoff.md:
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_paths:
+      - docs/evidence/implementation/phase55b1-stream-suppression-gate-handoff.md
+    deletion_reason: >-
+      Cutover 1C-48: the completed Phase 5.5-B1 direct-helper suppression-gate
+      handoff was a frozen bounded-slice record mislocated in the live architecture
+      collection. PR #619 moves it to frozen implementation evidence,
+      preserves PR #312 provenance, repairs the Phase 5.5 parent index, removes
+      stale and incorrect LAT-1/LAT-2 references, and leaves current request-runtime
+      suppression authority with the B2 handoff and implementation.
+
 family_rules:
   - id: canonical-target-collections
     path_regex: '^docs/(planning|reference|templates)/'
