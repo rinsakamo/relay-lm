@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=8", "respx>=0.21"]
+test = ["pytest>=8", "respx>=0.21", "jsonschema>=4.23"]
 dev = ["relay-lm[test]"]
 
 [project.scripts]

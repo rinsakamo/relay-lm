@@ -55,6 +55,24 @@ Current compile behavior has two implemented surfaces:
 
 Proposed runtime-compile v1 plan/result/decision projections, route-authority typing, forwarded-payload-source typing, managed fallback, and complete `BLOCKED` behavior remain target forms. Client-instruction lookup validation, content-free cache-hit projection diagnostics, trusted runtime-private typed-parse validation, and the default-off/dry-run-first C5b/C5c cache-writer path are implemented. Backend-response parsing, arbitrary frontend-metadata trust, semantic RelaySCN projection apply, and parser-versioned lookup/write compatibility are not implemented. The diagnostics-only recovery-response artifact is implemented, but generator execution and visible recovery output are not.
 
+## Governed evidence contracts
+
+- [Governed Evidence Contract Family](governed-evidence-contract-family.md) defines shared identity, authority primitives, terminology, and cross-contract invariants.
+- [Governed Source Capture and Admission](governed-source-capture-admission.md) owns source capture, immutable `SourceEvent`, admission, quarantine review, replay resolution, and validation-bundle binding.
+- [Evidence Governance and Access](evidence-governance-access.md) owns retention, grants and authorizations, review access, restriction, redaction, purge, export eligibility, and replication eligibility.
+- [Source Metadata, Lineage, and Derived Artifacts](source-metadata-lineage-derived-artifacts.md) owns effective metadata revisions, lineage, and derived-artifact lifecycle.
+- [Evidence Streams, Coverage, and Authority-Change Feed](evidence-streams-change-feed.md) owns capture sequencing, terminal coverage, privacy partitions, and authority-change projections.
+- [Assistant-Response Evidence Binding](assistant-response-evidence-binding.md) owns pre-emission reservation, canonical output binding, response finalization, delivery observations, and recovery.
+
+These six documents are exact normative **target** contracts. They do not claim that the corresponding runtime, storage, migration, or deployment behavior is implemented.
+
+Machine-readable Contract 1 v7 materials:
+
+- [schema catalog](schemas/contract1-v7/schema-catalog.json) and [Draft 2020-12 bundle](schemas/contract1-v7/relaylm-contract1-v7.bundle.schema.json);
+- [valid fixtures](fixtures/contract1-v7/valid/) and [invalid fixtures](fixtures/contract1-v7/invalid/);
+- [schema and lifecycle validator](../../scripts/relaylm_contract1_v7_validate.py);
+- [prose/schema equivalence validator](../../scripts/relaylm_contract1_v7_equivalence.py).
+
 ## RelaySOUL contracts
 
 - [RelaySOUL patch candidate contract](relaysoul_patch_candidate_contract.md)
