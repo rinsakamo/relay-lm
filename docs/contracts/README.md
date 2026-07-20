@@ -73,6 +73,21 @@ Machine-readable Contract 1 v7 materials:
 - [schema and lifecycle validator](../../scripts/relaylm_contract1_v7_validate.py);
 - [prose/schema equivalence validator](../../scripts/relaylm_contract1_v7_equivalence.py).
 
+## RelayCTX Session Evidence Overlay contract
+
+- [RelayCTX Session Evidence Overlay (CTX-OVL) contract](relayctx-session-evidence-overlay.md)
+  - target contract only; owns CTX-OVL admission/update/removal, bounded catch-up from governed evidence on a later admitted request, shared-scene/participant/relationship/quarantine partitioning, scene/partition epoch fencing, unknown-participant non-shadowing, rebuildability/restart behavior, the context-compiler read interface, and the bounded content-free Reflex Snapshot RelayATN may read
+  - consumes, but does not own or advance, Contract 1D source/change coverage and Contract 1B authorization watermarks
+  - does not define Shared Assessment, Subjective MEM, storage authority, RelaySLP, or RelayATN's own architecture
+
+Machine-readable CTX-OVL v1 materials:
+
+- [compact single-file Draft 2020-12 schema bundle](schemas/ctx-ovl-v1/relaylm-ctx-ovl-v1.schema.json) and [direct-reference catalog](schemas/ctx-ovl-v1/schema-catalog.json);
+- [valid fixtures](fixtures/ctx-ovl-v1/valid/) and [invalid fixtures](fixtures/ctx-ovl-v1/invalid/);
+- [schema and cross-record invariant validator](../../scripts/relaylm_ctx_ovl_v1_validate.py);
+- [prose/schema equivalence and coverage validator](../../scripts/relaylm_ctx_ovl_v1_equivalence.py);
+- [invalid-fixture registry guard](../../scripts/relaylm_ctx_ovl_v1_fixture_registry_guard.py).
+
 ## RelaySOUL contracts
 
 - [RelaySOUL patch candidate contract](relaysoul_patch_candidate_contract.md)
