@@ -4683,7 +4683,7 @@ This correction addresses duplicate accounting-cycle threads `PRRT_kwDOSh2R-s6SC
 ### C1C46-001 — ReLM showcase fixture authoring guide cutover
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 615
 merged_commit: pending
 record_count: 1
 cutover_recorded_on: 2026-07-20
@@ -4805,11 +4805,29 @@ open_pr_isolation:
   shared_file_overlaps: []
   no_content_imported: true
 c1c45_merged_commit_finalized_in_this_batch: 09bbdb1ecc0b25b89cfc9680849eb52c1399de09
-validated_content_head: pending
-validated_content_head_actions: pending
-reviews: pending
-pr_comments: pending
-unresolved_review_threads: pending
+validated_content_head: 9166c3e9d59912d2b9833c8d803bd336d43922d9
+validated_content_head_github_observation:
+  observed_head: 9166c3e9d59912d2b9833c8d803bd336d43922d9
+  phase: validated_content_head
+  base_sha: 2e046607dbf05ce0d2b6e87b66e15537f026e71a
+  check_runs:
+    total: 27
+    success: 19
+    skipped: 8
+    failure: 0
+  review_count: 0
+  top_level_pr_comment_count: 0
+  unresolved_review_thread_count: 0
+  mergeable_state: clean
+  exact_diff:
+    changed_files: 9
+    insertions: 554
+    deletions: 13
+  relaylm_changed_files: 0
+  later_review_comment_activity_does_not_retroactively_mutate_this_observation: true
+reviews: 0
+pr_comments: 0
+unresolved_review_threads: 0
 final_pr_changed_files: pending
 final_pr_net_diff: pending
 receipt_bookkeeping_commit: pending
@@ -4828,4 +4846,6 @@ Open-PR isolation: the four currently open PRs (`#614`, `#586`, `#578`, `#567`) 
 
 As part of this batch's receipt bookkeeping, the immediately prior Cutover 1C-45 entry's `merged_commit` is finalized from `pending` to `09bbdb1ecc0b25b89cfc9680849eb52c1399de09`, independently proven by current `main` (see the finalization paragraph appended to the C1C45 entry above); this is bookkeeping only and does not alter the accepted C1C45 evidence migration.
 
-No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/mvp/` and `docs/tools/` are both fully absent. No compatibility path, redirect, alias, symlink, fallback lookup, duplicate live copy, or old-path manifest was added. No open-PR content was imported, rebased, or partially copied. `cutover_pr`, `validated_content_head`, and the GitHub-observation fields above remain `pending`, to be recorded by the receipt-bookkeeping and receipt-finalization commits that follow, once the PR exists and its checks have run; `merged_commit` for the C1C46 record itself remains `pending` -- this task does not merge the PR.
+No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/mvp/` and `docs/tools/` are both fully absent. No compatibility path, redirect, alias, symlink, fallback lookup, duplicate live copy, or old-path manifest was added. No open-PR content was imported, rebased, or partially copied. `merged_commit` for the C1C46 record itself remains `pending` -- this task does not merge the PR.
+
+**Validated-content-head observation.** `cutover_pr: 615` (`rinsakamo/relay-lm#615`). `9166c3e9d59912d2b9833c8d803bd336d43922d9` -- this batch's single substantive commit -- is recorded above as `validated_content_head`: all 27 triggered check runs, independently confirmed via `get_check_runs`, completed with 19 successes, 8 skips (the always-skipped RelayMEM/UI/runtime matrix jobs unaffected by a documentation-only change, matching the established pattern in prior entries), and 0 failures. `get_reviews`, `get_comments`, and `get_review_comments` independently confirm 0 reviews, 0 top-level PR comments, and 0 unresolved review threads. `pull_request_read get` confirms `mergeable_state: clean` and a PR-level diff of 9 changed files, +554/-13 at this head -- identical to the local `git diff --cached --stat` total recorded during validation, since this is the PR's first and only commit so far. `final_pr_changed_files`/`final_pr_net_diff`/`receipt_bookkeeping_commit`/`receipt_finalization` remain `pending`, to be recorded by the receipt-only bookkeeping and finalization commits that follow.
