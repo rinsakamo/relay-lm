@@ -4832,10 +4832,30 @@ superseded_validated_content_head_github_observation:
   relaylm_changed_files: 0
   later_review_comment_activity_does_not_retroactively_mutate_this_observation: true
 superseded_receipt_bookkeeping_commit: 5c12239
-validated_content_head: pending
-reviews: pending
-pr_comments: pending
-unresolved_review_threads: pending
+validated_content_head: 924bf16534a22e8702f00fdf049a014986565b2f
+validated_content_head_github_observation:
+  observed_head: 924bf16534a22e8702f00fdf049a014986565b2f
+  phase: validated_content_head_after_codex_review_round_1_correction
+  base_sha: 2e046607dbf05ce0d2b6e87b66e15537f026e71a
+  check_runs:
+    total: 27
+    success: 19
+    skipped: 8
+    failure: 0
+  review_count: 1
+  review_disposition: 1_commented_review_addressed_both_threads_resolved
+  top_level_pr_comment_count: 0
+  unresolved_review_thread_count: 0
+  mergeable_state: clean
+  exact_diff:
+    changed_files: 9
+    insertions: 858
+    deletions: 14
+  relaylm_changed_files: 0
+  later_review_comment_activity_does_not_retroactively_mutate_this_observation: true
+reviews: 1
+pr_comments: 0
+unresolved_review_threads: 0
 final_pr_changed_files: pending
 final_pr_net_diff: pending
 receipt_bookkeeping_commit: pending
@@ -4859,3 +4879,5 @@ As part of this batch's receipt bookkeeping, the immediately prior Cutover 1C-45
 No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. `docs/mvp/` and `docs/tools/` are both fully absent. No compatibility path, redirect, alias, symlink, fallback lookup, duplicate live copy, or old-path manifest was added. No open-PR content was imported, rebased, or partially copied. `merged_commit` for the C1C46 record itself remains `pending` -- this task does not merge the PR.
 
 **Superseded validated-content-head observation (pre-correction).** `cutover_pr: 615` (`rinsakamo/relay-lm#615`). `9166c3e9d59912d2b9833c8d803bd336d43922d9` -- this batch's original substantive commit, before the Codex review round 1 correction -- was recorded as `validated_content_head`: all 27 triggered check runs, independently confirmed via `get_check_runs`, completed with 19 successes, 8 skips (the always-skipped RelayMEM/UI/runtime matrix jobs unaffected by a documentation-only change, matching the established pattern in prior entries), and 0 failures. `get_reviews`, `get_comments`, and `get_review_comments` independently confirmed 0 reviews, 0 top-level PR comments, and 0 unresolved review threads at that head. `pull_request_read get` confirmed `mergeable_state: clean` and a PR-level diff of 9 changed files, +554/-13 at that head. The receipt-only bookkeeping commit `5c12239` recorded this observation; both `9166c3e` and `5c12239` are now superseded per `prior_validated_content_head_superseded` above, since the Codex review found substantive defects (guard coverage gap, open-PR accounting error, stale C1C45 sentence) requiring correction before finalization. `validated_content_head`, `receipt_bookkeeping_commit`, and `receipt_finalization` are reset to `pending` above, to be recorded fresh from the corrected head.
+
+**Validated-content-head observation (post-correction).** `924bf16534a22e8702f00fdf049a014986565b2f` -- the correction commit that rewrote the retired-path guard to the corrected Cutover 1C-45 OpenWebUI pattern, fixed the open-PR shared-file accounting, and rewrote the stale C1C45 sentence -- is recorded above as `validated_content_head`: all 27 triggered check runs, independently confirmed via `get_check_runs`, completed with the identical 19 successes, 8 skips, 0 failures as the pre-correction head (a documentation/tooling-only change does not alter which jobs run). `get_reviews` confirms exactly 1 review (`rinsakamo`, `COMMENTED`, submitted against `9166c3e` -- the correction this batch performed), `get_comments` confirms 0 top-level PR comments, and `get_review_comments` confirms 0 unresolved review threads: both review threads (`PRRT_kwDOSh2R-s6SKtks` on the guard, `PRRT_kwDOSh2R-s6SKtkw` on the receipt) were independently resolved via `pull_request_review_write` after the corrections were pushed. `pull_request_read get` confirms `mergeable_state: clean` and a PR-level diff of 9 changed files, +858/-14 at this head (three commits total: the original substantive commit, the superseded bookkeeping commit, and this correction commit). `final_pr_changed_files`/`final_pr_net_diff`/`receipt_bookkeeping_commit`/`receipt_finalization` remain `pending`, to be recorded by the receipt-only bookkeeping and finalization commits that follow.
