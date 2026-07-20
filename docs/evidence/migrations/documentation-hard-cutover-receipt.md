@@ -4907,3 +4907,44 @@ No file under `relaylm/` changed, and no runtime, configuration, schema, schedul
 **Validated-content-head observation (post-correction).** `924bf16534a22e8702f00fdf049a014986565b2f` -- the correction commit that rewrote the retired-path guard to the corrected Cutover 1C-45 OpenWebUI pattern, fixed the open-PR shared-file accounting, and rewrote the stale C1C45 sentence -- is recorded above as `validated_content_head`: all 27 triggered check runs, independently confirmed via `get_check_runs`, completed with the identical 19 successes, 8 skips, 0 failures as the pre-correction head (a documentation/tooling-only change does not alter which jobs run). `get_reviews` confirms exactly 1 review (`rinsakamo`, `COMMENTED`, submitted against `9166c3e` -- the correction this batch performed), `get_comments` confirms 0 top-level PR comments, and `get_review_comments` confirms 0 unresolved review threads: both review threads (`PRRT_kwDOSh2R-s6SKtks` on the guard, `PRRT_kwDOSh2R-s6SKtkw` on the receipt) were independently resolved via `pull_request_review_write` after the corrections were pushed. `pull_request_read get` confirms `mergeable_state: clean` and a PR-level diff of 9 changed files, +858/-14 at this head (three commits total: the original substantive commit, the superseded bookkeeping commit, and this correction commit). `final_pr_changed_files`/`final_pr_net_diff`/`receipt_bookkeeping_commit`/`receipt_finalization` remain `pending`, to be recorded by the receipt-only bookkeeping and finalization commits that follow.
 
 **Receipt bookkeeping and finalization.** `81a7195f8433743130bb9a9116196265bd0896b9` -- the receipt-only commit that recorded the post-correction `validated_content_head` observation above -- is recorded as `receipt_bookkeeping_commit`. Independently reverified via `get_check_runs`: all 27 triggered check runs at this exact head completed with the same 19 successes, 8 skips, 0 failures. A second review was submitted by `rinsakamo` directly against this exact head (`commit_id: 81a7195f8433743130bb9a9116196265bd0896b9`), independently confirming via `get_reviews` that all three Codex-review-round-1 findings are substantively resolved -- the retired-path guard covers Markdown/text prose and backticks, adds guard-local `docs/**/*.txt` coverage, preserves exact allowlists, deduplicates line diagnostics, and remains registered in the production audit tuple; the PR body and receipt record the `docs/README.md`/`#586` overlap factually as disjoint; and the C1C45 open/unmerged wording is explicitly historical -- with no new substantive defect found, while explicitly naming this head as the bookkeeping head rather than the final receipt head. `review_count: 2` at this head (both `COMMENTED`, the first at `9166c3e` finding the three defects this batch corrected, the second at `81a7195` confirming the correction); `get_comments` confirms 0 top-level PR comments; `get_review_comments` confirms 0 unresolved review threads (both prior threads independently resolved). `pull_request_read get` confirms `mergeable_state: clean` and a PR-level diff of 9 changed files, +880/-14 at this head. This present commit -- the one containing this paragraph -- is the receipt-finalization commit: it adds the `receipt_bookkeeping_github_observation` block and resolves `final_pr_changed_files`/`final_pr_net_diff`/`receipt_finalization` above at the exact post-edit total, independently confirmed via `git diff origin/main --numstat`: **9 changed files, +906/-14** (the pre-edit `81a7195` total of +880/-14 plus this finalization commit's own net +26 lines, converged by direct measurement after staging -- including a second iteration after this converging paragraph's own text added two more lines -- rather than predicted in advance, matching the established C1C41/C1C42/C1C43 convergence method). `receipt_finalization: performed_after_validated_content_head`. `merged_commit` for the C1C46 record remains `pending` -- this task does not merge the PR, which remains **draft and unmerged**, left for final independent review and merge per the working-role convention.
+
+### C1C47-001 — Phase 5.5-A stream sentinel buffer dry-run handoff
+
+```yaml
+cutover_pr: 616
+merged_commit: 341878ad1ff2df281e85e64095a2604bf0dab2f2
+bookkeeping_pr: 618
+base_main: 1ff1b1b9e501b59340c3b909a985edfc6c2a4d32
+head_at_merge: 4b2ae3a5ea347d6479ad13b78ad6b8d6750ddf16
+merged_at: 2026-07-20T15:16:17Z
+old_path: docs/architecture/phase55a_stream_sentinel_buffer_dry_run_handoff.md
+old_blob_sha: 95481903cd5cb43bc2444a8647fd44b919f7d9e7
+old_content_sha256: d46295251db3365fef805056a192278674ec09b043ace4bfec672b0dcedf8a5b
+source_commit: c0135a9547ef2eda6d58bf87a274cc009239b8aa
+source_pr: 311
+recorded_on: 2026-06-20
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/phase55a-stream-sentinel-buffer-dry-run-handoff.md
+local_receipt: docs/evidence/migrations/cutover-1c47-phase55a.md
+verification:
+  old_path_removed: true
+  canonical_evidence_metadata_added: true
+  current_architecture_authority_retained_by: docs/architecture/phase5_5_stream_unpack_bounded_slice.md
+  parent_architecture_link_updated: true
+  implementation_evidence_index_updated: true
+  fail_closed_guard: scripts/relaylm_phase55a_handoff_cutover_guard.py
+  guard_integrated_into_existing_documentation_boundary_workflow: true
+  guard_self_test_assertions_after_bookkeeping: 23
+  final_pr_changed_files: 6
+  final_pr_insertions: 496
+  final_pr_deletions: 10
+  exact_head_workflow_runs: 15
+  exact_head_workflow_success: 15
+  exact_head_workflow_failure: 0
+  unresolved_review_threads: 0
+  runtime_files_changed: 0
+  relaylm_changed_files: 0
+  open_pr_content_imported: false
+```
+
+PR #616 removed the completed handoff from the live architecture collection and preserved it as frozen implementation evidence. The source-time implementation claims remain historical; current Stream Unpack architecture and runtime behavior remain owned by the parent architecture document and implementation. This bookkeeping-only follow-up records the merged state in the central append-only ledger and adds the exact path override without changing the accepted cutover content.

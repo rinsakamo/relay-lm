@@ -41,9 +41,14 @@ EXTERNAL_SCHEMES = {"http", "https", "mailto", "tel", "data"}
 
 REFERENCE_ALLOWLISTED_FILES = {
     "docs/evidence/migrations/cutover-1c47-phase55a.md",
+    "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
 }
 SELF_ALLOWED_LINES = {
     f'RETIRED = "{RETIRED}"',
+}
+EXACT_ALLOWED_LINES_BY_FILE = {
+    "docs/planning/documentation-cutover-rules.yaml": {f"{RETIRED}:"},
+    SELF_PATH: SELF_ALLOWED_LINES,
 }
 
 MD_LINK_RE = re.compile(r"\[[^\]\n]*\]\(([^)\n]+)\)")
@@ -147,7 +152,7 @@ def check_retired_path(errors: list[str], root: Path = ROOT) -> None:
         reported: set[int] = set()
 
         def allowed(line: str) -> bool:
-            return relative == SELF_PATH and line.strip() in SELF_ALLOWED_LINES
+            return line.strip() in EXACT_ALLOWED_LINES_BY_FILE.get(relative, set())
 
         for line_number, line in enumerate(text.splitlines(), 1):
             if allowed(line):
@@ -268,6 +273,33 @@ def self_test() -> None:
             f"source: {RETIRED}\n",
         ),
         None,
+    )
+    run(
+        "central migration ledger may narrate the retired source",
+        lambda root: _write(
+            root,
+            "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
+            f"old_path: {RETIRED}\n",
+        ),
+        None,
+    )
+    run(
+        "exact cutover-rules override key is accepted",
+        lambda root: _write(
+            root,
+            "docs/planning/documentation-cutover-rules.yaml",
+            f"  {RETIRED}:\n",
+        ),
+        None,
+    )
+    run(
+        "cutover-rules near-match is rejected",
+        lambda root: _write(
+            root,
+            "docs/planning/documentation-cutover-rules.yaml",
+            f"  {RETIRED}: trailing\n",
+        ),
+        "literal reference",
     )
     run(
         "retired file is rejected",
