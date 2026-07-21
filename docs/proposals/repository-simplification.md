@@ -9,9 +9,11 @@ relaylm_update_trigger:
   - proposal is accepted, rejected, withdrawn, or materially revised
   - repository inventory or invocation-root evidence changes
   - a cleanup wave is accepted or completed
+  - implementation-debt or roadmap authority changes
   - storage, serialization, or deployment authority changes
 relaylm_not_authoritative_for:
   - current runtime behavior
+  - implementation-debt closure, reprioritization, or roadmap sequencing
   - deletion, movement, rename, consolidation, or compatibility removal
   - storage migration or persistent-write enablement
   - repository-wide serialization conversion
@@ -20,6 +22,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../DOCUMENTATION_MODEL.md
+  - ../architecture/project_execution_plan.md
   - ../adr/0005-subjective-mem-storage-authority.md
   - ../contracts/subjective-mem-storage-authority-and-commit-protocol.md
 ---
@@ -56,6 +59,16 @@ The merged repository and storage inventory tooling from PR #577 is non-destruct
 
 An `unclassified`, unreferenced, or low-fan-in result is a triage signal only. It never proves that an asset is unused or safe to remove.
 
+### Implementation-debt and roadmap authority
+
+`docs/PROJECT_STATUS.md` owns current implementation status and active caveats. `docs/architecture/project_execution_plan.md` owns dependency-first sequencing, the post-v0.1 decision-debt registry, and roadmap ordering.
+
+This proposal may discover, classify, and provide evidence about assets related to registered decision debt or not-yet-implemented capabilities. It does not close, absorb, reprioritize, or implement that debt. PM-D1, PM-D2, PM-D4, PM-D9, and any later registered debt remain governed by the current roadmap authority until a separate decision or implementation PR changes their status.
+
+An asset that supports registered debt, an accepted near-term plan, or a not-yet-implemented capability is `planned_inactive` or otherwise retained according to its actual responsibility. It cannot become a `dead_code_candidate` merely because the current default runtime does not invoke it.
+
+When a cleanup wave overlaps an implementation-debt PR, the roadmap and component authority determine the intended replacement and sequencing. The cleanup evidence may support that PR, but it cannot silently narrow the debt scope or claim closure. Any combined execution must remain an explicitly reviewed atomic PR or coordinated atomic set.
+
 ### Subjective MEM storage authority
 
 ADR 0005 and the Subjective MEM Storage Authority and Commit Protocol Contract settle the target authority split for Subjective MEM:
@@ -73,6 +86,7 @@ This decision does not authorize a production migration and does not automatical
 - classify every retained script by actual responsibility and invocation mode;
 - audit Python modules from all supported invocation roots rather than only the default application graph;
 - distinguish current, opt-in, operator, tooling, validation, planned-inactive, and dead-code-candidate paths;
+- preserve registered implementation debt and accepted roadmap dependencies during classification;
 - identify duplicated validation families without weakening crash, restart, subprocess, concurrency, security, migration, or operator coverage;
 - prepare bounded cleanup waves with exact replacement and caller evidence;
 - use hard cutover only after a specific replacement has been separately accepted;
@@ -84,6 +98,8 @@ This decision does not authorize a production migration and does not automatical
 - treating all Python files under `scripts/` as tests or smoke checks;
 - deleting modules based on static imports from `relaylm/app.py` or another single root;
 - approving any deletion, path move, rename, workflow consolidation, or namespace reorganization in this proposal;
+- closing, absorbing, reprioritizing, or implementing registered decision debt;
+- changing roadmap sequencing or declaring a not-yet-implemented capability obsolete;
 - approving a broad SQLite migration;
 - applying the Subjective MEM storage decision to unrelated storage domains without review;
 - converting every internal value to Pydantic;
@@ -132,6 +148,12 @@ The audit includes at least:
 - current documentation that advertises an operator or offline path.
 
 Dynamic dispatch, subprocess construction, optional imports, and shell invocation are explicit audit limitations rather than silently ignored edges.
+
+### Roadmap authority before cleanup conclusions
+
+Current project status and the execution plan are checked before candidate status is assigned. Registered decision debt, accepted near-term work, and not-yet-implemented capabilities are plan dependencies, not evidence of dead code.
+
+Repository inventory can reveal that a debt item may already be closed, absorbed, or narrower than recorded, but only the owning decision or implementation PR may change the authoritative debt registry or roadmap status.
 
 ### Responsibility before count reduction
 
@@ -225,6 +247,8 @@ candidate_status
 
 A module can become a dead-code candidate only when all supported default, opt-in, operator, tooling, dynamic, subprocess, test, evidence, and near-term-plan roots have been checked.
 
+`current_plan_dependency` must include relevant registered decision debt, accepted roadmap items, and not-yet-implemented capability dependencies. A non-empty dependency blocks `dead_code_candidate` status until the owning authority explicitly removes or replaces that dependency.
+
 Planned inactive code remains distinct from dead code. Test-only code remains distinct from obsolete code when it protects a current invariant.
 
 ### Step 4: prepare bounded candidate waves
@@ -243,6 +267,7 @@ A candidate-wave plan includes:
 - replacement mapping or obsolete-boundary rationale;
 - retained invariant list;
 - affected workflows and operator commands;
+- roadmap and registered-debt dependencies;
 - negative-reference checks;
 - expected validation matrix;
 - state migration, drain, rebuild, or no-state rationale;
@@ -259,6 +284,7 @@ An execution PR must:
 - change only the accepted wave;
 - update all current callers and documentation in the same PR or an explicitly coordinated atomic set;
 - preserve current behavior unless behavior change is separately authorized;
+- preserve or explicitly update every affected roadmap and registered-debt dependency through its owning authority;
 - remove the superseded internal path at the accepted cutover boundary;
 - add negative checks preventing retired references from returning;
 - avoid indefinite aliases, redirects, fallbacks, dual-read, or dual-write paths;
@@ -270,6 +296,8 @@ An execution PR must:
 
 The following remain separate decisions even after this proposal is accepted:
 
+- implementation-debt closure, absorption, or reprioritization;
+- roadmap sequencing changes;
 - production storage migration;
 - scheduler or other non-Subjective-MEM storage authority;
 - subsystem-wide namespace redesign;
@@ -288,6 +316,7 @@ A deletion wave is eligible for separate approval only when:
 - no supported invocation root remains, or every current caller has an accepted replacement;
 - current documentation no longer advertises the old path after the same atomic change;
 - no retained validation requires the asset for a current invariant;
+- no registered decision debt, accepted roadmap item, or not-yet-implemented capability depends on it, or the owning authority accepts the replacement in the same atomic change;
 - no accepted near-term plan depends on it;
 - historical value remains in current evidence or Git history;
 - user-owned durable state is absent or has an accepted migration/backup plan;
@@ -339,6 +368,8 @@ Rejected because unclear ownership and duplicated mechanisms continue to increas
 ## Risks and mitigations
 
 - **Inventory is mistaken for authority.** Keep generated rows non-authoritative and require a separate deletion PR.
+- **Implementation debt is mistaken for cleanup authority.** Keep status and sequencing under `PROJECT_STATUS.md` and `project_execution_plan.md`; require the owning PR to close, absorb, or reprioritize debt.
+- **Planned inactive code is mistaken for dead code.** Record `current_plan_dependency` and block candidate status while an authoritative dependency remains.
 - **An operator path is missed.** Include CLIs, workflows, subprocesses, dynamic roots, and documentation in the invocation audit.
 - **Classification becomes permanent bureaucracy.** Keep one generated source and record only reviewed decisions and summaries.
 - **Test consolidation weakens process-level coverage.** Preserve dedicated crash, restart, security, concurrency, and subprocess suites where responsibility differs.
@@ -355,6 +386,7 @@ Acceptance would authorize only:
 - generation and review of a commit-fixed repository baseline;
 - responsibility classification of scripts, workflows, and modules;
 - invocation-root analysis;
+- identification of registered-debt and roadmap dependencies;
 - preparation of non-executing candidate-wave plans;
 - proposal of separate atomic implementation PRs.
 
@@ -363,6 +395,8 @@ Acceptance would not authorize:
 - deletion, movement, rename, consolidation, or compatibility removal;
 - merging any candidate wave;
 - changing runtime behavior;
+- closing, absorbing, reprioritizing, or implementing registered decision debt;
+- changing roadmap sequencing or declaring a planned capability obsolete;
 - storage migration or persistent-write enablement;
 - deleting or migrating user-owned durable state;
 - applying Subjective MEM storage authority to unrelated domains;
@@ -381,6 +415,8 @@ Before this proposal is accepted or rejected:
 - PR #567's O3 false-positive correction is preserved;
 - proposal acceptance is explicitly insufficient to authorize deletion;
 - documentation cleanup is represented as a parallel, separately governed track rather than a prerequisite;
+- `PROJECT_STATUS.md` and `project_execution_plan.md` remain authoritative for implementation status, decision debt, and roadmap ordering;
+- registered debt and not-yet-implemented capability dependencies block dead-code classification unless their owning authority accepts a replacement;
 - PR #577 inventory is described as evidence, not authority;
 - ADR 0005 is limited to Subjective MEM storage authority;
 - broad SQLite migration remains unauthorized;
