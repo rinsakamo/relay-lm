@@ -16,7 +16,7 @@ relaylm_not_authoritative_for:
   - CTX/MEM/SOUL/SLP persistence
 relaylm_related_authority:
   - phase5_5_stream_unpack_bounded_slice.md
-  - phase55c0_tts_segmentation_helper_handoff.md
+  - ../evidence/implementation/phase55c0-tts-segmentation-helper-handoff.md
   - pipeline_implementation_plan.md
 ---
 # Phase 5.5-C1 TTS Adapter Handoff Contract
