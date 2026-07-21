@@ -55,7 +55,7 @@ Human-readable Markdown workspace files are the target steady-state authority fo
 - durable Subjective MEM grounded content and subjective meaning;
 - stable logical memory identity and immutable revision lineage;
 - user-visible organization;
-- canonical lifecycle-visible state, including active, hidden, restored, pinned, successor, and other contract-owned states;
+- canonical lifecycle-visible state, including active, hidden, pinned, superseded, and other contract-owned states;
 - references needed to reach governed provenance and authorizing decisions.
 
 Memory pages are human-scale documents rather than one physical file per memory revision. Stable logical memory IDs survive page movement, heading changes, and title changes.
