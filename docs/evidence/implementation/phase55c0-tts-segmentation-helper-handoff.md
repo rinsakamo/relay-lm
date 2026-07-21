@@ -1,18 +1,28 @@
 ---
-relaylm_doc_type: implementation_handoff
-relaylm_authority: bounded_slice_record
-relaylm_status: historical_after_merge
+relaylm_doc_type: evidence
+relaylm_authority: historical_phase5_5_c0_tts_segmentation_helper_implementation
+relaylm_status: frozen
 relaylm_volatility: frozen
 relaylm_owner: implementation
-relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_source_commit: e884eca12aa6a035cb2945f033f01f7908f65ac7
+relaylm_source_pr: 314
+relaylm_recorded_on: 2026-06-20
+relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_not_authoritative_for:
   - canonical architecture
-  - future request-runtime SSE wiring
+  - current TTS segmentation helper behavior or diagnostics schema
+  - current request-runtime TTS handoff wiring
   - TTS execution
   - avatar adapter behavior
   - RelaySOUL persistence
+relaylm_related_authority:
+  - ../../architecture/phase5_5_stream_unpack_bounded_slice.md
+  - ../../architecture/phase55c1_tts_adapter_handoff_contract.md
+  - ../../architecture/phase55c2_runtime_tts_adapter_handoff_wiring.md
 ---
 # Phase 5.5-C0 TTS Segmentation Helper Handoff
+
+> **Historical implementation evidence.** This frozen record describes the helper-only C0 boundary merged in PR #314. Current Stream Unpack sequencing and TTS handoff behavior are owned by the Phase 5.5 parent document, the current C1/C2/C3/C4 handoffs, and implementation.
 
 ## Summary
 

@@ -149,7 +149,7 @@ Implemented:
 - internal sentinel blocking,
 - direct smoke coverage.
 
-See [Phase 5.5-C0 TTS Segmentation Helper Handoff](phase55c0_tts_segmentation_helper_handoff.md).
+See [Phase 5.5-C0 TTS Segmentation Helper Evidence](../evidence/implementation/phase55c0-tts-segmentation-helper-handoff.md).
 
 ### Phase 5.5-C1: TTS adapter handoff contract — complete
 

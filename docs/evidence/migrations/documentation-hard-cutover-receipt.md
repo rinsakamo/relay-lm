@@ -4993,3 +4993,48 @@ verification:
 ```
 
 PR #619 preserves the completed B1 helper handoff as frozen implementation evidence. The source-time helper facts remain historical; current Stream Unpack sequencing remains parent-owned and current request-runtime suppression behavior remains B2/code-owned. PR #620 consolidated the same merge attribution in the central audit ledger and local frozen receipt; it changed no accepted cutover content.
+
+### C1C49-001 — Phase 5.5-C0 TTS segmentation helper handoff
+
+```yaml
+cutover_pr: 622
+merged_commit: pending
+bookkeeping_pr: pending
+base_main: 1ca928cd28541f5a05fece30e9437a7fcf267921
+validated_content_head: 7c7fc6097252f6a89131d8020ce62ce6a9f96dac
+head_at_merge: pending
+merged_at: pending
+old_path: docs/architecture/phase55c0_tts_segmentation_helper_handoff.md
+old_blob_sha: df96f459109149f6715ca50caee5949f43b3b4fc
+old_content_sha256: 328d93043b480f987c37ef3426e8d9514aa3b98e1ccb7847a3ffbcaf441fa7fd
+source_commit: e884eca12aa6a035cb2945f033f01f7908f65ac7
+source_pr: 314
+recorded_on: 2026-06-20
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/phase55c0-tts-segmentation-helper-handoff.md
+local_receipt: docs/evidence/migrations/cutover-1c49-phase55c0.md
+verification:
+  old_path_removed: true
+  canonical_evidence_metadata_added: true
+  current_sequence_authority_retained_by: docs/architecture/phase5_5_stream_unpack_bounded_slice.md
+  current_c0_consumer_authority_retained_by: docs/architecture/phase55c1_tts_adapter_handoff_contract.md
+  current_runtime_handoff_authority_retained_by: docs/architecture/phase55c2_runtime_tts_adapter_handoff_wiring.md
+  parent_architecture_link_updated: true
+  c1_related_authority_link_updated: true
+  implementation_evidence_index_updated: true
+  fail_closed_guard: scripts/relaylm_phase55c0_handoff_cutover_guard.py
+  guard_integrated_into_existing_documentation_boundary_workflow: true
+  final_pr_changed_files: 9
+  final_pr_insertions: 585
+  final_pr_deletions: 8
+  exact_head_workflow_runs: 16
+  exact_head_workflow_success: 16
+  exact_head_workflow_failure: 0
+  unresolved_review_threads: 0
+  runtime_files_changed: 0
+  relaylm_changed_files: 0
+  open_pr_content_imported: false
+  open_pr_shared_path_reconciliation: ["#586:preserve C0 implementation-evidence index entry when rebased", "#621:shared documentation-boundary workflow; preserve both C0 guard and Subjective MEM integration during reconciliation"]
+```
+
+PR #622 preserves the completed helper-only C0 handoff as frozen implementation evidence. The source-time helper claims remain historical; current Stream Unpack sequencing, C0 consumption, and runtime TTS handoff behavior remain parent-, C1/C2-, code-owned. `merged_commit` remains pending until explicit final merge and bookkeeping consolidation.
