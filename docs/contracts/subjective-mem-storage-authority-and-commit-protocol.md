@@ -26,7 +26,6 @@ relaylm_related_authority:
   - ../architecture/memory_lifecycle_design.md
   - ../architecture/phase_i4_primary_mem_forget_hide_contract.md
   - ../architecture/phase_i4c1_primary_forget_hidden_successor.md
-  - ../architecture/phase_i4e_primary_restore_apply.md
 ---
 # Subjective MEM Storage Authority and Commit Protocol Contract
 
