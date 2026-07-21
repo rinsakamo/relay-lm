@@ -4998,12 +4998,12 @@ PR #619 preserves the completed B1 helper handoff as frozen implementation evide
 
 ```yaml
 cutover_pr: 622
-merged_commit: pending
-bookkeeping_pr: pending
+merged_commit: b16559dd1f7304db45bb3681a77fe2ff0864c60b
+bookkeeping_pr: 627
 base_main: 1ca928cd28541f5a05fece30e9437a7fcf267921
 validated_content_head: c7682947eea1ce97ed84e9586f4f9c225683be8b
-head_at_merge: pending
-merged_at: pending
+head_at_merge: ca9c2c4fee49cafae8f72172e4e5323f2a3ce56d
+merged_at: 2026-07-21T11:17:51Z
 old_path: docs/architecture/phase55c0_tts_segmentation_helper_handoff.md
 old_blob_sha: df96f459109149f6715ca50caee5949f43b3b4fc
 old_content_sha256: 328d93043b480f987c37ef3426e8d9514aa3b98e1ccb7847a3ffbcaf441fa7fd
@@ -5037,4 +5037,4 @@ verification:
   open_pr_shared_path_reconciliation: ["#586:preserve C0 implementation-evidence index entry when rebased"]
 ```
 
-PR #622 preserves the completed helper-only C0 handoff as frozen implementation evidence. The source-time helper claims remain historical; current Stream Unpack sequencing, C0 consumption, and runtime TTS handoff behavior remain parent-, C1/C2-, code-owned. `merged_commit` remains pending until explicit final merge and bookkeeping consolidation.
+PR #622 preserves the completed helper-only C0 handoff as frozen implementation evidence. The source-time helper claims remain historical; current Stream Unpack sequencing, C0 consumption, and runtime TTS handoff behavior remain parent-, C1/C2-, code-owned. PR #627 consolidates the merge attribution in the central audit ledger and local frozen receipt without changing accepted cutover content.
