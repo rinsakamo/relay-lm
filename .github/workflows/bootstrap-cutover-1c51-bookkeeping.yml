@@ -1,0 +1,68 @@
+name: Bootstrap Cutover 1C-51 bookkeeping
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths:
+      - ".github/workflows/bootstrap-cutover-1c51-bookkeeping.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  finalize-bookkeeping:
+    if: github.head_ref == 'agent/documentation-hard-cutover-1c51-bookkeeping'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Finalize Cutover 1C-51 bookkeeping
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import os
+
+          pr = os.environ["PR_NUMBER"]
+          head = "5ad8b67610f0fad775f7d987d845fb3402ded75b"
+          merged = "61338a97e33b982acffb7ba513861de300db8236"
+          merged_at = "2026-07-21T23:21:42Z"
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one occurrence, got {count}")
+              return text.replace(old, new, 1)
+
+          receipt_path = Path("docs/evidence/migrations/cutover-1c51-phase55b2.md")
+          receipt = receipt_path.read_text(encoding="utf-8")
+          receipt = replace_once(receipt, "- Bookkeeping consolidation PR: pending", f"- Bookkeeping consolidation PR: #{pr}", "receipt bookkeeping PR")
+          receipt = replace_once(receipt, "- Validated content head: pending exact-head validation\n- Merged commit: pending", f"- Final cutover head: `{head}`\n- Merged commit: `{merged}`\n- Merged at: `{merged_at}`\n- Final cutover diff: 10 files, +590/-20", "receipt merge facts")
+          receipt = replace_once(receipt, "- Exact-head GitHub Actions: pending", "- Exact-head GitHub Actions: 16 workflow runs, 16 success, 0 failure", "receipt actions")
+          receipt = replace_once(receipt, "- Open-PR content imported: none; PR #629 was open before branch creation, shares no planned cutover paths, and no content was imported\n- Unresolved review threads: pending final review", "- Open-PR content imported: none; PR #629 was open at final review, shared 0 changed paths, and no content was imported\n- Unresolved review threads at final cutover head: 0", "receipt final review")
+          receipt = replace_once(receipt, "This receipt records the in-review Cutover 1C-51 boundary. It does not make the historical B2 runtime-wiring handoff current authority and does not change runtime, contract, schema, storage, compatibility, alias, redirect, dual-read, or dual-write behavior. Merge and exact-head observations remain pending until explicit final review and merge.", "This frozen receipt records the Cutover 1C-51 migration facts. It does not make the historical B2 runtime-wiring handoff current authority and does not change runtime, contract, schema, storage, compatibility, alias, redirect, dual-read, or dual-write behavior. This bookkeeping-only integration changes no accepted cutover content.", "receipt closing")
+          receipt_path.write_text(receipt, encoding="utf-8")
+
+          ledger_path = Path("docs/evidence/migrations/documentation-hard-cutover-receipt.md")
+          ledger = ledger_path.read_text(encoding="utf-8")
+          marker = "### C1C51-001 — Phase 5.5-B2 request-runtime stream suppression wiring handoff"
+          if ledger.count(marker) != 1:
+              raise SystemExit("ledger marker count mismatch")
+          prefix, block = ledger.split(marker, 1)
+          block = replace_once(block, "merged_commit: pending\nbookkeeping_pr: pending", f"merged_commit: {merged}\nbookkeeping_pr: {pr}", "ledger merge/bookkeeping")
+          block = replace_once(block, "validated_content_head: pending\nhead_at_merge: pending\nmerged_at: pending", f"validated_content_head: {head}\nhead_at_merge: {head}\nmerged_at: {merged_at}", "ledger head facts")
+          block = replace_once(block, "  exact_head_workflow_runs: pending\n  exact_head_workflow_success: pending\n  exact_head_workflow_failure: pending\n  unresolved_review_threads: pending", "  exact_head_workflow_runs: 16\n  exact_head_workflow_success: 16\n  exact_head_workflow_failure: 0\n  unresolved_review_threads: 0", "ledger validation")
+          block = replace_once(block, "PR #631 preserves the completed B2 request-runtime suppression wiring handoff as frozen implementation evidence. Source-time implementation claims remain historical; current Stream Unpack sequencing and request-runtime suppression behavior remain parent-, implementation-, and focused-smoke-owned. Merge attribution and exact-head validation remain pending until explicit final review and bookkeeping consolidation.", f"PR #631 preserves the completed B2 request-runtime suppression wiring handoff as frozen implementation evidence. Source-time implementation claims remain historical; current Stream Unpack sequencing and request-runtime suppression behavior remain parent-, implementation-, and focused-smoke-owned. PR #{pr} consolidates the merge attribution in the central audit ledger and local frozen receipt without changing accepted cutover content.", "ledger closing")
+          ledger_path.write_text(prefix + marker + block, encoding="utf-8")
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/evidence/migrations/cutover-1c51-phase55b2.md docs/evidence/migrations/documentation-hard-cutover-receipt.md
+          git rm .github/workflows/bootstrap-cutover-1c51-bookkeeping.yml
+          git commit -m "docs: finalize cutover 1C-51 bookkeeping"
+          git push origin HEAD:"${HEAD_REF}"
