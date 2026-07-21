@@ -10,6 +10,7 @@ relaylm_update_trigger:
   - a wave opens or closes through a convergence PR
   - evaluation decision changes
   - post-MVP roadmap ordering changes
+  - accepted target contract implementation sequencing changes
 relaylm_not_authoritative_for:
   - current implemented runtime status
   - component responsibility and canonical target order
@@ -44,10 +45,20 @@ relaylm_related_authority:
   - pm_d5_relaymem_flat_store_compatibility_removal.md
   - pm_d6_relayint_native_artifact_relayref_wrapper_removal.md
   - pm_d7_runtime_install_hook_fold_in.md
+  - ../adr/0003-subjective-mem-direction.md
+  - ../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md
+  - ../adr/0005-subjective-mem-storage-authority.md
+  - memory/formation.md
+  - runtime/request-response-pipeline.md
+  - ../contracts/governed-evidence-contract-family.md
+  - ../contracts/relayctx-session-evidence-overlay.md
+  - ../contracts/shared-assessment-subjective-mem.md
+  - ../contracts/subjective-mem-storage-authority-and-commit-protocol.md
+  - ../proposals/repository-simplification.md
 ---
 # RelayLM Project Execution Plan
 
-Last reviewed: 2026-07-09 JST
+Last reviewed: 2026-07-21 JST
 
 ## Purpose
 
@@ -144,6 +155,54 @@ PM-D3 was closed by P0-PIPE: RelayREL now precedes RelaySCN, RelaySCN owns same-
 
 Future RelaySCN-owned `scene_state` or scene-wiki work must be handled through dedicated RelaySCN or Character Workspace follow-up slices and must not be treated as remaining PM-D3 debt. ACG-6 does not add Character Workspace parser/compiler/UI, scene-wiki page mutation, or permissive runtime authority from classifier output alone.
 
+## Contract-aligned implementation debt migration program
+
+The governed Evidence, CTX-OVL, Shared Assessment / Subjective MEM, and Subjective MEM storage contracts are accepted target authorities. Their acceptance does not mean that the corresponding runtime, storage, migration, or deployment behavior is implemented. The current Primary MEM, queue, worker, lifecycle, scheduler, and Retrieval implementation remains the current implementation and the characterization/migration base until a later series explicitly replaces each owned boundary.
+
+The dependency-first program is registered as:
+
+```text
+EV-1 Governed Evidence runtime foundation
+  ├─> OVL-1 CTX-OVL participant-private vertical slice
+  └─> ASM-1 Shared Assessment runtime foundation
+         -> SM-1 Subjective MEM decision/result vertical slice
+              -> ST-1 Markdown + operations commit protocol
+                   -> LC-1 lifecycle migration
+                        -> RT-1 Retrieval projection and hard cutover
+
+normal-route target convergence
+  = OVL-1 + RT-1 + their accepted prerequisite series
+```
+
+The series own the following bounded outcomes:
+
+- **EV-1 Governed Evidence runtime foundation** implements the minimum single-principal, private-conversation Contract 1 path: canonical SourceEvent identity, explicit capture/admission, current authorization, assistant-response Evidence binding, coverage/checkpoint references, and producer/consumer validation. It does not enable unbounded client-history capture, multi-user access, export, replication, or purge.
+- **OVL-1 CTX-OVL participant-private vertical slice** depends on EV-1 and implements bounded, rebuildable, non-durable RelayCTX working state for the first supported `participant` / `participant_private` partition. It adds exact Contract 1 binding, operation-time TTL, selection, invalidation, restart rebuild, bounded catch-up, and a content-free Reflex Snapshot. Unsupported partition or shared-scene behavior remains fail closed until its own later slice.
+- **ASM-1 Shared Assessment runtime foundation** depends on EV-1 and implements character-independent Shared Assessment revisions, one logical current-state selector, formation-time authorization receipts, and the split Assessment Pass boundary. It cannot write Subjective MEM.
+- **SM-1 Subjective MEM decision/result vertical slice** depends on ASM-1 and implements one end-to-end `create` path with exact assessment, character, scope, policy-revision, decision, result, and current-state linkage. Similarity remains candidate generation only. SOUL-conditioned apply cannot become production-authoritative until PM-D1 is resolved or the owning PR proves an explicitly narrower authority-safe boundary.
+- **ST-1 Markdown + operations commit protocol** depends on the SM-1 record shape and implements the first canonical `create` publication using a prepared immutable post-image, canonical Markdown, a matching durable operations receipt, scoped idempotency, digest-based recovery, and rebuildable projection fencing. Initial platform support must be explicit and evidence-backed; no multi-host support is implied.
+- **LC-1 lifecycle migration** depends on ST-1 and ports existing characterization-backed operations in bounded order: Correct, Forget, Pin/Unpin, Restore, then Consolidate. Existing Primary MEM lifecycle code and tests remain migration evidence. Purge stays outside this series until a separate irreversible authority is accepted.
+- **RT-1 Retrieval projection and hard cutover** depends on ST-1 and the required LC-1 eligibility boundaries. It implements exact-current-revision selection, lifecycle/mutation fail-closed behavior, durable content-free usage events, projection rebuild equivalence, old/new characterization comparison, writer fencing, one-authority cutover, temporary-adapter removal, and retirement of replaced readers/writers.
+
+Decision gates apply narrowly:
+
+- PM-D4 must be resolved before any new client-history capture becomes default-on; EV-1 may proceed with explicit route-owned capture while the existing default-off boundary remains.
+- PM-D9 must be resolved before multilingual Assessment generation or analyzer/schema policy becomes production-default; deterministic record plumbing and contract validation may proceed first.
+- PM-D1 must be resolved before SOUL-conditioned Subjective Formation apply or RelaySOUL intervention/rollback is treated as implemented.
+- PM-D2 closure or absorption remains separately governed and must not be silently folded into this program.
+
+Implementation and cleanup rules:
+
+- Each series lands through an atomic PR or an explicitly coordinated atomic set with exact producer, consumer, schema/version, feature posture, migration effect, rollback boundary, and validation matrix.
+- New writers and authority-changing readers begin default-off or dry-run-first unless an owning contract and reviewed deployment decision explicitly permit otherwise.
+- `docs/PROJECT_STATUS.md` is updated only after exact-head validation proves a runtime boundary implemented; plan registration alone never changes current implementation status.
+- The existing Primary MEM M3/B/C/I/O paths, lifecycle modules, fixtures, smokes, and operator paths cannot be classified as dead, deleted, renamed, or consolidated while they remain a characterization, rollback, migration, or runtime dependency.
+- Repository simplification and documentation hard cutover remain parallel, separately governed tracks. Overlap with this program requires shared-path and authority-reference reconciliation; inventory evidence alone cannot authorize deletion or debt closure.
+- Permanent dual-read, dual-write, precedence fallback, or two live canonical memory authorities are prohibited. Any compatibility adapter must name its removal gate and may not become a second semantic authority.
+- Current-user-data migration, backup/restore, platform support, and irreversible purge require their own accepted implementation or operations authority before execution.
+
+This registration authorizes preparation of bounded implementation PRs in the dependency order above. It does not itself authorize runtime default-on behavior, migration of user data, deletion of existing assets, or the final authority cutover.
+
 ## Current next work
 
 ```text
@@ -164,8 +223,16 @@ Completed post-MVP debt:
   PM-D7 runtime install hook fold-in complete
   PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in complete
 
-Remaining post-v0.1 candidates:
-  E1-R5 scoped Primary recall candidate fallback boundary remains complete.
+Registered contract-aligned implementation debt:
+  EV-1 Governed Evidence runtime foundation                            registered / not started
+    -> OVL-1 CTX-OVL participant-private vertical slice               registered / not started
+    -> ASM-1 Shared Assessment runtime foundation                     registered / not started
+         -> SM-1 Subjective MEM decision/result vertical slice        registered / not started
+              -> ST-1 Markdown + operations commit protocol           registered / not started
+                   -> LC-1 lifecycle migration                        registered / not started
+                        -> RT-1 Retrieval projection and hard cutover registered / not started
+
+Remaining post-v0.1 decision or gated candidates:
   PM-D1 RelaySOUL gate design-freeze relation
   PM-D4 client history exclusion default-off deployment decision
   PM-D9 analyzer candidate governance and multilingual schema policy follow-through
@@ -225,7 +292,7 @@ Wave 7 completed the E1-R3 / E1-R4 evidence and grounding slices without changin
 E1-R5 Primary MEM recall candidate discovery fallback complete
 ```
 
-E1-R5 remains a bounded scoped Primary recall fallback. It preserves M2 as preferred relevance owner. PM-D8 canonical adapter fold-in is complete in PR #491; the former runtime bridge module remains compatibility no-op only.
+E1-R5 remains a bounded scoped Primary MEM recall fallback. It preserves M2 as preferred relevance owner. PM-D8 canonical adapter fold-in is complete in PR #491; the former runtime bridge module remains compatibility no-op only.
 
 ### Character Workspace reset completed through CW-A5
 
@@ -273,4 +340,4 @@ PM-D3 is closed by the shipped P0-PIPE request-path ordering fix, which removes 
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
-The remaining candidates are PM-D1/PM-D4/PM-D9 follow-through and PM-D2 closure or absorption after PM-D6. Durable-memory E2 value smoke is complete as local human-reviewed v0.1 readiness evidence. RelayATN is registered as ATN-0 planning-only debt after voice-out / SOUL Lab Runtime MVP and does not authorize implementation.
+Within the pre-existing post-E1-R5 decision-debt registry: The remaining candidates are PM-D1/PM-D4/PM-D9 follow-through and PM-D2 closure or absorption after PM-D6. The separately registered dependency-first implementation program is EV-1, followed in parallel by OVL-1 and ASM-1, then SM-1 -> ST-1 -> LC-1 -> RT-1. PM-D4, PM-D9, and PM-D1 apply as the narrow default-on, multilingual-generation, and SOUL-conditioned-formation gates recorded above; PM-D2 remains separately governed. Durable-memory E2 value smoke is complete as local human-reviewed v0.1 readiness evidence. RelayATN remains ATN-0 planning-only debt after voice-out / SOUL Lab Runtime MVP and does not authorize implementation.
