@@ -30,7 +30,8 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 - Source and pre-cutover normalized SHA-256: `91686383c3a62921e23c60999750e957a7d78fe4ed636b393b02b4a256d68f04`
 - Source recorded on: `2026-06-20`
 - Current sequencing authority retained by: `docs/architecture/phase5_5_stream_unpack_bounded_slice.md`
-- Current runtime suppression boundary retained by: `docs/architecture/phase55b2_stream_suppression_runtime_handoff.md` and implementation
+- Current runtime suppression boundary retained by: `docs/architecture/phase5_5_stream_unpack_bounded_slice.md`, implementation, and focused smokes
+- Historical B2 runtime-wiring evidence retained at: `docs/evidence/implementation/phase55b2-stream-suppression-runtime-handoff.md`
 - Referrers repaired: Phase 5.5 parent index, LAT-1 stale reference, LAT-2 incorrect reference, implementation evidence index
 - Fail-closed enforcement: `scripts/relaylm_phase55b1_handoff_cutover_guard.py`, compiled and executed by `.github/workflows/documentation-current-boundary-smoke.yml`
 - Guard self-test: 23 assertions

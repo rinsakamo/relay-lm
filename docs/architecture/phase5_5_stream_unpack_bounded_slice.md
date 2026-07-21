@@ -134,7 +134,7 @@ Implemented:
 - content-free `relayctx_stream_suppression_gate` node result,
 - runtime smoke coverage.
 
-See [Phase 5.5-B2 Stream Suppression Runtime Wiring Handoff](phase55b2_stream_suppression_runtime_handoff.md).
+See [Phase 5.5-B2 Stream Suppression Runtime Wiring Evidence](../evidence/implementation/phase55b2-stream-suppression-runtime-handoff.md).
 
 ### Phase 5.5-C0: TTS-safe segmentation helper — complete
 

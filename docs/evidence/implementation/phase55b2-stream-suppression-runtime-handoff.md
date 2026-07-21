@@ -1,24 +1,25 @@
 ---
-relaylm_doc_type: implementation_handoff
-relaylm_authority: phase5_5_stream_unpack_bounded_slice_scope
-relaylm_status: current
-relaylm_volatility: medium
+relaylm_doc_type: evidence
+relaylm_authority: historical_phase5_5_b2_stream_suppression_runtime_wiring_implementation
+relaylm_status: frozen
+relaylm_volatility: frozen
 relaylm_owner: implementation
-relaylm_update_trigger:
-  - Phase 5.5-B2 runtime wiring changes
-  - streaming response wrapper behavior changes
-  - RelayCTX stream suppression diagnostics schema changes
+relaylm_source_commit: 9daa260ed1153f3b12911ac16af7b30e64fd3111
+relaylm_source_pr: 313
+relaylm_recorded_on: 2026-06-20
+relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_not_authoritative_for:
-  - canonical pipeline responsibility order
-  - TTS execution or Live2D/avatar control
-  - RelaySOUL apply/rollback/storage
+  - canonical architecture
+  - current request-runtime SSE suppression behavior
+  - current stream suppression diagnostics or configuration schema
+  - TTS execution or avatar control
   - CTX/MEM/SOUL/SLP persistence
 relaylm_related_authority:
-  - phase5_5_stream_unpack_bounded_slice.md
-  - pipeline_implementation_plan.md
-  - pipeline_responsibility_design.md
+  - ../../architecture/phase5_5_stream_unpack_bounded_slice.md
 ---
 # Phase 5.5-B2 Stream Suppression Runtime Wiring Handoff
+
+> **Historical implementation evidence.** This frozen record describes the request-runtime B2 wiring merged in PR #313 and its later docs-only status alignment. Current Stream Unpack sequencing and request-runtime suppression behavior are owned by the Phase 5.5 parent architecture, implementation, and focused smokes.
 
 ## Status
 
