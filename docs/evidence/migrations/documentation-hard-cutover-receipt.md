@@ -4953,9 +4953,11 @@ PR #616 removed the completed handoff from the live architecture collection and 
 
 ```yaml
 cutover_pr: 619
-merged_commit: pending
+merged_commit: da1ba6ddb3365069758da3cae56b0e25c5ff9b86
+bookkeeping_pr: 620
 base_main: 534f71e0043819f0ee16e035c9f0e100ae99fa1d
-validated_content_head: 2f9305279b94477319b99c9d7955b5f7e83ee62a
+head_at_merge: c2bc9c7085b843dc55f7a460ccc9feddba1be6db
+merged_at: 2026-07-20T23:46:54Z
 old_path: docs/architecture/phase55b1_stream_suppression_gate_handoff.md
 old_blob_sha: c9e16c751aad890102d8378e83b5b0de129be6e1
 old_content_sha256: 91686383c3a62921e23c60999750e957a7d78fe4ed636b393b02b4a256d68f04
@@ -4990,4 +4992,4 @@ verification:
   open_pr_shared_path_reconciliation: ["#617:preserve B1 guard when temporary workflow assembly is rebased/finalized", "#586:preserve B1 implementation-evidence index entry when rebased"]
 ```
 
-PR #619 preserves the completed B1 helper handoff as frozen implementation evidence. The source-time helper facts remain historical; current Stream Unpack sequencing remains parent-owned and current request-runtime suppression behavior remains B2/code-owned.
+PR #619 preserves the completed B1 helper handoff as frozen implementation evidence. The source-time helper facts remain historical; current Stream Unpack sequencing remains parent-owned and current request-runtime suppression behavior remains B2/code-owned. PR #620 consolidated the same merge attribution in the central audit ledger and local frozen receipt; it changed no accepted cutover content.
