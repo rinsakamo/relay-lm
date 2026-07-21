@@ -106,7 +106,7 @@ Operational records reference stable IDs, revisions, digests, authority snapshot
 
 Forget remains a canonical hidden successor, not physical deletion. Restore remains a canonical active successor. Purge is a separate irreversible authority.
 
-An anti-reformation tombstone may enforce that hidden or purged material is not automatically re-created. The tombstone is operational authority, not the canonical lifecycle representation. A lifecycle mutation is valid only when the canonical Markdown successor and its operation receipt agree.
+An anti-reformation tombstone may enforce that canonically hidden material is not automatically re-created. Purge enforcement remains owned by a separate irreversible authority. The tombstone is operational authority, not the canonical lifecycle representation. A lifecycle mutation is valid only when the canonical Markdown successor and its operation receipt agree.
 
 Restore clears or supersedes the applicable anti-reformation tombstone through the same finalized operation that publishes the active successor. A tombstone cannot silently hide an otherwise active canonical revision, and its absence cannot silently reactivate a hidden canonical revision.
 
@@ -229,5 +229,4 @@ Rejected because permanent dual read/write retains ambiguous authority and makes
 - [Memory Lifecycle Design](../architecture/memory_lifecycle_design.md)
 - [Primary MEM Forget / Hide Contract](../architecture/phase_i4_primary_mem_forget_hide_contract.md)
 - [Primary Forget Hidden-Successor Commit](../architecture/phase_i4c1_primary_forget_hidden_successor.md)
-- [Primary Restore Apply](../architecture/phase_i4e_primary_restore_apply.md)
 - [Project Status](../PROJECT_STATUS.md)
