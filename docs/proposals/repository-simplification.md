@@ -35,7 +35,7 @@ RelayLM contains default runtime modules, opt-in components, operator CLIs, offl
 
 The earlier repository-simplification proposal in PR #567 established several useful principles but is no longer current:
 
-- it treated completion of the documentation hard cutover as a prerequisite, while repository simplification must not reopen or depend on repository-wide documentation restructuring;
+- it treated completion of the documentation hard cutover as a prerequisite, while repository simplification should proceed as an independent track that can run in parallel with the ongoing documentation hard cutover;
 - it treated storage authority and a bounded SQLite spike as future work, while the Subjective MEM authority direction is now accepted and the experiment has been dispositioned;
 - it allowed wording that could be read as proposal acceptance authorizing deletion waves;
 - it predates the merged non-destructive repository and storage inventory tooling.
@@ -46,9 +46,9 @@ A concrete false positive remains instructive: `relaymem_slp_supervised_schedule
 
 ### Documentation boundary
 
-This proposal does not restart documentation cleanup and does not require completion of any repository-wide documentation cutover before code or test inventory work begins.
+Documentation cleanup continues as a parallel, separately governed track. This proposal neither governs nor blocks that work and does not require its completion before code or test inventory begins.
 
-The current documentation model remains authoritative. Any proposal, evidence record, ADR, contract, or implementation document changed by a later cleanup wave follows its existing placement and lifecycle rules.
+The current documentation model remains authoritative. Any proposal, evidence record, ADR, contract, or implementation document changed by a later cleanup wave follows its existing placement and lifecycle rules. Coordination is required when the parallel tracks touch the same path or authority reference.
 
 ### Existing inventory tooling
 
@@ -89,7 +89,7 @@ This decision does not authorize a production migration and does not automatical
 - converting every internal value to Pydantic;
 - enabling a feature by default;
 - creating compatibility aliases merely to make refactors easier;
-- reopening repository-wide documentation restructuring.
+- governing, pausing, replacing, or changing the scope of the parallel documentation hard-cutover program.
 
 ## Governing principles
 
@@ -314,7 +314,7 @@ Compatibility may be retained only when a current consumer is identified and a s
 
 ### Merge PR #567 as written
 
-Rejected. Its storage sequencing and documentation prerequisite are stale, and its adoption boundary can be read as authorizing deletion waves without a separate decision.
+Rejected. Its treatment of documentation completion as a prerequisite and its storage sequencing are stale, and its adoption boundary can be read as authorizing deletion waves without a separate decision.
 
 ### Delete everything absent from the default application graph
 
@@ -345,6 +345,7 @@ Rejected because unclear ownership and duplicated mechanisms continue to increas
 - **Hard cutover removes a hidden consumer.** Require complete caller evidence, negative-reference checks, and separate approval.
 - **User data is mistaken for disposable state.** Require authority classification and backup/count/digest verification.
 - **Subjective MEM authority is over-generalized.** Apply ADR 0005 only to its owned domain; review other stores separately.
+- **Parallel tracks conflict on the same path.** Reconcile shared paths and authority references before either PR is finalized; neither track silently overwrites the other.
 - **Cleanup delays product validation.** Keep dogfood and feature-value work independent from maintenance sequencing.
 
 ## Adoption boundary
@@ -367,7 +368,7 @@ Acceptance would not authorize:
 - applying Subjective MEM storage authority to unrelated domains;
 - repository-wide Pydantic conversion;
 - default-on graduation;
-- documentation restructuring;
+- governing, pausing, replacing, or changing the scope of the separately authorized documentation hard-cutover program;
 - whole-repository rewrite.
 
 ## Validation before disposition
@@ -379,7 +380,7 @@ Before this proposal is accepted or rejected:
 - only this proposal document changes;
 - PR #567's O3 false-positive correction is preserved;
 - proposal acceptance is explicitly insufficient to authorize deletion;
-- documentation cleanup is not a prerequisite or reopened scope;
+- documentation cleanup is represented as a parallel, separately governed track rather than a prerequisite;
 - PR #577 inventory is described as evidence, not authority;
 - ADR 0005 is limited to Subjective MEM storage authority;
 - broad SQLite migration remains unauthorized;
