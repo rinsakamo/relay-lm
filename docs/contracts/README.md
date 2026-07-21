@@ -103,6 +103,13 @@ Machine-readable Subjective MEM v1 materials:
 - [prose/schema/catalog/fixture equivalence validator](../../scripts/relaylm_subjective_mem_v1_equivalence.py);
 - [invalid-fixture registry guard](../../scripts/relaylm_subjective_mem_v1_fixture_registry_guard.py).
 
+## Subjective MEM storage authority contract
+
+- [Subjective MEM Storage Authority and Commit Protocol Contract](subjective-mem-storage-authority-and-commit-protocol.md)
+  - target logical contract only; owns canonical Markdown, rebuildable projection, durable operations, receipt finalization, digest/revision recovery, lifecycle-tombstone agreement, durable usage events, backup-set, and hard-cutover boundaries
+  - fixes that Markdown owns committed memory semantics and lifecycle-visible state while a matching operations receipt finalizes publication without becoming a second content authority
+  - treats PR #578 as feasibility evidence only and does not select final syntax, SQLite schema, filesystem implementation, migration procedure, or supported platform
+
 ## RelaySOUL contracts
 
 - [RelaySOUL patch candidate contract](relaysoul_patch_candidate_contract.md)
