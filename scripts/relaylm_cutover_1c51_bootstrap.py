@@ -1,0 +1,251 @@
+#!/usr/bin/env python3
+"""Temporary assembler for Documentation Hard Cutover 1C-51.
+
+This file is removed before final review. It builds the B2 evidence move,
+repairs path-bound references, appends receipts, and creates the fail-closed
+guard. Repository-wide guard validation runs only after the temporary workflow
+and this assembler have been removed from the final diff.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import os
+import subprocess
+from pathlib import Path
+
+PR_NUMBER = os.environ["PR_NUMBER"]
+BASE_MAIN = "0db41086cbe6c3c48f8f597f42aa2214ab3c48de"
+OLD = Path("docs/architecture/phase55b2_stream_suppression_runtime_handoff.md")
+NEW = Path("docs/evidence/implementation/phase55b2-stream-suppression-runtime-handoff.md")
+SOURCE_COMMIT = "9daa260ed1153f3b12911ac16af7b30e64fd3111"
+ALIGNMENT_COMMIT = "85e8ec1d14ff7ce77df4aff193cc9bac897944b4"
+
+
+def replace_once(text: str, before: str, after: str, label: str) -> str:
+    count = text.count(before)
+    if count != 1:
+        raise SystemExit(f"{label}: expected one occurrence, got {count}")
+    return text.replace(before, after, 1)
+
+
+source_bytes = OLD.read_bytes()
+source_text = source_bytes.decode("utf-8")
+old_blob = subprocess.check_output(
+    ["git", "rev-parse", f"HEAD:{OLD.as_posix()}"], text=True
+).strip()
+content_sha256 = hashlib.sha256(source_bytes).hexdigest()
+front_end = source_text.find("\n---\n", 4)
+if not source_text.startswith("---\n") or front_end < 0:
+    raise SystemExit("invalid B2 front matter")
+body = source_text[front_end + 5 :]
+heading = "# Phase 5.5-B2 Stream Suppression Runtime Wiring Handoff\n\n"
+banner = (
+    "> **Historical implementation evidence.** This frozen record describes the "
+    "request-runtime B2 wiring merged in PR #313 and its later docs-only status "
+    "alignment. Current Stream Unpack sequencing and request-runtime suppression "
+    "behavior are owned by the Phase 5.5 parent architecture, implementation, and "
+    "focused smokes.\n\n"
+)
+body = replace_once(body, heading, heading + banner, "B2 evidence banner")
+metadata = """---
+relaylm_doc_type: evidence
+relaylm_authority: historical_phase5_5_b2_stream_suppression_runtime_wiring_implementation
+relaylm_status: frozen
+relaylm_volatility: frozen
+relaylm_owner: implementation
+relaylm_source_commit: 9daa260ed1153f3b12911ac16af7b30e64fd3111
+relaylm_source_pr: 313
+relaylm_recorded_on: 2026-06-20
+relaylm_current_status_source: ../../PROJECT_STATUS.md
+relaylm_not_authoritative_for:
+  - canonical architecture
+  - current request-runtime SSE suppression behavior
+  - current stream suppression diagnostics or configuration schema
+  - TTS execution or avatar control
+  - CTX/MEM/SOUL/SLP persistence
+relaylm_related_authority:
+  - ../../architecture/phase5_5_stream_unpack_bounded_slice.md
+---
+"""
+NEW.parent.mkdir(parents=True, exist_ok=True)
+NEW.write_text(metadata + body, encoding="utf-8")
+OLD.unlink()
+
+parent_path = Path("docs/architecture/phase5_5_stream_unpack_bounded_slice.md")
+parent = parent_path.read_text(encoding="utf-8")
+parent = replace_once(
+    parent,
+    "See [Phase 5.5-B2 Stream Suppression Runtime Wiring Handoff](phase55b2_stream_suppression_runtime_handoff.md).",
+    "See [Phase 5.5-B2 Stream Suppression Runtime Wiring Evidence](../evidence/implementation/phase55b2-stream-suppression-runtime-handoff.md).",
+    "parent B2 link",
+)
+parent_path.write_text(parent, encoding="utf-8")
+
+b1_path = Path("docs/evidence/implementation/phase55b1-stream-suppression-gate-handoff.md")
+b1 = b1_path.read_text(encoding="utf-8")
+b1 = replace_once(
+    b1,
+    "  - ../../architecture/phase55b2_stream_suppression_runtime_handoff.md",
+    "  - phase55b2-stream-suppression-runtime-handoff.md",
+    "B1 related authority",
+)
+b1 = replace_once(
+    b1,
+    "Current Stream Unpack sequencing is owned by the Phase 5.5 parent document, and current request-runtime suppression behavior is owned by the B2 handoff and implementation.",
+    "Current Stream Unpack sequencing and request-runtime suppression behavior are owned by the Phase 5.5 parent architecture, implementation, and focused smokes; the B2 runtime-wiring record is retained separately as frozen historical evidence.",
+    "B1 banner",
+)
+b1_path.write_text(b1, encoding="utf-8")
+
+b1_receipt_path = Path("docs/evidence/migrations/cutover-1c48-phase55b1.md")
+b1_receipt = b1_receipt_path.read_text(encoding="utf-8")
+b1_receipt = replace_once(
+    b1_receipt,
+    "- Current runtime suppression boundary retained by: `docs/architecture/phase55b2_stream_suppression_runtime_handoff.md` and implementation",
+    "- Current runtime suppression boundary retained by: `docs/architecture/phase5_5_stream_unpack_bounded_slice.md`, implementation, and focused smokes\n- Historical B2 runtime-wiring evidence retained at: `docs/evidence/implementation/phase55b2-stream-suppression-runtime-handoff.md`",
+    "1C-48 B2 reference",
+)
+b1_receipt_path.write_text(b1_receipt, encoding="utf-8")
+
+index_path = Path("docs/evidence/implementation/README.md")
+index = index_path.read_text(encoding="utf-8")
+b1_line = "- [Phase 5.5-B1 stream suppression gate](phase55b1-stream-suppression-gate-handoff.md) — frozen helper implementation evidence from PR #312; current Stream Unpack sequencing remains [Phase 5.5 Stream Unpack Bounded Slice](../../architecture/phase5_5_stream_unpack_bounded_slice.md)-owned, and current request-runtime suppression behavior remains B2/code-owned."
+b1_b2_lines = "- [Phase 5.5-B1 stream suppression gate](phase55b1-stream-suppression-gate-handoff.md) — frozen helper implementation evidence from PR #312; current Stream Unpack sequencing and request-runtime suppression behavior remain [Phase 5.5 Stream Unpack Bounded Slice](../../architecture/phase5_5_stream_unpack_bounded_slice.md)-, implementation-, and focused-smoke-owned.\n- [Phase 5.5-B2 stream suppression runtime wiring](phase55b2-stream-suppression-runtime-handoff.md) — frozen runtime-wiring evidence from PR #313 plus the later docs-only status alignment; current Stream Unpack sequencing and request-runtime suppression behavior remain [Phase 5.5 Stream Unpack Bounded Slice](../../architecture/phase5_5_stream_unpack_bounded_slice.md)-, implementation-, and focused-smoke-owned."
+index = replace_once(index, b1_line, b1_b2_lines, "evidence index")
+index_path.write_text(index, encoding="utf-8")
+
+rules_path = Path("docs/planning/documentation-cutover-rules.yaml")
+rules = rules_path.read_text(encoding="utf-8")
+anchor = "\n  docs/architecture/phase55c0_tts_segmentation_helper_handoff.md:\n"
+entry = """
+  docs/architecture/phase55b2_stream_suppression_runtime_handoff.md:
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_paths:
+      - docs/evidence/implementation/phase55b2-stream-suppression-runtime-handoff.md
+    deletion_reason: >-
+      Cutover 1C-51: the completed Phase 5.5-B2 request-runtime SSE suppression
+      wiring handoff was a bounded implementation record mislocated in the live
+      architecture collection. The cutover preserves PR #313 and docs-alignment
+      provenance, repairs the Phase 5.5 parent plus B1 evidence and receipt
+      references, updates the implementation evidence index, and leaves current
+      Stream Unpack sequencing and request-runtime suppression authority with the
+      parent architecture, implementation, and focused smokes.
+"""
+if rules.count(anchor) != 1:
+    raise SystemExit("cutover rules anchor is not unique")
+rules_path.write_text(rules.replace(anchor, "\n" + entry + anchor, 1), encoding="utf-8")
+
+receipt_path = Path("docs/evidence/migrations/cutover-1c51-phase55b2.md")
+receipt_path.write_text(
+    f"""---
+relaylm_doc_type: evidence
+relaylm_authority: documentation_cutover_1c51_receipt
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: documentation
+relaylm_update_trigger:
+  - validated-head, merge attribution, or bookkeeping facts are finalized
+relaylm_not_authoritative_for:
+  - current runtime behavior
+  - Stream Unpack architecture
+  - implementation sequencing
+relaylm_current_status_source: ../../PROJECT_STATUS.md
+---
+# Documentation Hard Cutover 1C-51 Receipt
+
+- Cutover PR: #{PR_NUMBER}
+- Bookkeeping consolidation PR: pending
+- Base main: `{BASE_MAIN}`
+- Validated content head: pending exact-head validation
+- Merged commit: pending
+- Source: `{OLD.as_posix()}`
+- Canonical target: `{NEW.as_posix()}`
+- Disposition: `evidence_retained`, implemented as a move and retype from `implementation_handoff` / `current` to `evidence` / `frozen`
+- Source PR: #313
+- Source implementation commit: `{SOURCE_COMMIT}`
+- Post-source docs alignment commit: `{ALIGNMENT_COMMIT}`
+- Source and pre-cutover blob: `{old_blob}`
+- Source content SHA-256: `{content_sha256}`
+- Source recorded on: `2026-06-20`
+- Current sequencing and runtime-suppression authority retained by: `docs/architecture/phase5_5_stream_unpack_bounded_slice.md`, implementation, and focused smokes
+- Referrers repaired: Phase 5.5 parent, B1 frozen evidence, Cutover 1C-48 receipt, implementation evidence index
+- Fail-closed enforcement: `scripts/relaylm_phase55b2_handoff_cutover_guard.py`, to be compiled and executed by `.github/workflows/documentation-current-boundary-smoke.yml`
+- Guard self-test: 22 assertions
+- Exact-head GitHub Actions: pending
+- Runtime files changed: 0
+- `relaylm/**` files changed: 0
+- Open-PR content imported: none; PR #629 was open before branch creation, shares no planned cutover paths, and no content was imported
+- Unresolved review threads: pending final review
+
+This receipt records the in-review Cutover 1C-51 boundary. It does not make the historical B2 runtime-wiring handoff current authority and does not change runtime, contract, schema, storage, compatibility, alias, redirect, dual-read, or dual-write behavior. Merge and exact-head observations remain pending until explicit final review and merge.
+""",
+    encoding="utf-8",
+)
+
+ledger_path = Path("docs/evidence/migrations/documentation-hard-cutover-receipt.md")
+ledger = ledger_path.read_text(encoding="utf-8")
+marker = "### C1C51-001 — Phase 5.5-B2 request-runtime stream suppression wiring handoff"
+if marker in ledger:
+    raise SystemExit("C1C51 entry already exists")
+ledger += f"""
+
+{marker}
+
+```yaml
+cutover_pr: {PR_NUMBER}
+merged_commit: pending
+bookkeeping_pr: pending
+base_main: {BASE_MAIN}
+validated_content_head: pending
+head_at_merge: pending
+merged_at: pending
+old_path: {OLD.as_posix()}
+old_blob_sha: {old_blob}
+old_content_sha256: {content_sha256}
+source_commit: {SOURCE_COMMIT}
+source_pr: 313
+post_source_docs_alignment_commit: {ALIGNMENT_COMMIT}
+recorded_on: 2026-06-20
+disposition: evidence_retained
+new_canonical_path: {NEW.as_posix()}
+local_receipt: docs/evidence/migrations/cutover-1c51-phase55b2.md
+verification:
+  old_path_removed: true
+  canonical_evidence_metadata_added: true
+  current_sequence_authority_retained_by: docs/architecture/phase5_5_stream_unpack_bounded_slice.md
+  current_runtime_suppression_authority_retained_by: implementation_and_focused_smokes
+  parent_architecture_link_updated: true
+  b1_evidence_reference_updated: true
+  cutover_1c48_receipt_reference_updated: true
+  implementation_evidence_index_updated: true
+  fail_closed_guard: scripts/relaylm_phase55b2_handoff_cutover_guard.py
+  guard_integrated_into_existing_documentation_boundary_workflow: pending_connector_finalization
+  guard_self_test_assertions: 22
+  exact_head_workflow_runs: pending
+  exact_head_workflow_success: pending
+  exact_head_workflow_failure: pending
+  unresolved_review_threads: pending
+  runtime_files_changed: 0
+  relaylm_changed_files: 0
+  open_pr_content_imported: false
+```
+
+PR #{PR_NUMBER} preserves the completed B2 request-runtime suppression wiring handoff as frozen implementation evidence. Source-time implementation claims remain historical; current Stream Unpack sequencing and request-runtime suppression behavior remain parent-, implementation-, and focused-smoke-owned. Merge attribution and exact-head validation remain pending until explicit final review and bookkeeping consolidation.
+"""
+ledger_path.write_text(ledger, encoding="utf-8")
+
+guard = Path("scripts/relaylm_phase55c4_handoff_cutover_guard.py").read_text(encoding="utf-8")
+for before, after in (
+    ("Documentation Hard Cutover 1C-50", "Documentation Hard Cutover 1C-51"),
+    ("Phase 5.5-C4", "Phase 5.5-B2"),
+    ("phase55c4_runtime_tts_transport_envelope_wiring", "phase55b2_stream_suppression_runtime_handoff"),
+    ("phase55c4-runtime-tts-transport-envelope-wiring", "phase55b2-stream-suppression-runtime-handoff"),
+    ("relaylm_phase55c4_handoff_cutover_guard", "relaylm_phase55b2_handoff_cutover_guard"),
+    ("cutover-1c50-phase55c4", "cutover-1c51-phase55b2"),
+):
+    guard = guard.replace(before, after)
+guard_path = Path("scripts/relaylm_phase55b2_handoff_cutover_guard.py")
+guard_path.write_text(guard, encoding="utf-8")
+subprocess.run(["python", str(guard_path), "--self-test"], check=True)
