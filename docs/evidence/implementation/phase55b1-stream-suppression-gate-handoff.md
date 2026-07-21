@@ -16,11 +16,11 @@ relaylm_not_authoritative_for:
   - RelaySOUL persistence
 relaylm_related_authority:
   - ../../architecture/phase5_5_stream_unpack_bounded_slice.md
-  - ../../architecture/phase55b2_stream_suppression_runtime_handoff.md
+  - phase55b2-stream-suppression-runtime-handoff.md
 ---
 # Phase 5.5-B1 Stream Suppression Gate Handoff
 
-> **Historical implementation evidence.** This frozen record describes the helper-only B1 boundary merged in PR #312. Current Stream Unpack sequencing is owned by the Phase 5.5 parent document, and current request-runtime suppression behavior is owned by the B2 handoff and implementation.
+> **Historical implementation evidence.** This frozen record describes the helper-only B1 boundary merged in PR #312. Current Stream Unpack sequencing and request-runtime suppression behavior are owned by the Phase 5.5 parent architecture, implementation, and focused smokes; the B2 runtime-wiring record is retained separately as frozen historical evidence.
 
 ## Summary
 
