@@ -5038,3 +5038,44 @@ verification:
 ```
 
 PR #622 preserves the completed helper-only C0 handoff as frozen implementation evidence. The source-time helper claims remain historical; current Stream Unpack sequencing, C0 consumption, and runtime TTS handoff behavior remain parent-, C1/C2-, code-owned. PR #627 consolidates the merge attribution in the central audit ledger and local frozen receipt without changing accepted cutover content.
+
+### C1C50-001 — Phase 5.5-C4 runtime TTS transport envelope wiring handoff
+
+```yaml
+cutover_pr: 628
+merged_commit: pending
+bookkeeping_pr: pending
+base_main: 84bdafbfc2182710afb034f7b815b76e09616a50
+validated_content_head: pending
+head_at_merge: pending
+merged_at: pending
+old_path: docs/architecture/phase55c4_runtime_tts_transport_envelope_wiring.md
+old_blob_sha: 79f03a5dfae1d6db472973ae3357b05f2c740682
+old_content_sha256: 046c945619a67dd08f486ed5ca7d5bbf29de593773f615ed8a47316e227656d9
+source_commit: 00c284b8729c048b89dbc19e9bbf23d427e218e8
+source_pr: 327
+recorded_on: 2026-06-21
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/phase55c4-runtime-tts-transport-envelope-wiring.md
+local_receipt: docs/evidence/migrations/cutover-1c50-phase55c4.md
+verification:
+  old_path_removed: true
+  canonical_evidence_metadata_added: true
+  current_sequence_authority_retained_by: docs/architecture/phase5_5_stream_unpack_bounded_slice.md
+  current_runtime_handoff_authority_retained_by: docs/architecture/phase55c2_runtime_tts_adapter_handoff_wiring.md
+  current_transport_contract_authority_retained_by: docs/architecture/phase55c3_tts_adapter_transport_contract.md
+  parent_architecture_link_updated: true
+  lat2_reference_updated: true
+  implementation_evidence_index_updated: true
+  fail_closed_guard: scripts/relaylm_phase55c4_handoff_cutover_guard.py
+  guard_integrated_into_existing_documentation_boundary_workflow: true
+  exact_head_workflow_runs: pending
+  exact_head_workflow_success: pending
+  exact_head_workflow_failure: pending
+  unresolved_review_threads: pending
+  runtime_files_changed: 0
+  relaylm_changed_files: 0
+  open_pr_content_imported: false
+```
+
+PR #628 preserves the completed C4 runtime-wiring handoff as frozen implementation evidence. Source-time implementation claims remain historical; current Stream Unpack sequencing, runtime handoff behavior, and transport contract authority remain parent-, C2/C3-, code-, and focused-smoke-owned. Merge attribution and exact-head validation remain pending until explicit final review and bookkeeping consolidation.

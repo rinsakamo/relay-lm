@@ -1,26 +1,29 @@
 ---
-relaylm_doc_type: implementation_handoff
-relaylm_authority: phase5_5_stream_unpack_bounded_slice_scope
-relaylm_status: current
-relaylm_volatility: medium
+relaylm_doc_type: evidence
+relaylm_authority: historical_phase5_5_c4_runtime_tts_transport_envelope_wiring_implementation
+relaylm_status: frozen
+relaylm_volatility: frozen
 relaylm_owner: implementation
-relaylm_update_trigger:
-  - Phase 5.5-C4 runtime transport-envelope construction changes
-  - stream-final C0/C1/C3 node ordering changes
-  - runtime TTS transport diagnostics schema changes
+relaylm_source_commit: 00c284b8729c048b89dbc19e9bbf23d427e218e8
+relaylm_source_pr: 327
+relaylm_recorded_on: 2026-06-21
+relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_not_authoritative_for:
-  - canonical pipeline responsibility order
+  - canonical architecture
+  - current runtime TTS handoff or transport-envelope behavior
+  - current C0/C1/C3 node ordering or diagnostics schema
   - downstream adapter delivery
-  - TTS engine execution
-  - Live2D/avatar adapter behavior
+  - TTS execution
+  - avatar adapter behavior
   - CTX/MEM/SOUL/SLP persistence
 relaylm_related_authority:
-  - phase5_5_stream_unpack_bounded_slice.md
-  - phase55c3_tts_adapter_transport_contract.md
-  - phase55c2_runtime_tts_adapter_handoff_wiring.md
-  - pipeline_implementation_plan.md
+  - ../../architecture/phase5_5_stream_unpack_bounded_slice.md
+  - ../../architecture/phase55c2_runtime_tts_adapter_handoff_wiring.md
+  - ../../architecture/phase55c3_tts_adapter_transport_contract.md
 ---
 # Phase 5.5-C4 Runtime TTS Transport Envelope Wiring
+
+> **Historical implementation evidence.** This frozen record describes the runtime-wiring C4 boundary merged in PR #327. Current Stream Unpack sequencing and runtime handoff/transport behavior are owned by the Phase 5.5 parent document, the current C2/C3 authorities, and implementation.
 
 ## Status
 

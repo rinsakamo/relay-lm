@@ -214,7 +214,7 @@ Implemented:
 - invalid observation blocking both handoff and transport emission,
 - direct runtime smoke and dedicated CI coverage.
 
-See [Phase 5.5-C4 Runtime TTS Transport Envelope Wiring](phase55c4_runtime_tts_transport_envelope_wiring.md).
+See [Phase 5.5-C4 Runtime TTS Transport Envelope Wiring Evidence](../evidence/implementation/phase55c4-runtime-tts-transport-envelope-wiring.md).
 
 ## Smoke matrix
 
