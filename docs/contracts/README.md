@@ -88,6 +88,21 @@ Machine-readable CTX-OVL v1 materials:
 - [prose/schema equivalence and coverage validator](../../scripts/relaylm_ctx_ovl_v1_equivalence.py);
 - [invalid-fixture registry guard](../../scripts/relaylm_ctx_ovl_v1_fixture_registry_guard.py).
 
+## Shared Assessment and Subjective MEM contract
+
+- [Shared Assessment and Subjective MEM contract](shared-assessment-subjective-mem.md)
+  - target logical contract only; owns character-independent Shared Assessment revision/current-state authority and character-scoped Subjective MEM decision, revision, relation, lifecycle, scope, and ordinary-Retrieval eligibility boundaries
+  - fixes grounded-content / subjective-meaning separation, SOUL-centered and SCN/REL-bounded formation, EMO non-authority, false-merge-safe decisions, and Primary/Secondary versus Semantic/Episodic orthogonality
+  - consumes governed Evidence and CTX-OVL boundaries but does not define physical storage, runtime implementation, retrieval ranking, migration, or deployment
+
+Machine-readable Subjective MEM v1 materials:
+
+- [compact single-file Draft 2020-12 schema bundle](schemas/subjective-mem-v1/relaylm-subjective-mem-v1.schema.json) and [direct-reference catalog](schemas/subjective-mem-v1/schema-catalog.json);
+- [valid fixtures](fixtures/subjective-mem-v1/valid/) and [invalid fixtures](fixtures/subjective-mem-v1/invalid/);
+- [schema and cross-record invariant validator](../../scripts/relaylm_subjective_mem_v1_validate.py);
+- [prose/schema/catalog/fixture equivalence validator](../../scripts/relaylm_subjective_mem_v1_equivalence.py);
+- [invalid-fixture registry guard](../../scripts/relaylm_subjective_mem_v1_fixture_registry_guard.py).
+
 ## RelaySOUL contracts
 
 - [RelaySOUL patch candidate contract](relaysoul_patch_candidate_contract.md)
