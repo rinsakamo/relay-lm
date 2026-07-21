@@ -30,7 +30,7 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 - Source recorded on: `2026-06-20`
 - Current sequencing and runtime-suppression authority retained by: `docs/architecture/phase5_5_stream_unpack_bounded_slice.md`, implementation, and focused smokes
 - Referrers repaired: Phase 5.5 parent, B1 frozen evidence, Cutover 1C-48 receipt, implementation evidence index
-- Fail-closed enforcement: `scripts/relaylm_phase55b2_handoff_cutover_guard.py`, to be compiled and executed by `.github/workflows/documentation-current-boundary-smoke.yml`
+- Fail-closed enforcement: `scripts/relaylm_phase55b2_handoff_cutover_guard.py`, compiled and executed by `.github/workflows/documentation-current-boundary-smoke.yml`
 - Guard self-test: 22 assertions
 - Exact-head GitHub Actions: pending
 - Runtime files changed: 0

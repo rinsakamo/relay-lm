@@ -5111,7 +5111,7 @@ verification:
   cutover_1c48_receipt_reference_updated: true
   implementation_evidence_index_updated: true
   fail_closed_guard: scripts/relaylm_phase55b2_handoff_cutover_guard.py
-  guard_integrated_into_existing_documentation_boundary_workflow: pending_connector_finalization
+  guard_integrated_into_existing_documentation_boundary_workflow: true
   guard_self_test_assertions: 22
   exact_head_workflow_runs: pending
   exact_head_workflow_success: pending
