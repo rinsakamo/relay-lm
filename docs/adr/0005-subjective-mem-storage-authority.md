@@ -196,7 +196,7 @@ Rejected because jobs, leases, idempotency, crash intents, receipts, anti-reform
 
 ### Store canonical lifecycle independently in operations.db
 
-Rejected because active/hidden/restored/successor state would have two competing authorities. Operations may enforce and finalize lifecycle mutations but cannot own a second lifecycle representation.
+Rejected because active, hidden, pinned, superseded, and other lifecycle states would have two competing authorities. Operations may enforce and finalize lifecycle mutations but cannot own a second lifecycle representation.
 
 ### Define commit at file replacement alone
 
