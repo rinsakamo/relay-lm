@@ -15,9 +15,12 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 # Documentation Hard Cutover 1C-48 Receipt
 
 - Cutover PR: #619
+- Bookkeeping consolidation PR: #620
 - Base main: `534f71e0043819f0ee16e035c9f0e100ae99fa1d`
-- Validated content head: `2f9305279b94477319b99c9d7955b5f7e83ee62a`
-- Merged commit: `pending`
+- Final cutover head: `c2bc9c7085b843dc55f7a460ccc9feddba1be6db`
+- Merged commit: `da1ba6ddb3365069758da3cae56b0e25c5ff9b86`
+- Merged at: `2026-07-20T23:46:54Z`
+- Final cutover diff: 10 files, +586/-12
 - Source: `docs/architecture/phase55b1_stream_suppression_gate_handoff.md`
 - Canonical target: `docs/evidence/implementation/phase55b1-stream-suppression-gate-handoff.md`
 - Disposition: `evidence_retained`, implemented as a move and retype from `implementation_handoff` / `historical_after_merge` to `evidence` / `frozen`
@@ -31,11 +34,10 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 - Referrers repaired: Phase 5.5 parent index, LAT-1 stale reference, LAT-2 incorrect reference, implementation evidence index
 - Fail-closed enforcement: `scripts/relaylm_phase55b1_handoff_cutover_guard.py`, compiled and executed by `.github/workflows/documentation-current-boundary-smoke.yml`
 - Guard self-test: 23 assertions
-- Final diff: 10 files, +586/-12
 - Exact-head GitHub Actions: 16 workflow runs, 16 success, 0 failure
 - Runtime files changed: 0
 - `relaylm/**` files changed: 0
 - Open-PR content imported: none; shared-path reconciliation remains for PR #617 (preserve the B1 guard when its temporary assembly workflow is rebased/finalized) and PR #586 (preserve the B1 implementation-evidence index entry when rebased)
-- Unresolved review threads at validated head: 0
+- Unresolved review threads at final cutover head: 0
 
-This frozen receipt records the Cutover 1C-48 migration facts. It does not make the historical B1 helper handoff current authority and does not change runtime, contract, schema, storage, compatibility, alias, redirect, dual-read, or dual-write behavior.
+This frozen receipt records the Cutover 1C-48 migration facts. It does not make the historical B1 helper handoff current authority and does not change runtime, contract, schema, storage, compatibility, alias, redirect, dual-read, or dual-write behavior. The bookkeeping integration changes no accepted cutover content.
