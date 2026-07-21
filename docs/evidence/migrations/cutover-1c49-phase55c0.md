@@ -17,7 +17,7 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 - Cutover PR: #622
 - Bookkeeping consolidation PR: pending
 - Base main: `1ca928cd28541f5a05fece30e9437a7fcf267921`
-- Validated content head: `7c7fc6097252f6a89131d8020ce62ce6a9f96dac`
+- Validated content head: `c7682947eea1ce97ed84e9586f4f9c225683be8b`
 - Merged commit: pending
 - Source: `docs/architecture/phase55c0_tts_segmentation_helper_handoff.md`
 - Canonical target: `docs/evidence/implementation/phase55c0-tts-segmentation-helper-handoff.md`
@@ -34,7 +34,7 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 - Validated-content-head GitHub Actions: 16 workflow runs, 16 success, 0 failure
 - Runtime files changed: 0
 - `relaylm/**` files changed: 0
-- Open-PR content imported: none; PR #621 now shares `.github/workflows/documentation-current-boundary-smoke.yml` in disjoint validation blocks and must preserve both the C0 guard and Subjective MEM integration when reconciled; PR #586 shares only `docs/evidence/implementation/README.md` in a disjoint added entry; PR #578/#567 have no path overlap
+- Open-PR content imported: none; merged PRs #621 and #623 are part of base main and their Subjective MEM plus storage-authority workflow integration is preserved alongside the C0 guard; PR #586 shares only `docs/evidence/implementation/README.md` in a disjoint added entry; PR #578 has no changed-path overlap
 - Unresolved review threads at validated content head: 0
 
 This frozen receipt records the Cutover 1C-49 migration boundary. It does not make the historical C0 helper handoff current authority and does not change runtime, contract, schema, storage, compatibility, alias, redirect, dual-read, or dual-write behavior.

@@ -5001,7 +5001,7 @@ cutover_pr: 622
 merged_commit: pending
 bookkeeping_pr: pending
 base_main: 1ca928cd28541f5a05fece30e9437a7fcf267921
-validated_content_head: 7c7fc6097252f6a89131d8020ce62ce6a9f96dac
+validated_content_head: c7682947eea1ce97ed84e9586f4f9c225683be8b
 head_at_merge: pending
 merged_at: pending
 old_path: docs/architecture/phase55c0_tts_segmentation_helper_handoff.md
@@ -5034,7 +5034,7 @@ verification:
   runtime_files_changed: 0
   relaylm_changed_files: 0
   open_pr_content_imported: false
-  open_pr_shared_path_reconciliation: ["#586:preserve C0 implementation-evidence index entry when rebased", "#621:shared documentation-boundary workflow; preserve both C0 guard and Subjective MEM integration during reconciliation"]
+  open_pr_shared_path_reconciliation: ["#586:preserve C0 implementation-evidence index entry when rebased"]
 ```
 
 PR #622 preserves the completed helper-only C0 handoff as frozen implementation evidence. The source-time helper claims remain historical; current Stream Unpack sequencing, C0 consumption, and runtime TTS handoff behavior remain parent-, C1/C2-, code-owned. `merged_commit` remains pending until explicit final merge and bookkeeping consolidation.
