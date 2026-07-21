@@ -493,6 +493,18 @@ path_overrides:
       runtime handoff authority
       with the Phase 5.5 parent, C1/C2 handoffs, and implementation.
 
+  docs/architecture/phase55c4_runtime_tts_transport_envelope_wiring.md:
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_paths:
+      - docs/evidence/implementation/phase55c4-runtime-tts-transport-envelope-wiring.md
+    deletion_reason: >-
+      Cutover 1C-50: the completed Phase 5.5-C4 runtime transport-envelope wiring
+      handoff was a bounded implementation record mislocated in the live architecture
+      collection. The cutover preserves PR #327 provenance, repairs the Phase 5.5
+      parent and LAT-2 references, updates the implementation evidence index, and
+      leaves current Stream Unpack sequencing plus runtime handoff/transport authority
+      with the parent architecture, C2/C3 authorities, implementation, and focused smokes.
 family_rules:
   - id: canonical-target-collections
     path_regex: '^docs/(planning|reference|templates)/'
