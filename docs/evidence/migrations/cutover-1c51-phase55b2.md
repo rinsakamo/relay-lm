@@ -15,10 +15,12 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 # Documentation Hard Cutover 1C-51 Receipt
 
 - Cutover PR: #631
-- Bookkeeping consolidation PR: pending
+- Bookkeeping consolidation PR: #632
 - Base main: `0db41086cbe6c3c48f8f597f42aa2214ab3c48de`
-- Validated content head: pending exact-head validation
-- Merged commit: pending
+- Final cutover head: `5ad8b67610f0fad775f7d987d845fb3402ded75b`
+- Merged commit: `61338a97e33b982acffb7ba513861de300db8236`
+- Merged at: `2026-07-21T23:21:42Z`
+- Final cutover diff: 10 files, +590/-20
 - Source: `docs/architecture/phase55b2_stream_suppression_runtime_handoff.md`
 - Canonical target: `docs/evidence/implementation/phase55b2-stream-suppression-runtime-handoff.md`
 - Disposition: `evidence_retained`, implemented as a move and retype from `implementation_handoff` / `current` to `evidence` / `frozen`
@@ -32,10 +34,10 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 - Referrers repaired: Phase 5.5 parent, B1 frozen evidence, Cutover 1C-48 receipt, implementation evidence index
 - Fail-closed enforcement: `scripts/relaylm_phase55b2_handoff_cutover_guard.py`, compiled and executed by `.github/workflows/documentation-current-boundary-smoke.yml`
 - Guard self-test: 22 assertions
-- Exact-head GitHub Actions: pending
+- Exact-head GitHub Actions: 16 workflow runs, 16 success, 0 failure
 - Runtime files changed: 0
 - `relaylm/**` files changed: 0
-- Open-PR content imported: none; PR #629 was open before branch creation, shares no planned cutover paths, and no content was imported
-- Unresolved review threads: pending final review
+- Open-PR content imported: none; PR #629 was open at final review, shared 0 changed paths, and no content was imported
+- Unresolved review threads at final cutover head: 0
 
-This receipt records the in-review Cutover 1C-51 boundary. It does not make the historical B2 runtime-wiring handoff current authority and does not change runtime, contract, schema, storage, compatibility, alias, redirect, dual-read, or dual-write behavior. Merge and exact-head observations remain pending until explicit final review and merge.
+This frozen receipt records the Cutover 1C-51 migration facts. It does not make the historical B2 runtime-wiring handoff current authority and does not change runtime, contract, schema, storage, compatibility, alias, redirect, dual-read, or dual-write behavior. This bookkeeping-only integration changes no accepted cutover content.
