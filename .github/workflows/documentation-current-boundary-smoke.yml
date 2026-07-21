@@ -1,17 +1,16 @@
-name: Bootstrap Documentation Hard Cutover 1C-51
+name: Finalize Documentation Hard Cutover 1C-51
 
 on:
   pull_request:
     paths:
       - ".github/workflows/documentation-current-boundary-smoke.yml"
-      - "scripts/relaylm_cutover_1c51_bootstrap.py"
-      - "docs/evidence/migrations/cutover-1c51-bootstrap-trigger.txt"
+      - "scripts/relaylm_cutover_1c51_finalize_bootstrap.py"
 
 permissions:
   contents: write
 
 jobs:
-  bootstrap-cutover-1c51:
+  finalize-cutover-1c51:
     if: github.head_ref == 'agent/documentation-hard-cutover-1c51-phase55b2'
     runs-on: ubuntu-latest
     steps:
@@ -19,27 +18,16 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
-      - name: Build Cutover 1C-51
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: python scripts/relaylm_cutover_1c51_bootstrap.py
-      - name: Commit assembled cutover
+      - name: Finalize workflow integration facts
+        run: python scripts/relaylm_cutover_1c51_finalize_bootstrap.py
+      - name: Commit finalization facts
         env:
           HEAD_REF: ${{ github.head_ref }}
         run: |
-          git status --short
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
-            docs/architecture/phase5_5_stream_unpack_bounded_slice.md \
-            docs/architecture/phase55b2_stream_suppression_runtime_handoff.md \
-            docs/evidence/implementation/README.md \
-            docs/evidence/implementation/phase55b1-stream-suppression-gate-handoff.md \
-            docs/evidence/implementation/phase55b2-stream-suppression-runtime-handoff.md \
-            docs/evidence/migrations/cutover-1c48-phase55b1.md \
             docs/evidence/migrations/cutover-1c51-phase55b2.md \
-            docs/evidence/migrations/documentation-hard-cutover-receipt.md \
-            docs/planning/documentation-cutover-rules.yaml \
-            scripts/relaylm_phase55b2_handoff_cutover_guard.py
-          git commit -m "docs: move Phase 5.5-B2 handoff to frozen evidence"
+            docs/evidence/migrations/documentation-hard-cutover-receipt.md
+          git commit -m "docs: record Cutover 1C-51 workflow integration"
           git push origin HEAD:"${HEAD_REF}"
