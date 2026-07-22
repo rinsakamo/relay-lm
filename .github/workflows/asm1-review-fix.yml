@@ -82,8 +82,7 @@ jobs:
           for value, label in checks:
               if text.count(value) != 1:
                   raise RuntimeError(f'runner {label} patch expected one match, found {text.count(value)}')
-          text = text.replace(old, new).replace(redundant, '').replace(smoke_old, smoke_new)
-          path.write_text(text, encoding='utf-8')
+          path.write_text(text.replace(old, new).replace(redundant, '').replace(smoke_old, smoke_new), encoding='utf-8')
           PY
           set +e
           python /tmp/apply_asm1_review_fixes.py > /tmp/asm1-review-fix-error.txt 2>&1
@@ -99,60 +98,57 @@ jobs:
             git push origin HEAD:asm1-review-fix-runner-head
             exit "$status"
           fi
-          python - <<'PY'
+          set +e
+          python - <<'PY' > /tmp/asm1-review-fix-post-apply.txt 2>&1
           from pathlib import Path
 
           runtime = Path('relaylm/shared_assessment_runtime.py')
           text = runtime.read_text(encoding='utf-8')
-          call_old = '''                    expected_assessment_id=proposal.assessment_id,
-                  )
-          '''
-          call_new = '''                    expected_assessment_id=proposal.assessment_id,
-                      expected_assessment_revision=(
-                          1
-                          if proposal.expected_current_revision_or_null is None
-                          else proposal.expected_current_revision_or_null + 1
-                      ),
-                  )
-          '''
-          sig_old = '''    expected_idempotency_key_digest: str,
-              expected_assessment_id: str,
-          ) -> SharedAssessmentCommitResult:
-          '''
-          sig_new = '''    expected_idempotency_key_digest: str,
-              expected_assessment_id: str,
-              expected_assessment_revision: int,
-          ) -> SharedAssessmentCommitResult:
-          '''
-          check_old = '''        existing.get("assessment_id") != expected_assessment_id
-                  or type(assessment_revision) is not int
-          '''
-          check_new = '''        existing.get("assessment_id") != expected_assessment_id
-                  or assessment_revision != expected_assessment_revision
-                  or type(assessment_revision) is not int
-          '''
-          for old_value, label in ((call_old, 'operation call'), (sig_old, 'operation signature'), (check_old, 'operation revision check')):
-              if text.count(old_value) != 1:
-                  raise RuntimeError(f'{label} expected one match, found {text.count(old_value)}')
-          text = text.replace(call_old, call_new).replace(sig_old, sig_new).replace(check_old, check_new)
+          replacements = (
+              (
+                  'expected_assessment_id=proposal.assessment_id,\n                )',
+                  'expected_assessment_id=proposal.assessment_id,\n                    expected_assessment_revision=(\n                        1\n                        if proposal.expected_current_revision_or_null is None\n                        else proposal.expected_current_revision_or_null + 1\n                    ),\n                )',
+                  'operation call',
+              ),
+              (
+                  '    expected_assessment_id: str,\n) -> SharedAssessmentCommitResult:',
+                  '    expected_assessment_id: str,\n    expected_assessment_revision: int,\n) -> SharedAssessmentCommitResult:',
+                  'operation signature',
+              ),
+              (
+                  'existing.get("assessment_id") != expected_assessment_id\n        or type(assessment_revision) is not int',
+                  'existing.get("assessment_id") != expected_assessment_id\n        or assessment_revision != expected_assessment_revision\n        or type(assessment_revision) is not int',
+                  'operation revision check',
+              ),
+          )
+          for old_value, new_value, label in replacements:
+              count = text.count(old_value)
+              if count != 1:
+                  raise RuntimeError(f'{label} expected one match, found {count}')
+              text = text.replace(old_value, new_value)
           runtime.write_text(text, encoding='utf-8')
 
           tests = Path('tests/test_shared_assessment_runtime.py')
           test_text = tests.read_text(encoding='utf-8')
-          route_old = '''        route_snapshot(
-                      capture_profile="managed_user_input", issued_at=now.isoformat()
-                  ),
-          '''
-          route_new = '''        route_snapshot(
-                      capture_profile="managed_user_input",
-                      session_id=session_id,
-                      issued_at=now.isoformat(),
-                  ),
-          '''
-          if test_text.count(route_old) != 1:
-              raise RuntimeError(f'route snapshot expected one match, found {test_text.count(route_old)}')
+          route_old = 'capture_profile="managed_user_input", issued_at=now.isoformat()'
+          route_new = 'capture_profile="managed_user_input",\n            session_id=session_id,\n            issued_at=now.isoformat(),'
+          count = test_text.count(route_old)
+          if count != 1:
+              raise RuntimeError(f'route snapshot expected one match, found {count}')
           tests.write_text(test_text.replace(route_old, route_new), encoding='utf-8')
           PY
+          post_status=$?
+          set -e
+          cat /tmp/asm1-review-fix-post-apply.txt
+          if test "$post_status" -ne 0; then
+            cp /tmp/asm1-review-fix-post-apply.txt .asm1-review-fix-error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .asm1-review-fix-error.txt
+            git commit -m "chore: publish ASM-1 post-apply error"
+            git push origin HEAD:asm1-review-fix-runner-head
+            exit "$post_status"
+          fi
       - name: Install package with test dependencies
         run: |
           python -m pip install --upgrade pip
