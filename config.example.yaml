@@ -226,3 +226,9 @@ evidence_data_root:
 shared_assessment_enabled: false
 shared_assessment_dry_run_only: true
 shared_assessment_apply_enabled: false
+
+# OVL-1 is independently default-off and dry-run-first. Apply requires EV-1
+# capture apply because CTX-OVL may consume only currently authorized evidence.
+ctx_ovl_enabled: false
+ctx_ovl_dry_run_only: true
+ctx_ovl_apply_enabled: false

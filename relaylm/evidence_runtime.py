@@ -1,11 +1,15 @@
-"""Config-gated managed-chat integration facade for the bounded EV-1 slice."""
+"""Config-gated managed-chat integration facade for EV-1 and OVL-1."""
 from __future__ import annotations
 
-import hashlib
 from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from relaylm.ctx_ovl_runtime import (
+    derive_private_conversation_ref,
+    prepare_ctx_ovl_before_user_capture,
+    refresh_ctx_ovl_after_user_capture,
+)
 from relaylm.evidence_response_capture import (
     EvidenceResponseCaptureResult,
     capture_managed_assistant_response_nonstream,
@@ -46,14 +50,7 @@ class EvidenceRuntimeGate:
 
 
 def _private_session_ref(route: "ResolvedRoute") -> str | None:
-    if not isinstance(route.user_id, str) or not route.user_id:
-        return None
-    if not isinstance(route.session_id, str) or not route.session_id:
-        return None
-    digest = hashlib.sha256(
-        f"{route.user_id}\0{route.session_id}".encode("utf-8")
-    ).hexdigest()
-    return f"privateconversation_{digest}"
+    return derive_private_conversation_ref(route)
 
 
 def resolve_evidence_gate(
@@ -152,6 +149,17 @@ def capture_evidence_for_user_input(
     store, store_reasons = _evidence_store_for_gate(config, gate)
     fail_closed_reasons.extend(store_reasons)
 
+    # OVL-1 selects only previously committed evidence. The current user
+    # occurrence is captured after this step and admitted only for future turns.
+    ovl_prepare = prepare_ctx_ovl_before_user_capture(
+        config=config,
+        pipeline_context=pipeline_context,
+        resolved_scope=resolved_scope,
+        evidence_store=store,
+    )
+    if ovl_prepare is not None:
+        pipeline_context.record_node_result(ovl_prepare)
+
     current_user_text: str | None = None
     preflight = pipeline_context.client_history_exclusion_preflight_result
     if preflight is None:
@@ -205,7 +213,18 @@ def capture_evidence_for_user_input(
         route_snapshot_payload=snapshot,
     )
     pipeline_context.set_evidence_user_input_capture_result(result)
-    return _node_result("evidence_user_input_capture", result)
+
+    ovl_post = refresh_ctx_ovl_after_user_capture(
+        config=config,
+        pipeline_context=pipeline_context,
+        resolved_scope=resolved_scope,
+        evidence_store=store,
+    )
+    return _node_result(
+        "evidence_user_input_capture",
+        result,
+        ctx_ovl_post_capture=ovl_post,
+    )
 
 
 def _classify_nonstream_response(
@@ -402,6 +421,8 @@ def build_evidence_response_capture_node_result(
 def _node_result(
     node_name: str,
     result: EvidenceUserInputCaptureResult | EvidenceResponseCaptureResult,
+    *,
+    ctx_ovl_post_capture: PipelineNodeResult | None = None,
 ) -> PipelineNodeResult:
     status = {
         "admitted": "applied",
@@ -411,28 +432,28 @@ def _node_result(
         "integrity_conflict": "failed",
     }.get(result.status, "diagnostic_only")
     diagnostics = result.to_log_dict()
+    if ctx_ovl_post_capture is not None:
+        diagnostics["ctx_ovl_post_capture"] = {
+            "status": ctx_ovl_post_capture.status,
+            "decision": ctx_ovl_post_capture.decision,
+            "blocked_reasons": list(ctx_ovl_post_capture.blocked_reasons),
+            "diagnostics": dict(ctx_ovl_post_capture.diagnostics),
+        }
+    artifacts = [
+        {
+            "artifact_name": node_name,
+            "schema_version": diagnostics["schema_version"],
+            "content_free": True,
+            "present": True,
+        }
+    ]
+    if ctx_ovl_post_capture is not None:
+        artifacts.extend(ctx_ovl_post_capture.artifacts)
     return build_pipeline_node_result(
         node_name=node_name,
         status=status,
         decision=result.status,
         blocked_reasons=result.blocked_reasons,
         diagnostics=diagnostics,
-        artifacts=[
-            {
-                "artifact_name": node_name,
-                "schema_version": diagnostics["schema_version"],
-                "content_free": True,
-                "present": True,
-            }
-        ],
+        artifacts=artifacts,
     )
-
-
-__all__ = [
-    "EvidenceRuntimeGate",
-    "build_evidence_response_capture_node_result",
-    "capture_evidence_for_assistant_response_nonstream",
-    "capture_evidence_for_user_input",
-    "prepare_stream_evidence_response_capture",
-    "resolve_evidence_gate",
-]

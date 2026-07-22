@@ -243,6 +243,9 @@ class RelayLMConfig(BaseModel):
     shared_assessment_enabled: StrictBool = False
     shared_assessment_dry_run_only: StrictBool = True
     shared_assessment_apply_enabled: StrictBool = False
+    ctx_ovl_enabled: StrictBool = False
+    ctx_ovl_dry_run_only: StrictBool = True
+    ctx_ovl_apply_enabled: StrictBool = False
 
     @model_validator(mode="after")
     def _validate_local_scheduler_mode(self) -> "RelayLMConfig":
@@ -340,6 +343,18 @@ class RelayLMConfig(BaseModel):
                 raise ValueError(
                     "evidence_capture_apply_conflicts_with_relaymem_durable_finalization_apply"
                 )
+
+        ctx_ovl_triple = (
+            self.ctx_ovl_enabled,
+            self.ctx_ovl_dry_run_only,
+            self.ctx_ovl_apply_enabled,
+        )
+        if ctx_ovl_triple not in _VALID_GATE_TRIPLES:
+            raise ValueError("invalid_ctx_ovl_gate_combination")
+        if ctx_ovl_triple != _DISABLED_GATE_TRIPLE and evidence_triple == _DISABLED_GATE_TRIPLE:
+            raise ValueError("ctx_ovl_requires_evidence_capture_enabled")
+        if ctx_ovl_triple == _APPLY_GATE_TRIPLE and evidence_triple != _APPLY_GATE_TRIPLE:
+            raise ValueError("ctx_ovl_apply_requires_evidence_capture_apply")
         return self
 
     def _enable_route_owned_home_admission_trigger(self) -> None:
