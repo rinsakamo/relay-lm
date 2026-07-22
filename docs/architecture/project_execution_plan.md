@@ -225,7 +225,7 @@ Completed post-MVP debt:
 
 Registered contract-aligned implementation debt:
   EV-1 Governed Evidence runtime foundation                            complete / default-off
-    -> OVL-1 CTX-OVL participant-private vertical slice               registered / not started
+    -> OVL-1 CTX-OVL participant-private vertical slice               complete / default-off / participant-private only
     -> ASM-1 Shared Assessment runtime foundation                     complete / default-off
          -> SM-1 Subjective MEM decision/result vertical slice        complete / default-off / prepared-only
               -> ST-1 Markdown + operations commit protocol           next registered slice / not started

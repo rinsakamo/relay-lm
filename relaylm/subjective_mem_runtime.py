@@ -208,7 +208,9 @@ def create_subjective_mem(
         }
     )
     operation_key_digest = sha256_hex(operation_idempotency_key.encode("utf-8"))
-    operation_slot_id = _opaque("smkey", operation_idempotency_key)
+    operation_slot_id = _opaque(
+        "smkey", f"{namespace_digest}\0{operation_key_digest}"
+    )
     operation_id = _opaque(
         "smop", f"{namespace_digest}\0{operation_key_digest}"
     )
@@ -386,6 +388,7 @@ def create_subjective_mem(
                 prepared_revision_record_id=prepared_revision_record_id,
                 prepared_manifest_id=prepared_manifest_id,
                 state_key=state_key,
+                expected_current_state=current_state,
             )
             if collision_reasons:
                 return SubjectiveMemCreateResult(
@@ -546,6 +549,7 @@ def _preflight_new_identity(
     prepared_revision_record_id: str,
     prepared_manifest_id: str,
     state_key: str,
+    expected_current_state: SubjectiveMemCurrentState,
 ) -> tuple[str, ...]:
     checks = (
         ("shared_assessment_formation_receipt", receipt_id),
@@ -557,6 +561,52 @@ def _preflight_new_identity(
         return ("subjective_mem_identity_already_reserved_without_operation",)
     if tx.read_log(log_kind="subjective_mem_current_state", key=state_key) not in (None, []):
         return ("subjective_mem_current_state_already_exists",)
+    uniqueness_reasons = _validate_current_state_uniqueness(
+        tx=tx,
+        expected_key=state_key,
+        expected_current_state=expected_current_state,
+        require_expected=False,
+    )
+    if uniqueness_reasons:
+        return uniqueness_reasons
+    return ()
+
+
+def _validate_current_state_uniqueness(
+    *,
+    tx: EvidenceStoreTransaction,
+    expected_key: str,
+    expected_current_state: SubjectiveMemCurrentState,
+    require_expected: bool,
+) -> tuple[str, ...]:
+    try:
+        logs = tx.list_logs(
+            log_kind="subjective_mem_current_state",
+            limit=4096,
+        )
+    except (RuntimeError, TypeError, ValueError):
+        return ("subjective_mem_current_state_inventory_unavailable",)
+
+    matches: list[tuple[str, list[dict]]] = []
+    for key, events in logs:
+        if any(
+            item.get("character_id") == expected_current_state.character_id
+            and item.get("memory_id") == expected_current_state.memory_id
+            for item in events
+        ):
+            matches.append((key, events))
+
+    if not require_expected:
+        return (
+            ("subjective_mem_duplicate_logical_current_state",)
+            if matches
+            else ()
+        )
+    if len(matches) != 1:
+        return ("subjective_mem_duplicate_logical_current_state",)
+    key, events = matches[0]
+    if key != expected_key or events != [expected_current_state.to_dict()]:
+        return ("subjective_mem_duplicate_logical_current_state",)
     return ()
 
 
@@ -693,6 +743,16 @@ def _resolve_existing_operation(
             "fail_closed", blocked_reasons=("subjective_mem_operation_result_corrupt",)
         )
     receipt, decision, revision, manifest, current_state = parsed
+    uniqueness_reasons = _validate_current_state_uniqueness(
+        tx=tx,
+        expected_key=expected_current_state_key,
+        expected_current_state=expected_current_state,
+        require_expected=True,
+    )
+    if uniqueness_reasons:
+        return SubjectiveMemCreateResult(
+            "fail_closed", blocked_reasons=uniqueness_reasons
+        )
     if (
         decision.to_dict() != expected_decision.to_dict()
         or revision.to_dict() != expected_revision.to_dict()

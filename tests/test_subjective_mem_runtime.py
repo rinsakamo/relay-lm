@@ -461,10 +461,9 @@ def test_exact_assessment_input_and_monotonic_time_are_required(store) -> None:
     assert "shared_assessment_temporal_non_monotonic" in backwards.blocked_reasons
 
 
-def test_cross_character_operation_key_reuse_fails_closed(store) -> None:
+def test_same_raw_operation_key_is_scoped_per_character(store) -> None:
     captured, assessment_revision, assessment_state = _asm_ready(store)
     first = _create(store, captured, assessment_revision, assessment_state)
-    assert first.status == "committed"
     cross = _create(
         store,
         captured,
@@ -472,8 +471,11 @@ def test_cross_character_operation_key_reuse_fails_closed(store) -> None:
         assessment_state,
         character_authority=_character("char2"),
     )
-    assert cross.status == "fail_closed"
-    assert cross.blocked_reasons == ("subjective_mem_operation_scope_mismatch",)
+    assert first.status == cross.status == "committed"
+    assert first.decision is not None and cross.decision is not None
+    assert first.revision is not None and cross.revision is not None
+    assert first.decision.decision_id != cross.decision.decision_id
+    assert first.revision.memory_id != cross.revision.memory_id
 
 
 def test_corrupt_prepared_revision_blocks_retry(store) -> None:
@@ -1000,3 +1002,81 @@ def test_sm1_has_no_normal_path_soul_slp_retrieval_or_primary_mem_wiring() -> No
             continue
         assert "from relaylm.subjective_mem_runtime" not in path.read_text()
         assert "import relaylm.subjective_mem_runtime" not in path.read_text()
+
+
+
+def test_foreign_current_state_key_blocks_new_apply(store) -> None:
+    captured, assessment_revision, assessment_state = _asm_ready(store)
+    dry = _create(
+        store,
+        captured,
+        assessment_revision,
+        assessment_state,
+        apply_enabled=False,
+        operation_idempotency_key="foreign-state-before-apply",
+    )
+    assert dry.status == "dry_run_ready"
+    assert dry.current_state is not None
+    foreign_key = "smstate_foreign_before_apply"
+    foreign = {
+        **dry.current_state.to_dict(),
+        "memory_state_id": foreign_key,
+    }
+    written = store.write_log(
+        evidence_space_id=captured.evidence_space_id,
+        log_kind="subjective_mem_current_state",
+        key=foreign_key,
+        events=(foreign,),
+    )
+    assert written.status == "created"
+
+    blocked = _create(
+        store,
+        captured,
+        assessment_revision,
+        assessment_state,
+        operation_idempotency_key="foreign-state-before-apply",
+    )
+    assert blocked.status == "integrity_conflict"
+    assert blocked.blocked_reasons == (
+        "subjective_mem_duplicate_logical_current_state",
+    )
+    space = store.root / captured.evidence_space_id
+    assert not (space / "records" / "subjective_mem_operation").exists()
+
+
+def test_foreign_current_state_key_blocks_retry(store) -> None:
+    captured, assessment_revision, assessment_state = _asm_ready(store)
+    first = _create(
+        store,
+        captured,
+        assessment_revision,
+        assessment_state,
+        operation_idempotency_key="foreign-state-after-apply",
+    )
+    assert first.status == "committed"
+    assert first.current_state is not None
+    foreign_key = "smstate_foreign_after_apply"
+    foreign = {
+        **first.current_state.to_dict(),
+        "memory_state_id": foreign_key,
+    }
+    written = store.write_log(
+        evidence_space_id=captured.evidence_space_id,
+        log_kind="subjective_mem_current_state",
+        key=foreign_key,
+        events=(foreign,),
+    )
+    assert written.status == "created"
+
+    retry = _create(
+        store,
+        captured,
+        assessment_revision,
+        assessment_state,
+        operation_idempotency_key="foreign-state-after-apply",
+    )
+    assert retry.status == "fail_closed"
+    assert retry.blocked_reasons == (
+        "subjective_mem_duplicate_logical_current_state",
+    )

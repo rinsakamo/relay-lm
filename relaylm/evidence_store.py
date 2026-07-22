@@ -70,6 +70,17 @@ class EvidenceStoreTransaction:
             key=key,
         )
 
+    def list_logs(
+        self, *, log_kind: str, limit: int
+    ) -> tuple[tuple[str, list[dict]], ...]:
+        """Return one bounded, under-lock inventory for a logical log kind."""
+
+        return self._store._list_logs_unlocked(
+            evidence_space_id=self.evidence_space_id,
+            log_kind=log_kind,
+            limit=limit,
+        )
+
     def read_payload(self, *, payload_id: str) -> dict | None:
         return self._store._read_payload_unlocked(
             evidence_space_id=self.evidence_space_id, payload_id=payload_id
@@ -286,6 +297,44 @@ class EvidenceRecordStore:
         if not isinstance(value, list) or any(not isinstance(item, dict) for item in value):
             raise RuntimeError("evidence_store_log_corrupt")
         return value
+
+    def _list_logs_unlocked(
+        self,
+        *,
+        evidence_space_id: str,
+        log_kind: str,
+        limit: int,
+    ) -> tuple[tuple[str, list[dict]], ...]:
+        if not _is_safe_component(log_kind):
+            raise ValueError("evidence_store_log_kind_invalid")
+        if type(limit) is not int or not 1 <= limit <= 4096:
+            raise ValueError("evidence_store_log_inventory_limit_invalid")
+        directory = self._space_dir(evidence_space_id) / "logs" / log_kind
+        try:
+            info = directory.lstat()
+        except FileNotFoundError:
+            return ()
+        except OSError as exc:
+            raise RuntimeError("evidence_store_log_inventory_unreadable") from exc
+        if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+            raise RuntimeError("evidence_store_log_inventory_unsafe")
+        paths = sorted(directory.glob("*.json"))
+        if len(paths) > limit:
+            raise RuntimeError("evidence_store_log_inventory_limit_exceeded")
+        inventory: list[tuple[str, list[dict]]] = []
+        for path in paths:
+            key = path.name.removesuffix(".json")
+            if not _is_safe_component(key):
+                raise RuntimeError("evidence_store_log_inventory_unsafe")
+            events = self._read_log_unlocked(
+                evidence_space_id=evidence_space_id,
+                log_kind=log_kind,
+                key=key,
+            )
+            if events is None:
+                raise RuntimeError("evidence_store_log_inventory_unreadable")
+            inventory.append((key, events))
+        return tuple(inventory)
 
     def _payload_path(self, evidence_space_id: str, payload_id: str) -> Path:
         if not _is_safe_component(payload_id):

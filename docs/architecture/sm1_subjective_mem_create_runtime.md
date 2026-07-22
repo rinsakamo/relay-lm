@@ -126,11 +126,11 @@ current_state.current_revision == revision-1
 prepared_manifest.revision_digest == digest(revision-1)
 ```
 
-Character, scope, assessment references, supported-content digest, and all formation timestamps must also agree exactly. Corrupt, missing, duplicate, stale, or repointed records fail closed on retry.
+Character, scope, assessment references, supported-content digest, and all formation timestamps must also agree exactly. Under the Evidence-space lock, apply and retry use a bounded inventory to require exactly one logical current-state selector for the same character and memory even when a conflicting selector uses another state key. Corrupt, missing, duplicate, stale, or repointed records fail closed on retry.
 
 ## Identity and idempotency
 
-The raw key selects a deterministic idempotency slot inside the exact Evidence space. The logical operation ID is separately derived from the Evidence-space and character-authority namespace plus the key digest. The slot binds that scoped operation to:
+The raw-key digest and exact Evidence-space plus character-authority namespace select a deterministic idempotency slot. The logical operation ID is derived from the same namespace and key digest. The slot binds that scoped operation to:
 
 - the Evidence space;
 - the exact character/workspace authority digest;
