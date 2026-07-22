@@ -226,3 +226,9 @@ evidence_data_root:
 ctx_ovl_enabled: false
 ctx_ovl_dry_run_only: true
 ctx_ovl_apply_enabled: false
+
+# ASM-1 deferred Shared Assessment. Uses the EV-1 evidence_data_root and never
+# writes Subjective MEM. Apply is explicit and remains off by default.
+shared_assessment_enabled: false
+shared_assessment_dry_run_only: true
+shared_assessment_apply_enabled: false
