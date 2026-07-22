@@ -15,10 +15,12 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 # Documentation Hard Cutover 1C-52 Receipt
 
 - Cutover PR: #634
-- Bookkeeping consolidation PR: pending
-- Base main: `3b518000d9e87cafe8ba23aabf0b2ef815881c16`
-- Validated content head: pending exact-head validation
-- Merged commit: pending
+- Bookkeeping consolidation PR: #635
+- Base main: `86d3af1b3c24569f1daf01b2b52ef8c5119046d8`
+- Validated content head: `ca4a9bc98c48316dc777c9c7abf85f4d910a11ef`
+- Merged commit: `8791d0495e1c4b56aa97b49acc27b745a65bdd4c`
+- Merged at: `2026-07-22T08:16:33Z`
+- Final cutover diff: 17 changed files, +610/-28
 - Source: `docs/architecture/i1ge_durable_finalization_crash_validation.md`
 - Canonical target: `docs/evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md`
 - Disposition: `evidence_retained`, implemented as a move and retype from `implementation_handoff` / `historical_after_merge` to `evidence` / `frozen`
@@ -37,10 +39,10 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 - Immutable historical carriers preserved unchanged: `docs/evidence/waves/wave2_cross_slice_convergence_audit-source.txt`, `docs/evidence/waves/wave3_cross_slice_convergence_audit-source.txt`
 - Fail-closed enforcement: `scripts/relaylm_i1ge_handoff_cutover_guard.py`, compiled and executed by `.github/workflows/documentation-current-boundary-smoke.yml`
 - Guard self-test: 23 assertions
-- Exact-head GitHub Actions: pending
+- Exact-head GitHub Actions: 16 workflows; 16 success, 0 failure, 0 pending
 - Runtime files changed: 0
 - `relaylm/**` files changed: 0
-- Open-PR content imported: none; PR #629 was open before branch creation, shares no planned cutover paths, and no content was imported
-- Unresolved review threads: pending final review
+- Implementation-base integration: PR #629 merged before the final rebase as current main; it shared 0 cutover paths and no EV-1 content was duplicated in the cutover
+- Unresolved review threads: 0
 
-This receipt records the in-review Cutover 1C-52 boundary. It does not make the historical I1-GE validation handoff current authority and does not change runtime, contract, schema, storage, compatibility, alias, redirect, dual-read, or dual-write behavior. Merge and exact-head observations remain pending until explicit final review and merge.
+This receipt records the merged Cutover 1C-52 boundary. PR #634 merged as `8791d0495e1c4b56aa97b49acc27b745a65bdd4c` from reviewed head `ca4a9bc98c48316dc777c9c7abf85f4d910a11ef` on base `86d3af1b3c24569f1daf01b2b52ef8c5119046d8`; PR #635 consolidates those facts without changing the accepted cutover content. The historical I1-GE validation handoff remains non-authoritative for current runtime, contract, schema, storage, compatibility, alias, redirect, dual-read, or dual-write behavior.
