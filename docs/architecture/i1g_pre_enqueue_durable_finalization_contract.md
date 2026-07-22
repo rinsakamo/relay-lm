@@ -21,7 +21,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - i1gd_durable_finalization_retention_cleanup.md
-  - i1ge_durable_finalization_crash_validation.md
+  - ../evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md
   - phase6_i1b_runtime_enqueue_source_capture_handoff.md
   - phase6c1_durable_protected_source_persistence.md
   - phase6b2_relayslp_atomic_durable_enqueue.md

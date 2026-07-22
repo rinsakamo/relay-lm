@@ -14,7 +14,7 @@ REPORTS = {
         "pr": "#411",
         "merge": "e2caa1bdb53468ca282e8f374ba8ceebf839c976",
         "head": "6cb461cb614d14965f5a49c1c4b517755f44f4a6",
-        "handoff": "docs/architecture/i1ge_durable_finalization_crash_validation.md",
+        "handoff": "docs/evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md",
     },
     "I-4D": {
         "path": "docs/evidence/implementation/i4d_completion_report.md",
@@ -161,7 +161,7 @@ def check_i4d_static_boundary() -> None:
 
 def check_i1ge_static_boundary() -> None:
     require(
-        "docs/architecture/i1ge_durable_finalization_crash_validation.md",
+        "docs/evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md",
         "validation-only production evidence",
         "real child-process `os._exit` seams",
         "sealed durable-finalization evidence through exact C1-5/B2 correlation",

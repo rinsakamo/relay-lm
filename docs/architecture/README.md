@@ -94,7 +94,6 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [O3 Always-On Local Scheduler](o3_always_on_local_scheduler.md)
 - [I1-G Durable-finalization Contract and Replay Boundary](i1g_pre_enqueue_durable_finalization_contract.md)
 - [I1-GD Durable-finalization Retention and Isolation Cleanup](i1gd_durable_finalization_retention_cleanup.md)
-- [I1-GE Durable-finalization Crash Validation](i1ge_durable_finalization_crash_validation.md)
 - [Integration I1 Primary MEM Two-Turn Recall](integration_i1_primary_mem_two_turn_recall.md)
 - [Phase I-2 Real SOUL Lab Observation](phase_i2_real_soul_lab_observation.md)
 - [Phase I-3 Auditable Primary MEM Correct](phase_i3_auditable_primary_mem_correct.md)

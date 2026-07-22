@@ -7,7 +7,7 @@ relaylm_owner: relaymem_slp
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - i1g_pre_enqueue_durable_finalization_contract.md
-  - i1ge_durable_finalization_crash_validation.md
+  - ../evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md
   - o1b_sealed_i1g_replay_lane.md
   - ../evidence/waves/wave3_cross_slice_convergence_audit.md
 relaylm_not_authoritative_for:

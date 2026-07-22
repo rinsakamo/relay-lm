@@ -1,23 +1,30 @@
 ---
-relaylm_doc_type: implementation_handoff
-relaylm_authority: i1ge_durable_finalization_crash_validation
-relaylm_status: historical_after_merge
+relaylm_doc_type: evidence
+relaylm_authority: historical_i1ge_durable_finalization_crash_validation_handoff
+relaylm_status: frozen
 relaylm_volatility: frozen
 relaylm_owner: implementation
-relaylm_current_status_source: ../PROJECT_STATUS.md
-relaylm_related_authority:
-  - docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md
-  - docs/architecture/i1gd_durable_finalization_retention_cleanup.md
-  - docs/architecture/o1b_sealed_i1g_replay_lane.md
-  - docs/evidence/implementation/i1ge_completion_report.md
+relaylm_source_commit: 394ea1628f2262625c460c60d6b218ccc90429ac
+relaylm_source_pr: 415
+relaylm_recorded_on: 2026-06-27
+relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_not_authoritative_for:
+  - current durable-finalization production behavior
   - new durable-finalization schema
-  - replay algorithm changes
-  - scheduler or worker execution
+  - replay or retention algorithm changes
+  - scheduler, queue, or worker execution
   - Primary MEM formation
-  - repository-wide current status after later waves
+  - repository-wide current status
+relaylm_related_authority:
+  - ../../architecture/i1g_pre_enqueue_durable_finalization_contract.md
+  - ../../architecture/i1gd_durable_finalization_retention_cleanup.md
+  - ../../architecture/o1b_sealed_i1g_replay_lane.md
+  - i1ge_completion_report.md
+  - ../waves/wave3_cross_slice_convergence_audit.md
 ---
 # I1-GE Durable-finalization crash validation handoff
+
+> **Historical validation evidence.** This frozen governance handoff was added by Wave 3 convergence PR #415 to describe the validation-only proof implemented in PR #411. Current durable-finalization production authority remains with the I1-G contract, I1-GD, implementation, and focused smokes.
 
 ## Status
 

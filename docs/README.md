@@ -78,7 +78,6 @@ Implementation PRs add or update their own slice handoff and `docs/evidence/impl
 - [PM-D7 runtime install hook fold-in](architecture/pm_d7_runtime_install_hook_fold_in.md)
 - [I1-G durable-finalization contract and completed GA-GE boundaries](architecture/i1g_pre_enqueue_durable_finalization_contract.md)
 - [I1-GD durable-finalization retention and isolation lifecycle](architecture/i1gd_durable_finalization_retention_cleanup.md)
-- [I1-GE Durable-finalization Crash Validation](architecture/i1ge_durable_finalization_crash_validation.md)
 - [Integration I1 Primary MEM two-turn recall](architecture/integration_i1_primary_mem_two_turn_recall.md)
 - [Phase I-2 real SOUL Lab observation](architecture/phase_i2_real_soul_lab_observation.md)
 - [Phase I-3 auditable Primary MEM Correct](architecture/phase_i3_auditable_primary_mem_correct.md)
