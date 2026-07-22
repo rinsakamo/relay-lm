@@ -58,11 +58,31 @@ jobs:
               '        assessment_id=ASSESSMENT_ID,\\n',
           )
           '''
-          if text.count(old) != 1:
-              raise RuntimeError(f'runner session patch expected one match, found {text.count(old)}')
-          if text.count(redundant) != 1:
-              raise RuntimeError(f'runner redundant patch expected one match, found {text.count(redundant)}')
-          text = text.replace(old, new).replace(redundant, '')
+          smoke_old = '''replace_once(
+              "scripts/relaylm_asm1_shared_assessment_smoke.py",
+              '            assessment_id="asm1-smoke-assessment",\\n',
+              '            assessment_id=derive_shared_assessment_id(\\n                user.evidence_space_id, "asm1-smoke-assessment"\\n            ),\\n',
+          )
+          '''
+          smoke_new = '''replace_once(
+              "scripts/relaylm_asm1_shared_assessment_smoke.py",
+              """        proposal = SharedAssessmentProposal(
+                      assessment_id="asm1-smoke-assessment",
+                      supported_content="The user reported recent tiredness.",
+          """,
+              """        proposal = SharedAssessmentProposal(
+                      assessment_id=derive_shared_assessment_id(
+                          user.evidence_space_id, "asm1-smoke-assessment"
+                      ),
+                      supported_content="The user reported recent tiredness.",
+          """,
+          )
+          '''
+          checks = ((old, 'session'), (redundant, 'redundant'), (smoke_old, 'smoke'))
+          for value, label in checks:
+              if text.count(value) != 1:
+                  raise RuntimeError(f'runner {label} patch expected one match, found {text.count(value)}')
+          text = text.replace(old, new).replace(redundant, '').replace(smoke_old, smoke_new)
           path.write_text(text, encoding='utf-8')
           PY
           set +e
