@@ -55,7 +55,24 @@ jobs:
         run: python scripts/relaylm_sm1_subjective_mem_create_smoke.py
 
       - name: Documentation links
-        run: python scripts/check_docs_links.py
+        id: docs
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/check_docs_links.py 2>&1 | tee docs-links.log
+
+      - name: Upload documentation link output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sm1-final-doc-links
+          path: docs-links.log
+          if-no-files-found: error
+
+      - name: Stop on documentation link failure
+        if: steps.docs.outcome == 'failure'
+        run: exit 1
 
       - name: Diff check
         run: git diff --check
