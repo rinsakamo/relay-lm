@@ -20,33 +20,77 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - name: Assemble Cutover 1C-52
-        id: assemble
-        continue-on-error: true
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_REF: ${{ github.head_ref }}
         run: |
-          python scripts/relaylm_cutover_1c52_bootstrap.py > cutover-1c52-bootstrap.log 2>&1
-      - name: Upload bootstrap diagnostics
-        if: steps.assemble.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: cutover-1c52-bootstrap-diagnostics
-          path: cutover-1c52-bootstrap.log
-          if-no-files-found: error
-          retention-days: 1
-      - name: Fail after diagnostics
-        if: steps.assemble.outcome == 'failure'
-        run: exit 1
-      - name: Commit generated cutover
-        if: steps.assemble.outcome == 'success'
-        env:
-          HEAD_REF: ${{ github.head_ref }}
-        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("scripts/relaylm_cutover_1c52_bootstrap.py")
+          text = path.read_text(encoding="utf-8")
+          marker = "# Restore the canonical current-boundary workflow from main and integrate the\n"
+          if text.count(marker) != 1:
+              raise SystemExit("unexpected I1-GE assembler workflow marker")
+          prefix, _ = text.split(marker, 1)
+          tail = r'''# Generate the final integrated workflow as a temporary text carrier. The
+# connector installs its exact blob at the real workflow path and removes this
+# carrier plus the assembler before final review.
+workflow_text = subprocess.check_output(
+    ["git", "show", "origin/main:.github/workflows/documentation-current-boundary-smoke.yml"],
+    text=True,
+)
+path_anchor = '      - "scripts/relaylm_phase55c4_handoff_cutover_guard.py"\n'
+if workflow_text.count(path_anchor) != 2:
+    raise SystemExit("unexpected current-boundary path-trigger anchor count")
+workflow_text = workflow_text.replace(
+    path_anchor,
+    path_anchor + '      - "scripts/relaylm_i1ge_handoff_cutover_guard.py"\n',
+)
+compile_anchor = "            scripts/relaylm_phase55c4_handoff_cutover_guard.py \\\n"
+workflow_text = replace_once(
+    workflow_text,
+    compile_anchor,
+    compile_anchor + "            scripts/relaylm_i1ge_handoff_cutover_guard.py \\\n",
+    "current-boundary compile anchor",
+)
+run_anchor = (
+    "          python scripts/relaylm_phase55c4_handoff_cutover_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log\n"
+    "          phase55c4_cutover_guard_self_test_status=${PIPESTATUS[0]}\n"
+)
+run_block = run_anchor + (
+    "          python scripts/relaylm_i1ge_handoff_cutover_guard.py 2>&1 | tee -a documentation-current-boundary.log\n"
+    "          i1ge_cutover_guard_status=${PIPESTATUS[0]}\n"
+    "          python scripts/relaylm_i1ge_handoff_cutover_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log\n"
+    "          i1ge_cutover_guard_self_test_status=${PIPESTATUS[0]}\n"
+)
+workflow_text = replace_once(
+    workflow_text, run_anchor, run_block, "current-boundary I1-GE run anchor"
+)
+status_anchor = ' || [ "$phase55c4_cutover_guard_self_test_status" -ne 0 ] ||'
+workflow_text = replace_once(
+    workflow_text,
+    status_anchor,
+    status_anchor
+    + ' [ "$i1ge_cutover_guard_status" -ne 0 ] ||'
+    + ' [ "$i1ge_cutover_guard_self_test_status" -ne 0 ] ||',
+    "current-boundary I1-GE status anchor",
+)
+Path("docs/evidence/migrations/cutover-1c52-final-workflow.txt").write_text(
+    workflow_text, encoding="utf-8"
+)
+print(f"old_blob={old_blob}")
+print(f"old_content_sha256={content_sha256}")
+print(f"repaired_referrers={repaired_referrers!r}")
+print("Cutover 1C-52 content assembly complete")
+'''
+          path.write_text(prefix + tail, encoding="utf-8")
+          PY
+          python scripts/relaylm_cutover_1c52_bootstrap.py
           git status --short
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add docs scripts/relaylm_i1ge_handoff_cutover_guard.py
           git diff --cached --stat
-          git commit -m "docs: move I1-GE handoff to frozen evidence"
+          git commit -m "docs: assemble I1-GE frozen evidence cutover"
           git push origin HEAD:"${HEAD_REF}"
