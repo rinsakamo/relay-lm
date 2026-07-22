@@ -32,6 +32,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [Request / Response Pipeline](runtime/request-response-pipeline.md) defines target managed-mode dataflow, streaming/finalization separation, RelayREF, corrections, session transitions, and pass-through defaults.
 - [Runtime Scheduler](runtime/scheduler.md) defines Resource Provider observation, RelayRUN compute scheduling, and separate control-plane mutation fences.
 - [Subjective Memory Formation](memory/formation.md) defines episode grouping and the split Shared Assessment then Subjective Formation reference path.
+- [ASM-1 Shared Assessment Runtime Foundation](asm1_shared_assessment_runtime_foundation.md) records the default-off EV-1-to-Shared-Assessment implementation boundary and its explicit stop before Subjective MEM.
 
 ## Character workspace target architecture
 

@@ -220,3 +220,15 @@ evidence_capture_enabled: false
 evidence_capture_dry_run_only: true
 evidence_capture_apply_enabled: false  # non-stream only; streaming apply fails closed
 evidence_data_root:
+
+# ASM-1 deferred Shared Assessment. Uses the EV-1 evidence_data_root and never
+# writes Subjective MEM. Apply is explicit and remains off by default.
+shared_assessment_enabled: false
+shared_assessment_dry_run_only: true
+shared_assessment_apply_enabled: false
+
+# OVL-1 is independently default-off and dry-run-first. Apply requires EV-1
+# capture apply because CTX-OVL may consume only currently authorized evidence.
+ctx_ovl_enabled: false
+ctx_ovl_dry_run_only: true
+ctx_ovl_apply_enabled: false
