@@ -116,7 +116,7 @@ def _synchronize_partition(
             assert partition_descriptor is not None
             epoch_id = str(partition_descriptor["partition_epoch_id"])
             state = existing
-            if state is None or state.contract1_partition_epoch_id != epoch_id:
+            if state is None:
                 state = _new_partition_state(
                     session_id=session_id,
                     participant=exact_descriptor.controller_principal_ref,
@@ -126,7 +126,21 @@ def _synchronize_partition(
                     contract1_partition_epoch_id=epoch_id,
                     evaluated_at=evaluated_at,
                 )
-                mode = "rebuild"
+                if mode != "current_source":
+                    mode = "rebuild"
+            elif state.contract1_partition_epoch_id != epoch_id:
+                prior_state_had_overlays = bool(state.overlays_by_source)
+                state = _new_partition_state(
+                    session_id=session_id,
+                    participant=exact_descriptor.controller_principal_ref,
+                    participant_partition_id=participant_partition_id,
+                    evidence_space_id=descriptor.evidence_space_id,
+                    change_partition_id=change_partition_id,
+                    contract1_partition_epoch_id=epoch_id,
+                    evaluated_at=evaluated_at,
+                )
+                if mode != "current_source" or prior_state_had_overlays:
+                    mode = "rebuild"
 
             _prune_partition(state, evaluated_at=evaluated_at)
 
@@ -214,6 +228,9 @@ def _synchronize_partition(
                 produced.append((overlay_id, candidate.authority_snapshot_digest))
                 admitted += 1
 
+            # Revalidate retained records even without a new event. Reauthorization
+            # updates no produced-operation list; it only refreshes process-local
+            # eligibility for a record already represented by its source event.
             event_by_source: dict[str, dict] = {}
             for source_event in projection_events:
                 refs = source_event.get("authorized_source_event_refs")
@@ -270,6 +287,9 @@ def _synchronize_partition(
             coverage_checkpoint = coverage_events[-1] if coverage_events else None
             if mode in {"rebuild", "catch_up"}:
                 if produced:
+                    # Contract 1 authority snapshots are source-scoped. Emit one
+                    # operation record per exact digest instead of falsely
+                    # claiming that heterogeneous outputs share one authority.
                     for overlay_id, authority_digest in produced:
                         new_sync_events.append(
                             _build_sync_event(
