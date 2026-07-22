@@ -75,8 +75,8 @@ def update_ledger(bookkeeping_pr: str) -> None:
         "ledger final diff",
     )
     text = text[:start] + block + text[fence_end:]
-    old_tail = "PR #637 preserves the completed I-4C1 Primary Forget hidden-successor implementation handoff as frozen evidence. Current Primary Forget authority remains contract-, I-4C2/I-4D/I-4E/I-4F-, implementation-, and focused-smoke-owned. Merge attribution and exact-head validation remain pending until explicit final review and bookkeeping consolidation."
-    new_tail = f"PR #637 preserves the completed I-4C1 Primary Forget hidden-successor implementation handoff as frozen evidence and merged as `{MERGE}` from reviewed head `{HEAD}` on base `{BASE}`. Current Primary Forget authority remains contract-, I-4C2/I-4D/I-4E/I-4F-, implementation-, and focused-smoke-owned. PR #{bookkeeping_pr} consolidates merge attribution and exact-head validation without changing accepted cutover content."
+    old_tail = "PR #637 preserves the completed I-4C1 hidden-successor commit handoff as frozen implementation evidence. Current Primary Forget behavior remains I-4-contract-, I-4C2/I-4D/I-4E/I-4F-, implementation-, and focused-smoke-owned. Merge attribution and exact-head validation remain pending until explicit final review and bookkeeping consolidation."
+    new_tail = f"PR #637 preserves the completed I-4C1 hidden-successor commit handoff as frozen implementation evidence and merged as `{MERGE}` from reviewed head `{HEAD}` on base `{BASE}`. Current Primary Forget behavior remains I-4-contract-, I-4C2/I-4D/I-4E/I-4F-, implementation-, and focused-smoke-owned. PR #{bookkeeping_pr} consolidates merge attribution and exact-head validation without changing accepted cutover content."
     text = replace_once(text, old_tail, new_tail, "ledger tail")
     LEDGER.write_text(text, encoding="utf-8")
 
