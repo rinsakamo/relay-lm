@@ -45,14 +45,20 @@ jobs:
           path.write_text(text.replace(old, new), encoding="utf-8")
           PY
 
-      - name: Focused validation
-        shell: bash
-        run: |
-          python -m compileall -q relaylm scripts
-          PYTHONPATH=tests:. pytest -q tests/test_subjective_mem_runtime.py
-          python scripts/relaylm_sm1_subjective_mem_create_smoke.py
-          python scripts/check_docs_links.py
-          git diff --check
+      - name: Compile
+        run: python -m compileall -q relaylm scripts
+
+      - name: Focused SM-1 tests
+        run: PYTHONPATH=tests:. pytest -q tests/test_subjective_mem_runtime.py
+
+      - name: SM-1 smoke
+        run: python scripts/relaylm_sm1_subjective_mem_create_smoke.py
+
+      - name: Documentation links
+        run: python scripts/check_docs_links.py
+
+      - name: Diff check
+        run: git diff --check
 
       - name: Commit correction and remove temporary workflow
         shell: bash
