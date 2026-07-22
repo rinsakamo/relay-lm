@@ -54,7 +54,7 @@ jobs:
             expected=$(cat <<'EOF'
           temporary tooling remains in final diff:
            D .github/workflows/documentation-cutover-1c54-builder.yml
-           D scripts/_tmp_documentation_cutover_1c54_builder.py
+           D scripts/_tmp_documentation-cutover-1c54-builder.py
           EOF
           )
             actual=$(cat /tmp/documentation-cutover-1c54-builder.log)
@@ -154,12 +154,92 @@ jobs:
         with:
           name: documentation-cutover-1c54-final-tree
           path: /tmp/documentation-cutover-1c54-final-tree
-      - name: Commit and push final tree
+      - name: Commit validated content tree through Git Data API
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPOSITORY: ${{ github.repository }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
           git restore -- .github/workflows/documentation-cutover-1c54-builder.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "docs: move I-4C2 handoff to frozen evidence"
-          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          python - <<'PY'
+          from __future__ import annotations
+
+          import base64
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          from urllib.error import HTTPError
+          from urllib.parse import quote
+          from urllib.request import Request, urlopen
+
+          token = os.environ["GH_TOKEN"]
+          repository = os.environ["GH_REPOSITORY"]
+          branch = os.environ["HEAD_BRANCH"]
+          api = f"https://api.github.com/repos/{repository}"
+          headers = {
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {token}",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "User-Agent": "relaylm-documentation-cutover-1c54",
+          }
+
+          def request(method: str, path: str, payload: dict | None = None) -> dict:
+              body = None if payload is None else json.dumps(payload).encode("utf-8")
+              req = Request(api + path, data=body, headers=headers, method=method)
+              try:
+                  with urlopen(req, timeout=60) as response:
+                      return json.load(response)
+              except HTTPError as exc:
+                  detail = exc.read().decode("utf-8", errors="replace")
+                  raise RuntimeError(f"GitHub API {method} {path} failed: {exc.code} {detail}") from exc
+
+          head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          remote = request("GET", f"/git/ref/heads/{quote(branch, safe='')}")["object"]["sha"]
+          if remote != head:
+              raise SystemExit(f"branch moved during validated build: expected {head}, found {remote}")
+
+          tracked_changed = subprocess.check_output(
+              ["git", "diff", "--name-only", "--diff-filter=ACMRTUXB"],
+              text=True,
+          ).splitlines()
+          untracked = subprocess.check_output(
+              ["git", "ls-files", "--others", "--exclude-standard"],
+              text=True,
+          ).splitlines()
+          changed = sorted(set(tracked_changed + untracked))
+          deleted = subprocess.check_output(
+              ["git", "diff", "--name-only", "--diff-filter=D"],
+              text=True,
+          ).splitlines()
+          workflow = ".github/workflows/documentation-cutover-1c54-builder.yml"
+          if workflow in changed or workflow in deleted:
+              raise SystemExit("temporary workflow must be retained for connector cleanup")
+
+          elements: list[dict[str, object]] = []
+          for relative in changed:
+              raw = Path(relative).read_bytes()
+              blob = request(
+                  "POST",
+                  "/git/blobs",
+                  {"content": base64.b64encode(raw).decode("ascii"), "encoding": "base64"},
+              )
+              mode = "100644"
+              elements.append({"path": relative, "mode": mode, "type": "blob", "sha": blob["sha"]})
+          for relative in deleted:
+              elements.append({"path": relative, "mode": "100644", "type": "blob", "sha": None})
+
+          tree = request("POST", "/git/trees", {"base_tree": head, "tree": elements})
+          commit = request(
+              "POST",
+              "/git/commits",
+              {"message": "docs: move I-4C2 handoff to frozen evidence", "tree": tree["sha"], "parents": [head]},
+          )
+          request(
+              "PATCH",
+              f"/git/refs/heads/{quote(branch, safe='')}",
+              {"sha": commit["sha"], "force": False},
+          )
+          print(f"pushed validated content commit {commit['sha']}")
+          PY
