@@ -547,6 +547,20 @@ path_overrides:
       and leaves current Primary Forget authority with the I-4 contract,
       I-4C2/I-4D/I-4E/I-4F, implementation, and focused smokes.
 
+  docs/architecture/phase_i4c2_primary_forget_recovery_finalization.md:
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_paths:
+      - docs/evidence/implementation/i4c2-primary-forget-recovery-finalization-handoff.md
+    deletion_reason: >-
+      Cutover 1C-54: this completed I-4C2 recovery/finalization handoff was
+      frozen historical implementation evidence mislocated in the live
+      architecture collection. The cutover preserves PR #404 and PR #407
+      provenance, removes the handoff from current/product-critical indexes,
+      repairs every active path-bound reference, and leaves current Primary
+      Forget authority with the Phase I-4 master contract, current
+      implementation, I-4D/I-4E/I-4F documents, and focused smokes.
+
 family_rules:
   - id: canonical-target-collections
     path_regex: '^docs/(planning|reference|templates)/'

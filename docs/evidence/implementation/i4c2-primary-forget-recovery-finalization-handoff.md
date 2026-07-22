@@ -1,22 +1,52 @@
 ---
-relaylm_doc_type: implementation_handoff
-relaylm_authority: phase_i4c2_primary_forget_recovery_finalization
-relaylm_status: historical_after_merge
+relaylm_doc_type: evidence
+relaylm_authority: historical_phase_i4c2_primary_forget_recovery_finalization_handoff
+relaylm_status: frozen
 relaylm_volatility: frozen
-relaylm_owner: relaymem_soul_lab_integration
-relaylm_current_status_source: ../PROJECT_STATUS.md
-relaylm_related_authority:
-  - phase_i4_primary_mem_forget_hide_contract.md
-  - phase_i4b_primary_current_state_shared_fence.md
-  - ../evidence/implementation/i4c1-primary-forget-hidden-successor-handoff.md
-  - phase_i4d_primary_retrieval_exclusion.md
-  - ../evidence/waves/wave2_cross_slice_convergence_audit.md
+relaylm_owner: implementation
+relaylm_source_prs:
+  - 404
+  - 407
+relaylm_source_final_heads:
+  - 73416fab26f12e8c34793959bd3229f5c9fe8c59
+  - b4bff3b4804afa0e6f81d00410cd0d73512a15b7
+relaylm_source_merge_commits:
+  - 97e5a1060bface993bb4382f9a50074aca1ec37d
+  - c23b82da89853947eb5a2269760e24d7c25829c0
+relaylm_source_merged_at:
+  - 2026-06-26T13:13:22Z
+  - 2026-06-26T13:55:01Z
+relaylm_source_blob: ab8f8e0f906690dfc9a28c680f4fb2b230211ce1
+relaylm_source_sha256: f0b6eeef01f423283ef0b48cf9e8940b1edfacef23a0483669058ff4d81bba92
+relaylm_recorded_on: 2026-06-26
+relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_not_authoritative_for:
-  - I-4D ordinary retrieval exclusion
-  - I-4E API or UI
-  - I-4F product validation
+  - current Primary Forget runtime behavior
+  - current schema or storage authority
+  - current API or UI behavior
+  - current product validation status
+  - compatibility aliases redirects stubs dual-read or dual-write
+relaylm_related_authority:
+  - ../../architecture/phase_i4_primary_mem_forget_hide_contract.md
+  - ../../architecture/phase_i4b_primary_current_state_shared_fence.md
+  - i4c1-primary-forget-hidden-successor-handoff.md
+  - ../../architecture/phase_i4d_primary_retrieval_exclusion.md
+  - ../../architecture/phase_i4e_forget_api_ui.md
+  - ../../architecture/phase_i4f_forget_validation.md
+  - ../waves/wave2_cross_slice_convergence_audit.md
 ---
 # Phase I-4C2 Primary Forget Recovery and Finalization
+
+> **Historical implementation evidence.** This frozen handoff records the bounded recovery/finalization implementation delivered by PR #404 and the concurrent-loser normalization delivered by PR #407. It is not current runtime, schema, API/UI, storage, product, compatibility, alias, redirect, dual-read, or dual-write authority.
+
+## Current authority boundary
+
+Current behavior is independently owned by:
+
+- `docs/architecture/phase_i4_primary_mem_forget_hide_contract.md` for lifecycle, identity, persistence, shared Correct/Forget fencing, exact replay, forward-only recovery, tombstone, corruption, concurrency, and non-goals;
+- `docs/architecture/phase_i4d_primary_retrieval_exclusion.md`, `phase_i4e_forget_api_ui.md`, and `phase_i4f_forget_validation.md` for retrieval, product-surface, and completed validation boundaries;
+- `relaylm/relaymem_primary_forget_recovery.py`, `relaymem_primary_forget_public_apply.py`, `relaymem_primary_current_state.py`, `relaymem_primary_mutation_coordinator.py`, `relaymem_primary_forget_control_convergence.py`, `relaymem_primary_forget_finalization_artifact.py`, and `relaymem_primary_lifecycle_page.py` for executable behavior;
+- `scripts/relaylm_phase_i4c2_primary_forget_recovery_smoke.py`, `relaylm_phase_i4c2_primary_forget_fault_smoke.py`, `relaylm_phase_i4c2_primary_forget_concurrency_smoke.py`, `relaylm_phase_i4c2_primary_forget_security_smoke.py`, `relaylm_phase_i4c2_ownership_boundary_smoke.py`, and the I-4F validation suite for focused executable validation.
 
 Status: complete for the bounded I-4C2 one-operation recovery/finalization boundary.
 
@@ -188,7 +218,7 @@ Conflicting prepared/page/control/tombstone evidence, wrong revision or physical
 
 ## PR #407 concurrent-loser normalization
 
-The Wave 2 follow-up correction merged in PR #407 normalizes public concurrent-loser outcomes. This table is part of the I-4C2 authority and is consumed by later phases:
+The Wave 2 follow-up correction merged in PR #407 normalized the public concurrent-loser outcomes recorded below. Current ownership of these classifications is independent of this frozen handoff: the Phase I-4 master contract, current implementation, I-4E error mapping, and focused concurrency validation own them.
 
 | Fresh current-state observation during apply/retry | Required public outcome |
 |---|---|
@@ -238,7 +268,7 @@ hidden finalized state rejects new Correct/Forget commit
 recovery and explicit retry converge to one tombstone
 ```
 
-The PR #407 normalization table defines the public loser outcomes for already-hidden, hidden-in-progress, hidden-corrupt, and stale-active rereads. No snapshot read outside the shared lock is commit authority.
+The PR #407 normalization table records the public loser outcomes for already-hidden, hidden-in-progress, hidden-corrupt, and stale-active rereads. No snapshot read outside the shared lock is commit authority.
 
 ## Fault and response-loss convergence
 
@@ -269,7 +299,7 @@ The `after_tombstone_reread_before_applied_receipt` seam remains as an explicit 
 
 I-4C2 does not implement ordinary M2 lifecycle filtering, RelayCTX hidden exclusion, SOUL Lab API/UI, directory-wide recovery scanner, polling, sleep, retry loop, scheduler, daemon, worker pool, restore/unhide, physical deletion, secure erase, Pin/Unpin, Merge/Supersession, Held Apply/Discard, Secondary consolidation, or RelaySOUL mutation.
 
-Those statements describe the I-4C2 ownership boundary. Current repository status for later I-4D/I-4E/I-4F slices belongs to [Project Status](../PROJECT_STATUS.md).
+Those statements record the historical I-4C2 ownership boundary. Current repository status and authority routing belong to the Phase I-4 master contract, current implementation, later I-4D/I-4E/I-4F documents, and [Project Status](../../PROJECT_STATUS.md).
 
 ## Validation
 

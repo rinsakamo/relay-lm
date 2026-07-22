@@ -5222,3 +5222,40 @@ verification:
 ```
 
 PR #637 preserves the completed I-4C1 hidden-successor commit handoff as frozen implementation evidence and merged as `28f773f04bbb8837b2a8674da93c9317eddea9d4` from reviewed head `98bfb8f03df4323d7d7de33c0e19d063271683e7` on base `9647f35d4cb8792e9ab48795985bef96a75c5856`. Current Primary Forget behavior remains I-4-contract-, I-4C2/I-4D/I-4E/I-4F-, implementation-, and focused-smoke-owned. PR #638 consolidates merge attribution and exact-head validation without changing accepted cutover content.
+
+### C1C54-001 — I-4C2 recovery/finalization handoff (pending merge attribution)
+
+```yaml
+cutover_pr: pending
+merged_commit: pending
+old_path: docs/architecture/phase_i4c2_primary_forget_recovery_finalization.md
+old_blob_sha: ab8f8e0f906690dfc9a28c680f4fb2b230211ce1
+old_content_sha256: f0b6eeef01f423283ef0b48cf9e8940b1edfacef23a0483669058ff4d81bba92
+source_prs:
+  - 404
+  - 407
+source_final_heads:
+  - 73416fab26f12e8c34793959bd3229f5c9fe8c59
+  - b4bff3b4804afa0e6f81d00410cd0d73512a15b7
+source_merge_commits:
+  - 97e5a1060bface993bb4382f9a50074aca1ec37d
+  - c23b82da89853947eb5a2269760e24d7c25829c0
+recorded_on: 2026-06-26
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/i4c2-primary-forget-recovery-finalization-handoff.md
+verification:
+  old_path_removed_in_pr_tree: true
+  canonical_evidence_metadata_added: true
+  historical_banner_added: true
+  current_authority_independently_owned: true
+  pre_cutover_referrer_files: 10
+  active_path_references_repaired: true
+  implementation_evidence_index_updated: true
+  documentation_current_boundary_smoke_updated: true
+  runtime_files_changed: 0
+  relaylm_files_changed: 0
+  exact_head_actions: pending
+  unresolved_review_threads: pending
+```
+
+Pending merge attribution only. The frozen record preserves PR #404 recovery/finalization provenance and PR #407 concurrent-loser normalization without becoming current runtime, schema, API/UI, storage, product, compatibility, alias, redirect, dual-read, or dual-write authority.

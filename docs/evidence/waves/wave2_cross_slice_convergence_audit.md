@@ -10,7 +10,7 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - wave3_cross_slice_convergence_audit.md
   - ../../architecture/i1gd_durable_finalization_retention_cleanup.md
-  - ../../architecture/phase_i4c2_primary_forget_recovery_finalization.md
+  - ../implementation/i4c2-primary-forget-recovery-finalization-handoff.md
   - ../../architecture/o1b_sealed_i1g_replay_lane.md
   - ../../architecture/o1c_eligible_b2_queue_lane.md
 relaylm_not_authoritative_for:

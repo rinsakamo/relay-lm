@@ -20,7 +20,7 @@ relaylm_related_authority:
   - phase_i3_auditable_primary_mem_correct.md
   - phase_i4b_primary_current_state_shared_fence.md
   - ../evidence/implementation/i4c1-primary-forget-hidden-successor-handoff.md
-  - phase_i4c2_primary_forget_recovery_finalization.md
+  - ../evidence/implementation/i4c2-primary-forget-recovery-finalization-handoff.md
   - phase_i4d_primary_retrieval_exclusion.md
   - phase_i4e_forget_api_ui.md
   - phase_i4f_forget_validation.md

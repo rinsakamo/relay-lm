@@ -114,7 +114,7 @@ The preflight projection is intentionally smaller than the internal authority re
 
 - I-4B remains the authority for current-state resolution, shared mutation fence, read-only preflight, token creation/validation, and history boundary.
 - I-4C1 remains the authority for hidden successor commit.
-- I-4C2 remains the authority for prepared recovery, controls convergence, tombstone finalization, and public apply semantics.
+- The Phase I-4 master contract and current implementation own prepared recovery, controls convergence, tombstone finalization, and public apply semantics; the moved I-4C2 handoff is historical evidence only.
 - I-4D remains the authority for ordinary M2/RelayCTX lifecycle exclusion and historical lifecycle overlay.
 - I-4E only passes already-validated path/query/body fields to those authorities through a loopback API and UI.
 
