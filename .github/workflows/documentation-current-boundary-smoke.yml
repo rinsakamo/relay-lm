@@ -46,6 +46,11 @@ jobs:
           Path('/tmp/apply_cutover_1c54_bookkeeping.py').write_text(code, encoding='utf-8')
           PY
           python /tmp/apply_cutover_1c54_bookkeeping.py
+      - name: Restore final workflow tree before validation
+        run: |
+          set -euo pipefail
+          git checkout origin/main -- .github/workflows/documentation-current-boundary-smoke.yml
+          rm .github/workflows/documentation-cutover-1c54-bookkeeping.yml
       - name: Validate bookkeeping serially
         run: |
           set -euo pipefail
