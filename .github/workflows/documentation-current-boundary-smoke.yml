@@ -84,11 +84,38 @@ jobs:
           git diff --check
           test ! -e scripts/_cutover_1c55_builder.py
           grep -q '^name: Documentation current boundary smoke$' .github/workflows/documentation-current-boundary-smoke.yml
-      - name: Commit validated Cutover 1C-55 tree
+      - name: Commit and publish validated Cutover 1C-55 tree
+        id: publish
+        shell: bash
         run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "docs: move Phase I-2 handoff to frozen evidence"
-          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          set +e
+          {
+            git status --short
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "docs: move Phase I-2 handoff to frozen evidence"
+            commit_status=$?
+            echo "commit_status=$commit_status"
+            if [ "$commit_status" -eq 0 ]; then
+              git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+              publish_status=$?
+            else
+              publish_status=$commit_status
+            fi
+            echo "publish_status=$publish_status"
+          } > cutover-1c55-publish.log 2>&1
+          echo "status=$publish_status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload publish diagnostics
+        if: steps.publish.outputs.status != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutover-1c55-publish-diagnostics
+          path: cutover-1c55-publish.log
+          if-no-files-found: error
+      - name: Enforce publication
+        if: steps.publish.outputs.status != '0'
+        run: |
+          cat cutover-1c55-publish.log
+          exit 1
