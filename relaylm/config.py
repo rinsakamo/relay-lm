@@ -240,6 +240,9 @@ class RelayLMConfig(BaseModel):
     evidence_capture_dry_run_only: StrictBool = True
     evidence_capture_apply_enabled: StrictBool = False
     evidence_data_root: str | None = None
+    shared_assessment_enabled: StrictBool = False
+    shared_assessment_dry_run_only: StrictBool = True
+    shared_assessment_apply_enabled: StrictBool = False
     ctx_ovl_enabled: StrictBool = False
     ctx_ovl_dry_run_only: StrictBool = True
     ctx_ovl_apply_enabled: StrictBool = False
@@ -299,6 +302,24 @@ class RelayLMConfig(BaseModel):
             self.relaymem_slp_durable_finalization_apply_enabled,
         )):
             raise ValueError("relaymem_local_scheduler_operational_dry_run_lower_apply_enabled")
+
+        shared_assessment_triple = (
+            self.shared_assessment_enabled,
+            self.shared_assessment_dry_run_only,
+            self.shared_assessment_apply_enabled,
+        )
+        if shared_assessment_triple not in _VALID_GATE_TRIPLES:
+            raise ValueError("invalid_shared_assessment_gate_combination")
+        if shared_assessment_triple != _DISABLED_GATE_TRIPLE:
+            if not self.evidence_data_root:
+                raise ValueError("shared_assessment_requires_evidence_data_root")
+            shared_assessment_root = Path(self.evidence_data_root)
+            if not shared_assessment_root.is_absolute():
+                raise ValueError(
+                    "shared_assessment_requires_absolute_evidence_data_root"
+                )
+            if any(part in {".", ".."} for part in shared_assessment_root.parts[1:]):
+                raise ValueError("shared_assessment_evidence_data_root_invalid")
 
         evidence_triple = (
             self.evidence_capture_enabled,
