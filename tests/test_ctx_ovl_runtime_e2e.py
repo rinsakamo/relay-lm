@@ -8,6 +8,7 @@ import httpx
 import respx
 import yaml
 from fastapi.testclient import TestClient
+from respx.router import MockRouter
 
 from relaylm.app import create_app
 from relaylm.ctx_ovl_runtime import reset_ctx_ovl_runtime_cache
@@ -85,15 +86,17 @@ def _backend_response(index: int) -> dict[str, object]:
     }
 
 
-def _record_backend_payloads() -> tuple[list[dict[str, object]], object]:
+def _record_backend_payloads(
+    mock: MockRouter,
+) -> list[dict[str, object]]:
     payloads: list[dict[str, object]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         payloads.append(json.loads(request.content.decode("utf-8")))
         return httpx.Response(200, json=_backend_response(len(payloads)))
 
-    route = respx.post(BACKEND_CHAT_COMPLETIONS_URL).mock(side_effect=handler)
-    return payloads, route
+    mock.post(BACKEND_CHAT_COMPLETIONS_URL).mock(side_effect=handler)
+    return payloads
 
 
 def _continuity_messages(payload: dict[str, object]) -> list[str]:
@@ -123,8 +126,8 @@ def test_apply_uses_prior_user_evidence_but_never_self_injects_current_turn(
     )
     client = TestClient(create_app(str(config_path)))
 
-    with respx.mock(assert_all_called=False):
-        payloads, _route = _record_backend_payloads()
+    with respx.mock(assert_all_called=False) as mock:
+        payloads = _record_backend_payloads(mock)
         first = client.post("/v1/chat/completions", json=_request("first private turn"))
         second = client.post("/v1/chat/completions", json=_request("second current turn"))
 
@@ -155,8 +158,8 @@ def test_cache_loss_rebuilds_from_current_authorized_governed_evidence(
         ctx_ovl_apply_enabled=True,
     )
 
-    with respx.mock(assert_all_called=False):
-        first_payloads, _route = _record_backend_payloads()
+    with respx.mock(assert_all_called=False) as mock:
+        first_payloads = _record_backend_payloads(mock)
         first_client = TestClient(create_app(str(config_path)))
         first = first_client.post(
             "/v1/chat/completions", json=_request("rebuild source turn")
@@ -165,8 +168,8 @@ def test_cache_loss_rebuilds_from_current_authorized_governed_evidence(
     assert _continuity_messages(first_payloads[0]) == []
 
     reset_ctx_ovl_runtime_cache()
-    with respx.mock(assert_all_called=False):
-        second_payloads, _route = _record_backend_payloads()
+    with respx.mock(assert_all_called=False) as mock:
+        second_payloads = _record_backend_payloads(mock)
         restarted_client = TestClient(create_app(str(config_path)))
         second = restarted_client.post(
             "/v1/chat/completions", json=_request("after process restart")
@@ -197,8 +200,8 @@ def test_default_off_and_dry_run_do_not_change_forwarded_messages(
             ctx_ovl_apply_enabled=apply,
         )
         client = TestClient(create_app(str(config_path)))
-        with respx.mock(assert_all_called=False):
-            payloads, _route = _record_backend_payloads()
+        with respx.mock(assert_all_called=False) as mock:
+            payloads = _record_backend_payloads(mock)
             first = client.post("/v1/chat/completions", json=_request("one"))
             second = client.post("/v1/chat/completions", json=_request("two"))
         assert first.status_code == 200
