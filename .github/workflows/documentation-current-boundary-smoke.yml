@@ -39,12 +39,12 @@ jobs:
           python scripts/_cutover_1c55_builder.py
       - name: Install validation dependencies
         run: python -m pip install -e ".[test]"
-      - name: Validate cutover guard
-        run: |
-          set -euo pipefail
-          python -m compileall -q scripts
-          python scripts/relaylm_phase_i2_handoff_cutover_guard.py
-          python scripts/relaylm_phase_i2_handoff_cutover_guard.py --self-test
+      - name: Compile validation scripts
+        run: python -m compileall -q scripts
+      - name: Validate cutover repository tree
+        run: python scripts/relaylm_phase_i2_handoff_cutover_guard.py
+      - name: Validate cutover guard self-test
+        run: python scripts/relaylm_phase_i2_handoff_cutover_guard.py --self-test
       - name: Validate Phase I-2 documentation boundary
         run: python scripts/relaylm_phase_i2_documentation_boundary_smoke.py
       - name: Validate E1 evidence inventory
