@@ -90,9 +90,9 @@ jobs:
           GH_REPOSITORY: ${{ github.repository }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          set -euo pipefail
+          set -o pipefail
           git restore -- .github/workflows/documentation-cutover-1c54-builder.yml
-          python - <<'PY'
+          python - <<'PY' 2>&1 | tee /tmp/publish.log
           from __future__ import annotations
           import base64, json, os, subprocess
           from pathlib import Path
@@ -121,7 +121,8 @@ jobs:
                   raise RuntimeError(f"{method} {path}: {exc.code} {exc.read().decode(errors='replace')}") from exc
 
           head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-          remote = request("GET", f"/git/ref/heads/{quote(branch, safe='')}")["object"]["sha"]
+          ref_path = f"/git/ref/heads/{quote(branch, safe='/')}"
+          remote = request("GET", ref_path)["object"]["sha"]
           if remote != head:
               raise SystemExit(f"branch moved: expected {head}, found {remote}")
           changed = sorted(set(
@@ -146,6 +147,12 @@ jobs:
               "tree": tree["sha"],
               "parents": [head],
           })
-          request("PATCH", f"/git/refs/heads/{quote(branch, safe='')}", {"sha": commit["sha"], "force": False})
+          request("PATCH", f"/git/refs/heads/{quote(branch, safe='/')}", {"sha": commit["sha"], "force": False})
           print(commit["sha"])
           PY
+      - name: Upload publication diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-cutover-1c54-publication-diagnostics
+          path: /tmp/publish.log
