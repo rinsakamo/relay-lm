@@ -1,3 +1,4 @@
+"""Shared deterministic fixtures for governed-evidence runtime tests."""
 from __future__ import annotations
 
 from relaylm.evidence_common import build_runtime_authority, canonical_digest
