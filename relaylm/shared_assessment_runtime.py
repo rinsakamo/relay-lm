@@ -575,8 +575,8 @@ def build_shared_assessment_formation_receipt(
                 "fail_closed",
                 blocked_reasons=("shared_assessment_supported_content_digest_invalid",),
             )
-        receipt_id = _opaque_key(
-            "asmreceipt", f"{decision_id}\0{decision_input_digest}"
+        receipt_id = shared_assessment_formation_receipt_id(
+            decision_id, decision_input_digest
         )
         digest_input = {
             "schema": SHARED_ASSESSMENT_FORMATION_RECEIPT_SCHEMA,
@@ -915,6 +915,26 @@ def _validate_prepare_inputs(
     return tuple(reasons)
 
 
+def shared_assessment_revision_record_id(assessment_id: str, revision: int) -> str:
+    """Return the accepted ASM-1 immutable revision record identifier."""
+
+    return _revision_record_id(assessment_id, revision)
+
+
+def shared_assessment_formation_receipt_id(
+    decision_id: str, decision_input_digest: str
+) -> str:
+    """Return the accepted decision-bound ASM-1 receipt identifier."""
+
+    return _opaque_key("asmreceipt", f"{decision_id}\0{decision_input_digest}")
+
+
+def shared_assessment_current_state_key(assessment_id: str) -> str:
+    """Return the accepted ASM-1 logical current-state selector key."""
+
+    return _opaque_key("asmstate", assessment_id)
+
+
 def _revision_record_id(assessment_id: str, revision: int) -> str:
     return _opaque_key("asmrev", f"{assessment_id}\0{revision}")
 
@@ -967,4 +987,7 @@ __all__ = [
     "commit_shared_assessment_revision",
     "prepare_shared_assessment_pass",
     "resolve_shared_assessment_gate",
+    "shared_assessment_current_state_key",
+    "shared_assessment_formation_receipt_id",
+    "shared_assessment_revision_record_id",
 ]
