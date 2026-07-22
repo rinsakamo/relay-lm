@@ -228,5 +228,5 @@ Rejected because permanent dual read/write retains ambiguous authority and makes
 - [Shared Assessment and Subjective MEM Contract](../contracts/shared-assessment-subjective-mem.md)
 - [Memory Lifecycle Design](../architecture/memory_lifecycle_design.md)
 - [Primary MEM Forget / Hide Contract](../architecture/phase_i4_primary_mem_forget_hide_contract.md)
-- [Primary Forget Hidden-Successor Commit](../architecture/phase_i4c1_primary_forget_hidden_successor.md)
+- [Primary Forget Hidden-Successor Commit](../evidence/implementation/i4c1-primary-forget-hidden-successor-handoff.md)
 - [Project Status](../PROJECT_STATUS.md)
