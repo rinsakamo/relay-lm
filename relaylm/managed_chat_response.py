@@ -56,6 +56,11 @@ from relaylm.app_response_finalization import (
 )
 from relaylm.config import RelayLMConfig
 from relaylm.diagnostics import RequestDiagnostics
+from relaylm.evidence_runtime import (
+    build_evidence_response_capture_node_result,
+    capture_evidence_for_assistant_response_nonstream,
+    prepare_stream_evidence_response_capture,
+)
 from relaylm.pipeline_context import PipelineContext
 from relaylm.pipeline_stage import _finalize_timing, _start_timing
 from relaylm.relayemo_response_marker import (
@@ -182,6 +187,29 @@ async def _build_stream_response(
     backend_forward_timing = _finalize_timing(
         backend_forward_started_at, backend_forward_start_monotonic
     )
+    upstream_body_iter = body_iter
+    evidence_preflight_result = None
+    if 200 <= status_code < 300:
+        body_iter, evidence_preflight_result = prepare_stream_evidence_response_capture(
+            body_iter,
+            config=config,
+            pipeline_context=pipeline_context,
+            resolved_scope=merged_scope,
+            response_id=request_id,
+            on_finalized=lambda result: pipeline_context.record_node_result(
+                build_evidence_response_capture_node_result(result)
+            ),
+        )
+    if evidence_preflight_result is not None:
+        pipeline_context.record_node_result(evidence_preflight_result)
+        if body_iter is None:
+            await close_stream_iterator(upstream_body_iter)
+            return openai_error(
+                status_code=500,
+                message="RelayLM cannot apply governed evidence to streaming responses yet.",
+                error_type="evidence_stream_capture_error",
+            )
+    assert body_iter is not None
     stream_relayrun_artifact = _build_relayrun_runtime_artifact_for_context(
         runtime_artifact_context,
         backend_forward_status="completed",
@@ -199,7 +227,7 @@ async def _build_stream_response(
         or durable_finalization_gate_relevant(config)
     ):
         if not durable_finalization_gate_valid(config):
-            await close_stream_iterator(body_iter)
+            await close_stream_iterator(upstream_body_iter)
             return durable_finalization_server_error()
         stream_capture = RelayMEMSLPFinalizedVisibleTextCapture()
         durable_holder = RelayMEMSLPDurableFinalizationPreparedTurnHolder()
@@ -222,7 +250,7 @@ async def _build_stream_response(
                 "published", "duplicate_existing"
             }
         ):
-            await close_stream_iterator(body_iter)
+            await close_stream_iterator(upstream_body_iter)
             return durable_finalization_server_error()
         if config.relaymem_slp_runtime_enqueue_enabled:
             body_iter = wrap_stream_with_relaymem_slp_finalized_turn_capture(
@@ -334,6 +362,7 @@ async def _build_nonstream_response(
         relayrun_artifact=success_relayrun_artifact,
     )
     headers = success_diagnostics.to_headers()
+    backend_success = 200 <= status_code < 300
     if (
         isinstance(body, dict)
         and relayemo_artifact is not None
@@ -351,7 +380,7 @@ async def _build_nonstream_response(
         assistant_visible_text = extract_response_text(body)
         response_background = None
         durable_prepared = None
-        if route.mode_applied != "pass_through" and (
+        if backend_success and route.mode_applied != "pass_through" and (
             config.relaymem_slp_runtime_enqueue_enabled
             or durable_finalization_gate_relevant(config)
         ):
@@ -406,6 +435,32 @@ async def _build_nonstream_response(
                     prepared_turn=durable_prepared,
                     message_count=forwarded_message_count,
                 )
+        # The canonical visible body is now final: every gate that can replace
+        # it with a server error has passed. Persist governed assistant evidence
+        # before handing this body to ASGI.
+        evidence_node_result = None
+        if backend_success:
+            evidence_node_result = capture_evidence_for_assistant_response_nonstream(
+                config=config,
+                pipeline_context=pipeline_context,
+                resolved_scope=merged_scope,
+                response_id=pipeline_context.request_id,
+                response_body=body,
+            )
+        if evidence_node_result is not None:
+            pipeline_context.record_node_result(evidence_node_result)
+            if (
+                config.evidence_capture_enabled
+                and config.evidence_capture_apply_enabled
+                and not config.evidence_capture_dry_run_only
+                and evidence_node_result.decision not in {"admitted", "terminal_no_output"}
+            ):
+                return openai_error(
+                    status_code=500,
+                    message="RelayLM could not commit governed assistant evidence.",
+                    error_type="evidence_finalization_error",
+                    headers=headers,
+                )
         trace_runtime_event(
             config=config,
             diagnostics=success_diagnostics,
@@ -420,6 +475,29 @@ async def _build_nonstream_response(
             headers=headers,
             background=response_background,
         )
+    evidence_node_result = None
+    if backend_success:
+        evidence_node_result = capture_evidence_for_assistant_response_nonstream(
+            config=config,
+            pipeline_context=pipeline_context,
+            resolved_scope=merged_scope,
+            response_id=pipeline_context.request_id,
+            response_body=body,
+        )
+    if evidence_node_result is not None:
+        pipeline_context.record_node_result(evidence_node_result)
+        if (
+            config.evidence_capture_enabled
+            and config.evidence_capture_apply_enabled
+            and not config.evidence_capture_dry_run_only
+            and evidence_node_result.decision not in {"admitted", "terminal_no_output"}
+        ):
+            return openai_error(
+                status_code=500,
+                message="RelayLM could not commit governed assistant evidence.",
+                error_type="evidence_finalization_error",
+                headers=headers,
+            )
     return JSONResponse(status_code=status_code, content={"raw": body}, headers=headers)
 
 

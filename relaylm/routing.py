@@ -114,6 +114,7 @@ def resolve_route(config: RelayLMConfig, model: str) -> ResolvedRoute:
             config.client_history_exclusion_preflight_enabled
             or config.client_history_exclusion_apply_enabled
             or config.relaymem_slp_runtime_enqueue_enabled
+            or config.evidence_capture_enabled
         ),
         client_history_exclusion_apply_enabled=(
             config.client_history_exclusion_apply_enabled

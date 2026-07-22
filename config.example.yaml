@@ -215,3 +215,8 @@ relayrun_visible_recovery_apply_preflight_enabled: false
 relayrun_visible_recovery_apply_preflight_dry_run_only: true
 relayrun_user_action_dry_run_enabled: false
 relayrun_user_action_dry_run_only: true
+
+evidence_capture_enabled: false
+evidence_capture_dry_run_only: true
+evidence_capture_apply_enabled: false  # non-stream only; streaming apply fails closed
+evidence_data_root:

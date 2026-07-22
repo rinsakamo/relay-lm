@@ -25,6 +25,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from relaylm.app_request_validation import (
     _validate_and_resolve_managed_chat_request,
+    openai_error,
 )
 from relaylm.config import RelayLMConfig
 from relaylm.managed_chat_response import build_managed_chat_response
@@ -92,6 +93,7 @@ from relaylm.token_policy_signal import (
     build_token_policy_readiness_check,
     build_token_policy_signal,
 )
+from relaylm.evidence_runtime import capture_evidence_for_user_input
 from relaylm.pipeline_context import PipelineContext, replace_pipeline_forwarded_payload
 from relaylm.pipeline_stage import _finalize_timing, _start_timing, run_stage
 from relaylm.relayctx_repack import (
@@ -175,6 +177,24 @@ async def handle_managed_chat_completion(
     request_scope_identity = extract_request_scope_identity(request.headers, payload)
     scope_resolution_diagnostics = build_scope_resolution_diagnostics(route, request_scope_identity)
     merged_scope = dict(scope_resolution_diagnostics.merged_scope)
+    evidence_user_input_node_result = capture_evidence_for_user_input(
+        config=config,
+        pipeline_context=pipeline_context,
+        resolved_scope=merged_scope,
+    )
+    if evidence_user_input_node_result is not None:
+        pipeline_context.record_node_result(evidence_user_input_node_result)
+        if (
+            config.evidence_capture_enabled
+            and config.evidence_capture_apply_enabled
+            and not config.evidence_capture_dry_run_only
+            and evidence_user_input_node_result.decision != "admitted"
+        ):
+            return openai_error(
+                status_code=500,
+                message="RelayLM could not commit governed user evidence.",
+                error_type="evidence_capture_error",
+            )
     merged_scope["character_id"] = route.character_id
     merged_scope["memory_namespace"] = route.memory_namespace
     merged_scope["cache_namespace"] = route.cache_namespace

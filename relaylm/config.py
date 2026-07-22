@@ -236,6 +236,10 @@ class RelayLMConfig(BaseModel):
     relayrun_visible_recovery_apply_preflight_dry_run_only: bool = True
     relayrun_user_action_dry_run_enabled: bool = False
     relayrun_user_action_dry_run_only: bool = True
+    evidence_capture_enabled: StrictBool = False
+    evidence_capture_dry_run_only: StrictBool = True
+    evidence_capture_apply_enabled: StrictBool = False
+    evidence_data_root: str | None = None
 
     @model_validator(mode="after")
     def _validate_local_scheduler_mode(self) -> "RelayLMConfig":
@@ -292,6 +296,29 @@ class RelayLMConfig(BaseModel):
             self.relaymem_slp_durable_finalization_apply_enabled,
         )):
             raise ValueError("relaymem_local_scheduler_operational_dry_run_lower_apply_enabled")
+
+        evidence_triple = (
+            self.evidence_capture_enabled,
+            self.evidence_capture_dry_run_only,
+            self.evidence_capture_apply_enabled,
+        )
+        if evidence_triple not in _VALID_GATE_TRIPLES:
+            raise ValueError("invalid_evidence_capture_gate_combination")
+        if evidence_triple == _APPLY_GATE_TRIPLE:
+            if not self.evidence_data_root:
+                raise ValueError("evidence_capture_apply_requires_evidence_data_root")
+            evidence_root = Path(self.evidence_data_root)
+            if not evidence_root.is_absolute():
+                raise ValueError("evidence_capture_apply_requires_absolute_evidence_data_root")
+            if any(part in {".", ".."} for part in evidence_root.parts[1:]):
+                raise ValueError("evidence_capture_apply_evidence_data_root_invalid")
+            if (
+                self.relaymem_slp_durable_finalization_apply_enabled
+                and not self.relaymem_slp_durable_finalization_dry_run_only
+            ):
+                raise ValueError(
+                    "evidence_capture_apply_conflicts_with_relaymem_durable_finalization_apply"
+                )
         return self
 
     def _enable_route_owned_home_admission_trigger(self) -> None:
