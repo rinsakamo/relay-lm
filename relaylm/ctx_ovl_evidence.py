@@ -7,7 +7,11 @@ from datetime import datetime
 from relaylm.ctx_ovl_types import _AuthorizedCandidate
 from relaylm.evidence_access import resolve_evidence_access_authorization
 from relaylm.evidence_common import (
-    PolicySnapshotRef, PrincipalRef, dedupe, utf8_text_digest,
+    PolicySnapshotRef,
+    PrincipalRef,
+    canonical_digest,
+    dedupe,
+    utf8_text_digest,
 )
 from relaylm.evidence_governance import AccessGrant, EvidenceGovernanceState
 from relaylm.evidence_space import EvidenceSpaceDescriptor, _authority_scope_from_dict
@@ -44,10 +48,34 @@ def _read_authorized_candidate(
         reasons.append("ctx_ovl_source_event_space_mismatch")
     if source.get("origin_kind") != "participant":
         reasons.append("ctx_ovl_non_participant_source_unsupported_in_ovl1")
+    if source.get("source_role") != "user_input":
+        reasons.append("ctx_ovl_source_role_unsupported_in_ovl1")
     if source.get("speaker_identity_status") != "verified":
         reasons.append("ctx_ovl_participant_identity_unresolved")
     if source.get("conversation_ref_or_null") != session_id:
         reasons.append("ctx_ovl_source_event_session_mismatch")
+    participant = descriptor.controller_principal_ref.to_dict()
+    if source.get("producer_principal_ref") != participant:
+        reasons.append("ctx_ovl_source_producer_participant_mismatch")
+    if source.get("represented_speaker_ref_or_null") != participant:
+        reasons.append("ctx_ovl_source_represented_speaker_mismatch")
+    audience = source.get("configured_occurrence_audience")
+    if not isinstance(audience, dict):
+        reasons.append("ctx_ovl_source_audience_invalid")
+    elif (
+        audience.get("audience_class") != "private_direct"
+        or audience.get("participant_refs") != [participant]
+        or audience.get("room_ref_or_null") is not None
+        or audience.get("shared_scene_ref_or_null") is not None
+        or audience.get("trust") != "trusted_route"
+    ):
+        reasons.append("ctx_ovl_source_audience_not_exact_private_direct")
+
+    manifest = source.get("canonical_source_manifest")
+    if not isinstance(manifest, dict):
+        reasons.append("ctx_ovl_source_manifest_invalid")
+    elif canonical_digest(manifest) != source.get("canonical_source_manifest_digest"):
+        reasons.append("ctx_ovl_source_manifest_digest_mismatch")
 
     refs = event.get("authoritative_mutation_refs")
     if not isinstance(refs, list):
@@ -62,6 +90,7 @@ def _read_authorized_candidate(
     if reasons:
         return None, dedupe(reasons)
     assert admission_id is not None and governance_id is not None
+
     admission = tx.read_record(
         record_kind="admission_decision", record_id=admission_id
     )
@@ -70,6 +99,18 @@ def _read_authorized_candidate(
     )
     if admission is None or governance_event is None:
         return None, ("ctx_ovl_authority_record_unresolved",)
+    authority_reasons = _validate_authority_records(
+        source=source,
+        admission=admission,
+        admission_id=admission_id,
+        governance_event=governance_event,
+        governance_id=governance_id,
+        source_event_id=source_event_id,
+        evidence_space_id=descriptor.evidence_space_id,
+    )
+    if authority_reasons:
+        return None, authority_reasons
+
     validation_id = admission.get("validation_bundle_id_or_null")
     if not isinstance(validation_id, str) or not validation_id:
         return None, ("ctx_ovl_validation_bundle_ref_missing",)
@@ -78,6 +119,15 @@ def _read_authorized_candidate(
     )
     if validation is None:
         return None, ("ctx_ovl_validation_bundle_unresolved",)
+    validation_reasons = _validate_validation_bundle(
+        validation=validation,
+        validation_id=validation_id,
+        admission=admission,
+        source=source,
+        source_event_id=source_event_id,
+    )
+    if validation_reasons:
+        return None, validation_reasons
 
     grant_payloads = governance_event.get("operation_payload", {}).get(
         "initial_access_grants"
@@ -88,18 +138,24 @@ def _read_authorized_candidate(
     try:
         for payload in grant_payloads:
             grant = _access_grant_from_dict(payload)
+            if grant.to_dict() != payload:
+                return None, ("ctx_ovl_access_grant_shape_mismatch",)
+            persisted = tx.read_record(
+                record_kind="access_grant", record_id=grant.grant_id
+            )
+            if persisted != payload:
+                return None, ("ctx_ovl_access_grant_integrity_mismatch",)
             if grant.purpose == "relayctx_evidence_read":
-                persisted = tx.read_record(
-                    record_kind="access_grant", record_id=grant.grant_id
-                )
-                if persisted != payload:
-                    return None, ("ctx_ovl_access_grant_integrity_mismatch",)
                 grants.append(grant)
         governance_state = _governance_state_from_event(governance_event)
     except (KeyError, TypeError, ValueError):
         return None, ("ctx_ovl_authority_record_shape_invalid",)
+    if (
+        governance_state.digest()
+        != governance_event.get("resulting_governance_state_digest")
+    ):
+        return None, ("ctx_ovl_governance_state_digest_mismatch",)
 
-    manifest = source.get("canonical_source_manifest")
     parts = manifest.get("parts") if isinstance(manifest, dict) else None
     if not isinstance(parts, list) or len(parts) != 1 or not isinstance(parts[0], dict):
         return None, ("ctx_ovl_source_manifest_unsupported",)
@@ -109,8 +165,10 @@ def _read_authorized_candidate(
     actual_bytes = part.get("byte_length_or_null")
     if (
         part.get("part_kind") != "text"
+        or part.get("media_type") != "text/plain"
         or part.get("initial_disposition") != "protected"
         or part.get("part_origin") != "participant_authored"
+        or part.get("part_derivation_class") != "direct_occurrence"
         or not isinstance(part_id, str)
         or not isinstance(content_digest, str)
         or type(actual_bytes) is not int
@@ -118,9 +176,20 @@ def _read_authorized_candidate(
     ):
         return None, ("ctx_ovl_source_part_unsupported",)
 
-    partition_id = str(event["change_partition_id"])
-    epoch_id = str(event["partition_epoch_id"])
-    sequence = int(event["partition_sequence"])
+    partition_id = event.get("change_partition_id")
+    epoch_id = event.get("partition_epoch_id")
+    sequence = event.get("partition_sequence")
+    if (
+        not isinstance(partition_id, str)
+        or not isinstance(epoch_id, str)
+        or type(sequence) is not int
+        or sequence < 0
+    ):
+        return None, ("ctx_ovl_change_projection_shape_invalid",)
+    try:
+        policy_snapshot_ref = PolicySnapshotRef(**admission["policy_snapshot_ref"])
+    except (KeyError, TypeError, ValueError):
+        return None, ("ctx_ovl_policy_snapshot_invalid",)
     projection, access_reasons = resolve_evidence_access_authorization(
         purpose="relayctx_evidence_read",
         origin_kind=str(source.get("origin_kind")),
@@ -132,7 +201,7 @@ def _read_authorized_candidate(
         validation_bundle_state=str(validation.get("bundle_state")),
         validation_bundle_revision=int(validation.get("bundle_revision", -1)),
         grants=tuple(grants),
-        policy_snapshot_ref=PolicySnapshotRef(**admission["policy_snapshot_ref"]),
+        policy_snapshot_ref=policy_snapshot_ref,
         change_partition_watermark=sequence,
         now=evaluated_at,
         requested_part_ids=(part_id,),
@@ -168,6 +237,90 @@ def _read_authorized_candidate(
         ),
         (),
     )
+
+
+def _validate_authority_records(
+    *,
+    source: dict,
+    admission: dict,
+    admission_id: str,
+    governance_event: dict,
+    governance_id: str,
+    source_event_id: str,
+    evidence_space_id: str,
+) -> tuple[str, ...]:
+    reasons: list[str] = []
+    if admission.get("schema") != "relaylm.evidence_admission_decision.v1":
+        reasons.append("ctx_ovl_admission_decision_schema_invalid")
+    if admission.get("admission_decision_id") != admission_id:
+        reasons.append("ctx_ovl_admission_decision_identity_mismatch")
+    if admission.get("source_event_id_or_null") != source_event_id:
+        reasons.append("ctx_ovl_admission_decision_source_mismatch")
+    if admission.get("evidence_space_id") != evidence_space_id:
+        reasons.append("ctx_ovl_admission_decision_space_mismatch")
+    if admission.get("capture_attempt_id") != source.get("capture_attempt_id"):
+        reasons.append("ctx_ovl_admission_capture_attempt_mismatch")
+    if admission.get("outcome") != "admitted":
+        reasons.append("ctx_ovl_admission_decision_not_admitted")
+    if admission.get("canonical_source_manifest_digest_or_null") != source.get(
+        "canonical_source_manifest_digest"
+    ):
+        reasons.append("ctx_ovl_admission_manifest_digest_mismatch")
+    if admission.get("initial_governance_event_id_or_null") != governance_id:
+        reasons.append("ctx_ovl_admission_governance_ref_mismatch")
+    if governance_event.get("schema") != "relaylm.evidence_governance_event.v1":
+        reasons.append("ctx_ovl_governance_event_schema_invalid")
+    if governance_event.get("governance_event_id") != governance_id:
+        reasons.append("ctx_ovl_governance_event_identity_mismatch")
+    if governance_event.get("source_event_id") != source_event_id:
+        reasons.append("ctx_ovl_governance_event_source_mismatch")
+    if governance_event.get("evidence_space_id") != evidence_space_id:
+        reasons.append("ctx_ovl_governance_event_space_mismatch")
+    if governance_event.get("operation") != "initialize_admitted":
+        reasons.append("ctx_ovl_governance_event_operation_invalid")
+    if governance_event.get("governance_revision") != 1:
+        reasons.append("ctx_ovl_governance_event_revision_invalid")
+    if governance_event.get("expected_previous_governance_revision_or_null") is not None:
+        reasons.append("ctx_ovl_governance_previous_revision_invalid")
+    if governance_event.get("expected_metadata_revision") != 0:
+        reasons.append("ctx_ovl_governance_metadata_revision_invalid")
+    if governance_event.get("expected_validation_bundle_revision") != admission.get(
+        "validation_bundle_revision_or_null"
+    ):
+        reasons.append("ctx_ovl_governance_validation_revision_mismatch")
+    if governance_event.get("policy_snapshot_ref") != admission.get(
+        "policy_snapshot_ref"
+    ):
+        reasons.append("ctx_ovl_authority_policy_snapshot_mismatch")
+    return dedupe(reasons)
+
+
+def _validate_validation_bundle(
+    *,
+    validation: dict,
+    validation_id: str,
+    admission: dict,
+    source: dict,
+    source_event_id: str,
+) -> tuple[str, ...]:
+    reasons: list[str] = []
+    if validation.get("schema") != "relaylm.admission_validation_bundle_revision.v1":
+        reasons.append("ctx_ovl_validation_bundle_schema_invalid")
+    if validation.get("validation_bundle_id") != validation_id:
+        reasons.append("ctx_ovl_validation_bundle_identity_mismatch")
+    if validation.get("source_event_id_or_null") != source_event_id:
+        reasons.append("ctx_ovl_validation_bundle_source_mismatch")
+    if validation.get("capture_attempt_id") != source.get("capture_attempt_id"):
+        reasons.append("ctx_ovl_validation_capture_attempt_mismatch")
+    if validation.get("bundle_revision") != admission.get(
+        "validation_bundle_revision_or_null"
+    ):
+        reasons.append("ctx_ovl_validation_bundle_revision_mismatch")
+    if validation.get("bundle_state") != "valid":
+        reasons.append("ctx_ovl_validation_bundle_not_valid")
+    if validation.get("policy_snapshot_ref") != admission.get("policy_snapshot_ref"):
+        reasons.append("ctx_ovl_validation_policy_snapshot_mismatch")
+    return dedupe(reasons)
 
 
 def _single_ref(refs: Sequence[object], record_kind: str) -> str | None:
@@ -255,10 +408,30 @@ def _read_bound_text(
     )
     if attestation is None:
         return None, ("ctx_ovl_payload_binding_unresolved",)
+    authority_scope = attestation.get("attester_authority_scope")
+    resource_scope = (
+        authority_scope.get("resource_scope")
+        if isinstance(authority_scope, dict)
+        else None
+    )
     if (
-        attestation.get("source_event_id") != source_event_id
+        attestation.get("schema")
+        != "relaylm.protected_payload_binding_attestation.v1"
+        or attestation.get("payload_binding_attestation_id") != attestation_id
+        or attestation.get("source_event_id") != source_event_id
         or attestation.get("part_id") != part_id
         or attestation.get("content_digest") != content_digest
+        or attestation.get("storage_binding_schema")
+        != "relaylm.evidence_store_binding.v1"
+        or attestation.get("storage_authority_ref")
+        != "relaylm.ev1.device_local_store"
+        or not isinstance(authority_scope, dict)
+        or authority_scope.get("scope_kind") != "evidence_operator"
+        or "storage_binding_attest"
+        not in authority_scope.get("allowed_operations", [])
+        or not isinstance(resource_scope, dict)
+        or resource_scope.get("evidence_space_id") != evidence_space_id
+        or resource_scope.get("whole_evidence_space") is not True
     ):
         return None, ("ctx_ovl_payload_binding_mismatch",)
     storage_ref = attestation.get("storage_binding_ref")
