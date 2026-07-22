@@ -80,6 +80,7 @@ class _ParticipantPartitionState:
     overlays_by_source: dict[str, _StoredOverlay] = field(default_factory=dict)
     invalidation_events: list[dict[str, object]] = field(default_factory=list)
     write_attempts: list[dict[str, object]] = field(default_factory=list)
+    sync_events: list[dict[str, object]] = field(default_factory=list)
     last_selection: dict[str, object] | None = None
     last_sync_event: dict[str, object] | None = None
     last_observed_partition_sequence: int = -1
@@ -100,11 +101,7 @@ def evaluate_ctx_ovl_write_attempt(
     operation: str,
     attempted_actor_component: str,
 ) -> dict[str, object]:
-    """Return the contract-shaped writer-authorization decision.
-
-    RelayATN and external callers can observe CTX-OVL only through bounded
-    outputs; they can never mutate the overlay working state.
-    """
+    """Return the contract-shaped writer-authorization decision."""
 
     allowed_actors = {"relayctx_pipeline", "ctx_ovl_rebuild_process"}
     authorized = attempted_actor_component in allowed_actors
@@ -150,8 +147,6 @@ def _new_partition_state(
     contract1_partition_epoch_id: str,
     evaluated_at: datetime,
 ) -> _ParticipantPartitionState:
-    # Each process-local rebuild establishes a fresh opaque OVL epoch. The
-    # governing Contract-1 partition epoch remains bound separately below.
     epoch_descriptor_id = new_opaque_id("ctxovlepoch")
     epoch = {
         "schema": "relaylm.ctx_ovl_partition_epoch.v1",
@@ -187,11 +182,20 @@ def _parse_datetime(value: str) -> datetime | None:
 
 
 __all__ = [
-    "CtxOvlRuntimeResult", "_AuthorizedCandidate", "_StoredOverlay",
-    "_ParticipantPartitionState", "_MAX_CANDIDATE_BYTES",
-    "_SELECTION_MAX_RECORDS", "_SELECTION_MAX_TOTAL_BYTES",
-    "_CATCH_UP_MAX_EVENTS", "_CATCH_UP_MAX_TOTAL_BYTES",
-    "_REBUILD_MAX_RECORDS", "_REBUILD_MAX_TOTAL_BYTES", "_TTL_SECONDS",
-    "_new_partition_state", "_parse_datetime", "_record_write_attempt",
+    "CtxOvlRuntimeResult",
+    "_AuthorizedCandidate",
+    "_StoredOverlay",
+    "_ParticipantPartitionState",
+    "_MAX_CANDIDATE_BYTES",
+    "_SELECTION_MAX_RECORDS",
+    "_SELECTION_MAX_TOTAL_BYTES",
+    "_CATCH_UP_MAX_EVENTS",
+    "_CATCH_UP_MAX_TOTAL_BYTES",
+    "_REBUILD_MAX_RECORDS",
+    "_REBUILD_MAX_TOTAL_BYTES",
+    "_TTL_SECONDS",
+    "_new_partition_state",
+    "_parse_datetime",
+    "_record_write_attempt",
     "evaluate_ctx_ovl_write_attempt",
 ]
