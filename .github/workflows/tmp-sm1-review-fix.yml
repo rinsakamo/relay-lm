@@ -24,14 +24,20 @@ jobs:
       - name: Apply review corrections
         run: python scripts/tmp_sm1_review_fix.py
 
-      - name: Validate corrections serially
-        shell: bash
-        run: |
-          python -m compileall -q relaylm scripts
-          PYTHONPATH=tests:. pytest -q tests/test_subjective_mem_runtime.py
-          python scripts/relaylm_sm1_subjective_mem_create_smoke.py
-          PYTHONPATH=tests:. pytest -q
-          git diff --check
+      - name: Compile
+        run: python -m compileall -q relaylm scripts
+
+      - name: Focused SM-1 tests
+        run: PYTHONPATH=tests:. pytest -q tests/test_subjective_mem_runtime.py --tb=short
+
+      - name: SM-1 smoke
+        run: python scripts/relaylm_sm1_subjective_mem_create_smoke.py
+
+      - name: Full pytest
+        run: PYTHONPATH=tests:. pytest -q --tb=short
+
+      - name: Diff check
+        run: git diff --check
 
       - name: Commit corrections and remove temporary files
         shell: bash
