@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 from evidence_test_support import route_snapshot
 from relaylm.config import RelayLMConfig
+import relaylm.shared_assessment_runtime as shared_assessment_runtime
 from relaylm.evidence_store import EvidenceRecordStore
 from relaylm.evidence_user_input import capture_managed_user_input
 from relaylm.shared_assessment import SharedAssessmentProposal
@@ -267,6 +268,46 @@ def test_consecutive_revision_requires_exact_expected_current_revision(store) ->
     assert second.revision is not None
     assert second.revision.assessment_revision == 2
     assert second.revision.supersedes_assessment_revision_or_null == 1
+
+
+def test_revision_bound_blocks_successor_without_corrupting_current(
+    monkeypatch, store
+) -> None:
+    _captures, bundle = _bundle(store)
+    monkeypatch.setattr(
+        shared_assessment_runtime, "MAX_SHARED_ASSESSMENT_REVISIONS", 1
+    )
+    first = commit_shared_assessment_revision(
+        store=store,
+        bundle=bundle,
+        proposal=_proposal(),
+        operation_idempotency_key="bounded-revision-1",
+        apply_enabled=True,
+        now=NOW,
+    )
+    assert first.status == "committed"
+
+    blocked = commit_shared_assessment_revision(
+        store=store,
+        bundle=bundle,
+        proposal=_proposal(expected=1, text="must not become revision two"),
+        operation_idempotency_key="bounded-revision-2",
+        apply_enabled=True,
+        now=NOW + timedelta(seconds=1),
+    )
+    assert blocked.status == "fail_closed"
+    assert blocked.blocked_reasons == (
+        "shared_assessment_revision_index_bound_exceeded",
+    )
+    receipt = issue_shared_assessment_formation_receipt(
+        store=store,
+        evidence_space_id=bundle.evidence_space_id,
+        assessment_id="assessment-1",
+        assessment_revision=1,
+        operation_idempotency_key="bounded-revision-receipt",
+        now=NOW + timedelta(seconds=2),
+    )
+    assert receipt.status == "issued"
 
 
 def test_dry_run_validates_without_shared_assessment_write(store) -> None:

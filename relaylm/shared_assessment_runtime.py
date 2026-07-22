@@ -48,6 +48,8 @@ CommitStatus = Literal[
 ]
 ReceiptStatus = Literal["issued", "duplicate_existing", "fail_closed", "integrity_conflict"]
 
+MAX_SHARED_ASSESSMENT_REVISIONS = 4096
+
 
 
 
@@ -310,6 +312,17 @@ def commit_shared_assessment_revision(
             if index_reasons:
                 return SharedAssessmentCommitResult(
                     "fail_closed", blocked_reasons=index_reasons
+                )
+            if (
+                current_state is not None
+                and current_state.current_revision
+                >= MAX_SHARED_ASSESSMENT_REVISIONS
+            ):
+                return SharedAssessmentCommitResult(
+                    "fail_closed",
+                    blocked_reasons=(
+                        "shared_assessment_revision_index_bound_exceeded",
+                    ),
                 )
             if current_state is not None and (
                 current_state.lifecycle_state != "active"
@@ -635,7 +648,7 @@ def _validate_revision_index(
 ) -> tuple[str, ...]:
     entries = raw or []
     expected_count = 0 if current_state is None else current_state.current_revision
-    if expected_count > 4096:
+    if expected_count > MAX_SHARED_ASSESSMENT_REVISIONS:
         return ("shared_assessment_revision_index_bound_exceeded",)
     if len(entries) != expected_count:
         return ("shared_assessment_revision_index_inconsistent",)
