@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import threading
 from collections.abc import Mapping
+from copy import deepcopy
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
@@ -70,11 +71,11 @@ class _CtxOvlRegistry:
 
 
 _registry_lock = threading.Lock()
-_registries: dict[int, _CtxOvlRegistry] = {}
+_registries: dict[str, _CtxOvlRegistry] = {}
 
 
 def _registry_for(config: "RelayLMConfig") -> _CtxOvlRegistry:
-    key = id(config)
+    key = str(config.evidence_data_root or "ctx_ovl_no_evidence_root")
     with _registry_lock:
         registry = _registries.get(key)
         if registry is None:
@@ -98,25 +99,25 @@ def prepare_ctx_ovl_before_user_capture(
     evidence_store: EvidenceRecordStore | None,
     evaluated_at: datetime | None = None,
 ) -> PipelineNodeResult | None:
-    """Rebuild/catch up, select prior overlays, and optionally inject one hint."""
+    """Synchronize/select prior evidence and optionally inject one hint.
+
+    Dry-run executes the same governed reads, authorization, catch-up/rebuild,
+    TTL, and selection logic on a detached state copy. It differs only by not
+    mutating the process-local registry or the backend-bound payload.
+    """
 
     if not bool(config.ctx_ovl_enabled):
         return None
     route = pipeline_context.route
-    gate_reasons = _route_gate_reasons(route, resolved_scope)
+    gate_reasons = dedupe((
+        *_config_gate_reasons(config),
+        *_route_gate_reasons(route, resolved_scope),
+    ))
     if gate_reasons:
         return _node_result(
             "ctx_ovl_prepare",
             CtxOvlRuntimeResult(
                 status="fail_closed", blocked_reasons=gate_reasons
-            ),
-        )
-    if bool(config.ctx_ovl_dry_run_only) or not bool(config.ctx_ovl_apply_enabled):
-        return _node_result(
-            "ctx_ovl_prepare",
-            CtxOvlRuntimeResult(
-                status="dry_run_ready",
-                blocked_reasons=("ctx_ovl_apply_not_enabled",),
             ),
         )
     if evidence_store is None:
@@ -143,11 +144,17 @@ def prepare_ctx_ovl_before_user_capture(
     ) = identity
     registry = _registry_for(config)
     key = (private_session_ref, participant_partition_id)
+    dry_run = bool(config.ctx_ovl_dry_run_only) or not bool(
+        config.ctx_ovl_apply_enabled
+    )
     with registry.lock:
         existing = registry.partitions.get(key)
-        mode: CtxOvlSyncMode = "rebuild" if existing is None else "catch_up"
+        working_existing = deepcopy(existing) if dry_run else existing
+        mode: CtxOvlSyncMode = (
+            "rebuild" if working_existing is None else "catch_up"
+        )
         state, sync = _synchronize_partition(
-            existing=existing,
+            existing=working_existing,
             tx_store=evidence_store,
             descriptor=descriptor,
             session_id=private_session_ref,
@@ -157,7 +164,7 @@ def prepare_ctx_ovl_before_user_capture(
             mode=mode,
             request_id=pipeline_context.request_id,
         )
-        if state is not None:
+        if state is not None and not dry_run:
             registry.partitions[key] = state
         if state is None or sync.status == "fail_closed":
             return _node_result("ctx_ovl_prepare", sync)
@@ -178,11 +185,28 @@ def prepare_ctx_ovl_before_user_capture(
                     reflex_snapshot=_reflex_snapshot(state, "unknown"),
                 ),
             )
-        applied = False
         if selected:
             state.last_selection = _build_context_selection(
                 state, selected=selected, evaluated_at=now
             )
+        if dry_run:
+            return _node_result(
+                "ctx_ovl_prepare",
+                CtxOvlRuntimeResult(
+                    status="dry_run_ready",
+                    blocked_reasons=("ctx_ovl_apply_not_enabled",),
+                    sync_mode=sync.sync_mode,
+                    sync_outcome=sync.sync_outcome,
+                    selected_count=len(selected),
+                    admitted_count=sync.admitted_count,
+                    omitted_count=sync.omitted_count,
+                    payload_injection_applied=False,
+                    reflex_snapshot=_reflex_snapshot(state, "fresh"),
+                ),
+            )
+
+        applied = False
+        if selected:
             rendered = _render_transient_hint(selected)
             mutated, mutation_reasons = _inject_hint(
                 pipeline_context.forwarded_payload, rendered
@@ -241,14 +265,6 @@ def refresh_ctx_ovl_after_user_capture(
                 blocked_reasons=("ctx_ovl_current_source_not_admitted",),
             ),
         )
-    if bool(config.ctx_ovl_dry_run_only) or not bool(config.ctx_ovl_apply_enabled):
-        return _node_result(
-            "ctx_ovl_admit_current",
-            CtxOvlRuntimeResult(
-                status="dry_run_ready",
-                blocked_reasons=("ctx_ovl_apply_not_enabled",),
-            ),
-        )
     if evidence_store is None:
         return _node_result(
             "ctx_ovl_admit_current",
@@ -257,9 +273,10 @@ def refresh_ctx_ovl_after_user_capture(
                 blocked_reasons=("ctx_ovl_evidence_store_required",),
             ),
         )
-    route_reasons = _route_gate_reasons(
-        pipeline_context.route, resolved_scope
-    )
+    route_reasons = dedupe((
+        *_config_gate_reasons(config),
+        *_route_gate_reasons(pipeline_context.route, resolved_scope),
+    ))
     if route_reasons:
         return _node_result(
             "ctx_ovl_admit_current",
@@ -283,22 +300,49 @@ def refresh_ctx_ovl_after_user_capture(
     ) = identity
     registry = _registry_for(config)
     key = (private_session_ref, participant_partition_id)
+    dry_run = bool(config.ctx_ovl_dry_run_only) or not bool(
+        config.ctx_ovl_apply_enabled
+    )
     with registry.lock:
         existing = registry.partitions.get(key)
+        working_existing = deepcopy(existing) if dry_run else existing
         state, sync = _synchronize_partition(
-            existing=existing,
+            existing=working_existing,
             tx_store=evidence_store,
             descriptor=descriptor,
             session_id=private_session_ref,
             participant_partition_id=participant_partition_id,
             change_partition_id=change_partition_id,
             evaluated_at=now,
-            mode="current_source" if existing is not None else "rebuild",
+            mode="current_source" if working_existing is not None else "rebuild",
             request_id=pipeline_context.request_id,
         )
-        if state is not None:
+        if state is not None and not dry_run:
             registry.partitions[key] = state
+        if dry_run and sync.status == "applied":
+            sync = CtxOvlRuntimeResult(
+                status="dry_run_ready",
+                blocked_reasons=("ctx_ovl_apply_not_enabled",),
+                sync_mode=sync.sync_mode,
+                sync_outcome=sync.sync_outcome,
+                admitted_count=sync.admitted_count,
+                omitted_count=sync.omitted_count,
+                reflex_snapshot=sync.reflex_snapshot,
+            )
         return _node_result("ctx_ovl_admit_current", sync)
+
+
+def _config_gate_reasons(config: "RelayLMConfig") -> tuple[str, ...]:
+    """Fence OVL-1 from analyzers and the legacy CTX writer it cannot order yet."""
+
+    if bool(config.ctx_ovl_dry_run_only) or not bool(config.ctx_ovl_apply_enabled):
+        return ()
+    reasons: list[str] = []
+    if bool(config.relayemo_enabled):
+        reasons.append("ctx_ovl_apply_conflicts_with_relayemo_analysis")
+    if bool(config.relayctx_short_term_runtime_injection_apply_enabled):
+        reasons.append("ctx_ovl_apply_conflicts_with_legacy_relayctx_injection")
+    return dedupe(reasons)
 
 
 def _route_gate_reasons(
