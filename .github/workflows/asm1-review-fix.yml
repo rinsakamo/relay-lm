@@ -26,14 +26,14 @@ jobs:
           git fetch origin main agent/asm1-shared-assessment-runtime-v1
           git checkout -B asm1-main-sync origin/agent/asm1-shared-assessment-runtime-v1
           set +e
-          git merge --no-commit --no-ff origin/main
+          git merge --no-commit --no-ff origin/main > /tmp/asm1-merge.txt 2>&1
           merge_status=$?
           set -e
+          cat /tmp/asm1-merge.txt
           if test "$merge_status" -ne 0; then
-            conflicts="$(git diff --name-only --diff-filter=U)"
+            conflicts="$(git diff --name-only --diff-filter=U | sort)"
             if test "$conflicts" != "docs/PROJECT_STATUS.md"; then
-              echo "Unexpected merge conflicts:"
-              printf '%s\n' "$conflicts"
+              echo "Unexpected merge conflicts: $conflicts"
               exit 1
             fi
             git checkout --theirs docs/PROJECT_STATUS.md
@@ -45,65 +45,63 @@ jobs:
 
           status = Path("docs/PROJECT_STATUS.md")
           text = status.read_text(encoding="utf-8")
-          related_anchor = "  - docs/architecture/project_execution_plan.md\n"
-          related_line = "  - docs/architecture/asm1_shared_assessment_runtime_foundation.md\n"
-          if related_line not in text:
-              if text.count(related_anchor) != 1:
-                  raise RuntimeError("PROJECT_STATUS related-authority anchor mismatch")
-              text = text.replace(related_anchor, related_anchor + related_line)
-          old_status = "ASM-1 Shared Assessment runtime foundation: in progress in PR #636 on top of merged EV-1; until merge and accepted exact-head validation, Shared Assessment remains an active implementation milestone rather than current merged runtime authority"
-          new_status = "ASM-1 Shared Assessment runtime foundation: complete in PR #636 as a default-off deferred library/runtime slice with exact EV-1 authorization, evidence-space-bound assessment identity, immutable consecutive revisions, one logical current-state selector, and decision-transaction-bound formation receipts; no Subjective MEM writer or response-path integration"
-          if text.count(old_status) != 1:
-              raise RuntimeError(f"PROJECT_STATUS current line count {text.count(old_status)}")
-          text = text.replace(old_status, new_status)
-          old_boundary = "ASM-1 is in progress in PR #636 and consumes EV-1 directly without depending on OVL-1. Its active scope is the character-independent Shared Assessment revision/current-state foundation, split Assessment Pass prepare/commit boundary, exact EV-1 authorization revalidation, and content-free formation authorization receipts. Until that PR is merged after accepted exact-head validation, ASM-1 must not be described as implemented current runtime authority, and it does not authorize Subjective MEM writes or normal-response-path assessment injection."
-          new_boundary = "ASM-1 is complete in PR #636 and consumes EV-1 directly without depending on OVL-1. Its bounded scope is the character-independent Shared Assessment revision/current-state foundation, split Assessment Pass prepare/commit boundary, exact EV-1 authorization and assistant-finalization revalidation, and a content-free formation authorization receipt builder that becomes authoritative only when SM-1 commits it with the exact SubjectiveMemDecision in one transaction. ASM-1 remains default-off and does not authorize Subjective MEM writes or normal-response-path assessment injection."
-          if text.count(old_boundary) != 1:
-              raise RuntimeError(f"PROJECT_STATUS boundary paragraph count {text.count(old_boundary)}")
-          text = text.replace(old_boundary, new_boundary)
-          old_dep = "  ASM-1 Shared Assessment runtime foundation                 in progress in PR #636; not yet merged\n  SM-1 Subjective MEM decision/result vertical slice         waits for merged ASM-1"
-          new_dep = "  ASM-1 Shared Assessment runtime foundation                 complete in PR #636; default-off\n  SM-1 Subjective MEM decision/result vertical slice         next registered slice after ASM-1"
-          if text.count(old_dep) != 1:
-              raise RuntimeError(f"PROJECT_STATUS dependency block count {text.count(old_dep)}")
-          text = text.replace(old_dep, new_dep)
+          anchor = "  - docs/architecture/project_execution_plan.md\n"
+          handoff_ref = "  - docs/architecture/asm1_shared_assessment_runtime_foundation.md\n"
+          if handoff_ref not in text:
+              if anchor not in text:
+                  raise RuntimeError("missing PROJECT_STATUS related-authority anchor")
+              text = text.replace(anchor, anchor + handoff_ref, 1)
+          text, count = re.subn(
+              r"^ASM-1 Shared Assessment runtime foundation:.*$",
+              "ASM-1 Shared Assessment runtime foundation: complete in PR #636 as a default-off deferred library/runtime slice with exact EV-1 authorization, evidence-space-bound assessment identity, immutable consecutive revisions, one logical current-state selector, and decision-transaction-bound formation receipts; no Subjective MEM writer or response-path integration",
+              text,
+              count=1,
+              flags=re.MULTILINE,
+          )
+          if count != 1:
+              raise RuntimeError(f"ASM-1 status line replacement count {count}")
+          text, count = re.subn(
+              r"ASM-1 is in progress in PR #636.*?normal-response-path assessment injection\.",
+              "ASM-1 is complete in PR #636 and consumes EV-1 directly without depending on OVL-1. Its bounded scope is the character-independent Shared Assessment revision/current-state foundation, split Assessment Pass prepare/commit boundary, exact EV-1 authorization and assistant-finalization revalidation, and a content-free formation authorization receipt builder that becomes authoritative only when SM-1 commits it with the exact SubjectiveMemDecision in one transaction. ASM-1 remains default-off and does not authorize Subjective MEM writes or normal-response-path assessment injection.",
+              text,
+              count=1,
+              flags=re.DOTALL,
+          )
+          if count != 1:
+              raise RuntimeError(f"ASM-1 boundary replacement count {count}")
+          text = re.sub(
+              r"^  ASM-1 Shared Assessment runtime foundation\s+.*$",
+              "  ASM-1 Shared Assessment runtime foundation                 complete in PR #636; default-off",
+              text,
+              count=1,
+              flags=re.MULTILINE,
+          )
+          text = re.sub(
+              r"^  SM-1 Subjective MEM decision/result vertical slice\s+.*$",
+              "  SM-1 Subjective MEM decision/result vertical slice         next registered slice after ASM-1",
+              text,
+              count=1,
+              flags=re.MULTILINE,
+          )
           status.write_text(text, encoding="utf-8")
 
           handoff = Path("docs/architecture/asm1_shared_assessment_runtime_foundation.md")
           text = handoff.read_text(encoding="utf-8")
-          text = text.replace(
-              "- the canonical SourceEvent and manifest digest;\n- an admitted `AdmissionDecision` bound through the capture-attempt log;\n- the exact valid validation-bundle revision;",
-              "- the canonical SourceEvent manifest digest, exactly matched to the admitted `AdmissionDecision` and deterministic validation artifacts;\n- an admitted `AdmissionDecision` bound through the capture-attempt log;\n- the exact valid validation-bundle revision and artifact coverage;\n- for assistant Evidence, the canonical `AssistantResponseBinding`, reservation, finalize log, managed replay identity, visible-output digest/ranges, and `assistant_finalization` artifact;",
-          )
-          text = text.replace(
-              "The caller derives `assessment_id` with `derive_shared_assessment_id(evidence_space_id, logical_key)`, preventing the same logical ID from being independently current in another session Evidence space.",
-              "The caller derives `assessment_id` with `derive_shared_assessment_id(evidence_space_id, logical_key)`. The identifier carries a 128-bit Evidence-space namespace prefix plus a 256-bit logical-key digest, preventing the same logical ID from being independently current in another session Evidence space.",
-          )
-          text = text.replace(
-              "The tests cover target JSON Schema validation, user and assistant Evidence, character/SOUL contamination absence, current authorization and expiry, exact first/successor revisions, stale-output fencing, singleton current-state authority, revision-index integrity, dry-run no-write behavior, operation retry equivalence, conflict detection, exact formation-time receipts, prior-revision rejection, product-knowledge exclusion, default-off configuration, and the explicit absence of Subjective MEM records.",
-              "The tests cover target JSON Schema validation, user and assistant Evidence, exact assistant-response finalization binding, character/SOUL contamination absence, cross-space assessment identity fencing, current authorization and expiry, manifest/admission/artifact integrity, persisted grant authority, exact first/successor revisions, stale-output fencing, singleton current-state authority, revision-index integrity, dry-run no-write behavior, operation retry equivalence and repoint rejection, temporal monotonicity, exact decision-bound formation receipts, prior-revision rejection, product-knowledge exclusion, default-off configuration, and the explicit absence of Subjective MEM records.",
-          )
+          old = "- the canonical SourceEvent and manifest digest;\n- an admitted `AdmissionDecision` bound through the capture-attempt log;\n- the exact valid validation-bundle revision;"
+          new = "- the canonical SourceEvent manifest digest, exactly matched to the admitted `AdmissionDecision` and deterministic validation artifacts;\n- an admitted `AdmissionDecision` bound through the capture-attempt log;\n- the exact valid validation-bundle revision and artifact coverage;\n- for assistant Evidence, the canonical `AssistantResponseBinding`, reservation, finalize log, managed replay identity, visible-output digest/ranges, and `assistant_finalization` artifact;"
+          if old in text:
+              text = text.replace(old, new, 1)
+          old = "The caller derives `assessment_id` with `derive_shared_assessment_id(evidence_space_id, logical_key)`, preventing the same logical ID from being independently current in another session Evidence space."
+          new = "The caller derives `assessment_id` with `derive_shared_assessment_id(evidence_space_id, logical_key)`. The identifier carries a 128-bit Evidence-space namespace prefix plus a 256-bit logical-key digest, preventing the same logical ID from being independently current in another session Evidence space."
+          if old in text:
+              text = text.replace(old, new, 1)
+          old = "The tests cover target JSON Schema validation, user and assistant Evidence, character/SOUL contamination absence, current authorization and expiry, exact first/successor revisions, stale-output fencing, singleton current-state authority, revision-index integrity, dry-run no-write behavior, operation retry equivalence, conflict detection, exact formation-time receipts, prior-revision rejection, product-knowledge exclusion, default-off configuration, and the explicit absence of Subjective MEM records."
+          new = "The tests cover target JSON Schema validation, user and assistant Evidence, exact assistant-response finalization binding, character/SOUL contamination absence, cross-space assessment identity fencing, current authorization and expiry, manifest/admission/artifact integrity, persisted grant authority, exact first/successor revisions, stale-output fencing, singleton current-state authority, revision-index integrity, dry-run no-write behavior, operation retry equivalence and repoint rejection, temporal monotonicity, exact decision-bound formation receipts, prior-revision rejection, product-knowledge exclusion, default-off configuration, and the explicit absence of Subjective MEM records."
+          if old in text:
+              text = text.replace(old, new, 1)
           handoff.write_text(text, encoding="utf-8")
-
-          tests = Path("tests/test_shared_assessment_runtime.py")
-          text = tests.read_text(encoding="utf-8")
-          pattern = re.compile(
-              r'''    attempt = json\.loads\(\n        _record_path\(\n            store,\n            user\.evidence_space_id,\n            "capture_attempt",\n            source\["capture_attempt_id"\],\n        \)\.read_text\(encoding="utf-8"\)\n    \) if False else json\.loads\(\n        \(\n            store\.root\n            / user\.evidence_space_id\n            / "logs"\n            / "capture_attempt"\n            / f"\{source\['capture_attempt_id'\]\}\.json"\n        \)\.read_text\(encoding="utf-8"\)\n    \)'''
-          )
-          replacement = '''    attempt = json.loads(
-              (
-                  store.root
-                  / user.evidence_space_id
-                  / "logs"
-                  / "capture_attempt"
-                  / f"{source['capture_attempt_id']}.json"
-              ).read_text(encoding="utf-8")
-          )'''
-          text, count = pattern.subn(replacement, text)
-          if count != 1:
-              raise RuntimeError(f"assistant artifact test cleanup count {count}")
-          tests.write_text(text, encoding="utf-8")
           PY
-          git add docs/PROJECT_STATUS.md docs/architecture/asm1_shared_assessment_runtime_foundation.md tests/test_shared_assessment_runtime.py
+          git add docs/PROJECT_STATUS.md docs/architecture/asm1_shared_assessment_runtime_foundation.md
           git commit -m "merge: sync ASM-1 with current main"
       - name: Install package with test dependencies
         run: |
