@@ -210,6 +210,27 @@ def test_store_rejects_existing_symlink_root(tmp_path: Path) -> None:
         EvidenceRecordStore(str(link))
 
 
+def test_store_rejects_symlinked_record_subdirectory(tmp_path: Path) -> None:
+    root = tmp_path / "evidence"
+    store = EvidenceRecordStore(str(root))
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    linked_directory = root / "space-1" / "records" / "source_event"
+    linked_directory.parent.mkdir(parents=True)
+    linked_directory.symlink_to(outside, target_is_directory=True)
+
+    result = store.write_record(
+        evidence_space_id="space-1",
+        record_kind="source_event",
+        record_id="source-1",
+        payload={"schema": "test"},
+    )
+
+    assert result.status == "failed"
+    assert result.reasons == ("evidence_store_path_unsafe",)
+    assert not (outside / "source-1.json").exists()
+
+
 def test_nonstream_raw_2xx_fails_closed_in_evidence_apply(tmp_path: Path) -> None:
     evidence_root = tmp_path / "evidence"
     config_path = _write_config(

@@ -123,11 +123,15 @@ class EvidenceRecordStore:
     @contextmanager
     def _space_lock(self, evidence_space_id: str) -> Iterator[None]:
         space_dir = self._space_dir(evidence_space_id)
-        space_dir.mkdir(parents=True, exist_ok=True)
+        if not _ensure_safe_directory_chain(space_dir):
+            raise RuntimeError("evidence_store_path_unsafe")
         lock_path = space_dir / ".lock"
         fd = os.open(
             lock_path,
-            os.O_CREAT | os.O_RDWR | getattr(os, "O_CLOEXEC", 0),
+            os.O_CREAT
+            | os.O_RDWR
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0),
             0o600,
         )
         try:
@@ -241,7 +245,6 @@ class EvidenceRecordStore:
             target = self._record_path(evidence_space_id, record_kind, record_id)
         except ValueError:
             return EvidenceStoreResult("blocked", ("evidence_store_identifier_invalid",))
-        target.parent.mkdir(parents=True, exist_ok=True)
         return _atomic_create_or_verify(target, canonical_json_bytes(payload))
 
     def _read_record_unlocked(
@@ -262,7 +265,6 @@ class EvidenceRecordStore:
             target = self._log_path(evidence_space_id, log_kind, key)
         except ValueError:
             return EvidenceStoreResult("blocked", ("evidence_store_identifier_invalid",))
-        target.parent.mkdir(parents=True, exist_ok=True)
         return _atomic_replace(target, canonical_json_bytes(list(events)))
 
     def _read_log_unlocked(
@@ -341,7 +343,6 @@ class EvidenceRecordStore:
                 "failed", ("evidence_store_transaction_unreadable",)
             )
 
-        target.parent.mkdir(parents=True, exist_ok=True)
         prepared = {**body, "transaction_digest": digest, "state": "prepared"}
         result = _atomic_replace(target, canonical_json_bytes(prepared))
         if result.status not in {"created", "duplicate_existing"}:
@@ -395,7 +396,6 @@ class EvidenceRecordStore:
                     return EvidenceStoreResult(
                         "blocked", ("evidence_store_payload_id_invalid",)
                     )
-                target.parent.mkdir(parents=True, exist_ok=True)
                 result = _atomic_create_or_verify(
                     target, canonical_json_bytes(item.payload)
                 )
@@ -407,8 +407,16 @@ class EvidenceRecordStore:
         self, evidence_space_id: str
     ) -> EvidenceStoreResult:
         directory = self._space_dir(evidence_space_id) / "transactions"
-        if not directory.exists():
+        try:
+            directory_info = directory.lstat()
+        except FileNotFoundError:
             return EvidenceStoreResult("duplicate_existing")
+        except OSError:
+            return EvidenceStoreResult("failed", ("evidence_store_path_unsafe",))
+        if stat.S_ISLNK(directory_info.st_mode) or not stat.S_ISDIR(
+            directory_info.st_mode
+        ):
+            return EvidenceStoreResult("failed", ("evidence_store_path_unsafe",))
         for path in sorted(directory.glob("*.json")):
             value = _read_json(path)
             if not isinstance(value, dict):
@@ -487,7 +495,33 @@ def _is_safe_component(value: object) -> bool:
     )
 
 
+def _ensure_safe_directory_chain(directory: Path) -> bool:
+    """Create missing directories one component at a time and reject links/files."""
+
+    if not directory.is_absolute():
+        return False
+    current = Path(directory.anchor)
+    try:
+        for part in directory.parts[1:]:
+            current = current / part
+            try:
+                info = current.lstat()
+            except FileNotFoundError:
+                try:
+                    current.mkdir(mode=0o700)
+                except FileExistsError:
+                    pass
+                info = current.lstat()
+            if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+                return False
+    except OSError:
+        return False
+    return True
+
+
 def _atomic_create_or_verify(target: Path, data: bytes) -> EvidenceStoreResult:
+    if not _ensure_safe_directory_chain(target.parent):
+        return EvidenceStoreResult("failed", ("evidence_store_path_unsafe",))
     if target.exists():
         existing = _read_bytes_verified(target)
         if existing is None:
@@ -507,7 +541,8 @@ def _atomic_replace(target: Path, data: bytes) -> EvidenceStoreResult:
 
 
 def _atomic_write(target: Path, data: bytes, *, replace: bool) -> EvidenceStoreResult:
-    target.parent.mkdir(parents=True, exist_ok=True)
+    if not _ensure_safe_directory_chain(target.parent):
+        return EvidenceStoreResult("failed", ("evidence_store_path_unsafe",))
     temp = target.with_name(
         f".{target.name}.{os.getpid()}.{os.urandom(4).hex()}.tmp"
     )
@@ -525,6 +560,10 @@ def _atomic_write(target: Path, data: bytes, *, replace: bool) -> EvidenceStoreR
             os.fsync(fd)
         finally:
             os.close(fd)
+        if not _ensure_safe_directory_chain(target.parent):
+            if temp.exists():
+                os.unlink(temp)
+            return EvidenceStoreResult("failed", ("evidence_store_path_unsafe",))
         if replace:
             os.replace(temp, target)
         else:
