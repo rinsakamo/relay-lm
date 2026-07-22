@@ -15,10 +15,12 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 # Documentation Hard Cutover 1C-53 Receipt
 
 - Cutover PR: #637
-- Bookkeeping consolidation PR: pending
+- Bookkeeping consolidation PR: #638
 - Base main: `9647f35d4cb8792e9ab48795985bef96a75c5856`
-- Validated content head: pending exact-head validation
-- Merged commit: pending
+- Validated content head: `98bfb8f03df4323d7d7de33c0e19d063271683e7`
+- Merged commit: `28f773f04bbb8837b2a8674da93c9317eddea9d4`
+- Merged at: `2026-07-22T09:13:02Z`
+- Final cutover diff: 15 changed files, +362/-23
 - Source: `docs/architecture/phase_i4c1_primary_forget_hidden_successor.md`
 - Canonical target: `docs/evidence/implementation/i4c1-primary-forget-hidden-successor-handoff.md`
 - Disposition: `evidence_retained`, implemented as a move and retype from `implementation_handoff` / `historical_after_merge` to `evidence` / `frozen`
@@ -33,10 +35,10 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 - Active referrers repaired: `docs/README.md`, `docs/adr/0005-subjective-mem-storage-authority.md`, `docs/architecture/README.md`, `docs/architecture/phase_i4_primary_mem_forget_hide_contract.md`, `docs/architecture/phase_i4c2_primary_forget_recovery_finalization.md`, `docs/architecture/phase_i4f_forget_validation.md`, `docs/contracts/subjective-mem-storage-authority-and-commit-protocol.md`, `docs/evidence/implementation/i4f_completion_report.md`
 - Fail-closed enforcement: `scripts/relaylm_i4c1_handoff_cutover_guard.py`, compiled and executed by `.github/workflows/documentation-current-boundary-smoke.yml`
 - Guard self-test: 24 assertions
-- Exact-head GitHub Actions: pending
+- Exact-head GitHub Actions: 16 workflows; 16 success, 0 failure, 0 pending
 - Runtime files changed: 0
 - `relaylm/**` files changed: 0
 - Open-PR content imported: none; PR #636 was open before branch creation, shared no planned cutover paths at selection time, and no content was imported
-- Unresolved review threads: pending final review
+- Unresolved review threads: 0
 
-This receipt records the in-review Cutover 1C-53 boundary. It does not make the historical I-4C1 handoff current authority and does not change runtime, contract, schema, storage, compatibility, alias, redirect, dual-read, or dual-write behavior. Merge and exact-head observations remain pending until explicit final review and merge.
+This receipt records the merged Cutover 1C-53 boundary. PR #637 merged as `28f773f04bbb8837b2a8674da93c9317eddea9d4` from reviewed head `98bfb8f03df4323d7d7de33c0e19d063271683e7` on base `9647f35d4cb8792e9ab48795985bef96a75c5856`; PR #638 consolidates those facts without changing the accepted cutover content. The historical I-4C1 handoff remains non-authoritative for current runtime, contract, schema, storage, compatibility, alias, redirect, dual-read, or dual-write behavior.
