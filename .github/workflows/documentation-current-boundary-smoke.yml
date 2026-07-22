@@ -20,24 +20,29 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - name: Assemble Cutover 1C-52
+        id: assemble
+        continue-on-error: true
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_REF: ${{ github.head_ref }}
         run: |
-          set +e
-          python scripts/relaylm_cutover_1c52_bootstrap.py > /tmp/cutover-1c52.log 2>&1
-          status=$?
-          set -e
-          tail -120 /tmp/cutover-1c52.log
-          if [ "$status" -ne 0 ]; then
-            cp /tmp/cutover-1c52.log docs/evidence/migrations/cutover-1c52-bootstrap-failure.txt
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add docs/evidence/migrations/cutover-1c52-bootstrap-failure.txt
-            git commit -m "chore: capture Cutover 1C-52 bootstrap failure"
-            git push origin HEAD:"${HEAD_REF}"
-            exit "$status"
-          fi
+          python scripts/relaylm_cutover_1c52_bootstrap.py > cutover-1c52-bootstrap.log 2>&1
+      - name: Upload bootstrap diagnostics
+        if: steps.assemble.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutover-1c52-bootstrap-diagnostics
+          path: cutover-1c52-bootstrap.log
+          if-no-files-found: error
+          retention-days: 1
+      - name: Fail after diagnostics
+        if: steps.assemble.outcome == 'failure'
+        run: exit 1
+      - name: Commit generated cutover
+        if: steps.assemble.outcome == 'success'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
           git status --short
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
