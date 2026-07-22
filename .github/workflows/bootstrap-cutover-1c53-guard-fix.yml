@@ -1,0 +1,34 @@
+name: Correct Documentation Hard Cutover 1C-53 Guard
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths:
+      - ".github/workflows/bootstrap-cutover-1c53-guard-fix.yml"
+      - "scripts/relaylm_cutover_1c53_guard_fix.py"
+
+permissions:
+  contents: write
+
+jobs:
+  correct:
+    if: github.head_ref == 'agent/documentation-hard-cutover-1c53-i4c1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Correct I-4C1 guard boundary
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          python scripts/relaylm_cutover_1c53_guard_fix.py
+          python scripts/relaylm_i4c1_handoff_cutover_guard.py --self-test
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/relaylm_i4c1_handoff_cutover_guard.py
+          git commit -m "fix: harden I-4C1 cutover guard path boundary"
+          git push origin HEAD:"${HEAD_REF}"
