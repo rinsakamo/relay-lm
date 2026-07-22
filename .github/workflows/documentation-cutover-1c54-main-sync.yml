@@ -51,8 +51,9 @@ jobs:
           path = Path("docs/architecture/README.md")
           text = path.read_text(encoding="utf-8")
           retired = "- [Phase I-4C2 Primary Forget Recovery and Finalization](phase_i4c2_primary_forget_recovery_finalization.md)\n"
-          if text.count(retired) != 2:
-              raise SystemExit(f"expected two retired I-4C2 index entries, found {text.count(retired)}")
+          count = text.count(retired)
+          if count not in {0, 2}:
+              raise SystemExit(f"expected zero or two retired I-4C2 index entries, found {count}")
           text = text.replace(retired, "")
           asm = "- [ASM-1 Shared Assessment Runtime Foundation](asm1_shared_assessment_runtime_foundation.md) records the default-off EV-1-to-Shared-Assessment implementation boundary and its explicit stop before Subjective MEM.\n"
           if text.count(asm) != 1:
