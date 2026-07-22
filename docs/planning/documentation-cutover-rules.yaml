@@ -534,6 +534,19 @@ path_overrides:
       production authority with the I1-G contract, I1-GD, implementation, and
       focused smokes.
 
+  docs/architecture/phase_i2_real_soul_lab_observation.md:
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_paths:
+      - docs/evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
+    deletion_reason: >-
+      Cutover 1C-55: this completed Phase I-2 observe-only SOUL Lab integration
+      handoff was frozen historical implementation evidence mislocated in the live
+      architecture collection. The cutover preserves PR #377 provenance, removes
+      the handoff from current/product-critical indexes, repairs every active
+      path-bound reference, and leaves current SOUL Lab observation authority with
+      current UI/runtime architecture, implementation, and focused smokes.
+
   docs/architecture/phase_i4c1_primary_forget_hidden_successor.md:
     disposition: evidence_retained
     target_doc_type: evidence

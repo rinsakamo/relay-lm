@@ -176,7 +176,7 @@ EVIDENCE_PATHS = (
     "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
     "docs/architecture/soul_lab_ui_b1a_lifecycle_visibility.md",
     "docs/architecture/integration_i1_primary_mem_two_turn_recall.md",
-    "docs/architecture/phase_i2_real_soul_lab_observation.md",
+    "docs/evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md",
     "docs/architecture/phase_i4d_primary_retrieval_exclusion.md",
     "docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md",
     "docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md",

@@ -17,7 +17,7 @@ relaylm_related_authority:
   - docs/architecture/soul_lab_ui_mvp.md
   - docs/architecture/soul_lab_ui_a7_management_projection_handoff.md
   - docs/architecture/integration_i1_primary_mem_two_turn_recall.md
-  - docs/architecture/phase_i2_real_soul_lab_observation.md
+  - docs/evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
   - docs/architecture/phase_i3_auditable_primary_mem_correct.md
   - docs/architecture/o0_local_one_job_runner.md
   - docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md
