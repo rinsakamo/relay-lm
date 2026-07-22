@@ -14,12 +14,13 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 ---
 # Documentation Hard Cutover 1C-54 Receipt
 
-- Cutover PR: pending draft PR number at construction time
-- Bookkeeping consolidation PR: pending after merge
-- Base main: `16e733b41b57b9dfefe6c3af130c28acf915057b`
-- Validated content head: pending exact-head validation
-- Merged commit: pending
-- Merged at: pending
+- Cutover PR: #642
+- Bookkeeping consolidation PR: #644
+- Integration base / current main at final review: `32135811283edffa4408846c8a9e51173aea743e`
+- Validated content head: `9b92df29a2cd112c6ad80086fdcfa4ad0e6fd0d6`
+- Merged commit: `a21b9ac617fcf11d85a52e919f2ecb8678485927`
+- Merged at: `2026-07-22T16:24:41Z`
+- Final cutover diff: 16 changed files, +410/-31
 - Source: `docs/architecture/phase_i4c2_primary_forget_recovery_finalization.md`
 - Canonical target: `docs/evidence/implementation/i4c2-primary-forget-recovery-finalization-handoff.md`
 - Disposition: `evidence_retained`, implemented as a move and retype from `implementation_handoff` / `historical_after_merge` to `evidence` / `frozen`
@@ -33,14 +34,14 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 - Referrers observed: `docs/README.md`, `docs/architecture/README.md`, `docs/architecture/phase_i4_primary_mem_forget_hide_contract.md`, `docs/architecture/phase_i4f_forget_validation.md`, `docs/evidence/implementation/i4c1-primary-forget-hidden-successor-handoff.md`, `docs/evidence/implementation/i4e_completion_report.md`, `docs/evidence/implementation/i4f_completion_report.md`, `docs/evidence/migrations/cutover-1c53-i4c1.md`, `docs/evidence/waves/wave2_cross_slice_convergence_audit-source.txt`, `docs/evidence/waves/wave2_cross_slice_convergence_audit.md`
 - Active referrers repaired: `docs/README.md`, `docs/architecture/README.md`, `docs/architecture/phase_i4_primary_mem_forget_hide_contract.md`, `docs/architecture/phase_i4f_forget_validation.md`, `docs/evidence/implementation/i4c1-primary-forget-hidden-successor-handoff.md`, `docs/evidence/implementation/i4e_completion_report.md`, `docs/evidence/implementation/i4f_completion_report.md`, `docs/evidence/waves/wave2_cross_slice_convergence_audit.md`
 - Historical references intentionally preserved only in the Wave 2 byte-exact source snapshot, Cutover 1C-53 receipt, cutover rules, and migration ledger.
-- Open-PR overlap at branch creation: PR #636 overlaps `docs/architecture/README.md`; PR #639 and temporary PR #641 have no planned-path overlap. No open-PR content was imported.
+- Parallel-work resolution: PR #636 and PR #639 merged before final review; their ASM-1 and OVL-1 changes were retained during exact main synchronization. PR #643 was open at merge time, changed only `docs/PROJECT_STATUS.md`, and had no cutover-path overlap. No open-PR content was imported.
 - Runtime files changed: 0
 - `relaylm/**` files changed: 0
-- Project-status preservation: `docs/PROJECT_STATUS.md` is unchanged, preserving PR #640 EV-1-complete / ASM-1-in-progress convergence.
+- Project-status preservation: `docs/PROJECT_STATUS.md` was unchanged by Cutover 1C-54; later status convergence remains separately owned by PR #643.
 - Fail-closed enforcement: `scripts/relaylm_i4c2_handoff_cutover_guard.py`, compiled and executed by `.github/workflows/documentation-current-boundary-smoke.yml`
 - Guard self-test: 24 assertions
-- Exact-head GitHub Actions: pending
-- Unresolved review threads: pending final review
+- Exact-head GitHub Actions: 16 workflows; 16 success, 0 failure, 0 pending
+- Unresolved review threads: 0
 
 ## Semantic coverage matrix
 
@@ -61,4 +62,4 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 
 ## Conclusion
 
-Every current normative behavior recorded by the old I-4C2 handoff is independently owned by the Phase I-4 master contract, current implementation, current I-4D/I-4E/I-4F boundaries, and focused executable validation. The move therefore removes no unique current authority. The canonical document is frozen historical evidence only.
+Every current normative behavior recorded by the old I-4C2 handoff is independently owned by the Phase I-4 master contract, current implementation, current I-4D/I-4E/I-4F boundaries, and focused executable validation. The move therefore removes no unique current authority. The canonical document is frozen historical evidence only. PR #642 merged as `a21b9ac617fcf11d85a52e919f2ecb8678485927` from reviewed head `9b92df29a2cd112c6ad80086fdcfa4ad0e6fd0d6` on integration base `32135811283edffa4408846c8a9e51173aea743e`; PR #644 consolidates those facts without changing accepted cutover content.

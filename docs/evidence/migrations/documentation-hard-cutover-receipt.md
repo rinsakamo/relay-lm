@@ -5223,11 +5223,16 @@ verification:
 
 PR #637 preserves the completed I-4C1 hidden-successor commit handoff as frozen implementation evidence and merged as `28f773f04bbb8837b2a8674da93c9317eddea9d4` from reviewed head `98bfb8f03df4323d7d7de33c0e19d063271683e7` on base `9647f35d4cb8792e9ab48795985bef96a75c5856`. Current Primary Forget behavior remains I-4-contract-, I-4C2/I-4D/I-4E/I-4F-, implementation-, and focused-smoke-owned. PR #638 consolidates merge attribution and exact-head validation without changing accepted cutover content.
 
-### C1C54-001 — I-4C2 recovery/finalization handoff (pending merge attribution)
+### C1C54-001 — I-4C2 recovery/finalization handoff
 
 ```yaml
-cutover_pr: pending
-merged_commit: pending
+cutover_pr: 642
+merged_commit: a21b9ac617fcf11d85a52e919f2ecb8678485927
+bookkeeping_pr: 644
+base_main: 32135811283edffa4408846c8a9e51173aea743e
+validated_content_head: 9b92df29a2cd112c6ad80086fdcfa4ad0e6fd0d6
+head_at_merge: 9b92df29a2cd112c6ad80086fdcfa4ad0e6fd0d6
+merged_at: 2026-07-22T16:24:41Z
 old_path: docs/architecture/phase_i4c2_primary_forget_recovery_finalization.md
 old_blob_sha: ab8f8e0f906690dfc9a28c680f4fb2b230211ce1
 old_content_sha256: f0b6eeef01f423283ef0b48cf9e8940b1edfacef23a0483669058ff4d81bba92
@@ -5252,10 +5257,19 @@ verification:
   active_path_references_repaired: true
   implementation_evidence_index_updated: true
   documentation_current_boundary_smoke_updated: true
+  fail_closed_guard: scripts/relaylm_i4c2_handoff_cutover_guard.py
+  guard_integrated_into_existing_documentation_boundary_workflow: true
+  guard_self_test_assertions: 24
+  exact_head_workflow_runs: 16
+  exact_head_workflow_success: 16
+  exact_head_workflow_failure: 0
+  unresolved_review_threads: 0
   runtime_files_changed: 0
   relaylm_files_changed: 0
-  exact_head_actions: pending
-  unresolved_review_threads: pending
+  final_changed_files: 16
+  final_additions: 410
+  final_deletions: 31
+  open_pr_content_imported: false
 ```
 
-Pending merge attribution only. The frozen record preserves PR #404 recovery/finalization provenance and PR #407 concurrent-loser normalization without becoming current runtime, schema, API/UI, storage, product, compatibility, alias, redirect, dual-read, or dual-write authority.
+PR #642 preserves PR #404 recovery/finalization provenance and PR #407 concurrent-loser normalization as frozen implementation evidence and merged as `a21b9ac617fcf11d85a52e919f2ecb8678485927` from reviewed head `9b92df29a2cd112c6ad80086fdcfa4ad0e6fd0d6` on integration base `32135811283edffa4408846c8a9e51173aea743e`. PR #644 consolidates merge attribution and exact-head validation without changing accepted cutover content. The record remains non-authoritative for current runtime, schema, API/UI, storage, product, compatibility, alias, redirect, dual-read, or dual-write behavior.
