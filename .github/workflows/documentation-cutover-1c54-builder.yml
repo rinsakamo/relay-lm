@@ -34,7 +34,15 @@ jobs:
       - name: Install validation dependencies
         run: python -m pip install -e ".[test]"
       - name: Construct final cutover tree
-        run: python scripts/_tmp_documentation_cutover_1c54_builder.py
+        run: |
+          set -o pipefail
+          python scripts/_tmp_documentation_cutover_1c54_builder.py 2>&1 | tee /tmp/documentation-cutover-1c54-builder.log
+      - name: Upload builder diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-cutover-1c54-builder-diagnostics
+          path: /tmp/documentation-cutover-1c54-builder.log
       - name: Validate final tree serially
         run: |
           set -euo pipefail
