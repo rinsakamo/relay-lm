@@ -19,6 +19,9 @@ relaylm_related_authority:
   - docs/DOCUMENTATION_MODEL.md
   - docs/release/v0.1-release-readiness.md
   - docs/architecture/project_execution_plan.md
+  - docs/architecture/asm1_shared_assessment_runtime_foundation.md
+  - docs/contracts/governed-evidence-contract-family.md
+  - docs/contracts/shared-assessment-subjective-mem.md
   - docs/architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md
   - docs/architecture/analyzer_candidate_governance.md
   - docs/architecture/acg1_analyzer_candidate_governance_contract.md
@@ -45,7 +48,7 @@ relaylm_related_authority:
 ---
 # RelayLM Project Status
 
-Last reviewed: 2026-07-08 JST
+Last reviewed: 2026-07-22 JST
 
 ## Purpose and authority
 
@@ -75,6 +78,8 @@ O2 supervised worker service: complete as opt-in supervised local scheduler serv
 O3 always-on local operation: complete as opt-in local CLI/process wrapper around O2; not browser authority, not app-embedded, and not default-on
 
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall, scope isolation, E1-R5 scoped candidate fallback, and PM-D8 canonical Primary recall fold-in complete
+EV-1 Governed Evidence runtime foundation: complete in PR #629 for the bounded single-principal private managed-conversation slice; gates remain default-off and completion does not imply CTX-OVL, Shared Assessment, Subjective MEM, export, replication, or purge
+ASM-1 Shared Assessment runtime foundation: complete in PR #636 as a default-off deferred library/runtime slice with exact EV-1 authorization, evidence-space-bound assessment identity, immutable consecutive revisions, one logical current-state selector, and decision-transaction-bound formation receipts; no Subjective MEM writer or response-path integration
 P0-PIPE RelayREL / RelaySCN / RelayEMO ordering: complete in PR #458 after actual app.py request-path rewiring and local validation; RelayREL now precedes RelaySCN, RelaySCN precedes input-side RelayEMO, RelayINT/RelayMEM/RelayCTX remain downstream; PM-D3 scene_state ownership is closed by this shipped ordering boundary
 CTX Repack phase ordering fix: complete; RelayCTX short-term runtime injection now runs before token_budget_truncation in app.py so token_budget_truncation is the actual final CTX Repack mutation gate
 Analyzer Candidate Governance: ACG-1 contract/helpers complete; ACG-2 Grounded Recall Detail Safety complete; ACG-3 Retrieval Query Normalization complete; ACG-4 Reference/Intent Analyzer consolidation complete; ACG-5 RelayEMO scene ownership cleanup complete; ACG-6 SCN structured classifier and scene-wiki boundary complete
@@ -145,6 +150,12 @@ CW-A1 is complete as a read-only target contract slice. CW-A2 is complete as an 
 
 CW-A3 keeps Home on the existing RelayLM `/v1/chat/completions` authority path, keeps Real Runtime and Local Preview explicitly separated, and moves internal governance vocabulary toward Advanced without adding browser authority. CW-A4 keeps RelaySLP deferred and out-of-band. CW-A5 preserves the no-auto-default boundary: no-character startup enters Creation / Import flow, templates remain source candidates until explicit approval, workspace commit does not auto-activate the character, imported `.relaylm/**` runtime/build/state artifacts are rejected, and third-party/imported templates do not receive RelayLM onboarding memory automatically.
 
+## Contract-aligned implementation migration boundary
+
+EV-1 is complete in PR #629 for one bounded, single-principal private managed conversation. The merged slice establishes route-owned current-user and canonical assistant-response capture, immutable SourceEvents, validation bundles, governance and grant state, change projections, coverage checkpoints, and a bounded local Evidence store. All Evidence gates remain default-off. EV-1 does not complete the full governed-evidence contract family, CTX-OVL, Shared Assessment, Subjective MEM formation or storage, multi-user Evidence, export, replication, or purge.
+
+ASM-1 is complete in PR #636 and consumes EV-1 directly without depending on OVL-1. Its bounded scope is the character-independent Shared Assessment revision/current-state foundation, split Assessment Pass prepare/commit boundary, exact EV-1 authorization and assistant-finalization revalidation, and a content-free formation authorization receipt builder that becomes authoritative only when SM-1 commits it with the exact SubjectiveMemDecision in one transaction. ASM-1 remains default-off and does not authorize Subjective MEM writes or normal-response-path assessment injection.
+
 ## Current caveats
 
 E1-R4 is request-side only. It builds a backend-bound grounded recall context and instruction from eligible retrieved Primary MEM evidence; it does not add post-hoc visible response rewriting, polling, supervision, browser-owned trust, or new memory mutation authority.
@@ -158,6 +169,11 @@ Post-MVP decision debt is tracked explicitly as PM-D1 RelaySOUL gate design-free
 ## Immediate dependency-first work
 
 ```text
+Contract-aligned implementation migration:
+  EV-1 Governed Evidence runtime foundation                  complete in PR #629
+  ASM-1 Shared Assessment runtime foundation                 complete in PR #636; default-off
+  SM-1 Subjective MEM decision/result vertical slice         next registered slice after ASM-1
+
 Post-O1F next candidates:
   I-5B Pin / Unpin apply/API/UI/ranking work                 complete in Wave 6
   I-7C Held Apply/Discard runtime/API/UI/durable evidence    complete in Wave 6

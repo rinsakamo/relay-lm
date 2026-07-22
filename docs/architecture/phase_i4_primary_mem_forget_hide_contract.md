@@ -19,7 +19,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - phase_i3_auditable_primary_mem_correct.md
   - phase_i4b_primary_current_state_shared_fence.md
-  - phase_i4c1_primary_forget_hidden_successor.md
+  - ../evidence/implementation/i4c1-primary-forget-hidden-successor-handoff.md
   - phase_i4c2_primary_forget_recovery_finalization.md
   - phase_i4d_primary_retrieval_exclusion.md
   - phase_i4e_forget_api_ui.md

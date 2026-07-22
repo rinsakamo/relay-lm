@@ -8,7 +8,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - phase_i4_primary_mem_forget_hide_contract.md
   - phase_i4b_primary_current_state_shared_fence.md
-  - phase_i4c1_primary_forget_hidden_successor.md
+  - ../evidence/implementation/i4c1-primary-forget-hidden-successor-handoff.md
   - phase_i4d_primary_retrieval_exclusion.md
   - ../evidence/waves/wave2_cross_slice_convergence_audit.md
 relaylm_not_authoritative_for:
