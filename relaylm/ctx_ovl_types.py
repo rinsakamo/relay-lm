@@ -17,6 +17,35 @@ _TTL_SECONDS = 1800
 
 
 @dataclass(frozen=True)
+class CtxOvlRuntimeResult:
+    status: str
+    blocked_reasons: tuple[str, ...] = ()
+    sync_mode: str = "none"
+    sync_outcome: str = "not_run"
+    selected_count: int = 0
+    admitted_count: int = 0
+    omitted_count: int = 0
+    payload_injection_applied: bool = False
+    reflex_snapshot: dict[str, object] | None = None
+
+    def to_log_dict(self) -> dict[str, object]:
+        return {
+            "schema_version": "relaylm.ctx_ovl_runtime_result.v1",
+            "diagnostics_only": True,
+            "content_free": True,
+            "status": self.status,
+            "sync_mode": self.sync_mode,
+            "sync_outcome": self.sync_outcome,
+            "selected_count": self.selected_count,
+            "admitted_count": self.admitted_count,
+            "omitted_count": self.omitted_count,
+            "payload_injection_applied": self.payload_injection_applied,
+            "blocked_reason_ids": list(self.blocked_reasons),
+            "reflex_snapshot": dict(self.reflex_snapshot or {}),
+        }
+
+
+@dataclass(frozen=True)
 class _AuthorizedCandidate:
     source_event_id: str
     source_sequence: int
@@ -163,11 +192,11 @@ def _parse_datetime(value: str) -> datetime | None:
 
 
 __all__ = [
-    "_AuthorizedCandidate", "_StoredOverlay", "_ParticipantPartitionState",
-    "_MAX_CANDIDATE_BYTES", "_SELECTION_MAX_RECORDS",
-    "_SELECTION_MAX_TOTAL_BYTES", "_CATCH_UP_MAX_EVENTS",
-    "_CATCH_UP_MAX_TOTAL_BYTES", "_REBUILD_MAX_RECORDS",
-    "_REBUILD_MAX_TOTAL_BYTES", "_TTL_SECONDS", "_new_partition_state",
-    "_parse_datetime", "_record_write_attempt",
+    "CtxOvlRuntimeResult", "_AuthorizedCandidate", "_StoredOverlay",
+    "_ParticipantPartitionState", "_MAX_CANDIDATE_BYTES",
+    "_SELECTION_MAX_RECORDS", "_SELECTION_MAX_TOTAL_BYTES",
+    "_CATCH_UP_MAX_EVENTS", "_CATCH_UP_MAX_TOTAL_BYTES",
+    "_REBUILD_MAX_RECORDS", "_REBUILD_MAX_TOTAL_BYTES", "_TTL_SECONDS",
+    "_new_partition_state", "_parse_datetime", "_record_write_attempt",
     "evaluate_ctx_ovl_write_attempt",
 ]
