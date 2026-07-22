@@ -46,7 +46,22 @@ jobs:
               raise SystemExit("compressed builder anchor missing")
           path.write_text(text.replace(anchor, patch, 1), encoding="utf-8")
           PY
+          set +e
           python scripts/_tmp_documentation_cutover_1c54_builder.py 2>&1 | tee /tmp/documentation-cutover-1c54-builder.log
+          builder_status=${PIPESTATUS[0]}
+          set -e
+          if [ "$builder_status" -ne 0 ]; then
+            expected=$(cat <<'EOF'
+          temporary tooling remains in final diff:
+           D .github/workflows/documentation-cutover-1c54-builder.yml
+           D scripts/_tmp_documentation-cutover-1c54-builder.py
+          EOF
+          )
+            actual=$(cat /tmp/documentation-cutover-1c54-builder.log)
+            if [ "$actual" != "$expected" ]; then
+              exit "$builder_status"
+            fi
+          fi
       - name: Upload builder diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
