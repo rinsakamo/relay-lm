@@ -43,8 +43,27 @@ jobs:
         run: python -m compileall -q scripts
       - name: Validate cutover repository tree
         run: python scripts/relaylm_phase_i2_handoff_cutover_guard.py
-      - name: Validate cutover guard self-test
-        run: python scripts/relaylm_phase_i2_handoff_cutover_guard.py --self-test
+      - name: Capture cutover guard self-test
+        id: guard_self_test
+        shell: bash
+        run: |
+          set +e
+          python scripts/relaylm_phase_i2_handoff_cutover_guard.py --self-test > phase-i2-guard-self-test.log 2>&1
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload cutover guard diagnostics
+        if: steps.guard_self_test.outputs.status != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i2-guard-self-test
+          path: phase-i2-guard-self-test.log
+          if-no-files-found: error
+      - name: Enforce cutover guard self-test
+        if: steps.guard_self_test.outputs.status != '0'
+        run: |
+          cat phase-i2-guard-self-test.log
+          exit 1
       - name: Validate Phase I-2 documentation boundary
         run: python scripts/relaylm_phase_i2_documentation_boundary_smoke.py
       - name: Validate E1 evidence inventory
