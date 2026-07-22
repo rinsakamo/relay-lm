@@ -99,6 +99,60 @@ jobs:
             git push origin HEAD:asm1-review-fix-runner-head
             exit "$status"
           fi
+          python - <<'PY'
+          from pathlib import Path
+
+          runtime = Path('relaylm/shared_assessment_runtime.py')
+          text = runtime.read_text(encoding='utf-8')
+          call_old = '''                    expected_assessment_id=proposal.assessment_id,
+                  )
+          '''
+          call_new = '''                    expected_assessment_id=proposal.assessment_id,
+                      expected_assessment_revision=(
+                          1
+                          if proposal.expected_current_revision_or_null is None
+                          else proposal.expected_current_revision_or_null + 1
+                      ),
+                  )
+          '''
+          sig_old = '''    expected_idempotency_key_digest: str,
+              expected_assessment_id: str,
+          ) -> SharedAssessmentCommitResult:
+          '''
+          sig_new = '''    expected_idempotency_key_digest: str,
+              expected_assessment_id: str,
+              expected_assessment_revision: int,
+          ) -> SharedAssessmentCommitResult:
+          '''
+          check_old = '''        existing.get("assessment_id") != expected_assessment_id
+                  or type(assessment_revision) is not int
+          '''
+          check_new = '''        existing.get("assessment_id") != expected_assessment_id
+                  or assessment_revision != expected_assessment_revision
+                  or type(assessment_revision) is not int
+          '''
+          for old_value, label in ((call_old, 'operation call'), (sig_old, 'operation signature'), (check_old, 'operation revision check')):
+              if text.count(old_value) != 1:
+                  raise RuntimeError(f'{label} expected one match, found {text.count(old_value)}')
+          text = text.replace(call_old, call_new).replace(sig_old, sig_new).replace(check_old, check_new)
+          runtime.write_text(text, encoding='utf-8')
+
+          tests = Path('tests/test_shared_assessment_runtime.py')
+          test_text = tests.read_text(encoding='utf-8')
+          route_old = '''        route_snapshot(
+                      capture_profile="managed_user_input", issued_at=now.isoformat()
+                  ),
+          '''
+          route_new = '''        route_snapshot(
+                      capture_profile="managed_user_input",
+                      session_id=session_id,
+                      issued_at=now.isoformat(),
+                  ),
+          '''
+          if test_text.count(route_old) != 1:
+              raise RuntimeError(f'route snapshot expected one match, found {test_text.count(route_old)}')
+          tests.write_text(test_text.replace(route_old, route_new), encoding='utf-8')
+          PY
       - name: Install package with test dependencies
         run: |
           python -m pip install --upgrade pip
