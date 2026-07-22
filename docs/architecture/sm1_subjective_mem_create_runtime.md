@@ -139,7 +139,7 @@ The raw-key digest and exact Evidence-space plus character-authority namespace s
 - the exact decision time;
 - the deterministic decision, memory, manifest, and current-state identities.
 
-The raw key is never persisted or emitted publicly. The same key and equivalent immutable input returns the same decision, memory ID, revision, manifest, and current state. Any changed input is an integrity conflict or, for cross-character/workspace authority reuse, a scope mismatch. Retry cannot create revision 2 or another selector.
+The raw key is never persisted or emitted publicly. Within one exact Evidence-space and character-authority namespace, the same key and equivalent immutable input returns the same decision, memory ID, revision, manifest, and current state, while changed immutable input is an integrity conflict. The same raw key may independently identify another operation in a different character/workspace namespace. A persisted operation that is repointed across namespaces or claims mismatched scope authority fails closed. Retry cannot create revision 2 or another selector.
 
 `memory_id` is opaque and deterministic from the exact Evidence-space plus character-authority namespace and decision identity. It is not derived from a display name, title, path, heading, or subjective prose.
 
