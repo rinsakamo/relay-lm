@@ -1,9 +1,9 @@
 name: Temporary SM-1 review corrections
 
 on:
-  push:
-    branches:
-      - agent/sm1-subjective-mem-create-runtime
+  pull_request:
+    types: [synchronize]
+    branches: [main]
     paths:
       - .github/workflows/tmp-sm1-review-fix.yml
       - scripts/tmp_sm1_review_fix.py
@@ -13,10 +13,12 @@ permissions:
 
 jobs:
   patch-and-validate:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
       - name: Apply review corrections
