@@ -61,9 +61,10 @@ The ordinary response route does not invoke this path. The functions are explici
 
 `prepare_shared_assessment_pass(...)` consumes one to 64 exact SourceEvent IDs from one EV-1 evidence space. For each source it verifies:
 
-- the canonical SourceEvent and manifest digest;
+- the canonical SourceEvent manifest digest, exactly matched to the admitted `AdmissionDecision` and deterministic validation artifacts;
 - an admitted `AdmissionDecision` bound through the capture-attempt log;
-- the exact valid validation-bundle revision;
+- the exact valid validation-bundle revision and artifact coverage;
+- for assistant Evidence, the canonical `AssistantResponseBinding`, reservation, finalize log, managed replay identity, visible-output digest/ranges, and `assistant_finalization` artifact;
 - the initial governance event and resulting governance-state digest;
 - the current least-privilege `shared_assessment_read` grant;
 - retention deadline, record availability, integrity, selected part availability, locality, audience, and destination constraints through the EV-1 access resolver;
@@ -85,7 +86,7 @@ Publication is one EV-1 store transaction containing:
 - replacement of the singleton `relaylm.shared_assessment_current_state.v1` selector;
 - append of a bounded consecutive revision index used to prove that the selector names the latest persisted revision.
 
-The caller derives `assessment_id` with `derive_shared_assessment_id(evidence_space_id, logical_key)`, preventing the same logical ID from being independently current in another session Evidence space. The caller supplies `expected_current_revision_or_null`. Revision 1 requires `null`; every successor requires the exact current revision. Stale model output therefore cannot silently become a later revision. Successors increment exactly once and name the immediate predecessor.
+The caller derives `assessment_id` with `derive_shared_assessment_id(evidence_space_id, logical_key)`. The identifier carries a 128-bit Evidence-space namespace prefix plus a 256-bit logical-key digest, preventing the same logical ID from being independently current in another session Evidence space. The caller supplies `expected_current_revision_or_null`. Revision 1 requires `null`; every successor requires the exact current revision. Stale model output therefore cannot silently become a later revision. Successors increment exactly once and name the immediate predecessor.
 
 Operation retries use a stable semantic input digest rather than the transient pass ID or short-lived authorization-projection ID. Re-preparing the same exact authorized evidence and retrying the same operation is duplicate-safe. Reusing an operation key with different evidence or proposal content is an integrity conflict.
 
@@ -163,7 +164,7 @@ PYTHONPATH=tests:. pytest -q tests/test_shared_assessment_runtime.py
 python scripts/relaylm_asm1_shared_assessment_smoke.py
 ```
 
-The tests cover target JSON Schema validation, user and assistant Evidence, character/SOUL contamination absence, current authorization and expiry, exact first/successor revisions, stale-output fencing, singleton current-state authority, revision-index integrity, dry-run no-write behavior, operation retry equivalence, conflict detection, exact formation-time receipts, prior-revision rejection, product-knowledge exclusion, default-off configuration, and the explicit absence of Subjective MEM records.
+The tests cover target JSON Schema validation, user and assistant Evidence, exact assistant-response finalization binding, character/SOUL contamination absence, cross-space assessment identity fencing, current authorization and expiry, manifest/admission/artifact integrity, persisted grant authority, exact first/successor revisions, stale-output fencing, singleton current-state authority, revision-index integrity, dry-run no-write behavior, operation retry equivalence and repoint rejection, temporal monotonicity, exact decision-bound formation receipts, prior-revision rejection, product-knowledge exclusion, default-off configuration, and the explicit absence of Subjective MEM records.
 
 ## Explicit non-goals
 
