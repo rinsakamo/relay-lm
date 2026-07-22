@@ -54,7 +54,7 @@ jobs:
             expected=$(cat <<'EOF'
           temporary tooling remains in final diff:
            D .github/workflows/documentation-cutover-1c54-builder.yml
-           D scripts/_tmp_documentation_cutover_1c54_builder.py
+           D scripts/_tmp_documentation-cutover-1c54-builder.py
           EOF
           )
             actual=$(cat /tmp/documentation-cutover-1c54-builder.log)
@@ -104,6 +104,50 @@ jobs:
         with:
           name: documentation-cutover-1c54-validation-diagnostics
           path: /tmp/documentation-cutover-1c54-validation.log
+      - name: Prepare validated final tree artifact
+        if: success()
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import shutil
+          import subprocess
+          root = Path.cwd()
+          out = Path("/tmp/documentation-cutover-1c54-final-tree")
+          files = out / "files"
+          files.mkdir(parents=True, exist_ok=True)
+          changed = subprocess.check_output(
+              ["git", "diff", "--name-only", "--diff-filter=ACMRTUXB"],
+              text=True,
+          ).splitlines()
+          deleted = subprocess.check_output(
+              ["git", "diff", "--name-only", "--diff-filter=D"],
+              text=True,
+          ).splitlines()
+          for rel in changed:
+              target = files / rel
+              target.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(root / rel, target)
+          (out / "changed-files.txt").write_text("\n".join(changed) + "\n", encoding="utf-8")
+          (out / "deleted-files.txt").write_text("\n".join(deleted) + "\n", encoding="utf-8")
+          (out / "numstat.txt").write_text(
+              subprocess.check_output(["git", "diff", "--numstat"], text=True),
+              encoding="utf-8",
+          )
+          (out / "stat.txt").write_text(
+              subprocess.check_output(["git", "diff", "--stat"], text=True),
+              encoding="utf-8",
+          )
+          (out / "final.patch").write_text(
+              subprocess.check_output(["git", "diff", "--no-ext-diff"], text=True),
+              encoding="utf-8",
+          )
+          PY
+      - name: Upload validated final tree artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-cutover-1c54-final-tree
+          path: /tmp/documentation-cutover-1c54-final-tree
       - name: Commit and push final tree
         run: |
           set -euo pipefail
