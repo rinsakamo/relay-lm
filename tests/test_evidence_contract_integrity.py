@@ -130,9 +130,13 @@ def test_user_capture_persists_attestation_projection_and_coverage_chain(tmp_pat
     second = _capture_user(
         store, "user-two", "second", now=NOW + timedelta(seconds=1)
     )
-    assert first.status == second.status == "admitted"
+    third = _capture_user(
+        store, "user-three", "third", now=NOW + timedelta(seconds=2)
+    )
+    assert first.status == second.status == third.status == "admitted"
     assert first.capture_sequence == 0
     assert second.capture_sequence == 1
+    assert third.capture_sequence == 2
 
     source = store.read_record(
         evidence_space_id=first.evidence_space_id,
@@ -160,14 +164,14 @@ def test_user_capture_persists_attestation_projection_and_coverage_chain(tmp_pat
         log_kind="change_projection",
         key=participant_partition_id,
     )
-    assert [event["partition_sequence"] for event in projections] == [0, 1]
+    assert [event["partition_sequence"] for event in projections] == [0, 1, 2]
     checkpoints = store.read_log(
         evidence_space_id=first.evidence_space_id,
         log_kind="coverage_checkpoint",
         key="managed_user_input",
     )
-    assert [item["coverage_revision"] for item in checkpoints] == [1, 2]
-    assert checkpoints[-1]["expected_previous_coverage_revision_or_null"] == 1
+    assert [item["coverage_revision"] for item in checkpoints] == [1, 2, 3]
+    assert checkpoints[-1]["expected_previous_coverage_revision_or_null"] == 2
 
 
 def test_capture_sequence_rejects_terminal_attempt_mismatch() -> None:

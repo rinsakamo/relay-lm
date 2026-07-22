@@ -267,11 +267,12 @@ def _capture(
             status="fail_closed", blocked_reasons=dedupe(snapshot_reasons)
         )
 
-    stream_descriptor, sequence_log, previous_coverage = _load_stream(
+    stream_descriptor, sequence_log, coverage_log = _load_stream(
         tx=tx,
         evidence_space_id=descriptor.evidence_space_id,
         recorded_at=recorded_at,
     )
+    previous_coverage = coverage_log[-1] if coverage_log else None
     capture_attempt_id = _derive_id(
         "captureattempt", operation_idempotency_key, "capture_attempt"
     )
@@ -643,10 +644,7 @@ def _capture(
             (
                 "coverage_checkpoint",
                 _STREAM_KEY,
-                [
-                    *([previous_coverage] if previous_coverage else []),
-                    coverage.to_dict(),
-                ],
+                [*coverage_log, coverage.to_dict()],
             ),
             (
                 "change_projection",
@@ -742,7 +740,7 @@ def _load_stream(
 ) -> tuple[
     SourceCaptureStreamDescriptor,
     CaptureSequenceLog,
-    dict[str, object] | None,
+    list[dict],
 ]:
     persisted_descriptor = (
         tx.read_record(record_kind="stream_descriptor", record_id=_STREAM_KEY)
@@ -769,8 +767,7 @@ def _load_stream(
         if tx is not None
         else []
     )
-    previous = checkpoints[-1] if checkpoints else None
-    return descriptor, CaptureSequenceLog.from_events(descriptor, events), previous
+    return descriptor, CaptureSequenceLog.from_events(descriptor, events), list(checkpoints)
 
 
 __all__ = ["EvidenceUserInputCaptureResult", "capture_managed_user_input"]
