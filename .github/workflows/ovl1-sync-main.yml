@@ -1,11 +1,9 @@
 name: OVL-1 validate latest-main integration
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/ovl1-participant-private-runtime
-    paths:
-      - .github/workflows/ovl1-sync-main.yml
+      - main
 
 permissions:
   contents: read
