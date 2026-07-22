@@ -76,7 +76,7 @@ O2 supervised worker service: complete as opt-in supervised local scheduler serv
 O3 always-on local operation: complete as opt-in local CLI/process wrapper around O2; not browser authority, not app-embedded, and not default-on
 
 EV-1 Governed Evidence runtime foundation: complete for the bounded single-principal managed private-conversation path; default-off and no multi-user/export/replication/purge authority
-ASM-1 Shared Assessment runtime foundation: complete as a default-off deferred library/runtime slice with exact EV-1 authorization, character-independent Assessment Pass bundles, immutable consecutive revisions, one logical current-state selector, and formation-time authorization receipts; no Subjective MEM writer or response-path integration
+ASM-1 Shared Assessment runtime foundation: complete as a default-off deferred library/runtime slice with exact EV-1 authorization, character-independent Assessment Pass bundles, immutable consecutive revisions, one logical current-state selector, and a decision-transaction-bound formation authorization receipt builder; no independently persisted receipt, Subjective MEM writer, or response-path integration
 
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall, scope isolation, E1-R5 scoped candidate fallback, and PM-D8 canonical Primary recall fold-in complete
 P0-PIPE RelayREL / RelaySCN / RelayEMO ordering: complete in PR #458 after actual app.py request-path rewiring and local validation; RelayREL now precedes RelaySCN, RelaySCN precedes input-side RelayEMO, RelayINT/RelayMEM/RelayCTX remain downstream; PM-D3 scene_state ownership is closed by this shipped ordering boundary

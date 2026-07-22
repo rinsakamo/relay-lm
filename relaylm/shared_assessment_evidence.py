@@ -8,7 +8,7 @@ current-state or Subjective MEM write authority.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from relaylm.evidence_access import resolve_evidence_access_authorization
 from relaylm.evidence_common import (
@@ -84,10 +84,18 @@ def _load_authorized_shared_assessment_source(
     if "product_knowledge_derived" in source_material_classes:
         return None, ("shared_assessment_product_knowledge_forbidden",)
     manifest = source.get("canonical_source_manifest")
-    if not isinstance(manifest, dict) or canonical_digest(manifest) != source.get(
-        "canonical_source_manifest_digest"
+    manifest_digest = source.get("canonical_source_manifest_digest")
+    if (
+        not isinstance(manifest, dict)
+        or not isinstance(manifest_digest, str)
+        or canonical_digest(manifest) != manifest_digest
     ):
         return None, ("shared_assessment_source_manifest_invalid",)
+    semantic_reasons = _validate_source_semantics(
+        source=source, manifest=manifest, normalized_origin=origin
+    )
+    if semantic_reasons:
+        return None, semantic_reasons
 
     capture_attempt_id = source.get("capture_attempt_id")
     if not isinstance(capture_attempt_id, str):
@@ -104,8 +112,11 @@ def _load_authorized_shared_assessment_source(
         or admission.get("outcome") != "admitted"
         or admission.get("source_event_id_or_null") != source_event_id
         or admission.get("evidence_space_id") != evidence_space_id
+        or admission.get("capture_attempt_id") != capture_attempt_id
     ):
         return None, ("shared_assessment_source_not_admitted",)
+    if admission.get("canonical_source_manifest_digest_or_null") != manifest_digest:
+        return None, ("shared_assessment_source_admission_manifest_mismatch",)
     validation_id = admission.get("validation_bundle_id_or_null")
     validation_revision = admission.get("validation_bundle_revision_or_null")
     if not isinstance(validation_id, str) or type(validation_revision) is not int:
@@ -118,8 +129,19 @@ def _load_authorized_shared_assessment_source(
         or validation.get("bundle_state") != "valid"
         or validation.get("bundle_revision") != validation_revision
         or validation.get("source_event_id_or_null") != source_event_id
+        or validation.get("capture_attempt_id") != capture_attempt_id
     ):
         return None, ("shared_assessment_validation_bundle_invalid",)
+    artifact_reasons = _validate_validation_artifacts(
+        tx=tx,
+        validation=validation,
+        source_event_id=source_event_id,
+        evidence_space_id=evidence_space_id,
+        manifest_digest=manifest_digest,
+        normalized_origin=origin,
+    )
+    if artifact_reasons:
+        return None, artifact_reasons
     governance_event_id = admission.get("initial_governance_event_id_or_null")
     if not isinstance(governance_event_id, str):
         return None, ("shared_assessment_governance_reference_invalid",)
@@ -127,7 +149,8 @@ def _load_authorized_shared_assessment_source(
         record_kind="governance_event", record_id=governance_event_id
     )
     state, grants, governance_revision, governance_reasons = _parse_governance(
-        governance,
+        tx=tx,
+        raw=governance,
         source_event_id=source_event_id,
         evidence_space_id=evidence_space_id,
         admission_id=admission_id,
@@ -135,6 +158,16 @@ def _load_authorized_shared_assessment_source(
     )
     if state is None:
         return None, governance_reasons
+    not_before, timing_reasons = _authority_not_before(
+        source=source,
+        admission=admission,
+        validation=validation,
+        governance=governance,
+        grants=grants,
+        now=now,
+    )
+    if not_before is None:
+        return None, timing_reasons
     part_ids = _manifest_protected_text_part_ids(manifest)
     if not part_ids:
         return None, ("shared_assessment_no_supported_text_parts",)
@@ -187,14 +220,16 @@ def _load_authorized_shared_assessment_source(
         matched_grant_ids=projection.matched_grant_ids,
         governance_revision=projection.governance_revision,
         validation_bundle_revision=validation_revision,
+        not_before=not_before,
         not_after=projection.not_after,
     )
     return AuthorizedSharedAssessmentSource(evidence_ref, parts, snapshot), ()
 
 
 def _parse_governance(
-    raw: dict | None,
     *,
+    tx: EvidenceStoreTransaction,
+    raw: dict | None,
     source_event_id: str,
     evidence_space_id: str,
     admission_id: str,
@@ -231,8 +266,16 @@ def _parse_governance(
             admission_id=admission_id,
             validation_revision=validation_revision,
         )
-        if grant is not None:
-            grants.append(grant)
+        if grant is None:
+            return None, (), 0, ("shared_assessment_access_grant_invalid",)
+        canonical_grant = tx.read_record(
+            record_kind="access_grant", record_id=grant.grant_id
+        )
+        if canonical_grant != raw_grant:
+            return None, (), 0, ("shared_assessment_access_grant_record_mismatch",)
+        grants.append(grant)
+    if len({grant.grant_id for grant in grants}) != len(grants):
+        return None, (), 0, ("shared_assessment_access_grant_duplicate",)
     state = EvidenceGovernanceState(
         schema="relaylm.evidence_governance_state.v1",
         source_event_id=source_event_id,
@@ -292,7 +335,12 @@ def _grant_from_dict(
         evidence_space_id=evidence_space_id,
         issued_at=issued_at,
     )
-    return AccessGrant(
+    if (
+        raw.get("issued_by_principal_ref") != principal.to_dict()
+        or raw.get("issued_by_authority_scope") != scope.to_dict()
+    ):
+        return None
+    grant = AccessGrant(
         schema="relaylm.evidence_access_grant.v1",
         grant_id=grant_id,
         source_event_id=str(raw.get("source_event_id")),
@@ -323,6 +371,169 @@ def _grant_from_dict(
             else None
         ),
     )
+    return grant if grant.to_dict() == raw else None
+
+
+
+def _validate_source_semantics(
+    *, source: dict, manifest: dict, normalized_origin: str
+) -> tuple[str, ...]:
+    provenance = source.get("provenance_snapshot")
+    raw_parts = manifest.get("parts")
+    if not isinstance(provenance, dict) or not isinstance(raw_parts, list):
+        return ("shared_assessment_source_provenance_invalid",)
+    material_classes = provenance.get("source_material_classes")
+    if not isinstance(material_classes, list):
+        return ("shared_assessment_source_provenance_invalid",)
+    if "product_knowledge_derived" in material_classes or any(
+        isinstance(part, dict)
+        and part.get("part_derivation_class") == "product_knowledge_derived"
+        for part in raw_parts
+    ):
+        return ("shared_assessment_product_knowledge_forbidden",)
+    if normalized_origin == "user":
+        expected = {
+            "source_role": "user_input",
+            "occurrence_kind": "message",
+            "source_material_classes": ["personal_source"],
+            "part_origin": "participant_authored",
+            "part_derivation_class": "direct_occurrence",
+        }
+    else:
+        expected = {
+            "source_role": "assistant_response",
+            "occurrence_kind": "assistant_response",
+            "source_material_classes": ["assistant_generation"],
+            "part_origin": "assistant_authored",
+            "part_derivation_class": "model_generated",
+        }
+    if (
+        source.get("source_role") != expected["source_role"]
+        or manifest.get("schema") != "relaylm.canonical_source_manifest.v1"
+        or manifest.get("occurrence_kind") != expected["occurrence_kind"]
+        or material_classes != expected["source_material_classes"]
+        or provenance.get("capture_method") != "managed_runtime"
+        or provenance.get("provenance_assurance") != "verified"
+    ):
+        return ("shared_assessment_source_provenance_invalid",)
+    for part in raw_parts:
+        if not isinstance(part, dict):
+            return ("shared_assessment_source_parts_invalid",)
+        if part.get("part_kind") == "text" and part.get("initial_disposition") == "protected":
+            if (
+                part.get("part_origin") != expected["part_origin"]
+                or part.get("part_derivation_class")
+                != expected["part_derivation_class"]
+            ):
+                return ("shared_assessment_source_provenance_invalid",)
+    return ()
+
+
+def _validate_validation_artifacts(
+    *,
+    tx: EvidenceStoreTransaction,
+    validation: dict,
+    source_event_id: str,
+    evidence_space_id: str,
+    manifest_digest: str,
+    normalized_origin: str,
+) -> tuple[str, ...]:
+    requirements = validation.get("gate_requirements")
+    refs = validation.get("active_artifact_refs")
+    if not isinstance(requirements, list) or not isinstance(refs, list):
+        return ("shared_assessment_validation_artifacts_invalid",)
+    expected_gates = (
+        ("canonicalization", "integrity")
+        if normalized_origin == "user"
+        else ("canonicalization", "integrity", "assistant_finalization")
+    )
+    if len(requirements) != len(refs) or len(set(refs)) != len(refs):
+        return ("shared_assessment_validation_artifacts_invalid",)
+    gates: list[str] = []
+    for requirement, derived_id in zip(requirements, refs):
+        if not isinstance(requirement, dict) or not isinstance(derived_id, str):
+            return ("shared_assessment_validation_artifacts_invalid",)
+        gate = requirement.get("gate_kind")
+        if (
+            not isinstance(gate, str)
+            or requirement.get("requirement_id") != f"requirement:{gate}"
+            or requirement.get("required_result") != "pass"
+            or not derived_id.startswith("derivedartifact_")
+        ):
+            return ("shared_assessment_validation_artifacts_invalid",)
+        event_id = "artifactevent_" + derived_id.removeprefix("derivedartifact_")
+        event = tx.read_record(
+            record_kind="source_derived_artifact_event", record_id=event_id
+        )
+        payload = event.get("operation_payload") if isinstance(event, dict) else None
+        if (
+            not isinstance(event, dict)
+            or event.get("schema") != "relaylm.source_derived_artifact_event.v1"
+            or event.get("artifact_event_id") != event_id
+            or event.get("derived_artifact_id") != derived_id
+            or event.get("artifact_revision") != 1
+            or event.get("evidence_space_id") != evidence_space_id
+            or not isinstance(payload, dict)
+            or payload.get("result_status") != "pass"
+        ):
+            return ("shared_assessment_validation_artifacts_invalid",)
+        if gate in {"canonicalization", "integrity"}:
+            if (
+                event.get("subject")
+                != {"kind": "source_event", "source_event_id": source_event_id}
+                or payload.get("input_schema")
+                != "relaylm.canonical_source_manifest.v1"
+                or payload.get("input_digest") != manifest_digest
+                or payload.get("output_digest_or_null") != manifest_digest
+                or payload.get("output_binding_ref_or_null") != source_event_id
+            ):
+                return ("shared_assessment_validation_artifacts_invalid",)
+        gates.append(gate)
+    if tuple(gates) != expected_gates:
+        return ("shared_assessment_validation_artifacts_invalid",)
+    return ()
+
+
+def _parse_time(value: object) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(timezone.utc)
+
+
+def _authority_not_before(
+    *,
+    source: dict,
+    admission: dict,
+    validation: dict,
+    governance: dict | None,
+    grants: tuple[AccessGrant, ...],
+    now: datetime,
+) -> tuple[str | None, tuple[str, ...]]:
+    if now.tzinfo is None:
+        return None, ("shared_assessment_clock_invalid",)
+    values: list[object] = [
+        source.get("received_at"),
+        source.get("observed_at"),
+        admission.get("decided_at"),
+        validation.get("recorded_at"),
+    ]
+    if isinstance(governance, dict):
+        values.extend((governance.get("recorded_at"), governance.get("effective_at")))
+    values.extend(grant.issued_at for grant in grants)
+    parsed = [_parse_time(value) for value in values]
+    if any(value is None for value in parsed):
+        return None, ("shared_assessment_authority_time_invalid",)
+    latest = max(value for value in parsed if value is not None)
+    current = now.astimezone(timezone.utc)
+    if current < latest:
+        return None, ("shared_assessment_authority_not_yet_effective",)
+    return latest.isoformat(), ()
 
 
 def _load_parts(
@@ -472,6 +683,7 @@ def authorized_shared_assessment_sources_match_bundle(
             "validation_bundle_revision": (
                 item.authorization_snapshot.validation_bundle_revision
             ),
+            "not_before": item.authorization_snapshot.not_before,
         }
         for item in authorized
     ]
@@ -483,6 +695,7 @@ def authorized_shared_assessment_sources_match_bundle(
             "matched_grant_ids": list(item.matched_grant_ids),
             "governance_revision": item.governance_revision,
             "validation_bundle_revision": item.validation_bundle_revision,
+            "not_before": item.not_before,
         }
         for item in bundle.authorization_snapshots
     ]

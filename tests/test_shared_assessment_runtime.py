@@ -12,17 +12,29 @@ from pydantic import ValidationError
 from evidence_test_support import route_snapshot
 from relaylm.config import RelayLMConfig
 import relaylm.shared_assessment_runtime as shared_assessment_runtime
+from relaylm.evidence_space import derive_evidence_space_id
 from relaylm.evidence_store import EvidenceRecordStore
 from relaylm.evidence_user_input import capture_managed_user_input
-from relaylm.shared_assessment import SharedAssessmentProposal
+from relaylm.shared_assessment import (
+    SharedAssessmentProposal,
+    derive_shared_assessment_id,
+)
 from relaylm.shared_assessment_runtime import (
+    build_shared_assessment_formation_receipt,
     commit_shared_assessment_revision,
-    issue_shared_assessment_formation_receipt,
     prepare_shared_assessment_pass,
     resolve_shared_assessment_gate,
 )
 
 NOW = datetime(2026, 7, 22, 8, 0, 0, tzinfo=timezone.utc)
+EVIDENCE_SPACE_ID = derive_evidence_space_id(
+    workspace_or_tenant_ref="relaylm-local",
+    character_id="char1",
+    memory_namespace="ns1",
+    session_id="sess1",
+)
+ASSESSMENT_ID = derive_shared_assessment_id(EVIDENCE_SPACE_ID, "assessment-1")
+DECISION_INPUT_DIGEST = "a" * 64
 
 BASE_CONFIG = dict(
     backends={
@@ -46,18 +58,21 @@ def _capture(
     key: str = "source-1",
     text: str = "I have been tired lately.",
     now: datetime = NOW,
+    session_id: str = "sess1",
 ):
     return capture_managed_user_input(
         store=store,
         apply_enabled=True,
         character_id="char1",
         memory_namespace="ns1",
-        session_id="sess1",
+        session_id=session_id,
         current_user_text=text,
         fail_closed_reasons=(),
         operation_idempotency_key=key,
         route_snapshot_payload=route_snapshot(
-            capture_profile="managed_user_input", issued_at=now.isoformat()
+            capture_profile="managed_user_input",
+            session_id=session_id,
+            issued_at=now.isoformat(),
         ),
         now=now,
     )
@@ -82,7 +97,7 @@ def _bundle(store: EvidenceRecordStore, *, count: int = 1):
 
 def _proposal(*, expected=None, text="The user reported a current condition."):
     return SharedAssessmentProposal(
-        assessment_id="assessment-1",
+        assessment_id=ASSESSMENT_ID,
         supported_content=text,
         support_state="supported",
         uncertainty=("exact_duration_unknown",),
@@ -299,15 +314,17 @@ def test_revision_bound_blocks_successor_without_corrupting_current(
     assert blocked.blocked_reasons == (
         "shared_assessment_revision_index_bound_exceeded",
     )
-    receipt = issue_shared_assessment_formation_receipt(
-        store=store,
-        evidence_space_id=bundle.evidence_space_id,
-        assessment_id="assessment-1",
-        assessment_revision=1,
-        operation_idempotency_key="bounded-revision-receipt",
-        now=NOW + timedelta(seconds=2),
-    )
-    assert receipt.status == "issued"
+    with store.transaction(bundle.evidence_space_id) as tx:
+        receipt = build_shared_assessment_formation_receipt(
+            tx=tx,
+            evidence_space_id=bundle.evidence_space_id,
+            assessment_id=ASSESSMENT_ID,
+            assessment_revision=1,
+            decision_id="bounded-revision-decision",
+            decision_input_digest=DECISION_INPUT_DIGEST,
+            decided_at=NOW + timedelta(seconds=2),
+        )
+    assert receipt.status == "ready"
 
 
 def test_dry_run_validates_without_shared_assessment_write(store) -> None:
@@ -338,15 +355,17 @@ def test_formation_receipt_is_exact_current_and_content_free(store) -> None:
         now=NOW,
     )
     assert committed.status == "committed"
-    receipt = issue_shared_assessment_formation_receipt(
-        store=store,
-        evidence_space_id=captures[0].evidence_space_id,
-        assessment_id="assessment-1",
-        assessment_revision=1,
-        operation_idempotency_key="receipt-1",
-        now=NOW,
-    )
-    assert receipt.status == "issued"
+    with store.transaction(captures[0].evidence_space_id) as tx:
+        receipt = build_shared_assessment_formation_receipt(
+            tx=tx,
+            evidence_space_id=captures[0].evidence_space_id,
+            assessment_id=ASSESSMENT_ID,
+            assessment_revision=1,
+            decision_id="decision-1",
+            decision_input_digest=DECISION_INPUT_DIGEST,
+            decided_at=NOW,
+        )
+    assert receipt.status == "ready"
     assert receipt.receipt is not None
     payload = receipt.receipt.to_dict()
     assert payload["assessment_authorization_receipt"] == {
@@ -355,7 +374,17 @@ def test_formation_receipt_is_exact_current_and_content_free(store) -> None:
         "authorization_state_at_decision": "current_admitted",
     }
     assert "supported_content" not in payload
+    assert payload["decision_id"] == "decision-1"
+    assert payload["decision_input_digest"] == DECISION_INPUT_DIGEST
+    assert receipt.receipt.is_self_authenticating()
     assert "character" not in json.dumps(payload, sort_keys=True)
+    receipt_dir = (
+        store.root
+        / captures[0].evidence_space_id
+        / "records"
+        / "shared_assessment_formation_receipt"
+    )
+    assert not receipt_dir.exists()
     assert not (
         store.root
         / captures[0].evidence_space_id
@@ -384,14 +413,16 @@ def test_prior_revision_cannot_receive_new_receipt_after_successor(store) -> Non
         now=NOW + timedelta(seconds=1),
     )
     assert second.status == "committed"
-    receipt = issue_shared_assessment_formation_receipt(
-        store=store,
-        evidence_space_id=captures[0].evidence_space_id,
-        assessment_id="assessment-1",
-        assessment_revision=1,
-        operation_idempotency_key="stale-receipt",
-        now=NOW + timedelta(seconds=2),
-    )
+    with store.transaction(captures[0].evidence_space_id) as tx:
+        receipt = build_shared_assessment_formation_receipt(
+            tx=tx,
+            evidence_space_id=captures[0].evidence_space_id,
+            assessment_id=ASSESSMENT_ID,
+            assessment_revision=1,
+            decision_id="stale-decision",
+            decision_input_digest=DECISION_INPUT_DIGEST,
+            decided_at=NOW + timedelta(seconds=2),
+        )
     assert receipt.status == "fail_closed"
     assert receipt.blocked_reasons == (
         "shared_assessment_receipt_target_not_current_admitted",
@@ -400,7 +431,7 @@ def test_prior_revision_cannot_receive_new_receipt_after_successor(store) -> Non
 
 def test_duplicate_current_selector_fails_closed(store) -> None:
     _captures, bundle = _bundle(store)
-    state_key = "asmstate_" + __import__("hashlib").sha256(b"assessment-1").hexdigest()
+    state_key = "asmstate_" + __import__("hashlib").sha256(ASSESSMENT_ID.encode("utf-8")).hexdigest()
     store.write_log(
         evidence_space_id=bundle.evidence_space_id,
         log_kind="shared_assessment_current_state",
@@ -580,7 +611,7 @@ def test_malformed_proposal_and_tampered_bundle_fail_closed(store) -> None:
 
     _captures, bundle = _bundle(store)
     malformed = SharedAssessmentProposal(
-        assessment_id="assessment-1",
+        assessment_id=ASSESSMENT_ID,
         supported_content="content",
         support_state="supported",
         uncertainty=[],  # type: ignore[arg-type]
@@ -638,3 +669,296 @@ def test_enabled_dry_run_also_requires_evidence_root(tmp_path: Path) -> None:
     assert gate.dry_run_only is True
     assert gate.apply_enabled is False
     assert gate.store is not None
+
+def _record_path(store: EvidenceRecordStore, evidence_space_id: str, kind: str, record_id: str) -> Path:
+    return store.root / evidence_space_id / "records" / kind / f"{record_id}.json"
+
+
+def _write_json(path: Path, payload: dict) -> None:
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True),
+        encoding="utf-8",
+    )
+
+
+def test_assessment_identity_is_bound_to_one_evidence_space(store) -> None:
+    _captures, first_bundle = _bundle(store)
+    first = commit_shared_assessment_revision(
+        store=store,
+        bundle=first_bundle,
+        proposal=_proposal(),
+        operation_idempotency_key="space-one",
+        apply_enabled=True,
+        now=NOW,
+    )
+    assert first.status == "committed"
+    other = _capture(
+        store,
+        key="space-two-source",
+        text="other session",
+        session_id="sess2",
+        now=NOW,
+    )
+    prepared = prepare_shared_assessment_pass(
+        store=store,
+        evidence_space_id=other.evidence_space_id,
+        source_event_ids=(other.source_event_id,),
+        assessment_pass_id="space-two-pass",
+        now=NOW,
+    )
+    assert prepared.bundle is not None
+    blocked = commit_shared_assessment_revision(
+        store=store,
+        bundle=prepared.bundle,
+        proposal=_proposal(),
+        operation_idempotency_key="space-two-commit",
+        apply_enabled=True,
+        now=NOW,
+    )
+    assert blocked.status == "fail_closed"
+    assert "shared_assessment_id_evidence_space_mismatch" in blocked.blocked_reasons
+
+
+def test_source_manifest_must_match_admission_digest(store) -> None:
+    captured = _capture(store)
+    source_path = _record_path(
+        store, captured.evidence_space_id, "source_event", captured.source_event_id
+    )
+    source = json.loads(source_path.read_text(encoding="utf-8"))
+    source["canonical_source_manifest"]["manifest_extensions"] = {"tampered": True}
+    from relaylm.evidence_common import canonical_digest
+
+    source["canonical_source_manifest_digest"] = canonical_digest(
+        source["canonical_source_manifest"]
+    )
+    _write_json(source_path, source)
+    result = prepare_shared_assessment_pass(
+        store=store,
+        evidence_space_id=captured.evidence_space_id,
+        source_event_ids=(captured.source_event_id,),
+        assessment_pass_id="manifest-admission-mismatch",
+        now=NOW,
+    )
+    assert result.status == "fail_closed"
+    assert result.blocked_reasons == (
+        "shared_assessment_source_admission_manifest_mismatch",
+    )
+
+
+def test_validation_artifact_manifest_binding_is_required(store) -> None:
+    captured = _capture(store)
+    source = json.loads(
+        _record_path(
+            store, captured.evidence_space_id, "source_event", captured.source_event_id
+        ).read_text(encoding="utf-8")
+    )
+    attempt = json.loads(
+        next(
+            (
+                store.root
+                / captured.evidence_space_id
+                / "logs"
+                / "capture_attempt"
+            ).glob("*.json")
+        ).read_text(encoding="utf-8")
+    )
+    admission_id = next(
+        event["operation_payload"]["admission_decision_id"]
+        for event in attempt
+        if event.get("operation") == "bind_admission"
+    )
+    admission = json.loads(
+        _record_path(
+            store, captured.evidence_space_id, "admission_decision", admission_id
+        ).read_text(encoding="utf-8")
+    )
+    validation = json.loads(
+        _record_path(
+            store,
+            captured.evidence_space_id,
+            "validation_bundle",
+            admission["validation_bundle_id_or_null"],
+        ).read_text(encoding="utf-8")
+    )
+    derived_id = validation["active_artifact_refs"][0]
+    event_id = "artifactevent_" + derived_id.removeprefix("derivedartifact_")
+    artifact_path = _record_path(
+        store, captured.evidence_space_id, "source_derived_artifact_event", event_id
+    )
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    artifact["operation_payload"]["input_digest"] = "f" * 64
+    _write_json(artifact_path, artifact)
+    result = prepare_shared_assessment_pass(
+        store=store,
+        evidence_space_id=captured.evidence_space_id,
+        source_event_ids=(source["source_event_id"],),
+        assessment_pass_id="artifact-tamper",
+        now=NOW,
+    )
+    assert result.status == "fail_closed"
+    assert result.blocked_reasons == (
+        "shared_assessment_validation_artifacts_invalid",
+    )
+
+
+def test_persisted_grant_issuer_authority_is_not_synthesized(store) -> None:
+    captured = _capture(store)
+    source = json.loads(
+        _record_path(
+            store, captured.evidence_space_id, "source_event", captured.source_event_id
+        ).read_text(encoding="utf-8")
+    )
+    attempt = json.loads(
+        next(
+            (
+                store.root
+                / captured.evidence_space_id
+                / "logs"
+                / "capture_attempt"
+            ).glob("*.json")
+        ).read_text(encoding="utf-8")
+    )
+    admission_id = next(
+        event["operation_payload"]["admission_decision_id"]
+        for event in attempt
+        if event.get("operation") == "bind_admission"
+    )
+    admission = json.loads(
+        _record_path(
+            store, captured.evidence_space_id, "admission_decision", admission_id
+        ).read_text(encoding="utf-8")
+    )
+    governance_path = _record_path(
+        store,
+        captured.evidence_space_id,
+        "governance_event",
+        admission["initial_governance_event_id_or_null"],
+    )
+    governance = json.loads(governance_path.read_text(encoding="utf-8"))
+    grants = governance["operation_payload"]["initial_access_grants"]
+    shared_grant = next(grant for grant in grants if grant["purpose"] == "shared_assessment_read")
+    shared_grant["issued_by_principal_ref"]["principal_id"] = "tampered"
+    _write_json(governance_path, governance)
+    result = prepare_shared_assessment_pass(
+        store=store,
+        evidence_space_id=captured.evidence_space_id,
+        source_event_ids=(source["source_event_id"],),
+        assessment_pass_id="grant-authority-tamper",
+        now=NOW,
+    )
+    assert result.status == "fail_closed"
+    assert result.blocked_reasons == ("shared_assessment_access_grant_invalid",)
+
+
+def test_embedded_grant_must_equal_canonical_grant_record(store) -> None:
+    captured = _capture(store)
+    grant_dir = store.root / captured.evidence_space_id / "records" / "access_grant"
+    grant_path = next(
+        path
+        for path in grant_dir.glob("*.json")
+        if json.loads(path.read_text(encoding="utf-8"))["purpose"]
+        == "shared_assessment_read"
+    )
+    grant = json.loads(grant_path.read_text(encoding="utf-8"))
+    grant["destination_class_constraint"] = "tampered"
+    _write_json(grant_path, grant)
+    result = prepare_shared_assessment_pass(
+        store=store,
+        evidence_space_id=captured.evidence_space_id,
+        source_event_ids=(captured.source_event_id,),
+        assessment_pass_id="standalone-grant-tamper",
+        now=NOW,
+    )
+    assert result.status == "fail_closed"
+    assert result.blocked_reasons == (
+        "shared_assessment_access_grant_record_mismatch",
+    )
+
+
+def test_operation_record_cannot_be_repointed_to_another_revision(store) -> None:
+    _captures, bundle = _bundle(store)
+    first = commit_shared_assessment_revision(
+        store=store,
+        bundle=bundle,
+        proposal=_proposal(),
+        operation_idempotency_key="repoint-first",
+        apply_enabled=True,
+        now=NOW,
+    )
+    second = commit_shared_assessment_revision(
+        store=store,
+        bundle=bundle,
+        proposal=_proposal(expected=1, text="revision two"),
+        operation_idempotency_key="repoint-second",
+        apply_enabled=True,
+        now=NOW + timedelta(seconds=1),
+    )
+    assert first.status == second.status == "committed"
+    operation_id = "asmop_" + __import__("hashlib").sha256(b"repoint-first").hexdigest()
+    operation_path = _record_path(
+        store, bundle.evidence_space_id, "shared_assessment_operation", operation_id
+    )
+    operation = json.loads(operation_path.read_text(encoding="utf-8"))
+    revision_two_id = "asmrev_" + __import__("hashlib").sha256(
+        f"{ASSESSMENT_ID}\0{2}".encode("utf-8")
+    ).hexdigest()
+    operation["assessment_revision"] = 2
+    operation["revision_record_id"] = revision_two_id
+    operation["committed_at"] = (NOW + timedelta(seconds=1)).isoformat()
+    _write_json(operation_path, operation)
+    retry = commit_shared_assessment_revision(
+        store=store,
+        bundle=bundle,
+        proposal=_proposal(),
+        operation_idempotency_key="repoint-first",
+        apply_enabled=True,
+        now=NOW + timedelta(seconds=2),
+    )
+    assert retry.status == "fail_closed"
+    assert retry.blocked_reasons == (
+        "shared_assessment_operation_result_crosslink_invalid",
+    )
+
+
+def test_temporal_monotonicity_and_naive_clocks_fail_closed(store) -> None:
+    _captures, bundle = _bundle(store)
+    naive_prepare = prepare_shared_assessment_pass(
+        store=store,
+        evidence_space_id=bundle.evidence_space_id,
+        source_event_ids=tuple(ref.source_event_id for ref in bundle.evidence_refs),
+        assessment_pass_id="naive-prepare",
+        now=datetime(2026, 7, 22, 8, 0, 0),
+    )
+    assert naive_prepare.status == "fail_closed"
+    first = commit_shared_assessment_revision(
+        store=store,
+        bundle=bundle,
+        proposal=_proposal(),
+        operation_idempotency_key="time-first",
+        apply_enabled=True,
+        now=NOW + timedelta(seconds=2),
+    )
+    assert first.status == "committed"
+    backwards = commit_shared_assessment_revision(
+        store=store,
+        bundle=bundle,
+        proposal=_proposal(expected=1, text="backwards"),
+        operation_idempotency_key="time-backwards",
+        apply_enabled=True,
+        now=NOW + timedelta(seconds=1),
+    )
+    assert backwards.status == "fail_closed"
+    assert backwards.blocked_reasons == (
+        "shared_assessment_temporal_non_monotonic",
+    )
+    with store.transaction(bundle.evidence_space_id) as tx:
+        naive_receipt = build_shared_assessment_formation_receipt(
+            tx=tx,
+            evidence_space_id=bundle.evidence_space_id,
+            assessment_id=ASSESSMENT_ID,
+            assessment_revision=1,
+            decision_id="naive-decision",
+            decision_input_digest=DECISION_INPUT_DIGEST,
+            decided_at=datetime(2026, 7, 22, 8, 0, 0),
+        )
+    assert naive_receipt.status == "fail_closed"

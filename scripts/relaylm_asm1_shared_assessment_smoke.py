@@ -26,10 +26,10 @@ from relaylm.evidence_response_capture import (
 from relaylm.evidence_space import derive_evidence_space_id
 from relaylm.evidence_store import EvidenceRecordStore
 from relaylm.evidence_user_input import capture_managed_user_input
-from relaylm.shared_assessment import SharedAssessmentProposal
+from relaylm.shared_assessment import SharedAssessmentProposal, derive_shared_assessment_id
 from relaylm.shared_assessment_runtime import (
+    build_shared_assessment_formation_receipt,
     commit_shared_assessment_revision,
-    issue_shared_assessment_formation_receipt,
     prepare_shared_assessment_pass,
 )
 
@@ -146,7 +146,9 @@ def main() -> int:
         print("PASS: exact EV-1 authorization produced a character-independent pass")
 
         proposal = SharedAssessmentProposal(
-            assessment_id="asm1-smoke-assessment",
+            assessment_id=derive_shared_assessment_id(
+                user.evidence_space_id, "asm1-smoke-assessment"
+            ),
             supported_content="The user reported recent tiredness.",
             support_state="supported",
             uncertainty=("exact_duration_unknown",),
@@ -188,7 +190,7 @@ def main() -> int:
             store=store,
             bundle=prepared.bundle,
             proposal=SharedAssessmentProposal(
-                assessment_id="asm1-smoke-assessment",
+                assessment_id=proposal.assessment_id,
                 supported_content="Stale generated output.",
                 support_state="supported",
                 uncertainty=(),
@@ -207,20 +209,23 @@ def main() -> int:
         )
         print("PASS: stale Assessment Pass output fails closed")
 
-        receipt = issue_shared_assessment_formation_receipt(
-            store=store,
-            evidence_space_id=user.evidence_space_id,
-            assessment_id="asm1-smoke-assessment",
-            assessment_revision=1,
-            operation_idempotency_key="asm1-smoke-receipt",
-            now=NOW,
-        )
-        require(receipt.status == "issued", receipt.blocked_reasons)
+        with store.transaction(user.evidence_space_id) as tx:
+            receipt = build_shared_assessment_formation_receipt(
+                tx=tx,
+                evidence_space_id=user.evidence_space_id,
+                assessment_id=proposal.assessment_id,
+                assessment_revision=1,
+                decision_id="asm1-smoke-decision",
+                decision_input_digest="a" * 64,
+                decided_at=NOW,
+            )
+        require(receipt.status == "ready", receipt.blocked_reasons)
         require(receipt.receipt is not None, receipt)
         receipt_payload = receipt.receipt.to_dict()
         require("supported_content" not in receipt_payload, receipt_payload)
         require("character_id" not in receipt_payload, receipt_payload)
-        print("PASS: exact current formation-time authorization receipt issued")
+        require(receipt.receipt.is_self_authenticating(), receipt_payload)
+        print("PASS: decision-bound formation authorization receipt prepared")
 
         space_root = root / user.evidence_space_id
         subjective_paths = list(space_root.rglob("*subjective_mem*"))

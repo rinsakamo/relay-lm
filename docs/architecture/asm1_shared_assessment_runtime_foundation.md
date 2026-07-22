@@ -34,7 +34,7 @@ ASM-1 implements the first bounded runtime path from EV-1 governed Evidence to c
 - a transient, content-bearing split Assessment Pass input bundle;
 - immutable consecutive `SharedAssessmentRevision` records;
 - one logical `SharedAssessmentCurrentState` selector;
-- formation-time authorization receipts for the exact current admitted revision;
+- a decision-bound formation authorization receipt builder for the exact current admitted revision;
 - explicit default-off / dry-run / apply configuration gates.
 
 ASM-1 ends before Subjective MEM. It does not create a `SubjectiveMemDecision`, `SubjectiveMemRevision`, `SubjectiveMemCurrentState`, `SubjectiveMemRelation`, or `SubjectiveMemLifecycleTransition`.
@@ -50,7 +50,7 @@ EV-1 admitted SourceEvents
   -> deterministic proposal validation
   -> immutable SharedAssessmentRevision
   + one logical current-state selector
-  -> optional exact formation-time authorization receipt
+  -> decision-transaction-bound exact formation authorization receipt builder
 
 STOP: no SOUL conditioning and no Subjective MEM write
 ```
@@ -85,13 +85,13 @@ Publication is one EV-1 store transaction containing:
 - replacement of the singleton `relaylm.shared_assessment_current_state.v1` selector;
 - append of a bounded consecutive revision index used to prove that the selector names the latest persisted revision.
 
-The caller supplies `expected_current_revision_or_null`. Revision 1 requires `null`; every successor requires the exact current revision. Stale model output therefore cannot silently become a later revision. Successors increment exactly once and name the immediate predecessor.
+The caller derives `assessment_id` with `derive_shared_assessment_id(evidence_space_id, logical_key)`, preventing the same logical ID from being independently current in another session Evidence space. The caller supplies `expected_current_revision_or_null`. Revision 1 requires `null`; every successor requires the exact current revision. Stale model output therefore cannot silently become a later revision. Successors increment exactly once and name the immediate predecessor.
 
 Operation retries use a stable semantic input digest rather than the transient pass ID or short-lived authorization-projection ID. Re-preparing the same exact authorized evidence and retrying the same operation is duplicate-safe. Reusing an operation key with different evidence or proposal content is an integrity conflict.
 
 ## Formation-time authorization receipt
 
-`issue_shared_assessment_formation_receipt(...)` issues an immutable receipt only when:
+`build_shared_assessment_formation_receipt(...)` builds a self-authenticating receipt only inside a caller-owned Evidence transaction when:
 
 - the requested revision is the one logical current revision;
 - lifecycle is `active`;
@@ -110,7 +110,7 @@ The receipt preserves the contract fields:
 }
 ```
 
-It also records content-free Evidence authority snapshot digests and the supported-content digest. It does not duplicate protected source text or supported content. An already issued receipt remains an immutable historical authorization receipt even if a later assessment revision becomes current.
+It also records content-free Evidence authority snapshot digests and the supported-content digest. It does not duplicate protected source text or supported content. ASM-1 does not persist this receipt independently. SM-1 must bind it to an exact `decision_id` and decision-input digest, then commit the receipt and `SubjectiveMemDecision` in the same transaction. A prepared-but-uncommitted receipt has no authority.
 
 ## Feature posture
 

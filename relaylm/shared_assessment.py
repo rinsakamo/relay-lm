@@ -84,6 +84,7 @@ class SharedAssessmentAuthorizationSnapshot:
     matched_grant_ids: tuple[str, ...]
     governance_revision: int
     validation_bundle_revision: int
+    not_before: str
     not_after: str
 
     def to_dict(self) -> dict[str, object]:
@@ -95,6 +96,7 @@ class SharedAssessmentAuthorizationSnapshot:
             "matched_grant_ids": list(self.matched_grant_ids),
             "governance_revision": self.governance_revision,
             "validation_bundle_revision": self.validation_bundle_revision,
+            "not_before": self.not_before,
             "not_after": self.not_after,
         }
 
@@ -210,9 +212,12 @@ class SharedAssessmentFormationAuthorizationReceipt:
     lifecycle_state_at_decision: str
     authorization_state_at_decision: str
     evidence_authority_snapshot_digests: tuple[str, ...]
+    decision_id: str
+    decision_input_digest: str
     issued_at: str
+    receipt_digest: str
 
-    def to_dict(self) -> dict[str, object]:
+    def _digest_input(self) -> dict[str, object]:
         return {
             "schema": self.schema,
             "receipt_id": self.receipt_id,
@@ -227,8 +232,16 @@ class SharedAssessmentFormationAuthorizationReceipt:
             "evidence_authority_snapshot_digests": list(
                 self.evidence_authority_snapshot_digests
             ),
+            "decision_id": self.decision_id,
+            "decision_input_digest": self.decision_input_digest,
             "issued_at": self.issued_at,
         }
+
+    def to_dict(self) -> dict[str, object]:
+        return {**self._digest_input(), "receipt_digest": self.receipt_digest}
+
+    def is_self_authenticating(self) -> bool:
+        return self.receipt_digest == canonical_digest(self._digest_input())
 
 
 def validate_shared_assessment_proposal(
@@ -347,8 +360,13 @@ def validate_shared_assessment_pass_bundle(
             or item.validation_bundle_revision < 1
         ):
             reasons.append("shared_assessment_validation_bundle_revision_invalid")
+        if not _date_time(item.not_before):
+            reasons.append("shared_assessment_authorization_not_before_invalid")
         if not _date_time(item.not_after):
             reasons.append("shared_assessment_authorization_not_after_invalid")
+        if _date_time(item.not_before) and _date_time(item.not_after):
+            if _parse_date_time(item.not_before) >= _parse_date_time(item.not_after):
+                reasons.append("shared_assessment_authorization_window_invalid")
 
     if not 1 <= len(bundle.parts) <= MAX_ASSESSMENT_PASS_PARTS:
         reasons.append("shared_assessment_pass_part_count_invalid")
@@ -417,6 +435,13 @@ def build_shared_assessment_revision(
         reasons.append("shared_assessment_predecessor_not_consecutive")
     if not 1 <= len(evidence_refs) <= 64:
         reasons.append("shared_assessment_evidence_ref_count_invalid")
+    evidence_spaces = {item.evidence_space_id for item in evidence_refs}
+    if len(evidence_spaces) != 1:
+        reasons.append("shared_assessment_evidence_space_mismatch")
+    elif not assessment_id_matches_evidence_space(
+        proposal.assessment_id, next(iter(evidence_spaces))
+    ):
+        reasons.append("shared_assessment_id_evidence_space_mismatch")
     ref_keys = [
         (item.source_event_id, item.evidence_space_id, item.lineage_revision)
         for item in evidence_refs
@@ -460,14 +485,34 @@ def _digest(value: object) -> bool:
     )
 
 
+def derive_shared_assessment_id(evidence_space_id: str, logical_key: str) -> str:
+    if not _token(evidence_space_id) or not _token(logical_key):
+        raise ValueError("shared_assessment_identity_input_invalid")
+    space_prefix = canonical_digest({"evidence_space_id": evidence_space_id})[:16]
+    logical_digest = canonical_digest({"logical_key": logical_key})
+    return f"asm_{space_prefix}_{logical_digest}"
+
+
+def assessment_id_matches_evidence_space(assessment_id: object, evidence_space_id: object) -> bool:
+    if not isinstance(assessment_id, str) or not _token(evidence_space_id):
+        return False
+    prefix = f"asm_{canonical_digest({'evidence_space_id': evidence_space_id})[:16]}_"
+    suffix = assessment_id[len(prefix):] if assessment_id.startswith(prefix) else ""
+    return len(suffix) == 64 and _digest(suffix)
+
+
+def _parse_date_time(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+
+
 def _date_time(value: object) -> bool:
     if not isinstance(value, str):
         return False
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = _parse_date_time(value)
     except ValueError:
         return False
-    return parsed.tzinfo is not None and parsed.astimezone(timezone.utc) is not None
+    return parsed.tzinfo is not None
 
 
 def _token(value: object) -> bool:
@@ -489,7 +534,9 @@ __all__ = [
     "SharedAssessmentPassPart",
     "SharedAssessmentProposal",
     "SharedAssessmentRevision",
+    "assessment_id_matches_evidence_space",
     "build_shared_assessment_revision",
+    "derive_shared_assessment_id",
     "validate_shared_assessment_pass_bundle",
     "validate_shared_assessment_proposal",
 ]

@@ -37,6 +37,7 @@ from relaylm.shared_assessment import (
     SharedAssessmentPassBundle,
     SharedAssessmentProposal,
     SharedAssessmentRevision,
+    assessment_id_matches_evidence_space,
     build_shared_assessment_revision,
     validate_shared_assessment_pass_bundle,
     validate_shared_assessment_proposal,
@@ -46,7 +47,7 @@ PrepareStatus = Literal["ready", "fail_closed"]
 CommitStatus = Literal[
     "committed", "duplicate_existing", "dry_run_ready", "fail_closed", "integrity_conflict"
 ]
-ReceiptStatus = Literal["issued", "duplicate_existing", "fail_closed", "integrity_conflict"]
+ReceiptStatus = Literal["ready", "fail_closed"]
 
 MAX_SHARED_ASSESSMENT_REVISIONS = 4096
 
@@ -162,8 +163,8 @@ def prepare_shared_assessment_pass(
     )
     if reasons:
         return SharedAssessmentPrepareResult("fail_closed", blocked_reasons=reasons)
-    current_time = _utc(now)
     try:
+        current_time = _utc(now)
         with store.transaction(evidence_space_id) as tx:
             authorized, load_reasons = load_authorized_shared_assessment_sources(
                 tx=tx,
@@ -214,11 +215,20 @@ def commit_shared_assessment_revision(
 ) -> SharedAssessmentCommitResult:
     """Validate Pass-A output and atomically publish revision + one selector."""
 
-    current_time = _utc(now)
+    try:
+        current_time = _utc(now)
+    except ValueError:
+        return SharedAssessmentCommitResult(
+            "fail_closed", blocked_reasons=("shared_assessment_clock_invalid",)
+        )
     reasons = list(
         validate_shared_assessment_pass_bundle(bundle, verify_digest=False)
     )
     reasons.extend(validate_shared_assessment_proposal(proposal))
+    if not assessment_id_matches_evidence_space(
+        proposal.assessment_id, bundle.evidence_space_id
+    ):
+        reasons.append("shared_assessment_id_evidence_space_mismatch")
     if not reasons and not bundle.is_self_authenticating():
         reasons.append("shared_assessment_pass_bundle_invalid")
     if not _token(operation_idempotency_key, 256):
@@ -269,6 +279,12 @@ def commit_shared_assessment_revision(
                     expected_operation_id=operation_record_id,
                     expected_idempotency_key_digest=sha256_hex(
                         operation_idempotency_key.encode("utf-8")
+                    ),
+                    expected_assessment_id=proposal.assessment_id,
+                    expected_assessment_revision=(
+                        1
+                        if proposal.expected_current_revision_or_null is None
+                        else proposal.expected_current_revision_or_null + 1
                     ),
                 )
 
@@ -331,6 +347,13 @@ def commit_shared_assessment_revision(
                 return SharedAssessmentCommitResult(
                     "fail_closed",
                     blocked_reasons=("shared_assessment_current_state_not_admitted",),
+                )
+            if current_state is not None and _parse_date_time(
+                current_state.updated_at
+            ) > current_time:
+                return SharedAssessmentCommitResult(
+                    "fail_closed",
+                    blocked_reasons=("shared_assessment_temporal_non_monotonic",),
                 )
             predecessor = None if current_state is None else current_state.current_revision
             if proposal.expected_current_revision_or_null != predecessor:
@@ -438,168 +461,167 @@ def commit_shared_assessment_revision(
         )
 
 
-def issue_shared_assessment_formation_receipt(
+def build_shared_assessment_formation_receipt(
     *,
-    store: EvidenceRecordStore,
+    tx: EvidenceStoreTransaction,
     evidence_space_id: str,
     assessment_id: str,
     assessment_revision: int,
-    operation_idempotency_key: str,
-    now: datetime | None = None,
+    decision_id: str,
+    decision_input_digest: str,
+    decided_at: datetime,
 ) -> SharedAssessmentReceiptResult:
-    """Persist a receipt for the exact current, still-authorized assessment."""
+    """Build a decision-bound receipt inside the caller-owned decision transaction.
 
-    if not _token(assessment_id) or type(assessment_revision) is not int or assessment_revision < 1:
+    ASM-1 deliberately does not persist a receipt independently.  SM-1 must call
+    this function while holding the same Evidence transaction used to publish the
+    exact SubjectiveMemDecision, then commit the decision and receipt together.
+    """
+
+    if (
+        not _token(assessment_id)
+        or type(assessment_revision) is not int
+        or assessment_revision < 1
+        or not _token(decision_id)
+        or not _digest(decision_input_digest)
+        or not assessment_id_matches_evidence_space(
+            assessment_id, evidence_space_id
+        )
+    ):
         return SharedAssessmentReceiptResult(
             "fail_closed", blocked_reasons=("shared_assessment_receipt_target_invalid",)
         )
-    if not _token(operation_idempotency_key, 256):
-        return SharedAssessmentReceiptResult(
-            "fail_closed",
-            blocked_reasons=("shared_assessment_operation_idempotency_key_invalid",),
-        )
-    current_time = _utc(now)
-    receipt_id = _opaque_key("asmreceipt", operation_idempotency_key)
     try:
-        with store.transaction(evidence_space_id) as tx:
-            existing = tx.read_record(
-                record_kind="shared_assessment_formation_receipt", record_id=receipt_id
-            )
-            if existing is not None:
-                if (
-                    existing.get("assessment_id") != assessment_id
-                    or existing.get("assessment_revision") != assessment_revision
-                ):
-                    return SharedAssessmentReceiptResult(
-                        "integrity_conflict",
-                        blocked_reasons=("shared_assessment_receipt_idempotency_conflict",),
-                    )
-                parsed = _receipt_from_dict(existing)
-                if parsed is None:
-                    return SharedAssessmentReceiptResult(
-                        "fail_closed",
-                        blocked_reasons=("shared_assessment_receipt_record_corrupt",),
-                    )
-                return SharedAssessmentReceiptResult(
-                    "duplicate_existing", receipt=parsed
-                )
-
-            state_key = _opaque_key("asmstate", assessment_id)
-            state_log = tx.read_log(
-                log_kind="shared_assessment_current_state", key=state_key
-            )
-            current_state, state_reasons = _parse_single_current_state(
-                state_log, expected_assessment_id=assessment_id
-            )
-            if state_reasons or current_state is None:
-                return SharedAssessmentReceiptResult(
-                    "fail_closed",
-                    blocked_reasons=state_reasons
-                    or ("shared_assessment_current_state_missing",),
-                )
-            if (
-                current_state.current_revision != assessment_revision
-                or current_state.lifecycle_state != "active"
-                or current_state.authorization_state != "current_admitted"
-            ):
-                return SharedAssessmentReceiptResult(
-                    "fail_closed",
-                    blocked_reasons=("shared_assessment_receipt_target_not_current_admitted",),
-                )
-            revision_index = tx.read_log(
-                log_kind="shared_assessment_revision_index", key=state_key
-            )
-            index_reasons = _validate_revision_index(
-                tx=tx,
-                raw=revision_index,
-                assessment_id=assessment_id,
-                current_state=current_state,
-            )
-            if index_reasons:
-                return SharedAssessmentReceiptResult(
-                    "fail_closed", blocked_reasons=index_reasons
-                )
-            raw_revision = tx.read_record(
-                record_kind="shared_assessment_revision",
-                record_id=_revision_record_id(assessment_id, assessment_revision),
-            )
-            revision = (
-                _revision_from_dict(raw_revision)
-                if isinstance(raw_revision, dict)
-                else None
-            )
-            if revision is None:
-                return SharedAssessmentReceiptResult(
-                    "fail_closed",
-                    blocked_reasons=("shared_assessment_revision_missing_or_corrupt",),
-                )
-            raw_refs = [item.to_dict() for item in revision.evidence_refs]
-            source_ids = tuple(
-                item.source_event_id for item in revision.evidence_refs
-            )
-            authorized, auth_reasons = load_authorized_shared_assessment_sources(
-                tx=tx,
-                evidence_space_id=evidence_space_id,
-                source_event_ids=source_ids,
-                now=current_time,
-            )
-            if auth_reasons:
-                return SharedAssessmentReceiptResult(
-                    "fail_closed", blocked_reasons=auth_reasons
-                )
-            assert authorized is not None
-            expected_refs = [item.evidence_ref.to_dict() for item in authorized]
-            if expected_refs != raw_refs:
-                return SharedAssessmentReceiptResult(
-                    "fail_closed",
-                    blocked_reasons=("shared_assessment_revision_evidence_authority_changed",),
-                )
-            supported_digest = revision.supported_content_digest
-            supported_content = revision.supported_content
-            if utf8_text_digest(supported_content) != supported_digest:
-                return SharedAssessmentReceiptResult(
-                    "fail_closed",
-                    blocked_reasons=("shared_assessment_supported_content_digest_invalid",),
-                )
-            receipt = SharedAssessmentFormationAuthorizationReceipt(
-                schema=SHARED_ASSESSMENT_FORMATION_RECEIPT_SCHEMA,
-                receipt_id=receipt_id,
-                assessment_id=assessment_id,
-                assessment_revision=assessment_revision,
-                supported_content_digest=supported_digest,
-                current_revision_at_decision=assessment_revision,
-                lifecycle_state_at_decision="active",
-                authorization_state_at_decision="current_admitted",
-                evidence_authority_snapshot_digests=tuple(
-                    item.authorization_snapshot.authority_snapshot_digest
-                    for item in authorized
-                ),
-                issued_at=current_time.isoformat(),
-            )
-            commit = tx.commit(
-                transaction_id=_opaque_key("asmreceipttx", operation_idempotency_key),
-                records=(
-                    (
-                        "shared_assessment_formation_receipt",
-                        receipt_id,
-                        receipt.to_dict(),
-                    ),
-                ),
-                logs=(),
-            )
-            if commit.status == "collision":
-                return SharedAssessmentReceiptResult(
-                    "integrity_conflict", blocked_reasons=commit.reasons
-                )
-            if commit.status not in {"created", "duplicate_existing"}:
-                return SharedAssessmentReceiptResult(
-                    "fail_closed", blocked_reasons=commit.reasons
-                )
+        current_time = _utc(decided_at)
+        state_key = _opaque_key("asmstate", assessment_id)
+        state_log = tx.read_log(
+            log_kind="shared_assessment_current_state", key=state_key
+        )
+        current_state, state_reasons = _parse_single_current_state(
+            state_log, expected_assessment_id=assessment_id
+        )
+        if state_reasons or current_state is None:
             return SharedAssessmentReceiptResult(
-                "issued" if commit.status == "created" else "duplicate_existing",
-                receipt=receipt,
+                "fail_closed",
+                blocked_reasons=state_reasons
+                or ("shared_assessment_current_state_missing",),
             )
-    except (OSError, RuntimeError, ValueError):
+        if (
+            current_state.current_revision != assessment_revision
+            or current_state.lifecycle_state != "active"
+            or current_state.authorization_state != "current_admitted"
+        ):
+            return SharedAssessmentReceiptResult(
+                "fail_closed",
+                blocked_reasons=("shared_assessment_receipt_target_not_current_admitted",),
+            )
+        revision_index = tx.read_log(
+            log_kind="shared_assessment_revision_index", key=state_key
+        )
+        index_reasons = _validate_revision_index(
+            tx=tx,
+            raw=revision_index,
+            assessment_id=assessment_id,
+            current_state=current_state,
+        )
+        if index_reasons:
+            return SharedAssessmentReceiptResult(
+                "fail_closed", blocked_reasons=index_reasons
+            )
+        raw_revision = tx.read_record(
+            record_kind="shared_assessment_revision",
+            record_id=_revision_record_id(assessment_id, assessment_revision),
+        )
+        revision = (
+            _revision_from_dict(raw_revision)
+            if isinstance(raw_revision, dict)
+            else None
+        )
+        if revision is None:
+            return SharedAssessmentReceiptResult(
+                "fail_closed",
+                blocked_reasons=("shared_assessment_revision_missing_or_corrupt",),
+            )
+        if current_time < max(
+            _parse_date_time(revision.created_at),
+            _parse_date_time(current_state.updated_at),
+        ):
+            return SharedAssessmentReceiptResult(
+                "fail_closed",
+                blocked_reasons=("shared_assessment_temporal_non_monotonic",),
+            )
+        raw_refs = [item.to_dict() for item in revision.evidence_refs]
+        source_ids = tuple(item.source_event_id for item in revision.evidence_refs)
+        authorized, auth_reasons = load_authorized_shared_assessment_sources(
+            tx=tx,
+            evidence_space_id=evidence_space_id,
+            source_event_ids=source_ids,
+            now=current_time,
+        )
+        if auth_reasons:
+            return SharedAssessmentReceiptResult(
+                "fail_closed", blocked_reasons=auth_reasons
+            )
+        assert authorized is not None
+        expected_refs = [item.evidence_ref.to_dict() for item in authorized]
+        if expected_refs != raw_refs:
+            return SharedAssessmentReceiptResult(
+                "fail_closed",
+                blocked_reasons=("shared_assessment_revision_evidence_authority_changed",),
+            )
+        supported_digest = revision.supported_content_digest
+        if utf8_text_digest(revision.supported_content) != supported_digest:
+            return SharedAssessmentReceiptResult(
+                "fail_closed",
+                blocked_reasons=("shared_assessment_supported_content_digest_invalid",),
+            )
+        receipt_id = _opaque_key(
+            "asmreceipt", f"{decision_id}\0{decision_input_digest}"
+        )
+        digest_input = {
+            "schema": SHARED_ASSESSMENT_FORMATION_RECEIPT_SCHEMA,
+            "receipt_id": receipt_id,
+            "assessment_id": assessment_id,
+            "assessment_revision": assessment_revision,
+            "supported_content_digest": supported_digest,
+            "assessment_authorization_receipt": {
+                "current_revision_at_decision": assessment_revision,
+                "lifecycle_state_at_decision": "active",
+                "authorization_state_at_decision": "current_admitted",
+            },
+            "evidence_authority_snapshot_digests": [
+                item.authorization_snapshot.authority_snapshot_digest
+                for item in authorized
+            ],
+            "decision_id": decision_id,
+            "decision_input_digest": decision_input_digest,
+            "issued_at": current_time.isoformat(),
+        }
+        receipt = SharedAssessmentFormationAuthorizationReceipt(
+            schema=SHARED_ASSESSMENT_FORMATION_RECEIPT_SCHEMA,
+            receipt_id=receipt_id,
+            assessment_id=assessment_id,
+            assessment_revision=assessment_revision,
+            supported_content_digest=supported_digest,
+            current_revision_at_decision=assessment_revision,
+            lifecycle_state_at_decision="active",
+            authorization_state_at_decision="current_admitted",
+            evidence_authority_snapshot_digests=tuple(
+                item.authorization_snapshot.authority_snapshot_digest
+                for item in authorized
+            ),
+            decision_id=decision_id,
+            decision_input_digest=decision_input_digest,
+            issued_at=current_time.isoformat(),
+            receipt_digest=canonical_digest(digest_input),
+        )
+        if not receipt.is_self_authenticating():
+            return SharedAssessmentReceiptResult(
+                "fail_closed",
+                blocked_reasons=("shared_assessment_receipt_digest_invalid",),
+            )
+        return SharedAssessmentReceiptResult("ready", receipt=receipt)
+    except (OSError, RuntimeError, TypeError, ValueError):
         return SharedAssessmentReceiptResult(
             "fail_closed", blocked_reasons=("shared_assessment_store_unavailable",)
         )
@@ -652,6 +674,8 @@ def _validate_revision_index(
         return ("shared_assessment_revision_index_bound_exceeded",)
     if len(entries) != expected_count:
         return ("shared_assessment_revision_index_inconsistent",)
+    previous_revision_time: datetime | None = None
+    previous_recorded_time: datetime | None = None
     for expected_revision, item in enumerate(entries, start=1):
         if not isinstance(item, dict):
             return ("shared_assessment_revision_index_corrupt",)
@@ -686,6 +710,19 @@ def _validate_revision_index(
             or revision.assessment_revision != expected_revision
         ):
             return ("shared_assessment_revision_index_dangling",)
+        revision_time = _parse_date_time(revision.created_at)
+        recorded_time = _parse_date_time(str(item["recorded_at"]))
+        if revision_time > recorded_time:
+            return ("shared_assessment_temporal_non_monotonic",)
+        if previous_revision_time is not None and revision_time < previous_revision_time:
+            return ("shared_assessment_temporal_non_monotonic",)
+        if previous_recorded_time is not None and recorded_time < previous_recorded_time:
+            return ("shared_assessment_temporal_non_monotonic",)
+        previous_revision_time = revision_time
+        previous_recorded_time = recorded_time
+    if current_state is not None and previous_recorded_time is not None:
+        if _parse_date_time(current_state.updated_at) < previous_recorded_time:
+            return ("shared_assessment_temporal_non_monotonic",)
     return ()
 
 
@@ -696,6 +733,8 @@ def _resolve_existing_operation(
     expected_input_digest: str,
     expected_operation_id: str,
     expected_idempotency_key_digest: str,
+    expected_assessment_id: str,
+    expected_assessment_revision: int,
 ) -> SharedAssessmentCommitResult:
     if (
         existing.get("schema") != "relaylm.shared_assessment_operation.v1"
@@ -725,6 +764,20 @@ def _resolve_existing_operation(
             blocked_reasons=("shared_assessment_operation_idempotency_conflict",),
         )
     record_id = existing.get("revision_record_id")
+    assessment_revision = existing.get("assessment_revision")
+    if (
+        existing.get("assessment_id") != expected_assessment_id
+        or assessment_revision != expected_assessment_revision
+        or type(assessment_revision) is not int
+        or assessment_revision < 1
+        or record_id != _revision_record_id(
+            expected_assessment_id, assessment_revision
+        )
+    ):
+        return SharedAssessmentCommitResult(
+            "fail_closed",
+            blocked_reasons=("shared_assessment_operation_result_crosslink_invalid",),
+        )
     if not isinstance(record_id, str):
         return SharedAssessmentCommitResult(
             "fail_closed", blocked_reasons=("shared_assessment_operation_record_corrupt",)
@@ -741,6 +794,15 @@ def _resolve_existing_operation(
         return SharedAssessmentCommitResult(
             "fail_closed", blocked_reasons=("shared_assessment_operation_result_corrupt",)
         )
+    if (
+        revision.assessment_id != existing.get("assessment_id")
+        or revision.assessment_revision != existing.get("assessment_revision")
+        or revision.created_at != existing.get("committed_at")
+    ):
+        return SharedAssessmentCommitResult(
+            "fail_closed",
+            blocked_reasons=("shared_assessment_operation_result_crosslink_invalid",),
+        )
     state_log = tx.read_log(
         log_kind="shared_assessment_current_state",
         key=_opaque_key("asmstate", revision.assessment_id),
@@ -753,6 +815,27 @@ def _resolve_existing_operation(
             "fail_closed",
             blocked_reasons=state_reasons
             or ("shared_assessment_operation_current_state_missing",),
+        )
+    revision_index = tx.read_log(
+        log_kind="shared_assessment_revision_index",
+        key=_opaque_key("asmstate", revision.assessment_id),
+    )
+    index_reasons = _validate_revision_index(
+        tx=tx,
+        raw=revision_index,
+        assessment_id=revision.assessment_id,
+        current_state=state,
+    )
+    if index_reasons:
+        return SharedAssessmentCommitResult(
+            "fail_closed", blocked_reasons=index_reasons
+        )
+    assert revision_index is not None
+    entry = revision_index[revision.assessment_revision - 1]
+    if entry.get("revision_record_id") != record_id:
+        return SharedAssessmentCommitResult(
+            "fail_closed",
+            blocked_reasons=("shared_assessment_operation_result_crosslink_invalid",),
         )
     return SharedAssessmentCommitResult(
         "duplicate_existing", revision=revision, current_state=state, persisted=True
@@ -815,53 +898,6 @@ def _revision_from_dict(raw: dict) -> SharedAssessmentRevision | None:
         return None
     return revision
 
-def _receipt_from_dict(
-    raw: dict,
-) -> SharedAssessmentFormationAuthorizationReceipt | None:
-    nested = raw.get("assessment_authorization_receipt")
-    digests = raw.get("evidence_authority_snapshot_digests")
-    if (
-        raw.get("schema") != SHARED_ASSESSMENT_FORMATION_RECEIPT_SCHEMA
-        or not isinstance(nested, dict)
-        or not isinstance(digests, list)
-        or type(raw.get("assessment_revision")) is not int
-        or type(nested.get("current_revision_at_decision")) is not int
-        or not 1 <= len(digests) <= 64
-        or len(set(digests)) != len(digests)
-        or any(not _digest(item) for item in digests)
-        or not _digest(raw.get("supported_content_digest"))
-        or not _valid_date_time(raw.get("issued_at"))
-    ):
-        return None
-    try:
-        receipt = SharedAssessmentFormationAuthorizationReceipt(
-            schema=raw["schema"],
-            receipt_id=raw["receipt_id"],
-            assessment_id=raw["assessment_id"],
-            assessment_revision=raw["assessment_revision"],
-            supported_content_digest=raw["supported_content_digest"],
-            current_revision_at_decision=nested["current_revision_at_decision"],
-            lifecycle_state_at_decision=nested["lifecycle_state_at_decision"],
-            authorization_state_at_decision=nested[
-                "authorization_state_at_decision"
-            ],
-            evidence_authority_snapshot_digests=tuple(digests),
-            issued_at=raw["issued_at"],
-        )
-    except KeyError:
-        return None
-    if (
-        not _token(receipt.receipt_id)
-        or not _token(receipt.assessment_id)
-        or receipt.assessment_revision < 1
-        or receipt.current_revision_at_decision != receipt.assessment_revision
-        or receipt.lifecycle_state_at_decision != "active"
-        or receipt.authorization_state_at_decision != "current_admitted"
-        or receipt.to_dict() != raw
-    ):
-        return None
-    return receipt
-
 def _validate_prepare_inputs(
     *, evidence_space_id: str, source_event_ids: tuple[str, ...], assessment_pass_id: str
 ) -> tuple[str, ...]:
@@ -893,11 +929,17 @@ def _digest(value: object) -> bool:
     )
 
 
+def _parse_date_time(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(
+        timezone.utc
+    )
+
+
 def _valid_date_time(value: object) -> bool:
     if not isinstance(value, str):
         return False
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = _parse_date_time(value)
     except ValueError:
         return False
     return parsed.tzinfo is not None
@@ -921,8 +963,8 @@ __all__ = [
     "SharedAssessmentPrepareResult",
     "SharedAssessmentReceiptResult",
     "SharedAssessmentRuntimeGate",
+    "build_shared_assessment_formation_receipt",
     "commit_shared_assessment_revision",
-    "issue_shared_assessment_formation_receipt",
     "prepare_shared_assessment_pass",
     "resolve_shared_assessment_gate",
 ]
