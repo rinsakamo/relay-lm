@@ -224,9 +224,9 @@ Completed post-MVP debt:
   PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in complete
 
 Registered contract-aligned implementation debt:
-  EV-1 Governed Evidence runtime foundation                            registered / not started
+  EV-1 Governed Evidence runtime foundation                            complete / default-off
     -> OVL-1 CTX-OVL participant-private vertical slice               registered / not started
-    -> ASM-1 Shared Assessment runtime foundation                     registered / not started
+    -> ASM-1 Shared Assessment runtime foundation                     complete / default-off
          -> SM-1 Subjective MEM decision/result vertical slice        registered / not started
               -> ST-1 Markdown + operations commit protocol           registered / not started
                    -> LC-1 lifecycle migration                        registered / not started
