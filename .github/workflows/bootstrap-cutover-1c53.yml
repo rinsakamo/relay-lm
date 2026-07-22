@@ -1,0 +1,37 @@
+name: Bootstrap Documentation Hard Cutover 1C-53
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths:
+      - ".github/workflows/bootstrap-cutover-1c53.yml"
+      - "scripts/relaylm_cutover_1c53_assemble.py"
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    if: github.head_ref == 'agent/documentation-hard-cutover-1c53-i4c1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Assemble Cutover 1C-53
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          python scripts/relaylm_cutover_1c53_assemble.py
+          git diff --check
+          git status --short
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs scripts
+          git diff --cached --stat
+          git commit -m "docs: assemble I-4C1 cutover"
+          git push origin HEAD:"${HEAD_REF}"
