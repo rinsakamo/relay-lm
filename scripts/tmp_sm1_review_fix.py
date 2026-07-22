@@ -1,0 +1,87 @@
+from pathlib import Path
+
+
+def replace_once(path: str, old: str, new: str) -> None:
+    target = Path(path)
+    text = target.read_text(encoding="utf-8")
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f"{path}: expected one replacement target, found {count}")
+    target.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
+replace_once(
+    "relaylm/subjective_mem_runtime.py",
+    '    operation_slot_id = _opaque("smkey", operation_idempotency_key)\n',
+    '    operation_slot_id = _opaque(\n'
+    '        "smkey", f"{namespace_digest}\\0{operation_key_digest}"\n'
+    '    )\n',
+)
+
+replace_once(
+    "relaylm/subjective_mem_runtime.py",
+    '''                state_key=state_key,\n            )\n            if collision_reasons:\n''',
+    '''                state_key=state_key,\n                expected_current_state=current_state,\n            )\n            if collision_reasons:\n''',
+)
+
+replace_once(
+    "relaylm/subjective_mem_runtime.py",
+    '''    prepared_manifest_id: str,\n    state_key: str,\n) -> tuple[str, ...]:\n''',
+    '''    prepared_manifest_id: str,\n    state_key: str,\n    expected_current_state: SubjectiveMemCurrentState,\n) -> tuple[str, ...]:\n''',
+)
+
+replace_once(
+    "relaylm/subjective_mem_runtime.py",
+    '''    if tx.read_log(log_kind="subjective_mem_current_state", key=state_key) not in (None, []):\n        return ("subjective_mem_current_state_already_exists",)\n    return ()\n\n\ndef _resolve_existing_operation(\n''',
+    '''    if tx.read_log(log_kind="subjective_mem_current_state", key=state_key) not in (None, []):\n        return ("subjective_mem_current_state_already_exists",)\n    uniqueness_reasons = _validate_current_state_uniqueness(\n        tx=tx,\n        expected_key=state_key,\n        expected_current_state=expected_current_state,\n        require_expected=False,\n    )\n    if uniqueness_reasons:\n        return uniqueness_reasons\n    return ()\n\n\ndef _validate_current_state_uniqueness(\n    *,\n    tx: EvidenceStoreTransaction,\n    expected_key: str,\n    expected_current_state: SubjectiveMemCurrentState,\n    require_expected: bool,\n) -> tuple[str, ...]:\n    try:\n        logs = tx.list_logs(\n            log_kind="subjective_mem_current_state",\n            limit=4096,\n        )\n    except (RuntimeError, TypeError, ValueError):\n        return ("subjective_mem_current_state_inventory_unavailable",)\n\n    matches: list[tuple[str, list[dict]]] = []\n    for key, events in logs:\n        if any(\n            item.get("character_id") == expected_current_state.character_id\n            and item.get("memory_id") == expected_current_state.memory_id\n            for item in events\n        ):\n            matches.append((key, events))\n\n    if not require_expected:\n        return (\n            ("subjective_mem_duplicate_logical_current_state",)\n            if matches\n            else ()\n        )\n    if len(matches) != 1:\n        return ("subjective_mem_duplicate_logical_current_state",)\n    key, events = matches[0]\n    if key != expected_key or events != [expected_current_state.to_dict()]:\n        return ("subjective_mem_duplicate_logical_current_state",)\n    return ()\n\n\ndef _resolve_existing_operation(\n''',
+)
+
+replace_once(
+    "relaylm/subjective_mem_runtime.py",
+    '''    receipt, decision, revision, manifest, current_state = parsed\n    if (\n''',
+    '''    receipt, decision, revision, manifest, current_state = parsed\n    uniqueness_reasons = _validate_current_state_uniqueness(\n        tx=tx,\n        expected_key=expected_current_state_key,\n        expected_current_state=expected_current_state,\n        require_expected=True,\n    )\n    if uniqueness_reasons:\n        return SubjectiveMemCreateResult(\n            "fail_closed", blocked_reasons=uniqueness_reasons\n        )\n    if (\n''',
+)
+
+replace_once(
+    "relaylm/evidence_store.py",
+    '''    def read_log(self, *, log_kind: str, key: str) -> list[dict] | None:\n        return self._store._read_log_unlocked(\n            evidence_space_id=self.evidence_space_id,\n            log_kind=log_kind,\n            key=key,\n        )\n\n    def read_payload(self, *, payload_id: str) -> dict | None:\n''',
+    '''    def read_log(self, *, log_kind: str, key: str) -> list[dict] | None:\n        return self._store._read_log_unlocked(\n            evidence_space_id=self.evidence_space_id,\n            log_kind=log_kind,\n            key=key,\n        )\n\n    def list_logs(\n        self, *, log_kind: str, limit: int\n    ) -> tuple[tuple[str, list[dict]], ...]:\n        """Return one bounded, under-lock inventory for a logical log kind."""\n\n        return self._store._list_logs_unlocked(\n            evidence_space_id=self.evidence_space_id,\n            log_kind=log_kind,\n            limit=limit,\n        )\n\n    def read_payload(self, *, payload_id: str) -> dict | None:\n''',
+)
+
+replace_once(
+    "relaylm/evidence_store.py",
+    '''        if not isinstance(value, list) or any(not isinstance(item, dict) for item in value):\n            raise RuntimeError("evidence_store_log_corrupt")\n        return value\n\n    def _payload_path(self, evidence_space_id: str, payload_id: str) -> Path:\n''',
+    '''        if not isinstance(value, list) or any(not isinstance(item, dict) for item in value):\n            raise RuntimeError("evidence_store_log_corrupt")\n        return value\n\n    def _list_logs_unlocked(\n        self,\n        *,\n        evidence_space_id: str,\n        log_kind: str,\n        limit: int,\n    ) -> tuple[tuple[str, list[dict]], ...]:\n        if not _is_safe_component(log_kind):\n            raise ValueError("evidence_store_log_kind_invalid")\n        if type(limit) is not int or not 1 <= limit <= 4096:\n            raise ValueError("evidence_store_log_inventory_limit_invalid")\n        directory = self._space_dir(evidence_space_id) / "logs" / log_kind\n        try:\n            info = directory.lstat()\n        except FileNotFoundError:\n            return ()\n        except OSError as exc:\n            raise RuntimeError("evidence_store_log_inventory_unreadable") from exc\n        if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):\n            raise RuntimeError("evidence_store_log_inventory_unsafe")\n        paths = sorted(directory.glob("*.json"))\n        if len(paths) > limit:\n            raise RuntimeError("evidence_store_log_inventory_limit_exceeded")\n        inventory: list[tuple[str, list[dict]]] = []\n        for path in paths:\n            key = path.name.removesuffix(".json")\n            if not _is_safe_component(key):\n                raise RuntimeError("evidence_store_log_inventory_unsafe")\n            events = self._read_log_unlocked(\n                evidence_space_id=evidence_space_id,\n                log_kind=log_kind,\n                key=key,\n            )\n            if events is None:\n                raise RuntimeError("evidence_store_log_inventory_unreadable")\n            inventory.append((key, events))\n        return tuple(inventory)\n\n    def _payload_path(self, evidence_space_id: str, payload_id: str) -> Path:\n''',
+)
+
+replace_once(
+    "tests/test_subjective_mem_runtime.py",
+    '''def test_cross_character_operation_key_reuse_fails_closed(store) -> None:\n    captured, assessment_revision, assessment_state = _asm_ready(store)\n    first = _create(store, captured, assessment_revision, assessment_state)\n    assert first.status == "committed"\n    cross = _create(\n        store,\n        captured,\n        assessment_revision,\n        assessment_state,\n        character_authority=_character("char2"),\n    )\n    assert cross.status == "fail_closed"\n    assert cross.blocked_reasons == ("subjective_mem_operation_scope_mismatch",)\n''',
+    '''def test_same_raw_operation_key_is_scoped_per_character(store) -> None:\n    captured, assessment_revision, assessment_state = _asm_ready(store)\n    first = _create(store, captured, assessment_revision, assessment_state)\n    cross = _create(\n        store,\n        captured,\n        assessment_revision,\n        assessment_state,\n        character_authority=_character("char2"),\n    )\n    assert first.status == cross.status == "committed"\n    assert first.decision is not None and cross.decision is not None\n    assert first.revision is not None and cross.revision is not None\n    assert first.decision.decision_id != cross.decision.decision_id\n    assert first.revision.memory_id != cross.revision.memory_id\n''',
+)
+
+tests_path = Path("tests/test_subjective_mem_runtime.py")
+tests_text = tests_path.read_text(encoding="utf-8")
+marker = "def test_foreign_current_state_key_blocks_new_apply"
+if marker in tests_text:
+    raise SystemExit("logical current-state tests already present")
+tests_text += '''\n\n\ndef test_foreign_current_state_key_blocks_new_apply(store) -> None:\n    captured, assessment_revision, assessment_state = _asm_ready(store)\n    dry = _create(\n        store,\n        captured,\n        assessment_revision,\n        assessment_state,\n        apply_enabled=False,\n        operation_idempotency_key="foreign-state-before-apply",\n    )\n    assert dry.status == "dry_run_ready"\n    assert dry.current_state is not None\n    foreign_key = "smstate_foreign_before_apply"\n    foreign = {\n        **dry.current_state.to_dict(),\n        "memory_state_id": foreign_key,\n    }\n    written = store.write_log(\n        evidence_space_id=captured.evidence_space_id,\n        log_kind="subjective_mem_current_state",\n        key=foreign_key,\n        events=(foreign,),\n    )\n    assert written.status == "created"\n\n    blocked = _create(\n        store,\n        captured,\n        assessment_revision,\n        assessment_state,\n        operation_idempotency_key="foreign-state-before-apply",\n    )\n    assert blocked.status == "integrity_conflict"\n    assert blocked.blocked_reasons == (\n        "subjective_mem_duplicate_logical_current_state",\n    )\n    space = store.root / captured.evidence_space_id\n    assert not (space / "records" / "subjective_mem_operation").exists()\n\n\ndef test_foreign_current_state_key_blocks_retry(store) -> None:\n    captured, assessment_revision, assessment_state = _asm_ready(store)\n    first = _create(\n        store,\n        captured,\n        assessment_revision,\n        assessment_state,\n        operation_idempotency_key="foreign-state-after-apply",\n    )\n    assert first.status == "committed"\n    assert first.current_state is not None\n    foreign_key = "smstate_foreign_after_apply"\n    foreign = {\n        **first.current_state.to_dict(),\n        "memory_state_id": foreign_key,\n    }\n    written = store.write_log(\n        evidence_space_id=captured.evidence_space_id,\n        log_kind="subjective_mem_current_state",\n        key=foreign_key,\n        events=(foreign,),\n    )\n    assert written.status == "created"\n\n    retry = _create(\n        store,\n        captured,\n        assessment_revision,\n        assessment_state,\n        operation_idempotency_key="foreign-state-after-apply",\n    )\n    assert retry.status == "fail_closed"\n    assert retry.blocked_reasons == (\n        "subjective_mem_duplicate_logical_current_state",\n    )\n'''
+tests_path.write_text(tests_text, encoding="utf-8")
+
+replace_once(
+    "docs/architecture/project_execution_plan.md",
+    "    -> OVL-1 CTX-OVL participant-private vertical slice               registered / not started\n",
+    "    -> OVL-1 CTX-OVL participant-private vertical slice               complete / default-off / participant-private only\n",
+)
+
+replace_once(
+    "docs/architecture/sm1_subjective_mem_create_runtime.md",
+    "The raw key selects a deterministic idempotency slot inside the exact Evidence space. The logical operation ID is separately derived from the Evidence-space and character-authority namespace plus the key digest. The slot binds that scoped operation to:\n",
+    "The raw-key digest and exact Evidence-space plus character-authority namespace select a deterministic idempotency slot. The logical operation ID is derived from the same namespace and key digest. The slot binds that scoped operation to:\n",
+)
+
+replace_once(
+    "docs/architecture/sm1_subjective_mem_create_runtime.md",
+    "Character, scope, assessment references, supported-content digest, and all formation timestamps must also agree exactly. Corrupt, missing, duplicate, stale, or repointed records fail closed on retry.\n",
+    "Character, scope, assessment references, supported-content digest, and all formation timestamps must also agree exactly. Under the Evidence-space lock, apply and retry use a bounded inventory to require exactly one logical current-state selector for the same character and memory even when a conflicting selector uses another state key. Corrupt, missing, duplicate, stale, or repointed records fail closed on retry.\n",
+)
