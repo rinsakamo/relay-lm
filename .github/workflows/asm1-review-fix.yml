@@ -23,6 +23,8 @@ jobs:
       - name: Merge current main and resolve status authority
         shell: bash
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main agent/asm1-shared-assessment-runtime-v1
           git checkout -B asm1-main-sync origin/agent/asm1-shared-assessment-runtime-v1
           set +e
