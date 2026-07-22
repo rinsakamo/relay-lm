@@ -1,1 +1,0 @@
-Trigger exact-head CI after the verified ASM-1 revision-bound correction.
