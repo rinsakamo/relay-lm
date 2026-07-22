@@ -1,0 +1,67 @@
+name: Documentation Cutover 1C-54 Builder
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+    paths:
+      - ".github/workflows/documentation-cutover-1c54-builder.yml"
+      - "scripts/_tmp_documentation_cutover_1c54_builder.py"
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: documentation-cutover-1c54-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.head_ref == 'agent/documentation-hard-cutover-1c54-i4c2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install validation dependencies
+        run: python -m pip install -e ".[test]"
+      - name: Construct final cutover tree
+        run: python scripts/_tmp_documentation_cutover_1c54_builder.py
+      - name: Validate final tree serially
+        run: |
+          set -euo pipefail
+          python -m compileall -q relaylm scripts
+          python scripts/relaylm_i4c2_handoff_cutover_guard.py
+          python scripts/relaylm_i4c2_handoff_cutover_guard.py --self-test
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_semantic_audit.py
+          PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_recovery_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_fault_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_concurrency_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_security_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_ownership_boundary_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_hidden_successor_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_fault_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_concurrency_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_security_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_ui_smoke.py
+          git diff --check
+      - name: Commit and push final tree
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "docs: move I-4C2 handoff to frozen evidence"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
