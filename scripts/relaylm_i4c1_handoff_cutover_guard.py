@@ -33,7 +33,7 @@ PATH_TOKEN_RE = re.compile(
     r"((?:(?:\.\.?/|[A-Za-z0-9_.-]+/){0,16})"
     + re.escape(RETIRED_BASENAME)
     + r")(?:[?#][A-Za-z0-9_.~/%=&:-]+)?"
-    r"(?![A-Za-z0-9_.-])"
+    r"(?![A-Za-z0-9_-])"
 )
 URL_RE = re.compile(r"https?://[^\s)>\]}'\"]+")
 
