@@ -54,7 +54,7 @@ jobs:
             expected=$(cat <<'EOF'
           temporary tooling remains in final diff:
            D .github/workflows/documentation-cutover-1c54-builder.yml
-           D scripts/_tmp_documentation-cutover-1c54-builder.py
+           D scripts/_tmp_documentation_cutover_1c54_builder.py
           EOF
           )
             actual=$(cat /tmp/documentation-cutover-1c54-builder.log)
