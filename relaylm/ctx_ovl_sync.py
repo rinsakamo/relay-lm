@@ -21,6 +21,7 @@ from relaylm.ctx_ovl_types import (
     _CATCH_UP_MAX_TOTAL_BYTES,
     _MAX_CANDIDATE_BYTES,
     _ParticipantPartitionState,
+    _REBUILD_MAX_RECORDS,
     _REBUILD_MAX_TOTAL_BYTES,
     _new_partition_state,
 )
@@ -127,9 +128,6 @@ def _synchronize_partition(
                 )
                 mode = "rebuild"
 
-            # Equality at the TTL boundary is expired. Prune before
-            # reauthorization so an expired process-local record is not
-            # resurrected in place.
             _prune_partition(state, evaluated_at=evaluated_at)
 
             projection_events = tx.read_log(
@@ -138,7 +136,7 @@ def _synchronize_partition(
             coverage_events = tx.read_log(
                 log_kind="change_coverage_checkpoint", key=change_partition_id
             ) or []
-            event_slice, highest, coverage_reasons = _bounded_event_slice(
+            event_slice, resulting_watermark, coverage_reasons = _bounded_event_slice(
                 projection_events=projection_events,
                 coverage_events=coverage_events,
                 change_partition_id=change_partition_id,
@@ -159,6 +157,7 @@ def _synchronize_partition(
             omitted = 0
             total_bytes = 0
             processed_sources: set[str] = set()
+            produced: list[tuple[str, str]] = []
             for event in event_slice:
                 sequence = int(event["partition_sequence"])
                 candidate, _candidate_reasons = _read_authorized_candidate(
@@ -182,6 +181,7 @@ def _synchronize_partition(
                         event,
                         evaluated_at=evaluated_at,
                         reason="restricted",
+                        new_highest_observed_sequence=resulting_watermark,
                     )
                     continue
                 byte_cap = (
@@ -196,7 +196,7 @@ def _synchronize_partition(
                     omitted += 1
                     continue
                 total_bytes += candidate.actual_bytes
-                _admit_candidate(
+                overlay_id = _admit_candidate(
                     state,
                     candidate,
                     partition_sequence=sequence,
@@ -211,11 +211,9 @@ def _synchronize_partition(
                         )
                     ),
                 )
+                produced.append((overlay_id, candidate.authority_snapshot_digest))
                 admitted += 1
 
-            # Revalidate retained records even when the change feed has no new
-            # event. A short-lived access projection is never reused as durable
-            # authority.
             event_by_source: dict[str, dict] = {}
             for source_event in projection_events:
                 refs = source_event.get("authorized_source_event_refs")
@@ -226,6 +224,9 @@ def _synchronize_partition(
             for source_id in list(state.overlays_by_source):
                 if source_id in processed_sources:
                     continue
+                item = state.overlays_by_source.get(source_id)
+                if item is None or item.record.get("lifecycle_state") != "active":
+                    continue
                 authority_event = event_by_source.get(source_id)
                 if authority_event is None:
                     _invalidate_source(
@@ -233,6 +234,7 @@ def _synchronize_partition(
                         source_id,
                         evaluated_at=evaluated_at,
                         reason="watermark_advanced",
+                        new_highest_observed_sequence=resulting_watermark,
                     )
                     omitted += 1
                     continue
@@ -257,21 +259,49 @@ def _synchronize_partition(
                     candidate,
                     partition_sequence=int(authority_event["partition_sequence"]),
                     evaluated_at=evaluated_at,
-                    admission_origin="catch_up_pipeline",
+                    admission_origin=str(item.record.get("admission_origin")),
                 )
 
-            state.last_observed_partition_sequence = highest
+            state.last_observed_partition_sequence = resulting_watermark
             _prune_partition(state, evaluated_at=evaluated_at)
             state.revision += 1
-            state.last_sync_event = _build_sync_event(
-                state,
-                mode=mode,
-                evaluated_at=evaluated_at,
-                admitted_count=admitted,
-                omitted_count=omitted,
-                request_id=request_id,
-                coverage_checkpoint=(coverage_events[-1] if coverage_events else None),
-            )
+
+            new_sync_events: list[dict[str, object]] = []
+            coverage_checkpoint = coverage_events[-1] if coverage_events else None
+            if mode in {"rebuild", "catch_up"}:
+                if produced:
+                    for overlay_id, authority_digest in produced:
+                        new_sync_events.append(
+                            _build_sync_event(
+                                state,
+                                mode=mode,
+                                evaluated_at=evaluated_at,
+                                produced_overlay_record_ids=(overlay_id,),
+                                authority_snapshot_digest=authority_digest,
+                                omitted_count=omitted,
+                                request_id=request_id,
+                                coverage_checkpoint=coverage_checkpoint,
+                            )
+                        )
+                else:
+                    new_sync_events.append(
+                        _build_sync_event(
+                            state,
+                            mode=mode,
+                            evaluated_at=evaluated_at,
+                            produced_overlay_record_ids=(),
+                            authority_snapshot_digest=None,
+                            omitted_count=omitted,
+                            request_id=request_id,
+                            coverage_checkpoint=coverage_checkpoint,
+                        )
+                    )
+                state.sync_events.extend(new_sync_events)
+                del state.sync_events[:-_REBUILD_MAX_RECORDS]
+                state.last_sync_event = new_sync_events[-1]
+            else:
+                state.last_sync_event = None
+
             outcome = (
                 "rebuild_applied"
                 if mode == "rebuild"
@@ -293,10 +323,10 @@ def _synchronize_partition(
                 omitted_count=omitted,
                 reflex_snapshot=_reflex_snapshot(state, "fresh"),
             )
-    except (RuntimeError, KeyError, TypeError, ValueError) as exc:
+    except (RuntimeError, KeyError, TypeError, ValueError):
         return existing, CtxOvlRuntimeResult(
             status="fail_closed",
-            blocked_reasons=(str(exc),),
+            blocked_reasons=("ctx_ovl_store_validation_failed",),
             sync_mode=mode,
             sync_outcome="fail_closed_store",
             reflex_snapshot=(
