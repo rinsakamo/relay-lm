@@ -52,9 +52,18 @@ jobs:
           """,
           )
           '''
+          redundant = '''replace_once(
+              "tests/test_shared_assessment_runtime.py",
+              '        assessment_id="assessment-1",\\n',
+              '        assessment_id=ASSESSMENT_ID,\\n',
+          )
+          '''
           if text.count(old) != 1:
-              raise RuntimeError(f'runner patch expected one match, found {text.count(old)}')
-          path.write_text(text.replace(old, new), encoding='utf-8')
+              raise RuntimeError(f'runner session patch expected one match, found {text.count(old)}')
+          if text.count(redundant) != 1:
+              raise RuntimeError(f'runner redundant patch expected one match, found {text.count(redundant)}')
+          text = text.replace(old, new).replace(redundant, '')
+          path.write_text(text, encoding='utf-8')
           PY
           set +e
           python /tmp/apply_asm1_review_fixes.py > /tmp/asm1-review-fix-error.txt 2>&1
