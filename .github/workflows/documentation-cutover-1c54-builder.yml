@@ -62,6 +62,11 @@ jobs:
               exit "$builder_status"
             fi
           fi
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("docs/evidence/migrations/documentation-hard-cutover-receipt.md")
+          path.write_text(path.read_text(encoding="utf-8").rstrip() + "\n", encoding="utf-8")
+          PY
       - name: Upload builder diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
