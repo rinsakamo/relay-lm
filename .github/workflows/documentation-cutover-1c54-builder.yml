@@ -84,25 +84,22 @@ jobs:
           PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_security_smoke.py
           PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_ui_smoke.py
           git diff --check
-      - name: Publish validated content commit
+      - name: Create validated blob manifest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPOSITORY: ${{ github.repository }}
-          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          set -o pipefail
+          set -euo pipefail
           git restore -- .github/workflows/documentation-cutover-1c54-builder.yml
-          python - <<'PY' 2>&1 | tee /tmp/publish.log
+          python - <<'PY'
           from __future__ import annotations
           import base64, json, os, subprocess
           from pathlib import Path
           from urllib.error import HTTPError
-          from urllib.parse import quote
           from urllib.request import Request, urlopen
 
           token = os.environ["GH_TOKEN"]
           repository = os.environ["GH_REPOSITORY"]
-          branch = os.environ["HEAD_BRANCH"]
           api = f"https://api.github.com/repos/{repository}"
           headers = {
               "Accept": "application/vnd.github+json",
@@ -111,20 +108,19 @@ jobs:
               "User-Agent": "relaylm-documentation-cutover-1c54",
           }
 
-          def request(method: str, path: str, payload: dict | None = None) -> dict:
-              body = None if payload is None else json.dumps(payload).encode()
-              req = Request(api + path, data=body, headers=headers, method=method)
+          def post_blob(raw: bytes) -> str:
+              payload = json.dumps({
+                  "content": base64.b64encode(raw).decode(),
+                  "encoding": "base64",
+              }).encode()
+              req = Request(api + "/git/blobs", data=payload, headers=headers, method="POST")
               try:
                   with urlopen(req, timeout=60) as response:
-                      return json.load(response)
+                      return json.load(response)["sha"]
               except HTTPError as exc:
-                  raise RuntimeError(f"{method} {path}: {exc.code} {exc.read().decode(errors='replace')}") from exc
+                  raise RuntimeError(f"blob create failed: {exc.code} {exc.read().decode(errors='replace')}") from exc
 
           head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-          ref_path = f"/git/ref/heads/{quote(branch, safe='/')}"
-          remote = request("GET", ref_path)["object"]["sha"]
-          if remote != head:
-              raise SystemExit(f"branch moved: expected {head}, found {remote}")
           changed = sorted(set(
               subprocess.check_output(["git", "diff", "--name-only", "--diff-filter=ACMRTUXB"], text=True).splitlines()
               + subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard"], text=True).splitlines()
@@ -132,27 +128,25 @@ jobs:
           deleted = subprocess.check_output(["git", "diff", "--name-only", "--diff-filter=D"], text=True).splitlines()
           workflow = ".github/workflows/documentation-cutover-1c54-builder.yml"
           if workflow in changed or workflow in deleted:
-              raise SystemExit("temporary workflow must be retained for connector cleanup")
+              raise SystemExit("temporary workflow must be retained until connector commit")
           elements = []
           for relative in changed:
-              blob = request("POST", "/git/blobs", {
-                  "content": base64.b64encode(Path(relative).read_bytes()).decode(),
-                  "encoding": "base64",
+              elements.append({
+                  "path": relative,
+                  "mode": "100644",
+                  "type": "blob",
+                  "sha": post_blob(Path(relative).read_bytes()),
               })
-              elements.append({"path": relative, "mode": "100644", "type": "blob", "sha": blob["sha"]})
           elements.extend({"path": relative, "mode": "100644", "type": "blob", "sha": None} for relative in deleted)
-          tree = request("POST", "/git/trees", {"base_tree": head, "tree": elements})
-          commit = request("POST", "/git/commits", {
-              "message": "docs: move I-4C2 handoff to frozen evidence",
-              "tree": tree["sha"],
-              "parents": [head],
-          })
-          request("PATCH", f"/git/refs/heads/{quote(branch, safe='/')}", {"sha": commit["sha"], "force": False})
-          print(commit["sha"])
+          manifest = {"parent": head, "tree_elements": elements}
+          Path("/tmp/documentation-cutover-1c54-blob-manifest.json").write_text(
+              json.dumps(manifest, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(f"manifest parent={head} elements={len(elements)}")
           PY
-      - name: Upload publication diagnostics
-        if: failure()
+      - name: Upload validated blob manifest
         uses: actions/upload-artifact@v4
         with:
-          name: documentation-cutover-1c54-publication-diagnostics
-          path: /tmp/publish.log
+          name: documentation-cutover-1c54-blob-manifest
+          path: /tmp/documentation-cutover-1c54-blob-manifest.json
