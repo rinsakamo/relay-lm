@@ -1,22 +1,31 @@
 ---
-relaylm_doc_type: implementation_handoff
-relaylm_authority: phase_i4c1_primary_forget_hidden_successor_commit
-relaylm_status: historical_after_merge
+relaylm_doc_type: evidence
+relaylm_authority: historical_phase_i4c1_primary_forget_hidden_successor_handoff
+relaylm_status: frozen
 relaylm_volatility: frozen
-relaylm_owner: relaymem_soul_lab_integration
-relaylm_current_status_source: ../PROJECT_STATUS.md
-relaylm_related_authority:
-  - phase_i4_primary_mem_forget_hide_contract.md
-  - phase_i4b_primary_current_state_shared_fence.md
-  - phase_i4c2_primary_forget_recovery_finalization.md
-  - phase_i4d_primary_retrieval_exclusion.md
+relaylm_owner: implementation
+relaylm_source_commit: 4c08a5d973ddcdc657b46e1ae83e3cc3eb6f1fe9
+relaylm_source_pr: 396
+relaylm_recorded_on: 2026-06-26
+relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_not_authoritative_for:
-  - I-4C2 recovery and tombstone finalization
+  - current Primary Forget runtime behavior
+  - I-4C2 recovery or tombstone finalization
   - I-4D ordinary retrieval exclusion
-  - I-4E API or UI
-  - I-4F validation
+  - I-4E API or UI behavior
+  - I-4F product validation
+  - current Subjective MEM storage authority
+relaylm_related_authority:
+  - ../../architecture/phase_i4_primary_mem_forget_hide_contract.md
+  - ../../architecture/phase_i4b_primary_current_state_shared_fence.md
+  - ../../architecture/phase_i4c2_primary_forget_recovery_finalization.md
+  - ../../architecture/phase_i4d_primary_retrieval_exclusion.md
+  - ../../architecture/phase_i4e_forget_api_ui.md
+  - ../../architecture/phase_i4f_forget_validation.md
 ---
 # Phase I-4C1 Primary Forget Hidden-Successor Commit
+
+> **Historical implementation evidence.** This frozen handoff records the bounded hidden-successor commit delivered by PR #396. Current Primary Forget behavior remains owned by the I-4 contract, I-4C2/I-4D/I-4E/I-4F authorities, implementation, and focused smokes.
 
 Status: complete for the bounded I-4C1 commit boundary.
 

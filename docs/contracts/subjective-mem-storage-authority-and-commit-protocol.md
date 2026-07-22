@@ -25,7 +25,7 @@ relaylm_related_authority:
   - shared-assessment-subjective-mem.md
   - ../architecture/memory_lifecycle_design.md
   - ../architecture/phase_i4_primary_mem_forget_hide_contract.md
-  - ../architecture/phase_i4c1_primary_forget_hidden_successor.md
+  - ../evidence/implementation/i4c1-primary-forget-hidden-successor-handoff.md
 ---
 # Subjective MEM Storage Authority and Commit Protocol Contract
 

@@ -5176,3 +5176,46 @@ verification:
 ```
 
 PR #634 preserves the validation-only I1-GE governance handoff as frozen implementation evidence and merged as `8791d0495e1c4b56aa97b49acc27b745a65bdd4c` from reviewed head `ca4a9bc98c48316dc777c9c7abf85f4d910a11ef` on EV-1 main `86d3af1b3c24569f1daf01b2b52ef8c5119046d8`. The production proof remains attributable to PR #411; the handoff itself remains attributable to PR #415. Current durable-finalization behavior remains contract-, I1-GD-, implementation-, and focused-smoke-owned. PR #635 consolidates merge attribution and exact-head validation without changing accepted cutover content.
+
+
+### C1C53-001 — I-4C1 hidden-successor implementation handoff
+
+```yaml
+cutover_pr: 637
+merged_commit: pending
+bookkeeping_pr: pending
+base_main: 9647f35d4cb8792e9ab48795985bef96a75c5856
+validated_content_head: pending
+head_at_merge: pending
+merged_at: pending
+old_path: docs/architecture/phase_i4c1_primary_forget_hidden_successor.md
+old_blob_sha: 5744dbd445582b28ab030c38e1a49b24e355b4ed
+old_content_sha256: f52d89a6054a95e3168cbbc2edebd55fcf6ca6fcf2cd80b040152a9756a39344
+source_pr: 396
+source_final_head: 8977dd96fb0ed79fdd7d3d0646aa6e9067d8080e
+source_merge_commit: 4c08a5d973ddcdc657b46e1ae83e3cc3eb6f1fe9
+source_merged_at: 2026-06-26T03:17:05Z
+recorded_on: 2026-06-26
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/i4c1-primary-forget-hidden-successor-handoff.md
+local_receipt: docs/evidence/migrations/cutover-1c53-i4c1.md
+verification:
+  old_path_removed: true
+  canonical_evidence_metadata_added: true
+  current_production_authority_retained_by: i4_contract_i4c2_i4d_i4e_i4f_implementation_and_focused_smokes
+  active_referrers_repaired: 8
+  current_architecture_indexes_removed: true
+  implementation_evidence_index_updated: true
+  fail_closed_guard: scripts/relaylm_i4c1_handoff_cutover_guard.py
+  guard_integrated_into_existing_documentation_boundary_workflow: true
+  guard_self_test_assertions: 24
+  exact_head_workflow_runs: pending
+  exact_head_workflow_success: pending
+  exact_head_workflow_failure: pending
+  unresolved_review_threads: pending
+  runtime_files_changed: 0
+  relaylm_changed_files: 0
+  open_pr_content_imported: false
+```
+
+PR #637 preserves the completed I-4C1 hidden-successor commit handoff as frozen implementation evidence. Current Primary Forget behavior remains I-4-contract-, I-4C2/I-4D/I-4E/I-4F-, implementation-, and focused-smoke-owned. Merge attribution and exact-head validation remain pending until explicit final review and bookkeeping consolidation.
