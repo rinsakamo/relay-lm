@@ -70,8 +70,27 @@ jobs:
         run: python scripts/relaylm_phase_i2_documentation_boundary_smoke.py
       - name: Validate E1 evidence inventory
         run: python scripts/relaylm_e1_evaluation_consolidation_smoke.py
-      - name: Validate documentation links
-        run: python scripts/check_docs_links.py
+      - name: Capture documentation link validation
+        id: docs_links
+        shell: bash
+        run: |
+          set +e
+          python scripts/check_docs_links.py > documentation-links.log 2>&1
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload documentation link diagnostics
+        if: steps.docs_links.outputs.status != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutover-1c55-documentation-links
+          path: documentation-links.log
+          if-no-files-found: error
+      - name: Enforce documentation link validation
+        if: steps.docs_links.outputs.status != '0'
+        run: |
+          cat documentation-links.log
+          exit 1
       - name: Validate documentation semantics
         run: |
           python scripts/relaylm_docs_semantic_audit.py
