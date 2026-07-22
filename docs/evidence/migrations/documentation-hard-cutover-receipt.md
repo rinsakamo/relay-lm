@@ -5085,12 +5085,12 @@ PR #628 preserves the completed C4 runtime-wiring handoff as frozen implementati
 
 ```yaml
 cutover_pr: 631
-merged_commit: pending
-bookkeeping_pr: pending
+merged_commit: 61338a97e33b982acffb7ba513861de300db8236
+bookkeeping_pr: 632
 base_main: 0db41086cbe6c3c48f8f597f42aa2214ab3c48de
-validated_content_head: pending
-head_at_merge: pending
-merged_at: pending
+validated_content_head: 5ad8b67610f0fad775f7d987d845fb3402ded75b
+head_at_merge: 5ad8b67610f0fad775f7d987d845fb3402ded75b
+merged_at: 2026-07-21T23:21:42Z
 old_path: docs/architecture/phase55b2_stream_suppression_runtime_handoff.md
 old_blob_sha: 6ad890aae023bb6c6c07029bf2f1a106582d9c75
 old_content_sha256: b02189bace5faf8d81e26f82e38bc80f0b4d3c662baea607bec9eabed5095a9d
@@ -5113,13 +5113,13 @@ verification:
   fail_closed_guard: scripts/relaylm_phase55b2_handoff_cutover_guard.py
   guard_integrated_into_existing_documentation_boundary_workflow: true
   guard_self_test_assertions: 22
-  exact_head_workflow_runs: pending
-  exact_head_workflow_success: pending
-  exact_head_workflow_failure: pending
-  unresolved_review_threads: pending
+  exact_head_workflow_runs: 16
+  exact_head_workflow_success: 16
+  exact_head_workflow_failure: 0
+  unresolved_review_threads: 0
   runtime_files_changed: 0
   relaylm_changed_files: 0
   open_pr_content_imported: false
 ```
 
-PR #631 preserves the completed B2 request-runtime suppression wiring handoff as frozen implementation evidence. Source-time implementation claims remain historical; current Stream Unpack sequencing and request-runtime suppression behavior remain parent-, implementation-, and focused-smoke-owned. Merge attribution and exact-head validation remain pending until explicit final review and bookkeeping consolidation.
+PR #631 preserves the completed B2 request-runtime suppression wiring handoff as frozen implementation evidence. Source-time implementation claims remain historical; current Stream Unpack sequencing and request-runtime suppression behavior remain parent-, implementation-, and focused-smoke-owned. PR #632 consolidates the merge attribution in the central audit ledger and local frozen receipt without changing accepted cutover content.
