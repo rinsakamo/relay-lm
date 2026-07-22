@@ -21,6 +21,7 @@ relaylm_related_authority:
   - docs/architecture/project_execution_plan.md
   - docs/architecture/asm1_shared_assessment_runtime_foundation.md
   - docs/contracts/governed-evidence-contract-family.md
+  - docs/contracts/relayctx-session-evidence-overlay.md
   - docs/contracts/shared-assessment-subjective-mem.md
   - docs/architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md
   - docs/architecture/analyzer_candidate_governance.md
@@ -78,7 +79,8 @@ O2 supervised worker service: complete as opt-in supervised local scheduler serv
 O3 always-on local operation: complete as opt-in local CLI/process wrapper around O2; not browser authority, not app-embedded, and not default-on
 
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall, scope isolation, E1-R5 scoped candidate fallback, and PM-D8 canonical Primary recall fold-in complete
-EV-1 Governed Evidence runtime foundation: complete in PR #629 for the bounded single-principal private managed-conversation slice; gates remain default-off and completion does not imply CTX-OVL, Shared Assessment, Subjective MEM, export, replication, or purge
+EV-1 Governed Evidence runtime foundation: complete in PR #629 for the bounded single-principal private managed-conversation slice; gates remain default-off and the EV-1-owned boundary excludes overlay materialization, Shared Assessment, Subjective MEM, export, replication, and purge
+OVL-1 CTX-OVL participant-private vertical slice: complete in PR #639 as a default-off, process-local, bounded, rebuildable, non-durable `participant` / `participant_private` overlay over exact EV-1 authorization; shared-scene, relationship, quarantine, durable MEM formation, and RelayATN mutation remain outside scope
 ASM-1 Shared Assessment runtime foundation: complete in PR #636 as a default-off deferred library/runtime slice with exact EV-1 authorization, evidence-space-bound assessment identity, immutable consecutive revisions, one logical current-state selector, and decision-transaction-bound formation receipts; no Subjective MEM writer or response-path integration
 P0-PIPE RelayREL / RelaySCN / RelayEMO ordering: complete in PR #458 after actual app.py request-path rewiring and local validation; RelayREL now precedes RelaySCN, RelaySCN precedes input-side RelayEMO, RelayINT/RelayMEM/RelayCTX remain downstream; PM-D3 scene_state ownership is closed by this shipped ordering boundary
 CTX Repack phase ordering fix: complete; RelayCTX short-term runtime injection now runs before token_budget_truncation in app.py so token_budget_truncation is the actual final CTX Repack mutation gate
@@ -152,7 +154,9 @@ CW-A3 keeps Home on the existing RelayLM `/v1/chat/completions` authority path, 
 
 ## Contract-aligned implementation migration boundary
 
-EV-1 is complete in PR #629 for one bounded, single-principal private managed conversation. The merged slice establishes route-owned current-user and canonical assistant-response capture, immutable SourceEvents, validation bundles, governance and grant state, change projections, coverage checkpoints, and a bounded local Evidence store. All Evidence gates remain default-off. EV-1 does not complete the full governed-evidence contract family, CTX-OVL, Shared Assessment, Subjective MEM formation or storage, multi-user Evidence, export, replication, or purge.
+EV-1 is complete in PR #629 for one bounded, single-principal private managed conversation. The merged slice establishes route-owned current-user and canonical assistant-response capture, immutable SourceEvents, validation bundles, governance and grant state, change projections, coverage checkpoints, and a bounded local Evidence store. All Evidence gates remain default-off. The EV-1-owned boundary does not itself implement overlay materialization, Shared Assessment, Subjective MEM formation or storage, multi-user Evidence, export, replication, or purge.
+
+OVL-1 is complete in PR #639 and consumes EV-1 directly. Its bounded scope is process-local, rebuildable, non-durable `participant` / `participant_private` RelayCTX working state with exact Evidence authorization, strict operation-time TTL, bounded selection and catch-up, restart rebuild, invalidation, content-free Reflex Snapshot output, and explicit RelayATN write denial. OVL-1 remains default-off; apply fails closed when RelayEMO analysis or the legacy RelayCTX injection writer is enabled. It does not implement shared-scene, relationship, quarantine, durable MEM formation, or RelayATN mutation authority.
 
 ASM-1 is complete in PR #636 and consumes EV-1 directly without depending on OVL-1. Its bounded scope is the character-independent Shared Assessment revision/current-state foundation, split Assessment Pass prepare/commit boundary, exact EV-1 authorization and assistant-finalization revalidation, and a content-free formation authorization receipt builder that becomes authoritative only when SM-1 commits it with the exact SubjectiveMemDecision in one transaction. ASM-1 remains default-off and does not authorize Subjective MEM writes or normal-response-path assessment injection.
 
@@ -171,6 +175,7 @@ Post-MVP decision debt is tracked explicitly as PM-D1 RelaySOUL gate design-free
 ```text
 Contract-aligned implementation migration:
   EV-1 Governed Evidence runtime foundation                  complete in PR #629
+  OVL-1 CTX-OVL participant-private vertical slice           complete in PR #639; default-off
   ASM-1 Shared Assessment runtime foundation                 complete in PR #636; default-off
   SM-1 Subjective MEM decision/result vertical slice         next registered slice after ASM-1
 
@@ -212,6 +217,7 @@ The completed P0-PIPE implementation boundary is [P0 RelayREL / RelaySCN / Relay
 ## Not yet implemented
 
 - full RelayREL relationship Markdown parsing;
+- shared-scene, relationship, and quarantine CTX-OVL partitions;
 - restore/unhide or physical purge;
 - Merge / Supersession runtime apply;
 - Secondary MEM consolidation;
