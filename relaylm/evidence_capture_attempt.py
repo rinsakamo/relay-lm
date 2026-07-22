@@ -146,6 +146,9 @@ def build_managed_conversation_route_snapshot(
     try:
         from relaylm.evidence_space import _authority_scope_from_dict
 
+        expires_at_or_null = snapshot_payload["expires_at_or_null"]
+        if expires_at_or_null is not None and type(expires_at_or_null) is not str:
+            raise TypeError("expires_at_or_null must be null or string")
         snapshot = RouteCaptureGrantSnapshot(
             schema=str(snapshot_payload["schema"]),
             route_binding_id=str(snapshot_payload["route_binding_id"]),
@@ -165,7 +168,7 @@ def build_managed_conversation_route_snapshot(
                 snapshot_payload["allowed_stream_directions"]
             ),
             effective_from=str(snapshot_payload["effective_from"]),
-            expires_at_or_null=snapshot_payload["expires_at_or_null"],
+            expires_at_or_null=expires_at_or_null,
             revocation_revision_observed=int(
                 snapshot_payload["revocation_revision_observed"]
             ),

@@ -10,6 +10,8 @@ import pytest
 import respx
 
 import relaylm.evidence_response_capture as response_capture_module
+from relaylm.evidence_capture_attempt import build_managed_conversation_route_snapshot
+from relaylm.evidence_space import derive_evidence_space_id
 from relaylm.evidence_response_capture import (
     capture_managed_assistant_response_nonstream,
     wrap_stream_with_evidence_response_capture,
@@ -198,6 +200,26 @@ def test_change_refs_and_assistant_projection_use_persisted_partition_keys(
     assert coverage_files[0].stem == projection_files[0].stem
     assert len(json.loads(projection_files[0].read_text(encoding="utf-8"))) == 2
     assert len(json.loads(coverage_files[0].read_text(encoding="utf-8"))) == 2
+
+
+def test_route_snapshot_rejects_non_string_expiry() -> None:
+    payload = route_snapshot(capture_profile="managed_assistant_response")
+    payload["expires_at_or_null"] = 123
+    evidence_space_id = derive_evidence_space_id(
+        workspace_or_tenant_ref="relaylm-local",
+        character_id="char1",
+        memory_namespace="ns1",
+        session_id="sess1",
+    )
+
+    snapshot, reasons = build_managed_conversation_route_snapshot(
+        snapshot_payload=payload,
+        evidence_space_id=evidence_space_id,
+        capture_profile="managed_assistant_response",
+    )
+
+    assert snapshot is None
+    assert reasons == ("route_capture_grant_snapshot_shape_invalid",)
 
 
 def test_store_rejects_existing_symlink_root(tmp_path: Path) -> None:
