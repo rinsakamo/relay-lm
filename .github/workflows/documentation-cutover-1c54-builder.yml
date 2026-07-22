@@ -36,6 +36,16 @@ jobs:
       - name: Construct final cutover tree
         run: |
           set -o pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/_tmp_documentation_cutover_1c54_builder.py")
+          text = path.read_text(encoding="utf-8")
+          anchor = '_code = gzip.decompress(base64.b64decode(_PAYLOAD)).decode("utf-8")\n'
+          patch = anchor + "_code = _code.replace('        \"corrections\",\\n', '')\n"
+          if anchor not in text:
+              raise SystemExit("compressed builder anchor missing")
+          path.write_text(text.replace(anchor, patch, 1), encoding="utf-8")
+          PY
           python scripts/_tmp_documentation_cutover_1c54_builder.py 2>&1 | tee /tmp/documentation-cutover-1c54-builder.log
       - name: Upload builder diagnostics
         if: failure()
