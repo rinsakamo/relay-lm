@@ -13,8 +13,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: asm1-implementation-publisher
-  cancel-in-progress: true
+  group: asm1-implementation-publisher-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: false
 
 jobs:
   publish:
@@ -31,7 +31,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .github/asm1-bootstrap/patch.part* > /tmp/asm1.patch.gz.b64
+          printf '%s  %s\n' '5c751db6fc4b26503dfbf115e0e2afe39d191a58c36464d81b39a8809f9741dd' '.github/asm1-bootstrap/patch.part00' | sha256sum --check --strict
+          printf '%s  %s\n' 'e1e9b20777f9341ebf3a0b82b74e5e4f913df145ae9b52248c0e2b0637a252e1' '.github/asm1-bootstrap/patch.part01' | sha256sum --check --strict
+          printf '%s  %s\n' '5e23c9debd5b1639bd38c5ae8013db1bdfc31e4752bc4cd240cd4f3d66d0b2fd' '.github/asm1-bootstrap/patch.part02' | sha256sum --check --strict
+          printf '%s  %s\n' '021e29a4986481b37e09df23dfe71bbfb25027c7ef35273252d1620d5a177eac' '.github/asm1-bootstrap/patch.part03' | sha256sum --check --strict
+          printf '%s  %s\n' '133ab1dbb18ea7f655490c8128308ca0329ef8019777fbe13ca8b12dd116ab96' '.github/asm1-bootstrap/patch.part04' | sha256sum --check --strict
+          cat \
+            .github/asm1-bootstrap/patch.part00 \
+            .github/asm1-bootstrap/patch.part01 \
+            .github/asm1-bootstrap/patch.part02 \
+            .github/asm1-bootstrap/patch.part03 \
+            .github/asm1-bootstrap/patch.part04 \
+            > /tmp/asm1.patch.gz.b64
           printf '%s  %s\n' \
             'f30224f1f413304390148d4dddf20e1e70be7148d2610040d7567c472d5aaf3a' \
             '/tmp/asm1.patch.gz.b64' | sha256sum --check --strict
