@@ -70,6 +70,8 @@ jobs:
           path: /tmp/documentation-cutover-1c54-builder.log
       - name: Validate final tree serially
         run: |
+          set -o pipefail
+          {
           set -euo pipefail
           python -m compileall -q relaylm scripts
           python scripts/relaylm_i4c2_handoff_cutover_guard.py
@@ -90,6 +92,13 @@ jobs:
           PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_security_smoke.py
           PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_ui_smoke.py
           git diff --check
+          } 2>&1 | tee /tmp/documentation-cutover-1c54-validation.log
+      - name: Upload validation diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-cutover-1c54-validation-diagnostics
+          path: /tmp/documentation-cutover-1c54-validation.log
       - name: Commit and push final tree
         run: |
           set -euo pipefail
