@@ -28,7 +28,24 @@ jobs:
         run: python -m compileall -q relaylm scripts
 
       - name: Focused SM-1 tests
-        run: PYTHONPATH=tests:. pytest -q tests/test_subjective_mem_runtime.py --tb=short
+        id: focused
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          PYTHONPATH=tests:. pytest -q tests/test_subjective_mem_runtime.py --tb=short 2>&1 | tee focused-sm1.log
+
+      - name: Upload focused test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: focused-sm1-output
+          path: focused-sm1.log
+          if-no-files-found: error
+
+      - name: Stop on focused test failure
+        if: steps.focused.outcome == 'failure'
+        run: exit 1
 
       - name: SM-1 smoke
         run: python scripts/relaylm_sm1_subjective_mem_create_smoke.py
