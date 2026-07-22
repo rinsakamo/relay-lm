@@ -13,7 +13,7 @@ relaylm_related_authority:
   - phase_i4d_primary_retrieval_exclusion.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - i1gd_durable_finalization_retention_cleanup.md
-  - i1ge_durable_finalization_crash_validation.md
+  - ../evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md
   - o1d1_production_scheduler_round.md
   - ../evidence/waves/wave3_cross_slice_convergence_audit.md
 relaylm_not_authoritative_for:

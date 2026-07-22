@@ -16,6 +16,7 @@ on:
       - "scripts/relaylm_phase55b2_handoff_cutover_guard.py"
       - "scripts/relaylm_phase55c0_handoff_cutover_guard.py"
       - "scripts/relaylm_phase55c4_handoff_cutover_guard.py"
+      - "scripts/relaylm_i1ge_handoff_cutover_guard.py"
       - "scripts/relaylm_contract1_v7_validate.py"
       - "scripts/relaylm_contract1_v7_equivalence.py"
       - "scripts/relaylm_contract1_v7_regression_guard.py"
@@ -50,6 +51,7 @@ on:
       - "scripts/relaylm_phase55b2_handoff_cutover_guard.py"
       - "scripts/relaylm_phase55c0_handoff_cutover_guard.py"
       - "scripts/relaylm_phase55c4_handoff_cutover_guard.py"
+      - "scripts/relaylm_i1ge_handoff_cutover_guard.py"
       - "scripts/relaylm_contract1_v7_validate.py"
       - "scripts/relaylm_contract1_v7_equivalence.py"
       - "scripts/relaylm_contract1_v7_regression_guard.py"
@@ -93,6 +95,7 @@ jobs:
             scripts/relaylm_phase55b2_handoff_cutover_guard.py \
             scripts/relaylm_phase55c0_handoff_cutover_guard.py \
             scripts/relaylm_phase55c4_handoff_cutover_guard.py \
+            scripts/relaylm_i1ge_handoff_cutover_guard.py \
             scripts/relaylm_contract1_v7_validate.py \
             scripts/relaylm_contract1_v7_equivalence.py \
             scripts/relaylm_contract1_v7_regression_guard.py \
@@ -138,6 +141,10 @@ jobs:
           phase55c4_cutover_guard_status=${PIPESTATUS[0]}
           python scripts/relaylm_phase55c4_handoff_cutover_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
           phase55c4_cutover_guard_self_test_status=${PIPESTATUS[0]}
+          python scripts/relaylm_i1ge_handoff_cutover_guard.py 2>&1 | tee -a documentation-current-boundary.log
+          i1ge_cutover_guard_status=${PIPESTATUS[0]}
+          python scripts/relaylm_i1ge_handoff_cutover_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
+          i1ge_cutover_guard_self_test_status=${PIPESTATUS[0]}
           python scripts/relaylm_contract1_v7_validate.py 2>&1 | tee -a documentation-current-boundary.log
           contract1_validation_status=${PIPESTATUS[0]}
           python scripts/relaylm_contract1_v7_equivalence.py 2>&1 | tee -a documentation-current-boundary.log
@@ -184,7 +191,7 @@ jobs:
           subjective_mem_storage_authority_status=${PIPESTATUS[0]}
           python scripts/relaylm_subjective_mem_storage_authority_contract_smoke.py --self-test 2>&1 | tee -a documentation-current-boundary.log
           subjective_mem_storage_authority_self_test_status=${PIPESTATUS[0]}
-          if [ "$semantic_status" -ne 0 ] || [ "$semantic_self_test_status" -ne 0 ] || [ "$boundary_status" -ne 0 ] || [ "$phase55a_cutover_guard_status" -ne 0 ] || [ "$phase55a_cutover_guard_self_test_status" -ne 0 ] || [ "$phase55b1_cutover_guard_status" -ne 0 ] || [ "$phase55b1_cutover_guard_self_test_status" -ne 0 ] || [ "$phase55b2_cutover_guard_status" -ne 0 ] || [ "$phase55b2_cutover_guard_self_test_status" -ne 0 ] || [ "$phase55c0_cutover_guard_status" -ne 0 ] || [ "$phase55c0_cutover_guard_self_test_status" -ne 0 ] || [ "$phase55c4_cutover_guard_status" -ne 0 ] || [ "$phase55c4_cutover_guard_self_test_status" -ne 0 ] || [ "$contract1_validation_status" -ne 0 ] || [ "$contract1_equivalence_status" -ne 0 ] || [ "$contract1_regression_status" -ne 0 ] || [ "$contract1_regression_self_test_status" -ne 0 ] || [ "$contract1_fixture_registry_status" -ne 0 ] || [ "$contract1_fixture_registry_self_test_status" -ne 0 ] || [ "$relayctx_contract_status" -ne 0 ] || [ "$relayint_contract_status" -ne 0 ] || [ "$pipeline_node_result_contract_status" -ne 0 ] || [ "$audit_projection_contract_status" -ne 0 ] || [ "$audit_projection_exact_contract_status" -ne 0 ] || [ "$ctx_ovl_validation_status" -ne 0 ] || [ "$ctx_ovl_validation_self_test_status" -ne 0 ] || [ "$ctx_ovl_equivalence_status" -ne 0 ] || [ "$ctx_ovl_fixture_registry_status" -ne 0 ] || [ "$ctx_ovl_fixture_registry_self_test_status" -ne 0 ] || [ "$subjective_mem_validation_status" -ne 0 ] || [ "$subjective_mem_validation_self_test_status" -ne 0 ] || [ "$subjective_mem_equivalence_status" -ne 0 ] || [ "$subjective_mem_fixture_registry_status" -ne 0 ] || [ "$subjective_mem_fixture_registry_self_test_status" -ne 0 ] || [ "$subjective_mem_storage_authority_status" -ne 0 ] || [ "$subjective_mem_storage_authority_self_test_status" -ne 0 ]; then
+          if [ "$semantic_status" -ne 0 ] || [ "$semantic_self_test_status" -ne 0 ] || [ "$boundary_status" -ne 0 ] || [ "$phase55a_cutover_guard_status" -ne 0 ] || [ "$phase55a_cutover_guard_self_test_status" -ne 0 ] || [ "$phase55b1_cutover_guard_status" -ne 0 ] || [ "$phase55b1_cutover_guard_self_test_status" -ne 0 ] || [ "$phase55b2_cutover_guard_status" -ne 0 ] || [ "$phase55b2_cutover_guard_self_test_status" -ne 0 ] || [ "$phase55c0_cutover_guard_status" -ne 0 ] || [ "$phase55c0_cutover_guard_self_test_status" -ne 0 ] || [ "$phase55c4_cutover_guard_status" -ne 0 ] || [ "$phase55c4_cutover_guard_self_test_status" -ne 0 ] || [ "$i1ge_cutover_guard_status" -ne 0 ] || [ "$i1ge_cutover_guard_self_test_status" -ne 0 ] || [ "$contract1_validation_status" -ne 0 ] || [ "$contract1_equivalence_status" -ne 0 ] || [ "$contract1_regression_status" -ne 0 ] || [ "$contract1_regression_self_test_status" -ne 0 ] || [ "$contract1_fixture_registry_status" -ne 0 ] || [ "$contract1_fixture_registry_self_test_status" -ne 0 ] || [ "$relayctx_contract_status" -ne 0 ] || [ "$relayint_contract_status" -ne 0 ] || [ "$pipeline_node_result_contract_status" -ne 0 ] || [ "$audit_projection_contract_status" -ne 0 ] || [ "$audit_projection_exact_contract_status" -ne 0 ] || [ "$ctx_ovl_validation_status" -ne 0 ] || [ "$ctx_ovl_validation_self_test_status" -ne 0 ] || [ "$ctx_ovl_equivalence_status" -ne 0 ] || [ "$ctx_ovl_fixture_registry_status" -ne 0 ] || [ "$ctx_ovl_fixture_registry_self_test_status" -ne 0 ] || [ "$subjective_mem_validation_status" -ne 0 ] || [ "$subjective_mem_validation_self_test_status" -ne 0 ] || [ "$subjective_mem_equivalence_status" -ne 0 ] || [ "$subjective_mem_fixture_registry_status" -ne 0 ] || [ "$subjective_mem_fixture_registry_self_test_status" -ne 0 ] || [ "$subjective_mem_storage_authority_status" -ne 0 ] || [ "$subjective_mem_storage_authority_self_test_status" -ne 0 ]; then
             exit 1
           fi
       - name: Upload documentation boundary diagnostics

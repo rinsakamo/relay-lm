@@ -28,7 +28,7 @@ CONCRETE_CANARIES = (
 
 PUBLIC_DOCS = (
     "docs/evidence/waves/wave3_cross_slice_convergence_audit.md",
-    "docs/architecture/i1ge_durable_finalization_crash_validation.md",
+    "docs/evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md",
     "docs/architecture/phase_i4d_primary_retrieval_exclusion.md",
     "docs/architecture/o1d1_production_scheduler_round.md",
     "docs/evidence/implementation/i1ge_completion_report.md",

@@ -184,7 +184,7 @@ EVIDENCE_PATHS = (
     "docs/architecture/phase6c2_one_queued_primary_worker_integration.md",
     "docs/architecture/o0_local_one_job_runner.md",
     "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
-    "docs/architecture/i1ge_durable_finalization_crash_validation.md",
+    "docs/evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md",
     "scripts/relaylm_o0_local_one_job_runner_ci_runner.py",
     "scripts/relaylm_phase6c1_primary_worker_smoke.py",
     "scripts/relaylm_phase6c1_worker_crash_convergence_smoke.py",

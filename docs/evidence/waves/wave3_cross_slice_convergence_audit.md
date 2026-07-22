@@ -31,7 +31,7 @@ The exact submitted source is retained byte-for-byte as [wave3_cross_slice_conve
 
 | Slice | Source PR | Merged | Merge commit | Final head | Completion report | Dedicated handoff |
 |---|---:|---|---|---|---|---|
-| I1-GE full production crash validation | #411 | 2026-06-27 07:41:44 JST | `e2caa1bdb53468ca282e8f374ba8ceebf839c976` | `6cb461cb614d14965f5a49c1c4b517755f44f4a6` | `docs/evidence/implementation/i1ge_completion_report.md` | `docs/architecture/i1ge_durable_finalization_crash_validation.md` |
+| I1-GE full production crash validation | #411 | 2026-06-27 07:41:44 JST | `e2caa1bdb53468ca282e8f374ba8ceebf839c976` | `6cb461cb614d14965f5a49c1c4b517755f44f4a6` | `docs/evidence/implementation/i1ge_completion_report.md` | `docs/evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md` |
 | I-4D lifecycle-aware retrieval exclusion | #414 | 2026-06-27 07:34:39 JST | `48e890f05f76196b73267559b079f4a05c441077` | `81c58516a4ba04c6e439ff17d633575bb193f843` | `docs/evidence/implementation/i4d_completion_report.md` | `docs/architecture/phase_i4d_primary_retrieval_exclusion.md` |
 | O1D1 accepted scheduler gates and one round | #412 | 2026-06-27 02:02:51 JST | `9b6349236f1a01f3cdccbe9e3c2c874ae1137475` | `7aa051abe6a9e49a2f67c193b7e742f9406ec54f` | `docs/evidence/implementation/o1d1_completion_report.md` | `docs/architecture/o1d1_production_scheduler_round.md` |
 
@@ -45,7 +45,7 @@ All three completion reports declare `relaylm_doc_type: implementation_completio
 - I-4D #414 changed sixteen files: retrieval eligibility/runtime integration, Lab lifecycle projection/parser/API, seven permanent smokes, one workflow, one handoff, and one completion report.
 - O1D1 #412 changed fourteen files: accepted config/schema/example, scheduler coordinator, O1D1 support/smokes, current-boundary smoke, workflow, handoff, and completion report.
 
-Divergence found and corrected: I1-GE had a completion report but no dedicated architecture handoff in the merged source PR. W3-INT adds `docs/architecture/i1ge_durable_finalization_crash_validation.md` as a documentation-governance correction based on the merged PR body and report. No production behavior is changed.
+Divergence found and corrected: I1-GE had a completion report but no dedicated architecture handoff in the merged source PR. W3-INT added the documentation-governance handoff, now retained as frozen evidence at `docs/evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md`, based on the merged PR body and report. No production behavior is changed.
 
 ## Production modules and workflows
 

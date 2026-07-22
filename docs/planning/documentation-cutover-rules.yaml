@@ -520,6 +520,20 @@ path_overrides:
       parent and LAT-2 references, updates the implementation evidence index, and
       leaves current Stream Unpack sequencing plus runtime handoff/transport authority
       with the parent architecture, C2/C3 authorities, implementation, and focused smokes.
+  docs/architecture/i1ge_durable_finalization_crash_validation.md:
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_paths:
+      - docs/evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md
+    deletion_reason: >-
+      Cutover 1C-52: this validation-only I1-GE governance handoff was a frozen
+      historical record mislocated in the live architecture collection. The
+      cutover preserves PR #411 validation provenance and PR #415 handoff
+      provenance, repairs every active path-bound reference, keeps the byte-exact
+      Wave 2 and Wave 3 source snapshots unchanged, and leaves current durable-finalization
+      production authority with the I1-G contract, I1-GD, implementation, and
+      focused smokes.
+
 family_rules:
   - id: canonical-target-collections
     path_regex: '^docs/(planning|reference|templates)/'
