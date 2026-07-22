@@ -1,0 +1,37 @@
+name: OVL-1 targeted tests
+
+on:
+  push:
+    paths:
+      - "relaylm/ctx_ovl_*.py"
+      - "relaylm/evidence_runtime.py"
+      - "relaylm/config.py"
+      - "tests/test_ctx_ovl_*.py"
+      - ".github/workflows/ovl1-targeted.yml"
+  pull_request:
+    paths:
+      - "relaylm/ctx_ovl_*.py"
+      - "relaylm/evidence_runtime.py"
+      - "relaylm/config.py"
+      - "tests/test_ctx_ovl_*.py"
+      - ".github/workflows/ovl1-targeted.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install -q -e .[test]
+      - name: Run OVL-1 tests
+        run: >-
+          pytest -q --tb=short
+          tests/test_ctx_ovl_config.py
+          tests/test_ctx_ovl_runtime_contract.py
+          tests/test_ctx_ovl_runtime_e2e.py
