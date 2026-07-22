@@ -8,7 +8,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - phase_i4e_forget_api_ui.md
   - phase_i4d_primary_retrieval_exclusion.md
-  - phase_i4c2_primary_forget_recovery_finalization.md
+  - ../evidence/implementation/i4c2-primary-forget-recovery-finalization-handoff.md
   - ../evidence/implementation/i4c1-primary-forget-hidden-successor-handoff.md
   - phase_i4b_primary_current_state_shared_fence.md
 ---
@@ -36,7 +36,7 @@ one real current active Primary MEM
 
 - I-4B remains current-state resolver, shared mutation fence, read-only preflight, token validation, and bounded history authority.
 - I-4C1 remains durable prepared evidence and hidden-successor lifecycle commit authority.
-- I-4C2 remains prepared resume, M3f/M3g convergence, tombstone finalization, public apply semantics, and response-loss replay authority.
+- The Phase I-4 master contract and current implementation own prepared resume, M3f/M3g convergence, tombstone finalization, public apply semantics, and response-loss replay; the moved I-4C2 handoff is historical evidence only.
 - I-4D remains ordinary M2 / RelayCTX exclusion and historical lifecycle overlay authority.
 - I-4E remains loopback-only API and SOUL Lab Forget UI authority.
 - UI-B1A remains read-only lifecycle / operation visibility only.

@@ -100,7 +100,6 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [Phase I-3 Auditable Primary MEM Correct](phase_i3_auditable_primary_mem_correct.md)
 - [Phase I-4A Primary MEM Forget / Hide Contract](phase_i4_primary_mem_forget_hide_contract.md)
 - [Phase I-4B Primary Current State and Shared Mutation Fence](phase_i4b_primary_current_state_shared_fence.md)
-- [Phase I-4C2 Primary Forget Recovery and Finalization](phase_i4c2_primary_forget_recovery_finalization.md)
 - [Phase I-4D Primary Retrieval Exclusion](phase_i4d_primary_retrieval_exclusion.md)
 - [Phase I-4E Forget API and SOUL Lab UI](phase_i4e_forget_api_ui.md)
 - [Phase I-4F Forget Product Validation](phase_i4f_forget_validation.md)
@@ -138,7 +137,6 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in](e1r5_primary_mem_recall_candidate_bridge.md) — canonical fallback fold-in; M2 remains preferred and E1-R5 remains fallback-only.
 - [Phase I-4A Primary MEM Forget / Hide Contract](phase_i4_primary_mem_forget_hide_contract.md)
 - [Phase I-4B Primary Current State and Shared Mutation Fence](phase_i4b_primary_current_state_shared_fence.md)
-- [Phase I-4C2 Primary Forget Recovery and Finalization](phase_i4c2_primary_forget_recovery_finalization.md)
 - [Phase I-4D Primary Retrieval Exclusion](phase_i4d_primary_retrieval_exclusion.md)
 - [Phase I-4E Forget API and SOUL Lab UI](phase_i4e_forget_api_ui.md)
 - [Phase I-4F Forget Product Validation](phase_i4f_forget_validation.md)

@@ -11,7 +11,7 @@ relaylm_related_authority:
   - ../../architecture/phase_i4f_forget_validation.md
   - ../../architecture/phase_i4e_forget_api_ui.md
   - ../../architecture/phase_i4d_primary_retrieval_exclusion.md
-  - ../../architecture/phase_i4c2_primary_forget_recovery_finalization.md
+  - i4c2-primary-forget-recovery-finalization-handoff.md
   - i4c1-primary-forget-hidden-successor-handoff.md
   - ../../architecture/phase_i4b_primary_current_state_shared_fence.md
 relaylm_not_authoritative_for:
