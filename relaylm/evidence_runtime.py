@@ -170,6 +170,7 @@ def capture_evidence_for_user_input(
             isinstance(content, list)
             and len(content) == 1
             and isinstance(content[0], dict)
+            and content[0].get("type") in ("text", "input_text")
             and isinstance(content[0].get("text"), str)
             and content[0].get("text")
         ):

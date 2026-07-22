@@ -202,6 +202,53 @@ def test_change_refs_and_assistant_projection_use_persisted_partition_keys(
     assert len(json.loads(coverage_files[0].read_text(encoding="utf-8"))) == 2
 
 
+def test_non_text_single_content_part_with_text_field_fails_closed(
+    tmp_path: Path,
+) -> None:
+    evidence_root = tmp_path / "evidence"
+    config_path = _write_config(
+        tmp_path,
+        evidence_enabled=True,
+        evidence_dry_run_only=False,
+        evidence_apply_enabled=True,
+        evidence_data_root=str(evidence_root),
+    )
+    client = _client(config_path)
+    payload = _chat_request(
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "text": "must not be admitted as user text",
+                    }
+                ],
+            }
+        ]
+    )
+    with respx.mock(assert_all_called=False) as mock:
+        backend = mock.post(BACKEND_CHAT_COMPLETIONS_URL).mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "index": 0,
+                            "message": {"role": "assistant", "content": "ignored"},
+                            "finish_reason": "stop",
+                        }
+                    ]
+                },
+            )
+        )
+        response = client.post("/v1/chat/completions", json=payload)
+
+    assert response.status_code == 500
+    assert response.json()["error"]["type"] == "evidence_capture_error"
+    assert backend.called is False
+
+
 def test_route_snapshot_rejects_non_string_expiry() -> None:
     payload = route_snapshot(capture_profile="managed_assistant_response")
     payload["expires_at_or_null"] = 123
