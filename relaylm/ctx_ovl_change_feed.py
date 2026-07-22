@@ -44,6 +44,13 @@ def _bounded_event_slice(
     last_observed: int,
     mode: str,
 ) -> tuple[list[dict], int, tuple[str, ...]]:
+    """Return one bounded contiguous page and its resulting watermark.
+
+    Coverage is still proven against the complete Contract-1 projection log,
+    but catch-up advances in pages instead of becoming permanently blocked
+    whenever the backlog exceeds the per-operation event cap.
+    """
+
     if not coverage_events:
         if not projection_events:
             return [], last_observed, ()
@@ -70,9 +77,8 @@ def _bounded_event_slice(
 
     by_sequence: dict[int, dict] = {}
     for event in projection_events:
-        try:
-            sequence = int(event["partition_sequence"])
-        except (KeyError, TypeError, ValueError):
+        sequence = event.get("partition_sequence")
+        if type(sequence) is not int or sequence < 0:
             reasons.append("ctx_ovl_change_projection_shape_invalid")
             continue
         if (
@@ -93,11 +99,14 @@ def _bounded_event_slice(
 
     if mode == "rebuild":
         selected_sequences = expected[-_REBUILD_MAX_RECORDS:]
+        resulting_watermark = highest
     else:
-        selected_sequences = [seq for seq in expected if seq > last_observed]
-        if len(selected_sequences) > _CATCH_UP_MAX_EVENTS:
-            return [], last_observed, ("ctx_ovl_catch_up_event_bound_exceeded",)
-    return [by_sequence[seq] for seq in selected_sequences], highest, ()
+        pending = [seq for seq in expected if seq > last_observed]
+        selected_sequences = pending[:_CATCH_UP_MAX_EVENTS]
+        resulting_watermark = (
+            selected_sequences[-1] if selected_sequences else last_observed
+        )
+    return [by_sequence[seq] for seq in selected_sequences], resulting_watermark, ()
 
 
 __all__ = ["_bounded_event_slice", "_validate_change_partition_descriptor"]
