@@ -5129,12 +5129,14 @@ PR #631 preserves the completed B2 request-runtime suppression wiring handoff as
 
 ```yaml
 cutover_pr: 634
-merged_commit: pending
-bookkeeping_pr: pending
-base_main: 3b518000d9e87cafe8ba23aabf0b2ef815881c16
-validated_content_head: pending
-head_at_merge: pending
-merged_at: pending
+merged_commit: 8791d0495e1c4b56aa97b49acc27b745a65bdd4c
+bookkeeping_pr: 635
+base_main: 86d3af1b3c24569f1daf01b2b52ef8c5119046d8
+implementation_base_pr: 629
+implementation_base_merge: 86d3af1b3c24569f1daf01b2b52ef8c5119046d8
+validated_content_head: ca4a9bc98c48316dc777c9c7abf85f4d910a11ef
+head_at_merge: ca4a9bc98c48316dc777c9c7abf85f4d910a11ef
+merged_at: 2026-07-22T08:16:33Z
 old_path: docs/architecture/i1ge_durable_finalization_crash_validation.md
 old_blob_sha: c711874bc813f29e5ac23d85ebc315eeeb24eeba
 old_content_sha256: 4322642a4686ac77f2a72b695fc7d9e1ebe370670625b7ab5ea4278f46f50f57
@@ -5160,13 +5162,17 @@ verification:
   fail_closed_guard: scripts/relaylm_i1ge_handoff_cutover_guard.py
   guard_integrated_into_existing_documentation_boundary_workflow: true
   guard_self_test_assertions: 23
-  exact_head_workflow_runs: pending
-  exact_head_workflow_success: pending
-  exact_head_workflow_failure: pending
-  unresolved_review_threads: pending
+  exact_head_workflow_runs: 16
+  exact_head_workflow_success: 16
+  exact_head_workflow_failure: 0
+  unresolved_review_threads: 0
   runtime_files_changed: 0
   relaylm_changed_files: 0
   open_pr_content_imported: false
+  implementation_base_path_overlap: 0
+  final_changed_files: 17
+  final_additions: 610
+  final_deletions: 28
 ```
 
-PR #634 preserves the validation-only I1-GE governance handoff as frozen implementation evidence. The production proof remains attributable to PR #411; the handoff itself remains attributable to PR #415. Current durable-finalization behavior remains contract-, I1-GD-, implementation-, and focused-smoke-owned. Merge attribution and exact-head validation remain pending until explicit final review and bookkeeping consolidation.
+PR #634 preserves the validation-only I1-GE governance handoff as frozen implementation evidence and merged as `8791d0495e1c4b56aa97b49acc27b745a65bdd4c` from reviewed head `ca4a9bc98c48316dc777c9c7abf85f4d910a11ef` on EV-1 main `86d3af1b3c24569f1daf01b2b52ef8c5119046d8`. The production proof remains attributable to PR #411; the handoff itself remains attributable to PR #415. Current durable-finalization behavior remains contract-, I1-GD-, implementation-, and focused-smoke-owned. PR #635 consolidates merge attribution and exact-head validation without changing accepted cutover content.
