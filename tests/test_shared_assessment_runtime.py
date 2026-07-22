@@ -682,6 +682,7 @@ def _write_json(path: Path, payload: dict) -> None:
 
 
 def test_assessment_identity_is_bound_to_one_evidence_space(store) -> None:
+    assert len(ASSESSMENT_ID.split("_")[1]) == 32
     _captures, first_bundle = _bundle(store)
     first = commit_shared_assessment_revision(
         store=store,
@@ -962,3 +963,125 @@ def test_temporal_monotonicity_and_naive_clocks_fail_closed(store) -> None:
             decided_at=datetime(2026, 7, 22, 8, 0, 0),
         )
     assert naive_receipt.status == "fail_closed"
+
+
+def _capture_assistant_for_hardening(store, *, suffix: str):
+    from relaylm.evidence_response_capture import (
+        capture_managed_assistant_response_nonstream,
+    )
+
+    user = _capture(store, key=f"assistant-hardening-user-{suffix}")
+    assistant = capture_managed_assistant_response_nonstream(
+        store=store,
+        apply_enabled=True,
+        character_id="char1",
+        memory_namespace="ns1",
+        session_id="sess1",
+        response_id=f"assistant-hardening-response-{suffix}",
+        delivery_cohort_id=f"assistant-hardening-cohort-{suffix}",
+        request_source_event_ids=(user.source_event_id,),
+        assistant_visible_text="Canonical assistant output.",
+        operation_idempotency_key=f"assistant-hardening-{suffix}",
+        route_snapshot_payload=route_snapshot(
+            capture_profile="managed_assistant_response",
+            issued_at=NOW.isoformat(),
+        ),
+        now=NOW,
+    )
+    return user, assistant
+
+
+def test_assistant_response_binding_digest_is_required(store) -> None:
+    user, assistant = _capture_assistant_for_hardening(store, suffix="binding")
+    source_path = _record_path(
+        store, user.evidence_space_id, "source_event", assistant.source_event_id
+    )
+    source = json.loads(source_path.read_text(encoding="utf-8"))
+    binding_id = source["assistant_response_binding_ref_or_null"]
+    binding_path = _record_path(
+        store, user.evidence_space_id, "assistant_response_binding", binding_id
+    )
+    binding = json.loads(binding_path.read_text(encoding="utf-8"))
+    binding["canonical_binding_digest"] = "f" * 64
+    _write_json(binding_path, binding)
+    result = prepare_shared_assessment_pass(
+        store=store,
+        evidence_space_id=user.evidence_space_id,
+        source_event_ids=(assistant.source_event_id,),
+        assessment_pass_id="assistant-binding-tamper",
+        now=NOW,
+    )
+    assert result.status == "fail_closed"
+    assert result.blocked_reasons == (
+        "shared_assessment_assistant_response_binding_invalid",
+    )
+
+
+def test_assistant_finalization_artifact_is_exactly_bound(store) -> None:
+    user, assistant = _capture_assistant_for_hardening(store, suffix="artifact")
+    source = json.loads(
+        _record_path(
+            store, user.evidence_space_id, "source_event", assistant.source_event_id
+        ).read_text(encoding="utf-8")
+    )
+    attempt = json.loads(
+        _record_path(
+            store,
+            user.evidence_space_id,
+            "capture_attempt",
+            source["capture_attempt_id"],
+        ).read_text(encoding="utf-8")
+    ) if False else json.loads(
+        (
+            store.root
+            / user.evidence_space_id
+            / "logs"
+            / "capture_attempt"
+            / f"{source['capture_attempt_id']}.json"
+        ).read_text(encoding="utf-8")
+    )
+    admission_id = next(
+        event["operation_payload"]["admission_decision_id"]
+        for event in attempt
+        if event.get("operation") == "bind_admission"
+    )
+    admission = json.loads(
+        _record_path(
+            store, user.evidence_space_id, "admission_decision", admission_id
+        ).read_text(encoding="utf-8")
+    )
+    validation = json.loads(
+        _record_path(
+            store,
+            user.evidence_space_id,
+            "validation_bundle",
+            admission["validation_bundle_id_or_null"],
+        ).read_text(encoding="utf-8")
+    )
+    gate_index = next(
+        index
+        for index, requirement in enumerate(validation["gate_requirements"])
+        if requirement["gate_kind"] == "assistant_finalization"
+    )
+    derived_id = validation["active_artifact_refs"][gate_index]
+    event_id = "artifactevent_" + derived_id.removeprefix("derivedartifact_")
+    artifact_path = _record_path(
+        store,
+        user.evidence_space_id,
+        "source_derived_artifact_event",
+        event_id,
+    )
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    artifact["operation_payload"]["input_digest"] = "e" * 64
+    _write_json(artifact_path, artifact)
+    result = prepare_shared_assessment_pass(
+        store=store,
+        evidence_space_id=user.evidence_space_id,
+        source_event_ids=(assistant.source_event_id,),
+        assessment_pass_id="assistant-artifact-tamper",
+        now=NOW,
+    )
+    assert result.status == "fail_closed"
+    assert result.blocked_reasons == (
+        "shared_assessment_validation_artifacts_invalid",
+    )

@@ -488,7 +488,7 @@ def _digest(value: object) -> bool:
 def derive_shared_assessment_id(evidence_space_id: str, logical_key: str) -> str:
     if not _token(evidence_space_id) or not _token(logical_key):
         raise ValueError("shared_assessment_identity_input_invalid")
-    space_prefix = canonical_digest({"evidence_space_id": evidence_space_id})[:16]
+    space_prefix = canonical_digest({"evidence_space_id": evidence_space_id})[:32]
     logical_digest = canonical_digest({"logical_key": logical_key})
     return f"asm_{space_prefix}_{logical_digest}"
 
@@ -496,7 +496,7 @@ def derive_shared_assessment_id(evidence_space_id: str, logical_key: str) -> str
 def assessment_id_matches_evidence_space(assessment_id: object, evidence_space_id: object) -> bool:
     if not isinstance(assessment_id, str) or not _token(evidence_space_id):
         return False
-    prefix = f"asm_{canonical_digest({'evidence_space_id': evidence_space_id})[:16]}_"
+    prefix = f"asm_{canonical_digest({'evidence_space_id': evidence_space_id})[:32]}_"
     suffix = assessment_id[len(prefix):] if assessment_id.startswith(prefix) else ""
     return len(suffix) == 64 and _digest(suffix)
 

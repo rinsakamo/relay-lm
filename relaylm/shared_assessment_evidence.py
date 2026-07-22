@@ -134,6 +134,8 @@ def _load_authorized_shared_assessment_source(
         return None, ("shared_assessment_validation_bundle_invalid",)
     artifact_reasons = _validate_validation_artifacts(
         tx=tx,
+        source=source,
+        manifest=manifest,
         validation=validation,
         source_event_id=source_event_id,
         evidence_space_id=evidence_space_id,
@@ -392,6 +394,11 @@ def _validate_source_semantics(
     ):
         return ("shared_assessment_product_knowledge_forbidden",)
     if normalized_origin == "user":
+        if (
+            source.get("assistant_response_binding_ref_or_null") is not None
+            or source.get("source_replay_identity") != {"kind": "none"}
+        ):
+            return ("shared_assessment_source_provenance_invalid",)
         expected = {
             "source_role": "user_input",
             "occurrence_kind": "message",
@@ -429,9 +436,190 @@ def _validate_source_semantics(
     return ()
 
 
+_ASSISTANT_BINDING_DIGEST_FIELDS = (
+    "response_id",
+    "run_id",
+    "turn_id_or_null",
+    "delivery_cohort_id",
+    "request_source_refs",
+    "canonical_output_parts",
+    "completion_extent",
+    "termination_cause",
+    "first_output_unit_sequence",
+    "last_output_unit_sequence",
+    "output_unit_count",
+    "finalization_idempotency_key",
+)
+
+
+def _load_assistant_response_binding(
+    *,
+    tx: EvidenceStoreTransaction,
+    source: dict,
+    manifest: dict,
+    evidence_space_id: str,
+) -> tuple[tuple[str, str] | None, tuple[str, ...]]:
+    binding_id = source.get("assistant_response_binding_ref_or_null")
+    replay = source.get("source_replay_identity")
+    if not isinstance(binding_id, str) or not isinstance(replay, dict):
+        return None, ("shared_assessment_assistant_response_binding_invalid",)
+    binding = tx.read_record(
+        record_kind="assistant_response_binding", record_id=binding_id
+    )
+    if (
+        not isinstance(binding, dict)
+        or binding.get("schema") != "relaylm.assistant_response_binding.v1"
+        or binding.get("assistant_response_binding_id") != binding_id
+    ):
+        return None, ("shared_assessment_assistant_response_binding_invalid",)
+    digest_input = {
+        field: binding.get(field) for field in _ASSISTANT_BINDING_DIGEST_FIELDS
+    }
+    binding_digest = binding.get("canonical_binding_digest")
+    if (
+        not isinstance(binding_digest, str)
+        or canonical_digest(digest_input) != binding_digest
+    ):
+        return None, ("shared_assessment_assistant_response_binding_invalid",)
+    finalized_at = _parse_time(binding.get("finalized_at"))
+    first_output_at = _parse_time(binding.get("first_output_accepted_at"))
+    received_at = _parse_time(source.get("received_at"))
+    observed_at = _parse_time(source.get("observed_at"))
+    if (
+        finalized_at is None
+        or first_output_at is None
+        or received_at != finalized_at
+        or observed_at != finalized_at
+        or first_output_at > finalized_at
+        or binding.get("finalization_basis_ref")
+        != "relaylm-managed-visible-output-finalization"
+    ):
+        return None, ("shared_assessment_assistant_response_binding_invalid",)
+    principal, scope = build_runtime_authority(
+        scope_kind="runtime_finalization_authority",
+        allowed_operations=("response_finalize",),
+        evidence_space_id=evidence_space_id,
+        issued_at=str(binding["finalized_at"]),
+    )
+    if (
+        binding.get("runtime_principal_ref") != principal.to_dict()
+        or binding.get("runtime_finalization_authority_scope")
+        != scope.to_dict()
+    ):
+        return None, ("shared_assessment_assistant_response_binding_invalid",)
+    expected_replay = {
+        "kind": "managed_response_identity",
+        "response_id": binding.get("response_id"),
+        "delivery_cohort_id": binding.get("delivery_cohort_id"),
+        "response_finalization_idempotency_key": binding.get(
+            "finalization_idempotency_key"
+        ),
+        "canonical_response_binding_digest": binding_digest,
+    }
+    if replay != expected_replay:
+        return None, ("shared_assessment_assistant_response_binding_invalid",)
+
+    reservation_id = binding.get("response_capture_reservation_id")
+    if not isinstance(reservation_id, str):
+        return None, ("shared_assessment_assistant_response_binding_invalid",)
+    reservation = tx.read_record(
+        record_kind="response_capture_reservation", record_id=reservation_id
+    )
+    if (
+        not isinstance(reservation, dict)
+        or reservation.get("schema")
+        != "relaylm.assistant_response_capture_reservation.v1"
+        or reservation.get("response_capture_reservation_id") != reservation_id
+        or reservation.get("evidence_space_id") != evidence_space_id
+        or any(
+            reservation.get(field) != binding.get(field)
+            for field in (
+                "response_id",
+                "run_id",
+                "turn_id_or_null",
+                "delivery_cohort_id",
+                "request_source_refs",
+            )
+        )
+    ):
+        return None, ("shared_assessment_assistant_response_binding_invalid",)
+    response_events = tx.read_log(
+        log_kind="response_capture", key=reservation_id
+    )
+    finalize_events = [
+        event
+        for event in (response_events or [])
+        if isinstance(event, dict) and event.get("operation") == "finalize"
+    ]
+    if (
+        len(finalize_events) != 1
+        or not isinstance(finalize_events[0].get("operation_payload"), dict)
+        or finalize_events[0]["operation_payload"].get(
+            "assistant_response_binding"
+        )
+        != binding
+    ):
+        return None, ("shared_assessment_assistant_response_binding_invalid",)
+
+    manifest_parts = manifest.get("parts")
+    binding_parts = binding.get("canonical_output_parts")
+    if not isinstance(manifest_parts, list) or not isinstance(binding_parts, list):
+        return None, ("shared_assessment_assistant_response_binding_invalid",)
+    manifest_by_id = {
+        item.get("part_id"): item
+        for item in manifest_parts
+        if isinstance(item, dict) and isinstance(item.get("part_id"), str)
+    }
+    if len(binding_parts) != len(manifest_by_id) or not binding_parts:
+        return None, ("shared_assessment_assistant_response_binding_invalid",)
+    for output_part in binding_parts:
+        if not isinstance(output_part, dict):
+            return None, ("shared_assessment_assistant_response_binding_invalid",)
+        part_id = output_part.get("part_id")
+        manifest_part = manifest_by_id.get(part_id)
+        representation = output_part.get("content_representation")
+        ranges = output_part.get("accepted_ranges")
+        if (
+            not isinstance(manifest_part, dict)
+            or not isinstance(representation, dict)
+            or representation
+            != {
+                "kind": "content_digest",
+                "digest_algorithm": "sha256",
+                "digest_value": manifest_part.get("content_digest_or_null"),
+            }
+            or not isinstance(ranges, list)
+            or not ranges
+            or output_part.get("media_type")
+            != "text/plain; charset=utf-8"
+            or str(manifest_part.get("media_type", "")).split(";", 1)[0]
+            .strip()
+            .lower()
+            != "text/plain"
+        ):
+            return None, ("shared_assessment_assistant_response_binding_invalid",)
+        cursor = 0
+        for accepted_range in ranges:
+            if (
+                not isinstance(accepted_range, dict)
+                or accepted_range.get("unit") != "utf8_byte"
+                or type(accepted_range.get("start_inclusive")) is not int
+                or type(accepted_range.get("end_exclusive")) is not int
+                or accepted_range["start_inclusive"] != cursor
+                or accepted_range["end_exclusive"] <= cursor
+            ):
+                return None, ("shared_assessment_assistant_response_binding_invalid",)
+            cursor = accepted_range["end_exclusive"]
+        if cursor != manifest_part.get("byte_length_or_null"):
+            return None, ("shared_assessment_assistant_response_binding_invalid",)
+    return (binding_id, binding_digest), ()
+
+
 def _validate_validation_artifacts(
     *,
     tx: EvidenceStoreTransaction,
+    source: dict,
+    manifest: dict,
     validation: dict,
     source_event_id: str,
     evidence_space_id: str,
@@ -447,6 +635,16 @@ def _validate_validation_artifacts(
         if normalized_origin == "user"
         else ("canonicalization", "integrity", "assistant_finalization")
     )
+    assistant_binding: tuple[str, str] | None = None
+    if normalized_origin == "assistant":
+        assistant_binding, binding_reasons = _load_assistant_response_binding(
+            tx=tx,
+            source=source,
+            manifest=manifest,
+            evidence_space_id=evidence_space_id,
+        )
+        if assistant_binding is None:
+            return binding_reasons
     if len(requirements) != len(refs) or len(set(refs)) != len(refs):
         return ("shared_assessment_validation_artifacts_invalid",)
     gates: list[str] = []
@@ -486,6 +684,22 @@ def _validate_validation_artifacts(
                 or payload.get("input_digest") != manifest_digest
                 or payload.get("output_digest_or_null") != manifest_digest
                 or payload.get("output_binding_ref_or_null") != source_event_id
+            ):
+                return ("shared_assessment_validation_artifacts_invalid",)
+        elif gate == "assistant_finalization":
+            assert assistant_binding is not None
+            binding_id, binding_digest = assistant_binding
+            if (
+                event.get("subject")
+                != {
+                    "kind": "assistant_response_binding",
+                    "assistant_response_binding_id": binding_id,
+                }
+                or payload.get("input_schema")
+                != "relaylm.assistant_response_binding.v1"
+                or payload.get("input_digest") != binding_digest
+                or payload.get("output_digest_or_null") != binding_digest
+                or payload.get("output_binding_ref_or_null") != binding_id
             ):
                 return ("shared_assessment_validation_artifacts_invalid",)
         gates.append(gate)
