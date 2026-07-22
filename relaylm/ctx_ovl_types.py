@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from relaylm.evidence_common import PrincipalRef, canonical_digest, new_opaque_id
+from relaylm.evidence_common import PrincipalRef, new_opaque_id
 
 _MAX_CANDIDATE_BYTES = 8192
 _SELECTION_MAX_RECORDS = 4
@@ -150,14 +150,9 @@ def _new_partition_state(
     contract1_partition_epoch_id: str,
     evaluated_at: datetime,
 ) -> _ParticipantPartitionState:
-    epoch_descriptor_id = "ctxovlepoch_" + canonical_digest(
-        {
-            "session_id": session_id,
-            "partition_kind": "participant",
-            "partition_id": participant_partition_id,
-            "epoch_sequence": 1,
-        }
-    )
+    # Each process-local rebuild establishes a fresh opaque OVL epoch. The
+    # governing Contract-1 partition epoch remains bound separately below.
+    epoch_descriptor_id = new_opaque_id("ctxovlepoch")
     epoch = {
         "schema": "relaylm.ctx_ovl_partition_epoch.v1",
         "partition_epoch_descriptor_id": epoch_descriptor_id,
