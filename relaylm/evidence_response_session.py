@@ -423,11 +423,36 @@ def _restore(
         "response_id": response_id,
         "delivery_cohort_id": delivery_cohort_id,
         "evidence_space_id": descriptor.evidence_space_id,
-        "route_capture_grant_snapshot_ref": route_snapshot.route_binding_id,
         "capture_stream_id": stream_descriptor.capture_stream_id,
         "capture_stream_epoch_id": stream_descriptor.capture_stream_epoch_id,
     }
     if any(reservation.get(key) != value for key, value in expected.items()):
+        return None, ("assistant_response_reservation_integrity_conflict",)
+    persisted_route_ref = reservation.get("route_capture_grant_snapshot_ref")
+    if not isinstance(persisted_route_ref, str) or not persisted_route_ref:
+        return None, ("assistant_response_reservation_shape_invalid",)
+    persisted_route_payload = tx.read_record(
+        record_kind="route_capture_grant_snapshot", record_id=persisted_route_ref
+    )
+    persisted_route_snapshot, persisted_route_reasons = (
+        build_managed_conversation_route_snapshot(
+            snapshot_payload=persisted_route_payload,
+            evidence_space_id=descriptor.evidence_space_id,
+            capture_profile="managed_assistant_response",
+        )
+    )
+    if persisted_route_snapshot is None or persisted_route_reasons:
+        return None, ("assistant_response_route_snapshot_recovery_invalid",)
+    if (
+        persisted_route_snapshot.route_binding_id != persisted_route_ref
+        or persisted_route_snapshot.route_contract_ref != route_snapshot.route_contract_ref
+        or persisted_route_snapshot.route_contract_revision
+        != route_snapshot.route_contract_revision
+        or persisted_route_snapshot.route_contract_snapshot_digest
+        != route_snapshot.route_contract_snapshot_digest
+        or persisted_route_snapshot.evidence_space_id != route_snapshot.evidence_space_id
+        or persisted_route_snapshot.capture_profile != route_snapshot.capture_profile
+    ):
         return None, ("assistant_response_reservation_integrity_conflict",)
     try:
         sequence = int(reservation["capture_sequence"])
@@ -439,7 +464,7 @@ def _restore(
         store=store,
         apply_enabled=True,
         descriptor=descriptor,
-        route_snapshot=route_snapshot,
+        route_snapshot=persisted_route_snapshot,
         stream_descriptor=stream_descriptor,
         capture_attempt_id=capture_attempt_id,
         capture_sequence=sequence,

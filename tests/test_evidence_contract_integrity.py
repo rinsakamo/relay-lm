@@ -12,7 +12,7 @@ from relaylm.evidence_response_capture import (
     capture_managed_assistant_response_nonstream,
     wrap_stream_with_evidence_response_capture,
 )
-from relaylm.evidence_response_session import derive_id
+from relaylm.evidence_response_session import derive_id, prepare_response_capture
 from relaylm.evidence_runtime import EvidenceRuntimeGate, _evidence_store_for_gate
 from relaylm.evidence_space import (
     derive_evidence_space_id,
@@ -242,6 +242,52 @@ def test_nonstream_source_resolves_real_binding_and_attestation(tmp_path) -> Non
     assert binding["termination_cause"] == "normal"
     assert binding["canonical_binding_digest"] == source["source_replay_identity"]["canonical_response_binding_digest"]
     assert len(source["protected_payload_binding_attestation_ids"]) == 1
+
+
+def test_response_recovery_reuses_persisted_route_snapshot_across_validation_times(
+    tmp_path,
+) -> None:
+    store = EvidenceRecordStore(str(tmp_path / "evidence"))
+    operation_key = "assistant-route-recovery"
+    prepared, reasons = prepare_response_capture(
+        store=store,
+        apply_enabled=True,
+        character_id="char1",
+        memory_namespace="ns1",
+        session_id="sess1",
+        response_id="response-recovery",
+        delivery_cohort_id="cohort-recovery",
+        request_source_event_ids=(),
+        operation_idempotency_key=operation_key,
+        route_snapshot_payload=route_snapshot(
+            capture_profile="managed_assistant_response",
+            issued_at=NOW.isoformat(),
+        ),
+        now=NOW,
+    )
+    assert prepared is not None and not reasons
+    ok, observe_reasons = prepared.observe("visible answer", NOW.isoformat())
+    assert ok and not observe_reasons
+
+    recovered = capture_managed_assistant_response_nonstream(
+        store=store,
+        apply_enabled=True,
+        character_id="char1",
+        memory_namespace="ns1",
+        session_id="sess1",
+        response_id="response-recovery",
+        delivery_cohort_id="cohort-recovery",
+        request_source_event_ids=(),
+        assistant_visible_text="visible answer",
+        operation_idempotency_key=operation_key,
+        route_snapshot_payload=route_snapshot(
+            capture_profile="managed_assistant_response",
+            issued_at=(NOW + timedelta(seconds=5)).isoformat(),
+        ),
+        now=NOW + timedelta(seconds=5),
+    )
+    assert recovered.status == "admitted"
+    assert recovered.source_event_id is not None
 
 
 def test_stream_dry_run_hands_off_first_chunk_and_finalizes_diagnostics(tmp_path) -> None:
