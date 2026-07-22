@@ -5182,12 +5182,12 @@ PR #634 preserves the validation-only I1-GE governance handoff as frozen impleme
 
 ```yaml
 cutover_pr: 637
-merged_commit: pending
-bookkeeping_pr: pending
+merged_commit: 28f773f04bbb8837b2a8674da93c9317eddea9d4
+bookkeeping_pr: 638
 base_main: 9647f35d4cb8792e9ab48795985bef96a75c5856
-validated_content_head: pending
-head_at_merge: pending
-merged_at: pending
+validated_content_head: 98bfb8f03df4323d7d7de33c0e19d063271683e7
+head_at_merge: 98bfb8f03df4323d7d7de33c0e19d063271683e7
+merged_at: 2026-07-22T09:13:02Z
 old_path: docs/architecture/phase_i4c1_primary_forget_hidden_successor.md
 old_blob_sha: 5744dbd445582b28ab030c38e1a49b24e355b4ed
 old_content_sha256: f52d89a6054a95e3168cbbc2edebd55fcf6ca6fcf2cd80b040152a9756a39344
@@ -5209,13 +5209,16 @@ verification:
   fail_closed_guard: scripts/relaylm_i4c1_handoff_cutover_guard.py
   guard_integrated_into_existing_documentation_boundary_workflow: true
   guard_self_test_assertions: 24
-  exact_head_workflow_runs: pending
-  exact_head_workflow_success: pending
-  exact_head_workflow_failure: pending
-  unresolved_review_threads: pending
+  exact_head_workflow_runs: 16
+  exact_head_workflow_success: 16
+  exact_head_workflow_failure: 0
+  unresolved_review_threads: 0
   runtime_files_changed: 0
   relaylm_changed_files: 0
+  final_changed_files: 15
+  final_additions: 362
+  final_deletions: 23
   open_pr_content_imported: false
 ```
 
-PR #637 preserves the completed I-4C1 hidden-successor commit handoff as frozen implementation evidence. Current Primary Forget behavior remains I-4-contract-, I-4C2/I-4D/I-4E/I-4F-, implementation-, and focused-smoke-owned. Merge attribution and exact-head validation remain pending until explicit final review and bookkeeping consolidation.
+PR #637 preserves the completed I-4C1 hidden-successor commit handoff as frozen implementation evidence and merged as `28f773f04bbb8837b2a8674da93c9317eddea9d4` from reviewed head `98bfb8f03df4323d7d7de33c0e19d063271683e7` on base `9647f35d4cb8792e9ab48795985bef96a75c5856`. Current Primary Forget behavior remains I-4-contract-, I-4C2/I-4D/I-4E/I-4F-, implementation-, and focused-smoke-owned. PR #638 consolidates merge attribution and exact-head validation without changing accepted cutover content.
