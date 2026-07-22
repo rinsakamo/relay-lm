@@ -3,8 +3,7 @@ name: Documentation Cutover 1C-54 Builder
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches:
-      - main
+    branches: [main]
     paths:
       - ".github/workflows/documentation-cutover-1c54-builder.yml"
       - "scripts/_tmp_documentation_cutover_1c54_builder.py"
@@ -31,9 +30,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install validation dependencies
-        run: python -m pip install -e ".[test]"
-      - name: Construct final cutover tree
+      - run: python -m pip install -e ".[test]"
+      - name: Construct final tree
         run: |
           set -o pipefail
           python - <<'PY'
@@ -47,36 +45,25 @@ jobs:
           path.write_text(text.replace(anchor, patch, 1), encoding="utf-8")
           PY
           set +e
-          python scripts/_tmp_documentation_cutover_1c54_builder.py 2>&1 | tee /tmp/documentation-cutover-1c54-builder.log
-          builder_status=${PIPESTATUS[0]}
+          python scripts/_tmp_documentation_cutover_1c54_builder.py 2>&1 | tee /tmp/builder.log
+          status=${PIPESTATUS[0]}
           set -e
-          if [ "$builder_status" -ne 0 ]; then
+          if [ "$status" -ne 0 ]; then
             expected=$(cat <<'EOF'
           temporary tooling remains in final diff:
            D .github/workflows/documentation-cutover-1c54-builder.yml
-           D scripts/_tmp_documentation-cutover-1c54-builder.py
+           D scripts/_tmp_documentation_cutover_1c54_builder.py
           EOF
           )
-            actual=$(cat /tmp/documentation-cutover-1c54-builder.log)
-            if [ "$actual" != "$expected" ]; then
-              exit "$builder_status"
-            fi
+            [ "$(cat /tmp/builder.log)" = "$expected" ] || exit "$status"
           fi
           python - <<'PY'
           from pathlib import Path
           path = Path("docs/evidence/migrations/documentation-hard-cutover-receipt.md")
           path.write_text(path.read_text(encoding="utf-8").rstrip() + "\n", encoding="utf-8")
           PY
-      - name: Upload builder diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: documentation-cutover-1c54-builder-diagnostics
-          path: /tmp/documentation-cutover-1c54-builder.log
       - name: Validate final tree serially
         run: |
-          set -o pipefail
-          {
           set -euo pipefail
           python -m compileall -q relaylm scripts
           python scripts/relaylm_i4c2_handoff_cutover_guard.py
@@ -97,64 +84,7 @@ jobs:
           PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_security_smoke.py
           PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_ui_smoke.py
           git diff --check
-          } 2>&1 | tee /tmp/documentation-cutover-1c54-validation.log
-      - name: Upload validation diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: documentation-cutover-1c54-validation-diagnostics
-          path: /tmp/documentation-cutover-1c54-validation.log
-      - name: Prepare validated final tree artifact
-        if: success()
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import shutil
-          import subprocess
-          root = Path.cwd()
-          out = Path("/tmp/documentation-cutover-1c54-final-tree")
-          files = out / "files"
-          files.mkdir(parents=True, exist_ok=True)
-          tracked_changed = subprocess.check_output(
-              ["git", "diff", "--name-only", "--diff-filter=ACMRTUXB"],
-              text=True,
-          ).splitlines()
-          untracked = subprocess.check_output(
-              ["git", "ls-files", "--others", "--exclude-standard"],
-              text=True,
-          ).splitlines()
-          changed = sorted(set(tracked_changed + untracked))
-          deleted = subprocess.check_output(
-              ["git", "diff", "--name-only", "--diff-filter=D"],
-              text=True,
-          ).splitlines()
-          for rel in changed:
-              target = files / rel
-              target.parent.mkdir(parents=True, exist_ok=True)
-              shutil.copy2(root / rel, target)
-          (out / "changed-files.txt").write_text("\n".join(changed) + "\n", encoding="utf-8")
-          (out / "untracked-files.txt").write_text("\n".join(untracked) + "\n", encoding="utf-8")
-          (out / "deleted-files.txt").write_text("\n".join(deleted) + "\n", encoding="utf-8")
-          (out / "numstat.txt").write_text(
-              subprocess.check_output(["git", "diff", "--numstat"], text=True),
-              encoding="utf-8",
-          )
-          (out / "stat.txt").write_text(
-              subprocess.check_output(["git", "diff", "--stat"], text=True),
-              encoding="utf-8",
-          )
-          (out / "final.patch").write_text(
-              subprocess.check_output(["git", "diff", "--no-ext-diff"], text=True),
-              encoding="utf-8",
-          )
-          PY
-      - name: Upload validated final tree artifact
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: documentation-cutover-1c54-final-tree
-          path: /tmp/documentation-cutover-1c54-final-tree
-      - name: Commit validated content tree through Git Data API
+      - name: Publish validated content commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPOSITORY: ${{ github.repository }}
@@ -164,12 +94,8 @@ jobs:
           git restore -- .github/workflows/documentation-cutover-1c54-builder.yml
           python - <<'PY'
           from __future__ import annotations
-
-          import base64
-          import json
-          import os
+          import base64, json, os, subprocess
           from pathlib import Path
-          import subprocess
           from urllib.error import HTTPError
           from urllib.parse import quote
           from urllib.request import Request, urlopen
@@ -186,60 +112,40 @@ jobs:
           }
 
           def request(method: str, path: str, payload: dict | None = None) -> dict:
-              body = None if payload is None else json.dumps(payload).encode("utf-8")
+              body = None if payload is None else json.dumps(payload).encode()
               req = Request(api + path, data=body, headers=headers, method=method)
               try:
                   with urlopen(req, timeout=60) as response:
                       return json.load(response)
               except HTTPError as exc:
-                  detail = exc.read().decode("utf-8", errors="replace")
-                  raise RuntimeError(f"GitHub API {method} {path} failed: {exc.code} {detail}") from exc
+                  raise RuntimeError(f"{method} {path}: {exc.code} {exc.read().decode(errors='replace')}") from exc
 
           head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
           remote = request("GET", f"/git/ref/heads/{quote(branch, safe='')}")["object"]["sha"]
           if remote != head:
-              raise SystemExit(f"branch moved during validated build: expected {head}, found {remote}")
-
-          tracked_changed = subprocess.check_output(
-              ["git", "diff", "--name-only", "--diff-filter=ACMRTUXB"],
-              text=True,
-          ).splitlines()
-          untracked = subprocess.check_output(
-              ["git", "ls-files", "--others", "--exclude-standard"],
-              text=True,
-          ).splitlines()
-          changed = sorted(set(tracked_changed + untracked))
-          deleted = subprocess.check_output(
-              ["git", "diff", "--name-only", "--diff-filter=D"],
-              text=True,
-          ).splitlines()
+              raise SystemExit(f"branch moved: expected {head}, found {remote}")
+          changed = sorted(set(
+              subprocess.check_output(["git", "diff", "--name-only", "--diff-filter=ACMRTUXB"], text=True).splitlines()
+              + subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard"], text=True).splitlines()
+          ))
+          deleted = subprocess.check_output(["git", "diff", "--name-only", "--diff-filter=D"], text=True).splitlines()
           workflow = ".github/workflows/documentation-cutover-1c54-builder.yml"
           if workflow in changed or workflow in deleted:
               raise SystemExit("temporary workflow must be retained for connector cleanup")
-
-          elements: list[dict[str, object]] = []
+          elements = []
           for relative in changed:
-              raw = Path(relative).read_bytes()
-              blob = request(
-                  "POST",
-                  "/git/blobs",
-                  {"content": base64.b64encode(raw).decode("ascii"), "encoding": "base64"},
-              )
-              mode = "100644"
-              elements.append({"path": relative, "mode": mode, "type": "blob", "sha": blob["sha"]})
-          for relative in deleted:
-              elements.append({"path": relative, "mode": "100644", "type": "blob", "sha": None})
-
+              blob = request("POST", "/git/blobs", {
+                  "content": base64.b64encode(Path(relative).read_bytes()).decode(),
+                  "encoding": "base64",
+              })
+              elements.append({"path": relative, "mode": "100644", "type": "blob", "sha": blob["sha"]})
+          elements.extend({"path": relative, "mode": "100644", "type": "blob", "sha": None} for relative in deleted)
           tree = request("POST", "/git/trees", {"base_tree": head, "tree": elements})
-          commit = request(
-              "POST",
-              "/git/commits",
-              {"message": "docs: move I-4C2 handoff to frozen evidence", "tree": tree["sha"], "parents": [head]},
-          )
-          request(
-              "PATCH",
-              f"/git/refs/heads/{quote(branch, safe='')}",
-              {"sha": commit["sha"], "force": False},
-          )
-          print(f"pushed validated content commit {commit['sha']}")
+          commit = request("POST", "/git/commits", {
+              "message": "docs: move I-4C2 handoff to frozen evidence",
+              "tree": tree["sha"],
+              "parents": [head],
+          })
+          request("PATCH", f"/git/refs/heads/{quote(branch, safe='')}", {"sha": commit["sha"], "force": False})
+          print(commit["sha"])
           PY
