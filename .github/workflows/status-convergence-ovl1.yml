@@ -1,0 +1,81 @@
+name: Status convergence OVL-1
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/status-convergence-ovl1.yml
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  converge:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'agent/status-convergence-ovl1-complete'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Update project status
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("docs/PROJECT_STATUS.md")
+          text = path.read_text(encoding="utf-8")
+
+          replacements = [
+              (
+                  "  - docs/contracts/governed-evidence-contract-family.md\n  - docs/contracts/shared-assessment-subjective-mem.md",
+                  "  - docs/contracts/governed-evidence-contract-family.md\n  - docs/contracts/relayctx-session-evidence-overlay.md\n  - docs/contracts/shared-assessment-subjective-mem.md",
+              ),
+              (
+                  "EV-1 Governed Evidence runtime foundation: complete in PR #629 for the bounded single-principal private managed-conversation slice; gates remain default-off and completion does not imply CTX-OVL, Shared Assessment, Subjective MEM, export, replication, or purge\nASM-1 Shared Assessment runtime foundation: complete in PR #636 as a default-off deferred library/runtime slice with exact EV-1 authorization, evidence-space-bound assessment identity, immutable consecutive revisions, one logical current-state selector, and decision-transaction-bound formation receipts; no Subjective MEM writer or response-path integration",
+                  "EV-1 Governed Evidence runtime foundation: complete in PR #629 for the bounded single-principal private managed-conversation slice; gates remain default-off and the EV-1-owned boundary excludes overlay materialization, Shared Assessment, Subjective MEM, export, replication, and purge\nOVL-1 CTX-OVL participant-private vertical slice: complete in PR #639 as a default-off, process-local, bounded, rebuildable, non-durable `participant` / `participant_private` overlay over exact EV-1 authorization; shared-scene, relationship, quarantine, durable MEM formation, and RelayATN mutation remain outside scope\nASM-1 Shared Assessment runtime foundation: complete in PR #636 as a default-off deferred library/runtime slice with exact EV-1 authorization, evidence-space-bound assessment identity, immutable consecutive revisions, one logical current-state selector, and decision-transaction-bound formation receipts; no Subjective MEM writer or response-path integration",
+              ),
+              (
+                  "EV-1 is complete in PR #629 for one bounded, single-principal private managed conversation. The merged slice establishes route-owned current-user and canonical assistant-response capture, immutable SourceEvents, validation bundles, governance and grant state, change projections, coverage checkpoints, and a bounded local Evidence store. All Evidence gates remain default-off. EV-1 does not complete the full governed-evidence contract family, CTX-OVL, Shared Assessment, Subjective MEM formation or storage, multi-user Evidence, export, replication, or purge.\n\nASM-1 is complete in PR #636 and consumes EV-1 directly without depending on OVL-1.",
+                  "EV-1 is complete in PR #629 for one bounded, single-principal private managed conversation. The merged slice establishes route-owned current-user and canonical assistant-response capture, immutable SourceEvents, validation bundles, governance and grant state, change projections, coverage checkpoints, and a bounded local Evidence store. All Evidence gates remain default-off. The EV-1-owned boundary does not itself implement overlay materialization, Shared Assessment, Subjective MEM formation or storage, multi-user Evidence, export, replication, or purge.\n\nOVL-1 is complete in PR #639 and consumes EV-1 directly. Its bounded scope is process-local, rebuildable, non-durable `participant` / `participant_private` RelayCTX working state with exact Evidence authorization, strict operation-time TTL, bounded selection and catch-up, restart rebuild, invalidation, content-free Reflex Snapshot output, and explicit RelayATN write denial. OVL-1 remains default-off; apply fails closed when RelayEMO analysis or the legacy RelayCTX injection writer is enabled. It does not implement shared-scene, relationship, quarantine, durable MEM formation, or RelayATN mutation authority.\n\nASM-1 is complete in PR #636 and consumes EV-1 directly without depending on OVL-1.",
+              ),
+              (
+                  "Contract-aligned implementation migration:\n  EV-1 Governed Evidence runtime foundation                  complete in PR #629\n  ASM-1 Shared Assessment runtime foundation                 complete in PR #636; default-off\n  SM-1 Subjective MEM decision/result vertical slice         next registered slice after ASM-1",
+                  "Contract-aligned implementation migration:\n  EV-1 Governed Evidence runtime foundation                  complete in PR #629\n  OVL-1 CTX-OVL participant-private vertical slice           complete in PR #639; default-off\n  ASM-1 Shared Assessment runtime foundation                 complete in PR #636; default-off\n  SM-1 Subjective MEM decision/result vertical slice         next registered slice after ASM-1",
+              ),
+              (
+                  "- full RelayREL relationship Markdown parsing;\n- restore/unhide or physical purge;",
+                  "- full RelayREL relationship Markdown parsing;\n- shared-scene, relationship, and quarantine CTX-OVL partitions;\n- restore/unhide or physical purge;",
+              ),
+          ]
+
+          for index, (old, new) in enumerate(replacements, start=1):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"replacement {index} expected once, found {count}")
+              text = text.replace(old, new)
+
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Validate status-only change
+        shell: bash
+        run: |
+          python scripts/relaylm_docs_link_check.py
+          python scripts/relaylm_docs_semantic_audit.py
+          git diff --check
+          test "$(git diff --name-only | sort)" = "docs/PROJECT_STATUS.md"
+
+      - name: Commit final status and remove bootstrap workflow
+        shell: bash
+        run: |
+          rm .github/workflows/status-convergence-ovl1.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/PROJECT_STATUS.md .github/workflows/status-convergence-ovl1.yml
+          git commit -m "docs: converge OVL-1 project status"
+          git push origin "HEAD:${{ github.head_ref }}"
