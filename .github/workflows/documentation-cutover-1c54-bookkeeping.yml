@@ -176,3 +176,5 @@ PR #642 preserves PR #404 recovery/finalization provenance and PR #407 concurren
           git add docs/evidence/migrations/cutover-1c54-i4c2.md docs/evidence/migrations/documentation-hard-cutover-receipt.md
           git commit -m "docs: finalize cutover 1C-54 bookkeeping"
           git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+
+# synchronize trigger for bootstrap execution
