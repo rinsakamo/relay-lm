@@ -1,13 +1,20 @@
 """OVL-1 candidate admission, invalidation, and sync record builders."""
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 
 from relaylm.ctx_ovl_types import (
-    _AuthorizedCandidate, _ParticipantPartitionState, _StoredOverlay,
+    _AuthorizedCandidate,
+    _ParticipantPartitionState,
+    _StoredOverlay,
     _CATCH_UP_MAX_EVENTS,
-    _CATCH_UP_MAX_TOTAL_BYTES, _MAX_CANDIDATE_BYTES, _REBUILD_MAX_RECORDS,
-    _REBUILD_MAX_TOTAL_BYTES, _TTL_SECONDS, _parse_datetime,
+    _CATCH_UP_MAX_TOTAL_BYTES,
+    _MAX_CANDIDATE_BYTES,
+    _REBUILD_MAX_RECORDS,
+    _REBUILD_MAX_TOTAL_BYTES,
+    _TTL_SECONDS,
+    _parse_datetime,
     _record_write_attempt,
 )
 from relaylm.evidence_common import canonical_digest, new_opaque_id
@@ -20,7 +27,9 @@ def _admit_candidate(
     partition_sequence: int,
     evaluated_at: datetime,
     admission_origin: str,
-) -> None:
+) -> str:
+    """Admit or reauthorize one candidate and return its overlay record ID."""
+
     producer = (
         "ctx_ovl_rebuild_process"
         if admission_origin == "rebuild_pipeline"
@@ -61,7 +70,7 @@ def _admit_candidate(
             )
             existing.record["ttl_expires_at"] = ttl_limit.isoformat()
             existing.record["lifecycle_state"] = "active"
-            return
+            return str(existing.record["overlay_record_id"])
 
     _record_write_attempt(
         state,
@@ -69,9 +78,6 @@ def _admit_candidate(
         operation="admit",
         actor=producer,
     )
-    # IDs are intentionally random opaque tokens. Content identity remains in
-    # the explicit digest fields; identifiers must not become reversible or
-    # correlation-friendly encodings of source content.
     artifact_id = new_opaque_id("ctxovlartifact")
     artifact = {
         "schema": "relaylm.ctx_ovl_candidate_artifact.v1",
@@ -172,6 +178,7 @@ def _admit_candidate(
         text=candidate.text,
         partition_sequence=partition_sequence,
     )
+    return overlay_id
 
 
 def _invalidate_event_sources(
@@ -180,6 +187,7 @@ def _invalidate_event_sources(
     *,
     evaluated_at: datetime,
     reason: str,
+    new_highest_observed_sequence: int | None = None,
 ) -> None:
     refs = event.get("authorized_source_event_refs")
     if not isinstance(refs, list):
@@ -187,7 +195,11 @@ def _invalidate_event_sources(
     for source_id in refs:
         if isinstance(source_id, str):
             _invalidate_source(
-                state, source_id, evaluated_at=evaluated_at, reason=reason
+                state,
+                source_id,
+                evaluated_at=evaluated_at,
+                reason=reason,
+                new_highest_observed_sequence=new_highest_observed_sequence,
             )
 
 
@@ -197,6 +209,7 @@ def _invalidate_source(
     *,
     evaluated_at: datetime,
     reason: str,
+    new_highest_observed_sequence: int | None = None,
 ) -> None:
     item = state.overlays_by_source.get(source_id)
     if item is None:
@@ -214,6 +227,21 @@ def _invalidate_source(
         actor="relayctx_pipeline",
     )
     record["lifecycle_state"] = "removed"
+    prior_highest = prior.get("highest_observed_partition_sequence")
+    highest = prior_highest
+    if reason == "watermark_advanced":
+        if type(new_highest_observed_sequence) is not int:
+            new_highest_observed_sequence = (
+                int(prior_highest) + 1 if type(prior_highest) is int else 0
+            )
+        highest = new_highest_observed_sequence
+    access_state = {
+        "restricted": "restricted",
+        "redacted": "redacted",
+        "purged": "purged",
+        "corrected_superseded": "corrected_superseded",
+        "watermark_advanced": "restricted",
+    }.get(reason, "restricted")
     event = {
         "schema": "relaylm.ctx_ovl_overlay_invalidation_event.v1",
         "invalidation_event_id": new_opaque_id("ctxovlinvalidation"),
@@ -224,17 +252,13 @@ def _invalidate_source(
         "authorization_ref": {
             "change_partition_id": prior.get("change_partition_id"),
             "partition_epoch_id": prior.get("partition_epoch_id"),
-            "highest_observed_partition_sequence": prior.get(
-                "highest_observed_partition_sequence"
-            ),
+            "highest_observed_partition_sequence": highest,
             "authority_snapshot_digest": prior.get("authority_snapshot_digest"),
             "watermark_freshness": "stale",
-            "validated_access_state": "restricted",
+            "validated_access_state": access_state,
             "validated_at": evaluated_at.isoformat(),
         },
-        "prior_highest_observed_partition_sequence_or_null": prior.get(
-            "highest_observed_partition_sequence"
-        ),
+        "prior_highest_observed_partition_sequence_or_null": prior_highest,
         "invalidation_scope_binding": dict(binding),
     }
     state.invalidation_events.append(event)
@@ -246,30 +270,21 @@ def _build_sync_event(
     *,
     mode: str,
     evaluated_at: datetime,
-    admitted_count: int,
+    produced_overlay_record_ids: Sequence[str],
+    authority_snapshot_digest: str | None,
     omitted_count: int,
     request_id: str,
     coverage_checkpoint: dict | None,
 ) -> dict[str, object]:
-    newest = max(
-        state.active_overlays(),
-        key=lambda item: item.partition_sequence,
-        default=None,
-    )
-    authority_digest = (
-        str(
-            newest.record["last_validated_authorization"][
-                "authority_snapshot_digest"
-            ]
-        )
-        if newest is not None
-        else canonical_digest(
-            {
-                "partition": state.change_partition_id,
-                "epoch": state.contract1_partition_epoch_id,
-                "watermark": state.last_observed_partition_sequence,
-            }
-        )
+    """Build one contract-valid operation record for one authority scope."""
+
+    produced = list(produced_overlay_record_ids)
+    authority_digest = authority_snapshot_digest or canonical_digest(
+        {
+            "partition": state.change_partition_id,
+            "epoch": state.contract1_partition_epoch_id,
+            "watermark": state.last_observed_partition_sequence,
+        }
     )
     authorization = {
         "change_partition_id": state.change_partition_id,
@@ -307,9 +322,7 @@ def _build_sync_event(
             "coverage_checkpoint_ref": coverage_ref,
             "authorization_ref": authorization,
             "durable_state_claimed": False,
-            "produced_overlay_record_ids": [
-                item.record["overlay_record_id"] for item in state.active_overlays()
-            ],
+            "produced_overlay_record_ids": produced,
             "excluded_reason_codes": ["restricted"] if omitted_count else [],
             "rebuild_bound": {
                 "bounded": True,
@@ -348,11 +361,9 @@ def _build_sync_event(
             "max_total_candidate_bytes": _CATCH_UP_MAX_TOTAL_BYTES,
         },
         "outcome": (
-            "bounded_catch_up_applied" if admitted_count else "no_catch_up_needed"
+            "bounded_catch_up_applied" if produced else "no_catch_up_needed"
         ),
-        "produced_overlay_record_ids": [
-            item.record["overlay_record_id"] for item in state.active_overlays()
-        ],
+        "produced_overlay_record_ids": produced,
         "budget_policy_ref": {
             "policy_id": "ctx_ovl_budget_policy_v1",
             "policy_version": 1,
@@ -361,5 +372,9 @@ def _build_sync_event(
     }
 
 
-__all__ = ["_admit_candidate", "_build_sync_event",
-           "_invalidate_event_sources", "_invalidate_source"]
+__all__ = [
+    "_admit_candidate",
+    "_build_sync_event",
+    "_invalidate_event_sources",
+    "_invalidate_source",
+]
