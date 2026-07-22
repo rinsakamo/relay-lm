@@ -28,6 +28,34 @@ jobs:
             exit 1
           fi
           tr -d '\n' < .github/asm1-review-fix-payload.txt | base64 -d | gzip -d > /tmp/apply_asm1_review_fixes.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('/tmp/apply_asm1_review_fixes.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''replace_once(
+              "tests/test_shared_assessment_runtime.py",
+              '        session_id="sess1",\\n',
+              '        session_id=session_id,\\n',
+          )
+          '''
+          new = '''replace_once(
+              "tests/test_shared_assessment_runtime.py",
+              """        character_id="char1",
+                  memory_namespace="ns1",
+                  session_id="sess1",
+                  current_user_text=text,
+          """,
+              """        character_id="char1",
+                  memory_namespace="ns1",
+                  session_id=session_id,
+                  current_user_text=text,
+          """,
+          )
+          '''
+          if text.count(old) != 1:
+              raise RuntimeError(f'runner patch expected one match, found {text.count(old)}')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
           set +e
           python /tmp/apply_asm1_review_fixes.py > /tmp/asm1-review-fix-error.txt 2>&1
           status=$?
