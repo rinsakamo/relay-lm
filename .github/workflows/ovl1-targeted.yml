@@ -30,8 +30,21 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install -q -e .[test]
       - name: Run OVL-1 tests
+        id: tests
+        continue-on-error: true
         run: >-
           pytest -q --tb=short
           tests/test_ctx_ovl_config.py
           tests/test_ctx_ovl_runtime_contract.py
           tests/test_ctx_ovl_runtime_e2e.py
+          > ovl1-test.log 2>&1
+      - name: Upload OVL-1 test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ovl1-targeted-test-log
+          path: ovl1-test.log
+          if-no-files-found: error
+      - name: Propagate test status
+        if: steps.tests.outcome != 'success'
+        run: exit 1
