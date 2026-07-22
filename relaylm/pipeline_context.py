@@ -12,6 +12,7 @@ from relaylm.pipeline_node_result import PipelineNodeResult
 from relaylm.routing import ResolvedRoute
 
 if TYPE_CHECKING:
+    from relaylm.evidence_user_input import EvidenceUserInputCaptureResult
     from relaylm.client_history_exclusion_apply import (
         ClientHistoryExclusionApplyResult,
     )
@@ -98,6 +99,12 @@ class PipelineContext:
         | ClientHistoryExclusionApplyV1Result
         | None
     ) = field(
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
+    )
+    _evidence_user_input_capture_result: "EvidenceUserInputCaptureResult | None" = field(
         default=None,
         init=False,
         repr=False,
@@ -419,6 +426,22 @@ class PipelineContext:
         """Return request-local private apply state without copying it."""
 
         return self._client_history_exclusion_apply_result
+
+    def set_evidence_user_input_capture_result(
+        self,
+        result: "EvidenceUserInputCaptureResult | None",
+    ) -> None:
+        """Store the EV-1 user-input capture result for the response phase."""
+
+        self._evidence_user_input_capture_result = result
+
+    @property
+    def evidence_user_input_capture_result(
+        self,
+    ) -> "EvidenceUserInputCaptureResult | None":
+        """Return the request-local EV-1 user-input capture result, if any."""
+
+        return self._evidence_user_input_capture_result
 
     def node_results_to_log_dicts(self) -> list[dict[str, Any]]:
         """Return detached log dictionaries for recorded node results."""
