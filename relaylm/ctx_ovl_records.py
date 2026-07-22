@@ -69,13 +69,10 @@ def _admit_candidate(
         operation="admit",
         actor=producer,
     )
-    artifact_id = "ctxovlartifact_" + canonical_digest(
-        {
-            "source_event_id": candidate.source_event_id,
-            "content_digest": candidate.content_digest,
-            "authority_snapshot_digest": candidate.authority_snapshot_digest,
-        }
-    )
+    # IDs are intentionally random opaque tokens. Content identity remains in
+    # the explicit digest fields; identifiers must not become reversible or
+    # correlation-friendly encodings of source content.
+    artifact_id = new_opaque_id("ctxovlartifact")
     artifact = {
         "schema": "relaylm.ctx_ovl_candidate_artifact.v1",
         "artifact_id": artifact_id,
@@ -90,15 +87,7 @@ def _admit_candidate(
         "actual_bytes": candidate.actual_bytes,
         "immutable": True,
     }
-    overlay_id = "ctxovlrecord_" + canonical_digest(
-        {
-            "artifact_id": artifact_id,
-            "partition_id": state.partition_id,
-            "partition_epoch": state.partition_epoch_descriptor[
-                "partition_epoch_descriptor_id"
-            ],
-        }
-    )
+    overlay_id = new_opaque_id("ctxovlrecord")
     ttl_limit = min(
         evaluated_at + timedelta(seconds=_TTL_SECONDS),
         _parse_datetime(candidate.not_after) or evaluated_at,
