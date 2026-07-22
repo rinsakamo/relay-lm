@@ -24,7 +24,20 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_REF: ${{ github.head_ref }}
         run: |
-          python scripts/relaylm_cutover_1c52_bootstrap.py
+          set +e
+          python scripts/relaylm_cutover_1c52_bootstrap.py > /tmp/cutover-1c52.log 2>&1
+          status=$?
+          set -e
+          tail -120 /tmp/cutover-1c52.log
+          if [ "$status" -ne 0 ]; then
+            cp /tmp/cutover-1c52.log docs/evidence/migrations/cutover-1c52-bootstrap-failure.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/evidence/migrations/cutover-1c52-bootstrap-failure.txt
+            git commit -m "chore: capture Cutover 1C-52 bootstrap failure"
+            git push origin HEAD:"${HEAD_REF}"
+            exit "$status"
+          fi
           git status --short
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
