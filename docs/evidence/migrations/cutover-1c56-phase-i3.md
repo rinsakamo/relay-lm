@@ -15,11 +15,12 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 # Documentation Hard Cutover 1C-56 Receipt
 
 - Cutover PR: #660
-- Bookkeeping consolidation PR: pending after merge
-- Base main: `358e6a57251688df8590f48f3b04317fd7023601`
-- Validated content head: pending exact-head validation
-- Merged commit: pending
-- Merged at: pending
+- Bookkeeping consolidation PR: #666
+- Integration base / current main at final review: `a971e18b2c36a179b095b0e7e9d289a7e4d80d1a`
+- Validated content head: `b9b8ba2fc44e3da4f8bf3cfc48786a1fc4f79e9d`
+- Merged commit: `ce5931aadeef591067b074f0bfc659aa10a8d94c`
+- Merged at: `2026-07-23T11:59:30Z`
+- Final cutover diff: 22 changed files, +409/-43
 - Source: `docs/architecture/phase_i3_auditable_primary_mem_correct.md`
 - Canonical target: `docs/evidence/implementation/phase-i3-auditable-primary-mem-correct-handoff.md`
 - Disposition: `evidence_retained`, implemented as a move and retype from `implementation_handoff` / `historical_after_merge` to `evidence` / `frozen`
@@ -40,8 +41,8 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 - `docs/PROJECT_STATUS.md` changed: no
 - Fail-closed enforcement: `scripts/relaylm_phase_i3_handoff_cutover_guard.py`, compiled and executed by `.github/workflows/documentation-current-boundary-smoke.yml`
 - Guard self-test: 24 assertions
-- Exact-head GitHub Actions: pending
-- Unresolved review threads: pending final review
+- Exact-head GitHub Actions: 16 workflows; 16 success, 0 failure, 0 pending, 0 skipped
+- Unresolved review threads: 0
 
 ## Semantic coverage matrix
 
@@ -60,4 +61,4 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 
 ## Conclusion
 
-Every current normative behavior recorded by the old Phase I-3 handoff is independently owned by current memory-lifecycle architecture, implementation, SOUL Lab API/frontend validation, Project Status, and focused executable validation. The move therefore removes no unique current authority. The canonical document is frozen historical evidence only.
+Every current normative behavior recorded by the old Phase I-3 handoff is independently owned by current memory-lifecycle architecture, implementation, SOUL Lab API/frontend validation, Project Status, and focused executable validation. The move therefore removes no unique current authority. The canonical document is frozen historical evidence only. PR #660 merged as `ce5931aadeef591067b074f0bfc659aa10a8d94c` from reviewed head `b9b8ba2fc44e3da4f8bf3cfc48786a1fc4f79e9d` on synchronized main `a971e18b2c36a179b095b0e7e9d289a7e4d80d1a`; PR #666 consolidates those facts without changing accepted cutover content.
