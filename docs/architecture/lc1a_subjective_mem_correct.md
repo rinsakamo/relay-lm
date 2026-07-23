@@ -80,7 +80,7 @@ authorization_ref:
   authority_id: exact transition ID
 ```
 
-The prior canonical revision remains byte-reconstructable and auditable. Exactly one operations selector continues to own logical currentness. During unresolved publication it is replaced atomically with:
+The prior canonical revision remains byte-reconstructable and auditable. Exactly one operations selector continues to own logical currentness. The selector binds the exact current receipt ID, while that self-authenticating receipt binds the complete selector digest. This non-circular composite proof is deliberate: placing the receipt digest inside the selector while the receipt also digests the selector would create a self-reference. During unresolved publication it is replaced atomically with:
 
 ```yaml
 current_revision: previous

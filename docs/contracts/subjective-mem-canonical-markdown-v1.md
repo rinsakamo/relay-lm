@@ -127,7 +127,7 @@ retrieval_visible: true
 authorization_ref.authority_kind: lifecycle_transition
 ```
 
-Corrected grounded content must equal one exact current admitted Shared Assessment revision. Corrected subjective meaning and strength are explicit governed inputs; LC-1A does not generate them. The prior canonical revision remains in the page and exactly one operations selector identifies the logical current revision. During unresolved publication that selector is ineligible; it becomes eligible only after the exact page and lifecycle receipt agree.
+Corrected grounded content must equal one exact current admitted Shared Assessment revision. Corrected subjective meaning and strength are explicit governed inputs; LC-1A does not generate them. The prior canonical revision remains in the page and exactly one operations selector identifies the logical current revision. The selector binds the current receipt ID and the matching self-authenticating receipt binds the complete selector digest; the full receipt digest is intentionally not embedded back into that selector because doing so would be self-referential. During unresolved publication that selector is ineligible; it becomes eligible only after the exact page and lifecycle receipt agree.
 
 Pinned Correct and every other lifecycle operation remain unsupported by this slice.
 

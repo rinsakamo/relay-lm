@@ -678,6 +678,13 @@ def test_correct_final_selector_binds_exact_canonical_authority(lifecycle_env) -
     assert binding["canonical_page_digest"] == result._post_image_digest
     assert binding["authorization_ref"]["authority_id"] == result.transition_id
     assert binding["current_receipt_id"] == result.receipt_id
+    receipt = lifecycle_env["store"].read_record(
+        evidence_space_id=lifecycle_env["captured"].evidence_space_id,
+        record_kind="subjective_mem_lifecycle_receipt",
+        record_id=result.receipt_id,
+    )
+    assert isinstance(receipt, dict)
+    assert receipt["current_state_digest"] == canonical_digest(raw)
 
 
 def test_correct_same_key_changed_operation_time_conflicts(lifecycle_env) -> None:
