@@ -16,10 +16,10 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 
 - Cutover PR: #647
 - Bookkeeping consolidation PR: pending after merge
-- Base main: `f775581b8393522635b88f2d3178ef355330bc62`
-- Validated content head: pending exact-head validation
-- Merged commit: pending
-- Merged at: pending
+- Base main: `80906b60aca640d9618d550d9decb12872d67a0d`
+- Validated content head: `7acdd2f8d567e4b06a229105ade6c56969438243`
+- Merged commit: `954eee9d26bd14d27da3d9a37e3caff9e6b760a3`
+- Merged at: `2026-07-23T01:09:50Z`
 - Source: `docs/architecture/phase_i2_real_soul_lab_observation.md`
 - Canonical target: `docs/evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md`
 - Disposition: `evidence_retained`, implemented as a move and retype from `implementation_handoff` / `historical_after_merge` to `evidence` / `frozen`
@@ -34,11 +34,11 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 - Runtime files changed: 0
 - `relaylm/**` files changed: 0
 - Project-status preservation: `docs/PROJECT_STATUS.md` is unchanged; PR #645 remains separately owned.
-- Parallel implementation: PR #646 overlaps only `docs/architecture/README.md`; no SM-1 content is imported.
+- Parallel implementation: PR #646 merged first as `80906b60aca640d9618d550d9decb12872d67a0d`; the cutover was synchronized afterward, preserved its SM-1 architecture-index entry, and removed only the two retired Phase I-2 entries.
 - Fail-closed enforcement: `scripts/relaylm_phase_i2_handoff_cutover_guard.py`, compiled and executed by `.github/workflows/documentation-current-boundary-smoke.yml`
 - Guard self-test: 24 assertions
-- Exact-head GitHub Actions: pending
-- Unresolved review threads: pending final review
+- Exact-head GitHub Actions: 16 workflow runs; 16 success; 0 failure; 0 pending; 0 skipped
+- Unresolved review threads: 0
 
 ## Semantic coverage matrix
 
