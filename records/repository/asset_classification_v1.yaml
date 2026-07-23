@@ -24,6 +24,9 @@ canonical_entrypoints:
   - group: repository_inventory
     command: python scripts/relaylm_repo_inventory_cli.py
     asset_id: repo_inventory.entrypoint
+  - group: repository_asset_classification_registry
+    command: python scripts/relaylm_repository_asset_classification_registry.py
+    asset_id: asset_classification.validator
   - group: o3_local_scheduler
     command: python scripts/relaylm_o3_always_on_local_scheduler.py
     asset_id: scheduler.o3_cli
@@ -167,10 +170,12 @@ records:
     responsibility: repository_validation
     lifecycle: active
     owner: repository_maintenance
-    protected_boundary: reproducible inventory self-test, report generation, and artifact upload
+    protected_boundary: reproducible inventory and classification validation, deterministic rendering, and artifact upload
     current_callers: [pull_request path-filter trigger, workflow_dispatch]
     invocation_roots: [github_actions_step]
-    evidence: [.github/workflows/repository-storage-inventory.yml]
+    evidence:
+      - .github/workflows/repository-storage-inventory.yml
+      - scripts/relaylm_repository_asset_classification_registry.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
@@ -190,6 +195,58 @@ records:
       - tests/test_relaylm_repo_inventory.py
       - tests/test_relaylm_repo_inventory_cross_mode_hardening.py
       - tests/test_relaylm_repo_inventory_final_hardening.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: asset_classification.registry
+    paths: [records/repository/asset_classification_v1.yaml]
+    responsibility: repository_validation
+    lifecycle: active
+    owner: repository_maintenance
+    protected_boundary: machine-readable mirror of reviewed classification records and explicit canonical-entrypoint claims
+    current_callers:
+      - scripts/relaylm_repository_asset_classification_registry.py
+      - .github/workflows/repository-storage-inventory.yml
+      - tests/test_relaylm_repository_asset_classification_registry.py
+    invocation_roots: [static_or_package_data]
+    evidence:
+      - records/repository/asset_classification_v1.yaml
+      - docs/reference/repository-asset-classification.md
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: asset_classification.validator
+    paths: [scripts/relaylm_repository_asset_classification_registry.py]
+    responsibility: repository_validation
+    lifecycle: active
+    owner: repository_maintenance
+    protected_boundary: fail-closed registry drift, schema, path, lifecycle-gate, canonical-entrypoint, and deterministic-render validation
+    current_callers:
+      - .github/workflows/repository-storage-inventory.yml
+      - tests/test_relaylm_repository_asset_classification_registry.py
+      - operator validation command
+    invocation_roots: [operator_cli, github_actions_step]
+    evidence:
+      - scripts/relaylm_repository_asset_classification_registry.py
+      - records/repository/asset_classification_v1.yaml
+      - tests/test_relaylm_repository_asset_classification_registry.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: asset_classification.tests
+    paths: [tests/test_relaylm_repository_asset_classification_registry.py]
+    responsibility: ordinary_test
+    lifecycle: active
+    owner: repository_maintenance
+    protected_boundary: regression coverage for mirror drift, enum and path rejection, lifecycle gates, retired-state safety, and canonical-entrypoint uniqueness
+    current_callers: [.github/workflows/repository-storage-inventory.yml, maintained pytest suite]
+    invocation_roots: [pytest_root]
+    evidence:
+      - tests/test_relaylm_repository_asset_classification_registry.py
+      - scripts/relaylm_repository_asset_classification_registry.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
