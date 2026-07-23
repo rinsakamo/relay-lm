@@ -246,6 +246,10 @@ class RelayLMConfig(BaseModel):
     subjective_mem_create_enabled: StrictBool = False
     subjective_mem_create_dry_run_only: StrictBool = True
     subjective_mem_create_apply_enabled: StrictBool = False
+    subjective_mem_commit_enabled: StrictBool = False
+    subjective_mem_commit_dry_run_only: StrictBool = True
+    subjective_mem_commit_apply_enabled: StrictBool = False
+    subjective_mem_workspace_root: str | None = None
     ctx_ovl_enabled: StrictBool = False
     ctx_ovl_dry_run_only: StrictBool = True
     ctx_ovl_apply_enabled: StrictBool = False
@@ -343,6 +347,31 @@ class RelayLMConfig(BaseModel):
                 raise ValueError("subjective_mem_create_evidence_data_root_invalid")
         if subjective_mem_triple == _APPLY_GATE_TRIPLE and shared_assessment_triple != _APPLY_GATE_TRIPLE:
             raise ValueError("subjective_mem_create_apply_requires_shared_assessment_apply")
+
+        subjective_mem_commit_triple = (
+            self.subjective_mem_commit_enabled,
+            self.subjective_mem_commit_dry_run_only,
+            self.subjective_mem_commit_apply_enabled,
+        )
+        if subjective_mem_commit_triple not in _VALID_GATE_TRIPLES:
+            raise ValueError("invalid_subjective_mem_commit_gate_combination")
+        if subjective_mem_commit_triple != _DISABLED_GATE_TRIPLE:
+            if subjective_mem_triple == _DISABLED_GATE_TRIPLE:
+                raise ValueError("subjective_mem_commit_requires_subjective_mem_create_enabled")
+            if not self.evidence_data_root:
+                raise ValueError("subjective_mem_commit_requires_evidence_data_root")
+            if not self.subjective_mem_workspace_root:
+                raise ValueError("subjective_mem_commit_requires_workspace_root")
+            workspace_root = Path(self.subjective_mem_workspace_root)
+            if not workspace_root.is_absolute():
+                raise ValueError("subjective_mem_commit_requires_absolute_workspace_root")
+            if any(part in {".", ".."} for part in workspace_root.parts[1:]):
+                raise ValueError("subjective_mem_commit_workspace_root_invalid")
+        if (
+            subjective_mem_commit_triple == _APPLY_GATE_TRIPLE
+            and subjective_mem_triple != _APPLY_GATE_TRIPLE
+        ):
+            raise ValueError("subjective_mem_commit_apply_requires_subjective_mem_create_apply")
 
         evidence_triple = (
             self.evidence_capture_enabled,

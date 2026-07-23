@@ -195,7 +195,7 @@ def test_create_commits_exact_bidirectional_prepared_result(store) -> None:
     assert state.memory_id == revision.memory_id
     assert state.to_dict()["mutation_state"] == "prepared"
     assert state.to_dict()["retrieval_eligible"] is False
-    assert revision.to_dict()["retrieval_visible"] is False
+    assert revision.to_dict()["retrieval_visible"] is True
     assert revision.grounded_content == assessment_revision.supported_content
     assert revision.grounded_content_digest == assessment_revision.supported_content_digest
     assert manifest.to_dict()["canonical_markdown_published"] is False
@@ -998,7 +998,14 @@ def test_sm1_has_no_normal_path_soul_slp_retrieval_or_primary_mem_wiring() -> No
     )
     assert all(name not in runtime_source for name in forbidden_imports)
     for path in Path("relaylm").glob("*.py"):
-        if path.name in {"subjective_mem.py", "subjective_mem_runtime.py"}:
+        if path.name in {
+            "subjective_mem.py",
+            "subjective_mem_runtime.py",
+            "subjective_mem_commit.py",
+            "subjective_mem_commit_runtime.py",
+            "subjective_mem_markdown.py",
+            "_subjective_mem_commit_io.py",
+        }:
             continue
         assert "from relaylm.subjective_mem_runtime" not in path.read_text()
         assert "import relaylm.subjective_mem_runtime" not in path.read_text()

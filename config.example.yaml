@@ -234,6 +234,14 @@ subjective_mem_create_enabled: false
 subjective_mem_create_dry_run_only: true
 subjective_mem_create_apply_enabled: false
 
+# ST-1 publishes one exact SM-1 prepared create bundle as deterministic canonical
+# Subjective MEM Markdown and finalizes a durable content-free receipt. Logical
+# retrieval eligibility does not wire ordinary Retrieval; RT-1 remains separate.
+subjective_mem_commit_enabled: false
+subjective_mem_commit_dry_run_only: true
+subjective_mem_commit_apply_enabled: false
+subjective_mem_workspace_root:
+
 # OVL-1 is independently default-off and dry-run-first. Apply requires EV-1
 # capture apply because CTX-OVL may consume only currently authorized evidence.
 ctx_ovl_enabled: false
