@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate frozen Wave 5 convergence evidence without coupling to current prose."""
+"""Validate frozen Wave 5 convergence evidence and stale-current bounds without prose coupling."""
 from __future__ import annotations
 
 from pathlib import Path
