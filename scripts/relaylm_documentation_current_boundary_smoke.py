@@ -16,10 +16,11 @@ REQUIRED = {
         "OVL-1 CTX-OVL participant-private vertical slice: complete",
         "ASM-1 Shared Assessment runtime foundation: complete",
         "SM-1 Subjective MEM create decision/result vertical slice: complete",
-        "ST-1 Markdown + operations commit protocol: next registered slice; not started",
+        "ST-1 Markdown + operations commit protocol: complete; default-off, create-only, POSIX apply",
         "## Contract-aligned implementation migration boundary",
         "## Current caveats",
         "## Immediate dependency-first work",
+        "LC-1 lifecycle migration                                    next registered slice; not started",
         "## Not yet implemented",
         "Project Status Reference Map",
     ),
@@ -38,7 +39,8 @@ REQUIRED = {
         "OVL-1 CTX-OVL participant-private vertical slice               complete / default-off / participant-private only",
         "ASM-1 Shared Assessment runtime foundation                     complete / default-off",
         "SM-1 Subjective MEM decision/result vertical slice        complete / default-off / prepared-only",
-        "ST-1 Markdown + operations commit protocol           next registered slice / not started",
+        "ST-1 Markdown + operations commit protocol           complete / default-off / create-only / POSIX apply",
+        "LC-1 lifecycle migration                        next registered slice / not started",
     ),
     "docs/README.md": (
         "[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.",
@@ -46,6 +48,7 @@ REQUIRED = {
     "docs/architecture/README.md": (
         "ASM-1 Shared Assessment Runtime Foundation",
         "SM-1 Subjective MEM Create Runtime",
+        "ST-1 Subjective MEM Commit Runtime",
     ),
     "docs/DOCUMENTATION_MODEL.md": (
         "`architecture_handoff`",
@@ -61,7 +64,8 @@ STALE = (
     "ASM-1 Shared Assessment runtime foundation                     registered / not started",
     "SM-1 Subjective MEM decision/result vertical slice        registered / not started",
     "SM-1 Subjective MEM decision/result vertical slice         next registered slice",
-    "ST-1 Markdown + operations commit protocol: complete",
+    "ST-1 Markdown + operations commit protocol: next registered slice; not started",
+    "ST-1 Markdown + operations commit protocol           next registered slice / not started",
     "PM-D3 RelayEMO/RelaySCN scene_state ownership: open",
 )
 

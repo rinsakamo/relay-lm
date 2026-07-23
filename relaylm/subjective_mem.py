@@ -256,7 +256,7 @@ class SubjectiveMemRevision:
             "formation_snapshot": self.formation_snapshot.to_dict(),
             "strength": self.strength.to_dict(),
             "lifecycle_state": "active",
-            "retrieval_visible": False,
+            "retrieval_visible": True,
             "predecessor_revision_or_null": None,
             "authorization_ref": {
                 "authority_kind": "formation_decision",
@@ -272,6 +272,15 @@ class SubjectiveMemCurrentState:
     memory_id: str
     character_id: str
     updated_at: str
+    mutation_state: str = "prepared"
+    retrieval_eligible: bool = False
+
+    def __post_init__(self) -> None:
+        if (self.mutation_state, self.retrieval_eligible) not in {
+            ("prepared", False),
+            ("none", True),
+        }:
+            raise ValueError("subjective_mem_current_state_pair_invalid")
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -281,8 +290,8 @@ class SubjectiveMemCurrentState:
             "character_id": self.character_id,
             "current_revision": 1,
             "lifecycle_state": "active",
-            "mutation_state": "prepared",
-            "retrieval_eligible": False,
+            "mutation_state": self.mutation_state,
+            "retrieval_eligible": self.retrieval_eligible,
             "updated_at": self.updated_at,
         }
 

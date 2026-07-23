@@ -205,7 +205,7 @@ def main() -> int:
         require(created.prepared_manifest and created.formation_receipt, created)
         require(created.current_state.to_dict()["mutation_state"] == "prepared", created)
         require(created.current_state.to_dict()["retrieval_eligible"] is False, created)
-        require(created.revision.to_dict()["retrieval_visible"] is False, created)
+        require(created.revision.to_dict()["retrieval_visible"] is True, created)
         require(created.prepared_manifest.to_dict()["canonical_markdown_published"] is False, created)
         require(list(store.root.rglob("*.md")) == [], "canonical Markdown emitted")
         print("PASS: exact ASM-1 authority produced one prepared SM-1 create result")

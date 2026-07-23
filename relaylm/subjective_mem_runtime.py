@@ -49,9 +49,51 @@ CreateStatus = Literal[
     "dry_run_ready",
     "committed",
     "duplicate_existing",
+    "duplicate_finalized",
     "fail_closed",
     "integrity_conflict",
 ]
+
+@dataclass(frozen=True)
+class SubjectiveMemOperationIdentity:
+    character_authority_digest: str
+    namespace_digest: str
+    operation_key_digest: str
+    operation_slot_id: str
+    operation_id: str
+
+
+def derive_subjective_mem_operation_identity(
+    *,
+    evidence_space_id: str,
+    character_authority: SubjectiveMemCharacterAuthority,
+    operation_idempotency_key: str,
+) -> SubjectiveMemOperationIdentity:
+    if not _token(evidence_space_id):
+        raise ValueError("subjective_mem_evidence_space_id_invalid")
+    if type(character_authority) is not SubjectiveMemCharacterAuthority:
+        raise ValueError("subjective_mem_character_authority_invalid")
+    if not _token(operation_idempotency_key, 256):
+        raise ValueError("subjective_mem_operation_idempotency_key_invalid")
+    character_authority_digest = canonical_digest(character_authority.to_dict())
+    namespace_digest = canonical_digest(
+        {
+            "evidence_space_id": evidence_space_id,
+            "character_authority_digest": character_authority_digest,
+        }
+    )
+    operation_key_digest = sha256_hex(operation_idempotency_key.encode("utf-8"))
+    return SubjectiveMemOperationIdentity(
+        character_authority_digest=character_authority_digest,
+        namespace_digest=namespace_digest,
+        operation_key_digest=operation_key_digest,
+        operation_slot_id=_opaque(
+            "smkey", f"{namespace_digest}\0{operation_key_digest}"
+        ),
+        operation_id=_opaque(
+            "smop", f"{namespace_digest}\0{operation_key_digest}"
+        ),
+    )
 
 
 @dataclass(frozen=True)
@@ -86,6 +128,14 @@ def resolve_subjective_mem_create_gate(config: object) -> SubjectiveMemCreateGat
         store,
     )
 
+@dataclass(frozen=True)
+class SubjectiveMemPersistedBundle:
+    formation_receipt: SharedAssessmentFormationAuthorizationReceipt
+    decision: SubjectiveMemDecision
+    revision: SubjectiveMemRevision = field(repr=False)
+    prepared_manifest: SubjectiveMemPreparedManifest
+    current_state: SubjectiveMemCurrentState
+
 
 @dataclass(frozen=True)
 class SubjectiveMemCreateResult:
@@ -95,6 +145,9 @@ class SubjectiveMemCreateResult:
     current_state: SubjectiveMemCurrentState | None = None
     prepared_manifest: SubjectiveMemPreparedManifest | None = None
     formation_receipt: SharedAssessmentFormationAuthorizationReceipt | None = None
+    finalization_id: str | None = None
+    canonical_page_id: str | None = None
+    canonical_block_id: str | None = None
     blocked_reasons: tuple[str, ...] = ()
     persisted: bool = False
 
@@ -113,12 +166,25 @@ class SubjectiveMemCreateResult:
                 self.revision.scope_binding.scope_kind if self.revision else None
             ),
             "memory_kind": self.revision.memory_kind if self.revision else None,
-            "prepared": self.current_state is not None,
+            "prepared": (
+                self.current_state is not None
+                and self.current_state.mutation_state == "prepared"
+            ),
+            "finalization_id": self.finalization_id,
+            "canonical_page_id": self.canonical_page_id,
+            "canonical_block_id": self.canonical_block_id,
             "persisted": self.persisted,
-            "retrieval_eligible": False,
-            "canonical_published": False,
+            "retrieval_eligible": (
+                self.current_state.retrieval_eligible if self.current_state else False
+            ),
+            "canonical_published": self.status == "duplicate_finalized",
             "content_free": True,
         }
+
+class _FinalizedOperationRetry(RuntimeError):
+    def __init__(self, result: SubjectiveMemCreateResult) -> None:
+        super().__init__("subjective_mem_finalized_operation_retry")
+        self.result = result
 
 
 def create_subjective_mem(
@@ -200,20 +266,16 @@ def create_subjective_mem(
         )
     assert current_time is not None
 
-    character_authority_digest = canonical_digest(character_authority.to_dict())
-    namespace_digest = canonical_digest(
-        {
-            "evidence_space_id": evidence_space_id,
-            "character_authority_digest": character_authority_digest,
-        }
+    identity = derive_subjective_mem_operation_identity(
+        evidence_space_id=evidence_space_id,
+        character_authority=character_authority,
+        operation_idempotency_key=operation_idempotency_key,
     )
-    operation_key_digest = sha256_hex(operation_idempotency_key.encode("utf-8"))
-    operation_slot_id = _opaque(
-        "smkey", f"{namespace_digest}\0{operation_key_digest}"
-    )
-    operation_id = _opaque(
-        "smop", f"{namespace_digest}\0{operation_key_digest}"
-    )
+    character_authority_digest = identity.character_authority_digest
+    namespace_digest = identity.namespace_digest
+    operation_key_digest = identity.operation_key_digest
+    operation_slot_id = identity.operation_slot_id
+    operation_id = identity.operation_id
     decision_id = _opaque("smdec", operation_id)
     memory_id = _opaque("smem", f"{namespace_digest}\0{decision_id}")
     prepared_revision_record_id = _opaque("smprev", f"{memory_id}\0revision-1")
@@ -304,7 +366,7 @@ def create_subjective_mem(
                 record_id=operation_slot_id,
             )
             if existing_operation is not None:
-                return _resolve_existing_operation(
+                existing_result = _resolve_existing_operation(
                     tx=tx,
                     existing=existing_operation,
                     expected_operation_slot_id=operation_slot_id,
@@ -331,6 +393,9 @@ def create_subjective_mem(
                     expected_manifest=manifest,
                     expected_current_state=current_state,
                 )
+                if existing_result.status == "duplicate_finalized":
+                    raise _FinalizedOperationRetry(existing_result)
+                return existing_result
 
             exact_reasons = _validate_exact_assessment_inputs(
                 tx=tx,
@@ -488,6 +553,54 @@ def create_subjective_mem(
                 formation_receipt=receipt,
                 persisted=True,
             )
+    except _FinalizedOperationRetry as retry:
+        workspace_root = getattr(
+            character_config, "subjective_mem_workspace_root", None
+        )
+        if not isinstance(workspace_root, str) or not workspace_root:
+            return SubjectiveMemCreateResult(
+                "fail_closed",
+                blocked_reasons=(
+                    "subjective_mem_finalization_workspace_unavailable",
+                ),
+            )
+        from relaylm.subjective_mem_commit_runtime import (
+            validate_finalized_subjective_mem_operation,
+        )
+
+        validation = validate_finalized_subjective_mem_operation(
+            store=store,
+            evidence_space_id=evidence_space_id,
+            character_config=character_config,
+            character_authority=character_authority,
+            workspace_root=workspace_root,
+            sm1_operation_idempotency_key=operation_idempotency_key,
+        )
+        if (
+            validation.status != "duplicate_finalized"
+            or validation.current_state is None
+            or validation.finalization_id is None
+            or validation.page_id is None
+            or validation.block_id is None
+        ):
+            return SubjectiveMemCreateResult(
+                "fail_closed",
+                blocked_reasons=validation.blocked_reasons
+                or ("subjective_mem_finalization_unverifiable",),
+            )
+        prior = retry.result
+        return SubjectiveMemCreateResult(
+            "duplicate_finalized",
+            decision=prior.decision,
+            revision=prior.revision,
+            current_state=validation.current_state,
+            prepared_manifest=prior.prepared_manifest,
+            formation_receipt=prior.formation_receipt,
+            finalization_id=validation.finalization_id,
+            canonical_page_id=validation.page_id,
+            canonical_block_id=validation.block_id,
+            persisted=True,
+        )
     except (OSError, RuntimeError, TypeError, ValueError):
         return SubjectiveMemCreateResult(
             "fail_closed", blocked_reasons=("subjective_mem_store_unavailable",)
@@ -746,18 +859,28 @@ def _resolve_existing_operation(
     uniqueness_reasons = _validate_current_state_uniqueness(
         tx=tx,
         expected_key=expected_current_state_key,
-        expected_current_state=expected_current_state,
+        expected_current_state=current_state,
         require_expected=True,
     )
     if uniqueness_reasons:
         return SubjectiveMemCreateResult(
             "fail_closed", blocked_reasons=uniqueness_reasons
         )
+    finalized_current_state = (
+        current_state.memory_state_id == expected_current_state.memory_state_id
+        and current_state.memory_id == expected_current_state.memory_id
+        and current_state.character_id == expected_current_state.character_id
+        and current_state.mutation_state == "none"
+        and current_state.retrieval_eligible is True
+    )
+    prepared_current_state = (
+        current_state.to_dict() == expected_current_state.to_dict()
+    )
     if (
         decision.to_dict() != expected_decision.to_dict()
         or revision.to_dict() != expected_revision.to_dict()
         or manifest.to_dict() != expected_manifest.to_dict()
-        or current_state.to_dict() != expected_current_state.to_dict()
+        or not (prepared_current_state or finalized_current_state)
     ):
         return SubjectiveMemCreateResult(
             "fail_closed",
@@ -798,18 +921,23 @@ def _resolve_existing_operation(
         receipt=receipt,
         decision=decision,
         revision=revision,
-        current_state=current_state,
+        current_state=expected_current_state,
         manifest=manifest,
     )
     if reasons:
         return SubjectiveMemCreateResult("fail_closed", blocked_reasons=reasons)
     return SubjectiveMemCreateResult(
-        "duplicate_existing",
+        "duplicate_finalized" if finalized_current_state else "duplicate_existing",
         decision=decision,
         revision=revision,
         current_state=current_state,
         prepared_manifest=manifest,
         formation_receipt=receipt,
+        finalization_id=(
+            _opaque("st1fin", expected_operation_id)
+            if finalized_current_state
+            else None
+        ),
         persisted=True,
     )
 
@@ -884,6 +1012,8 @@ def _parse_existing_bundle(*, receipt_raw, decision_raw, revision_raw, manifest_
             memory_id=current["memory_id"],
             character_id=current["character_id"],
             updated_at=current["updated_at"],
+            mutation_state=current["mutation_state"],
+            retrieval_eligible=current["retrieval_eligible"],
         )
         if current_state.to_dict() != current:
             return None
@@ -905,6 +1035,72 @@ def _parse_existing_bundle(*, receipt_raw, decision_raw, revision_raw, manifest_
     return receipt, decision, revision, manifest, current_state
 
 
+def load_subjective_mem_persisted_bundle(
+    *, tx: EvidenceStoreTransaction, operation: dict
+) -> tuple[SubjectiveMemPersistedBundle | None, tuple[str, ...]]:
+    required_ids = (
+        "receipt_id",
+        "decision_id",
+        "prepared_revision_record_id",
+        "prepared_manifest_id",
+        "current_state_key",
+    )
+    if not isinstance(operation, dict) or any(
+        not _token(operation.get(name)) for name in required_ids
+    ):
+        return None, ("subjective_mem_operation_result_identity_invalid",)
+    parsed = _parse_existing_bundle(
+        receipt_raw=tx.read_record(
+            record_kind="shared_assessment_formation_receipt",
+            record_id=str(operation["receipt_id"]),
+        ),
+        decision_raw=tx.read_record(
+            record_kind="subjective_mem_decision",
+            record_id=str(operation["decision_id"]),
+        ),
+        revision_raw=tx.read_record(
+            record_kind="subjective_mem_prepared_revision",
+            record_id=str(operation["prepared_revision_record_id"]),
+        ),
+        manifest_raw=tx.read_record(
+            record_kind="subjective_mem_prepared_manifest",
+            record_id=str(operation["prepared_manifest_id"]),
+        ),
+        state_raw=tx.read_log(
+            log_kind="subjective_mem_current_state",
+            key=str(operation["current_state_key"]),
+        ),
+    )
+    if parsed is None:
+        return None, ("subjective_mem_operation_result_corrupt",)
+    receipt, decision, revision, manifest, current_state = parsed
+    return (
+        SubjectiveMemPersistedBundle(
+            formation_receipt=receipt,
+            decision=decision,
+            revision=revision,
+            prepared_manifest=manifest,
+            current_state=current_state,
+        ),
+        (),
+    )
+
+
+def validate_subjective_mem_current_state_uniqueness(
+    *,
+    tx: EvidenceStoreTransaction,
+    expected_key: str,
+    expected_current_state: SubjectiveMemCurrentState,
+    require_expected: bool = True,
+) -> tuple[str, ...]:
+    return _validate_current_state_uniqueness(
+        tx=tx,
+        expected_key=expected_key,
+        expected_current_state=expected_current_state,
+        require_expected=require_expected,
+    )
+
+
 def _opaque(prefix: str, value: str) -> str:
     return f"{prefix}_{sha256_hex(value.encode('utf-8'))}"
 
@@ -924,6 +1120,11 @@ def _utc(value: datetime) -> datetime:
 __all__ = [
     "SubjectiveMemCreateGate",
     "SubjectiveMemCreateResult",
+    "SubjectiveMemOperationIdentity",
+    "SubjectiveMemPersistedBundle",
     "create_subjective_mem",
+    "derive_subjective_mem_operation_identity",
+    "load_subjective_mem_persisted_bundle",
     "resolve_subjective_mem_create_gate",
+    "validate_subjective_mem_current_state_uniqueness",
 ]
