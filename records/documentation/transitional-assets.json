@@ -34,19 +34,17 @@
       "family_id": "legacy-completion-report-validation",
       "paths": [
         ".github/workflows/documentation-completion-report-files.yml",
-        ".github/workflows/documentation-completion-report-model.yml",
         "docs/evidence/implementation/*_completion_report.md",
         "docs/templates/implementation-completion-report.md",
         "scripts/relaylm_mvp_completion_report_smoke.py"
       ],
       "owner": "documentation",
-      "protected_boundary": "Existing completion-report file profiles, template shape, section structure, source-PR evidence anchors, unresolved-placeholder rejection, and a temporary negative proof that the former Documentation Model prose-anchor responsibility is absent. This family has no authority over Documentation Model prose, active-document semantics, or retired-path detection.",
+      "protected_boundary": "Existing completion-report file profiles, template shape, section structure, source-PR evidence anchors, and unresolved-placeholder rejection. This family has no authority over Documentation Model prose, active-document semantics, or retired-path detection.",
       "current_consumers": [
         ".github/workflows/documentation-completion-report-files.yml",
-        ".github/workflows/documentation-completion-report-model.yml",
         ".github/workflows/wave4-cross-slice-convergence.yml"
       ],
-      "removal_gate": "Immediately after D1 merges, remove documentation-completion-report-model.yml once main owns the replacement workflow definition and the old pull-request workflow can no longer invoke --check-model. Remove the remaining family when all existing completion reports and the template are synthesized, reclassified into allowlisted retained records, or retired to Git; no workflow invokes the validator; and generic authority, retained-record, link, semantic-audit, and Git-recoverability checks protect every continuing invariant.",
+      "removal_gate": "All reports and the template have a reviewed D2-D6 disposition, no workflow invokes this validator, and generic authority, record, link, semantic-audit, and Git-recoverability checks protect every continuing invariant.",
       "replacement_validation": [
         "active_document_authority",
         "git_recoverability",
