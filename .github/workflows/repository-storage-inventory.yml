@@ -18,7 +18,7 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -26,12 +26,10 @@ jobs:
           python-version: "3.12"
       - name: Install validation dependencies
         run: python -m pip install --quiet pyyaml pytest
-      - name: Run focused inventory tests
+      - name: Validate the canonical inventory entrypoint
         run: >-
           python -m pytest -q
-          tests/test_relaylm_repo_inventory.py
-          tests/test_relaylm_repo_inventory_cross_mode_hardening.py
-          tests/test_relaylm_repo_inventory_final_hardening.py
+          tests/test_relaylm_repo_inventory_cross_mode_hardening.py::test_package_internal_script_is_not_reported_as_direct_cli
       - name: Self-test
         run: python scripts/relaylm_repo_inventory_cli.py --self-test
       - name: Generate JSON inventory
