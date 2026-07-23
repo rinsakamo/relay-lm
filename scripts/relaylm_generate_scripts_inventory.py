@@ -9,6 +9,9 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY_PATH = ROOT / "docs" / "smoke" / "scripts_inventory.md"
+HELPER_TOKENS = frozenset(
+    {"fixture", "fixtures", "helper", "helpers", "support", "supports"}
+)
 
 
 def read_texts(paths: list[Path]) -> str:
@@ -25,8 +28,8 @@ def filename_signal(name: str) -> str:
     """Return a neutral filename-shape signal, never a responsibility decision."""
 
     stem = Path(name).stem
-    tokens = tuple(part for part in stem.split("_") if part)
-    if name.startswith("_") or "support" in tokens or "fixture" in tokens:
+    tokens = frozenset(part for part in stem.split("_") if part)
+    if name.startswith("_") or tokens.intersection(HELPER_TOKENS):
         return "helper-shaped"
     if "smoke" in tokens:
         return "smoke-named"
