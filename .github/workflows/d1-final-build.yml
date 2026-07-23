@@ -6,6 +6,9 @@ on:
       - agent/d1-final-build
     paths:
       - ".github/workflows/d1-final-build.yml"
+  pull_request:
+    paths:
+      - ".github/workflows/d1-final-build.yml"
 
 permissions:
   contents: write
