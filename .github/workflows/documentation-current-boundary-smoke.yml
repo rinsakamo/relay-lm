@@ -28,29 +28,34 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Merge latest main with explicit README authority preservation
+      - name: Capture latest-main merge preparation
+        id: merge_prepare
+        shell: bash
         run: |
-          set -euo pipefail
-          original_head="$(git rev-parse HEAD)"
-          git show "${original_head}^:.github/workflows/documentation-current-boundary-smoke.yml" > /tmp/documentation-current-boundary-smoke.final.yml
-          git fetch origin main
           set +e
-          git merge --no-ff --no-commit origin/main
-          merge_status=$?
-          set -e
-          unresolved="$(git diff --name-only --diff-filter=U || true)"
-          unexpected="$(printf '%s\n' "$unresolved" | grep -v '^docs/architecture/README.md$' | sed '/^$/d' || true)"
-          if [ -n "$unexpected" ]; then
-            echo "Unexpected merge conflicts:" >&2
-            printf '%s\n' "$unexpected" >&2
-            exit 1
-          fi
-          git show origin/main:docs/architecture/README.md > docs/architecture/README.md
-          python - <<'PY'
+          {
+            set -x
+            original_head="$(git rev-parse HEAD)"
+            git show "${original_head}^:.github/workflows/documentation-current-boundary-smoke.yml" > /tmp/documentation-current-boundary-smoke.final.yml
+            git fetch origin main
+            git merge --no-ff --no-commit origin/main
+            merge_status=$?
+            echo "merge_status=$merge_status"
+            unresolved="$(git diff --name-only --diff-filter=U || true)"
+            echo "unresolved=$unresolved"
+            unexpected="$(printf '%s\n' "$unresolved" | grep -v '^docs/architecture/README.md$' | sed '/^$/d' || true)"
+            if [ -n "$unexpected" ]; then
+              echo "Unexpected merge conflicts:"
+              printf '%s\n' "$unexpected"
+              exit 11
+            fi
+            git show origin/main:docs/architecture/README.md > docs/architecture/README.md
+            python - <<'PY'
           from pathlib import Path
           path = Path("docs/architecture/README.md")
           text = path.read_text(encoding="utf-8")
           retired = "- [Phase I-2 Real SOUL Lab Observation](phase_i2_real_soul_lab_observation.md)\n"
+          print(f"retired_count={text.count(retired)}")
           if text.count(retired) != 2:
               raise SystemExit(f"expected two retired Phase I-2 index entries, got {text.count(retired)}")
           text = text.replace(retired, "")
@@ -59,20 +64,36 @@ jobs:
               raise SystemExit("SM-1 architecture index entry was not preserved")
           path.write_text(text, encoding="utf-8")
           PY
-          git add docs/architecture/README.md
-          if git diff --name-only --diff-filter=U | grep -q .; then
-            echo "Unresolved merge conflicts remain" >&2
-            git diff --name-only --diff-filter=U >&2
-            exit 1
-          fi
-          # Keep the temporary sync workflow unchanged in the merge commit;
-          # the validated final workflow is restored later through the connector.
-          git add -A
-          if [ "$merge_status" -ne 0 ] && ! git rev-parse -q --verify MERGE_HEAD >/dev/null; then
-            echo "Merge failed before producing a merge state" >&2
-            exit 1
-          fi
+            git add docs/architecture/README.md
+            if git diff --name-only --diff-filter=U | grep -q .; then
+              echo "Unresolved merge conflicts remain"
+              git diff --name-only --diff-filter=U
+              exit 12
+            fi
+            git add -A
+            if [ "$merge_status" -ne 0 ] && ! git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+              echo "Merge failed before producing a merge state"
+              exit 13
+            fi
+            git status --short
+          } > cutover-1c55-main-sync.log 2>&1
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload main-sync diagnostics
+        if: steps.merge_prepare.outputs.status != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutover-1c55-main-sync-diagnostics
+          path: cutover-1c55-main-sync.log
+          if-no-files-found: error
+      - name: Enforce main merge preparation
+        if: steps.merge_prepare.outputs.status != '0'
+        run: |
+          cat cutover-1c55-main-sync.log
+          exit 1
       - name: Validate synchronized final content
+        if: steps.merge_prepare.outputs.status == '0'
         run: |
           set -euo pipefail
           python -m pip install -e ".[test]"
@@ -91,6 +112,7 @@ jobs:
           grep -q 'SM-1 Subjective MEM Create Runtime' docs/architecture/README.md
           ! grep -q 'phase_i2_real_soul_lab_observation.md' docs/architecture/README.md
       - name: Commit and publish synchronized non-workflow tree
+        if: steps.merge_prepare.outputs.status == '0'
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -98,6 +120,7 @@ jobs:
           git commit -m "docs: synchronize cutover 1C-55 with SM-1 main"
           git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
       - name: Upload validated final workflow
+        if: steps.merge_prepare.outputs.status == '0'
         uses: actions/upload-artifact@v4
         with:
           name: cutover-1c55-final-workflow-after-main-sync
