@@ -6,6 +6,11 @@ on:
       - agent/r2b-repository-inventory-test-consolidation
     paths:
       - .github/workflows/r2b-repository-inventory-test-consolidation.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/r2b-repository-inventory-test-consolidation.yml
 
 permissions:
   contents: write
@@ -16,6 +21,7 @@ concurrency:
 
 jobs:
   consolidate:
+    if: github.event_name == 'push' || github.head_ref == 'agent/r2b-repository-inventory-test-consolidation'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
