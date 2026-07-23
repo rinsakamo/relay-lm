@@ -4,9 +4,6 @@ on:
   pull_request:
     types: [synchronize, reopened]
     branches: [main]
-    paths:
-      - ".github/workflows/st1-bootstrap-snapshot.yml"
-      - ".github/st1-payload/**"
 
 permissions:
   contents: write
