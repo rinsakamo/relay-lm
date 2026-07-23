@@ -18,6 +18,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - 0006-repository-structure-and-maintenance-sequencing.md
+  - 0008-lane-local-continuation-safety.md
   - ../planning/workstream-orchestration.md
   - ../../AGENTS.md
   - ../../skills/relaylm-stable-implementation/SKILL.md
@@ -30,7 +31,7 @@ relaylm_superseded_by: null
 
 RelayLM adopts one mandatory architecture-first implementation discipline for Lane C implementation, Lane D documentation canonicalization, Lane R repository maintenance, debugging, review correction, and PR convergence.
 
-A bare user command such as `次に進めて`, `進めて`, `続けて`, or `次へ` invokes this discipline automatically through the repository `AGENTS.md`, the `relaylm-stable-implementation` skill, and the workstream orchestration authority.
+A bare user command such as `次に進めて`, `進めて`, `続けて`, or `次へ` invokes this discipline automatically through the repository `AGENTS.md`, the `relaylm-stable` skill, and the workstream orchestration authority. ADR 0008 defines the lane-local execution scope and explicit portfolio exception.
 
 Substantive implementation does not begin immediately after scope selection. It first passes:
 
@@ -195,19 +196,20 @@ architecture defect
 
 This rule prevents a correction loop from stabilizing the wrong architecture through accumulated exceptions.
 
-### 8. Continuation commands authorize end-to-end convergence
+### 8. Continuation commands authorize lane-local end-to-end convergence
 
 A bare continuation command directs ChatGPT or Codex to:
 
 1. refresh repository and PR state;
-2. read the repository skill and current authorities;
-3. determine each active PR's P0-P8 stage;
-4. perform the next executable action rather than return a menu;
-5. converge existing PRs before opening overlapping replacements;
-6. merge when P7 passes unless the user limited the turn to review-only;
-7. verify P8 and automatically select the next safe action.
+2. read the `relaylm-stable` skill and current authorities;
+3. resolve exactly one lane, PR, branch, or bounded work item under ADR 0008;
+4. determine the selected PR's P0-P8 stage;
+5. perform the next executable action rather than return a menu;
+6. converge the selected lane's existing PR before opening a replacement;
+7. merge the selected PR when P7 passes unless the user limited the turn to review-only;
+8. verify P8 and select the next action only in the same lane.
 
-The command does not authorize hidden background execution or claims without fresh evidence.
+Cross-lane execution requires an explicit portfolio command under ADR 0008. No continuation command authorizes hidden background execution or claims without fresh evidence.
 
 ## Consequences
 
@@ -216,7 +218,7 @@ The command does not authorize hidden background execution or claims without fre
 - Root-cause corrections may remain small, but every change must fit one stable authority model.
 - Some apparently simple tasks return to design when they expose authority or recovery ambiguity.
 - PRs may take longer before first code, but correction and rollback cost should decrease.
-- The repository `AGENTS.md` provides Codex-compatible automatic instructions, while the Agent Skills-standard `SKILL.md` provides a portable ChatGPT/Codex workflow.
+- The repository `AGENTS.md` provides Codex-compatible automatic instructions, while the Agent Skills-standard `relaylm-stable` Skill provides a portable ChatGPT/Codex workflow.
 - Existing active PRs adopt the revised lifecycle at their next review or correction boundary; completed, evidence-backed earlier stages are not mechanically repeated.
 
 ## Rejected alternatives
