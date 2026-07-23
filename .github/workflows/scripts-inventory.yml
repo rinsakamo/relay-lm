@@ -30,3 +30,10 @@ jobs:
           path: generated/scripts_inventory.md
           if-no-files-found: error
           retention-days: 7
+      - name: Upload LC-1A runtime source for repair
+        uses: actions/upload-artifact@v4
+        with:
+          name: lc1a-runtime-source
+          path: relaylm/subjective_mem_lifecycle_runtime.py
+          if-no-files-found: error
+          retention-days: 1
