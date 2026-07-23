@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate E1 frozen evidence, stable implementation boundaries, and current-reference indexes."""
+"""Validate E1 frozen evidence, stable implementation boundaries, and reference indexes."""
 from __future__ import annotations
 
 from pathlib import Path
