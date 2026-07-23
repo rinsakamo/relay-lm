@@ -1,0 +1,248 @@
+registry_version: 1
+generated_from: docs/reference/repository-asset-classification.md
+source_commit: c6a0735ec51dff2ba4aa4e7f741b3c3d9f788de0
+classification_version: 1
+canonical_entrypoints:
+  - group: soul_lab_runtime
+    command: relaylm
+    asset_id: console.relaylm
+  - group: relaymem_worker
+    command: relaylm-worker
+    asset_id: console.worker
+  - group: character_store_bootstrap
+    command: relaylm-character-store-bootstrap
+    asset_id: console.character_store_bootstrap
+  - group: character_create
+    command: relaylm-character-create
+    asset_id: console.character_create
+  - group: character_template_validate
+    command: relaylm-character-template-validate
+    asset_id: console.character_template_validate
+  - group: runtime_install
+    command: relaylm-runtime-install
+    asset_id: console.runtime_install
+  - group: repository_inventory
+    command: python scripts/relaylm_repo_inventory_cli.py
+    asset_id: repo_inventory.entrypoint
+  - group: o3_local_scheduler
+    command: python scripts/relaylm_o3_always_on_local_scheduler.py
+    asset_id: scheduler.o3_cli
+records:
+  - asset_id: console.relaylm
+    paths: [pyproject.toml]
+    entrypoint: "relaylm = relaylm.soul_lab_app:main"
+    responsibility: operator_cli
+    lifecycle: active
+    owner: soul_lab_runtime
+    protected_boundary: supported local RelayLM ASGI and SOUL Lab launch
+    current_callers: [installed relaylm command, local operator invocation]
+    invocation_roots: [console_script]
+    evidence: ["pyproject.toml [project.scripts]", relaylm/soul_lab_app.py]
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: console.worker
+    paths: [pyproject.toml]
+    entrypoint: "relaylm-worker = relaylm.local_worker_cli:main"
+    responsibility: operator_cli
+    lifecycle: active
+    owner: relaymem_worker
+    protected_boundary: explicit local one-job worker operation
+    current_callers: [installed relaylm-worker command, local operator invocation]
+    invocation_roots: [console_script]
+    evidence: ["pyproject.toml [project.scripts]", relaylm/local_worker_cli.py]
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: console.character_store_bootstrap
+    paths: [pyproject.toml]
+    entrypoint: "relaylm-character-store-bootstrap = relaylm.character_store_bootstrap_cli:main"
+    responsibility: operator_cli
+    lifecycle: active
+    owner: character_workspace
+    protected_boundary: explicit character-store bootstrap
+    current_callers: [installed relaylm-character-store-bootstrap command, local operator invocation]
+    invocation_roots: [console_script]
+    evidence: ["pyproject.toml [project.scripts]", relaylm/character_store_bootstrap_cli.py]
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: console.character_create
+    paths: [pyproject.toml]
+    entrypoint: "relaylm-character-create = relaylm.character_creation_cli:main_create"
+    responsibility: operator_cli
+    lifecycle: active
+    owner: character_workspace
+    protected_boundary: explicit character creation
+    current_callers: [installed relaylm-character-create command, local operator invocation]
+    invocation_roots: [console_script]
+    evidence: ["pyproject.toml [project.scripts]", relaylm/character_creation_cli.py]
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: console.character_template_validate
+    paths: [pyproject.toml]
+    entrypoint: "relaylm-character-template-validate = relaylm.character_creation_cli:main_validate"
+    responsibility: operator_cli
+    lifecycle: active
+    owner: character_workspace
+    protected_boundary: explicit character-template validation
+    current_callers: [installed relaylm-character-template-validate command, local operator invocation]
+    invocation_roots: [console_script]
+    evidence: ["pyproject.toml [project.scripts]", relaylm/character_creation_cli.py]
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: console.runtime_install
+    paths: [pyproject.toml]
+    entrypoint: "relaylm-runtime-install = relaylm.runtime_install_cli:main"
+    responsibility: operator_cli
+    lifecycle: active
+    owner: runtime_install
+    protected_boundary: explicit dry-run-first runtime install and preflight operation
+    current_callers: [installed relaylm-runtime-install command, local operator invocation]
+    invocation_roots: [console_script]
+    evidence: ["pyproject.toml [project.scripts]", relaylm/runtime_install_cli.py]
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: repo_inventory.entrypoint
+    paths: [scripts/relaylm_repo_inventory_cli.py]
+    responsibility: repository_validation
+    lifecycle: active
+    owner: repository_maintenance
+    protected_boundary: sole supported direct repository-inventory operator and workflow entry point
+    current_callers:
+      - .github/workflows/repository-storage-inventory.yml
+      - docs/evidence/implementation/repository_inventory_baseline_1ca928cd.md reproduction command
+      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py operator-root assertion
+    invocation_roots: [operator_cli, github_actions_step]
+    evidence:
+      - scripts/relaylm_repo_inventory_cli.py
+      - .github/workflows/repository-storage-inventory.yml
+      - tests/test_relaylm_repo_inventory.py
+      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+    notes: R2-A retained this function-oriented wrapper because scripts is a flat non-installed tooling directory and all supported callers already use it
+
+  - asset_id: repo_inventory.implementation
+    paths:
+      - scripts/relaylm_repo_inventory/__init__.py
+      - scripts/relaylm_repo_inventory/cli.py
+      - scripts/relaylm_repo_inventory/config_deps.py
+      - scripts/relaylm_repo_inventory/invocations.py
+      - scripts/relaylm_repo_inventory/repo.py
+      - scripts/relaylm_repo_inventory/records.py
+      - scripts/relaylm_repo_inventory/report.py
+      - scripts/relaylm_repo_inventory/storage.py
+      - scripts/relaylm_repo_inventory/storage_root_links.py
+      - scripts/relaylm_repo_inventory/subprocess_aliases.py
+      - scripts/relaylm_repo_inventory/toml_dependencies.py
+    responsibility: repository_validation
+    lifecycle: active
+    owner: repository_maintenance
+    protected_boundary: import-only discovery and rendering implementation for current inventory evidence
+    current_callers: [scripts/relaylm_repo_inventory_cli.py, repository inventory tests]
+    invocation_roots: []
+    invocation_root_reason: internal package reached from the supported wrapper and maintained tests; R2-A removed the unsupported cli.py main guard
+    evidence:
+      - scripts/relaylm_repo_inventory/cli.py
+      - scripts/relaylm_repo_inventory/invocations.py
+      - scripts/relaylm_repo_inventory/records.py
+      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: repo_inventory.workflow
+    paths: [.github/workflows/repository-storage-inventory.yml]
+    responsibility: repository_validation
+    lifecycle: active
+    owner: repository_maintenance
+    protected_boundary: reproducible inventory self-test, report generation, and artifact upload
+    current_callers: [pull_request path-filter trigger, workflow_dispatch]
+    invocation_roots: [github_actions_step]
+    evidence: [.github/workflows/repository-storage-inventory.yml]
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: repo_inventory.tests
+    paths:
+      - tests/test_relaylm_repo_inventory.py
+      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py
+      - tests/test_relaylm_repo_inventory_final_hardening.py
+    responsibility: ordinary_test
+    lifecycle: active
+    owner: repository_maintenance
+    protected_boundary: regression coverage for discovery, determinism, cross-mode behavior, hardening, and one canonical repository-inventory entry point
+    current_callers: [maintained pytest suite]
+    invocation_roots: [pytest_root]
+    evidence:
+      - tests/test_relaylm_repo_inventory.py
+      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py
+      - tests/test_relaylm_repo_inventory_final_hardening.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: scheduler.o3_cli
+    paths: [scripts/relaylm_o3_always_on_local_scheduler.py]
+    responsibility: operator_cli
+    lifecycle: active
+    owner: relaymem_scheduler
+    protected_boundary: opt-in local O2 process wrapper, signal cancellation, JSON projection, and bounded exit codes
+    current_callers:
+      - docs/architecture/o3_always_on_local_scheduler.md
+      - scripts/relaylm_o3_always_on_local_scheduler_smoke.py
+    invocation_roots: [operator_cli, subprocess_child]
+    evidence:
+      - scripts/relaylm_o3_always_on_local_scheduler.py
+      - docs/architecture/o3_always_on_local_scheduler.md
+      - scripts/relaylm_o3_always_on_local_scheduler_smoke.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: scheduler.o3_process_smoke
+    paths: [scripts/relaylm_o3_always_on_local_scheduler_smoke.py]
+    responsibility: process_smoke
+    lifecycle: active
+    owner: relaymem_scheduler
+    protected_boundary: real subprocess invocation, stdout and stderr contract, exit status, config failure, and disclosure boundary
+    current_callers: [docs/architecture/o3_always_on_local_scheduler.md validation commands]
+    invocation_roots: [smoke_only_root]
+    evidence:
+      - scripts/relaylm_o3_always_on_local_scheduler_smoke.py
+      - docs/architecture/o3_always_on_local_scheduler.md
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+    notes: must not be converted to an in-process test solely to reduce file count
+
+  - asset_id: retrieval.primary_recall_characterization
+    paths: [scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py]
+    responsibility: migration_or_maintenance
+    lifecycle: transitional
+    owner: retrieval_migration
+    protected_boundary: current Primary MEM scoped recall, grounding, disabled-store behavior, and content-free public projection characterization while LC-1 and RT-1 remain open
+    current_callers:
+      - scripts/relaylm_mvp_eval_runner_registry.py E1_SCRIPTS
+      - docs/architecture/e1_evaluation_consolidation.md
+    invocation_roots: [registry, smoke_only_root]
+    evidence:
+      - scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
+      - scripts/relaylm_mvp_eval_runner_registry.py
+      - docs/architecture/e1_evaluation_consolidation.md
+      - docs/architecture/project_execution_plan.md
+    removal_gate: RT-1 establishes one ordinary Subjective MEM Retrieval authority and the MVP evaluation registry no longer requires Primary MEM characterization
+    replacement_validation: exact old/new characterization comparison, exact-current Subjective MEM selection, lifecycle and mutation fail-closed checks, rebuild-equivalent projection validation, disclosure regression, and negative-reference validation on the accepted RT-1 head
+    confidence: confirmed
