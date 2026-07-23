@@ -1,0 +1,110 @@
+name: Cutover 1C-56 Main Sync
+
+on:
+  pull_request:
+    types: [ready_for_review]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.head_ref == 'agent/documentation-hard-cutover-1c56-phase-i3'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Merge current main and resolve index overlap
+        env:
+          EXPECTED_MAIN: a971e18b2c36a179b095b0e7e9d289a7e4d80d1a
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$EXPECTED_MAIN"
+
+          set +e
+          git merge --no-commit --no-ff origin/main
+          merge_status=$?
+          set -e
+          if [ "$merge_status" -ne 0 ] && [ "$merge_status" -ne 1 ]; then
+            exit "$merge_status"
+          fi
+
+          conflicts="$(git diff --name-only --diff-filter=U | sort)"
+          unexpected="$(printf '%s\n' "$conflicts" | grep -v -E '^(docs/README\.md|docs/architecture/README\.md)?$' || true)"
+          test -z "$unexpected"
+
+          git checkout origin/main -- docs/README.md docs/architecture/README.md
+          python - <<'PY'
+          from pathlib import Path
+
+          edits = {
+              'docs/README.md': [
+                  '- [Phase I-3 auditable Primary MEM Correct](architecture/phase_i3_auditable_primary_mem_correct.md)\n',
+              ],
+              'docs/architecture/README.md': [
+                  '- [Phase I-3 Auditable Primary MEM Correct](phase_i3_auditable_primary_mem_correct.md)\n',
+              ],
+          }
+          for relative, lines in edits.items():
+              path = Path(relative)
+              text = path.read_text(encoding='utf-8')
+              for line in lines:
+                  count = text.count(line)
+                  if relative == 'docs/architecture/README.md':
+                      if count != 2:
+                          raise SystemExit(f'{relative}: expected two Phase I-3 index entries, got {count}')
+                      text = text.replace(line, '')
+                  else:
+                      if count != 1:
+                          raise SystemExit(f'{relative}: expected one Phase I-3 index entry, got {count}')
+                      text = text.replace(line, '')
+              path.write_text(text, encoding='utf-8')
+
+          docs = Path('docs/README.md').read_text(encoding='utf-8')
+          arch = Path('docs/architecture/README.md').read_text(encoding='utf-8')
+          required = (
+              'architecture/st1_subjective_mem_commit_runtime.md',
+              'contracts/subjective-mem-canonical-markdown-v1.md',
+          )
+          for token in required:
+              if token not in docs:
+                  raise SystemExit(f'docs/README.md: missing preserved ST-1 entry {token}')
+          if 'st1_subjective_mem_commit_runtime.md' not in arch:
+              raise SystemExit('docs/architecture/README.md: missing preserved ST-1 entry')
+          PY
+          git add docs/README.md docs/architecture/README.md
+          test -z "$(git diff --name-only --diff-filter=U)"
+
+      - name: Install validation dependencies
+        run: python -m pip install -e '.[test]'
+      - name: Validate synchronized cutover tree
+        run: |
+          set -euo pipefail
+          python -m compileall -q relaylm scripts
+          python scripts/relaylm_phase_i3_handoff_cutover_guard.py
+          python scripts/relaylm_phase_i3_handoff_cutover_guard.py --self-test
+          python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
+          python scripts/relaylm_phase_i2_documentation_boundary_smoke.py
+          python scripts/relaylm_e1_evaluation_consolidation_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
+          python scripts/relaylm_docs_semantic_audit.py
+          python scripts/relaylm_docs_semantic_audit.py --self-test
+          python scripts/relaylm_documentation_current_boundary_smoke.py
+          git diff --check
+      - name: Commit and publish synchronized tree
+        run: |
+          set -euo pipefail
+          git add -A
+          git commit -m 'merge: synchronize cutover 1C-56 with current main'
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
