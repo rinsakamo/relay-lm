@@ -10,11 +10,45 @@ RUNNER_FILES = {
     "relaylm_mvp_eval_runner_security_smoke.py",
 }
 
-REQUIRED_DOCS = (
-    "docs/PROJECT_STATUS.md",
-    "docs/architecture/project_execution_plan.md",
-    "docs/architecture/e1_evaluation_consolidation.md",
-)
+REQUIRED_DOC_ANCHORS = {
+    "docs/reference/project-status-reference-map.md": (
+        "relaylm_authority: project_status_reference_map",
+        "## Completed foundation inventory",
+        "opt-in O2/O3 process operation",
+        "## O1/O2/O3 boundary notes",
+        "## Phase 6 and E1 boundary notes",
+        "E1-R5 remains a bounded query-hinted fallback",
+        "o2_supervised_scheduler_service.md",
+        "o3_always_on_local_scheduler.md",
+    ),
+    "docs/architecture/o2_supervised_scheduler_service.md": (
+        "relaylm_authority: o2_supervised_scheduler_service_boundary",
+        "# O2 Supervised Scheduler Service",
+        "## Authority",
+        "O2 has no independent memory, queue, worker, stale-recovery, or finalization authority.",
+        "## Non-goals and boundaries",
+        "- start background threads;",
+        "- start from `create_app()`;",
+        "- turn scheduling on by default;",
+    ),
+    "docs/architecture/o3_always_on_local_scheduler.md": (
+        "relaylm_authority: o3_always_on_local_scheduler_boundary",
+        "# O3 Always-On Local Scheduler",
+        "## Authority",
+        "O3 is local operation support. It is not app-embedded and is not browser authority.",
+        "## Non-goals and boundaries",
+        "- start automatically from FastAPI `create_app()`;",
+        "- turn scheduler gates on by default;",
+        "- directly mutate queue records;",
+    ),
+    "docs/architecture/e1_evaluation_consolidation.md": (
+        "relaylm_authority: e1_mvp_evaluation_evidence_consolidation",
+        "# E1 MVP Evaluation Evidence Consolidation",
+        "## Current E1 proof boundary",
+        "scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
+        "does not require a live LLM",
+    ),
+}
 
 E1_SCRIPTS = """
 relaylm_e1r3_provenance_formation_summary_smoke.py

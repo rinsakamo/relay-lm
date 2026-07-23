@@ -17,7 +17,7 @@ from relaylm_mvp_eval_runner_registry import (
     E1_SCRIPTS,
     GOVERNANCE_PATTERNS,
     O1_SCRIPTS,
-    REQUIRED_DOCS,
+    REQUIRED_DOC_ANCHORS,
     RUNNER_FILES,
     TWO_TURN_SCRIPTS,
 )
@@ -99,25 +99,20 @@ def _preflight(root: Path, command: CommandSpec) -> dict[str, object]:
     start = time.monotonic()
     if not (root / "relaylm").is_dir() or not (root / "scripts").is_dir():
         return _result(command, STATUS_FAIL, start, "missing_root")
-    if any(not (root / relative).is_file() for relative in REQUIRED_DOCS):
+    if any(not (root / relative).is_file() for relative in REQUIRED_DOC_ANCHORS):
         return _result(command, STATUS_FAIL, start, "missing_doc")
     try:
-        project_status = _read(root / "docs" / "PROJECT_STATUS.md")
-        execution_plan = _read(root / "docs" / "architecture" / "project_execution_plan.md")
-        e1_doc = _read(root / "docs" / "architecture" / "e1_evaluation_consolidation.md")
+        docs = {
+            relative: _read(root / relative)
+            for relative in REQUIRED_DOC_ANCHORS
+        }
     except Exception:
         return _result(command, STATUS_FAIL, start, "missing_doc")
-    anchors = (
-        (project_status, "O2 supervised worker service: complete as opt-in supervised local scheduler service wrapping O1E; not app-embedded, not default-on, and no new memory mutation authority"),
-        (project_status, "O3 always-on local operation: complete as opt-in local CLI/process wrapper around O2; not browser authority, not app-embedded, and not default-on"),
-        (project_status, "E1-R5 Primary MEM recall candidate fallback: complete"),
-        (execution_plan, "O2 supervised worker service             complete as opt-in local scheduler service"),
-        (execution_plan, "O3 always-on local operation             complete as opt-in local CLI/process wrapper"),
-        (execution_plan, "E1-R5 Primary MEM recall candidate discovery fallback complete"),
-        (e1_doc, "scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py"),
-        (e1_doc, "does not require a live LLM"),
-    )
-    if any(anchor not in body for body, anchor in anchors):
+    if any(
+        anchor not in docs[relative]
+        for relative, anchors in REQUIRED_DOC_ANCHORS.items()
+        for anchor in anchors
+    ):
         return _result(command, STATUS_FAIL, start, "doc_anchor_mismatch")
     runner_like = {
         path.name
