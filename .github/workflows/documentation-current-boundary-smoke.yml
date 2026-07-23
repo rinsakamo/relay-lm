@@ -28,43 +28,66 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Merge latest main with explicit README authority preservation
+      - name: Capture latest-main merge preparation
+        id: merge_prepare
+        shell: bash
         run: |
-          set -euo pipefail
-          original_head="$(git rev-parse HEAD)"
-          git show "${original_head}^:.github/workflows/documentation-current-boundary-smoke.yml" > /tmp/documentation-current-boundary-smoke.final.yml
-          git fetch origin main
-          merge_status=0
-          git merge --no-ff --no-commit origin/main || merge_status=$?
-          unresolved="$(git diff --name-only --diff-filter=U || true)"
-          unexpected="$(printf '%s\n' "$unresolved" | grep -v '^docs/architecture/README.md$' | sed '/^$/d' || true)"
-          if [ -n "$unexpected" ]; then
-            echo "Unexpected merge conflicts:" >&2
-            printf '%s\n' "$unexpected" >&2
-            exit 11
-          fi
-          git show origin/main:docs/architecture/README.md > docs/architecture/README.md
-          retired='- [Phase I-2 Real SOUL Lab Observation](phase_i2_real_soul_lab_observation.md)'
-          retired_count="$(grep -Fxc -- "$retired" docs/architecture/README.md || true)"
-          if [ "$retired_count" -ne 2 ]; then
-            echo "Expected two retired Phase I-2 index entries, got $retired_count" >&2
-            exit 12
-          fi
-          grep -Fvx -- "$retired" docs/architecture/README.md > docs/architecture/README.md.tmp
-          mv docs/architecture/README.md.tmp docs/architecture/README.md
-          grep -Fq -- '- [SM-1 Subjective MEM Create Runtime](sm1_subjective_mem_create_runtime.md)' docs/architecture/README.md
-          git add docs/architecture/README.md
-          if git diff --name-only --diff-filter=U | grep -q .; then
-            echo "Unresolved merge conflicts remain" >&2
-            git diff --name-only --diff-filter=U >&2
-            exit 13
-          fi
-          git add -A
-          if [ "$merge_status" -ne 0 ] && ! git rev-parse -q --verify MERGE_HEAD >/dev/null; then
-            echo "Merge failed before producing a merge state" >&2
-            exit 14
-          fi
+          set +e
+          {
+            set -x
+            original_head="$(git rev-parse HEAD)"
+            git show "${original_head}^:.github/workflows/documentation-current-boundary-smoke.yml" > /tmp/documentation-current-boundary-smoke.final.yml
+            git fetch origin main
+            merge_status=0
+            git merge --no-ff --no-commit origin/main || merge_status=$?
+            unresolved="$(git diff --name-only --diff-filter=U || true)"
+            unexpected="$(printf '%s\n' "$unresolved" | grep -v '^docs/architecture/README.md$' | sed '/^$/d' || true)"
+            if [ -n "$unexpected" ]; then
+              echo "Unexpected merge conflicts:"
+              printf '%s\n' "$unexpected"
+              exit 11
+            fi
+            git show origin/main:docs/architecture/README.md > docs/architecture/README.md
+            retired='- [Phase I-2 Real SOUL Lab Observation](phase_i2_real_soul_lab_observation.md)'
+            retired_count="$(grep -Fxc -- "$retired" docs/architecture/README.md || true)"
+            echo "retired_count=$retired_count"
+            if [ "$retired_count" -ne 2 ]; then
+              echo "Expected two retired Phase I-2 index entries, got $retired_count"
+              exit 12
+            fi
+            grep -Fvx -- "$retired" docs/architecture/README.md > docs/architecture/README.md.tmp
+            mv docs/architecture/README.md.tmp docs/architecture/README.md
+            grep -Fq -- '- [SM-1 Subjective MEM Create Runtime](sm1_subjective_mem_create_runtime.md)' docs/architecture/README.md || exit 13
+            git add docs/architecture/README.md
+            if git diff --name-only --diff-filter=U | grep -q .; then
+              echo "Unresolved merge conflicts remain"
+              git diff --name-only --diff-filter=U
+              exit 14
+            fi
+            git add -A
+            if [ "$merge_status" -ne 0 ] && ! git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+              echo "Merge failed before producing a merge state"
+              exit 15
+            fi
+            git status --short
+          } > cutover-1c55-main-sync.log 2>&1
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload main-sync diagnostics
+        if: steps.merge_prepare.outputs.status != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutover-1c55-main-sync-diagnostics
+          path: cutover-1c55-main-sync.log
+          if-no-files-found: error
+      - name: Enforce main merge preparation
+        if: steps.merge_prepare.outputs.status != '0'
+        run: |
+          cat cutover-1c55-main-sync.log
+          exit 1
       - name: Validate synchronized final content
+        if: steps.merge_prepare.outputs.status == '0'
         run: |
           set -euo pipefail
           python -m pip install -e ".[test]"
@@ -83,6 +106,7 @@ jobs:
           grep -q 'SM-1 Subjective MEM Create Runtime' docs/architecture/README.md
           ! grep -q 'phase_i2_real_soul_lab_observation.md' docs/architecture/README.md
       - name: Commit and publish synchronized non-workflow tree
+        if: steps.merge_prepare.outputs.status == '0'
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -90,6 +114,7 @@ jobs:
           git commit -m "docs: synchronize cutover 1C-55 with SM-1 main"
           git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
       - name: Upload validated final workflow
+        if: steps.merge_prepare.outputs.status == '0'
         uses: actions/upload-artifact@v4
         with:
           name: cutover-1c55-final-workflow-after-main-sync
