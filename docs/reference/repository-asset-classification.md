@@ -333,7 +333,7 @@ records:
 
   - asset_id: retrieval.primary_recall_characterization
     paths: [scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py]
-    responsibility: process_smoke
+    responsibility: migration_or_maintenance
     lifecycle: transitional
     owner: retrieval_migration
     protected_boundary: current Primary MEM scoped recall, grounding, disabled-store behavior, and content-free public projection characterization while LC-1 and RT-1 remain open
