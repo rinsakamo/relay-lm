@@ -30,20 +30,20 @@ Last reviewed: 2026-07-24 JST
 
 ## Purpose and authority boundary
 
-This page defines the canonical Lane R responsibility and lifecycle classification format and records the first bounded R1 classification surface.
+This page defines the canonical Lane R responsibility and lifecycle classification format and records the bounded R1 classification surface plus accepted R2 entry-point decisions.
 
 ```text
 repository: rinsakamo/relay-lm
-source main: 555ce47c8b558fde77230973d148f78420702b93
-source main meaning: squash merge of PR #668
+source main: c5b7c1d2427f61334bd40b54deece4faa5bcf28a
+source main meaning: squash merge of PR #669
 lane: R
-stage: R1 responsibility classification
-P0 scope: classification and candidate planning only
+stage: R2 test / smoke / validation consolidation
+scope: classification and one bounded repository-inventory entry-point decision
 ```
 
 Classification is evidence for later review. It does not authorize deletion, movement, rename, consolidation, behavior change, compatibility removal, storage migration, or status changes. Every destructive or authority-affecting action requires its own atomic PR and fresh caller evidence.
 
-Assets not explicitly listed in the bounded registry below remain `unclassified` for R1 purposes even when the mechanical inventory reports an invocation root or low reachability.
+Assets not explicitly listed in the bounded registry below remain `unclassified` for Lane R purposes even when the mechanical inventory reports an invocation root or low reachability.
 
 ## Canonical classification format
 
@@ -120,17 +120,17 @@ static_or_package_data
 subprocess_child
 ```
 
-These are discovery categories, not responsibility decisions. R1 review must inspect FastAPI/request paths, installed commands, supported `python -m` entry points, workflows, subprocesses, dynamic registries, tests, process smoke, migrations, recovery and rollback tools, generators, benchmarks, repository validators, and current runbooks where applicable.
+These are discovery categories, not responsibility decisions. Lane R review must inspect FastAPI/request paths, installed commands, supported `python -m` entry points, workflows, subprocesses, dynamic registries, tests, process smoke, migrations, recovery and rollback tools, generators, benchmarks, repository validators, and current runbooks where applicable.
 
 The fixed `1ca928cd` baseline counted 731 roots. It is historical mechanical evidence, not a current complete classification. Current caller inspection at the source revision above controls each listed decision.
 
-## Initial bounded classification registry
+## Bounded classification registry
 
-The following YAML-shaped records are the canonical human-reviewed representation for this R1 slice. They are not yet a generated registry.
+The following YAML-shaped records are the canonical human-reviewed representation for this Lane R slice. They are not yet a generated registry.
 
 ```yaml
 classification_version: 1
-source_commit: 555ce47c8b558fde77230973d148f78420702b93
+source_commit: ec3054c9ca18e3037e7871de14ba438f3696f0af
 records:
   - asset_id: console.relaylm
     paths: [pyproject.toml]
@@ -221,12 +221,12 @@ records:
     responsibility: repository_validation
     lifecycle: active
     owner: repository_maintenance
-    protected_boundary: deterministic non-destructive repository, invocation, config, and storage inventory entry point
+    protected_boundary: sole supported direct repository-inventory operator and workflow entry point
     current_callers:
       - .github/workflows/repository-storage-inventory.yml
       - docs/evidence/implementation/repository_inventory_baseline_1ca928cd.md
       - repository inventory subprocess tests
-    invocation_roots: [github_actions_step, subprocess_child]
+    invocation_roots: [operator_cli, github_actions_step, subprocess_child]
     evidence:
       - scripts/relaylm_repo_inventory_cli.py
       - .github/workflows/repository-storage-inventory.yml
@@ -235,7 +235,7 @@ records:
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
-    notes: wrapper/core pair is an R2 investigation candidate, not a retirement decision
+    notes: R2-A retained this function-oriented wrapper because scripts is a flat non-installed tooling directory and all supported callers already use it
 
   - asset_id: repo_inventory.implementation
     paths:
@@ -253,14 +253,15 @@ records:
     responsibility: repository_validation
     lifecycle: active
     owner: repository_maintenance
-    protected_boundary: discovery and rendering implementation for current inventory evidence
+    protected_boundary: import-only discovery and rendering implementation for current inventory evidence
     current_callers: [scripts/relaylm_repo_inventory_cli.py, repository inventory tests]
     invocation_roots: []
-    invocation_root_reason: internal package reached from the supported wrapper and maintained tests
+    invocation_root_reason: internal package reached from the supported wrapper and maintained tests; R2-A removed the unsupported cli.py main guard
     evidence:
       - scripts/relaylm_repo_inventory/cli.py
       - scripts/relaylm_repo_inventory/invocations.py
       - scripts/relaylm_repo_inventory/records.py
+      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
@@ -286,7 +287,7 @@ records:
     responsibility: ordinary_test
     lifecycle: active
     owner: repository_maintenance
-    protected_boundary: regression coverage for discovery, determinism, cross-mode behavior, and hardening
+    protected_boundary: regression coverage for discovery, determinism, cross-mode behavior, hardening, and one canonical repository-inventory entry point
     current_callers: [maintained pytest suite]
     invocation_roots: [pytest_root]
     evidence:
@@ -359,13 +360,13 @@ transitional: 1
 retired: 0
 ```
 
-No asset in this bounded surface is retired. Every record has a current supported caller or an open protected migration responsibility. R1 performs no deletion.
+No asset in this bounded surface is retired. Every record has a current supported caller or an open protected migration responsibility. R2-A performs no file retirement.
 
 ## Explicit unknowns and unclassified surfaces
 
 The following remain unresolved and must not be guessed:
 
-- current complete row counts at `555ce47c...`; the committed baseline is fixed to `1ca928cd...`;
+- current complete row counts at `c5b7c1d...`; the committed baseline is fixed to `1ca928cd...`;
 - runtime expansion of dynamically assembled imports, registries, plugin-style lookup, and subprocess commands;
 - responsibility and lifecycle outside the bounded registry above;
 - whether each discovered `python -m` root is supported or only an implementation convenience;
@@ -373,23 +374,23 @@ The following remain unresolved and must not be guessed:
 - whether milestone-named smoke outside this surface is active regression, process validation, transitional characterization, or retired;
 - any retirement disposition for Primary MEM, ordinary Retrieval, Subjective MEM publication, lifecycle, recovery, rollback, or characterization before the owning LC-1 or RT-1 gate closes.
 
-## Registered candidate waves
+## Wave register and R2-A resolution
 
 ### R2-A: repository inventory entry-point consolidation
 
-Highest-confidence bounded R2 candidate after R1 acceptance:
+R2-A selects and preserves:
 
 ```text
-scripts/relaylm_repo_inventory_cli.py
-scripts/relaylm_repo_inventory/cli.py
-.github/workflows/repository-storage-inventory.yml
-tests/test_relaylm_repo_inventory.py
-tests/test_relaylm_repo_inventory_cross_mode_hardening.py
-tests/test_relaylm_repo_inventory_final_hardening.py
-docs/evidence/implementation/repository_inventory_baseline_1ca928cd.md
+canonical supported invocation:
+  python scripts/relaylm_repo_inventory_cli.py <arguments>
+
+import-only implementation:
+  scripts/relaylm_repo_inventory/cli.py
 ```
 
-Before implementation, select one canonical invocation; preserve all scan modes, self-test, output formats, exit behavior, determinism, and artifact paths; update every workflow, test, and current document caller atomically; prove no supported wrapper caller remains; and run negative-reference checks. Removal uses Git history, not an executable archive.
+Caller inspection showed that the top-level wrapper is not a disposable cosmetic duplicate: `scripts/` is a flat, non-installed operator-tool directory, and the workflow, fixed inventory receipt, and subprocess-based tests use the wrapper. Moving to a package/module command would introduce a new packaging or `PYTHONPATH` contract and belongs to a later package migration, not R2 consolidation.
+
+The internal `cli.py` main guard was an unsupported secondary invocation surface and contradicted the maintained test that package-internal inventory code is not reported as a direct operator CLI. R2-A removes only that guard. The wrapper remains the sole supported entry point; scan modes, self-test, formats, output paths, exit behavior, and implementation imports are unchanged.
 
 ### R2-B: repository inventory test partition review
 
@@ -401,7 +402,7 @@ Use O3 as a control example. Subprocess, output, exit-code, platform, filesystem
 
 ### R3-A: generated classification registry and drift check
 
-After this schema is accepted, generate a machine-readable registry from explicit records rather than reachability inference. Reject unknown enum values, missing paths, unexpanded globs, duplicate IDs, transitional records missing required gates, retired records with live callers, and competing canonical entry points. Generated output remains navigation and evidence, not retirement authority.
+Generate a machine-readable registry from explicit records rather than reachability inference. Reject unknown enum values, missing paths, unexpanded globs, duplicate IDs, transitional records missing required gates, retired records with live callers, and competing canonical entry points. Generated output remains navigation and evidence, not retirement authority.
 
 ### R4-A: installed CLI package-move discovery
 
@@ -409,6 +410,6 @@ The six console-script records are eligible for caller discovery only. A pre-RT-
 
 ## Parallel-safety and non-goals
 
-This initial R1 boundary changes only this classification reference. It does not change `docs/PROJECT_STATUS.md`, runtime or storage behavior, APIs, UI, feature gates, schemas, packages, imports, console scripts, workflows, tests, smoke, Lane D retirement decisions, LC-1 or RT-1 authority paths, current callers, or generated registries.
+R2-A changes only the unsupported internal `cli.py` main guard and this classification reference. It does not change the canonical wrapper, workflow commands, report formats, storage scanning, invocation scanning, configuration scanning, `docs/PROJECT_STATUS.md`, runtime or storage behavior, APIs, UI, feature gates, schemas, Lane D retirement decisions, LC-1 or RT-1 authority paths, or user state.
 
 Every later R2, R3, or R4 PR must refresh `main`, open PRs, exact callers, workflows, review threads, and authority overlap before treating a candidate above as executable.
