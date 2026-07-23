@@ -154,6 +154,8 @@ The selector transition is committed under the Evidence-space transaction lock a
 
 Apply reuses the ST-1 POSIX dir-fd writer: validated absolute workspace, component-by-component non-following traversal, allowlisted Character Workspace target, page lock, immediate pre-image digest check, private complete staging, file fsync, atomic replacement, installed inode/bytes/parser/lineage verification, directory fsync, and receipt finalization while the page lock remains held.
 
+Exact pre-image publication revalidates mutable Evidence-space, Shared Assessment, predecessor receipt/authorization, claim, intent, and prepared-selector authority while the page-domain lock is held. An already-durable exact post-image does not re-open mutable proposal authority; it rolls the original transaction forward.
+
 Recovery is caller-invoked only:
 
 1. exact pre-image: read the original immutable artifact and retry that byte-exact post-image;

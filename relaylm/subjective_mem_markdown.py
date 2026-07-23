@@ -479,6 +479,8 @@ def parse_subjective_mem_page_bytes(
                 or current.character_id != previous.character_id
                 or current.memory_kind != previous.memory_kind
                 or current.scope_binding.to_dict() != previous.scope_binding.to_dict()
+                or current.formation_snapshot.to_dict()
+                != previous.formation_snapshot.to_dict()
             ):
                 return None, ("subjective_mem_markdown_revision_chain_invalid",)
 

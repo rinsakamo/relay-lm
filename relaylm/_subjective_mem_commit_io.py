@@ -43,6 +43,7 @@ LOCK_FILENAME = "subjective_mem_st1.lock"
 FaultInjector = Callable[[str], None]
 InstalledVerifier = Callable[[bytes], bool]
 InstalledFinalizer = Callable[[], bool]
+PreImageValidator = Callable[[], bool]
 
 
 @dataclass(frozen=True, repr=False)
@@ -225,6 +226,7 @@ def publish_canonical_page(
     expected_post_digest: str,
     verify_installed: InstalledVerifier,
     finalize_installed: InstalledFinalizer | None = None,
+    validate_pre_image: PreImageValidator | None = None,
     fault_injector: FaultInjector | None = None,
 ) -> CanonicalPublishResult:
     if type(post_image) is not bytes or len(post_image) > MAX_CANONICAL_PAGE_BYTES:
@@ -312,6 +314,8 @@ def publish_canonical_page(
                 installed_digest=snapshot.digest,
                 reasons=("subjective_mem_commit_foreign_image",),
             )
+        if validate_pre_image is not None and not _safe_finalize(validate_pre_image):
+            return _publish_failed("subjective_mem_commit_pre_image_authority_changed")
         _fault(fault_injector, "before_staging")
         result = _atomic_replace_at(
             parent_fd=parent_fd,

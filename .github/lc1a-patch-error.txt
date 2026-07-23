@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "<stdin>", line 6, in <module>
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/base64.py", line 88, in b64decode
-    return binascii.a2b_base64(s, strict_mode=validate)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-binascii.Error: Invalid base64-encoded string: number of data characters (12305) cannot be 1 more than a multiple of 4

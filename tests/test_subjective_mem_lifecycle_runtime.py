@@ -13,7 +13,11 @@ from relaylm.config import RelayLMConfig
 from relaylm.evidence_common import canonical_digest
 from relaylm.evidence_store import EvidenceRecordStore
 from relaylm._subjective_mem_commit_io import PLATFORM_REVISION
-from relaylm.subjective_mem import SUBJECTIVE_MEM_REVISION_SCHEMA, SubjectiveMemStrength
+from relaylm.subjective_mem import (
+    SUBJECTIVE_MEM_CURRENT_STATE_V2_SCHEMA,
+    SUBJECTIVE_MEM_REVISION_SCHEMA,
+    SubjectiveMemStrength,
+)
 from relaylm.subjective_mem_lifecycle import (
     LIFECYCLE_POLICY_REVISION,
     SubjectiveMemCorrectProposal,
@@ -31,6 +35,7 @@ from relaylm.subjective_mem_markdown import (
     PAGE_SCHEMA,
     RENDERER_REVISION,
     parse_subjective_mem_page_bytes,
+    plan_subjective_mem_revision_successor,
 )
 from test_subjective_mem_commit_runtime import _commit, _make_workspace
 from test_subjective_mem_runtime import (
@@ -660,3 +665,154 @@ def test_correct_rejects_future_operation_time_and_wrong_receipt_digest(
     result = _correct(lifecycle_env, proposal=wrong_receipt, apply=False)
     assert result.status == "fail_closed"
     assert "subjective_mem_lifecycle_current_receipt_not_exact" in result.blocked_reasons
+
+
+def test_correct_final_selector_binds_exact_canonical_authority(lifecycle_env) -> None:
+    result = _correct(lifecycle_env)
+    assert result.status == "committed", result.blocked_reasons
+    assert result.current_state is not None
+    raw = result.current_state.to_dict()
+    assert raw["schema"] == SUBJECTIVE_MEM_CURRENT_STATE_V2_SCHEMA
+    binding = raw["authority_binding"]
+    assert binding["page_id"] == lifecycle_env["page"].page_id
+    assert binding["canonical_page_digest"] == result._post_image_digest
+    assert binding["authorization_ref"]["authority_id"] == result.transition_id
+    assert binding["current_receipt_id"] == result.receipt_id
+
+
+def test_correct_same_key_changed_operation_time_conflicts(lifecycle_env) -> None:
+    first = _correct(lifecycle_env)
+    assert first.status == "committed"
+    second = correct_subjective_mem(
+        store=lifecycle_env["store"],
+        evidence_space_id=lifecycle_env["captured"].evidence_space_id,
+        character_config=lifecycle_env["config"],
+        character_authority=lifecycle_env["authority"],
+        workspace_root=str(lifecycle_env["workspace_root"]),
+        operation_idempotency_key="lc1a-correct-operation",
+        proposal=_proposal(lifecycle_env),
+        apply_enabled=True,
+        committed_at=NOW + timedelta(seconds=4),
+        observed_at=NOW + timedelta(seconds=5),
+    )
+    assert second.status == "integrity_conflict"
+
+
+def test_correct_tampered_durable_intent_fails_closed(lifecycle_env) -> None:
+    def crash(stage: str) -> None:
+        if stage == "after_intent_before_page":
+  raise RuntimeError("simulated")
+
+    assert _correct(lifecycle_env, fault=crash).status == "recovery_pending"
+    intent_paths = [
+        path for path in lifecycle_env["store"].root.rglob("*.json")
+        if "subjective_mem_lifecycle_intent" in str(path)
+        and "finalization" not in str(path)
+    ]
+    assert len(intent_paths) == 1
+    raw = json.loads(intent_paths[0].read_text(encoding="utf-8"))
+    raw["artifact_id"] = "smartifact_" + "0" * 64
+    intent_paths[0].write_text(
+        json.dumps(raw, ensure_ascii=False, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
+    retry = _correct(lifecycle_env)
+    assert retry.status == "fail_closed"
+    assert "subjective_mem_lifecycle_intent_corrupt" in retry.blocked_reasons
+
+
+def test_correct_pre_image_authority_is_revalidated_under_lock(
+    lifecycle_env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def crash(stage: str) -> None:
+        if stage == "after_intent_before_page":
+  raise RuntimeError("simulated")
+
+    before = lifecycle_env["page_path"].read_bytes()
+    assert _correct(lifecycle_env, fault=crash).status == "recovery_pending"
+    monkeypatch.setattr(
+        lifecycle_runtime,
+        "_validate_pre_image_authority_current",
+        lambda **_kwargs: False,
+    )
+    retry = _correct(lifecycle_env)
+    assert retry.status == "recovery_pending"
+    assert "subjective_mem_commit_pre_image_authority_changed" in retry.blocked_reasons
+    assert lifecycle_env["page_path"].read_bytes() == before
+
+
+def test_correct_requires_reachable_predecessor_transition(lifecycle_env) -> None:
+    first = _correct(lifecycle_env)
+    assert first.status == "committed", first.blocked_reasons
+    assert first.transition_id is not None and first.current_state is not None
+    transition_path = lifecycle_env["store"]._record_path(  # noqa: SLF001
+        lifecycle_env["captured"].evidence_space_id,
+        "subjective_mem_lifecycle_transition",
+        first.transition_id,
+    )
+    transition_path.unlink()
+    page, reasons = parse_subjective_mem_page_bytes(
+        lifecycle_env["page_path"].read_bytes()
+    )
+    assert page is not None and not reasons
+    current_block = next(item for item in page.blocks if item.revision.memory_revision == 2)
+    receipt = lifecycle_env["store"].read_record(
+        evidence_space_id=lifecycle_env["captured"].evidence_space_id,
+        record_kind="subjective_mem_lifecycle_receipt",
+        record_id=first.receipt_id,
+    )
+    assert isinstance(receipt, dict)
+    proposal = _proposal(
+        lifecycle_env,
+        expected_current_revision=2,
+        expected_block_id=current_block.block_id,
+        expected_page_digest=page.page_digest,
+        expected_current_selector_digest=canonical_digest(first.current_state.to_dict()),
+        expected_current_receipt_id=first.receipt_id,
+        expected_current_receipt_digest=receipt["receipt_digest"],
+        corrected_subjective_meaning="A later exact correction.",
+        authorization_id="user-correction-authorization-2",
+    )
+    result = correct_subjective_mem(
+        store=lifecycle_env["store"],
+        evidence_space_id=lifecycle_env["captured"].evidence_space_id,
+        character_config=lifecycle_env["config"],
+        character_authority=lifecycle_env["authority"],
+        workspace_root=str(lifecycle_env["workspace_root"]),
+        operation_idempotency_key="lc1a-correct-operation-2",
+        proposal=proposal,
+        apply_enabled=False,
+        committed_at=NOW + timedelta(seconds=4),
+        observed_at=NOW + timedelta(seconds=5),
+    )
+    assert result.status == "fail_closed"
+    assert "subjective_mem_lifecycle_predecessor_authority_not_exact" in result.blocked_reasons
+
+
+def test_markdown_successor_rejects_changed_formation_snapshot(lifecycle_env) -> None:
+    first = _correct(lifecycle_env)
+    assert first.status == "committed"
+    page, reasons = parse_subjective_mem_page_bytes(
+        lifecycle_env["page_path"].read_bytes()
+    )
+    assert page is not None and not reasons
+    predecessor = next(item.revision for item in page.blocks if item.revision.memory_revision == 2)
+    changed_snapshot = replace(
+        predecessor.formation_snapshot,
+        soul_revision=predecessor.formation_snapshot.soul_revision + "-changed",
+    )
+    successor = replace(
+        predecessor,
+        memory_revision=3,
+        predecessor_revision_or_null=2,
+        formation_snapshot=changed_snapshot,
+        decision_id="transition-changed-snapshot",
+        created_at=(NOW + timedelta(seconds=6)).isoformat(),
+    )
+    planned = plan_subjective_mem_revision_successor(
+        predecessor=predecessor,
+        successor=successor,
+        existing_bytes=lifecycle_env["page_path"].read_bytes(),
+    )
+    assert planned.plan is None
+    assert "subjective_mem_markdown_revision_chain_invalid" in planned.reasons

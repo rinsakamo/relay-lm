@@ -24,6 +24,7 @@ from relaylm._subjective_mem_commit_io import (
 )
 from relaylm.evidence_common import canonical_digest, sha256_hex, utf8_text_digest
 from relaylm.evidence_space import EvidenceSpaceDescriptor
+from relaylm.subjective_mem_commit import ST1_RECEIPT_SCHEMA
 from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreTransaction
 from relaylm.shared_assessment import SharedAssessmentCurrentState, SharedAssessmentRevision
 from relaylm.shared_assessment_runtime import (
@@ -46,6 +47,7 @@ from relaylm.subjective_mem_lifecycle import (
     LIFECYCLE_POLICY_REVISION,
     LIFECYCLE_RECEIPT_SCHEMA,
     LIFECYCLE_RESULT_SCHEMA,
+    LIFECYCLE_TRANSITION_SCHEMA,
     SubjectiveMemCorrectProposal,
     SubjectiveMemCorrectionBoundary,
     SubjectiveMemLifecycleTransition,
@@ -274,7 +276,10 @@ def correct_subjective_mem(
         character_authority=character_authority,
         memory_id=proposal.expected_memory_id,
         operation_key=operation_idempotency_key,
-        input_digest=proposal.input_digest,
+        input_digest=canonical_digest({
+            "proposal_input_digest": proposal.input_digest,
+            "operation_time": final_time.isoformat(),
+        }),
     )
     if identity is None:
         return _result("fail_closed", reasons=identity_reasons)
@@ -303,7 +308,11 @@ def correct_subjective_mem(
                 proposal=proposal,
                 reasons=("subjective_mem_lifecycle_idempotency_conflict",),
             )
-        if intent is None or intent.get("operation_id") != identity.operation_id:
+        if (
+            intent is None
+            or intent.get("operation_id") != identity.operation_id
+            or claim != _claim_from_intent(identity=identity, intent=intent)
+        ):
             return _result(
                 "fail_closed",
                 identity=identity,
@@ -512,6 +521,19 @@ def _prepare_new(
         )
     ):
         return None, ("subjective_mem_lifecycle_current_revision_invalid",)
+    try:
+        with store.transaction(evidence_space_id) as tx:
+            authority_reasons = _validate_predecessor_authority_locked(
+                tx=tx,
+                proposal=proposal,
+                predecessor=predecessor,
+                character_id=character_authority.character_id,
+                evidence_space_id=evidence_space_id,
+            )
+            if authority_reasons:
+                return None, authority_reasons
+    except (OSError, RuntimeError, TypeError, ValueError):
+        return None, ("subjective_mem_lifecycle_store_unavailable",)
     if _no_semantic_change(predecessor, proposal):
         return None, ("subjective_mem_lifecycle_correction_no_change",)
 
@@ -558,16 +580,9 @@ def _prepare_new(
     if plan_result.plan is None:
         return None, plan_result.reasons
     plan = plan_result.plan
-    current_state = SubjectiveMemCurrentState(
-        memory_state_id=proposal.expected_current_selector_id,
-        memory_id=predecessor.memory_id,
-        character_id=predecessor.character_id,
-        current_revision=predecessor.memory_revision,
-        lifecycle_state="active",
-        mutation_state="none",
-        retrieval_eligible=True,
-        updated_at=str(selector_raw["updated_at"]),
-    )
+    current_state = _current_state_from_dict(selector_raw)
+    if current_state is None:
+        return None, ("subjective_mem_lifecycle_current_selector_not_exact",)
     prepared_state = SubjectiveMemCurrentState(
         memory_state_id=current_state.memory_state_id,
         memory_id=current_state.memory_id,
@@ -577,6 +592,16 @@ def _prepare_new(
         mutation_state="prepared",
         retrieval_eligible=False,
         updated_at=committed_at,
+        workspace_authority_digest=_workspace_authority_digest(
+            workspace_root, character_authority
+        ),
+        scope_binding_digest=canonical_digest(predecessor.scope_binding.to_dict()),
+        page_id=proposal.expected_page_id,
+        block_id=proposal.expected_block_id,
+        canonical_page_digest=proposal.expected_page_digest,
+        authorization_kind=predecessor.authorization_kind,
+        authorization_id=predecessor.authorization_id,
+        current_receipt_id=proposal.expected_current_receipt_id,
     )
     intent = _build_intent(
         evidence_space_id=evidence_space_id,
@@ -677,7 +702,14 @@ def _recover_prepared(
     intent: dict[str, object],
     fault_injector: FaultInjector | None,
 ) -> SubjectiveMemLifecycleResult:
-    if not _intent_exact(intent, identity=identity, proposal=proposal, character_authority=character_authority):
+    if not _intent_exact(
+        intent,
+        identity=identity,
+        proposal=proposal,
+        character_authority=character_authority,
+        evidence_space_id=evidence_space_id,
+        workspace_root=workspace_root,
+    ):
         return _result(
             "fail_closed",
             identity=identity,
@@ -703,7 +735,16 @@ def _recover_prepared(
         character_id=character_authority.character_id,
         artifact_id=str(intent["artifact_id"]),
     )
-    if artifact is None or canonical_page_digest(artifact) != intent.get("post_image_digest"):
+    if (
+        artifact is None
+        or canonical_page_digest(artifact) != intent.get("post_image_digest")
+        or not _artifact_exact_for_intent(
+            artifact,
+            intent=intent,
+            proposal=proposal,
+            character_authority=character_authority,
+        )
+    ):
         return _result(
             "recovery_required",
             identity=identity,
@@ -788,6 +829,17 @@ def _publish_and_finalize(
         finalization.update({"ok": ok, "duplicate": duplicate, "records": records, "reasons": reasons})
         return ok
 
+    def validate_pre_image() -> bool:
+        return _validate_pre_image_authority_current(
+            store=store,
+            evidence_space_id=evidence_space_id,
+            character_authority=character_authority,
+            proposal=proposal,
+            identity=identity,
+            intent=intent,
+            artifact_bytes=artifact_bytes,
+        )
+
     publish = publish_canonical_page(
         workspace_root=workspace_root,
         character_id=character_authority.character_id,
@@ -798,6 +850,7 @@ def _publish_and_finalize(
         expected_post_digest=str(intent["post_image_digest"]),
         verify_installed=verify,
         finalize_installed=finalize,
+        validate_pre_image=validate_pre_image,
         fault_injector=fault_injector,
     )
     if publish.status == "lock_busy":
@@ -885,6 +938,7 @@ def _claim_from_intent(
         "operation_kind": "correct",
         "operation_key_digest": identity.operation_key_digest,
         "input_digest": identity.input_digest,
+        "intent_digest": canonical_digest(intent),
         "evidence_space_id": intent["evidence_space_id"],
         "character_id": intent["character_id"],
         "memory_id": intent["memory_id"],
@@ -1125,6 +1179,8 @@ def _resolve_final_replay(
                     identity=identity,
                     proposal=proposal,
                     character_authority=character_authority,
+                    evidence_space_id=evidence_space_id,
+                    workspace_root=workspace_root,
                 )
                 or claim != _claim_from_intent(identity=identity, intent=intent)
             ):
@@ -1288,17 +1344,24 @@ def _build_intent(
         "evidence_space_id": evidence_space_id,
         "character_id": character_authority.character_id,
         "character_authority_digest": canonical_digest(character_authority.to_dict()),
-        "workspace_authority_digest": canonical_digest({"workspace_root_digest": sha256_hex(workspace_root.encode("utf-8")), "character_authority": character_authority.to_dict()}),
+        "workspace_authority_digest": _workspace_authority_digest(
+            workspace_root, character_authority
+        ),
         "memory_id": predecessor.memory_id,
         "memory_kind": predecessor.memory_kind,
         "formation_stage": predecessor.formation_stage,
+        "scope_binding_digest": canonical_digest(predecessor.scope_binding.to_dict()),
         "from_revision": predecessor.memory_revision,
         "to_revision": successor.memory_revision,
         "from_lifecycle_state": predecessor.lifecycle_state,
         "to_lifecycle_state": successor.lifecycle_state,
         "predecessor_revision_digest": canonical_digest(predecessor.to_dict()),
+        "predecessor_block_id": proposal.expected_block_id,
+        "predecessor_authorization_kind": predecessor.authorization_kind,
+        "predecessor_authorization_id": predecessor.authorization_id,
         "successor_revision_digest": canonical_digest(successor.to_dict()),
         "transition_id": transition.transition_id,
+        "receipt_id": identity.receipt_id,
         "authorization_class": proposal.authorization_class,
         "authorization_id": proposal.authorization_id,
         "reason_category": proposal.reason_category,
@@ -1540,14 +1603,37 @@ def _validate_current_receipt_locked(
     character_id: str,
     evidence_space_id: str,
 ) -> tuple[str, ...]:
-    kind = "subjective_mem_st1_commit_receipt" if proposal.expected_current_revision == 1 else "subjective_mem_lifecycle_receipt"
+    kind = (
+        "subjective_mem_st1_commit_receipt"
+        if proposal.expected_current_revision == 1
+        else "subjective_mem_lifecycle_receipt"
+    )
     receipt = tx.read_record(record_kind=kind, record_id=proposal.expected_current_receipt_id)
     if not _receipt_self_authentic(receipt):
         return ("subjective_mem_lifecycle_current_receipt_missing_or_corrupt",)
     assert isinstance(receipt, dict)
     memory_ref = receipt.get("memory_ref")
+    page_id = (
+        receipt.get("target_page_id")
+        if proposal.expected_current_revision == 1
+        else receipt.get("page_id")
+    )
+    block_id = (
+        receipt.get("memory_block_id")
+        if proposal.expected_current_revision == 1
+        else receipt.get("successor_block_id")
+    )
+    expected_schema = (
+        ST1_RECEIPT_SCHEMA
+        if proposal.expected_current_revision == 1
+        else LIFECYCLE_RECEIPT_SCHEMA
+    )
+    expected_operation = "create" if proposal.expected_current_revision == 1 else "correct"
     if (
-        receipt.get("receipt_digest") != proposal.expected_current_receipt_digest
+        receipt.get("schema") != expected_schema
+        or receipt.get("operation_kind") != expected_operation
+        or receipt.get("operation_outcome") != "committed"
+        or receipt.get("receipt_digest") != proposal.expected_current_receipt_digest
         or receipt.get("evidence_space_id") != evidence_space_id
         or receipt.get("character_id") != character_id
         or not isinstance(memory_ref, dict)
@@ -1555,9 +1641,252 @@ def _validate_current_receipt_locked(
         or memory_ref.get("memory_revision") != proposal.expected_current_revision
         or receipt.get("post_image_digest") != proposal.expected_page_digest
         or receipt.get("current_state_digest") != proposal.expected_current_selector_digest
+        or page_id != proposal.expected_page_id
+        or block_id != proposal.expected_block_id
+        or receipt.get("renderer_revision") != proposal.expected_renderer_revision
+        or receipt.get("partition_revision") != proposal.expected_partition_revision
+        or receipt.get("platform_revision") != proposal.expected_platform_revision
+    ):
+        return ("subjective_mem_lifecycle_current_receipt_not_exact",)
+    if proposal.expected_current_revision > 1 and (
+        receipt.get("revision_schema") != proposal.expected_revision_schema
+        or receipt.get("page_schema") != proposal.expected_page_schema
+        or receipt.get("block_schema") != proposal.expected_block_schema
+        or receipt.get("policy_revision") != LIFECYCLE_POLICY_REVISION
     ):
         return ("subjective_mem_lifecycle_current_receipt_not_exact",)
     return ()
+
+
+def _validate_predecessor_authority_locked(
+    *,
+    tx: EvidenceStoreTransaction,
+    proposal: SubjectiveMemCorrectProposal,
+    predecessor: SubjectiveMemRevision,
+    character_id: str,
+    evidence_space_id: str,
+) -> tuple[str, ...]:
+    receipt_reasons = _validate_current_receipt_locked(
+        tx=tx,
+        proposal=proposal,
+        character_id=character_id,
+        evidence_space_id=evidence_space_id,
+    )
+    if receipt_reasons:
+        return receipt_reasons
+    kind = (
+        "subjective_mem_st1_commit_receipt"
+        if predecessor.memory_revision == 1
+        else "subjective_mem_lifecycle_receipt"
+    )
+    receipt = tx.read_record(record_kind=kind, record_id=proposal.expected_current_receipt_id)
+    if not isinstance(receipt, dict):
+        return ("subjective_mem_lifecycle_predecessor_authority_missing",)
+    if predecessor.memory_revision == 1:
+        decision = tx.read_record(
+  record_kind="subjective_mem_decision",
+  record_id=predecessor.authorization_id,
+        )
+        result_ref = decision.get("result_memory_ref_or_null") if isinstance(decision, dict) else None
+        if (
+  predecessor.authorization_kind != "formation_decision"
+  or receipt.get("decision_id") != predecessor.authorization_id
+  or not isinstance(result_ref, dict)
+  or result_ref.get("memory_id") != predecessor.memory_id
+  or result_ref.get("memory_revision") != 1
+        ):
+  return ("subjective_mem_lifecycle_predecessor_authority_not_exact",)
+        return ()
+    transition_id = receipt.get("transition_id")
+    transition = tx.read_record(
+        record_kind="subjective_mem_lifecycle_transition",
+        record_id=str(transition_id),
+    )
+    if (
+        predecessor.authorization_kind != "lifecycle_transition"
+        or transition_id != predecessor.authorization_id
+        or not isinstance(transition, dict)
+        or transition.get("schema") != LIFECYCLE_TRANSITION_SCHEMA
+        or transition.get("transition_id") != predecessor.authorization_id
+        or transition.get("character_id") != predecessor.character_id
+        or transition.get("memory_id") != predecessor.memory_id
+        or transition.get("to_revision") != predecessor.memory_revision
+        or transition.get("to_lifecycle_state") != predecessor.lifecycle_state
+        or transition.get("to_formation_stage") != predecessor.formation_stage
+        or receipt.get("successor_revision_digest")
+        != canonical_digest(predecessor.to_dict())
+    ):
+        return ("subjective_mem_lifecycle_predecessor_authority_not_exact",)
+    return ()
+
+
+def _validate_pre_image_authority_current(
+    *,
+    store: EvidenceRecordStore,
+    evidence_space_id: str,
+    character_authority: SubjectiveMemCharacterAuthority,
+    proposal: SubjectiveMemCorrectProposal,
+    identity: _Identity,
+    intent: dict[str, object],
+    artifact_bytes: bytes,
+) -> bool:
+    try:
+        with store.transaction(evidence_space_id) as tx:
+  if _validate_evidence_space_locked(
+      tx=tx,
+      evidence_space_id=evidence_space_id,
+      character_authority=character_authority,
+  ):
+      return False
+  expected_prepared = _state_from_intent(intent, prepared=True)
+  if expected_prepared is None:
+      return False
+  selector, _ = _load_exact_selector_locked_raw(
+      tx=tx,
+      selector_id=expected_prepared.memory_state_id,
+      expected=expected_prepared.to_dict(),
+  )
+  if selector is None or _validate_assessment_locked(tx=tx, proposal=proposal):
+      return False
+  claim = tx.read_record(
+      record_kind="subjective_mem_lifecycle_claim",
+      record_id=identity.operation_slot_id,
+  )
+  stored_intent = tx.read_record(
+      record_kind="subjective_mem_lifecycle_intent",
+      record_id=identity.intent_id,
+  )
+  if claim != _claim_from_intent(identity=identity, intent=intent) or stored_intent != intent:
+      return False
+  predecessor = _predecessor_from_artifact(
+
+      artifact_bytes,
+
+      intent=intent,
+
+      proposal=proposal,
+
+      character_authority=character_authority,
+
+  )
+  return predecessor is not None and not _validate_predecessor_authority_locked(
+      tx=tx,
+      proposal=proposal,
+      predecessor=predecessor,
+      character_id=character_authority.character_id,
+      evidence_space_id=evidence_space_id,
+  )
+    except (OSError, RuntimeError, TypeError, ValueError):
+        return False
+
+
+def _predecessor_from_artifact(
+    artifact: bytes,
+    *,
+    intent: dict[str, object],
+    proposal: SubjectiveMemCorrectProposal,
+    character_authority: SubjectiveMemCharacterAuthority,
+) -> SubjectiveMemRevision | None:
+    try:
+        _page_id, _relative, partition = subjective_mem_page_identity(
+  character_id=character_authority.character_id,
+  memory_kind=proposal.expected_memory_kind,
+        )
+        page, reasons = parse_subjective_mem_page_bytes(
+  artifact,
+  expected_page_id=proposal.expected_page_id,
+  expected_character_id=character_authority.character_id,
+  expected_partition=partition,
+        )
+        if page is None or reasons:
+  return None
+        matches = [
+  item.revision
+  for item in page.blocks
+  if item.revision.memory_id == proposal.expected_memory_id
+  and item.revision.memory_revision == proposal.expected_current_revision
+  and canonical_digest(item.revision.to_dict())
+  == intent.get("predecessor_revision_digest")
+        ]
+        return matches[0] if len(matches) == 1 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _artifact_exact_for_intent(
+    artifact: bytes,
+    *,
+    intent: dict[str, object],
+    proposal: SubjectiveMemCorrectProposal,
+    character_authority: SubjectiveMemCharacterAuthority,
+) -> bool:
+    try:
+        _page_id, _relative, partition = subjective_mem_page_identity(
+  character_id=character_authority.character_id,
+  memory_kind=proposal.expected_memory_kind,
+        )
+        page, reasons = parse_subjective_mem_page_bytes(
+  artifact,
+  expected_page_id=proposal.expected_page_id,
+  expected_character_id=character_authority.character_id,
+  expected_partition=partition,
+        )
+        if page is None or reasons:
+  return False
+        predecessor = next(
+  item
+  for item in page.blocks
+  if item.revision.memory_id == proposal.expected_memory_id
+  and item.revision.memory_revision == proposal.expected_current_revision
+        )
+        successor = next(
+  item
+  for item in page.blocks
+  if item.revision.memory_id == proposal.expected_memory_id
+  and item.revision.memory_revision == proposal.expected_current_revision + 1
+        )
+    except (StopIteration, TypeError, ValueError):
+        return False
+    predecessor_revision = predecessor.revision
+    successor_revision = successor.revision
+    return (
+        predecessor.block_id == proposal.expected_block_id
+        and canonical_digest(predecessor_revision.to_dict())
+        == intent.get("predecessor_revision_digest")
+        and predecessor_revision.authorization_kind
+        == intent.get("predecessor_authorization_kind")
+        and predecessor_revision.authorization_id
+        == intent.get("predecessor_authorization_id")
+        and successor.block_id == intent.get("successor_block_id")
+        and successor.block_digest == intent.get("successor_block_digest")
+        and canonical_digest(successor_revision.to_dict())
+        == intent.get("successor_revision_digest")
+        and successor_revision.predecessor_revision_or_null
+        == proposal.expected_current_revision
+        and successor_revision.grounded_content == proposal.corrected_grounded_content
+        and successor_revision.subjective_meaning == proposal.corrected_subjective_meaning
+        and successor_revision.strength.to_dict() == proposal.corrected_strength.to_dict()
+        and successor_revision.assessment_id == proposal.assessment_revision.assessment_id
+        and successor_revision.assessment_revision
+        == proposal.assessment_revision.assessment_revision
+        and successor_revision.authorization_kind == "lifecycle_transition"
+        and successor_revision.authorization_id == identity_transition(intent)
+        and canonical_page_digest(artifact) == intent.get("post_image_digest")
+    )
+
+
+def identity_transition(intent: dict[str, object]) -> str:
+    return str(intent.get("transition_id", ""))
+
+
+def _workspace_authority_digest(
+    workspace_root: str,
+    character_authority: SubjectiveMemCharacterAuthority,
+) -> str:
+    return canonical_digest({
+        "workspace_root_digest": sha256_hex(workspace_root.encode("utf-8")),
+        "character_authority": character_authority.to_dict(),
+    })
 
 
 def _receipt_self_authentic(raw: object) -> bool:
@@ -1582,45 +1911,88 @@ def _read_claim_and_intent(
 
 def _intent_exact(
     intent: dict[str, object],
-    *, identity: _Identity,
+    *,
+    identity: _Identity,
     proposal: SubjectiveMemCorrectProposal,
     character_authority: SubjectiveMemCharacterAuthority,
+    evidence_space_id: str,
+    workspace_root: str,
 ) -> bool:
     required = {
         "schema", "intent_id", "operation_slot_id", "operation_id", "operation_kind",
         "operation_key_digest", "input_digest", "evidence_space_id", "character_id",
         "character_authority_digest", "workspace_authority_digest", "memory_id", "memory_kind",
-        "formation_stage", "from_revision", "to_revision", "from_lifecycle_state", "to_lifecycle_state",
-        "predecessor_revision_digest", "successor_revision_digest", "transition_id", "authorization_class",
-        "authorization_id", "reason_category", "policy_revision", "current_receipt_id", "current_receipt_digest",
-        "current_selector_id", "current_selector_digest", "prepared_current_state_digest", "page_id", "partition",
-        "successor_block_id", "pre_image_state", "pre_image_digest", "post_image_digest",
-        "successor_block_digest", "artifact_id", "artifact_digest", "revision_schema", "page_schema", "block_schema",
-        "renderer_revision", "partition_revision", "platform_revision", "prepared_at", "recovery_state",
+        "formation_stage", "scope_binding_digest", "from_revision", "to_revision",
+        "from_lifecycle_state", "to_lifecycle_state", "predecessor_revision_digest",
+        "predecessor_block_id", "predecessor_authorization_kind", "predecessor_authorization_id",
+        "successor_revision_digest", "transition_id", "receipt_id", "authorization_class",
+        "authorization_id", "reason_category", "policy_revision", "current_receipt_id",
+        "current_receipt_digest", "current_selector_id", "current_selector_digest",
+        "prepared_current_state_digest", "page_id", "partition", "successor_block_id",
+        "pre_image_state", "pre_image_digest", "post_image_digest", "successor_block_digest",
+        "artifact_id", "artifact_digest", "revision_schema", "page_schema", "block_schema",
+        "renderer_revision", "partition_revision", "platform_revision", "prepared_at",
+        "recovery_state",
     }
+    prepared_at = intent.get("prepared_at")
+    operation_digest = canonical_digest({
+        "proposal_input_digest": proposal.input_digest,
+        "operation_time": prepared_at,
+    })
+    expected_page_id, _relative, partition = subjective_mem_page_identity(
+        character_id=character_authority.character_id,
+        memory_kind=proposal.expected_memory_kind,
+    )
+    post_digest = intent.get("post_image_digest")
     return (
         set(intent) == required
         and intent.get("schema") == LIFECYCLE_INTENT_SCHEMA
         and intent.get("intent_id") == identity.intent_id
         and intent.get("operation_slot_id") == identity.operation_slot_id
         and intent.get("operation_id") == identity.operation_id
-        and intent.get("input_digest") == identity.input_digest
-        and intent.get("memory_id") == proposal.expected_memory_id
-        and intent.get("from_revision") == proposal.expected_current_revision
+        and intent.get("operation_key_digest") == identity.operation_key_digest
+        and intent.get("input_digest") == identity.input_digest == operation_digest
+        and intent.get("evidence_space_id") == evidence_space_id
         and intent.get("character_id") == character_authority.character_id
-        and intent.get("transition_id") == identity.transition_id
-        and intent.get("operation_kind") == "correct"
+        and intent.get("character_authority_digest")
+        == canonical_digest(character_authority.to_dict())
+        and intent.get("workspace_authority_digest")
+        == _workspace_authority_digest(workspace_root, character_authority)
+        and intent.get("memory_id") == proposal.expected_memory_id
         and intent.get("memory_kind") == proposal.expected_memory_kind
         and intent.get("formation_stage") == proposal.expected_formation_stage
+        and intent.get("scope_binding_digest") == proposal.expected_scope_binding_digest
+        and intent.get("from_revision") == proposal.expected_current_revision
+        and intent.get("to_revision") == proposal.expected_current_revision + 1
+        and intent.get("from_lifecycle_state") == "active"
+        and intent.get("to_lifecycle_state") == "active"
+        and intent.get("predecessor_block_id") == proposal.expected_block_id
+        and intent.get("transition_id") == identity.transition_id
+        and intent.get("receipt_id") == identity.receipt_id
+        and intent.get("authorization_class") == proposal.authorization_class
+        and intent.get("authorization_id") == proposal.authorization_id
+        and intent.get("reason_category") == proposal.reason_category
+        and intent.get("policy_revision") == proposal.policy_revision
+        and intent.get("current_receipt_id") == proposal.expected_current_receipt_id
+        and intent.get("current_receipt_digest") == proposal.expected_current_receipt_digest
+        and intent.get("current_selector_id") == proposal.expected_current_selector_id
+        and intent.get("current_selector_digest") == proposal.expected_current_selector_digest
+        and intent.get("page_id") == proposal.expected_page_id == expected_page_id
+        and intent.get("partition") == partition
+        and intent.get("pre_image_state") == "present"
+        and intent.get("pre_image_digest") == proposal.expected_page_digest
+        and isinstance(post_digest, str)
+        and intent.get("artifact_digest") == post_digest
+        and intent.get("artifact_id")
+        == "smartifact_" + post_digest.removeprefix("sha256:")
         and intent.get("revision_schema") == proposal.expected_revision_schema
         and intent.get("page_schema") == proposal.expected_page_schema
         and intent.get("block_schema") == proposal.expected_block_schema
         and intent.get("renderer_revision") == proposal.expected_renderer_revision
         and intent.get("partition_revision") == proposal.expected_partition_revision
         and intent.get("platform_revision") == proposal.expected_platform_revision
-        and intent.get("from_lifecycle_state") == "active"
-        and intent.get("to_lifecycle_state") == "active"
         and intent.get("recovery_state") == "prepared"
+        and isinstance(prepared_at, str)
     )
 
 
@@ -1629,15 +2001,40 @@ def _state_from_intent(
 ) -> SubjectiveMemCurrentState | None:
     try:
         mutation = "recovery_required" if recovery else "prepared" if prepared else "none"
+        predecessor = prepared or recovery
         state = SubjectiveMemCurrentState(
-            memory_state_id=str(intent["current_selector_id"]),
-            memory_id=str(intent["memory_id"]),
-            character_id=str(intent["character_id"]),
-            current_revision=int(intent["from_revision"] if prepared or recovery else intent["to_revision"]),
-            lifecycle_state="active",
-            mutation_state=mutation,
-            retrieval_eligible=not (prepared or recovery),
-            updated_at=str(intent["prepared_at"]),
+  memory_state_id=str(intent["current_selector_id"]),
+  memory_id=str(intent["memory_id"]),
+  character_id=str(intent["character_id"]),
+  current_revision=int(intent["from_revision"] if predecessor else intent["to_revision"]),
+  lifecycle_state="active",
+  mutation_state=mutation,
+  retrieval_eligible=not predecessor,
+  updated_at=str(intent["prepared_at"]),
+  workspace_authority_digest=str(intent["workspace_authority_digest"]),
+  scope_binding_digest=str(intent["scope_binding_digest"]),
+  page_id=str(intent["page_id"]),
+  block_id=str(
+      intent["predecessor_block_id"]
+      if predecessor
+      else intent["successor_block_id"]
+  ),
+  canonical_page_digest=str(
+      intent["pre_image_digest"] if predecessor else intent["post_image_digest"]
+  ),
+  authorization_kind=str(
+      intent["predecessor_authorization_kind"]
+      if predecessor
+      else "lifecycle_transition"
+  ),
+  authorization_id=str(
+      intent["predecessor_authorization_id"]
+      if predecessor
+      else intent["transition_id"]
+  ),
+  current_receipt_id=str(
+      intent["current_receipt_id"] if predecessor else intent["receipt_id"]
+  ),
         )
     except (KeyError, TypeError, ValueError):
         return None
@@ -1709,16 +2106,30 @@ def _any_final_record_present_locked(*, tx: EvidenceStoreTransaction, identity: 
 def _current_state_from_dict(raw: object) -> SubjectiveMemCurrentState | None:
     if not isinstance(raw, dict):
         return None
+    binding = raw.get("authority_binding")
+    if binding is not None and not isinstance(binding, dict):
+        return None
+    authorization = binding.get("authorization_ref") if isinstance(binding, dict) else None
+    if authorization is not None and not isinstance(authorization, dict):
+        return None
     try:
         state = SubjectiveMemCurrentState(
-            memory_state_id=raw["memory_state_id"],
-            memory_id=raw["memory_id"],
-            character_id=raw["character_id"],
-            current_revision=raw["current_revision"],
-            lifecycle_state=raw["lifecycle_state"],
-            mutation_state=raw["mutation_state"],
-            retrieval_eligible=raw["retrieval_eligible"],
-            updated_at=raw["updated_at"],
+  memory_state_id=raw["memory_state_id"],
+  memory_id=raw["memory_id"],
+  character_id=raw["character_id"],
+  current_revision=raw["current_revision"],
+  lifecycle_state=raw["lifecycle_state"],
+  mutation_state=raw["mutation_state"],
+  retrieval_eligible=raw["retrieval_eligible"],
+  updated_at=raw["updated_at"],
+  workspace_authority_digest=(binding.get("workspace_authority_digest") if isinstance(binding, dict) else None),
+  scope_binding_digest=(binding.get("scope_binding_digest") if isinstance(binding, dict) else None),
+  page_id=(binding.get("page_id") if isinstance(binding, dict) else None),
+  block_id=(binding.get("block_id") if isinstance(binding, dict) else None),
+  canonical_page_digest=(binding.get("canonical_page_digest") if isinstance(binding, dict) else None),
+  authorization_kind=(authorization.get("authority_kind") if isinstance(authorization, dict) else None),
+  authorization_id=(authorization.get("authority_id") if isinstance(authorization, dict) else None),
+  current_receipt_id=(binding.get("current_receipt_id") if isinstance(binding, dict) else None),
         )
     except (KeyError, TypeError, ValueError):
         return None
