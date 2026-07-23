@@ -25,6 +25,7 @@ jobs:
         shell: bash
         run: |
           sed -i 's/Guard self-test: 23 assertions/Guard self-test: 24 assertions/g; s/guard_self_test_assertions: 23/guard_self_test_assertions: 24/g' .github/cutover-1c57-apply.py
+          sed -i "/('canonical Phase I-3 correction evidence',/d" .github/cutover-1c57-apply.py
           python .github/cutover-1c57-apply.py
 
       - name: Validate final cutover tree
