@@ -360,33 +360,33 @@ class SubjectiveMemCurrentState:
 
     def to_dict(self) -> dict[str, object]:
         body: dict[str, object] = {
-  "schema": (
-      SUBJECTIVE_MEM_CURRENT_STATE_V2_SCHEMA
-      if self.authority_bound
-      else SUBJECTIVE_MEM_CURRENT_STATE_SCHEMA
-  ),
-  "memory_state_id": self.memory_state_id,
-  "memory_id": self.memory_id,
-  "character_id": self.character_id,
-  "current_revision": self.current_revision,
-  "lifecycle_state": self.lifecycle_state,
-  "mutation_state": self.mutation_state,
-  "retrieval_eligible": self.retrieval_eligible,
-  "updated_at": self.updated_at,
+            "schema": (
+                SUBJECTIVE_MEM_CURRENT_STATE_V2_SCHEMA
+                if self.authority_bound
+                else SUBJECTIVE_MEM_CURRENT_STATE_SCHEMA
+            ),
+            "memory_state_id": self.memory_state_id,
+            "memory_id": self.memory_id,
+            "character_id": self.character_id,
+            "current_revision": self.current_revision,
+            "lifecycle_state": self.lifecycle_state,
+            "mutation_state": self.mutation_state,
+            "retrieval_eligible": self.retrieval_eligible,
+            "updated_at": self.updated_at,
         }
         if self.authority_bound:
-  body["authority_binding"] = {
-      "workspace_authority_digest": self.workspace_authority_digest,
-      "scope_binding_digest": self.scope_binding_digest,
-      "page_id": self.page_id,
-      "block_id": self.block_id,
-      "canonical_page_digest": self.canonical_page_digest,
-      "authorization_ref": {
-          "authority_kind": self.authorization_kind,
-          "authority_id": self.authorization_id,
-      },
-      "current_receipt_id": self.current_receipt_id,
-  }
+            body["authority_binding"] = {
+                "workspace_authority_digest": self.workspace_authority_digest,
+                "scope_binding_digest": self.scope_binding_digest,
+                "page_id": self.page_id,
+                "block_id": self.block_id,
+                "canonical_page_digest": self.canonical_page_digest,
+                "authorization_ref": {
+                    "authority_kind": self.authorization_kind,
+                    "authority_id": self.authorization_id,
+                },
+                "current_receipt_id": self.current_receipt_id,
+            }
         return body
 @dataclass(frozen=True)
 class SubjectiveMemPreparedManifest:
