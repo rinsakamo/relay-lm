@@ -33,16 +33,19 @@ def test_filename_signal_is_shape_only(name: str, expected: str) -> None:
     assert inventory.filename_signal(name) == expected
 
 
-def test_generate_keeps_reference_facts_separate_from_filename_signal(
+def test_generate_keeps_mechanical_signals_separate_from_reviewed_responsibility(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     scripts = tmp_path / "scripts"
     workflows = tmp_path / ".github" / "workflows"
     docs = tmp_path / "docs"
+    records = tmp_path / "records" / "repository"
     inventory_path = docs / "smoke" / "scripts_inventory.md"
+    registry_path = records / "asset_classification_v1.yaml"
     scripts.mkdir(parents=True)
     workflows.mkdir(parents=True)
     inventory_path.parent.mkdir(parents=True)
+    records.mkdir(parents=True)
 
     fixture = scripts / "phase5c4a_cache_fixture.py"
     support = scripts / "phase5c4a_smoke_support.py"
@@ -70,9 +73,25 @@ def test_generate_keeps_reference_facts_separate_from_filename_signal(
         "This generated inventory must be excluded from reference detection.\n",
         encoding="utf-8",
     )
+    registry_path.write_text(
+        """\
+records:
+  - asset_id: demo.fixture
+    paths: [scripts/phase5c4a_cache_fixture.py]
+    responsibility: ordinary_test
+  - asset_id: demo.smoke
+    paths: [scripts/relaylm_demo_smoke.py]
+    responsibility: process_smoke
+  - asset_id: ignored.non_script
+    paths: [docs/runbook.md]
+    responsibility: repository_validation
+""",
+        encoding="utf-8",
+    )
 
     monkeypatch.setattr(inventory, "ROOT", tmp_path)
     monkeypatch.setattr(inventory, "INVENTORY_PATH", inventory_path)
+    monkeypatch.setattr(inventory, "CLASSIFICATION_REGISTRY_PATH", registry_path)
     monkeypatch.setattr(
         inventory.subprocess,
         "run",
@@ -81,13 +100,55 @@ def test_generate_keeps_reference_facts_separate_from_filename_signal(
 
     rendered = inventory.generate()
 
-    assert "| script | CI-referenced | docs-referenced | filename signal |" in rendered
-    assert "| `phase5c4a_cache_fixture.py` | yes | no | helper-shaped |" in rendered
-    assert "| `phase5c4a_smoke_support.py` | yes | no | helper-shaped |" in rendered
-    assert "| `relaylm_demo_smoke.py` | yes | yes | smoke-named |" in rendered
-    assert "| `relaylm_demo_tool.py` | no | no | other |" in rendered
+    assert (
+        "| script | CI-referenced | docs-referenced | filename signal | "
+        "reviewed responsibility |"
+    ) in rendered
+    assert (
+        "| `phase5c4a_cache_fixture.py` | yes | no | helper-shaped | ordinary_test |"
+        in rendered
+    )
+    assert (
+        "| `phase5c4a_smoke_support.py` | yes | no | helper-shaped | unclassified |"
+        in rendered
+    )
+    assert (
+        "| `relaylm_demo_smoke.py` | yes | yes | smoke-named | process_smoke |"
+        in rendered
+    )
+    assert (
+        "| `relaylm_demo_tool.py` | no | no | other | unclassified |"
+        in rendered
+    )
     assert "active smoke" not in rendered
     assert "phase-completion evidence" not in rendered
     assert "does not classify responsibility, lifecycle, or retention" in rendered
+    assert "copied only from exact script paths" in rendered
+    assert "2 with a reviewed responsibility" in rendered
     assert "--output generated/scripts_inventory.md" in rendered
     assert "--output docs/smoke/scripts_inventory.md" not in rendered
+
+
+def test_conflicting_reviewed_responsibilities_fail_closed(tmp_path: Path) -> None:
+    registry_path = tmp_path / "asset_classification_v1.yaml"
+    registry_path.write_text(
+        """\
+records:
+  - asset_id: first
+    paths: [scripts/relaylm_demo.py]
+    responsibility: ordinary_test
+  - asset_id: second
+    paths: [scripts/relaylm_demo.py]
+    responsibility: process_smoke
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "conflicting reviewed responsibilities for "
+            "scripts/relaylm_demo.py: ordinary_test vs process_smoke"
+        ),
+    ):
+        inventory.load_reviewed_responsibilities(registry_path)
