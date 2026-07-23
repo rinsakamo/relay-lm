@@ -1,3 +1,4 @@
+# Synchronize after draft PR creation so the pull_request workflow evaluates this branch.
 name: R2-B repository inventory test consolidation
 
 on:
