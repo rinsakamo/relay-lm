@@ -85,3 +85,4 @@ jobs:
           name: cutover-1c57-final-tree
           path: /tmp/cutover-1c57-final-tree
           if-no-files-found: error
+          include-hidden-files: true
