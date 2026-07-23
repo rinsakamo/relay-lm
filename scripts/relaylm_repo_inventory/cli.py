@@ -317,7 +317,3 @@ def main(argv: list[str] | None = None) -> int:
     content = _render(payload, args.format)
     _write_output(content, args.output)
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
