@@ -20,10 +20,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Apply reviewed corrections
+      - name: Apply reviewed corrections or record exact failure
         shell: bash
         run: |
-          python - <<'PY'
+          set +e
+          python - <<'PY' > /tmp/lc1a-patch.log 2>&1
           import base64
           import gzip
           import re
@@ -40,16 +41,25 @@ jobs:
               Path('.github/workflows/lc1a-review-runner.yml'),
               Path('.github/lc1a-review-trigger'),
               Path('.github/lc1a-review-trigger-2'),
+              Path('.github/lc1a-patch-error.txt'),
           ):
               path.unlink(missing_ok=True)
           PY
-          python -m compileall -q relaylm scripts tests
-          git diff --check
-      - name: Commit reviewed corrections
-        shell: bash
-        run: |
+          status=$?
+          set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "$status" -ne 0 ]; then
+            git reset --hard HEAD
+            tail -200 /tmp/lc1a-patch.log > .github/lc1a-patch-error.txt
+            git add .github/lc1a-patch-error.txt
+            git commit -m "chore: record LC-1A correction failure"
+            git push origin HEAD:agent/lc1a-subjective-mem-correct
+            exit 1
+          fi
+          cat /tmp/lc1a-patch.log
+          python -m compileall -q relaylm scripts tests
+          git diff --check
           git add -A
           git commit -m "fix: harden LC-1A authority recovery"
           git push origin HEAD:agent/lc1a-subjective-mem-correct
