@@ -1,4 +1,4 @@
-name: Cutover 1C-56 Payload Hash Probe
+name: Cutover 1C-56 Payload Part Probe
 
 on:
   pull_request:
@@ -16,7 +16,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
-      - name: Print payload hashes
-        run: |
-          sha256sum scripts/_cutover_1c56_phase_i3_builder.py.b64.*
-          cat scripts/_cutover_1c56_phase_i3_builder.py.b64.* | sha256sum
+      - name: Check payload part 03a
+        run: echo 'c38bed1f861b822949f3b08993428706b7e5fb3d14ed2797f83467903c9fda31  scripts/_cutover_1c56_phase_i3_builder.py.b64.03a' | sha256sum -c -
+      - name: Check payload part 03b
+        if: always()
+        run: echo '8ced35c642d77d3f3933d575ab0603b1dfd9162e9bfd0def543ad633dfa2e475  scripts/_cutover_1c56_phase_i3_builder.py.b64.03b' | sha256sum -c -
