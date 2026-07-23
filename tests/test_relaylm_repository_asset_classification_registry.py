@@ -51,6 +51,14 @@ def test_current_registry_matches_reviewed_document_and_validates() -> None:
     assert registry.validate_registry(payload, root=root) == []
 
 
+def test_current_registry_rendering_is_deterministic() -> None:
+    payload = registry.load_yaml(registry.repository_root() / registry.REGISTRY_PATH)
+
+    assert registry.render_json(payload) == registry.render_json(payload)
+    assert registry.render_markdown(payload) == registry.render_markdown(payload)
+    assert "does not authorize retirement" in registry.render_markdown(payload)
+
+
 def test_loader_rejects_duplicate_yaml_mapping_keys() -> None:
     with pytest.raises(ValueError, match="duplicate YAML mapping key: 'registry_version'"):
         registry.load_yaml_text(
@@ -145,3 +153,18 @@ def test_valid_retired_asset_needs_no_invocation_root_reason(tmp_path: Path) -> 
     errors = registry.validate_registry(payload, root=tmp_path)
 
     assert errors == []
+
+
+def test_active_operator_root_requires_one_canonical_claim(tmp_path: Path) -> None:
+    (tmp_path / "existing.py").write_text("pass\n", encoding="utf-8")
+    first = _base_record()
+    second = {
+        **_base_record(),
+        "asset_id": "example.second",
+    }
+    payload = _payload(first)
+    payload["records"].append(second)
+
+    errors = registry.validate_registry(payload, root=tmp_path)
+
+    assert "active operator-root asset must have exactly one canonical entrypoint claim: example.second" in errors
