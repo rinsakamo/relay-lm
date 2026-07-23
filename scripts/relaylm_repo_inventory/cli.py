@@ -163,7 +163,7 @@ def self_test() -> tuple[bool, list[str]]:
             f"FAIL: O3 scheduler root_kind is '{o3_root['root_kind']}', expected 'operator_cli' (not smoke-only)."
         )
     else:
-        messages.append("PASS: O3 always-on local scheduler CLI is classified as operator_cli, not smoke-only or dead.")
+        messages.append("PASS: O3 scheduler root_kind is classified as operator_cli, not smoke-only or dead.")
 
     kinds_present = {r["root_kind"] for r in invocation_records}
     for expected_kind in (
@@ -317,7 +317,3 @@ def main(argv: list[str] | None = None) -> int:
     content = _render(payload, args.format)
     _write_output(content, args.output)
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
