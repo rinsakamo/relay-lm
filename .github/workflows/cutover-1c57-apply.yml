@@ -49,11 +49,16 @@ jobs:
       - name: Check final diff formatting
         run: git diff --check
 
-      - name: Commit final cutover tree
+      - name: Stage and commit final cutover tree
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git status --short
           git add -A
+          git diff --cached --check
           git commit -m "docs: move RelayMEM M3a handoff to frozen evidence"
-          git push origin HEAD:agent/documentation-hard-cutover-1c57-relaymem-m3a
+
+      - name: Push final cutover tree
+        shell: bash
+        run: git push origin HEAD:agent/documentation-hard-cutover-1c57-relaymem-m3a
