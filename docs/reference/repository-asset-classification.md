@@ -30,15 +30,15 @@ Last reviewed: 2026-07-24 JST
 
 ## Purpose and authority boundary
 
-This page defines the canonical Lane R responsibility and lifecycle classification format and records the bounded R1 classification surface plus accepted R2 entry-point decisions.
+This page defines the canonical Lane R responsibility and lifecycle classification format and records the bounded R1 surface plus accepted R2 and R3 decisions.
 
 ```text
 repository: rinsakamo/relay-lm
-source main: c5b7c1d2427f61334bd40b54deece4faa5bcf28a
-source main meaning: squash merge of PR #669
+source main: c6a0735ec51dff2ba4aa4e7f741b3c3d9f788de0
+source main meaning: squash merge of PR #671
 lane: R
-stage: R2 test / smoke / validation consolidation
-scope: classification and one bounded repository-inventory entry-point decision
+stage: R3 generated navigation and drift checks
+scope: reviewed classification, one canonical repository-inventory entry point, and its machine-readable mirror
 ```
 
 Classification is evidence for later review. It does not authorize deletion, movement, rename, consolidation, behavior change, compatibility removal, storage migration, or status changes. Every destructive or authority-affecting action requires its own atomic PR and fresh caller evidence.
@@ -57,13 +57,13 @@ A classification record uses these fields:
 | `responsibility` | required | One accepted responsibility class. |
 | `lifecycle` | required | `active`, `transitional`, or `retired`. |
 | `owner` | required | Maintainer or subsystem that owns the continuing responsibility. |
-| `protected_boundary` | required | Runtime, operator, process, migration, recovery, or governance boundary protected by the asset. |
+| `protected_boundary` | required for `active` and `transitional` | Runtime, operator, process, migration, recovery, or governance boundary protected by the asset. |
 | `current_callers` | required for `active` and `transitional` | Current direct, indirect, dynamic, subprocess, workflow, operator, test, or documentation callers. |
-| `invocation_roots` | required | Mechanical root kinds supporting the decision. An empty list requires `invocation_root_reason`. |
-| `invocation_root_reason` | required when `invocation_roots` is empty | Why the asset is internal rather than independently invoked. |
+| `invocation_roots` | required | Mechanical root kinds supporting the decision. An empty list for an active or transitional internal asset requires `invocation_root_reason`. |
+| `invocation_root_reason` | required for an active or transitional asset with no roots | Why the asset is internal rather than independently invoked. |
 | `evidence` | required | Exact current repository anchors used for the decision. |
-| `removal_gate` | required for `transitional` | Explicit event that must close before retirement review. Active records use `null`. |
-| `replacement_validation` | required for `transitional` | Validation that must replace the protected responsibility before retirement. Active records use `null`. |
+| `removal_gate` | required for `transitional` | Explicit event that must close before retirement review. Active and retired records use `null`. |
+| `replacement_validation` | required for `transitional` | Validation that must replace the protected responsibility before retirement. Active and retired records use `null`. |
 | `confidence` | required | `confirmed`, `provisional`, or `unclassified`. |
 | `notes` | optional | Scope limits, naming debt, or candidate-wave observations. |
 
@@ -126,11 +126,11 @@ The fixed `1ca928cd` baseline counted 731 roots. It is historical mechanical evi
 
 ## Bounded classification registry
 
-The following YAML-shaped records are the canonical human-reviewed representation for this Lane R slice. They are not yet a generated registry.
+The following YAML records are the canonical human-reviewed representation for this Lane R slice. `records/repository/asset_classification_v1.yaml` is a machine-readable mirror. Drift validation is fail-closed, but neither the mirror nor generated navigation can authorize retirement.
 
 ```yaml
 classification_version: 1
-source_commit: 39212194bb67b21e297f3b3cc9ba28a21695ee02
+source_commit: c6a0735ec51dff2ba4aa4e7f741b3c3d9f788de0
 records:
   - asset_id: console.relaylm
     paths: [pyproject.toml]
@@ -271,10 +271,12 @@ records:
     responsibility: repository_validation
     lifecycle: active
     owner: repository_maintenance
-    protected_boundary: reproducible inventory self-test, report generation, and artifact upload
+    protected_boundary: reproducible inventory and classification validation, deterministic rendering, and artifact upload
     current_callers: [pull_request path-filter trigger, workflow_dispatch]
     invocation_roots: [github_actions_step]
-    evidence: [.github/workflows/repository-storage-inventory.yml]
+    evidence:
+      - .github/workflows/repository-storage-inventory.yml
+      - scripts/relaylm_repository_asset_classification_registry.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
@@ -294,6 +296,58 @@ records:
       - tests/test_relaylm_repo_inventory.py
       - tests/test_relaylm_repo_inventory_cross_mode_hardening.py
       - tests/test_relaylm_repo_inventory_final_hardening.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: asset_classification.registry
+    paths: [records/repository/asset_classification_v1.yaml]
+    responsibility: repository_validation
+    lifecycle: active
+    owner: repository_maintenance
+    protected_boundary: machine-readable mirror of reviewed classification records and explicit canonical-entrypoint claims
+    current_callers:
+      - scripts/relaylm_repository_asset_classification_registry.py
+      - .github/workflows/repository-storage-inventory.yml
+      - tests/test_relaylm_repository_asset_classification_registry.py
+    invocation_roots: [static_or_package_data]
+    evidence:
+      - records/repository/asset_classification_v1.yaml
+      - docs/reference/repository-asset-classification.md
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: asset_classification.validator
+    paths: [scripts/relaylm_repository_asset_classification_registry.py]
+    responsibility: repository_validation
+    lifecycle: active
+    owner: repository_maintenance
+    protected_boundary: fail-closed registry drift, schema, path, lifecycle-gate, canonical-entrypoint, and deterministic-render validation
+    current_callers:
+      - .github/workflows/repository-storage-inventory.yml
+      - tests/test_relaylm_repository_asset_classification_registry.py
+      - operator validation command
+    invocation_roots: [operator_cli, github_actions_step]
+    evidence:
+      - scripts/relaylm_repository_asset_classification_registry.py
+      - records/repository/asset_classification_v1.yaml
+      - tests/test_relaylm_repository_asset_classification_registry.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: asset_classification.tests
+    paths: [tests/test_relaylm_repository_asset_classification_registry.py]
+    responsibility: ordinary_test
+    lifecycle: active
+    owner: repository_maintenance
+    protected_boundary: regression coverage for mirror drift, enum and path rejection, lifecycle gates, retired-state safety, and canonical-entrypoint uniqueness
+    current_callers: [.github/workflows/repository-storage-inventory.yml, maintained pytest suite]
+    invocation_roots: [pytest_root]
+    evidence:
+      - tests/test_relaylm_repository_asset_classification_registry.py
+      - scripts/relaylm_repository_asset_classification_registry.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
@@ -355,30 +409,28 @@ records:
 ## Decision summary
 
 ```text
-active: 12
+active: 15
 transitional: 1
 retired: 0
 ```
 
-No asset in this bounded surface is retired. Every record has a current supported caller or an open protected migration responsibility. R2-A performs no file retirement.
+No asset in this bounded surface is retired. Every record has a current supported caller or an open protected migration responsibility. R3-A performs no file retirement.
 
 ## Explicit unknowns and unclassified surfaces
 
 The following remain unresolved and must not be guessed:
 
-- current complete row counts at `c5b7c1d...`; the committed baseline is fixed to `1ca928cd...`;
+- current complete inventory row counts at `c6a0735e...`; the committed baseline is fixed to `1ca928cd...`;
 - runtime expansion of dynamically assembled imports, registries, plugin-style lookup, and subprocess commands;
 - responsibility and lifecycle outside the bounded registry above;
 - whether each discovered `python -m` root is supported or only an implementation convenience;
-- whether the three inventory pytest files should remain partitioned after complete overlap review;
+- whether the three repository-inventory pytest files should remain partitioned after complete overlap review;
 - whether milestone-named smoke outside this surface is active regression, process validation, transitional characterization, or retired;
 - any retirement disposition for Primary MEM, ordinary Retrieval, Subjective MEM publication, lifecycle, recovery, rollback, or characterization before the owning LC-1 or RT-1 gate closes.
 
-## Wave register and R2-A resolution
+## Wave register and accepted decisions
 
 ### R2-A: repository inventory entry-point consolidation
-
-R2-A selects and preserves:
 
 ```text
 canonical supported invocation:
@@ -388,9 +440,7 @@ import-only implementation:
   scripts/relaylm_repo_inventory/cli.py
 ```
 
-Caller inspection showed that the top-level wrapper is not a disposable cosmetic duplicate: `scripts/` is a flat, non-installed operator-tool directory, and the workflow and fixed inventory receipt use the wrapper. The maintained cross-mode test also asserts that this wrapper is the direct operator root while package-internal `cli.py` is not. Moving to a package/module command would introduce a new packaging or `PYTHONPATH` contract and belongs to a later package migration, not R2 consolidation.
-
-The internal `cli.py` main guard was an unsupported secondary invocation surface and contradicted the maintained test that package-internal inventory code is not reported as a direct operator CLI. R2-A removes only that guard. The wrapper remains the sole supported entry point; scan modes, self-test, formats, output paths, exit behavior, and implementation imports are unchanged.
+The top-level wrapper remains the supported entry point. The internal `cli.py` main guard was removed without changing scan modes, self-test, formats, output paths, exit behavior, or implementation imports.
 
 ### R2-B: repository inventory test partition review
 
@@ -402,7 +452,9 @@ Use O3 as a control example. Subprocess, output, exit-code, platform, filesystem
 
 ### R3-A: generated classification registry and drift check
 
-Generate a machine-readable registry from explicit records rather than reachability inference. Reject unknown enum values, missing paths, unexpanded globs, duplicate IDs, transitional records missing required gates, retired records with live callers, and competing canonical entry points. Generated output remains navigation and evidence, not retirement authority.
+R3-A adds a machine-readable mirror and fail-closed validator. The validator rejects document/registry drift, unknown enums, missing paths, unexpanded globs, duplicate IDs, incomplete transitional gates, retired records with live responsibilities, and competing canonical-entrypoint claims. It renders deterministic JSON and Markdown navigation evidence.
+
+The reviewed document remains upstream authority. Registry and generated outputs remain navigation and review evidence only.
 
 ### R4-A: installed CLI package-move discovery
 
@@ -410,6 +462,6 @@ The six console-script records are eligible for caller discovery only. A pre-RT-
 
 ## Parallel-safety and non-goals
 
-R2-A changes only the unsupported internal `cli.py` main guard and this classification reference. It does not change the canonical wrapper, workflow commands, report formats, storage scanning, invocation scanning, configuration scanning, `docs/PROJECT_STATUS.md`, runtime or storage behavior, APIs, UI, feature gates, schemas, Lane D retirement decisions, LC-1 or RT-1 authority paths, or user state.
+R3-A adds only repository-governance data, validation, tests, and generated navigation wiring. It does not change runtime or storage behavior, APIs, UI, feature gates, user state, `docs/PROJECT_STATUS.md`, Lane D documentation retirement authority, LC-1, or RT-1 paths.
 
 Every later R2, R3, or R4 PR must refresh `main`, open PRs, exact callers, workflows, review threads, and authority overlap before treating a candidate above as executable.
