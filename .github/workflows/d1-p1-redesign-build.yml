@@ -1,0 +1,358 @@
+name: Build redesigned D1 completion-report boundary
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/d1-p1-redesign-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/d1-p1-redesign-build
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Apply P1 authority-transfer redesign
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main:refs/remotes/origin/main
+          python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          from pathlib import Path
+
+
+          def read(path: str) -> str:
+              return Path(path).read_text(encoding="utf-8")
+
+
+          def write(path: str, text: str) -> None:
+              Path(path).write_text(text, encoding="utf-8")
+
+
+          def replace_once(path: str, old: str, new: str, label: str) -> None:
+              text = read(path)
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one occurrence in {path}, found {count}")
+              write(path, text.replace(old, new, 1))
+
+
+          # Narrow the completion-report validator to existing report files only.
+          path = "scripts/relaylm_mvp_completion_report_smoke.py"
+          text = read(path)
+          old_docstring = '''"""Validate transitional RelayLM completion-report files and their template.
+
+          This validator deliberately does not inspect ``docs/DOCUMENTATION_MODEL.md``
+          and does not own retired-path detection. Documentation semantics and retired
+          path absence are governed by the generic documentation validators. This script
+          owns only the bounded, removal-gated file shape of existing completion reports
+          and their template.
+          """'''
+          new_docstring = '''"""Validate existing transitional RelayLM completion-report files.
+
+          This validator deliberately owns neither ``docs/DOCUMENTATION_MODEL.md`` nor a
+          reusable report-creation template nor retired-path detection. Those authorities
+          belong to generic documentation governance. This script remains only as a
+          closed, removal-gated structural validator for already-existing report files.
+          """'''
+          if text.count(old_docstring) != 1:
+              raise SystemExit("completion validator docstring drift")
+          text = text.replace(old_docstring, new_docstring, 1)
+          text = text.replace(
+              'CANONICAL_TEMPLATE_PATH = "docs/templates/implementation-completion-report.md"\n',
+              "",
+              1,
+          )
+          start = text.index("TEMPLATE_FRONT_MATTER = {")
+          end = text.index("\n\ndef read_text", start)
+          text = text[:start] + text[end + 2 :]
+          start = text.index("def validate_template_front_matter() -> None:")
+          end = text.index("\n\ndef determine_profile", start)
+          text = text[:start] + text[end + 2 :]
+          old_validation = '''def validate_repository_files(paths: list[str], check_all: bool) -> None:
+              if check_all:
+                  validate_template_front_matter()
+                  paths.extend(all_report_paths())
+              for relative_path in dict.fromkeys(paths):
+                  validate_report(relative_path)
+          '''
+          new_validation = '''def validate_repository_files(paths: list[str], check_all: bool) -> None:
+              if check_all:
+                  paths.extend(all_report_paths())
+              for relative_path in dict.fromkeys(paths):
+                  validate_report(relative_path)
+          '''
+          if text.count(old_validation) != 1:
+              raise SystemExit("completion validator repository-file block drift")
+          text = text.replace(old_validation, new_validation, 1)
+          text = text.replace(
+              '"real repository completion-report files and template pass",',
+              '"real repository completion-report files pass",',
+              1,
+          )
+          start = text.index("    real_template = (real_root / CANONICAL_TEMPLATE_PATH)")
+          end = text.index("\n    failed = ", start)
+          text = text[:start] + text[end:]
+          forbidden = (
+              "CANONICAL_TEMPLATE_PATH",
+              "TEMPLATE_FRONT_MATTER",
+              "validate_template_front_matter",
+              "implementation-completion-report.md",
+              "--check-model",
+              "docs/mvp",
+          )
+          remaining = [item for item in forbidden if item in text]
+          if remaining:
+              raise SystemExit(f"completion validator retains retired responsibilities: {remaining}")
+          write(path, text)
+
+          # Retire template/model coupling from the semantic audit while preserving the
+          # generic retired-tree scan and existing-report index validation.
+          path = "scripts/relaylm_docs_semantic_audit.py"
+          text = read(path)
+          for line in (
+              'RETIRED_TEMPLATE_PATHS = ("docs/mvp/IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md",)\n',
+              'CANONICAL_COMPLETION_REPORT_TEMPLATE_PATH = "docs/templates/implementation-completion-report.md"\n',
+          ):
+              if text.count(line) != 1:
+                  raise SystemExit(f"semantic-audit constant drift: {line.strip()}")
+              text = text.replace(line, "", 1)
+          start = text.index("def check_completion_report_template(errors: list[str]) -> None:")
+          end = text.index("\n\nMVP_REFERENCE_PATTERN =", start)
+          text = text[:start] + text[end + 2 :]
+          for marker in (
+              '    "docs/evidence/implementation/README.md": (\n',
+              '    "scripts/relaylm_mvp_completion_report_smoke.py": (\n',
+          ):
+              start = text.index(marker)
+              end = text.index("    ),\n", start) + len("    ),\n")
+              text = text[:start] + text[end:]
+          line = "    check_completion_report_template,\n"
+          if text.count(line) != 1:
+              raise SystemExit("semantic-audit production tuple drift")
+          text = text.replace(line, "", 1)
+          for forbidden_name in (
+              "check_completion_report_template",
+              "CANONICAL_COMPLETION_REPORT_TEMPLATE_PATH",
+              "RETIRED_TEMPLATE_PATHS",
+          ):
+              if forbidden_name in text:
+                  raise SystemExit(f"semantic audit retains retired template authority: {forbidden_name}")
+          write(path, text)
+
+          # Align current navigation with the D1 evidence policy.
+          replace_once(
+              "docs/README.md",
+              "- [Implementation evidence](evidence/implementation/README.md) — per-PR implementation completion reports and focused historical MVP evidence.",
+              "- [Implementation evidence](evidence/implementation/README.md) — closed transitional implementation records and focused historical MVP evidence; new PR evidence normally remains in Git, CI, and the pull request.",
+              "docs root implementation-evidence entry",
+          )
+          replace_once(
+              "docs/README.md",
+              '''## Parallel implementation documentation rule
+
+          Implementation PRs add or update their own slice handoff and `docs/evidence/implementation/<slice>_completion_report.md` only. Shared current-status and execution-plan documents may receive the minimum anchors needed to keep active validation green, but the wave convergence PR remains responsible for repository-wide synthesis. The next wave and release/evaluation gate remain closed until the convergence PR links the merged reports and updates shared current-status documents.
+          ''',
+              '''## Parallel implementation documentation rule
+
+          Implementation PRs record bounded implementation and validation evidence in the pull request, exact-head CI, and Git history. They do not create a permanent completion report or handoff by default. A convergence PR reads the merged pull requests and validation results, then updates shared current-status documents only when repository-wide synthesis is required. Existing committed completion reports remain transitional evidence during D2-D6 and do not open a later wave or release/evaluation gate.
+          ''',
+              "docs root parallel rule",
+          )
+
+          path = "docs/evidence/implementation/README.md"
+          text = read(path)
+          start = text.index("## Creating a new completion report")
+          end = text.index("\n\n## Early MVP smoke records", start)
+          replacement = '''## Closed transitional completion-report collection
+
+          This collection is closed to new completion reports and implementation handoffs. Existing records remain readable as bounded historical evidence while D2-D6 assigns each source a canonical synthesis, an allowlisted retained-record disposition, or Git-history retirement.
+
+          New implementation work records evidence in the pull request, exact-head CI, and Git history. A new committed record is created only when it qualifies for an allowlisted retained-record class with a continuing release, migration, audit, recovery, rollback, retirement, CI, or operational consumer. Existing legacy and canonical completion-report metadata profiles remain readable only for the files already present in this transitional collection.
+          '''
+          text = text[:start] + replacement + text[end:]
+          for forbidden_value in (
+              "implementation-completion-report.md",
+              "Creating a new completion report",
+              "docs/mvp",
+              "A new Stage-1 implementation PR creates",
+          ):
+              if forbidden_value in text:
+                  raise SystemExit(
+                      f"implementation evidence router retains creation authority: {forbidden_value}"
+                  )
+          write(path, text)
+
+          replace_once(
+              "docs/templates/README.md",
+              "- [Implementation completion report](implementation-completion-report.md)\n",
+              "",
+              "template index completion-report entry",
+          )
+
+          # Remove live command consumers of the retired model mode.
+          replace_once(
+              "scripts/relaylm_mvp_eval_runner_registry.py",
+              '("--check-model", "docs/evidence/implementation/mvp_eval_runner_completion_report.md"),',
+              '("docs/evidence/implementation/mvp_eval_runner_completion_report.md",),',
+              "MVP eval runner completion command",
+          )
+          replace_once(
+              "scripts/relaylm_ci_consolidated_smoke.py",
+              '[["scripts/relaylm_mvp_completion_report_smoke.py", "--check-model", "--check-all"]]',
+              '[["scripts/relaylm_mvp_completion_report_smoke.py", "--check-all"]]',
+              "consolidated completion command",
+          )
+
+          # Delete the superseded reusable template.
+          template = Path("docs/templates/implementation-completion-report.md")
+          if not template.is_file():
+              raise SystemExit("completion-report template missing before retirement")
+          template.unlink()
+
+          # Register only the remaining existing-report validator family.
+          registry_path = Path("records/documentation/transitional-assets.json")
+          registry = json.loads(registry_path.read_text(encoding="utf-8"))
+          family = next(
+              item
+              for item in registry["families"]
+              if item["family_id"] == "legacy-completion-report-validation"
+          )
+          family.update(
+              {
+                  "paths": [
+                      ".github/workflows/documentation-completion-report-files.yml",
+                      "docs/evidence/implementation/*_completion_report.md",
+                      "scripts/relaylm_mvp_completion_report_smoke.py",
+                  ],
+                  "owner": "documentation",
+                  "protected_boundary": (
+                      "Existing completion-report metadata profiles, required sections, "
+                      "source-PR evidence anchors, and unresolved-placeholder rejection. "
+                      "This family has no authority over Documentation Model prose, new-record "
+                      "creation, templates, active-document semantics, or retired-path detection."
+                  ),
+                  "current_consumers": [
+                      ".github/workflows/documentation-completion-report-files.yml",
+                      ".github/workflows/wave4-cross-slice-convergence.yml",
+                      "scripts/relaylm_ci_consolidated_smoke.py",
+                      "scripts/relaylm_mvp_eval_runner_registry.py",
+                  ],
+                  "removal_gate": (
+                      "All existing completion reports are synthesized, reclassified into "
+                      "allowlisted retained records, or retired to Git; no workflow, consolidated "
+                      "smoke group, evaluation runner, operator procedure, or current architecture "
+                      "document consumes the validator; and generic authority, retained-record, "
+                      "link, semantic-audit, and Git-recoverability checks protect every continuing invariant."
+                  ),
+                  "replacement_validation": [
+                      "active_document_authority",
+                      "git_recoverability",
+                      "links_and_routers",
+                      "retained_record_allowlist",
+                  ],
+                  "growth_policy": "closed",
+              }
+          )
+          registry_path.write_text(
+              json.dumps(registry, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+
+          # Record exact Git recovery for the retired template.
+          manifest_path = Path("records/documentation/retirement-manifest.json")
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          entry = {
+              "old_path": "docs/templates/implementation-completion-report.md",
+              "last_live_commit": "28176f4a8336b6ce7191166e1c720cb71a617e99",
+              "old_blob_sha": "f6b1df5d39d0c67b4183ec9b21be302fde81147b",
+              "removed_by_pr": 670,
+              "replacement_paths": [
+                  "docs/DOCUMENTATION_MODEL.md",
+                  "docs/contracts/documentation-governance.md",
+              ],
+              "disposition": "superseded",
+              "retention_reason": (
+                  "D1 superseded the reusable completion-report creation model with pull-request, "
+                  "exact-head CI, Git-history, and allowlisted retained-record governance."
+              ),
+          }
+          manifest["entries"] = sorted(
+              [
+                  item
+                  for item in manifest.get("entries", [])
+                  if item.get("old_path") != entry["old_path"]
+              ]
+              + [entry],
+              key=lambda item: item["old_path"],
+          )
+          manifest_path.write_text(
+              json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+
+          # Live authority must no longer refer to the retired model mode or template.
+          allowed_historical_prefixes = (
+              "docs/evidence/implementation/",
+              "docs/evidence/migrations/",
+          )
+          forbidden_hits: list[str] = []
+          for root_name in (".github", "docs", "scripts", "tests"):
+              root = Path(root_name)
+              if not root.exists():
+                  continue
+              for candidate in sorted(path for path in root.rglob("*") if path.is_file()):
+                  relative = candidate.as_posix()
+                  if relative.startswith(allowed_historical_prefixes):
+                      continue
+                  try:
+                      body = candidate.read_text(encoding="utf-8")
+                  except UnicodeDecodeError:
+                      continue
+                  for needle in ("--check-model", "implementation-completion-report.md"):
+                      if needle in body:
+                          forbidden_hits.append(f"{relative}: {needle}")
+          if forbidden_hits:
+              raise SystemExit(
+                  "live completion-report authority references remain:\n"
+                  + "\n".join(forbidden_hits)
+              )
+          PY
+      - name: Validate redesigned boundary
+        run: |
+          set -euo pipefail
+          python -m pip install -e ".[test]"
+          python -m compileall -q scripts/relaylm_mvp_completion_report_smoke.py scripts/relaylm_docs_semantic_audit.py scripts/relaylm_documentation_governance_validate.py
+          python scripts/relaylm_mvp_completion_report_smoke.py --check-all
+          python scripts/relaylm_mvp_completion_report_smoke.py --self-test
+          python scripts/relaylm_docs_semantic_audit.py
+          python scripts/relaylm_docs_semantic_audit.py --self-test
+          python scripts/relaylm_documentation_governance_validate.py --base-ref origin/main
+          python scripts/relaylm_documentation_governance_validate.py --self-test
+          python scripts/relaylm_documentation_current_boundary_smoke.py
+          python scripts/relaylm_docs_link_check.py
+          PYTHONPATH=.:scripts python scripts/relaylm_wave4_cross_slice_convergence_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_ci_consolidated_smoke_contract.py
+          test ! -e docs/templates/implementation-completion-report.md
+          git diff --check
+      - name: Commit validated redesign to build branch
+        run: |
+          set -euo pipefail
+          git add -A
+          git diff --cached --check
+          git commit -m "docs: retire completion-report model authority"
+          git push origin HEAD:agent/d1-p1-redesign-build
