@@ -1,1 +1,0 @@
-Trigger exact-head pull-request validation for Cutover 1C-56 bookkeeping.
