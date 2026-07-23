@@ -156,7 +156,7 @@ mutation_state: prepared
 retrieval_eligible: false
 ```
 
-The revision itself also has `retrieval_visible: false`. The manifest states:
+The revision itself has `retrieval_visible: true`, matching the target validator rule for an active semantic revision. Pre-publication safety is owned by the separate prepared selector rather than by an invalid active revision shape. The manifest states:
 
 ```yaml
 publication_state: prepared_noncanonical
@@ -167,7 +167,7 @@ st1_finalization_required: true
 
 This prepared JSON post-image is not canonical Markdown and is not a second editable semantic authority. It is immutable transaction material that lets ST-1 consume the exact formation result without re-running an LLM or subjective formation.
 
-ST-1 must:
+ST-1 consumes this handoff through [ST-1 Subjective MEM Commit Runtime](st1_subjective_mem_commit_runtime.md). It must:
 
 1. verify the operation, receipt, decision, revision, manifest, and current-state crosslinks and digests;
 2. render and durably install the supported canonical Markdown post-image under its accepted platform contract;

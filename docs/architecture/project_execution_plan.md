@@ -54,11 +54,13 @@ relaylm_related_authority:
   - ../contracts/relayctx-session-evidence-overlay.md
   - ../contracts/shared-assessment-subjective-mem.md
   - ../contracts/subjective-mem-storage-authority-and-commit-protocol.md
+  - st1_subjective_mem_commit_runtime.md
+  - ../contracts/subjective-mem-canonical-markdown-v1.md
   - ../proposals/repository-simplification.md
 ---
 # RelayLM Project Execution Plan
 
-Last reviewed: 2026-07-21 JST
+Last reviewed: 2026-07-23 JST
 
 ## Purpose
 
@@ -180,7 +182,7 @@ The series own the following bounded outcomes:
 - **OVL-1 CTX-OVL participant-private vertical slice** depends on EV-1 and implements bounded, rebuildable, non-durable RelayCTX working state for the first supported `participant` / `participant_private` partition. It adds exact Contract 1 binding, operation-time TTL, selection, invalidation, restart rebuild, bounded catch-up, and a content-free Reflex Snapshot. Unsupported partition or shared-scene behavior remains fail closed until its own later slice.
 - **ASM-1 Shared Assessment runtime foundation** depends on EV-1 and implements character-independent Shared Assessment revisions, one logical current-state selector, formation-time authorization receipts, and the split Assessment Pass boundary. It cannot write Subjective MEM.
 - **SM-1 Subjective MEM decision/result vertical slice** depends on ASM-1 and implements one end-to-end `create` path with exact assessment, character, scope, policy-revision, decision, result, and current-state linkage. The bounded implementation is documented in [SM-1 Subjective MEM Create Runtime](sm1_subjective_mem_create_runtime.md): it remains default-off, character-private, prepared-only, non-retrievable, and stops before ST-1 canonical publication. Similarity remains candidate generation only. SOUL-conditioned proposal generation cannot become production-authoritative until PM-D1 is resolved.
-- **ST-1 Markdown + operations commit protocol** depends on the SM-1 record shape and implements the first canonical `create` publication using a prepared immutable post-image, canonical Markdown, a matching durable operations receipt, scoped idempotency, digest-based recovery, and rebuildable projection fencing. Initial platform support must be explicit and evidence-backed; no multi-host support is implied.
+- **ST-1 Markdown + operations commit protocol** depends on the SM-1 record shape and implements the first canonical `create` publication using a prepared immutable post-image, canonical Markdown, a matching durable operations receipt, scoped idempotency, digest-based caller-invoked recovery, and rebuildable projection fencing. The bounded implementation is documented in [ST-1 Subjective MEM Commit Runtime](st1_subjective_mem_commit_runtime.md) and [Subjective MEM Canonical Markdown v1](../contracts/subjective-mem-canonical-markdown-v1.md): it remains default-off, create-only, single-host, and POSIX-apply-only; logical Retrieval eligibility does not wire ordinary Retrieval.
 - **LC-1 lifecycle migration** depends on ST-1 and ports existing characterization-backed operations in bounded order: Correct, Forget, Pin/Unpin, Restore, then Consolidate. Existing Primary MEM lifecycle code and tests remain migration evidence. Purge stays outside this series until a separate irreversible authority is accepted.
 - **RT-1 Retrieval projection and hard cutover** depends on ST-1 and the required LC-1 eligibility boundaries. It implements exact-current-revision selection, lifecycle/mutation fail-closed behavior, durable content-free usage events, projection rebuild equivalence, old/new characterization comparison, writer fencing, one-authority cutover, temporary-adapter removal, and retirement of replaced readers/writers.
 
@@ -228,8 +230,8 @@ Registered contract-aligned implementation debt:
     -> OVL-1 CTX-OVL participant-private vertical slice               complete / default-off / participant-private only
     -> ASM-1 Shared Assessment runtime foundation                     complete / default-off
          -> SM-1 Subjective MEM decision/result vertical slice        complete / default-off / prepared-only
-              -> ST-1 Markdown + operations commit protocol           next registered slice / not started
-                   -> LC-1 lifecycle migration                        registered / not started
+              -> ST-1 Markdown + operations commit protocol           complete in PR #650 / default-off / create-only / POSIX apply
+                   -> LC-1 lifecycle migration                        next registered slice / not started
                         -> RT-1 Retrieval projection and hard cutover registered / not started
 
 Remaining post-v0.1 decision or gated candidates:
@@ -340,4 +342,4 @@ PM-D3 is closed by the shipped P0-PIPE request-path ordering fix, which removes 
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
-Within the pre-existing post-E1-R5 decision-debt registry: The remaining candidates are PM-D1/PM-D4/PM-D9 follow-through and PM-D2 closure or absorption after PM-D6. The separately registered dependency-first implementation program is EV-1, followed in parallel by OVL-1 and ASM-1, then SM-1 -> ST-1 -> LC-1 -> RT-1. PM-D4, PM-D9, and PM-D1 apply as the narrow default-on, multilingual-generation, and SOUL-conditioned-formation gates recorded above; PM-D2 remains separately governed. Durable-memory E2 value smoke is complete as local human-reviewed v0.1 readiness evidence. RelayATN remains ATN-0 planning-only debt after voice-out / SOUL Lab Runtime MVP and does not authorize implementation.
+Within the pre-existing post-E1-R5 decision-debt registry: The remaining candidates are PM-D1/PM-D4/PM-D9 follow-through and PM-D2 closure or absorption after PM-D6. The separately registered dependency-first implementation program has completed EV-1, OVL-1, ASM-1, SM-1, and the default-off bounded ST-1 create commit slice; LC-1 is next, followed by RT-1. PM-D4, PM-D9, and PM-D1 apply as the narrow default-on, multilingual-generation, and SOUL-conditioned-formation gates recorded above; PM-D2 remains separately governed. Durable-memory E2 value smoke is complete as local human-reviewed v0.1 readiness evidence. RelayATN remains ATN-0 planning-only debt after voice-out / SOUL Lab Runtime MVP and does not authorize implementation.
