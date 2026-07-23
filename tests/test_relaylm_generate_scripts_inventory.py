@@ -86,3 +86,5 @@ def test_generate_keeps_reference_facts_separate_from_filename_signal(
     assert "active smoke" not in rendered
     assert "phase-completion evidence" not in rendered
     assert "does not classify responsibility, lifecycle, or retention" in rendered
+    assert "--output generated/scripts_inventory.md" in rendered
+    assert "--output docs/smoke/scripts_inventory.md" not in rendered
