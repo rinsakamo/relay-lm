@@ -2,7 +2,7 @@ name: ST-1 apply implementation
 
 on:
   pull_request:
-    types: [synchronize, reopened]
+    types: [opened, synchronize, reopened]
     branches: [main]
 
 permissions:
@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   apply:
-    if: github.head_ref == 'agent/st1-subjective-mem-commit-runtime'
+    if: github.head_ref == 'agent/st1-apply-trigger-20260723'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
