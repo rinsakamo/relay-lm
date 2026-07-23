@@ -15,7 +15,7 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 # Documentation Hard Cutover 1C-55 Receipt
 
 - Cutover PR: #647
-- Bookkeeping consolidation PR: pending after merge
+- Bookkeeping consolidation PR: #649
 - Base main: `80906b60aca640d9618d550d9decb12872d67a0d`
 - Validated content head: `7acdd2f8d567e4b06a229105ade6c56969438243`
 - Merged commit: `954eee9d26bd14d27da3d9a37e3caff9e6b760a3`
