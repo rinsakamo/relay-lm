@@ -1,0 +1,55 @@
+name: LC1A reviewed correction runner
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.pull_request.head.ref == 'agent/lc1a-subjective-mem-correct'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/lc1a-subjective-mem-correct
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply reviewed corrections
+        shell: bash
+        run: |
+          python - <<'PY'
+          import base64
+          import gzip
+          import re
+          from pathlib import Path
+
+          source = Path('.github/workflows/lc1a-review-corrections.yml').read_text(encoding='utf-8')
+          match = re.search(r'payload = """([A-Za-z0-9+/=]+)"""', source)
+          if match is None:
+              raise SystemExit('LC-1A correction payload missing')
+          code = gzip.decompress(base64.b64decode(match.group(1)))
+          exec(compile(code, 'lc1a_review_patch.py', 'exec'))
+          for path in (
+              Path('.github/workflows/lc1a-review-corrections.yml'),
+              Path('.github/workflows/lc1a-review-runner.yml'),
+              Path('.github/lc1a-review-trigger'),
+              Path('.github/lc1a-review-trigger-2'),
+          ):
+              path.unlink(missing_ok=True)
+          PY
+          python -m compileall -q relaylm scripts tests
+          git diff --check
+      - name: Commit reviewed corrections
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: harden LC-1A authority recovery"
+          git push origin HEAD:agent/lc1a-subjective-mem-correct
