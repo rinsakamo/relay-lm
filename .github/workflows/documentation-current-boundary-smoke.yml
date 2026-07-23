@@ -46,7 +46,7 @@ jobs:
           replacements = {
               "- Bookkeeping consolidation PR: pending after merge": "- Bookkeeping consolidation PR: #649",
               "- Base main: `f775581b8393522635b88f2d3178ef355330bc62`": "- Base main: `80906b60aca640d9618d550d9decb12872d67a0d`",
-              "- Validated content head: pending exact-head validation": "- Validated content head: `7acdd2f8d567e4b06a229105ade6c56969438243`",
+              "- Validated content head: pending exact-head validation": "- Validated content head: `7acdd2f8d56747e721d51acbf01a9bf2ad70eba7`",
               "- Merged commit: pending": "- Merged commit: `954eee9d26bd14d27da3d9a37e3caff9e6b760a3`",
               "- Merged at: pending": "- Merged at: `2026-07-23T01:09:50Z`",
               "- Parallel implementation: PR #646 overlaps only `docs/architecture/README.md`; no SM-1 content is imported.": "- Parallel implementation: PR #646 merged first as `80906b60aca640d9618d550d9decb12872d67a0d`; the cutover was synchronized afterward, preserved its SM-1 architecture-index entry, and removed only the two retired Phase I-2 entries.",
@@ -156,3 +156,5 @@ PR #647 preserves the completed Phase I-2 observe-only SOUL Lab integration as f
           git add docs/evidence/migrations/cutover-1c55-phase-i2.md docs/evidence/migrations/documentation-hard-cutover-receipt.md
           git commit -m "docs: generate cutover 1C-55 bookkeeping content"
           git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+
+# synchronize trigger
