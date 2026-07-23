@@ -2,7 +2,7 @@ name: Cutover 1C-55 Bookkeeping Content Generator
 
 on:
   pull_request:
-    types: [synchronize, reopened]
+    types: [synchronize, reopened, ready_for_review]
     branches: [main]
 
 permissions:
@@ -156,5 +156,3 @@ PR #647 preserves the completed Phase I-2 observe-only SOUL Lab integration as f
           git add docs/evidence/migrations/cutover-1c55-phase-i2.md docs/evidence/migrations/documentation-hard-cutover-receipt.md
           git commit -m "docs: generate cutover 1C-55 bookkeeping content"
           git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
-
-# synchronize trigger 2
