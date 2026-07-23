@@ -2,7 +2,7 @@ name: Cutover 1C-55 Bookkeeping Validation Trigger
 
 on:
   pull_request:
-    types: [opened]
+    types: [synchronize]
     branches: [main]
 
 permissions:
