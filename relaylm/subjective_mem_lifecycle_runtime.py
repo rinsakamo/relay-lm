@@ -1736,50 +1736,50 @@ def _validate_pre_image_authority_current(
 ) -> bool:
     try:
         with store.transaction(evidence_space_id) as tx:
-  if _validate_evidence_space_locked(
-      tx=tx,
-      evidence_space_id=evidence_space_id,
-      character_authority=character_authority,
-  ):
-      return False
-  expected_prepared = _state_from_intent(intent, prepared=True)
-  if expected_prepared is None:
-      return False
-  selector, _ = _load_exact_selector_locked_raw(
-      tx=tx,
-      selector_id=expected_prepared.memory_state_id,
-      expected=expected_prepared.to_dict(),
-  )
-  if selector is None or _validate_assessment_locked(tx=tx, proposal=proposal):
-      return False
-  claim = tx.read_record(
-      record_kind="subjective_mem_lifecycle_claim",
-      record_id=identity.operation_slot_id,
-  )
-  stored_intent = tx.read_record(
-      record_kind="subjective_mem_lifecycle_intent",
-      record_id=identity.intent_id,
-  )
-  if claim != _claim_from_intent(identity=identity, intent=intent) or stored_intent != intent:
-      return False
-  predecessor = _predecessor_from_artifact(
-
-      artifact_bytes,
-
-      intent=intent,
-
-      proposal=proposal,
-
-      character_authority=character_authority,
-
-  )
-  return predecessor is not None and not _validate_predecessor_authority_locked(
-      tx=tx,
-      proposal=proposal,
-      predecessor=predecessor,
-      character_id=character_authority.character_id,
-      evidence_space_id=evidence_space_id,
-  )
+            if _validate_evidence_space_locked(
+                tx=tx,
+                evidence_space_id=evidence_space_id,
+                character_authority=character_authority,
+            ):
+                return False
+            expected_prepared = _state_from_intent(intent, prepared=True)
+            if expected_prepared is None:
+                return False
+            selector, _ = _load_exact_selector_locked_raw(
+                tx=tx,
+                selector_id=expected_prepared.memory_state_id,
+                expected=expected_prepared.to_dict(),
+            )
+            if selector is None or _validate_assessment_locked(
+                tx=tx, proposal=proposal
+            ):
+                return False
+            claim = tx.read_record(
+                record_kind="subjective_mem_lifecycle_claim",
+                record_id=identity.operation_slot_id,
+            )
+            stored_intent = tx.read_record(
+                record_kind="subjective_mem_lifecycle_intent",
+                record_id=identity.intent_id,
+            )
+            if (
+                claim != _claim_from_intent(identity=identity, intent=intent)
+                or stored_intent != intent
+            ):
+                return False
+            predecessor = _predecessor_from_artifact(
+                artifact_bytes,
+                intent=intent,
+                proposal=proposal,
+                character_authority=character_authority,
+            )
+            return predecessor is not None and not _validate_predecessor_authority_locked(
+                tx=tx,
+                proposal=proposal,
+                predecessor=predecessor,
+                character_id=character_authority.character_id,
+                evidence_space_id=evidence_space_id,
+            )
     except (OSError, RuntimeError, TypeError, ValueError):
         return False
 
