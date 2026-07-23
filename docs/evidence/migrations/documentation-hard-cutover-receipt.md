@@ -5327,12 +5327,19 @@ verification:
 
 PR #647 preserves the completed Phase I-2 observe-only SOUL Lab integration as frozen implementation evidence and merged as `954eee9d26bd14d27da3d9a37e3caff9e6b760a3` from reviewed head `7acdd2f8d567e4b06a229105ade6c56969438243` on synchronized main `80906b60aca640d9618d550d9decb12872d67a0d`. The synchronization retained PR #646's SM-1 architecture-index entry and removed only the two retired Phase I-2 index entries. Current observation behavior remains architecture-, implementation-, frontend-validation-, Project-Status-, and focused-smoke-owned. PR #649 consolidates merge attribution and exact-head validation without changing accepted cutover content.
 
-### C1C56-001 — Phase I-3 Auditable Primary MEM Correct handoff (pending merge attribution)
+### C1C56-001 — Phase I-3 Auditable Primary MEM Correct handoff
 
 ```yaml
 cutover_pr: 660
-merged_commit: pending
-base_main: 358e6a57251688df8590f48f3b04317fd7023601
+merged_commit: ce5931aadeef591067b074f0bfc659aa10a8d94c
+bookkeeping_pr: 666
+base_main: a971e18b2c36a179b095b0e7e9d289a7e4d80d1a
+validated_content_head: b9b8ba2fc44e3da4f8bf3cfc48786a1fc4f79e9d
+head_at_merge: b9b8ba2fc44e3da4f8bf3cfc48786a1fc4f79e9d
+merged_at: 2026-07-23T11:59:30Z
+final_changed_files: 22
+final_additions: 409
+final_deletions: 43
 old_path: docs/architecture/phase_i3_auditable_primary_mem_correct.md
 old_blob_sha: 6b621aa6b9ef51b846cacc1b49c18c0a54fc8043
 old_content_sha256: f9055b1369da26c80cce3217f3786f5a384477d301b57019be8b3f39212401f7
@@ -5366,8 +5373,13 @@ verification:
   runtime_files_changed: 0
   relaylm_files_changed: 0
   project_status_changed: false
-  exact_head_actions: pending
-  unresolved_review_threads: pending
+  exact_head_workflow_runs: 16
+  exact_head_workflow_success: 16
+  exact_head_workflow_failure: 0
+  exact_head_workflow_pending: 0
+  exact_head_workflow_skipped: 0
+  unresolved_review_threads: 0
+  open_pr_content_imported: false
 ```
 
-Pending merge attribution only. The frozen record preserves Phase I-3 correction-loop provenance without becoming current runtime, schema, API/UI, storage, product, compatibility, alias, redirect, dual-read, or dual-write authority.
+PR #660 preserves the completed Phase I-3 correction-loop handoff as frozen implementation evidence and merged as `ce5931aadeef591067b074f0bfc659aa10a8d94c` from reviewed head `b9b8ba2fc44e3da4f8bf3cfc48786a1fc4f79e9d` on synchronized main `a971e18b2c36a179b095b0e7e9d289a7e4d80d1a`. Current Primary MEM correction behavior remains architecture-, implementation-, SOUL Lab API/frontend-validation-, Project-Status-, and focused-smoke-owned. PR #666 consolidates merge attribution and exact-head validation without changing accepted cutover content. The record remains non-authoritative for current runtime, schema, API/UI, storage, product, compatibility, alias, redirect, dual-read, or dual-write behavior.
