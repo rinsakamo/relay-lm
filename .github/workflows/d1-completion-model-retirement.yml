@@ -27,9 +27,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main:refs/remotes/origin/main
+          python .d1_preclean.py
           python .d1_completion_model_retirement.py
-          rm .d1_completion_model_retirement.py
-          rm .github/workflows/d1-completion-model-retirement.yml
+          rm -f .d1_completion_model_retirement.py .d1_preclean.py
+          rm -f .github/workflows/d1-completion-model-retirement.yml
       - name: Validate redesigned D1 boundary
         run: |
           set -o pipefail
@@ -61,8 +62,12 @@ jobs:
             echo "FAIL: retired model workflow remains" | tee -a /tmp/d1-completion-model-retirement.log
             failed=1
           fi
-          if [ -e .d1_completion_model_retirement.py ] || [ -e .github/workflows/d1-completion-model-retirement.yml ]; then
-            echo "FAIL: temporary construction asset remains" | tee -a /tmp/d1-completion-model-retirement.log
+          if find . -maxdepth 2 -type f -name '.d1*' | grep -q .; then
+            echo "FAIL: temporary root construction asset remains" | tee -a /tmp/d1-completion-model-retirement.log
+            failed=1
+          fi
+          if find .github/workflows -maxdepth 1 -type f -name 'd1-*.yml' | grep -q .; then
+            echo "FAIL: temporary D1 workflow remains" | tee -a /tmp/d1-completion-model-retirement.log
             failed=1
           fi
           exit "$failed"
