@@ -2,7 +2,7 @@ name: Cutover 1C-55 Bookkeeping Builder
 
 on:
   pull_request:
-    types: [synchronize, reopened]
+    types: [synchronize, reopened, edited]
     branches: [main]
     paths:
       - ".github/workflows/tmp-cutover-1c55-bookkeeping.yml"
