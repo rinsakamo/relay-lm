@@ -19,7 +19,6 @@ relaylm_related_authority:
   - ../../architecture/post_i3_evaluation_work_roadmap.md
   - ../../architecture/integration_i1_primary_mem_two_turn_recall.md
   - ../../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
-  - ../../architecture/phase_i3_auditable_primary_mem_correct.md
   - ../../architecture/o0_local_one_job_runner.md
   - ../../architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md
   - ../../architecture/phase6c1_durable_protected_source_persistence.md

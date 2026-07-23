@@ -1,36 +1,60 @@
 ---
-relaylm_doc_type: implementation_handoff
-relaylm_authority: phase_i3_primary_mem_correct
-relaylm_status: historical_after_merge
+relaylm_doc_type: evidence
+relaylm_authority: historical_phase_i3_auditable_primary_mem_correct_handoff
+relaylm_status: frozen
 relaylm_volatility: frozen
-relaylm_owner: relaymem_soul_lab_integration
-relaylm_update_trigger:
-  - Primary MEM correction schema changes
-  - correction revision or recovery semantics change
-  - SOUL Lab mutation access policy changes
-  - M2 current-revision resolution changes
-relaylm_current_status_source: ../PROJECT_STATUS.md
-relaylm_related_authority:
-  - docs/PROJECT_STATUS.md
-  - docs/architecture/relaymem_m3e_atomic_primary_page_writer.md
-  - docs/architecture/relaymem_m3f_primary_index_log_reconciliation_preflight.md
-  - docs/architecture/relaymem_m3g_primary_index_log_reconciliation_apply.md
-  - docs/architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
-  - docs/architecture/integration_i1_primary_mem_two_turn_recall.md
-  - docs/evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
-  - docs/architecture/phase_i4b_primary_current_state_shared_fence.md
+relaylm_owner: implementation
+relaylm_source_pr: 379
+relaylm_source_final_head: 21af3752884204b4b60b82b75146525a2b6a6fa2
+relaylm_source_merge_commit: 74b308f341cb049e6adebbe2b0c959950198739a
+relaylm_source_merged_at: 2026-06-24T14:50:28Z
+relaylm_intermediate_prs:
+  - 415
+  - 647
+relaylm_intermediate_merge_commits:
+  - 394ea1628f2262625c460c60d6b218ccc90429ac
+  - 954eee9d26bd14d27da3d9a37e3caff9e6b760a3
+relaylm_source_blob: 6b621aa6b9ef51b846cacc1b49c18c0a54fc8043
+relaylm_source_sha256: f9055b1369da26c80cce3217f3786f5a384477d301b57019be8b3f39212401f7
+relaylm_recorded_on: 2026-06-24
+relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_not_authoritative_for:
-  - current repository-wide implementation status after Phase I-3
-  - Forget / Hide lifecycle
-  - scheduler or durable-finalization status
+  - current Primary MEM correction runtime behavior
+  - current public schema storage API or UI behavior
+  - current repository-wide implementation status
+  - Forget Hide Pin Held or later mutation governance
+  - compatibility aliases redirects stubs dual-read or dual-write
+relaylm_related_authority:
+  - ../../architecture/integration_i1_primary_mem_two_turn_recall.md
+  - ../../architecture/memory_lifecycle_design.md
+  - ../../architecture/phase_i4_primary_mem_forget_hide_contract.md
+  - ../../architecture/phase_i5_pin_unpin_contract.md
+  - ../../architecture/phase_i7ab_held_apply_discard_contract.md
+  - ../../architecture/soul_lab_ui_mvp.md
+  - ../../architecture/soul_lab_runtime_mvp.md
+  - ../../architecture/soul_lab_ui_b0_real_home_conversation.md
+  - ../../architecture/soul_lab_ui_b1a_lifecycle_visibility.md
 ---
 # Phase I-3: Auditable Primary MEM Correct
+
+> **Historical implementation evidence.** This frozen handoff records the bounded auditable Primary MEM Correct implementation delivered by PR #379 and its later documentation/link maintenance. It is not current runtime, schema, API/UI, storage, product, compatibility, alias, redirect, dual-read, or dual-write authority.
+
+## Current authority boundary
+
+Current Correct behavior is independently owned by:
+
+- `relaylm/relaymem_primary_correction.py` and `relaylm/relaymem_primary_recall.py` for correction-chain persistence and current-revision retrieval behavior;
+- `relaylm/soul_lab_memory_correction.py` and `relaylm/soul_lab_app.py` for loopback mutation, token, projection, isolation, and route behavior;
+- `apps/soul-lab/src/features/lab/correctionApi.ts`, `PrimaryMemoryCorrectPanel.tsx`, and the current SOUL Lab frontend for exact browser validation and explicit confirmation behavior;
+- `scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py` and the focused Phase I-3 functional, security, validation, path-safety, and fault smokes for executable validation;
+- current memory-lifecycle and SOUL Lab architecture documents for cross-slice ownership boundaries;
+- `docs/PROJECT_STATUS.md` for repository-wide current implementation status.
 
 Last reviewed: 2026-06-24 JST
 
 ## Status
 
-Implemented on the Phase I-3 feature boundary. This is a historical-after-merge handoff; current repository-wide status belongs to [Project Status](../PROJECT_STATUS.md).
+Implemented on the Phase I-3 feature boundary. This is a historical-after-merge handoff; current repository-wide status belongs to [Project Status](../../PROJECT_STATUS.md).
 
 This slice closes the first observe/correct/retrieve product loop for one real formed Primary MEM:
 
@@ -240,4 +264,4 @@ visible response delivery
   -> B2 queue publication
 ```
 
-A process exit before source/queue publication is the I1-G pre-enqueue background-finalizer durability boundary and must not be reported as solved by Correct. Current status for that later track belongs to [Project Status](../PROJECT_STATUS.md).
+A process exit before source/queue publication is the I1-G pre-enqueue background-finalizer durability boundary and must not be reported as solved by Correct. Current status for that later track belongs to [Project Status](../../PROJECT_STATUS.md).

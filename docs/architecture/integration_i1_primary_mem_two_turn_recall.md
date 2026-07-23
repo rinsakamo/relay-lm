@@ -145,6 +145,6 @@ Phase I-3 completes the first real observe/correct/retrieve loop. A formed Prima
 
 Character/namespace isolation, stable logical memory identity, no-clobber publication, exact operation idempotency, one-winner revision fencing, crash recovery, and historical used-memory integrity are preserved. Correction reason, audit receipt, paths, digests, lineage, queue/lease state, and prior full pages are not retrieval inputs or public prompt content.
 
-Authority and exact contracts: `docs/architecture/phase_i3_auditable_primary_mem_correct.md`.
+Historical implementation evidence: `docs/evidence/implementation/phase-i3-auditable-primary-mem-correct-handoff.md`. Current Correct behavior is owned by `relaylm/relaymem_primary_correction.py`, `relaylm/soul_lab_memory_correction.py`, `relaylm/soul_lab_app.py`, the current SOUL Lab frontend, and focused Phase I-3 smokes.
 
 Still separate and unresolved: the I1-G process-exit window after visible-response delivery but before background-finalizer protected-source and B2 queue publication. Phase I-3 does not implement forget, pin/unpin, merge, held apply/discard, Secondary MEM consolidation, RelaySOUL mutation, queue scanner/scheduler/daemon, static UI serving, or TTS/audio/avatar execution.

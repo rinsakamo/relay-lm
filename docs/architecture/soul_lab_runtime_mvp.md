@@ -19,7 +19,6 @@ relaylm_related_authority:
   - soul_lab_ui_a7_management_projection_handoff.md
   - soul_lab_ui_b0_real_home_conversation.md
   - ../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
-  - phase_i3_auditable_primary_mem_correct.md
   - ai_vtuber_pipeline_profile.md
   - relayemo_return_side_expression_design.md
   - ai_character_product_principles.md
@@ -180,7 +179,7 @@ Text-first Lab slices additionally do not complete TTS/audio/avatar adapter deli
 - [SOUL Lab UI-A7 Management Projection](soul_lab_ui_a7_management_projection_handoff.md) owns the original content-free loopback management read boundary.
 - [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md) owns real Home chat wiring.
 - [Phase I-2 Real SOUL Lab Observation](../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md) owns real bounded observation integration and explicitly does not own runtime adapter execution.
-- [Phase I-3 Auditable Primary MEM Correct](phase_i3_auditable_primary_mem_correct.md) owns Correct.
+- [Phase I-3 Auditable Primary MEM Correct](../evidence/implementation/phase-i3-auditable-primary-mem-correct-handoff.md) is frozen implementation evidence; current Correct behavior remains implementation-, SOUL-Lab-, and focused-smoke-owned.
 - [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md) owns RelayLM Core stream safety and TTS handoff metadata preparation through C4.
 - [AI VTuber Pipeline Profile](ai_vtuber_pipeline_profile.md) defines the realtime profile and per-chunk conceptual path.
 - [RelayEMO Return-side Expression Design](relayemo_return_side_expression_design.md) owns engine-neutral expression hint boundaries.
