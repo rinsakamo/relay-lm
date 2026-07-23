@@ -98,6 +98,8 @@ Implementation PRs add or update their own slice handoff and `docs/evidence/impl
 - [E1-R4 retrieval-response grounding](architecture/e1r4_retrieval_response_grounding.md)
 - [E1-R5 Primary MEM recall candidate discovery bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md)
 - [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md)
+- [ST-1 Subjective MEM Commit Runtime](architecture/st1_subjective_mem_commit_runtime.md)
+- [Subjective MEM Canonical Markdown v1 Physical Contract](contracts/subjective-mem-canonical-markdown-v1.md)
 - [Architecture documentation index](architecture/README.md)
 
 ## Current status pointer

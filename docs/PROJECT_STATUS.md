@@ -21,9 +21,11 @@ relaylm_related_authority:
   - docs/architecture/project_execution_plan.md
   - docs/architecture/asm1_shared_assessment_runtime_foundation.md
   - docs/architecture/sm1_subjective_mem_create_runtime.md
+  - docs/architecture/st1_subjective_mem_commit_runtime.md
   - docs/contracts/governed-evidence-contract-family.md
   - docs/contracts/relayctx-session-evidence-overlay.md
   - docs/contracts/shared-assessment-subjective-mem.md
+  - docs/contracts/subjective-mem-canonical-markdown-v1.md
   - docs/reference/project-status-reference-map.md
 ---
 # RelayLM Project Status
@@ -50,7 +52,7 @@ EV-1 Governed Evidence runtime foundation: complete in PR #629; default-off
 OVL-1 CTX-OVL participant-private vertical slice: complete in PR #639; default-off and participant-private only
 ASM-1 Shared Assessment runtime foundation: complete in PR #636; default-off
 SM-1 Subjective MEM create decision/result vertical slice: complete in PR #646; default-off and prepared-only
-ST-1 Markdown + operations commit protocol: next registered slice; not started
+ST-1 Markdown + operations commit protocol: complete; default-off, create-only, POSIX apply
 ```
 
 ## Contract-aligned implementation migration boundary
@@ -61,16 +63,18 @@ ST-1 Markdown + operations commit protocol: next registered slice; not started
 
 **ASM-1** consumes EV-1 directly and provides character-independent Shared Assessment revisions, one logical current selector, formation-time revalidation, and transaction-bound formation receipts. ASM-1 does not itself write Subjective MEM or inject assessments into the normal response path.
 
-**SM-1** consumes one exact current ASM-1 revision and atomically creates one immutable `create` decision plus one revision-1 prepared Subjective MEM result. The result is non-canonical, non-retrievable, and not ordinary runtime memory authority.
+**SM-1** consumes one exact current ASM-1 revision and atomically creates one immutable `create` decision plus one revision-1 prepared Subjective MEM result. The result remains non-canonical and unavailable to ordinary Retrieval until ST-1 finalizes the exact prepared linkage.
 
-**ST-1** is the next consumer boundary. It must verify the prepared bundle, publish byte-exact canonical Markdown, commit the matching durable operations receipt, finalize or retire prepared linkage, and keep Retrieval fail closed until canonical page and receipt agree.
+**ST-1** consumes one exact SM-1 prepared `create` bundle, publishes deterministic canonical Subjective MEM Markdown, commits the matching durable content-free operations receipt, and finalizes the logical selector to `mutation_state: none` / `retrieval_eligible: true`. The bounded slice remains default-off, create-only, single-host, and POSIX-apply-only. Logical eligibility does not wire ordinary Retrieval, projection, ranking, cache, or request-path readers; LC-1 and RT-1 remain later boundaries.
 
 ## Current caveats
 
-- EV-1, OVL-1, ASM-1, and SM-1 remain fully default-off.
+- EV-1, OVL-1, ASM-1, SM-1, and ST-1 remain fully default-off.
 - OVL-1 supports only `participant` / `participant_private` process-local overlay state.
 - SM-1 performs no LLM, translation, embedding, classifier, RelaySOUL, queue, worker, scheduler, normal response-path, Primary MEM, or Retrieval call.
-- Primary MEM remains the current ordinary memory and Retrieval authority until ST-1, required lifecycle migration, and hard cutover are accepted.
+- ST-1 supports only revision-1 `create` finalization on the checked POSIX single-host apply boundary; Windows startup remains supported while ST-1 apply fails closed there.
+- ST-1 logical `retrieval_eligible: true` does not implement ordinary Subjective MEM Retrieval or projection.
+- Primary MEM remains the current ordinary memory and Retrieval authority until required lifecycle migration and RT-1 hard cutover are accepted.
 - O2/O3 remain explicit local process layers, not browser authority, app-embedded services, or new memory mutation authority.
 - RelayCTX short-term runtime injection apply remains default-off and dry-run-only by default.
 - Open decision debt remains PM-D1 RelaySOUL gate design-freeze relation, PM-D2 legacy intent-artifact closure/absorption, PM-D4 client-history exclusion deployment policy, and PM-D9 multilingual analyzer/proposal policy.
@@ -78,9 +82,8 @@ ST-1 Markdown + operations commit protocol: next registered slice; not started
 ## Immediate dependency-first work
 
 ```text
-ST-1 Markdown + operations commit protocol                 next registered slice; not started
-  -> LC-1 lifecycle migration                              registered; not started
-    -> RT-1 Retrieval projection and hard cutover          registered; not started
+LC-1 lifecycle migration                                    next registered slice; not started
+  -> RT-1 Retrieval projection and hard cutover             registered; not started
 
 Parallel decision work:
   PM-D1 RelaySOUL gate design-freeze relation
@@ -91,9 +94,9 @@ Parallel decision work:
 
 ## Not yet implemented
 
-- canonical Subjective MEM Markdown publication and durable ST-1 commit receipt;
-- prepared-linkage finalization/recovery and ordinary Subjective MEM Retrieval eligibility;
-- Subjective MEM lifecycle migration and Primary MEM hard cutover;
+- Subjective MEM lifecycle operations beyond the bounded ST-1 revision-1 `create` finalization;
+- ordinary Subjective MEM Retrieval projection, ranking, cache, request-path wiring, and RT-1 hard cutover;
+- Primary MEM migration, Subjective MEM backup/restore completion, and multi-host publication;
 - shared-scene, relationship, and quarantine CTX-OVL partitions;
 - full RelayREL relationship Markdown parsing;
 - restore/unhide or physical purge;
