@@ -51,7 +51,7 @@ jobs:
         run: |
           git diff --check
           expected=$'.github/workflows/documentation-current-boundary-smoke.yml\ndocs/architecture/phase6c1_relaymem_primary_pipeline_compose.md\ndocs/architecture/relaymem_m3a_primary_formation_handoff.md\ndocs/evidence/implementation/README.md\ndocs/evidence/implementation/relaymem-m3a-primary-formation-handoff.md\ndocs/evidence/migrations/cutover-1c57-relaymem-m3a.md\ndocs/evidence/migrations/documentation-hard-cutover-receipt.md\ndocs/planning/documentation-cutover-rules.yaml\nscripts/relaylm_relaymem_m3a_handoff_cutover_guard.py'
-          test "$(git diff --name-only HEAD | sort)" = "$expected"
+          test "$(git diff --name-only origin/main | sort)" = "$expected"
 
       - name: Commit final cutover tree
         shell: bash
