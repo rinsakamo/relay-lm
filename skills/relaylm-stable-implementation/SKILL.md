@@ -1,16 +1,25 @@
 ---
 name: relaylm-stable-implementation
-description: Advance RelayLM repository work end to end from bare continuation commands such as 次に進めて, 進めて, 続けて, or 次へ. Use for implementation, documentation canonicalization, repository maintenance, debugging, PR convergence, review correction, and merge. Enforces architecture-first investigation, root-cause-only changes, No-Patch and Stable-Structure gates, invariant-first tests, thorough review, exact-head verification, and automatic P0-P8 convergence.
+description: Advance one explicitly bound RelayLM lane or pull request end to end from bare continuation commands such as 次に進めて, 進めて, 続けて, or 次へ. Cross-lane execution requires an explicit portfolio command. Use for implementation, documentation canonicalization, repository maintenance, debugging, PR convergence, review correction, and merge. Enforces architecture-first investigation, root-cause-only changes, No-Patch and Stable-Structure gates, invariant-first tests, thorough review, exact-head verification, and P0-P8 convergence.
 ---
 
 # RelayLM Stable Implementation
 
 ## Purpose
 
-Run RelayLM work without requiring the user to restate the workflow. A bare continuation command means: inspect the live repository, select the next authorized action, perform it, and converge the owning PR as far as evidence permits.
+Run RelayLM work without requiring the user to restate the implementation workflow, while preserving strict lane isolation.
+
+A bare continuation command means:
+
+1. resolve exactly one current lane, PR, branch, or bounded work item;
+2. inspect live repository evidence;
+3. perform the next authorized action only inside that scope;
+4. converge that owning PR as far as evidence permits;
+5. after merge, select the next item only in the same lane.
 
 This skill combines:
 
+- lane-local fail-closed execution;
 - design before implementation;
 - root-cause-first debugging;
 - invariant-first test design;
@@ -19,9 +28,11 @@ This skill combines:
 - fresh verification before completion;
 - RelayLM single-authority, forward-recovery, removal-gate, and Git-history-retirement rules.
 
-## Trigger
+## Command modes
 
-Use this skill when the user says:
+### Lane-local continuation mode
+
+The following commands are lane-local by default:
 
 ```text
 次に進めて
@@ -30,21 +41,87 @@ Use this skill when the user says:
 次へ
 ```
 
-Also use it for any RelayLM request to implement, fix, refactor, canonicalize, consolidate, retire, review, finalize, or merge repository work.
+They do not authorize work in another lane merely because that work is unblocked, higher priority, or waiting for CI.
 
-A narrower instruction such as `LC-1だけ進めて`, `ドキュメント整理だけ進めて`, `コード整理を進めて`, or `#672を進めて` limits lane selection but does not weaken this workflow.
+### Explicit portfolio mode
+
+Cross-lane execution requires an explicit instruction such as:
+
+```text
+全レーンを進めて
+ポートフォリオを進めて
+Lane C・D・Rを並行で進めて
+```
+
+Equivalent language is valid only when it clearly authorizes more than one named lane or the whole portfolio.
+
+A narrower instruction such as `LC-1だけ進めて`, `ドキュメント整理だけ進めて`, `コード整理を進めて`, or `#672を進めて` binds the run to that lane or PR and does not weaken this workflow.
+
+## Resolve lane scope before acting
+
+For lane-local mode, resolve scope in this order:
+
+1. explicit lane, PR, branch, or work item in the current user instruction;
+2. lane declared by the current thread's initial prompt or handoff;
+3. uniquely identified current PR or branch and its lane metadata;
+4. one unambiguous work item already selected in the current conversation.
+
+The result must be exactly one of:
+
+```text
+Lane C
+Lane D
+Lane R
+one explicitly named PR or bounded work item belonging to one lane
+```
+
+If the result is ambiguous, fail closed:
+
+- do not modify repository files;
+- do not create or retarget a PR;
+- do not review, comment on, approve, or merge any PR;
+- do not choose another lane from repository priority;
+- ask the user to identify the lane or PR.
+
+Never infer portfolio authorization from the existence of several open lane PRs.
+
+## Cross-lane read-only boundary
+
+A lane-local run may inspect other lanes only to detect:
+
+- changed-path overlap;
+- semantic-authority overlap;
+- shared generated registries or status owners;
+- stack or merge-order dependencies;
+- a newer `main` change that invalidates the selected lane's evidence.
+
+Without explicit portfolio authorization, other lanes are read-only. Do not:
+
+- edit their branches or files;
+- update their PR bodies;
+- post comments or reviews;
+- resolve their threads;
+- merge, close, reopen, retarget, or supersede them;
+- start their next work item.
+
+When a cross-lane dependency blocks the selected lane, report the blocker and stop or continue with another safe action inside the same lane. Do not repair the dependency in the other lane.
 
 ## Mandatory repository refresh
 
 At the start of every run:
 
-1. read current `main` and open PRs;
-2. inspect checks, reviews, unresolved threads, changed paths, exact heads, mergeability, and stacking;
-3. read `docs/PROJECT_STATUS.md`;
-4. read `docs/architecture/project_execution_plan.md`;
-5. read `docs/planning/workstream-orchestration.md`;
-6. read the owning ADRs, contracts, plans, code, tests, workflows, and registries;
-7. identify each active PR's P0-P8 stage and available lane capacity.
+1. resolve the lane-local or explicit portfolio mode;
+2. read current `main` and open PRs;
+3. inspect checks, reviews, unresolved threads, changed paths, exact heads, mergeability, and stacking;
+4. read `AGENTS.md`;
+5. read `docs/adr/0008-lane-local-continuation-safety.md`;
+6. read `docs/PROJECT_STATUS.md`;
+7. read `docs/architecture/project_execution_plan.md`;
+8. read `docs/planning/workstream-orchestration.md`;
+9. read the owning ADRs, contracts, plans, code, tests, workflows, and registries;
+10. determine the selected PR's P0-P8 stage.
+
+In lane-local mode, determine other PR stages only as much as necessary for conflict and dependency checks.
 
 Conversation memory, old prompts, PR bodies, and historical files are orientation only.
 
@@ -71,16 +148,18 @@ No required stage is skipped merely for speed.
 
 Before substantive changes, identify:
 
-- lane and ordered program stage;
+- the single selected lane and ordered program stage;
 - exact owned paths and authorities;
 - current callers, consumers, entry points, workflows, generated registries, and operator paths;
 - current state, writer, reader, selector, recovery, and canonical representation where applicable;
 - behavioral and authority non-goals;
 - compatibility, migration, rollback, retirement, and removal boundaries;
 - validation matrix;
-- path and authority parallel-safety.
+- path and authority safety against other lanes.
 
-An unclear or expanding scope returns to P0.
+The PR body must state that the lane is exclusive for the run unless portfolio mode was explicitly invoked.
+
+An unclear, expanding, or cross-lane scope returns to P0.
 
 ## P1: Implementation strategy and design review
 
@@ -116,6 +195,7 @@ fail-closed stale or tampered state
 forward-only recovery after durable intent
 no unauthorized retrieval or disclosure
 no permanent fallback or dual authority
+no cross-lane ownership transfer
 ```
 
 ### Compare meaningful alternatives
@@ -129,7 +209,8 @@ Compare at least two materially different approaches when a real design choice e
 - testability;
 - future ordered consumers already accepted by repository authorities;
 - temporary compatibility and removal cost;
-- structural stability.
+- structural stability;
+- whether the approach remains owned entirely by the selected lane.
 
 Do not invent alternatives when only one valid path exists; explain why the alternatives are invalid.
 
@@ -161,7 +242,7 @@ post-merge verification
 
 ### Confirm the atomic PR boundary
 
-Split work only at complete authority boundaries. Do not separate schema, runtime, recovery, or caller changes into independently misleading partial states.
+Split work only at complete authority boundaries. Do not separate schema, runtime, recovery, or caller changes into independently misleading partial states. Do not absorb another lane's responsibility to keep the selected PR moving.
 
 ## P2: Architecture stability gate
 
@@ -182,7 +263,8 @@ Reject an approach that relies on any of the following unless an accepted contra
 9. direct modification of generated output rather than its source;
 10. permanent milestone-oriented production names;
 11. known in-scope debt deferred to later cleanup;
-12. a change whose root cause cannot be explained.
+12. a change whose root cause cannot be explained;
+13. changing another lane to unblock the selected lane without explicit portfolio authorization.
 
 A small change is allowed when it corrects the root cause and preserves the stable model.
 
@@ -201,6 +283,7 @@ explicit dependency direction
 bounded compatibility with removal gates
 function-oriented permanent names
 no speculative abstraction without a concrete accepted consumer
+one lane owner for the complete atomic change
 ```
 
 Record the gate result in the PR body or owning design record.
@@ -223,11 +306,11 @@ REFACTOR
   unnecessary wrappers, and inverted dependencies while tests stay green
 ```
 
-For documentation or repository-maintenance PRs, the same cycle means:
+For documentation or repository-maintenance PRs, the equivalent cycle is:
 
 - define failing generic validation or explicit reviewed criteria;
 - implement canonical authority, registry, generation, movement, or retirement;
-- remove obsolete mechanisms and negative references within the accepted scope.
+- remove obsolete mechanisms and negative references within the selected lane's scope.
 
 Do not stop at “tests pass” when the resulting structure remains patch-like.
 
@@ -235,9 +318,9 @@ Do not stop at “tests pass” when the resulting structure remains patch-like.
 
 Before thorough review:
 
-- branch and PR match the declared atomic scope;
+- branch and PR match the declared atomic and lane-local scope;
 - obvious syntax, format, compile, schema, link, and focused-test failures are fixed;
-- PR body records P0-P2 decisions, non-goals, rollback, removal gates, validation, and parallel-safety;
+- PR body records P0-P2 decisions, non-goals, rollback, removal gates, validation, and cross-lane read-only checks;
 - current exact head is recorded;
 - temporary construction artifacts are removed or explicitly bounded;
 - the PR can be reviewed without hidden or uncommitted work.
@@ -256,7 +339,8 @@ Inspect:
 - compatibility surfaces and removal gates;
 - fallback, duplicate authority, stale paths, dead wrappers, and scope drift;
 - documentation claims against behavior;
-- deletion and Git recoverability where applicable.
+- deletion and Git recoverability where applicable;
+- accidental changes, comments, reviews, or ownership assumptions involving another lane.
 
 CI success is not a thorough review.
 
@@ -265,9 +349,9 @@ CI success is not a thorough review.
 For each finding:
 
 1. classify it as a local implementation defect or an architectural assumption defect;
-2. correct the underlying cause;
+2. correct the underlying cause inside the selected lane;
 3. strengthen regression evidence when practical;
-4. update contracts, docs, records, manifests, and PR body when the boundary changed;
+4. update contracts, docs, records, manifests, and PR body when the selected boundary changed;
 5. run focused validation and required exact-head CI;
 6. perform a fresh final review of the full exact head.
 
@@ -280,6 +364,9 @@ local defect
 architecture defect, authority duplication, repeated special cases,
 or three failed correction attempts
   -> stop patching -> return to P1 -> redesign -> re-enter P2
+
+required correction belongs to another lane
+  -> do not edit that lane -> record blocker -> stop selected-lane convergence
 ```
 
 A review comment is not resolved by explanation alone when code, tests, docs, or evidence remain wrong.
@@ -295,9 +382,12 @@ Merge only when:
 - base and head are intended and mergeable;
 - conflict resolution has been reviewed;
 - no newer repository change invalidated the design or evidence;
-- destructive and authority-changing effects remain authorized.
+- destructive and authority-changing effects remain authorized;
+- the merge changes only the selected lane's authorized boundary.
 
-When the user gave a continuation command and did not say `レビューだけ` or `マージしないで`, merge without asking for repeated authorization. Use expected-head protection where available.
+When the user gave a lane-local continuation command and did not say `レビューだけ` or `マージしないで`, merge the selected lane's PR without asking for repeated authorization. Use expected-head protection where available.
+
+Do not merge another lane's PR in the same interaction unless explicit portfolio mode was invoked.
 
 ## P8: Post-merge convergence
 
@@ -305,16 +395,28 @@ After merge:
 
 - verify the merge commit and resulting `main`;
 - verify required post-merge or main-head checks;
-- update shared status, sequencing, generated registries, or bookkeeping only through their owner;
-- close or supersede replaced PRs and branches factually;
-- release the lane slot;
-- refresh the portfolio and select the next executable action.
+- update shared status, sequencing, generated registries, or bookkeeping only through the selected lane's authorized owner;
+- close or supersede replaced PRs and branches in the selected lane factually;
+- release the selected lane slot;
+- select the next executable action only in the same lane.
 
 Do not report completion when post-merge state is unknown.
 
-## Portfolio selection
+## Lane-local action selection
 
-Default capacity:
+In lane-local mode:
+
+1. converge the selected lane's existing PR;
+2. if no PR exists, choose the earliest executable item in that same lane;
+3. if that PR is blocked by CI, inspect or improve only safe work in the same lane;
+4. if no same-lane action is safe, report the exact blocker and stop;
+5. never fill time by advancing another lane.
+
+Pending CI is allowed to be a lane-local stop condition when no other safe action exists in the selected lane.
+
+## Explicit portfolio action selection
+
+Only in explicit portfolio mode:
 
 ```text
 1 Lane C PR
@@ -322,43 +424,46 @@ Default capacity:
 + up to 1 Lane R PR
 ```
 
-Converge existing work first. Then advance the earliest executable Lane C item and one eligible path- and authority-disjoint parallel lane when meaningful work exists.
-
-Pending CI alone is not a stop condition while another safe bounded action exists.
+Converge existing work first, then advance additional path- and authority-disjoint lanes as explicitly authorized. Three open lane PRs are a ceiling, not a target.
 
 Do not open speculative work merely to fill capacity.
 
 ## Progress report
 
+### Lane-local mode
+
 Report:
 
 ```text
-Critical lane
+Selected lane
   PR and P0-P8 stage
   action completed
   exact head
   strategy or gate decisions when changed
   validation, review, and merge state
 
-Parallel lanes
-  PR and P0-P8 stage
-  action completed or exact reason no safe action existed
+Cross-lane safety
+  read-only conflicts or dependencies discovered
+  confirmation that no other lane was modified
 
-Portfolio
-  active PR count
-  path or authority conflicts
-  next automatically selected action
+Next
+  next action in the same lane, or exact blocker
 ```
 
-Do not present a menu unless repository evidence cannot resolve a genuine policy decision.
+### Explicit portfolio mode
+
+Report each authorized lane separately, followed by portfolio conflicts and the next authorized portfolio action.
+
+Do not present a menu unless lane scope or a genuine policy decision cannot be resolved safely.
 
 ## Stop conditions
 
-Stop without changing work only when:
+In lane-local mode, stop without changing other lanes when:
 
-- all registered lanes are complete;
-- every remaining action requires a genuine user policy decision or unavailable external authority;
-- no safe bounded path- and authority-disjoint action exists;
+- the selected lane is complete;
+- the selected lane requires a genuine user decision or unavailable authority;
+- the selected lane is blocked by another lane or pending evidence and no same-lane action exists;
+- lane binding is ambiguous;
 - repository state cannot be read reliably enough to act safely.
 
 Name the exact stop condition. Never promise hidden background work.
