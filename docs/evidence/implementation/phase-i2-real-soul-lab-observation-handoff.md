@@ -20,7 +20,6 @@ relaylm_not_authoritative_for:
   - compatibility aliases redirects stubs dual-read or dual-write
 relaylm_related_authority:
   - ../../architecture/integration_i1_primary_mem_two_turn_recall.md
-  - ../../architecture/phase_i3_auditable_primary_mem_correct.md
   - ../../architecture/phase_i4d_primary_retrieval_exclusion.md
   - ../../architecture/soul_lab_ui_mvp.md
   - ../../architecture/soul_lab_runtime_mvp.md

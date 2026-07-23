@@ -17,7 +17,6 @@ relaylm_not_authoritative_for:
   - queue scheduling worker supervision or I1-G durability
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - phase_i3_auditable_primary_mem_correct.md
   - phase_i4b_primary_current_state_shared_fence.md
   - ../evidence/implementation/i4c1-primary-forget-hidden-successor-handoff.md
   - ../evidence/implementation/i4c2-primary-forget-recovery-finalization-handoff.md

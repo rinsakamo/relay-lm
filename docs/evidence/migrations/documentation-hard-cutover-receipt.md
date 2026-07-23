@@ -5326,3 +5326,48 @@ verification:
 ```
 
 PR #647 preserves the completed Phase I-2 observe-only SOUL Lab integration as frozen implementation evidence and merged as `954eee9d26bd14d27da3d9a37e3caff9e6b760a3` from reviewed head `7acdd2f8d567e4b06a229105ade6c56969438243` on synchronized main `80906b60aca640d9618d550d9decb12872d67a0d`. The synchronization retained PR #646's SM-1 architecture-index entry and removed only the two retired Phase I-2 index entries. Current observation behavior remains architecture-, implementation-, frontend-validation-, Project-Status-, and focused-smoke-owned. PR #649 consolidates merge attribution and exact-head validation without changing accepted cutover content.
+
+### C1C56-001 — Phase I-3 Auditable Primary MEM Correct handoff (pending merge attribution)
+
+```yaml
+cutover_pr: 660
+merged_commit: pending
+base_main: 358e6a57251688df8590f48f3b04317fd7023601
+old_path: docs/architecture/phase_i3_auditable_primary_mem_correct.md
+old_blob_sha: 6b621aa6b9ef51b846cacc1b49c18c0a54fc8043
+old_content_sha256: f9055b1369da26c80cce3217f3786f5a384477d301b57019be8b3f39212401f7
+source_pr: 379
+source_final_head: 21af3752884204b4b60b82b75146525a2b6a6fa2
+source_merge_commit: 74b308f341cb049e6adebbe2b0c959950198739a
+source_merged_at: 2026-06-24T14:50:28Z
+intermediate_prs:
+  - 415
+  - 647
+intermediate_merge_commits:
+  - 394ea1628f2262625c460c60d6b218ccc90429ac
+  - 954eee9d26bd14d27da3d9a37e3caff9e6b760a3
+recorded_on: 2026-06-24
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/phase-i3-auditable-primary-mem-correct-handoff.md
+local_receipt: docs/evidence/migrations/cutover-1c56-phase-i3.md
+verification:
+  old_path_removed_in_pr_tree: true
+  canonical_evidence_metadata_added: true
+  historical_banner_added: true
+  current_authority_independently_owned: true
+  active_pre_cutover_referrer_files: 15
+  active_path_references_repaired: true
+  current_architecture_indexes_removed: true
+  implementation_evidence_index_updated: true
+  phase_i2_over_scoped_index_assertions_removed: true
+  fail_closed_guard: scripts/relaylm_phase_i3_handoff_cutover_guard.py
+  guard_integrated_into_existing_documentation_boundary_workflow: true
+  guard_self_test_assertions: 24
+  runtime_files_changed: 0
+  relaylm_files_changed: 0
+  project_status_changed: false
+  exact_head_actions: pending
+  unresolved_review_threads: pending
+```
+
+Pending merge attribution only. The frozen record preserves Phase I-3 correction-loop provenance without becoming current runtime, schema, API/UI, storage, product, compatibility, alias, redirect, dual-read, or dual-write authority.

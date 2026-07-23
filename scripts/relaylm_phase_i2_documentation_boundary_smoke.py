@@ -56,8 +56,6 @@ def main() -> None:
         "docs/evidence/implementation/README.md",
         "phase-i2-real-soul-lab-observation-handoff.md",
     )
-    require_text("docs/README.md", "phase_i3_auditable_primary_mem_correct.md")
-    require_text("docs/architecture/README.md", "phase_i3_auditable_primary_mem_correct.md")
     forbid_text("docs/README.md", "Phase I-2 real SOUL Lab observation")
     forbid_text("docs/architecture/README.md", "Phase I-2 Real SOUL Lab Observation")
 

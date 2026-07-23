@@ -26,7 +26,6 @@ relaylm_related_authority:
   - relaymem_slp_current_target.md
   - scene_memory_scope_design.md
   - soul_lab_ui_mvp.md
-  - phase_i3_auditable_primary_mem_correct.md
   - phase_i4_primary_mem_forget_hide_contract.md
   - phase_i4d_primary_retrieval_exclusion.md
   - ../PROJECT_STATUS.md

@@ -18,7 +18,6 @@ relaylm_related_authority:
   - soul_lab_runtime_mvp.md
   - soul_lab_ui_a7_management_projection_handoff.md
   - ../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
-  - phase_i3_auditable_primary_mem_correct.md
   - soul_lab_ui_b0_real_home_conversation.md
   - soul_lab_ui_b1a_lifecycle_visibility.md
   - phase_i4e_forget_api_ui.md

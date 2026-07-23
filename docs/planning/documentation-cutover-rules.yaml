@@ -92,6 +92,19 @@ path_overrides:
     target_paths:
       - docs/architecture/README.md
     requires_manual_section_map: true
+  docs/architecture/phase_i3_auditable_primary_mem_correct.md:
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_paths:
+      - docs/evidence/implementation/phase-i3-auditable-primary-mem-correct-handoff.md
+    deletion_reason: >-
+      Cutover 1C-56: this completed implementation handoff carried the legacy
+      implementation_handoff / historical_after_merge profile under
+      docs/architecture/. Moved to canonical frozen implementation evidence;
+      current Correct behavior remains independently owned by implementation,
+      SOUL Lab frontend/API code, current lifecycle architecture, Project Status,
+      and focused Phase I-3 smokes. No compatibility alias, redirect, stub,
+      dual-read, or dual-write path is retained.
   docs/mvp/README.md:
     disposition: absorbed
     target_doc_type: documentation_index

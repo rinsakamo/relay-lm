@@ -9,7 +9,6 @@ relaylm_update_trigger:
   - Pin / Unpin retrieval-ranking policy changes
   - SOUL Lab Pin / Unpin API or UI changes
 relaylm_related_authority:
-  - phase_i3_auditable_primary_mem_correct.md
   - phase_i4_primary_mem_forget_hide_contract.md
   - phase_i4b_primary_current_state_shared_fence.md
   - phase_i4d_primary_retrieval_exclusion.md
