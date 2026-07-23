@@ -34,11 +34,11 @@ This page defines the canonical Lane R responsibility and lifecycle classificati
 
 ```text
 repository: rinsakamo/relay-lm
-source main: c6a0735ec51dff2ba4aa4e7f741b3c3d9f788de0
-source main meaning: squash merge of PR #671
+source main: b733903f09a8fda5cb6b440b21a2702225d3c443
+source main meaning: main after PR #674; R2-B reviewed base
 lane: R
-stage: R3 generated navigation and drift checks
-scope: reviewed classification, one canonical repository-inventory entry point, and its machine-readable mirror
+stage: R2 test / smoke / validation consolidation
+scope: reviewed classification, one canonical repository-inventory entry point, one consolidated inventory pytest owner, and its machine-readable mirror
 ```
 
 Classification is evidence for later review. It does not authorize deletion, movement, rename, consolidation, behavior change, compatibility removal, storage migration, or status changes. Every destructive or authority-affecting action requires its own atomic PR and fresh caller evidence.
@@ -130,7 +130,7 @@ The following YAML records are the canonical human-reviewed representation for t
 
 ```yaml
 classification_version: 1
-source_commit: c6a0735ec51dff2ba4aa4e7f741b3c3d9f788de0
+source_commit: b733903f09a8fda5cb6b440b21a2702225d3c443
 records:
   - asset_id: console.relaylm
     paths: [pyproject.toml]
@@ -225,13 +225,12 @@ records:
     current_callers:
       - .github/workflows/repository-storage-inventory.yml
       - docs/evidence/implementation/repository_inventory_baseline_1ca928cd.md reproduction command
-      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py operator-root assertion
+      - tests/test_relaylm_repo_inventory.py operator-root assertion
     invocation_roots: [operator_cli, github_actions_step]
     evidence:
       - scripts/relaylm_repo_inventory_cli.py
       - .github/workflows/repository-storage-inventory.yml
       - tests/test_relaylm_repo_inventory.py
-      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
@@ -261,7 +260,7 @@ records:
       - scripts/relaylm_repo_inventory/cli.py
       - scripts/relaylm_repo_inventory/invocations.py
       - scripts/relaylm_repo_inventory/records.py
-      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py
+      - tests/test_relaylm_repo_inventory.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
@@ -282,23 +281,20 @@ records:
     confidence: confirmed
 
   - asset_id: repo_inventory.tests
-    paths:
-      - tests/test_relaylm_repo_inventory.py
-      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py
-      - tests/test_relaylm_repo_inventory_final_hardening.py
+    paths: [tests/test_relaylm_repo_inventory.py]
     responsibility: ordinary_test
     lifecycle: active
     owner: repository_maintenance
-    protected_boundary: regression coverage for discovery, determinism, cross-mode behavior, hardening, and one canonical repository-inventory entry point
-    current_callers: [maintained pytest suite]
+    protected_boundary: regression coverage for discovery, determinism, cross-mode behavior, subprocess and dynamic-import expansion, storage linkage, config evidence, and one canonical repository-inventory entry point
+    current_callers: [.github/workflows/repository-storage-inventory.yml, maintained pytest suite]
     invocation_roots: [pytest_root]
     evidence:
       - tests/test_relaylm_repo_inventory.py
-      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py
-      - tests/test_relaylm_repo_inventory_final_hardening.py
+      - .github/workflows/repository-storage-inventory.yml
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
+    notes: R2-B consolidated the cross-mode and final-hardening partitions without removing their assertions
 
   - asset_id: asset_classification.registry
     paths: [records/repository/asset_classification_v1.yaml]
@@ -414,17 +410,16 @@ transitional: 1
 retired: 0
 ```
 
-No asset in this bounded surface is retired. Every record has a current supported caller or an open protected migration responsibility. R3-A performs no file retirement.
+No classified responsibility in this bounded surface is retired. R2-B retires two redundant pytest file partitions through Git history while preserving every assertion in the active repository-inventory test owner.
 
 ## Explicit unknowns and unclassified surfaces
 
 The following remain unresolved and must not be guessed:
 
-- current complete inventory row counts at `c6a0735e...`; the committed baseline is fixed to `1ca928cd...`;
+- current complete inventory row counts at `b733903f...`; the committed baseline is fixed to `1ca928cd...`;
 - runtime expansion of dynamically assembled imports, registries, plugin-style lookup, and subprocess commands;
 - responsibility and lifecycle outside the bounded registry above;
 - whether each discovered `python -m` root is supported or only an implementation convenience;
-- whether the three repository-inventory pytest files should remain partitioned after complete overlap review;
 - whether milestone-named smoke outside this surface is active regression, process validation, transitional characterization, or retired;
 - any retirement disposition for Primary MEM, ordinary Retrieval, Subjective MEM publication, lifecycle, recovery, rollback, or characterization before the owning LC-1 or RT-1 gate closes.
 
@@ -442,9 +437,9 @@ import-only implementation:
 
 The top-level wrapper remains the supported entry point. The internal `cli.py` main guard was removed without changing scan modes, self-test, formats, output paths, exit behavior, or implementation imports.
 
-### R2-B: repository inventory test partition review
+### R2-B: repository inventory test consolidation
 
-Review the three pytest files for duplicated setup and assertions. Consolidate only when cross-mode, subprocess, deterministic-output, and negative coverage remain clear. File-count reduction alone is insufficient.
+R2-B consolidates all repository-inventory pytest responsibility into `tests/test_relaylm_repo_inventory.py`. The cross-mode and final-hardening partitions are deleted from the current tree after their six tests are moved unchanged. The dedicated workflow continues to execute the canonical-entrypoint regression by its new path, and the classification authority and mirror identify one maintained pytest owner. Process, operator, migration, and characterization assets are unaffected.
 
 ### R2-C: process-smoke retention and naming review
 
@@ -462,6 +457,6 @@ The six console-script records are eligible for caller discovery only. A pre-RT-
 
 ## Parallel-safety and non-goals
 
-R3-A adds only repository-governance data, validation, tests, and generated navigation wiring. It does not change runtime or storage behavior, APIs, UI, feature gates, user state, `docs/PROJECT_STATUS.md`, Lane D documentation retirement authority, LC-1, or RT-1 paths.
+R2-B changes only repository-inventory ordinary tests, their focused workflow invocation, and the Lane R classification authority/mirror. It does not change runtime or storage behavior, process smoke, operator commands, APIs, UI, feature gates, user state, `docs/PROJECT_STATUS.md`, Lane C, Lane D, LC-1, or RT-1 paths.
 
 Every later R2, R3, or R4 PR must refresh `main`, open PRs, exact callers, workflows, review threads, and authority overlap before treating a candidate above as executable.
