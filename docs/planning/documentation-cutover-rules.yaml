@@ -105,6 +105,19 @@ path_overrides:
       SOUL Lab frontend/API code, current lifecycle architecture, Project Status,
       and focused Phase I-3 smokes. No compatibility alias, redirect, stub,
       dual-read, or dual-write path is retained.
+  docs/architecture/relaymem_m3a_primary_formation_handoff.md:
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_paths:
+      - docs/evidence/implementation/relaymem-m3a-primary-formation-handoff.md
+    deletion_reason: >-
+      Cutover 1C-57: this completed helper-only implementation handoff carried
+      the legacy implementation_handoff / historical_after_merge profile under
+      docs/architecture/. Moved to canonical frozen implementation evidence;
+      current M3a behavior remains independently owned by implementation,
+      RelayMEM design, the Primary pipeline compose boundary, Project Status,
+      and focused smokes. No compatibility alias, redirect, stub, dual-read, or
+      dual-write path is retained.
   docs/mvp/README.md:
     disposition: absorbed
     target_doc_type: documentation_index

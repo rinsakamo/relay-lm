@@ -18,7 +18,7 @@ relaylm_related_authority:
   - phase6c1_one_claimed_primary_worker_handoff.md
   - phase6c1_integrated_worker_fault_smoke_handoff.md
   - phase6c1_durable_protected_source_persistence.md
-  - relaymem_m3a_primary_formation_handoff.md
+  - ../evidence/implementation/relaymem-m3a-primary-formation-handoff.md
   - relaymem_m3d_primary_writer_handoff.md
   - relaymem_m3e_atomic_primary_page_writer.md
   - relaymem_m3f_primary_index_log_reconciliation_preflight.md

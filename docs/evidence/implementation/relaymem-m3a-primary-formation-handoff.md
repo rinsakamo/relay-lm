@@ -1,24 +1,35 @@
 ---
-relaylm_doc_type: implementation_handoff
-relaylm_authority: relaymem_mvp_independent_track
-relaylm_status: historical_after_merge
-relaylm_volatility: medium
-relaylm_owner: relaymem
-relaylm_update_trigger:
-  - RelayMEM M3 primary formation boundary changes
-  - Primary MEM candidate schema producer or consumer changes
-  - Primary MEM write preflight or apply gates land
+relaylm_doc_type: evidence
+relaylm_authority: historical_relaymem_m3a_primary_formation_handoff
+relaylm_status: frozen
+relaylm_volatility: frozen
+relaylm_owner: implementation
+relaylm_source_pr: 326
+relaylm_source_final_head: 9a95963c4a0c2a3d2e61e8e174d2e8f70280542f
+relaylm_source_merge_commit: f40d4190c04b116c6d3b2fc206df3534f30545c7
+relaylm_source_merged_at: 2026-06-21T00:37:04Z
+relaylm_implementation_pr: 324
+relaylm_implementation_final_head: cd551902c5ae093a90a29a37b1bfaf3a2c0f1eb3
+relaylm_implementation_merge_commit: b49727fb00bc5e38a11306dfa853b61e5ffe09d4
+relaylm_implementation_merged_at: 2026-06-20T17:15:28Z
+relaylm_source_blob: fbb08beb9975e3a1b46d4a9f510753669297bc26
+relaylm_source_sha256: 1e1e752417e31cc083ef82365a9a27c0980426e85832beaa70ebf6c84cfd041e
+relaylm_recorded_on: 2026-06-21
+relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_not_authoritative_for:
-  - repository-wide Phase 5.5 Stream Unpack sequencing
-  - RelayCTX stream/TTS adapter behavior
-  - exact runtime config defaults outside RelayMEM-M3
-  - current repository-wide implementation status
+  - current RelayMEM Primary formation behavior
+  - current Primary pipeline stage composition
+  - current RelaySCN RelayEMO or message-shape semantics
+  - current repository-wide implementation status or sequencing
+  - compatibility aliases redirects stubs dual-read or dual-write
 relaylm_related_authority:
-  - relaymem_mvp_implementation_plan.md
-  - memory_lifecycle_design.md
-  - relaymem_mvp_design.md
-  - ../PROJECT_STATUS.md
+  - ../../architecture/relaymem_mvp_implementation_plan.md
+  - ../../architecture/memory_lifecycle_design.md
+  - ../../architecture/relaymem_mvp_design.md
+  - ../../architecture/phase6c1_relaymem_primary_pipeline_compose.md
 ---
+> **Historical implementation evidence.** This record preserves the completed helper-only RelayMEM-M3a boundary from PR #324 and its documentation handoff from PR #326. Current behavior remains implementation-, Primary-pipeline-, RelayMEM-design-, Project-Status-, and focused-smoke-owned.
+
 # RelayMEM-M3a Primary Formation Handoff
 
 ## Status
