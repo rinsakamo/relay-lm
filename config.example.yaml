@@ -227,6 +227,13 @@ shared_assessment_enabled: false
 shared_assessment_dry_run_only: true
 shared_assessment_apply_enabled: false
 
+# SM-1 consumes an exact current ASM-1 revision and prepares one non-canonical
+# character-private Subjective MEM create result. It does not publish Markdown
+# or enable ordinary Retrieval. Apply requires ASM-1 apply and is default-off.
+subjective_mem_create_enabled: false
+subjective_mem_create_dry_run_only: true
+subjective_mem_create_apply_enabled: false
+
 # OVL-1 is independently default-off and dry-run-first. Apply requires EV-1
 # capture apply because CTX-OVL may consume only currently authorized evidence.
 ctx_ovl_enabled: false

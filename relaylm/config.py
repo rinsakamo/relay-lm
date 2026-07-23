@@ -243,6 +243,9 @@ class RelayLMConfig(BaseModel):
     shared_assessment_enabled: StrictBool = False
     shared_assessment_dry_run_only: StrictBool = True
     shared_assessment_apply_enabled: StrictBool = False
+    subjective_mem_create_enabled: StrictBool = False
+    subjective_mem_create_dry_run_only: StrictBool = True
+    subjective_mem_create_apply_enabled: StrictBool = False
     ctx_ovl_enabled: StrictBool = False
     ctx_ovl_dry_run_only: StrictBool = True
     ctx_ovl_apply_enabled: StrictBool = False
@@ -320,6 +323,26 @@ class RelayLMConfig(BaseModel):
                 )
             if any(part in {".", ".."} for part in shared_assessment_root.parts[1:]):
                 raise ValueError("shared_assessment_evidence_data_root_invalid")
+
+        subjective_mem_triple = (
+            self.subjective_mem_create_enabled,
+            self.subjective_mem_create_dry_run_only,
+            self.subjective_mem_create_apply_enabled,
+        )
+        if subjective_mem_triple not in _VALID_GATE_TRIPLES:
+            raise ValueError("invalid_subjective_mem_create_gate_combination")
+        if subjective_mem_triple != _DISABLED_GATE_TRIPLE:
+            if shared_assessment_triple == _DISABLED_GATE_TRIPLE:
+                raise ValueError("subjective_mem_create_requires_shared_assessment_enabled")
+            if not self.evidence_data_root:
+                raise ValueError("subjective_mem_create_requires_evidence_data_root")
+            subjective_root = Path(self.evidence_data_root)
+            if not subjective_root.is_absolute():
+                raise ValueError("subjective_mem_create_requires_absolute_evidence_data_root")
+            if any(part in {".", ".."} for part in subjective_root.parts[1:]):
+                raise ValueError("subjective_mem_create_evidence_data_root_invalid")
+        if subjective_mem_triple == _APPLY_GATE_TRIPLE and shared_assessment_triple != _APPLY_GATE_TRIPLE:
+            raise ValueError("subjective_mem_create_apply_requires_shared_assessment_apply")
 
         evidence_triple = (
             self.evidence_capture_enabled,

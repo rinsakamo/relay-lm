@@ -33,6 +33,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [Runtime Scheduler](runtime/scheduler.md) defines Resource Provider observation, RelayRUN compute scheduling, and separate control-plane mutation fences.
 - [Subjective Memory Formation](memory/formation.md) defines episode grouping and the split Shared Assessment then Subjective Formation reference path.
 - [ASM-1 Shared Assessment Runtime Foundation](asm1_shared_assessment_runtime_foundation.md) records the default-off EV-1-to-Shared-Assessment implementation boundary and its explicit stop before Subjective MEM.
+- [SM-1 Subjective MEM Create Runtime](sm1_subjective_mem_create_runtime.md) records the default-off exact `create` decision/result transaction and its prepared-only stop before ST-1 canonical publication.
 
 ## Character workspace target architecture
 
