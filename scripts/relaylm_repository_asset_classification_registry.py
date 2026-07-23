@@ -1,8 +1,8 @@
 """Validate and render the Lane R repository asset classification registry.
 
 The human-reviewed records remain embedded in
-``docs/reference/repository-asset-classification.md``.  The YAML registry is a
-machine-readable mirror.  This tool verifies that the mirror has not drifted,
+``docs/reference/repository-asset-classification.md``. The YAML registry is a
+machine-readable mirror. This tool verifies that the mirror has not drifted,
 validates lifecycle/caller/path requirements, and renders navigation evidence.
 It never infers retirement from reachability and never edits repository files.
 """
@@ -203,7 +203,7 @@ def validate_registry(payload: dict[str, Any], *, root: Path) -> list[str]:
         elif any(root_kind not in INVOCATION_ROOTS for root_kind in roots):
             unknown = sorted({root_kind for root_kind in roots if root_kind not in INVOCATION_ROOTS})
             errors.append(f"{record_id}.invocation_roots contains unknown values: {', '.join(unknown)}")
-        elif not roots and not _nonempty_string(record.get("invocation_root_reason")):
+        elif lifecycle != "retired" and not roots and not _nonempty_string(record.get("invocation_root_reason")):
             errors.append(f"{record_id} has no invocation roots and no invocation_root_reason")
 
         if lifecycle in {"active", "transitional"}:
