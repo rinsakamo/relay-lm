@@ -1,0 +1,26 @@
+name: Export D1 redesign build workspace
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/d1-build-export.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/d1-p1-redesign-build
+          fetch-depth: 1
+      - name: Pack workspace
+        run: tar --exclude=.git -czf /tmp/d1-build-workspace.tar.gz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d1-build-workspace
+          path: /tmp/d1-build-workspace.tar.gz
+          if-no-files-found: error
