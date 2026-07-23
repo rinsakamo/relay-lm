@@ -1,11 +1,24 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import importlib.util
 from pathlib import Path
 
 import pytest
 
-from scripts import relaylm_repository_asset_classification_registry as registry
+
+SCRIPT_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "scripts"
+    / "relaylm_repository_asset_classification_registry.py"
+)
+SPEC = importlib.util.spec_from_file_location(
+    "relaylm_repository_asset_classification_registry",
+    SCRIPT_PATH,
+)
+assert SPEC is not None and SPEC.loader is not None
+registry = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(registry)
 
 
 def _base_record() -> dict:
