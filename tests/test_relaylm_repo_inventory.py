@@ -311,3 +311,108 @@ def test_json_output_round_trips():
     assert reloaded["storage_count"] == len(reloaded["storage"])
     assert reloaded["invocations_count"] == len(reloaded["invocations"])
     assert reloaded["config_count"] == len(reloaded["config"])
+
+
+def test_storage_cross_references_are_mode_stable_and_not_dangling() -> None:
+    storage_only = _run_scan({"storage"})
+    combined = _run_scan({"storage", "invocations"})
+
+    assert storage_only["storage"] == combined["storage"]
+    invocation_ids = {
+        record["root_id"]
+        for record in combined["invocations"]
+    }
+    dangling = {
+        root_id
+        for record in combined["storage"]
+        for root_id in record["invocation_roots"]
+        if root_id not in invocation_ids
+    }
+    assert dangling == set()
+
+
+def test_package_internal_script_is_not_reported_as_direct_cli() -> None:
+    payload = _run_scan({"invocations"})
+    operator_paths = {
+        record["source_path"]
+        for record in payload["invocations"]
+        if record["root_kind"] == "operator_cli"
+    }
+
+    assert "scripts/relaylm_repo_inventory/cli.py" not in operator_paths
+    assert "scripts/relaylm_repo_inventory_cli.py" in operator_paths
+
+
+def test_yaml_config_evidence_tracks_full_dotted_paths() -> None:
+    payload = _run_scan({"config"})
+    by_name = {
+        record["name"]: record
+        for record in payload["config"]
+        if record["key_kind"] in {"config_key", "feature_flag"}
+    }
+
+    top_mode = by_name["mode"]["evidence"][0]
+    route_mode = by_name[
+        "model_routes.relaylm-default.mode"
+    ]["evidence"][0]
+    assert route_mode["line"] != top_mode["line"]
+    assert route_mode["line"] > top_mode["line"]
+
+    top_policy = by_name["common_runtime_policy"]["evidence"][0]
+    character_policy = by_name[
+        "characters.default.common_runtime_policy"
+    ]["evidence"][0]
+    assert character_policy["line"] != top_policy["line"]
+    assert character_policy["line"] > top_policy["line"]
+
+
+def test_literal_tuple_subprocess_loop_is_expanded() -> None:
+    payload = _run_scan({"invocations"})
+    commands = {
+        record["command_or_symbol"]
+        for record in payload["invocations"]
+        if record["root_kind"] == "subprocess_child"
+        and record["source_path"]
+        == "scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py"
+    }
+    assert {
+        "python scripts/relaylm_phase_i1_two_turn_primary_recall_security_smoke.py",
+        "python scripts/relaylm_phase_i1_two_turn_primary_recall_smoke.py",
+        "python scripts/relaylm_documentation_current_boundary_smoke.py",
+    } <= commands
+    assert "unresolved subprocess invocation" not in commands
+
+
+def test_dynamic_import_inventory_uses_ast_calls_only() -> None:
+    payload = _run_scan({"invocations"})
+    dynamic = [
+        record
+        for record in payload["invocations"]
+        if record["root_kind"] == "dynamic_import"
+    ]
+    assert dynamic
+    assert all(
+        record["source_path"] != "scripts/relaylm_repo_inventory/invocations.py"
+        for record in dynamic
+    )
+    assert all("_DYNAMIC_IMPORT_RE" not in record["command_or_symbol"] for record in dynamic)
+    assert any(
+        record["source_path"] == "scripts/relaylm_package_import_purity_smoke.py"
+        for record in dynamic
+    )
+
+
+def test_literal_children_relink_storage_roots() -> None:
+    payload = _run_scan({"storage", "invocations"})
+    record = next(
+        item
+        for item in payload["storage"]
+        if item["source_path"]
+        == "scripts/relaylm_documentation_current_boundary_smoke.py"
+    )
+    assert any(
+        root.startswith(
+            "subprocess_child:scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py"
+        )
+        for root in record["invocation_roots"]
+    )

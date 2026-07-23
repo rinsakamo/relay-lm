@@ -1,6 +1,6 @@
 registry_version: 1
 generated_from: docs/reference/repository-asset-classification.md
-source_commit: c6a0735ec51dff2ba4aa4e7f741b3c3d9f788de0
+source_commit: b733903f09a8fda5cb6b440b21a2702225d3c443
 classification_version: 1
 canonical_entrypoints:
   - group: soul_lab_runtime
@@ -124,13 +124,12 @@ records:
     current_callers:
       - .github/workflows/repository-storage-inventory.yml
       - docs/evidence/implementation/repository_inventory_baseline_1ca928cd.md reproduction command
-      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py operator-root assertion
+      - tests/test_relaylm_repo_inventory.py operator-root assertion
     invocation_roots: [operator_cli, github_actions_step]
     evidence:
       - scripts/relaylm_repo_inventory_cli.py
       - .github/workflows/repository-storage-inventory.yml
       - tests/test_relaylm_repo_inventory.py
-      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
@@ -160,7 +159,7 @@ records:
       - scripts/relaylm_repo_inventory/cli.py
       - scripts/relaylm_repo_inventory/invocations.py
       - scripts/relaylm_repo_inventory/records.py
-      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py
+      - tests/test_relaylm_repo_inventory.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
@@ -181,23 +180,20 @@ records:
     confidence: confirmed
 
   - asset_id: repo_inventory.tests
-    paths:
-      - tests/test_relaylm_repo_inventory.py
-      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py
-      - tests/test_relaylm_repo_inventory_final_hardening.py
+    paths: [tests/test_relaylm_repo_inventory.py]
     responsibility: ordinary_test
     lifecycle: active
     owner: repository_maintenance
-    protected_boundary: regression coverage for discovery, determinism, cross-mode behavior, hardening, and one canonical repository-inventory entry point
-    current_callers: [maintained pytest suite]
+    protected_boundary: regression coverage for discovery, determinism, cross-mode behavior, subprocess and dynamic-import expansion, storage linkage, config evidence, and one canonical repository-inventory entry point
+    current_callers: [.github/workflows/repository-storage-inventory.yml, maintained pytest suite]
     invocation_roots: [pytest_root]
     evidence:
       - tests/test_relaylm_repo_inventory.py
-      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py
-      - tests/test_relaylm_repo_inventory_final_hardening.py
+      - .github/workflows/repository-storage-inventory.yml
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
+    notes: R2-B consolidated the cross-mode and final-hardening partitions without removing their assertions
 
   - asset_id: asset_classification.registry
     paths: [records/repository/asset_classification_v1.yaml]
