@@ -8,6 +8,8 @@ on:
       - "scripts/**"
       - "apps/**"
       - "tests/**"
+      - "records/repository/**"
+      - "docs/reference/repository-asset-classification.md"
       - "pyproject.toml"
       - "config.example.yaml"
       - ".github/workflows/**"
@@ -30,16 +32,26 @@ jobs:
         run: >-
           python -m pytest -q
           tests/test_relaylm_repo_inventory_cross_mode_hardening.py::test_package_internal_script_is_not_reported_as_direct_cli
+      - name: Test repository asset classification registry
+        run: python -m pytest -q tests/test_relaylm_repository_asset_classification_registry.py
+      - name: Validate and render repository asset classification registry
+        run: >-
+          python scripts/relaylm_repository_asset_classification_registry.py
+          --check
+          --render-json generated/repository_asset_classification.json
+          --render-markdown generated/repository_asset_classification.md
       - name: Self-test
         run: python scripts/relaylm_repo_inventory_cli.py --self-test
       - name: Generate JSON inventory
         run: python scripts/relaylm_repo_inventory_cli.py --all --format json --output generated/repository_storage_inventory.json
       - name: Generate Markdown inventory
         run: python scripts/relaylm_repo_inventory_cli.py --all --format markdown --output generated/repository_storage_inventory.md
-      - name: Upload inventory
+      - name: Upload inventory and classification navigation
         uses: actions/upload-artifact@v4
         with:
           name: repository-storage-inventory
-          path: generated/repository_storage_inventory.*
+          path: |
+            generated/repository_storage_inventory.*
+            generated/repository_asset_classification.*
           if-no-files-found: error
           retention-days: 7
