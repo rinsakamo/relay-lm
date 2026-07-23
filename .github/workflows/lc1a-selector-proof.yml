@@ -1,0 +1,70 @@
+name: LC1A selector receipt proof
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.pull_request.head.ref == 'agent/lc1a-subjective-mem-correct'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/lc1a-subjective-mem-correct
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Document and test non-circular selector receipt proof
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          doc = Path('docs/architecture/lc1a_subjective_mem_correct.md')
+          text = doc.read_text(encoding='utf-8')
+          needle = 'Exactly one operations selector continues to own logical currentness. During unresolved publication it is replaced atomically with:\n'
+          addition = ('Exactly one operations selector continues to own logical currentness. The selector binds the exact current receipt ID, while that self-authenticating receipt binds the complete selector digest. This non-circular composite proof is deliberate: placing the receipt digest inside the selector while the receipt also digests the selector would create a self-reference. During unresolved publication it is replaced atomically with:\n')
+          if text.count(needle) != 1:
+              raise SystemExit('architecture insertion point mismatch')
+          doc.write_text(text.replace(needle, addition), encoding='utf-8')
+
+          contract = Path('docs/contracts/subjective-mem-canonical-markdown-v1.md')
+          text = contract.read_text(encoding='utf-8')
+          needle = 'The prior canonical revision remains in the page and exactly one operations selector identifies the logical current revision. During unresolved publication that selector is ineligible; it becomes eligible only after the exact page and lifecycle receipt agree.\n'
+          addition = ('The prior canonical revision remains in the page and exactly one operations selector identifies the logical current revision. The selector binds the current receipt ID and the matching self-authenticating receipt binds the complete selector digest; the full receipt digest is intentionally not embedded back into that selector because doing so would be self-referential. During unresolved publication that selector is ineligible; it becomes eligible only after the exact page and lifecycle receipt agree.\n')
+          if text.count(needle) != 1:
+              raise SystemExit('contract insertion point mismatch')
+          contract.write_text(text.replace(needle, addition), encoding='utf-8')
+
+          tests = Path('tests/test_subjective_mem_lifecycle_runtime.py')
+          text = tests.read_text(encoding='utf-8')
+          needle = '    assert binding["current_receipt_id"] == result.receipt_id\n'
+          addition = '''    assert binding["current_receipt_id"] == result.receipt_id
+    receipt = lifecycle_env["store"].read_record(
+        evidence_space_id=lifecycle_env["captured"].evidence_space_id,
+        record_kind="subjective_mem_lifecycle_receipt",
+        record_id=result.receipt_id,
+    )
+    assert isinstance(receipt, dict)
+    assert receipt["current_state_digest"] == canonical_digest(raw)
+'''
+          if text.count(needle) != 1:
+              raise SystemExit('test insertion point mismatch')
+          tests.write_text(text.replace(needle, addition), encoding='utf-8')
+
+          Path('.github/workflows/lc1a-selector-proof.yml').unlink()
+          Path('.github/lc1a-selector-proof-trigger').unlink(missing_ok=True)
+          PY
+          python -m compileall -q relaylm scripts tests
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "docs: define LC-1A selector receipt proof"
+          git push origin HEAD:agent/lc1a-subjective-mem-correct
