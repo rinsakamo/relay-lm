@@ -24,12 +24,13 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
+          import base64
           from pathlib import Path
 
           doc = Path('docs/architecture/lc1a_subjective_mem_correct.md')
           text = doc.read_text(encoding='utf-8')
           needle = 'Exactly one operations selector continues to own logical currentness. During unresolved publication it is replaced atomically with:\n'
-          addition = ('Exactly one operations selector continues to own logical currentness. The selector binds the exact current receipt ID, while that self-authenticating receipt binds the complete selector digest. This non-circular composite proof is deliberate: placing the receipt digest inside the selector while the receipt also digests the selector would create a self-reference. During unresolved publication it is replaced atomically with:\n')
+          addition = 'Exactly one operations selector continues to own logical currentness. The selector binds the exact current receipt ID, while that self-authenticating receipt binds the complete selector digest. This non-circular composite proof is deliberate: placing the receipt digest inside the selector while the receipt also digests the selector would create a self-reference. During unresolved publication it is replaced atomically with:\n'
           if text.count(needle) != 1:
               raise SystemExit('architecture insertion point mismatch')
           doc.write_text(text.replace(needle, addition), encoding='utf-8')
@@ -37,7 +38,7 @@ jobs:
           contract = Path('docs/contracts/subjective-mem-canonical-markdown-v1.md')
           text = contract.read_text(encoding='utf-8')
           needle = 'The prior canonical revision remains in the page and exactly one operations selector identifies the logical current revision. During unresolved publication that selector is ineligible; it becomes eligible only after the exact page and lifecycle receipt agree.\n'
-          addition = ('The prior canonical revision remains in the page and exactly one operations selector identifies the logical current revision. The selector binds the current receipt ID and the matching self-authenticating receipt binds the complete selector digest; the full receipt digest is intentionally not embedded back into that selector because doing so would be self-referential. During unresolved publication that selector is ineligible; it becomes eligible only after the exact page and lifecycle receipt agree.\n')
+          addition = 'The prior canonical revision remains in the page and exactly one operations selector identifies the logical current revision. The selector binds the current receipt ID and the matching self-authenticating receipt binds the complete selector digest; the full receipt digest is intentionally not embedded back into that selector because doing so would be self-referential. During unresolved publication that selector is ineligible; it becomes eligible only after the exact page and lifecycle receipt agree.\n'
           if text.count(needle) != 1:
               raise SystemExit('contract insertion point mismatch')
           contract.write_text(text.replace(needle, addition), encoding='utf-8')
@@ -45,15 +46,7 @@ jobs:
           tests = Path('tests/test_subjective_mem_lifecycle_runtime.py')
           text = tests.read_text(encoding='utf-8')
           needle = '    assert binding["current_receipt_id"] == result.receipt_id\n'
-          addition = '''    assert binding["current_receipt_id"] == result.receipt_id
-    receipt = lifecycle_env["store"].read_record(
-        evidence_space_id=lifecycle_env["captured"].evidence_space_id,
-        record_kind="subjective_mem_lifecycle_receipt",
-        record_id=result.receipt_id,
-    )
-    assert isinstance(receipt, dict)
-    assert receipt["current_state_digest"] == canonical_digest(raw)
-'''
+          addition = base64.b64decode('ICAgIGFzc2VydCBiaW5kaW5nWyJjdXJyZW50X3JlY2VpcHRfaWQiXSA9PSByZXN1bHQucmVjZWlwdF9pZAogICAgcmVjZWlwdCA9IGxpZmVjeWNsZV9lbnZbInN0b3JlIl0ucmVhZF9yZWNvcmQoCiAgICAgICAgZXZpZGVuY2Vfc3BhY2VfaWQ9bGlmZWN5Y2xlX2VudlsiY2FwdHVyZWQiXS5ldmlkZW5jZV9zcGFjZV9pZCwKICAgICAgICByZWNvcmRfa2luZD0ic3ViamVjdGl2ZV9tZW1fbGlmZWN5Y2xlX3JlY2VpcHQiLAogICAgICAgIHJlY29yZF9pZD1yZXN1bHQucmVjZWlwdF9pZCwKICAgICkKICAgIGFzc2VydCBpc2luc3RhbmNlKHJlY2VpcHQsIGRpY3QpCiAgICBhc3NlcnQgcmVjZWlwdFsiY3VycmVudF9zdGF0ZV9kaWdlc3QiXSA9PSBjYW5vbmljYWxfZGlnZXN0KHJhdykK').decode('utf-8')
           if text.count(needle) != 1:
               raise SystemExit('test insertion point mismatch')
           tests.write_text(text.replace(needle, addition), encoding='utf-8')
