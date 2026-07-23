@@ -27,14 +27,10 @@ jobs:
           python - <<'PY' > /tmp/lc1a-patch.log 2>&1
           import base64
           import gzip
-          import re
           from pathlib import Path
 
-          source = Path('.github/workflows/lc1a-review-corrections.yml').read_text(encoding='utf-8')
-          match = re.search(r'payload = """([A-Za-z0-9+/=]+)"""', source)
-          if match is None:
-              raise SystemExit('LC-1A correction payload missing')
-          code = gzip.decompress(base64.b64decode(match.group(1)))
+          payload = Path('.github/lc1a-patch-payload-v2.b64').read_text(encoding='utf-8').strip()
+          code = gzip.decompress(base64.b64decode(payload))
           exec(compile(code, 'lc1a_review_patch.py', 'exec'))
           for path in (
               Path('.github/workflows/lc1a-review-corrections.yml'),
@@ -42,6 +38,7 @@ jobs:
               Path('.github/lc1a-review-trigger'),
               Path('.github/lc1a-review-trigger-2'),
               Path('.github/lc1a-patch-error.txt'),
+              Path('.github/lc1a-patch-payload-v2.b64'),
           ):
               path.unlink(missing_ok=True)
           PY
