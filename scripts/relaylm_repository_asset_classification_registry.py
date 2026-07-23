@@ -16,6 +16,7 @@ import sys
 from typing import Any
 
 import yaml
+from yaml.resolver import BaseResolver
 
 
 DOC_PATH = Path("docs/reference/repository-asset-classification.md")
@@ -67,17 +68,53 @@ REQUIRED_RECORD_FIELDS = {
 ASSET_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]*$")
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 GLOB_CHARS = set("*?[]{}")
+OPERATOR_ROOTS = {"console_script", "operator_cli"}
+
+
+class UniqueKeyLoader(yaml.SafeLoader):
+    """Safe YAML loader that rejects duplicate mapping keys."""
+
+
+def _construct_unique_mapping(
+    loader: UniqueKeyLoader,
+    node: yaml.nodes.MappingNode,
+    deep: bool = False,
+) -> dict[Any, Any]:
+    mapping: dict[Any, Any] = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        try:
+            duplicate = key in mapping
+        except TypeError as exc:
+            raise ValueError(f"unhashable YAML mapping key: {key!r}") from exc
+        if duplicate:
+            raise ValueError(f"duplicate YAML mapping key: {key!r}")
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+UniqueKeyLoader.add_constructor(
+    BaseResolver.DEFAULT_MAPPING_TAG,
+    _construct_unique_mapping,
+)
 
 
 def repository_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def load_yaml(path: Path) -> dict[str, Any]:
-    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+def load_yaml_text(text: str) -> dict[str, Any]:
+    payload = yaml.load(text, Loader=UniqueKeyLoader)
     if not isinstance(payload, dict):
-        raise ValueError(f"{path}: top level must be a mapping")
+        raise ValueError("YAML top level must be a mapping")
     return payload
+
+
+def load_yaml(path: Path) -> dict[str, Any]:
+    try:
+        return load_yaml_text(path.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        raise ValueError(f"{path}: {exc}") from exc
 
 
 def extract_document_registry(document_text: str) -> dict[str, Any]:
@@ -94,15 +131,16 @@ def extract_document_registry(document_text: str) -> dict[str, Any]:
     if fence_end < 0:
         raise ValueError("unterminated YAML fence in classification document")
 
-    payload = yaml.safe_load(document_text[content_start:fence_end])
-    if not isinstance(payload, dict):
-        raise ValueError("classification document YAML must be a mapping")
-    return payload
+    try:
+        return load_yaml_text(document_text[content_start:fence_end])
+    except ValueError as exc:
+        raise ValueError(f"classification document YAML: {exc}") from exc
 
 
 def mirrored_payload(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "classification_version": payload.get("classification_version"),
+        "source_commit": payload.get("source_commit"),
         "records": payload.get("records"),
     }
 
@@ -234,6 +272,7 @@ def validate_registry(payload: dict[str, Any], *, root: Path) -> list[str]:
             errors.append(f"{record_id}.entrypoint must be a non-empty string when present")
 
     canonical_entries = payload.get("canonical_entrypoints")
+    canonical_claims_by_asset: dict[str, list[dict[str, Any]]] = {}
     if not isinstance(canonical_entries, list) or not canonical_entries:
         errors.append("canonical_entrypoints must be a non-empty list")
     else:
@@ -248,14 +287,14 @@ def validate_registry(payload: dict[str, Any], *, root: Path) -> list[str]:
             group = entry.get("group")
             command = entry.get("command")
             asset_id = entry.get("asset_id")
-            if not _nonempty_string(group):
-                errors.append(f"{prefix}.group must be non-empty")
+            if not _nonempty_string(group) or not ASSET_ID_RE.fullmatch(group):
+                errors.append(f"{prefix}.group is invalid")
             elif group in groups:
                 errors.append(f"competing canonical entrypoint group: {group}")
             else:
                 groups.add(group)
-            if not _nonempty_string(command):
-                errors.append(f"{prefix}.command must be non-empty")
+            if not _nonempty_string(command) or "\n" in command or "\r" in command:
+                errors.append(f"{prefix}.command must be one non-empty line")
             elif command in commands:
                 errors.append(f"duplicate canonical entrypoint command: {command}")
             else:
@@ -263,25 +302,28 @@ def validate_registry(payload: dict[str, Any], *, root: Path) -> list[str]:
             if not _nonempty_string(asset_id) or asset_id not in record_by_id:
                 errors.append(f"{prefix}.asset_id does not reference a classified asset: {asset_id!r}")
                 continue
+            canonical_claims_by_asset.setdefault(asset_id, []).append(entry)
             if asset_id in claimed_assets:
                 errors.append(f"asset has multiple canonical entrypoint claims: {asset_id}")
             claimed_assets.add(asset_id)
             record = record_by_id[asset_id]
             if record.get("lifecycle") != "active":
                 errors.append(f"canonical entrypoint asset must be active: {asset_id}")
+            record_roots = set(record.get("invocation_roots") or [])
+            if not (record_roots & OPERATOR_ROOTS):
+                errors.append(f"canonical entrypoint asset lacks an operator root: {asset_id}")
 
         for asset_id, record in record_by_id.items():
+            record_roots = set(record.get("invocation_roots") or [])
+            claims = canonical_claims_by_asset.get(asset_id, [])
+            if record.get("lifecycle") == "active" and record_roots & OPERATOR_ROOTS and len(claims) != 1:
+                errors.append(f"active operator-root asset must have exactly one canonical entrypoint claim: {asset_id}")
+
             entrypoint = record.get("entrypoint")
             if not _nonempty_string(entrypoint):
                 continue
             command = entrypoint.split("=", 1)[0].strip()
-            matches = [
-                entry
-                for entry in canonical_entries
-                if isinstance(entry, dict)
-                and entry.get("asset_id") == asset_id
-                and entry.get("command") == command
-            ]
+            matches = [entry for entry in claims if entry.get("command") == command]
             if len(matches) != 1:
                 errors.append(f"{asset_id}.entrypoint is not represented exactly once in canonical_entrypoints")
 
