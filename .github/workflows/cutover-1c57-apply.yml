@@ -49,40 +49,13 @@ jobs:
       - name: Check final diff formatting
         run: git diff --check
 
-      - name: Stage and commit final cutover tree
+      - name: Commit and push validated non-workflow cutover tree
         shell: bash
         run: |
+          git checkout HEAD -- .github/workflows/documentation-current-boundary-smoke.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --check
           git commit -m "docs: move RelayMEM M3a handoff to frozen evidence"
-
-      - name: Package validated final tree
-        shell: bash
-        run: |
-          out=/tmp/cutover-1c57-final-tree
-          mkdir -p "$out"
-          for path in \
-            .github/workflows/documentation-current-boundary-smoke.yml \
-            docs/architecture/phase6c1_relaymem_primary_pipeline_compose.md \
-            docs/evidence/implementation/README.md \
-            docs/evidence/implementation/relaymem-m3a-primary-formation-handoff.md \
-            docs/evidence/migrations/cutover-1c57-relaymem-m3a.md \
-            docs/evidence/migrations/documentation-hard-cutover-receipt.md \
-            docs/planning/documentation-cutover-rules.yaml \
-            scripts/relaylm_relaymem_m3a_handoff_cutover_guard.py
-          do
-            mkdir -p "$out/$(dirname "$path")"
-            cp "$path" "$out/$path"
-          done
-          printf '%s\n' 'docs/architecture/relaymem_m3a_primary_formation_handoff.md' > "$out/deleted-paths.txt"
-          git rev-parse HEAD > "$out/local-validated-commit.txt"
-          git diff-tree --no-commit-id --name-status -r HEAD > "$out/changed-files.txt"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cutover-1c57-final-tree
-          path: /tmp/cutover-1c57-final-tree
-          if-no-files-found: error
-          include-hidden-files: true
+          git push origin HEAD:agent/documentation-hard-cutover-1c57-relaymem-m3a
