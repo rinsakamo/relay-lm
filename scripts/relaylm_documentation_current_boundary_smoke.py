@@ -20,7 +20,8 @@ REQUIRED = {
         "## Contract-aligned implementation migration boundary",
         "## Current caveats",
         "## Immediate dependency-first work",
-        "LC-1 lifecycle migration                                    next registered slice; not started",
+        "LC-1 lifecycle migration                                    in progress; LC-1A Correct implemented",
+        "LC-1B Forget                                           next ordered slice; not started",
         "## Not yet implemented",
         "Project Status Reference Map",
     ),
@@ -40,7 +41,15 @@ REQUIRED = {
         "ASM-1 Shared Assessment runtime foundation                     complete / default-off",
         "SM-1 Subjective MEM decision/result vertical slice        complete / default-off / prepared-only",
         "ST-1 Markdown + operations commit protocol           complete / default-off / create-only / POSIX apply",
-        "LC-1 lifecycle migration                        next registered slice / not started",
+        "LC-1 lifecycle migration                        in progress / LC-1A Correct implemented / default-off",
+        "LC-1B Forget                                next ordered slice / not started",
+    ),
+    "docs/architecture/lc1a_subjective_mem_correct.md": (
+        "relaylm_authority: lc1a_subjective_mem_correct_runtime_boundary",
+        "# LC-1A Subjective MEM Correct Runtime",
+        "Correct | `active` | `none` | `active`",
+        "LC-1 remains incomplete.",
+        "Purge remains prohibited.",
     ),
     "docs/README.md": (
         "[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.",
@@ -49,6 +58,7 @@ REQUIRED = {
         "ASM-1 Shared Assessment Runtime Foundation",
         "SM-1 Subjective MEM Create Runtime",
         "ST-1 Subjective MEM Commit Runtime",
+        "LC-1A Subjective MEM Correct Runtime",
     ),
     "docs/DOCUMENTATION_MODEL.md": (
         "`architecture_handoff`",
@@ -66,6 +76,8 @@ STALE = (
     "SM-1 Subjective MEM decision/result vertical slice         next registered slice",
     "ST-1 Markdown + operations commit protocol: next registered slice; not started",
     "ST-1 Markdown + operations commit protocol           next registered slice / not started",
+    "LC-1 lifecycle migration                                    next registered slice; not started",
+    "LC-1 lifecycle migration                        next registered slice / not started",
     "PM-D3 RelayEMO/RelaySCN scene_state ownership: open",
 )
 

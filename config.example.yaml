@@ -240,6 +240,13 @@ subjective_mem_create_apply_enabled: false
 subjective_mem_commit_enabled: false
 subjective_mem_commit_dry_run_only: true
 subjective_mem_commit_apply_enabled: false
+
+# LC-1 lifecycle operations consume explicit exact inputs and extend canonical
+# Subjective MEM Markdown. LC-1A currently supports Correct only. No ordinary
+# Retrieval, Primary migration, background work, or Purge is enabled here.
+subjective_mem_lifecycle_enabled: false
+subjective_mem_lifecycle_dry_run_only: true
+subjective_mem_lifecycle_apply_enabled: false
 subjective_mem_workspace_root:
 
 # OVL-1 is independently default-off and dry-run-first. Apply requires EV-1

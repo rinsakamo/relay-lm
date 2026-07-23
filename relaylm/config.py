@@ -249,6 +249,9 @@ class RelayLMConfig(BaseModel):
     subjective_mem_commit_enabled: StrictBool = False
     subjective_mem_commit_dry_run_only: StrictBool = True
     subjective_mem_commit_apply_enabled: StrictBool = False
+    subjective_mem_lifecycle_enabled: StrictBool = False
+    subjective_mem_lifecycle_dry_run_only: StrictBool = True
+    subjective_mem_lifecycle_apply_enabled: StrictBool = False
     subjective_mem_workspace_root: str | None = None
     ctx_ovl_enabled: StrictBool = False
     ctx_ovl_dry_run_only: StrictBool = True
@@ -372,6 +375,26 @@ class RelayLMConfig(BaseModel):
             and subjective_mem_triple != _APPLY_GATE_TRIPLE
         ):
             raise ValueError("subjective_mem_commit_apply_requires_subjective_mem_create_apply")
+
+        subjective_mem_lifecycle_triple = (
+            self.subjective_mem_lifecycle_enabled,
+            self.subjective_mem_lifecycle_dry_run_only,
+            self.subjective_mem_lifecycle_apply_enabled,
+        )
+        if subjective_mem_lifecycle_triple not in _VALID_GATE_TRIPLES:
+            raise ValueError("invalid_subjective_mem_lifecycle_gate_combination")
+        if subjective_mem_lifecycle_triple != _DISABLED_GATE_TRIPLE:
+            if subjective_mem_commit_triple == _DISABLED_GATE_TRIPLE:
+                raise ValueError("subjective_mem_lifecycle_requires_subjective_mem_commit_enabled")
+            if not self.evidence_data_root:
+                raise ValueError("subjective_mem_lifecycle_requires_evidence_data_root")
+            if not self.subjective_mem_workspace_root:
+                raise ValueError("subjective_mem_lifecycle_requires_workspace_root")
+        if (
+            subjective_mem_lifecycle_triple == _APPLY_GATE_TRIPLE
+            and subjective_mem_commit_triple != _APPLY_GATE_TRIPLE
+        ):
+            raise ValueError("subjective_mem_lifecycle_apply_requires_subjective_mem_commit_apply")
 
         evidence_triple = (
             self.evidence_capture_enabled,

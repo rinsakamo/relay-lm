@@ -222,6 +222,14 @@ class SubjectiveMemDecision:
 
 @dataclass(frozen=True)
 class SubjectiveMemRevision:
+    """One immutable canonical Subjective MEM revision.
+
+    SM-1 callers may continue using the original constructor: the trailing
+    defaults describe the revision-1 active create shape.  LC-1 lifecycle
+    callers set the explicit revision, predecessor, lifecycle, and authority
+    fields without mutating an earlier revision in place.
+    """
+
     memory_id: str
     character_id: str
     assessment_id: str
@@ -235,12 +243,22 @@ class SubjectiveMemRevision:
     strength: SubjectiveMemStrength
     decision_id: str
     created_at: str
+    memory_revision: int = 1
+    formation_stage: str = "primary"
+    lifecycle_state: str = "active"
+    retrieval_visible: bool = True
+    predecessor_revision_or_null: int | None = None
+    authorization_kind: str = "formation_decision"
+
+    @property
+    def authorization_id(self) -> str:
+        return self.decision_id
 
     def to_dict(self) -> dict[str, object]:
         return {
             "schema": SUBJECTIVE_MEM_REVISION_SCHEMA,
             "memory_id": self.memory_id,
-            "memory_revision": 1,
+            "memory_revision": self.memory_revision,
             "character_id": self.character_id,
             "grounded_assessment_ref": {
                 "assessment_id": self.assessment_id,
@@ -250,17 +268,17 @@ class SubjectiveMemRevision:
             "grounded_content": self.grounded_content,
             "grounded_content_digest": self.grounded_content_digest,
             "subjective_meaning": self.subjective_meaning,
-            "formation_stage": "primary",
+            "formation_stage": self.formation_stage,
             "memory_kind": self.memory_kind,
             "scope_binding": self.scope_binding.to_dict(),
             "formation_snapshot": self.formation_snapshot.to_dict(),
             "strength": self.strength.to_dict(),
-            "lifecycle_state": "active",
-            "retrieval_visible": True,
-            "predecessor_revision_or_null": None,
+            "lifecycle_state": self.lifecycle_state,
+            "retrieval_visible": self.retrieval_visible,
+            "predecessor_revision_or_null": self.predecessor_revision_or_null,
             "authorization_ref": {
-                "authority_kind": "formation_decision",
-                "authority_id": self.decision_id,
+                "authority_kind": self.authorization_kind,
+                "authority_id": self.authorization_id,
             },
             "created_at": self.created_at,
         }
@@ -274,12 +292,25 @@ class SubjectiveMemCurrentState:
     updated_at: str
     mutation_state: str = "prepared"
     retrieval_eligible: bool = False
+    current_revision: int = 1
+    lifecycle_state: str = "active"
 
     def __post_init__(self) -> None:
-        if (self.mutation_state, self.retrieval_eligible) not in {
-            ("prepared", False),
-            ("none", True),
-        }:
+        lifecycle_states = {
+            "active", "pinned", "held", "hidden", "superseded", "purged"
+        }
+        mutation_states = {"none", "prepared", "recovery_required", "corrupt"}
+        expected_eligible = (
+            self.mutation_state == "none"
+            and self.lifecycle_state in {"active", "pinned"}
+        )
+        if (
+            self.lifecycle_state not in lifecycle_states
+            or self.mutation_state not in mutation_states
+            or type(self.current_revision) is not int
+            or self.current_revision < 1
+            or self.retrieval_eligible is not expected_eligible
+        ):
             raise ValueError("subjective_mem_current_state_pair_invalid")
 
     def to_dict(self) -> dict[str, object]:
@@ -288,8 +319,8 @@ class SubjectiveMemCurrentState:
             "memory_state_id": self.memory_state_id,
             "memory_id": self.memory_id,
             "character_id": self.character_id,
-            "current_revision": 1,
-            "lifecycle_state": "active",
+            "current_revision": self.current_revision,
+            "lifecycle_state": self.lifecycle_state,
             "mutation_state": self.mutation_state,
             "retrieval_eligible": self.retrieval_eligible,
             "updated_at": self.updated_at,
