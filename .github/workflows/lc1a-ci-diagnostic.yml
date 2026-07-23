@@ -20,41 +20,126 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      - name: Normalize Python 3.10 indentation and clean diagnostics
+      - name: Normalize indentation and validate Python 3.10
         shell: bash
         run: |
           python - <<'PY'
-          import base64
-          import re
           from pathlib import Path
 
-          subjective = Path('relaylm/subjective_mem.py')
-          text = subjective.read_text(encoding='utf-8')
-          replacement = base64.b64decode('ICAgIGRlZiBfX3Bvc3RfaW5pdF9fKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgbGlmZWN5Y2xlX3N0YXRlcyA9IHsKICAgICAgICAgICAgImFjdGl2ZSIsCiAgICAgICAgICAgICJwaW5uZWQiLAogICAgICAgICAgICAiaGVsZCIsCiAgICAgICAgICAgICJoaWRkZW4iLAogICAgICAgICAgICAic3VwZXJzZWRlZCIsCiAgICAgICAgICAgICJwdXJnZWQiLAogICAgICAgIH0KICAgICAgICBtdXRhdGlvbl9zdGF0ZXMgPSB7Im5vbmUiLCAicHJlcGFyZWQiLCAicmVjb3ZlcnlfcmVxdWlyZWQiLCAiY29ycnVwdCJ9CiAgICAgICAgZXhwZWN0ZWRfZWxpZ2libGUgPSAoCiAgICAgICAgICAgIHNlbGYubXV0YXRpb25fc3RhdGUgPT0gIm5vbmUiCiAgICAgICAgICAgIGFuZCBzZWxmLmxpZmVjeWNsZV9zdGF0ZSBpbiB7ImFjdGl2ZSIsICJwaW5uZWQifQogICAgICAgICkKICAgICAgICBhdXRob3JpdHlfdmFsdWVzID0gKAogICAgICAgICAgICBzZWxmLndvcmtzcGFjZV9hdXRob3JpdHlfZGlnZXN0LAogICAgICAgICAgICBzZWxmLnNjb3BlX2JpbmRpbmdfZGlnZXN0LAogICAgICAgICAgICBzZWxmLnBhZ2VfaWQsCiAgICAgICAgICAgIHNlbGYuYmxvY2tfaWQsCiAgICAgICAgICAgIHNlbGYuY2Fub25pY2FsX3BhZ2VfZGlnZXN0LAogICAgICAgICAgICBzZWxmLmF1dGhvcml6YXRpb25fa2luZCwKICAgICAgICAgICAgc2VsZi5hdXRob3JpemF0aW9uX2lkLAogICAgICAgICAgICBzZWxmLmN1cnJlbnRfcmVjZWlwdF9pZCwKICAgICAgICApCiAgICAgICAgdW5ib3VuZCA9IGFsbCh2YWx1ZSBpcyBOb25lIGZvciB2YWx1ZSBpbiBhdXRob3JpdHlfdmFsdWVzKQogICAgICAgIGJvdW5kID0gYWxsKAogICAgICAgICAgICBpc2luc3RhbmNlKHZhbHVlLCBzdHIpIGFuZCBib29sKHZhbHVlKSBmb3IgdmFsdWUgaW4gYXV0aG9yaXR5X3ZhbHVlcwogICAgICAgICkKICAgICAgICBpZiBib3VuZDoKICAgICAgICAgICAgYXNzZXJ0IHNlbGYud29ya3NwYWNlX2F1dGhvcml0eV9kaWdlc3QgaXMgbm90IE5vbmUKICAgICAgICAgICAgYXNzZXJ0IHNlbGYuc2NvcGVfYmluZGluZ19kaWdlc3QgaXMgbm90IE5vbmUKICAgICAgICAgICAgYXNzZXJ0IHNlbGYuY2Fub25pY2FsX3BhZ2VfZGlnZXN0IGlzIG5vdCBOb25lCiAgICAgICAgICAgIGlmICgKICAgICAgICAgICAgICAgIGxlbihzZWxmLndvcmtzcGFjZV9hdXRob3JpdHlfZGlnZXN0KSAhPSA2NAogICAgICAgICAgICAgICAgb3IgbGVuKHNlbGYuc2NvcGVfYmluZGluZ19kaWdlc3QpICE9IDY0CiAgICAgICAgICAgICAgICBvciBub3Qgc2VsZi5jYW5vbmljYWxfcGFnZV9kaWdlc3Quc3RhcnRzd2l0aCgic2hhMjU2OiIpCiAgICAgICAgICAgICAgICBvciBsZW4oc2VsZi5jYW5vbmljYWxfcGFnZV9kaWdlc3QpICE9IDcxCiAgICAgICAgICAgICk6CiAgICAgICAgICAgICAgICByYWlzZSBWYWx1ZUVycm9yKCJzdWJqZWN0aXZlX21lbV9jdXJyZW50X3N0YXRlX2F1dGhvcml0eV9pbnZhbGlkIikKICAgICAgICBpZiAoCiAgICAgICAgICAgIHNlbGYubGlmZWN5Y2xlX3N0YXRlIG5vdCBpbiBsaWZlY3ljbGVfc3RhdGVzCiAgICAgICAgICAgIG9yIHNlbGYubXV0YXRpb25fc3RhdGUgbm90IGluIG11dGF0aW9uX3N0YXRlcwogICAgICAgICAgICBvciB0eXBlKHNlbGYuY3VycmVudF9yZXZpc2lvbikgaXMgbm90IGludAogICAgICAgICAgICBvciBzZWxmLmN1cnJlbnRfcmV2aXNpb24gPCAxCiAgICAgICAgICAgIG9yIHNlbGYucmV0cmlldmFsX2VsaWdpYmxlIGlzIG5vdCBleHBlY3RlZF9lbGlnaWJsZQogICAgICAgICAgICBvciBub3QgKHVuYm91bmQgb3IgYm91bmQpCiAgICAgICAgKToKICAgICAgICAgICAgcmFpc2UgVmFsdWVFcnJvcigic3ViamVjdGl2ZV9tZW1fY3VycmVudF9zdGF0ZV9wYWlyX2ludmFsaWQiKQoK').decode('utf-8')
-          pattern = re.compile(r'    def __post_init__\(self\) -> None:\n.*?(?=    @property\n    def authority_bound)', re.DOTALL)
-          text, count = pattern.subn(replacement, text)
-          if count != 1:
-              raise SystemExit(f'subjective_mem post-init replacement count={count}')
-          subjective.write_text(text, encoding='utf-8')
+          def replace_region(path: Path, search_after: str, start: str, end: str, replacement: list[str]) -> None:
+              lines = path.read_text(encoding="utf-8").splitlines()
+              anchor = lines.index(search_after)
+              start_index = lines.index(start, anchor + 1)
+              end_index = lines.index(end, start_index + 1)
+              lines[start_index:end_index] = replacement
+              path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-          runtime = Path('relaylm/subjective_mem_lifecycle_runtime.py')
-          text = runtime.read_text(encoding='utf-8')
-          replacement = base64.b64decode('ICAgIGlmIHByZWRlY2Vzc29yLm1lbW9yeV9yZXZpc2lvbiA9PSAxOgogICAgICAgIGRlY2lzaW9uID0gdHgucmVhZF9yZWNvcmQoCiAgICAgICAgICAgIHJlY29yZF9raW5kPSJzdWJqZWN0aXZlX21lbV9kZWNpc2lvbiIsCiAgICAgICAgICAgIHJlY29yZF9pZD1wcmVkZWNlc3Nvci5hdXRob3JpemF0aW9uX2lkLAogICAgICAgICkKICAgICAgICByZXN1bHRfcmVmID0gKAogICAgICAgICAgICBkZWNpc2lvbi5nZXQoInJlc3VsdF9tZW1vcnlfcmVmX29yX251bGwiKQogICAgICAgICAgICBpZiBpc2luc3RhbmNlKGRlY2lzaW9uLCBkaWN0KQogICAgICAgICAgICBlbHNlIE5vbmUKICAgICAgICApCiAgICAgICAgaWYgKAogICAgICAgICAgICBwcmVkZWNlc3Nvci5hdXRob3JpemF0aW9uX2tpbmQgIT0gImZvcm1hdGlvbl9kZWNpc2lvbiIKICAgICAgICAgICAgb3IgcmVjZWlwdC5nZXQoImRlY2lzaW9uX2lkIikgIT0gcHJlZGVjZXNzb3IuYXV0aG9yaXphdGlvbl9pZAogICAgICAgICAgICBvciBub3QgaXNpbnN0YW5jZShyZXN1bHRfcmVmLCBkaWN0KQogICAgICAgICAgICBvciByZXN1bHRfcmVmLmdldCgibWVtb3J5X2lkIikgIT0gcHJlZGVjZXNzb3IubWVtb3J5X2lkCiAgICAgICAgICAgIG9yIHJlc3VsdF9yZWYuZ2V0KCJtZW1vcnlfcmV2aXNpb24iKSAhPSAxCiAgICAgICAgKToKICAgICAgICAgICAgcmV0dXJuICgic3ViamVjdGl2ZV9tZW1fbGlmZWN5Y2xlX3ByZWRlY2Vzc29yX2F1dGhvcml0eV9ub3RfZXhhY3QiLCkKICAgICAgICByZXR1cm4gKCkK').decode('utf-8')
-          pattern = re.compile(r'    if predecessor\.memory_revision == 1:\n.*?        return \(\)\n(?=    transition_id = receipt\.get)', re.DOTALL)
-          text, count = pattern.subn(replacement, text)
-          if count != 1:
-              raise SystemExit(f'predecessor authority replacement count={count}')
-          runtime.write_text(text, encoding='utf-8')
+          replace_region(
+              Path("relaylm/subjective_mem.py"),
+              "class SubjectiveMemCurrentState:",
+              "    def __post_init__(self) -> None:",
+              "    @property",
+              [
+                  "    def __post_init__(self) -> None:",
+                  "        lifecycle_states = {",
+                  '            "active",',
+                  '            "pinned",',
+                  '            "held",',
+                  '            "hidden",',
+                  '            "superseded",',
+                  '            "purged",',
+                  "        }",
+                  '        mutation_states = {"none", "prepared", "recovery_required", "corrupt"}',
+                  "        expected_eligible = (",
+                  '            self.mutation_state == "none"',
+                  '            and self.lifecycle_state in {"active", "pinned"}',
+                  "        )",
+                  "        authority_values = (",
+                  "            self.workspace_authority_digest,",
+                  "            self.scope_binding_digest,",
+                  "            self.page_id,",
+                  "            self.block_id,",
+                  "            self.canonical_page_digest,",
+                  "            self.authorization_kind,",
+                  "            self.authorization_id,",
+                  "            self.current_receipt_id,",
+                  "        )",
+                  "        unbound = all(value is None for value in authority_values)",
+                  "        bound = all(",
+                  "            isinstance(value, str) and bool(value)",
+                  "            for value in authority_values",
+                  "        )",
+                  "        if bound:",
+                  "            assert self.workspace_authority_digest is not None",
+                  "            assert self.scope_binding_digest is not None",
+                  "            assert self.canonical_page_digest is not None",
+                  "            if (",
+                  "                len(self.workspace_authority_digest) != 64",
+                  "                or len(self.scope_binding_digest) != 64",
+                  '                or not self.canonical_page_digest.startswith("sha256:")',
+                  "                or len(self.canonical_page_digest) != 71",
+                  "            ):",
+                  '                raise ValueError("subjective_mem_current_state_authority_invalid")',
+                  "        if (",
+                  "            self.lifecycle_state not in lifecycle_states",
+                  "            or self.mutation_state not in mutation_states",
+                  "            or type(self.current_revision) is not int",
+                  "            or self.current_revision < 1",
+                  "            or self.retrieval_eligible is not expected_eligible",
+                  "            or not (unbound or bound)",
+                  "        ):",
+                  '            raise ValueError("subjective_mem_current_state_pair_invalid")',
+                  "",
+              ],
+          )
 
+          replace_region(
+              Path("relaylm/subjective_mem_lifecycle_runtime.py"),
+              "def _validate_predecessor_authority_locked(",
+              "    if predecessor.memory_revision == 1:",
+              '    transition_id = receipt.get("transition_id")',
+              [
+                  "    if predecessor.memory_revision == 1:",
+                  "        decision = tx.read_record(",
+                  '            record_kind="subjective_mem_decision",',
+                  "            record_id=predecessor.authorization_id,",
+                  "        )",
+                  "        result_ref = (",
+                  '            decision.get("result_memory_ref_or_null")',
+                  "            if isinstance(decision, dict)",
+                  "            else None",
+                  "        )",
+                  "        if (",
+                  '            predecessor.authorization_kind != "formation_decision"',
+                  '            or receipt.get("decision_id") != predecessor.authorization_id',
+                  "            or not isinstance(result_ref, dict)",
+                  '            or result_ref.get("memory_id") != predecessor.memory_id',
+                  '            or result_ref.get("memory_revision") != 1',
+                  "        ):",
+                  '            return ("subjective_mem_lifecycle_predecessor_authority_not_exact",)',
+                  "        return ()",
+              ],
+          )
+
+          tests = Path("tests/test_subjective_mem_lifecycle_runtime.py")
+          test_text = tests.read_text(encoding="utf-8")
+          test_text = test_text.replace(
+              '        if stage == "after_intent_before_page":\n  raise RuntimeError("simulated")',
+              '        if stage == "after_intent_before_page":\n            raise RuntimeError("simulated")',
+          )
+          tests.write_text(test_text, encoding="utf-8")
+          PY
+          python -m compileall -f -q relaylm scripts tests
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
           for path in (
-              Path('.github/workflows/lc1a-ci-diagnostic.yml'),
-              Path('.github/lc1a-ci-diagnostic-trigger'),
-              Path('.github/lc1a-ci-diagnostic.txt'),
+              Path(".github/workflows/lc1a-ci-diagnostic.yml"),
+              Path(".github/lc1a-ci-diagnostic-trigger"),
+              Path(".github/lc1a-ci-diagnostic.txt"),
           ):
               path.unlink(missing_ok=True)
           PY
-          python -m compileall -f -q relaylm scripts
-          git diff --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
