@@ -1,15 +1,222 @@
 #!/usr/bin/env python3
-"""Run E1 evidence convergence without freezing its history into PROJECT_STATUS."""
-from relaylm_e1_evaluation_consolidation_smoke_core import REQUIRED, main
+"""Validate E1 frozen evidence, stable implementation boundaries, and current-reference indexes."""
+from __future__ import annotations
 
-REQUIRED.pop("docs/PROJECT_STATUS.md", None)
-REQUIRED["docs/reference/project-status-reference-map.md"] = (
-    "## Completed foundation inventory",
-    "E1-R1 through E1-R5",
-    "## Phase 6 and E1 boundary notes",
-    "E1-R4 remains request-side grounding",
-    "E1-R5 remains a bounded query-hinted fallback",
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+REQUIRED = {
+    "docs/architecture/e1_evaluation_consolidation.md": (
+        "# E1 MVP Evaluation Evidence Consolidation",
+        "## Evidence inventory",
+        "## Implemented evidence vs remaining quality work",
+        "E1-R1 route-owned trusted Home admission",
+        "E1-R2 character-store bootstrap is implemented",
+        "E1-R3 provenance-preserving Primary MEM formation summary is implemented",
+        "E1-R4 retrieval-response grounding and unsupported-detail suppression is implemented",
+        "E1-R5 recall candidate discovery bridge is implemented",
+        "Wave 7 Cross-Slice Convergence Audit",
+        "## Direct Home-origin admission decision record",
+        "Implemented by E1-R1",
+        "## Character-store bootstrap ergonomics",
+        "## Speaker-provenance-safe memory summary formation",
+        "## Evidence-grounded recall behavior",
+        "Implemented E1-R4/E1-R5 boundary",
+    ),
+    "docs/reference/project-status-reference-map.md": (
+        "relaylm_authority: project_status_reference_map",
+        "## Completed foundation inventory",
+        "E1-R1 through E1-R5",
+        "## Phase 6 and E1 boundary notes",
+        "E1-R4 remains request-side grounding",
+        "E1-R5 remains a bounded query-hinted fallback",
+    ),
+    "docs/evidence/implementation/e1_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "relaylm_source_pr: 425",
+        "E1 MVP Evaluation Evidence Consolidation Completion Report",
+        "frozen implementation evidence",
+        "e1_completion_report-source.txt",
+        "source PR final-head/merge form",
+    ),
+    "docs/evidence/implementation/e1r1_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "trusted Home scene admission",
+    ),
+    "docs/evidence/implementation/e1r2_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "character-store bootstrap",
+    ),
+    "docs/evidence/implementation/e1r3_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "provenance-preserving Primary MEM formation summary",
+    ),
+    "docs/evidence/implementation/e1r4_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "retrieval-response grounding and unsupported-detail suppression",
+    ),
+    "docs/evidence/implementation/e1r5_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "Primary MEM Recall Candidate Discovery Bridge",
+        "PR: #439",
+    ),
+    "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md": (
+        "relaylm_doc_type: implementation_handoff",
+        "user_assertion_evidence",
+        "assistant_acknowledgement_evidence",
+        "assistant_speculation_or_non_factual_evidence",
+        "Downstream E1-R4 boundary",
+    ),
+    "docs/architecture/e1r4_retrieval_response_grounding.md": (
+        "relaylm_doc_type: implementation_handoff",
+        "relaymem.grounded_recall_context.v0",
+        "unsupported_detail_suppressed",
+    ),
+    "docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md": (
+        "relaylm_doc_type: implementation_handoff",
+        "Primary MEM Recall Candidate Discovery Bridge",
+        "shared I-4D current-state eligibility index",
+        "PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
+    ),
+    "docs/evidence/waves/wave7_cross_slice_convergence_audit.md": (
+        "# Wave 7 Cross-Slice Convergence Audit",
+        "E1-R3 provenance-preserving Primary MEM formation summary",
+        "E1-R4 retrieval-response grounding and unsupported-detail suppression",
+        "W7-INT is merged.",
+    ),
+    "docs/evidence/waves/e1r5_post_wave7_correction_convergence_audit.md": (
+        "# E1-R5 Post-Wave-7 Correction Convergence Audit",
+        "M2 remains the preferred relevance owner.",
+        "PM-D8 is closed by PR #491",
+        "The former runtime bridge module remains compatibility no-op only.",
+    ),
+}
+
+EVIDENCE_PATHS = (
+    "docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md",
+    "docs/architecture/e1r1_trusted_home_scene_admission.md",
+    "docs/architecture/e1r2_character_store_bootstrap.md",
+    "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md",
+    "docs/architecture/e1r4_retrieval_response_grounding.md",
+    "docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md",
+    "docs/evidence/waves/wave7_cross_slice_convergence_audit.md",
+    "docs/evidence/waves/e1r5_post_wave7_correction_convergence_audit.md",
+    "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
+    "docs/architecture/soul_lab_ui_b1a_lifecycle_visibility.md",
+    "docs/architecture/integration_i1_primary_mem_two_turn_recall.md",
+    "docs/evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md",
+    "docs/architecture/phase_i4d_primary_retrieval_exclusion.md",
+    "docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md",
+    "docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md",
+    "docs/architecture/phase6c1_durable_protected_source_persistence.md",
+    "docs/architecture/phase6c2_one_queued_primary_worker_integration.md",
+    "docs/architecture/o0_local_one_job_runner.md",
+    "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
+    "docs/evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md",
+    "scripts/relaylm_o0_local_one_job_runner_ci_runner.py",
+    "scripts/relaylm_phase6c1_primary_worker_smoke.py",
+    "scripts/relaylm_phase6c1_worker_crash_convergence_smoke.py",
+    "scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py",
+    "scripts/relaylm_e1r3_provenance_formation_summary_smoke.py",
+    "scripts/relaylm_e1r3_provenance_formation_security_smoke.py",
+    "scripts/relaylm_e1r4_grounded_recall_response_smoke.py",
+    "scripts/relaylm_e1r4_unsupported_detail_suppression_smoke.py",
+    "scripts/relaylm_e1r4_grounded_recall_security_smoke.py",
+    "scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
+    "scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py",
+    "scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py",
+    "scripts/relaylm_e1r5_primary_mem_recall_bridge_relevance_bounds_smoke.py",
+    "scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py",
 )
+
+STALE = (
+    "Home requests do not currently carry a server-owned trusted scene-admission projection",
+    "Direct Home-origin formation: not currently proven; trusted scene admission is missing",
+    "Direct Home-origin trusted scene admission remains target work",
+    "Character-store bootstrap remains operator-facing and brittle",
+    "E1-R1 trusted Home scene-admission path: candidate",
+    "E1-R2 idempotent character-store bootstrap command: candidate",
+    "E1-R1 trusted Home scene-admission path         candidate",
+    "Trusted Home admission is implemented, but formation quality risks are not solved.",
+    "E1-R3 provenance-preserving Primary MEM formation summary  current next candidate",
+    "E1-R4 retrieval-response grounding and unsupported-detail suppression current next candidate",
+    "Recall evidence is present, but evidence-grounded response behavior is not fully evaluated.",
+    "E1-R4 evidence-grounded recall behavior remains quality work",
+    "E1-R4 remains incomplete quality/evaluation work",
+    "E1-R5 remains incomplete",
+    "E1-R5 scoped Primary recall candidate discovery bridge is current implemented.",
+    "E1-R5 scoped Primary recall bridge                complete as E1-R5",
+)
+
+SCANNED_DOCS = (
+    "docs/PROJECT_STATUS.md",
+    "docs/architecture/project_execution_plan.md",
+    "docs/architecture/relaymem_slp_current_target.md",
+    "docs/architecture/current_target_migration_guide.md",
+)
+
+
+def read(path: str) -> str:
+    location = ROOT / path
+    assert location.exists(), f"missing file: {path}"
+    return location.read_text(encoding="utf-8")
+
+
+def require(path: str, anchors: tuple[str, ...]) -> None:
+    body = read(path)
+    missing = [anchor for anchor in anchors if anchor not in body]
+    assert not missing, f"{path}: missing anchors: {missing!r}"
+
+
+def forbid(path: str, anchors: tuple[str, ...]) -> None:
+    lowered = read(path).lower()
+    forbidden = [anchor for anchor in anchors if anchor.lower() in lowered]
+    assert not forbidden, f"{path}: forbidden anchors: {forbidden!r}"
+
+
+def validate_evidence_paths() -> None:
+    missing = [path for path in EVIDENCE_PATHS if not (ROOT / path).exists()]
+    assert not missing, f"missing E1 evidence paths: {missing!r}"
+
+
+def validate_indexes_reference_e1() -> None:
+    combined = "\n".join(
+        read(path)
+        for path in (
+            "docs/README.md",
+            "docs/architecture/README.md",
+            "docs/evidence/implementation/README.md",
+        )
+    )
+    for required in (
+        "e1_evaluation_consolidation.md",
+        "e1_local_runtime_evaluation_2026_06_25.md",
+        "e1r1_trusted_home_scene_admission.md",
+        "e1r2_character_store_bootstrap.md",
+        "e1r3_provenance_preserving_primary_mem_formation_summary.md",
+        "e1r4_retrieval_response_grounding.md",
+        "e1r5_primary_mem_recall_candidate_bridge.md",
+        "wave7_cross_slice_convergence_audit.md",
+        "e1r5_post_wave7_correction_convergence_audit.md",
+        "e1_completion_report.md",
+        "e1r1_completion_report.md",
+        "e1r2_completion_report.md",
+        "e1r3_completion_report.md",
+        "e1r4_completion_report.md",
+        "e1r5_completion_report.md",
+    ):
+        assert required in combined, f"index links missing {required}"
+
+
+def main() -> None:
+    for path, anchors in REQUIRED.items():
+        require(path, anchors)
+    for path in SCANNED_DOCS:
+        forbid(path, STALE)
+    validate_evidence_paths()
+    validate_indexes_reference_e1()
+    print("E1 evaluation consolidation smoke passed")
 
 
 if __name__ == "__main__":
