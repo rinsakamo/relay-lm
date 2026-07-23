@@ -7,6 +7,10 @@ on:
     paths:
       - ".github/workflows/d1-final-patch-build.yml"
       - ".d1-final.diff.gz.b64"
+  pull_request:
+    paths:
+      - ".github/workflows/d1-final-patch-build.yml"
+      - ".d1-final.diff.gz.b64"
 
 permissions:
   contents: write
