@@ -389,7 +389,6 @@ class SubjectiveMemCurrentState:
   }
         return body
 
-
 @dataclass(frozen=True)
 class SubjectiveMemPreparedManifest:
     prepared_manifest_id: str
