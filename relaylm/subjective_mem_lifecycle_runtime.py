@@ -308,16 +308,22 @@ def correct_subjective_mem(
                 proposal=proposal,
                 reasons=("subjective_mem_lifecycle_idempotency_conflict",),
             )
+        if intent is None:
+            return _result(
+                "fail_closed",
+                identity=identity,
+                proposal=proposal,
+                reasons=("subjective_mem_lifecycle_intent_missing_or_corrupt",),
+            )
         if (
-            intent is None
-            or intent.get("operation_id") != identity.operation_id
+            intent.get("operation_id") != identity.operation_id
             or claim != _claim_from_intent(identity=identity, intent=intent)
         ):
             return _result(
                 "fail_closed",
                 identity=identity,
                 proposal=proposal,
-                reasons=("subjective_mem_lifecycle_intent_missing_or_corrupt",),
+                reasons=("subjective_mem_lifecycle_intent_corrupt",),
             )
         return _recover_prepared(
             store=store,
