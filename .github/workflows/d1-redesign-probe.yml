@@ -1,0 +1,28 @@
+name: Probe D1 completion-report redesign
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/d1-redesign-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Enumerate live completion-report model and template consumers
+        run: |
+          set -euo pipefail
+          git grep -n -E -- 'check_completion_report_template|CANONICAL_COMPLETION_REPORT_TEMPLATE_PATH|RETIRED_TEMPLATE_PATHS|implementation-completion-report\.md|--check-model|Creating a new completion report|Parallel implementation documentation rule|Two-stage parallel implementation documentation|Stage 1: implementation PR|Stage 2: convergence and shared-documentation PR' > /tmp/d1-redesign-consumers.txt || true
+          cat /tmp/d1-redesign-consumers.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d1-redesign-consumers
+          path: /tmp/d1-redesign-consumers.txt
+          if-no-files-found: error
