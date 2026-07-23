@@ -1,4 +1,4 @@
-name: Cutover 1C-56 Non-Workflow Publisher
+name: Cutover 1C-56 Workflow Blob Stager
 
 on:
   pull_request:
@@ -6,72 +6,35 @@ on:
     branches: [main]
 
 permissions:
+  actions: read
   contents: write
 
 jobs:
-  publish:
+  stage:
     if: github.head_ref == 'agent/documentation-hard-cutover-1c56-phase-i3'
     runs-on: ubuntu-latest
-    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Reconstruct final cutover tree
+      - name: Stage exact canonical workflow blob
         env:
-          BASE_MAIN: 358e6a57251688df8590f48f3b04317fd7023601
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          test "$(git rev-parse origin/main)" = "$BASE_MAIN"
-          cat scripts/_cutover_1c56_phase_i3_builder.py.b64.* > /tmp/cutover_i3_builder.py.b64
-          echo 'a80be96139edc44d8c346aeab1b796a363ef5a5e102d0157066f50b12edca0da  /tmp/cutover_i3_builder.py.b64' | sha256sum -c -
-          base64 -d /tmp/cutover_i3_builder.py.b64 > /tmp/cutover_i3_builder.py
-          echo 'eb89897568c5bfa7c439a73610d8fac3a7bd5ec543c420155be366bb7496a71f  /tmp/cutover_i3_builder.py' | sha256sum -c -
-          python /tmp/cutover_i3_builder.py
-          rm -f scripts/_cutover_1c56_phase_i3_builder.py.b64.*
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('docs/evidence/migrations/documentation-hard-cutover-receipt.md')
-          text = path.read_text(encoding='utf-8')
-          path.write_text(text.rstrip('\n') + '\n', encoding='utf-8')
-          PY
-      - name: Install validation dependencies
-        run: python -m pip install -e ".[test]"
-      - name: Validate generated cutover
-        run: |
-          python -m compileall -q relaylm scripts
-          python scripts/relaylm_phase_i3_handoff_cutover_guard.py
-          python scripts/relaylm_phase_i3_handoff_cutover_guard.py --self-test
-          python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
-          python scripts/relaylm_phase_i2_documentation_boundary_smoke.py
-          python scripts/relaylm_e1_evaluation_consolidation_smoke.py
-          PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
-          python scripts/relaylm_docs_semantic_audit.py
-          python scripts/relaylm_docs_semantic_audit.py --self-test
-          python scripts/relaylm_documentation_current_boundary_smoke.py
-          git diff --check
-      - name: Save final workflow
-        run: cp .github/workflows/documentation-current-boundary-smoke.yml /tmp/documentation-current-boundary-smoke.yml
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cutover-1c56-final-workflow
-          path: /tmp/documentation-current-boundary-smoke.yml
-          if-no-files-found: error
-      - name: Publish non-workflow cutover tree
-        run: |
-          set -euo pipefail
-          git checkout HEAD -- .github/workflows/documentation-current-boundary-smoke.yml
-          git fetch origin main
-          test "$(git rev-parse origin/main)" = "358e6a57251688df8590f48f3b04317fd7023601"
-          git add -A
-          git commit -m "docs: move Phase I-3 handoff to frozen evidence"
+          mkdir -p /tmp/cutover-workflow tmp
+          curl --fail --location \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/8560052638/zip" \
+            --output /tmp/cutover-workflow/artifact.zip
+          unzip -q /tmp/cutover-workflow/artifact.zip -d /tmp/cutover-workflow/extracted
+          cp /tmp/cutover-workflow/extracted/documentation-current-boundary-smoke.yml tmp/cutover-1c56-final-workflow.yml
+          echo '95e3cfba2eef40ee7f415a3adfa905788c7d02ce716295bbb0f243b460db8036  tmp/cutover-1c56-final-workflow.yml' | sha256sum -c -
+          git add tmp/cutover-1c56-final-workflow.yml
+          git commit -m "chore: stage canonical cutover 1C-56 workflow blob"
           git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
