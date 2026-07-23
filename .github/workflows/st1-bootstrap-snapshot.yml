@@ -1,19 +1,23 @@
 name: ST-1 bootstrap snapshot
 
 on:
-  push:
-    branches:
-      - agent/st1-subjective-mem-commit-runtime
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+    paths:
+      - ".github/workflows/st1-bootstrap-snapshot.yml"
 
 permissions:
   contents: read
 
 jobs:
   snapshot:
+    if: github.head_ref == 'agent/st1-subjective-mem-commit-runtime'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
       - name: Archive repository snapshot
         run: |
