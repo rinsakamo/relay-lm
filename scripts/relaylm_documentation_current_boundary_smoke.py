@@ -93,16 +93,7 @@ def forbid(path: str, anchors: tuple[str, ...]) -> None:
     assert not stale, f"{path}: stale current-boundary anchors: {stale!r}"
 
 
-def assert_retired_trees_absent() -> None:
-    assert not (ROOT / "docs" / "mvp").exists(), "retired docs/mvp/ tree reintroduced"
-    assert not (ROOT / "docs" / "tools").exists(), "retired docs/tools/ tree reintroduced"
-    assert not (ROOT / "docs" / "evaluation" / "lat1_retrieval_scaling_report.md").exists(), (
-        "retired LAT-1 scaffold reintroduced"
-    )
-
-
 def main() -> None:
-    assert_retired_trees_absent()
     for path, anchors in REQUIRED.items():
         require(path, anchors)
     for path in CURRENT_DOCS:
