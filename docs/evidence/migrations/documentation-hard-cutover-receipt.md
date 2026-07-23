@@ -5383,3 +5383,44 @@ verification:
 ```
 
 PR #660 preserves the completed Phase I-3 correction-loop handoff as frozen implementation evidence and merged as `ce5931aadeef591067b074f0bfc659aa10a8d94c` from reviewed head `b9b8ba2fc44e3da4f8bf3cfc48786a1fc4f79e9d` on synchronized main `a971e18b2c36a179b095b0e7e9d289a7e4d80d1a`. Current Primary MEM correction behavior remains architecture-, implementation-, SOUL Lab API/frontend-validation-, Project-Status-, and focused-smoke-owned. PR #666 consolidates merge attribution and exact-head validation without changing accepted cutover content. The record remains non-authoritative for current runtime, schema, API/UI, storage, product, compatibility, alias, redirect, dual-read, or dual-write behavior.
+
+### C1C57-001 — RelayMEM-M3a Primary Formation handoff (pending merge attribution)
+
+```yaml
+cutover_pr: 667
+merged_commit: pending
+base_main: 1777ca0c0c4d1f64c650f9b3f559a178ad0aed20
+old_path: docs/architecture/relaymem_m3a_primary_formation_handoff.md
+old_blob_sha: fbb08beb9975e3a1b46d4a9f510753669297bc26
+old_content_sha256: 1e1e752417e31cc083ef82365a9a27c0980426e85832beaa70ebf6c84cfd041e
+source_handoff_pr: 326
+source_handoff_final_head: 9a95963c4a0c2a3d2e61e8e174d2e8f70280542f
+source_handoff_merge_commit: f40d4190c04b116c6d3b2fc206df3534f30545c7
+source_handoff_merged_at: 2026-06-21T00:37:04Z
+implementation_pr: 324
+implementation_final_head: cd551902c5ae093a90a29a37b1bfaf3a2c0f1eb3
+implementation_merge_commit: b49727fb00bc5e38a11306dfa853b61e5ffe09d4
+implementation_merged_at: 2026-06-20T17:15:28Z
+recorded_on: 2026-06-21
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/relaymem-m3a-primary-formation-handoff.md
+local_receipt: docs/evidence/migrations/cutover-1c57-relaymem-m3a.md
+verification:
+  old_path_removed_in_pr_tree: true
+  canonical_evidence_metadata_added: true
+  historical_banner_added: true
+  current_authority_independently_owned: true
+  active_pre_cutover_referrer_files: 1
+  active_path_references_repaired: true
+  implementation_evidence_index_updated: true
+  fail_closed_guard: scripts/relaylm_relaymem_m3a_handoff_cutover_guard.py
+  guard_integrated_into_existing_documentation_boundary_workflow: true
+  guard_self_test_assertions: 24
+  runtime_files_changed: 0
+  relaylm_files_changed: 0
+  project_status_changed: false
+  exact_head_actions: pending
+  unresolved_review_threads: pending
+```
+
+Pending merge attribution only. The frozen record preserves the helper-only RelayMEM-M3a formation-candidate boundary without becoming current runtime, schema, Primary-pipeline, storage, product, compatibility, alias, redirect, dual-read, or dual-write authority.
