@@ -1,0 +1,26 @@
+name: ST-1 bootstrap snapshot
+
+on:
+  push:
+    branches:
+      - agent/st1-subjective-mem-commit-runtime
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Archive repository snapshot
+        run: |
+          tar --exclude=.git -czf /tmp/relay-lm-st1-snapshot.tgz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: relay-lm-st1-snapshot
+          path: /tmp/relay-lm-st1-snapshot.tgz
+          if-no-files-found: error
+          retention-days: 1
