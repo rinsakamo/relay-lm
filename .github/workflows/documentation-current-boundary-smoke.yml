@@ -1,224 +1,66 @@
-name: Documentation current boundary smoke
+name: Cutover 1C-56 Phase I-3 Inventory
 
 on:
-  workflow_dispatch:
   pull_request:
-    paths:
-      - "README.md"
-      - "README_ja.md"
-      - "config.example.yaml"
-      - "relaylm/config.py"
-      - "docs/**"
-      - "scripts/relaylm_documentation_current_boundary_smoke.py"
-      - "scripts/relaylm_docs_semantic_audit.py"
-      - "scripts/relaylm_phase55a_handoff_cutover_guard.py"
-      - "scripts/relaylm_phase55b1_handoff_cutover_guard.py"
-      - "scripts/relaylm_phase55b2_handoff_cutover_guard.py"
-      - "scripts/relaylm_phase55c0_handoff_cutover_guard.py"
-      - "scripts/relaylm_phase55c4_handoff_cutover_guard.py"
-      - "scripts/relaylm_i1ge_handoff_cutover_guard.py"
-      - "scripts/relaylm_i4c1_handoff_cutover_guard.py"
-      - "scripts/relaylm_i4c2_handoff_cutover_guard.py"
-      - "scripts/relaylm_phase_i2_handoff_cutover_guard.py"
-      - "scripts/relaylm_contract1_v7_validate.py"
-      - "scripts/relaylm_contract1_v7_equivalence.py"
-      - "scripts/relaylm_contract1_v7_regression_guard.py"
-      - "scripts/relaylm_contract1_v7_fixture_registry_guard.py"
-      - "scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py"
-      - "scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py"
-      - "scripts/relaylm_pipeline_node_result_contract_smoke.py"
-      - "scripts/relaylm_audit_projection_contract_smoke.py"
-      - "scripts/relaylm_audit_projection_exact_contract_smoke.py"
-      - "scripts/relaylm_ctx_ovl_v1_validate.py"
-      - "scripts/relaylm_ctx_ovl_v1_equivalence.py"
-      - "scripts/relaylm_ctx_ovl_v1_fixture_registry_guard.py"
-      - "scripts/relaylm_subjective_mem_v1_validate.py"
-      - "scripts/relaylm_subjective_mem_v1_equivalence.py"
-      - "scripts/relaylm_subjective_mem_v1_fixture_registry_guard.py"
-      - "scripts/relaylm_subjective_mem_storage_authority_contract_smoke.py"
-      - ".github/workflows/documentation-current-boundary-smoke.yml"
-      - "pyproject.toml"
-  push:
-    branches:
-      - main
-    paths:
-      - "README.md"
-      - "README_ja.md"
-      - "config.example.yaml"
-      - "relaylm/config.py"
-      - "docs/**"
-      - "scripts/relaylm_documentation_current_boundary_smoke.py"
-      - "scripts/relaylm_docs_semantic_audit.py"
-      - "scripts/relaylm_phase55a_handoff_cutover_guard.py"
-      - "scripts/relaylm_phase55b1_handoff_cutover_guard.py"
-      - "scripts/relaylm_phase55b2_handoff_cutover_guard.py"
-      - "scripts/relaylm_phase55c0_handoff_cutover_guard.py"
-      - "scripts/relaylm_phase55c4_handoff_cutover_guard.py"
-      - "scripts/relaylm_i1ge_handoff_cutover_guard.py"
-      - "scripts/relaylm_i4c1_handoff_cutover_guard.py"
-      - "scripts/relaylm_i4c2_handoff_cutover_guard.py"
-      - "scripts/relaylm_phase_i2_handoff_cutover_guard.py"
-      - "scripts/relaylm_contract1_v7_validate.py"
-      - "scripts/relaylm_contract1_v7_equivalence.py"
-      - "scripts/relaylm_contract1_v7_regression_guard.py"
-      - "scripts/relaylm_contract1_v7_fixture_registry_guard.py"
-      - "scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py"
-      - "scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py"
-      - "scripts/relaylm_pipeline_node_result_contract_smoke.py"
-      - "scripts/relaylm_audit_projection_contract_smoke.py"
-      - "scripts/relaylm_audit_projection_exact_contract_smoke.py"
-      - "scripts/relaylm_ctx_ovl_v1_validate.py"
-      - "scripts/relaylm_ctx_ovl_v1_equivalence.py"
-      - "scripts/relaylm_ctx_ovl_v1_fixture_registry_guard.py"
-      - "scripts/relaylm_subjective_mem_v1_validate.py"
-      - "scripts/relaylm_subjective_mem_v1_equivalence.py"
-      - "scripts/relaylm_subjective_mem_v1_fixture_registry_guard.py"
-      - "scripts/relaylm_subjective_mem_storage_authority_contract_smoke.py"
-      - ".github/workflows/documentation-current-boundary-smoke.yml"
-      - "pyproject.toml"
+    types: [ready_for_review]
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
-  smoke:
+  inventory:
+    if: github.head_ref == 'agent/documentation-hard-cutover-1c56-i3-inventory'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      - name: Install semantic audit and contract-smoke dependencies
-        run: python -m pip install -e ".[test]"
-      - name: Compile documentation validation scripts
+          fetch-depth: 0
+      - name: Build Phase I-3 inventory
         run: |
-          python -m compileall -q \
-            scripts/relaylm_documentation_current_boundary_smoke.py \
-            scripts/relaylm_docs_semantic_audit.py \
-            scripts/relaylm_phase55a_handoff_cutover_guard.py \
-            scripts/relaylm_phase55b1_handoff_cutover_guard.py \
-            scripts/relaylm_phase55b2_handoff_cutover_guard.py \
-            scripts/relaylm_phase55c0_handoff_cutover_guard.py \
-            scripts/relaylm_phase55c4_handoff_cutover_guard.py \
-            scripts/relaylm_i1ge_handoff_cutover_guard.py \
-            scripts/relaylm_i4c1_handoff_cutover_guard.py \
-            scripts/relaylm_i4c2_handoff_cutover_guard.py \
-            scripts/relaylm_phase_i2_handoff_cutover_guard.py \
-            scripts/relaylm_contract1_v7_validate.py \
-            scripts/relaylm_contract1_v7_equivalence.py \
-            scripts/relaylm_contract1_v7_regression_guard.py \
-            scripts/relaylm_contract1_v7_fixture_registry_guard.py \
-            scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py \
-            scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py \
-            scripts/relaylm_pipeline_node_result_contract_smoke.py \
-            scripts/relaylm_audit_projection_contract_smoke.py \
-            scripts/relaylm_audit_projection_exact_contract_smoke.py \
-            scripts/relaylm_ctx_ovl_v1_validate.py \
-            scripts/relaylm_ctx_ovl_v1_equivalence.py \
-            scripts/relaylm_ctx_ovl_v1_fixture_registry_guard.py \
-            scripts/relaylm_subjective_mem_v1_validate.py \
-            scripts/relaylm_subjective_mem_v1_equivalence.py \
-            scripts/relaylm_subjective_mem_v1_fixture_registry_guard.py \
-            scripts/relaylm_subjective_mem_storage_authority_contract_smoke.py
-      - name: Validate documentation semantics and current boundaries
-        run: |
-          set +e
-          python scripts/relaylm_docs_semantic_audit.py 2>&1 | tee documentation-current-boundary.log
-          semantic_status=${PIPESTATUS[0]}
-          python scripts/relaylm_docs_semantic_audit.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          semantic_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_documentation_current_boundary_smoke.py 2>&1 | tee -a documentation-current-boundary.log
-          boundary_status=${PIPESTATUS[0]}
-          python scripts/relaylm_phase55a_handoff_cutover_guard.py 2>&1 | tee -a documentation-current-boundary.log
-          phase55a_cutover_guard_status=${PIPESTATUS[0]}
-          python scripts/relaylm_phase55a_handoff_cutover_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          phase55a_cutover_guard_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_phase55b1_handoff_cutover_guard.py 2>&1 | tee -a documentation-current-boundary.log
-          phase55b1_cutover_guard_status=${PIPESTATUS[0]}
-          python scripts/relaylm_phase55b1_handoff_cutover_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          phase55b1_cutover_guard_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_phase55b2_handoff_cutover_guard.py 2>&1 | tee -a documentation-current-boundary.log
-          phase55b2_cutover_guard_status=${PIPESTATUS[0]}
-          python scripts/relaylm_phase55b2_handoff_cutover_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          phase55b2_cutover_guard_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_phase55c0_handoff_cutover_guard.py 2>&1 | tee -a documentation-current-boundary.log
-          phase55c0_cutover_guard_status=${PIPESTATUS[0]}
-          python scripts/relaylm_phase55c0_handoff_cutover_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          phase55c0_cutover_guard_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_phase55c4_handoff_cutover_guard.py 2>&1 | tee -a documentation-current-boundary.log
-          phase55c4_cutover_guard_status=${PIPESTATUS[0]}
-          python scripts/relaylm_phase55c4_handoff_cutover_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          phase55c4_cutover_guard_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_i1ge_handoff_cutover_guard.py 2>&1 | tee -a documentation-current-boundary.log
-          i1ge_cutover_guard_status=${PIPESTATUS[0]}
-          python scripts/relaylm_i1ge_handoff_cutover_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          i1ge_cutover_guard_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_i4c1_handoff_cutover_guard.py 2>&1 | tee -a documentation-current-boundary.log
-          i4c1_cutover_guard_status=${PIPESTATUS[0]}
-          python scripts/relaylm_i4c1_handoff_cutover_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          i4c1_cutover_guard_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_i4c2_handoff_cutover_guard.py 2>&1 | tee -a documentation-current-boundary.log
-          i4c2_cutover_guard_status=${PIPESTATUS[0]}
-          python scripts/relaylm_i4c2_handoff_cutover_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          i4c2_cutover_guard_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_phase_i2_handoff_cutover_guard.py 2>&1 | tee -a documentation-current-boundary.log
-          phase_i2_cutover_guard_status=${PIPESTATUS[0]}
-          python scripts/relaylm_phase_i2_handoff_cutover_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          phase_i2_cutover_guard_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_contract1_v7_validate.py 2>&1 | tee -a documentation-current-boundary.log
-          contract1_validation_status=${PIPESTATUS[0]}
-          python scripts/relaylm_contract1_v7_equivalence.py 2>&1 | tee -a documentation-current-boundary.log
-          contract1_equivalence_status=${PIPESTATUS[0]}
-          python scripts/relaylm_contract1_v7_regression_guard.py 2>&1 | tee -a documentation-current-boundary.log
-          contract1_regression_status=${PIPESTATUS[0]}
-          python scripts/relaylm_contract1_v7_regression_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          contract1_regression_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_contract1_v7_fixture_registry_guard.py 2>&1 | tee -a documentation-current-boundary.log
-          contract1_fixture_registry_status=${PIPESTATUS[0]}
-          python scripts/relaylm_contract1_v7_fixture_registry_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          contract1_fixture_registry_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py 2>&1 | tee -a documentation-current-boundary.log
-          relayctx_contract_status=${PIPESTATUS[0]}
-          python scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py 2>&1 | tee -a documentation-current-boundary.log
-          relayint_contract_status=${PIPESTATUS[0]}
-          python scripts/relaylm_pipeline_node_result_contract_smoke.py 2>&1 | tee -a documentation-current-boundary.log
-          pipeline_node_result_contract_status=${PIPESTATUS[0]}
-          python scripts/relaylm_audit_projection_contract_smoke.py 2>&1 | tee -a documentation-current-boundary.log
-          audit_projection_contract_status=${PIPESTATUS[0]}
-          python scripts/relaylm_audit_projection_exact_contract_smoke.py 2>&1 | tee -a documentation-current-boundary.log
-          audit_projection_exact_contract_status=${PIPESTATUS[0]}
-          python scripts/relaylm_ctx_ovl_v1_validate.py 2>&1 | tee -a documentation-current-boundary.log
-          ctx_ovl_validation_status=${PIPESTATUS[0]}
-          python scripts/relaylm_ctx_ovl_v1_validate.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          ctx_ovl_validation_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_ctx_ovl_v1_equivalence.py 2>&1 | tee -a documentation-current-boundary.log
-          ctx_ovl_equivalence_status=${PIPESTATUS[0]}
-          python scripts/relaylm_ctx_ovl_v1_fixture_registry_guard.py 2>&1 | tee -a documentation-current-boundary.log
-          ctx_ovl_fixture_registry_status=${PIPESTATUS[0]}
-          python scripts/relaylm_ctx_ovl_v1_fixture_registry_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          ctx_ovl_fixture_registry_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_subjective_mem_v1_validate.py 2>&1 | tee -a documentation-current-boundary.log
-          subjective_mem_validation_status=${PIPESTATUS[0]}
-          python scripts/relaylm_subjective_mem_v1_validate.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          subjective_mem_validation_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_subjective_mem_v1_equivalence.py 2>&1 | tee -a documentation-current-boundary.log
-          subjective_mem_equivalence_status=${PIPESTATUS[0]}
-          python scripts/relaylm_subjective_mem_v1_fixture_registry_guard.py 2>&1 | tee -a documentation-current-boundary.log
-          subjective_mem_fixture_registry_status=${PIPESTATUS[0]}
-          python scripts/relaylm_subjective_mem_v1_fixture_registry_guard.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          subjective_mem_fixture_registry_self_test_status=${PIPESTATUS[0]}
-          python scripts/relaylm_subjective_mem_storage_authority_contract_smoke.py 2>&1 | tee -a documentation-current-boundary.log
-          subjective_mem_storage_authority_status=${PIPESTATUS[0]}
-          python scripts/relaylm_subjective_mem_storage_authority_contract_smoke.py --self-test 2>&1 | tee -a documentation-current-boundary.log
-          subjective_mem_storage_authority_self_test_status=${PIPESTATUS[0]}
-          if [ "$semantic_status" -ne 0 ] || [ "$semantic_self_test_status" -ne 0 ] || [ "$boundary_status" -ne 0 ] || [ "$phase55a_cutover_guard_status" -ne 0 ] || [ "$phase55a_cutover_guard_self_test_status" -ne 0 ] || [ "$phase55b1_cutover_guard_status" -ne 0 ] || [ "$phase55b1_cutover_guard_self_test_status" -ne 0 ] || [ "$phase55b2_cutover_guard_status" -ne 0 ] || [ "$phase55b2_cutover_guard_self_test_status" -ne 0 ] || [ "$phase55c0_cutover_guard_status" -ne 0 ] || [ "$phase55c0_cutover_guard_self_test_status" -ne 0 ] || [ "$phase55c4_cutover_guard_status" -ne 0 ] || [ "$phase55c4_cutover_guard_self_test_status" -ne 0 ] || [ "$i1ge_cutover_guard_status" -ne 0 ] || [ "$i1ge_cutover_guard_self_test_status" -ne 0 ] || [ "$i4c1_cutover_guard_status" -ne 0 ] || [ "$i4c1_cutover_guard_self_test_status" -ne 0 ] || [ "$i4c2_cutover_guard_status" -ne 0 ] || [ "$i4c2_cutover_guard_self_test_status" -ne 0 ] || [ "$phase_i2_cutover_guard_status" -ne 0 ] || [ "$phase_i2_cutover_guard_self_test_status" -ne 0 ] || [ "$contract1_validation_status" -ne 0 ] || [ "$contract1_equivalence_status" -ne 0 ] || [ "$contract1_regression_status" -ne 0 ] || [ "$contract1_regression_self_test_status" -ne 0 ] || [ "$contract1_fixture_registry_status" -ne 0 ] || [ "$contract1_fixture_registry_self_test_status" -ne 0 ] || [ "$relayctx_contract_status" -ne 0 ] || [ "$relayint_contract_status" -ne 0 ] || [ "$pipeline_node_result_contract_status" -ne 0 ] || [ "$audit_projection_contract_status" -ne 0 ] || [ "$audit_projection_exact_contract_status" -ne 0 ] || [ "$ctx_ovl_validation_status" -ne 0 ] || [ "$ctx_ovl_validation_self_test_status" -ne 0 ] || [ "$ctx_ovl_equivalence_status" -ne 0 ] || [ "$ctx_ovl_fixture_registry_status" -ne 0 ] || [ "$ctx_ovl_fixture_registry_self_test_status" -ne 0 ] || [ "$subjective_mem_validation_status" -ne 0 ] || [ "$subjective_mem_validation_self_test_status" -ne 0 ] || [ "$subjective_mem_equivalence_status" -ne 0 ] || [ "$subjective_mem_fixture_registry_status" -ne 0 ] || [ "$subjective_mem_fixture_registry_self_test_status" -ne 0 ] || [ "$subjective_mem_storage_authority_status" -ne 0 ] || [ "$subjective_mem_storage_authority_self_test_status" -ne 0 ]; then
-            exit 1
-          fi
-      - name: Upload documentation boundary diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
+          set -euo pipefail
+          target='docs/architecture/phase_i3_auditable_primary_mem_correct.md'
+          basename='phase_i3_auditable_primary_mem_correct.md'
+          stem='phase_i3_auditable_primary_mem_correct'
+          authority='phase_i3_primary_mem_correct'
+          {
+            echo '## HEAD'
+            git rev-parse HEAD
+            echo
+            echo '## target metadata and content'
+            sed -n '1,260p' "$target"
+            echo
+            echo '## target blob and sha256'
+            git rev-parse "HEAD:$target"
+            sha256sum "$target"
+            wc -l "$target"
+            echo
+            echo '## target history'
+            git log --follow --date=iso-strict --format='%H|%aI|%cI|%s' -- "$target"
+            echo
+            echo '## exact path references'
+            git grep -n -F "$target" HEAD -- . || true
+            echo
+            echo '## basename references'
+            git grep -n -F "$basename" HEAD -- . || true
+            echo
+            echo '## stem references'
+            git grep -n -F "$stem" HEAD -- . || true
+            echo
+            echo '## authority references'
+            git grep -n -F "$authority" HEAD -- . || true
+            echo
+            echo '## Phase I-3 prose references'
+            git grep -n -E 'Phase I-3|Phase I3|I-3' HEAD -- README.md README_ja.md docs scripts .github/workflows relaylm tests pyproject.toml config.example.yaml || true
+            echo
+            echo '## related cutover files and guards'
+            find docs/evidence/implementation docs/evidence/migrations scripts .github/workflows -maxdepth 2 -type f | sort | grep -E 'phase-i2|phase_i2|i4c2|cutover-1c55|handoff_cutover_guard|documentation-current-boundary' || true
+            echo
+            echo '## current open branch hints'
+            git branch -r --contains HEAD || true
+          } > phase-i3-inventory.txt
+      - uses: actions/upload-artifact@v4
         with:
-          name: documentation-current-boundary-diagnostics
-          path: documentation-current-boundary.log
+          name: phase-i3-inventory
+          path: phase-i3-inventory.txt
           if-no-files-found: error
