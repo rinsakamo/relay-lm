@@ -1,41 +1,32 @@
 name: Scripts inventory artifact
 
 on:
+  workflow_dispatch:
   pull_request:
-    branches: [main]
-    types: [opened, reopened, synchronize]
+    paths:
+      - "scripts/**"
+      - ".github/workflows/**"
+      - "docs/**"
+      - ".github/workflows/scripts-inventory.yml"
 
 permissions:
   contents: read
 
 jobs:
   generate:
-    if: github.event.pull_request.head.ref == 'agent/lc1a-subjective-mem-correct'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-      - name: Install package with test dependencies
-        run: python -m pip install -q -e '.[test]'
-      - name: Capture first unit failure
-        shell: bash
-        run: |
-          set +e
-          mkdir -p generated
-          PYTHONPATH=tests:. python -m pytest -q --maxfail=1 > generated/lc1a-unit-failure.log 2>&1
-          status=$?
-          cat generated/lc1a-unit-failure.log
-          echo "$status" > generated/lc1a-unit-status.txt
-          exit 0
-      - name: Upload unit diagnostic
+          python-version: "3.12"
+      - name: Generate inventory
+        run: python scripts/relaylm_generate_scripts_inventory.py --output generated/scripts_inventory.md
+      - name: Upload inventory
         uses: actions/upload-artifact@v4
         with:
-          name: lc1a-unit-failure
-          path: |
-            generated/lc1a-unit-failure.log
-            generated/lc1a-unit-status.txt
+          name: scripts-inventory
+          path: generated/scripts_inventory.md
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
