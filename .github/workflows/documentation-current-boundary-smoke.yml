@@ -1,160 +1,17 @@
-name: Cutover 1C-55 Bookkeeping Content Generator
+name: Cutover 1C-55 Generator Trigger Probe
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [synchronize, reopened, ready_for_review]
     branches: [main]
-    paths:
-      - ".github/workflows/documentation-current-boundary-smoke.yml"
 
 permissions:
   contents: write
 
-concurrency:
-  group: cutover-1c55-generator-${{ github.event.pull_request.number }}
-  cancel-in-progress: false
-
 jobs:
-  generate:
+  probe:
     if: github.head_ref == 'agent/cutover-1c55-bookkeeping-generator'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Pin current main
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          test "$(git rev-parse origin/main)" = "bccc8278523ff8a79bdd82c9e81598940745708f"
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install validation dependencies
-        run: python -m pip install -e ".[test]"
-      - name: Generate exact bookkeeping documents
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-
-          local = Path("docs/evidence/migrations/cutover-1c55-phase-i2.md")
-          local_text = local.read_text(encoding="utf-8")
-          replacements = {
-              "- Bookkeeping consolidation PR: pending after merge": "- Bookkeeping consolidation PR: #649",
-              "- Base main: `f775581b8393522635b88f2d3178ef355330bc62`": "- Base main: `80906b60aca640d9618d550d9decb12872d67a0d`",
-              "- Validated content head: pending exact-head validation": "- Validated content head: `7acdd2f8d567e4b06a229105ade6c56969438243`",
-              "- Merged commit: pending": "- Merged commit: `954eee9d26bd14d27da3d9a37e3caff9e6b760a3`",
-              "- Merged at: pending": "- Merged at: `2026-07-23T01:09:50Z`",
-              "- Parallel implementation: PR #646 overlaps only `docs/architecture/README.md`; no SM-1 content is imported.": "- Parallel implementation: PR #646 merged first as `80906b60aca640d9618d550d9decb12872d67a0d`; the cutover was synchronized afterward, preserved its SM-1 architecture-index entry, and removed only the two retired Phase I-2 entries.",
-              "- Exact-head GitHub Actions: pending": "- Exact-head GitHub Actions: 16 workflow runs; 16 success; 0 failure; 0 pending; 0 skipped",
-              "- Unresolved review threads: pending final review": "- Unresolved review threads: 0",
-          }
-          for old, new in replacements.items():
-              count = local_text.count(old)
-              if count != 1:
-                  raise SystemExit(f"local receipt anchor count for {old!r}: {count}")
-              local_text = local_text.replace(old, new, 1)
-          local.write_text(local_text, encoding="utf-8")
-
-          ledger = Path("docs/evidence/migrations/documentation-hard-cutover-receipt.md")
-          text = ledger.read_text(encoding="utf-8")
-          heading = "### C1C55-001 — Phase I-2 Real SOUL Lab Observation handoff (pending merge attribution)"
-          if text.count(heading) != 1:
-              raise SystemExit(f"pending heading count must be 1, got {text.count(heading)}")
-          start = text.index(heading)
-          tail = text[start:]
-          for token in (
-              "merged_commit: pending",
-              "exact_head_actions: pending",
-              "unresolved_review_threads: pending",
-              "Pending merge attribution only.",
-          ):
-              if tail.count(token) != 1:
-                  raise SystemExit(f"pending token {token!r} count must be 1, got {tail.count(token)}")
-
-          retired_path = "docs/architecture/" + "phase_i2_real_soul_lab_observation.md"
-          final = f"""### C1C55-001 — Phase I-2 Real SOUL Lab Observation handoff
-
-```yaml
-cutover_pr: 647
-merged_commit: 954eee9d26bd14d27da3d9a37e3caff9e6b760a3
-bookkeeping_pr: 649
-base_main: 80906b60aca640d9618d550d9decb12872d67a0d
-validated_content_head: 7acdd2f8d567e4b06a229105ade6c56969438243
-head_at_merge: 7acdd2f8d567e4b06a229105ade6c56969438243
-merged_at: 2026-07-23T01:09:50Z
-old_path: {retired_path}
-old_blob_sha: 496c29ad94558a4bb0e12921cf20ad5358ae1120
-old_content_sha256: 989747ef065b315f94d079cf635e3da79c52dde45e3066cd4a3fae5cd0ef0079
-source_pr: 377
-source_final_head: a891dc67a47afeaf074443c69682adb7a5aa9fbc
-source_merge_commit: 4a24bdc9e6614433675eaa54f97b40647010c007
-source_merged_at: 2026-06-24T12:34:06Z
-recorded_on: 2026-06-24
-disposition: evidence_retained
-new_canonical_path: docs/evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
-local_receipt: docs/evidence/migrations/cutover-1c55-phase-i2.md
-verification:
-  old_path_removed_in_pr_tree: true
-  canonical_evidence_metadata_added: true
-  historical_banner_added: true
-  current_authority_independently_owned: true
-  pre_cutover_referrer_files: 13
-  active_path_references_repaired: true
-  current_architecture_indexes_removed: true
-  implementation_evidence_index_updated: true
-  e1_evidence_inventory_updated: true
-  phase_i2_documentation_boundary_smoke_updated: true
-  fail_closed_guard: scripts/relaylm_phase_i2_handoff_cutover_guard.py
-  guard_integrated_into_existing_documentation_boundary_workflow: true
-  guard_self_test_assertions: 24
-  sm1_index_entry_preserved_after_pr_646_sync: true
-  exact_head_workflow_runs: 16
-  exact_head_workflow_success: 16
-  exact_head_workflow_failure: 0
-  exact_head_workflow_pending: 0
-  exact_head_workflow_skipped: 0
-  unresolved_review_threads: 0
-  runtime_files_changed: 0
-  relaylm_files_changed: 0
-  project_status_changed: false
-  final_changed_files: 20
-  final_additions: 406
-  final_deletions: 50
-  open_pr_content_imported: false
-```
-
-PR #647 preserves the completed Phase I-2 observe-only SOUL Lab integration as frozen implementation evidence and merged as `954eee9d26bd14d27da3d9a37e3caff9e6b760a3` from reviewed head `7acdd2f8d567e4b06a229105ade6c56969438243` on synchronized main `80906b60aca640d9618d550d9decb12872d67a0d`. The synchronization retained PR #646's SM-1 architecture-index entry and removed only the two retired Phase I-2 index entries. Current observation behavior remains architecture-, implementation-, frontend-validation-, Project-Status-, and focused-smoke-owned. PR #649 consolidates merge attribution and exact-head validation without changing accepted cutover content.
-"""
-          ledger.write_text(text[:start] + final, encoding="utf-8")
-          PY
-      - name: Validate generated documents
-        run: |
-          set -euo pipefail
-          python -m compileall -q relaylm scripts
-          python scripts/relaylm_phase_i2_handoff_cutover_guard.py
-          python scripts/relaylm_phase_i2_handoff_cutover_guard.py --self-test
-          python scripts/relaylm_phase_i2_documentation_boundary_smoke.py
-          python scripts/relaylm_e1_evaluation_consolidation_smoke.py
-          PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
-          python scripts/relaylm_docs_semantic_audit.py
-          python scripts/relaylm_docs_semantic_audit.py --self-test
-          git diff --check
-          changed="$(git diff --name-only HEAD)"
-          printf 'generated paths:\n%s\n' "$changed"
-          expected=$'docs/evidence/migrations/cutover-1c55-phase-i2.md\ndocs/evidence/migrations/documentation-hard-cutover-receipt.md'
-          test "$changed" = "$expected"
-      - name: Commit generated bookkeeping documents
-        run: |
-          set -euo pipefail
-          git fetch origin main
-          test "$(git rev-parse origin/main)" = "bccc8278523ff8a79bdd82c9e81598940745708f"
-          git add docs/evidence/migrations/cutover-1c55-phase-i2.md docs/evidence/migrations/documentation-hard-cutover-receipt.md
-          git commit -m "docs: generate cutover 1C-55 bookkeeping content"
-          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+      - run: echo generator-trigger-ok
