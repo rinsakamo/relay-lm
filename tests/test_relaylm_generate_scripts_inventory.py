@@ -21,7 +21,10 @@ SPEC.loader.exec_module(inventory)
     (
         ("_relaylm_crash_child.py", "helper-shaped"),
         ("phase5c4a_cache_fixture.py", "helper-shaped"),
+        ("relaylm_fault_fixtures.py", "helper-shaped"),
+        ("relaylm_local_helpers.py", "helper-shaped"),
         ("phase5c4a_smoke_support.py", "helper-shaped"),
+        ("relaylm_platform_supports.py", "helper-shaped"),
         ("relaylm_o3_always_on_local_scheduler_smoke.py", "smoke-named"),
         ("relaylm_generate_scripts_inventory.py", "other"),
     ),
