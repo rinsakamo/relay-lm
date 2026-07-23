@@ -17,7 +17,7 @@ relaylm_related_authority:
   - docs/architecture/relaymem_m3g_primary_index_log_reconciliation_apply.md
   - docs/architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
   - docs/architecture/integration_i1_primary_mem_two_turn_recall.md
-  - docs/architecture/phase_i2_real_soul_lab_observation.md
+  - docs/evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
   - docs/architecture/phase_i4b_primary_current_state_shared_fence.md
 relaylm_not_authoritative_for:
   - current repository-wide implementation status after Phase I-3

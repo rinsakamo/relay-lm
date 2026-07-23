@@ -17,7 +17,7 @@ relaylm_related_authority:
   - phase6c2_one_queued_primary_worker_integration.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
-  - phase_i2_real_soul_lab_observation.md
+  - ../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
   - e1r5_primary_mem_recall_candidate_bridge.md
   - ../PROJECT_STATUS.md
 ---
@@ -116,7 +116,7 @@ Phase I-2 proves that the completed I-1 path can be inspected after restart with
 - wrong character and wrong namespace cannot observe another scope,
 - observation errors do not change I-1 retrieval or response behavior.
 
-See [Phase I-2 Real SOUL Lab Observation](phase_i2_real_soul_lab_observation.md).
+See [Phase I-2 Real SOUL Lab Observation](../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md).
 
 ## Next boundary
 

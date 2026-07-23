@@ -1,22 +1,46 @@
 ---
-relaylm_doc_type: implementation_handoff
-relaylm_authority: phase_i2_real_soul_lab_observation
-relaylm_status: historical_after_merge
+relaylm_doc_type: evidence
+relaylm_authority: historical_phase_i2_real_soul_lab_observation_handoff
+relaylm_status: frozen
 relaylm_volatility: frozen
-relaylm_owner: relaymem_soul_lab_integration
-relaylm_current_status_source: ../PROJECT_STATUS.md
-relaylm_related_authority:
-  - integration_i1_primary_mem_two_turn_recall.md
-  - phase_i3_auditable_primary_mem_correct.md
-  - phase_i4d_primary_retrieval_exclusion.md
-  - soul_lab_ui_b0_real_home_conversation.md
+relaylm_owner: implementation
+relaylm_source_pr: 377
+relaylm_source_final_head: a891dc67a47afeaf074443c69682adb7a5aa9fbc
+relaylm_source_merge_commit: 4a24bdc9e6614433675eaa54f97b40647010c007
+relaylm_source_merged_at: 2026-06-24T12:34:06Z
+relaylm_source_blob: 496c29ad94558a4bb0e12921cf20ad5358ae1120
+relaylm_source_sha256: 989747ef065b315f94d079cf635e3da79c52dde45e3066cd4a3fae5cd0ef0079
+relaylm_recorded_on: 2026-06-24
+relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_not_authoritative_for:
-  - current repository-wide implementation status
-  - memory mutation
-  - queue scheduling
-  - runtime adapter execution
+  - current SOUL Lab runtime behavior
+  - current public schema or storage authority
+  - current API or UI behavior
+  - current product status
+  - compatibility aliases redirects stubs dual-read or dual-write
+relaylm_related_authority:
+  - ../../architecture/integration_i1_primary_mem_two_turn_recall.md
+  - ../../architecture/phase_i3_auditable_primary_mem_correct.md
+  - ../../architecture/phase_i4d_primary_retrieval_exclusion.md
+  - ../../architecture/soul_lab_ui_mvp.md
+  - ../../architecture/soul_lab_runtime_mvp.md
+  - ../../architecture/soul_lab_ui_b0_real_home_conversation.md
+  - ../../architecture/soul_lab_ui_b1a_lifecycle_visibility.md
 ---
 # Phase I-2 Real SOUL Lab Observation
+
+> **Historical implementation evidence.** This frozen handoff records the bounded observe-only SOUL Lab integration delivered by PR #377. It is not current runtime, schema, API/UI, storage, product, compatibility, alias, redirect, dual-read, or dual-write authority.
+
+## Current authority boundary
+
+Current behavior is independently owned by:
+
+- `docs/architecture/soul_lab_ui_mvp.md`, `soul_lab_runtime_mvp.md`, `soul_lab_ui_b0_real_home_conversation.md`, and `soul_lab_ui_b1a_lifecycle_visibility.md` for current SOUL Lab observation, Home, and lifecycle-visibility boundaries;
+- `relaylm/soul_lab_observation.py` and `relaylm/soul_lab_app.py` for executable observation capture, projection, route, loopback, isolation, and response-finalization behavior;
+- `apps/soul-lab/src/features/lab/observationApi.ts` and the current SOUL Lab frontend for exact browser validation and stale-response rejection;
+- `scripts/relaylm_phase_i2_lab_observation_ci_runner.py` and `scripts/relaylm_phase_i2_documentation_boundary_smoke.py` for focused executable and documentation validation;
+- `docs/PROJECT_STATUS.md` for repository-wide current implementation status.
+
 
 Status: complete for the bounded Phase I-2 real observation boundary.
 
@@ -166,6 +190,6 @@ cd apps/soul-lab && npm run typecheck && npm run build
 
 ## Completion boundary
 
-Phase I-2 completes real SOUL Lab observation only. Later completed slices include Phase I-3 Correct, I-4B/I-4C1/I-4C2/I-4D lifecycle work, and UI-B0 real Home conversation. Their current status belongs to [Project Status](../PROJECT_STATUS.md) and their dedicated handoffs.
+Phase I-2 completes real SOUL Lab observation only. Later completed slices include Phase I-3 Correct, I-4B/I-4C1/I-4C2/I-4D lifecycle work, and UI-B0 real Home conversation. Their current status belongs to [Project Status](../../PROJECT_STATUS.md) and their dedicated handoffs.
 
 Phase I-2 does not implement memory mutation, Forget, Pin/Unpin, Merge, Held Apply/Discard, RelaySOUL mutation, queue scanner/scheduler, daemon/service lifecycle, I1-G durable-finalization replay, Secondary MEM consolidation, static UI bundle serving, or TTS/audio/Live2D execution.

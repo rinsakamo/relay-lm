@@ -37,7 +37,7 @@ relaylm_related_authority:
   - relaymem_m3g_primary_index_log_reconciliation_apply.md
   - relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
   - integration_i1_primary_mem_two_turn_recall.md
-  - phase_i2_real_soul_lab_observation.md
+  - ../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
 ---
 # Phase I-4A: Auditable Primary MEM Forget / Hide Contract
 

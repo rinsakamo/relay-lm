@@ -8,7 +8,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - soul_lab_ui_mvp.md
   - soul_lab_ui_b0_real_home_conversation.md
-  - phase_i2_real_soul_lab_observation.md
+  - ../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
   - phase_i3_auditable_primary_mem_correct.md
   - phase_i4d_primary_retrieval_exclusion.md
   - i1g_pre_enqueue_durable_finalization_contract.md

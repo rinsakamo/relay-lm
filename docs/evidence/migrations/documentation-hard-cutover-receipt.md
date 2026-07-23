@@ -5273,3 +5273,35 @@ verification:
 ```
 
 PR #642 preserves PR #404 recovery/finalization provenance and PR #407 concurrent-loser normalization as frozen implementation evidence and merged as `a21b9ac617fcf11d85a52e919f2ecb8678485927` from reviewed head `9b92df29a2cd112c6ad80086fdcfa4ad0e6fd0d6` on integration base `32135811283edffa4408846c8a9e51173aea743e`. PR #644 consolidates merge attribution and exact-head validation without changing accepted cutover content. The record remains non-authoritative for current runtime, schema, API/UI, storage, product, compatibility, alias, redirect, dual-read, or dual-write behavior.
+
+### C1C55-001 — Phase I-2 Real SOUL Lab Observation handoff (pending merge attribution)
+
+```yaml
+cutover_pr: 647
+merged_commit: pending
+old_path: docs/architecture/phase_i2_real_soul_lab_observation.md
+old_blob_sha: 496c29ad94558a4bb0e12921cf20ad5358ae1120
+old_content_sha256: 989747ef065b315f94d079cf635e3da79c52dde45e3066cd4a3fae5cd0ef0079
+source_pr: 377
+source_final_head: a891dc67a47afeaf074443c69682adb7a5aa9fbc
+source_merge_commit: 4a24bdc9e6614433675eaa54f97b40647010c007
+source_merged_at: 2026-06-24T12:34:06Z
+recorded_on: 2026-06-24
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
+verification:
+  old_path_removed_in_pr_tree: true
+  canonical_evidence_metadata_added: true
+  historical_banner_added: true
+  current_authority_independently_owned: true
+  pre_cutover_referrer_files: 13
+  active_path_references_repaired: true
+  implementation_evidence_index_updated: true
+  documentation_current_boundary_smoke_updated: true
+  runtime_files_changed: 0
+  relaylm_files_changed: 0
+  exact_head_actions: pending
+  unresolved_review_threads: pending
+```
+
+Pending merge attribution only. The frozen record preserves PR #377 Phase I-2 provenance without becoming current runtime, schema, API/UI, storage, product, compatibility, alias, redirect, dual-read, or dual-write authority.

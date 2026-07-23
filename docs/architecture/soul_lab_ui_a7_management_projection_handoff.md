@@ -20,7 +20,7 @@ relaylm_not_authoritative_for:
 relaylm_related_authority:
   - soul_lab_ui_mvp.md
   - soul_lab_ui_a6_shared_shell_settings_handoff.md
-  - phase_i2_real_soul_lab_observation.md
+  - ../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
   - soul_lab_runtime_mvp.md
 ---
 # SOUL Lab UI-A7 Read-only Lab Management Projection

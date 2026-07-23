@@ -1,4 +1,4 @@
-"""Documentation boundary smoke for Phase I-2 without over-pinning later phases."""
+"""Documentation boundary smoke for Phase I-2 after evidence cutover."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -21,31 +21,17 @@ def forbid_text(path: str, *needles: str) -> None:
 
 
 def main() -> None:
-    handoff = "phase_i2_real_soul_lab_observation.md"
+    evidence = "docs/evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md"
     require_text(
         "docs/PROJECT_STATUS.md",
         "SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3",
         "I1-G overall: complete",
-        "I1-GA contract / fault model: complete",
-        "I1-GB durable-finalization publication / pre-release admission: complete",
-        "I1-GC one-record restart replay / exact C1-5+B2 convergence / completion marker: complete",
-        "I1-GD retention / orphan reconciliation / isolation lifecycle / cleanup: complete",
         "I1-GE full production crash validation: complete",
     )
     require_text(
         "docs/architecture/project_execution_plan.md",
         "read-only observation of latest runs, formed memory, held or blocked outcomes, lifecycle state, and used-memory evidence",
         "MVP completion criteria",
-    )
-    require_text(
-        "docs/architecture/pipeline_implementation_plan.md",
-        "relaylm_doc_type: redirect_stub",
-        "This file is a compatibility stub.",
-    )
-    require_text(
-        "docs/architecture/relaymem_mvp_implementation_plan.md",
-        "relaylm_doc_type: redirect_stub",
-        "This file is a compatibility stub.",
     )
     require_text(
         "docs/architecture/relaymem_slp_current_target.md",
@@ -74,12 +60,21 @@ def main() -> None:
         "observation receipt",
     )
     require_text(
-        "docs/architecture/phase_i2_real_soul_lab_observation.md",
+        evidence,
+        "relaylm_doc_type: evidence",
+        "relaylm_status: frozen",
+        "**Historical implementation evidence.**",
         "Lab observation receipts are secondary read-only evidence only",
         "GET /lab/api/characters/{character_id}/memory/recent?namespace=...&limit=...",
     )
-    require_text("docs/README.md", handoff, "phase_i3_auditable_primary_mem_correct.md")
-    require_text("docs/architecture/README.md", handoff, "phase_i3_auditable_primary_mem_correct.md")
+    require_text(
+        "docs/evidence/implementation/README.md",
+        "phase-i2-real-soul-lab-observation-handoff.md",
+    )
+    require_text("docs/README.md", "phase_i3_auditable_primary_mem_correct.md")
+    require_text("docs/architecture/README.md", "phase_i3_auditable_primary_mem_correct.md")
+    forbid_text("docs/README.md", "Phase I-2 real SOUL Lab observation")
+    forbid_text("docs/architecture/README.md", "Phase I-2 Real SOUL Lab Observation")
 
     for path in (
         "docs/PROJECT_STATUS.md",
