@@ -25,6 +25,14 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Synchronize latest main
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git rev-parse origin/main > /tmp/cutover-main-sha
+          git merge --no-edit origin/main
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -131,11 +139,11 @@ PR #647 preserves the completed Phase I-2 observe-only SOUL Lab integration as f
           changed="$(git diff --name-only HEAD)"
           printf 'uncommitted changed paths:\n%s\n' "$changed"
           test "$changed" = "docs/evidence/migrations/documentation-hard-cutover-receipt.md"
-      - name: Commit finalized central ledger
+      - name: Commit and publish synchronized bookkeeping
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$(cat /tmp/cutover-main-sha)"
           git add docs/evidence/migrations/documentation-hard-cutover-receipt.md
           git commit -m "docs: finalize cutover 1C-55 bookkeeping ledger"
           git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
