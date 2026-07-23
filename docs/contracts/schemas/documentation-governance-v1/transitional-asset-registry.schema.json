@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://relaylm.local/schemas/documentation-governance-v1/transitional-asset-registry.schema.json",
+  "title": "RelayLM Documentation Transitional Asset Registry v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "families"],
+  "properties": {
+    "schema_version": {"const": "relaylm.documentation.transitional-asset-registry.v1"},
+    "families": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "family_id",
+          "paths",
+          "owner",
+          "protected_boundary",
+          "current_consumers",
+          "removal_gate",
+          "replacement_validation",
+          "growth_policy"
+        ],
+        "properties": {
+          "family_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"},
+          "paths": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^[A-Za-z0-9._*/-]+$"}
+          },
+          "owner": {"type": "string", "minLength": 1, "maxLength": 128},
+          "protected_boundary": {"type": "string", "minLength": 1, "maxLength": 512},
+          "current_consumers": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1, "maxLength": 256}
+          },
+          "removal_gate": {"type": "string", "minLength": 1, "maxLength": 512},
+          "replacement_validation": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1, "maxLength": 256}
+          },
+          "growth_policy": {"enum": ["closed", "closed_after_1c57"]}
+        }
+      }
+    }
+  }
+}

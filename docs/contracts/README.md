@@ -55,6 +55,12 @@ Current compile behavior has two implemented surfaces:
 
 Proposed runtime-compile v1 plan/result/decision projections, route-authority typing, forwarded-payload-source typing, managed fallback, and complete `BLOCKED` behavior remain target forms. Client-instruction lookup validation, content-free cache-hit projection diagnostics, trusted runtime-private typed-parse validation, and the default-off/dry-run-first C5b/C5c cache-writer path are implemented. Backend-response parsing, arbitrary frontend-metadata trust, semantic RelaySCN projection apply, and parser-versioned lookup/write compatibility are not implemented. The diagnostics-only recovery-response artifact is implemented, but generator execution and visible recovery output are not.
 
+## Documentation governance contract
+
+- [Documentation Governance Contract](documentation-governance.md) owns the canonical active-document graph, stable granularity, retained-record allowlist, retirement manifest, Git recoverability, generic validation families, and the no-growth/removal gates for legacy source-specific cutover machinery.
+- Machine-readable schemas live under [`schemas/documentation-governance-v1/`](schemas/documentation-governance-v1/).
+- Current documentation governance records live under [`records/documentation/`](../../records/documentation/); they are provenance and validation inputs, not semantic authority.
+
 ## Governed evidence contracts
 
 - [Governed Evidence Contract Family](governed-evidence-contract-family.md) defines shared identity, authority primitives, terminology, and cross-contract invariants.
@@ -125,4 +131,4 @@ The `mvp-soul-0` five-file allowlist is current compatibility behavior, not the 
 
 ## Placement rule
 
-Create new contract, artifact, schema, approval, and gate docs directly under `docs/contracts/`. Keep implementation evidence under `docs/evidence/implementation/`, architecture documents under `docs/architecture/`, and smoke/manual runbooks under `docs/smoke/`.
+Create new exact contract, artifact, schema, approval, and gate documents under `docs/contracts/`. Keep architecture under `docs/architecture/`, procedures under `docs/operations/` or `docs/guides/`, and narrowly continuing machine-readable records under `records/`. Transitional evidence and smoke collections do not define permanent placement; their owning D2-D6 batch synthesizes, reclassifies, or retires them without redirects.
