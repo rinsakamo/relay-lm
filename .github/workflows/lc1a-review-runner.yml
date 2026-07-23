@@ -39,23 +39,7 @@ jobs:
           end_marker = "predecessor_helper = '''def _predecessor_from_artifact"
           start = code.index(start_marker)
           end = code.index(end_marker, start)
-          replacement = '''sub_once(
-    runtime,
-    r'(?P<indent>\\s*)predecessor = _revision_from_intent_artifact\\(\\n'
-    r'\\s*intent=intent,\\n'
-    r'\\s*proposal=proposal,\\n'
-    r'\\s*character_authority=character_authority,\\n'
-    r'\\s*\\)',
-    lambda match: (
-        match.group('indent') + 'predecessor = _predecessor_from_artifact(\\n'
-        + match.group('indent') + '    artifact_bytes,\\n'
-        + match.group('indent') + '    intent=intent,\\n'
-        + match.group('indent') + '    proposal=proposal,\\n'
-        + match.group('indent') + '    character_authority=character_authority,\\n'
-        + match.group('indent') + ')'
-    ),
-)
-'''
+          replacement = base64.b64decode('c3ViX29uY2UoCiAgICBydW50aW1lLAogICAgcicoP1A8aW5kZW50PlxzKilwcmVkZWNlc3NvciA9IF9yZXZpc2lvbl9mcm9tX2ludGVudF9hcnRpZmFjdFwoXG4nCiAgICByJ1xzKmludGVudD1pbnRlbnQsXG4nCiAgICByJ1xzKnByb3Bvc2FsPXByb3Bvc2FsLFxuJwogICAgcidccypjaGFyYWN0ZXJfYXV0aG9yaXR5PWNoYXJhY3Rlcl9hdXRob3JpdHksXG4nCiAgICByJ1xzKlwpJywKICAgIGxhbWJkYSBtYXRjaDogKAogICAgICAgIG1hdGNoLmdyb3VwKCdpbmRlbnQnKSArICdwcmVkZWNlc3NvciA9IF9wcmVkZWNlc3Nvcl9mcm9tX2FydGlmYWN0KFxuJwogICAgICAgICsgbWF0Y2guZ3JvdXAoJ2luZGVudCcpICsgJyAgICBhcnRpZmFjdF9ieXRlcyxcbicKICAgICAgICArIG1hdGNoLmdyb3VwKCdpbmRlbnQnKSArICcgICAgaW50ZW50PWludGVudCxcbicKICAgICAgICArIG1hdGNoLmdyb3VwKCdpbmRlbnQnKSArICcgICAgcHJvcG9zYWw9cHJvcG9zYWwsXG4nCiAgICAgICAgKyBtYXRjaC5ncm91cCgnaW5kZW50JykgKyAnICAgIGNoYXJhY3Rlcl9hdXRob3JpdHk9Y2hhcmFjdGVyX2F1dGhvcml0eSxcbicKICAgICAgICArIG1hdGNoLmdyb3VwKCdpbmRlbnQnKSArICcpJwogICAgKSwKKQo=').decode('utf-8')
           code = code[:start] + replacement + code[end:]
           exec(compile(code, 'lc1a_review_patch.py', 'exec'))
           for path in (
