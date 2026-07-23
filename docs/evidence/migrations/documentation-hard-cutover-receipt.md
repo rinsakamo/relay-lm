@@ -5274,11 +5274,16 @@ verification:
 
 PR #642 preserves PR #404 recovery/finalization provenance and PR #407 concurrent-loser normalization as frozen implementation evidence and merged as `a21b9ac617fcf11d85a52e919f2ecb8678485927` from reviewed head `9b92df29a2cd112c6ad80086fdcfa4ad0e6fd0d6` on integration base `32135811283edffa4408846c8a9e51173aea743e`. PR #644 consolidates merge attribution and exact-head validation without changing accepted cutover content. The record remains non-authoritative for current runtime, schema, API/UI, storage, product, compatibility, alias, redirect, dual-read, or dual-write behavior.
 
-### C1C55-001 — Phase I-2 Real SOUL Lab Observation handoff (pending merge attribution)
+### C1C55-001 — Phase I-2 Real SOUL Lab Observation handoff
 
 ```yaml
 cutover_pr: 647
-merged_commit: pending
+merged_commit: 954eee9d26bd14d27da3d9a37e3caff9e6b760a3
+bookkeeping_pr: 649
+base_main: 80906b60aca640d9618d550d9decb12872d67a0d
+validated_content_head: 7acdd2f8d567e4b06a229105ade6c56969438243
+head_at_merge: 7acdd2f8d567e4b06a229105ade6c56969438243
+merged_at: 2026-07-23T01:09:50Z
 old_path: docs/architecture/phase_i2_real_soul_lab_observation.md
 old_blob_sha: 496c29ad94558a4bb0e12921cf20ad5358ae1120
 old_content_sha256: 989747ef065b315f94d079cf635e3da79c52dde45e3066cd4a3fae5cd0ef0079
@@ -5289,6 +5294,7 @@ source_merged_at: 2026-06-24T12:34:06Z
 recorded_on: 2026-06-24
 disposition: evidence_retained
 new_canonical_path: docs/evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
+local_receipt: docs/evidence/migrations/cutover-1c55-phase-i2.md
 verification:
   old_path_removed_in_pr_tree: true
   canonical_evidence_metadata_added: true
@@ -5296,12 +5302,27 @@ verification:
   current_authority_independently_owned: true
   pre_cutover_referrer_files: 13
   active_path_references_repaired: true
+  current_architecture_indexes_removed: true
   implementation_evidence_index_updated: true
-  documentation_current_boundary_smoke_updated: true
+  e1_evidence_inventory_updated: true
+  phase_i2_documentation_boundary_smoke_updated: true
+  fail_closed_guard: scripts/relaylm_phase_i2_handoff_cutover_guard.py
+  guard_integrated_into_existing_documentation_boundary_workflow: true
+  guard_self_test_assertions: 24
+  sm1_index_entry_preserved_after_pr_646_sync: true
+  exact_head_workflow_runs: 16
+  exact_head_workflow_success: 16
+  exact_head_workflow_failure: 0
+  exact_head_workflow_pending: 0
+  exact_head_workflow_skipped: 0
+  unresolved_review_threads: 0
   runtime_files_changed: 0
   relaylm_files_changed: 0
-  exact_head_actions: pending
-  unresolved_review_threads: pending
+  project_status_changed: false
+  final_changed_files: 20
+  final_additions: 406
+  final_deletions: 50
+  open_pr_content_imported: false
 ```
 
-Pending merge attribution only. The frozen record preserves PR #377 Phase I-2 provenance without becoming current runtime, schema, API/UI, storage, product, compatibility, alias, redirect, dual-read, or dual-write authority.
+PR #647 preserves the completed Phase I-2 observe-only SOUL Lab integration as frozen implementation evidence and merged as `954eee9d26bd14d27da3d9a37e3caff9e6b760a3` from reviewed head `7acdd2f8d567e4b06a229105ade6c56969438243` on synchronized main `80906b60aca640d9618d550d9decb12872d67a0d`. The synchronization retained PR #646's SM-1 architecture-index entry and removed only the two retired Phase I-2 index entries. Current observation behavior remains architecture-, implementation-, frontend-validation-, Project-Status-, and focused-smoke-owned. PR #649 consolidates merge attribution and exact-head validation without changing accepted cutover content.
