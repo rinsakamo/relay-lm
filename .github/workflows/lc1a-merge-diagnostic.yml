@@ -1,0 +1,70 @@
+name: LC1A merge-ref diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: github.event.pull_request.head.ref == 'agent/lc1a-subjective-mem-correct'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Diagnose exact merge ref
+        shell: bash
+        run: |
+          if git show origin/agent/lc1a-subjective-mem-correct:.github/lc1a-merge-diagnostic.txt >/dev/null 2>&1; then
+            exit 1
+          fi
+          set +e
+          {
+            echo "checked_out=$(git rev-parse HEAD)"
+            python - <<'PY'
+          from pathlib import Path
+          import py_compile
+          import subprocess
+
+          tracked = subprocess.check_output(
+              ["git", "ls-files", "*.py"], text=True
+          ).splitlines()
+          failures = []
+          for name in tracked:
+              try:
+                  py_compile.compile(name, doraise=True)
+              except Exception as exc:
+                  failures.append((name, repr(exc)))
+          print(f"tracked_python={len(tracked)} failures={len(failures)}")
+          for name, error in failures:
+              print(f"PY_COMPILE_FAILURE {name}: {error}")
+          raise SystemExit(1 if failures else 0)
+          PY
+            compile_status=$?
+            echo "compile_status=$compile_status"
+            python -m pip install -q -e '.[test]'
+            python -m pytest -q --collect-only
+            collect_status=$?
+            echo "collect_status=$collect_status"
+          } > /tmp/lc1a-merge-diagnostic.txt 2>&1
+          status=$?
+          set -e
+          git fetch origin agent/lc1a-subjective-mem-correct
+          git checkout -B agent/lc1a-subjective-mem-correct origin/agent/lc1a-subjective-mem-correct
+          {
+            echo "run_id=$GITHUB_RUN_ID merge_sha=$GITHUB_SHA status=$status"
+            tail -400 /tmp/lc1a-merge-diagnostic.txt
+          } > .github/lc1a-merge-diagnostic.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/lc1a-merge-diagnostic.txt
+          git commit -m "chore: record LC-1A merge-ref diagnostic"
+          git push origin HEAD:agent/lc1a-subjective-mem-correct
+          exit 1
