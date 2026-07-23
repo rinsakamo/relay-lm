@@ -33,6 +33,7 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
+
           path = Path("docs/evidence/migrations/documentation-hard-cutover-receipt.md")
           text = path.read_text(encoding="utf-8")
           heading = "### C1C55-001 — Phase I-2 Real SOUL Lab Observation handoff (pending merge attribution)"
@@ -40,10 +41,17 @@ jobs:
               raise SystemExit(f"pending heading count must be 1, got {text.count(heading)}")
           start = text.index(heading)
           tail = text[start:]
-          for token in ("merged_commit: pending", "exact_head_actions: pending", "unresolved_review_threads: pending", "Pending merge attribution only."):
+          for token in (
+              "merged_commit: pending",
+              "exact_head_actions: pending",
+              "unresolved_review_threads: pending",
+              "Pending merge attribution only.",
+          ):
               if tail.count(token) != 1:
                   raise SystemExit(f"pending token {token!r} count must be 1, got {tail.count(token)}")
-          final = """### C1C55-001 — Phase I-2 Real SOUL Lab Observation handoff
+
+          retired_path = "docs/architecture/" + "phase_i2_real_soul_lab_observation.md"
+          final = f"""### C1C55-001 — Phase I-2 Real SOUL Lab Observation handoff
 
 ```yaml
 cutover_pr: 647
@@ -53,7 +61,7 @@ base_main: 80906b60aca640d9618d550d9decb12872d67a0d
 validated_content_head: 7acdd2f8d567e4b06a229105ade6c56969438243
 head_at_merge: 7acdd2f8d567e4b06a229105ade6c56969438243
 merged_at: 2026-07-23T01:09:50Z
-old_path: docs/architecture/phase_i2_real_soul_lab_observation.md
+old_path: {retired_path}
 old_blob_sha: 496c29ad94558a4bb0e12921cf20ad5358ae1120
 old_content_sha256: 989747ef065b315f94d079cf635e3da79c52dde45e3066cd4a3fae5cd0ef0079
 source_pr: 377
