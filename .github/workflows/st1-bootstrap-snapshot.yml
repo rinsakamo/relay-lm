@@ -1,25 +1,24 @@
 name: ST-1 apply implementation
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches: [main]
+  push:
+    branches:
+      - agent/st1-apply-trigger-20260723
 
 permissions:
   contents: write
 
 concurrency:
-  group: st1-apply-${{ github.event.pull_request.number }}
+  group: st1-apply-trigger-20260723
   cancel-in-progress: false
 
 jobs:
   apply:
-    if: github.head_ref == 'agent/st1-apply-trigger-20260723'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
@@ -30,7 +29,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
 
       - name: Apply exact ST-1 patch
         shell: bash
@@ -74,4 +73,4 @@ jobs:
           git diff --cached --check
           test -z "$(git status --short | grep -E '^\?\?' || true)"
           git commit -m "feat: implement ST-1 Subjective MEM commit protocol"
-          git push origin HEAD:${{ github.head_ref }}
+          git push origin HEAD:${{ github.ref_name }}
