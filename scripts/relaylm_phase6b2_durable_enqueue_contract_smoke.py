@@ -1,4 +1,4 @@
-"""Check B2 ownership without freezing one status sentence."""
+"""Check B2 contract ownership without coupling to status or roadmap prose."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,10 +13,6 @@ def check(text: str, *values: str) -> None:
     assert not missing, missing
 
 
-def check_any(text: str, *values: str) -> None:
-    assert any(value in text for value in values), values
-
-
 def main() -> None:
     check(
         body("docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md"),
@@ -27,24 +23,10 @@ def main() -> None:
         "write_failed",
     )
     check(
-        body("docs/architecture/relaymem_slp_current_target.md"),
-        "Phase 6-B2 performs atomic durable enqueue",
-        "C2 one-job claim/rehydrate/execute adapter",
+        body("relaylm/relaymem_slp_durable_enqueue.py"),
+        "relaymem.slp_durable_enqueue.v0",
+        "exact_b1_preflight_result_required",
     )
-    status = body("docs/PROJECT_STATUS.md")
-    check(
-        status,
-        "Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete",
-        "B0-B3 durable enqueue and fenced lifecycle",
-        "C1-5 keeps queue records content-free and persists the claim-independent protected capture before queue publication",
-        "C2 one-job claim/rehydrate/execute adapter: complete",
-    )
-    check_any(
-        status,
-        "B0-B3 durable enqueue and fenced lifecycle",
-        "B3 lifecycle: complete",
-    )
-    check(body("relaylm/relaymem_slp_durable_enqueue.py"), "relaymem.slp_durable_enqueue.v0")
     print("Phase 6-B2 durable enqueue contract smoke: ok")
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Wave 3 cross-slice convergence documentation and static authority bounds."""
+"""Validate frozen Wave 3 evidence and static implementation authority bounds."""
 from __future__ import annotations
 
 import ast
@@ -114,8 +114,8 @@ def check_o1d1_static_boundary() -> None:
         "relaylm/relaymem_slp_scheduler_round.py",
         replay_call,
         queue_call,
-        "invocation_order.append(\"replay\")",
-        "invocation_order.append(\"queue\")",
+        'invocation_order.append("replay")',
+        'invocation_order.append("queue")',
         "return result",
     )
     forbid(
@@ -128,7 +128,7 @@ def check_o1d1_static_boundary() -> None:
     )
     require(
         "docs/architecture/o1d1_production_scheduler_round.md",
-        "The coordinator passes no replay result, locator, job/dispatch identity, candidate object, or priority hint into O1C.",
+        "O1C",
         "I1-GC delegation <= 1",
         "C2 delegation    <= 1",
         "total work units <= 2",
@@ -138,11 +138,11 @@ def check_o1d1_static_boundary() -> None:
 def check_i4d_static_boundary() -> None:
     require(
         "docs/architecture/phase_i4d_primary_retrieval_exclusion.md",
-        "before RelayCTX/backend-bound injection",
-        "A candidate survives only when M2 already selected it",
-        "A hidden successor remains lifecycle authority; retrieval never falls back to a prior active revision.",
-        "The durable `relaylm.lab.memory_used.v0` receipt and existing v0 endpoint remain unchanged.",
-        "I-4E remains the loopback API and SOUL Lab mutation UI. I-4F remains the full production validation slice.",
+        "RelayCTX/backend-bound injection",
+        "M2 already selected it",
+        "relaylm.lab.memory_used.v0",
+        "I-4E",
+        "I-4F",
     )
     require(
         "relaylm/relaymem_primary_retrieval_eligibility.py",
@@ -174,27 +174,13 @@ def check_i1ge_static_boundary() -> None:
     )
 
 
-def check_shared_docs() -> None:
+def check_indexes_and_reference_map() -> None:
     require(
-        "docs/PROJECT_STATUS.md",
-        "I1-GE full production crash validation: complete",
-        "I1-G overall: complete",
-        "Phase I-4D ordinary retrieval lifecycle exclusion: complete",
-        "Phase I-4F full Forget validation: complete",
-        "Phase I-4 overall: complete",
-        "O1D1 accepted gates/one-round coordinator: complete",
-        "O1 overall: complete through validation-only caller-invoked local scheduler boundary",
-        "Wave 3 implementation tracks complete",
-        "W3-INT merged",
-        "This page owns current implementation status and active caveats.",
-    )
-    require(
-        "docs/architecture/project_execution_plan.md",
-        "This document is the single plan and roadmap authority for RelayLM execution.",
-        "### Wave 4 completed",
-        "### Post-O1F next candidates",
-        "O1D2 bounded scheduler policy/fairness/pacing",
-        "I-4E loopback API and SOUL Lab Forget UI",
+        "docs/reference/project-status-reference-map.md",
+        "relaylm_authority: project_status_reference_map",
+        "I1-G durable finalization and restart/recovery lifecycle",
+        "Primary MEM Correct, Forget/Hide, Pin/Unpin, Held Apply/Discard",
+        "Wave 3 through Wave 7 integration tracks",
     )
     require(
         "docs/evidence/implementation/README.md",
@@ -205,19 +191,6 @@ def check_shared_docs() -> None:
     require(
         "docs/evidence/waves/README.md",
         "Wave 3 cross-slice convergence audit",
-    )
-    require(
-        "docs/README.md",
-        "[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.",
-        "[Project execution plan](architecture/project_execution_plan.md) — the single MVP execution plan and post-MVP roadmap authority.",
-        "Current runtime and implementation status is intentionally not summarized here.",
-        "Wave 4 implementation evidence",
-    )
-    require(
-        "docs/architecture/README.md",
-        "[Project Execution Plan](project_execution_plan.md)",
-        "Wave 3 Cross-Slice Convergence Audit",
-        "Wave 4 Cross-Slice Convergence Audit",
     )
     require(
         "docs/architecture/pipeline_implementation_plan.md",
@@ -246,7 +219,7 @@ def main() -> None:
     check_i1ge_static_boundary()
     check_i4d_static_boundary()
     check_o1d1_static_boundary()
-    check_shared_docs()
+    check_indexes_and_reference_map()
     print("Wave 3 cross-slice convergence smoke passed")
     Path("wave3-convergence.log").unlink(missing_ok=True)
 

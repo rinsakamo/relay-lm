@@ -1,4 +1,4 @@
-"""Validate durable queue ownership without freezing obsolete phase wording."""
+"""Validate durable queue contracts without coupling to current-status prose."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,14 +15,8 @@ def require(text: str, *anchors: str) -> None:
     assert not missing, missing
 
 
-def require_any(text: str, *alternatives: str) -> None:
-    assert any(value in text for value in alternatives), alternatives
-
-
 def main() -> None:
     b0 = read("docs/architecture/phase6b0_relayslp_durable_queue_contract.md")
-    current = read("docs/architecture/relaymem_slp_current_target.md")
-    status = read("docs/PROJECT_STATUS.md")
     b1 = read("relaylm/relaymem_slp_dispatch_preflight.py")
     b2 = read("relaylm/relaymem_slp_durable_enqueue.py")
     b3 = read("relaylm/relaymem_slp_queue_state.py")
@@ -35,30 +29,6 @@ def main() -> None:
         "memory-write idempotency",
         "terminal-state immutability",
         "B3 does not generate `dead_letter`",
-    )
-    require(
-        current,
-        "Phase 6-B2 performs atomic durable enqueue",
-        "Phase 6-B3 performs default-off, dry-run-first",
-        "C2 one-job claim/rehydrate/execute adapter",
-        "durably enqueued jobs",
-    )
-    require(
-        status,
-        "Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete",
-        "B0-B3 durable enqueue and fenced lifecycle",
-        "C2 one-job claim/rehydrate/execute adapter: complete",
-        "I1 next-turn Primary MEM recall: complete",
-    )
-    require_any(
-        status,
-        "Character and namespace isolation: complete",
-        "character and namespace isolation: complete",
-    )
-    require_any(
-        status,
-        "B0-B3 durable enqueue and fenced lifecycle",
-        "B3 lifecycle: complete",
     )
     require(b1, "relaymem.slp_dispatch_preflight.v0", "relaymem.slp_durable_job.v0")
     require(b2, "relaymem.slp_durable_enqueue.v0", "exact_b1_preflight_result_required")
