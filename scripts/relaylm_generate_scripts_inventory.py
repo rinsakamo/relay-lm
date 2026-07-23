@@ -85,7 +85,7 @@ def generate() -> str:
         "Regenerate with:",
         "",
         "```bash",
-        "python scripts/relaylm_generate_scripts_inventory.py --output docs/smoke/scripts_inventory.md",
+        "python scripts/relaylm_generate_scripts_inventory.py --output generated/scripts_inventory.md",
         "```",
         "",
         f"Snapshot stats: {len(rows)} Python scripts total, {ci_count} CI-referenced, "
