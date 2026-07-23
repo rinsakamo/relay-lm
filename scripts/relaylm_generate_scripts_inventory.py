@@ -9,6 +9,9 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY_PATH = ROOT / "docs" / "smoke" / "scripts_inventory.md"
+HELPER_TOKENS = frozenset(
+    {"fixture", "fixtures", "helper", "helpers", "support", "supports"}
+)
 
 
 def read_texts(paths: list[Path]) -> str:
@@ -21,14 +24,16 @@ def read_texts(paths: list[Path]) -> str:
     return "\n".join(chunks)
 
 
-def category(name: str, ci_referenced: bool, docs_referenced: bool) -> str:
-    if ci_referenced:
-        return "active smoke"
-    if name.startswith("_") or "_support" in name or "_fixture" in name:
-        return "helper"
-    if docs_referenced:
-        return "phase-completion evidence"
-    return "tool"
+def filename_signal(name: str) -> str:
+    """Return a neutral filename-shape signal, never a responsibility decision."""
+
+    stem = Path(name).stem
+    tokens = frozenset(part for part in stem.split("_") if part)
+    if name.startswith("_") or tokens.intersection(HELPER_TOKENS):
+        return "helper-shaped"
+    if "smoke" in tokens:
+        return "smoke-named"
+    return "other"
 
 
 def generate() -> str:
@@ -58,7 +63,7 @@ def generate() -> str:
                 relative.removeprefix("scripts/"),
                 ci_referenced,
                 docs_referenced,
-                category(name, ci_referenced, docs_referenced),
+                filename_signal(name),
             )
         )
 
@@ -83,7 +88,7 @@ def generate() -> str:
         "Regenerate with:",
         "",
         "```bash",
-        "python scripts/relaylm_generate_scripts_inventory.py --output docs/smoke/scripts_inventory.md",
+        "python scripts/relaylm_generate_scripts_inventory.py --output generated/scripts_inventory.md",
         "```",
         "",
         f"Snapshot stats: {len(rows)} Python scripts total, {ci_count} CI-referenced, "
@@ -94,13 +99,17 @@ def generate() -> str:
         "The generated inventory itself is excluded from documentation-reference "
         "detection to prevent self-reference from marking every script as documented.",
         "",
-        "| script | CI-referenced | docs-referenced | category guess |",
+        "Reference columns are mechanical facts. The filename signal describes only "
+        "the path shape; it does not classify responsibility, lifecycle, or retention.",
+        "Those decisions require reviewed Lane R evidence.",
+        "",
+        "| script | CI-referenced | docs-referenced | filename signal |",
         "| --- | --- | --- | --- |",
     ]
-    for script, ci_ref, docs_ref, guess in rows:
+    for script, ci_ref, docs_ref, signal in rows:
         lines.append(
             f"| `{script}` | {'yes' if ci_ref else 'no'} | "
-            f"{'yes' if docs_ref else 'no'} | {guess} |"
+            f"{'yes' if docs_ref else 'no'} | {signal} |"
         )
     lines.append("")
     return "\n".join(lines)

@@ -51,6 +51,8 @@ For pull requests, use the uploaded `scripts-inventory` artifact as the review a
 
 - CI-reference status;
 - documentation-reference status;
-- a mechanical category guess: active smoke, phase-completion evidence, helper, or tool.
+- a neutral filename signal: `helper-shaped`, `smoke-named`, or `other`.
+
+Reference status and filename shape are mechanical review inputs only. They do not classify a script as an ordinary test, process smoke, operator CLI, migration asset, historical evidence, or retired asset. Responsibility, lifecycle, retention, and rename decisions require reviewed Lane R caller and protected-boundary evidence.
 
 After reviewing a new artifact, update this summary only with its source commit/run and aggregate counts. Do not copy the generated row table into this file and do not overwrite this file with the generator.
