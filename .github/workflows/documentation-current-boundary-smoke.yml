@@ -1,4 +1,4 @@
-name: Cutover 1C-56 Whitespace Diagnostic
+name: Cutover 1C-56 Phase I-3 Publisher
 
 on:
   pull_request:
@@ -6,10 +6,10 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  publish:
     if: github.head_ref == 'agent/documentation-hard-cutover-1c56-phase-i3'
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -18,6 +18,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -27,6 +28,8 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           test "$(git rev-parse origin/main)" = "$BASE_MAIN"
           cat scripts/_cutover_1c56_phase_i3_builder.py.b64.* > /tmp/cutover_i3_builder.py.b64
@@ -35,37 +38,41 @@ jobs:
           echo 'eb89897568c5bfa7c439a73610d8fac3a7bd5ec543c420155be366bb7496a71f  /tmp/cutover_i3_builder.py' | sha256sum -c -
           python /tmp/cutover_i3_builder.py
           rm -f scripts/_cutover_1c56_phase_i3_builder.py.b64.*
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('docs/evidence/migrations/documentation-hard-cutover-receipt.md')
+          text = path.read_text(encoding='utf-8')
+          path.write_text(text.rstrip('\n') + '\n', encoding='utf-8')
+          PY
       - name: Install validation dependencies
         run: python -m pip install -e ".[test]"
-      - name: Run validated sequence
+      - name: Compile
+        run: python -m compileall -q relaylm scripts
+      - name: Validate Phase I-3 guard
+        run: python scripts/relaylm_phase_i3_handoff_cutover_guard.py
+      - name: Self-test Phase I-3 guard
+        run: python scripts/relaylm_phase_i3_handoff_cutover_guard.py --self-test
+      - name: Run Phase I-3 functional CI runner
+        run: python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
+      - name: Validate Phase I-2 documentation boundary
+        run: python scripts/relaylm_phase_i2_documentation_boundary_smoke.py
+      - name: Validate E1 evaluation consolidation
+        run: python scripts/relaylm_e1_evaluation_consolidation_smoke.py
+      - name: Validate documentation links
+        run: PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
+      - name: Validate documentation semantics
+        run: python scripts/relaylm_docs_semantic_audit.py
+      - name: Self-test documentation semantics
+        run: python scripts/relaylm_docs_semantic_audit.py --self-test
+      - name: Validate documentation current boundary
+        run: python scripts/relaylm_documentation_current_boundary_smoke.py
+      - name: Validate whitespace
+        run: git diff --check
+      - name: Commit and publish generated tree
         run: |
-          python -m compileall -q relaylm scripts
-          python scripts/relaylm_phase_i3_handoff_cutover_guard.py
-          python scripts/relaylm_phase_i3_handoff_cutover_guard.py --self-test
-          python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
-          python scripts/relaylm_phase_i2_documentation_boundary_smoke.py
-          python scripts/relaylm_e1_evaluation_consolidation_smoke.py
-          PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
-          python scripts/relaylm_docs_semantic_audit.py
-          python scripts/relaylm_docs_semantic_audit.py --self-test
-          python scripts/relaylm_documentation_current_boundary_smoke.py
-      - name: Capture whitespace failure
-        run: |
-          set +e
-          {
-            echo '## git diff --check'
-            git diff --check
-            echo "status=$?"
-            echo
-            echo '## git status --short'
-            git status --short
-            echo
-            echo '## diff numstat'
-            git diff --numstat
-          } > cutover-1c56-whitespace.txt 2>&1
-          exit 0
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cutover-1c56-whitespace
-          path: cutover-1c56-whitespace.txt
-          if-no-files-found: error
+          set -euo pipefail
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "358e6a57251688df8590f48f3b04317fd7023601"
+          git add -A
+          git commit -m "docs: move Phase I-3 handoff to frozen evidence"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
