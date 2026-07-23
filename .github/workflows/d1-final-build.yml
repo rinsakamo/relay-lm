@@ -27,18 +27,20 @@ jobs:
           python-version: "3.12"
       - name: Apply accepted P1 authority transfer
         run: |
-          set -euo pipefail
+          set -o pipefail
+          : > /tmp/d1-final-build.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin main:refs/remotes/origin/main
-          python .d1_patch_repair.py
-          python .d1_completion_model_retirement.py
+          git fetch origin main:refs/remotes/origin/main 2>&1 | tee -a /tmp/d1-final-build.log
+          echo "> python .d1_patch_repair.py" | tee -a /tmp/d1-final-build.log
+          python .d1_patch_repair.py 2>&1 | tee -a /tmp/d1-final-build.log || exit 1
+          echo "> python .d1_completion_model_retirement.py" | tee -a /tmp/d1-final-build.log
+          python .d1_completion_model_retirement.py 2>&1 | tee -a /tmp/d1-final-build.log || exit 1
           rm -f .d1_patch_repair.py .d1_completion_model_retirement.py
           rm -f .github/workflows/d1-final-build.yml
       - name: Validate exact build
         run: |
           set -o pipefail
-          : > /tmp/d1-final-build.log
           failed=0
           run_check() {
             echo "> $*" | tee -a /tmp/d1-final-build.log
