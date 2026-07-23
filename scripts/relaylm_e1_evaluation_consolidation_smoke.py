@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = {
     "docs/architecture/e1_evaluation_consolidation.md": (
         "# E1 MVP Evaluation Evidence Consolidation",
+        "## Current E1 proof boundary",
         "## Evidence inventory",
         "## Implemented evidence vs remaining quality work",
         "E1-R1 route-owned trusted Home admission",
@@ -18,10 +19,16 @@ REQUIRED = {
         "E1-R5 recall candidate discovery bridge is implemented",
         "Wave 7 Cross-Slice Convergence Audit",
         "## Direct Home-origin admission decision record",
+        "Option A",
+        "Option B",
         "Implemented by E1-R1",
         "## Character-store bootstrap ergonomics",
+        "E1-R2 idempotent character-store bootstrap command",
         "## Speaker-provenance-safe memory summary formation",
+        "E1-R3 provenance-preserving Primary MEM formation summary",
         "## Evidence-grounded recall behavior",
+        "E1-R4 distinguishes retrieved fact from inference",
+        "E1-R4 suppresses unsupported date, name, preference, quantity, relationship, and cause details",
         "Implemented E1-R4/E1-R5 boundary",
     ),
     "docs/reference/project-status-reference-map.md": (
@@ -150,6 +157,7 @@ STALE = (
 )
 
 SCANNED_DOCS = (
+    "docs/architecture/e1_evaluation_consolidation.md",
     "docs/PROJECT_STATUS.md",
     "docs/architecture/project_execution_plan.md",
     "docs/architecture/relaymem_slp_current_target.md",
