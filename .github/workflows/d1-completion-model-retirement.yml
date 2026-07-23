@@ -1,0 +1,82 @@
+name: Execute D1 completion-model retirement
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/d1-completion-model-retirement.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  retire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/d1-documentation-governance-lock
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Apply accepted P1 design
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main:refs/remotes/origin/main
+          python .d1_completion_model_retirement.py
+          rm .d1_completion_model_retirement.py
+          rm .github/workflows/d1-completion-model-retirement.yml
+      - name: Validate redesigned D1 boundary
+        run: |
+          set -o pipefail
+          : > /tmp/d1-completion-model-retirement.log
+          failed=0
+          run_check() {
+            echo "> $*" | tee -a /tmp/d1-completion-model-retirement.log
+            "$@" 2>&1 | tee -a /tmp/d1-completion-model-retirement.log || failed=1
+          }
+          run_check python -m pip install -e ".[test]"
+          run_check python -m compileall -q scripts/relaylm_mvp_completion_report_smoke.py scripts/relaylm_docs_semantic_audit.py scripts/relaylm_documentation_governance_validate.py scripts/relaylm_mvp_eval_runner_registry.py
+          run_check python scripts/relaylm_mvp_completion_report_smoke.py --check-all
+          run_check python scripts/relaylm_mvp_completion_report_smoke.py --self-test
+          run_check python scripts/relaylm_docs_semantic_audit.py
+          run_check python scripts/relaylm_docs_semantic_audit.py --self-test
+          run_check python scripts/relaylm_documentation_governance_validate.py --base-ref origin/main
+          run_check python scripts/relaylm_documentation_governance_validate.py --self-test
+          run_check python scripts/relaylm_documentation_current_boundary_smoke.py
+          run_check python scripts/relaylm_docs_link_check.py
+          run_check python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+          run_check env PYTHONPATH=.:scripts python scripts/relaylm_wave4_cross_slice_convergence_smoke.py
+          run_check env PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner_smoke.py
+          run_check git diff --check
+          if [ -e docs/templates/implementation-completion-report.md ]; then
+            echo "FAIL: retired template remains" | tee -a /tmp/d1-completion-model-retirement.log
+            failed=1
+          fi
+          if [ -e .github/workflows/documentation-completion-report-model.yml ]; then
+            echo "FAIL: retired model workflow remains" | tee -a /tmp/d1-completion-model-retirement.log
+            failed=1
+          fi
+          if [ -e .d1_completion_model_retirement.py ] || [ -e .github/workflows/d1-completion-model-retirement.yml ]; then
+            echo "FAIL: temporary construction asset remains" | tee -a /tmp/d1-completion-model-retirement.log
+            failed=1
+          fi
+          exit "$failed"
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-completion-model-retirement-diagnostics
+          path: /tmp/d1-completion-model-retirement.log
+          if-no-files-found: error
+      - name: Commit and push redesigned boundary
+        run: |
+          set -euo pipefail
+          git add -A
+          git diff --cached --check
+          git commit -m "docs: retire completion-report model authority"
+          git push origin HEAD:agent/d1-documentation-governance-lock
