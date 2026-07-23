@@ -130,7 +130,7 @@ The following YAML-shaped records are the canonical human-reviewed representatio
 
 ```yaml
 classification_version: 1
-source_commit: ec3054c9ca18e3037e7871de14ba438f3696f0af
+source_commit: 39212194bb67b21e297f3b3cc9ba28a21695ee02
 records:
   - asset_id: console.relaylm
     paths: [pyproject.toml]
@@ -224,9 +224,9 @@ records:
     protected_boundary: sole supported direct repository-inventory operator and workflow entry point
     current_callers:
       - .github/workflows/repository-storage-inventory.yml
-      - docs/evidence/implementation/repository_inventory_baseline_1ca928cd.md
-      - repository inventory subprocess tests
-    invocation_roots: [operator_cli, github_actions_step, subprocess_child]
+      - docs/evidence/implementation/repository_inventory_baseline_1ca928cd.md reproduction command
+      - tests/test_relaylm_repo_inventory_cross_mode_hardening.py operator-root assertion
+    invocation_roots: [operator_cli, github_actions_step]
     evidence:
       - scripts/relaylm_repo_inventory_cli.py
       - .github/workflows/repository-storage-inventory.yml
@@ -388,7 +388,7 @@ import-only implementation:
   scripts/relaylm_repo_inventory/cli.py
 ```
 
-Caller inspection showed that the top-level wrapper is not a disposable cosmetic duplicate: `scripts/` is a flat, non-installed operator-tool directory, and the workflow, fixed inventory receipt, and subprocess-based tests use the wrapper. Moving to a package/module command would introduce a new packaging or `PYTHONPATH` contract and belongs to a later package migration, not R2 consolidation.
+Caller inspection showed that the top-level wrapper is not a disposable cosmetic duplicate: `scripts/` is a flat, non-installed operator-tool directory, and the workflow and fixed inventory receipt use the wrapper. The maintained cross-mode test also asserts that this wrapper is the direct operator root while package-internal `cli.py` is not. Moving to a package/module command would introduce a new packaging or `PYTHONPATH` contract and belongs to a later package migration, not R2 consolidation.
 
 The internal `cli.py` main guard was an unsupported secondary invocation surface and contradicted the maintained test that package-internal inventory code is not reported as a direct operator CLI. R2-A removes only that guard. The wrapper remains the sole supported entry point; scan modes, self-test, formats, output paths, exit behavior, and implementation imports are unchanged.
 
