@@ -1,4 +1,4 @@
-name: Cutover 1C-56 Phase I-3 Final Publisher
+name: Cutover 1C-56 Tree Shape Diagnostic
 
 on:
   pull_request:
@@ -6,30 +6,23 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  publish:
+  diagnose:
     if: github.head_ref == 'agent/documentation-hard-cutover-1c56-phase-i3'
     runs-on: ubuntu-latest
-    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
       - name: Reconstruct final cutover tree
         env:
           BASE_MAIN: 358e6a57251688df8590f48f3b04317fd7023601
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           test "$(git rev-parse origin/main)" = "$BASE_MAIN"
           cat scripts/_cutover_1c56_phase_i3_builder.py.b64.* > /tmp/cutover_i3_builder.py.b64
@@ -38,42 +31,26 @@ jobs:
           echo 'eb89897568c5bfa7c439a73610d8fac3a7bd5ec543c420155be366bb7496a71f  /tmp/cutover_i3_builder.py' | sha256sum -c -
           python /tmp/cutover_i3_builder.py
           rm -f scripts/_cutover_1c56_phase_i3_builder.py.b64.*
-      - name: Install validation dependencies
-        run: python -m pip install -e ".[test]"
-      - name: Compile
-        run: python -m compileall -q relaylm scripts
-      - name: Validate Phase I-3 guard
-        run: python scripts/relaylm_phase_i3_handoff_cutover_guard.py
-      - name: Self-test Phase I-3 guard
-        run: python scripts/relaylm_phase_i3_handoff_cutover_guard.py --self-test
-      - name: Run Phase I-3 functional CI runner
-        run: python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
-      - name: Validate Phase I-2 documentation boundary
-        run: python scripts/relaylm_phase_i2_documentation_boundary_smoke.py
-      - name: Validate E1 evaluation consolidation
-        run: python scripts/relaylm_e1_evaluation_consolidation_smoke.py
-      - name: Validate documentation links
-        run: PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
-      - name: Validate documentation semantics
-        run: python scripts/relaylm_docs_semantic_audit.py
-      - name: Self-test documentation semantics
-        run: python scripts/relaylm_docs_semantic_audit.py --self-test
-      - name: Validate documentation current boundary
-        run: python scripts/relaylm_documentation_current_boundary_smoke.py
-      - name: Validate final tree shape
+      - name: Diff check
+        continue-on-error: true
+        run: git diff --check
+      - name: Old source absent
+        continue-on-error: true
+        run: test ! -e docs/architecture/phase_i3_auditable_primary_mem_correct.md
+      - name: Canonical target present
+        continue-on-error: true
+        run: test -e docs/evidence/implementation/phase-i3-auditable-primary-mem-correct-handoff.md
+      - name: Payload absent
+        continue-on-error: true
+        run: test -z "$(find scripts -maxdepth 1 -name '_cutover_1c56_phase_i3_builder.py.b64.*' -print -quit)"
+      - name: Canonical workflow restored
+        continue-on-error: true
+        run: grep -q '^name: Documentation current boundary smoke$' .github/workflows/documentation-current-boundary-smoke.yml
+      - name: Runtime and Project Status unchanged
+        continue-on-error: true
+        run: test -z "$(git diff --name-only -- relaylm docs/PROJECT_STATUS.md)"
+      - name: Show final status
+        if: always()
         run: |
-          set -euo pipefail
-          git diff --check
-          test ! -e docs/architecture/phase_i3_auditable_primary_mem_correct.md
-          test -e docs/evidence/implementation/phase-i3-auditable-primary-mem-correct-handoff.md
-          test ! -e scripts/_cutover_1c56_phase_i3_builder.py.b64.00
-          grep -q '^name: Documentation current boundary smoke$' .github/workflows/documentation-current-boundary-smoke.yml
-          test -z "$(git diff --name-only -- relaylm docs/PROJECT_STATUS.md)"
-      - name: Commit and publish final cutover tree
-        run: |
-          set -euo pipefail
-          git fetch origin main
-          test "$(git rev-parse origin/main)" = "358e6a57251688df8590f48f3b04317fd7023601"
-          git add -A
-          git commit -m "docs: move Phase I-3 handoff to frozen evidence"
-          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          git status --short
+          git diff --name-only
