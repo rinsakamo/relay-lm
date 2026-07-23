@@ -36,6 +36,7 @@ relaylm_related_authority:
   - cw_a2_workspace_compiler_projections.md
   - cw_a3_character_workspace_ui_rebuild.md
   - cw_a4_slp_workspace_maintenance_candidates.md
+  - cw_a5_character_workspace_ui_rebuild.md
   - cw_a5_character_creation_templates_showcase_import.md
   - e1r5_primary_mem_recall_candidate_bridge.md
   - ../evidence/waves/e1r5_post_wave7_correction_convergence_audit.md
@@ -48,6 +49,7 @@ relaylm_related_authority:
   - ../adr/0003-subjective-mem-direction.md
   - ../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md
   - ../adr/0005-subjective-mem-storage-authority.md
+  - ../adr/0006-repository-structure-and-maintenance-sequencing.md
   - memory/formation.md
   - runtime/request-response-pipeline.md
   - ../contracts/governed-evidence-contract-family.md
@@ -56,11 +58,13 @@ relaylm_related_authority:
   - ../contracts/subjective-mem-storage-authority-and-commit-protocol.md
   - st1_subjective_mem_commit_runtime.md
   - ../contracts/subjective-mem-canonical-markdown-v1.md
+  - ../planning/repository-structure-migration.md
+  - ../planning/workstream-orchestration.md
   - ../proposals/repository-simplification.md
 ---
 # RelayLM Project Execution Plan
 
-Last reviewed: 2026-07-23 JST
+Last reviewed: 2026-07-24 JST
 
 ## Purpose
 
@@ -126,7 +130,7 @@ O2/O3 close the explicit opt-in local scheduler operation need for current MVP w
 
 ## v0.1 release readiness boundary
 
-The current v0.1 readiness assessment is [v0.1 Release Readiness Assessment](../release/v0.1-release-readiness.md); the separate frozen tag receipt is [v0.1 Final Main-HEAD Validation and Tag Receipt](../evidence/releases/v0.1-final-main-validation-tag-receipt.md). v0.1 readiness means the MVP implementation lanes listed above are complete, the durable-memory E2 value smoke has local human-reviewed evidence, the final main-HEAD validation passed, and the remaining items below are post-v0.1 decision debt rather than v0.1 blockers.
+The current v0.1 readiness assessment is [v0.1 Release Readiness Assessment](../release/v0.1-release-readiness.md); the separate tag-validation receipt is [v0.1 Final Main-HEAD Validation and Tag Receipt](../evidence/releases/v0.1-final-main-validation-tag-receipt.md). v0.1 readiness means the MVP implementation lanes listed above are complete, the durable-memory E2 value smoke has local human-reviewed evidence, the final main-HEAD validation passed, and the remaining items below are post-v0.1 decision debt rather than v0.1 blockers.
 
 RelayATN is registered only as a gated post-v0.1 / post-voice-out candidate. This plan authorizes ATN-0 planning registration only and does not authorize implementation, runtime behavior changes, default-on resident processing, multi-user admission policy, or disclosure/memory authority.
 
@@ -184,7 +188,7 @@ The series own the following bounded outcomes:
 - **SM-1 Subjective MEM decision/result vertical slice** depends on ASM-1 and implements one end-to-end `create` path with exact assessment, character, scope, policy-revision, decision, result, and current-state linkage. The bounded implementation is documented in [SM-1 Subjective MEM Create Runtime](sm1_subjective_mem_create_runtime.md): it remains default-off, character-private, prepared-only, non-retrievable, and stops before ST-1 canonical publication. Similarity remains candidate generation only. SOUL-conditioned proposal generation cannot become production-authoritative until PM-D1 is resolved.
 - **ST-1 Markdown + operations commit protocol** depends on the SM-1 record shape and implements the first canonical `create` publication using a prepared immutable post-image, canonical Markdown, a matching durable operations receipt, scoped idempotency, digest-based caller-invoked recovery, and rebuildable projection fencing. The bounded implementation is documented in [ST-1 Subjective MEM Commit Runtime](st1_subjective_mem_commit_runtime.md) and [Subjective MEM Canonical Markdown v1](../contracts/subjective-mem-canonical-markdown-v1.md): it remains default-off, create-only, single-host, and POSIX-apply-only; logical Retrieval eligibility does not wire ordinary Retrieval.
 - **LC-1 lifecycle migration** depends on ST-1 and ports existing characterization-backed operations in bounded order: Correct, Forget, Pin/Unpin, Restore, then Consolidate. LC-1A implements the first `active -> active` Correct slice with an immutable canonical successor, shared mutation fence, content-free intent/receipt/idempotency state, and caller-invoked forward recovery; [LC-1A Subjective MEM Correct Runtime](lc1a_subjective_mem_correct.md) records the exact boundary. LC-1 overall remains incomplete, and Forget is the next ordered slice. Existing Primary MEM lifecycle code and tests remain migration evidence. Purge stays outside this series until a separate irreversible authority is accepted.
-- **RT-1 Retrieval projection and hard cutover** depends on ST-1 and the required LC-1 eligibility boundaries. It implements exact-current-revision selection, lifecycle/mutation fail-closed behavior, durable content-free usage events, projection rebuild equivalence, old/new characterization comparison, writer fencing, one-authority cutover, temporary-adapter removal, and retirement of replaced readers/writers.
+- **RT-1 Retrieval projection and hard cutover** depends on ST-1 and the required LC-1 eligibility boundaries. It implements exact-current-revision selection, lifecycle/mutation fail-closed behavior, durable content-free usage records, projection rebuild equivalence, old/new characterization comparison, writer fencing, one-authority cutover, temporary-adapter removal, and retirement of replaced readers/writers.
 
 Decision gates apply narrowly:
 
@@ -198,12 +202,48 @@ Implementation and cleanup rules:
 - Each series lands through an atomic PR or an explicitly coordinated atomic set with exact producer, consumer, schema/version, feature posture, migration effect, rollback boundary, and validation matrix.
 - New writers and authority-changing readers begin default-off or dry-run-first unless an owning contract and reviewed deployment decision explicitly permit otherwise.
 - `docs/PROJECT_STATUS.md` is updated only after exact-head validation proves a runtime boundary implemented; plan registration alone never changes current implementation status.
-- The existing Primary MEM M3/B/C/I/O paths, lifecycle modules, fixtures, smokes, and operator paths cannot be classified as dead, deleted, renamed, or consolidated while they remain a characterization, rollback, migration, or runtime dependency.
-- Repository simplification and documentation hard cutover remain parallel, separately governed tracks. Overlap with this program requires shared-path and authority-reference reconciliation; inventory evidence alone cannot authorize deletion or debt closure.
+- The existing Primary MEM M3/B/C/I/O paths, lifecycle modules, fixtures, smoke, and operator paths cannot be classified as retired, deleted, renamed, or consolidated while they remain a characterization, rollback, migration, or runtime dependency.
+- Repository simplification, documentation canonicalization, and the contract-aligned implementation program are coordinated parallel workstreams. Overlap requires shared-path and authority-reference reconciliation; inventory evidence alone cannot authorize deletion or debt closure.
+- Active code, tests, process smoke, tools, and documents move toward function- and responsibility-oriented names through their owning atomic migrations.
+- Transitional characterization, compatibility, rollback, and migration assets remain active only with an explicit owner, current caller, removal gate, and replacement validation.
+- Retired code, smoke, tooling, and documents are deleted from the current tree and remain recoverable through Git history; a general frozen or archive tree is not created.
+- Only narrowly typed records with a continuing release, stateful migration, audit, recovery, rollback, or repository-governance function remain in the current tree.
 - Permanent dual-read, dual-write, precedence fallback, or two live canonical memory authorities are prohibited. Any compatibility adapter must name its removal gate and may not become a second semantic authority.
 - Current-user-data migration, backup/restore, platform support, and irreversible purge require their own accepted implementation or operations authority before execution.
 
 This registration authorizes preparation of bounded implementation PRs in the dependency order above. It does not itself authorize runtime default-on behavior, migration of user data, deletion of existing assets, or the final authority cutover.
+
+## Coordinated repository and documentation workstreams
+
+ADR 0006 accepts the detailed [Repository Structure and Documentation Canonicalization Plan](../planning/repository-structure-migration.md) and [Workstream Orchestration and Continuation Command](../planning/workstream-orchestration.md). The coordinated portfolio is ordered around the current memory authority migration:
+
+```text
+Lane C: critical implementation
+  Cutover 1C-57 convergence where still open
+    -> synchronize and merge LC-1A
+    -> LC-1B -> LC-1C -> LC-1D -> LC-1E
+    -> RT-1 one-authority Retrieval cutover
+
+Lane D: documentation canonicalization and historical retirement
+  last already-open legacy cutover slice
+    -> canonical active graph, retained-record allowlist, and retirement-manifest lock
+    -> stable-domain synthesis and bounded Git-history retirement
+    -> lifecycle canonicalization after LC-1
+    -> Retrieval / Primary MEM canonicalization after RT-1
+    -> legacy cutover-tool retirement
+
+Lane R: repository maintenance
+  code, script, smoke, workflow, and tooling classification
+    -> bounded test, smoke, and validation consolidation
+    -> generated active-document and retained-record navigation
+    -> low-risk package moves
+    -> governed core package migration after RT-1
+    -> Primary MEM retirement-or-move decision
+```
+
+New permanent milestone-oriented asset names stop with the ADR. Stable-domain documentation synthesis, historical retirement, script and code responsibility classification, bounded duplicate-smoke cleanup, generated-index preparation, and low-risk path-disjoint package moves may proceed in parallel when authority ownership is also disjoint. Subjective MEM, ordinary Retrieval, and Primary MEM package movement remains blocked until RT-1 completes.
+
+A bare `次に進めて`, `進めて`, or `続けて` is an execution command under the orchestration plan: converge existing PRs, advance the earliest executable critical item, and advance eligible parallel Lane D or Lane R work without asking the user to select among already ordered candidates. This does not authorize hidden background execution.
 
 ## Current next work
 
@@ -235,6 +275,25 @@ Registered contract-aligned implementation debt:
                         -> LC-1B Forget                                next ordered slice / not started
                         -> LC-1C Pin/Unpin -> LC-1D Restore -> LC-1E Consolidate registered / not started
                         -> RT-1 Retrieval projection and hard cutover registered / not started
+
+Documentation canonicalization:
+  Cutover 1C-57                                                active final legacy source-by-source slice
+    -> canonical active graph / retained-record / manifest lock next documentation boundary
+    -> stable-domain synthesis and historical retirement       registered / parallel when authority-disjoint
+    -> lifecycle canonicalization                              gated on LC-1 completion
+    -> Retrieval / Primary MEM canonicalization                gated on RT-1 completion
+
+Repository maintenance:
+  permanent milestone-oriented naming freeze                   accepted on ADR merge
+  code/script/smoke classification and generated-index preparation parallel when path- and authority-disjoint
+  retired code, smoke, tooling, and documents                  delete to Git history; no general archive tree
+  transitional characterization                               active with explicit removal gate
+  low-risk independent package moves                           eligible with complete caller evidence
+  Subjective MEM / Retrieval / Primary MEM namespace moves     blocked until RT-1
+
+Continuation orchestration:
+  default portfolio                                            1 critical + up to 1 documentation + up to 1 maintenance PR
+  bare continuation command                                    execute ordered critical and parallel workstreams
 
 Remaining post-v0.1 decision or gated candidates:
   PM-D1 RelaySOUL gate design-freeze relation
@@ -344,4 +403,4 @@ PM-D3 is closed by the shipped P0-PIPE request-path ordering fix, which removes 
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
-Within the pre-existing post-E1-R5 decision-debt registry: The remaining candidates are PM-D1/PM-D4/PM-D9 follow-through and PM-D2 closure or absorption after PM-D6. The separately registered dependency-first implementation program has completed EV-1, OVL-1, ASM-1, SM-1, and the default-off bounded ST-1 create commit slice, and LC-1A Correct; LC-1B Forget is next, followed by the remaining LC-1 slices and RT-1. PM-D4, PM-D9, and PM-D1 apply as the narrow default-on, multilingual-generation, and SOUL-conditioned-formation gates recorded above; PM-D2 remains separately governed. Durable-memory E2 value smoke is complete as local human-reviewed v0.1 readiness evidence. RelayATN remains ATN-0 planning-only debt after voice-out / SOUL Lab Runtime MVP and does not authorize implementation.
+Within the pre-existing post-E1-R5 decision-debt registry: The remaining candidates are PM-D1/PM-D4/PM-D9 follow-through and PM-D2 closure or absorption after PM-D6. The separately registered dependency-first implementation program has completed EV-1, OVL-1, ASM-1, SM-1, and the default-off bounded ST-1 create commit slice, and LC-1A Correct; LC-1B Forget is next, followed by the remaining LC-1 slices and RT-1. Repository and documentation maintenance now follow ADR 0006: finish the already-open Cutover 1C-57, rebuild active documentation by canonical target domain, retire consumed source and historical documents to Git history through bounded manifest-backed batches, retain only narrowly typed current records, allow path- and authority-disjoint documentation and maintenance work in parallel, classify active and transitional code or validation by supported responsibility, delete truly retired executable assets, and defer core memory/Retrieval namespace movement until after RT-1. The shorthand continuation command executes this ordered portfolio under the orchestration plan. PM-D4, PM-D9, and PM-D1 apply as the narrow default-on, multilingual-generation, and SOUL-conditioned-formation gates recorded above; PM-D2 remains separately governed. Durable-memory E2 value smoke is complete as local human-reviewed v0.1 readiness evidence. RelayATN remains ATN-0 planning-only debt after voice-out / SOUL Lab Runtime MVP and does not authorize implementation.
