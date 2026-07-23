@@ -28,18 +28,27 @@ jobs:
           sed -i "/('canonical Phase I-3 correction evidence',/d" .github/cutover-1c57-apply.py
           python .github/cutover-1c57-apply.py
 
-      - name: Validate final cutover tree
+      - name: Compile Python
+        run: python -m compileall -q relaylm scripts
+      - name: Validate M3a cutover guard
+        run: PYTHONPATH=. python scripts/relaylm_relaymem_m3a_handoff_cutover_guard.py
+      - name: Self-test M3a cutover guard
+        run: PYTHONPATH=. python scripts/relaylm_relaymem_m3a_handoff_cutover_guard.py --self-test
+      - name: Run M3a formation smoke
+        run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_formation_dry_run_smoke.py
+      - name: Run Primary pipeline smoke
+        run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_smoke.py
+      - name: Check documentation links
+        run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+      - name: Audit documentation semantics
+        run: PYTHONPATH=. python scripts/relaylm_docs_semantic_audit.py
+      - name: Self-test documentation semantics
+        run: PYTHONPATH=. python scripts/relaylm_docs_semantic_audit.py --self-test
+      - name: Check documentation current boundary
+        run: PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
+      - name: Check final diff
         shell: bash
         run: |
-          python -m compileall -q relaylm scripts
-          PYTHONPATH=. python scripts/relaylm_relaymem_m3a_handoff_cutover_guard.py
-          PYTHONPATH=. python scripts/relaylm_relaymem_m3a_handoff_cutover_guard.py --self-test
-          PYTHONPATH=. python scripts/relaylm_relaymem_primary_formation_dry_run_smoke.py
-          PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_smoke.py
-          PYTHONPATH=. python scripts/relaylm_docs_link_check.py
-          PYTHONPATH=. python scripts/relaylm_docs_semantic_audit.py
-          PYTHONPATH=. python scripts/relaylm_docs_semantic_audit.py --self-test
-          PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
           git diff --check
           expected=$'.github/workflows/documentation-current-boundary-smoke.yml\ndocs/architecture/phase6c1_relaymem_primary_pipeline_compose.md\ndocs/architecture/relaymem_m3a_primary_formation_handoff.md\ndocs/evidence/implementation/README.md\ndocs/evidence/implementation/relaymem-m3a-primary-formation-handoff.md\ndocs/evidence/migrations/cutover-1c57-relaymem-m3a.md\ndocs/evidence/migrations/documentation-hard-cutover-receipt.md\ndocs/planning/documentation-cutover-rules.yaml\nscripts/relaylm_relaymem_m3a_handoff_cutover_guard.py'
           test "$(git diff --name-only HEAD | sort)" = "$expected"
