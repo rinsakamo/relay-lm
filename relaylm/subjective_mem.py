@@ -388,7 +388,6 @@ class SubjectiveMemCurrentState:
       "current_receipt_id": self.current_receipt_id,
   }
         return body
-
 @dataclass(frozen=True)
 class SubjectiveMemPreparedManifest:
     prepared_manifest_id: str
