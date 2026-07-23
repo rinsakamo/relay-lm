@@ -1684,18 +1684,22 @@ def _validate_predecessor_authority_locked(
         return ("subjective_mem_lifecycle_predecessor_authority_missing",)
     if predecessor.memory_revision == 1:
         decision = tx.read_record(
-  record_kind="subjective_mem_decision",
-  record_id=predecessor.authorization_id,
+            record_kind="subjective_mem_decision",
+            record_id=predecessor.authorization_id,
         )
-        result_ref = decision.get("result_memory_ref_or_null") if isinstance(decision, dict) else None
+        result_ref = (
+            decision.get("result_memory_ref_or_null")
+            if isinstance(decision, dict)
+            else None
+        )
         if (
-  predecessor.authorization_kind != "formation_decision"
-  or receipt.get("decision_id") != predecessor.authorization_id
-  or not isinstance(result_ref, dict)
-  or result_ref.get("memory_id") != predecessor.memory_id
-  or result_ref.get("memory_revision") != 1
+            predecessor.authorization_kind != "formation_decision"
+            or receipt.get("decision_id") != predecessor.authorization_id
+            or not isinstance(result_ref, dict)
+            or result_ref.get("memory_id") != predecessor.memory_id
+            or result_ref.get("memory_revision") != 1
         ):
-  return ("subjective_mem_lifecycle_predecessor_authority_not_exact",)
+            return ("subjective_mem_lifecycle_predecessor_authority_not_exact",)
         return ()
     transition_id = receipt.get("transition_id")
     transition = tx.read_record(

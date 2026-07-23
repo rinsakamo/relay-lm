@@ -306,45 +306,53 @@ class SubjectiveMemCurrentState:
 
     def __post_init__(self) -> None:
         lifecycle_states = {
-  "active", "pinned", "held", "hidden", "superseded", "purged"
+            "active",
+            "pinned",
+            "held",
+            "hidden",
+            "superseded",
+            "purged",
         }
         mutation_states = {"none", "prepared", "recovery_required", "corrupt"}
         expected_eligible = (
-  self.mutation_state == "none"
-  and self.lifecycle_state in {"active", "pinned"}
+            self.mutation_state == "none"
+            and self.lifecycle_state in {"active", "pinned"}
         )
         authority_values = (
-  self.workspace_authority_digest,
-  self.scope_binding_digest,
-  self.page_id,
-  self.block_id,
-  self.canonical_page_digest,
-  self.authorization_kind,
-  self.authorization_id,
-  self.current_receipt_id,
+            self.workspace_authority_digest,
+            self.scope_binding_digest,
+            self.page_id,
+            self.block_id,
+            self.canonical_page_digest,
+            self.authorization_kind,
+            self.authorization_id,
+            self.current_receipt_id,
         )
         unbound = all(value is None for value in authority_values)
-        bound = all(isinstance(value, str) and bool(value) for value in authority_values)
+        bound = all(
+            isinstance(value, str) and bool(value)
+            for value in authority_values
+        )
         if bound:
-  assert self.workspace_authority_digest is not None
-  assert self.scope_binding_digest is not None
-  assert self.canonical_page_digest is not None
-  if (
-      len(self.workspace_authority_digest) != 64
-      or len(self.scope_binding_digest) != 64
-      or not self.canonical_page_digest.startswith("sha256:")
-      or len(self.canonical_page_digest) != 71
-  ):
-      raise ValueError("subjective_mem_current_state_authority_invalid")
+            assert self.workspace_authority_digest is not None
+            assert self.scope_binding_digest is not None
+            assert self.canonical_page_digest is not None
+            if (
+                len(self.workspace_authority_digest) != 64
+                or len(self.scope_binding_digest) != 64
+                or not self.canonical_page_digest.startswith("sha256:")
+                or len(self.canonical_page_digest) != 71
+            ):
+                raise ValueError("subjective_mem_current_state_authority_invalid")
         if (
-  self.lifecycle_state not in lifecycle_states
-  or self.mutation_state not in mutation_states
-  or type(self.current_revision) is not int
-  or self.current_revision < 1
-  or self.retrieval_eligible is not expected_eligible
-  or not (unbound or bound)
+            self.lifecycle_state not in lifecycle_states
+            or self.mutation_state not in mutation_states
+            or type(self.current_revision) is not int
+            or self.current_revision < 1
+            or self.retrieval_eligible is not expected_eligible
+            or not (unbound or bound)
         ):
-  raise ValueError("subjective_mem_current_state_pair_invalid")
+            raise ValueError("subjective_mem_current_state_pair_invalid")
 
     @property
     def authority_bound(self) -> bool:

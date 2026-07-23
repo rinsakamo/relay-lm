@@ -708,7 +708,7 @@ def test_correct_same_key_changed_operation_time_conflicts(lifecycle_env) -> Non
 def test_correct_tampered_durable_intent_fails_closed(lifecycle_env) -> None:
     def crash(stage: str) -> None:
         if stage == "after_intent_before_page":
-  raise RuntimeError("simulated")
+            raise RuntimeError("simulated")
 
     assert _correct(lifecycle_env, fault=crash).status == "recovery_pending"
     intent_paths = [
@@ -733,7 +733,7 @@ def test_correct_pre_image_authority_is_revalidated_under_lock(
 ) -> None:
     def crash(stage: str) -> None:
         if stage == "after_intent_before_page":
-  raise RuntimeError("simulated")
+            raise RuntimeError("simulated")
 
     before = lifecycle_env["page_path"].read_bytes()
     assert _correct(lifecycle_env, fault=crash).status == "recovery_pending"
