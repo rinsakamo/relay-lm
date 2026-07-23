@@ -21,6 +21,8 @@ from relaylm_mvp_eval_runner import (
     run_categories,
     write_summary_json,
 )
+from relaylm_mvp_eval_runner_impl import _preflight
+from relaylm_mvp_eval_runner_registry import REQUIRED_DOC_ANCHORS
 
 
 def require(condition: bool, message: object) -> None:
@@ -30,6 +32,40 @@ def require(condition: bool, message: object) -> None:
 
 def _python_command(code: str) -> tuple[str, ...]:
     return (sys.executable, "-c", code)
+
+
+def _write_preflight_docs(root: Path) -> None:
+    for relative, anchors in REQUIRED_DOC_ANCHORS.items():
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("\n".join(anchors) + "\n", encoding="utf-8")
+
+
+def _validate_stable_preflight_boundary(root: Path) -> None:
+    (root / "relaylm").mkdir(parents=True)
+    (root / "scripts").mkdir(parents=True)
+    _write_preflight_docs(root)
+
+    # Mutable current/roadmap prose is deliberately irrelevant to the static preflight.
+    (root / "docs" / "PROJECT_STATUS.md").write_text("current status may stay concise\n", encoding="utf-8")
+    execution_plan = root / "docs" / "architecture" / "project_execution_plan.md"
+    execution_plan.parent.mkdir(parents=True, exist_ok=True)
+    execution_plan.write_text("roadmap prose may change independently\n", encoding="utf-8")
+
+    command = CommandSpec("internal:static-preflight", internal_action="static_preflight")
+    passed = _preflight(root, command)
+    require(passed["status"] == STATUS_PASS, passed)
+
+    reference_path = root / "docs" / "reference" / "project-status-reference-map.md"
+    reference_path.write_text("relaylm_authority: project_status_reference_map\n", encoding="utf-8")
+    mismatch = _preflight(root, command)
+    require(mismatch["status"] == STATUS_FAIL, mismatch)
+    require(mismatch["failure_reason_id"] == "doc_anchor_mismatch", mismatch)
+
+    reference_path.unlink()
+    missing = _preflight(root, command)
+    require(missing["status"] == STATUS_FAIL, missing)
+    require(missing["failure_reason_id"] == "missing_doc", missing)
 
 
 def main() -> int:
@@ -139,6 +175,9 @@ def main() -> int:
         )
         require(list_result.returncode == 0, list_result.stderr or list_result.stdout)
         require("internal:static-preflight" in list_result.stdout, list_result.stdout)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _validate_stable_preflight_boundary(Path(tmpdir))
 
     print("RelayLM MVP eval runner smoke passed")
     return 0
