@@ -3,6 +3,8 @@ from __future__ import annotations
 from copy import deepcopy
 from pathlib import Path
 
+import pytest
+
 from scripts import relaylm_repository_asset_classification_registry as registry
 
 
@@ -47,6 +49,26 @@ def test_current_registry_matches_reviewed_document_and_validates() -> None:
 
     assert registry.mirrored_payload(payload) == registry.mirrored_payload(document)
     assert registry.validate_registry(payload, root=root) == []
+
+
+def test_loader_rejects_duplicate_yaml_mapping_keys() -> None:
+    with pytest.raises(ValueError, match="duplicate YAML mapping key: 'registry_version'"):
+        registry.load_yaml_text(
+            "registry_version: 1\n"
+            "registry_version: 2\n"
+        )
+
+
+def test_source_commit_is_part_of_the_mirrored_authority() -> None:
+    left = {
+        "classification_version": 1,
+        "source_commit": "a" * 40,
+        "records": [],
+    }
+    right = deepcopy(left)
+    right["source_commit"] = "b" * 40
+
+    assert registry.mirrored_payload(left) != registry.mirrored_payload(right)
 
 
 def test_validator_rejects_duplicate_asset_ids_and_canonical_groups(tmp_path: Path) -> None:
@@ -104,3 +126,22 @@ def test_validator_rejects_retired_assets_with_live_responsibilities(tmp_path: P
     assert "example.asset.protected_boundary must be null or 'none' for retired assets" in errors
     assert "example.asset.invocation_roots must be empty for retired assets" in errors
     assert "canonical entrypoint asset must be active: example.asset" in errors
+
+
+def test_valid_retired_asset_needs_no_invocation_root_reason(tmp_path: Path) -> None:
+    (tmp_path / "existing.py").write_text("pass\n", encoding="utf-8")
+    active = _base_record()
+    retired = {
+        **_base_record(),
+        "asset_id": "example.retired",
+        "lifecycle": "retired",
+        "protected_boundary": None,
+        "current_callers": [],
+        "invocation_roots": [],
+    }
+    payload = _payload(active)
+    payload["records"].append(retired)
+
+    errors = registry.validate_registry(payload, root=tmp_path)
+
+    assert errors == []
