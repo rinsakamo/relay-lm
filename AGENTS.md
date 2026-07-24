@@ -70,15 +70,25 @@ When the receipt is missing or stale, or the governance epoch changed after the 
 - do not add a corrective patch;
 - do not create a temporary validation PR or transfer branch;
 - remove or disable branch-pushing automation;
-- refresh and incorporate current `main`;
 - refresh current authority, callers, workflows, registries, and failure evidence;
+- perform the controlled exact-main integration described below;
 - reclassify P0 and P1 and pass P2 again;
 - record a new execution receipt before substantive work resumes.
 
-Controlled exceptions while stopped:
+Controlled exceptions while stopped, in this order:
 
-- one branch change may only disable branch-writing automation or remove a temporary execution artifact;
-- after read-only P0/P1/P2 re-bootstrap, one PR-body edit may add or replace only the execution receipt.
+1. one containment branch change may only disable branch-writing automation or remove temporary execution machinery;
+2. after containment and a read-only comparison with current `main`, one exact-main integration or reconstruction may update the branch;
+3. after the resulting head receives read-only P0/P1/P2 review, one PR-body edit may add or replace only the execution receipt.
+
+The exact-main integration or reconstruction:
+
+- captures and checks the expected branch head immediately before writing;
+- uses the exact current `origin/main` commit as its integration parent or reconstruction base;
+- preserves the already reviewed domain intent and introduces no new feature, workaround, fallback, or scope expansion;
+- records and reviews any mechanical conflict resolution in the complete diff;
+- stops without writing when a conflict requires a policy, authority, lifecycle, migration, or semantic decision;
+- is not retried, rebased, or force-pushed automatically after a head mismatch.
 
 The receipt edit must contain no branch write, review disposition, merge action, title/base change, or unrelated body edit. Run the guard immediately afterward.
 

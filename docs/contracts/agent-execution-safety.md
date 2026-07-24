@@ -99,7 +99,9 @@ A missing or stale receipt, current-main mismatch, changed epoch, writer collisi
 ```text
 active
   -> write_stop
-  -> exact current-main incorporation
+  -> containment
+  -> read-only current-main comparison
+  -> one controlled exact-main integration or reconstruction
   -> P0/P1 reclassification
   -> P2 stability review
   -> new receipt
@@ -107,9 +109,22 @@ active
   -> active
 ```
 
-No branch write is allowed between `write_stop` and the new receipt except one controlled containment change that disables branch-writing automation or removes temporary execution machinery.
+While stopped, only these writes are allowed, in order:
 
-After read-only P0/P1/P2 re-bootstrap, exactly one controlled PR-body edit may add or replace only the receipt. It contains no branch write, review disposition, merge action, title/base change, or unrelated body edit.
+1. one containment change that disables branch-writing automation or removes temporary execution machinery;
+2. one exact-main integration or reconstruction after containment and read-only comparison;
+3. one PR-body edit that adds or replaces only the receipt after read-only P0/P1/P2 review of the resulting head.
+
+The exact-main integration or reconstruction must:
+
+- capture the expected branch head immediately before writing and fail on mismatch;
+- use exact current `origin/main` as its integration parent or reconstruction base;
+- preserve already reviewed domain intent without adding a feature, workaround, fallback, compatibility path, or scope expansion;
+- keep all mechanical conflict resolution visible for complete-diff review;
+- stop without writing when any conflict requires a policy, authority, lifecycle, migration, rollback, state, or semantic decision;
+- avoid automatic retry, rebase, force-push, or conflict resolution after a mismatch.
+
+The receipt edit contains no branch write, review disposition, merge action, title/base change, or unrelated body edit. Containment and main integration are re-bootstrap operations, not implementation progress and not correction-attempt counter resets.
 
 ## Single-writer invariant
 
@@ -210,7 +225,7 @@ The same stop is required immediately for architectural assumption error, duplic
 While stopped:
 
 - static execution safety fails;
-- no branch writes or auto-correct;
+- no ordinary branch writes or auto-correct;
 - no temporary workflow or transfer PR;
 - merge is prohibited;
 - a later green run does not clear the stop;
@@ -254,7 +269,7 @@ A reset clears monitor state and execution labels but leaves the PR Draft. Retur
 
 ## Existing PR migration
 
-Every pre-contract open PR remains Draft and merge-prohibited until branch-writing automation and temporary artifacts are absent, exact current main is incorporated, P0/P1/P2 are refreshed, the receipt is valid, and no stop label or unresolved failure state remains.
+Every pre-contract open PR remains Draft and merge-prohibited until branch-writing automation and temporary artifacts are absent, one controlled exact-main integration or reconstruction is complete, P0/P1/P2 are refreshed against the resulting head, the receipt is valid, and no stop label or unresolved failure state remains.
 
 Correct domain code and evidence need not be discarded merely because process state is stale.
 
