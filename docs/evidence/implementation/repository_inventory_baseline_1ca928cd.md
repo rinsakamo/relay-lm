@@ -16,7 +16,8 @@ relaylm_not_authoritative_for:
   - implementation-debt closure or roadmap sequencing
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../../proposals/repository-simplification.md
+  - ../../architecture/repository-maintenance-system.md
+  - ../../planning/repository-structure-migration.md
   - ../../architecture/project_execution_plan.md
 ---
 # Repository Inventory Baseline Receipt — `1ca928cd`
@@ -85,7 +86,7 @@ The tool self-test runs two consecutive scans and requires byte-identical JSON o
 | `subprocess_child` | 54 |
 | **Total** | **731** |
 
-These root kinds are mechanical invocation categories. They are not the final repository-responsibility classes defined by the simplification proposal. Responsibility classification remains later reviewed work.
+These root kinds are mechanical invocation categories. They are not the final repository-responsibility classes defined by current repository-maintenance authority. Responsibility classification remains later reviewed work.
 
 ### Config/dependency kinds
 
@@ -161,9 +162,9 @@ The row-level JSON and Markdown reports remain generated artifacts rather than c
 
 ## Disposition and next boundary
 
-This receipt authorizes no cleanup execution. It is non-authoritative evidence that may inform later review of the proposal and any separately approved work.
+This receipt authorizes no cleanup execution. It is non-authoritative evidence that may inform later repository-maintenance review and any separately approved work.
 
-If separately authorized, later repository-simplification work could:
+If separately authorized, later repository-maintenance work could:
 
 1. classify scripts and workflow entry points by reviewed responsibility;
 2. audit modules across default, opt-in, operator, offline, dynamic, subprocess, test, evidence, and roadmap roots;
