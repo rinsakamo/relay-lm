@@ -73,7 +73,8 @@ STOP WRITES
   -> remove temporary execution machinery only
   -> do not add a corrective patch
   -> do not create a validation PR or transfer branch
-  -> incorporate exact current main
+  -> compare the stopped head with exact current main
+  -> perform one controlled exact-main integration or reconstruction
   -> refresh current authority and evidence
   -> reclassify P0 and P1
   -> pass P2 again
@@ -84,10 +85,20 @@ STOP WRITES
 
 Correct domain evidence may be preserved. Old process state is not grandfathered.
 
-Controlled exceptions while stopped:
+Controlled exceptions while stopped, in order:
 
-- one branch change may only disable branch-writing automation or remove temporary execution machinery;
-- after read-only P0/P1/P2 re-bootstrap, one PR-body edit may add or replace only the receipt.
+1. one containment branch change may only disable branch-writing automation or remove temporary execution machinery;
+2. one exact-main integration or reconstruction may update the branch after containment and read-only comparison;
+3. after read-only P0/P1/P2 review of the resulting head, one PR-body edit may add or replace only the receipt.
+
+The exact-main integration or reconstruction:
+
+- captures and verifies the expected head immediately before the write;
+- uses exact current `origin/main` as its integration parent or reconstruction base;
+- preserves already reviewed domain intent and adds no feature, workaround, fallback, or scope expansion;
+- records mechanical conflict resolution for complete-diff review;
+- stops without writing when a conflict requires a policy, authority, lifecycle, migration, or semantic decision;
+- is not automatically retried, rebased, or force-pushed after a head mismatch.
 
 The receipt edit contains no branch write, review disposition, merge, title/base change, or unrelated body change.
 
