@@ -34,7 +34,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [RelayREL relationship design](architecture/relayrel_relationship_design.md) — target-specific relationship state, relationship-conditioned interaction policy, and `RELATIONSHIP.md` / `relationships/<target>.md` ownership.
 - [Character template creation flow](architecture/character_template_creation_flow.md) — no-character startup, Quick/Advanced Create, template import, and showcase policy.
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, AI reading rules, and the parallel implementation/convergence flow.
-- [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
+- [Pipeline Responsibilities](architecture/pipeline-responsibilities.md) — component responsibility and canonical target order.
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) — compatibility interpretation.
 - [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md) — current E1 evidence inventory and completed E1-R1 through E1-R5 quality work.
 - [Implementation evidence](evidence/implementation/README.md) — closed transitional implementation records and focused historical MVP evidence; new PR evidence normally remains in Git, CI, and the pull request.
@@ -188,7 +188,7 @@ These documents are target architecture unless explicitly listed as a current co
 
 1. `docs/PROJECT_STATUS.md` owns current implementation status and active caveats.
 2. `architecture/project_execution_plan.md` owns MVP boundary, dependency sequencing, and roadmap ordering.
-3. `pipeline_responsibility_design.md` owns component responsibility and canonical target order.
+3. `architecture/pipeline-responsibilities.md` owns component responsibility and canonical target order.
 4. Dedicated current contracts own exact bounded behavior.
 5. `current_target_migration_guide.md` owns current/target/compatibility interpretation.
 6. `docs/evidence/` and `docs/architecture/` evaluation records are historical or bounded evidence unless listed as current authorities above.
