@@ -70,21 +70,9 @@ Existing documents may continue to link this path only until D2-B2b migrates the
 
 The old path is not a fallback semantic authority. If canonical documents disagree with this transitional summary, the canonical documents and exact contracts govern.
 
-## 9. RelayCTX Repack
+## RelayCTX Repack current-order ownership
 
-This heading is a bounded compatibility anchor for existing current consumers. Canonical RelayCTX component ownership is defined by [Pipeline Responsibilities](pipeline-responsibilities.md#responsibility-matrix), while exact current short-term runtime fields and gates remain in the [RelayCTX short-term runtime contract](../contracts/relayctx_short_term_runtime_contract.md).
-
-The current runtime phase order inside RelayCTX Repack is:
-
-```text
-relaymem runtime CTX/snippet injection
-  -> RelayCTX short-term runtime injection
-  -> token_budget_truncation
-```
-
-`token_budget_truncation` runs last among these mutations, so it is the final gate on the forwarded payload's estimated token total; every prior injection phase's output is subject to it before the backend forward. Injection phases must not run after truncation, since nothing downstream re-enforces the budget.
-
-This exact current ordering remains temporarily owned by this compatibility section because two current consumers bind to the existing anchor. D2-B2b moves those consumers and the ordering statement to the smallest canonical current authority before deleting this path.
+The exact current RelayCTX Repack mutation order and final token-budget gate now belong only to the [RelayCTX Short-Term Runtime Contract](../contracts/relayctx_short_term_runtime_contract.md#current-runtime-position-and-stage-ordering). This transitional path no longer provides an ordering anchor or restates that rule.
 
 ## Stable current safeguards
 
@@ -101,4 +89,4 @@ Exact canonical component ownership and target order are defined only by the can
 
 ## Removal gate
 
-Delete this path after every current consumer links directly to `system-overview.md`, `pipeline-responsibilities.md`, `runtime/request-response-pipeline.md`, `runtime/compile-and-checkpoint.md`, or the owning domain authority; the current RelayCTX phase-order consumers and rule move to their canonical current owner; generic authority and link validation are green; and the retirement manifest records this path. Historical wording remains recoverable through Git.
+Delete this path after every current consumer links directly to `system-overview.md`, `pipeline-responsibilities.md`, `runtime/request-response-pipeline.md`, `runtime/compile-and-checkpoint.md`, or the owning domain authority; generic authority and link validation are green; and the retirement manifest records this path. Historical wording remains recoverable through Git.
