@@ -26,7 +26,9 @@ Before treating a proposed schema as the current wire contract, use the [Current
 
 - [Runtime compile current / target boundary](runtime_compile_current_target.md)
 - [Runtime compile artifact contract](runtime_compile_artifact_contract.md)
-  - related design: [Runtime Compile Gate Design](../architecture/runtime_compile_gate_design.md)
+  - related architecture: [Runtime Compile and Checkpoint Architecture](../architecture/runtime/compile-and-checkpoint.md)
+- [RelayRUN checkpoint and recovery contract](relayrun-checkpoint-and-recovery.md)
+  - related architecture: [Runtime Compile and Checkpoint Architecture](../architecture/runtime/compile-and-checkpoint.md)
 - [Context compiler contract](context_compiler_contract.md)
 - [RelayCTX short-term runtime contract](relayctx_short_term_runtime_contract.md)
   - current four-stage default-off diagnostics/injection chain: extraction dry-run -> block assembly dry-run -> injection preflight -> gated apply
@@ -44,7 +46,7 @@ Before treating a proposed schema as the current wire contract, use the [Current
   - related authority: [Client Instruction Authority Contract](../architecture/client_instruction_authority_contract.md)
 - [RelayRUN recovery response generator current / target boundary](relayrun_recovery_response_generator_current_target.md)
 - [RelayRUN recovery response generator contract](relayrun_recovery_response_generator_contract.md)
-  - related design: [RelayRUN Runtime Checkpoint Design](../architecture/relayrun_runtime_checkpoint_design.md)
+  - related architecture: [Runtime Compile and Checkpoint Architecture](../architecture/runtime/compile-and-checkpoint.md)
 - [LAT-1 RelayRUN `timing_summary` artifact schema](../architecture/lat1_latency_measurement.md)
   - `relayrun.timing_summary.v0`: numeric-only per-request RelayRUN node timing rollup, measurement only
 
