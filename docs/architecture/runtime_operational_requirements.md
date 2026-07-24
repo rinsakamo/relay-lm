@@ -4,7 +4,7 @@
 
 This document defines cross-cutting runtime requirements that are not owned by a single semantic pipeline component: reliability, fallback, observability, privacy, compatibility, latency, and product-level acceptance.
 
-Use [Pipeline Responsibility Design](pipeline_responsibility_design.md) for ownership, [Runtime Architecture](runtime_architecture.md) for runtime layering and modes, [Pipeline Implementation Plan](pipeline_implementation_plan.md) for current status, [AI Character Product Principles](ai_character_product_principles.md) for product goals, and [Current / Target / Migration Guide](current_target_migration_guide.md) for interpretation.
+Use [RelayLM System Overview](system-overview.md) for system layering, [Pipeline Responsibilities](pipeline-responsibilities.md) for component ownership, [Request / Response Pipeline](runtime/request-response-pipeline.md) for mode-specific dataflow, [Project Status](../PROJECT_STATUS.md) for current implementation, [Pipeline Implementation Plan](pipeline_implementation_plan.md) for sequencing, [AI Character Product Principles](ai_character_product_principles.md) for product goals, and [Current / Target / Migration Guide](current_target_migration_guide.md) for interpretation.
 
 ## Current implemented boundary
 
