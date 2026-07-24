@@ -33,7 +33,7 @@ def test_filename_signal_is_shape_only(name: str, expected: str) -> None:
     assert inventory.filename_signal(name) == expected
 
 
-def test_generate_keeps_mechanical_signals_separate_from_reviewed_responsibility(
+def test_generate_keeps_mechanical_signals_separate_from_reviewed_classification(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     scripts = tmp_path / "scripts"
@@ -79,12 +79,18 @@ records:
   - asset_id: demo.fixture
     paths: [scripts/phase5c4a_cache_fixture.py]
     responsibility: ordinary_test
+    lifecycle: active
+    owner: regression_validation
   - asset_id: demo.smoke
     paths: [scripts/relaylm_demo_smoke.py]
     responsibility: process_smoke
+    lifecycle: transitional
+    owner: process_validation
   - asset_id: ignored.non_script
     paths: [docs/runbook.md]
     responsibility: repository_validation
+    lifecycle: active
+    owner: repository_maintenance
 """,
         encoding="utf-8",
     )
@@ -102,53 +108,84 @@ records:
 
     assert (
         "| script | CI-referenced | docs-referenced | filename signal | "
-        "reviewed responsibility |"
+        "reviewed responsibility | reviewed lifecycle | reviewed owner |"
     ) in rendered
     assert (
-        "| `phase5c4a_cache_fixture.py` | yes | no | helper-shaped | ordinary_test |"
+        "| `phase5c4a_cache_fixture.py` | yes | no | helper-shaped | "
+        "ordinary_test | active | regression_validation |"
         in rendered
     )
     assert (
-        "| `phase5c4a_smoke_support.py` | yes | no | helper-shaped | unclassified |"
+        "| `phase5c4a_smoke_support.py` | yes | no | helper-shaped | "
+        "unclassified | unclassified | unclassified |"
         in rendered
     )
     assert (
-        "| `relaylm_demo_smoke.py` | yes | yes | smoke-named | process_smoke |"
+        "| `relaylm_demo_smoke.py` | yes | yes | smoke-named | "
+        "process_smoke | transitional | process_validation |"
         in rendered
     )
     assert (
-        "| `relaylm_demo_tool.py` | no | no | other | unclassified |"
+        "| `relaylm_demo_tool.py` | no | no | other | "
+        "unclassified | unclassified | unclassified |"
         in rendered
     )
     assert "active smoke" not in rendered
     assert "phase-completion evidence" not in rendered
     assert "does not classify responsibility, lifecycle, or retention" in rendered
-    assert "copied only from exact script paths" in rendered
-    assert "2 with a reviewed responsibility" in rendered
+    assert "copied together only from exact script paths" in rendered
+    assert "2 with a reviewed classification" in rendered
     assert "--output generated/scripts_inventory.md" in rendered
     assert "--output docs/smoke/scripts_inventory.md" not in rendered
 
 
-def test_conflicting_reviewed_responsibilities_fail_closed(tmp_path: Path) -> None:
+def test_conflicting_reviewed_classifications_fail_closed(tmp_path: Path) -> None:
     registry_path = tmp_path / "asset_classification_v1.yaml"
     registry_path.write_text(
         """\
 records:
   - asset_id: first
     paths: [scripts/relaylm_demo.py]
-    responsibility: ordinary_test
+    responsibility: process_smoke
+    lifecycle: active
+    owner: first_owner
   - asset_id: second
     paths: [scripts/relaylm_demo.py]
     responsibility: process_smoke
+    lifecycle: transitional
+    owner: second_owner
 """,
         encoding="utf-8",
     )
 
     with pytest.raises(
         ValueError,
-        match=(
-            "conflicting reviewed responsibilities for "
-            "scripts/relaylm_demo.py: ordinary_test vs process_smoke"
-        ),
+        match="conflicting reviewed classifications for scripts/relaylm_demo.py",
     ):
-        inventory.load_reviewed_responsibilities(registry_path)
+        inventory.load_reviewed_classifications(registry_path)
+
+
+@pytest.mark.parametrize("missing_field", ("responsibility", "lifecycle", "owner"))
+def test_incomplete_reviewed_classification_fails_closed(
+    tmp_path: Path, missing_field: str
+) -> None:
+    values = {
+        "responsibility": "process_smoke",
+        "lifecycle": "active",
+        "owner": "process_validation",
+    }
+    values.pop(missing_field)
+    registry_path = tmp_path / "asset_classification_v1.yaml"
+    lines = [
+        "records:",
+        "  - asset_id: incomplete",
+        "    paths: [scripts/relaylm_demo.py]",
+    ]
+    lines.extend(f"    {key}: {value}" for key, value in values.items())
+    registry_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match=f"classification record 0 requires a non-empty {missing_field}",
+    ):
+        inventory.load_reviewed_classifications(registry_path)
