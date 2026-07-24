@@ -7,7 +7,7 @@ It mixed durable requirements with a superseded MVP-0 through MVP-5 roadmap and 
 Use these current documents instead:
 
 - [Pipeline implementation plan](pipeline_implementation_plan.md) for current implementation status and sequencing
-- [Runtime architecture](runtime_architecture.md) for runtime layers, routing, modes, and component boundaries
+- [RelayLM System Overview](system-overview.md), [Pipeline Responsibilities](pipeline-responsibilities.md), and [Request / Response Pipeline](runtime/request-response-pipeline.md) for runtime layers, component boundaries, and modes
 - [Runtime operational requirements](runtime_operational_requirements.md) for reliability, fallback, observability, privacy, compatibility, and acceptance
 - [AI character product principles](ai_character_product_principles.md) for product value and experience priorities
 - [Context packing design](context_packing_design.md) for authority order and prompt layout
