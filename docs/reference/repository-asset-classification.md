@@ -30,15 +30,15 @@ Last reviewed: 2026-07-24 JST
 
 ## Purpose and authority boundary
 
-This page defines the canonical Lane R responsibility and lifecycle classification format and records the bounded R1 surface plus accepted R2 and R3 decisions.
+This page defines the canonical Lane R responsibility and lifecycle classification format and records the bounded R1 surface plus accepted R2, R3, and R4 decisions.
 
 ```text
 repository: rinsakamo/relay-lm
-source main: b733903f09a8fda5cb6b440b21a2702225d3c443
-source main meaning: main after PR #674; R2-B reviewed base
+source main: 8ff4f3a749eabcbb895bae79c577d111a7312850
+source main meaning: main after PR #692; R4-A3 reviewed base
 lane: R
-stage: R2 test / smoke / validation consolidation
-scope: reviewed classification, one canonical repository-inventory entry point, one consolidated inventory pytest owner, and its machine-readable mirror
+stage: R4 low-risk independent package moves
+scope: reviewed classification, canonical repository-inventory ownership, generated classification evidence, and the bounded runtime-install CLI package move
 ```
 
 Classification is evidence for later review. It does not authorize deletion, movement, rename, consolidation, behavior change, compatibility removal, storage migration, or status changes. Every destructive or authority-affecting action requires its own atomic PR and fresh caller evidence.
@@ -130,7 +130,7 @@ The following YAML records are the canonical human-reviewed representation for t
 
 ```yaml
 classification_version: 1
-source_commit: b733903f09a8fda5cb6b440b21a2702225d3c443
+source_commit: 8ff4f3a749eabcbb895bae79c577d111a7312850
 records:
   - asset_id: console.relaylm
     paths: [pyproject.toml]
@@ -204,17 +204,25 @@ records:
 
   - asset_id: console.runtime_install
     paths: [pyproject.toml]
-    entrypoint: "relaylm-runtime-install = relaylm.runtime_install_cli:main"
+    entrypoint: "relaylm-runtime-install = relaylm.cli.runtime_install:main"
     responsibility: operator_cli
     lifecycle: active
     owner: runtime_install
     protected_boundary: explicit dry-run-first runtime install and preflight operation
-    current_callers: [installed relaylm-runtime-install command, local operator invocation]
+    current_callers:
+      - installed relaylm-runtime-install command
+      - local operator invocation
+      - scripts/relaylm_pm_d7_runtime_install_hook_fold_in_smoke.py direct main import
     invocation_roots: [console_script]
-    evidence: ["pyproject.toml [project.scripts]", relaylm/runtime_install_cli.py]
+    evidence:
+      - "pyproject.toml [project.scripts]"
+      - relaylm/cli/runtime_install.py
+      - scripts/relaylm_pm_d7_runtime_install_hook_fold_in_smoke.py
+      - tests/test_relaylm_repo_inventory.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
+    notes: R4-A3 moved the implementation without retaining the unsupported old module path or adding a compatibility alias
 
   - asset_id: repo_inventory.entrypoint
     paths: [scripts/relaylm_repo_inventory_cli.py]
@@ -416,7 +424,7 @@ No classified responsibility in this bounded surface is retired. R2-B retires tw
 
 The following remain unresolved and must not be guessed:
 
-- current complete inventory row counts at `b733903f...`; the committed baseline is fixed to `1ca928cd...`;
+- current complete inventory row counts at `8ff4f3a7...`; the committed baseline is fixed to `1ca928cd...`;
 - runtime expansion of dynamically assembled imports, registries, plugin-style lookup, and subprocess commands;
 - responsibility and lifecycle outside the bounded registry above;
 - whether each discovered `python -m` root is supported or only an implementation convenience;
@@ -451,12 +459,14 @@ R3-A adds a machine-readable mirror and fail-closed validator. The validator rej
 
 The reviewed document remains upstream authority. Registry and generated outputs remain navigation and review evidence only.
 
-### R4-A: installed CLI package-move discovery
+### R4-A: installed CLI package moves
 
-The six console-script records are eligible for caller discovery only. A pre-RT-1 move requires complete direct, dynamic, subprocess, workflow, test, documentation, and operator evidence and must not touch active LC-1, Subjective MEM publication, ordinary Retrieval, or Primary MEM authority.
+R4-A1 added generic console-target integrity validation. R4-A2 proved that `relaylm-runtime-install` is the sole supported runtime-install invocation, removed the unsupported `python -m relaylm.runtime_install_cli` root, and locked the direct PM-D7 smoke caller. R4-A3 moves that implementation to `relaylm/cli/runtime_install.py`, updates every accepted caller and mirror, and deletes the old module without a compatibility alias.
+
+The other five console-script records remain eligible for caller discovery only. Any later pre-RT-1 move requires complete direct, dynamic, subprocess, workflow, test, documentation, and operator evidence and must not touch active LC-1, Subjective MEM publication, ordinary Retrieval, or Primary MEM authority.
 
 ## Parallel-safety and non-goals
 
-R2-B changes only repository-inventory ordinary tests, their focused workflow invocation, and the Lane R classification authority/mirror. It does not change runtime or storage behavior, process smoke, operator commands, APIs, UI, feature gates, user state, `docs/PROJECT_STATUS.md`, Lane C, Lane D, LC-1, or RT-1 paths.
+R4-A3 changes only the runtime-install CLI package path, its installed target, its direct process-smoke caller, repository-inventory regression evidence, and the Lane R classification authority/mirror. It does not change runtime-install behavior, durable state, APIs, UI, feature gates, user state, `docs/PROJECT_STATUS.md`, Lane C, Lane D, LC-1, or RT-1 paths.
 
 Every later R2, R3, or R4 PR must refresh `main`, open PRs, exact callers, workflows, review threads, and authority overlap before treating a candidate above as executable.
