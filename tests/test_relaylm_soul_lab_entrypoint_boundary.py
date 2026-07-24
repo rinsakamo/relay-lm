@@ -11,7 +11,7 @@ if str(ROOT / "scripts") not in sys.path:
 from relaylm_repo_inventory import invocations  # noqa: E402
 
 
-def test_relaylm_uses_installed_soul_lab_entrypoint_and_keeps_core_fallback() -> None:
+def test_relaylm_uses_packaged_soul_lab_launcher_and_keeps_core_fallback() -> None:
     records = invocations.collect_all()
 
     console_records = [
@@ -22,12 +22,13 @@ def test_relaylm_uses_installed_soul_lab_entrypoint_and_keeps_core_fallback() ->
     assert len(console_records) == 1
     assert (
         console_records[0].command_or_symbol
-        == "relaylm -> relaylm.soul_lab_app:main"
+        == "relaylm -> relaylm.cli.soul_lab:main"
     )
 
     assert not any(
         record.root_kind == "python_dash_m"
-        and record.source_path == "relaylm/soul_lab_app.py"
+        and record.source_path
+        in {"relaylm/soul_lab_app.py", "relaylm/cli/soul_lab.py"}
         for record in records
     )
 
