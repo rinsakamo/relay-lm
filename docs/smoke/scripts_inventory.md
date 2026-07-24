@@ -52,8 +52,8 @@ For pull requests, use the uploaded `scripts-inventory` artifact as review evide
 - CI-reference status;
 - documentation-reference status;
 - a neutral filename signal: `helper-shaped`, `smoke-named`, or `other`;
-- the reviewed responsibility copied from an exact script path in `records/repository/asset_classification_v1.yaml`, or `unclassified` when the script is not listed there.
+- the reviewed responsibility, lifecycle, and owner copied together from an exact script path in `records/repository/asset_classification_v1.yaml`, or `unclassified` for all three fields when the script is not listed there.
 
-Reference status and filename shape are mechanical review inputs only. The reviewed-responsibility column mirrors the current Lane R classification registry; it does not create a responsibility or authorize lifecycle, retention, deletion, consolidation, or rename decisions. Conflicting reviewed responsibility claims fail generation rather than selecting one.
+Reference status and filename shape are mechanical review inputs only. The reviewed-classification columns mirror one complete current Lane R registry claim; they do not create authority or authorize lifecycle, retention, deletion, consolidation, or rename decisions. Conflicting responsibility, lifecycle, or owner claims fail generation rather than selecting one.
 
 After reviewing a new artifact, update this summary only with its source commit/run and aggregate counts. Do not copy the generated row table into this file and do not overwrite this file with the generator.
