@@ -99,6 +99,8 @@ validated request evidence
             -> deferred coverage / enqueue handoff
 ```
 
+RelayREL precedes RelaySCN so route- or session-authenticated relationship policy can constrain scene, expression, disclosure, and memory handling. RelayREL does not override RelaySCN public/private scene constraints, safety gates, or current-scene authority.
+
 The compile gate is a request-local authority-aware decision phase, not a standalone semantic component. RelayRUN surrounds and records the flow but does not reinterpret semantic artifacts. Streaming emission and response-complete finalization are separate branches; mode-specific details remain in the request/response pipeline authority.
 
 ### Deferred after-turn path
