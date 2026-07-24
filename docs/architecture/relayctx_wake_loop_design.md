@@ -8,7 +8,7 @@ The old document assigns reference resolution and response-mode selection to Rel
 
 Use these current documents instead:
 
-- [Pipeline responsibility design](pipeline_responsibility_design.md)
+- [Pipeline Responsibilities](pipeline-responsibilities.md)
 - [Pipeline implementation plan](pipeline_implementation_plan.md)
 - [RelayINT MVP design](relayint_mvp_design.md)
 - [Context packing design](context_packing_design.md)
