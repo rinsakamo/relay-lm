@@ -8,7 +8,7 @@ Documents in this directory are **non-canonical historical references**.
 
 Use these documents as the current sources of truth:
 
-1. [Pipeline responsibility design](../pipeline_responsibility_design.md) for component names, pipeline order, and responsibility boundaries.
+1. [Pipeline Responsibilities](../pipeline-responsibilities.md) for component names, pipeline order, and responsibility boundaries.
 2. [Pipeline implementation plan](../pipeline_implementation_plan.md) for implementation sequencing and current phase status.
 3. Current module and contract documents for schema and behavior details.
 
