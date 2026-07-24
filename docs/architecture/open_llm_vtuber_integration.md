@@ -277,5 +277,5 @@ This integration does not:
 - [Open-LLM-VTuber Current / Target Boundary](open_llm_vtuber_current_target.md)
 - [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md)
 - [AI VTuber Pipeline Profile](ai_vtuber_pipeline_profile.md)
-- [Pipeline Responsibility Design](pipeline_responsibility_design.md)
+- [Pipeline Responsibilities](pipeline-responsibilities.md)
 - [Project Status](../PROJECT_STATUS.md)
