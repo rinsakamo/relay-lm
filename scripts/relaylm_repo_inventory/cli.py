@@ -8,6 +8,7 @@ marks a storage artifact as safe to remove or migrate.
 from __future__ import annotations
 
 import argparse
+import ast
 from pathlib import Path
 import sys
 
@@ -76,6 +77,108 @@ def _write_output(content: str, output: Path | None) -> None:
         return
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(content, encoding="utf-8")
+
+
+def _top_level_bindings(tree: ast.Module) -> set[str]:
+    bindings: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            bindings.add(node.name)
+        elif isinstance(node, ast.Assign):
+            bindings.update(
+                target.id for target in node.targets if isinstance(target, ast.Name)
+            )
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            bindings.add(node.target.id)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                bindings.add(alias.asname or alias.name.split(".", 1)[0])
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                if alias.name != "*":
+                    bindings.add(alias.asname or alias.name)
+    return bindings
+
+
+def validate_installed_console_entrypoints() -> tuple[int, list[str]]:
+    """Validate exact repository module and top-level symbol targets.
+
+    This is a mechanical integrity check for installed console declarations. It
+    does not classify responsibility, infer callers, authorize a package move,
+    or decide whether any compatibility surface can be removed.
+    """
+
+    records = invocations.scan_console_scripts()
+    errors: list[str] = []
+    for record in records:
+        command, separator, target = record.command_or_symbol.partition(" -> ")
+        if not separator or not command or record.root_id != f"console_script:{command}":
+            errors.append(
+                f"{record.root_id}: console declaration is not represented canonically"
+            )
+            continue
+
+        module_name, target_separator, symbol_name = target.partition(":")
+        module_parts = module_name.split(".") if module_name else []
+        if (
+            not target_separator
+            or not module_parts
+            or not all(part.isidentifier() for part in module_parts)
+            or not symbol_name.isidentifier()
+        ):
+            errors.append(
+                f"{record.root_id}: target must be module.path:top_level_symbol"
+            )
+            continue
+
+        module_base = repo.ROOT.joinpath(*module_parts)
+        candidates = [
+            candidate
+            for candidate in (
+                module_base.with_suffix(".py"),
+                module_base / "__init__.py",
+            )
+            if candidate.is_file()
+        ]
+        if len(candidates) != 1:
+            relative_candidates = [
+                repo.relative(candidate)
+                for candidate in (
+                    module_base.with_suffix(".py"),
+                    module_base / "__init__.py",
+                )
+                if candidate.exists()
+            ]
+            errors.append(
+                f"{record.root_id}: module target {module_name!r} must resolve to "
+                f"exactly one repository Python file; found {relative_candidates}"
+            )
+            continue
+
+        module_path = candidates[0]
+        source = repo.read_text(module_path)
+        if source is None:
+            errors.append(
+                f"{record.root_id}: resolved module {repo.relative(module_path)} "
+                "is not readable as UTF-8"
+            )
+            continue
+        try:
+            tree = ast.parse(source)
+        except SyntaxError as exc:
+            errors.append(
+                f"{record.root_id}: resolved module {repo.relative(module_path)} "
+                f"does not parse: line {exc.lineno}"
+            )
+            continue
+
+        if symbol_name not in _top_level_bindings(tree):
+            errors.append(
+                f"{record.root_id}: target symbol {symbol_name!r} is not a top-level "
+                f"binding in {repo.relative(module_path)}"
+            )
+
+    return len(records), sorted(errors)
 
 
 def self_test() -> tuple[bool, list[str]]:
@@ -164,6 +267,19 @@ def self_test() -> tuple[bool, list[str]]:
         )
     else:
         messages.append("PASS: O3 always-on local scheduler CLI is classified as operator_cli, not smoke-only or dead.")
+
+    console_count, console_errors = validate_installed_console_entrypoints()
+    if console_errors:
+        ok = False
+        messages.extend(f"FAIL: {error}" for error in console_errors)
+    elif console_count == 0:
+        ok = False
+        messages.append("FAIL: no installed console entrypoints were discovered.")
+    else:
+        messages.append(
+            f"PASS: all {console_count} installed console entrypoint targets resolve "
+            "to one repository module and top-level symbol."
+        )
 
     kinds_present = {r["root_kind"] for r in invocation_records}
     for expected_kind in (
