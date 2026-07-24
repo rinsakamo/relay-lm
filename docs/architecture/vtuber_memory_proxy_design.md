@@ -6,7 +6,8 @@ Its topology, modes, backend stance, routing, and Open-LLM-VTuber integration de
 
 Use these current documents instead:
 
-- [Runtime architecture](runtime_architecture.md)
+- [RelayLM System Overview](system-overview.md)
+- [Request / Response Pipeline](runtime/request-response-pipeline.md)
 - [Runtime operational requirements](runtime_operational_requirements.md)
 - [Open-LLM-VTuber integration design](open_llm_vtuber_integration.md)
 - [AI VTuber pipeline profile](ai_vtuber_pipeline_profile.md)
