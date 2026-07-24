@@ -7,7 +7,7 @@ import sys
 from dataclasses import dataclass
 from typing import Sequence
 
-from .character_store_bootstrap import (
+from ..character_store_bootstrap import (
     REQUEST_SCHEMA,
     RESULT_SCHEMA,
     CharacterStoreBootstrapRequest,
@@ -15,7 +15,7 @@ from .character_store_bootstrap import (
     execute_character_store_bootstrap,
     exit_code_for_character_store_bootstrap,
 )
-from .config import RelayLMConfig, load_config
+from ..config import RelayLMConfig, load_config
 
 
 class _CLIInputError(Exception):

@@ -22,10 +22,14 @@ def test_character_store_bootstrap_uses_only_canonical_installed_entrypoint() ->
     assert len(console_records) == 1
     assert (
         console_records[0].command_or_symbol
-        == "relaylm-character-store-bootstrap -> relaylm.character_store_bootstrap_cli:main"
+        == "relaylm-character-store-bootstrap -> relaylm.cli.character_store_bootstrap:main"
     )
     assert not any(
         record.root_kind == "python_dash_m"
-        and record.source_path == "relaylm/character_store_bootstrap_cli.py"
+        and record.source_path == "relaylm/cli/character_store_bootstrap.py"
+        for record in records
+    )
+    assert not any(
+        record.source_path == "relaylm/character_store_bootstrap_cli.py"
         for record in records
     )

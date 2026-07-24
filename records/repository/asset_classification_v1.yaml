@@ -1,6 +1,6 @@
 registry_version: 1
 generated_from: docs/reference/repository-asset-classification.md
-source_commit: 96068400d896a76e3079ddb946fb4a5c965353c6
+source_commit: 0e6f578fa1ffb4662f7e3db2f5d3a9484fbd07e8
 classification_version: 1
 canonical_entrypoints:
   - group: soul_lab_runtime
@@ -69,17 +69,25 @@ records:
 
   - asset_id: console.character_store_bootstrap
     paths: [pyproject.toml]
-    entrypoint: "relaylm-character-store-bootstrap = relaylm.character_store_bootstrap_cli:main"
+    entrypoint: "relaylm-character-store-bootstrap = relaylm.cli.character_store_bootstrap:main"
     responsibility: operator_cli
     lifecycle: active
     owner: character_workspace
     protected_boundary: explicit character-store bootstrap
-    current_callers: [installed relaylm-character-store-bootstrap command, local operator invocation]
+    current_callers:
+      - installed relaylm-character-store-bootstrap command
+      - local operator invocation
+      - scripts/relaylm_e1r2_character_store_bootstrap_smoke.py direct main import
     invocation_roots: [console_script]
-    evidence: ["pyproject.toml [project.scripts]", relaylm/character_store_bootstrap_cli.py]
+    evidence:
+      - "pyproject.toml [project.scripts]"
+      - relaylm/cli/character_store_bootstrap.py
+      - scripts/relaylm_e1r2_character_store_bootstrap_smoke.py
+      - tests/test_relaylm_character_store_bootstrap_entrypoint_boundary.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
+    notes: R4-C2 moved the implementation without retaining the unsupported old module path or adding a compatibility alias
 
   - asset_id: console.character_create
     paths: [pyproject.toml]

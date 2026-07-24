@@ -23,7 +23,7 @@ dev = ["relay-lm[test]"]
 [project.scripts]
 relaylm = "relaylm.soul_lab_app:main"
 relaylm-worker = "relaylm.cli.worker:main"
-relaylm-character-store-bootstrap = "relaylm.character_store_bootstrap_cli:main"
+relaylm-character-store-bootstrap = "relaylm.cli.character_store_bootstrap:main"
 relaylm-character-create = "relaylm.character_creation_cli:main_create"
 relaylm-character-template-validate = "relaylm.character_creation_cli:main_validate"
 relaylm-runtime-install = "relaylm.cli.runtime_install:main"
