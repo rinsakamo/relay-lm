@@ -34,11 +34,11 @@ This page defines the canonical Lane R responsibility and lifecycle classificati
 
 ```text
 repository: rinsakamo/relay-lm
-source main: 91ce87766fedeb3a6be1cb6b8321fcdcfd53887e
-source main meaning: exact R4-D2 reviewed base after the disjoint Lane D architecture-router migration
+source main: 17ce820b91299e72dc532e7ed67046a377c0fd7e
+source main meaning: exact R4-E2 reviewed base after the disjoint governance failure-budget dispatch-input correction
 lane: R
 stage: R4 low-risk independent package moves
-scope: reviewed classification, canonical repository-inventory ownership, generated classification evidence, and the bounded runtime-install, worker, character-store bootstrap, and shared character-creation CLI package moves
+scope: reviewed classification, canonical repository-inventory ownership, generated classification evidence, and the bounded runtime-install, worker, character-store bootstrap, shared character-creation, and installed RelayLM launcher package moves
 ```
 
 Classification is evidence for later review. It does not authorize deletion, movement, rename, consolidation, behavior change, compatibility removal, storage migration, or status changes. Every destructive or authority-affecting action requires its own atomic PR and fresh caller evidence.
@@ -130,21 +130,26 @@ The following YAML records are the canonical human-reviewed representation for t
 
 ```yaml
 classification_version: 1
-source_commit: 91ce87766fedeb3a6be1cb6b8321fcdcfd53887e
+source_commit: 17ce820b91299e72dc532e7ed67046a377c0fd7e
 records:
   - asset_id: console.relaylm
     paths: [pyproject.toml]
-    entrypoint: "relaylm = relaylm.soul_lab_app:main"
+    entrypoint: "relaylm = relaylm.cli.soul_lab:main"
     responsibility: operator_cli
     lifecycle: active
     owner: soul_lab_runtime
     protected_boundary: supported local RelayLM ASGI and SOUL Lab launch
     current_callers: [installed relaylm command, local operator invocation]
     invocation_roots: [console_script]
-    evidence: ["pyproject.toml [project.scripts]", relaylm/soul_lab_app.py]
+    evidence:
+      - "pyproject.toml [project.scripts]"
+      - relaylm/cli/soul_lab.py
+      - relaylm/soul_lab_app.py
+      - tests/test_relaylm_soul_lab_entrypoint_boundary.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
+    notes: R4-E2 moved the installed launcher implementation into the CLI package while retaining the ASGI factory in soul_lab_app without an alias or second invocation root
 
   - asset_id: console.worker
     paths: [pyproject.toml]
@@ -448,7 +453,7 @@ No classified responsibility in this bounded surface is retired. R2-B retires tw
 
 The following remain unresolved and must not be guessed:
 
-- current complete inventory row counts at `91ce8776...`; the committed baseline is fixed to `1ca928cd...`;
+- current complete inventory row counts at `17ce820b...`; the committed baseline is fixed to `1ca928cd...`;
 - runtime expansion of dynamically assembled imports, registries, plugin-style lookup, and subprocess commands;
 - responsibility and lifecycle outside the bounded registry above;
 - whether each discovered `python -m` root is supported or only an implementation convenience;
@@ -491,12 +496,14 @@ R4-B1 proved that `relaylm-worker` is the sole supported worker invocation, remo
 
 R4-C1 proved that `relaylm-character-store-bootstrap` is the sole supported character-store bootstrap invocation, removed the unsupported `python -m relaylm.character_store_bootstrap_cli` root, and locked the direct E1-R2 smoke caller. R4-C2 moved that implementation to `relaylm/cli/character_store_bootstrap.py`, updated the installed target, direct caller, focused regression, authority, and mirror, and deleted the old module without a compatibility alias.
 
-R4-D1 proved that `relaylm-character-create` and `relaylm-character-template-validate` are the two supported installed roots for one shared implementation, removed the asymmetric unsupported `python -m relaylm.character_creation_cli` root, and locked both console targets as one ownership boundary. R4-D2 moves that shared implementation to `relaylm/cli/character_creation.py`, updates both installed targets, the focused regression, authority, and mirror, and deletes the old module without a compatibility alias.
+R4-D1 proved that `relaylm-character-create` and `relaylm-character-template-validate` are the two supported installed roots for one shared implementation, removed the asymmetric unsupported `python -m relaylm.character_creation_cli` root, and locked both console targets as one ownership boundary. R4-D2 moved that shared implementation to `relaylm/cli/character_creation.py`, updated both installed targets, the focused regression, authority, and mirror, and deleted the old module without a compatibility alias.
 
-The remaining `relaylm` console-script record remains eligible for caller discovery only. Any later pre-RT-1 move requires complete direct, dynamic, subprocess, workflow, test, documentation, and operator evidence and must not touch active LC-1, Subjective MEM publication, ordinary Retrieval, or Primary MEM authority.
+R4-E1 proved that `relaylm` is the sole supported installed product launch, removed the unsupported `python -m relaylm.soul_lab_app` root, retained the distinct documented `python -m relaylm.app` Core fallback, and locked the installed target without changing the ASGI factory or management routes. R4-E2 moves only the installed launcher implementation to `relaylm/cli/soul_lab.py`, updates the console target, focused regression, authority, and mirror, removes `main` from the ASGI module, and retains `relaylm.soul_lab_app:create_app` as the sole SOUL Lab ASGI ownership boundary without an alias.
+
+All six installed console implementation owners now live under `relaylm/cli/`. The `relaylm.soul_lab_app:create_app` ASGI factory remains outside that package because it owns runtime routes rather than operator parsing. Any later pre-RT-1 move requires complete direct, dynamic, subprocess, workflow, test, documentation, and operator evidence and must not touch active LC-1, Subjective MEM publication, ordinary Retrieval, or Primary MEM authority.
 
 ## Parallel-safety and non-goals
 
-R4-D2 changes only the shared character-creation CLI package path, its two installed targets, its focused entrypoint regression, and the Lane R classification authority/mirror. It does not change character creation or template-validation behavior, file-first workspace semantics, configuration, APIs, UI, active-character selection, feature gates, user state, Primary MEM, `docs/PROJECT_STATUS.md`, Lane C, Lane D, LC-1, or RT-1 paths.
+R4-E2 changes only the installed RelayLM launcher owner, its console target, its focused entrypoint regression, and the Lane R classification authority/mirror. It leaves `relaylm.soul_lab_app:create_app` and every management route in place and does not change command arguments, environment propagation, config loading, uvicorn target, host, port, HTTP APIs, UI behavior, feature gates, user state, Primary MEM, `docs/PROJECT_STATUS.md`, Lane C, Lane D, LC-1, or RT-1 paths.
 
 Every later R2, R3, or R4 PR must refresh `main`, open PRs, exact callers, workflows, review threads, and authority overlap before treating a candidate above as executable.
