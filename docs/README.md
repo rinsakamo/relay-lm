@@ -34,13 +34,13 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) — compatibility interpretation.
 - [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md) — current E1 evidence inventory and completed E1-R1 through E1-R5 quality work.
-- [Implementation evidence](evidence/implementation/README.md) — per-PR implementation completion reports and focused historical MVP evidence.
+- [Implementation evidence](evidence/implementation/README.md) — closed transitional implementation records and focused historical MVP evidence; new PR evidence normally remains in Git, CI, and the pull request.
 
 The current product target is no longer only a memory-governance proxy. The MVP direction is a Markdown/file-first Character Workspace plus governed runtime behavior for relationship-, scene-, emotion-, memory-, and context-aware conversation.
 
 ## Parallel implementation documentation rule
 
-Implementation PRs add or update their own slice handoff and `docs/evidence/implementation/<slice>_completion_report.md` only. Shared current-status and execution-plan documents may receive the minimum anchors needed to keep active validation green, but the wave convergence PR remains responsible for repository-wide synthesis. The next wave and release/evaluation gate remain closed until the convergence PR links the merged reports and updates shared current-status documents.
+Implementation PRs record bounded implementation and validation evidence in the pull request, exact-head CI, and Git history. They do not create a permanent completion report or handoff by default. A convergence PR reads the merged pull requests and validation results, then updates shared current-status documents only when repository-wide synthesis is required. Existing committed completion reports remain transitional evidence during D2-D6 and do not open a later wave or release/evaluation gate.
 
 ## Product-critical boundaries
 

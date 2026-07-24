@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://relaylm.local/schemas/documentation-governance-v1/retained-record-registry.schema.json",
+  "title": "RelayLM Retained Record Registry v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "record_classes"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "relaylm.documentation.retained-record-registry.v1"
+    },
+    "record_classes": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "class_id",
+          "schema_path",
+          "owner",
+          "continuing_function",
+          "media_types",
+          "generated",
+          "current_consumers"
+        ],
+        "properties": {
+          "class_id": {
+            "enum": [
+              "current_machine_registry",
+              "external_audit_record",
+              "recovery_checkpoint",
+              "release_validation_receipt",
+              "retirement_manifest",
+              "stateful_migration_receipt"
+            ]
+          },
+          "schema_path": {
+            "type": "string",
+            "pattern": "^docs/contracts/schemas/documentation-governance-v1/[a-z0-9._/-]+\\.schema\\.json$",
+            "allOf": [
+              {
+                "if": {
+                  "type": "string"
+                },
+                "then": {
+                  "not": {
+                    "pattern": "(^|/)\\.\\.?(/|$)"
+                  }
+                }
+              },
+              {
+                "if": {
+                  "type": "string"
+                },
+                "then": {
+                  "not": {
+                    "pattern": "//"
+                  }
+                }
+              }
+            ]
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "continuing_function": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "media_types": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9.+-]+/[a-z0-9.+-]+$"
+            }
+          },
+          "generated": {
+            "type": "boolean"
+          },
+          "current_consumers": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          }
+        }
+      }
+    }
+  }
+}

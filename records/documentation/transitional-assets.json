@@ -1,0 +1,101 @@
+{
+  "schema_version": "relaylm.documentation.transitional-asset-registry.v1",
+  "families": [
+    {
+      "family_id": "bespoke-handoff-cutover-guards",
+      "paths": [
+        "scripts/relaylm_i1ge_handoff_cutover_guard.py",
+        "scripts/relaylm_i4c1_handoff_cutover_guard.py",
+        "scripts/relaylm_i4c2_handoff_cutover_guard.py",
+        "scripts/relaylm_phase55a_handoff_cutover_guard.py",
+        "scripts/relaylm_phase55b1_handoff_cutover_guard.py",
+        "scripts/relaylm_phase55b2_handoff_cutover_guard.py",
+        "scripts/relaylm_phase55c0_handoff_cutover_guard.py",
+        "scripts/relaylm_phase55c4_handoff_cutover_guard.py",
+        "scripts/relaylm_phase_i2_handoff_cutover_guard.py",
+        "scripts/relaylm_phase_i3_handoff_cutover_guard.py",
+        "scripts/relaylm_relaymem_m3a_handoff_cutover_guard.py"
+      ],
+      "owner": "documentation",
+      "protected_boundary": "Existing source-specific old-path absence and replacement checks until generic manifest, authority, link, and Git-recoverability validation supersedes them.",
+      "current_consumers": [
+        ".github/workflows/documentation-current-boundary-smoke.yml"
+      ],
+      "removal_gate": "Every protected old path has a generic retirement-manifest entry or reviewed current disposition, equivalent generic validation is green, and no current workflow consumer remains.",
+      "replacement_validation": [
+        "active_document_authority",
+        "git_recoverability",
+        "links_and_routers",
+        "normative_extraction"
+      ],
+      "growth_policy": "closed"
+    },
+    {
+      "family_id": "legacy-completion-report-validation",
+      "paths": [
+        ".github/workflows/documentation-completion-report-files.yml",
+        "docs/evidence/implementation/*_completion_report.md",
+        "scripts/relaylm_mvp_completion_report_smoke.py"
+      ],
+      "owner": "documentation",
+      "protected_boundary": "Existing completion-report metadata profiles, required sections, source-PR evidence anchors, and unresolved-placeholder rejection. This family has no authority over Documentation Model prose, new-record creation, templates, active-document semantics, or retired-path detection.",
+      "current_consumers": [
+        ".github/workflows/documentation-completion-report-files.yml",
+        ".github/workflows/wave4-cross-slice-convergence.yml",
+        "scripts/relaylm_ci_consolidated_smoke.py",
+        "scripts/relaylm_mvp_eval_runner_registry.py"
+      ],
+      "removal_gate": "All existing completion reports are synthesized, reclassified into allowlisted retained records, or retired to Git; no workflow, consolidated smoke group, evaluation runner, operator procedure, or current architecture document consumes the validator; and generic authority, retained-record, link, semantic-audit, and Git-recoverability checks protect every continuing invariant.",
+      "replacement_validation": [
+        "active_document_authority",
+        "git_recoverability",
+        "links_and_routers",
+        "retained_record_allowlist"
+      ],
+      "growth_policy": "closed"
+    },
+    {
+      "family_id": "legacy-cutover-preparation",
+      "paths": [
+        ".github/workflows/documentation-cutover-preparation.yml",
+        "docs/planning/documentation-cutover-rules.yaml",
+        "docs/planning/documentation-cutover-tooling.md",
+        "scripts/relaylm_docs_cutover_prepare.py",
+        "scripts/relaylm_docs_normative_digest.py",
+        "scripts/relaylm_docs_relative_link_inventory.py"
+      ],
+      "owner": "documentation",
+      "protected_boundary": "Commit-fixed legacy classification, normative candidate extraction, and link-dependency evidence still referenced by unfinished source families.",
+      "current_consumers": [
+        "bounded D2-D6 source-family synthesis and retirement reviews"
+      ],
+      "removal_gate": "All remaining sources are governed by the canonical active graph, generic normative extraction, generic link checks, and the retirement manifest.",
+      "replacement_validation": [
+        "active_document_authority",
+        "generated_index_drift",
+        "links_and_routers",
+        "normative_extraction"
+      ],
+      "growth_policy": "closed"
+    },
+    {
+      "family_id": "legacy-cutover-receipts",
+      "paths": [
+        "docs/evidence/migrations/README.md",
+        "docs/evidence/migrations/cutover-*",
+        "docs/evidence/migrations/documentation-hard-cutover-receipt.md"
+      ],
+      "owner": "documentation",
+      "protected_boundary": "Legacy one-document cutover provenance until its durable fields are represented by the generic retirement manifest or an allowlisted retained record.",
+      "current_consumers": [
+        "documentation migration provenance review"
+      ],
+      "removal_gate": "All continuing recovery or audit facts are represented by allowlisted records, and historical-only narratives remain recoverable from Git.",
+      "replacement_validation": [
+        "git_recoverability",
+        "retained_record_allowlist"
+      ],
+      "growth_policy": "closed_after_1c57"
+    }
+  ]
+}

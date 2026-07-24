@@ -12,8 +12,11 @@ relaylm_not_authoritative_for:
   - exact contracts
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_decision_source: ../../adr/0002-documentation-information-architecture.md
+relaylm_retirement_state: transitional
 ---
 # Migration Evidence
+
+> Transitional closed family after Documentation Hard Cutover 1C-57. Do not add another ordinary per-source receipt or treat this collection as a permanent archive. D2-D6 use the generic retirement manifest and Git recoverability contract; D6 removes redundant legacy receipts and indexes after equivalent coverage is proven.
 
 This collection records path maps, source provenance, exact-copy verification, deletion classifications, and final cutover receipts. Migration evidence may contain old paths as historical identifiers; those literals do not create live compatibility paths.
 

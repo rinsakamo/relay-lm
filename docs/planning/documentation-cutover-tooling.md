@@ -17,8 +17,11 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_decision_source: ../adr/0002-documentation-information-architecture.md
 relaylm_verified_by:
   - ../../.github/workflows/documentation-cutover-preparation.yml
+relaylm_retirement_state: transitional
 ---
 # Documentation Cutover Preparation Tooling
+
+> Transitional after Documentation Hard Cutover 1C-57. This family may support bounded D2-D6 source review but may not gain new source-specific cutover rules, numbered slices, or permanent authority. Removal is governed by the Documentation Governance Contract and the transitional-asset registry.
 
 This document defines the Preparation C tooling and dry-run boundary. The tools inspect the frozen baseline and emit planning artifacts; they do not move, rewrite, or delete documentation.
 
