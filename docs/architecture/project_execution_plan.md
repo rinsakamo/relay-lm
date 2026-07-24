@@ -56,7 +56,9 @@ relaylm_related_authority:
   - ../contracts/subjective-mem-storage-authority-and-commit-protocol.md
   - st1_subjective_mem_commit_runtime.md
   - ../contracts/subjective-mem-canonical-markdown-v1.md
-  - ../proposals/repository-simplification.md
+  - documentation-governance.md
+  - repository-maintenance-system.md
+  - ../operations/documentation-synthesis-and-retirement.md
 ---
 # RelayLM Project Execution Plan
 
