@@ -42,7 +42,7 @@ def _write_config(path: Path, *, memory_root: str, character_id: str = "default"
 
 
 def _run_cli(args: list[str]) -> tuple[int, dict[str, Any], str]:
-    from relaylm.runtime_install_cli import main as runtime_cli_main
+    from relaylm.cli.runtime_install import main as runtime_cli_main
 
     stdout = io.StringIO()
     with contextlib.redirect_stdout(stdout):
@@ -105,7 +105,7 @@ def main() -> int:
         require(str(work) not in text, "public write report leaked path")
         print("ok write creates allowed layout only")
 
-    from relaylm.runtime_install_cli import main as runtime_cli_main
+    from relaylm.cli.runtime_install import main as runtime_cli_main
 
     try:
         runtime_cli_main(["--help"])
@@ -116,7 +116,7 @@ def main() -> int:
     print("ok help works")
 
     pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    require('relaylm-runtime-install = "relaylm.runtime_install_cli:main"' in pyproject, "entrypoint missing")
+    require('relaylm-runtime-install = "relaylm.cli.runtime_install:main"' in pyproject, "entrypoint missing")
     print("RelayLM PM-D7 runtime install hook fold-in smoke passed")
     return 0
 

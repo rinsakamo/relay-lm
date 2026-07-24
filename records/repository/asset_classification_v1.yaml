@@ -1,6 +1,6 @@
 registry_version: 1
 generated_from: docs/reference/repository-asset-classification.md
-source_commit: b733903f09a8fda5cb6b440b21a2702225d3c443
+source_commit: 8ff4f3a749eabcbb895bae79c577d111a7312850
 classification_version: 1
 canonical_entrypoints:
   - group: soul_lab_runtime
@@ -103,17 +103,25 @@ records:
 
   - asset_id: console.runtime_install
     paths: [pyproject.toml]
-    entrypoint: "relaylm-runtime-install = relaylm.runtime_install_cli:main"
+    entrypoint: "relaylm-runtime-install = relaylm.cli.runtime_install:main"
     responsibility: operator_cli
     lifecycle: active
     owner: runtime_install
     protected_boundary: explicit dry-run-first runtime install and preflight operation
-    current_callers: [installed relaylm-runtime-install command, local operator invocation]
+    current_callers:
+      - installed relaylm-runtime-install command
+      - local operator invocation
+      - scripts/relaylm_pm_d7_runtime_install_hook_fold_in_smoke.py direct main import
     invocation_roots: [console_script]
-    evidence: ["pyproject.toml [project.scripts]", relaylm/runtime_install_cli.py]
+    evidence:
+      - "pyproject.toml [project.scripts]"
+      - relaylm/cli/runtime_install.py
+      - scripts/relaylm_pm_d7_runtime_install_hook_fold_in_smoke.py
+      - tests/test_relaylm_repo_inventory.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
+    notes: R4-A3 moved the implementation without retaining the unsupported old module path or adding a compatibility alias
 
   - asset_id: repo_inventory.entrypoint
     paths: [scripts/relaylm_repo_inventory_cli.py]

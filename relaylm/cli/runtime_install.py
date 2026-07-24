@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
-from .config import load_config
-from .runtime_install import (
+from ..config import load_config
+from ..runtime_install import (
     PROJECTION_SCHEMA,
     REQUEST_SCHEMA,
     RuntimeInstallRequest,

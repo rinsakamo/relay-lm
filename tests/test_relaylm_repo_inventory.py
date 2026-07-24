@@ -213,7 +213,7 @@ def test_excluded_directories_are_pruned_before_walk(tmp_path, monkeypatch):
 
 def test_json_writer_and_reader_discovered():
     records = storage.scan_storage_artifacts()
-    writer = _find_storage(records, "relaylm/runtime_install_cli.py")
+    writer = _find_storage(records, "relaylm/cli/runtime_install.py")
     assert writer is not None
     assert any("json.dump" in value for value in writer.writers)
     assert writer.classification_state == "unclassified"
@@ -355,11 +355,15 @@ def test_runtime_install_uses_only_canonical_installed_entrypoint() -> None:
     assert len(console_records) == 1
     assert (
         console_records[0]["command_or_symbol"]
-        == "relaylm-runtime-install -> relaylm.runtime_install_cli:main"
+        == "relaylm-runtime-install -> relaylm.cli.runtime_install:main"
     )
     assert not any(
         record["root_kind"] == "python_dash_m"
-        and record["source_path"] == "relaylm/runtime_install_cli.py"
+        and record["source_path"] == "relaylm/cli/runtime_install.py"
+        for record in records
+    )
+    assert not any(
+        record["source_path"] == "relaylm/runtime_install_cli.py"
         for record in records
     )
 
