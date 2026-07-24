@@ -34,11 +34,11 @@ This page defines the canonical Lane R responsibility and lifecycle classificati
 
 ```text
 repository: rinsakamo/relay-lm
-source main: 0e6f578fa1ffb4662f7e3db2f5d3a9484fbd07e8
-source main meaning: exact R4-C2 reviewed base after the disjoint Lane D archive-router migration
+source main: 91ce87766fedeb3a6be1cb6b8321fcdcfd53887e
+source main meaning: exact R4-D2 reviewed base after the disjoint Lane D architecture-router migration
 lane: R
 stage: R4 low-risk independent package moves
-scope: reviewed classification, canonical repository-inventory ownership, generated classification evidence, and the bounded runtime-install, worker, and character-store bootstrap CLI package moves
+scope: reviewed classification, canonical repository-inventory ownership, generated classification evidence, and the bounded runtime-install, worker, character-store bootstrap, and shared character-creation CLI package moves
 ```
 
 Classification is evidence for later review. It does not authorize deletion, movement, rename, consolidation, behavior change, compatibility removal, storage migration, or status changes. Every destructive or authority-affecting action requires its own atomic PR and fresh caller evidence.
@@ -130,7 +130,7 @@ The following YAML records are the canonical human-reviewed representation for t
 
 ```yaml
 classification_version: 1
-source_commit: 0e6f578fa1ffb4662f7e3db2f5d3a9484fbd07e8
+source_commit: 91ce87766fedeb3a6be1cb6b8321fcdcfd53887e
 records:
   - asset_id: console.relaylm
     paths: [pyproject.toml]
@@ -192,31 +192,39 @@ records:
 
   - asset_id: console.character_create
     paths: [pyproject.toml]
-    entrypoint: "relaylm-character-create = relaylm.character_creation_cli:main_create"
+    entrypoint: "relaylm-character-create = relaylm.cli.character_creation:main_create"
     responsibility: operator_cli
     lifecycle: active
     owner: character_workspace
     protected_boundary: explicit character creation
     current_callers: [installed relaylm-character-create command, local operator invocation]
     invocation_roots: [console_script]
-    evidence: ["pyproject.toml [project.scripts]", relaylm/character_creation_cli.py]
+    evidence:
+      - "pyproject.toml [project.scripts]"
+      - relaylm/cli/character_creation.py
+      - tests/test_relaylm_character_creation_entrypoint_boundary.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
+    notes: R4-D2 moved the shared two-command implementation without retaining the unsupported old module path or adding a compatibility alias
 
   - asset_id: console.character_template_validate
     paths: [pyproject.toml]
-    entrypoint: "relaylm-character-template-validate = relaylm.character_creation_cli:main_validate"
+    entrypoint: "relaylm-character-template-validate = relaylm.cli.character_creation:main_validate"
     responsibility: operator_cli
     lifecycle: active
     owner: character_workspace
     protected_boundary: explicit character-template validation
     current_callers: [installed relaylm-character-template-validate command, local operator invocation]
     invocation_roots: [console_script]
-    evidence: ["pyproject.toml [project.scripts]", relaylm/character_creation_cli.py]
+    evidence:
+      - "pyproject.toml [project.scripts]"
+      - relaylm/cli/character_creation.py
+      - tests/test_relaylm_character_creation_entrypoint_boundary.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
+    notes: R4-D2 moved the shared two-command implementation without retaining the unsupported old module path or adding a compatibility alias
 
   - asset_id: console.runtime_install
     paths: [pyproject.toml]
@@ -440,7 +448,7 @@ No classified responsibility in this bounded surface is retired. R2-B retires tw
 
 The following remain unresolved and must not be guessed:
 
-- current complete inventory row counts at `0e6f578f...`; the committed baseline is fixed to `1ca928cd...`;
+- current complete inventory row counts at `91ce8776...`; the committed baseline is fixed to `1ca928cd...`;
 - runtime expansion of dynamically assembled imports, registries, plugin-style lookup, and subprocess commands;
 - responsibility and lifecycle outside the bounded registry above;
 - whether each discovered `python -m` root is supported or only an implementation convenience;
@@ -481,12 +489,14 @@ R4-A1 added generic console-target integrity validation. R4-A2 proved that `rela
 
 R4-B1 proved that `relaylm-worker` is the sole supported worker invocation, removed the unsupported `python -m relaylm.local_worker_cli` root, and locked the O0 security-smoke caller. R4-B2 moved that implementation to `relaylm/cli/worker.py`, updated the installed target, direct caller, focused regression, authority, and mirror, and deleted the old module without a compatibility alias.
 
-R4-C1 proved that `relaylm-character-store-bootstrap` is the sole supported character-store bootstrap invocation, removed the unsupported `python -m relaylm.character_store_bootstrap_cli` root, and locked the direct E1-R2 smoke caller. R4-C2 moves that implementation to `relaylm/cli/character_store_bootstrap.py`, updates the installed target, direct caller, focused regression, authority, and mirror, and deletes the old module without a compatibility alias.
+R4-C1 proved that `relaylm-character-store-bootstrap` is the sole supported character-store bootstrap invocation, removed the unsupported `python -m relaylm.character_store_bootstrap_cli` root, and locked the direct E1-R2 smoke caller. R4-C2 moved that implementation to `relaylm/cli/character_store_bootstrap.py`, updated the installed target, direct caller, focused regression, authority, and mirror, and deleted the old module without a compatibility alias.
 
-The remaining three console-script records remain eligible for caller discovery only. Any later pre-RT-1 move requires complete direct, dynamic, subprocess, workflow, test, documentation, and operator evidence and must not touch active LC-1, Subjective MEM publication, ordinary Retrieval, or Primary MEM authority.
+R4-D1 proved that `relaylm-character-create` and `relaylm-character-template-validate` are the two supported installed roots for one shared implementation, removed the asymmetric unsupported `python -m relaylm.character_creation_cli` root, and locked both console targets as one ownership boundary. R4-D2 moves that shared implementation to `relaylm/cli/character_creation.py`, updates both installed targets, the focused regression, authority, and mirror, and deletes the old module without a compatibility alias.
+
+The remaining `relaylm` console-script record remains eligible for caller discovery only. Any later pre-RT-1 move requires complete direct, dynamic, subprocess, workflow, test, documentation, and operator evidence and must not touch active LC-1, Subjective MEM publication, ordinary Retrieval, or Primary MEM authority.
 
 ## Parallel-safety and non-goals
 
-R4-C2 changes only the character-store bootstrap CLI package path, its installed target, its direct E1-R2 smoke caller, its focused entrypoint regression, and the Lane R classification authority/mirror. It does not change character-store behavior, Primary MEM layout or authority, configuration, APIs, UI, feature gates, user state, `docs/PROJECT_STATUS.md`, Lane C, Lane D, LC-1, or RT-1 paths.
+R4-D2 changes only the shared character-creation CLI package path, its two installed targets, its focused entrypoint regression, and the Lane R classification authority/mirror. It does not change character creation or template-validation behavior, file-first workspace semantics, configuration, APIs, UI, active-character selection, feature gates, user state, Primary MEM, `docs/PROJECT_STATUS.md`, Lane C, Lane D, LC-1, or RT-1 paths.
 
 Every later R2, R3, or R4 PR must refresh `main`, open PRs, exact callers, workflows, review threads, and authority overlap before treating a candidate above as executable.
