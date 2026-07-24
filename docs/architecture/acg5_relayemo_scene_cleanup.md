@@ -16,7 +16,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - analyzer_candidate_governance.md
   - project_execution_plan.md
-  - pipeline_responsibility_design.md
+  - pipeline-responsibilities.md
   - p0_relayrel_relayscn_relayemo_ordering_fix.md
 ---
 # ACG-5 RelayEMO Scene Ownership Cleanup
