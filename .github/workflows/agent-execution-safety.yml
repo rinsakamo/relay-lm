@@ -1,0 +1,46 @@
+name: Agent execution safety
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+      - ready_for_review
+      - labeled
+      - unlabeled
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: agent-execution-safety-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch exact current main and diff base
+        run: |
+          git fetch origin main:refs/remotes/origin/main
+          git fetch origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+      - name: Compile execution guard
+        run: python -m compileall -q scripts/relaylm_agent_execution_guard.py
+      - name: Run execution guard self-test
+        run: python scripts/relaylm_agent_execution_guard.py --self-test
+      - name: Run failure-budget core self-test
+        run: node scripts/relaylm_agent_failure_budget.js --self-test
+      - name: Validate current epoch, exact main, writer, and stop state
+        run: >-
+          python scripts/relaylm_agent_execution_guard.py
+          --event "$GITHUB_EVENT_PATH"
+          --governance-ref origin/main
+          --diff-base-ref "origin/${{ github.base_ref }}"
+          --head-ref HEAD

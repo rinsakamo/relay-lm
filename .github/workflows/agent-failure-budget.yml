@@ -1,0 +1,49 @@
+name: Agent failure budget
+
+on:
+  workflow_run:
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number whose reviewed P6 stop state is being reset
+        required: true
+        type: number
+      reset_reason:
+        description: Reviewed P0/P1/P2 re-bootstrap evidence for the reset
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: agent-failure-budget-${{ github.event.workflow_run.head_branch || inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.event == 'pull_request' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.name != 'Agent execution safety' &&
+        github.event.workflow_run.name != 'Agent failure budget'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run failure-budget self-test
+        run: node scripts/relaylm_agent_failure_budget.js --self-test
+      - name: Update bounded PR failure state
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const monitor = require('./scripts/relaylm_agent_failure_budget.js');
+            await monitor.run({github, context});

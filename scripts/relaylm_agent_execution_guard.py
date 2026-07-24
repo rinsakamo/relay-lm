@@ -216,13 +216,18 @@ def changed_surface_errors(
 
 
 def validate(
-    *, event_path: Path, base_ref: str, head_ref: str, root: Path = ROOT
+    *,
+    event_path: Path,
+    governance_ref: str,
+    diff_base_ref: str,
+    head_ref: str,
+    root: Path = ROOT,
 ) -> list[str]:
     event = load_event(event_path)
-    expected_main_sha = git_text("rev-parse", base_ref, root=root)
+    expected_main_sha = git_text("rev-parse", governance_ref, root=root)
     if not HEX40.fullmatch(expected_main_sha):
-        raise GuardError(f"{base_ref}: invalid current-main commit identity")
-    expected_epoch = governance_epoch(base_ref, root)
+        raise GuardError(f"{governance_ref}: invalid current-main commit identity")
+    expected_epoch = governance_epoch(governance_ref, root)
     receipt = parse_receipt(event_body(event))
     errors = receipt_errors(receipt, expected_epoch, expected_main_sha)
 
@@ -240,7 +245,8 @@ def validate(
         if ancestor.returncode != 0:
             errors.append("exact current main is not an ancestor of the PR head")
 
-    errors.extend(changed_surface_errors(changed_paths(base_ref, head_ref, root), head_ref, root))
+    paths = changed_paths(diff_base_ref, head_ref, root)
+    errors.extend(changed_surface_errors(paths, head_ref, root))
     return sorted(set(errors))
 
 
@@ -307,7 +313,8 @@ temporary_artifacts: none
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--event", type=Path)
-    parser.add_argument("--base-ref", default="origin/main")
+    parser.add_argument("--governance-ref", default="origin/main")
+    parser.add_argument("--diff-base-ref", default="origin/main")
     parser.add_argument("--head-ref", default="HEAD")
     parser.add_argument("--print-epoch", action="store_true")
     parser.add_argument("--self-test", action="store_true")
@@ -317,7 +324,7 @@ def main() -> int:
         return self_test()
     if args.print_epoch:
         try:
-            print(governance_epoch(args.base_ref))
+            print(governance_epoch(args.governance_ref))
         except GuardError as exc:
             print(f"FAIL: {exc}")
             return 1
@@ -328,7 +335,8 @@ def main() -> int:
     try:
         errors = validate(
             event_path=args.event,
-            base_ref=args.base_ref,
+            governance_ref=args.governance_ref,
+            diff_base_ref=args.diff_base_ref,
             head_ref=args.head_ref,
         )
     except GuardError as exc:
