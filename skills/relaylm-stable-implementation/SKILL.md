@@ -1,29 +1,29 @@
 ---
 name: relaylm-stable
-description: Advance one explicitly bound RelayLM lane or pull request from bare continuation commands such as 次に進めて, 進めて, 続けて, or 次へ. Cross-lane execution requires an explicit portfolio command. Enforces lane-local fail-closed execution, architecture-first design, No-Patch and Stable-Structure gates, invariant-first implementation, complete-diff review, exact-head verification, and P0-P8 convergence.
+description: Advance one explicitly bound RelayLM lane or pull request from bare continuation commands such as 次に進めて, 進めて, 続けて, or 次へ. Cross-lane execution requires an explicit portfolio command. Enforces current-main re-bootstrap, lane-local and single-writer execution, architecture-first design, No-Patch and Stable-Structure gates, machine-owned failure stopping, complete-diff review, exact-head verification, and P0-P8 convergence.
 ---
 
 # RelayLM Stable
 
 ## Purpose
 
-Advance RelayLM work end to end without requiring the user to repeat the implementation workflow, while preserving strict lane isolation.
+Advance RelayLM work without requiring the user to restate the workflow, while preventing an initial prompt from governing after repository authority changes.
 
-This Skill is the portable execution entry point. Detailed repository authority remains in:
+Current repository authority is:
 
 1. `AGENTS.md`;
 2. `docs/adr/0007-architecture-first-stable-implementation.md`;
 3. `docs/adr/0008-lane-local-continuation-safety.md`;
-4. `docs/planning/workstream-orchestration.md`;
-5. the selected lane's current plans, contracts, code, tests, workflows, records, and review state.
+4. `docs/adr/0009-execution-epoch-and-rebootstrap.md`;
+5. `docs/contracts/agent-execution-safety.md`;
+6. `docs/planning/workstream-orchestration.md`;
+7. the selected lane's current authorities and implementation evidence.
 
-Read those authorities before substantive action. This Skill summarizes and executes them; it does not replace them.
+Read these from current `main`. Initial prompts, handoffs, conversation memory, PR bodies, and historical files are orientation only.
 
-## Command modes
+## Command scope
 
-### Lane-local mode
-
-The following commands are lane-local by default:
+These commands are lane-local:
 
 ```text
 次に進めて
@@ -32,28 +32,16 @@ The following commands are lane-local by default:
 次へ
 ```
 
-They advance only the lane, PR, branch, or bounded work item already established by the current thread.
+Resolve one scope from, in order:
 
-Resolve scope in this order:
-
-1. explicit lane, PR, branch, or work item in the current user instruction;
-2. lane declared by the thread's initial prompt or handoff;
-3. uniquely identified current PR or branch and its lane metadata;
+1. an explicit lane, PR, branch, or work item in the current instruction;
+2. the lane declared by the thread's initial prompt or handoff;
+3. a uniquely identified current PR or branch and its lane metadata;
 4. one unambiguous work item already selected in the conversation.
 
-The result must be exactly one lane or one bounded PR belonging to one lane.
+If exactly one lane or bounded PR cannot be resolved, fail closed. Do not edit, create, retarget, review, comment on, approve, merge, or select work.
 
-If scope is ambiguous, fail closed:
-
-- do not edit repository files;
-- do not create or retarget a PR;
-- do not review, comment on, approve, or merge a PR;
-- do not select another lane from repository priority;
-- ask the user to name Lane C, Lane D, Lane R, or a PR.
-
-### Explicit portfolio mode
-
-Cross-lane execution requires an explicit instruction such as:
+Cross-lane execution requires explicit wording such as:
 
 ```text
 全レーンを進めて
@@ -61,33 +49,106 @@ Cross-lane execution requires an explicit instruction such as:
 Lane C・D・Rを並行で進めて
 ```
 
-Never infer portfolio authorization from multiple open PRs, free capacity, priority, or pending CI.
+In lane-local mode, other lanes are read-only and may be inspected only for path, authority, caller, registry, status-owner, stack, merge-order, and stale-base conflicts.
 
-## Cross-lane read-only boundary
+## Current-main execution gate
 
-In lane-local mode, inspect other lanes only for:
+Before any ordinary branch write, review mutation, correction, merge, or PR metadata change:
 
-- changed-path or semantic-authority overlap;
-- shared callers, workflows, records, registries, or status owners;
-- stack and merge-order dependencies;
-- newer `main` changes that invalidate selected-lane evidence.
+1. refresh exact current `origin/main`;
+2. refresh the selected PR head, checks, reviews, threads, labels, mergeability, changed paths, and workflows;
+3. read current execution authorities;
+4. read `docs/PROJECT_STATUS.md`, `docs/architecture/project_execution_plan.md`, the selected lane plan, and required ADRs, contracts, code, tests, workflows, registries, and operator entry points;
+5. run or reproduce `scripts/relaylm_agent_execution_guard.py`;
+6. verify one receipt whose `bootstrap_main_sha` equals exact current `origin/main` and is an ancestor of the PR head;
+7. verify one writer, no branch-pushing workflow or transfer PR, no `relaylm:p6-stop`, and no temporary artifact.
 
-Do not edit, review, comment on, merge, close, reopen, retarget, supersede, or advance another lane.
+## Re-bootstrap
 
-When a required correction belongs to another lane, record the blocker and stop or continue with another safe action inside the selected lane.
+When the receipt is missing or stale, current main is not incorporated, or the governance epoch changed:
 
-## Mandatory refresh
+```text
+STOP WRITES
+  -> disable branch-pushing automation
+  -> remove temporary execution machinery only
+  -> do not add a corrective patch
+  -> do not create a validation PR or transfer branch
+  -> incorporate exact current main
+  -> refresh current authority and evidence
+  -> reclassify P0 and P1
+  -> pass P2 again
+  -> replace or add only the receipt
+  -> run the guard
+  -> resume only when clean
+```
 
-At the beginning of every run:
+Correct domain evidence may be preserved. Old process state is not grandfathered.
 
-1. resolve lane-local or explicit portfolio mode;
-2. refresh current `main` and open PRs;
-3. inspect changed paths, checks, reviews, unresolved threads, exact heads, mergeability, and stacking;
-4. read the authorities listed under Purpose;
-5. determine the selected PR's P0-P8 stage;
-6. verify path and authority safety before any write.
+Controlled exceptions while stopped:
 
-Conversation memory, handoffs, PR bodies, and historical files are orientation only.
+- one branch change may only disable branch-writing automation or remove temporary execution machinery;
+- after read-only P0/P1/P2 re-bootstrap, one PR-body edit may add or replace only the receipt.
+
+The receipt edit contains no branch write, review disposition, merge, title/base change, or unrelated body change.
+
+### Receipt
+
+```text
+<!-- relaylm-execution-receipt
+version: 1
+lane: C
+bootstrap_main_sha: <exact current main 40-hex SHA>
+governance_epoch: <64 lowercase hex>
+writer_id: <stable lowercase logical identifier>
+writer_mode: single
+temporary_artifacts: none
+-->
+```
+
+Allowed lanes are `C`, `D`, `R`, and `governance`.
+
+## Single writer
+
+One PR branch has one logical writer. Test and validation workflows are repository-content read-only.
+
+Never use:
+
+- `contents: write` or `git push` in PR-local construction or validation;
+- an auto-correct bot beside the implementation writer;
+- a second PR or branch only to apply, validate, or transfer a correction;
+- automatic retry, rebase, force-push, or conflict resolution after a head mismatch.
+
+The failure-budget monitor may change only its hidden state comment, execution labels, and Draft state. It never changes branch content or the PR body.
+
+Fetch the exact head immediately before a write. A mismatch stops execution and requires re-bootstrap.
+
+## Machine-owned failure budget
+
+One monitor owns consecutive-failure state in one hidden PR comment and mirrors it with one label:
+
+```text
+relaylm:failure-1
+relaylm:failure-2
+relaylm:p6-stop
+```
+
+Signature:
+
+```text
+workflow + failed job + first failed step + bounded conclusion category
+```
+
+A new head, renamed workflow, moved step, or prose-only edit does not reset a materially identical failure.
+
+The third consecutive identical signature adds `relaylm:p6-stop` and converts the PR to Draft. Architectural assumption error, duplicate authority or writer, branch collision, branch-writing validation, temporary-artifact recurrence, or temporary transfer PR triggers the same stop immediately.
+
+After P6-STOP:
+
+- no branch writes or auto-correct;
+- no temporary workflow or transfer PR;
+- the label is sticky;
+- return to P1 through current-main re-bootstrap;
+- clear only after the new receipt and P2 evidence are reviewed.
 
 ## P0-P8 lifecycle
 
@@ -99,173 +160,116 @@ P0 scope and authority lock
   -> P4 baseline validation and reviewable PR
   -> P5 thorough complete-PR review
   -> P6 root-cause correction and exact-head final-review loop
-       -> local defect: repeat P6
-       -> architecture defect: return to P1
+       -> local defect: correct within the machine failure budget
+       -> architecture defect: P6-STOP and P1 re-bootstrap
+       -> third identical failure: P6-STOP
+       -> writer collision or temporary recurrence: P6-STOP
        -> cross-lane dependency: record blocker; do not edit other lane
-       -> clean: proceed to P7
+       -> clean: P7
   -> P7 expected-head-protected merge
-  -> P8 post-merge convergence inside the same lane
+  -> P8 same-lane post-merge convergence
 ```
-
-No stage is skipped merely for speed.
 
 ## P0: Scope and authority lock
 
 Identify:
 
-- one selected lane and ordered stage;
+- selected lane and ordered stage;
 - owned paths and authorities;
-- callers, consumers, entry points, workflows, and registries;
-- state, writer, reader, selector, representation, recovery, and rollback where applicable;
+- direct, indirect, dynamic, subprocess, workflow, registry, operator, and documentation invocation roots;
+- state, writer, reader, selector, representation, recovery, and rollback;
 - non-goals;
 - compatibility, migration, retirement, and removal boundaries;
 - validation matrix;
-- cross-lane read-only conflicts.
+- cross-lane conflicts;
+- expected exact head, machine failure state, and temporary-artifact inventory.
 
-## P1: Implementation strategy
+## P1: Strategy
 
 Before substantive implementation:
 
-- investigate the current system and all relevant invocation roots;
+- investigate every relevant invocation root;
 - define invariants and negative cases;
 - compare meaningful alternatives;
-- map failure, recovery, migration, and rollback points;
+- map failure, recovery, migration, and rollback;
 - define compatibility owners and removal gates;
-- map invariants to validation evidence;
-- confirm one complete atomic boundary owned by the selected lane.
+- map invariants to validation;
+- confirm one complete atomic lane-owned boundary;
+- confirm validation cannot mutate branch content.
 
 Typical invariants:
 
 ```text
 one semantic authority
 one owner per responsibility
-one exact current selector where applicable
+one selector where applicable
 one authoritative write path
 one canonical representation
 one recovery model
+one branch writer
+exact current-main bootstrap
 fail-closed stale or tampered state
-forward-only recovery after durable intent
+forward-only recovery
 no permanent fallback or dual authority
 no cross-lane ownership transfer
+repository-content read-only validation
 ```
 
 ## P2: Stability gates
-
-### No-Patch Gate
 
 Reject:
 
 - caller-, fixture-, test-, platform-, or environment-specific bypasses;
 - duplicate authorities, selectors, writers, or representations;
-- fallback or precedence that hides disagreement;
+- fallback or precedence hiding disagreement;
 - wrapper-only indirection without ownership transfer;
-- swallowed errors or retries that hide invalid state;
+- swallowed errors or masking retries;
 - compatibility without owner, consumer, removal gate, and replacement validation;
-- current and target both treated as canonical;
-- weakened tests;
-- direct edits to generated output;
-- permanent milestone-oriented production names;
-- deferred known in-scope structural debt;
-- changes whose root cause cannot be explained;
-- changing another lane to unblock the selected lane.
+- current and target both canonical;
+- weakened tests or direct generated-output edits;
+- permanent milestone production names;
+- deferred known in-scope debt;
+- unexplained root cause;
+- changing another lane as a convenience;
+- branch-writing validation or auto-correct;
+- temporary validation PRs or transfer branches.
 
-A small root-cause correction is valid. Diff size is not the criterion.
+Require one semantic authority, one lane owner, one owner per responsibility, one selector/write path/recovery model/canonical representation where applicable, one branch writer, explicit dependency direction, bounded compatibility, stable names, and repository-content read-only validation.
 
-### Stable-Structure Gate
+## P3-P6
 
-Require:
+Use RED → GREEN → structural REFACTOR. Construction helpers stay outside the repository tree where possible.
 
-```text
-one semantic authority
-one lane owner for the atomic change
-one owner per responsibility
-one selector and write path where applicable
-one recovery model
-one canonical representation
-explicit dependency direction
-bounded compatibility with removal gates
-function-oriented permanent names
-no speculative abstraction without an accepted consumer
-```
+Before P5, make the PR complete, atomic, documented, exact-head testable, and free of temporary artifacts.
 
-Record the gate result in the PR body or owning design record.
+P5 reviews the complete diff, every file, callers, workflows, registries, authority, state, failure modes, recovery, compatibility, negative cases, documentation claims, deletion recoverability, lane ownership, writer ownership, labels, and receipt.
 
-## P3: Invariant-first implementation
+CI success does not replace review. Correct local defects at the root, validate the exact head, and perform a fresh complete review. A P6-STOP condition ends branch correction.
 
-Use:
+## Temporary artifact rejection
 
-```text
-RED
-  add failing evidence for the invariant
+Reject root hidden patch/apply/fix scripts, probe workflows, branch-mutating structural-refactor workflows, hardening/final-build/build-transfer workflows, auto-correct workflows, self-deleting or self-pushing mechanisms, generated syntax-fix scripts, and temporary validation branches or PRs.
 
-GREEN
-  implement the smallest correct behavior
+Permanent automation requires accepted authority, stable naming, tests, repository-content read-only operation unless separately governed, ownership, rollback, and removal analysis.
 
-REFACTOR
-  remove duplication, special cases, unstable ownership,
-  unnecessary wrappers, and wrong dependency direction
-```
-
-Do not stop merely because tests pass if the final structure remains patch-like.
-
-## P4-P6: Validation, review, and correction
-
-Before P5, make the PR complete, atomic, documented, exact-head testable, and free of temporary construction artifacts.
-
-P5 reviews the complete diff, every changed file, callers, authority, state, failure modes, recovery, compatibility, negative cases, documentation claims, deletion recoverability, and lane ownership.
-
-CI success does not replace review.
-
-P6 classifies every finding:
-
-```text
-local defect
-  -> root-cause correction -> exact-head validation -> fresh complete review
-
-architecture defect, duplicate authority, repeated special cases,
-or three failed correction attempts
-  -> stop patching -> return to P1 and redesign
-
-cross-lane dependency
-  -> do not edit the owner lane -> record the blocker
-```
-
-A finding remains open until the corrected exact head is reviewed.
-
-## P7: Merge
+## P7 and P8
 
 Merge only when:
 
-- P0-P6 are complete;
-- the latest complete-diff review is clean;
-- exact-head checks pass and skips are understood;
-- review threads and requested changes are resolved;
-- base and head are intended and mergeable;
-- no newer repository change invalidated the evidence;
-- the merge remains within the selected lane.
+- receipt epoch and bootstrap match exact current main;
+- no stop or unresolved failure label exists;
+- P0-P6 and fresh complete review are clean;
+- exact-head checks pass and review threads are resolved;
+- base/head are intended and mergeable;
+- no newer change invalidated evidence;
+- no temporary artifact or branch-writing workflow exists.
 
-A lane-local continuation command authorizes merging only the selected lane's PR, unless the user says review-only or do not merge.
+A lane-local command authorizes only the selected lane's merge unless the user says review-only or do not merge.
 
-## P8: Same-lane convergence
-
-After merge:
-
-- verify the merge commit and resulting `main`;
-- verify required post-merge checks;
-- perform bookkeeping only through the selected lane's owner;
-- release the selected lane slot;
-- select the next executable item only in the same lane.
-
-Do not switch lanes automatically.
+After merge, verify the merge and resulting `main`, verify post-merge checks, perform same-lane bookkeeping, release the slot, and select only the next item in the same lane.
 
 ## Stop conditions
 
-In lane-local mode, stop without changing another lane when:
-
-- lane binding is ambiguous;
-- the selected lane is complete;
-- the selected lane requires a genuine user decision or unavailable authority;
-- another lane or pending evidence blocks it and no same-lane action exists;
-- repository state cannot be read safely.
+Stop when scope is ambiguous, receipt/main/epoch is stale, re-bootstrap is incomplete, writer collision or branch-writing workflow exists, `relaylm:p6-stop` is present, temporary artifacts recur, the lane is complete, a genuine decision or unavailable authority is required, another lane blocks all safe same-lane work, or repository state cannot be read safely.
 
 Name the exact blocker. Never promise hidden background work.
