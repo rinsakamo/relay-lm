@@ -19,7 +19,7 @@ from relaylm.character_store_bootstrap import (  # noqa: E402
     CharacterStoreBootstrapRequest,
     execute_character_store_bootstrap,
 )
-from relaylm.character_store_bootstrap_cli import main as cli_main  # noqa: E402
+from relaylm.cli.character_store_bootstrap import main as cli_main  # noqa: E402
 from relaylm.config import load_config  # noqa: E402
 from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root  # noqa: E402
 
