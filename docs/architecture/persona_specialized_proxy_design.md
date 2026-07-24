@@ -6,7 +6,9 @@ Its runtime-layer, context-hierarchy, memory-adapter, agent-boundary, and scope-
 
 Use these current documents instead:
 
-- [Runtime architecture](runtime_architecture.md)
+- [RelayLM System Overview](system-overview.md)
+- [Pipeline Responsibilities](pipeline-responsibilities.md)
+- [Request / Response Pipeline](runtime/request-response-pipeline.md)
 - [Context packing design](context_packing_design.md)
 - [AI character product principles](ai_character_product_principles.md)
 - [Request scope and scene designs](scene_lifecycle_design.md)
