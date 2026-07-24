@@ -91,10 +91,13 @@ jobs:
           name: d1-final-patch-build-diagnostics
           path: /tmp/d1-final-patch-build.log
           if-no-files-found: error
-      - name: Publish validated D1 build
+      - name: Publish validated non-workflow tree
         run: |
           set -euo pipefail
-          git add -A
+          git diff --binary origin/main -- ':!.github/workflows' > /tmp/d1-validated-nonworkflow.patch
+          git reset --hard origin/main
+          git clean -fdx
+          git apply --index /tmp/d1-validated-nonworkflow.patch
           git diff --cached --check
-          git commit -m "docs: finalize D1 authority transfer"
-          git push origin HEAD:agent/d1-final-patch-build
+          git commit -m "docs: finalize D1 non-workflow authority transfer"
+          git push --force origin HEAD:agent/d1-validated-nonworkflow
