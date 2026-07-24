@@ -27,6 +27,9 @@ from relaylm.shared_assessment_runtime import (
     shared_assessment_formation_receipt_id,
     shared_assessment_revision_record_id,
 )
+from relaylm.subjective_mem_reformation import (
+    check_subjective_mem_reformation_locked,
+)
 from relaylm.subjective_mem import (
     SUBJECTIVE_MEM_PREPARED_MANIFEST_SCHEMA,
     SubjectiveMemAssessmentAuthorizationProjection,
@@ -409,6 +412,24 @@ def create_subjective_mem(
             if exact_reasons:
                 return SubjectiveMemCreateResult(
                     "fail_closed", blocked_reasons=exact_reasons
+                )
+
+            reformation = check_subjective_mem_reformation_locked(
+                tx=tx,
+                evidence_space_id=evidence_space_id,
+                character_id=character_authority.character_id,
+                grounded_content_digest=assessment_revision.supported_content_digest,
+                subjective_meaning=proposal.subjective_meaning,
+                memory_kind=proposal.memory_kind,
+                scope_binding=proposal.scope_binding,
+            )
+            if not reformation.allowed:
+                return SubjectiveMemCreateResult(
+                    "fail_closed",
+                    blocked_reasons=(
+                        reformation.blocked_reasons
+                        or ("subjective_mem_reformation_check_failed",)
+                    ),
                 )
 
             receipt_result = build_shared_assessment_formation_receipt(

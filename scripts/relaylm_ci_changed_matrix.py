@@ -18,6 +18,7 @@ RUNTIME_TIMEOUTS = {
     "e1r1_trusted_home_scene_admission": 30,
     "e1r2_character_store_bootstrap": 30,
     "soul_lab_management": 30,
+    "subjective_mem_lifecycle": 45,
 }
 
 UI_KINDS = {
