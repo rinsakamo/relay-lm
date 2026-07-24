@@ -421,3 +421,50 @@ Two items are not parallel-safe when either changes:
 - competing canonical paths, imports, or precedence rules.
 
 ## Atomic PR requirements
+
+Every execution PR states:
+
+```text
+lane and stage
+scope and exact paths
+current responsibility and callers
+accepted replacement mapping
+behavioral and authority non-goals
+public and operator entry-point effect
+state migration or no-state rationale
+compatibility and removal gate
+validation matrix
+rollback boundary
+negative-reference checks
+parallel-safety analysis
+current P0-P8 stage
+```
+
+A documentation synthesis or retirement PR additionally states:
+
+```text
+canonical target documents
+source-document set
+normative extraction result
+retained-record decisions
+retiring-path manifest effect
+Git-recoverability proof
+retired bespoke guards or receipts
+```
+
+## Completion criteria
+
+The program is complete only when:
+
+- permanent milestone-oriented naming is rejected;
+- active documentation is complete at stable responsibility-level granularity;
+- retired documentation and code are absent from the current tree and recoverable through Git;
+- retained records are narrowly typed and current-function-owned;
+- one-document cutover guards, receipts, and ledger growth are retired;
+- generated navigation is reproducible and drift-checked;
+- retained scripts have one clear responsibility and canonical invocation;
+- ordinary tests, process smoke, transitional characterization, operator tools, and repository validators are distinguishable;
+- accepted domain packages enforce dependency direction;
+- Subjective MEM and Retrieval have one canonical package and authority path;
+- remaining Primary MEM assets have an explicit retained, transitional, rollback, or retired disposition;
+- no permanent migration aliases or duplicate semantic authorities remain.
