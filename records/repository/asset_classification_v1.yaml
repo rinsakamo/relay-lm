@@ -1,6 +1,6 @@
 registry_version: 1
 generated_from: docs/reference/repository-asset-classification.md
-source_commit: 91ce87766fedeb3a6be1cb6b8321fcdcfd53887e
+source_commit: 17ce820b91299e72dc532e7ed67046a377c0fd7e
 classification_version: 1
 canonical_entrypoints:
   - group: soul_lab_runtime
@@ -33,17 +33,22 @@ canonical_entrypoints:
 records:
   - asset_id: console.relaylm
     paths: [pyproject.toml]
-    entrypoint: "relaylm = relaylm.soul_lab_app:main"
+    entrypoint: "relaylm = relaylm.cli.soul_lab:main"
     responsibility: operator_cli
     lifecycle: active
     owner: soul_lab_runtime
     protected_boundary: supported local RelayLM ASGI and SOUL Lab launch
     current_callers: [installed relaylm command, local operator invocation]
     invocation_roots: [console_script]
-    evidence: ["pyproject.toml [project.scripts]", relaylm/soul_lab_app.py]
+    evidence:
+      - "pyproject.toml [project.scripts]"
+      - relaylm/cli/soul_lab.py
+      - relaylm/soul_lab_app.py
+      - tests/test_relaylm_soul_lab_entrypoint_boundary.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
+    notes: R4-E2 moved the installed launcher implementation into the CLI package while retaining the ASGI factory in soul_lab_app without an alias or second invocation root
 
   - asset_id: console.worker
     paths: [pyproject.toml]
