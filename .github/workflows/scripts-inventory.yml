@@ -6,6 +6,7 @@ on:
     paths:
       - "scripts/**"
       - "tests/test_relaylm_generate_scripts_inventory.py"
+      - "records/repository/asset_classification_v1.yaml"
       - ".github/workflows/**"
       - "docs/**"
       - ".github/workflows/scripts-inventory.yml"
@@ -22,8 +23,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install test dependency
-        run: python -m pip install --quiet pytest
+      - name: Install test dependencies
+        run: python -m pip install --quiet pyyaml pytest
       - name: Test inventory semantics
         run: python -m pytest -q tests/test_relaylm_generate_scripts_inventory.py
       - name: Generate inventory

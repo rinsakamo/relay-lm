@@ -7,8 +7,13 @@ import argparse
 from pathlib import Path
 import subprocess
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY_PATH = ROOT / "docs" / "smoke" / "scripts_inventory.md"
+CLASSIFICATION_REGISTRY_PATH = (
+    ROOT / "records" / "repository" / "asset_classification_v1.yaml"
+)
 HELPER_TOKENS = frozenset(
     {"fixture", "fixtures", "helper", "helpers", "support", "supports"}
 )
@@ -36,6 +41,51 @@ def filename_signal(name: str) -> str:
     return "other"
 
 
+def load_reviewed_responsibilities(path: Path | None = None) -> dict[str, str]:
+    """Read exact script responsibility claims from the reviewed registry."""
+
+    registry_path = path or CLASSIFICATION_REGISTRY_PATH
+    payload = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("classification registry must be a mapping")
+
+    records = payload.get("records")
+    if not isinstance(records, list):
+        raise ValueError("classification registry records must be a list")
+
+    responsibilities: dict[str, str] = {}
+    for index, record in enumerate(records):
+        if not isinstance(record, dict):
+            raise ValueError(f"classification record {index} must be a mapping")
+
+        responsibility = record.get("responsibility")
+        paths = record.get("paths")
+        if not isinstance(responsibility, str) or not responsibility:
+            raise ValueError(
+                f"classification record {index} requires a non-empty responsibility"
+            )
+        if not isinstance(paths, list):
+            raise ValueError(f"classification record {index} paths must be a list")
+
+        for raw_path in paths:
+            if not isinstance(raw_path, str):
+                raise ValueError(
+                    f"classification record {index} contains a non-string path"
+                )
+            if not raw_path.startswith("scripts/") or not raw_path.endswith(".py"):
+                continue
+
+            prior = responsibilities.get(raw_path)
+            if prior is not None and prior != responsibility:
+                raise ValueError(
+                    "conflicting reviewed responsibilities for "
+                    f"{raw_path}: {prior} vs {responsibility}"
+                )
+            responsibilities[raw_path] = responsibility
+
+    return responsibilities
+
+
 def generate() -> str:
     scripts = sorted(
         path
@@ -51,8 +101,9 @@ def generate() -> str:
         if path.resolve() != INVENTORY_PATH.resolve()
     )
     docs_text = read_texts(docs_sources)
+    reviewed_responsibilities = load_reviewed_responsibilities()
 
-    rows: list[tuple[str, bool, bool, str]] = []
+    rows: list[tuple[str, bool, bool, str, str]] = []
     for path in scripts:
         relative = path.relative_to(ROOT).as_posix()
         name = path.name
@@ -64,6 +115,7 @@ def generate() -> str:
                 ci_referenced,
                 docs_referenced,
                 filename_signal(name),
+                reviewed_responsibilities.get(relative, "unclassified"),
             )
         )
 
@@ -77,6 +129,7 @@ def generate() -> str:
     ci_count = sum(row[1] for row in rows)
     docs_count = sum(row[2] for row in rows)
     neither_count = sum(not row[1] and not row[2] for row in rows)
+    reviewed_count = sum(row[4] != "unclassified" for row in rows)
 
     lines = [
         "# Scripts Inventory",
@@ -92,7 +145,8 @@ def generate() -> str:
         "```",
         "",
         f"Snapshot stats: {len(rows)} Python scripts total, {ci_count} CI-referenced, "
-        f"{docs_count} docs-referenced, {neither_count} referenced by neither.",
+        f"{docs_count} docs-referenced, {neither_count} referenced by neither, and "
+        f"{reviewed_count} with a reviewed responsibility.",
         "",
         "CI references include direct workflow invocations and commands registered in "
         "`scripts/relaylm_ci_consolidated_smoke.py`.",
@@ -101,15 +155,17 @@ def generate() -> str:
         "",
         "Reference columns are mechanical facts. The filename signal describes only "
         "the path shape; it does not classify responsibility, lifecycle, or retention.",
-        "Those decisions require reviewed Lane R evidence.",
+        "Reviewed responsibility is copied only from exact script paths in "
+        "`records/repository/asset_classification_v1.yaml`; unlisted scripts remain "
+        "`unclassified`. The generated inventory cannot authorize a lifecycle change.",
         "",
-        "| script | CI-referenced | docs-referenced | filename signal |",
-        "| --- | --- | --- | --- |",
+        "| script | CI-referenced | docs-referenced | filename signal | reviewed responsibility |",
+        "| --- | --- | --- | --- | --- |",
     ]
-    for script, ci_ref, docs_ref, signal in rows:
+    for script, ci_ref, docs_ref, signal, responsibility in rows:
         lines.append(
             f"| `{script}` | {'yes' if ci_ref else 'no'} | "
-            f"{'yes' if docs_ref else 'no'} | {signal} |"
+            f"{'yes' if docs_ref else 'no'} | {signal} | {responsibility} |"
         )
     lines.append("")
     return "\n".join(lines)
