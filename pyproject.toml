@@ -24,8 +24,8 @@ dev = ["relay-lm[test]"]
 relaylm = "relaylm.soul_lab_app:main"
 relaylm-worker = "relaylm.cli.worker:main"
 relaylm-character-store-bootstrap = "relaylm.cli.character_store_bootstrap:main"
-relaylm-character-create = "relaylm.character_creation_cli:main_create"
-relaylm-character-template-validate = "relaylm.character_creation_cli:main_validate"
+relaylm-character-create = "relaylm.cli.character_creation:main_create"
+relaylm-character-template-validate = "relaylm.cli.character_creation:main_validate"
 relaylm-runtime-install = "relaylm.cli.runtime_install:main"
 
 [build-system]

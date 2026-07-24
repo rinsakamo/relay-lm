@@ -1,6 +1,6 @@
 registry_version: 1
 generated_from: docs/reference/repository-asset-classification.md
-source_commit: 0e6f578fa1ffb4662f7e3db2f5d3a9484fbd07e8
+source_commit: 91ce87766fedeb3a6be1cb6b8321fcdcfd53887e
 classification_version: 1
 canonical_entrypoints:
   - group: soul_lab_runtime
@@ -91,31 +91,39 @@ records:
 
   - asset_id: console.character_create
     paths: [pyproject.toml]
-    entrypoint: "relaylm-character-create = relaylm.character_creation_cli:main_create"
+    entrypoint: "relaylm-character-create = relaylm.cli.character_creation:main_create"
     responsibility: operator_cli
     lifecycle: active
     owner: character_workspace
     protected_boundary: explicit character creation
     current_callers: [installed relaylm-character-create command, local operator invocation]
     invocation_roots: [console_script]
-    evidence: ["pyproject.toml [project.scripts]", relaylm/character_creation_cli.py]
+    evidence:
+      - "pyproject.toml [project.scripts]"
+      - relaylm/cli/character_creation.py
+      - tests/test_relaylm_character_creation_entrypoint_boundary.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
+    notes: R4-D2 moved the shared two-command implementation without retaining the unsupported old module path or adding a compatibility alias
 
   - asset_id: console.character_template_validate
     paths: [pyproject.toml]
-    entrypoint: "relaylm-character-template-validate = relaylm.character_creation_cli:main_validate"
+    entrypoint: "relaylm-character-template-validate = relaylm.cli.character_creation:main_validate"
     responsibility: operator_cli
     lifecycle: active
     owner: character_workspace
     protected_boundary: explicit character-template validation
     current_callers: [installed relaylm-character-template-validate command, local operator invocation]
     invocation_roots: [console_script]
-    evidence: ["pyproject.toml [project.scripts]", relaylm/character_creation_cli.py]
+    evidence:
+      - "pyproject.toml [project.scripts]"
+      - relaylm/cli/character_creation.py
+      - tests/test_relaylm_character_creation_entrypoint_boundary.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
+    notes: R4-D2 moved the shared two-command implementation without retaining the unsupported old module path or adding a compatibility alias
 
   - asset_id: console.runtime_install
     paths: [pyproject.toml]
