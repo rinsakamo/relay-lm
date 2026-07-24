@@ -15,10 +15,10 @@ def test_character_creation_commands_use_only_canonical_installed_entrypoints() 
     records = invocations.collect_all()
     expected_targets = {
         "console_script:relaylm-character-create": (
-            "relaylm-character-create -> relaylm.character_creation_cli:main_create"
+            "relaylm-character-create -> relaylm.cli.character_creation:main_create"
         ),
         "console_script:relaylm-character-template-validate": (
-            "relaylm-character-template-validate -> relaylm.character_creation_cli:main_validate"
+            "relaylm-character-template-validate -> relaylm.cli.character_creation:main_validate"
         ),
     }
 
@@ -29,6 +29,10 @@ def test_character_creation_commands_use_only_canonical_installed_entrypoints() 
 
     assert not any(
         record.root_kind == "python_dash_m"
-        and record.source_path == "relaylm/character_creation_cli.py"
+        and record.source_path == "relaylm/cli/character_creation.py"
+        for record in records
+    )
+    assert not any(
+        record.source_path == "relaylm/character_creation_cli.py"
         for record in records
     )
