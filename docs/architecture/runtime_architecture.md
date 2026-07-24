@@ -1,364 +1,133 @@
-# RelayLM Runtime Architecture
+---
+relaylm_doc_type: system_architecture
+relaylm_authority: transitional_runtime_integration_and_mode_current_implementation_note
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: runtime
+relaylm_update_trigger:
+  - supported frontend/backend integration posture changes
+  - current route, mode, profile, or adapter compatibility changes
+  - the D2-B2b consumer migration and removal gate closes
+relaylm_not_authoritative_for:
+  - canonical RelayLM system context or authority planes
+  - canonical component responsibility or target pipeline order
+  - exact compile, client-authority, memory, or checkpoint contracts
+  - repository-wide current implementation completion
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - system-overview.md
+  - pipeline-responsibilities.md
+  - runtime/request-response-pipeline.md
+  - runtime/compile-and-checkpoint.md
+  - open_llm_vtuber_integration.md
+relaylm_related_contracts:
+  - ../contracts/runtime_compile_current_target.md
+  - client_instruction_authority_contract.md
+relaylm_lifecycle: transitional
+relaylm_primary_consumers:
+  - onboarding and integration maintainers
+  - current configuration readers
+  - D2-B2b migration reviewers
+relaylm_authority_level: implementation_context
+---
+# Transitional Runtime Integration and Mode Note
 
-RelayLM is an OpenAI-compatible Memory Context Proxy for local LLM frontends.
+## Status
 
-The primary local MVP path is:
+This path is a closed transitional current-implementation and integration note. Canonical RelayLM system context is [RelayLM System Overview](system-overview.md), canonical component ownership and target order are [Pipeline Responsibilities](pipeline-responsibilities.md), mode-specific runtime dataflow is [Request / Response Pipeline](runtime/request-response-pipeline.md), and compile/checkpoint responsibility is [Runtime Compile and Checkpoint Architecture](runtime/compile-and-checkpoint.md).
+
+This page no longer owns repository-wide runtime architecture. It must not gain new consumers. Its path remains in the onboarding workflow trigger and in existing documentation links until D2-B2b moves each consumer to the smallest owning authority.
+
+## Current external topology
+
+The primary local integration remains:
 
 ```text
-OpenWebUI
+OpenWebUI or another supported OpenAI-compatible frontend
   -> RelayLM /v1/chat/completions
-  -> LM Studio /v1/chat/completions
+  -> LM Studio or another OpenAI-compatible backend
 ```
 
-An optional real-time profile is:
+An optional realtime profile may use Open-LLM-VTuber or another adapter-facing frontend. RelayLM preserves OpenAI-compatible request/response and streaming transport while adding explicit managed context, memory, character, and runtime boundaries where configured.
+
+## Current terminology
+
+These terms remain distinct:
 
 ```text
-Open-LLM-VTuber
-  -> RelayLM /v1/chat/completions
-  -> OpenAI-compatible backend
+route
+  RelayLM mapping from the incoming model identity to a runtime configuration bundle
+
+mode
+  prompt/context assembly and managed-runtime behavior profile
+
+backend
+  the model-serving endpoint and engine selected for forwarding
 ```
 
-RelayLM should make an AI character feel memoryful, persona-stable, and conversationally continuous while keeping the frontend unchanged.
+A route selects configuration, a mode selects managed behavior, and a backend executes the model request. These terms do not transfer semantic scene, memory, persona, or relationship authority.
 
-RelayLM is not an agent framework or a memory database. It controls what the backend model sees before generation so persona, relationship, memory, and recent context can be shaped without taking over tool workflows or external memory-product responsibilities.
+## Current integration layers
 
-## Runtime layers
-
-RelayLM keeps the runtime split into explicit layers so pass-through compatibility and memory-aware context packing share one architecture.
+Current implementation exposes the following integration-oriented layers:
 
 ```text
-OpenAI-compatible API layer
-  -> Routing layer
-  -> Character profile layer
-  -> Memory / retrieval layer
-  -> Context compiler layer
-  -> Backend adapter layer
+OpenAI-compatible API
+  -> route and backend selection
+  -> configured character/profile loading
+  -> optional memory and retrieval inputs
+  -> context compilation and managed payload gates
+  -> backend adapter and streaming transport
 ```
 
-This layer view is deployment- and integration-oriented. It complements, but does not replace, the canonical semantic/runtime pipeline vocabulary in [Pipeline Responsibility Design](pipeline_responsibility_design.md): RelaySCN, RelayEMO, RelayINT, RelayMEM, RelayCTX, RelayREF, RelayRUN, and RelaySLP.
+Canonical semantic component responsibility inside these layers is owned by the new pipeline page. Layer names describe integration and deployment structure only.
 
-## Terminology boundary notes
+## Current mode posture
 
-- `route`: RelayLM-internal mapping from incoming `model` value to runtime config bundle.
-- `mode`: prompt-assembly behavior profile (`pass_through`, `memory_light`, `memory_full`).
-- `backend`: actual model-serving endpoint and engine family behind adapter forwarding.
+### `pass_through`
 
-These three terms should stay distinct: route chooses configuration, mode chooses compilation behavior, backend chooses execution target.
+`pass_through` is an explicit delegated-authority compatibility route. It preserves compatible client-owned message context and common OpenAI-compatible fields while routing to the configured backend. A compile failure on a managed route is not permission to enter pass-through.
 
-### OpenAI-compatible API layer
+### `memory_light`
 
-Responsibilities:
+`memory_light` is the primary low-latency managed compatibility profile. Current behavior may combine configured character/profile sources, bounded memory or selected recent context, default-off history-exclusion gates, and the current profile compiler. Exact current apply behavior is owned by code, implemented schema/version, current contracts, and Project Status.
 
-- expose `/v1/chat/completions`,
-- expose `/v1/models`,
-- accept OpenAI-compatible request bodies from supported local frontends,
-- preserve streaming behavior for real-time profiles,
-- return backend-compatible error payloads where practical.
+### `memory_full`
 
-This layer does not own memory, persona loading, retrieval, or backend-specific optimization.
+`memory_full` names the heavier budget-aware managed profile direction for broader retrieval, RAG, spill, or compression. The name does not prove that every target RelayCTX, Retrieval, or compression handoff is implemented or default-on.
 
-### Routing layer
+### optional response-finalization profiles
 
-Responsibilities:
+Optional persona, presentation, TTS, avatar, or response-finalization profiles remain separately governed. They do not become the canonical ordinary conversation path merely because an adapter supports them.
 
-- resolve the incoming `model` name to a RelayLM route,
-- select the backend,
-- select the character profile,
-- select the cache namespace and memory namespace,
-- map the RelayLM model name to the backend model name when configured.
+## Current authority and compatibility rules
 
-Model-name routing is the primary MVP mechanism because supported frontends can change the model field without RelayLM-specific code changes.
+- client-provided messages are request evidence on managed routes, not automatic SOUL, relationship, scene, or memory authority;
+- explicit pass-through remains the delegated-context exception;
+- current managed reconstruction and history exclusion remain bounded by their implemented gates and supported request shapes;
+- RelayMEM Retrieval is read-only in the interactive path;
+- RelayCTX owns selected context construction and token-budget handling, not semantic policy;
+- RelayRUN owns orchestration, fallback/recovery routing, checkpoints, and trace, not persona or response meaning;
+- backend adapters preserve protocol and transport rather than deciding character behavior;
+- current completion is determined by Project Status, code, schema/version, and focused validation.
 
-### Character profile layer
+Exact client-instruction, compile, fallback, context, and checkpoint rules remain in their owning contracts.
 
-Responsibilities:
+## Conversation and capability boundary
 
-- load approved character identity and expression policy,
-- resolve `SOUL.md`,
-- resolve `OUTPUT_POLICY.md`,
-- resolve relationship anchors and stable memory summaries,
-- expose a stable profile object to RelayCTX Repack.
+Ordinary generated conversation is model output shaped by the selected model, approved character sources, managed context, and user configuration. RelayLM does not treat natural-language text as an executable capability merely because it contains code or a command.
 
-`SOUL.md` and `OUTPUT_POLICY.md` stay separate:
+Tool execution, filesystem and protected-data access, credentials, network actions, persistence, memory mutation, character-source mutation, and other externally observable side effects require typed owning authority and fail-closed gates. Product-level conversation principles remain in [AI Character Product Principles](ai_character_product_principles.md).
 
-```text
-SOUL = who the character is
-OUTPUT_POLICY = how the character speaks and emotionally manifests
-```
+## Removal gate
 
-Authority boundary:
+Delete this path after D2-B2b:
 
-```text
-RelayLM runtime / capability policy
-  -> highest execution and side-effect authority
+1. moves system-context consumers to `system-overview.md`;
+2. moves component-order consumers to `pipeline-responsibilities.md`;
+3. moves mode/timing/failure consumers to `runtime/request-response-pipeline.md` and current/target references;
+4. moves configuration and onboarding explanations to configuration/reference or integration guides;
+5. updates `.github/workflows/onboarding-config-smoke.yml` to its canonical documentation trigger;
+6. proves generic authority and link validation green and records this path in the retirement manifest.
 
-approved RelaySOUL / route-configured SOUL.md
-  -> durable persona authority
-
-approved OUTPUT_POLICY / relationship anchors
-  -> durable expression and relationship policy
-
-RelaySCN
-  -> current role, task, scene, and temporary constraints
-
-client system/developer evidence
-  -> bounded low-trust evidence for current-scene interpretation
-```
-
-Client-supplied `system` and `developer` messages are not fallback SOUL sources. On a supported v1 managed request, only explicitly provenanced candidates may enter one bounded low-trust instruction-evidence block. Input-side RelaySCN may later normalize validated evidence into a temporary scene role, context, or constraint. RelayLM must never copy the raw client prompt into `SOUL.md`.
-
-Detailed authority rules live in [Client Instruction Authority Contract](client_instruction_authority_contract.md).
-
-### Memory / retrieval layer
-
-Responsibilities:
-
-- provide lightweight approved character/viewer memory for `memory_light`,
-- provide bounded RAG, spill, compression, or heavier retrieval for `memory_full`,
-- keep real-time latency in mind,
-- avoid expensive synchronous work in latency-sensitive profiles,
-- preserve source, scope, confidence, and policy metadata for downstream selection.
-
-The synchronous retrieval implementation should remain simple, local-first, and bounded. Embeddings, rerankers, and summarizers may be added behind the same read interface when needed.
-
-External memory systems may specialize in user facts, episodic recall, temporal relationship memory, procedural persona updates, or external knowledge. RelayLM should normalize, arbitrate, and repack approved retrieval outputs rather than expose all external memory output directly to the backend model.
-
-RelayMEM Retrieval boundary:
-
-- reads approved memory evidence for the current response,
-- obeys RelaySCN memory scope and RelayINT retrieval intent,
-- returns bounded retrieval candidates or blocks,
-- does not finalize prompt packing,
-- does not mutate MEM or SOUL.
-
-RelaySLP boundary:
-
-- runs outside the latency-critical normal response path,
-- extracts and compiles deferred memory or SOUL candidates from governed evidence,
-- emits held, rejected, update, or proposal candidates through explicit gates,
-- does not answer the current turn or bypass persistence approval.
-
-Current Phase 6 reaches atomic durable enqueue through B2, but ordinary request finalization, queue lifecycle, worker execution, and later-turn recall are not yet integrated.
-
-### Context compiler layer
-
-Responsibilities:
-
-- convert approved character profile, RelaySCN state, approved memory evidence, selected RelayLM-owned recent context, and current-turn evidence into a stable context layout,
-- preserve persona stability,
-- keep stable blocks byte-for-byte stable when possible,
-- put dynamic evidence later in the prompt,
-- emit an OpenAI-compatible message list for the backend adapter.
-
-Client-provided message arrays are request evidence, not automatically trusted backend context.
-
-#### Current compatibility behavior
-
-- explicit `pass_through` routes preserve compatible client-owned messages,
-- the default `memory_light` compatibility path may retain prior client user/assistant history in the backend-bound message list,
-- default streaming remains compatible backend SSE forwarding.
-
-#### Current bounded managed apply
-
-- history-exclusion apply is default-off and dry-run-only by default,
-- `client_history_exclusion_apply.v0` supports bounded managed `memory_light` requests with no client system/developer messages,
-- `client_history_exclusion_apply.v1` supports bounded instruction-bearing requests only with exact `client_instruction_source.v1` provenance,
-- role, wording, and message position alone are not provenance,
-- unsupported or invalid managed requests fail closed rather than restoring raw client context,
-- active tool transactions remain blocked until a minimum-chain reconstruction contract exists,
-- `pass_through` remains an explicit exemption.
-
-#### Current cache interpretation plumbing
-
-- cache lookup is strict and read-only,
-- C4b emits a detached content-free RelaySCN-facing diagnostics projection from a validated hit,
-- C5 can validate a trusted runtime-private typed-parse candidate and invoke a default-off gated cache writer,
-- current code does not parse arbitrary backend visible responses, trust frontend metadata as a typed source, semantically apply RelaySCN state, or support parser-versioned lookup/write compatibility.
-
-#### Target managed reconstruction
-
-```text
-validated current user turn
-+ bounded current instruction evidence
-+ RelayLM-owned profile / scene / context / memory state
-+ minimum active transaction state
-  -> newly constructed backend-bound message list
-```
-
-The complete target path is broader than current v0/v1 request support and makes managed reconstruction the ordinary behavior rather than an explicit apply gate.
-
-RelayLM treats prompt construction as context compilation rather than concatenation.
-
-RelayCTX boundary:
-
-- RelayCTX Repack packs selected context into the compiled runtime prompt shape,
-- RelayCTX Repack consumes policy and memory selections but does not own scene or persistence policy decisions,
-- RelayCTX Repack owns prompt-layout and token-budget application decisions,
-- RelayCTX output is runtime compiled context, not a RelaySOUL artifact,
-- RelayCTX Unpack separates explicit internal update blocks from user-visible text and does not judge visible content by meaning.
-
-Current non-stream Unpack is gated. Current Phase 5.5 also provides default-off request-runtime stream suppression and TTS-handoff metadata construction through B2/C4. The target architecture makes Repack/Unpack default-on core protocol-boundary behavior for managed routes; `pass_through` remains the compatibility exemption.
-
-The compiled prompt should use tags for persona and conversation context. Machine contracts such as adapter results, diagnostics, traces, and tool protocols should remain JSON/dataclass-shaped. In short: JSON is for machine contracts; tags are for persona/context conditioning.
-
-### Backend adapter layer
-
-Responsibilities:
-
-- forward non-streaming requests to OpenAI-compatible backends,
-- forward streaming SSE chunks without breaking frontend latency expectations,
-- adapt model names and headers,
-- preserve pass-through fields such as `temperature`, `tools`, and sampling parameters when possible.
-
-Backend-specific optimization should be hidden behind adapters. vLLM and SGLang are important long-term targets, but the MVP should work with any OpenAI-compatible backend.
-
-Relay Adapter boundary:
-
-- preserve OpenAI-compatible frontend/backend interoperability,
-- preserve request/response compatibility and streaming semantics,
-- avoid changing persona policy or memory decisions,
-- remain a transport/integration boundary rather than a semantic pipeline stage.
-
-Phase 5.5 transport envelopes are runtime-private metadata only. RelayLM Core does not deliver them to a TTS process or execute audio/avatar behavior.
-
-Policy and runtime decision boundary:
-
-- RelaySCN resolves scene, expression, memory-scope, persistence policy, and optional pre-generation model/profile selection.
-- RelayINT owns pre-action intent, ambiguity, clarification, and semantic proceed/block decisions before an action is authorized.
-- RelayCTX Repack owns prompt construction and token-budget degradation.
-- RelayRUN owns runtime orchestration, transport/runtime fallback and recovery routing, checkpoints, trace artifacts, and node-state reporting.
-- The Runtime Compile Gate is a request-local decision phase that consumes route, mode, preflight, scene-policy, and budget outcomes; it is not a standalone `RelayPLC` component.
-
-## Conversation content and capability boundary
-
-RelayLM does not treat ordinary natural-language conversation as an executable capability.
-
-```text
-ordinary generated text
-  -> model / RelaySOUL / OUTPUT_POLICY responsibility
-  -> no mandatory RelayLM semantic censorship or rewrite
-
-requested side effect
-  -> typed capability contract
-  -> explicit authority and bounded inputs
-  -> fail-closed runtime gate
-```
-
-The core runtime does not add a universal post-generation classifier, secondary moderation LLM, or meaning-changing rewrite step for teasing, insults, arguments, adult-oriented tone, politics, or other open-ended conversation judgments. Generated conversation depends on the selected model, approved character profile, context, and user configuration. A recommended model profile verifies compatibility and expected default behavior; it does not certify or guarantee content.
-
-RelayLM governs tool calls, code or command execution, filesystem and protected-data access, credentials, network actions, persistence, configuration changes, MEM mutation, RelaySOUL mutation, and other externally observable or irreversible side effects. These capabilities do not inherit authority from natural-language output.
-
-Text that contains code, a command, or a request to perform an action remains text unless RelayLM or an attached adapter attempts to interpret it as an executable capability. At that point, the typed capability gate applies. Malformed structured output may be rejected as a protocol error, but RelayLM must not silently replace it with a semantically rewritten answer.
-
-These gates define the required RelayLM-owned authority path, not an absolute guarantee for arbitrary external clients, backends, plugins, or future adapters. Any integration that executes a side effect without routing it through the typed capability gate is outside RelayLM's governed execution boundary.
-
-RelayCTX Repack/Unpack may add or remove RelayLM-owned protocol blocks on managed routes. This is required visible/internal context separation, not content censorship. Unpack must be marker/schema-bounded and must not classify ordinary visible text as acceptable or unacceptable.
-
-RelayEMO text markers are optional presentation decoration. They should remain disabled or adapter-controlled unless explicitly configured, and they must not become the mechanism for content safety or canonical response correction.
-
-Safety-sensitive routes may select a more suitable model, prompt profile, tool policy, retrieval scope, or capability set before generation. They must not imply that RelayLM universally inspects and guarantees the semantic acceptability of every final conversational response.
-
-Optional content or presentation filters required by a frontend, broadcast platform, age profile, or deployment policy belong in explicit client or adapter layers rather than the canonical RelayLM conversation path.
-
-The canonical product principle is defined in [AI Character Product Principles](ai_character_product_principles.md#conversation-content-and-capability-authority).
-
-Core handoff rule:
-
-```text
-RelaySCN resolves scene and persistence policy
-  -> RelayINT decides whether to proceed and whether retrieval is needed
-  -> RelayMEM Retrieval returns approved evidence
-  -> RelayCTX packs selected context and applies token budgets
-  -> RelayRUN orchestrates runtime fallback/recovery and records trace/checkpoint artifacts
-  -> adapters preserve API/backend compatibility
-
-Out-of-band:
-  governed evidence -> RelaySLP -> gated MEM updates / SOUL proposals
-```
-
-## Mode contract
-
-RelayLM modes define how much of the runtime stack is active.
-
-### pass_through
-
-Purpose:
-
-- verify URL-swap integration,
-- test `/v1/models`,
-- test `/v1/chat/completions`,
-- test streaming SSE forwarding.
-
-Behavior:
-
-- use routing and backend adapter,
-- do not modify messages,
-- map model name to backend model when configured,
-- forward common OpenAI-compatible fields transparently.
-
-### memory_light
-
-Purpose:
-
-- add useful memory while preserving low latency,
-- make AI characters feel more continuous without heavy RAG.
-
-Behavior:
-
-- preserve stable character blocks,
-- keep bounded RelayLM-owned selected recent context,
-- add lightweight approved character/viewer memory,
-- avoid heavy retrieval, rerankers, or compression in the synchronous path.
-
-### memory_full
-
-Purpose:
-
-- perform full budget-aware context compilation,
-- support memory, RAG, spill, and compression.
-
-Behavior:
-
-- compile SOUL, OUTPUT_POLICY, relationship anchors, RelaySCN state, approved retrieved memory, selected RelayLM-owned recent context, and current-turn evidence,
-- enforce token budgets,
-- support retrieval and compression behind explicit interfaces,
-- keep stable prefix blocks before dynamic retrieved content.
-
-### optional persona_finalizer profile
-
-Purpose:
-
-- shape only final natural-language responses from an external agent framework,
-- preserve the agent result while applying persona, relationship, memory, and output policy.
-
-Default agent integration should pass through planning, tool calls, tool observations, and structured output. Persona/context repacking should apply to final natural-language answers or normal chat turns.
-
-## Routing modes
-
-RelayLM supports both routing styles.
-
-### Single proxy mode
-
-One RelayLM instance serves multiple characters and routes by model name.
-
-This is the onboarding-first mode.
-
-### Per-character instance mode
-
-Each character has a dedicated RelayLM server, port, and cache namespace.
-
-This is the speed-first mode. It improves prefix stability and reduces cross-character cache interference.
-
-## Runtime ownership non-goals
-
-RelayLM does not own:
-
-- direct KV-cache mutation or backend engine scheduler changes,
-- frontend UI behavior,
-- Live2D control,
-- ASR or TTS model runtimes,
-- heavy RAG in the default synchronous path,
-- general agent tool-workflow orchestration beyond compatibility-preserving pass-through,
-- universal semantic censorship or content guarantees for ordinary model-generated conversation.
-
-RelayLM does own authority-bounded context construction, visible/internal output separation, protocol-valid output segmentation, and typed capability gates before external tools, TTS, avatar, network, persistence, or other side-effect consumers receive data. Current implementation status and sequencing for those boundaries live only in [Pipeline Implementation Plan](pipeline_implementation_plan.md).
+Historical wording remains recoverable through Git.
