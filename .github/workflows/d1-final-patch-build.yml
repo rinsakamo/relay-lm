@@ -29,21 +29,38 @@ jobs:
           python-version: "3.12"
       - name: Apply validated D1 delta
         run: |
-          set -euo pipefail
+          set -o pipefail
+          : > /tmp/d1-final-patch-build.log
+          failed=0
+          run_apply() {
+            echo "> $*" | tee -a /tmp/d1-final-patch-build.log
+            "$@" 2>&1 | tee -a /tmp/d1-final-patch-build.log || failed=1
+          }
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin main:refs/remotes/origin/main
-          base64 -d .d1-final.diff.gz.b64 > /tmp/d1-final.diff.gz
-          echo "569c77e52fd51f70dd62ebfd5ef9a3c40074399e10de397d59f8325dff68820b  /tmp/d1-final.diff.gz" | sha256sum -c -
-          gzip -dc /tmp/d1-final.diff.gz > /tmp/d1-final.diff
-          patch --batch -p3 < /tmp/d1-final.diff
+          run_apply git fetch origin main:refs/remotes/origin/main
+          run_apply base64 -d .d1-final.diff.gz.b64
+          if [ "$failed" -eq 0 ]; then
+            base64 -d .d1-final.diff.gz.b64 > /tmp/d1-final.diff.gz 2>> /tmp/d1-final-patch-build.log || failed=1
+          fi
+          if [ "$failed" -eq 0 ]; then
+            echo "569c77e52fd51f70dd62ebfd5ef9a3c40074399e10de397d59f8325dff68820b  /tmp/d1-final.diff.gz" | sha256sum -c - 2>&1 | tee -a /tmp/d1-final-patch-build.log || failed=1
+          fi
+          if [ "$failed" -eq 0 ]; then
+            gzip -dc /tmp/d1-final.diff.gz > /tmp/d1-final.diff 2>> /tmp/d1-final-patch-build.log || failed=1
+          fi
+          if [ "$failed" -eq 0 ]; then
+            patch --batch -p3 < /tmp/d1-final.diff 2>&1 | tee -a /tmp/d1-final-patch-build.log || failed=1
+          fi
+          if [ "$failed" -ne 0 ]; then
+            exit 1
+          fi
           rm -f .d1-final.diff.gz.b64 .github/workflows/d1-final-patch-build.yml
           find . -maxdepth 1 -type f -name '.d1*' -delete
           find .github/workflows -maxdepth 1 -type f -name 'd1-*.yml' -delete
       - name: Validate exact D1 boundary
         run: |
           set -o pipefail
-          : > /tmp/d1-final-patch-build.log
           failed=0
           run_check() {
             echo "> $*" | tee -a /tmp/d1-final-patch-build.log
