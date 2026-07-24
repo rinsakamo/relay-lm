@@ -96,6 +96,29 @@
         "retained_record_allowlist"
       ],
       "growth_policy": "closed_after_1c57"
+    },
+    {
+      "family_id": "legacy-runtime-compile-checkpoint-docs",
+      "paths": [
+        "docs/architecture/archive/relayrun_runtime_checkpoint_design_history.md",
+        "docs/architecture/archive/runtime_compile_gate_design_history.md",
+        "docs/architecture/relayrun_runtime_checkpoint_design.md",
+        "docs/architecture/runtime_compile_gate_design.md"
+      ],
+      "owner": "documentation",
+      "protected_boundary": "Existing current-document consumers and historical compile/checkpoint provenance while canonical architecture and exact checkpoint authority move to responsibility-oriented paths.",
+      "current_consumers": [
+        "current architecture and contract links that still reference the legacy compile/checkpoint paths",
+        "bounded D2-B2 live-consumer migration review"
+      ],
+      "removal_gate": "Every current consumer links directly to docs/architecture/runtime/compile-and-checkpoint.md and the owning contracts, the dedicated history pages have no current consumer, generic link and authority validation are green, and each removed path has a retirement-manifest entry.",
+      "replacement_validation": [
+        "active_document_authority",
+        "git_recoverability",
+        "links_and_routers",
+        "normative_extraction"
+      ],
+      "growth_policy": "closed"
     }
   ]
 }
