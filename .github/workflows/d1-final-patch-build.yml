@@ -6,11 +6,13 @@ on:
       - agent/d1-final-patch-build
     paths:
       - ".github/workflows/d1-final-patch-build.yml"
-      - ".d1-final.diff.gz.b64"
+      - ".d1-final-v2.diff.gz.b64"
+      - ".d1-transitional-final.json"
   pull_request:
     paths:
       - ".github/workflows/d1-final-patch-build.yml"
-      - ".d1-final.diff.gz.b64"
+      - ".d1-final-v2.diff.gz.b64"
+      - ".d1-transitional-final.json"
 
 permissions:
   contents: write
@@ -29,38 +31,21 @@ jobs:
           python-version: "3.12"
       - name: Apply validated D1 delta
         run: |
-          set -o pipefail
-          : > /tmp/d1-final-patch-build.log
-          failed=0
-          run_apply() {
-            echo "> $*" | tee -a /tmp/d1-final-patch-build.log
-            "$@" 2>&1 | tee -a /tmp/d1-final-patch-build.log || failed=1
-          }
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          run_apply git fetch origin main:refs/remotes/origin/main
-          run_apply base64 -d .d1-final.diff.gz.b64
-          if [ "$failed" -eq 0 ]; then
-            base64 -d .d1-final.diff.gz.b64 > /tmp/d1-final.diff.gz 2>> /tmp/d1-final-patch-build.log || failed=1
-          fi
-          if [ "$failed" -eq 0 ]; then
-            echo "569c77e52fd51f70dd62ebfd5ef9a3c40074399e10de397d59f8325dff68820b  /tmp/d1-final.diff.gz" | sha256sum -c - 2>&1 | tee -a /tmp/d1-final-patch-build.log || failed=1
-          fi
-          if [ "$failed" -eq 0 ]; then
-            gzip -dc /tmp/d1-final.diff.gz > /tmp/d1-final.diff 2>> /tmp/d1-final-patch-build.log || failed=1
-          fi
-          if [ "$failed" -eq 0 ]; then
-            patch --batch -p3 < /tmp/d1-final.diff 2>&1 | tee -a /tmp/d1-final-patch-build.log || failed=1
-          fi
-          if [ "$failed" -ne 0 ]; then
-            exit 1
-          fi
-          rm -f .d1-final.diff.gz.b64 .github/workflows/d1-final-patch-build.yml
+          git fetch origin main:refs/remotes/origin/main
+          base64 -d .d1-final-v2.diff.gz.b64 > /tmp/d1-final-v2.diff.gz
+          echo "acca8baca3747faf89638afa1997144936fb74c1a92ec3b473689ee71fec225b  /tmp/d1-final-v2.diff.gz" | sha256sum -c -
+          gzip -dc /tmp/d1-final-v2.diff.gz > /tmp/d1-final-v2.diff
+          patch --batch -p3 < /tmp/d1-final-v2.diff
+          cp .d1-transitional-final.json records/documentation/transitional-assets.json
           find . -maxdepth 1 -type f -name '.d1*' -delete
           find .github/workflows -maxdepth 1 -type f -name 'd1-*.yml' -delete
       - name: Validate exact D1 boundary
         run: |
           set -o pipefail
+          : > /tmp/d1-final-patch-build.log
           failed=0
           run_check() {
             echo "> $*" | tee -a /tmp/d1-final-patch-build.log
