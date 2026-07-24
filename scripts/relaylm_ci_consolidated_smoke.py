@@ -31,6 +31,7 @@ GROUPS = {
         "e1r1_trusted_home_scene_admission": ["scripts/relaylm_e1r1_*", "docs/architecture/e1r1_*", "docs/evidence/implementation/e1r1_*"],
         "e1r2_character_store_bootstrap": ["relaylm/character_store_bootstrap*", "scripts/relaylm_e1r2_*", "docs/architecture/e1r2_*", "docs/evidence/implementation/e1r2_*"],
         "soul_lab_management": ["relaylm/soul_lab_management.py", "relaylm/soul_lab_app.py", "scripts/relaylm_soul_lab_management_projection_smoke.py"],
+        "subjective_mem_lifecycle": ["relaylm/subjective_mem*.py", "scripts/relaylm_subjective_mem_*", "scripts/relaylm_lc1a_subjective_mem_correct_smoke.py", "tests/test_subjective_mem*.py", "docs/architecture/subjective-mem-*"],
     },
     "ui": {
         "soul_lab_build": ["apps/soul-lab/**"],
@@ -75,6 +76,7 @@ COMMANDS = {
         "e1r1_trusted_home_scene_admission": [["scripts/relaylm_e1r1_trusted_home_scene_admission_smoke.py"], ["scripts/relaylm_mvp_completion_report_smoke.py", "docs/evidence/implementation/e1r1_completion_report.md"]],
         "e1r2_character_store_bootstrap": [["scripts/relaylm_e1r2_character_store_bootstrap_smoke.py"], ["scripts/relaylm_mvp_completion_report_smoke.py", "docs/evidence/implementation/e1r2_completion_report.md"], ["scripts/relaylm_mvp_completion_report_pr_link_smoke.py"], ["scripts/relaylm_docs_link_check.py"]],
         "soul_lab_management": [["scripts/relaylm_soul_lab_management_projection_smoke.py"]],
+        "subjective_mem_lifecycle": [["-m", "pytest", "-q", "tests/test_subjective_mem_runtime.py", "tests/test_subjective_mem_commit_runtime.py", "tests/test_subjective_mem_lifecycle_runtime.py", "tests/test_subjective_mem_forget_runtime.py"], ["scripts/relaylm_lc1a_subjective_mem_correct_smoke.py"], ["scripts/relaylm_subjective_mem_forget_smoke.py"]],
     },
     "ui": {
         "lab_observation": [["scripts/relaylm_phase_i2_lab_observation_ci_runner.py"], ["scripts/relaylm_docs_link_check.py"]],
