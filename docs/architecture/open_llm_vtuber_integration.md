@@ -208,7 +208,7 @@ Current profile compilation is apply-capable. History-exclusion actual apply is 
 
 RelayLM canonicalizes client evidence and reconstructs backend context according to the client history and instruction authority contracts as ordinary managed behavior.
 
-Mode names and current runtime behavior are defined in [Runtime Architecture](runtime_architecture.md) and [Project Status](../PROJECT_STATUS.md).
+Current mode fields and route-level mode overrides are defined in [Configuration Reference](../config_schema.md); mode-specific target dataflow is owned by [Request / Response Pipeline](runtime/request-response-pipeline.md); current implementation posture remains owned by [Project Status](../PROJECT_STATUS.md).
 
 ## Streaming output boundary
 
