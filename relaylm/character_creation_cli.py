@@ -56,7 +56,3 @@ def main_validate() -> None:
     args = parser.parse_args()
     payload = validate_template_path(Path(args.path)).to_public_dict()
     print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
-
-
-if __name__ == "__main__":
-    main_create()
