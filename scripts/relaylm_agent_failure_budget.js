@@ -126,6 +126,26 @@ function summary(state, resetReason = '') {
   return `${MARKER_START}${JSON.stringify(canonicalState(state))}${MARKER_END}\n\n**RelayLM failure budget**\n\n${status}${reset}`;
 }
 
+function stateForReviewedReset(markers, currentLabels) {
+  if (markers.length > 1) {
+    throw new Error('reset requires at most one failure-budget state comment');
+  }
+
+  if (markers.length === 1) {
+    const state = canonicalState(parseState(markers[0].body));
+    if (!state.p6_stop && !currentLabels.has('relaylm:p6-stop')) {
+      throw new Error('reset target has no active P6 stop');
+    }
+    return state;
+  }
+
+  if (!currentLabels.has('relaylm:p6-stop')) {
+    throw new Error('reset requires a failure-budget state comment or relaylm:p6-stop label');
+  }
+
+  return {version: 1, workflows: {}, p6_stop: true};
+}
+
 async function commentsFor(github, owner, repo, prNumber) {
   return github.paginate(github.rest.issues.listComments, {
     owner,
@@ -224,15 +244,15 @@ async function resetStop({github, owner, repo, prNumber, reason}) {
   if (pr.state !== 'open') throw new Error('reset target PR is not open');
   const comments = await commentsFor(github, owner, repo, prNumber);
   const markers = comments.filter(item => item.body && item.body.includes(MARKER_START));
-  if (markers.length !== 1) {
-    throw new Error('reset requires exactly one failure-budget state comment');
-  }
-  const state = canonicalState(parseState(markers[0].body));
+  const currentLabels = new Set(pr.labels.map(item => item.name));
+  const state = stateForReviewedReset(markers, currentLabels);
   state.p6_stop = false;
   state.workflows = {};
-  const currentLabels = new Set(pr.labels.map(item => item.name));
-  await replaceExecutionLabel(github, owner, repo, prNumber, currentLabels, null);
+
+  // Establish the canonical state comment before removing the fail-closed label.
+  // A partial reset therefore remains stopped and can be retried safely.
   await writeState(github, owner, repo, prNumber, markers, state, reason);
+  await replaceExecutionLabel(github, owner, repo, prNumber, currentLabels, null);
 }
 
 async function failedFields(github, owner, repo, run) {
@@ -341,6 +361,14 @@ function selfTest() {
     process.stdout.write(`${condition ? 'PASS' : 'FAIL'}: ${name}\n`);
     if (!condition) failures.push(name);
   };
+  const expectThrows = (name, action, pattern) => {
+    try {
+      action();
+      expect(name, false);
+    } catch (error) {
+      expect(name, pattern.test(String(error && error.message)));
+    }
+  };
 
   const run1 = {id: 100, name: 'Example'};
   const fields = {
@@ -379,6 +407,35 @@ function selfTest() {
   expect('state marker round-trips', parseState(serialized).p6_stop === true);
   expect('neutral conclusion is non-counting', NON_COUNTING.has('neutral'));
 
+  const marker = [{body: serialized}];
+  expect(
+    'reviewed reset accepts canonical stopped marker',
+    stateForReviewedReset(marker, new Set()).p6_stop === true,
+  );
+  expect(
+    'reviewed reset reconstructs missing marker from P6 label',
+    stateForReviewedReset([], new Set(['relaylm:p6-stop'])).p6_stop === true,
+  );
+  expect(
+    'reviewed reset accepts label when marker mirror is stale',
+    stateForReviewedReset([{body: summary(emptyState())}], new Set(['relaylm:p6-stop'])).p6_stop === false,
+  );
+  expectThrows(
+    'reviewed reset rejects duplicate marker comments',
+    () => stateForReviewedReset([marker[0], marker[0]], new Set(['relaylm:p6-stop'])),
+    /at most one/,
+  );
+  expectThrows(
+    'reviewed reset rejects absent stop evidence',
+    () => stateForReviewedReset([], new Set()),
+    /state comment or relaylm:p6-stop label/,
+  );
+  expectThrows(
+    'reviewed reset rejects inactive marker without P6 label',
+    () => stateForReviewedReset([{body: summary(emptyState())}], new Set()),
+    /no active P6 stop/,
+  );
+
   if (failures.length) {
     process.stderr.write(`SELF-TEST FAILED: ${failures.length} assertion(s)\n`);
     return 1;
@@ -396,6 +453,7 @@ module.exports = {
   parseState,
   run,
   signatureDigest,
+  stateForReviewedReset,
   successState,
 };
 
