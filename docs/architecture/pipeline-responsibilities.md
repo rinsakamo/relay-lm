@@ -60,7 +60,7 @@ No stage may recreate an upstream semantic decision merely because its artifact 
 
 ## Canonical order
 
-### Optional pre-request admission
+### Accepted target: optional pre-request admission
 
 ```text
 source occurrence
@@ -69,7 +69,7 @@ source occurrence
   -> admitted request
 ```
 
-RelayATN operates before the normal request shell in continuous-input environments. It does not write RelayCTX, scene, relationship, persona, or memory state.
+RelayATN is a gated target before the normal request shell for future continuous-input environments. This branch does not claim current runtime implementation. RelayATN does not write RelayCTX, scene, relationship, persona, or memory state.
 
 ### Interactive request/response path
 
@@ -120,7 +120,7 @@ The deferred path does not answer the current turn and cannot retroactively repl
 | Component | Owns | Must not own |
 |---|---|---|
 | Evidence authority | source identity, admission, authorization, retention, lineage, protected response binding | turn admission, prompt layout, memory meaning |
-| RelayATN | pre-request reject/hold/select in supported continuous-input profiles | evidence admission, CTX, scene, relationship, or memory mutation |
+| RelayATN | target pre-request reject/hold/select for future continuous-input profiles | evidence admission, CTX, scene, relationship, or memory mutation |
 | RelayRUN | run/turn identity, node state, timeout/retry orchestration, fallback/recovery routing, stream state, checkpoints, trace, idempotency | scene, emotion, intent, memory, persona, prompt, or final wording semantics |
 | PipelineContext | request-local original/forwarded payload coordination, explicit replacement reasons, ordered node results, and detached candidates | semantic policy or durable state |
 | RelayREL | authenticated target relationship selection and interaction policy | portable character identity, scene classification, memory truth |
