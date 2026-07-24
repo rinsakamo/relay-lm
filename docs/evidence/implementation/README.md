@@ -17,11 +17,12 @@ relaylm_decision_source: ../../adr/0002-documentation-information-architecture.m
 
 This collection preserves bounded implementation and smoke evidence after its active design or operational authority has moved elsewhere. Commands and expectations inside exact source snapshots describe their historical boundary and are not automatically current instructions.
 
-## Creating a new completion report
+## Closed transitional completion-report collection
 
-A new Stage-1 implementation PR creates its own report directly at `docs/evidence/implementation/<slice>_completion_report.md`; no `docs/mvp/wave*/` path exists to route through. Start from the canonical [Implementation Completion Report template](../../templates/implementation-completion-report.md). A completion report is evidence for one PR only; it is not repository-wide current-status authority, MVP dependency sequencing, or release/evaluation readiness.
+This collection is closed to new completion reports and implementation handoffs. Existing records remain readable as bounded historical evidence while D2-D6 assigns each source a canonical synthesis, an allowlisted retained-record disposition, or Git-history retirement.
 
-New reports use the canonical `evidence` / `frozen` / `low` metadata profile and carry no migration-only provenance fields. Reports already migrated into this collection by a documentation hard-cutover PR may retain the legacy `implementation_completion_report` / `historical_after_merge` / `frozen` profile with source-blob and pre-cutover provenance until a separate family-normalization cutover; both profiles remain readable and valid.
+New implementation work records evidence in the pull request, exact-head CI, and Git history. A new committed record is created only when it qualifies for an allowlisted retained-record class with a continuing release, migration, audit, recovery, rollback, retirement, CI, or operational consumer. Existing legacy and canonical completion-report metadata profiles remain readable only for the files already present in this transitional collection.
+
 
 ## Early MVP smoke records
 

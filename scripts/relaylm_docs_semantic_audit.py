@@ -64,8 +64,6 @@ RETIRED_RELEASE_PATHS = (
     "docs/mvp/v0.1_final_validation_receipt.md",
 )
 
-RETIRED_TEMPLATE_PATHS = ("docs/mvp/IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md",)
-CANONICAL_COMPLETION_REPORT_TEMPLATE_PATH = "docs/templates/implementation-completion-report.md"
 RETIRED_MVP_TREE = "docs/mvp"
 
 
@@ -257,69 +255,6 @@ def check_release_assessment(errors: list[str]) -> None:
             errors.append(f"{retired_path}: retired release path must not be reintroduced")
 
 
-def check_completion_report_template(errors: list[str]) -> None:
-    for retired_path in RETIRED_TEMPLATE_PATHS:
-        if (ROOT / retired_path).exists():
-            errors.append(f"{retired_path}: retired template path must not be reintroduced")
-
-    canonical_path = CANONICAL_COMPLETION_REPORT_TEMPLATE_PATH
-    canonical_target = ROOT / canonical_path
-    if not canonical_target.exists():
-        errors.append(f"{canonical_path}: canonical completion-report template is missing")
-        return
-
-    metadata, body = parse_front_matter(canonical_path)
-    if metadata.get("relaylm_doc_type") != "template":
-        errors.append(f"{canonical_path}: relaylm_doc_type must be 'template'")
-    if metadata.get("relaylm_status") != "target":
-        errors.append(f"{canonical_path}: relaylm_status must be 'target'")
-    if metadata.get("relaylm_authority") != "non_authoritative_implementation_completion_report_template":
-        errors.append(f"{canonical_path}: relaylm_authority must be the non-authoritative template key")
-    if "docs/evidence/implementation/" not in body:
-        errors.append(f"{canonical_path}: must instruct the canonical evidence destination")
-
-    retired_generated_profile_anchors = (
-        "relaylm_doc_type: implementation_completion_report",
-        "relaylm_status: historical_after_merge",
-    )
-    present_retired = [anchor for anchor in retired_generated_profile_anchors if anchor in body]
-    if present_retired:
-        errors.append(
-            f"{canonical_path}: generated-report example must not reintroduce the retired "
-            f"implementation_completion_report/historical_after_merge profile: {present_retired!r}"
-        )
-
-    migration_only_provenance_anchors = (
-        "relaylm_source_origin_commit:",
-        "relaylm_source_blob:",
-        "relaylm_source_content_sha256:",
-        "relaylm_pre_cutover_blob:",
-        "relaylm_pre_cutover_content_sha256:",
-        "relaylm_exact_source_snapshot:",
-    )
-    present_migration_only = [anchor for anchor in migration_only_provenance_anchors if anchor in body]
-    if present_migration_only:
-        errors.append(
-            f"{canonical_path}: generated-report example must not require migration-only "
-            f"provenance fields for a natively canonical report: {present_migration_only!r}"
-        )
-
-    if "relaylm_doc_type: evidence" not in body or "relaylm_status: frozen" not in body:
-        errors.append(f"{canonical_path}: generated-report example must use the canonical evidence/frozen profile")
-
-    templates_index = read_text("docs/templates/README.md")
-    if "implementation-completion-report.md" not in templates_index:
-        errors.append("docs/templates/README.md: missing canonical completion-report template link")
-
-    implementation_index = read_text("docs/evidence/implementation/README.md")
-    if "IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md" in implementation_index:
-        errors.append("docs/evidence/implementation/README.md: still links the retired template path")
-    if "../../templates/implementation-completion-report.md" not in implementation_index:
-        errors.append(
-            "docs/evidence/implementation/README.md: missing link to the canonical completion-report template"
-        )
-
-
 MVP_REFERENCE_PATTERN = re.compile(r"docs/mvp(?:/|\b)")
 
 # Files whose *entire* content is historical/migration record-keeping by
@@ -351,9 +286,6 @@ MVP_REFERENCE_HISTORICAL_STATUSES = frozenset({"frozen", "historical_after_merge
 # pattern NOT covered by a whole-file allowlist entry above and NOT matching
 # one of these exact substrings fails closed.
 MVP_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
-    "docs/evidence/implementation/README.md": (
-        "no `docs/mvp/wave*/` path exists to route through",
-    ),
     ".github/workflows/documentation-cutover-preparation.yml": (
         '"docs/mvp/mvp10_summary.md=docs/mvp/README.md"',
     ),
@@ -375,19 +307,6 @@ MVP_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
     "scripts/relaylm_documentation_current_boundary_smoke.py": (
         "docs/mvp/wave6/e1r2_completion_report.md",
         '"retired docs/mvp/ tree reintroduced (retired by Cutover 1C-38)"',
-    ),
-    "scripts/relaylm_mvp_completion_report_smoke.py": (
-        'OLD_TEMPLATE_PATH = "docs/mvp/IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md"',
-        '"legacy docs/mvp/wave<N>/*_completion_report.md path(s) reintroduced "',
-        '"retired docs/mvp/ tree reintroduced (retired by Cutover 1C-38; canonical "',
-        'check("real repository: docs/mvp/ tree is absent", assert_no_mvp_tree)',
-        "A synthetic reintroduced docs/mvp/README.md is rejected.",
-        '"reintroduced docs/mvp/README.md is rejected",',
-        '"retired docs/mvp/ tree reintroduced",',
-        "A synthetic file anywhere below docs/mvp/ is rejected.",
-        '"reintroduced file anywhere below docs/mvp/ is rejected",',
-        "A clean synthetic tree with no docs/mvp/ directory at all is silent.",
-        'check("clean synthetic tree with no docs/mvp/ directory is silent", _no_mvp_dir_silent)',
     ),
 }
 
@@ -7387,7 +7306,6 @@ DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS = (
     check_e2_boundary,
     check_client_instruction_boundary,
     check_release_assessment,
-    check_completion_report_template,
     check_implementation_evidence_index,
     check_no_live_mvp_tree,
     check_cutover_rule_target_types,

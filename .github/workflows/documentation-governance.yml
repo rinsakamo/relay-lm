@@ -1,0 +1,58 @@
+name: Documentation governance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "records/**"
+      - "scripts/relaylm_documentation_governance_validate.py"
+      - ".github/workflows/documentation-governance.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "records/**"
+      - "scripts/relaylm_documentation_governance_validate.py"
+      - ".github/workflows/documentation-governance.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install validation dependencies
+        run: python -m pip install -e ".[test]"
+      - name: Compile validator
+        run: python -m compileall -q scripts/relaylm_documentation_governance_validate.py
+      - name: Fetch pull-request base
+        if: github.event_name == 'pull_request'
+        run: git fetch origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+      - name: Validate governance records and active graph
+        run: |
+          set -o pipefail
+          base_args=()
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_args=(--base-ref "origin/${{ github.base_ref }}" --pull-request-number "${{ github.event.pull_request.number }}")
+          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            base_args=(--base-ref "${{ github.event.before }}")
+          fi
+          python scripts/relaylm_documentation_governance_validate.py "${base_args[@]}" 2>&1 | tee documentation-governance.log
+          python scripts/relaylm_documentation_governance_validate.py --self-test 2>&1 | tee -a documentation-governance.log
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-governance-diagnostics
+          path: documentation-governance.log
+          if-no-files-found: error

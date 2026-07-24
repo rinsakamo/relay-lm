@@ -87,7 +87,7 @@ relaylm_o1f_operational_validation_security_smoke.py
 DOC_COMMANDS = (
     (
         "relaylm_mvp_completion_report_smoke.py",
-        ("--check-model", "docs/evidence/implementation/mvp_eval_runner_completion_report.md"),
+        ("docs/evidence/implementation/mvp_eval_runner_completion_report.md",),
     ),
     ("relaylm_docs_link_check.py", ()),
     ("relaylm_documentation_current_boundary_smoke.py", ()),

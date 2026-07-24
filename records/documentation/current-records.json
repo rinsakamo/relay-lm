@@ -1,0 +1,91 @@
+{
+  "schema_version": "relaylm.documentation.current-record-catalog.v1",
+  "records": [
+    {
+      "path": "records/documentation/current-records.json",
+      "record_class": "current_machine_registry",
+      "media_type": "application/json",
+      "owner": "documentation",
+      "continuing_function": "Canonical catalog of schema-governed current records and their validators.",
+      "current_consumers": [
+        "scripts/relaylm_documentation_governance_validate.py"
+      ],
+      "schema_path": "docs/contracts/schemas/documentation-governance-v1/current-machine-registry.schema.json",
+      "validator_paths": [
+        "scripts/relaylm_documentation_governance_validate.py"
+      ],
+      "authority_paths": [
+        "docs/contracts/documentation-governance.md"
+      ]
+    },
+    {
+      "path": "records/documentation/retained-record-registry.json",
+      "record_class": "current_machine_registry",
+      "media_type": "application/json",
+      "owner": "documentation",
+      "continuing_function": "Allowlisted retained-record class definitions, media types, owners, and consumers.",
+      "current_consumers": [
+        "scripts/relaylm_documentation_governance_validate.py"
+      ],
+      "schema_path": "docs/contracts/schemas/documentation-governance-v1/retained-record-registry.schema.json",
+      "validator_paths": [
+        "scripts/relaylm_documentation_governance_validate.py"
+      ],
+      "authority_paths": [
+        "docs/contracts/documentation-governance.md"
+      ]
+    },
+    {
+      "path": "records/documentation/retirement-manifest.json",
+      "record_class": "retirement_manifest",
+      "media_type": "application/json",
+      "owner": "documentation",
+      "continuing_function": "Generated provenance and Git-recovery navigation for retired documentation paths.",
+      "current_consumers": [
+        "scripts/relaylm_documentation_governance_validate.py"
+      ],
+      "schema_path": "docs/contracts/schemas/documentation-governance-v1/retirement-manifest.schema.json",
+      "validator_paths": [
+        "scripts/relaylm_documentation_governance_validate.py"
+      ],
+      "authority_paths": [
+        "docs/contracts/documentation-governance.md"
+      ]
+    },
+    {
+      "path": "records/documentation/transitional-assets.json",
+      "record_class": "current_machine_registry",
+      "media_type": "application/json",
+      "owner": "documentation",
+      "continuing_function": "Removal-gated registry for legacy documentation cutover assets during D2-D6.",
+      "current_consumers": [
+        "scripts/relaylm_documentation_governance_validate.py"
+      ],
+      "schema_path": "docs/contracts/schemas/documentation-governance-v1/transitional-asset-registry.schema.json",
+      "validator_paths": [
+        "scripts/relaylm_documentation_governance_validate.py"
+      ],
+      "authority_paths": [
+        "docs/contracts/documentation-governance.md"
+      ]
+    },
+    {
+      "path": "records/repository/asset_classification_v1.yaml",
+      "record_class": "current_machine_registry",
+      "media_type": "application/yaml",
+      "owner": "repository_maintenance",
+      "continuing_function": "Machine-readable mirror and canonical-entrypoint claims for the reviewed Lane R asset classification.",
+      "current_consumers": [
+        ".github/workflows/repository-storage-inventory.yml",
+        "scripts/relaylm_repository_asset_classification_registry.py"
+      ],
+      "schema_path": null,
+      "validator_paths": [
+        "scripts/relaylm_repository_asset_classification_registry.py"
+      ],
+      "authority_paths": [
+        "docs/reference/repository-asset-classification.md"
+      ]
+    }
+  ]
+}
