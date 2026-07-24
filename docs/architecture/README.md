@@ -26,6 +26,12 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 4. Dedicated current contracts and handoffs
 5. [Current / Target / Migration Guide](current_target_migration_guide.md)
 
+## Documentation and repository governance
+
+- [Documentation Governance Architecture](documentation-governance.md) defines responsibility and control flow for active authority, retained records, deterministic validation, synthesis, and Git-history retirement.
+- [Repository Maintenance System](repository-maintenance-system.md) defines discovery, reviewed classification, generated projection, bounded consolidation, package movement, and retirement architecture.
+- [Documentation Synthesis and Retirement](../operations/documentation-synthesis-and-retirement.md) is the repeatable D2-D6 operator procedure.
+
 ## Accepted target runtime and memory architecture
 
 - [ADR 0004: Single-response-call ordinary conversation and deferred subjective formation](../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md) records the accepted timing and authority decision; it is not proof of implementation.
