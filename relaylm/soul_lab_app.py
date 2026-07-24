@@ -234,7 +234,3 @@ def main() -> None:
         host=config.listen.host,
         port=config.listen.port,
     )
-
-
-if __name__ == "__main__":
-    main()
