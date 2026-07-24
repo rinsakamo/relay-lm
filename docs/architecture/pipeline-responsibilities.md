@@ -50,8 +50,7 @@ RelayLM keeps semantic decisions separate from runtime orchestration and transpo
 semantic policy and selection
   -> bounded context construction
   -> model execution
-  -> output separation and observation
-  -> runtime finalization and transport
+  -> visible emission and response-complete finalization branches
 
 out of band after the answer
   governed evidence -> deferred assessment and candidate formation
@@ -85,15 +84,22 @@ validated request evidence
   -> RelayCTX Repack
   -> Runtime Compile Gate
   -> Main LLM / backend execution
-  -> RelayCTX Unpack
-  -> RelayREF
-  -> return-side RelayEMO
-  -> output-side RelaySCN
-  -> RelayRUN response/stream finalization
-  -> adapter transport and user-visible output
+       |- streaming chunk branch
+       |    -> incremental RelayCTX Unpack / output boundary
+       |    -> adapter transport and user-visible chunk
+       |    -> RelayRUN chunk and idempotency accounting
+       |
+       `- response-complete branch
+            -> finalized assistant Evidence
+            -> RelayCTX final Unpack validation
+            -> RelayREF
+            -> return-side RelayEMO and output-side RelaySCN consumers
+            -> RelayRUN response finalization
+            -> non-stream response or stream-close transport
+            -> deferred coverage / enqueue handoff
 ```
 
-The compile gate is a request-local authority-aware decision phase, not a standalone semantic component. RelayRUN surrounds and records the flow but does not reinterpret semantic artifacts.
+The compile gate is a request-local authority-aware decision phase, not a standalone semantic component. RelayRUN surrounds and records the flow but does not reinterpret semantic artifacts. Streaming emission and response-complete finalization are separate branches; mode-specific details remain in the request/response pipeline authority.
 
 ### Deferred after-turn path
 
@@ -116,7 +122,7 @@ The deferred path does not answer the current turn and cannot retroactively repl
 | Evidence authority | source identity, admission, authorization, retention, lineage, protected response binding | turn admission, prompt layout, memory meaning |
 | RelayATN | pre-request reject/hold/select in supported continuous-input profiles | evidence admission, CTX, scene, relationship, or memory mutation |
 | RelayRUN | run/turn identity, node state, timeout/retry orchestration, fallback/recovery routing, stream state, checkpoints, trace, idempotency | scene, emotion, intent, memory, persona, prompt, or final wording semantics |
-| PipelineContext | request-local payload and typed artifact coordination | semantic policy or durable state |
+| PipelineContext | request-local original/forwarded payload coordination, explicit replacement reasons, ordered node results, and detached candidates | semantic policy or durable state |
 | RelayREL | authenticated target relationship selection and interaction policy | portable character identity, scene classification, memory truth |
 | input-side RelaySCN | request-local situation, disclosure, persistence, confirmation, memory-scope, and expression policy | prompt assembly, affect state, relationship state, durable memory writes |
 | input-side RelayEMO | bounded affect estimate and expression pressure | scene, intent, relationship, persistence, or memory authority |
