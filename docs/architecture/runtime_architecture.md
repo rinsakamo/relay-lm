@@ -18,6 +18,18 @@ OpenWebUI or another supported OpenAI-compatible frontend
 
 An optional realtime profile may use Open-LLM-VTuber or another adapter-facing frontend. RelayLM preserves OpenAI-compatible request/response and streaming transport while adding explicit managed context, memory, character, and runtime boundaries where configured.
 
+## Current protocol surface
+
+The onboarding-compatible surface includes:
+
+- `/v1/models` for supported model/route discovery;
+- `/v1/chat/completions` for non-streaming and streaming requests;
+- backend model-name mapping where configured;
+- compatible forwarding of common sampling and request fields, including active tool or structured transaction state when supported;
+- OpenAI-compatible errors and SSE transport where practical.
+
+Transport compatibility does not grant the adapter persona, relationship, scene, memory, or persistence authority.
+
 ## Current terminology
 
 These terms remain distinct:
@@ -66,7 +78,21 @@ Canonical semantic component responsibility inside these layers is owned by the 
 
 ### Optional response-finalization profiles
 
-Optional persona, presentation, TTS, avatar, or response-finalization profiles remain separately governed. They do not become the canonical ordinary conversation path merely because an adapter supports them.
+An optional persona-finalization profile may shape a final natural-language answer from an external agent or tool framework while preserving planning, tool calls, tool observations, and structured transaction output through compatibility paths. Persona finalization is not the canonical ordinary conversation path and does not acquire tool-execution authority.
+
+Presentation, TTS, avatar, or other response-finalization profiles remain separately governed. Adapter support does not make them default-on core behavior.
+
+## Current routing styles
+
+### Single-proxy mode
+
+One RelayLM instance may serve multiple configured characters or routes and select them through the incoming model identity. This is the onboarding-first topology.
+
+### Per-character instance mode
+
+A deployment may use a dedicated RelayLM process, port, and cache or memory namespace for each character. This is a speed- and prefix-stability-oriented topology, not a different semantic authority model.
+
+Exact deployment commands and configuration fields belong in configuration/reference and integration guidance.
 
 ## Current authority and compatibility rules
 
@@ -86,6 +112,10 @@ Exact client-instruction, compile, fallback, context, and checkpoint rules remai
 Ordinary generated conversation is model output shaped by the selected model, approved character sources, managed context, and user configuration. RelayLM does not treat natural-language text as an executable capability merely because it contains code or a command.
 
 Tool execution, filesystem and protected-data access, credentials, network actions, persistence, memory mutation, character-source mutation, and other externally observable side effects require typed owning authority and fail-closed gates. Product-level conversation principles remain in [AI Character Product Principles](ai_character_product_principles.md).
+
+## Current integration non-ownership
+
+This integration layer does not own frontend UI behavior, Live2D control, ASR or TTS model runtimes, backend KV-cache or scheduler internals, heavy synchronous RAG policy, or general external-agent tool orchestration. Those responsibilities remain in their owning adapters, services, backends, or domain authorities.
 
 ## Removal gate
 
