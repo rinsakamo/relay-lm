@@ -70,7 +70,7 @@ RelayLM separates four non-competing authority planes.
 ```text
 approved character sources
 relationship sources
-canonical memory
+governed memory and lifecycle state
 protected source evidence
 accepted contracts and durable operations
 ```
@@ -120,7 +120,7 @@ These surfaces coordinate execution and maintenance. They do not acquire semanti
 | RelaySCN | request-local situation, disclosure, persistence, and expression policy | prompt assembly or durable memory truth |
 | RelayEMO | bounded affect/expression pressure and presentation hints | scene, intent, relationship, or persistence authority |
 | RelayINT | pre-action intent, reference, ambiguity, proceed/block, and retrieval need | memory search execution or final wording |
-| RelayMEM | canonical subjective memory lifecycle and read-only retrieval | prompt layout or current scene policy |
+| RelayMEM | governed memory lifecycle and read-only retrieval across current migration boundaries | prompt layout or current scene policy |
 | RelayCTX | bounded working context, context assembly, token degradation, and output separation | durable memory or semantic policy ownership |
 | Main LLM/backend | response generation from the selected context | RelayLM durable state authority |
 | RelayREF | bounded post-response observation | pre-action decisions or direct state mutation |
