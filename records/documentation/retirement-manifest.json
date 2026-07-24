@@ -2,6 +2,24 @@
   "schema_version": "relaylm.documentation.retirement-manifest.v1",
   "entries": [
     {
+      "old_path": "docs/architecture/runtime_architecture.md",
+      "last_live_commit": "a9238d1b692e3665c8a046936f75c80fc7a358a9",
+      "old_blob_sha": "1b0ffb9ef4b3d4f76ef3c0cf559a47fd2cff1444",
+      "removed_by_pr": 697,
+      "replacement_paths": [
+        "docs/architecture/open_llm_vtuber_integration.md",
+        "docs/architecture/pipeline-responsibilities.md",
+        "docs/architecture/runtime/compile-and-checkpoint.md",
+        "docs/architecture/runtime/request-response-pipeline.md",
+        "docs/architecture/runtime_operational_requirements.md",
+        "docs/architecture/system-overview.md",
+        "docs/config_schema.md",
+        "docs/openwebui_lmstudio_mvp.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D2-B2b migrated every remaining consumer to the smallest canonical system, pipeline, request/response, compile/checkpoint, configuration, integration, or operational authority and removed the mixed transitional note; its historical wording remains recoverable from Git."
+    },
+    {
       "old_path": "docs/proposals/repository-simplification.md",
       "last_live_commit": "b484babc2093422f6c0b8d55b897266abf936107",
       "old_blob_sha": "3398aaffa7937f7857686c7f86af754a6fb5558b",
