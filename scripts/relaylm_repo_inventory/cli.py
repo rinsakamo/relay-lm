@@ -11,6 +11,9 @@ import argparse
 import ast
 from pathlib import Path
 import sys
+import tempfile
+from types import SimpleNamespace
+from typing import Iterable
 
 from . import TOOL_VERSION
 from . import (
@@ -100,7 +103,18 @@ def _top_level_bindings(tree: ast.Module) -> set[str]:
     return bindings
 
 
-def validate_installed_console_entrypoints() -> tuple[int, list[str]]:
+def _relative_to_root(path: Path, root: Path) -> str:
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def validate_installed_console_entrypoints(
+    *,
+    root: Path | None = None,
+    records: Iterable[object] | None = None,
+) -> tuple[int, list[str]]:
     """Validate exact repository module and top-level symbol targets.
 
     This is a mechanical integrity check for installed console declarations. It
@@ -108,13 +122,16 @@ def validate_installed_console_entrypoints() -> tuple[int, list[str]]:
     or decide whether any compatibility surface can be removed.
     """
 
-    records = invocations.scan_console_scripts()
+    repository_root = root or repo.ROOT
+    console_records = list(records) if records is not None else invocations.scan_console_scripts()
     errors: list[str] = []
-    for record in records:
-        command, separator, target = record.command_or_symbol.partition(" -> ")
-        if not separator or not command or record.root_id != f"console_script:{command}":
+    for record in console_records:
+        root_id = str(getattr(record, "root_id", ""))
+        command_or_symbol = str(getattr(record, "command_or_symbol", ""))
+        command, separator, target = command_or_symbol.partition(" -> ")
+        if not separator or not command or root_id != f"console_script:{command}":
             errors.append(
-                f"{record.root_id}: console declaration is not represented canonically"
+                f"{root_id or '<missing-root-id>'}: console declaration is not represented canonically"
             )
             continue
 
@@ -127,39 +144,35 @@ def validate_installed_console_entrypoints() -> tuple[int, list[str]]:
             or not symbol_name.isidentifier()
         ):
             errors.append(
-                f"{record.root_id}: target must be module.path:top_level_symbol"
+                f"{root_id}: target must be module.path:top_level_symbol"
             )
             continue
 
-        module_base = repo.ROOT.joinpath(*module_parts)
-        candidates = [
-            candidate
-            for candidate in (
-                module_base.with_suffix(".py"),
-                module_base / "__init__.py",
-            )
-            if candidate.is_file()
-        ]
+        module_base = repository_root.joinpath(*module_parts)
+        candidate_paths = (
+            module_base.with_suffix(".py"),
+            module_base / "__init__.py",
+        )
+        candidates = [candidate for candidate in candidate_paths if candidate.is_file()]
         if len(candidates) != 1:
             relative_candidates = [
-                repo.relative(candidate)
-                for candidate in (
-                    module_base.with_suffix(".py"),
-                    module_base / "__init__.py",
-                )
+                _relative_to_root(candidate, repository_root)
+                for candidate in candidate_paths
                 if candidate.exists()
             ]
             errors.append(
-                f"{record.root_id}: module target {module_name!r} must resolve to "
+                f"{root_id}: module target {module_name!r} must resolve to "
                 f"exactly one repository Python file; found {relative_candidates}"
             )
             continue
 
         module_path = candidates[0]
-        source = repo.read_text(module_path)
-        if source is None:
+        try:
+            source = module_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
             errors.append(
-                f"{record.root_id}: resolved module {repo.relative(module_path)} "
+                f"{root_id}: resolved module "
+                f"{_relative_to_root(module_path, repository_root)} "
                 "is not readable as UTF-8"
             )
             continue
@@ -167,18 +180,78 @@ def validate_installed_console_entrypoints() -> tuple[int, list[str]]:
             tree = ast.parse(source)
         except SyntaxError as exc:
             errors.append(
-                f"{record.root_id}: resolved module {repo.relative(module_path)} "
+                f"{root_id}: resolved module "
+                f"{_relative_to_root(module_path, repository_root)} "
                 f"does not parse: line {exc.lineno}"
             )
             continue
 
         if symbol_name not in _top_level_bindings(tree):
             errors.append(
-                f"{record.root_id}: target symbol {symbol_name!r} is not a top-level "
-                f"binding in {repo.relative(module_path)}"
+                f"{root_id}: target symbol {symbol_name!r} is not a top-level "
+                f"binding in {_relative_to_root(module_path, repository_root)}"
             )
 
-    return len(records), sorted(errors)
+    return len(console_records), sorted(errors)
+
+
+def _console_target_fixture_failures() -> list[str]:
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory(prefix="relaylm-console-target-") as temp_root:
+        root = Path(temp_root)
+        package = root / "demo"
+        package.mkdir()
+        (package / "cli.py").write_text("def main():\n    return 0\n", encoding="utf-8")
+        ambiguous_package = package / "ambiguous"
+        ambiguous_package.mkdir()
+        (package / "ambiguous.py").write_text("def main():\n    return 0\n", encoding="utf-8")
+        (ambiguous_package / "__init__.py").write_text(
+            "def main():\n    return 0\n", encoding="utf-8"
+        )
+
+        def record(command: str, target: str) -> SimpleNamespace:
+            return SimpleNamespace(
+                root_id=f"console_script:{command}",
+                command_or_symbol=f"{command} -> {target}",
+            )
+
+        count, errors = validate_installed_console_entrypoints(
+            root=root,
+            records=[record("demo", "demo.cli:main")],
+        )
+        if count != 1 or errors:
+            failures.append(f"valid fixture did not resolve: {errors}")
+
+        negative_cases = (
+            (
+                record("malformed", "demo.cli"),
+                "target must be module.path:top_level_symbol",
+            ),
+            (
+                record("missing-module", "demo.missing:main"),
+                "must resolve to exactly one repository Python file",
+            ),
+            (
+                record("ambiguous-module", "demo.ambiguous:main"),
+                "must resolve to exactly one repository Python file",
+            ),
+            (
+                record("missing-symbol", "demo.cli:absent"),
+                "is not a top-level binding",
+            ),
+        )
+        for fixture_record, expected in negative_cases:
+            _, fixture_errors = validate_installed_console_entrypoints(
+                root=root,
+                records=[fixture_record],
+            )
+            if len(fixture_errors) != 1 or expected not in fixture_errors[0]:
+                failures.append(
+                    f"negative fixture {fixture_record.root_id} did not fail as "
+                    f"expected: {fixture_errors}"
+                )
+
+    return failures
 
 
 def self_test() -> tuple[bool, list[str]]:
@@ -279,6 +352,16 @@ def self_test() -> tuple[bool, list[str]]:
         messages.append(
             f"PASS: all {console_count} installed console entrypoint targets resolve "
             "to one repository module and top-level symbol."
+        )
+
+    fixture_failures = _console_target_fixture_failures()
+    if fixture_failures:
+        ok = False
+        messages.extend(f"FAIL: {failure}" for failure in fixture_failures)
+    else:
+        messages.append(
+            "PASS: console target fixtures fail closed for malformed, missing, "
+            "ambiguous, and missing-symbol targets."
         )
 
     kinds_present = {r["root_kind"] for r in invocation_records}
