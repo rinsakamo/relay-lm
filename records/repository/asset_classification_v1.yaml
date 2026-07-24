@@ -1,6 +1,6 @@
 registry_version: 1
 generated_from: docs/reference/repository-asset-classification.md
-source_commit: 8ff4f3a749eabcbb895bae79c577d111a7312850
+source_commit: 96068400d896a76e3079ddb946fb4a5c965353c6
 classification_version: 1
 canonical_entrypoints:
   - group: soul_lab_runtime
@@ -47,17 +47,25 @@ records:
 
   - asset_id: console.worker
     paths: [pyproject.toml]
-    entrypoint: "relaylm-worker = relaylm.local_worker_cli:main"
+    entrypoint: "relaylm-worker = relaylm.cli.worker:main"
     responsibility: operator_cli
     lifecycle: active
     owner: relaymem_worker
     protected_boundary: explicit local one-job worker operation
-    current_callers: [installed relaylm-worker command, local operator invocation]
+    current_callers:
+      - installed relaylm-worker command
+      - local operator invocation
+      - scripts/relaylm_o0_local_one_job_runner_security_smoke.py direct main import
     invocation_roots: [console_script]
-    evidence: ["pyproject.toml [project.scripts]", relaylm/local_worker_cli.py]
+    evidence:
+      - "pyproject.toml [project.scripts]"
+      - relaylm/cli/worker.py
+      - scripts/relaylm_o0_local_one_job_runner_security_smoke.py
+      - tests/test_relaylm_worker_entrypoint_boundary.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
+    notes: R4-B2 moved the implementation without retaining the unsupported old module path or adding a compatibility alias
 
   - asset_id: console.character_store_bootstrap
     paths: [pyproject.toml]
