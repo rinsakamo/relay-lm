@@ -343,6 +343,27 @@ def test_package_internal_script_is_not_reported_as_direct_cli() -> None:
     assert "scripts/relaylm_repo_inventory_cli.py" in operator_paths
 
 
+def test_runtime_install_uses_only_canonical_installed_entrypoint() -> None:
+    payload = _run_scan({"invocations"})
+    records = payload["invocations"]
+    console_records = [
+        record
+        for record in records
+        if record["root_id"] == "console_script:relaylm-runtime-install"
+    ]
+
+    assert len(console_records) == 1
+    assert (
+        console_records[0]["command_or_symbol"]
+        == "relaylm-runtime-install -> relaylm.runtime_install_cli:main"
+    )
+    assert not any(
+        record["root_kind"] == "python_dash_m"
+        and record["source_path"] == "relaylm/runtime_install_cli.py"
+        for record in records
+    )
+
+
 def test_yaml_config_evidence_tracks_full_dotted_paths() -> None:
     payload = _run_scan({"config"})
     by_name = {

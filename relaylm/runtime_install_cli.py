@@ -120,7 +120,3 @@ def _write_json_out(path_value: str, payload: dict[str, object]) -> str | None:
     except OSError:
         return "runtime_install_json_out_write_failed"
     return None
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
