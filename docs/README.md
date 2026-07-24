@@ -23,6 +23,9 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Current project status](PROJECT_STATUS.md) — the single current implementation status authority.
 - [v0.1 Release Readiness Assessment](release/v0.1-release-readiness.md) — current readiness assessment for the validated and tagged v0.1 boundary; the frozen tag receipt is [v0.1 Final Main-HEAD Validation and Tag Receipt](evidence/releases/v0.1-final-main-validation-tag-receipt.md).
 - [Project execution plan](architecture/project_execution_plan.md) — the single MVP execution plan and post-MVP roadmap authority.
+- [Documentation governance architecture](architecture/documentation-governance.md) — responsibility and control flow for active authority, retained records, synthesis, validation, and Git-history retirement.
+- [Repository maintenance system](architecture/repository-maintenance-system.md) — discovery, reviewed classification, deterministic projection, bounded cleanup, and retirement architecture.
+- [Documentation synthesis and retirement](operations/documentation-synthesis-and-retirement.md) — the repeatable D2-D6 operator procedure.
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md) — the current product direction reset target: editable Markdown character sources compiled into runtime projections.
 - [CW-A1 File-first Source Tree and Parser Contracts](architecture/cw_a1_file_first_source_tree_parser_contracts.md) — the current read-only source tree/parser contract slice for the file-first Character Workspace reset.
 - [CW-A5 Character Creation, Templates, and Showcase Import](architecture/cw_a5_character_creation_templates_showcase_import.md) — the current bounded creation/template/import slice for deterministic local Character Workspace creation.
