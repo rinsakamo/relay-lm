@@ -7,6 +7,7 @@ candidate identity and delegate to one under-lock lineage evaluator.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 import re
 from typing import Literal
 
@@ -545,7 +546,13 @@ def _digest(value: object) -> bool:
 
 
 def _timestamp(value: object) -> bool:
-    return isinstance(value, str) and bool(value) and "T" in value
+    if not isinstance(value, str) or not value:
+        return False
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return parsed.tzinfo is not None
 
 
 __all__ = [

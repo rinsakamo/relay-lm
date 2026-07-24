@@ -11,6 +11,7 @@ if str(SCRIPTS) not in sys.path:
 
 from relaylm_ci_changed_matrix import RUNTIME_TIMEOUTS, _matrix
 from relaylm_ci_consolidated_smoke import COMMANDS, changed_outputs
+from relaylm.subjective_mem_reformation import _timestamp
 
 
 def test_subjective_mem_runtime_change_selects_lifecycle_group() -> None:
@@ -88,3 +89,9 @@ def test_reformation_module_is_the_only_semantic_evaluator_owner() -> None:
     assert "_valid_tombstone_state" not in forget_runtime
     assert "_valid_tombstone_lineage" not in forget_runtime
     assert "subjective_mem_forget_runtime import" not in canonical
+
+
+def test_reformation_lineage_timestamp_requires_aware_iso_datetime() -> None:
+    assert _timestamp("2026-07-24T01:00:00+00:00") is True
+    assert _timestamp("2026-07-24T01:00:00") is False
+    assert _timestamp("T") is False
