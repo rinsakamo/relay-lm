@@ -21,9 +21,11 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../DOCUMENTATION_MODEL.md
   - ../architecture/project_execution_plan.md
+  - ../architecture/documentation-governance.md
+  - ../architecture/repository-maintenance-system.md
+  - ../operations/documentation-synthesis-and-retirement.md
   - ../planning/repository-structure-migration.md
   - ../planning/workstream-orchestration.md
-  - ../proposals/repository-simplification.md
   - ../evidence/implementation/repository_inventory_baseline_1ca928cd.md
 relaylm_supersedes: []
 relaylm_superseded_by: null
