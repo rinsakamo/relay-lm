@@ -56,23 +56,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (SystemExit, KeyboardInterrupt):
         raise
     except _CLIInputError:
-        result = invalid_runtime_install_report(
-            "runtime_install_cli_input_invalid",
-            write_requested=False,
-            config_loaded=False,
-        )
+        result = invalid_runtime_install_report("runtime_install_cli_input_invalid", write_requested=False, config_loaded=False)
     except FileNotFoundError:
-        result = invalid_runtime_install_report(
-            "runtime_install_config_missing",
-            write_requested=args.write,
-            config_loaded=False,
-        )
+        result = invalid_runtime_install_report("runtime_install_config_missing", write_requested=args.write, config_loaded=False)
     except Exception:
-        result = invalid_runtime_install_report(
-            "runtime_install_config_invalid",
-            write_requested=args.write,
-            config_loaded=False,
-        )
+        result = invalid_runtime_install_report("runtime_install_config_invalid", write_requested=args.write, config_loaded=False)
 
     payload = result.to_public_dict()
     if args.json_out is not None:
@@ -96,24 +84,10 @@ def _parse_args(argv: Sequence[str] | None) -> _CLIArgs:
     )
     parser.add_argument("--config", required=True)
     mode = parser.add_mutually_exclusive_group()
-    mode.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Plan only. This is the default.",
-    )
-    mode.add_argument(
-        "--write",
-        action="store_true",
-        help="Create only safe missing runtime layout directories.",
-    )
-    parser.add_argument(
-        "--character-id",
-        help="Optionally run the E1-R2 character-store bootstrap authority.",
-    )
-    parser.add_argument(
-        "--json-out",
-        help="Write the content-free report to a new JSON file.",
-    )
+    mode.add_argument("--dry-run", action="store_true", help="Plan only. This is the default.")
+    mode.add_argument("--write", action="store_true", help="Create only safe missing runtime layout directories.")
+    parser.add_argument("--character-id", help="Optionally run the E1-R2 character-store bootstrap authority.")
+    parser.add_argument("--json-out", help="Write the content-free report to a new JSON file.")
     namespace = parser.parse_args(list(argv) if argv is not None else None)
     return _CLIArgs(
         config=namespace.config,
@@ -125,16 +99,7 @@ def _parse_args(argv: Sequence[str] | None) -> _CLIArgs:
 
 def _emit_payload(payload: dict[str, object]) -> None:
     assert payload.get("schema_version") == PROJECTION_SCHEMA
-    sys.stdout.write(
-        json.dumps(
-            payload,
-            ensure_ascii=True,
-            sort_keys=True,
-            separators=(",", ":"),
-            allow_nan=False,
-        )
-        + "\n"
-    )
+    sys.stdout.write(json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n")
 
 
 def _write_json_out(path_value: str, payload: dict[str, object]) -> str | None:
@@ -150,14 +115,7 @@ def _write_json_out(path_value: str, payload: dict[str, object]) -> str | None:
         return "runtime_install_json_out_create_failed"
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as handle:
-            json.dump(
-                payload,
-                handle,
-                ensure_ascii=True,
-                sort_keys=True,
-                separators=(",", ":"),
-                allow_nan=False,
-            )
+            json.dump(payload, handle, ensure_ascii=True, sort_keys=True, separators=(",", ":"), allow_nan=False)
             handle.write("\n")
     except OSError:
         return "runtime_install_json_out_write_failed"
