@@ -17,7 +17,7 @@ The ordinary managed no-tool conversation path requires one Main LLM response-ge
 Use these current documents:
 
 - [ADR 0004: Single-response-call ordinary conversation and deferred subjective formation](../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md)
-- [Pipeline Responsibility Design](pipeline_responsibility_design.md)
+- [Pipeline Responsibilities](pipeline-responsibilities.md)
 - [Request / Response Pipeline](runtime/request-response-pipeline.md)
 - [Runtime Scheduler](runtime/scheduler.md)
 - [Subjective Memory Formation](memory/formation.md)
