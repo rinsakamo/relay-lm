@@ -69,6 +69,12 @@ Existing documents may continue to link this path only until D2-B2b migrates the
 
 The old path is not a fallback semantic authority. If canonical documents disagree with this transitional summary, the canonical documents and exact contracts govern.
 
+## 9. RelayCTX Repack
+
+This heading is a bounded compatibility anchor for existing current consumers. Canonical RelayCTX ownership is defined by [Pipeline Responsibilities](pipeline-responsibilities.md#responsibility-matrix), while exact current short-term runtime fields and gates remain in the [RelayCTX short-term runtime contract](../contracts/relayctx_short_term_runtime_contract.md).
+
+RelayCTX Repack currently owns bounded backend-context construction and token-budget application. It does not own scene, intent, relationship, or durable memory meaning. D2-B2b removes this compatibility anchor when its remaining consumers move to the canonical authority.
+
 ## Stable current safeguards
 
 - semantic components and runtime orchestration remain separate;
