@@ -108,8 +108,8 @@
       "owner": "documentation",
       "protected_boundary": "Existing current-document consumers and historical compile/checkpoint provenance while canonical architecture and exact checkpoint authority move to responsibility-oriented paths.",
       "current_consumers": [
-        "current architecture and contract links that still reference the legacy compile/checkpoint paths",
-        "bounded D2-B2 live-consumer migration review"
+        "bounded D2-B2 live-consumer migration review",
+        "current architecture and contract links that still reference the legacy compile/checkpoint paths"
       ],
       "removal_gate": "Every current consumer links directly to docs/architecture/runtime/compile-and-checkpoint.md and the owning contracts, the dedicated history pages have no current consumer, generic link and authority validation are green, and each removed path has a retirement-manifest entry.",
       "replacement_validation": [
