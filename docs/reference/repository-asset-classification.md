@@ -34,11 +34,11 @@ This page defines the canonical Lane R responsibility and lifecycle classificati
 
 ```text
 repository: rinsakamo/relay-lm
-source main: 8ff4f3a749eabcbb895bae79c577d111a7312850
-source main meaning: main after PR #692; R4-A3 reviewed base
+source main: 96068400d896a76e3079ddb946fb4a5c965353c6
+source main meaning: main after the net-zero placeholder cleanup; R4-B2 reviewed base
 lane: R
 stage: R4 low-risk independent package moves
-scope: reviewed classification, canonical repository-inventory ownership, generated classification evidence, and the bounded runtime-install CLI package move
+scope: reviewed classification, canonical repository-inventory ownership, generated classification evidence, and the bounded runtime-install and worker CLI package moves
 ```
 
 Classification is evidence for later review. It does not authorize deletion, movement, rename, consolidation, behavior change, compatibility removal, storage migration, or status changes. Every destructive or authority-affecting action requires its own atomic PR and fresh caller evidence.
@@ -130,7 +130,7 @@ The following YAML records are the canonical human-reviewed representation for t
 
 ```yaml
 classification_version: 1
-source_commit: 8ff4f3a749eabcbb895bae79c577d111a7312850
+source_commit: 96068400d896a76e3079ddb946fb4a5c965353c6
 records:
   - asset_id: console.relaylm
     paths: [pyproject.toml]
@@ -148,17 +148,25 @@ records:
 
   - asset_id: console.worker
     paths: [pyproject.toml]
-    entrypoint: "relaylm-worker = relaylm.local_worker_cli:main"
+    entrypoint: "relaylm-worker = relaylm.cli.worker:main"
     responsibility: operator_cli
     lifecycle: active
     owner: relaymem_worker
     protected_boundary: explicit local one-job worker operation
-    current_callers: [installed relaylm-worker command, local operator invocation]
+    current_callers:
+      - installed relaylm-worker command
+      - local operator invocation
+      - scripts/relaylm_o0_local_one_job_runner_security_smoke.py direct main import
     invocation_roots: [console_script]
-    evidence: ["pyproject.toml [project.scripts]", relaylm/local_worker_cli.py]
+    evidence:
+      - "pyproject.toml [project.scripts]"
+      - relaylm/cli/worker.py
+      - scripts/relaylm_o0_local_one_job_runner_security_smoke.py
+      - tests/test_relaylm_worker_entrypoint_boundary.py
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
+    notes: R4-B2 moved the implementation without retaining the unsupported old module path or adding a compatibility alias
 
   - asset_id: console.character_store_bootstrap
     paths: [pyproject.toml]
@@ -424,7 +432,7 @@ No classified responsibility in this bounded surface is retired. R2-B retires tw
 
 The following remain unresolved and must not be guessed:
 
-- current complete inventory row counts at `8ff4f3a7...`; the committed baseline is fixed to `1ca928cd...`;
+- current complete inventory row counts at `96068400...`; the committed baseline is fixed to `1ca928cd...`;
 - runtime expansion of dynamically assembled imports, registries, plugin-style lookup, and subprocess commands;
 - responsibility and lifecycle outside the bounded registry above;
 - whether each discovered `python -m` root is supported or only an implementation convenience;
@@ -459,14 +467,16 @@ R3-A adds a machine-readable mirror and fail-closed validator. The validator rej
 
 The reviewed document remains upstream authority. Registry and generated outputs remain navigation and review evidence only.
 
-### R4-A: installed CLI package moves
+### R4: installed CLI package moves
 
-R4-A1 added generic console-target integrity validation. R4-A2 proved that `relaylm-runtime-install` is the sole supported runtime-install invocation, removed the unsupported `python -m relaylm.runtime_install_cli` root, and locked the direct PM-D7 smoke caller. R4-A3 moves that implementation to `relaylm/cli/runtime_install.py`, updates every accepted caller and mirror, and deletes the old module without a compatibility alias.
+R4-A1 added generic console-target integrity validation. R4-A2 proved that `relaylm-runtime-install` is the sole supported runtime-install invocation, removed the unsupported `python -m relaylm.runtime_install_cli` root, and locked the direct PM-D7 smoke caller. R4-A3 moved that implementation to `relaylm/cli/runtime_install.py`, updated every accepted caller and mirror, and deleted the old module without a compatibility alias.
 
-The other five console-script records remain eligible for caller discovery only. Any later pre-RT-1 move requires complete direct, dynamic, subprocess, workflow, test, documentation, and operator evidence and must not touch active LC-1, Subjective MEM publication, ordinary Retrieval, or Primary MEM authority.
+R4-B1 proved that `relaylm-worker` is the sole supported worker invocation, removed the unsupported `python -m relaylm.local_worker_cli` root, and locked the O0 security-smoke caller. R4-B2 moves that implementation to `relaylm/cli/worker.py`, updates the installed target, direct caller, focused regression, authority, and mirror, and deletes the old module without a compatibility alias.
+
+The other four console-script records remain eligible for caller discovery only. Any later pre-RT-1 move requires complete direct, dynamic, subprocess, workflow, test, documentation, and operator evidence and must not touch active LC-1, Subjective MEM publication, ordinary Retrieval, or Primary MEM authority.
 
 ## Parallel-safety and non-goals
 
-R4-A3 changes only the runtime-install CLI package path, its installed target, its direct process-smoke caller, repository-inventory regression evidence, and the Lane R classification authority/mirror. It does not change runtime-install behavior, durable state, APIs, UI, feature gates, user state, `docs/PROJECT_STATUS.md`, Lane C, Lane D, LC-1, or RT-1 paths.
+R4-B2 changes only the worker CLI package path, its installed target, its direct security-smoke caller, its focused entrypoint regression, and the Lane R classification authority/mirror. It does not change worker behavior, queue or durable-state semantics, APIs, UI, feature gates, user state, `docs/PROJECT_STATUS.md`, Lane C, Lane D, LC-1, or RT-1 paths.
 
 Every later R2, R3, or R4 PR must refresh `main`, open PRs, exact callers, workflows, review threads, and authority overlap before treating a candidate above as executable.

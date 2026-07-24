@@ -7,8 +7,8 @@ import sys
 from dataclasses import dataclass
 from typing import Sequence
 
-from .config import load_config
-from .local_worker_once import (
+from ..config import load_config
+from ..local_worker_once import (
     PROJECTION_SCHEMA,
     REQUEST_SCHEMA,
     RESULT_SCHEMA,

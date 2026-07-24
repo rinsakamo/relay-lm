@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import relaylm.local_worker_once as local_worker
-from relaylm.local_worker_cli import main as cli_main
+from relaylm.cli.worker import main as cli_main
 from relaylm.local_worker_once import execute_local_worker_once
 from relaylm.relaymem_slp_queue_record import (
     FILENAME_PREFIX,
