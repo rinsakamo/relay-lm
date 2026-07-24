@@ -34,8 +34,8 @@ This page defines the canonical Lane R responsibility and lifecycle classificati
 
 ```text
 repository: rinsakamo/relay-lm
-source main: b1c056f3949948b52e1c8aa26d7f86a0e35a586e
-source main meaning: main after R4-C1 locked the character-store bootstrap invocation boundary; R4-C2 reviewed base
+source main: 0e6f578fa1ffb4662f7e3db2f5d3a9484fbd07e8
+source main meaning: exact R4-C2 reviewed base after the disjoint Lane D archive-router migration
 lane: R
 stage: R4 low-risk independent package moves
 scope: reviewed classification, canonical repository-inventory ownership, generated classification evidence, and the bounded runtime-install, worker, and character-store bootstrap CLI package moves
@@ -130,7 +130,7 @@ The following YAML records are the canonical human-reviewed representation for t
 
 ```yaml
 classification_version: 1
-source_commit: b1c056f3949948b52e1c8aa26d7f86a0e35a586e
+source_commit: 0e6f578fa1ffb4662f7e3db2f5d3a9484fbd07e8
 records:
   - asset_id: console.relaylm
     paths: [pyproject.toml]
@@ -440,7 +440,7 @@ No classified responsibility in this bounded surface is retired. R2-B retires tw
 
 The following remain unresolved and must not be guessed:
 
-- current complete inventory row counts at `b1c056f3...`; the committed baseline is fixed to `1ca928cd...`;
+- current complete inventory row counts at `0e6f578f...`; the committed baseline is fixed to `1ca928cd...`;
 - runtime expansion of dynamically assembled imports, registries, plugin-style lookup, and subprocess commands;
 - responsibility and lifecycle outside the bounded registry above;
 - whether each discovered `python -m` root is supported or only an implementation convenience;
