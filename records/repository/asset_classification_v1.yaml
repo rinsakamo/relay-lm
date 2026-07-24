@@ -1,6 +1,6 @@
 registry_version: 1
 generated_from: docs/reference/repository-asset-classification.md
-source_commit: b1c056f3949948b52e1c8aa26d7f86a0e35a586e
+source_commit: 0e6f578fa1ffb4662f7e3db2f5d3a9484fbd07e8
 classification_version: 1
 canonical_entrypoints:
   - group: soul_lab_runtime
