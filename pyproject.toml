@@ -21,7 +21,7 @@ test = ["pytest>=8", "respx>=0.21", "jsonschema>=4.23"]
 dev = ["relay-lm[test]"]
 
 [project.scripts]
-relaylm = "relaylm.soul_lab_app:main"
+relaylm = "relaylm.cli.soul_lab:main"
 relaylm-worker = "relaylm.cli.worker:main"
 relaylm-character-store-bootstrap = "relaylm.cli.character_store_bootstrap:main"
 relaylm-character-create = "relaylm.cli.character_creation:main_create"
