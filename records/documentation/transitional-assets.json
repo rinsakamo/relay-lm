@@ -123,16 +123,15 @@
     {
       "family_id": "legacy-system-pipeline-docs",
       "paths": [
-        "docs/architecture/pipeline_responsibility_design.md",
-        "docs/architecture/runtime_architecture.md"
+        "docs/architecture/pipeline_responsibility_design.md"
       ],
       "owner": "documentation",
-      "protected_boundary": "Broad current architecture, contract, router, reference, evidence, integration, and top-level documentation consumers while canonical system context and component responsibility authority move to responsibility-oriented paths.",
+      "protected_boundary": "Remaining current architecture, contract, router, reference, integration, and top-level documentation consumers while canonical component responsibility and target order move to docs/architecture/pipeline-responsibilities.md and narrower mode, compile/checkpoint, or domain owners.",
       "current_consumers": [
-        "bounded D2-B2b consumer migration review",
-        "broad current architecture, contract, router, reference, evidence, integration, and top-level documentation links"
+        "bounded D2-B2b pipeline consumer migration review",
+        "remaining current architecture, contract, router, reference, integration, and top-level documentation links to the transitional pipeline responsibility path"
       ],
-      "removal_gate": "Move every remaining consumer to the canonical system, pipeline, request/response, compile/checkpoint, configuration, integration, or domain authority; pass generic authority and link validation; and record each removal in the manifest.",
+      "removal_gate": "Move every remaining consumer to docs/architecture/pipeline-responsibilities.md or the smallest mode, compile/checkpoint, configuration, integration, or domain authority; pass generic authority and link validation; and record the removal in the manifest.",
       "replacement_validation": [
         "active_document_authority",
         "git_recoverability",
