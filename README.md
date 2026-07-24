@@ -256,7 +256,7 @@ This is the canonical responsibility order, not a claim that every stage is alre
 | Output | 🔎 **RelayREF** | Observes the generated response and records diagnostics |
 | After the response | 🌙 **RelaySLP** | Organizes memory and SOUL update candidates outside the response path |
 
-For authoritative ownership and order, see the [Pipeline Responsibility Design](docs/architecture/pipeline_responsibility_design.md).
+For authoritative ownership and order, see the [Pipeline Responsibilities](docs/architecture/pipeline-responsibilities.md).
 
 ## 📚 Documentation
 

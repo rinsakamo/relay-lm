@@ -256,7 +256,7 @@ Out-of-band after-turn path:
 | 出力側 | 🔎 **RelayREF** | 生成された応答を観察し、診断情報を残す |
 | 応答後 | 🌙 **RelaySLP** | 通常応答とは別経路で、記憶・SOULの更新候補を整理する |
 
-責務と順序の正式な定義は [Pipeline Responsibility Design](docs/architecture/pipeline_responsibility_design.md) を参照してください。
+責務と順序の正式な定義は [Pipeline Responsibilities](docs/architecture/pipeline-responsibilities.md) を参照してください。
 
 ## 📚 ドキュメント
 
