@@ -44,4 +44,4 @@ PR #5 added an offline `pip install -e . --no-build-isolation` fallback and a `p
 
 ## Current authority
 
-Current request-pipeline responsibility and ordering belong to [Pipeline Responsibility Design](../../architecture/pipeline_responsibility_design.md) and [Runtime Architecture](../../architecture/runtime_architecture.md). Repository-wide current implementation status remains owned by [Project Status](../../PROJECT_STATUS.md). This record does not describe current memory, RAG, SOUL, or context-compilation behavior, all of which were explicitly out of scope for MVP-0.
+Current system context, request-pipeline responsibility, and ordering belong to [RelayLM System Overview](../../architecture/system-overview.md), [Pipeline Responsibilities](../../architecture/pipeline-responsibilities.md), and [Request / Response Pipeline](../../architecture/runtime/request-response-pipeline.md). Repository-wide current implementation status remains owned by [Project Status](../../PROJECT_STATUS.md). This record does not describe current memory, RAG, SOUL, or context-compilation behavior, all of which were explicitly out of scope for MVP-0.
