@@ -18,7 +18,7 @@
     },
     {
       "old_path": "docs/relayrun_runtime_checkpoint_design.md",
-      "last_live_commit": "dcb5507f24199950fe30fcd155f21e1fdd921412",
+      "last_live_commit": "37d99ad5b274c026b935c6f89e7e5e5640e95953",
       "old_blob_sha": "e046dfc4ca4edb194d4f4c5d5f4e91e0773e2e95",
       "removed_by_pr": 688,
       "replacement_paths": [
@@ -30,7 +30,7 @@
     },
     {
       "old_path": "docs/runtime_compile_gate_design.md",
-      "last_live_commit": "dcb5507f24199950fe30fcd155f21e1fdd921412",
+      "last_live_commit": "37d99ad5b274c026b935c6f89e7e5e5640e95953",
       "old_blob_sha": "ec14cc0d6d8c91fa93619f4dc968e2362525ddae",
       "removed_by_pr": 688,
       "replacement_paths": [
