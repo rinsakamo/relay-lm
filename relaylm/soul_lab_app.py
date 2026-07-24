@@ -1,17 +1,14 @@
 """RelayLM ASGI wrapper with loopback-only SOUL Lab management routes."""
 from __future__ import annotations
 
-import argparse
 import json
-import os
 
-import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from relaylm.app import create_app as create_core_app
-from relaylm.config import RelayLMConfig, load_config
+from relaylm.config import RelayLMConfig
 from relaylm.lab_held_governance_api import install_held_governance_routes
 from relaylm.soul_lab_character_creation import install_character_creation_routes
 from relaylm.soul_lab_forget_projection_history import (
@@ -217,20 +214,3 @@ def create_app(config_path: str | None = None) -> FastAPI:
     )
 
     return app
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Run RelayLM with SOUL Lab management API")
-    parser.add_argument("--config", default=None, help="Path to config.yaml")
-    args = parser.parse_args()
-
-    if args.config:
-        os.environ["RELAYLM_CONFIG"] = args.config
-
-    config = load_config(args.config)
-    uvicorn.run(
-        "relaylm.soul_lab_app:create_app",
-        factory=True,
-        host=config.listen.host,
-        port=config.listen.port,
-    )
