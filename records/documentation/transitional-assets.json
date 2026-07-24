@@ -119,6 +119,27 @@
         "normative_extraction"
       ],
       "growth_policy": "closed"
+    },
+    {
+      "family_id": "legacy-system-pipeline-docs",
+      "paths": [
+        "docs/architecture/pipeline_responsibility_design.md",
+        "docs/architecture/runtime_architecture.md"
+      ],
+      "owner": "documentation",
+      "protected_boundary": "Broad current architecture, contract, router, reference, evidence, onboarding, integration, and top-level documentation consumers while canonical system context and component responsibility authority move to responsibility-oriented paths.",
+      "current_consumers": [
+        ".github/workflows/onboarding-config-smoke.yml",
+        "bounded D2-B2b consumer migration review",
+        "broad current architecture, contract, router, reference, evidence, integration, and top-level documentation links"
+      ],
+      "removal_gate": "Move every consumer to the canonical system, pipeline, request/response, compile/checkpoint, configuration, integration, or domain authority; move the RelayCTX phase-order rule and onboarding trigger to their canonical owners; pass generic authority and link validation; and record each removal in the manifest.",
+      "replacement_validation": [
+        "active_document_authority",
+        "git_recoverability",
+        "links_and_routers"
+      ],
+      "growth_policy": "closed"
     }
   ]
 }
