@@ -133,7 +133,7 @@
         "bounded D2-B2b consumer migration review",
         "broad current architecture, contract, router, reference, evidence, integration, and top-level documentation links"
       ],
-      "removal_gate": "Move every consumer to the canonical system, pipeline, request/response, compile/checkpoint, configuration, integration, or domain authority; move the RelayCTX phase-order rule and onboarding trigger to their canonical owners; pass generic authority and link validation; and record each removal in the manifest.",
+      "removal_gate": "Move every consumer to the canonical system, pipeline, request/response, compile/checkpoint, configuration, integration, or domain authority; move the onboarding trigger to its canonical owner; pass generic authority and link validation; and record each removal in the manifest.",
       "replacement_validation": [
         "active_document_authority",
         "git_recoverability",
