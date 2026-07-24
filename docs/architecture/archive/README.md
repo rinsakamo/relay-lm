@@ -81,7 +81,9 @@ Useful principles migrated into current documents:
 
 Current replacements:
 
-- [Runtime architecture](../runtime_architecture.md)
+- [RelayLM System Overview](../system-overview.md)
+- [Pipeline Responsibilities](../pipeline-responsibilities.md)
+- [Request / Response Pipeline](../runtime/request-response-pipeline.md)
 - [Context packing design](../context_packing_design.md)
 - [AI character product principles](../ai_character_product_principles.md)
 - [RelaySOUL design](../../relaysoul/relaysoul_design.md)
@@ -104,7 +106,8 @@ Useful principles migrated into current documents:
 
 Current replacements:
 
-- [Runtime architecture](../runtime_architecture.md)
+- [RelayLM System Overview](../system-overview.md)
+- [Request / Response Pipeline](../runtime/request-response-pipeline.md)
 - [Open-LLM-VTuber integration design](../open_llm_vtuber_integration.md)
 - [AI VTuber pipeline profile](../ai_vtuber_pipeline_profile.md)
 - [AI character product principles](../ai_character_product_principles.md)
@@ -131,7 +134,9 @@ Useful principles migrated into current documents:
 Current replacements:
 
 - [Pipeline implementation plan](../pipeline_implementation_plan.md)
-- [Runtime architecture](../runtime_architecture.md)
+- [RelayLM System Overview](../system-overview.md)
+- [Pipeline Responsibilities](../pipeline-responsibilities.md)
+- [Request / Response Pipeline](../runtime/request-response-pipeline.md)
 - [Runtime operational requirements](../runtime_operational_requirements.md)
 - [AI character product principles](../ai_character_product_principles.md)
 - [Context packing design](../context_packing_design.md)
