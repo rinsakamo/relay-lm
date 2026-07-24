@@ -71,16 +71,10 @@ jobs:
         with:
           script: |
             const monitor = require('./scripts/relaylm_agent_failure_budget.js');
-            const dispatchContext = context.eventName === 'workflow_dispatch'
-              ? {
-                  ...context,
-                  payload: {
-                    ...context.payload,
-                    inputs: {
-                      pr_number: process.env.RELAYLM_PR_NUMBER,
-                      reset_reason: process.env.RELAYLM_RESET_REASON,
-                    },
-                  },
-                }
-              : context;
-            await monitor.run({github, context: dispatchContext});
+            if (context.eventName === 'workflow_dispatch') {
+              context.payload.inputs = {
+                pr_number: process.env.RELAYLM_PR_NUMBER,
+                reset_reason: process.env.RELAYLM_RESET_REASON,
+              };
+            }
+            await monitor.run({github, context});
