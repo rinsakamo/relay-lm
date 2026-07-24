@@ -137,7 +137,7 @@ inserted_content_empty             - the rendered content-free summary is empty
 token_budget_exceeded              - token_budget <= 0 or estimated tokens exceed it
 payload_mutation_disabled          - appended to a blocked result when dry_run_only is True
 messages_contain_non_object_items  - late-stage-only replacement reason when filtering non-Mapping
-                                    message entries would change the message count
+                                     message entries would change the message count
 ```
 
 The source condition for `payload_mutation_disabled` is `dry_run_only or not apply_enabled`, but the `not apply_enabled` branch is unreachable in the current function because disabled apply returns before blocked-reason evaluation. Therefore the current reachable apply-tier reason is appended only for a blocked dry-run-only request. Other apply-tier blockers with `dry_run_only=False` do not automatically receive `payload_mutation_disabled`.
