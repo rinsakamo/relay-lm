@@ -2,6 +2,28 @@ name: Agent failure budget
 
 on:
   workflow_run:
+    workflows:
+      - "Completion report link smoke"
+      - "Documentation completion report files"
+      - "Documentation current boundary smoke"
+      - "Documentation cutover preparation"
+      - "Documentation governance"
+      - "Documentation links"
+      - "E1 evaluation consolidation"
+      - "MVP eval runner"
+      - "Onboarding config smoke"
+      - "Phase I-4A Forget Hide contract"
+      - "RelayLM runtime code smokes"
+      - "RelayMEM / SLP smokes"
+      - "Repository & storage inventory artifact"
+      - "Scripts inventory artifact"
+      - "Smoke consolidation contract"
+      - "SOUL Lab UI smokes"
+      - "Unit tests"
+      - "v0.1 final main validation"
+      - "Wave 4 cross-slice convergence"
+      - "Wave 5 cross-slice convergence"
+      - "Windows startup"
     types:
       - completed
   workflow_dispatch:
