@@ -19,6 +19,7 @@ This collection contains repeatable operator procedures and manual-validation ru
 
 ## Runbooks
 
+- [Documentation synthesis and retirement](documentation-synthesis-and-retirement.md)
 - [Consolidated smoke workflow maintenance](consolidated-smoke-workflow-maintenance.md)
 - [O1 manual one-round operations runbook](o1-manual-one-round.md)
 - [OpenWebUI + LM Studio manual smoke runbook](openwebui-lmstudio-manual-smoke.md)

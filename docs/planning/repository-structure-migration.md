@@ -21,7 +21,9 @@ relaylm_related_authority:
   - ../architecture/project_execution_plan.md
   - workstream-orchestration.md
   - ../DOCUMENTATION_MODEL.md
-  - ../proposals/repository-simplification.md
+  - ../architecture/documentation-governance.md
+  - ../architecture/repository-maintenance-system.md
+  - ../operations/documentation-synthesis-and-retirement.md
   - ../evidence/implementation/repository_inventory_baseline_1ca928cd.md
 ---
 # Repository Structure and Documentation Canonicalization Plan
