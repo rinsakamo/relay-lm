@@ -17,7 +17,7 @@ relaylm_not_authoritative_for:
   - exact RelayREL relationship schema
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - pipeline_responsibility_design.md
+  - pipeline-responsibilities.md
   - relayrel_relationship_design.md
   - scene_lifecycle_design.md
   - memory_lifecycle_design.md
