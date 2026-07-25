@@ -16,7 +16,7 @@ relaylm_not_authoritative_for:
   - SOUL Lab Runtime MVP adapter delivery
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - pipeline_responsibility_design.md
+  - pipeline-responsibilities.md
   - pipeline_implementation_plan.md
   - current_target_migration_guide.md
   - soul_lab_runtime_mvp.md
