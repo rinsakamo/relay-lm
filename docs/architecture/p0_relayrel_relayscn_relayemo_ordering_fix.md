@@ -15,7 +15,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - project_execution_plan.md
-  - pipeline_responsibility_design.md
+  - pipeline-responsibilities.md
   - relayscn_mvp_scene_policy.md
   - ../relayemo_mvp_initial_design.md
 ---
