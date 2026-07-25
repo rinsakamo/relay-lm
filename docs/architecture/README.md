@@ -43,6 +43,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [ST-1 Subjective MEM Commit Runtime](st1_subjective_mem_commit_runtime.md) records deterministic canonical Markdown publication, content-free intent/receipt finalization, caller-invoked recovery, and the logical eligibility boundary that remains unwired from ordinary Retrieval.
 - [LC-1A Subjective MEM Correct Runtime](lc1a_subjective_mem_correct.md) records the default-off exact `active -> active` immutable correction successor, shared mutation fence, and forward-only recovery boundary.
 - [LC-1B Subjective MEM Forget Runtime](subjective-mem-forget-runtime.md) records the default-off exact `active -> hidden` immutable successor, content-free anti-reformation tombstone, and forward-only recovery boundary; Pin/Unpin and later LC-1 operations remain unimplemented.
+- [LC-1C Subjective MEM Pin / Unpin Runtime](subjective-mem-pin-unpin-runtime.md) defines the accepted target `active <-> pinned` immutable successor, single-owner idempotency, publication, and recovery boundary; runtime implementation remains unimplemented.
 
 ## Character workspace target architecture
 
