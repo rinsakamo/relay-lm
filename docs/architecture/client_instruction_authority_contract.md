@@ -7,7 +7,7 @@ This document defines how RelayLM treats client-supplied `system` and `developer
 It complements:
 
 - [Client History Authority Contract](client_history_authority_contract.md)
-- [Pipeline Responsibility Design](pipeline_responsibility_design.md)
+- [RelayLM Pipeline Responsibilities](pipeline-responsibilities.md)
 - [Pipeline Implementation Plan](pipeline_implementation_plan.md)
 - [Phase 5-C4a Implementation Handoff](phase5c4a_instruction_bearing_managed_apply_handoff.md)
 - [Phase 5-C4b Cache-Hit RelaySCN Projection Handoff](phase5c4b_cache_hit_relayscn_projection_handoff.md)
