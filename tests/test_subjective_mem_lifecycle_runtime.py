@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import replace
+from dataclasses import fields, replace
 from datetime import timedelta
 from pathlib import Path
 
@@ -23,6 +23,7 @@ from relaylm.subjective_mem_lifecycle import (
     SubjectiveMemCorrectProposal,
     SubjectiveMemCorrectionBoundary,
 )
+import relaylm.subjective_mem_lifecycle_engine as lifecycle_engine
 import relaylm.subjective_mem_lifecycle_runtime as lifecycle_runtime
 import relaylm.subjective_mem_markdown as subjective_mem_markdown
 from relaylm.subjective_mem_lifecycle_runtime import (
@@ -738,8 +739,8 @@ def test_correct_pre_image_authority_is_revalidated_under_lock(
     before = lifecycle_env["page_path"].read_bytes()
     assert _correct(lifecycle_env, fault=crash).status == "recovery_pending"
     monkeypatch.setattr(
-        lifecycle_runtime,
-        "_validate_pre_image_authority_current",
+        lifecycle_engine,
+        "_pre_image_authority_current",
         lambda **_kwargs: False,
     )
     retry = _correct(lifecycle_env)
@@ -823,3 +824,100 @@ def test_markdown_successor_rejects_changed_formation_snapshot(lifecycle_env) ->
     )
     assert planned.plan is None
     assert "subjective_mem_markdown_revision_chain_invalid" in planned.reasons
+
+
+def test_correct_production_path_executes_through_the_shared_engine(
+    lifecycle_env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[str] = []
+
+    def recorded(name: str):
+        real = getattr(lifecycle_engine, name)
+
+        def wrapper(**kwargs):
+            calls.append(name)
+            return real(**kwargs)
+
+        return wrapper
+
+    for name in (
+        "read_lifecycle_reservation",
+        "reserve_lifecycle_publication",
+        "publish_lifecycle_post_image",
+    ):
+        monkeypatch.setattr(lifecycle_runtime, name, recorded(name))
+    result = _correct(lifecycle_env)
+    assert result.status == "committed", result.blocked_reasons
+    assert calls == [
+        "read_lifecycle_reservation",
+        "reserve_lifecycle_publication",
+        "publish_lifecycle_post_image",
+    ]
+
+
+def test_shared_engine_never_imports_a_lifecycle_operation_owner() -> None:
+    source = Path("relaylm/subjective_mem_lifecycle_engine.py").read_text(encoding="utf-8")
+    assert "subjective_mem_lifecycle_runtime" not in source
+    assert "subjective_mem_forget_runtime" not in source
+    assert "relaymem_primary" not in source
+    for dynamic in (
+        "Protocol",
+        "importlib",
+        "sys.modules",
+        "ContextVar",
+        "monkeypatch",
+        "registry",
+        "factory",
+        "plugin",
+    ):
+        assert dynamic not in source
+
+
+def test_moved_publication_bodies_are_absent_from_correct_runtime() -> None:
+    source = Path("relaylm/subjective_mem_lifecycle_runtime.py").read_text(encoding="utf-8")
+    for moved in (
+        "def _persist_prepared(",
+        "def _publish_and_finalize(",
+        "def _finalize_operations(",
+        "def _resolve_final_replay(",
+        "def _mark_recovery_required(",
+        "def _read_claim_and_intent(",
+        "def _state_from_intent(",
+        "def _claim_from_intent(",
+        "def _final_records_exact_locked(",
+        "def _any_final_record_present_locked(",
+        "def _validate_pre_image_authority_current(",
+    ):
+        assert moved not in source
+    for owned_by_engine in (
+        "publish_canonical_page",
+        "write_immutable_rendered_artifact",
+        "read_immutable_rendered_artifact",
+    ):
+        assert owned_by_engine not in source
+
+
+def test_correct_keeps_one_engine_execution_path_without_fallback() -> None:
+    source = Path("relaylm/subjective_mem_lifecycle_runtime.py").read_text(encoding="utf-8")
+    assert source.count("from relaylm.subjective_mem_lifecycle_engine import") == 1
+    for bypass in ("ImportError", "importlib", "sys.modules", "fallback", "ContextVar"):
+        assert bypass not in source
+
+
+def test_shared_engine_records_and_outcomes_stay_content_free() -> None:
+    assert {item.name for item in fields(lifecycle_engine.LifecycleExecutionOutcome)} == {
+        "status",
+        "reasons",
+        "current_state",
+        "recovery_outcome",
+        "canonical_page_published",
+        "lifecycle_receipt_present",
+        "persisted",
+    }
+    assert {item.name for item in fields(lifecycle_engine.LifecycleFinalRecords)} == {
+        "transition",
+        "receipt",
+        "finalization",
+        "result",
+        "projection",
+    }
