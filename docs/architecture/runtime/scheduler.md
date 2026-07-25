@@ -18,7 +18,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_decision_source: ../../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md
 relaylm_related_authority:
-  - ../pipeline_responsibility_design.md
+  - ../pipeline-responsibilities.md
   - ../relayrun_runtime_checkpoint_design.md
   - request-response-pipeline.md
   - ../memory/formation.md
