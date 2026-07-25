@@ -41,8 +41,12 @@ REQUIRED = {
         "ASM-1 Shared Assessment runtime foundation                     complete / default-off",
         "SM-1 Subjective MEM decision/result vertical slice        complete / default-off / prepared-only",
         "ST-1 Markdown + operations commit protocol           complete / default-off / create-only / POSIX apply",
+        "LC-1 lifecycle migration                        in progress / LC-1A Correct, LC-1B Forget, and LC-1C Pin/Unpin implemented / default-off",
+        "LC-1D Restore                               next ordered slice / target architecture accepted / implementation not started",
+        "LC-1E Consolidate                           registered / not started",
         "LC-1C Pin/Unpin implements exact current `active -> pinned` and `pinned -> active` immutable successors",
         "LC-1 remains incomplete, and Restore is the next ordered slice.",
+        "LC-1D Restore is the next implementation slice; its target architecture is accepted, while runtime implementation remains not started.",
     ),
     "docs/architecture/lc1a_subjective_mem_correct.md": (
         "relaylm_authority: lc1a_subjective_mem_correct_runtime_boundary",
@@ -94,6 +98,10 @@ STALE = (
     "LC-1 lifecycle migration                                    in progress; LC-1A Correct and LC-1B Forget implemented",
     "LC-1C Pin/Unpin                                        next ordered slice; not started",
     "LC-1 remains incomplete, and Pin/Unpin is the next ordered slice.",
+    "LC-1 lifecycle migration                        in progress / LC-1A Correct and LC-1B Forget implemented / default-off",
+    "LC-1C Pin/Unpin                             next ordered slice / not started",
+    "LC-1D Restore -> LC-1E Consolidate          registered / not started",
+    "LC-1C Pin/Unpin is next, followed by LC-1D Restore",
     "PM-D3 RelayEMO/RelaySCN scene_state ownership: open",
 )
 
