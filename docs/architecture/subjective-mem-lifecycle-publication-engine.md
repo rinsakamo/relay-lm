@@ -32,42 +32,37 @@ relaylm_authority_level: subsystem
 
 ## Purpose
 
-This document owns the operation-neutral execution boundary required to publish
-an immutable Subjective MEM lifecycle successor and finalize its content-free
-durable state without duplicating the existing Correct runtime for every later
-lifecycle operation.
+This document owns the operation-neutral execution boundary needed to publish an
+immutable Subjective MEM lifecycle successor and finalize its content-free state
+without copying the existing Correct runtime for each later lifecycle operation.
 
-The first implementation consumers are:
+The accepted first implementation consumer is Correct. Pin / Unpin is the next
+consumer after exact Correct equivalence is proven. This document does not claim
+that the shared engine is already implemented.
 
-```text
-current consumer:  Correct
-next consumer:     Pin / Unpin
-```
+Correct remains the semantic owner of `active -> active`. Pin / Unpin remains the
+semantic owner of `active -> pinned` and `pinned -> active`. The shared engine
+does not choose transitions or create semantic payloads.
 
-Correct remains the semantic owner of `active -> active` correction. Pin / Unpin
-remains the semantic owner of `active -> pinned` and `pinned -> active`.
-The shared engine owns neither transition choice nor operation-specific content.
+## Current problem
 
-## Current implementation problem
+The current Correct runtime contains both Correct semantics and reusable page
+publication, selector fencing, replay, and recovery mechanics. Forget imports
+some Correct-private validation helpers and owns a separate specialized body
+because it also finalizes anti-reformation state.
 
-The current Correct runtime contains both Correct semantics and reusable
-publication machinery in one large module. Forget reuses some Correct-private
-validation helpers but owns a separate publication and recovery body because it
-also finalizes anti-reformation state.
+LC-1C must not proceed by:
 
-LC-1C cannot safely proceed by:
-
-- copying the Correct publication state machine into a Pin / Unpin module;
-- importing high-level Correct or Forget private helpers;
-- adding a wrapper that delegates to Correct while leaving authority there;
-- creating a second selector, receipt family, canonical page writer, replay
-  model, or recovery model;
+- copying the Correct publication state machine;
+- importing Correct or Forget private operation helpers;
+- wrapping Correct while leaving authority there;
+- adding another selector, page writer, replay model, or recovery model;
 - converting every lifecycle operation in one unbounded refactor.
 
-The root cause is missing operation-neutral ownership for the mechanics already
-shared by the accepted lifecycle contracts.
+The missing boundary is one operation-neutral owner for mechanics already shared
+by the accepted lifecycle contracts.
 
-## P1 decision
+## Decision
 
 Introduce one function-oriented module:
 
@@ -75,171 +70,134 @@ Introduce one function-oriented module:
 relaylm/subjective_mem_lifecycle_engine.py
 ```
 
-It owns only the operation-neutral mechanics listed below. It must have at least
-one exact current production consumer in the same extraction PR. Correct is that
-consumer. The module is not an extension point for hypothetical operations.
+The first code PR must move real operation-neutral responsibility from Correct
+into this module and migrate Correct as a production consumer in the same PR.
+The moved Correct implementation is deleted; no compatibility wrapper or
+fallback remains.
 
-The dependency direction is:
+Dependency direction:
 
 ```text
-Correct operation owner -------------------+
-                                            |
-Pin / Unpin operation owner ---------------+--> lifecycle publication engine
-                                            |      -> canonical Markdown planner/I/O
-future accepted lifecycle owner -----------+      -> Evidence store transaction
-                                                   -> shared lifecycle record schemas
+Correct operation owner ---------+
+                                  +--> lifecycle publication engine
+Pin / Unpin operation owner -----+      -> canonical Markdown I/O
+                                         -> Evidence store transaction
+                                         -> shared lifecycle schemas
 ```
 
-Operation owners construct and validate an exact immutable execution plan. The
-engine validates that plan again at its authority boundary and executes it. The
-engine never imports an operation owner.
+The engine never imports an operation owner. Operation owners provide one exact,
+immutable execution plan and one directly called deterministic finalization
+function for their operation-specific durable records. There is no registry,
+factory, plugin loading, ContextVar dispatch, monkeypatch, fallback, or dynamic
+operation discovery.
 
 ## Engine-owned responsibility
 
-The shared engine owns exactly these mechanics:
+The engine owns only:
 
-1. validate one bounded operation-neutral execution plan;
-2. reserve the singleton current selector with `mutation_state: prepared` and
-   `retrieval_eligible: false` under the Evidence-space transaction lock;
-3. persist the operation claim and prepared intent supplied by the operation
-   owner after exact schema and digest validation;
-4. write and read one immutable rendered post-image artifact;
-5. publish the canonical page through the secure POSIX page-domain lock and
-   exact pre-image/post-image digests;
-6. verify predecessor retention and exact successor installation through a
-   caller-supplied bounded verifier;
-7. invoke one bounded operation finalizer inside the publication boundary;
-8. resolve exact finalized replay without appending another revision;
-9. recover forward from exact pre-image or exact post-image states;
-10. mark the selector `recovery_required` for a foreign or ambiguous page without
-    overwriting it;
-11. return bounded, content-free execution outcomes.
+1. validation of one bounded operation-neutral plan;
+2. singleton selector reservation as `prepared` and Retrieval-ineligible;
+3. shared lifecycle claim and prepared-intent persistence;
+4. immutable rendered post-image artifact I/O;
+5. secure POSIX canonical-page publication with exact pre/post digests;
+6. exact predecessor retention and successor installation verification;
+7. invocation of the operation-owned deterministic finalizer;
+8. exact finalized replay;
+9. caller-invoked forward recovery from exact pre-image or post-image states;
+10. `recovery_required` fencing for foreign or ambiguous images;
+11. bounded, content-free execution outcomes.
 
-The engine does not decide or synthesize:
+The engine does not own:
 
-- operation kind;
-- allowed from/to lifecycle states;
-- successor semantic payload;
-- authorization class or reason category;
-- operation-specific durable records such as a Forget tombstone;
-- operation-specific final-record equality beyond a bounded callback contract.
+- operation kind or allowed transition;
+- semantic successor construction;
+- authorization or reason policy;
+- operation-specific records such as a Forget tombstone;
+- ordinary Retrieval, ranking, cache, API, UI, or background recovery.
 
-## Exact execution plan
+## Operation-neutral plan
 
-The engine accepts one immutable plan whose fields are limited to the authority
-needed by the shared mechanics:
+The plan binds only the shared execution authority:
 
 ```text
 operation identity and input digest
-exact evidence-space and character authority digests
+exact evidence-space and character authority
 exact logical memory and from/to revision
-exact current selector pre-state and prepared state
+exact selector pre-state and prepared state
 exact current receipt lineage
-exact canonical page identity, relative path, partition, and pre-image digest
+exact page identity, path, partition, and pre-image digest
 exact predecessor and successor revision/block digests
-exact immutable artifact ID and post-image digest
-exact shared lifecycle claim and prepared intent
-bounded verify-installed callback
-bounded finalize-installed callback
-bounded final-replay resolver
-bounded recovery-required recorder
+exact immutable artifact and post-image digest
+exact shared claim and prepared intent
 ```
 
-Callbacks are accepted only where operation-specific durable semantics cannot be
-expressed by the engine without taking their authority. They must be explicit
-current consumers, deterministic, repository-local, content-free at the engine
-boundary, and covered by operation tests. Generic hooks, registries, factories,
-plugin loading, ContextVar dispatch, monkeypatching, or fallback callbacks are
-prohibited.
+The engine revalidates the plan at its boundary. A caller cannot omit publication
+verification, finalization, replay validation, or recovery fencing.
 
 ## Invariants
-
-The implementation must preserve:
 
 ```text
 one singleton selector
 one canonical page writer
 one exact pre-image/post-image publication path
 one immutable artifact path
-one claim and prepared-intent reservation model
+one shared claim and prepared-intent reservation model
 one exact finalized-replay model
 one forward-only recovery model
-one Evidence-space transaction writer at each durable transition
-no raw idempotency key, semantic content, path, or unrestricted exception text
-  in execution results or shared records
-no operation-specific lifecycle decision in the shared engine
+no operation semantics in the shared engine
+no raw key, semantic content, filesystem path, or unrestricted exception text
+  in shared records or execution results
 ```
 
-A caller cannot weaken engine validation by omitting a verifier or finalizer.
-Malformed plans, duplicate or foreign selector state, changed receipts, stale
-page authority, partial final records, unsupported platform, unsafe path, lock
+Malformed plans, stale or duplicate selectors, changed receipts, stale page
+authority, partial final records, unsupported platforms, unsafe paths, lock
 contention, and foreign images fail closed.
 
 ## Migration order
 
-### Extraction PR
+### Shared-engine extraction
 
-The first code PR after this design must:
+The next code PR must:
 
-1. move only operation-neutral mechanics from the Correct runtime into the shared
-   engine;
-2. migrate Correct to consume the shared engine in the same PR;
-3. preserve exact Correct behavior, record shapes, IDs, error classification,
-   replay, crash recovery, and process smoke;
-4. delete the moved Correct-private implementations rather than retain wrapper
-   or fallback paths;
-5. leave Forget behavior unchanged unless a required shared-helper move can be
-   proven mechanically and without importing Forget tombstone semantics.
+1. move only operation-neutral mechanics from Correct;
+2. migrate Correct to the shared engine in the same PR;
+3. preserve Correct record shapes, IDs, statuses, replay, and crash recovery;
+4. delete the moved Correct-private bodies;
+5. leave Forget semantics unchanged.
 
-This PR does not implement Pin / Unpin. Its accepted current consumer is Correct,
-so the engine is not speculative.
+This PR does not implement Pin / Unpin. Correct is the concrete accepted current
+consumer, so the extraction is not speculative.
 
-### Pin / Unpin PR
+### Pin / Unpin runtime
 
-Only after the extraction PR is merged and exact Correct equivalence is green,
-LC-1C may add `subjective_mem_pin_runtime.py` as the sole Pin / Unpin semantic
-owner. It consumes the shared engine and supplies:
+After the extraction merges and exact Correct equivalence is green,
+`subjective_mem_pin_runtime.py` becomes the sole Pin / Unpin semantic owner and
+uses the shared engine. It supplies exact transition validation, byte-equivalent
+successor preservation, and Pin / Unpin final records.
 
-- exact Pin / Unpin transition validation;
-- byte-equivalent successor preservation;
-- operation-specific intent and final lifecycle records;
-- exact replay and final-record equality for the Pin / Unpin operation family.
-
-It must not copy the extracted engine, import Correct/Forget private helpers, or
-add a second execution path.
+Pin / Unpin must not copy the engine or import Correct/Forget private helpers.
 
 ### Forget boundary
 
-Forget is not silently migrated by either PR. Its anti-reformation tombstone and
-semantic-identity finalization are an additional authority. A later migration is
-allowed only through a separate complete-diff review proving exact behavior and
-removing the replaced body in the same PR. Until then, no new Pin / Unpin code
-may depend on Forget internals.
+Forget is not silently migrated. Its anti-reformation finalization is an
+additional authority. A later migration requires a separate complete-diff review
+and removal of the replaced body in the same PR.
 
-## Alternatives considered
+## Alternatives
 
-### Copy Correct into Pin / Unpin
+**Copy Correct into Pin / Unpin:** rejected because it creates duplicate
+publication, replay, and recovery authorities.
 
-Rejected because it creates a second publication, replay, and recovery authority
-and adds another large lifecycle state machine.
+**Import Correct private helpers:** rejected because ownership remains unstable
+and operation coupling becomes implicit.
 
-### Import Correct private helpers directly
+**General lifecycle registry/framework:** rejected because no dynamic consumer
+exists and it would add speculative extension points.
 
-Rejected because private helper ownership remains with Correct and later changes
-can silently break Pin / Unpin semantics.
+**Extract with Correct as the first consumer:** accepted because it transfers a
+real current responsibility and gives Pin / Unpin one stable dependency.
 
-### General registry or lifecycle plugin framework
-
-Rejected because there are only two accepted immediate consumers and no current
-need for dynamic registration. It would create speculative extension points.
-
-### Extract the engine with Correct as current consumer
-
-Accepted because it transfers real existing responsibility, removes the moved
-Correct implementation, provides exact characterization evidence, and gives
-Pin / Unpin one stable dependency without taking operation semantics.
-
-## Change budget for the extraction PR
+## Extraction change budget
 
 Expected production paths:
 
@@ -255,50 +213,42 @@ modified: tests/test_subjective_mem_lifecycle_runtime.py
 modified: scripts/relaylm_lc1a_subjective_mem_correct_smoke.py only if required
 ```
 
-Expected new production files: one. Expected changed paths: two to four.
-No workflow, changed-matrix, status, API, UI, Primary MEM, Retrieval, Forget
-semantic, or documentation-wide cleanup path is expected.
+Expected changed paths: two to four. No workflow, changed-matrix, status, API,
+UI, Primary MEM, Retrieval, Forget semantic, or documentation-wide cleanup path
+is expected.
 
-The extraction should reduce the Correct module by moving responsibility, not
-increase total production logic through duplication. Unexpected additional
-paths, more than roughly 200 net new lines in an existing file, a new function
-above roughly 80 lines, or a new module above roughly 700 lines returns the work
-to P1. These are review triggers, not mechanical split targets.
+The extraction must reduce the Correct module by moving responsibility, not add
+a duplicate implementation. Unexpected paths, roughly more than 200 net new
+lines in an existing file, a function above roughly 80 lines, or a new module
+above roughly 700 lines returns the work to P1. These are review triggers, not
+mechanical split targets.
 
 ## Validation
 
 The extraction PR must prove:
 
-- all existing Correct unit and process tests remain exact;
+- all existing Correct unit and process behavior remains exact;
 - default-off and dry-run behavior remains write-free;
-- committed and duplicate-finalized results are unchanged;
-- pre-page and post-page crash recovery remains forward-only;
-- foreign image handling preserves the foreign page and marks recovery required;
-- selector, receipt, page, and predecessor races remain fail closed;
-- shared engine results and records remain content-free;
-- the Correct module no longer contains the moved publication/replay/recovery
-  implementation or a compatibility fallback;
-- the engine has one current production consumer and no dynamic registry;
-- Python 3.10/3.12 unit suites and the consolidated Subjective MEM lifecycle
-  group pass on the exact head.
+- committed and duplicate-finalized outcomes remain exact;
+- pre-page and post-page recovery remains forward-only;
+- foreign images are preserved and fenced;
+- selector, receipt, page, and predecessor races fail closed;
+- shared records and outcomes remain content-free;
+- the moved Correct implementation and fallback paths are absent;
+- the engine has one production consumer and no dynamic registry;
+- Python 3.10/3.12 tests and the consolidated lifecycle group pass on the exact
+  head.
 
-The later Pin / Unpin PR must additionally satisfy the validation matrix in
+The later Pin / Unpin PR must also satisfy
 `subjective-mem-pin-unpin-runtime.md`.
 
-## Rollback and removal
+## Rollback and non-goals
 
-Before the extraction PR merges, rollback is branch deletion. After merge, the
-shared engine is the publication owner for Correct and must not be bypassed by
-restoring the removed body. A defect is corrected in the engine or the exact
-Correct plan construction, with exact-head characterization evidence.
-
-If Pin / Unpin is later abandoned, the engine remains justified by Correct as
-its current consumer. No Pin-specific compatibility surface remains in the
-engine.
-
-## Non-goals
+Before merge, rollback is branch deletion. After merge, Correct uses the shared
+engine as its publication owner; rollback is a reviewed correction, not revival
+of the deleted body.
 
 This design does not implement Pin / Unpin, change Correct or Forget semantics,
-wire ordinary Retrieval, add API/UI routes, change Primary MEM, introduce
-background recovery, support non-POSIX apply, migrate user data, or authorize
-Restore, Consolidate, Merge, Supersession, or Purge.
+wire Retrieval, add API/UI, change Primary MEM, add background recovery, support
+non-POSIX apply, migrate user data, or authorize Restore, Consolidate, Merge,
+Supersession, or Purge.
