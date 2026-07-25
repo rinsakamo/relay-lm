@@ -206,6 +206,7 @@ Before substantive implementation:
 - define compatibility owners and removal gates;
 - map invariants to validation;
 - confirm one complete atomic lane-owned boundary;
+- define a bounded change budget for expected production, test, and documentation paths, new files, and likely growth hotspots;
 - confirm validation cannot mutate branch content.
 
 Typical invariants:
@@ -247,13 +248,36 @@ Reject:
 
 Require one semantic authority, one lane owner, one owner per responsibility, one selector/write path/recovery model/canonical representation where applicable, one branch writer, explicit dependency direction, bounded compatibility, stable names, and repository-content read-only validation.
 
+## Minimal change and structural-growth review
+
+Implement only the minimum code and documentation required by the selected authority, invariants, and acceptance criteria.
+
+Do not add:
+
+- speculative abstractions or future-facing extension points without a concrete accepted current consumer;
+- unrelated refactors, opportunistic cleanup, or adjacent feature work;
+- unused configuration, hooks, interfaces, registries, factories, adapters, or compatibility surfaces;
+- duplicate production logic in tests, migration helpers, or alternate execution paths;
+- file splits whose only purpose is satisfying a line-count target;
+- thin wrappers that do not transfer authority, ownership, validation, or responsibility.
+
+The P1 change budget is a review baseline, not a hard LOC cap. Stop substantive implementation and return to P1 when changed-path count or diff size grows unexpectedly, or when any default review trigger appears:
+
+- roughly more than 200 added lines in one existing file;
+- a file grows beyond roughly 700 lines or a function beyond roughly 80 lines;
+- multiple semantic authorities or unrelated reasons to change accumulate in one file;
+- a new wrapper, adapter, registry, factory, or interface has no accepted current consumer;
+- tests begin reimplementing production behavior instead of validating invariants.
+
+A trigger is not automatic rejection. P1 must either reduce or split the design along authority and responsibility boundaries, or record why the current structure remains simpler and safer. Never introduce a repository-wide mechanical LOC limit that rewards meaningless fragmentation.
+
 ## P3-P6
 
 Use RED → GREEN → structural REFACTOR. Construction helpers stay outside the repository tree where possible.
 
-Before P5, make the PR complete, atomic, documented, exact-head testable, and free of temporary artifacts.
+Before P5, make the PR complete, atomic, documented, exact-head testable, within the reviewed change budget or explicitly re-approved at P1, and free of temporary artifacts.
 
-P5 reviews the complete diff, every file, callers, workflows, registries, authority, state, failure modes, recovery, compatibility, negative cases, documentation claims, deletion recoverability, lane ownership, writer ownership, labels, and receipt.
+P5 reviews the complete diff, every file, callers, workflows, registries, authority, state, failure modes, recovery, compatibility, negative cases, documentation claims, deletion recoverability, lane ownership, writer ownership, labels, receipt, change-budget drift, and structural-growth triggers.
 
 CI success does not replace review. Correct local defects at the root, validate the exact head, and perform a fresh complete review. A P6-STOP condition ends branch correction.
 
