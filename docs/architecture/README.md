@@ -41,7 +41,8 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [ASM-1 Shared Assessment Runtime Foundation](asm1_shared_assessment_runtime_foundation.md) records the default-off EV-1-to-Shared-Assessment implementation boundary and its explicit stop before Subjective MEM.
 - [SM-1 Subjective MEM Create Runtime](sm1_subjective_mem_create_runtime.md) records the default-off exact `create` decision/result transaction and its prepared-only stop before ST-1 canonical publication.
 - [ST-1 Subjective MEM Commit Runtime](st1_subjective_mem_commit_runtime.md) records deterministic canonical Markdown publication, content-free intent/receipt finalization, caller-invoked recovery, and the logical eligibility boundary that remains unwired from ordinary Retrieval.
-- [LC-1A Subjective MEM Correct Runtime](lc1a_subjective_mem_correct.md) records the default-off exact `active -> active` immutable correction successor, shared mutation fence, and forward-only recovery boundary; later LC-1 operations remain unimplemented.
+- [LC-1A Subjective MEM Correct Runtime](lc1a_subjective_mem_correct.md) records the default-off exact `active -> active` immutable correction successor, shared mutation fence, and forward-only recovery boundary.
+- [LC-1B Subjective MEM Forget Runtime](subjective-mem-forget-runtime.md) records the default-off exact `active -> hidden` immutable successor, content-free anti-reformation tombstone, and forward-only recovery boundary; Pin/Unpin and later LC-1 operations remain unimplemented.
 
 ## Character workspace target architecture
 

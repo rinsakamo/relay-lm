@@ -20,8 +20,8 @@ REQUIRED = {
         "## Contract-aligned implementation migration boundary",
         "## Current caveats",
         "## Immediate dependency-first work",
-        "LC-1 lifecycle migration                                    in progress; LC-1A Correct implemented",
-        "LC-1B Forget                                           next ordered slice; not started",
+        "LC-1 lifecycle migration                                    in progress; LC-1A Correct and LC-1B Forget implemented",
+        "LC-1C Pin/Unpin                                        next ordered slice; not started",
         "## Not yet implemented",
         "Project Status Reference Map",
     ),
@@ -41,8 +41,8 @@ REQUIRED = {
         "ASM-1 Shared Assessment runtime foundation                     complete / default-off",
         "SM-1 Subjective MEM decision/result vertical slice        complete / default-off / prepared-only",
         "ST-1 Markdown + operations commit protocol           complete / default-off / create-only / POSIX apply",
-        "LC-1 lifecycle migration                        in progress / LC-1A Correct implemented / default-off",
-        "LC-1B Forget                                next ordered slice / not started",
+        "LC-1 lifecycle migration                        in progress / LC-1A Correct and LC-1B Forget implemented / default-off",
+        "LC-1C Pin/Unpin                             next ordered slice / not started",
     ),
     "docs/architecture/lc1a_subjective_mem_correct.md": (
         "relaylm_authority: lc1a_subjective_mem_correct_runtime_boundary",
@@ -50,6 +50,13 @@ REQUIRED = {
         "Correct | `active` | `none` | `active`",
         "LC-1 remains incomplete.",
         "Purge remains prohibited.",
+    ),
+    "docs/architecture/subjective-mem-forget-runtime.md": (
+        "relaylm_authority: subjective_mem_forget_runtime_architecture",
+        "# LC-1B Subjective MEM Forget Runtime",
+        "exact `active -> hidden`",
+        "content-free anti-reformation tombstone effective",
+        "The Forget module is a separate operation implementation, not a second semantic",
     ),
     "docs/README.md": (
         "[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.",
@@ -59,6 +66,7 @@ REQUIRED = {
         "SM-1 Subjective MEM Create Runtime",
         "ST-1 Subjective MEM Commit Runtime",
         "LC-1A Subjective MEM Correct Runtime",
+        "LC-1B Subjective MEM Forget Runtime",
     ),
     "docs/DOCUMENTATION_MODEL.md": (
         "`architecture_handoff`",
@@ -78,6 +86,11 @@ STALE = (
     "ST-1 Markdown + operations commit protocol           next registered slice / not started",
     "LC-1 lifecycle migration                                    next registered slice; not started",
     "LC-1 lifecycle migration                        next registered slice / not started",
+    "LC-1 lifecycle migration                                    in progress; LC-1A Correct implemented",
+    "LC-1B Forget                                           next ordered slice; not started",
+    "LC-1 lifecycle migration                        in progress / LC-1A Correct implemented / default-off",
+    "LC-1B Forget                                next ordered slice / not started",
+    "[LC-1A Subjective MEM Correct Runtime](lc1a_subjective_mem_correct.md) records the default-off exact `active -> active` immutable correction successor, shared mutation fence, and forward-only recovery boundary; later LC-1 operations remain unimplemented.",
     "PM-D3 RelayEMO/RelaySCN scene_state ownership: open",
 )
 

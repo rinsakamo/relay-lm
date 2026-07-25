@@ -23,6 +23,7 @@ relaylm_related_authority:
   - docs/architecture/sm1_subjective_mem_create_runtime.md
   - docs/architecture/st1_subjective_mem_commit_runtime.md
   - docs/architecture/lc1a_subjective_mem_correct.md
+  - docs/architecture/subjective-mem-forget-runtime.md
   - docs/contracts/governed-evidence-contract-family.md
   - docs/contracts/relayctx-session-evidence-overlay.md
   - docs/contracts/shared-assessment-subjective-mem.md
@@ -31,7 +32,7 @@ relaylm_related_authority:
 ---
 # RelayLM Project Status
 
-Last reviewed: 2026-07-23 JST
+Last reviewed: 2026-07-25 JST
 
 ## Purpose and authority
 
@@ -54,7 +55,7 @@ OVL-1 CTX-OVL participant-private vertical slice: complete in PR #639; default-o
 ASM-1 Shared Assessment runtime foundation: complete in PR #636; default-off
 SM-1 Subjective MEM create decision/result vertical slice: complete in PR #646; default-off and prepared-only
 ST-1 Markdown + operations commit protocol: complete; default-off, create-only, POSIX apply
-LC-1 lifecycle migration: in progress; LC-1A Correct implemented, default-off, active-to-active only, POSIX apply
+LC-1 lifecycle migration: in progress; LC-1A Correct and LC-1B Forget implemented; default-off, POSIX apply
 ```
 
 ## Contract-aligned implementation migration boundary
@@ -69,14 +70,18 @@ LC-1 lifecycle migration: in progress; LC-1A Correct implemented, default-off, a
 
 **ST-1** consumes one exact SM-1 prepared `create` bundle, publishes deterministic canonical Subjective MEM Markdown, commits the matching durable content-free operations receipt, and finalizes the logical selector to `mutation_state: none` / `retrieval_eligible: true`. The bounded slice remains default-off, create-only, single-host, and POSIX-apply-only.
 
-**LC-1A Correct** consumes one exact current active canonical revision, current selector, current receipt, current admitted Shared Assessment, and explicit correction authority. It appends one immutable successor revision, retains the predecessor, atomically fences the selector during publication, and finalizes content-free transition/receipt/idempotency records. It remains default-off, active-to-active only, single-host, and POSIX-apply-only. LC-1 is not complete: Forget, Pin/Unpin, Restore, and Consolidate remain ordered later slices. Logical eligibility still does not wire ordinary Retrieval, projection, ranking, cache, or request-path readers; RT-1 remains later.
+**LC-1A Correct** consumes one exact current active canonical revision, current selector, current receipt, current admitted Shared Assessment, and explicit correction authority. It appends one immutable successor revision, retains the predecessor, atomically fences the selector during publication, and finalizes content-free transition/receipt/idempotency records. It remains default-off, active-to-active only, single-host, and POSIX-apply-only.
+
+**LC-1B Forget** consumes one exact current active canonical revision and appends an immutable hidden successor while retaining the predecessor. It finalizes the shared lifecycle transition, receipt, selector, and content-free anti-reformation tombstone under one Evidence-space transaction, with deterministic idempotency and caller-invoked forward recovery. Exact forgotten semantics are rejected through one canonical public/locked anti-reformation evaluator. The slice remains default-off, single-host, and POSIX-apply-only.
+
+LC-1 is not complete: Pin/Unpin, Restore, and Consolidate remain ordered later slices. Logical eligibility still does not wire ordinary Retrieval, projection, ranking, cache, or request-path readers; RT-1 remains later.
 
 ## Current caveats
 
-- EV-1, OVL-1, ASM-1, SM-1, ST-1, and LC-1A remain fully default-off.
+- EV-1, OVL-1, ASM-1, SM-1, ST-1, LC-1A, and LC-1B remain fully default-off.
 - OVL-1 supports only `participant` / `participant_private` process-local overlay state.
 - SM-1 performs no LLM, translation, embedding, classifier, RelaySOUL, queue, worker, scheduler, normal response-path, Primary MEM, or Retrieval call.
-- ST-1 supports revision-1 `create`; LC-1A supports only exact current `active -> active` Correct successors on the checked POSIX single-host apply boundary. Windows startup remains supported while secure apply fails closed there.
+- ST-1 supports revision-1 `create`; LC-1A supports exact current `active -> active` Correct successors; LC-1B supports exact current `active -> hidden` Forget successors and exact anti-reformation blocking. These secure apply paths remain limited to the checked POSIX single-host boundary. Windows startup remains supported while secure apply fails closed there.
 - ST-1 logical `retrieval_eligible: true` does not implement ordinary Subjective MEM Retrieval or projection.
 - Primary MEM remains the current ordinary memory and Retrieval authority until required lifecycle migration and RT-1 hard cutover are accepted.
 - O2/O3 remain explicit local process layers, not browser authority, app-embedded services, or new memory mutation authority.
@@ -86,9 +91,9 @@ LC-1 lifecycle migration: in progress; LC-1A Correct implemented, default-off, a
 ## Immediate dependency-first work
 
 ```text
-LC-1 lifecycle migration                                    in progress; LC-1A Correct implemented
-  -> LC-1B Forget                                           next ordered slice; not started
-  -> LC-1C Pin/Unpin -> LC-1D Restore -> LC-1E Consolidate registered; not started
+LC-1 lifecycle migration                                    in progress; LC-1A Correct and LC-1B Forget implemented
+  -> LC-1C Pin/Unpin                                        next ordered slice; not started
+  -> LC-1D Restore -> LC-1E Consolidate                     registered; not started
   -> RT-1 Retrieval projection and hard cutover             registered; not started
 
 Parallel decision work:
@@ -100,7 +105,7 @@ Parallel decision work:
 
 ## Not yet implemented
 
-- Subjective MEM Forget, Pin/Unpin, Restore, Consolidate, and every lifecycle transition beyond LC-1A active-to-active Correct;
+- Subjective MEM Pin/Unpin, Restore, Consolidate, and every lifecycle transition beyond LC-1B Forget;
 - ordinary Subjective MEM Retrieval projection, ranking, cache, request-path wiring, and RT-1 hard cutover;
 - Primary MEM migration, Subjective MEM backup/restore completion, and multi-host publication;
 - shared-scene, relationship, and quarantine CTX-OVL partitions;
