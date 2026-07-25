@@ -16,7 +16,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../architecture/file_first_character_workspace_design.md
-  - ../architecture/pipeline_responsibility_design.md
+  - ../architecture/pipeline-responsibilities.md
   - ../contracts/relaysoul_patch_schema.md
   - ../contracts/relaysoul_revision_contract.md
 ---
