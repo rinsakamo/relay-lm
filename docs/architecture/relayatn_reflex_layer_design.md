@@ -30,7 +30,7 @@ relaylm_related_authority:
   - relayrun_runtime_checkpoint_design.md
   - relayint_mvp_design.md
   - relayscn_mvp_scene_policy.md
-  - pipeline_responsibility_design.md
+  - pipeline-responsibilities.md
   - project_execution_plan.md
   - o3_always_on_local_scheduler.md
   - soul_lab_runtime_mvp.md
