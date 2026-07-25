@@ -921,3 +921,137 @@ def test_shared_engine_records_and_outcomes_stay_content_free() -> None:
         "result",
         "projection",
     }
+
+
+def _reservation_plan(lifecycle_env, monkeypatch):
+    """Capture the exact production reservation plan without performing any write."""
+
+    seen: dict[str, object] = {}
+
+    def capture(*, store, plan, post_image, fault_injector=None):
+        seen["plan"] = plan
+        seen["post_image"] = post_image
+        return lifecycle_engine.LifecycleExecutionOutcome(
+            "fail_closed", ("subjective_mem_lifecycle_capture_only",)
+        )
+
+    monkeypatch.setattr(lifecycle_runtime, "reserve_lifecycle_publication", capture)
+    _correct(lifecycle_env)
+    plan = seen["plan"]
+    assert isinstance(plan, lifecycle_engine.LifecyclePublicationPlan)
+    assert plan.current_state is not None
+    monkeypatch.undo()
+    return plan, seen["post_image"]
+
+
+def _durable_state(lifecycle_env):
+    """Snapshot every durable surface a reservation is allowed to touch."""
+
+    store = lifecycle_env["store"]
+    space = lifecycle_env["captured"].evidence_space_id
+    selector = lifecycle_env["st1"].current_state
+    artifacts = lifecycle_env["workspace_root"] / (
+        "char1/.relaylm/state/subjective_mem_st1/artifacts"
+    )
+    return {
+        "artifacts": sorted(item.name for item in artifacts.glob("*")),
+        "lifecycle_records": sorted(
+            str(item.relative_to(store.root))
+            for item in store.root.rglob("*lifecycle*")
+        ),
+        "selector": store.read_log(
+            evidence_space_id=space,
+            log_kind="subjective_mem_current_state",
+            key=selector.memory_state_id,
+        ),
+        "page": lifecycle_env["page_path"].read_bytes(),
+    }
+
+
+def test_reservation_rejects_pre_state_not_derived_from_this_plan(
+    lifecycle_env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan, post_image = _reservation_plan(lifecycle_env, monkeypatch)
+    before = _durable_state(lifecycle_env)
+    bound_current = replace(
+        plan.prepared_state, mutation_state="none", retrieval_eligible=True
+    )
+    substitutions = {
+        "subjective_mem_lifecycle_plan_pre_state_missing": None,
+        # an unrelated logical memory
+        "foreign_memory": replace(plan.current_state, memory_id="smmem-unrelated"),
+        # a selector that is already reserved by someone else
+        "already_reserved": replace(
+            plan.current_state, mutation_state="prepared", retrieval_eligible=False
+        ),
+        # an already-bound selector whose canonical binding does not carry over
+        "rebound": replace(bound_current, block_id="smblock_" + "0" * 64),
+        # a selector pointing at a different revision
+        "wrong_revision": replace(
+            plan.current_state, current_revision=plan.current_state.current_revision + 1
+        ),
+    }
+    for label, candidate in substitutions.items():
+        outcome = lifecycle_engine.reserve_lifecycle_publication(
+            store=lifecycle_env["store"],
+            plan=replace(plan, current_state=candidate),
+            post_image=post_image,
+        )
+        assert outcome.status == "fail_closed", label
+        expected = (
+            "subjective_mem_lifecycle_plan_pre_state_missing"
+            if candidate is None
+            else "subjective_mem_lifecycle_plan_pre_state_not_exact"
+        )
+        assert outcome.reasons == (expected,), (label, outcome.reasons)
+        assert outcome.persisted is False, label
+        assert _durable_state(lifecycle_env) == before, label
+
+
+def test_reservation_and_publication_reject_post_image_before_any_write(
+    lifecycle_env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan, post_image = _reservation_plan(lifecycle_env, monkeypatch)
+    before = _durable_state(lifecycle_env)
+    foreign_block = "smblock_" + "0" * 64
+    candidates = {
+        "foreign_bytes": (plan, b"# foreign\n"),
+        "pre_image_bytes": (plan, lifecycle_env["page_path"].read_bytes()),
+        "not_bytes": (plan, "# not bytes\n"),
+        # exact digest, but the plan's successor binding no longer matches
+        "unbound_successor": (
+            replace(
+                plan,
+                successor_block_id=foreign_block,
+                prepared_intent={
+                    **plan.prepared_intent,
+                    "successor_block_id": foreign_block,
+                },
+            ),
+            post_image,
+        ),
+    }
+    for label, (candidate_plan, candidate_bytes) in candidates.items():
+        reserved = lifecycle_engine.reserve_lifecycle_publication(
+            store=lifecycle_env["store"],
+            plan=candidate_plan,
+            post_image=candidate_bytes,
+        )
+        assert reserved.status == "fail_closed", label
+        assert reserved.reasons == (
+            "subjective_mem_lifecycle_post_image_not_exact",
+        ), (label, reserved.reasons)
+        assert reserved.persisted is False, label
+
+        published = lifecycle_engine.publish_lifecycle_post_image(
+            store=lifecycle_env["store"],
+            plan=candidate_plan,
+            post_image=candidate_bytes,
+            finalizer=lambda _state: None,
+        )
+        assert published.status == "fail_closed", label
+        assert published.reasons == (
+            "subjective_mem_lifecycle_post_image_not_exact",
+        ), (label, published.reasons)
+        assert published.canonical_page_published is False, label
+        assert _durable_state(lifecycle_env) == before, label

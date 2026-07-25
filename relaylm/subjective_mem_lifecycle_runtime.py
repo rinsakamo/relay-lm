@@ -387,6 +387,7 @@ def correct_subjective_mem(
         prepared_state=prepared.prepared_state,
         record_bindings=prepared.record_bindings,
         log_bindings=prepared.log_bindings,
+        current_state=prepared.current_state,
     )
     if execution_plan is None:
         return _result(
@@ -399,7 +400,6 @@ def correct_subjective_mem(
         store=store,
         plan=execution_plan,
         post_image=prepared.page_plan.rendered_bytes,
-        observed_current_state=prepared.current_state,
         fault_injector=fault_injector,
     )
     if reservation.status != "reserved":
@@ -919,6 +919,7 @@ def _execution_plan(
     prepared_state: SubjectiveMemCurrentState,
     record_bindings: tuple[RecordBinding, ...] = (),
     log_bindings: tuple[LogBinding, ...] = (),
+    current_state: SubjectiveMemCurrentState | None = None,
 ) -> LifecyclePublicationPlan | None:
     """Materialize the exact operation-neutral execution plan for this Correct."""
 
@@ -960,6 +961,7 @@ def _execution_plan(
             prepared_at=str(intent["prepared_at"]),
             record_bindings=record_bindings,
             log_bindings=log_bindings,
+            current_state=current_state,
         )
     except (KeyError, TypeError, ValueError):
         return None

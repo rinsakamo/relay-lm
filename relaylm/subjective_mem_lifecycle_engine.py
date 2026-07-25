@@ -148,6 +148,10 @@ class LifecyclePublicationPlan:
     prepared_at: str
     record_bindings: tuple[RecordBinding, ...] = ()
     log_bindings: tuple[LogBinding, ...] = ()
+    # exact durable selector pre-state this reservation is derived from; present
+    # only on a reservation plan, because a resumed operation has already
+    # replaced that selector with `prepared_state`.
+    current_state: SubjectiveMemCurrentState | None = None
 
 
 @dataclass(frozen=True)
@@ -168,14 +172,17 @@ def reserve_lifecycle_publication(
     store: EvidenceRecordStore,
     plan: LifecyclePublicationPlan,
     post_image: bytes,
-    observed_current_state: SubjectiveMemCurrentState,
     fault_injector: FaultInjector | None = None,
 ) -> LifecycleExecutionOutcome:
     """Write the immutable post-image artifact and reserve the singleton selector."""
 
-    reasons = validate_lifecycle_plan(plan)
+    reasons = validate_lifecycle_plan(plan) or _reservation_plan_errors(plan)
     if reasons:
         return LifecycleExecutionOutcome("fail_closed", reasons)
+    if not _post_image_exact(post_image, plan=plan):
+        return LifecycleExecutionOutcome(
+            "fail_closed", ("subjective_mem_lifecycle_post_image_not_exact",)
+        )
     artifact = write_immutable_rendered_artifact(
         workspace_root=plan.workspace_root,
         character_id=plan.character_id,
@@ -190,9 +197,7 @@ def reserve_lifecycle_publication(
         return LifecycleExecutionOutcome(
             "fail_closed", ("subjective_mem_lifecycle_fault_before_intent",)
         )
-    persisted, persist_reasons = _persist_reservation(
-        store=store, plan=plan, observed_current_state=observed_current_state
-    )
+    persisted, persist_reasons = _persist_reservation(store=store, plan=plan)
     if not persisted:
         return LifecycleExecutionOutcome("fail_closed", persist_reasons)
     return LifecycleExecutionOutcome("reserved", current_state=plan.prepared_state, persisted=True)
@@ -254,6 +259,10 @@ def publish_lifecycle_post_image(
     reasons = validate_lifecycle_plan(plan)
     if reasons:
         return LifecycleExecutionOutcome("fail_closed", reasons)
+    if not _post_image_exact(post_image, plan=plan):
+        return LifecycleExecutionOutcome(
+            "fail_closed", ("subjective_mem_lifecycle_post_image_not_exact",)
+        )
     final_state = final_lifecycle_state(plan)
     finalization: dict[str, object] = {}
 
@@ -523,14 +532,53 @@ def validate_lifecycle_plan(plan: LifecyclePublicationPlan) -> tuple[str, ...]:
     return ()
 
 
+def _reservation_plan_errors(plan: LifecyclePublicationPlan) -> tuple[str, ...]:
+    """Validate the exact selector pre-state a reservation plan is derived from."""
+
+    current = plan.current_state
+    if type(current) is not SubjectiveMemCurrentState:
+        return ("subjective_mem_lifecycle_plan_pre_state_missing",)
+    prepared = plan.prepared_state
+    # A reservation may only fence the exact live selector it was derived from:
+    # its identity, revision, and lifecycle state carry over unchanged, and an
+    # already authority-bound selector carries its whole binding over unchanged.
+    if (
+        current.memory_state_id != prepared.memory_state_id
+        or current.memory_id != prepared.memory_id
+        or current.character_id != prepared.character_id
+        or current.current_revision != prepared.current_revision
+        or current.lifecycle_state != prepared.lifecycle_state
+        or current.mutation_state != "none"
+        or current.retrieval_eligible is not True
+    ):
+        return ("subjective_mem_lifecycle_plan_pre_state_not_exact",)
+    if current.authority_bound and replace(
+        current,
+        mutation_state="prepared",
+        retrieval_eligible=False,
+        updated_at=prepared.updated_at,
+    ).to_dict() != prepared.to_dict():
+        return ("subjective_mem_lifecycle_plan_pre_state_not_exact",)
+    return ()
+
+
+def _post_image_exact(post_image: object, *, plan: LifecyclePublicationPlan) -> bool:
+    """Prove the caller's bytes are this plan's exact post-image before any write."""
+
+    return (
+        type(post_image) is bytes
+        and canonical_page_digest(post_image) == plan.post_image_digest
+        and _successor_installed_exactly(post_image, plan=plan)
+    )
+
+
 def _persist_reservation(
-    *,
-    store: EvidenceRecordStore,
-    plan: LifecyclePublicationPlan,
-    observed_current_state: SubjectiveMemCurrentState,
+    *, store: EvidenceRecordStore, plan: LifecyclePublicationPlan
 ) -> tuple[bool, tuple[str, ...]]:
     claim = lifecycle_claim_record(plan)
-    expected = observed_current_state.to_dict()
+    current_state = plan.current_state
+    assert current_state is not None  # guaranteed by _reservation_plan_errors
+    expected = current_state.to_dict()
     try:
         with store.transaction(plan.evidence_space_id) as tx:
             existing_result = tx.read_record(
@@ -552,7 +600,7 @@ def _persist_reservation(
             ]:
                 return False, ("subjective_mem_lifecycle_current_selector_changed",)
             duplicate_selector = _duplicate_logical_selector_locked(
-                tx=tx, plan=plan, expected=observed_current_state
+                tx=tx, plan=plan, expected=current_state
             )
             if duplicate_selector:
                 return False, duplicate_selector
