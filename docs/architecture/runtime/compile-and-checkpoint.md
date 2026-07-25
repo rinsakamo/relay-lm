@@ -18,7 +18,7 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_decision_source: ../../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md
 relaylm_related_authority:
   - request-response-pipeline.md
-  - ../pipeline_responsibility_design.md
+  - ../pipeline-responsibilities.md
   - ../safe_soul_scene_ctx_compile_chain.md
   - scheduler.md
 relaylm_related_contracts:
