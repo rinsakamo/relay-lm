@@ -235,9 +235,9 @@ Registered contract-aligned implementation debt:
     -> ASM-1 Shared Assessment runtime foundation                     complete / default-off
          -> SM-1 Subjective MEM decision/result vertical slice        complete / default-off / prepared-only
               -> ST-1 Markdown + operations commit protocol           complete / default-off / create-only / POSIX apply
-                   -> LC-1 lifecycle migration                        in progress / LC-1A Correct and LC-1B Forget implemented / default-off
-                        -> LC-1C Pin/Unpin                             next ordered slice / not started
-                        -> LC-1D Restore -> LC-1E Consolidate          registered / not started
+                   -> LC-1 lifecycle migration                        in progress / LC-1A Correct, LC-1B Forget, and LC-1C Pin/Unpin implemented / default-off
+                        -> LC-1D Restore                               next ordered slice / target architecture accepted / implementation not started
+                        -> LC-1E Consolidate                           registered / not started
                         -> RT-1 Retrieval projection and hard cutover registered / not started
 
 Remaining post-v0.1 decision or gated candidates:
@@ -348,4 +348,4 @@ PM-D3 is closed by the shipped P0-PIPE request-path ordering fix, which removes 
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
-Within the pre-existing post-E1-R5 decision-debt registry: The remaining candidates are PM-D1/PM-D4/PM-D9 follow-through and PM-D2 closure or absorption after PM-D6. The separately registered dependency-first implementation program has completed EV-1, OVL-1, ASM-1, SM-1, the default-off bounded ST-1 create commit slice, LC-1A Correct, and LC-1B Forget; LC-1C Pin/Unpin is next, followed by LC-1D Restore, LC-1E Consolidate, and RT-1. PM-D4, PM-D9, and PM-D1 apply as the narrow default-on, multilingual-generation, and SOUL-conditioned-formation gates recorded above; PM-D2 remains separately governed. Durable-memory E2 value smoke is complete as local human-reviewed v0.1 readiness evidence. RelayATN remains ATN-0 planning-only debt after voice-out / SOUL Lab Runtime MVP and does not authorize implementation.
+Within the pre-existing post-E1-R5 decision-debt registry: The remaining candidates are PM-D1/PM-D4/PM-D9 follow-through and PM-D2 closure or absorption after PM-D6. The separately registered dependency-first implementation program has completed EV-1, OVL-1, ASM-1, SM-1, the default-off bounded ST-1 create commit slice, LC-1A Correct, LC-1B Forget, and LC-1C Pin/Unpin. LC-1D Restore is the next implementation slice; its target architecture is accepted, while runtime implementation remains not started. LC-1E Consolidate and RT-1 follow. PM-D4, PM-D9, and PM-D1 apply as the narrow default-on, multilingual-generation, and SOUL-conditioned-formation gates recorded above; PM-D2 remains separately governed. Durable-memory E2 value smoke is complete as local human-reviewed v0.1 readiness evidence. RelayATN remains ATN-0 planning-only debt after voice-out / SOUL Lab Runtime MVP and does not authorize implementation.
