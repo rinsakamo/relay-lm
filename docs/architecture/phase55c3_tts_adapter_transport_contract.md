@@ -17,7 +17,7 @@ relaylm_not_authoritative_for:
 relaylm_related_authority:
   - phase5_5_stream_unpack_bounded_slice.md
   - pipeline_implementation_plan.md
-  - pipeline_responsibility_design.md
+  - pipeline-responsibilities.md
 ---
 # Phase 5.5-C3 TTS Adapter Transport Contract
 
