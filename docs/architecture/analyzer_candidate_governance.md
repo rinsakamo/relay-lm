@@ -17,7 +17,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../DOCUMENTATION_MODEL.md
   - project_execution_plan.md
-  - pipeline_responsibility_design.md
+  - pipeline-responsibilities.md
   - p0_relayrel_relayscn_relayemo_ordering_fix.md
   - acg1_analyzer_candidate_governance_contract.md
   - acg2_grounded_recall_detail_safety.md
