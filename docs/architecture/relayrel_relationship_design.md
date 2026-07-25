@@ -18,7 +18,7 @@ relaylm_not_authoritative_for:
   - RelayMEM retrieval implementation status
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - pipeline_responsibility_design.md
+  - pipeline-responsibilities.md
   - file_first_character_workspace_design.md
   - character_belief_relationship_dynamics_design.md
   - relayscn_mvp_scene_policy.md
