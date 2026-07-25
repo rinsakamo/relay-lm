@@ -55,7 +55,7 @@ OVL-1 CTX-OVL participant-private vertical slice: complete in PR #639; default-o
 ASM-1 Shared Assessment runtime foundation: complete in PR #636; default-off
 SM-1 Subjective MEM create decision/result vertical slice: complete in PR #646; default-off and prepared-only
 ST-1 Markdown + operations commit protocol: complete; default-off, create-only, POSIX apply
-LC-1 lifecycle migration: in progress; LC-1A Correct and LC-1B Forget implemented; default-off, POSIX apply
+LC-1 lifecycle migration: in progress; LC-1A Correct, LC-1B Forget, and LC-1C Pin/Unpin implemented; default-off, POSIX apply
 ```
 
 ## Contract-aligned implementation migration boundary
@@ -74,14 +74,16 @@ LC-1 lifecycle migration: in progress; LC-1A Correct and LC-1B Forget implemente
 
 **LC-1B Forget** consumes one exact current active canonical revision and appends an immutable hidden successor while retaining the predecessor. It finalizes the shared lifecycle transition, receipt, selector, and content-free anti-reformation tombstone under one Evidence-space transaction, with deterministic idempotency and caller-invoked forward recovery. Exact forgotten semantics are rejected through one canonical public/locked anti-reformation evaluator. The slice remains default-off, single-host, and POSIX-apply-only.
 
-LC-1 is not complete: Pin/Unpin, Restore, and Consolidate remain ordered later slices. Logical eligibility still does not wire ordinary Retrieval, projection, ranking, cache, or request-path readers; RT-1 remains later.
+**LC-1C Pin/Unpin** consumes one exact current canonical revision, selector, receipt, predecessor authority, and explicit management authority. It appends an immutable `active -> pinned` or `pinned -> active` successor while preserving semantic payload, scope, formation snapshot, strength, memory kind, and formation stage. It uses shared lifecycle reservation, canonical publication, exact replay, and caller-invoked forward recovery; its durable lifecycle records remain content-free. The slice remains default-off, single-host, and POSIX-apply-only.
+
+LC-1 is not complete: Restore and Consolidate remain ordered later slices. Logical eligibility still does not wire ordinary Retrieval, projection, ranking, cache, or request-path readers; RT-1 remains later.
 
 ## Current caveats
 
-- EV-1, OVL-1, ASM-1, SM-1, ST-1, LC-1A, and LC-1B remain fully default-off.
+- EV-1, OVL-1, ASM-1, SM-1, ST-1, LC-1A, LC-1B, and LC-1C remain fully default-off.
 - OVL-1 supports only `participant` / `participant_private` process-local overlay state.
 - SM-1 performs no LLM, translation, embedding, classifier, RelaySOUL, queue, worker, scheduler, normal response-path, Primary MEM, or Retrieval call.
-- ST-1 supports revision-1 `create`; LC-1A supports exact current `active -> active` Correct successors; LC-1B supports exact current `active -> hidden` Forget successors and exact anti-reformation blocking. These secure apply paths remain limited to the checked POSIX single-host boundary. Windows startup remains supported while secure apply fails closed there.
+- ST-1 supports revision-1 `create`; LC-1A supports exact current `active -> active` Correct successors; LC-1B supports exact current `active -> hidden` Forget successors and exact anti-reformation blocking; LC-1C supports exact current `active -> pinned` and `pinned -> active` successors. These secure apply paths remain limited to the checked POSIX single-host boundary. Windows startup remains supported while secure apply fails closed there.
 - ST-1 logical `retrieval_eligible: true` does not implement ordinary Subjective MEM Retrieval or projection.
 - Primary MEM remains the current ordinary memory and Retrieval authority until required lifecycle migration and RT-1 hard cutover are accepted.
 - O2/O3 remain explicit local process layers, not browser authority, app-embedded services, or new memory mutation authority.
@@ -91,9 +93,9 @@ LC-1 is not complete: Pin/Unpin, Restore, and Consolidate remain ordered later s
 ## Immediate dependency-first work
 
 ```text
-LC-1 lifecycle migration                                    in progress; LC-1A Correct and LC-1B Forget implemented
-  -> LC-1C Pin/Unpin                                        next ordered slice; not started
-  -> LC-1D Restore -> LC-1E Consolidate                     registered; not started
+LC-1 lifecycle migration                                    in progress; LC-1A Correct, LC-1B Forget, and LC-1C Pin/Unpin implemented
+  -> LC-1D Restore                                          next ordered slice; not started
+  -> LC-1E Consolidate                                      registered; not started
   -> RT-1 Retrieval projection and hard cutover             registered; not started
 
 Parallel decision work:
@@ -105,7 +107,7 @@ Parallel decision work:
 
 ## Not yet implemented
 
-- Subjective MEM Pin/Unpin, Restore, Consolidate, and every lifecycle transition beyond LC-1B Forget;
+- Subjective MEM Restore, Consolidate, and every lifecycle transition beyond LC-1C Pin/Unpin;
 - ordinary Subjective MEM Retrieval projection, ranking, cache, request-path wiring, and RT-1 hard cutover;
 - Primary MEM migration, Subjective MEM backup/restore completion, and multi-host publication;
 - shared-scene, relationship, and quarantine CTX-OVL partitions;
