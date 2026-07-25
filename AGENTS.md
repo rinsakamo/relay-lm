@@ -132,6 +132,7 @@ Do not begin substantive implementation before:
 - invariants and negative cases are written down;
 - meaningful alternatives are compared;
 - failure points, migration, rollback, and removal gates are defined;
+- a bounded change budget identifies expected paths, new files, and likely growth hotspots;
 - the No-Patch Gate and Stable-Structure Gate pass;
 - the atomic PR boundary and validation matrix are fixed.
 
@@ -151,6 +152,29 @@ Prohibited by default:
 - editing generated output instead of source authority;
 - permanent milestone-oriented production names;
 - deferring known in-scope structural debt to later cleanup.
+
+## Minimal-change and structural-growth rule
+
+Implement only the minimum code and documentation required by the selected authority, invariants, and acceptance criteria.
+
+Prohibited by default:
+
+- speculative abstractions or future-facing extension points without a concrete accepted current consumer;
+- unrelated refactors, opportunistic cleanup, or adjacent feature work;
+- unused configuration, hooks, interfaces, registries, factories, adapters, or compatibility surfaces;
+- duplicate production logic in tests, migration helpers, or alternate execution paths;
+- splitting files only to satisfy a line-count target;
+- thin wrapper layers that do not transfer authority, ownership, validation, or responsibility.
+
+The P1 change budget is a review baseline, not a mechanical LOC limit. Unexpected path count, substantial diff growth, or any of the following default review triggers requires stopping substantive implementation and returning to P1 before continuing:
+
+- roughly more than 200 added lines in one existing file;
+- a file growing beyond roughly 700 lines or a function beyond roughly 80 lines;
+- multiple semantic authorities or unrelated reasons to change accumulating in one file;
+- a new wrapper, adapter, registry, factory, or interface without an accepted current consumer;
+- tests beginning to reimplement production behavior instead of validating invariants.
+
+A trigger is not an automatic rejection. P1 must either reduce or split the design along authority and responsibility boundaries, or record why the current structure is simpler and safer. Do not add repository-wide hard LOC caps that encourage meaningless fragmentation.
 
 ## Mechanical failure budget and P6-STOP
 
