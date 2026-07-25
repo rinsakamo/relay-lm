@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Mapping
 import json
 from pathlib import Path
 
@@ -45,6 +46,8 @@ UI_KINDS = {
     },
 }
 
+UI_MATRIX_KINDS = frozenset({"python", "frontend", "mixed"})
+
 
 def _files(path: Path | None) -> list[str]:
     if path is None:
@@ -52,12 +55,78 @@ def _files(path: Path | None) -> list[str]:
     return [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-def _matrix(enabled: dict[str, bool], timeouts: dict[str, int]) -> dict[str, list[dict[str, object]]]:
+def _matrix(enabled: dict[str, bool], timeouts: Mapping[str, int]) -> dict[str, list[dict[str, object]]]:
     include = []
     for group, timeout in timeouts.items():
         if enabled.get(group, False):
             include.append({"group": group, "name": group.replace("_", "-"), "timeout": timeout})
     return {"include": include}
+
+
+def _invalid_timeouts(timeouts: Mapping[str, int]) -> list[str]:
+    return sorted(
+        group
+        for group, timeout in timeouts.items()
+        if isinstance(timeout, bool) or not isinstance(timeout, int) or timeout <= 0
+    )
+
+
+def validate_matrix_coverage(
+    groups: Mapping[str, Mapping[str, object]] = GROUPS,
+    runtime_timeouts: Mapping[str, int] = RUNTIME_TIMEOUTS,
+    ui_kinds: Mapping[str, Mapping[str, int]] = UI_KINDS,
+) -> None:
+    """Fail closed when a selected smoke group cannot enter exactly one matrix."""
+
+    runtime_groups = set(groups.get("runtime", {}))
+    runtime_matrix_groups = set(runtime_timeouts)
+    runtime_missing = sorted(runtime_groups - runtime_matrix_groups)
+    runtime_unknown = sorted(runtime_matrix_groups - runtime_groups)
+    runtime_invalid = _invalid_timeouts(runtime_timeouts)
+    if runtime_missing or runtime_unknown or runtime_invalid:
+        raise ValueError(
+            "runtime matrix coverage drift: "
+            f"missing={runtime_missing!r} unknown={runtime_unknown!r} "
+            f"invalid_timeouts={runtime_invalid!r}"
+        )
+
+    ui_kind_names = set(ui_kinds)
+    missing_kinds = sorted(UI_MATRIX_KINDS - ui_kind_names)
+    unknown_kinds = sorted(ui_kind_names - UI_MATRIX_KINDS)
+
+    ui_owners: dict[str, list[str]] = {}
+    invalid_ui_timeouts: list[str] = []
+    for kind, timeouts in ui_kinds.items():
+        for group in timeouts:
+            ui_owners.setdefault(group, []).append(kind)
+        invalid_ui_timeouts.extend(
+            f"{kind}/{group}" for group in _invalid_timeouts(timeouts)
+        )
+
+    ui_groups = set(groups.get("ui", {}))
+    ui_matrix_groups = set(ui_owners)
+    ui_missing = sorted(ui_groups - ui_matrix_groups)
+    ui_unknown = sorted(ui_matrix_groups - ui_groups)
+    ui_duplicates = sorted(
+        f"{group}:{','.join(sorted(kinds))}"
+        for group, kinds in ui_owners.items()
+        if len(kinds) != 1
+    )
+    if (
+        missing_kinds
+        or unknown_kinds
+        or ui_missing
+        or ui_unknown
+        or ui_duplicates
+        or invalid_ui_timeouts
+    ):
+        raise ValueError(
+            "ui matrix coverage drift: "
+            f"missing_kinds={missing_kinds!r} unknown_kinds={unknown_kinds!r} "
+            f"missing={ui_missing!r} unknown={ui_unknown!r} "
+            f"duplicates={ui_duplicates!r} "
+            f"invalid_timeouts={sorted(invalid_ui_timeouts)!r}"
+        )
 
 
 def main() -> int:
@@ -68,6 +137,7 @@ def main() -> int:
     parser.add_argument("--all", action="store_true")
     args = parser.parse_args()
 
+    validate_matrix_coverage()
     enabled = changed_outputs(args.workflow, _files(args.files), args.all)
     if args.workflow == "runtime":
         matrix = _matrix(enabled, RUNTIME_TIMEOUTS)
