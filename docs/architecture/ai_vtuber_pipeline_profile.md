@@ -6,7 +6,7 @@ This document defines the optional AI VTuber realtime profile for RelayLM.
 
 It complements:
 
-- [Pipeline Responsibility Design](pipeline_responsibility_design.md),
+- [Pipeline Responsibilities](pipeline-responsibilities.md),
 - [Context Packing Design](context_packing_design.md),
 - [RelayEMO Return-side Expression Design](relayemo_return_side_expression_design.md),
 - [Project Status](../PROJECT_STATUS.md).
