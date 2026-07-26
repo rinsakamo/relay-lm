@@ -24,6 +24,7 @@ relaylm_related_authority:
   - ../planning/workstream-orchestration.md
   - ../../AGENTS.md
   - ../../skills/relaylm-stable-implementation/SKILL.md
+  - ../../skills/relaylm-github-operations/SKILL.md
 relaylm_supersedes: []
 relaylm_superseded_by: null
 relaylm_lifecycle: accepted_target
@@ -39,7 +40,7 @@ relaylm_authority_level: exact_contract
 
 RelayLM introduces a deterministic execution-governance epoch. An active PR must carry a current execution receipt before ordinary repository work continues.
 
-Initial thread prompts and handoffs are bootstrap orientation. They cannot grandfather an old loop after `AGENTS.md`, the RelayLM Skill, execution ADRs, the safety contract, or orchestration authority changes.
+Initial thread prompts and handoffs are bootstrap orientation. They cannot grandfather an old loop after `AGENTS.md`, the RelayLM Skills, execution ADRs, the safety contract, or orchestration authority changes.
 
 A stale or missing receipt stops branch writes and returns the lane to P0/P1/P2. New rules are not partially overlaid on an old P6 loop.
 
@@ -82,6 +83,7 @@ The epoch is a SHA-256 digest over ordered Git blob identities for:
 ```text
 AGENTS.md
 skills/relaylm-stable-implementation/SKILL.md
+skills/relaylm-github-operations/SKILL.md
 docs/adr/0007-architecture-first-stable-implementation.md
 docs/adr/0008-lane-local-continuation-safety.md
 docs/adr/0009-execution-epoch-and-rebootstrap.md
