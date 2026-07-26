@@ -18,7 +18,7 @@ relaylm_not_authoritative_for:
   - UI component implementation details
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - pipeline_responsibility_design.md
+  - pipeline-responsibilities.md
   - memory_lifecycle_design.md
   - relayscn_mvp_scene_policy.md
   - ../relayemo_mvp_initial_design.md
@@ -620,7 +620,6 @@ This migration is target architecture. Existing compatibility tooling may contin
 
 ```text
 RelayLM character workspace is a Markdown-first character source tree.
-
 Human-editable uppercase files define the character and policy layer.
 SLP-maintained lowercase wiki pages grow scene, memory, and relationship instances.
 .relaylm generated artifacts compile them into cache-friendly runtime projections.
