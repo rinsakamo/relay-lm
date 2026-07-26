@@ -27,7 +27,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../adr/relayatn_pre_request_authority_separation.md
-  - relayrun_runtime_checkpoint_design.md
+  - runtime/compile-and-checkpoint.md
   - relayint_mvp_design.md
   - relayscn_mvp_scene_policy.md
   - pipeline-responsibilities.md
@@ -35,6 +35,8 @@ relaylm_related_authority:
   - o3_always_on_local_scheduler.md
   - soul_lab_runtime_mvp.md
   - ../PROJECT_STATUS.md
+relaylm_related_contracts:
+  - ../contracts/relayrun-checkpoint-and-recovery.md
 ---
 # RelayATN Reflex Layer Design (Target)
 
@@ -114,7 +116,7 @@ Turn admission does not authorize, prohibit, create, rewrite, or delete governed
 
 ### RelayRUN
 
-[RelayRUN Runtime Checkpoint Design](relayrun_runtime_checkpoint_design.md) owns orchestration, checkpoint, recovery, and idempotency, and must not make semantic decisions. RelayATN operates before the request shell exists and is orchestrated by, not owned by, the runtime.
+[Runtime Compile and Checkpoint Architecture](runtime/compile-and-checkpoint.md) owns RelayRUN orchestration and checkpoint/recovery responsibility flow. Exact checkpoint persistence, resume, stream, fallback, and recovery rules remain in the [RelayRUN Checkpoint and Recovery Contract](../contracts/relayrun-checkpoint-and-recovery.md). RelayRUN must not make semantic decisions. RelayATN operates before the request shell exists and is orchestrated by, not owned by, the runtime.
 
 Once RelayATN selects a candidate, RelayRUN owns the normal turn exactly as today. RelayRUN may record only content-free admission summaries.
 
