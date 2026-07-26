@@ -8,7 +8,7 @@ relaylm_update_trigger:
   - ChatGPT GitHub connector capabilities change
   - normalized repository or pull-request snapshot fields change
   - GitHub mutation preconditions or postconditions change
-  - implementation transport or delegated writer policy changes
+  - implementation transport or delegated execution policy changes
   - execution receipt, expected-head, review, or merge gates change
 relaylm_not_authoritative_for:
   - runtime, storage, schema, API, UI, memory, or documentation semantics
