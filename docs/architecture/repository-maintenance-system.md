@@ -19,6 +19,7 @@ relaylm_decision_source: ../adr/0006-repository-structure-and-maintenance-sequen
 relaylm_related_authority:
   - ../planning/repository-structure-migration.md
   - ../reference/repository-asset-classification.md
+  - ../contracts/chatgpt-github-operations.md
   - documentation-governance.md
   - ../operations/documentation-synthesis-and-retirement.md
 relaylm_lifecycle: accepted_target
@@ -59,11 +60,18 @@ Discovery is evidence. Classification is reviewed authority. Generated projectio
 | discover files, imports, invocations, config, storage, and workflow roots | repository tooling | mechanical evidence only |
 | assign supported responsibility and lifecycle | repository maintenance | reviewed classification authority |
 | expose deterministic inventories and navigation | generators | projection only; no deletion authority |
+| standardize ChatGPT GitHub observation and mutation procedure | ChatGPT GitHub operations | fresh snapshot, action gates, one mutation, and verified postcondition only |
 | preserve runtime and operator entry points during moves | owning subsystem plus repository maintenance | atomic migration boundary |
 | consolidate tests, smoke, workflows, and validators | responsibility owner | equivalence and removal-gate review |
 | retire unsupported assets | repository maintenance | exact caller, rollback, replacement, and Git-recovery proof |
 | synthesize and retire documentation | documentation | separate Lane D authority |
 | change runtime, storage, lifecycle, or Retrieval semantics | Lane C owners | outside repository-maintenance authority |
+
+## ChatGPT GitHub operations
+
+When ChatGPT operates RelayLM through the connected GitHub tool surface, [ChatGPT GitHub Operations Contract](../contracts/chatgpt-github-operations.md) defines the normalized repository and PR snapshot, action gates, serialized mutation transaction, expected-head merge protection, and postcondition verification. The executable operator entry point is `skills/relaylm-github-operations/SKILL.md`.
+
+The layer deliberately separates fresh GitHub observation from stable procedure. Exact main, PR head, checks, reviews, labels, paths, receipt, and mergeability are re-read when required; the order and safety rules are not reconstructed per conversation. The snapshot is temporary evidence and never becomes a second lane, lifecycle, review, or domain authority.
 
 ## Asset state model
 
