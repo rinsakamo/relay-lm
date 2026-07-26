@@ -22,6 +22,7 @@ Use these current documents:
 - [Runtime Scheduler](runtime/scheduler.md)
 - [Subjective Memory Formation](memory/formation.md)
 - [RelayMEM SLP Execution Design](relaymem_slp_execution_design.md)
-- [RelayRUN Runtime Checkpoint Design](relayrun_runtime_checkpoint_design.md)
+- [Runtime Compile and Checkpoint Architecture](runtime/compile-and-checkpoint.md)
+- [RelayRUN Checkpoint and Recovery Contract](../contracts/relayrun-checkpoint-and-recovery.md)
 - [RelaySCN MVP Scene Policy](relayscn_mvp_scene_policy.md)
 - [RelayEMO MVP Initial Design](../relayemo_mvp_initial_design.md)
