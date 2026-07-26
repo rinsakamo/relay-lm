@@ -26,7 +26,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - 0003-subjective-mem-direction.md
   - relayatn_pre_request_authority_separation.md
-  - ../architecture/pipeline_responsibility_design.md
+  - ../architecture/pipeline-responsibilities.md
   - ../architecture/runtime/request-response-pipeline.md
   - ../architecture/runtime/scheduler.md
   - ../architecture/memory/formation.md
