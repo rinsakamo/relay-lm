@@ -20,7 +20,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../DOCUMENTATION_MODEL.md
   - ../release/v0.1-release-readiness.md
-  - pipeline_responsibility_design.md
+  - pipeline-responsibilities.md
   - file_first_character_workspace_design.md
   - character_template_creation_flow.md
   - current_target_migration_guide.md
