@@ -17,7 +17,7 @@ relaylm_not_authoritative_for:
   - exact RelayCTX renderer implementation
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - pipeline_responsibility_design.md
+  - pipeline-responsibilities.md
   - relayrel_relationship_design.md
   - context_packing_design.md
   - current_target_migration_guide.md
