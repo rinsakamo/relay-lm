@@ -19,11 +19,13 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_decision_source: ../../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md
 relaylm_related_authority:
   - ../pipeline-responsibilities.md
-  - ../relayrun_runtime_checkpoint_design.md
+  - compile-and-checkpoint.md
   - request-response-pipeline.md
   - ../memory/formation.md
   - ../phase6b0_relayslp_durable_queue_contract.md
   - ../phase_i4b_primary_current_state_shared_fence.md
+relaylm_related_contracts:
+  - ../../contracts/relayrun-checkpoint-and-recovery.md
 ---
 # RelayLM Runtime Scheduler
 
