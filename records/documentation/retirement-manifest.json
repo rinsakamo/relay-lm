@@ -36,6 +36,18 @@
       "retention_reason": "D2-B2b4c28 migrated every active consumer to canonical system, pipeline, request/response, compile/checkpoint, status, or exact RelayCTX authority and removed the closed transitional note; its historical wording remains recoverable from Git."
     },
     {
+      "old_path": "docs/architecture/relayrun_runtime_checkpoint_design.md",
+      "last_live_commit": "3cee07899121e8e75eaaa8ba37cbefb6eb9f832c",
+      "old_blob_sha": "c9cf93e4841c1847d6b110a884516fa2f6cdb5e2",
+      "removed_by_pr": 763,
+      "replacement_paths": [
+        "docs/architecture/runtime/compile-and-checkpoint.md",
+        "docs/contracts/relayrun-checkpoint-and-recovery.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D2-B2b4c36 migrated every current consumer to canonical compile/checkpoint architecture and exact RelayRUN checkpoint/recovery contract authority, removed the closed transitional current-implementation note, and preserved its source lineage through immutable blob provenance and Git history."
+    },
+    {
       "old_path": "docs/architecture/runtime_architecture.md",
       "last_live_commit": "a9238d1b692e3665c8a046936f75c80fc7a358a9",
       "old_blob_sha": "1b0ffb9ef4b3d4f76ef3c0cf559a47fd2cff1444",
