@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 GOVERNANCE_PATHS = (
     "AGENTS.md",
     "skills/relaylm-stable-implementation/SKILL.md",
+    "skills/relaylm-github-operations/SKILL.md",
     "docs/adr/0007-architecture-first-stable-implementation.md",
     "docs/adr/0008-lane-local-continuation-safety.md",
     "docs/adr/0009-execution-epoch-and-rebootstrap.md",
