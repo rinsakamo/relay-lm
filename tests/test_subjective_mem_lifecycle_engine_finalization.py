@@ -1,6 +1,7 @@
 """Focused shared lifecycle finalization extension tests for LC-1D Restore."""
 from __future__ import annotations
 
+from dataclasses import replace
 from types import SimpleNamespace
 
 import relaylm.subjective_mem_lifecycle_engine as lifecycle_engine
@@ -19,6 +20,17 @@ def _plan(state, *, record_bindings=(), log_bindings=()):
         selector_id=state.memory_state_id,
         record_bindings=record_bindings,
         log_bindings=log_bindings,
+    )
+
+
+def _reservation_plan(current):
+    return SimpleNamespace(
+        current_state=current,
+        prepared_state=replace(
+            current,
+            mutation_state="prepared",
+            retrieval_eligible=False,
+        ),
     )
 
 
@@ -42,6 +54,87 @@ def _records(*, additional_records=(), additional_logs=()):
         {"projection_state": "rebuild_required"},
         **kwargs,
     )
+
+
+def test_reservation_keeps_active_and_pinned_selector_behavior(lifecycle_env) -> None:
+    state = lifecycle_env["st1"].current_state
+    assert state is not None
+    for lifecycle_state in ("active", "pinned"):
+        current = replace(
+            state,
+            lifecycle_state=lifecycle_state,
+            mutation_state="none",
+            retrieval_eligible=True,
+        )
+        assert lifecycle_engine._reservation_plan_errors(
+            _reservation_plan(current)
+        ) == ()
+
+
+def test_reservation_accepts_only_exact_authority_bound_hidden_selector(
+    lifecycle_env,
+) -> None:
+    state = lifecycle_env["st1"].current_state
+    assert state is not None and state.authority_bound
+    current = replace(
+        state,
+        lifecycle_state="hidden",
+        mutation_state="none",
+        retrieval_eligible=False,
+    )
+    plan = _reservation_plan(current)
+    assert lifecycle_engine._reservation_plan_errors(plan) == ()
+
+    drifted = SimpleNamespace(
+        current_state=current,
+        prepared_state=replace(
+            plan.prepared_state,
+            current_receipt_id="receipt-drift",
+        ),
+    )
+    assert lifecycle_engine._reservation_plan_errors(drifted) == (
+        "subjective_mem_lifecycle_plan_pre_state_not_exact",
+    )
+
+
+def test_reservation_rejects_unbound_hidden_selector(lifecycle_env) -> None:
+    state = lifecycle_env["st1"].current_state
+    assert state is not None
+    current = replace(
+        state,
+        lifecycle_state="hidden",
+        mutation_state="none",
+        retrieval_eligible=False,
+        workspace_authority_digest=None,
+        scope_binding_digest=None,
+        page_id=None,
+        block_id=None,
+        canonical_page_digest=None,
+        authorization_kind=None,
+        authorization_id=None,
+        current_receipt_id=None,
+    )
+    assert current.authority_bound is False
+    assert lifecycle_engine._reservation_plan_errors(
+        _reservation_plan(current)
+    ) == ("subjective_mem_lifecycle_plan_pre_state_not_exact",)
+
+
+def test_reservation_rejects_other_non_retrieval_lifecycle_states(
+    lifecycle_env,
+) -> None:
+    state = lifecycle_env["st1"].current_state
+    assert state is not None
+    for lifecycle_state in ("held", "superseded", "purged"):
+        current = replace(
+            state,
+            lifecycle_state=lifecycle_state,
+            mutation_state="none",
+            retrieval_eligible=False,
+        )
+        assert lifecycle_engine._reservation_plan_errors(
+            _reservation_plan(current)
+        ) == ("subjective_mem_lifecycle_plan_pre_state_not_exact",)
 
 
 def test_existing_finalizers_keep_empty_operation_owned_bindings(lifecycle_env) -> None:
