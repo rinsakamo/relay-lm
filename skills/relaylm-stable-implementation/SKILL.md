@@ -1,6 +1,6 @@
 ---
 name: relaylm-stable
-description: Advance one explicitly bound RelayLM lane or pull request from bare continuation commands such as 次に進めて, 進めて, 続けて, or 次へ. Cross-lane execution requires an explicit portfolio command. Enforces current-main re-bootstrap, lane-local and single-writer execution, architecture-first design, No-Patch and Stable-Structure gates, machine-owned failure stopping, complete-diff review, exact-head verification, and P0-P8 convergence.
+description: Advance one explicitly bound RelayLM lane or pull request from bare continuation commands such as 次に進めて, 進めて, 続けて, or 次へ. Cross-lane execution requires an explicit portfolio command. Enforces current-main re-bootstrap, lane-local and single-writer execution, ChatGPT-first implementation-backend routing, architecture-first design, No-Patch and Stable-Structure gates, machine-owned failure stopping, complete-diff review, exact-head verification, and P0-P8 convergence.
 ---
 
 # RelayLM Stable
@@ -13,12 +13,13 @@ Current repository authority is:
 
 1. `AGENTS.md`;
 2. `skills/relaylm-github-operations/SKILL.md`;
-3. `docs/adr/0007-architecture-first-stable-implementation.md`;
-4. `docs/adr/0008-lane-local-continuation-safety.md`;
-5. `docs/adr/0009-execution-epoch-and-rebootstrap.md`;
-6. `docs/contracts/agent-execution-safety.md`;
-7. `docs/planning/workstream-orchestration.md`;
-8. the selected lane's current authorities and implementation evidence.
+3. `docs/contracts/chatgpt-github-operations.md`;
+4. `docs/adr/0007-architecture-first-stable-implementation.md`;
+5. `docs/adr/0008-lane-local-continuation-safety.md`;
+6. `docs/adr/0009-execution-epoch-and-rebootstrap.md`;
+7. `docs/contracts/agent-execution-safety.md`;
+8. `docs/planning/workstream-orchestration.md`;
+9. the selected lane's current authorities and implementation evidence.
 
 Read these from current `main`. Initial prompts, handoffs, conversation memory, PR bodies, and historical files are orientation only.
 
@@ -134,6 +135,42 @@ The failure-budget monitor may change only its hidden state comment, execution l
 
 Fetch the exact head immediately before a write. A mismatch stops execution and requires re-bootstrap.
 
+## Implementation backend routing
+
+ChatGPT is the default coordinator, reviewer, GitHub operator, and implementation writer. Keep implementation in ChatGPT whenever connected GitHub operations can express and verify the reviewed bounded change safely. Do not delegate merely because a change is large, spans multiple files, or requires careful reasoning.
+
+Before each P3 or P6 branch write, select exactly one implementation backend for the next bounded slice:
+
+```text
+safe complete or bounded sequential connected writes
+  -> ChatGPT connected GitHub implementation
+
+Base64 or payload chunking, partial-file assembly, placeholder/noop writes,
+repository temporary helpers, ambiguous connector outcomes, or checkout-bound
+edit/test iteration required for a safe change
+  -> Claude Code handoff on the existing branch
+```
+
+Use ChatGPT connected GitHub implementation only when:
+
+- each file can be sent as one complete UTF-8 replacement or as an independently valid bounded write;
+- no Base64 splitting, payload chunking, partial-file reconstruction, placeholder, noop, or repository temporary artifact is needed;
+- sequential writes do not create an unsafe semantic intermediate state;
+- expected-head verification and a postcondition read can protect every write;
+- the complete resulting diff can be independently re-read and reviewed.
+
+When those conditions are not met, stop ChatGPT branch writes before attempting a workaround and hand the bounded implementation slice to Claude Code. The handoff must:
+
+- keep the existing repository, PR, and branch; never create a transfer branch or corrective PR;
+- state exact current main, exact expected head, selected lane and lifecycle state, allowed paths, invariants, negative cases, non-goals, required tests, and prohibited temporary mechanisms;
+- explicitly prohibit Base64 splitting, partial assembly, placeholder/noop files, patch/apply helpers in the repository, automatic rebase, force-push, and scope expansion;
+- direct Claude Code to edit in a checkout, run the required tests, commit intentionally, and push only to the existing branch;
+- transfer the single logical writer role to Claude Code for that bounded slice while ChatGPT remains read-only on branch content.
+
+After Claude Code reports a push, do not trust the report as repository evidence. ChatGPT must independently re-read the actual exact head, complete diff, changed paths, checks, reviews, temporary-artifact state, failure state, and current-main relation before resuming P5 or P6. Return to P1 and P2 when the pushed diff changes design, scope, authority, compatibility, or the reviewed change budget.
+
+An error, timeout, null response, or otherwise ambiguous connected write outcome does not authorize switching transports immediately. First re-read the branch and prove whether the mutation applied. Transport difficulty is not itself a domain or CI correction failure, but any unintended branch mutation, temporary artifact, writer collision, or materially identical resulting failure is governed by the ordinary failure budget and stop rules.
+
 ## Machine-owned failure budget
 
 One monitor owns consecutive-failure state in one hidden PR comment and mirrors it with one label:
@@ -208,6 +245,7 @@ Before substantive implementation:
 - map invariants to validation;
 - confirm one complete atomic lane-owned boundary;
 - define a bounded change budget for expected production, test, and documentation paths, new files, and likely growth hotspots;
+- select the implementation backend for each bounded slice and define its single-writer handoff boundary;
 - confirm validation cannot mutate branch content.
 
 Typical invariants:
@@ -245,9 +283,10 @@ Reject:
 - unexplained root cause;
 - changing another lane as a convenience;
 - branch-writing validation or auto-correct;
-- temporary validation PRs or transfer branches.
+- temporary validation PRs or transfer branches;
+- Base64-split or partial-file assembly, placeholder/noop writes, or repository temporary helpers used to work around the selected implementation transport.
 
-Require one semantic authority, one lane owner, one owner per responsibility, one selector/write path/recovery model/canonical representation where applicable, one branch writer, explicit dependency direction, bounded compatibility, stable names, and repository-content read-only validation.
+Require one semantic authority, one lane owner, one owner per responsibility, one selector/write path/recovery model/canonical representation where applicable, one branch writer, explicit dependency direction, bounded compatibility, stable names, repository-content read-only validation, and one explicit implementation backend per bounded write slice.
 
 ## Minimal change and structural-growth review
 
@@ -270,7 +309,7 @@ The P1 change budget is a review baseline, not a hard LOC cap. Stop substantive 
 - a new wrapper, adapter, registry, factory, or interface has no accepted current consumer;
 - tests begin reimplementing production behavior instead of validating invariants.
 
-A trigger is not automatic rejection. P1 must either reduce or split the design along authority and responsibility boundaries, or record why the current structure remains simpler and safer. Never introduce a repository-wide mechanical LOC limit that rewards meaningless fragmentation.
+A trigger is not automatic rejection. P1 must either reduce or split the design along authority and responsibility boundaries, or record why the current structure remains simpler and safer. Never introduce a repository-wide mechanical LOC limit that rewards meaningless fragmentation. A structural-growth trigger also does not automatically require Claude Code; backend selection depends on write-transport safety, not line count alone.
 
 ## P3-P6
 
@@ -278,7 +317,7 @@ Use RED → GREEN → structural REFACTOR. Construction helpers stay outside the
 
 Before P5, make the PR complete, atomic, documented, exact-head testable, within the reviewed change budget or explicitly re-approved at P1, and free of temporary artifacts.
 
-P5 reviews the complete diff, every file, callers, workflows, registries, authority, state, failure modes, recovery, compatibility, negative cases, documentation claims, deletion recoverability, lane ownership, writer ownership, labels, receipt, change-budget drift, and structural-growth triggers.
+P5 reviews the complete diff, every file, callers, workflows, registries, authority, state, failure modes, recovery, compatibility, negative cases, documentation claims, deletion recoverability, lane ownership, writer ownership, implementation-backend handoff evidence, labels, receipt, change-budget drift, and structural-growth triggers.
 
 CI success does not replace review. Correct local defects at the root, validate the exact head, and perform a fresh complete review. A P6-STOP condition ends branch correction.
 
@@ -306,6 +345,6 @@ After merge, verify the merge and resulting `main`, verify post-merge checks, pe
 
 ## Stop conditions
 
-Stop when scope is ambiguous, receipt/main/epoch is stale, re-bootstrap is incomplete, writer collision or branch-writing workflow exists, `relaylm:p6-stop` is present, temporary artifacts recur, the lane is complete, a genuine decision or unavailable authority is required, another lane blocks all safe same-lane work, or repository state cannot be read safely.
+Stop when scope is ambiguous, receipt/main/epoch is stale, re-bootstrap is incomplete, writer collision or branch-writing workflow exists, `relaylm:p6-stop` is present, temporary artifacts recur, the lane is complete, a genuine decision or unavailable authority is required, another lane blocks all safe same-lane work, repository state cannot be read safely, or neither ChatGPT connected writes nor a governed Claude Code handoff can safely execute the next bounded slice.
 
 Name the exact blocker. Never promise hidden background work.
