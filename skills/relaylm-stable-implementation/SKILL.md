@@ -168,7 +168,7 @@ When those conditions are not met, stop ChatGPT branch writes before attempting 
 - state exact current main, exact expected head, selected lane and lifecycle state, allowed paths, invariants, negative cases, non-goals, required tests, and prohibited temporary mechanisms;
 - explicitly prohibit Base64 splitting, partial assembly, placeholder/noop files, patch/apply helpers in the repository, automatic rebase, force-push, and scope expansion;
 - direct Claude Code to edit in a checkout, run the required tests, commit intentionally, and push only to the existing branch;
-- transfer the single logical writer role to Claude Code for that bounded slice while ChatGPT remains read-only on branch content.
+- keep the receipt's existing logical `writer_id` and designate Claude Code as the exclusive branch-content execution backend for that bounded slice while ChatGPT remains read-only on branch content.
 
 After Claude Code reports a push, do not trust the report as repository evidence. ChatGPT must independently re-read the actual exact head, complete diff, changed paths, checks, reviews, temporary-artifact state, failure state, and current-main relation before resuming P5 or P6. Return to P1 and P2 when the pushed diff changes design, scope, authority, compatibility, or the reviewed change budget.
 
@@ -248,7 +248,7 @@ Before substantive implementation:
 - map invariants to validation;
 - confirm one complete atomic lane-owned boundary;
 - define a bounded change budget for expected production, test, and documentation paths, new files, and likely growth hotspots;
-- select the implementation backend for each bounded slice and define its single-writer handoff boundary;
+- select the implementation backend for each bounded slice and define its exclusive branch-content execution boundary;
 - confirm validation cannot mutate branch content.
 
 Typical invariants:
