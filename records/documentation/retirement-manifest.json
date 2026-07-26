@@ -2,6 +2,19 @@
   "schema_version": "relaylm.documentation.retirement-manifest.v1",
   "entries": [
     {
+      "old_path": "docs/architecture/runtime_compile_gate_design.md",
+      "last_live_commit": "008432a80345eb9cb1e86825be400fcce925d3b7",
+      "old_blob_sha": "1ac77f25a511fe2bc72eb4cc572aaf9b0f313118",
+      "removed_by_pr": 757,
+      "replacement_paths": [
+        "docs/architecture/runtime/compile-and-checkpoint.md",
+        "docs/contracts/runtime_compile_artifact_contract.md",
+        "docs/contracts/runtime_compile_current_target.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D2-B2b4c30 migrated every current consumer to canonical compile/checkpoint architecture or the owning exact compile contracts and removed the closed transitional current-implementation note; its wording remains recoverable from Git."
+    },
+    {
       "old_path": "docs/architecture/archive/runtime_compile_gate_design_history.md",
       "last_live_commit": "968541a715af304d50061c24febc1e17caf77d91",
       "old_blob_sha": "f68c7fd61e8b3ff17a265b346c8ecfe2740b48bd",
