@@ -18,7 +18,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - file_first_character_workspace_design.md
   - project_execution_plan.md
-  - pipeline_responsibility_design.md
+  - pipeline-responsibilities.md
 ---
 # Character Template and Creation Flow
 
