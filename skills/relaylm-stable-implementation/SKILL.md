@@ -145,9 +145,12 @@ Before each P3 or P6 branch write, select exactly one implementation backend for
 safe complete or bounded sequential connected writes
   -> ChatGPT connected GitHub implementation
 
+write outcome unknown or expected head changed
+  -> stop and re-read; do not retry or switch backends yet
+
 Base64 or payload chunking, partial-file assembly, placeholder/noop writes,
-repository temporary helpers, ambiguous connector outcomes, or checkout-bound
-edit/test iteration required for a safe change
+repository temporary helpers, or checkout-bound edit/test iteration required
+for a safe change
   -> Claude Code handoff on the existing branch
 ```
 
