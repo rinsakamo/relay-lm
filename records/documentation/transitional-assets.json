@@ -101,7 +101,6 @@
       "family_id": "legacy-runtime-compile-checkpoint-docs",
       "paths": [
         "docs/architecture/archive/relayrun_runtime_checkpoint_design_history.md",
-        "docs/architecture/archive/runtime_compile_gate_design_history.md",
         "docs/architecture/relayrun_runtime_checkpoint_design.md",
         "docs/architecture/runtime_compile_gate_design.md"
       ],
