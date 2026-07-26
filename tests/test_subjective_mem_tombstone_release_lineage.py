@@ -9,6 +9,7 @@ from relaylm.subjective_mem_reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_RECORD_KIND,
 )
 from test_subjective_mem_forget_runtime import _forget, _reformation_pair
+from test_subjective_mem_lifecycle_runtime import lifecycle_env
 from test_subjective_mem_runtime import NOW
 from test_subjective_mem_tombstone_release import _release_payloads
 
