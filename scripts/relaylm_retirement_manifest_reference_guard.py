@@ -35,6 +35,7 @@ HISTORICAL_EXACT_PATHS = {
     "docs/planning/documentation-cutover-rules.yaml",
     "docs/planning/documentation-cutover-tooling.md",
     "docs/planning/documentation-placement-decisions.md",
+    "docs/planning/documentation-target-architecture-graph.md",
     MANIFEST_PATH,
     "scripts/relaylm_retirement_manifest_reference_guard.py",
 }
@@ -283,6 +284,15 @@ def self_test() -> int:
             root,
             "docs/planning/documentation-cutover-rules.yaml",
             f"{old}:\n  disposition: replaced\n",
+        ),
+        None,
+    )
+    run(
+        "target architecture graph may name retired source paths",
+        lambda root, old, _new: _write(
+            root,
+            "docs/planning/documentation-target-architecture-graph.md",
+            f"source: {old}\n",
         ),
         None,
     )
