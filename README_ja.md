@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img alt="Python 3.10+" src="https://img.shields.io/badge/Python-3.10%2B-blue">
+  <img alt="Python 3.12" src="https://img.shields.io/badge/Python-3.12-blue">
   <img alt="OpenAI互換" src="https://img.shields.io/badge/API-OpenAI--compatible-6f42c1">
   <img alt="開発状況: active development" src="https://img.shields.io/badge/status-active%20development-orange">
   <a href="./LICENSE"><img alt="ライセンス: Apache-2.0" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg"></a>
@@ -97,7 +97,7 @@ RelayLMが担当するのは会話プロキシ、コンテキスト境界、ラ�
 
 | 項目 | 要件 |
 |---|---|
-| Python | 3.10以上 |
+| Python | 3.12.x |
 | バックエンド | OpenAI互換Chat Completions対応 |
 | 標準構成 | OpenWebUI + RelayLM + LM Studio |
 | OpenWebUI | OpenAI接続の Standard / Compatible を使用し、現在のRelayLMではOpen Responsesを選択しない |

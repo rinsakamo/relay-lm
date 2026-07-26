@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img alt="Python 3.10+" src="https://img.shields.io/badge/Python-3.10%2B-blue">
+  <img alt="Python 3.12" src="https://img.shields.io/badge/Python-3.12-blue">
   <img alt="OpenAI-compatible" src="https://img.shields.io/badge/API-OpenAI--compatible-6f42c1">
   <img alt="Status: active development" src="https://img.shields.io/badge/status-active%20development-orange">
   <a href="./LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg"></a>
@@ -97,7 +97,7 @@ For the current phase, implemented boundaries, dry-run/read-only/default-off beh
 
 | Item | Requirement |
 |---|---|
-| Python | 3.10 or later |
+| Python | 3.12.x |
 | Backend | OpenAI-compatible Chat Completions backend |
 | Standard setup | OpenWebUI + RelayLM + LM Studio |
 | OpenWebUI | Use an OpenAI-compatible Standard / Compatible connection; do not select Open Responses for the current RelayLM runtime |
