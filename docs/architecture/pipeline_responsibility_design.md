@@ -26,9 +26,9 @@ relaylm_related_contracts:
 
 ## Status
 
-This path is a closed transitional current-implementation note retained for the broad existing documentation consumer set. Canonical system context is [RelayLM System Overview](system-overview.md), canonical component ownership and target order are [Pipeline Responsibilities](pipeline-responsibilities.md), and mode-specific dataflow is [Request / Response Pipeline](runtime/request-response-pipeline.md).
+This path is a closed transitional current-implementation note. Every active documentation consumer has migrated to the smallest owning canonical authority. Canonical system context is [RelayLM System Overview](system-overview.md), canonical component ownership and target order are [Pipeline Responsibilities](pipeline-responsibilities.md), and mode-specific dataflow is [Request / Response Pipeline](runtime/request-response-pipeline.md).
 
-This page no longer owns the canonical target order or component responsibility model. It must not gain new consumers. Its owner, current consumer class, removal gate, and replacement validation are registered in `records/documentation/transitional-assets.json`.
+This page no longer owns the canonical target order or component responsibility model and has no current semantic consumer. It must not gain new consumers. The bounded retirement PR removes this path only after the transitional registry is closed and the same PR records exact Git recoverability in the retirement manifest.
 
 ## Current implementation posture
 
