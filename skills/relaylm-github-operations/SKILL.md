@@ -1,40 +1,30 @@
 ---
 name: relaylm-github-operations
-description: Operate the RelayLM GitHub repository from ChatGPT through the connected GitHub tool surface without reconstructing the procedure per thread. Builds one fresh normalized snapshot, applies lane and execution gates, serializes mutations, verifies postconditions, and uses expected-head protection for merge.
+description: Operate RelayLM from ChatGPT through connected GitHub tools using one fresh normalized snapshot, lane and execution gates, serialized mutations, postcondition reads, and expected-head merge protection.
 ---
 
 # RelayLM GitHub Operations
 
 ## Purpose
 
-Use this Skill whenever ChatGPT reads or mutates RelayLM repository, branch, pull-request, review, workflow, label, Draft, or merge state through the connected GitHub tools.
+Use this Skill whenever ChatGPT reads or mutates RelayLM repository, branch, pull-request, review, workflow, label, Draft, or merge state.
 
-This Skill standardizes the procedure. It does not cache repository facts. Build fresh state from GitHub for every action that can be invalidated by another actor.
+The exact snapshot and gate rules are in [ChatGPT GitHub Operations Contract](../../docs/contracts/chatgpt-github-operations.md). This Skill is the procedure; it does not replace `relaylm-stable`, execution safety, P0-P8, CI, or domain review.
 
-The exact data and gate contract is [ChatGPT GitHub Operations Contract](../../docs/contracts/chatgpt-github-operations.md). Current execution safety remains owned by `AGENTS.md`, `relaylm-stable`, and the Agent Execution Safety Contract.
+## Scope and source rules
 
-## Scope binding
+Resolve exactly one lane or bounded PR from current authority before operating. Other lanes remain read-only except for conflict and dependency inspection.
 
-First resolve exactly one lane or bounded PR using current repository authority.
+Use connected GitHub state. Do not substitute web search, conversation memory, a PR-body claim, an old handoff, or a truncated diff.
 
-Lane-local commands operate only on the already selected lane. Other lanes are read-only for path, authority, caller, workflow, registry, status-owner, stack, merge-order, and stale-base conflict checks.
+Use local `git` or `gh` only when the task explicitly provides a local checkout and no connected operation can perform the exact action.
 
-Do not use this Skill to pick another lane because the selected lane is blocked or CI is pending.
-
-## Connector-first rule
-
-Use the connected GitHub operations for repository-private and current state. Do not replace connected repository reads with web search, conversation memory, a PR-body claim, or an old handoff.
-
-Use local `git` or `gh` only when a current task explicitly provides a local checkout and the connected operation cannot perform the exact required action. ChatGPT connector sessions normally remain connector-only.
-
-## Operation cycle
-
-Every GitHub operation uses this cycle:
+## One operation cycle
 
 ```text
 bind scope
   -> read current authority
-  -> build normalized snapshot
+  -> build fresh normalized snapshot
   -> evaluate one action gate
   -> perform at most one mutation
   -> re-read target and refs
@@ -42,199 +32,131 @@ bind scope
   -> continue or stop
 ```
 
-Independent reads may be issued together. Mutations are serialized.
+Independent reads may run together. Mutations are serialized.
 
-## Build the normalized snapshot
+## Build the snapshot
 
-Resolve the fields in the contract using the following connected capabilities.
+### Exact main
 
-### Repository and main
-
-- Read the repository default branch when it is not already exact.
-- Resolve exact current main from the latest commit on that branch.
-- Never use a remembered main SHA for a mutation.
+1. Resolve the repository default branch name.
+2. Resolve that ref's exact SHA with an exact-ref-capable connected operation, such as comparing the default ref to itself.
+3. Do not use repository-wide recent-commit search as current-main authority.
 
 ### Pull request
 
-For an existing PR, read:
+Read state, merged/Draft state, base and head refs/SHAs, complete body and receipt, labels, mergeability, reviewers, and the complete changed-path set.
 
-- state and merged state;
-- Draft state;
-- base ref and SHA;
-- head ref and SHA;
-- body and execution receipt;
-- labels and mergeability;
-- requested reviewers.
+### Reviews
 
-Use the complete changed-filename operation rather than a truncated diff summary when path ownership matters.
+Read top-level comments, submitted reviews, and inline review threads separately. Absence of comments does not prove zero unresolved threads.
 
-### Reviews and discussion
+### Checks
 
-Read separately:
-
-- top-level PR comments;
-- submitted reviews;
-- inline review threads and their resolved state.
-
-Do not infer zero unresolved threads from the absence of top-level comments.
-
-### Checks and workflows
-
-Read workflow and status evidence for the exact current head SHA.
-
-- Associate every check result with its commit SHA.
-- Read jobs and first failed steps when a workflow failed.
-- Distinguish pending, failed, successful, skipped/neutral, and unavailable evidence.
-- Never carry a green result from an older head into the current snapshot.
+Read workflow runs and status for the exact current head. For failures, read jobs and the first failed step. Never carry green evidence from an older head.
 
 ### Execution state
 
-Parse exactly one `relaylm-execution-receipt` from the PR body. Verify:
+Verify exactly one receipt, current bootstrap main, governance epoch from exact-main authority blobs, one writer, `writer_mode: single`, no P6 stop, no branch-writing workflow or transfer branch, and no temporary artifact.
 
-- lane;
-- current bootstrap main;
-- governance epoch from exact current main authority blobs;
-- one stable writer identity;
-- `writer_mode: single`;
-- `temporary_artifacts: none`.
+### Cross-lane state
 
-Read stop and failure labels, changed workflows, temporary artifacts, and branch-writing mechanisms. Reproduce the execution guard when required.
-
-### Cross-lane conflict state
-
-Inspect open PRs only as far as needed to establish:
-
-- changed-path overlap;
-- semantic or document authority overlap;
-- shared caller, workflow, generated registry, or status owner;
-- stacked dependency or merge-order conflict.
-
-Do not mutate another lane during this inspection.
+Inspect open PRs only for path, authority, caller, workflow, registry, status-owner, stack, merge-order, and stale-base conflicts. Do not mutate another lane.
 
 ## Action cards
 
 ### Read or report
 
-1. Bind repository and scope.
-2. Build the required snapshot fields.
-3. Separate observed facts, gate results, inferences, and unavailable evidence.
-4. Report the exact head and main when the result concerns current progress or merge readiness.
+1. Build only the snapshot fields required by the question.
+2. Separate observed facts, gate results, inferences, and unavailable evidence.
+3. Include exact main and head for progress or merge-readiness reports.
 
-No mutation is implied by a read request.
+A read request authorizes no mutation.
 
 ### Start a new bounded PR
 
-Use only when the user authorized the selected work and lane capacity is available.
+1. Resolve exact current main.
+2. Confirm lane capacity, path/authority ownership, and no conflicting branch.
+3. Define P0-P2, owned paths, non-goals, change budget, and validation.
+4. Create one branch from the exact main SHA.
+5. Write only the reviewed bounded scope.
+6. Open one Draft PR with exactly one current receipt.
+7. Re-read the PR, refs, paths, labels, and checks.
+8. Reproduce the execution guard and stop unless clean.
 
-1. Refresh exact current main.
-2. Read open PRs and check path and authority conflicts.
-3. Confirm the intended branch does not exist.
-4. Define P0-P2, owned paths, non-goals, change budget, and validation.
-5. Create one branch from the exact main SHA.
-6. Write only the reviewed initial atomic scope.
-7. Open one Draft PR against the intended base.
-8. Put exactly one current execution receipt in the PR body.
-9. Immediately read the new PR, exact head, paths, labels, and checks.
-10. Reproduce the execution guard and stop if the bootstrap is not clean.
+Prefer one atomic initial commit. If connector file writes must be sequential, re-read the branch head before each write and keep one logical writer.
 
-Prefer one atomic commit for the initial bounded scope. When the connector must write files sequentially, verify the current branch head before each write and keep one logical writer.
+### Continue or correct an existing PR
 
-### Continue an existing PR
-
-1. Build a complete snapshot.
+1. Build the complete snapshot.
 2. Verify current main, current head, receipt, epoch, ancestry, writer, stop state, and temporary-artifact state.
-3. Re-read relevant code, authorities, callers, workflows, and reviews at exact refs.
-4. Evaluate P0-P2 before substantive correction or expansion.
-5. Immediately before a branch write, verify the expected head again.
+3. Re-read relevant authorities, code, callers, workflows, and reviews at exact refs.
+4. Re-evaluate P0-P2 before substantive correction or scope growth.
+5. Immediately before a branch write, verify expected head again.
 6. Apply one bounded write.
-7. Re-read the branch or PR and confirm the intended diff only.
+7. Re-read the branch/PR and confirm the intended diff only.
 
 Do not automatically rebase, retry, force-push, or resolve semantic conflicts after a head mismatch.
 
-### Update a PR body
+### Update PR body or metadata
 
-1. Read the complete current body and exact head.
-2. Declare whether the change is receipt-only or an ordinary lifecycle/body update.
-3. Preserve all unrelated text byte-for-byte where practical.
-4. Ensure exactly one receipt block.
-5. Apply one body update.
-6. Re-read the PR body and verify only the intended block or prose changed.
+1. Read the complete body, exact head, and target field.
+2. Declare receipt-only or ordinary metadata change.
+3. Preserve unrelated content.
+4. Apply one bounded mutation.
+5. Re-read and verify only the intended field changed.
 
-A receipt-only re-bootstrap edit must not change title, base, Draft state, reviews, branch content, or lifecycle prose.
+A receipt-only edit changes exactly one receipt block and nothing else.
 
-### Comment or review
+### Comment, review, or resolve a thread
 
-1. Read current head and the complete discussion state.
-2. Confirm the selected lane owns the review action.
-3. Anchor findings to current files and current head evidence.
-4. Add one comment or review action.
-5. Re-read the discussion and verify it exists once.
+1. Read current head and complete discussion state.
+2. Confirm lane and lifecycle authority.
+3. Anchor the action to current evidence.
+4. Mutate exactly one comment, review, or thread.
+5. Re-read and verify it once.
 
-Do not post duplicate findings to compensate for an uncertain connector response.
+Resolve a thread only after its finding is corrected or explicitly disposed. Never bulk-resolve because CI is green.
 
-### Resolve a review thread
+### Labels and Draft state
 
-Resolve only after the exact finding is corrected or explicitly disposed by current evidence.
+Use targeted mutations:
 
-1. Read the thread and current head.
-2. Verify the correction or disposition.
-3. Resolve exactly that thread ID.
-4. Re-read thread state.
+- add labels additively;
+- remove only the named label;
+- keep `relaylm:p6-stop` sticky until authorized re-bootstrap and reset;
+- mark ready only after the Ready gate;
+- convert to Draft when lifecycle or failure state requires it.
 
-Do not bulk-resolve threads merely because CI is green.
+Re-read labels and Draft state afterward.
 
-### Change labels or Draft state
-
-Use targeted operations.
-
-- Add labels additively.
-- Remove only the named label.
-- Treat `relaylm:p6-stop` as sticky until authorized re-bootstrap and reset are complete.
-- Mark ready only after the Ready gate passes.
-- Convert to Draft when required by failure or lifecycle state.
-
-Re-read labels and Draft state after the mutation.
-
-### Re-run workflow evidence
-
-A rerun is not a correction.
+### Workflow rerun
 
 1. Read the failed run, jobs, and first failed step.
 2. Confirm the head remains current.
-3. Classify whether the failure is transient, stale, or materially identical.
-4. Re-run only the required job or failed jobs when current policy permits.
-5. Do not use reruns to evade the failure budget or avoid root-cause correction.
+3. Classify transient, stale, or materially identical failure.
+4. Re-run only the required job or failed jobs when policy permits.
+
+A rerun is not a correction and must not evade the failure budget.
 
 ### Ready for review
 
-Build a fresh complete snapshot and require:
-
-- valid current receipt and current-main ancestry;
-- no P6 stop or unresolved failure state;
-- P0-P6 evidence complete;
-- exact-head required checks successful;
-- no unresolved review thread or requested change;
-- complete-diff review clean;
-- no newer main or head invalidation.
-
-Then mark ready and re-read the PR.
+Require a current receipt and ancestry, no stop or unresolved failure, P0-P6 evidence, successful exact-head required checks, clean reviews, clean complete-diff review, and no newer main/head invalidation. Then mark ready and re-read the PR.
 
 ### Merge
 
 1. Build the final complete snapshot.
-2. Re-read exact current main and exact PR head.
-3. Verify all P7 requirements from current authority.
+2. Re-resolve exact current main and PR head.
+3. Verify all P7 requirements and intended refs.
 4. Supply the exact head SHA as expected-head protection.
-5. Perform one merge mutation using the accepted merge method.
+5. Perform one accepted merge mutation.
 6. Re-read the PR and resulting main.
-7. Verify the accepted change is present and record the merge result.
-8. Perform P8 and release the lane slot only after convergence.
+7. Verify the accepted change and complete P8 before releasing the lane slot.
 
-Never merge on mergeability alone. Never retry an ambiguous merge without first reading the PR and main.
+Never merge on mergeability alone. Never retry an ambiguous merge before reading PR and main.
 
-## Mutation safety
+## Mutation declaration
 
-Before every mutation, declare internally:
+Before each mutation, record internally:
 
 ```yaml
 target_repository: rinsakamo/relay-lm
@@ -246,55 +168,20 @@ expected_head_sha: 40-hex | null
 allowed_change: bounded description
 ```
 
-After the mutation, verify:
+Afterward verify target identity, resulting ref/state, unrelated fields, single application, and lane/lifecycle compliance.
 
-- target identity is unchanged;
-- branch or PR head is the expected result;
-- unrelated fields did not change;
-- the mutation appears exactly once;
-- current state remains within lane and lifecycle authority.
+## Uncertain connector outcome
 
-## Connector uncertainty
+An error, timeout, null/empty response, or incomplete pagination is unknown, not success.
 
-Treat an error, timeout, null response, missing response, or partial pagination as unknown outcome.
+Before retrying, re-read the target and prove the mutation did not apply. Do not create duplicate branches, PRs, commits, comments, reviews, labels, receipts, or merge attempts as a workaround.
 
-Before retrying:
+## Stable report
 
-1. re-read the target object;
-2. determine whether the prior mutation applied;
-3. stop on disagreement or collision;
-4. retry only when the operation is proven absent and the gate still passes.
-
-Do not create a second branch, PR, comment, review, label, commit, receipt, or merge attempt as an uncertainty workaround.
-
-## Stable output
-
-For progress and final reports, include only the material evidence:
-
-- selected lane and PR;
-- exact current main and head;
-- current lifecycle position;
-- changed-path scope;
-- checks and review state;
-- stop or blocker state;
-- mutation performed and verified postcondition;
-- next safe same-lane action.
-
-Do not expose internal connector IDs or low-level response payloads.
+Report only material evidence: selected lane/PR, exact main/head, lifecycle position, changed paths, checks, reviews, stop/blocker state, verified mutation, and next safe same-lane action. Do not expose internal connector IDs.
 
 ## Stop conditions
 
-Stop and name the exact blocker when:
-
-- scope is ambiguous;
-- exact current main or head is unavailable;
-- the receipt or epoch is stale;
-- checks belong to another head;
-- labels, reviews, changed paths, or workflow state cannot be read when required;
-- a writer collision or branch-writing workflow exists;
-- `relaylm:p6-stop` is active;
-- connector results disagree;
-- the next action crosses lane authority;
-- a required connected capability is unavailable.
+Stop and name the exact blocker when scope or exact refs are ambiguous; receipt/epoch is stale; checks belong to another head; required paths, labels, reviews, or workflow evidence is unavailable; a writer collision, branch-writing workflow, temporary artifact, or P6 stop exists; connector results disagree; the next action crosses lane authority; or the required connected capability is unavailable.
 
 Never promise hidden or background GitHub work.
