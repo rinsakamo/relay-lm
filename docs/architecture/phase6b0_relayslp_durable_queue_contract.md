@@ -27,9 +27,11 @@ relaylm_related_authority:
   - phase6b3_relayslp_queue_state_helpers.md
   - relaymem_slp_current_target.md
   - relaymem_slp_execution_design.md
-  - relayrun_runtime_checkpoint_design.md
+  - runtime/compile-and-checkpoint.md
   - pipeline_implementation_plan.md
   - ../PROJECT_STATUS.md
+relaylm_related_contracts:
+  - ../contracts/relayrun-checkpoint-and-recovery.md
 ---
 # Phase 6-B0 RelaySLP Durable Queue Contract
 
