@@ -49,14 +49,15 @@ from relaylm.subjective_mem_lifecycle import (
     LIFECYCLE_TRANSITION_SCHEMA,
     SubjectiveMemLifecycleTransition,
 )
+from relaylm.subjective_mem_lifecycle_authority import (
+    SubjectiveMemPredecessorExpectation,
+    load_subjective_mem_predecessor_authority_locked,
+)
 from relaylm.subjective_mem_lifecycle_runtime import (
     SubjectiveMemLifecycleGate,
     _current_state_from_dict,
     _load_exact_selector_locked,
     _load_exact_selector_locked_raw,
-    _validate_current_receipt_locked,
-    _validate_evidence_space_locked,
-    _validate_predecessor_authority_locked,
     _validate_selector_uniqueness_locked,
     _workspace_authority_digest,
     resolve_subjective_mem_lifecycle_gate,
@@ -420,13 +421,6 @@ def _prepare_new(
 
     try:
         with store.transaction(evidence_space_id) as tx:
-            evidence_reasons = _validate_evidence_space_locked(
-                tx=tx,
-                evidence_space_id=evidence_space_id,
-                character_authority=character_authority,
-            )
-            if evidence_reasons:
-                return None, evidence_reasons
             selector_raw, selector_reasons = _load_exact_selector_locked(
                 tx=tx,
                 proposal=proposal,  # type: ignore[arg-type]
@@ -434,14 +428,6 @@ def _prepare_new(
             )
             if selector_raw is None:
                 return None, selector_reasons
-            receipt_reasons = _validate_current_receipt_locked(
-                tx=tx,
-                proposal=proposal,  # type: ignore[arg-type]
-                character_id=character_authority.character_id,
-                evidence_space_id=evidence_space_id,
-            )
-            if receipt_reasons:
-                return None, receipt_reasons
     except (OSError, RuntimeError, TypeError, ValueError):
         return None, ("subjective_mem_forget_store_unavailable",)
 
@@ -499,14 +485,29 @@ def _prepare_new(
             scope_binding=predecessor.scope_binding,
         )
         with store.transaction(evidence_space_id) as tx:
-            authority_reasons = _validate_predecessor_authority_locked(
-                tx=tx,
-                proposal=proposal,  # type: ignore[arg-type]
-                predecessor=predecessor,
-                character_id=character_authority.character_id,
-                evidence_space_id=evidence_space_id,
+            predecessor_authority, authority_reasons = (
+                load_subjective_mem_predecessor_authority_locked(
+                    tx=tx,
+                    evidence_space_id=evidence_space_id,
+                    character_authority=character_authority,
+                    predecessor=predecessor,
+                    expectation=SubjectiveMemPredecessorExpectation(
+                        receipt_id=proposal.expected_current_receipt_id,
+                        receipt_digest=proposal.expected_current_receipt_digest,
+                        current_state_digest=proposal.expected_current_selector_digest,
+                        page_id=proposal.expected_page_id,
+                        block_id=proposal.expected_block_id,
+                        page_digest=proposal.expected_page_digest,
+                        revision_schema=proposal.expected_revision_schema,
+                        page_schema=proposal.expected_page_schema,
+                        block_schema=proposal.expected_block_schema,
+                        renderer_revision=proposal.expected_renderer_revision,
+                        partition_revision=proposal.expected_partition_revision,
+                        platform_revision=proposal.expected_platform_revision,
+                    ),
+                )
             )
-            if authority_reasons:
+            if predecessor_authority is None:
                 return None, authority_reasons
             reformation = inspect_subjective_mem_reformation_digest_locked(
                 tx=tx,
@@ -1577,12 +1578,6 @@ def _validate_pre_image_authority_current(
 ) -> bool:
     try:
         with store.transaction(evidence_space_id) as tx:
-            if _validate_evidence_space_locked(
-                tx=tx,
-                evidence_space_id=evidence_space_id,
-                character_authority=character_authority,
-            ):
-                return False
             expected_prepared = _state_from_intent(intent, prepared=True)
             if expected_prepared is None:
                 return False
@@ -1620,13 +1615,31 @@ def _validate_pre_image_authority_current(
                 proposal=proposal,
                 character_authority=character_authority,
             )
-            return predecessor is not None and not _validate_predecessor_authority_locked(
-                tx=tx,
-                proposal=proposal,  # type: ignore[arg-type]
-                predecessor=predecessor,
-                character_id=character_authority.character_id,
-                evidence_space_id=evidence_space_id,
+            if predecessor is None:
+                return False
+            predecessor_authority, _authority_reasons = (
+                load_subjective_mem_predecessor_authority_locked(
+                    tx=tx,
+                    evidence_space_id=evidence_space_id,
+                    character_authority=character_authority,
+                    predecessor=predecessor,
+                    expectation=SubjectiveMemPredecessorExpectation(
+                        receipt_id=proposal.expected_current_receipt_id,
+                        receipt_digest=proposal.expected_current_receipt_digest,
+                        current_state_digest=proposal.expected_current_selector_digest,
+                        page_id=proposal.expected_page_id,
+                        block_id=proposal.expected_block_id,
+                        page_digest=proposal.expected_page_digest,
+                        revision_schema=proposal.expected_revision_schema,
+                        page_schema=proposal.expected_page_schema,
+                        block_schema=proposal.expected_block_schema,
+                        renderer_revision=proposal.expected_renderer_revision,
+                        partition_revision=proposal.expected_partition_revision,
+                        platform_revision=proposal.expected_platform_revision,
+                    ),
+                )
             )
+            return predecessor_authority is not None
     except (OSError, RuntimeError, TypeError, ValueError):
         return False
 

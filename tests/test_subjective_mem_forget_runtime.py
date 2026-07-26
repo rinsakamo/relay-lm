@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import timedelta
+import json
+from pathlib import Path
 
 from relaylm._subjective_mem_commit_io import PLATFORM_REVISION
 from relaylm.evidence_common import canonical_digest
@@ -31,7 +33,7 @@ from relaylm.subjective_mem_reformation import (
     subjective_mem_semantic_identity_digest,
 )
 from relaylm.subjective_mem_runtime import create_subjective_mem
-from test_subjective_mem_lifecycle_runtime import lifecycle_env
+from test_subjective_mem_lifecycle_runtime import _correct, lifecycle_env
 from test_subjective_mem_runtime import NOW
 
 
@@ -421,3 +423,119 @@ def test_malformed_existing_tombstone_state_blocks_forget_before_publication(
         "subjective_mem_reformation_tombstone_state_corrupt"
         in result.blocked_reasons
     )
+
+
+def _decision_path(env, predecessor) -> Path:
+    return env["store"]._record_path(  # noqa: SLF001
+        env["captured"].evidence_space_id,
+        "subjective_mem_decision",
+        predecessor.authorization_id,
+    )
+
+
+def test_forget_owns_predecessor_authority_through_shared_owner() -> None:
+    source = Path("relaylm/subjective_mem_forget_runtime.py").read_text(encoding="utf-8")
+    assert "from relaylm.subjective_mem_lifecycle_authority import" in source
+    assert "load_subjective_mem_predecessor_authority_locked(" in source
+    for removed in (
+        "_validate_evidence_space_locked",
+        "_validate_current_receipt_locked",
+        "_validate_predecessor_authority_locked",
+    ):
+        assert removed not in source
+
+
+def test_forget_accepts_exact_st1_predecessor_authority(lifecycle_env) -> None:
+    predecessor = lifecycle_env["page"].blocks[0].revision
+    assert predecessor.memory_revision == 1
+    assert predecessor.authorization_kind == "formation_decision"
+    result = _forget(lifecycle_env)
+    assert result.status == "committed", result.blocked_reasons
+    assert result.current_state is not None
+    assert result.current_state.current_revision == 2
+    assert result.current_state.lifecycle_state == "hidden"
+
+
+def test_forget_accepts_committed_correct_predecessor_authority(lifecycle_env) -> None:
+    corrected = _correct(lifecycle_env)
+    assert corrected.status == "committed", corrected.blocked_reasons
+    assert corrected.current_state is not None
+    page, reasons = parse_subjective_mem_page_bytes(
+        lifecycle_env["page_path"].read_bytes()
+    )
+    assert page is not None and not reasons
+    current_block = next(
+        item for item in page.blocks if item.revision.memory_revision == 2
+    )
+    assert current_block.revision.authorization_kind == "lifecycle_transition"
+    receipt = lifecycle_env["store"].read_record(
+        evidence_space_id=lifecycle_env["captured"].evidence_space_id,
+        record_kind="subjective_mem_lifecycle_receipt",
+        record_id=corrected.receipt_id,
+    )
+    assert isinstance(receipt, dict)
+    proposal = _proposal(
+        lifecycle_env,
+        expected_current_revision=2,
+        expected_block_id=current_block.block_id,
+        expected_page_digest=page.page_digest,
+        expected_current_selector_digest=canonical_digest(
+            corrected.current_state.to_dict()
+        ),
+        expected_current_receipt_id=corrected.receipt_id,
+        expected_current_receipt_digest=receipt["receipt_digest"],
+        authorization_id="user-forget-authorization-2",
+    )
+    result = forget_subjective_mem(
+        store=lifecycle_env["store"],
+        evidence_space_id=lifecycle_env["captured"].evidence_space_id,
+        character_config=lifecycle_env["config"],
+        character_authority=lifecycle_env["authority"],
+        workspace_root=str(lifecycle_env["workspace_root"]),
+        operation_idempotency_key="lc1b-forget-after-correct",
+        proposal=proposal,
+        apply_enabled=True,
+        committed_at=NOW + timedelta(seconds=4),
+        observed_at=NOW + timedelta(seconds=5),
+    )
+    assert result.status == "committed", result.blocked_reasons
+    assert result.current_state is not None
+    assert result.current_state.current_revision == 3
+    assert result.current_state.lifecycle_state == "hidden"
+
+
+def test_forget_missing_predecessor_authorization_fails_closed(lifecycle_env) -> None:
+    predecessor = lifecycle_env["page"].blocks[0].revision
+    before = lifecycle_env["page_path"].read_bytes()
+    _decision_path(lifecycle_env, predecessor).unlink()
+
+    result = _forget(lifecycle_env)
+    assert result.status == "fail_closed"
+    assert (
+        "subjective_mem_lifecycle_predecessor_authority_missing"
+        in result.blocked_reasons
+    )
+    assert lifecycle_env["page_path"].read_bytes() == before
+
+
+def test_forget_non_exact_predecessor_authorization_fails_closed(lifecycle_env) -> None:
+    predecessor = lifecycle_env["page"].blocks[0].revision
+    before = lifecycle_env["page_path"].read_bytes()
+    path = _decision_path(lifecycle_env, predecessor)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["result_memory_ref_or_null"] = {
+        "memory_id": predecessor.memory_id,
+        "memory_revision": 99,
+    }
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True),
+        encoding="utf-8",
+    )
+
+    result = _forget(lifecycle_env)
+    assert result.status == "fail_closed"
+    assert (
+        "subjective_mem_lifecycle_predecessor_authority_not_exact"
+        in result.blocked_reasons
+    )
+    assert lifecycle_env["page_path"].read_bytes() == before
