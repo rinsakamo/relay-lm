@@ -33,8 +33,10 @@ relaylm_related_authority:
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
   - memory_lifecycle_design.md
-  - relayrun_runtime_checkpoint_design.md
+  - runtime/compile-and-checkpoint.md
   - ../PROJECT_STATUS.md
+relaylm_related_contracts:
+  - ../contracts/relayrun-checkpoint-and-recovery.md
 ---
 # Phase 6 Asynchronous RelaySLP Bounded Slice
 
