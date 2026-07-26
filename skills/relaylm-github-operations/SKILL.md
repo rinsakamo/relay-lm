@@ -53,10 +53,12 @@ Before Claude Code writes:
 1. build the complete snapshot and re-read exact main and exact head;
 2. stop ChatGPT branch-content mutations;
 3. keep the same repository, PR, and branch;
-4. transfer the single logical writer role for one bounded slice;
+4. keep the receipt's existing logical `writer_id` and designate Claude Code as the exclusive branch-content execution backend for one bounded slice;
 5. provide exact main/head, lane and P0-P8 state, allowed paths, invariants, negative cases, non-goals, required tests, and prohibited mechanisms.
 
 The handoff prohibits new or transfer branches, corrective PRs, automatic rebase, force-push, Base64/payload splitting, partial-file reconstruction, placeholder/noop files, repository patch/apply helpers, temporary workflows, and scope expansion. Claude Code edits in a checkout, tests, commits intentionally, and pushes only to the existing branch.
+
+While Claude Code is the exclusive branch-content execution backend for the bounded slice, ChatGPT remains the logical writer and is read-only on branch content.
 
 After a reported push, independently re-read the actual exact head, complete diff, changed paths, checks, reviews, receipt, failure state, current-main relation, and temporary-artifact state. Treat Claude's reported SHA and test output as orientation only. Return to P1/P2 if the observed diff changes the reviewed design, authority, compatibility, scope, or change budget.
 
@@ -131,7 +133,7 @@ Prefer one atomic initial commit. If connector file writes must be sequential, r
 2. Verify current main, current head, receipt, epoch, ancestry, writer, normalized failure state, and temporary-artifact state.
 3. Re-read relevant authorities, code, callers, workflows, and reviews at exact refs.
 4. Re-evaluate P0-P2 before substantive correction or scope growth.
-5. Select the implementation backend and confirm its single-writer boundary.
+5. Select the implementation backend and confirm its exclusive branch-content execution boundary under the current logical writer.
 6. Immediately before a branch write, verify expected head again.
 7. Apply one bounded write permitted by the current failure state.
 8. Re-read the branch/PR and confirm the intended diff only.
@@ -210,7 +212,7 @@ expected_head_sha: 40-hex | null
 allowed_change: bounded description
 ```
 
-Afterward verify target identity, resulting ref/state, unrelated fields, single application, backend writer ownership, and lane/lifecycle compliance.
+Afterward verify target identity, resulting ref/state, unrelated fields, single application, exclusive branch-content execution, and lane/lifecycle compliance.
 
 ## Uncertain connector outcome
 
