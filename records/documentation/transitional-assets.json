@@ -100,16 +100,15 @@
     {
       "family_id": "legacy-runtime-compile-checkpoint-docs",
       "paths": [
-        "docs/architecture/archive/relayrun_runtime_checkpoint_design_history.md",
         "docs/architecture/relayrun_runtime_checkpoint_design.md"
       ],
       "owner": "documentation",
-      "protected_boundary": "Existing RelayRUN checkpoint current-document consumers and checkpoint history provenance while canonical checkpoint architecture and exact recovery authority move to responsibility-oriented paths.",
+      "protected_boundary": "Existing RelayRUN checkpoint current-document consumers while canonical checkpoint architecture and exact recovery authority move to responsibility-oriented paths.",
       "current_consumers": [
         "bounded D2-B2 checkpoint live-consumer migration review",
         "current architecture and contract links that still reference the legacy checkpoint current-note path"
       ],
-      "removal_gate": "Every current consumer links directly to docs/architecture/runtime/compile-and-checkpoint.md and docs/contracts/relayrun-checkpoint-and-recovery.md, the dedicated checkpoint history page has no current consumer, generic link and authority validation are green, and each removed path has a retirement-manifest entry.",
+      "removal_gate": "Every current consumer links directly to docs/architecture/runtime/compile-and-checkpoint.md and docs/contracts/relayrun-checkpoint-and-recovery.md, generic link and authority validation are green, and the removed path has a retirement-manifest entry.",
       "replacement_validation": [
         "active_document_authority",
         "git_recoverability",

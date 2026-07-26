@@ -2,6 +2,15 @@
   "schema_version": "relaylm.documentation.retirement-manifest.v1",
   "entries": [
     {
+      "old_path": "docs/architecture/archive/relayrun_runtime_checkpoint_design_history.md",
+      "last_live_commit": "3568171def75c30386054523c34abd4fcabc117a",
+      "old_blob_sha": "57da5825535254f133396c02fcf88039ca18b9ee",
+      "removed_by_pr": 758,
+      "replacement_paths": [],
+      "disposition": "retired_git_history_only",
+      "retention_reason": "D2-B2b4c31 removed the redundant RelayRUN checkpoint history marker after its archive-router exposure was closed; the marker and original long-form checkpoint design remain recoverable from Git."
+    },
+    {
       "old_path": "docs/architecture/archive/runtime_compile_gate_design_history.md",
       "last_live_commit": "968541a715af304d50061c24febc1e17caf77d91",
       "old_blob_sha": "f68c7fd61e8b3ff17a265b346c8ecfe2740b48bd",

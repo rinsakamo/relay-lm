@@ -77,5 +77,6 @@ A future visible-recovery implementation must update together:
 ## References
 
 - [RelayRUN Recovery Response Generator Contract](relayrun_recovery_response_generator_contract.md)
-- [RelayRUN Runtime Checkpoint Design](../architecture/relayrun_runtime_checkpoint_design.md)
+- [Runtime Compile and Checkpoint Architecture](../architecture/runtime/compile-and-checkpoint.md)
+- [RelayRUN Checkpoint and Recovery Contract](relayrun-checkpoint-and-recovery.md)
 - [Current / Target / Migration Guide](../architecture/current_target_migration_guide.md)
