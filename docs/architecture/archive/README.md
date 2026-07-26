@@ -148,8 +148,6 @@ Current replacements:
 
 These markers record where append-only design histories were superseded by concise active contracts. The original long-form bodies remain available in Git history.
 
-- [RelayRUN Runtime Checkpoint Design History](relayrun_runtime_checkpoint_design_history.md) -> current [RelayRUN Runtime Checkpoint Design](../relayrun_runtime_checkpoint_design.md)
-
 ## Reviewed and retained as active documents
 
 The following documents contain distinct current contracts and remain in the active architecture index:
