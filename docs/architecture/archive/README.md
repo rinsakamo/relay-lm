@@ -149,7 +149,6 @@ Current replacements:
 These markers record where append-only design histories were superseded by concise active contracts. The original long-form bodies remain available in Git history.
 
 - [RelayRUN Runtime Checkpoint Design History](relayrun_runtime_checkpoint_design_history.md) -> current [RelayRUN Runtime Checkpoint Design](../relayrun_runtime_checkpoint_design.md)
-- [Runtime Compile Gate Design History](runtime_compile_gate_design_history.md) -> current [Runtime Compile Gate Design](../runtime_compile_gate_design.md)
 
 ## Reviewed and retained as active documents
 
