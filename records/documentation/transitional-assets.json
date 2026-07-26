@@ -119,25 +119,6 @@
         "normative_extraction"
       ],
       "growth_policy": "closed"
-    },
-    {
-      "family_id": "legacy-system-pipeline-docs",
-      "paths": [
-        "docs/architecture/pipeline_responsibility_design.md"
-      ],
-      "owner": "documentation",
-      "protected_boundary": "Remaining active architecture, contract, planning, reference, and integration documentation consumers while canonical component responsibility and target order move to docs/architecture/pipeline-responsibilities.md and narrower mode, compile/checkpoint, or domain owners.",
-      "current_consumers": [
-        "bounded D2-B2b active consumer migration review",
-        "remaining active architecture, contract, planning, reference, and integration documentation links to the transitional pipeline responsibility path"
-      ],
-      "removal_gate": "Move every remaining consumer to docs/architecture/pipeline-responsibilities.md or the smallest mode, compile/checkpoint, configuration, integration, or domain authority; pass generic authority and link validation; and record the removal in the manifest.",
-      "replacement_validation": [
-        "active_document_authority",
-        "git_recoverability",
-        "links_and_routers"
-      ],
-      "growth_policy": "closed"
     }
   ]
 }
