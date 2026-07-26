@@ -12,12 +12,13 @@ Advance RelayLM work without requiring the user to restate the workflow, while p
 Current repository authority is:
 
 1. `AGENTS.md`;
-2. `docs/adr/0007-architecture-first-stable-implementation.md`;
-3. `docs/adr/0008-lane-local-continuation-safety.md`;
-4. `docs/adr/0009-execution-epoch-and-rebootstrap.md`;
-5. `docs/contracts/agent-execution-safety.md`;
-6. `docs/planning/workstream-orchestration.md`;
-7. the selected lane's current authorities and implementation evidence.
+2. `skills/relaylm-github-operations/SKILL.md`;
+3. `docs/adr/0007-architecture-first-stable-implementation.md`;
+4. `docs/adr/0008-lane-local-continuation-safety.md`;
+5. `docs/adr/0009-execution-epoch-and-rebootstrap.md`;
+6. `docs/contracts/agent-execution-safety.md`;
+7. `docs/planning/workstream-orchestration.md`;
+8. the selected lane's current authorities and implementation evidence.
 
 Read these from current `main`. Initial prompts, handoffs, conversation memory, PR bodies, and historical files are orientation only.
 

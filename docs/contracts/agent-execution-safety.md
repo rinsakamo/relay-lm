@@ -19,6 +19,7 @@ relaylm_decision_source: ../adr/0009-execution-epoch-and-rebootstrap.md
 relaylm_related_authority:
   - ../../AGENTS.md
   - ../../skills/relaylm-stable-implementation/SKILL.md
+  - ../../skills/relaylm-github-operations/SKILL.md
   - ../planning/workstream-orchestration.md
 relaylm_verified_by:
   - ../../scripts/relaylm_agent_execution_guard.py
@@ -47,6 +48,7 @@ The ordered epoch inputs are:
 ```text
 AGENTS.md
 skills/relaylm-stable-implementation/SKILL.md
+skills/relaylm-github-operations/SKILL.md
 docs/adr/0007-architecture-first-stable-implementation.md
 docs/adr/0008-lane-local-continuation-safety.md
 docs/adr/0009-execution-epoch-and-rebootstrap.md
