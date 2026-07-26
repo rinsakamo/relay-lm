@@ -105,12 +105,12 @@
         "docs/architecture/runtime_compile_gate_design.md"
       ],
       "owner": "documentation",
-      "protected_boundary": "Existing current-document consumers and historical compile/checkpoint provenance while canonical architecture and exact checkpoint authority move to responsibility-oriented paths.",
+      "protected_boundary": "Existing current-document consumers and RelayRUN checkpoint history provenance while canonical architecture and exact compile/checkpoint authority move to responsibility-oriented paths.",
       "current_consumers": [
         "bounded D2-B2 live-consumer migration review",
-        "current architecture and contract links that still reference the legacy compile/checkpoint paths"
+        "current architecture and contract links that still reference the legacy compile/checkpoint current-note paths"
       ],
-      "removal_gate": "Every current consumer links directly to docs/architecture/runtime/compile-and-checkpoint.md and the owning contracts, the dedicated history pages have no current consumer, generic link and authority validation are green, and each removed path has a retirement-manifest entry.",
+      "removal_gate": "Every current consumer links directly to docs/architecture/runtime/compile-and-checkpoint.md and the owning contracts, the remaining dedicated checkpoint history page has no current consumer, generic link and authority validation are green, and each removed path has a retirement-manifest entry.",
       "replacement_validation": [
         "active_document_authority",
         "git_recoverability",
