@@ -18,7 +18,7 @@ relaylm_not_authoritative_for:
   - UI component implementation details
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - pipeline_responsibility_design.md
+  - pipeline-responsibilities.md
   - memory_lifecycle_design.md
   - relayscn_mvp_scene_policy.md
   - ../relayemo_mvp_initial_design.md
