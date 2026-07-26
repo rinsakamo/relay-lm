@@ -97,7 +97,8 @@ execution:
   receipt_valid: boolean
   bootstrap_matches_main: boolean
   main_is_head_ancestor: true | false | unknown
-  p6_stop: boolean
+  failure_state: none | failure_1 | failure_2 | p6_stop | unknown
+  failure_state_comment_count: integer | unknown
   branch_writing_workflows: [string]
 conflicts:
   path: [string]
@@ -163,7 +164,8 @@ Immediately before each branch write require:
 - expected head equals observed head;
 - exactly one valid receipt matches current main and governance epoch;
 - current main is an ancestor of head;
-- no P6 stop, writer collision, branch-writing validation, transfer branch, or temporary artifact;
+- failure state is neither `p6_stop` nor an unreadable duplicate state;
+- no writer collision, branch-writing validation, transfer branch, or temporary artifact;
 - the change remains in reviewed lane-owned scope.
 
 A mismatch stops the operation. Do not automatically rebase, retry, force-push, or reconstruct.
@@ -176,7 +178,7 @@ A receipt-only edit changes only the single receipt block. It does not alter lif
 
 ### Ready
 
-Require current receipt and ancestry, no stop or unresolved failure, P0-P6 evidence, successful exact-head required checks, clean review state, clean complete-diff review, and no newer main or head invalidation.
+Require current receipt and ancestry, `failure_state: none`, P0-P6 evidence, successful exact-head required checks, clean review state, clean complete-diff review, and no newer main or head invalidation.
 
 ### Merge
 
@@ -212,7 +214,7 @@ Verify the PR is merged, resulting main contains the accepted change, required p
 
 ## Failure behavior
 
-Fail closed when scope, exact refs, paths, checks, reviews, labels, receipt, stop state, or connector outcome is ambiguous or unavailable for the requested action; when connector results disagree; when the expected head changes; or when a cross-lane write would be required.
+Fail closed when scope, exact refs, paths, checks, reviews, labels, receipt, failure state, or connector outcome is ambiguous or unavailable for the requested action; when connector results disagree; when the expected head changes; or when a cross-lane write would be required.
 
 State the exact missing or conflicting evidence. Never claim a mutation, review, merge, or completion without a postcondition read.
 
