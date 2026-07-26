@@ -28,10 +28,11 @@ relaylm_related_authority:
   - ../adr/0008-lane-local-continuation-safety.md
   - ../../AGENTS.md
   - ../../skills/relaylm-stable-implementation/SKILL.md
+  - ../../skills/relaylm-github-operations/SKILL.md
 ---
 # Workstream Orchestration, Lane-Local Continuation, and Stable PR Convergence
 
-Last reviewed: 2026-07-24 JST
+Last reviewed: 2026-07-26 JST
 
 ## Purpose
 
@@ -148,11 +149,12 @@ At the beginning of every continuation turn, read or verify:
 2. current `main` and open PR state;
 3. `AGENTS.md`;
 4. `skills/relaylm-stable-implementation/SKILL.md`;
-5. `docs/adr/0008-lane-local-continuation-safety.md`;
-6. `docs/PROJECT_STATUS.md` for implemented state and caveats;
-7. `docs/architecture/project_execution_plan.md` for repository-wide sequencing;
-8. the owning plan for the selected lane or authorized portfolio lanes;
-9. exact ADRs, contracts, changed files, review threads, callers, workflows, generated registries, and entry points required by the selected action.
+5. `skills/relaylm-github-operations/SKILL.md`;
+6. `docs/adr/0008-lane-local-continuation-safety.md`;
+7. `docs/PROJECT_STATUS.md` for implemented state and caveats;
+8. `docs/architecture/project_execution_plan.md` for repository-wide sequencing;
+9. the owning plan for the selected lane or authorized portfolio lanes;
+10. exact ADRs, contracts, changed files, review threads, callers, workflows, generated registries, and entry points required by the selected action.
 
 Conversation memory, handoff prompts, PR bodies, retired Git blobs, and historical records are orientation only. They do not override current repository authorities.
 
