@@ -1,8 +1,8 @@
 """Canonical anti-reformation authority for governed Subjective MEM formation.
 
-Public queries acquire an Evidence-space transaction. Callers that already own
-that transaction use the locked entrypoint. Both paths prepare the same exact
-candidate identity and delegate to one under-lock lineage evaluator.
+Public and locked entrypoints delegate to one exact semantic evaluator. A valid
+Forget tombstone blocks exact re-formation until its optional immutable Restore
+release is proven by the shared release-lineage authority.
 """
 from __future__ import annotations
 
@@ -24,110 +24,48 @@ from relaylm.subjective_mem_lifecycle import (
     LIFECYCLE_RECEIPT_SCHEMA,
     LIFECYCLE_TRANSITION_SCHEMA,
 )
+from relaylm.subjective_mem_tombstone_release import (
+    SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
+    SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_RECORD_KIND,
+    SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_SCHEMA,
+    SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_STATE_SCHEMA,
+    inspect_subjective_mem_forget_tombstone_release_locked,
+)
 
 ReformationStatus = Literal["allowed", "blocked", "fail_closed"]
-SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND = (
-    "subjective_mem_forget_tombstone_state"
-)
+SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND = "subjective_mem_forget_tombstone_state"
 _SEMANTIC_IDENTITY_SCHEMA = "relaylm.subjective_mem_semantic_identity.v1"
 _TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,255}$")
 
-_STATE_FIELDS = {
-    "schema",
-    "tombstone_id",
-    "tombstone_digest",
-    "evidence_space_id",
-    "character_id",
-    "semantic_identity_digest",
-    "memory_id",
-    "hidden_revision",
-    "formation_stage",
-    "transition_id",
-    "transition_digest",
-    "receipt_id",
-    "effective",
-    "superseded_by_tombstone_id_or_null",
-    "updated_at",
-    "content_free",
-}
-_TOMBSTONE_FIELDS = {
-    "schema",
-    "tombstone_id",
-    "evidence_space_id",
-    "character_id",
-    "memory_id",
-    "source_revision",
-    "hidden_revision",
-    "formation_stage",
-    "transition_id",
-    "transition_digest",
-    "receipt_id",
-    "semantic_identity_digest",
-    "scope_binding_digest",
-    "authorization_class",
-    "authorization_id",
-    "reason_category",
-    "policy_revision",
-    "effective_at",
-    "effective",
-    "content_free",
-    "tombstone_digest",
-}
-_RECEIPT_FIELDS = {
-    "schema",
-    "receipt_id",
-    "intent_id",
-    "intent_digest",
-    "operation_id",
-    "operation_kind",
-    "operation_outcome",
-    "input_digest",
-    "evidence_space_id",
-    "character_id",
-    "memory_ref",
-    "predecessor_revision",
-    "formation_stage",
-    "transition_id",
-    "transition_digest",
-    "tombstone_id",
-    "tombstone_digest",
-    "semantic_identity_digest",
-    "authorization_class",
-    "authorization_id",
-    "reason_category",
-    "policy_revision",
-    "revision_schema",
-    "page_schema",
-    "block_schema",
-    "renderer_revision",
-    "partition_revision",
-    "platform_revision",
-    "page_id",
-    "successor_block_id",
-    "pre_image_digest",
-    "post_image_digest",
-    "successor_revision_digest",
-    "current_state_digest",
-    "projection_state",
-    "ordinary_retrieval_wired",
-    "finalized_at",
-    "receipt_digest",
-}
-_TRANSITION_FIELDS = {
-    "schema",
-    "transition_id",
-    "character_id",
-    "memory_id",
-    "from_revision",
-    "to_revision",
-    "operation",
-    "from_lifecycle_state",
-    "to_lifecycle_state",
-    "from_formation_stage",
-    "to_formation_stage",
-    "authorized_by",
-    "committed_at",
-}
+_STATE_FIELDS = frozenset(
+    "schema tombstone_id tombstone_digest evidence_space_id character_id "
+    "semantic_identity_digest memory_id hidden_revision formation_stage "
+    "transition_id transition_digest receipt_id effective "
+    "superseded_by_tombstone_id_or_null updated_at content_free".split()
+)
+_TOMBSTONE_FIELDS = frozenset(
+    "schema tombstone_id evidence_space_id character_id memory_id source_revision "
+    "hidden_revision formation_stage transition_id transition_digest receipt_id "
+    "semantic_identity_digest scope_binding_digest authorization_class "
+    "authorization_id reason_category policy_revision effective_at effective "
+    "content_free tombstone_digest".split()
+)
+_RECEIPT_FIELDS = frozenset(
+    "schema receipt_id intent_id intent_digest operation_id operation_kind "
+    "operation_outcome input_digest evidence_space_id character_id memory_ref "
+    "predecessor_revision formation_stage transition_id transition_digest "
+    "tombstone_id tombstone_digest semantic_identity_digest authorization_class "
+    "authorization_id reason_category policy_revision revision_schema page_schema "
+    "block_schema renderer_revision partition_revision platform_revision page_id "
+    "successor_block_id pre_image_digest post_image_digest successor_revision_digest "
+    "current_state_digest projection_state ordinary_retrieval_wired finalized_at "
+    "receipt_digest".split()
+)
+_TRANSITION_FIELDS = frozenset(
+    "schema transition_id character_id memory_id from_revision to_revision operation "
+    "from_lifecycle_state to_lifecycle_state from_formation_stage "
+    "to_formation_stage authorized_by committed_at".split()
+)
 
 
 @dataclass(frozen=True)
@@ -191,28 +129,20 @@ def check_subjective_mem_reformation(
     if type(store) is not EvidenceRecordStore:
         return _failure("subjective_mem_reformation_store_invalid")
     candidate = _candidate(
-        evidence_space_id=evidence_space_id,
-        character_id=character_id,
-        grounded_content_digest=grounded_content_digest,
-        subjective_meaning=subjective_meaning,
-        memory_kind=memory_kind,
-        scope_binding=scope_binding,
+        evidence_space_id,
+        character_id,
+        grounded_content_digest,
+        subjective_meaning,
+        memory_kind,
+        scope_binding,
     )
     if isinstance(candidate, SubjectiveMemReformationCheck):
         return candidate
     try:
         with store.transaction(evidence_space_id) as tx:
-            return _evaluate_subjective_mem_reformation_locked(
-                tx=tx,
-                evidence_space_id=evidence_space_id,
-                character_id=character_id,
-                semantic_identity_digest=candidate,
-            )
+            return _evaluate_subjective_mem_reformation_locked(tx, evidence_space_id, character_id, candidate)
     except (KeyError, OSError, RuntimeError, TypeError, ValueError):
-        return _failure(
-            "subjective_mem_reformation_store_unavailable",
-            semantic_identity_digest=candidate,
-        )
+        return _failure("subjective_mem_reformation_store_unavailable", candidate)
 
 
 def check_subjective_mem_reformation_locked(
@@ -230,27 +160,19 @@ def check_subjective_mem_reformation_locked(
     if type(tx) is not EvidenceStoreTransaction or tx.evidence_space_id != evidence_space_id:
         return _failure("subjective_mem_reformation_transaction_invalid")
     candidate = _candidate(
-        evidence_space_id=evidence_space_id,
-        character_id=character_id,
-        grounded_content_digest=grounded_content_digest,
-        subjective_meaning=subjective_meaning,
-        memory_kind=memory_kind,
-        scope_binding=scope_binding,
+        evidence_space_id,
+        character_id,
+        grounded_content_digest,
+        subjective_meaning,
+        memory_kind,
+        scope_binding,
     )
     if isinstance(candidate, SubjectiveMemReformationCheck):
         return candidate
     try:
-        return _evaluate_subjective_mem_reformation_locked(
-            tx=tx,
-            evidence_space_id=evidence_space_id,
-            character_id=character_id,
-            semantic_identity_digest=candidate,
-        )
+        return _evaluate_subjective_mem_reformation_locked(tx, evidence_space_id, character_id, candidate)
     except (KeyError, OSError, RuntimeError, TypeError, ValueError):
-        return _failure(
-            "subjective_mem_reformation_store_unavailable",
-            semantic_identity_digest=candidate,
-        )
+        return _failure("subjective_mem_reformation_store_unavailable", candidate)
 
 
 def inspect_subjective_mem_reformation_digest_locked(
@@ -272,20 +194,16 @@ def inspect_subjective_mem_reformation_digest_locked(
         return _failure("subjective_mem_reformation_candidate_invalid")
     try:
         return _evaluate_subjective_mem_reformation_locked(
-            tx=tx,
-            evidence_space_id=evidence_space_id,
-            character_id=character_id,
-            semantic_identity_digest=semantic_identity_digest,
+            tx, evidence_space_id, character_id, semantic_identity_digest
         )
     except (KeyError, OSError, RuntimeError, TypeError, ValueError):
         return _failure(
             "subjective_mem_reformation_store_unavailable",
-            semantic_identity_digest=semantic_identity_digest,
+            semantic_identity_digest,
         )
 
 
 def _candidate(
-    *,
     evidence_space_id: str,
     character_id: str,
     grounded_content_digest: str,
@@ -307,7 +225,6 @@ def _candidate(
 
 
 def _evaluate_subjective_mem_reformation_locked(
-    *,
     tx: EvidenceStoreTransaction,
     evidence_space_id: str,
     character_id: str,
@@ -324,65 +241,100 @@ def _evaluate_subjective_mem_reformation_locked(
     if not isinstance(events, list) or not events:
         return _failure(
             "subjective_mem_reformation_tombstone_state_corrupt",
-            semantic_identity_digest=semantic_identity_digest,
+            semantic_identity_digest,
         )
-
-    tombstone_ids: list[str] = []
+    seen: set[str] = set()
+    blocked: list[str] = []
     for state in events:
-        if not _valid_state(
-            state,
-            evidence_space_id=evidence_space_id,
-            character_id=character_id,
-            semantic_identity_digest=semantic_identity_digest,
-        ):
-            return _failure(
-                "subjective_mem_reformation_tombstone_state_corrupt",
-                semantic_identity_digest=semantic_identity_digest,
-            )
-        tombstone_id = str(state["tombstone_id"])
-        if tombstone_id in tombstone_ids:
-            return _failure(
-                "subjective_mem_reformation_tombstone_state_duplicate",
-                semantic_identity_digest=semantic_identity_digest,
-            )
-        tombstone = tx.read_record(
-            record_kind="subjective_mem_forget_tombstone",
-            record_id=tombstone_id,
-        )
-        receipt = tx.read_record(
-            record_kind="subjective_mem_lifecycle_receipt",
-            record_id=str(state["receipt_id"]),
-        )
-        transition = tx.read_record(
-            record_kind="subjective_mem_lifecycle_transition",
-            record_id=str(state["transition_id"]),
-        )
-        if not _valid_lineage(
+        status, tombstone_id, reasons = _evaluate_tombstone(
+            tx=tx,
             state=state,
-            tombstone=tombstone,
-            receipt=receipt,
-            transition=transition,
+            seen=seen,
             evidence_space_id=evidence_space_id,
             character_id=character_id,
             semantic_identity_digest=semantic_identity_digest,
-        ):
+        )
+        if status == "invalid":
             return _failure(
-                "subjective_mem_reformation_tombstone_lineage_invalid",
-                semantic_identity_digest=semantic_identity_digest,
+                reasons[0]
+                if reasons
+                else "subjective_mem_reformation_tombstone_lineage_invalid",
+                semantic_identity_digest,
             )
-        tombstone_ids.append(tombstone_id)
-
+        assert tombstone_id is not None
+        if status == "unreleased":
+            blocked.append(tombstone_id)
+        seen.add(tombstone_id)
+    if blocked:
+        return SubjectiveMemReformationCheck(
+            "blocked",
+            semantic_identity_digest=semantic_identity_digest,
+            tombstone_ids=tuple(sorted(blocked)),
+            blocked_reasons=("subjective_mem_reformation_blocked_by_forget",),
+        )
     return SubjectiveMemReformationCheck(
-        "blocked",
-        semantic_identity_digest=semantic_identity_digest,
-        tombstone_ids=tuple(sorted(tombstone_ids)),
-        blocked_reasons=("subjective_mem_reformation_blocked_by_forget",),
+        "allowed", semantic_identity_digest=semantic_identity_digest
     )
 
 
+def _evaluate_tombstone(
+    *,
+    tx: EvidenceStoreTransaction,
+    state: object,
+    seen: set[str],
+    evidence_space_id: str,
+    character_id: str,
+    semantic_identity_digest: str,
+) -> tuple[str, str | None, tuple[str, ...]]:
+    if not _valid_state(
+        state, evidence_space_id, character_id, semantic_identity_digest
+    ):
+        return "invalid", None, (
+            "subjective_mem_reformation_tombstone_state_corrupt",
+        )
+    assert isinstance(state, dict)
+    tombstone_id = str(state["tombstone_id"])
+    if tombstone_id in seen:
+        return "invalid", None, (
+            "subjective_mem_reformation_tombstone_state_duplicate",
+        )
+    tombstone = tx.read_record(
+        record_kind="subjective_mem_forget_tombstone", record_id=tombstone_id
+    )
+    receipt = tx.read_record(
+        record_kind="subjective_mem_lifecycle_receipt",
+        record_id=str(state["receipt_id"]),
+    )
+    transition = tx.read_record(
+        record_kind="subjective_mem_lifecycle_transition",
+        record_id=str(state["transition_id"]),
+    )
+    if not _valid_lineage(
+        state,
+        tombstone,
+        receipt,
+        transition,
+        evidence_space_id,
+        character_id,
+        semantic_identity_digest,
+    ):
+        return "invalid", None, (
+            "subjective_mem_reformation_tombstone_lineage_invalid",
+        )
+    assert isinstance(tombstone, dict) and isinstance(receipt, dict)
+    release_status, reasons = inspect_subjective_mem_forget_tombstone_release_locked(
+        tx=tx,
+        tombstone_state=state,
+        tombstone=tombstone,
+        forget_receipt=receipt,
+        evidence_space_id=evidence_space_id,
+        character_id=character_id,
+        semantic_identity_digest=semantic_identity_digest,
+    )
+    return release_status, tombstone_id, reasons
+
 def _valid_state(
     raw: object,
-    *,
     evidence_space_id: str,
     character_id: str,
     semantic_identity_digest: str,
@@ -411,7 +363,6 @@ def _valid_state(
 
 
 def _valid_lineage(
-    *,
     state: dict[str, object],
     tombstone: object,
     receipt: object,
@@ -427,57 +378,48 @@ def _valid_lineage(
         or set(receipt) != _RECEIPT_FIELDS
         or not isinstance(transition, dict)
         or set(transition) != _TRANSITION_FIELDS
+        or not _self_digest(tombstone, "tombstone_digest")
+        or not _self_digest(receipt, "receipt_digest")
     ):
         return False
-
-    tombstone_body = {
-        key: value for key, value in tombstone.items() if key != "tombstone_digest"
-    }
-    receipt_body = {
-        key: value for key, value in receipt.items() if key != "receipt_digest"
-    }
-    transition_digest = canonical_digest(transition)
-    source_revision = tombstone.get("source_revision")
-    hidden_revision = tombstone.get("hidden_revision")
+    source = tombstone.get("source_revision")
+    hidden = tombstone.get("hidden_revision")
+    at = tombstone.get("effective_at")
+    stage = tombstone.get("formation_stage")
+    auth = tombstone.get("authorization_class")
+    auth_id = tombstone.get("authorization_id")
+    reason = tombstone.get("reason_category")
     memory_ref = receipt.get("memory_ref")
-    effective_at = tombstone.get("effective_at")
-    formation_stage = tombstone.get("formation_stage")
-    authorization_class = tombstone.get("authorization_class")
-    authorization_id = tombstone.get("authorization_id")
-    reason_category = tombstone.get("reason_category")
-    policy_revision = tombstone.get("policy_revision")
-
+    transition_digest = canonical_digest(transition)
     return (
         tombstone.get("schema") == FORGET_TOMBSTONE_SCHEMA
         and tombstone.get("tombstone_id") == state.get("tombstone_id")
         and tombstone.get("tombstone_digest") == state.get("tombstone_digest")
-        and tombstone.get("tombstone_digest") == canonical_digest(tombstone_body)
         and tombstone.get("evidence_space_id") == evidence_space_id
         and tombstone.get("character_id") == character_id
         and tombstone.get("semantic_identity_digest") == semantic_identity_digest
         and tombstone.get("memory_id") == state.get("memory_id")
-        and tombstone.get("hidden_revision") == state.get("hidden_revision")
-        and tombstone.get("formation_stage") == state.get("formation_stage")
+        and hidden == state.get("hidden_revision")
+        and stage == state.get("formation_stage")
         and tombstone.get("transition_id") == state.get("transition_id")
         and tombstone.get("transition_digest") == state.get("transition_digest")
         and tombstone.get("transition_digest") == transition_digest
         and tombstone.get("receipt_id") == state.get("receipt_id")
-        and type(source_revision) is int
-        and int(source_revision) >= 1
-        and type(hidden_revision) is int
-        and int(hidden_revision) == int(source_revision) + 1
-        and formation_stage in {"primary", "secondary"}
+        and type(source) is int
+        and type(hidden) is int
+        and source >= 1
+        and hidden == source + 1
+        and stage in {"primary", "secondary"}
         and _digest(tombstone.get("scope_binding_digest"))
-        and authorization_class in {"user_management", "operator"}
-        and _token(authorization_id)
-        and reason_category in FORGET_REASON_CATEGORIES
-        and policy_revision == LIFECYCLE_POLICY_REVISION
-        and _timestamp(effective_at)
-        and effective_at == state.get("updated_at")
+        and auth in {"user_management", "operator"}
+        and _token(auth_id)
+        and reason in FORGET_REASON_CATEGORIES
+        and tombstone.get("policy_revision") == LIFECYCLE_POLICY_REVISION
+        and _timestamp(at)
+        and at == state.get("updated_at")
         and tombstone.get("effective") is True
         and tombstone.get("content_free") is True
         and receipt.get("schema") == LIFECYCLE_RECEIPT_SCHEMA
-        and receipt.get("receipt_digest") == canonical_digest(receipt_body)
         and receipt.get("receipt_id") == tombstone.get("receipt_id")
         and receipt.get("operation_kind") == "forget"
         and receipt.get("operation_outcome") == "committed"
@@ -488,39 +430,44 @@ def _valid_lineage(
         and receipt.get("tombstone_id") == tombstone.get("tombstone_id")
         and receipt.get("tombstone_digest") == tombstone.get("tombstone_digest")
         and receipt.get("semantic_identity_digest") == semantic_identity_digest
-        and receipt.get("predecessor_revision") == source_revision
-        and receipt.get("formation_stage") == formation_stage
-        and receipt.get("authorization_class") == authorization_class
-        and receipt.get("authorization_id") == authorization_id
-        and receipt.get("reason_category") == reason_category
-        and receipt.get("policy_revision") == policy_revision
+        and receipt.get("predecessor_revision") == source
+        and receipt.get("formation_stage") == stage
+        and receipt.get("authorization_class") == auth
+        and receipt.get("authorization_id") == auth_id
+        and receipt.get("reason_category") == reason
+        and receipt.get("policy_revision") == LIFECYCLE_POLICY_REVISION
         and receipt.get("projection_state") == "rebuild_required"
         and receipt.get("ordinary_retrieval_wired") is False
-        and receipt.get("finalized_at") == effective_at
+        and receipt.get("finalized_at") == at
         and isinstance(memory_ref, dict)
         and set(memory_ref) == {"memory_id", "memory_revision"}
         and memory_ref.get("memory_id") == tombstone.get("memory_id")
-        and memory_ref.get("memory_revision") == hidden_revision
+        and memory_ref.get("memory_revision") == hidden
         and transition.get("schema") == LIFECYCLE_TRANSITION_SCHEMA
         and transition.get("transition_id") == tombstone.get("transition_id")
         and transition.get("character_id") == character_id
         and transition.get("memory_id") == tombstone.get("memory_id")
-        and transition.get("from_revision") == source_revision
-        and transition.get("to_revision") == hidden_revision
+        and transition.get("from_revision") == source
+        and transition.get("to_revision") == hidden
         and transition.get("operation") == "forget"
         and transition.get("from_lifecycle_state") == "active"
         and transition.get("to_lifecycle_state") == "hidden"
-        and transition.get("from_formation_stage") == formation_stage
-        and transition.get("to_formation_stage") == formation_stage
-        and transition.get("authorized_by") == authorization_class
-        and transition.get("committed_at") == effective_at
+        and transition.get("from_formation_stage") == stage
+        and transition.get("to_formation_stage") == stage
+        and transition.get("authorized_by") == auth
+        and transition.get("committed_at") == at
+    )
+
+
+def _self_digest(raw: dict[str, object], field: str) -> bool:
+    value = raw.get(field)
+    return isinstance(value, str) and value == canonical_digest(
+        {key: item for key, item in raw.items() if key != field}
     )
 
 
 def _failure(
-    reason: str,
-    *,
-    semantic_identity_digest: str | None = None,
+    reason: str, semantic_identity_digest: str | None = None
 ) -> SubjectiveMemReformationCheck:
     return SubjectiveMemReformationCheck(
         "fail_closed",
@@ -557,6 +504,10 @@ def _timestamp(value: object) -> bool:
 
 __all__ = [
     "SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND",
+    "SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND",
+    "SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_RECORD_KIND",
+    "SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_SCHEMA",
+    "SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_STATE_SCHEMA",
     "SubjectiveMemReformationCheck",
     "check_subjective_mem_reformation",
     "check_subjective_mem_reformation_locked",

@@ -57,15 +57,40 @@ LifecycleReservation = tuple[
 ]
 
 
+_MAX_OPERATION_FINAL_BINDINGS = 8
+_RESERVED_FINAL_RECORD_KINDS = frozenset(
+    {
+        CLAIM_RECORD_KIND,
+        INTENT_RECORD_KIND,
+        INTENT_FINALIZATION_RECORD_KIND,
+        TRANSITION_RECORD_KIND,
+        RECEIPT_RECORD_KIND,
+        RESULT_RECORD_KIND,
+        RECOVERY_RECORD_KIND,
+    }
+)
+_RESERVED_FINAL_LOG_KINDS = frozenset(
+    {CURRENT_STATE_LOG_KIND, PROJECTION_LOG_KIND}
+)
+
+
 @dataclass(frozen=True)
 class LifecycleFinalRecords:
-    """Operation-owned durable records for one finalized lifecycle operation."""
+    """Core durable records for one finalized lifecycle operation."""
 
     transition: dict[str, object]
     receipt: dict[str, object]
     finalization: dict[str, object]
     result: dict[str, object]
     projection: dict[str, object]
+
+
+@dataclass(frozen=True)
+class LifecycleFinalRecordsWithBindings(LifecycleFinalRecords):
+    """Core records plus bounded operation-owned atomic final bindings."""
+
+    additional_records: tuple[RecordBinding, ...] = ()
+    additional_logs: tuple[LogBinding, ...] = ()
 
 
 LifecycleFinalizer = Callable[[SubjectiveMemCurrentState], LifecycleFinalRecords | None]
@@ -399,6 +424,7 @@ def resolve_finalized_replay(
             records = finalizer(final_state)
             if (
                 records is None
+                or _final_records_errors(plan, records, final_state)
                 or not _reservation_unchanged_locked(tx=tx, plan=plan)
                 or result != records.result
                 or not _final_records_exact_locked(
@@ -637,13 +663,18 @@ def _finalize_locked(
     records = finalizer(final_state)
     if records is None:
         return False, False, ("subjective_mem_lifecycle_intent_corrupt",)
+    record_errors = _final_records_errors(plan, records, final_state)
+    if record_errors:
+        return False, False, record_errors
     try:
         with store.transaction(plan.evidence_space_id) as tx:
             if _final_records_exact_locked(
                 tx=tx, plan=plan, records=records, final_state=final_state
             ):
                 return True, True, ()
-            if _any_final_record_present_locked(tx=tx, plan=plan):
+            if _any_final_record_present_locked(
+                tx=tx, plan=plan, records=records, final_state=final_state
+            ):
                 return False, False, (
                     "subjective_mem_lifecycle_partial_finalization_conflict",
                 )
@@ -755,26 +786,135 @@ def _reservation_unchanged_locked(
     return claim == lifecycle_claim_record(plan) and stored_intent == dict(plan.prepared_intent)
 
 
+def _final_records_errors(
+    plan: LifecyclePublicationPlan,
+    records: object,
+    final_state: SubjectiveMemCurrentState,
+) -> tuple[str, ...]:
+    """Validate bounded operation-owned additions before the final transaction."""
+
+    if not isinstance(records, LifecycleFinalRecords):
+        return ("subjective_mem_lifecycle_final_records_invalid",)
+    core_bodies = (
+        records.transition,
+        records.receipt,
+        records.finalization,
+        records.result,
+        records.projection,
+    )
+    if any(not isinstance(body, dict) or not body for body in core_bodies):
+        return ("subjective_mem_lifecycle_final_records_invalid",)
+    finalization_id = records.finalization.get("finalization_id")
+    if isinstance(records, LifecycleFinalRecordsWithBindings) and (
+        type(records.additional_records) is not tuple
+        or type(records.additional_logs) is not tuple
+    ):
+        return ("subjective_mem_lifecycle_final_records_invalid",)
+    additional_records, additional_logs = _operation_final_bindings(records)
+    if (
+        not _binding_token(finalization_id)
+        or len(additional_records) > _MAX_OPERATION_FINAL_BINDINGS
+        or len(additional_logs) > _MAX_OPERATION_FINAL_BINDINGS
+        or type(final_state) is not SubjectiveMemCurrentState
+    ):
+        return ("subjective_mem_lifecycle_final_records_invalid",)
+    if any(
+        not _record_binding_valid(binding)
+        for binding in additional_records
+    ) or any(
+        not _log_binding_valid(binding)
+        for binding in additional_logs
+    ):
+        return ("subjective_mem_lifecycle_final_binding_invalid",)
+    record_keys = [(kind, record_id) for kind, record_id, _ in additional_records]
+    log_keys = [(kind, key) for kind, key, _ in additional_logs]
+    bound_records = {(kind, record_id) for kind, record_id, _ in plan.record_bindings}
+    bound_logs = {(kind, key): events for kind, key, events in plan.log_bindings}
+    if (
+        len(record_keys) != len(set(record_keys))
+        or len(log_keys) != len(set(log_keys))
+        or any(kind in _RESERVED_FINAL_RECORD_KINDS for kind, _ in record_keys)
+        or any(kind in _RESERVED_FINAL_LOG_KINDS for kind, _ in log_keys)
+        or any(key in bound_records for key in record_keys)
+        or any(
+            bound_logs.get((kind, key)) == events
+            for kind, key, events in additional_logs
+        )
+    ):
+        return ("subjective_mem_lifecycle_final_binding_conflict",)
+    return ()
+
+
+def _operation_final_bindings(
+    records: LifecycleFinalRecords,
+) -> tuple[tuple[RecordBinding, ...], tuple[LogBinding, ...]]:
+    if isinstance(records, LifecycleFinalRecordsWithBindings):
+        if (
+            type(records.additional_records) is not tuple
+            or type(records.additional_logs) is not tuple
+        ):
+            return (), ()
+        return records.additional_records, records.additional_logs
+    return (), ()
+
+
+def _record_binding_valid(binding: object) -> bool:
+    return (
+        isinstance(binding, tuple)
+        and len(binding) == 3
+        and _binding_token(binding[0])
+        and _binding_token(binding[1])
+        and isinstance(binding[2], dict)
+        and bool(binding[2])
+    )
+
+
+def _log_binding_valid(binding: object) -> bool:
+    return (
+        isinstance(binding, tuple)
+        and len(binding) == 3
+        and _binding_token(binding[0])
+        and _binding_token(binding[1])
+        and isinstance(binding[2], tuple)
+        and bool(binding[2])
+        and all(isinstance(event, dict) and event for event in binding[2])
+    )
+
+
+def _binding_token(value: object) -> bool:
+    return (
+        type(value) is str
+        and 1 <= len(value) <= 256
+        and value not in {".", ".."}
+        and "/" not in value
+        and "\\" not in value
+        and "\x00" not in value
+    )
+
+
 def _final_commit_payload(
     plan: LifecyclePublicationPlan,
     records: LifecycleFinalRecords,
     final_state: SubjectiveMemCurrentState,
 ) -> tuple[tuple[RecordBinding, ...], tuple[LogBinding, ...]]:
+    core_records: tuple[RecordBinding, ...] = (
+        (TRANSITION_RECORD_KIND, plan.transition_id, records.transition),
+        (RECEIPT_RECORD_KIND, plan.receipt_id, records.receipt),
+        (
+            INTENT_FINALIZATION_RECORD_KIND,
+            str(records.finalization["finalization_id"]),
+            records.finalization,
+        ),
+        (RESULT_RECORD_KIND, plan.result_id, records.result),
+    )
+    core_logs: tuple[LogBinding, ...] = (
+        (CURRENT_STATE_LOG_KIND, plan.selector_id, (final_state.to_dict(),)),
+        (PROJECTION_LOG_KIND, plan.selector_id, (records.projection,)),
+    )
+    additional_records, additional_logs = _operation_final_bindings(records)
     return (
-        (
-            (TRANSITION_RECORD_KIND, plan.transition_id, records.transition),
-            (RECEIPT_RECORD_KIND, plan.receipt_id, records.receipt),
-            (
-                INTENT_FINALIZATION_RECORD_KIND,
-                str(records.finalization["finalization_id"]),
-                records.finalization,
-            ),
-            (RESULT_RECORD_KIND, plan.result_id, records.result),
-        ),
-        (
-            (CURRENT_STATE_LOG_KIND, plan.selector_id, (final_state.to_dict(),)),
-            (PROJECTION_LOG_KIND, plan.selector_id, (records.projection,)),
-        ),
+        core_records + additional_records,
+        core_logs + additional_logs,
     )
 
 
@@ -796,17 +936,26 @@ def _final_records_exact_locked(
 
 
 def _any_final_record_present_locked(
-    *, tx: EvidenceStoreTransaction, plan: LifecyclePublicationPlan
+    *,
+    tx: EvidenceStoreTransaction,
+    plan: LifecyclePublicationPlan,
+    records: LifecycleFinalRecords,
+    final_state: SubjectiveMemCurrentState,
 ) -> bool:
+    commit_records, _ = _final_commit_payload(plan, records, final_state)
+    if any(
+        tx.read_record(record_kind=kind, record_id=record_id) is not None
+        for kind, record_id, _ in commit_records
+    ):
+        return True
+    bound_logs = {
+        (kind, key): list(events) for kind, key, events in plan.log_bindings
+    }
+    _, additional_logs = _operation_final_bindings(records)
     return any(
-        item is not None
-        for item in (
-            tx.read_record(
-                record_kind=TRANSITION_RECORD_KIND, record_id=plan.transition_id
-            ),
-            tx.read_record(record_kind=RECEIPT_RECORD_KIND, record_id=plan.receipt_id),
-            tx.read_record(record_kind=RESULT_RECORD_KIND, record_id=plan.result_id),
-        )
+        tx.read_log(log_kind=kind, key=key)
+        not in (None, bound_logs.get((kind, key), []))
+        for kind, key, _ in additional_logs
     )
 
 
@@ -893,6 +1042,7 @@ def _fault(injector: FaultInjector | None, stage: str) -> None:
 __all__ = [
     "LifecycleExecutionOutcome",
     "LifecycleFinalRecords",
+    "LifecycleFinalRecordsWithBindings",
     "LifecycleFinalizer",
     "LifecyclePublicationPlan",
     "final_lifecycle_state",
