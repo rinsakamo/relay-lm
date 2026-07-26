@@ -35,6 +35,20 @@ def _reservation_plan(state, *, prepared_state=None):
     return SimpleNamespace(current_state=state, prepared_state=prepared)
 
 
+def _authority_bound(state):
+    return replace(
+        state,
+        workspace_authority_digest="0" * 64,
+        scope_binding_digest="1" * 64,
+        page_id="smpage-test",
+        block_id="smblock-test",
+        canonical_page_digest="sha256:" + "2" * 64,
+        authorization_kind="lifecycle_transition",
+        authorization_id="transition-test",
+        current_receipt_id="receipt-test",
+    )
+
+
 def _records(*, additional_records=(), additional_logs=()):
     record_type = (
         LifecycleFinalRecordsWithBindings
@@ -75,9 +89,9 @@ def test_reservation_accepts_only_exact_authority_bound_hidden_selector(
     lifecycle_env,
 ) -> None:
     state = lifecycle_env["st1"].current_state
-    assert state is not None and state.authority_bound
+    assert state is not None and state.authority_bound is False
     hidden = replace(
-        state,
+        _authority_bound(state),
         lifecycle_state="hidden",
         retrieval_eligible=False,
     )
