@@ -2,35 +2,6 @@
   "schema_version": "relaylm.documentation.transitional-asset-registry.v1",
   "families": [
     {
-      "family_id": "bespoke-handoff-cutover-guards",
-      "paths": [
-        "scripts/relaylm_i1ge_handoff_cutover_guard.py",
-        "scripts/relaylm_i4c1_handoff_cutover_guard.py",
-        "scripts/relaylm_i4c2_handoff_cutover_guard.py",
-        "scripts/relaylm_phase55a_handoff_cutover_guard.py",
-        "scripts/relaylm_phase55b1_handoff_cutover_guard.py",
-        "scripts/relaylm_phase55b2_handoff_cutover_guard.py",
-        "scripts/relaylm_phase55c0_handoff_cutover_guard.py",
-        "scripts/relaylm_phase55c4_handoff_cutover_guard.py",
-        "scripts/relaylm_phase_i2_handoff_cutover_guard.py",
-        "scripts/relaylm_phase_i3_handoff_cutover_guard.py",
-        "scripts/relaylm_relaymem_m3a_handoff_cutover_guard.py"
-      ],
-      "owner": "documentation",
-      "protected_boundary": "Existing source-specific old-path absence and replacement checks until generic manifest, authority, link, and Git-recoverability validation supersedes them.",
-      "current_consumers": [
-        ".github/workflows/documentation-current-boundary-smoke.yml"
-      ],
-      "removal_gate": "Every protected old path has a generic retirement-manifest entry or reviewed current disposition, equivalent generic validation is green, and no current workflow consumer remains.",
-      "replacement_validation": [
-        "active_document_authority",
-        "git_recoverability",
-        "links_and_routers",
-        "normative_extraction"
-      ],
-      "growth_policy": "closed"
-    },
-    {
       "family_id": "legacy-completion-report-validation",
       "paths": [
         ".github/workflows/documentation-completion-report-files.yml",
@@ -96,26 +67,6 @@
         "retained_record_allowlist"
       ],
       "growth_policy": "closed_after_1c57"
-    },
-    {
-      "family_id": "legacy-runtime-compile-checkpoint-docs",
-      "paths": [
-        "docs/architecture/relayrun_runtime_checkpoint_design.md"
-      ],
-      "owner": "documentation",
-      "protected_boundary": "Existing RelayRUN checkpoint current-document consumers while canonical checkpoint architecture and exact recovery authority move to responsibility-oriented paths.",
-      "current_consumers": [
-        "bounded D2-B2 checkpoint live-consumer migration review",
-        "current architecture and contract links that still reference the legacy checkpoint current-note path"
-      ],
-      "removal_gate": "Every current consumer links directly to docs/architecture/runtime/compile-and-checkpoint.md and docs/contracts/relayrun-checkpoint-and-recovery.md, generic link and authority validation are green, and the removed path has a retirement-manifest entry.",
-      "replacement_validation": [
-        "active_document_authority",
-        "git_recoverability",
-        "links_and_routers",
-        "normative_extraction"
-      ],
-      "growth_policy": "closed"
     }
   ]
 }

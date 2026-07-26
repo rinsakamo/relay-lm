@@ -20,6 +20,116 @@
       "retention_reason": "D2-B2b4c29 migrated two bounded current consumers to canonical compile authority and removed the redundant archive marker; the marker and original long-form design remain recoverable from Git."
     },
     {
+      "old_path": "docs/architecture/i1ge_durable_finalization_crash_validation.md",
+      "last_live_commit": "86d3af1b3c24569f1daf01b2b52ef8c5119046d8",
+      "old_blob_sha": "c711874bc813f29e5ac23d85ebc315eeeb24eeba",
+      "removed_by_pr": 764,
+      "replacement_paths": [
+        "docs/evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #634 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
+    },
+    {
+      "old_path": "docs/architecture/phase55a_stream_sentinel_buffer_dry_run_handoff.md",
+      "last_live_commit": "1ff1b1b9e501b59340c3b909a985edfc6c2a4d32",
+      "old_blob_sha": "95481903cd5cb43bc2444a8647fd44b919f7d9e7",
+      "removed_by_pr": 764,
+      "replacement_paths": [
+        "docs/evidence/implementation/phase55a-stream-sentinel-buffer-dry-run-handoff.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #616 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
+    },
+    {
+      "old_path": "docs/architecture/phase55b1_stream_suppression_gate_handoff.md",
+      "last_live_commit": "534f71e0043819f0ee16e035c9f0e100ae99fa1d",
+      "old_blob_sha": "c9e16c751aad890102d8378e83b5b0de129be6e1",
+      "removed_by_pr": 764,
+      "replacement_paths": [
+        "docs/evidence/implementation/phase55b1-stream-suppression-gate-handoff.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #619 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
+    },
+    {
+      "old_path": "docs/architecture/phase55b2_stream_suppression_runtime_handoff.md",
+      "last_live_commit": "0db41086cbe6c3c48f8f597f42aa2214ab3c48de",
+      "old_blob_sha": "6ad890aae023bb6c6c07029bf2f1a106582d9c75",
+      "removed_by_pr": 764,
+      "replacement_paths": [
+        "docs/evidence/implementation/phase55b2-stream-suppression-runtime-handoff.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #631 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
+    },
+    {
+      "old_path": "docs/architecture/phase55c0_tts_segmentation_helper_handoff.md",
+      "last_live_commit": "1ca928cd28541f5a05fece30e9437a7fcf267921",
+      "old_blob_sha": "df96f459109149f6715ca50caee5949f43b3b4fc",
+      "removed_by_pr": 764,
+      "replacement_paths": [
+        "docs/evidence/implementation/phase55c0-tts-segmentation-helper-handoff.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #622 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
+    },
+    {
+      "old_path": "docs/architecture/phase55c4_runtime_tts_transport_envelope_wiring.md",
+      "last_live_commit": "84bdafbfc2182710afb034f7b815b76e09616a50",
+      "old_blob_sha": "79f03a5dfae1d6db472973ae3357b05f2c740682",
+      "removed_by_pr": 764,
+      "replacement_paths": [
+        "docs/evidence/implementation/phase55c4-runtime-tts-transport-envelope-wiring.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #628 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
+    },
+    {
+      "old_path": "docs/architecture/phase_i2_real_soul_lab_observation.md",
+      "last_live_commit": "80906b60aca640d9618d550d9decb12872d67a0d",
+      "old_blob_sha": "496c29ad94558a4bb0e12921cf20ad5358ae1120",
+      "removed_by_pr": 764,
+      "replacement_paths": [
+        "docs/evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #647 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
+    },
+    {
+      "old_path": "docs/architecture/phase_i3_auditable_primary_mem_correct.md",
+      "last_live_commit": "a971e18b2c36a179b095b0e7e9d289a7e4d80d1a",
+      "old_blob_sha": "6b621aa6b9ef51b846cacc1b49c18c0a54fc8043",
+      "removed_by_pr": 764,
+      "replacement_paths": [
+        "docs/evidence/implementation/phase-i3-auditable-primary-mem-correct-handoff.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #660 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
+    },
+    {
+      "old_path": "docs/architecture/phase_i4c1_primary_forget_hidden_successor.md",
+      "last_live_commit": "9647f35d4cb8792e9ab48795985bef96a75c5856",
+      "old_blob_sha": "5744dbd445582b28ab030c38e1a49b24e355b4ed",
+      "removed_by_pr": 764,
+      "replacement_paths": [
+        "docs/evidence/implementation/i4c1-primary-forget-hidden-successor-handoff.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #637 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
+    },
+    {
+      "old_path": "docs/architecture/phase_i4c2_primary_forget_recovery_finalization.md",
+      "last_live_commit": "32135811283edffa4408846c8a9e51173aea743e",
+      "old_blob_sha": "ab8f8e0f906690dfc9a28c680f4fb2b230211ce1",
+      "removed_by_pr": 764,
+      "replacement_paths": [
+        "docs/evidence/implementation/i4c2-primary-forget-recovery-finalization-handoff.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #642 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
+    },
+    {
       "old_path": "docs/architecture/pipeline_responsibility_design.md",
       "last_live_commit": "8cf605ab1e2d50c0a419fa3c3e356d40ecc0b7f3",
       "old_blob_sha": "b594305a32c442a0f068690a62bb6890d87d54b5",
@@ -34,6 +144,29 @@
       ],
       "disposition": "superseded",
       "retention_reason": "D2-B2b4c28 migrated every active consumer to canonical system, pipeline, request/response, compile/checkpoint, status, or exact RelayCTX authority and removed the closed transitional note; its historical wording remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/relaymem_m3a_primary_formation_handoff.md",
+      "last_live_commit": "1777ca0c0c4d1f64c650f9b3f559a178ad0aed20",
+      "old_blob_sha": "fbb08beb9975e3a1b46d4a9f510753669297bc26",
+      "removed_by_pr": 764,
+      "replacement_paths": [
+        "docs/evidence/implementation/relaymem-m3a-primary-formation-handoff.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #667 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
+    },
+    {
+      "old_path": "docs/architecture/relayrun_runtime_checkpoint_design.md",
+      "last_live_commit": "3cee07899121e8e75eaaa8ba37cbefb6eb9f832c",
+      "old_blob_sha": "c9cf93e4841c1847d6b110a884516fa2f6cdb5e2",
+      "removed_by_pr": 763,
+      "replacement_paths": [
+        "docs/architecture/runtime/compile-and-checkpoint.md",
+        "docs/contracts/relayrun-checkpoint-and-recovery.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D2-B2b4c36 migrated every current consumer to canonical compile/checkpoint architecture and exact RelayRUN checkpoint/recovery contract authority, removed the closed transitional current-implementation note, and preserved its source lineage through immutable blob provenance and Git history."
     },
     {
       "old_path": "docs/architecture/runtime_architecture.md",
