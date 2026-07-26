@@ -8,11 +8,12 @@ Thread initial prompts, handoffs, conversation memory, PR bodies, and historical
 
 1. `AGENTS.md`;
 2. `skills/relaylm-stable-implementation/SKILL.md`;
-3. `docs/adr/0007-architecture-first-stable-implementation.md`;
-4. `docs/adr/0008-lane-local-continuation-safety.md`;
-5. `docs/adr/0009-execution-epoch-and-rebootstrap.md`;
-6. `docs/contracts/agent-execution-safety.md`;
-7. `docs/planning/workstream-orchestration.md`.
+3. `skills/relaylm-github-operations/SKILL.md`;
+4. `docs/adr/0007-architecture-first-stable-implementation.md`;
+5. `docs/adr/0008-lane-local-continuation-safety.md`;
+6. `docs/adr/0009-execution-epoch-and-rebootstrap.md`;
+7. `docs/contracts/agent-execution-safety.md`;
+8. `docs/planning/workstream-orchestration.md`.
 
 A lane started before any of these authorities changed must not continue its old loop by partially applying new wording. Stop branch writes and perform the current execution-epoch re-bootstrap.
 
