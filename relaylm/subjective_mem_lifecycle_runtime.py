@@ -28,6 +28,10 @@ from relaylm.shared_assessment_runtime import (
     shared_assessment_current_state_key,
     shared_assessment_revision_record_id,
 )
+from relaylm.subjective_mem_lifecycle_authority import (
+    SubjectiveMemPredecessorExpectation,
+    load_subjective_mem_predecessor_authority_locked,
+)
 from relaylm.subjective_mem_lifecycle_engine import (
     LifecycleExecutionOutcome,
     LifecycleFinalRecords,
@@ -465,13 +469,6 @@ def _prepare_new(
 
     try:
         with store.transaction(evidence_space_id) as tx:
-            evidence_reasons = _validate_evidence_space_locked(
-                tx=tx,
-                evidence_space_id=evidence_space_id,
-                character_authority=character_authority,
-            )
-            if evidence_reasons:
-                return None, evidence_reasons
             selector_raw, selector_reasons = _load_exact_selector_locked(
                 tx=tx,
                 proposal=proposal,
@@ -482,14 +479,6 @@ def _prepare_new(
             assessment_reasons = _validate_assessment_locked(tx=tx, proposal=proposal)
             if assessment_reasons:
                 return None, assessment_reasons
-            receipt_reasons = _validate_current_receipt_locked(
-                tx=tx,
-                proposal=proposal,
-                character_id=character_authority.character_id,
-                evidence_space_id=evidence_space_id,
-            )
-            if receipt_reasons:
-                return None, receipt_reasons
     except (OSError, RuntimeError, TypeError, ValueError):
         return None, ("subjective_mem_lifecycle_store_unavailable",)
 
@@ -1029,76 +1018,52 @@ def _read_authority_bindings_locked(
 ) -> tuple[tuple[RecordBinding, ...], tuple[LogBinding, ...], tuple[str, ...]]:
     """Validate and bind the exact Correct-specific authority this plan depends on."""
 
-    reasons = _validate_evidence_space_locked(
+    authority, authority_reasons = load_subjective_mem_predecessor_authority_locked(
         tx=tx,
         evidence_space_id=evidence_space_id,
         character_authority=character_authority,
-    )
-    reasons = reasons or _validate_assessment_locked(tx=tx, proposal=proposal)
-    reasons = reasons or _validate_predecessor_authority_locked(
-        tx=tx,
-        proposal=proposal,
         predecessor=predecessor,
-        character_id=character_authority.character_id,
-        evidence_space_id=evidence_space_id,
+        expectation=SubjectiveMemPredecessorExpectation(
+            receipt_id=proposal.expected_current_receipt_id,
+            receipt_digest=proposal.expected_current_receipt_digest,
+            current_state_digest=proposal.expected_current_selector_digest,
+            page_id=proposal.expected_page_id,
+            block_id=proposal.expected_block_id,
+            page_digest=proposal.expected_page_digest,
+            revision_schema=proposal.expected_revision_schema,
+            page_schema=proposal.expected_page_schema,
+            block_schema=proposal.expected_block_schema,
+            renderer_revision=proposal.expected_renderer_revision,
+            partition_revision=proposal.expected_partition_revision,
+            platform_revision=proposal.expected_platform_revision,
+        ),
     )
+    if authority is None:
+        return (), (), authority_reasons
+    reasons = _validate_assessment_locked(tx=tx, proposal=proposal)
     if reasons:
         return (), (), reasons
-    receipt_kind = (
-        "subjective_mem_st1_commit_receipt"
-        if proposal.expected_current_revision == 1
-        else "subjective_mem_lifecycle_receipt"
-    )
-    authority_kind = (
-        "subjective_mem_decision"
-        if predecessor.memory_revision == 1
-        else "subjective_mem_lifecycle_transition"
-    )
     assessment_id = proposal.assessment_revision.assessment_id
     assessment_key = shared_assessment_current_state_key(assessment_id)
-    records = (
-        (
-            "evidence_space_descriptor",
-            "revision-1",
-            tx.read_record(
-                record_kind="evidence_space_descriptor", record_id="revision-1"
-            ),
-        ),
-        (
-            receipt_kind,
-            proposal.expected_current_receipt_id,
-            tx.read_record(
-                record_kind=receipt_kind,
-                record_id=proposal.expected_current_receipt_id,
-            ),
-        ),
-        (
-            authority_kind,
-            predecessor.authorization_id,
-            tx.read_record(
-                record_kind=authority_kind, record_id=predecessor.authorization_id
-            ),
-        ),
-        (
-            "shared_assessment_revision",
-            shared_assessment_revision_record_id(
-                assessment_id, proposal.assessment_revision.assessment_revision
-            ),
-            tx.read_record(
-                record_kind="shared_assessment_revision",
-                record_id=shared_assessment_revision_record_id(
-                    assessment_id, proposal.assessment_revision.assessment_revision
-                ),
-            ),
-        ),
+    assessment_record_id = shared_assessment_revision_record_id(
+        assessment_id, proposal.assessment_revision.assessment_revision
+    )
+    assessment_revision = tx.read_record(
+        record_kind="shared_assessment_revision",
+        record_id=assessment_record_id,
     )
     events = tx.read_log(log_kind="shared_assessment_current_state", key=assessment_key)
-    if any(not isinstance(body, dict) or not body for _kind, _id, body in records) or not isinstance(
-        events, list
+    if (
+        not isinstance(assessment_revision, dict)
+        or not assessment_revision
+        or not isinstance(events, list)
     ):
         return (), (), ("subjective_mem_lifecycle_predecessor_authority_missing",)
+    records = authority.record_bindings + (
+        ("shared_assessment_revision", assessment_record_id, assessment_revision),
+    )
     logs = (("shared_assessment_current_state", assessment_key, tuple(events)),)
-    return records, logs, ()  # type: ignore[return-value]
+    return records, logs, ()
 
 
 def _correct_finalizer(

@@ -794,7 +794,7 @@ def test_correct_requires_reachable_predecessor_transition(lifecycle_env) -> Non
         observed_at=NOW + timedelta(seconds=5),
     )
     assert result.status == "fail_closed"
-    assert "subjective_mem_lifecycle_predecessor_authority_not_exact" in result.blocked_reasons
+    assert "subjective_mem_lifecycle_predecessor_authority_missing" in result.blocked_reasons
 
 
 def test_markdown_successor_rejects_changed_formation_snapshot(lifecycle_env) -> None:
