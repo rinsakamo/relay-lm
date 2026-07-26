@@ -143,7 +143,8 @@ Rejected because those contracts belong to governed ingress, RelayCTX, and scene
 
 - [RelayATN Reflex Layer Design](../architecture/relayatn_reflex_layer_design.md)
 - [Pipeline Responsibilities](../architecture/pipeline-responsibilities.md)
-- [RelayRUN Runtime Checkpoint Design](../architecture/relayrun_runtime_checkpoint_design.md)
+- [Runtime Compile and Checkpoint Architecture](../architecture/runtime/compile-and-checkpoint.md)
+- [RelayRUN Checkpoint and Recovery Contract](../contracts/relayrun-checkpoint-and-recovery.md)
 - [RelayINT MVP Design](../architecture/relayint_mvp_design.md)
 - [RelaySCN MVP Scene Policy](../architecture/relayscn_mvp_scene_policy.md)
 - [Project Execution Plan](../architecture/project_execution_plan.md)
