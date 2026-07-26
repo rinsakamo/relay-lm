@@ -40,7 +40,7 @@ relaylm_authority_level: exact_contract
 
 This contract owns the exact current checkpoint artifact, persistence, index, resume-preflight, stream, fallback, and safety boundaries extracted from the former RelayRUN checkpoint design. It does not claim that general resume, retry, or recovery-transition apply is implemented.
 
-The following normative sections are rebuilt without wording changes from `docs/architecture/relayrun_runtime_checkpoint_design.md` at blob `a0fc965aad8a0f4a8c6ae7248beba19e817d7292`.
+The following normative sections were rebuilt without wording changes from the retired transitional checkpoint design at blob `a0fc965aad8a0f4a8c6ae7248beba19e817d7292`.
 
 ## Current implemented artifact families
 
