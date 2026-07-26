@@ -21,7 +21,7 @@ relaylm_related_authority:
   - file_first_character_workspace_design.md
   - character_template_creation_flow.md
   - analyzer_candidate_governance.md
-  - pipeline_responsibility_design.md
+  - pipeline-responsibilities.md
 ---
 # CW-A1 File-first Source Tree and Parser Contracts
 
