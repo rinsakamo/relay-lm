@@ -167,7 +167,7 @@ Before handoff:
 1. stop ChatGPT branch-content writes;
 2. re-read exact main, exact branch head, receipt, failure state, changed paths, and current writer;
 3. preserve the existing repository, PR, and branch;
-4. define one bounded implementation slice and transfer the single logical writer role for that slice.
+4. define one bounded implementation slice, keep the receipt's existing logical `writer_id`, and designate Claude Code as the exclusive branch-content execution backend for that slice.
 
 The handoff instruction must include:
 
@@ -187,7 +187,7 @@ required_tests: [string]
 
 It must explicitly prohibit a new PR, transfer branch, automatic rebase, force-push, Base64 or payload splitting, partial-file assembly, placeholder/noop files, repository patch/apply helpers, temporary workflows, and scope expansion. Claude Code edits in a checkout, runs the required tests, commits intentionally, and pushes only to the existing branch.
 
-While Claude Code owns that bounded write slice, ChatGPT is read-only on branch content. PR metadata or failure-state mutations remain separately governed and must not create a second branch writer.
+While Claude Code is the exclusive branch-content execution backend for that bounded slice, ChatGPT remains the logical writer and is read-only on branch content. PR metadata or failure-state mutations remain separately governed and must not create a second branch-content executor.
 
 After a reported push, ChatGPT independently resolves the actual exact head and reads the complete diff, changed paths, checks, reviews, current-main ancestry, temporary-artifact state, receipt, and failure state. A reported commit SHA or test result is orientation only. Resume P5 or P6 only from observed GitHub evidence. Return to P1 and P2 when the resulting diff changes the reviewed design, authority, compatibility, scope, or change budget.
 
@@ -222,7 +222,7 @@ Immediately before each branch write require:
 - current main is an ancestor of head;
 - failure state is neither `p6_stop` nor an unreadable duplicate state;
 - no writer collision, branch-writing validation, transfer branch, or temporary artifact;
-- the selected implementation backend owns the single logical writer role for the bounded slice;
+- the selected implementation backend is the only branch-content executor for the bounded slice under the existing logical writer;
 - the change remains in reviewed lane-owned scope.
 
 A mismatch stops the operation. Do not automatically rebase, retry, force-push, reconstruct, or switch implementation transports.
@@ -271,7 +271,7 @@ Verify the PR is merged, resulting main contains the accepted change, required p
 
 ## Failure behavior
 
-Fail closed when scope, exact refs, paths, checks, reviews, labels, receipt, failure state, selected implementation backend, writer ownership, or connector outcome is ambiguous or unavailable for the requested action; when connector results disagree; when the expected head changes; or when a cross-lane write would be required.
+Fail closed when scope, exact refs, paths, checks, reviews, labels, receipt, failure state, selected implementation backend, branch-content execution ownership, or connector outcome is ambiguous or unavailable for the requested action; when connector results disagree; when the expected head changes; or when a cross-lane write would be required.
 
 State the exact missing or conflicting evidence. Never claim a mutation, review, merge, or completion without a postcondition read.
 
