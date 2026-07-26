@@ -568,6 +568,13 @@ def _reservation_plan_errors(plan: LifecyclePublicationPlan) -> tuple[str, ...]:
     # A reservation may only fence the exact live selector it was derived from:
     # its identity, revision, and lifecycle state carry over unchanged, and an
     # already authority-bound selector carries its whole binding over unchanged.
+    # Restore additionally reserves an exact authority-bound hidden selector,
+    # which is retrieval-ineligible by construction.
+    reservable = current.retrieval_eligible is True or (
+        current.lifecycle_state == "hidden"
+        and current.retrieval_eligible is False
+        and current.authority_bound
+    )
     if (
         current.memory_state_id != prepared.memory_state_id
         or current.memory_id != prepared.memory_id
@@ -575,7 +582,7 @@ def _reservation_plan_errors(plan: LifecyclePublicationPlan) -> tuple[str, ...]:
         or current.current_revision != prepared.current_revision
         or current.lifecycle_state != prepared.lifecycle_state
         or current.mutation_state != "none"
-        or current.retrieval_eligible is not True
+        or not reservable
     ):
         return ("subjective_mem_lifecycle_plan_pre_state_not_exact",)
     if current.authority_bound and replace(
