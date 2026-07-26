@@ -6,11 +6,7 @@
       "last_live_commit": "968541a715af304d50061c24febc1e17caf77d91",
       "old_blob_sha": "f68c7fd61e8b3ff17a265b346c8ecfe2740b48bd",
       "removed_by_pr": 756,
-      "replacement_paths": [
-        "docs/architecture/runtime/compile-and-checkpoint.md",
-        "docs/contracts/runtime_compile_artifact_contract.md",
-        "docs/contracts/runtime_compile_current_target.md"
-      ],
+      "replacement_paths": [],
       "disposition": "retired_git_history_only",
       "retention_reason": "D2-B2b4c29 migrated two bounded current consumers to canonical compile authority and removed the redundant archive marker; the marker and original long-form design remain recoverable from Git."
     },
@@ -90,7 +86,7 @@
     },
     {
       "old_path": "docs/templates/implementation-completion-report.md",
-      "last_live_commit": "28176f4a8336b66ce7191166e1c720cb71a617e99",
+      "last_live_commit": "28176f4a8336b6ce7191166e1c720cb71a617e99",
       "old_blob_sha": "f6b1df5d39d0c67b4183ec9b21be302fde81147b",
       "removed_by_pr": 670,
       "replacement_paths": [
