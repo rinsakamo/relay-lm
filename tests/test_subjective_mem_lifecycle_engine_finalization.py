@@ -1,4 +1,4 @@
-"""Focused shared lifecycle finalization extension tests for LC-1D Restore."""
+"""Focused shared lifecycle reservation and finalization tests for LC-1D Restore."""
 from __future__ import annotations
 
 from dataclasses import replace
@@ -23,15 +23,16 @@ def _plan(state, *, record_bindings=(), log_bindings=()):
     )
 
 
-def _reservation_plan(current):
-    return SimpleNamespace(
-        current_state=current,
-        prepared_state=replace(
-            current,
+def _reservation_plan(state, *, prepared_state=None):
+    prepared = prepared_state
+    if prepared is None:
+        prepared = replace(
+            state,
             mutation_state="prepared",
             retrieval_eligible=False,
-        ),
-    )
+            updated_at="2025-01-01T00:00:01Z",
+        )
+    return SimpleNamespace(current_state=state, prepared_state=prepared)
 
 
 def _records(*, additional_records=(), additional_logs=()):
@@ -63,7 +64,6 @@ def test_reservation_keeps_active_and_pinned_selector_behavior(lifecycle_env) ->
         current = replace(
             state,
             lifecycle_state=lifecycle_state,
-            mutation_state="none",
             retrieval_eligible=True,
         )
         assert lifecycle_engine._reservation_plan_errors(
@@ -76,34 +76,26 @@ def test_reservation_accepts_only_exact_authority_bound_hidden_selector(
 ) -> None:
     state = lifecycle_env["st1"].current_state
     assert state is not None and state.authority_bound
-    current = replace(
+    hidden = replace(
         state,
         lifecycle_state="hidden",
-        mutation_state="none",
         retrieval_eligible=False,
     )
-    plan = _reservation_plan(current)
+    plan = _reservation_plan(hidden)
     assert lifecycle_engine._reservation_plan_errors(plan) == ()
 
-    drifted = SimpleNamespace(
-        current_state=current,
-        prepared_state=replace(
-            plan.prepared_state,
-            current_receipt_id="receipt-drift",
-        ),
-    )
-    assert lifecycle_engine._reservation_plan_errors(drifted) == (
-        "subjective_mem_lifecycle_plan_pre_state_not_exact",
-    )
+    drifted = replace(plan.prepared_state, current_receipt_id="receipt-drifted")
+    assert lifecycle_engine._reservation_plan_errors(
+        _reservation_plan(hidden, prepared_state=drifted)
+    ) == ("subjective_mem_lifecycle_plan_pre_state_not_exact",)
 
 
 def test_reservation_rejects_unbound_hidden_selector(lifecycle_env) -> None:
     state = lifecycle_env["st1"].current_state
     assert state is not None
-    current = replace(
+    hidden = replace(
         state,
         lifecycle_state="hidden",
-        mutation_state="none",
         retrieval_eligible=False,
         workspace_authority_digest=None,
         scope_binding_digest=None,
@@ -114,9 +106,9 @@ def test_reservation_rejects_unbound_hidden_selector(lifecycle_env) -> None:
         authorization_id=None,
         current_receipt_id=None,
     )
-    assert current.authority_bound is False
+    assert hidden.authority_bound is False
     assert lifecycle_engine._reservation_plan_errors(
-        _reservation_plan(current)
+        _reservation_plan(hidden)
     ) == ("subjective_mem_lifecycle_plan_pre_state_not_exact",)
 
 
@@ -129,7 +121,6 @@ def test_reservation_rejects_other_non_retrieval_lifecycle_states(
         current = replace(
             state,
             lifecycle_state=lifecycle_state,
-            mutation_state="none",
             retrieval_eligible=False,
         )
         assert lifecycle_engine._reservation_plan_errors(
