@@ -134,5 +134,5 @@ They must inspect the implemented schema/version and actual forwarded-payload so
 
 - [Context Compiler Contract](context_compiler_contract.md)
 - [Runtime Compile Artifact Contract](runtime_compile_artifact_contract.md)
-- [Runtime Compile Gate Design](../architecture/runtime_compile_gate_design.md)
+- [Runtime Compile and Checkpoint Architecture](../architecture/runtime/compile-and-checkpoint.md)
 - [Current / Target / Migration Guide](../architecture/current_target_migration_guide.md)

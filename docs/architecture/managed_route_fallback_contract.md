@@ -31,7 +31,7 @@ A future implementation must update route-authority typing, managed history excl
 
 ## References
 
-- [Runtime Compile Gate Design](runtime_compile_gate_design.md)
+- [Runtime Compile and Checkpoint Architecture](runtime/compile-and-checkpoint.md)
 - [Client History Authority Contract](client_history_authority_contract.md)
 - [Client Instruction Authority Contract](client_instruction_authority_contract.md)
 - [Current / Target / Migration Guide](current_target_migration_guide.md)

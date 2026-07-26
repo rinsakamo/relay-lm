@@ -2,6 +2,31 @@
   "schema_version": "relaylm.documentation.retirement-manifest.v1",
   "entries": [
     {
+      "old_path": "docs/architecture/archive/runtime_compile_gate_design_history.md",
+      "last_live_commit": "968541a715af304d50061c24febc1e17caf77d91",
+      "old_blob_sha": "f68c7fd61e8b3ff17a265b346c8ecfe2740b48bd",
+      "removed_by_pr": 756,
+      "replacement_paths": [],
+      "disposition": "retired_git_history_only",
+      "retention_reason": "D2-B2b4c29 migrated two bounded current consumers to canonical compile authority and removed the redundant archive marker; the marker and original long-form design remain recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/pipeline_responsibility_design.md",
+      "last_live_commit": "8cf605ab1e2d50c0a419fa3c3e356d40ecc0b7f3",
+      "old_blob_sha": "b594305a32c442a0f068690a62bb6890d87d54b5",
+      "removed_by_pr": 755,
+      "replacement_paths": [
+        "docs/PROJECT_STATUS.md",
+        "docs/architecture/pipeline-responsibilities.md",
+        "docs/architecture/runtime/compile-and-checkpoint.md",
+        "docs/architecture/runtime/request-response-pipeline.md",
+        "docs/architecture/system-overview.md",
+        "docs/contracts/relayctx_short_term_runtime_contract.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D2-B2b4c28 migrated every active consumer to canonical system, pipeline, request/response, compile/checkpoint, status, or exact RelayCTX authority and removed the closed transitional note; its historical wording remains recoverable from Git."
+    },
+    {
       "old_path": "docs/architecture/runtime_architecture.md",
       "last_live_commit": "a9238d1b692e3665c8a046936f75c80fc7a358a9",
       "old_blob_sha": "1b0ffb9ef4b3d4f76ef3c0cf559a47fd2cff1444",
@@ -18,6 +43,19 @@
       ],
       "disposition": "absorbed",
       "retention_reason": "D2-B2b migrated every remaining consumer to the smallest canonical system, pipeline, request/response, compile/checkpoint, configuration, integration, or operational authority and removed the mixed transitional note; its historical wording remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/runtime_compile_gate_design.md",
+      "last_live_commit": "008432a80345eb9cb1e86825be400fcce925d3b7",
+      "old_blob_sha": "1ac77f25a511fe2bc72eb4cc572aaf9b0f313118",
+      "removed_by_pr": 757,
+      "replacement_paths": [
+        "docs/architecture/runtime/compile-and-checkpoint.md",
+        "docs/contracts/runtime_compile_artifact_contract.md",
+        "docs/contracts/runtime_compile_current_target.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D2-B2b4c30 migrated every current consumer to canonical compile/checkpoint architecture or the owning exact compile contracts and removed the closed transitional current-implementation note; its wording remains recoverable from Git."
     },
     {
       "old_path": "docs/proposals/repository-simplification.md",

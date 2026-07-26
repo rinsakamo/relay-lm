@@ -101,41 +101,20 @@
       "family_id": "legacy-runtime-compile-checkpoint-docs",
       "paths": [
         "docs/architecture/archive/relayrun_runtime_checkpoint_design_history.md",
-        "docs/architecture/archive/runtime_compile_gate_design_history.md",
-        "docs/architecture/relayrun_runtime_checkpoint_design.md",
-        "docs/architecture/runtime_compile_gate_design.md"
+        "docs/architecture/relayrun_runtime_checkpoint_design.md"
       ],
       "owner": "documentation",
-      "protected_boundary": "Existing current-document consumers and historical compile/checkpoint provenance while canonical architecture and exact checkpoint authority move to responsibility-oriented paths.",
+      "protected_boundary": "Existing RelayRUN checkpoint current-document consumers and checkpoint history provenance while canonical checkpoint architecture and exact recovery authority move to responsibility-oriented paths.",
       "current_consumers": [
-        "bounded D2-B2 live-consumer migration review",
-        "current architecture and contract links that still reference the legacy compile/checkpoint paths"
+        "bounded D2-B2 checkpoint live-consumer migration review",
+        "current architecture and contract links that still reference the legacy checkpoint current-note path"
       ],
-      "removal_gate": "Every current consumer links directly to docs/architecture/runtime/compile-and-checkpoint.md and the owning contracts, the dedicated history pages have no current consumer, generic link and authority validation are green, and each removed path has a retirement-manifest entry.",
+      "removal_gate": "Every current consumer links directly to docs/architecture/runtime/compile-and-checkpoint.md and docs/contracts/relayrun-checkpoint-and-recovery.md, the dedicated checkpoint history page has no current consumer, generic link and authority validation are green, and each removed path has a retirement-manifest entry.",
       "replacement_validation": [
         "active_document_authority",
         "git_recoverability",
         "links_and_routers",
         "normative_extraction"
-      ],
-      "growth_policy": "closed"
-    },
-    {
-      "family_id": "legacy-system-pipeline-docs",
-      "paths": [
-        "docs/architecture/pipeline_responsibility_design.md"
-      ],
-      "owner": "documentation",
-      "protected_boundary": "Remaining active architecture, contract, planning, reference, and integration documentation consumers while canonical component responsibility and target order move to docs/architecture/pipeline-responsibilities.md and narrower mode, compile/checkpoint, or domain owners.",
-      "current_consumers": [
-        "bounded D2-B2b active consumer migration review",
-        "remaining active architecture, contract, planning, reference, and integration documentation links to the transitional pipeline responsibility path"
-      ],
-      "removal_gate": "Move every remaining consumer to docs/architecture/pipeline-responsibilities.md or the smallest mode, compile/checkpoint, configuration, integration, or domain authority; pass generic authority and link validation; and record the removal in the manifest.",
-      "replacement_validation": [
-        "active_document_authority",
-        "git_recoverability",
-        "links_and_routers"
       ],
       "growth_policy": "closed"
     }

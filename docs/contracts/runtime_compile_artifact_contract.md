@@ -4,7 +4,7 @@
 
 This contract defines the vocabulary and authority boundary for request-local runtime compilation artifacts.
 
-See the active [Runtime Compile Gate Design](../architecture/runtime_compile_gate_design.md) for the decision policy and the [Context Compiler Contract](context_compiler_contract.md) for current-versus-target compiler wiring.
+See the [Runtime Compile and Checkpoint Architecture](../architecture/runtime/compile-and-checkpoint.md) for responsibility flow and the [Context Compiler Contract](context_compiler_contract.md) for current-versus-target compiler wiring.
 
 This is a docs-only contract. It does not introduce a new runtime schema, persistence path, or standalone `RelayPLC` component.
 
