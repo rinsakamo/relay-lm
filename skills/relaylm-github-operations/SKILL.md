@@ -54,9 +54,21 @@ Read top-level comments, submitted reviews, and inline review threads separately
 
 Read workflow runs and status for the exact current head. For failures, read jobs and the first failed step. Never carry green evidence from an older head.
 
-### Execution state
+### Execution and failure state
 
-Verify exactly one receipt, current bootstrap main, governance epoch from exact-main authority blobs, one writer, `writer_mode: single`, no P6 stop, no branch-writing workflow or transfer branch, and no temporary artifact.
+Verify exactly one receipt, current bootstrap main, governance epoch from exact-main authority blobs, one writer, `writer_mode: single`, no branch-writing workflow or transfer branch, and no temporary artifact.
+
+Read labels and all issue comments. Normalize the machine-owned failure state as exactly one of:
+
+```text
+none
+failure_1
+failure_2
+p6_stop
+unknown
+```
+
+Require at most one `relaylm-failure-budget-state` marker comment. Duplicate markers or unreadable disagreement between the marker, execution labels, and Draft state are `unknown` and fail closed. `failure_1` and `failure_2` permit only authorized root-cause correction; `p6_stop` prohibits ordinary writes. Ready and merge require `none`.
 
 ### Cross-lane state
 
@@ -80,7 +92,7 @@ A read request authorizes no mutation.
 4. Create one branch from the exact main SHA.
 5. Write only the reviewed bounded scope.
 6. Open one Draft PR with exactly one current receipt.
-7. Re-read the PR, refs, paths, labels, and checks.
+7. Re-read the PR, refs, paths, labels, failure state, and checks.
 8. Reproduce the execution guard and stop unless clean.
 
 Prefer one atomic initial commit. If connector file writes must be sequential, re-read the branch head before each write and keep one logical writer.
@@ -88,11 +100,11 @@ Prefer one atomic initial commit. If connector file writes must be sequential, r
 ### Continue or correct an existing PR
 
 1. Build the complete snapshot.
-2. Verify current main, current head, receipt, epoch, ancestry, writer, stop state, and temporary-artifact state.
+2. Verify current main, current head, receipt, epoch, ancestry, writer, normalized failure state, and temporary-artifact state.
 3. Re-read relevant authorities, code, callers, workflows, and reviews at exact refs.
 4. Re-evaluate P0-P2 before substantive correction or scope growth.
 5. Immediately before a branch write, verify expected head again.
-6. Apply one bounded write.
+6. Apply one bounded write permitted by the current failure state.
 7. Re-read the branch/PR and confirm the intended diff only.
 
 Do not automatically rebase, retry, force-push, or resolve semantic conflicts after a head mismatch.
@@ -124,10 +136,10 @@ Use targeted mutations:
 - add labels additively;
 - remove only the named label;
 - keep `relaylm:p6-stop` sticky until authorized re-bootstrap and reset;
-- mark ready only after the Ready gate;
+- mark ready only when `failure_state: none` and the Ready gate passes;
 - convert to Draft when lifecycle or failure state requires it.
 
-Re-read labels and Draft state afterward.
+Re-read labels, marker comments, and Draft state afterward.
 
 ### Workflow rerun
 
@@ -140,13 +152,13 @@ A rerun is not a correction and must not evade the failure budget.
 
 ### Ready for review
 
-Require a current receipt and ancestry, no stop or unresolved failure, P0-P6 evidence, successful exact-head required checks, clean reviews, clean complete-diff review, and no newer main/head invalidation. Then mark ready and re-read the PR.
+Require a current receipt and ancestry, `failure_state: none`, P0-P6 evidence, successful exact-head required checks, clean reviews, clean complete-diff review, and no newer main/head invalidation. Then mark ready and re-read the PR.
 
 ### Merge
 
 1. Build the final complete snapshot.
 2. Re-resolve exact current main and PR head.
-3. Verify all P7 requirements and intended refs.
+3. Verify all P7 requirements, intended refs, and `failure_state: none`.
 4. Supply the exact head SHA as expected-head protection.
 5. Perform one accepted merge mutation.
 6. Re-read the PR and resulting main.
@@ -178,10 +190,10 @@ Before retrying, re-read the target and prove the mutation did not apply. Do not
 
 ## Stable report
 
-Report only material evidence: selected lane/PR, exact main/head, lifecycle position, changed paths, checks, reviews, stop/blocker state, verified mutation, and next safe same-lane action. Do not expose internal connector IDs.
+Report only material evidence: selected lane/PR, exact main/head, lifecycle position, changed paths, checks, reviews, normalized failure state, verified mutation, and next safe same-lane action. Do not expose internal connector IDs.
 
 ## Stop conditions
 
-Stop and name the exact blocker when scope or exact refs are ambiguous; receipt/epoch is stale; checks belong to another head; required paths, labels, reviews, or workflow evidence is unavailable; a writer collision, branch-writing workflow, temporary artifact, or P6 stop exists; connector results disagree; the next action crosses lane authority; or the required connected capability is unavailable.
+Stop and name the exact blocker when scope or exact refs are ambiguous; receipt/epoch is stale; checks belong to another head; required paths, labels, reviews, workflow evidence, or failure marker state is unavailable; duplicate failure markers, a writer collision, branch-writing workflow, temporary artifact, or `p6_stop` exists; connector results disagree; the next action crosses lane authority; or the required connected capability is unavailable.
 
 Never promise hidden or background GitHub work.
