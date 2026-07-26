@@ -620,6 +620,7 @@ This migration is target architecture. Existing compatibility tooling may contin
 
 ```text
 RelayLM character workspace is a Markdown-first character source tree.
+
 Human-editable uppercase files define the character and policy layer.
 SLP-maintained lowercase wiki pages grow scene, memory, and relationship instances.
 .relaylm generated artifacts compile them into cache-friendly runtime projections.
