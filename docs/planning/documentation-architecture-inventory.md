@@ -89,7 +89,7 @@ Target synthesis families:
 | reflex/attention layer | `docs/architecture/relayatn_reflex_layer_design.md` | `architecture/attention/reflex-layer.md` | moved or lightly normalized |
 | response-side style | `docs/architecture/relayemo_return_side_style_adapter_design.md` and response-stage handoffs | `architecture/emotion/affect-modulation.md` and `architecture/runtime/request-response-pipeline.md` | split/synthesized |
 
-`pipeline_responsibility_design.md` remains the strongest current responsibility source until cutover, but its target content is split between system context, pipeline responsibility, and component pages.
+`pipeline_responsibility_design.md` was the strongest pre-cutover responsibility source. D2-B2b synthesized its durable content into `system-overview.md`, `pipeline-responsibilities.md`, mode-specific runtime pages, and exact contracts; D2-B2b4c28 retires the transitional path after active-consumer migration.
 
 ## C. Character Workspace and character-source architecture
 
