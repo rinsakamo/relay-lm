@@ -2,35 +2,6 @@
   "schema_version": "relaylm.documentation.transitional-asset-registry.v1",
   "families": [
     {
-      "family_id": "bespoke-handoff-cutover-guards",
-      "paths": [
-        "scripts/relaylm_i1ge_handoff_cutover_guard.py",
-        "scripts/relaylm_i4c1_handoff_cutover_guard.py",
-        "scripts/relaylm_i4c2_handoff_cutover_guard.py",
-        "scripts/relaylm_phase55a_handoff_cutover_guard.py",
-        "scripts/relaylm_phase55b1_handoff_cutover_guard.py",
-        "scripts/relaylm_phase55b2_handoff_cutover_guard.py",
-        "scripts/relaylm_phase55c0_handoff_cutover_guard.py",
-        "scripts/relaylm_phase55c4_handoff_cutover_guard.py",
-        "scripts/relaylm_phase_i2_handoff_cutover_guard.py",
-        "scripts/relaylm_phase_i3_handoff_cutover_guard.py",
-        "scripts/relaylm_relaymem_m3a_handoff_cutover_guard.py"
-      ],
-      "owner": "documentation",
-      "protected_boundary": "Existing source-specific old-path absence and replacement checks until generic manifest, authority, link, and Git-recoverability validation supersedes them.",
-      "current_consumers": [
-        ".github/workflows/documentation-current-boundary-smoke.yml"
-      ],
-      "removal_gate": "Every protected old path has a generic retirement-manifest entry or reviewed current disposition, equivalent generic validation is green, and no current workflow consumer remains.",
-      "replacement_validation": [
-        "active_document_authority",
-        "git_recoverability",
-        "links_and_routers",
-        "normative_extraction"
-      ],
-      "growth_policy": "closed"
-    },
-    {
       "family_id": "legacy-completion-report-validation",
       "paths": [
         ".github/workflows/documentation-completion-report-files.yml",
