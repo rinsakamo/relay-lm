@@ -155,7 +155,6 @@ These markers record where append-only design histories were superseded by conci
 The following documents contain distinct current contracts and remain in the active architecture index:
 
 - `context_packing_design.md`
-- `runtime_compile_gate_design.md`
 - `relayrun_runtime_checkpoint_design.md`
 - `runtime_operational_requirements.md`
 - `relaymem_mvp_design.md`
