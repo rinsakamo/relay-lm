@@ -19,7 +19,7 @@ relaylm_related_authority:
   - file_first_character_workspace_design.md
   - cw_a1_file_first_source_tree_parser_contracts.md
   - project_execution_plan.md
-  - pipeline_responsibility_design.md
+  - pipeline-responsibilities.md
 ---
 # CW-A2 Workspace Compiler Projections and KV-cache Tiers
 
