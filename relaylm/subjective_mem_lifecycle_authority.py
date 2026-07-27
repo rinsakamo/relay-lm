@@ -18,6 +18,12 @@ from relaylm.subjective_mem import (
     SubjectiveMemRevision,
 )
 from relaylm.subjective_mem_commit import ST1_RECEIPT_SCHEMA
+from relaylm.subjective_mem_consolidate import (
+    CONSOLIDATE_AUTHORIZATION_CLASS,
+    CONSOLIDATE_OPERATION_FAMILY,
+    CONSOLIDATE_POLICY_REVISION,
+    CONSOLIDATE_REASON_CATEGORY,
+)
 from relaylm.subjective_mem_lifecycle import (
     LIFECYCLE_POLICY_REVISION,
     LIFECYCLE_RECEIPT_SCHEMA,
@@ -25,15 +31,73 @@ from relaylm.subjective_mem_lifecycle import (
 )
 from relaylm.subjective_mem_lifecycle_engine import RecordBinding
 
-COMMITTED_LIFECYCLE_TRANSITIONS = MappingProxyType(
+
+@dataclass(frozen=True)
+class SubjectiveMemCommittedOperationSpec:
+    """Exact committed semantics one accepted lifecycle operation must carry.
+
+    ``from_formation_stage`` and ``to_formation_stage`` are ``None`` for every
+    operation that preserves its predecessor's formation stage.  An operation
+    that names them declares the only stage change it is allowed to have made,
+    and both ends are still compared against the exact committed revision.
+    ``authorization_class`` and ``reason_category`` are ``None`` when the
+    operation owner, not this shared authority, bounds its accepted authority.
+    """
+
+    from_lifecycle_state: str
+    to_lifecycle_state: str
+    policy_revision: str
+    from_formation_stage: str | None = None
+    to_formation_stage: str | None = None
+    authorization_class: str | None = None
+    reason_category: str | None = None
+
+
+COMMITTED_LIFECYCLE_OPERATIONS = MappingProxyType(
     {
-        "correct": ("active", "active"),
-        "forget": ("active", "hidden"),
-        "pin": ("active", "pinned"),
-        "unpin": ("pinned", "active"),
-        "restore": ("hidden", "active"),
+        "correct": SubjectiveMemCommittedOperationSpec(
+            "active", "active", LIFECYCLE_POLICY_REVISION
+        ),
+        "forget": SubjectiveMemCommittedOperationSpec(
+            "active", "hidden", LIFECYCLE_POLICY_REVISION
+        ),
+        "pin": SubjectiveMemCommittedOperationSpec(
+            "active", "pinned", LIFECYCLE_POLICY_REVISION
+        ),
+        "unpin": SubjectiveMemCommittedOperationSpec(
+            "pinned", "active", LIFECYCLE_POLICY_REVISION
+        ),
+        "restore": SubjectiveMemCommittedOperationSpec(
+            "hidden", "active", LIFECYCLE_POLICY_REVISION
+        ),
+        CONSOLIDATE_OPERATION_FAMILY: SubjectiveMemCommittedOperationSpec(
+            "active",
+            "active",
+            CONSOLIDATE_POLICY_REVISION,
+            from_formation_stage="primary",
+            to_formation_stage="secondary",
+            authorization_class=CONSOLIDATE_AUTHORIZATION_CLASS,
+            reason_category=CONSOLIDATE_REASON_CATEGORY,
+        ),
     }
 )
+
+
+def _operation_spec(operation: object) -> SubjectiveMemCommittedOperationSpec | None:
+    return (
+        COMMITTED_LIFECYCLE_OPERATIONS.get(operation)
+        if isinstance(operation, str)
+        else None
+    )
+
+
+def _formation_stages(
+    spec: SubjectiveMemCommittedOperationSpec, predecessor: SubjectiveMemRevision
+) -> tuple[str, str]:
+    return (
+        spec.from_formation_stage or predecessor.formation_stage,
+        spec.to_formation_stage or predecessor.formation_stage,
+    )
 
 
 @dataclass(frozen=True)
@@ -231,16 +295,20 @@ def _lifecycle_receipt_exact(
     predecessor: SubjectiveMemRevision,
     expectation: SubjectiveMemPredecessorExpectation,
 ) -> bool:
-    operation = receipt.get("operation_kind")
-    transition = (
-        COMMITTED_LIFECYCLE_TRANSITIONS.get(operation)
-        if isinstance(operation, str)
-        else None
-    )
+    spec = _operation_spec(receipt.get("operation_kind"))
+    if spec is None:
+        return False
     return (
         receipt.get("schema") == LIFECYCLE_RECEIPT_SCHEMA
-        and transition is not None
-        and transition[1] == predecessor.lifecycle_state
+        and spec.to_lifecycle_state == predecessor.lifecycle_state
+        and (
+            spec.authorization_class is None
+            or receipt.get("authorization_class") == spec.authorization_class
+        )
+        and (
+            spec.reason_category is None
+            or receipt.get("reason_category") == spec.reason_category
+        )
         and receipt.get("predecessor_revision")
         == predecessor.memory_revision - 1
         and receipt.get("transition_id") == predecessor.authorization_id
@@ -251,7 +319,7 @@ def _lifecycle_receipt_exact(
         and receipt.get("revision_schema") == expectation.revision_schema
         and receipt.get("page_schema") == expectation.page_schema
         and receipt.get("block_schema") == expectation.block_schema
-        and receipt.get("policy_revision") == LIFECYCLE_POLICY_REVISION
+        and receipt.get("policy_revision") == spec.policy_revision
     )
 
 
@@ -310,15 +378,13 @@ def _lifecycle_authorization_exact(
     predecessor: SubjectiveMemRevision,
 ) -> bool:
     operation = receipt.get("operation_kind")
-    states = (
-        COMMITTED_LIFECYCLE_TRANSITIONS.get(operation)
-        if isinstance(operation, str)
-        else None
-    )
+    spec = _operation_spec(operation)
+    if spec is None:
+        return False
+    from_stage, to_stage = _formation_stages(spec, predecessor)
     expected_visible = predecessor.lifecycle_state in {"active", "pinned"}
     return (
-        states is not None
-        and predecessor.authorization_kind == "lifecycle_transition"
+        predecessor.authorization_kind == "lifecycle_transition"
         and predecessor.retrieval_visible is expected_visible
         and transition.get("schema") == LIFECYCLE_TRANSITION_SCHEMA
         and transition.get("transition_id") == predecessor.authorization_id
@@ -328,11 +394,12 @@ def _lifecycle_authorization_exact(
         and transition.get("from_revision") == predecessor.memory_revision - 1
         and transition.get("to_revision") == predecessor.memory_revision
         and transition.get("operation") == operation
-        and transition.get("from_lifecycle_state") == states[0]
-        and transition.get("to_lifecycle_state") == states[1]
+        and transition.get("from_lifecycle_state") == spec.from_lifecycle_state
+        and transition.get("to_lifecycle_state") == spec.to_lifecycle_state
         and transition.get("to_lifecycle_state") == predecessor.lifecycle_state
-        and transition.get("from_formation_stage") == predecessor.formation_stage
-        and transition.get("to_formation_stage") == predecessor.formation_stage
+        and transition.get("from_formation_stage") == from_stage
+        and transition.get("to_formation_stage") == to_stage
+        and to_stage == predecessor.formation_stage
         and transition.get("authorized_by") == receipt.get("authorization_class")
         and transition.get("committed_at") == receipt.get("finalized_at")
     )

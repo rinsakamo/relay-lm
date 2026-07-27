@@ -18,6 +18,12 @@ CONSOLIDATE_OPERATION_FAMILY = "consolidate"
 CONSOLIDATE_AUTHORIZATION_CLASS = "relaymem_policy"
 CONSOLIDATE_REASON_CATEGORY = "policy_authorized_consolidation"
 CONSOLIDATE_POLICY_REVISION = "relaylm.subjective_mem_consolidation_policy.v1"
+# The exact predecessor authorization kinds already selected by the shared
+# predecessor authority: an ST-1 revision-1 formation decision, or the committed
+# lifecycle transition that produced a later canonical revision.
+CONSOLIDATE_PREDECESSOR_AUTHORIZATION_KINDS = frozenset(
+    {"subjective_mem_decision", "subjective_mem_lifecycle_transition"}
+)
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]*\Z")
 
@@ -84,8 +90,9 @@ class SubjectiveMemConsolidateProposal:
     expected_current_selector_digest: str
     expected_current_receipt_id: str
     expected_current_receipt_digest: str
-    expected_current_transition_id: str
-    expected_current_transition_digest: str
+    expected_current_authorization_kind: str
+    expected_current_authorization_id: str
+    expected_current_authorization_digest: str
     expected_memory_kind: str
     expected_formation_stage: str
     expected_scope_binding_digest: str
@@ -121,8 +128,11 @@ class SubjectiveMemConsolidateProposal:
             "expected_current_selector_digest": self.expected_current_selector_digest,
             "expected_current_receipt_id": self.expected_current_receipt_id,
             "expected_current_receipt_digest": self.expected_current_receipt_digest,
-            "expected_current_transition_id": self.expected_current_transition_id,
-            "expected_current_transition_digest": self.expected_current_transition_digest,
+            "expected_current_authorization_kind": self.expected_current_authorization_kind,
+            "expected_current_authorization_id": self.expected_current_authorization_id,
+            "expected_current_authorization_digest": (
+                self.expected_current_authorization_digest
+            ),
             "expected_memory_kind": self.expected_memory_kind,
             "expected_formation_stage": self.expected_formation_stage,
             "expected_scope_binding_digest": self.expected_scope_binding_digest,
@@ -217,6 +227,15 @@ def _consolidate_authority_reasons(
         reasons.append("subjective_mem_consolidate_authorization_class_invalid")
     if proposal.reason_category != CONSOLIDATE_REASON_CATEGORY:
         reasons.append("subjective_mem_consolidate_reason_category_invalid")
+    if proposal.policy_revision != CONSOLIDATE_POLICY_REVISION:
+        reasons.append("subjective_mem_consolidate_policy_revision_invalid")
+    if (
+        proposal.expected_current_authorization_kind
+        not in CONSOLIDATE_PREDECESSOR_AUTHORIZATION_KINDS
+    ):
+        reasons.append(
+            "subjective_mem_consolidate_current_authorization_kind_invalid"
+        )
     if (
         type(proposal.boundary) is not SubjectiveMemConsolidateBoundary
         or proposal.boundary.to_dict()
@@ -236,7 +255,7 @@ def _consolidate_shape_reasons(
         proposal.expected_block_id,
         proposal.expected_current_selector_id,
         proposal.expected_current_receipt_id,
-        proposal.expected_current_transition_id,
+        proposal.expected_current_authorization_id,
         proposal.expected_revision_schema,
         proposal.expected_page_schema,
         proposal.expected_block_schema,
@@ -255,7 +274,7 @@ def _consolidate_shape_reasons(
     digest_fields = (
         proposal.expected_current_selector_digest,
         proposal.expected_current_receipt_digest,
-        proposal.expected_current_transition_digest,
+        proposal.expected_current_authorization_digest,
         proposal.expected_scope_binding_digest,
         proposal.expected_formation_snapshot_digest,
         proposal.expected_strength_digest,
@@ -384,6 +403,7 @@ __all__ = [
     "CONSOLIDATE_AUTHORIZATION_CLASS",
     "CONSOLIDATE_OPERATION_FAMILY",
     "CONSOLIDATE_POLICY_REVISION",
+    "CONSOLIDATE_PREDECESSOR_AUTHORIZATION_KINDS",
     "CONSOLIDATE_REASON_CATEGORY",
     "SubjectiveMemConsolidateBoundary",
     "SubjectiveMemConsolidateOperationIdentity",

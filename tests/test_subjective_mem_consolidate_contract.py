@@ -8,6 +8,8 @@ import relaylm.subjective_mem_consolidate as consolidate_contract
 from relaylm.subjective_mem_consolidate import (
     CONSOLIDATE_AUTHORIZATION_CLASS,
     CONSOLIDATE_OPERATION_FAMILY,
+    CONSOLIDATE_POLICY_REVISION,
+    CONSOLIDATE_PREDECESSOR_AUTHORIZATION_KINDS,
     CONSOLIDATE_REASON_CATEGORY,
     SubjectiveMemConsolidateBoundary,
     SubjectiveMemConsolidateProposal,
@@ -37,8 +39,9 @@ def _proposal(**changes: object) -> SubjectiveMemConsolidateProposal:
         expected_current_selector_digest=HEX,
         expected_current_receipt_id="receipt-1",
         expected_current_receipt_digest=OTHER_HEX,
-        expected_current_transition_id="transition-1",
-        expected_current_transition_digest=THIRD_HEX,
+        expected_current_authorization_kind="subjective_mem_lifecycle_transition",
+        expected_current_authorization_id="transition-1",
+        expected_current_authorization_digest=THIRD_HEX,
         expected_memory_kind="episodic",
         expected_formation_stage="primary",
         expected_scope_binding_digest=HEX,
@@ -53,7 +56,7 @@ def _proposal(**changes: object) -> SubjectiveMemConsolidateProposal:
         authorization_class=CONSOLIDATE_AUTHORIZATION_CLASS,
         authorization_id="authorization-1",
         reason_category=CONSOLIDATE_REASON_CATEGORY,
-        policy_revision="relaylm.subjective_mem_consolidation_policy.v1",
+        policy_revision=CONSOLIDATE_POLICY_REVISION,
         boundary=SubjectiveMemConsolidateBoundary(),
     )
     return replace(base, **changes)
@@ -140,6 +143,76 @@ def test_policy_authorization_has_no_user_or_operator_fallback() -> None:
         assert reason in validate_subjective_mem_consolidate_proposal(proposal)
 
 
+def test_exact_consolidate_policy_revision_is_required() -> None:
+    assert validate_subjective_mem_consolidate_proposal(
+        _proposal(policy_revision=CONSOLIDATE_POLICY_REVISION)
+    ) == ()
+    for other in (
+        "relaylm.subjective_mem_consolidation_policy.v2",
+        "relaylm.subjective_mem_lifecycle_policy.v1",
+    ):
+        assert (
+            "subjective_mem_consolidate_policy_revision_invalid"
+            in validate_subjective_mem_consolidate_proposal(
+                _proposal(policy_revision=other)
+            )
+        )
+
+
+def test_revision_one_formation_decision_predecessor_authority_is_accepted() -> None:
+    proposal = _proposal(
+        expected_current_revision=1,
+        expected_current_authorization_kind="subjective_mem_decision",
+        expected_current_authorization_id="decision-1",
+    )
+    assert validate_subjective_mem_consolidate_proposal(proposal) == ()
+    payload = proposal.to_digest_input()
+    assert payload["expected_current_authorization_kind"] == "subjective_mem_decision"
+    assert payload["expected_current_authorization_id"] == "decision-1"
+
+
+def test_later_lifecycle_transition_predecessor_authority_is_accepted() -> None:
+    proposal = _proposal(
+        expected_current_revision=4,
+        expected_current_authorization_kind="subjective_mem_lifecycle_transition",
+        expected_current_authorization_id="transition-4",
+    )
+    assert validate_subjective_mem_consolidate_proposal(proposal) == ()
+    assert CONSOLIDATE_PREDECESSOR_AUTHORIZATION_KINDS == {
+        "subjective_mem_decision",
+        "subjective_mem_lifecycle_transition",
+    }
+
+
+def test_unsupported_predecessor_authorization_kind_fails_closed() -> None:
+    for kind in ("formation_decision", "lifecycle_transition", "user_management"):
+        assert (
+            "subjective_mem_consolidate_current_authorization_kind_invalid"
+            in validate_subjective_mem_consolidate_proposal(
+                _proposal(expected_current_authorization_kind=kind)
+            )
+        )
+
+
+def test_transition_only_predecessor_fields_are_absent() -> None:
+    fields = set(_proposal().to_digest_input())
+    assert "expected_current_transition_id" not in fields
+    assert "expected_current_transition_digest" not in fields
+    assert not hasattr(_proposal(), "expected_current_transition_id")
+    assert not hasattr(_proposal(), "expected_current_transition_digest")
+    source = inspect.getsource(consolidate_contract)
+    assert "expected_current_transition_id" not in source
+    assert "expected_current_transition_digest" not in source
+
+
+def test_operation_authorization_id_is_distinct_from_predecessor_authority() -> None:
+    base = _proposal()
+    assert base.authorization_id != base.expected_current_authorization_id
+    payload = base.to_digest_input()
+    assert payload["authorization_id"] == "authorization-1"
+    assert payload["expected_current_authorization_id"] == "transition-1"
+
+
 def test_path_digest_identifier_and_boundary_validation() -> None:
     invalid = (
         _proposal(expected_relative_path="../outside.md"),
@@ -147,7 +220,7 @@ def test_path_digest_identifier_and_boundary_validation() -> None:
         _proposal(expected_relative_path="memory/episodes/subjective-mem-v1.md\0bad"),
         _proposal(expected_page_digest=HEX),
         _proposal(expected_strength_digest="not-a-digest"),
-        _proposal(expected_current_transition_id="bad id"),
+        _proposal(expected_current_authorization_id="bad id"),
         _proposal(
             boundary=replace(
                 SubjectiveMemConsolidateBoundary(), strength_preserved=False
@@ -173,7 +246,9 @@ def test_proposal_digest_binds_current_authority_strength_and_policy() -> None:
         _proposal(expected_current_revision=2),
         _proposal(expected_current_selector_digest=OTHER_HEX),
         _proposal(expected_current_receipt_digest=HEX),
-        _proposal(expected_current_transition_digest=HEX),
+        _proposal(expected_current_authorization_kind="subjective_mem_decision"),
+        _proposal(expected_current_authorization_id="transition-2"),
+        _proposal(expected_current_authorization_digest=HEX),
         _proposal(expected_strength_digest=HEX),
         _proposal(policy_revision="relaylm.subjective_mem_consolidation_policy.v2"),
         _proposal(authorization_id="authorization-2"),
@@ -183,7 +258,7 @@ def test_proposal_digest_binds_current_authority_strength_and_policy() -> None:
 
 def test_operation_family_slot_detects_changed_proposal_key_reuse() -> None:
     base = _proposal()
-    changed = _proposal(policy_revision="relaylm.subjective_mem_consolidation_policy.v2")
+    changed = _proposal(expected_current_revision=2)
     first = _identity(base)
     exact_retry = _identity(base)
     changed_identity = _identity(changed)
