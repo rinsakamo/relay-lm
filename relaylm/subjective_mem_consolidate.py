@@ -17,6 +17,7 @@ from relaylm.evidence_common import canonical_digest, sha256_hex
 CONSOLIDATE_OPERATION_FAMILY = "consolidate"
 CONSOLIDATE_AUTHORIZATION_CLASS = "relaymem_policy"
 CONSOLIDATE_REASON_CATEGORY = "policy_authorized_consolidation"
+CONSOLIDATE_POLICY_REVISION = "relaylm.subjective_mem_consolidation_policy.v1"
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]*\Z")
 
@@ -382,6 +383,7 @@ def _canonical_timestamp(value: object) -> str | None:
 __all__ = [
     "CONSOLIDATE_AUTHORIZATION_CLASS",
     "CONSOLIDATE_OPERATION_FAMILY",
+    "CONSOLIDATE_POLICY_REVISION",
     "CONSOLIDATE_REASON_CATEGORY",
     "SubjectiveMemConsolidateBoundary",
     "SubjectiveMemConsolidateOperationIdentity",
