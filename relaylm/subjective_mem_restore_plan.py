@@ -218,6 +218,9 @@ def build_subjective_mem_restore_prepared_intent(
             inputs.character_authority.to_dict()
         ),
         "workspace_authority_digest": inputs.workspace_authority_digest,
+        "evidence_space_descriptor_digest": _binding_digest(
+            inputs.record_bindings, "evidence_space_descriptor"
+        ),
         "memory_id": predecessor.memory_id,
         "memory_kind": predecessor.memory_kind,
         "formation_stage": predecessor.formation_stage,
@@ -502,6 +505,19 @@ def _restore_projection(plan: LifecyclePublicationPlan) -> dict[str, object]:
 
 def _opaque(prefix: str, value: str) -> str:
     return f"{prefix}_{sha256_hex(value.encode('utf-8'))}"
+
+
+def _binding_digest(bindings: tuple[RecordBinding, ...], kind: str) -> str:
+    """Digest the exact bound record of one kind, or empty when it is absent.
+
+    An empty digest can never match a durable record, so an unbound kind fails
+    closed when the replay reconstruction proves this intent against the store.
+    """
+
+    for record_kind, _record_id, body in bindings:
+        if record_kind == kind:
+            return canonical_digest(body)
+    return ""
 
 
 def subjective_mem_restore_predecessor_expectation(

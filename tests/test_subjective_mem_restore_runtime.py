@@ -1392,3 +1392,167 @@ def test_restore_recovery_projection_stays_content_free(lifecycle_env) -> None:
         proposal.expected_semantic_identity_digest,
     ):
         assert forbidden not in text
+
+
+_PREDECESSOR_BINDING_KINDS = [
+    "evidence_space_descriptor",
+    "subjective_mem_lifecycle_receipt",
+    "subjective_mem_lifecycle_transition",
+    "subjective_mem_forget_tombstone",
+]
+
+
+def _record_file(env, kind: str, record_id: str):
+    return env["store"]._record_path(  # noqa: SLF001
+        env["captured"].evidence_space_id, kind, record_id
+    )
+
+
+def _predecessor_binding_cases(proposal):
+    """Missing and altered forms of the two bindings replay must revalidate."""
+
+    transition_id = proposal.expected_forget_transition_id
+    stale = "2020-01-01T00:00:00+00:00"
+    return (
+        ("evidence_space_descriptor", "revision-1", None, None),
+        ("evidence_space_descriptor", "revision-1", "created_at", stale),
+        ("evidence_space_descriptor", "revision-1", "retired_at_or_null", stale),
+        ("subjective_mem_lifecycle_transition", transition_id, None, None),
+        ("subjective_mem_lifecycle_transition", transition_id, "committed_at", stale),
+        ("subjective_mem_lifecycle_transition", transition_id, "operation", "correct"),
+    )
+
+
+def _with_broken_binding(env, kind: str, record_id: str, field, value):
+    """Delete or alter one durable binding in place and return its exact text."""
+
+    space = env["captured"].evidence_space_id
+    path = _record_file(env, kind, record_id)
+    saved = path.read_text(encoding="utf-8")
+    original = _record(env, kind, record_id)
+    assert isinstance(original, dict)
+    path.unlink()
+    if field is not None:
+        written = env["store"].write_record(
+            evidence_space_id=space, record_kind=kind, record_id=record_id,
+            payload={**original, field: value},
+        )
+        assert written.status == "created"
+        # the record ID is unchanged, so only the reconstruction can reject it
+        assert _record(env, kind, record_id) != original
+    return saved
+
+
+def _restore_binding(env, kind: str, record_id: str, saved: str) -> None:
+    path = _record_file(env, kind, record_id)
+    if path.exists():
+        path.unlink()
+    path.write_text(saved, encoding="utf-8")
+
+
+def test_restore_durable_plan_rebinds_the_exact_four_predecessor_records(
+    lifecycle_env,
+) -> None:
+    _forgotten, proposal = _proposal(lifecycle_env)
+    prepared, reasons, identity, _at = _prepared_plan(
+        lifecycle_env, proposal, key="binding-shape"
+    )
+    assert prepared is not None, reasons
+    reserved = reserve_lifecycle_publication(
+        store=lifecycle_env["store"], plan=prepared.plan,
+        post_image=prepared.page.rendered_bytes,
+    )
+    assert reserved.status == "reserved", reserved.reasons
+    fresh = prepared.plan
+    assert [kind for kind, _id, _body in fresh.record_bindings] == (
+        _PREDECESSOR_BINDING_KINDS
+    )
+
+    intent = _record(
+        lifecycle_env, "subjective_mem_lifecycle_intent", fresh.intent_id
+    )
+    rebuilt, reasons = restore_runtime._durable_plan(  # noqa: SLF001
+        lifecycle_env["store"],
+        lifecycle_env["captured"].evidence_space_id,
+        lifecycle_env["authority"],
+        str(lifecycle_env["workspace_root"]),
+        intent=intent, identity=identity, proposal=proposal,
+    )
+    assert rebuilt is not None, reasons
+    # the reconstruction is the originally reserved plan, binding for binding
+    assert rebuilt.record_bindings == fresh.record_bindings
+    assert rebuilt.log_bindings == fresh.log_bindings
+    assert rebuilt.prepared_intent == fresh.prepared_intent
+
+
+def test_restore_recovery_requires_exact_predecessor_bindings(lifecycle_env) -> None:
+    _forgotten, proposal = _proposal(lifecycle_env)
+    _reserved(lifecycle_env, proposal, key="recover-bindings")
+    before_page = lifecycle_env["page_path"].read_bytes()
+    before_files = _store_files(lifecycle_env)
+
+    for kind, record_id, field, value in _predecessor_binding_cases(proposal):
+        saved = _with_broken_binding(
+            lifecycle_env, kind, record_id, field, value
+        )
+        for apply_enabled in (False, True):
+            blocked = _restore(
+                lifecycle_env, proposal, apply=apply_enabled, key="recover-bindings"
+            )
+            assert blocked.status == "fail_closed", (
+                f"{kind}/{field} apply={apply_enabled} -> {blocked.status}"
+            )
+            assert blocked.recovery_outcome is None
+            assert blocked.canonical_markdown_published is False
+            assert blocked.lifecycle_receipt_present is False
+            assert blocked.tombstone_release_present is False
+            assert lifecycle_env["page_path"].read_bytes() == before_page
+            assert _release_events(lifecycle_env, proposal) in (None, [])
+        _restore_binding(lifecycle_env, kind, record_id, saved)
+        assert _store_files(lifecycle_env) == before_files
+
+    recovered = _restore(
+        lifecycle_env, proposal, apply=True, key="recover-bindings"
+    )
+    assert recovered.status == "committed", recovered.blocked_reasons
+    assert _revisions(lifecycle_env["page_path"].read_bytes()) == [1, 2, 3]
+    release = _release_events(lifecycle_env, proposal)
+    assert isinstance(release, list) and len(release) == 1
+
+
+def test_restore_replay_requires_exact_predecessor_bindings(lifecycle_env) -> None:
+    proposal, first = _committed_restore(lifecycle_env, key="replay-bindings")
+    page_after = lifecycle_env["page_path"].read_bytes()
+    files_after = _store_files(lifecycle_env)
+    release_after = _release_events(lifecycle_env, proposal)
+
+    for kind, record_id, field, value in _predecessor_binding_cases(proposal):
+        saved = _with_broken_binding(
+            lifecycle_env, kind, record_id, field, value
+        )
+        for apply_enabled in (False, True):
+            blocked = _restore(
+                lifecycle_env, proposal, apply=apply_enabled, key="replay-bindings"
+            )
+            assert blocked.status == "fail_closed", (
+                f"{kind}/{field} apply={apply_enabled} -> {blocked.status}"
+            )
+            assert blocked.recovery_outcome != "exact_replay"
+            assert blocked.tombstone_release_present is False
+            assert lifecycle_env["page_path"].read_bytes() == page_after
+            assert _release_events(lifecycle_env, proposal) == release_after
+        _restore_binding(lifecycle_env, kind, record_id, saved)
+        assert _store_files(lifecycle_env) == files_after
+
+    for apply_enabled in (False, True):
+        replay = _restore(
+            lifecycle_env, proposal, apply=apply_enabled, key="replay-bindings"
+        )
+        assert replay.status == "duplicate_finalized", replay.blocked_reasons
+        assert replay.recovery_outcome == "exact_replay"
+        assert replay.release_id == first.release_id
+    assert lifecycle_env["page_path"].read_bytes() == page_after
+    assert _store_files(lifecycle_env) == files_after
+    assert _revisions(page_after) == [1, 2, 3]
+    assert _release_events(lifecycle_env, proposal) == release_after
+    assert len(release_after) == 1

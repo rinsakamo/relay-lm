@@ -14,6 +14,7 @@ single Restore owner.
 from __future__ import annotations
 
 from relaylm.evidence_common import canonical_digest
+from relaylm.evidence_space import EvidenceSpaceDescriptor
 from relaylm.subjective_mem import (
     SubjectiveMemCharacterAuthority,
     SubjectiveMemCurrentState,
@@ -21,7 +22,10 @@ from relaylm.subjective_mem import (
 )
 from relaylm.subjective_mem_forget import FORGET_TOMBSTONE_STATE_SCHEMA
 from relaylm.subjective_mem_lifecycle import LIFECYCLE_INTENT_SCHEMA
-from relaylm.subjective_mem_lifecycle_engine import LifecyclePublicationPlan
+from relaylm.subjective_mem_lifecycle_engine import (
+    LifecyclePublicationPlan,
+    RecordBinding,
+)
 from relaylm.subjective_mem_markdown import (
     parse_subjective_mem_page_bytes,
     subjective_mem_page_identity,
@@ -37,7 +41,10 @@ from relaylm.subjective_mem_tombstone_release import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
 )
 
+_DESCRIPTOR_KIND = "evidence_space_descriptor"
+_DESCRIPTOR_ID = "revision-1"
 _FORGET_RECEIPT_KIND = "subjective_mem_lifecycle_receipt"
+_FORGET_TRANSITION_KIND = "subjective_mem_lifecycle_transition"
 _FORGET_TOMBSTONE_KIND = "subjective_mem_forget_tombstone"
 _TOMBSTONE_STATE_FIELDS = frozenset(
     "schema tombstone_id tombstone_digest evidence_space_id character_id "
@@ -56,7 +63,9 @@ def build_subjective_mem_restore_replay_plan(
     character_authority: SubjectiveMemCharacterAuthority,
     workspace_root: str,
     workspace_authority_digest: str,
+    descriptor: object,
     forget_receipt: object,
+    forget_transition: object,
     tombstone: object,
     tombstone_state: object,
 ) -> tuple[LifecyclePublicationPlan | None, tuple[str, ...]]:
@@ -64,7 +73,7 @@ def build_subjective_mem_restore_replay_plan(
 
     The persisted intent is reused verbatim so the shared replay resolver can
     prove the durable reservation is unchanged. Nothing here reads a store or a
-    page: the caller supplies the durable Forget authority it already read.
+    page: the caller supplies the durable predecessor authority it already read.
     """
 
     reasons = _replay_intent_errors(
@@ -76,11 +85,13 @@ def build_subjective_mem_restore_replay_plan(
     if reasons:
         return None, reasons
     assert isinstance(intent, dict)
-    reasons = _replay_binding_errors(
-        intent=intent, forget_receipt=forget_receipt, tombstone=tombstone,
+    bindings, reasons = _replay_record_bindings(
+        intent=intent, character_authority=character_authority,
+        descriptor=descriptor, forget_receipt=forget_receipt,
+        forget_transition=forget_transition, tombstone=tombstone,
         tombstone_state=tombstone_state,
     )
-    if reasons:
+    if bindings is None:
         return None, reasons
     prepared = _replay_prepared_state(intent)
     if prepared is None:
@@ -90,7 +101,7 @@ def build_subjective_mem_restore_replay_plan(
         intent=intent, identity=identity, proposal=proposal,
         evidence_space_id=evidence_space_id,
         character_authority=character_authority, workspace_root=workspace_root,
-        prepared=prepared, forget_receipt=forget_receipt, tombstone=tombstone,
+        prepared=prepared, record_bindings=bindings,
         tombstone_state=tombstone_state,
     ), ()
 
@@ -104,8 +115,7 @@ def _replay_publication_plan(
     character_authority: SubjectiveMemCharacterAuthority,
     workspace_root: str,
     prepared: SubjectiveMemCurrentState,
-    forget_receipt: object,
-    tombstone: object,
+    record_bindings: tuple[RecordBinding, ...],
     tombstone_state: list,
 ) -> LifecyclePublicationPlan:
     """Rebuild the plan fields the reserved operation was finalized with."""
@@ -141,10 +151,7 @@ def _replay_publication_plan(
         artifact_id=str(intent["artifact_id"]),
         prepared_intent=dict(intent),
         prepared_at=str(intent["prepared_at"]),
-        record_bindings=(
-            (_FORGET_RECEIPT_KIND, str(intent["current_receipt_id"]), forget_receipt),
-            (_FORGET_TOMBSTONE_KIND, str(intent["forget_tombstone_id"]), tombstone),
-        ),
+        record_bindings=record_bindings,
         log_bindings=(
             (
                 SUBJECTIVE_MEM_FORGET_TOMBSTONE_STATE_LOG_KIND,
@@ -232,29 +239,35 @@ def _replay_intent_errors(
     return ()
 
 
-def _replay_binding_errors(
+def _replay_record_bindings(
     *,
     intent: dict[str, object],
+    character_authority: SubjectiveMemCharacterAuthority,
+    descriptor: object,
     forget_receipt: object,
+    forget_transition: object,
     tombstone: object,
     tombstone_state: object,
-) -> tuple[str, ...]:
-    """Require the durable Forget authority the finalized plan was bound to."""
+) -> tuple[tuple[RecordBinding, ...] | None, tuple[str, ...]]:
+    """Rebuild the exact four predecessor bindings the operation was reserved with.
 
-    if (
-        not isinstance(forget_receipt, dict)
-        or not isinstance(tombstone, dict)
-        or forget_receipt.get("receipt_id") != intent["current_receipt_id"]
-        or forget_receipt.get("receipt_digest") != intent["current_receipt_digest"]
-        or forget_receipt.get("operation_kind") != "forget"
-        or forget_receipt.get("transition_id") != intent["forget_transition_id"]
-        or forget_receipt.get("tombstone_id") != intent["forget_tombstone_id"]
-        or tombstone.get("tombstone_id") != intent["forget_tombstone_id"]
-        or tombstone.get("tombstone_digest") != intent["forget_tombstone_digest"]
-        or tombstone.get("semantic_identity_digest")
-        != intent["semantic_identity_digest"]
+    The reserved set and its order are the shared predecessor authority's
+    Evidence-space descriptor, current Forget receipt, and original Forget
+    transition, followed by the immutable Forget tombstone this operation
+    releases. Anything short of that exact set cannot reconstruct the plan.
+    """
+
+    if not _descriptor_exact(
+        descriptor, intent=intent, character_authority=character_authority
     ):
-        return ("subjective_mem_restore_replay_forget_authority_not_exact",)
+        return None, ("subjective_mem_restore_replay_evidence_space_not_exact",)
+    if not isinstance(forget_receipt, dict) or not isinstance(tombstone, dict):
+        return None, ("subjective_mem_restore_replay_forget_authority_not_exact",)
+    if not _forget_lineage_exact(
+        forget_receipt=forget_receipt, forget_transition=forget_transition,
+        tombstone=tombstone, intent=intent,
+    ):
+        return None, ("subjective_mem_restore_replay_forget_authority_not_exact",)
     if (
         not isinstance(tombstone_state, list)
         or len(tombstone_state) != 1
@@ -262,8 +275,84 @@ def _replay_binding_errors(
             tombstone_state[0], intent=intent, tombstone=tombstone
         )
     ):
-        return ("subjective_mem_restore_replay_tombstone_state_not_exact",)
-    return ()
+        return None, ("subjective_mem_restore_replay_tombstone_state_not_exact",)
+    return (
+        (_DESCRIPTOR_KIND, _DESCRIPTOR_ID, descriptor),
+        (_FORGET_RECEIPT_KIND, str(intent["current_receipt_id"]), forget_receipt),
+        (
+            _FORGET_TRANSITION_KIND,
+            str(intent["forget_transition_id"]),
+            forget_transition,
+        ),
+        (_FORGET_TOMBSTONE_KIND, str(intent["forget_tombstone_id"]), tombstone),
+    ), ()
+
+
+def _descriptor_exact(
+    descriptor: object, *,
+    intent: dict[str, object],
+    character_authority: SubjectiveMemCharacterAuthority,
+) -> bool:
+    """Require the exact current, non-retired Evidence-space descriptor."""
+
+    if not isinstance(descriptor, dict):
+        return False
+    try:
+        parsed = EvidenceSpaceDescriptor.from_dict(descriptor)
+    except (KeyError, TypeError, ValueError):
+        return False
+    return (
+        parsed.to_dict() == descriptor
+        and parsed.evidence_space_id == intent["evidence_space_id"]
+        and parsed.workspace_or_tenant_ref
+        == character_authority.workspace_or_tenant_ref
+        and parsed.isolation_mode == "private_conversation"
+        and parsed.retired_at_or_null is None
+        and canonical_digest(descriptor)
+        == intent["evidence_space_descriptor_digest"]
+    )
+
+
+def _forget_lineage_exact(
+    *,
+    forget_receipt: dict[str, object],
+    forget_transition: object,
+    tombstone: dict[str, object],
+    intent: dict[str, object],
+) -> bool:
+    """Require the exact Forget receipt, transition, and tombstone as one lineage.
+
+    The three records are cross-linked, so proving them together is one check:
+    each must match the persisted intent and the identifiers the other two
+    carry, including the transition digest the tombstone was sealed with.
+    """
+
+    if not isinstance(forget_transition, dict):
+        return False
+    return (
+        forget_receipt.get("receipt_id") == intent["current_receipt_id"]
+        and forget_receipt.get("receipt_digest") == intent["current_receipt_digest"]
+        and forget_receipt.get("operation_kind") == "forget"
+        and forget_receipt.get("transition_id") == intent["forget_transition_id"]
+        and forget_receipt.get("tombstone_id") == intent["forget_tombstone_id"]
+        and tombstone.get("tombstone_id") == intent["forget_tombstone_id"]
+        and tombstone.get("tombstone_digest") == intent["forget_tombstone_digest"]
+        and tombstone.get("semantic_identity_digest")
+        == intent["semantic_identity_digest"]
+        and tombstone.get("transition_id") == intent["forget_transition_id"]
+        and tombstone.get("transition_digest") == intent["forget_transition_digest"]
+        and forget_transition.get("transition_id") == intent["forget_transition_id"]
+        and canonical_digest(forget_transition) == intent["forget_transition_digest"]
+        and forget_transition.get("operation") == "forget"
+        and forget_transition.get("to_lifecycle_state") == "hidden"
+        and forget_transition.get("to_revision") == intent["from_revision"]
+        and forget_transition.get("character_id") == intent["character_id"]
+        and forget_transition.get("memory_id") == intent["memory_id"]
+        and forget_transition.get("to_formation_stage") == intent["formation_stage"]
+        and forget_transition.get("authorized_by")
+        == tombstone.get("authorization_class")
+        and forget_transition.get("committed_at") == tombstone.get("effective_at")
+    )
 
 
 def _tombstone_state_exact(

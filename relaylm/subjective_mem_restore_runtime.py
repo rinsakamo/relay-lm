@@ -542,9 +542,16 @@ def _durable_plan(
 
     try:
         with store.transaction(space) as tx:
+            descriptor = tx.read_record(
+                record_kind="evidence_space_descriptor", record_id="revision-1"
+            )
             receipt = tx.read_record(
                 record_kind="subjective_mem_lifecycle_receipt",
                 record_id=proposal.expected_current_receipt_id,
+            )
+            transition = tx.read_record(
+                record_kind="subjective_mem_lifecycle_transition",
+                record_id=proposal.expected_forget_transition_id,
             )
             tombstone = tx.read_record(
                 record_kind=_TOMBSTONE,
@@ -572,7 +579,8 @@ def _durable_plan(
         workspace_authority_digest=(
             subjective_mem_restore_workspace_authority_digest(workspace, authority)
         ),
-        forget_receipt=receipt, tombstone=tombstone, tombstone_state=states,
+        descriptor=descriptor, forget_receipt=receipt,
+        forget_transition=transition, tombstone=tombstone, tombstone_state=states,
     )
 
 
