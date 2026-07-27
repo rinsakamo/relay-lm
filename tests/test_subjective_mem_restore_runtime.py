@@ -360,19 +360,19 @@ def test_restore_plan_binds_singleton_tombstone_state_and_empty_release(
     assert release_events == ()
 
 
-def test_restore_dry_run_and_apply_paths_make_no_mutation(lifecycle_env) -> None:
+def test_restore_dry_run_makes_no_mutation(lifecycle_env) -> None:
     _forgotten, proposal = _proposal(lifecycle_env)
     before_page = lifecycle_env["page_path"].read_bytes()
     before_files = _store_files(lifecycle_env)
 
     dry = _restore(lifecycle_env, proposal, key="no-mutation-dry")
     assert dry.status == "dry_run_ready", dry.blocked_reasons
-    applied = _restore(lifecycle_env, proposal, apply=True, key="no-mutation-apply")
-    assert applied.status == "fail_closed"
-    assert applied.blocked_reasons == ("subjective_mem_restore_apply_not_implemented",)
-    assert applied.persisted is False
-    assert applied.current_state is not None
-    assert applied.post_image_digest is not None
+    assert dry.persisted is False
+    assert dry.canonical_markdown_published is False
+    assert dry.lifecycle_receipt_present is False
+    assert dry.tombstone_release_present is False
+    assert dry.current_state is not None
+    assert dry.post_image_digest is not None
 
     assert lifecycle_env["page_path"].read_bytes() == before_page
     assert _store_files(lifecycle_env) == before_files
@@ -422,23 +422,31 @@ def test_restore_fails_closed_on_existing_release_or_changed_forget_authority(
     assert _store_files(lifecycle_env) == before_files
 
 
-def test_restore_plans_through_shared_engine_without_direct_publication() -> None:
+def test_restore_publishes_only_through_the_shared_engine() -> None:
     runtime_source = inspect.getsource(restore_runtime)
     plan_source = inspect.getsource(restore_plan)
     assert "subjective_mem_lifecycle_engine import" in runtime_source
     assert "validate_lifecycle_plan(" in runtime_source
+    assert "reserve_lifecycle_publication(" in runtime_source
+    assert "publish_lifecycle_post_image(" in runtime_source
     assert "LifecyclePublicationPlan(" in plan_source
+    # replay and caller-invoked recovery belong to later slices
     for source in (runtime_source, plan_source):
         for forbidden in (
-            "reserve_lifecycle_publication",
-            "publish_lifecycle_post_image",
             "resolve_finalized_replay",
+            "read_prepared_post_image",
+            "recovery_lifecycle_state",
             "write_immutable_rendered_artifact",
             "tx.commit(",
             "write_record(",
             "write_log(",
         ):
             assert forbidden not in source
+    for forbidden in (
+        "reserve_lifecycle_publication",
+        "publish_lifecycle_post_image",
+    ):
+        assert forbidden not in plan_source
 
 
 def test_restore_runtime_delegates_plan_construction_to_plan_module() -> None:
@@ -498,3 +506,215 @@ def test_restore_plan_builder_is_deterministic(lifecycle_env) -> None:
     assert first.plan.record_bindings == second.plan.record_bindings
     assert first.plan.log_bindings == second.plan.log_bindings
     assert validate_lifecycle_plan(second.plan) == ()
+
+
+def _record(env, kind: str, record_id: str):
+    return env["store"].read_record(
+        evidence_space_id=env["captured"].evidence_space_id,
+        record_kind=kind,
+        record_id=record_id,
+    )
+
+
+def _log(env, kind: str, key: str):
+    return env["store"].read_log(
+        evidence_space_id=env["captured"].evidence_space_id,
+        log_kind=kind,
+        key=key,
+    )
+
+
+def test_restore_fresh_apply_publishes_hidden_to_active_successor(
+    lifecycle_env,
+) -> None:
+    forgotten, proposal = _proposal(lifecycle_env)
+    tombstone_before = _record(
+        lifecycle_env, "subjective_mem_forget_tombstone", forgotten.tombstone_id
+    )
+    forget_receipt_before = _record(
+        lifecycle_env,
+        "subjective_mem_lifecycle_receipt",
+        proposal.expected_current_receipt_id,
+    )
+
+    result = _restore(lifecycle_env, proposal, apply=True, key="fresh-apply")
+    assert result.status == "committed", result.blocked_reasons
+    assert result.from_revision == 2 and result.to_revision == 3
+    assert result.canonical_markdown_published is True
+    assert result.lifecycle_receipt_present is True
+    assert result.tombstone_release_present is True
+    assert result.persisted is True
+    assert result.current_state is not None
+    assert result.current_state.current_revision == 3
+    assert result.current_state.lifecycle_state == "active"
+    assert result.current_state.mutation_state == "none"
+    assert result.current_state.retrieval_eligible is True
+
+    page, reasons = parse_subjective_mem_page_bytes(
+        lifecycle_env["page_path"].read_bytes()
+    )
+    assert page is not None and not reasons
+    revisions = [item.revision for item in page.blocks]
+    assert [item.memory_revision for item in revisions] == [1, 2, 3]
+    assert [item.lifecycle_state for item in revisions] == ["active", "hidden", "active"]
+    assert revisions[1].to_dict() == next(
+        item.revision for item in page.blocks if item.revision.memory_revision == 2
+    ).to_dict()
+
+    # the original Forget authority stays immutable
+    assert _record(
+        lifecycle_env, "subjective_mem_forget_tombstone", forgotten.tombstone_id
+    ) == tombstone_before
+    assert _record(
+        lifecycle_env,
+        "subjective_mem_lifecycle_receipt",
+        proposal.expected_current_receipt_id,
+    ) == forget_receipt_before
+
+
+def test_restore_fresh_apply_persists_exact_final_records(lifecycle_env) -> None:
+    forgotten, proposal = _proposal(lifecycle_env)
+    result = _restore(lifecycle_env, proposal, apply=True, key="final-records")
+    assert result.status == "committed", result.blocked_reasons
+
+    transition = _record(
+        lifecycle_env, "subjective_mem_lifecycle_transition", result.transition_id
+    )
+    assert isinstance(transition, dict)
+    assert transition["operation"] == "restore"
+    assert transition["from_lifecycle_state"] == "hidden"
+    assert transition["to_lifecycle_state"] == "active"
+    assert transition["to_revision"] == 3
+
+    receipt = _record(
+        lifecycle_env, "subjective_mem_lifecycle_receipt", result.receipt_id
+    )
+    assert isinstance(receipt, dict)
+    assert receipt["operation_kind"] == "restore"
+    assert receipt["operation_outcome"] == "committed"
+    assert receipt["release_id"] == result.release_id
+    assert receipt["tombstone_id"] == forgotten.tombstone_id
+    assert receipt["projection_state"] == "rebuild_required"
+    assert receipt["receipt_digest"] == canonical_digest(
+        {key: value for key, value in receipt.items() if key != "receipt_digest"}
+    )
+
+    release = _record(
+        lifecycle_env, "subjective_mem_forget_tombstone_release", result.release_id
+    )
+    assert isinstance(release, dict)
+    assert release["restore_receipt_id"] == result.receipt_id
+    assert release["restore_transition_id"] == result.transition_id
+    assert release["content_free"] is True
+
+    release_state = _log(
+        lifecycle_env,
+        SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
+        forgotten.tombstone_id,
+    )
+    assert isinstance(release_state, list) and len(release_state) == 1
+    assert release_state[0]["release_id"] == result.release_id
+    assert release_state[0]["effective"] is True
+
+    selector = _log(
+        lifecycle_env, "subjective_mem_current_state", proposal.expected_current_selector_id
+    )
+    assert isinstance(selector, list) and len(selector) == 1
+    assert selector[0]["current_revision"] == 3
+    assert selector[0]["lifecycle_state"] == "active"
+    assert selector[0]["retrieval_eligible"] is True
+
+    tombstone_state = _log(
+        lifecycle_env,
+        SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
+        proposal.expected_semantic_identity_digest,
+    )
+    assert isinstance(tombstone_state, list) and len(tombstone_state) == 1
+
+
+def test_restore_apply_result_projection_stays_content_free(lifecycle_env) -> None:
+    _forgotten, proposal = _proposal(lifecycle_env)
+    raw_key = "caller-secret-apply-key"
+    result = _restore(lifecycle_env, proposal, apply=True, key=raw_key)
+    assert result.status == "committed", result.blocked_reasons
+    text = json.dumps(result.to_log_dict())
+    assert result.to_log_dict()["content_free"] is True
+    assert result.to_log_dict()["tombstone_release_present"] is True
+    for forbidden in (
+        raw_key,
+        str(lifecycle_env["workspace_root"]),
+        "I felt relieved",
+        result.post_image_digest or "sha256:absent",
+    ):
+        assert forbidden not in text
+
+
+def test_restore_existing_slot_never_reserves_again(lifecycle_env) -> None:
+    _forgotten, proposal = _proposal(lifecycle_env)
+    prepared, reasons, identity, _at = _prepared_plan(
+        lifecycle_env, proposal, key="existing-slot"
+    )
+    assert prepared is not None, reasons
+    plan = prepared.plan
+    space = lifecycle_env["captured"].evidence_space_id
+    before_page = lifecycle_env["page_path"].read_bytes()
+
+    conflicting = {"input_digest": "conflicting-digest", "schema": "claim"}
+    written = lifecycle_env["store"].write_record(
+        evidence_space_id=space,
+        record_kind="subjective_mem_lifecycle_claim",
+        record_id=plan.operation_slot_id,
+        payload=conflicting,
+    )
+    assert written.status == "created"
+    conflict = restore_runtime._apply(  # noqa: SLF001
+        lifecycle_env["store"], prepared, identity=identity, proposal=proposal
+    )
+    assert conflict.status == "integrity_conflict"
+    assert conflict.canonical_markdown_published is False
+    assert conflict.tombstone_release_present is False
+    assert lifecycle_env["page_path"].read_bytes() == before_page
+    assert _record(lifecycle_env, "subjective_mem_lifecycle_intent", plan.intent_id) is None
+
+
+def test_restore_reservation_or_finalizer_failure_never_commits(lifecycle_env) -> None:
+    _forgotten, proposal = _proposal(lifecycle_env)
+    prepared, reasons, identity, _at = _prepared_plan(
+        lifecycle_env, proposal, key="engine-failure"
+    )
+    assert prepared is not None, reasons
+    before_page = lifecycle_env["page_path"].read_bytes()
+
+    broken_plan = replace(prepared.plan, post_image_digest="sha256:" + "0" * 64)
+    reservation = restore_runtime._apply(  # noqa: SLF001
+        lifecycle_env["store"],
+        replace(prepared, plan=broken_plan),
+        identity=identity,
+        proposal=proposal,
+    )
+    assert reservation.status != "committed"
+    assert reservation.canonical_markdown_published is False
+    assert reservation.tombstone_release_present is False
+    assert lifecycle_env["page_path"].read_bytes() == before_page
+
+    unbound = replace(
+        prepared.plan,
+        record_bindings=tuple(
+            binding
+            for binding in prepared.plan.record_bindings
+            if binding[0] != "subjective_mem_forget_tombstone"
+        ),
+    )
+    finalizer = restore_runtime._apply(  # noqa: SLF001
+        lifecycle_env["store"],
+        replace(prepared, plan=unbound),
+        identity=identity,
+        proposal=proposal,
+    )
+    assert finalizer.status != "committed"
+    assert finalizer.tombstone_release_present is False
+    assert _log(
+        lifecycle_env,
+        SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
+        proposal.expected_forget_tombstone_id,
+    ) in (None, [])
