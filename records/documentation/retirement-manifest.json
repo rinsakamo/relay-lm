@@ -200,6 +200,127 @@
       "retention_reason": "D2-B2b4c30 migrated every current consumer to canonical compile/checkpoint architecture or the owning exact compile contracts and removed the closed transitional current-implementation note; its wording remains recoverable from Git."
     },
     {
+      "old_path": "docs/evidence/migrations/cutover-1c47-phase55a.md",
+      "last_live_commit": "14f31ba70345f72b4d4a648e658eb567b8e8a596",
+      "old_blob_sha": "606bd265ed58acb9b724b57350ab36a64ae3137a",
+      "removed_by_pr": 766,
+      "replacement_paths": [
+        "records/documentation/retirement-manifest.json"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R1 removed the redundant per-source receipt after its continuing collection-level history was retained by the central migration ledger and its exact path/blob recovery identity was added to the generic retirement manifest; the full receipt remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/evidence/migrations/cutover-1c48-phase55b1.md",
+      "last_live_commit": "14f31ba70345f72b4d4a648e658eb567b8e8a596",
+      "old_blob_sha": "0d02ace86aa13c8eb2a3feae3f5a568a503ddc8e",
+      "removed_by_pr": 766,
+      "replacement_paths": [
+        "records/documentation/retirement-manifest.json"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R1 removed the redundant per-source receipt after its continuing collection-level history was retained by the central migration ledger and its exact path/blob recovery identity was added to the generic retirement manifest; the full receipt remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/evidence/migrations/cutover-1c49-phase55c0.md",
+      "last_live_commit": "14f31ba70345f72b4d4a648e658eb567b8e8a596",
+      "old_blob_sha": "02faab2331f7a81405a884313cc85fd6db941b84",
+      "removed_by_pr": 766,
+      "replacement_paths": [
+        "records/documentation/retirement-manifest.json"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R1 removed the redundant per-source receipt after its continuing collection-level history was retained by the central migration ledger and its exact path/blob recovery identity was added to the generic retirement manifest; the full receipt remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/evidence/migrations/cutover-1c50-phase55c4.md",
+      "last_live_commit": "14f31ba70345f72b4d4a648e658eb567b8e8a596",
+      "old_blob_sha": "d4261718b0b5949409cecceb8207ab6c66a32993",
+      "removed_by_pr": 766,
+      "replacement_paths": [
+        "records/documentation/retirement-manifest.json"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R1 removed the redundant per-source receipt after its continuing collection-level history was retained by the central migration ledger and its exact path/blob recovery identity was added to the generic retirement manifest; the full receipt remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/evidence/migrations/cutover-1c51-phase55b2.md",
+      "last_live_commit": "14f31ba70345f72b4d4a648e658eb567b8e8a596",
+      "old_blob_sha": "e072f517d4ee32edf11c5902fb0399372f36a576",
+      "removed_by_pr": 766,
+      "replacement_paths": [
+        "records/documentation/retirement-manifest.json"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R1 removed the redundant per-source receipt after its continuing collection-level history was retained by the central migration ledger and its exact path/blob recovery identity was added to the generic retirement manifest; the full receipt remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/evidence/migrations/cutover-1c52-i1ge.md",
+      "last_live_commit": "14f31ba70345f72b4d4a648e658eb567b8e8a596",
+      "old_blob_sha": "a8caae8708c823db00eb9899be3a9bc24ca6618c",
+      "removed_by_pr": 766,
+      "replacement_paths": [
+        "records/documentation/retirement-manifest.json"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R1 removed the redundant per-source receipt after its continuing collection-level history was retained by the central migration ledger and its exact path/blob recovery identity was added to the generic retirement manifest; the full receipt remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/evidence/migrations/cutover-1c53-i4c1.md",
+      "last_live_commit": "14f31ba70345f72b4d4a648e658eb567b8e8a596",
+      "old_blob_sha": "46e464928401b53b5cc8b524ab4fc09f11d1e80c",
+      "removed_by_pr": 766,
+      "replacement_paths": [
+        "records/documentation/retirement-manifest.json"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R1 removed the redundant per-source receipt after its continuing collection-level history was retained by the central migration ledger and its exact path/blob recovery identity was added to the generic retirement manifest; the full receipt remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/evidence/migrations/cutover-1c54-i4c2.md",
+      "last_live_commit": "14f31ba70345f72b4d4a648e658eb567b8e8a596",
+      "old_blob_sha": "ce9d4c9288142286b3149d604ea5d698eb885b86",
+      "removed_by_pr": 766,
+      "replacement_paths": [
+        "records/documentation/retirement-manifest.json"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R1 removed the redundant per-source receipt after its continuing collection-level history was retained by the central migration ledger and its exact path/blob recovery identity was added to the generic retirement manifest; the full receipt remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/evidence/migrations/cutover-1c55-phase-i2.md",
+      "last_live_commit": "14f31ba70345f72b4d4a648e658eb567b8e8a596",
+      "old_blob_sha": "56382a08b8c8d518e8ff5a88622df36af47af838",
+      "removed_by_pr": 766,
+      "replacement_paths": [
+        "records/documentation/retirement-manifest.json"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R1 removed the redundant per-source receipt after its continuing collection-level history was retained by the central migration ledger and its exact path/blob recovery identity was added to the generic retirement manifest; the full receipt remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/evidence/migrations/cutover-1c56-phase-i3.md",
+      "last_live_commit": "14f31ba70345f72b4d4a648e658eb567b8e8a596",
+      "old_blob_sha": "55a182f34913ba1120e00c0a36e146a9e41a9425",
+      "removed_by_pr": 766,
+      "replacement_paths": [
+        "records/documentation/retirement-manifest.json"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R1 removed the redundant per-source receipt after its continuing collection-level history was retained by the central migration ledger and its exact path/blob recovery identity was added to the generic retirement manifest; the full receipt remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/evidence/migrations/cutover-1c57-relaymem-m3a.md",
+      "last_live_commit": "14f31ba70345f72b4d4a648e658eb567b8e8a596",
+      "old_blob_sha": "ab9d2156fa3acb421c1fdd514da745b07611f097",
+      "removed_by_pr": 766,
+      "replacement_paths": [
+        "records/documentation/retirement-manifest.json"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R1 removed the redundant per-source receipt after its continuing collection-level history was retained by the central migration ledger and its exact path/blob recovery identity was added to the generic retirement manifest; the full receipt remains recoverable from Git."
+    },
+    {
       "old_path": "docs/proposals/repository-simplification.md",
       "last_live_commit": "b484babc2093422f6c0b8d55b897266abf936107",
       "old_blob_sha": "3398aaffa7937f7857686c7f86af754a6fb5558b",
