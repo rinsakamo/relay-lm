@@ -1,6 +1,7 @@
 """LC-1D write-free Subjective MEM Restore preflight tests."""
 from __future__ import annotations
 
+import ast
 from dataclasses import replace
 from datetime import timedelta
 import inspect
@@ -20,6 +21,8 @@ from relaylm.subjective_mem_markdown import (
 from relaylm.subjective_mem_lifecycle_engine import validate_lifecycle_plan
 from relaylm.subjective_mem_reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
+)
+from relaylm.subjective_mem_tombstone_release import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
 )
 from relaylm.subjective_mem_restore import (
@@ -27,6 +30,7 @@ from relaylm.subjective_mem_restore import (
     SubjectiveMemRestoreProposal,
     derive_subjective_mem_restore_operation_identity,
 )
+import relaylm.subjective_mem_restore_plan as restore_plan
 import relaylm.subjective_mem_restore_runtime as restore_runtime
 from relaylm.subjective_mem_restore_runtime import restore_subjective_mem
 from test_subjective_mem_forget_runtime import _forget, _semantic_identity
@@ -419,17 +423,78 @@ def test_restore_fails_closed_on_existing_release_or_changed_forget_authority(
 
 
 def test_restore_plans_through_shared_engine_without_direct_publication() -> None:
-    source = inspect.getsource(restore_runtime)
-    assert "subjective_mem_lifecycle_engine import" in source
-    assert "validate_lifecycle_plan(" in source
-    assert "LifecyclePublicationPlan(" in source
+    runtime_source = inspect.getsource(restore_runtime)
+    plan_source = inspect.getsource(restore_plan)
+    assert "subjective_mem_lifecycle_engine import" in runtime_source
+    assert "validate_lifecycle_plan(" in runtime_source
+    assert "LifecyclePublicationPlan(" in plan_source
+    for source in (runtime_source, plan_source):
+        for forbidden in (
+            "reserve_lifecycle_publication",
+            "publish_lifecycle_post_image",
+            "resolve_finalized_replay",
+            "write_immutable_rendered_artifact",
+            "tx.commit(",
+            "write_record(",
+            "write_log(",
+        ):
+            assert forbidden not in source
+
+
+def test_restore_runtime_delegates_plan_construction_to_plan_module() -> None:
+    runtime_source = inspect.getsource(restore_runtime)
+    assert "from relaylm.subjective_mem_restore_plan import" in runtime_source
+    assert "build_subjective_mem_restore_lifecycle_plan(" in runtime_source
+    # the runtime keeps no second intent or plan constructor
+    assert "LifecyclePublicationPlan(" not in runtime_source
+    assert "LIFECYCLE_INTENT_SCHEMA" not in runtime_source
+    assert runtime_source.count("SubjectiveMemRestorePlanInputs(") == 1
+    assert (
+        "from relaylm.subjective_mem_tombstone_release import" in runtime_source
+    )
+
+
+def test_restore_plan_module_is_storage_neutral_and_write_free() -> None:
+    source = inspect.getsource(restore_plan)
+    imported = {
+        node.module
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.ImportFrom) and node.module
+    }
+    assert not any(
+        "restore_runtime" in module or "evidence_store" in module
+        for module in imported
+    )
     for forbidden in (
-        "reserve_lifecycle_publication",
-        "publish_lifecycle_post_image",
-        "resolve_finalized_replay",
-        "write_immutable_rendered_artifact",
-        "tx.commit(",
-        "write_record(",
-        "write_log(",
+        "EvidenceRecordStore",
+        "EvidenceStoreTransaction",
+        "open(",
+        "Path(",
+        "read_log(",
+        "read_record(",
+        "inspect_canonical_page",
+        "subprocess",
     ):
         assert forbidden not in source
+    assert set(restore_plan.__all__) == {
+        "SubjectiveMemRestorePlanInputs",
+        "build_subjective_mem_restore_lifecycle_plan",
+        "build_subjective_mem_restore_prepared_intent",
+    }
+
+
+def test_restore_plan_builder_is_deterministic(lifecycle_env) -> None:
+    _forgotten, proposal = _proposal(lifecycle_env)
+    first, reasons, _identity, _at = _prepared_plan(
+        lifecycle_env, proposal, key="determinism"
+    )
+    assert first is not None, reasons
+    second, reasons, _identity, _at = _prepared_plan(
+        lifecycle_env, proposal, key="determinism"
+    )
+    assert second is not None, reasons
+    assert first.plan == second.plan
+    assert first.plan.prepared_intent == second.plan.prepared_intent
+    assert first.plan.record_bindings == second.plan.record_bindings
+    assert first.plan.log_bindings == second.plan.log_bindings
+    assert validate_lifecycle_plan(second.plan) == ()

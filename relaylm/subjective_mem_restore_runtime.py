@@ -22,9 +22,7 @@ from relaylm.subjective_mem import (
     SubjectiveMemRevision,
     resolve_subjective_mem_character_authority,
 )
-from relaylm.subjective_mem_lifecycle import (
-    LIFECYCLE_INTENT_SCHEMA, LIFECYCLE_POLICY_REVISION,
-)
+from relaylm.subjective_mem_lifecycle import LIFECYCLE_POLICY_REVISION
 from relaylm.subjective_mem_lifecycle_authority import (
     SubjectiveMemPredecessorExpectation,
     load_subjective_mem_predecessor_authority_locked,
@@ -44,7 +42,6 @@ from relaylm.subjective_mem_markdown import (
 )
 from relaylm.subjective_mem_reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
-    SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
     inspect_subjective_mem_reformation_digest_locked, subjective_mem_semantic_identity_digest,
 )
 from relaylm.subjective_mem_restore import (
@@ -52,6 +49,12 @@ from relaylm.subjective_mem_restore import (
     SubjectiveMemRestoreProposal,
     derive_subjective_mem_restore_operation_identity,
     validate_subjective_mem_restore_proposal,
+)
+from relaylm.subjective_mem_restore_plan import (
+    SubjectiveMemRestorePlanInputs, build_subjective_mem_restore_lifecycle_plan,
+)
+from relaylm.subjective_mem_tombstone_release import (
+    SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
 )
 
 RestoreStatus = Literal["dry_run_ready", "fail_closed", "integrity_conflict"]
@@ -231,11 +234,23 @@ def _prepare(
         bound.current, mutation_state="prepared", retrieval_eligible=False,
         updated_at=committed_at,
     )
-    plan = _plan(
-        space=space, authority=authority, workspace=workspace, proposal=proposal,
-        identity=identity, predecessor=predecessor, successor=successor,
-        current=bound.current, prepared=prepared, page=planned.plan,
-        bound=bound, committed_at=committed_at,
+    plan = build_subjective_mem_restore_lifecycle_plan(
+        SubjectiveMemRestorePlanInputs(
+            evidence_space_id=space,
+            character_authority=authority,
+            workspace_root=workspace,
+            workspace_authority_digest=_workspace_digest(workspace, authority),
+            proposal=proposal,
+            identity=identity,
+            predecessor=predecessor,
+            successor=successor,
+            current_state=bound.current,
+            prepared_state=prepared,
+            page=planned.plan,
+            record_bindings=bound.records,
+            log_bindings=bound.logs,
+            prepared_at=committed_at,
+        )
     )
     errors = validate_lifecycle_plan(plan)
     if errors:
@@ -244,87 +259,6 @@ def _prepare(
         current=bound.current, prepared=prepared, predecessor=predecessor,
         successor=successor, page=planned.plan, plan=plan,
     ), ()
-
-
-def _plan(
-    *, space: str, authority: SubjectiveMemCharacterAuthority, workspace: str,
-    proposal: SubjectiveMemRestoreProposal,
-    identity: SubjectiveMemRestoreOperationIdentity,
-    predecessor: SubjectiveMemRevision, successor: SubjectiveMemRevision,
-    current: SubjectiveMemCurrentState, prepared: SubjectiveMemCurrentState,
-    page: SubjectiveMemPagePlan, bound: _Bound, committed_at: str,
-) -> LifecyclePublicationPlan:
-    """Bind the engine plan fields and the operation-owned Restore lineage."""
-
-    predecessor_digest = canonical_digest(predecessor.to_dict())
-    successor_digest = canonical_digest(successor.to_dict())
-    intent: dict[str, object] = {
-        "schema": LIFECYCLE_INTENT_SCHEMA, "intent_id": identity.intent_id,
-        "operation_slot_id": identity.operation_slot_id, "operation_kind": "restore",
-        "operation_id": identity.operation_id, "input_digest": identity.input_digest,
-        "operation_key_digest": identity.operation_key_digest, "evidence_space_id": space,
-        "character_id": authority.character_id,
-        "character_authority_digest": canonical_digest(authority.to_dict()),
-        "workspace_authority_digest": _workspace_digest(workspace, authority),
-        "memory_id": predecessor.memory_id, "memory_kind": predecessor.memory_kind,
-        "formation_stage": predecessor.formation_stage,
-        "scope_binding_digest": proposal.expected_scope_binding_digest,
-        "formation_snapshot_digest": proposal.expected_formation_snapshot_digest,
-        "semantic_identity_digest": proposal.expected_semantic_identity_digest,
-        "from_revision": predecessor.memory_revision, "from_lifecycle_state": "hidden",
-        "to_revision": successor.memory_revision, "to_lifecycle_state": "active",
-        "predecessor_revision_digest": predecessor_digest,
-        "predecessor_block_id": proposal.expected_block_id,
-        "predecessor_authorization_kind": predecessor.authorization_kind,
-        "predecessor_authorization_id": predecessor.authorization_id,
-        "successor_revision_digest": successor_digest,
-        "transition_id": identity.transition_id, "receipt_id": identity.receipt_id,
-        "release_id": identity.release_id, "result_id": identity.result_id,
-        "forget_transition_id": proposal.expected_forget_transition_id,
-        "forget_transition_digest": proposal.expected_forget_transition_digest,
-        "forget_tombstone_id": proposal.expected_forget_tombstone_id,
-        "forget_tombstone_digest": proposal.expected_forget_tombstone_digest,
-        "authorization_class": proposal.authorization_class,
-        "authorization_id": proposal.authorization_id,
-        "reason_category": proposal.reason_category,
-        "policy_revision": proposal.policy_revision,
-        "current_receipt_id": proposal.expected_current_receipt_id,
-        "current_receipt_digest": proposal.expected_current_receipt_digest,
-        "current_selector_id": proposal.expected_current_selector_id,
-        "current_selector_digest": proposal.expected_current_selector_digest,
-        "prepared_current_state_digest": canonical_digest(prepared.to_dict()),
-        "page_id": page.page_id, "partition": page.partition,
-        "successor_block_id": page.block_id, "artifact_id": page.artifact_id,
-        "successor_block_digest": page.block_digest, "artifact_digest": page.post_image_digest,
-        "pre_image_state": page.pre_image_state, "pre_image_digest": page.pre_image_digest,
-        "post_image_digest": page.post_image_digest,
-        "revision_schema": SUBJECTIVE_MEM_REVISION_SCHEMA, "page_schema": PAGE_SCHEMA,
-        "block_schema": LIFECYCLE_BLOCK_SCHEMA, "renderer_revision": RENDERER_REVISION,
-        "partition_revision": PAGE_PARTITION_REVISION,
-        "platform_revision": PLATFORM_REVISION,
-        "prepared_at": committed_at, "recovery_state": "prepared",
-    }
-    return LifecyclePublicationPlan(
-        evidence_space_id=space, character_id=authority.character_id,
-        workspace_root=workspace, operation_kind="restore",
-        operation_slot_id=identity.operation_slot_id, operation_id=identity.operation_id,
-        operation_key_digest=identity.operation_key_digest,
-        input_digest=identity.input_digest, intent_id=identity.intent_id,
-        transition_id=identity.transition_id, receipt_id=identity.receipt_id,
-        result_id=identity.result_id, memory_id=predecessor.memory_id,
-        from_revision=predecessor.memory_revision,
-        to_revision=successor.memory_revision, to_lifecycle_state="active",
-        selector_id=proposal.expected_current_selector_id, prepared_state=prepared,
-        page_id=page.page_id, page_partition=page.partition,
-        page_relative_path=proposal.expected_relative_path,
-        pre_image_state=page.pre_image_state, pre_image_digest=page.pre_image_digest,
-        post_image_digest=page.post_image_digest,
-        predecessor_revision_digest=predecessor_digest,
-        successor_revision_digest=successor_digest,
-        successor_block_id=page.block_id, artifact_id=page.artifact_id,
-        prepared_intent=intent, prepared_at=committed_at,
-        record_bindings=bound.records, log_bindings=bound.logs, current_state=current,
-    )
 
 
 def _page_predecessor(
