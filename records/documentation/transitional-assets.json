@@ -53,9 +53,7 @@
       "family_id": "legacy-cutover-receipts",
       "paths": [
         "docs/evidence/migrations/README.md",
-        "docs/evidence/migrations/cutover-1b-mvp-snapshot-deletions.tsv",
-        "docs/evidence/migrations/cutover-1c2-early-mvp-smokes.tsv",
-        "docs/evidence/migrations/cutover-1c3-mvp2-compile-smokes.tsv",
+        "docs/evidence/migrations/cutover-*",
         "docs/evidence/migrations/documentation-hard-cutover-receipt.md"
       ],
       "owner": "documentation",
