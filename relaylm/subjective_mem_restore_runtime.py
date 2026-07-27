@@ -30,7 +30,7 @@ from relaylm.subjective_mem_lifecycle_engine import (
     LifecycleExecutionOutcome, LifecycleFinalRecords, LifecycleFinalizer,
     LifecyclePublicationPlan, LogBinding, RecordBinding,
     publish_lifecycle_post_image, read_lifecycle_reservation,
-    reserve_lifecycle_publication, validate_lifecycle_plan,
+    reserve_lifecycle_publication, resolve_finalized_replay, validate_lifecycle_plan,
 )
 from relaylm.subjective_mem_markdown import (
     LIFECYCLE_BLOCK_SCHEMA,
@@ -55,22 +55,26 @@ from relaylm.subjective_mem_restore import (
 from relaylm.subjective_mem_restore_plan import (
     SubjectiveMemRestorePlanInputs, build_subjective_mem_restore_final_records,
     build_subjective_mem_restore_lifecycle_plan,
+    subjective_mem_restore_current_state,
     subjective_mem_restore_predecessor_exact,
     subjective_mem_restore_predecessor_expectation,
     subjective_mem_restore_tombstone_exact,
     subjective_mem_restore_workspace_authority_digest,
+)
+from relaylm.subjective_mem_restore_replay import (
+    build_subjective_mem_restore_replay_plan,
 )
 from relaylm.subjective_mem_tombstone_release import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
 )
 
 RestoreStatus = Literal[
-    "dry_run_ready", "committed", "recovery_pending", "recovery_required",
-    "lock_busy", "fail_closed", "integrity_conflict",
+    "dry_run_ready", "committed", "duplicate_finalized", "recovery_pending",
+    "recovery_required", "lock_busy", "fail_closed", "integrity_conflict",
 ]
 _ENGINE_STATUSES = frozenset(
-    {"committed", "recovery_pending", "recovery_required", "lock_busy",
-     "fail_closed", "integrity_conflict"}
+    {"committed", "duplicate_finalized", "recovery_pending", "recovery_required",
+     "lock_busy", "fail_closed", "integrity_conflict"}
 )
 _CURRENT = "subjective_mem_current_state"
 _TOMBSTONE = "subjective_mem_forget_tombstone"
@@ -184,6 +188,21 @@ def restore_subjective_mem(
             else "fail_closed"
         )
         return _result(status, proposal=proposal, reasons=reasons)
+    claim, intent, final, reasons = read_lifecycle_reservation(
+        store=store, evidence_space_id=evidence_space_id,
+        operation_slot_id=identity.operation_slot_id, intent_id=identity.intent_id,
+        result_id=identity.result_id,
+    )
+    if reasons:
+        return _result(
+            "fail_closed", identity=identity, proposal=proposal, reasons=reasons
+        )
+    if claim is not None or intent is not None or final is not None:
+        return _existing_operation(
+            store, evidence_space_id, character_authority, workspace_root,
+            claim=claim, intent=intent, final=final,
+            identity=identity, proposal=proposal,
+        )
     prepared, reasons = _prepare(
         store, evidence_space_id, character_authority, workspace_root,
         proposal, identity, operation_time.isoformat(),
@@ -372,7 +391,7 @@ def _selector(
     if not isinstance(events, list) or len(events) != 1:
         return None, ("subjective_mem_restore_current_selector_missing_or_corrupt",)
     raw = events[0]
-    state = _state(raw)
+    state = subjective_mem_restore_current_state(raw)
     if (
         state is None
         or state.memory_state_id != proposal.expected_current_selector_id
@@ -486,35 +505,6 @@ def _request_errors(
     return errors
 
 
-def _state(raw: object) -> SubjectiveMemCurrentState | None:
-    if not isinstance(raw, dict):
-        return None
-    binding = raw.get("authority_binding")
-    auth = binding.get("authorization_ref") if isinstance(binding, dict) else None
-    if not isinstance(binding, dict) or not isinstance(auth, dict):
-        return None
-    try:
-        state = SubjectiveMemCurrentState(
-            memory_state_id=raw["memory_state_id"], memory_id=raw["memory_id"],
-            character_id=raw["character_id"],
-            current_revision=raw["current_revision"],
-            lifecycle_state=raw["lifecycle_state"],
-            mutation_state=raw["mutation_state"],
-            retrieval_eligible=raw["retrieval_eligible"],
-            updated_at=raw["updated_at"],
-            workspace_authority_digest=binding.get("workspace_authority_digest"),
-            scope_binding_digest=binding.get("scope_binding_digest"),
-            page_id=binding.get("page_id"), block_id=binding.get("block_id"),
-            canonical_page_digest=binding.get("canonical_page_digest"),
-            authorization_kind=auth.get("authority_kind"),
-            authorization_id=auth.get("authority_id"),
-            current_receipt_id=binding.get("current_receipt_id"),
-        )
-    except (KeyError, TypeError, ValueError):
-        return None
-    return state if state.to_dict() == raw else None
-
-
 def _space_present(store: EvidenceRecordStore, space: str) -> bool:
     path = store.root / space
     try:
@@ -537,20 +527,6 @@ def _apply(
     """Execute one fresh Restore publication through the shared lifecycle engine."""
 
     plan, post_image = prepared.plan, prepared.page.rendered_bytes
-    claim, intent, final, reasons = read_lifecycle_reservation(
-        store=store, evidence_space_id=plan.evidence_space_id,
-        operation_slot_id=plan.operation_slot_id, intent_id=plan.intent_id,
-        result_id=plan.result_id,
-    )
-    if reasons:
-        return _result(
-            "fail_closed", identity=identity, proposal=proposal, reasons=reasons
-        )
-    if claim is not None or intent is not None or final is not None:
-        return _existing_slot(
-            plan, claim=claim, intent=intent, final=final,
-            identity=identity, proposal=proposal,
-        )
     reserved = reserve_lifecycle_publication(
         store=store, plan=plan, post_image=post_image
     )
@@ -562,38 +538,97 @@ def _apply(
     return _from_outcome(outcome, identity=identity, proposal=proposal, plan=plan)
 
 
-def _existing_slot(
-    plan: LifecyclePublicationPlan, *, claim: object, intent: object, final: object,
+def _existing_operation(
+    store: EvidenceRecordStore, space: str,
+    authority: SubjectiveMemCharacterAuthority, workspace: str, *,
+    claim: object, intent: object, final: object,
     identity: SubjectiveMemRestoreOperationIdentity,
     proposal: SubjectiveMemRestoreProposal,
 ) -> SubjectiveMemRestoreResult:
-    """Return one bounded outcome for an idempotency slot that already exists.
+    """Resolve one durable idempotency slot without starting a new reservation.
 
-    Replay and prepared-state resume belong to later slices, so an exact
-    existing slot is reported without reserving, publishing, or finalizing.
+    An exact finalized result replays through the shared resolver. A prepared
+    claim without a result stays bounded: resume belongs to a later slice.
     """
 
     stored = final if final is not None else claim
-    if isinstance(stored, dict) and stored.get("input_digest") != plan.input_digest:
+    if isinstance(stored, dict) and stored.get("input_digest") != identity.input_digest:
         return _result(
             "integrity_conflict", identity=identity, proposal=proposal, persisted=True,
             reasons=("subjective_mem_lifecycle_idempotency_conflict",),
         )
-    if final is not None:
+    if final is None:
+        if claim is None or intent is None:
+            return _result(
+                "fail_closed", identity=identity, proposal=proposal, persisted=True,
+                reasons=("subjective_mem_restore_reservation_slot_not_exact",),
+            )
         return _result(
-            "fail_closed", identity=identity, proposal=proposal, persisted=True,
-            reasons=("subjective_mem_restore_finalized_replay_not_implemented",),
+            "recovery_pending", identity=identity, proposal=proposal, persisted=True,
+            reasons=("subjective_mem_restore_prepared_resume_not_implemented",),
+            recovery_outcome="pre_image_pending_publication",
         )
-    if claim is None or intent is None:
+    if claim is None:
         return _result(
             "fail_closed", identity=identity, proposal=proposal, persisted=True,
             reasons=("subjective_mem_restore_reservation_slot_not_exact",),
         )
-    return _result(
-        "recovery_pending", identity=identity, proposal=proposal, persisted=True,
-        reasons=("subjective_mem_restore_prepared_resume_not_implemented",),
-        recovery_outcome="pre_image_pending_publication",
+    return _replay(
+        store, space, authority, workspace,
+        intent=intent, identity=identity, proposal=proposal,
     )
+
+
+def _replay(
+    store: EvidenceRecordStore, space: str,
+    authority: SubjectiveMemCharacterAuthority, workspace: str, *,
+    intent: object, identity: SubjectiveMemRestoreOperationIdentity,
+    proposal: SubjectiveMemRestoreProposal,
+) -> SubjectiveMemRestoreResult:
+    """Prove one exact finalized Restore through the shared replay resolver."""
+
+    try:
+        with store.transaction(space) as tx:
+            receipt = tx.read_record(
+                record_kind="subjective_mem_lifecycle_receipt",
+                record_id=proposal.expected_current_receipt_id,
+            )
+            tombstone = tx.read_record(
+                record_kind=_TOMBSTONE,
+                record_id=proposal.expected_forget_tombstone_id,
+            )
+            states = tx.read_log(
+                log_kind=SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
+                key=proposal.expected_semantic_identity_digest,
+            )
+    except (OSError, RuntimeError, TypeError, ValueError):
+        return _result(
+            "fail_closed", identity=identity, proposal=proposal, persisted=True,
+            reasons=("subjective_mem_restore_store_unavailable",),
+        )
+    plan, reasons = build_subjective_mem_restore_replay_plan(
+        intent=intent, identity=identity, proposal=proposal,
+        evidence_space_id=space, character_authority=authority,
+        workspace_root=workspace,
+        workspace_authority_digest=(
+            subjective_mem_restore_workspace_authority_digest(workspace, authority)
+        ),
+        forget_receipt=receipt, tombstone=tombstone, tombstone_state=states,
+    )
+    if plan is None:
+        return _result(
+            "fail_closed", identity=identity, proposal=proposal, reasons=reasons,
+            persisted=True,
+        )
+    outcome = resolve_finalized_replay(
+        store=store, plan=plan, finalizer=_finalizer(plan)
+    )
+    if outcome is None:
+        return _result(
+            "fail_closed", identity=identity, proposal=proposal, persisted=True,
+            reasons=("subjective_mem_restore_final_result_incomplete",),
+        )
+    return _from_outcome(outcome, identity=identity, proposal=proposal, plan=plan)
 
 
 def _finalizer(plan: LifecyclePublicationPlan) -> LifecycleFinalizer:
@@ -618,13 +653,15 @@ def _from_outcome(
     status: RestoreStatus = (
         outcome.status if outcome.status in _ENGINE_STATUSES else "fail_closed"
     )  # type: ignore[assignment]
-    committed = outcome.status == "committed"
+    # the immutable release is finalized atomically with the receipt, so it is
+    # present exactly when the engine confirms a fresh commit or an exact replay
+    finalized = outcome.status in {"committed", "duplicate_finalized"}
     return _result(
         status, identity=identity, proposal=proposal, current=outcome.current_state,
         reasons=outcome.reasons, post_digest=plan.post_image_digest,
         published=outcome.canonical_page_published,
         receipt_present=outcome.lifecycle_receipt_present,
-        release_present=committed and outcome.lifecycle_receipt_present,
+        release_present=finalized and outcome.lifecycle_receipt_present,
         recovery_outcome=outcome.recovery_outcome, persisted=outcome.persisted,
     )
 

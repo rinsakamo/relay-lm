@@ -1,7 +1,9 @@
 """Focused LC-1D Restore final-record composition tests.
 
-These prove the write-free deterministic final payload only. Reservation,
-publication, replay, recovery, and Restore apply remain disabled.
+These prove the deterministic final payload the shared engine commits and
+replays. Reservation, publication, and finalized replay are exercised through
+the Restore runtime tests; prepared-state resume and caller-invoked recovery
+remain unimplemented.
 """
 from __future__ import annotations
 

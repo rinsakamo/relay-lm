@@ -541,11 +541,43 @@ def _utc_text(value: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def subjective_mem_restore_current_state(
+    raw: object,
+) -> SubjectiveMemCurrentState | None:
+    if not isinstance(raw, dict):
+        return None
+    binding = raw.get("authority_binding")
+    auth = binding.get("authorization_ref") if isinstance(binding, dict) else None
+    if not isinstance(binding, dict) or not isinstance(auth, dict):
+        return None
+    try:
+        state = SubjectiveMemCurrentState(
+            memory_state_id=raw["memory_state_id"], memory_id=raw["memory_id"],
+            character_id=raw["character_id"],
+            current_revision=raw["current_revision"],
+            lifecycle_state=raw["lifecycle_state"],
+            mutation_state=raw["mutation_state"],
+            retrieval_eligible=raw["retrieval_eligible"],
+            updated_at=raw["updated_at"],
+            workspace_authority_digest=binding.get("workspace_authority_digest"),
+            scope_binding_digest=binding.get("scope_binding_digest"),
+            page_id=binding.get("page_id"), block_id=binding.get("block_id"),
+            canonical_page_digest=binding.get("canonical_page_digest"),
+            authorization_kind=auth.get("authority_kind"),
+            authorization_id=auth.get("authority_id"),
+            current_receipt_id=binding.get("current_receipt_id"),
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
+    return state if state.to_dict() == raw else None
+
+
 __all__ = [
     "SubjectiveMemRestorePlanInputs",
     "build_subjective_mem_restore_final_records",
     "build_subjective_mem_restore_lifecycle_plan",
     "build_subjective_mem_restore_prepared_intent",
+    "subjective_mem_restore_current_state",
     "subjective_mem_restore_predecessor_exact",
     "subjective_mem_restore_predecessor_expectation",
     "subjective_mem_restore_tombstone_exact",
