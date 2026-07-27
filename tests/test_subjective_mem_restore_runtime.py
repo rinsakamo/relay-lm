@@ -920,3 +920,67 @@ def test_restore_prepared_claim_without_result_stays_recovery_pending(
     assert pending.recovery_outcome == "pre_image_pending_publication"
     assert pending.tombstone_release_present is False
     assert lifecycle_env["page_path"].read_bytes() == before_page
+
+
+def test_restore_replay_fails_closed_on_altered_tombstone_state_event(
+    lifecycle_env,
+) -> None:
+    proposal, first = _committed_restore(lifecycle_env, key="replay-state")
+    space = lifecycle_env["captured"].evidence_space_id
+    before_page = lifecycle_env["page_path"].read_bytes()
+    before_files = _store_files(lifecycle_env)
+    events = _log(
+        lifecycle_env,
+        SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
+        proposal.expected_semantic_identity_digest,
+    )
+    assert isinstance(events, list) and len(events) == 1
+    original = events[0]
+
+    for field, value in (
+        ("updated_at", "2020-01-01T00:00:00+00:00"),
+        ("formation_stage", "consolidated"),
+        ("transition_digest", "d" * 64),
+        ("receipt_id", "smfreceipt_foreign"),
+        ("effective", False),
+        ("superseded_by_tombstone_id_or_null", original["tombstone_id"]),
+        ("content_free", False),
+        ("hidden_revision", 99),
+    ):
+        altered = {**original, field: value}
+        assert altered["tombstone_id"] == original["tombstone_id"]
+        written = lifecycle_env["store"].write_log(
+            evidence_space_id=space,
+            log_kind=SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
+            key=proposal.expected_semantic_identity_digest,
+            events=(altered,),
+        )
+        assert written.status in {"created", "replaced", "duplicate_existing"}
+
+        blocked = _restore(lifecycle_env, proposal, apply=True, key="replay-state")
+        assert blocked.status == "fail_closed", f"{field} returned {blocked.status}"
+        assert blocked.recovery_outcome != "exact_replay"
+        assert blocked.tombstone_release_present is False
+        assert lifecycle_env["page_path"].read_bytes() == before_page
+        assert _store_files(lifecycle_env) == before_files
+        page, reasons = parse_subjective_mem_page_bytes(before_page)
+        assert page is not None and not reasons
+        assert [item.revision.memory_revision for item in page.blocks] == [1, 2, 3]
+        release_state = _log(
+            lifecycle_env,
+            SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
+            proposal.expected_forget_tombstone_id,
+        )
+        assert isinstance(release_state, list) and len(release_state) == 1
+        assert release_state[0]["release_id"] == first.release_id
+
+    restored = lifecycle_env["store"].write_log(
+        evidence_space_id=space,
+        log_kind=SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
+        key=proposal.expected_semantic_identity_digest,
+        events=(original,),
+    )
+    assert restored.status in {"created", "replaced", "duplicate_existing"}
+    assert _restore(
+        lifecycle_env, proposal, apply=True, key="replay-state"
+    ).status == "duplicate_finalized"

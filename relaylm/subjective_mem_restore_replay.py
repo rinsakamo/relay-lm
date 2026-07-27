@@ -15,6 +15,7 @@ from relaylm.subjective_mem import (
     SubjectiveMemCharacterAuthority,
     SubjectiveMemCurrentState,
 )
+from relaylm.subjective_mem_forget import FORGET_TOMBSTONE_STATE_SCHEMA
 from relaylm.subjective_mem_lifecycle import LIFECYCLE_INTENT_SCHEMA
 from relaylm.subjective_mem_lifecycle_engine import LifecyclePublicationPlan
 from relaylm.subjective_mem_markdown import subjective_mem_page_identity
@@ -31,6 +32,12 @@ from relaylm.subjective_mem_tombstone_release import (
 
 _FORGET_RECEIPT_KIND = "subjective_mem_lifecycle_receipt"
 _FORGET_TOMBSTONE_KIND = "subjective_mem_forget_tombstone"
+_TOMBSTONE_STATE_FIELDS = frozenset(
+    "schema tombstone_id tombstone_digest evidence_space_id character_id "
+    "semantic_identity_digest memory_id hidden_revision formation_stage "
+    "transition_id transition_digest receipt_id effective "
+    "superseded_by_tombstone_id_or_null updated_at content_free".split()
+)
 
 
 def build_subjective_mem_restore_replay_plan(
@@ -244,11 +251,55 @@ def _replay_binding_errors(
     if (
         not isinstance(tombstone_state, list)
         or len(tombstone_state) != 1
-        or not isinstance(tombstone_state[0], dict)
-        or tombstone_state[0].get("tombstone_id") != intent["forget_tombstone_id"]
+        or not _tombstone_state_exact(
+            tombstone_state[0], intent=intent, tombstone=tombstone
+        )
     ):
         return ("subjective_mem_restore_replay_tombstone_state_not_exact",)
     return ()
+
+
+def _tombstone_state_exact(
+    event: object, *, intent: dict[str, object], tombstone: dict[str, object]
+) -> bool:
+    """Require the exact singleton Forget tombstone-state event, field by field.
+
+    The shared reservation claim carries no bindings, so this reconstruction
+    layer must prove the whole original state event, not only its identifier.
+    """
+
+    if not isinstance(event, dict) or set(event) != _TOMBSTONE_STATE_FIELDS:
+        return False
+    return (
+        event["schema"] == FORGET_TOMBSTONE_STATE_SCHEMA
+        and event["tombstone_id"] == intent["forget_tombstone_id"]
+        and event["tombstone_id"] == tombstone.get("tombstone_id")
+        and event["tombstone_digest"] == intent["forget_tombstone_digest"]
+        and event["tombstone_digest"] == tombstone.get("tombstone_digest")
+        and event["evidence_space_id"] == intent["evidence_space_id"]
+        and event["evidence_space_id"] == tombstone.get("evidence_space_id")
+        and event["character_id"] == intent["character_id"]
+        and event["character_id"] == tombstone.get("character_id")
+        and event["semantic_identity_digest"] == intent["semantic_identity_digest"]
+        and event["semantic_identity_digest"]
+        == tombstone.get("semantic_identity_digest")
+        and event["memory_id"] == intent["memory_id"]
+        and event["memory_id"] == tombstone.get("memory_id")
+        and event["hidden_revision"] == intent["from_revision"]
+        and event["hidden_revision"] == tombstone.get("hidden_revision")
+        and event["formation_stage"] == intent["formation_stage"]
+        and event["formation_stage"] == tombstone.get("formation_stage")
+        and event["transition_id"] == intent["forget_transition_id"]
+        and event["transition_id"] == tombstone.get("transition_id")
+        and event["transition_digest"] == intent["forget_transition_digest"]
+        and event["transition_digest"] == tombstone.get("transition_digest")
+        and event["receipt_id"] == intent["current_receipt_id"]
+        and event["receipt_id"] == tombstone.get("receipt_id")
+        and event["effective"] is True
+        and event["superseded_by_tombstone_id_or_null"] is None
+        and event["updated_at"] == tombstone.get("effective_at")
+        and event["content_free"] is True
+    )
 
 
 def _replay_prepared_state(

@@ -1,9 +1,10 @@
-"""LC-1D Subjective MEM Restore preflight and one fresh publication.
+"""LC-1D Subjective MEM Restore preflight, publication, and finalized replay.
 
 This Draft-PR slice validates one exact ``hidden -> active`` Restore request,
-plans its immutable successor, and executes a single fresh apply through the
-shared lifecycle reservation/publication engine. The dry-run path stays
-write-free. Finalized replay and caller-invoked recovery remain later commits.
+plans its immutable successor, executes a single fresh apply, and resolves an
+exact finalized repeat through the shared lifecycle engine. The dry-run path
+stays write-free. Prepared-state resume and caller-invoked recovery remain
+later commits in the same LC-1D PR.
 """
 from __future__ import annotations
 
