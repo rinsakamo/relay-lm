@@ -6,6 +6,7 @@ the canonical reformation evaluator remains the sole decision owner.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
@@ -63,6 +64,204 @@ _RESTORE_RECEIPT_REQUIRED = frozenset(
     "reason_category policy_revision projection_state ordinary_retrieval_wired "
     "finalized_at receipt_digest".split()
 )
+
+
+@dataclass(frozen=True)
+class SubjectiveMemForgetTombstoneReleaseAuthority:
+    release: dict[str, object]
+    state: dict[str, object]
+
+
+def build_subjective_mem_forget_tombstone_release_authority(
+    *,
+    release_id: str,
+    tombstone: dict[str, object],
+    forget_receipt: dict[str, object],
+    restore_transition: dict[str, object],
+    restore_receipt: dict[str, object],
+    authorization_class: str,
+    authorization_id: str,
+    reason_category: str,
+    policy_revision: str,
+    released_at: str,
+) -> tuple[
+    SubjectiveMemForgetTombstoneReleaseAuthority | None,
+    tuple[str, ...],
+]:
+    """Build the exact content-free release pair for one immutable Forget tombstone."""
+
+    reasons = _build_inputs_invalid(
+        release_id=release_id,
+        tombstone=tombstone,
+        forget_receipt=forget_receipt,
+        restore_transition=restore_transition,
+        restore_receipt=restore_receipt,
+        authorization_id=authorization_id,
+        released_at=released_at,
+    )
+    if reasons:
+        return None, reasons
+    if not _authorization_reason_exact(authorization_class, reason_category):
+        return None, (
+            "subjective_mem_restore_tombstone_release_authorization_unsupported",
+        )
+    if policy_revision != LIFECYCLE_POLICY_REVISION:
+        return None, (
+            "subjective_mem_restore_tombstone_release_policy_unsupported",
+        )
+    if restore_receipt.get("release_id") != release_id:
+        return None, ("subjective_mem_restore_tombstone_release_id_mismatch",)
+    if not _strictly_after(released_at, str(tombstone.get("effective_at"))):
+        return None, ("subjective_mem_restore_tombstone_release_non_monotonic",)
+
+    hidden = tombstone["hidden_revision"]
+    release = _compose_release(
+        release_id=release_id,
+        tombstone=tombstone,
+        forget_receipt=forget_receipt,
+        restore_transition=restore_transition,
+        restore_receipt=restore_receipt,
+        hidden=int(hidden),
+        authorization_class=authorization_class,
+        authorization_id=authorization_id,
+        reason_category=reason_category,
+        released_at=released_at,
+    )
+    state = _compose_release_state(
+        release=release,
+        tombstone=tombstone,
+        released_at=released_at,
+    )
+    if not _composed_pair_exact(
+        release=release,
+        state=state,
+        tombstone=tombstone,
+        forget_receipt=forget_receipt,
+        restore_transition=restore_transition,
+        restore_receipt=restore_receipt,
+    ):
+        return None, ("subjective_mem_restore_tombstone_release_lineage_invalid",)
+    return SubjectiveMemForgetTombstoneReleaseAuthority(release=release, state=state), ()
+
+
+def _composed_pair_exact(
+    *, release: dict[str, object], state: dict[str, object],
+    tombstone: dict[str, object], forget_receipt: dict[str, object],
+    restore_transition: dict[str, object], restore_receipt: dict[str, object],
+) -> bool:
+    """Prove the composed pair with the predicates the release evaluator uses."""
+
+    space = str(tombstone["evidence_space_id"])
+    character = str(tombstone["character_id"])
+    semantic = str(tombstone["semantic_identity_digest"])
+    return _valid_release_state(
+        state,
+        tombstone_state=tombstone,
+        evidence_space_id=space,
+        character_id=character,
+        semantic_identity_digest=semantic,
+    ) and _valid_release_lineage(
+        release_state=state,
+        release=release,
+        tombstone=tombstone,
+        forget_receipt=forget_receipt,
+        restore_transition=restore_transition,
+        restore_receipt=restore_receipt,
+        evidence_space_id=space,
+        character_id=character,
+        semantic_identity_digest=semantic,
+    )
+
+
+def _build_inputs_invalid(
+    *, release_id: object, tombstone: object, forget_receipt: object,
+    restore_transition: object, restore_receipt: object,
+    authorization_id: object, released_at: object,
+) -> tuple[str, ...]:
+    if (
+        not _token(release_id)
+        or not _token(authorization_id)
+        or not _timestamp(released_at)
+        or not isinstance(tombstone, dict)
+        or not isinstance(forget_receipt, dict)
+        or not isinstance(restore_transition, dict)
+        or not isinstance(restore_receipt, dict)
+        or type(tombstone.get("hidden_revision")) is not int
+        or not _token(tombstone.get("tombstone_id"))
+        or not _token(tombstone.get("memory_id"))
+        or not _token(tombstone.get("evidence_space_id"))
+        or not _token(tombstone.get("character_id"))
+        or not _digest(tombstone.get("semantic_identity_digest"))
+        or not _timestamp(tombstone.get("effective_at"))
+    ):
+        return ("subjective_mem_restore_tombstone_release_input_invalid",)
+    if (
+        not _self_digest(tombstone, "tombstone_digest")
+        or not _self_digest(forget_receipt, "receipt_digest")
+        or not _self_digest(restore_receipt, "receipt_digest")
+    ):
+        return ("subjective_mem_restore_tombstone_release_input_not_authentic",)
+    return ()
+
+
+def _compose_release(
+    *, release_id: str, tombstone: dict[str, object],
+    forget_receipt: dict[str, object], restore_transition: dict[str, object],
+    restore_receipt: dict[str, object], hidden: int, authorization_class: str,
+    authorization_id: str, reason_category: str, released_at: str,
+) -> dict[str, object]:
+    body = {
+        "schema": SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_SCHEMA,
+        "release_id": release_id,
+        "evidence_space_id": tombstone["evidence_space_id"],
+        "character_id": tombstone["character_id"],
+        "semantic_identity_digest": tombstone["semantic_identity_digest"],
+        "memory_id": tombstone["memory_id"],
+        "hidden_revision": hidden,
+        "restored_revision": hidden + 1,
+        "tombstone_id": tombstone["tombstone_id"],
+        "tombstone_digest": tombstone["tombstone_digest"],
+        "forget_transition_id": tombstone["transition_id"],
+        "forget_transition_digest": tombstone["transition_digest"],
+        "forget_receipt_id": tombstone["receipt_id"],
+        "forget_receipt_digest": forget_receipt["receipt_digest"],
+        "restore_transition_id": restore_transition.get("transition_id"),
+        "restore_transition_digest": canonical_digest(restore_transition),
+        "restore_receipt_id": restore_receipt["receipt_id"],
+        "restore_receipt_digest": restore_receipt["receipt_digest"],
+        "authorization_class": authorization_class,
+        "authorization_id": authorization_id,
+        "reason_category": reason_category,
+        "policy_revision": LIFECYCLE_POLICY_REVISION,
+        "released_at": released_at,
+        "content_free": True,
+    }
+    return {**body, "release_digest": canonical_digest(body)}
+
+
+def _compose_release_state(
+    *, release: dict[str, object], tombstone: dict[str, object], released_at: str,
+) -> dict[str, object]:
+    return {
+        "schema": SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_STATE_SCHEMA,
+        "tombstone_id": tombstone["tombstone_id"],
+        "tombstone_digest": tombstone["tombstone_digest"],
+        "release_id": release["release_id"],
+        "release_digest": release["release_digest"],
+        "evidence_space_id": tombstone["evidence_space_id"],
+        "character_id": tombstone["character_id"],
+        "semantic_identity_digest": tombstone["semantic_identity_digest"],
+        "memory_id": tombstone["memory_id"],
+        "hidden_revision": release["hidden_revision"],
+        "restored_revision": release["restored_revision"],
+        "restore_transition_id": release["restore_transition_id"],
+        "restore_transition_digest": release["restore_transition_digest"],
+        "restore_receipt_id": release["restore_receipt_id"],
+        "restore_receipt_digest": release["restore_receipt_digest"],
+        "effective": True,
+        "updated_at": released_at,
+        "content_free": True,
+    }
 
 
 def inspect_subjective_mem_forget_tombstone_release_locked(
@@ -488,5 +687,7 @@ __all__ = [
     "SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_RECORD_KIND",
     "SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_SCHEMA",
     "SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_STATE_SCHEMA",
+    "SubjectiveMemForgetTombstoneReleaseAuthority",
+    "build_subjective_mem_forget_tombstone_release_authority",
     "inspect_subjective_mem_forget_tombstone_release_locked",
 ]

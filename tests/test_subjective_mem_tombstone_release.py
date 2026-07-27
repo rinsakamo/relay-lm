@@ -15,6 +15,9 @@ from relaylm.subjective_mem_reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_SCHEMA,
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_STATE_SCHEMA,
 )
+from relaylm.subjective_mem_tombstone_release import (
+    build_subjective_mem_forget_tombstone_release_authority,
+)
 from test_subjective_mem_forget_runtime import (
     _forget,
     _reformation_pair,
@@ -24,7 +27,12 @@ from test_subjective_mem_lifecycle_runtime import lifecycle_env
 from test_subjective_mem_runtime import NOW
 
 
-def _release_payloads(env, predecessor, forgotten, *, released_at: str):
+AUTHORIZATION_CLASS = "user_management"
+AUTHORIZATION_ID = "user-restore-authorization-1"
+REASON_CATEGORY = "user_requested_restore"
+
+
+def _release_inputs(env, predecessor, forgotten):
     space = env["captured"].evidence_space_id
     tombstone = env["store"].read_record(
         evidence_space_id=space,
@@ -38,7 +46,31 @@ def _release_payloads(env, predecessor, forgotten, *, released_at: str):
         record_id=str(tombstone["receipt_id"]),
     )
     assert isinstance(forget_receipt, dict)
-    semantic_id = _semantic_identity(env, predecessor)
+    return space, tombstone, forget_receipt, _semantic_identity(env, predecessor)
+
+
+def _build(tombstone, forget_receipt, transition, receipt, *, released_at: str, **changes):
+    arguments = {
+        "release_id": receipt["release_id"],
+        "tombstone": tombstone,
+        "forget_receipt": forget_receipt,
+        "restore_transition": transition,
+        "restore_receipt": receipt,
+        "authorization_class": AUTHORIZATION_CLASS,
+        "authorization_id": AUTHORIZATION_ID,
+        "reason_category": REASON_CATEGORY,
+        "policy_revision": LIFECYCLE_POLICY_REVISION,
+        "released_at": released_at,
+    }
+    return build_subjective_mem_forget_tombstone_release_authority(
+        **{**arguments, **changes}
+    )
+
+
+def _release_payloads(env, predecessor, forgotten, *, released_at: str):
+    space, tombstone, forget_receipt, semantic_id = _release_inputs(
+        env, predecessor, forgotten
+    )
     transition, receipt = _restore_lineage(
         space=space,
         predecessor=predecessor,
@@ -47,18 +79,11 @@ def _release_payloads(env, predecessor, forgotten, *, released_at: str):
         semantic_id=semantic_id,
         released_at=released_at,
     )
-    release, state = _release_authority(
-        space=space,
-        predecessor=predecessor,
-        forgotten=forgotten,
-        tombstone=tombstone,
-        forget_receipt=forget_receipt,
-        transition=transition,
-        restore_receipt=receipt,
-        semantic_id=semantic_id,
-        released_at=released_at,
+    authority, reasons = _build(
+        tombstone, forget_receipt, transition, receipt, released_at=released_at
     )
-    return transition, receipt, release, state
+    assert authority is not None, reasons
+    return transition, receipt, authority.release, authority.state
 
 
 def _restore_lineage(
@@ -109,69 +134,47 @@ def _restore_lineage(
     return transition, {**receipt_body, "receipt_digest": canonical_digest(receipt_body)}
 
 
-def _release_authority(
-    *,
-    space,
-    predecessor,
-    forgotten,
-    tombstone,
-    forget_receipt,
-    transition,
-    restore_receipt,
-    semantic_id: str,
-    released_at: str,
-):
-    hidden = int(tombstone["hidden_revision"])
-    restored = hidden + 1
-    transition_digest = canonical_digest(transition)
-    release_body = {
-        "schema": SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_SCHEMA,
-        "release_id": restore_receipt["release_id"],
-        "evidence_space_id": space,
-        "character_id": predecessor.character_id,
-        "semantic_identity_digest": semantic_id,
-        "memory_id": predecessor.memory_id,
-        "hidden_revision": hidden,
-        "restored_revision": restored,
-        "tombstone_id": forgotten.tombstone_id,
-        "tombstone_digest": tombstone["tombstone_digest"],
-        "forget_transition_id": tombstone["transition_id"],
-        "forget_transition_digest": tombstone["transition_digest"],
-        "forget_receipt_id": tombstone["receipt_id"],
-        "forget_receipt_digest": forget_receipt["receipt_digest"],
-        "restore_transition_id": transition["transition_id"],
-        "restore_transition_digest": transition_digest,
-        "restore_receipt_id": restore_receipt["receipt_id"],
-        "restore_receipt_digest": restore_receipt["receipt_digest"],
-        "authorization_class": "user_management",
-        "authorization_id": "user-restore-authorization-1",
-        "reason_category": "user_requested_restore",
-        "policy_revision": LIFECYCLE_POLICY_REVISION,
-        "released_at": released_at,
-        "content_free": True,
+def _non_monotonic_payloads(env, predecessor, forgotten):
+    """Restamp exact builder output onto the tombstone's own effective time.
+
+    The builder refuses a non-monotonic release, so the evaluator's monotonic
+    fence is exercised by re-timing its output instead of re-deriving one.
+    """
+
+    space, tombstone, _forget_receipt, semantic_id = _release_inputs(
+        env, predecessor, forgotten
+    )
+    early = str(tombstone["effective_at"])
+    transition, receipt = _restore_lineage(
+        space=space,
+        predecessor=predecessor,
+        forgotten=forgotten,
+        tombstone=tombstone,
+        semantic_id=semantic_id,
+        released_at=early,
+    )
+    _, _, release, state = _release_payloads(
+        env,
+        predecessor,
+        forgotten,
+        released_at=(NOW + timedelta(seconds=4)).isoformat(),
+    )
+    body = {
+        **{key: value for key, value in release.items() if key != "release_digest"},
+        "restore_transition_digest": canonical_digest(transition),
+        "restore_receipt_digest": receipt["receipt_digest"],
+        "released_at": early,
     }
-    release = {**release_body, "release_digest": canonical_digest(release_body)}
-    state = {
-        "schema": SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_STATE_SCHEMA,
-        "tombstone_id": forgotten.tombstone_id,
-        "tombstone_digest": tombstone["tombstone_digest"],
-        "release_id": release["release_id"],
-        "release_digest": release["release_digest"],
-        "evidence_space_id": space,
-        "character_id": predecessor.character_id,
-        "semantic_identity_digest": semantic_id,
-        "memory_id": predecessor.memory_id,
-        "hidden_revision": hidden,
-        "restored_revision": restored,
-        "restore_transition_id": transition["transition_id"],
-        "restore_transition_digest": transition_digest,
-        "restore_receipt_id": restore_receipt["receipt_id"],
-        "restore_receipt_digest": restore_receipt["receipt_digest"],
-        "effective": True,
-        "updated_at": released_at,
-        "content_free": True,
+    early_release = {**body, "release_digest": canonical_digest(body)}
+    early_state = {
+        **state,
+        "release_digest": early_release["release_digest"],
+        "restore_transition_digest": early_release["restore_transition_digest"],
+        "restore_receipt_digest": early_release["restore_receipt_digest"],
+        "updated_at": early,
     }
-    return release, state
+    return transition, receipt, early_release, early_state
+
 
 def _commit_release(
     env,
@@ -305,12 +308,8 @@ def test_non_monotonic_release_fails_closed(lifecycle_env) -> None:
         record_id=forgotten.tombstone_id,
     )
     assert isinstance(tombstone, dict)
-    payloads = _release_payloads(
-        lifecycle_env,
-        predecessor,
-        forgotten,
-        released_at=str(tombstone["effective_at"]),
-    )
+    payloads = _non_monotonic_payloads(lifecycle_env, predecessor, forgotten)
+    assert payloads[2]["released_at"] == str(tombstone["effective_at"])
     _commit_release(lifecycle_env, forgotten, *payloads)
     result, locked = _reformation_pair(lifecycle_env, predecessor)
     assert result == locked
@@ -319,3 +318,221 @@ def test_non_monotonic_release_fails_closed(lifecycle_env) -> None:
         "subjective_mem_reformation_tombstone_release_non_monotonic"
         in result.blocked_reasons
     )
+
+
+def test_builder_output_is_exact_and_content_free(lifecycle_env) -> None:
+    predecessor = lifecycle_env["page"].blocks[0].revision
+    forgotten = _forget(lifecycle_env)
+    assert forgotten.status == "committed"
+    _space, tombstone, forget_receipt, semantic_id = _release_inputs(
+        lifecycle_env, predecessor, forgotten
+    )
+    released_at = (NOW + timedelta(seconds=4)).isoformat()
+    transition, receipt, release, state = _release_payloads(
+        lifecycle_env, predecessor, forgotten, released_at=released_at
+    )
+
+    assert release["schema"] == SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_SCHEMA
+    assert state["schema"] == SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_STATE_SCHEMA
+    assert release["release_id"] == receipt["release_id"] == state["release_id"]
+    assert release["release_digest"] == canonical_digest(
+        {key: value for key, value in release.items() if key != "release_digest"}
+    )
+    assert state["release_digest"] == release["release_digest"]
+    assert release["evidence_space_id"] == tombstone["evidence_space_id"]
+    assert release["character_id"] == predecessor.character_id
+    assert release["semantic_identity_digest"] == semantic_id
+    assert release["memory_id"] == predecessor.memory_id
+    assert release["hidden_revision"] == int(tombstone["hidden_revision"])
+    assert release["restored_revision"] == release["hidden_revision"] + 1
+    assert release["tombstone_digest"] == tombstone["tombstone_digest"]
+    assert release["forget_transition_id"] == tombstone["transition_id"]
+    assert release["forget_transition_digest"] == tombstone["transition_digest"]
+    assert release["forget_receipt_digest"] == forget_receipt["receipt_digest"]
+    assert release["restore_transition_id"] == transition["transition_id"]
+    assert release["restore_transition_digest"] == canonical_digest(transition)
+    assert release["restore_receipt_digest"] == receipt["receipt_digest"]
+    assert release["policy_revision"] == LIFECYCLE_POLICY_REVISION
+    assert release["released_at"] == released_at == state["updated_at"]
+    assert release["content_free"] is True and state["content_free"] is True
+    assert state["effective"] is True
+    assert state["tombstone_id"] == forgotten.tombstone_id
+
+
+def test_builder_output_commits_and_allows_reformation(lifecycle_env) -> None:
+    predecessor = lifecycle_env["page"].blocks[0].revision
+    forgotten = _forget(lifecycle_env)
+    payloads = _release_payloads(
+        lifecycle_env,
+        predecessor,
+        forgotten,
+        released_at=(NOW + timedelta(seconds=4)).isoformat(),
+    )
+    blocked, _locked = _reformation_pair(lifecycle_env, predecessor)
+    assert blocked.status == "blocked"
+
+    _commit_release(lifecycle_env, forgotten, *payloads)
+    public, locked = _reformation_pair(lifecycle_env, predecessor)
+    assert public == locked
+    assert public.status == "allowed", public.blocked_reasons
+
+
+def test_builder_rejects_unsupported_authorization_and_reason(lifecycle_env) -> None:
+    predecessor = lifecycle_env["page"].blocks[0].revision
+    forgotten = _forget(lifecycle_env)
+    space, tombstone, forget_receipt, semantic_id = _release_inputs(
+        lifecycle_env, predecessor, forgotten
+    )
+    released_at = (NOW + timedelta(seconds=4)).isoformat()
+    transition, receipt = _restore_lineage(
+        space=space,
+        predecessor=predecessor,
+        forgotten=forgotten,
+        tombstone=tombstone,
+        semantic_id=semantic_id,
+        released_at=released_at,
+    )
+    for changes in (
+        {"authorization_class": "operator_management"},
+        {"reason_category": "operator_requested_restore"},
+        {"reason_category": "user_requested_forget"},
+    ):
+        authority, reasons = _build(
+            tombstone,
+            forget_receipt,
+            transition,
+            receipt,
+            released_at=released_at,
+            **changes,
+        )
+        assert authority is None
+        assert reasons == (
+            "subjective_mem_restore_tombstone_release_authorization_unsupported",
+        )
+
+    authority, reasons = _build(
+        tombstone,
+        forget_receipt,
+        transition,
+        receipt,
+        released_at=released_at,
+        policy_revision="relaylm.subjective_mem_lifecycle_policy.v0",
+    )
+    assert authority is None
+    assert reasons == ("subjective_mem_restore_tombstone_release_policy_unsupported",)
+
+
+def test_builder_rejects_mismatched_release_id(lifecycle_env) -> None:
+    predecessor = lifecycle_env["page"].blocks[0].revision
+    forgotten = _forget(lifecycle_env)
+    space, tombstone, forget_receipt, semantic_id = _release_inputs(
+        lifecycle_env, predecessor, forgotten
+    )
+    released_at = (NOW + timedelta(seconds=4)).isoformat()
+    transition, receipt = _restore_lineage(
+        space=space,
+        predecessor=predecessor,
+        forgotten=forgotten,
+        tombstone=tombstone,
+        semantic_id=semantic_id,
+        released_at=released_at,
+    )
+    authority, reasons = _build(
+        tombstone,
+        forget_receipt,
+        transition,
+        receipt,
+        released_at=released_at,
+        release_id="smrestorerelease-other-1",
+    )
+    assert authority is None
+    assert reasons == ("subjective_mem_restore_tombstone_release_id_mismatch",)
+
+
+def test_builder_rejects_tampered_forget_and_restore_lineage(lifecycle_env) -> None:
+    predecessor = lifecycle_env["page"].blocks[0].revision
+    forgotten = _forget(lifecycle_env)
+    space, tombstone, forget_receipt, semantic_id = _release_inputs(
+        lifecycle_env, predecessor, forgotten
+    )
+    released_at = (NOW + timedelta(seconds=4)).isoformat()
+    transition, receipt = _restore_lineage(
+        space=space,
+        predecessor=predecessor,
+        forgotten=forgotten,
+        tombstone=tombstone,
+        semantic_id=semantic_id,
+        released_at=released_at,
+    )
+
+    foreign_body = {
+        key: value for key, value in forget_receipt.items() if key != "receipt_digest"
+    }
+    foreign_body["receipt_id"] = "smforgetreceipt-foreign-1"
+    foreign_receipt = {
+        **foreign_body,
+        "receipt_digest": canonical_digest(foreign_body),
+    }
+    authority, reasons = _build(
+        tombstone, foreign_receipt, transition, receipt, released_at=released_at
+    )
+    assert authority is None
+    assert reasons == ("subjective_mem_restore_tombstone_release_lineage_invalid",)
+
+    tampered_receipt = {**forget_receipt, "receipt_id": "smforgetreceipt-tampered-1"}
+    authority, reasons = _build(
+        tombstone, tampered_receipt, transition, receipt, released_at=released_at
+    )
+    assert authority is None
+    assert reasons == (
+        "subjective_mem_restore_tombstone_release_input_not_authentic",
+    )
+
+    for broken in (
+        {**transition, "to_revision": int(tombstone["hidden_revision"]) + 9},
+        {**transition, "from_lifecycle_state": "active"},
+        {**transition, "operation": "correct"},
+        {**transition, "committed_at": (NOW + timedelta(seconds=9)).isoformat()},
+    ):
+        authority, reasons = _build(
+            tombstone, forget_receipt, broken, receipt, released_at=released_at
+        )
+        assert authority is None
+        assert reasons == (
+            "subjective_mem_restore_tombstone_release_lineage_invalid",
+        )
+
+
+def test_builder_rejects_non_monotonic_release_without_mutation(lifecycle_env) -> None:
+    predecessor = lifecycle_env["page"].blocks[0].revision
+    forgotten = _forget(lifecycle_env)
+    space, tombstone, forget_receipt, semantic_id = _release_inputs(
+        lifecycle_env, predecessor, forgotten
+    )
+    early = str(tombstone["effective_at"])
+    transition, receipt = _restore_lineage(
+        space=space,
+        predecessor=predecessor,
+        forgotten=forgotten,
+        tombstone=tombstone,
+        semantic_id=semantic_id,
+        released_at=early,
+    )
+    before = sorted(str(path) for path in lifecycle_env["store"].root.rglob("*"))
+    page_before = lifecycle_env["page_path"].read_bytes()
+
+    authority, reasons = _build(
+        tombstone, forget_receipt, transition, receipt, released_at=early
+    )
+    assert authority is None
+    assert reasons == ("subjective_mem_restore_tombstone_release_non_monotonic",)
+
+    assert sorted(str(path) for path in lifecycle_env["store"].root.rglob("*")) == before
+    assert lifecycle_env["page_path"].read_bytes() == page_before
+    forbidden = (
+        str(lifecycle_env["workspace_root"]),
+        predecessor.subjective_meaning,
+        predecessor.grounded_content,
+        "lc1b-forget-operation",
+    )
+    assert all(value not in " ".join(reasons) for value in forbidden)
