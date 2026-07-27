@@ -1,4 +1,4 @@
-"""LC-1D write-free Subjective MEM Restore preflight tests."""
+"""LC-1D Subjective MEM Restore preflight and fresh-publication tests."""
 from __future__ import annotations
 
 import ast
@@ -486,8 +486,13 @@ def test_restore_plan_module_is_storage_neutral_and_write_free() -> None:
         assert forbidden not in source
     assert set(restore_plan.__all__) == {
         "SubjectiveMemRestorePlanInputs",
+        "build_subjective_mem_restore_final_records",
         "build_subjective_mem_restore_lifecycle_plan",
         "build_subjective_mem_restore_prepared_intent",
+        "subjective_mem_restore_predecessor_exact",
+        "subjective_mem_restore_predecessor_expectation",
+        "subjective_mem_restore_tombstone_exact",
+        "subjective_mem_restore_workspace_authority_digest",
     }
 
 

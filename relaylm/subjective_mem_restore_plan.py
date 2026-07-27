@@ -1,16 +1,18 @@
-"""Deterministic Restore lifecycle plan composition.
+"""Deterministic Restore lifecycle plan composition and operation-pure checks.
 
-This module owns only the write-free composition of the content-free prepared
-intent and the immutable ``LifecyclePublicationPlan`` for one already validated
-``hidden N -> active N+1`` Restore operation. It performs no filesystem or
-Evidence-store access, holds no runtime state, and is not a second Restore
-owner: request validation, authority loading, and orchestration remain in
-``relaylm.subjective_mem_restore_runtime``, while reservation, publication, and
-finalization remain owned by the shared lifecycle engine.
+This module owns the write-free composition of the content-free prepared
+intent, the immutable ``LifecyclePublicationPlan``, and the final records for
+one ``hidden N -> active N+1`` Restore operation, together with the
+operation-pure exactness predicates those payloads depend on. It performs no
+filesystem, transaction, or Evidence-store access, holds no runtime state, and
+is not a second Restore owner: request handling, durable authority loading, and
+orchestration remain in ``relaylm.subjective_mem_restore_runtime``, while
+reservation, publication, and finalization remain owned by the shared engine.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from relaylm._subjective_mem_commit_io import PLATFORM_REVISION
 from relaylm.evidence_common import canonical_digest, sha256_hex
@@ -19,6 +21,9 @@ from relaylm.subjective_mem import (
     SubjectiveMemCharacterAuthority,
     SubjectiveMemCurrentState,
     SubjectiveMemRevision,
+)
+from relaylm.subjective_mem_lifecycle_authority import (
+    SubjectiveMemPredecessorExpectation,
 )
 from relaylm.subjective_mem_lifecycle import (
     LIFECYCLE_INTENT_FINALIZATION_SCHEMA,
@@ -41,6 +46,9 @@ from relaylm.subjective_mem_markdown import (
     PAGE_SCHEMA,
     RENDERER_REVISION,
     SubjectiveMemPagePlan,
+)
+from relaylm.subjective_mem_reformation import (
+    subjective_mem_semantic_identity_digest,
 )
 from relaylm.subjective_mem_restore import (
     SubjectiveMemRestoreOperationIdentity,
@@ -427,11 +435,119 @@ def _opaque(prefix: str, value: str) -> str:
     return f"{prefix}_{sha256_hex(value.encode('utf-8'))}"
 
 
-# NOTE: ``build_subjective_mem_restore_final_records`` is public API but is not
-# re-exported yet: the Restore runtime tests pin this ``__all__`` to the plan
-# builders, and that file is outside this slice's allowed paths.
+def subjective_mem_restore_predecessor_expectation(
+    proposal: SubjectiveMemRestoreProposal,
+) -> SubjectiveMemPredecessorExpectation:
+    return SubjectiveMemPredecessorExpectation(
+        proposal.expected_current_receipt_id,
+        proposal.expected_current_receipt_digest,
+        proposal.expected_current_selector_digest,
+        proposal.expected_page_id,
+        proposal.expected_block_id,
+        proposal.expected_page_digest,
+        proposal.expected_revision_schema,
+        proposal.expected_page_schema,
+        proposal.expected_block_schema,
+        proposal.expected_renderer_revision,
+        proposal.expected_partition_revision,
+        proposal.expected_platform_revision,
+    )
+
+
+def subjective_mem_restore_tombstone_exact(
+    raw: object, space: str, character_id: str,
+    predecessor: SubjectiveMemRevision, proposal: SubjectiveMemRestoreProposal,
+) -> bool:
+    if not isinstance(raw, dict):
+        return False
+    body = {key: value for key, value in raw.items() if key != "tombstone_digest"}
+    return (
+        raw.get("tombstone_id") == proposal.expected_forget_tombstone_id
+        and raw.get("tombstone_digest") == proposal.expected_forget_tombstone_digest
+        and canonical_digest(body) == proposal.expected_forget_tombstone_digest
+        and raw.get("evidence_space_id") == space
+        and raw.get("character_id") == character_id
+        and raw.get("memory_id") == predecessor.memory_id
+        and raw.get("hidden_revision") == predecessor.memory_revision
+        and raw.get("transition_id") == proposal.expected_forget_transition_id
+        and raw.get("receipt_id") == proposal.expected_current_receipt_id
+        and raw.get("semantic_identity_digest")
+        == proposal.expected_semantic_identity_digest
+        and raw.get("effective") is True and raw.get("content_free") is True)
+
+
+def subjective_mem_restore_predecessor_exact(
+    space: str, predecessor: SubjectiveMemRevision, state: SubjectiveMemCurrentState,
+    proposal: SubjectiveMemRestoreProposal,
+    authority: SubjectiveMemCharacterAuthority, workspace: str, committed_at: str,
+) -> bool:
+    try:
+        semantic_identity = subjective_mem_semantic_identity_digest(
+            evidence_space_id=space,
+            character_id=authority.character_id,
+            grounded_content_digest=predecessor.grounded_content_digest,
+            subjective_meaning=predecessor.subjective_meaning,
+            memory_kind=predecessor.memory_kind,
+            scope_binding=predecessor.scope_binding,
+        )
+    except (TypeError, ValueError):
+        return False
+    return (
+        predecessor.character_id == authority.character_id
+        and predecessor.memory_id == proposal.expected_memory_id
+        and predecessor.memory_revision == proposal.expected_current_revision
+        and predecessor.lifecycle_state == "hidden"
+        and predecessor.retrieval_visible is False
+        and predecessor.memory_kind == proposal.expected_memory_kind
+        and predecessor.formation_stage == proposal.expected_formation_stage
+        and semantic_identity == proposal.expected_semantic_identity_digest
+        and canonical_digest(predecessor.scope_binding.to_dict())
+        == proposal.expected_scope_binding_digest
+        and canonical_digest(predecessor.formation_snapshot.to_dict())
+        == proposal.expected_formation_snapshot_digest
+        and state.workspace_authority_digest
+        == subjective_mem_restore_workspace_authority_digest(workspace, authority)
+        and state.scope_binding_digest == proposal.expected_scope_binding_digest
+        and state.page_id == proposal.expected_page_id
+        and state.block_id == proposal.expected_block_id
+        and state.canonical_page_digest == proposal.expected_page_digest
+        and state.authorization_kind == predecessor.authorization_kind
+        and state.authorization_id == predecessor.authorization_id
+        and state.current_receipt_id == proposal.expected_current_receipt_id
+        and _after(committed_at, predecessor.created_at, state.updated_at))
+
+
+def subjective_mem_restore_workspace_authority_digest(
+    workspace: str, authority: SubjectiveMemCharacterAuthority
+) -> str:
+    return canonical_digest({
+        "workspace_root_digest": sha256_hex(workspace.encode("utf-8")),
+        "character_authority": authority.to_dict(),
+    })
+
+
+def _after(candidate: str, *earlier: str) -> bool:
+    try:
+        current = _utc_text(candidate)
+        return all(current > _utc_text(item) for item in earlier)
+    except (TypeError, ValueError):
+        return False
+
+
+def _utc_text(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        raise ValueError("subjective_mem_restore_clock_invalid")
+    return parsed.astimezone(timezone.utc)
+
+
 __all__ = [
     "SubjectiveMemRestorePlanInputs",
+    "build_subjective_mem_restore_final_records",
     "build_subjective_mem_restore_lifecycle_plan",
     "build_subjective_mem_restore_prepared_intent",
+    "subjective_mem_restore_predecessor_exact",
+    "subjective_mem_restore_predecessor_expectation",
+    "subjective_mem_restore_tombstone_exact",
+    "subjective_mem_restore_workspace_authority_digest",
 ]

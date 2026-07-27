@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Literal
 
 from relaylm._subjective_mem_commit_io import PLATFORM_REVISION, inspect_canonical_page
-from relaylm.evidence_common import canonical_digest, sha256_hex
+from relaylm.evidence_common import canonical_digest
 from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreTransaction
 from relaylm.subjective_mem import (
     SUBJECTIVE_MEM_REVISION_SCHEMA,
@@ -24,7 +24,6 @@ from relaylm.subjective_mem import (
 )
 from relaylm.subjective_mem_lifecycle import LIFECYCLE_POLICY_REVISION
 from relaylm.subjective_mem_lifecycle_authority import (
-    SubjectiveMemPredecessorExpectation,
     load_subjective_mem_predecessor_authority_locked,
 )
 from relaylm.subjective_mem_lifecycle_engine import (
@@ -45,7 +44,7 @@ from relaylm.subjective_mem_markdown import (
 )
 from relaylm.subjective_mem_reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
-    inspect_subjective_mem_reformation_digest_locked, subjective_mem_semantic_identity_digest,
+    inspect_subjective_mem_reformation_digest_locked,
 )
 from relaylm.subjective_mem_restore import (
     SubjectiveMemRestoreOperationIdentity,
@@ -56,6 +55,10 @@ from relaylm.subjective_mem_restore import (
 from relaylm.subjective_mem_restore_plan import (
     SubjectiveMemRestorePlanInputs, build_subjective_mem_restore_final_records,
     build_subjective_mem_restore_lifecycle_plan,
+    subjective_mem_restore_predecessor_exact,
+    subjective_mem_restore_predecessor_expectation,
+    subjective_mem_restore_tombstone_exact,
+    subjective_mem_restore_workspace_authority_digest,
 )
 from relaylm.subjective_mem_tombstone_release import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
@@ -209,7 +212,7 @@ def _prepare(
     bound, errors = _stored_authority(store, space, authority, proposal, predecessor)
     if bound is None:
         return None, errors
-    if not _predecessor_exact(
+    if not subjective_mem_restore_predecessor_exact(
         space, predecessor, bound.current, proposal, authority, workspace, committed_at
     ):
         return None, ("subjective_mem_restore_current_revision_invalid",)
@@ -234,7 +237,9 @@ def _prepare(
         SubjectiveMemRestorePlanInputs(
             evidence_space_id=space, character_authority=authority,
             workspace_root=workspace, proposal=proposal, identity=identity,
-            workspace_authority_digest=_workspace_digest(workspace, authority),
+            workspace_authority_digest=(
+                subjective_mem_restore_workspace_authority_digest(workspace, authority)
+            ),
             predecessor=predecessor, successor=successor,
             current_state=bound.current, prepared_state=prepared,
             page=planned.plan, record_bindings=bound.records,
@@ -310,7 +315,8 @@ def _stored_authority(
                 return None, reasons
             loaded, reasons = load_subjective_mem_predecessor_authority_locked(
                 tx=tx, evidence_space_id=space, character_authority=authority,
-                predecessor=predecessor, expectation=_expectation(proposal),
+                predecessor=predecessor,
+                expectation=subjective_mem_restore_predecessor_expectation(proposal),
             )
             if loaded is None:
                 return None, reasons
@@ -412,7 +418,9 @@ def _forget_lineage(
     tombstone = tx.read_record(
         record_kind=_TOMBSTONE, record_id=proposal.expected_forget_tombstone_id
     )
-    if not _tombstone_exact(tombstone, space, character_id, predecessor, proposal):
+    if not subjective_mem_restore_tombstone_exact(
+        tombstone, space, character_id, predecessor, proposal
+    ):
         return None, ("subjective_mem_restore_forget_tombstone_not_exact",)
     check = inspect_subjective_mem_reformation_digest_locked(
         tx=tx, evidence_space_id=space, character_id=character_id,
@@ -507,96 +515,6 @@ def _state(raw: object) -> SubjectiveMemCurrentState | None:
     return state if state.to_dict() == raw else None
 
 
-def _expectation(
-    proposal: SubjectiveMemRestoreProposal,
-) -> SubjectiveMemPredecessorExpectation:
-    return SubjectiveMemPredecessorExpectation(
-        proposal.expected_current_receipt_id,
-        proposal.expected_current_receipt_digest,
-        proposal.expected_current_selector_digest,
-        proposal.expected_page_id,
-        proposal.expected_block_id,
-        proposal.expected_page_digest,
-        proposal.expected_revision_schema,
-        proposal.expected_page_schema,
-        proposal.expected_block_schema,
-        proposal.expected_renderer_revision,
-        proposal.expected_partition_revision,
-        proposal.expected_platform_revision,
-    )
-
-
-def _tombstone_exact(
-    raw: object, space: str, character_id: str,
-    predecessor: SubjectiveMemRevision, proposal: SubjectiveMemRestoreProposal,
-) -> bool:
-    if not isinstance(raw, dict):
-        return False
-    body = {key: value for key, value in raw.items() if key != "tombstone_digest"}
-    return (
-        raw.get("tombstone_id") == proposal.expected_forget_tombstone_id
-        and raw.get("tombstone_digest") == proposal.expected_forget_tombstone_digest
-        and canonical_digest(body) == proposal.expected_forget_tombstone_digest
-        and raw.get("evidence_space_id") == space
-        and raw.get("character_id") == character_id
-        and raw.get("memory_id") == predecessor.memory_id
-        and raw.get("hidden_revision") == predecessor.memory_revision
-        and raw.get("transition_id") == proposal.expected_forget_transition_id
-        and raw.get("receipt_id") == proposal.expected_current_receipt_id
-        and raw.get("semantic_identity_digest")
-        == proposal.expected_semantic_identity_digest
-        and raw.get("effective") is True and raw.get("content_free") is True)
-
-
-def _predecessor_exact(
-    space: str, predecessor: SubjectiveMemRevision, state: SubjectiveMemCurrentState,
-    proposal: SubjectiveMemRestoreProposal,
-    authority: SubjectiveMemCharacterAuthority, workspace: str, committed_at: str,
-) -> bool:
-    try:
-        semantic_identity = subjective_mem_semantic_identity_digest(
-            evidence_space_id=space,
-            character_id=authority.character_id,
-            grounded_content_digest=predecessor.grounded_content_digest,
-            subjective_meaning=predecessor.subjective_meaning,
-            memory_kind=predecessor.memory_kind,
-            scope_binding=predecessor.scope_binding,
-        )
-    except (TypeError, ValueError):
-        return False
-    return (
-        predecessor.character_id == authority.character_id
-        and predecessor.memory_id == proposal.expected_memory_id
-        and predecessor.memory_revision == proposal.expected_current_revision
-        and predecessor.lifecycle_state == "hidden"
-        and predecessor.retrieval_visible is False
-        and predecessor.memory_kind == proposal.expected_memory_kind
-        and predecessor.formation_stage == proposal.expected_formation_stage
-        and semantic_identity == proposal.expected_semantic_identity_digest
-        and canonical_digest(predecessor.scope_binding.to_dict())
-        == proposal.expected_scope_binding_digest
-        and canonical_digest(predecessor.formation_snapshot.to_dict())
-        == proposal.expected_formation_snapshot_digest
-        and state.workspace_authority_digest == _workspace_digest(workspace, authority)
-        and state.scope_binding_digest == proposal.expected_scope_binding_digest
-        and state.page_id == proposal.expected_page_id
-        and state.block_id == proposal.expected_block_id
-        and state.canonical_page_digest == proposal.expected_page_digest
-        and state.authorization_kind == predecessor.authorization_kind
-        and state.authorization_id == predecessor.authorization_id
-        and state.current_receipt_id == proposal.expected_current_receipt_id
-        and _after(committed_at, predecessor.created_at, state.updated_at))
-
-
-def _workspace_digest(
-    workspace: str, authority: SubjectiveMemCharacterAuthority
-) -> str:
-    return canonical_digest({
-        "workspace_root_digest": sha256_hex(workspace.encode("utf-8")),
-        "character_authority": authority.to_dict(),
-    })
-
-
 def _space_present(store: EvidenceRecordStore, space: str) -> bool:
     path = store.root / space
     try:
@@ -605,25 +523,10 @@ def _space_present(store: EvidenceRecordStore, space: str) -> bool:
         return False
 
 
-def _after(candidate: str, *earlier: str) -> bool:
-    try:
-        current = _utc_text(candidate)
-        return all(current > _utc_text(item) for item in earlier)
-    except (TypeError, ValueError):
-        return False
-
-
 def _utc(value: datetime) -> datetime:
     if not isinstance(value, datetime) or value.tzinfo is None:
         raise ValueError("subjective_mem_restore_clock_invalid")
     return value.astimezone(timezone.utc)
-
-
-def _utc_text(value: str) -> datetime:
-    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    if parsed.tzinfo is None:
-        raise ValueError("subjective_mem_restore_clock_invalid")
-    return parsed.astimezone(timezone.utc)
 
 
 def _apply(
