@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal
+from typing import Literal, get_args
 
 from relaylm._subjective_mem_commit_io import PLATFORM_REVISION, inspect_canonical_page
 from relaylm.evidence_common import canonical_digest
@@ -75,10 +75,8 @@ RestoreStatus = Literal[
     "dry_run_ready", "committed", "duplicate_finalized", "recovery_pending",
     "recovery_required", "lock_busy", "fail_closed", "integrity_conflict",
 ]
-_ENGINE_STATUSES = frozenset(
-    {"committed", "duplicate_finalized", "recovery_pending", "recovery_required",
-     "lock_busy", "fail_closed", "integrity_conflict"}
-)
+# every status the shared engine can return: all but the preflight-only dry run
+_ENGINE_STATUSES = frozenset(get_args(RestoreStatus)) - {"dry_run_ready"}
 _CURRENT = "subjective_mem_current_state"
 _TOMBSTONE = "subjective_mem_forget_tombstone"
 
@@ -417,12 +415,8 @@ def _forget_lineage(
 
 
 def _request_errors(
-    store: object,
-    config: object,
-    authority: object,
-    workspace: object,
-    proposal: object,
-    apply: object,
+    store: object, config: object, authority: object,
+    workspace: object, proposal: object, apply: object,
 ) -> list[str]:
     errors: list[str] = []
     if type(store) is not EvidenceRecordStore:
@@ -543,8 +537,7 @@ def _durable_plan(
     try:
         with store.transaction(space) as tx:
             descriptor = tx.read_record(
-                record_kind="evidence_space_descriptor", record_id="revision-1"
-            )
+                record_kind="evidence_space_descriptor", record_id="revision-1")
             receipt = tx.read_record(
                 record_kind="subjective_mem_lifecycle_receipt",
                 record_id=proposal.expected_current_receipt_id,
@@ -665,8 +658,8 @@ def _from_outcome(
     status: RestoreStatus = (
         outcome.status if outcome.status in _ENGINE_STATUSES else "fail_closed"
     )  # type: ignore[assignment]
-    # the immutable release is finalized atomically with the receipt, so it is
-    # present exactly when the engine confirms a fresh commit or an exact replay
+    # the release is finalized atomically with the receipt, so it is present
+    # exactly on a fresh commit or an exact replay
     finalized = outcome.status in {"committed", "duplicate_finalized"}
     return _result(
         status, identity=identity, proposal=proposal, current=outcome.current_state,

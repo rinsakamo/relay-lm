@@ -1556,3 +1556,123 @@ def test_restore_replay_requires_exact_predecessor_bindings(lifecycle_env) -> No
     assert _revisions(page_after) == [1, 2, 3]
     assert _release_events(lifecycle_env, proposal) == release_after
     assert len(release_after) == 1
+
+
+def _uninspected_binding_cases(proposal):
+    """Fields no lineage comparison selects, altered while the digest is kept."""
+
+    return (
+        (
+            "subjective_mem_lifecycle_receipt",
+            proposal.expected_current_receipt_id,
+            "renderer_revision",
+            "relaylm.subjective_mem_renderer.v0",
+        ),
+        (
+            "subjective_mem_forget_tombstone",
+            proposal.expected_forget_tombstone_id,
+            "scope_binding_digest",
+            "f" * 64,
+        ),
+        (
+            "subjective_mem_forget_tombstone",
+            proposal.expected_forget_tombstone_id,
+            "reason_category",
+            "operator_requested_forget",
+        ),
+    )
+
+
+def _alter_keeping_digest(env, kind: str, record_id: str, field: str, value):
+    """Alter one uninspected field while retaining the record's stale digest."""
+
+    space = env["captured"].evidence_space_id
+    path = _record_file(env, kind, record_id)
+    saved = path.read_text(encoding="utf-8")
+    original = _record(env, kind, record_id)
+    assert isinstance(original, dict) and field in original
+    assert original[field] != value
+    digest_field = (
+        "receipt_digest" if "receipt" in kind else "tombstone_digest"
+    )
+    path.unlink()
+    written = env["store"].write_record(
+        evidence_space_id=space, record_kind=kind, record_id=record_id,
+        payload={**original, field: value},
+    )
+    assert written.status == "created"
+    altered = _record(env, kind, record_id)
+    assert isinstance(altered, dict)
+    # the stale self-digest is retained, so only recomputing it detects this
+    assert altered[digest_field] == original[digest_field]
+    return saved
+
+
+def test_restore_recovery_rejects_altered_uninspected_binding_fields(
+    lifecycle_env,
+) -> None:
+    _forgotten, proposal = _proposal(lifecycle_env)
+    _reserved(lifecycle_env, proposal, key="recover-selfdigest")
+    before_page = lifecycle_env["page_path"].read_bytes()
+    before_files = _store_files(lifecycle_env)
+
+    for kind, record_id, field, value in _uninspected_binding_cases(proposal):
+        saved = _alter_keeping_digest(
+            lifecycle_env, kind, record_id, field, value
+        )
+        for apply_enabled in (False, True):
+            blocked = _restore(
+                lifecycle_env, proposal, apply=apply_enabled, key="recover-selfdigest"
+            )
+            assert blocked.status == "fail_closed", (
+                f"{kind}/{field} apply={apply_enabled} -> {blocked.status}"
+            )
+            assert blocked.recovery_outcome is None
+            assert blocked.canonical_markdown_published is False
+            assert blocked.lifecycle_receipt_present is False
+            assert blocked.tombstone_release_present is False
+            assert lifecycle_env["page_path"].read_bytes() == before_page
+            assert _release_events(lifecycle_env, proposal) in (None, [])
+        _restore_binding(lifecycle_env, kind, record_id, saved)
+        assert _store_files(lifecycle_env) == before_files
+
+    recovered = _restore(
+        lifecycle_env, proposal, apply=True, key="recover-selfdigest"
+    )
+    assert recovered.status == "committed", recovered.blocked_reasons
+    assert _revisions(lifecycle_env["page_path"].read_bytes()) == [1, 2, 3]
+
+
+def test_restore_replay_rejects_altered_uninspected_binding_fields(
+    lifecycle_env,
+) -> None:
+    proposal, first = _committed_restore(lifecycle_env, key="replay-selfdigest")
+    page_after = lifecycle_env["page_path"].read_bytes()
+    files_after = _store_files(lifecycle_env)
+    release_after = _release_events(lifecycle_env, proposal)
+
+    for kind, record_id, field, value in _uninspected_binding_cases(proposal):
+        saved = _alter_keeping_digest(
+            lifecycle_env, kind, record_id, field, value
+        )
+        for apply_enabled in (False, True):
+            blocked = _restore(
+                lifecycle_env, proposal, apply=apply_enabled, key="replay-selfdigest"
+            )
+            assert blocked.status == "fail_closed", (
+                f"{kind}/{field} apply={apply_enabled} -> {blocked.status}"
+            )
+            assert blocked.recovery_outcome != "exact_replay"
+            assert blocked.tombstone_release_present is False
+            assert lifecycle_env["page_path"].read_bytes() == page_after
+            assert _release_events(lifecycle_env, proposal) == release_after
+        _restore_binding(lifecycle_env, kind, record_id, saved)
+        assert _store_files(lifecycle_env) == files_after
+
+    replay = _restore(lifecycle_env, proposal, apply=True, key="replay-selfdigest")
+    assert replay.status == "duplicate_finalized", replay.blocked_reasons
+    assert replay.recovery_outcome == "exact_replay"
+    assert replay.release_id == first.release_id
+    assert lifecycle_env["page_path"].read_bytes() == page_after
+    assert _store_files(lifecycle_env) == files_after
+    assert _release_events(lifecycle_env, proposal) == release_after

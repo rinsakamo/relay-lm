@@ -320,39 +320,45 @@ def _forget_lineage_exact(
     tombstone: dict[str, object],
     intent: dict[str, object],
 ) -> bool:
-    """Require the exact Forget receipt, transition, and tombstone as one lineage.
+    """Authenticate the whole Forget receipt, transition, and tombstone bodies.
 
-    The three records are cross-linked, so proving them together is one check:
-    each must match the persisted intent and the identifiers the other two
-    carry, including the transition digest the tombstone was sealed with.
+    Anchoring each complete record to the digest the reservation persisted is
+    stronger than comparing selected fields: with the body pinned, no
+    uninspected field can differ while a stale digest field is retained, and
+    the lineage the three records cross-link follows by construction. Only the
+    store keys they were read under still need their own comparison.
     """
 
-    if not isinstance(forget_transition, dict):
-        return False
     return (
-        forget_receipt.get("receipt_id") == intent["current_receipt_id"]
-        and forget_receipt.get("receipt_digest") == intent["current_receipt_digest"]
-        and forget_receipt.get("operation_kind") == "forget"
+        _self_digest_exact(
+            forget_receipt, "receipt_digest", intent["current_receipt_digest"]
+        )
+        and _self_digest_exact(
+            tombstone, "tombstone_digest", intent["forget_tombstone_digest"]
+        )
+        and isinstance(forget_transition, dict)
+        and canonical_digest(forget_transition) == intent["forget_transition_digest"]
+        and forget_receipt.get("receipt_id") == intent["current_receipt_id"]
         and forget_receipt.get("transition_id") == intent["forget_transition_id"]
         and forget_receipt.get("tombstone_id") == intent["forget_tombstone_id"]
         and tombstone.get("tombstone_id") == intent["forget_tombstone_id"]
-        and tombstone.get("tombstone_digest") == intent["forget_tombstone_digest"]
-        and tombstone.get("semantic_identity_digest")
-        == intent["semantic_identity_digest"]
-        and tombstone.get("transition_id") == intent["forget_transition_id"]
-        and tombstone.get("transition_digest") == intent["forget_transition_digest"]
         and forget_transition.get("transition_id") == intent["forget_transition_id"]
-        and canonical_digest(forget_transition) == intent["forget_transition_digest"]
-        and forget_transition.get("operation") == "forget"
-        and forget_transition.get("to_lifecycle_state") == "hidden"
-        and forget_transition.get("to_revision") == intent["from_revision"]
-        and forget_transition.get("character_id") == intent["character_id"]
-        and forget_transition.get("memory_id") == intent["memory_id"]
-        and forget_transition.get("to_formation_stage") == intent["formation_stage"]
-        and forget_transition.get("authorized_by")
-        == tombstone.get("authorization_class")
-        and forget_transition.get("committed_at") == tombstone.get("effective_at")
     )
+
+
+def _self_digest_exact(record: object, field: str, persisted: object) -> bool:
+    """Recompute one record's self-digest and anchor it to the persisted value.
+
+    The record carries its own digest, so a retained stale digest field is only
+    caught by recomputing it over the rest of the body.
+    """
+
+    if not isinstance(record, dict):
+        return False
+    recomputed = canonical_digest(
+        {key: value for key, value in record.items() if key != field}
+    )
+    return recomputed == record.get(field) == persisted
 
 
 def _tombstone_state_exact(
