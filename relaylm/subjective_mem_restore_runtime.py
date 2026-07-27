@@ -22,23 +22,30 @@ from relaylm.subjective_mem import (
     SubjectiveMemRevision,
     resolve_subjective_mem_character_authority,
 )
-from relaylm.subjective_mem_lifecycle import LIFECYCLE_POLICY_REVISION
+from relaylm.subjective_mem_lifecycle import (
+    LIFECYCLE_INTENT_SCHEMA, LIFECYCLE_POLICY_REVISION,
+)
 from relaylm.subjective_mem_lifecycle_authority import (
     SubjectiveMemPredecessorExpectation,
     load_subjective_mem_predecessor_authority_locked,
+)
+from relaylm.subjective_mem_lifecycle_engine import (
+    LifecyclePublicationPlan, LogBinding, RecordBinding, validate_lifecycle_plan,
 )
 from relaylm.subjective_mem_markdown import (
     LIFECYCLE_BLOCK_SCHEMA,
     PAGE_PARTITION_REVISION,
     PAGE_SCHEMA,
     RENDERER_REVISION,
+    SubjectiveMemPagePlan,
     parse_subjective_mem_page_bytes,
     plan_subjective_mem_revision_successor,
     subjective_mem_page_identity,
 )
 from relaylm.subjective_mem_reformation import (
-    inspect_subjective_mem_reformation_digest_locked,
-    subjective_mem_semantic_identity_digest,
+    SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
+    SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
+    inspect_subjective_mem_reformation_digest_locked, subjective_mem_semantic_identity_digest,
 )
 from relaylm.subjective_mem_restore import (
     SubjectiveMemRestoreOperationIdentity,
@@ -50,6 +57,23 @@ from relaylm.subjective_mem_restore import (
 RestoreStatus = Literal["dry_run_ready", "fail_closed", "integrity_conflict"]
 _CURRENT = "subjective_mem_current_state"
 _TOMBSTONE = "subjective_mem_forget_tombstone"
+
+
+@dataclass(frozen=True)
+class _Bound:
+    current: SubjectiveMemCurrentState
+    records: tuple[RecordBinding, ...]
+    logs: tuple[LogBinding, ...]
+
+
+@dataclass(frozen=True)
+class _Prepared:
+    current: SubjectiveMemCurrentState
+    prepared: SubjectiveMemCurrentState
+    predecessor: SubjectiveMemRevision
+    successor: SubjectiveMemRevision
+    page: SubjectiveMemPagePlan
+    plan: LifecyclePublicationPlan
 
 
 @dataclass(frozen=True, repr=False)
@@ -147,23 +171,23 @@ def restore_subjective_mem(
             else "fail_closed"
         )
         return _result(status, proposal=proposal, reasons=reasons)
-    current, post_digest, reasons = _prepare(
+    prepared, reasons = _prepare(
         store, evidence_space_id, character_authority, workspace_root,
         proposal, identity, operation_time.isoformat(),
     )
-    if current is None:
+    if prepared is None:
         return _result(
             "fail_closed", identity=identity, proposal=proposal, reasons=reasons
         )
     if apply_enabled:
         return _result(
-            "fail_closed", identity=identity, proposal=proposal, current=current,
-            post_digest=post_digest,
+            "fail_closed", identity=identity, proposal=proposal,
+            current=prepared.current, post_digest=prepared.plan.post_image_digest,
             reasons=("subjective_mem_restore_apply_not_implemented",),
         )
     return _result(
         "dry_run_ready", identity=identity, proposal=proposal,
-        current=current, post_digest=post_digest,
+        current=prepared.current, post_digest=prepared.plan.post_image_digest,
     )
 
 
@@ -175,17 +199,17 @@ def _prepare(
     proposal: SubjectiveMemRestoreProposal,
     identity: SubjectiveMemRestoreOperationIdentity,
     committed_at: str,
-) -> tuple[SubjectiveMemCurrentState | None, str | None, tuple[str, ...]]:
+) -> tuple[_Prepared | None, tuple[str, ...]]:
     predecessor, page_bytes, errors = _page_predecessor(workspace, authority, proposal)
     if predecessor is None or page_bytes is None:
-        return None, None, errors
-    current, errors = _stored_authority(store, space, authority, proposal, predecessor)
-    if current is None:
-        return None, None, errors
+        return None, errors
+    bound, errors = _stored_authority(store, space, authority, proposal, predecessor)
+    if bound is None:
+        return None, errors
     if not _predecessor_exact(
-        space, predecessor, current, proposal, authority, workspace, committed_at
+        space, predecessor, bound.current, proposal, authority, workspace, committed_at
     ):
-        return None, None, ("subjective_mem_restore_current_revision_invalid",)
+        return None, ("subjective_mem_restore_current_revision_invalid",)
     successor = replace(
         predecessor,
         decision_id=identity.transition_id,
@@ -200,8 +224,107 @@ def _prepare(
         predecessor=predecessor, successor=successor, existing_bytes=page_bytes
     )
     if planned.plan is None:
-        return None, None, planned.reasons
-    return current, planned.plan.post_image_digest, ()
+        return None, planned.reasons
+    # The hidden selector is fenced by reserving it: only the mutation state and
+    # the exact operation time change, and it stays retrieval-ineligible.
+    prepared = replace(
+        bound.current, mutation_state="prepared", retrieval_eligible=False,
+        updated_at=committed_at,
+    )
+    plan = _plan(
+        space=space, authority=authority, workspace=workspace, proposal=proposal,
+        identity=identity, predecessor=predecessor, successor=successor,
+        current=bound.current, prepared=prepared, page=planned.plan,
+        bound=bound, committed_at=committed_at,
+    )
+    errors = validate_lifecycle_plan(plan)
+    if errors:
+        return None, errors
+    return _Prepared(
+        current=bound.current, prepared=prepared, predecessor=predecessor,
+        successor=successor, page=planned.plan, plan=plan,
+    ), ()
+
+
+def _plan(
+    *, space: str, authority: SubjectiveMemCharacterAuthority, workspace: str,
+    proposal: SubjectiveMemRestoreProposal,
+    identity: SubjectiveMemRestoreOperationIdentity,
+    predecessor: SubjectiveMemRevision, successor: SubjectiveMemRevision,
+    current: SubjectiveMemCurrentState, prepared: SubjectiveMemCurrentState,
+    page: SubjectiveMemPagePlan, bound: _Bound, committed_at: str,
+) -> LifecyclePublicationPlan:
+    """Bind the engine plan fields and the operation-owned Restore lineage."""
+
+    predecessor_digest = canonical_digest(predecessor.to_dict())
+    successor_digest = canonical_digest(successor.to_dict())
+    intent: dict[str, object] = {
+        "schema": LIFECYCLE_INTENT_SCHEMA, "intent_id": identity.intent_id,
+        "operation_slot_id": identity.operation_slot_id, "operation_kind": "restore",
+        "operation_id": identity.operation_id, "input_digest": identity.input_digest,
+        "operation_key_digest": identity.operation_key_digest, "evidence_space_id": space,
+        "character_id": authority.character_id,
+        "character_authority_digest": canonical_digest(authority.to_dict()),
+        "workspace_authority_digest": _workspace_digest(workspace, authority),
+        "memory_id": predecessor.memory_id, "memory_kind": predecessor.memory_kind,
+        "formation_stage": predecessor.formation_stage,
+        "scope_binding_digest": proposal.expected_scope_binding_digest,
+        "formation_snapshot_digest": proposal.expected_formation_snapshot_digest,
+        "semantic_identity_digest": proposal.expected_semantic_identity_digest,
+        "from_revision": predecessor.memory_revision, "from_lifecycle_state": "hidden",
+        "to_revision": successor.memory_revision, "to_lifecycle_state": "active",
+        "predecessor_revision_digest": predecessor_digest,
+        "predecessor_block_id": proposal.expected_block_id,
+        "predecessor_authorization_kind": predecessor.authorization_kind,
+        "predecessor_authorization_id": predecessor.authorization_id,
+        "successor_revision_digest": successor_digest,
+        "transition_id": identity.transition_id, "receipt_id": identity.receipt_id,
+        "release_id": identity.release_id, "result_id": identity.result_id,
+        "forget_transition_id": proposal.expected_forget_transition_id,
+        "forget_transition_digest": proposal.expected_forget_transition_digest,
+        "forget_tombstone_id": proposal.expected_forget_tombstone_id,
+        "forget_tombstone_digest": proposal.expected_forget_tombstone_digest,
+        "authorization_class": proposal.authorization_class,
+        "authorization_id": proposal.authorization_id,
+        "reason_category": proposal.reason_category,
+        "policy_revision": proposal.policy_revision,
+        "current_receipt_id": proposal.expected_current_receipt_id,
+        "current_receipt_digest": proposal.expected_current_receipt_digest,
+        "current_selector_id": proposal.expected_current_selector_id,
+        "current_selector_digest": proposal.expected_current_selector_digest,
+        "prepared_current_state_digest": canonical_digest(prepared.to_dict()),
+        "page_id": page.page_id, "partition": page.partition,
+        "successor_block_id": page.block_id, "artifact_id": page.artifact_id,
+        "successor_block_digest": page.block_digest, "artifact_digest": page.post_image_digest,
+        "pre_image_state": page.pre_image_state, "pre_image_digest": page.pre_image_digest,
+        "post_image_digest": page.post_image_digest,
+        "revision_schema": SUBJECTIVE_MEM_REVISION_SCHEMA, "page_schema": PAGE_SCHEMA,
+        "block_schema": LIFECYCLE_BLOCK_SCHEMA, "renderer_revision": RENDERER_REVISION,
+        "partition_revision": PAGE_PARTITION_REVISION,
+        "platform_revision": PLATFORM_REVISION,
+        "prepared_at": committed_at, "recovery_state": "prepared",
+    }
+    return LifecyclePublicationPlan(
+        evidence_space_id=space, character_id=authority.character_id,
+        workspace_root=workspace, operation_kind="restore",
+        operation_slot_id=identity.operation_slot_id, operation_id=identity.operation_id,
+        operation_key_digest=identity.operation_key_digest,
+        input_digest=identity.input_digest, intent_id=identity.intent_id,
+        transition_id=identity.transition_id, receipt_id=identity.receipt_id,
+        result_id=identity.result_id, memory_id=predecessor.memory_id,
+        from_revision=predecessor.memory_revision,
+        to_revision=successor.memory_revision, to_lifecycle_state="active",
+        selector_id=proposal.expected_current_selector_id, prepared_state=prepared,
+        page_id=page.page_id, page_partition=page.partition,
+        page_relative_path=proposal.expected_relative_path,
+        pre_image_state=page.pre_image_state, pre_image_digest=page.pre_image_digest,
+        post_image_digest=page.post_image_digest,
+        predecessor_revision_digest=predecessor_digest,
+        successor_revision_digest=successor_digest,
+        successor_block_id=page.block_id, artifact_id=page.artifact_id,
+        prepared_intent=intent, prepared_at=committed_at,
+        record_bindings=bound.records, log_bindings=bound.logs, current_state=current,
+    )
 
 
 def _page_predecessor(
@@ -261,7 +384,7 @@ def _stored_authority(
     authority: SubjectiveMemCharacterAuthority,
     proposal: SubjectiveMemRestoreProposal,
     predecessor: SubjectiveMemRevision,
-) -> tuple[SubjectiveMemCurrentState | None, tuple[str, ...]]:
+) -> tuple[_Bound | None, tuple[str, ...]]:
     try:
         with store.transaction(space) as tx:
             current, reasons = _selector(tx, proposal, authority.character_id)
@@ -276,13 +399,50 @@ def _stored_authority(
             )
             if loaded is None:
                 return None, reasons
-            reasons = _forget_lineage(
+            tombstone, reasons = _forget_lineage(
                 tx, space, authority.character_id, predecessor, proposal,
                 loaded.receipt, loaded.authorization_record,
             )
-            return (current, ()) if not reasons else (None, reasons)
+            if tombstone is None:
+                return None, reasons
+            logs, reasons = _forget_log_bindings(tx, proposal)
+            if logs is None:
+                return None, reasons
+            records = loaded.record_bindings + (
+                (_TOMBSTONE, proposal.expected_forget_tombstone_id, tombstone),
+            )
+            return _Bound(current=current, records=records, logs=logs), ()
     except (OSError, RuntimeError, TypeError, ValueError):
         return None, ("subjective_mem_restore_store_unavailable",)
+
+
+def _forget_log_bindings(
+    tx: EvidenceStoreTransaction, proposal: SubjectiveMemRestoreProposal,
+) -> tuple[tuple[LogBinding, ...] | None, tuple[str, ...]]:
+    """Bind the exact singleton tombstone state and prove no release exists."""
+
+    states = tx.read_log(
+        log_kind=SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
+        key=proposal.expected_semantic_identity_digest,
+    )
+    if (
+        not isinstance(states, list) or len(states) != 1
+        or not isinstance(states[0], dict)
+        or states[0].get("tombstone_id") != proposal.expected_forget_tombstone_id
+    ):
+        return None, ("subjective_mem_restore_forget_tombstone_state_not_exact",)
+    released = tx.read_log(
+        log_kind=SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
+        key=proposal.expected_forget_tombstone_id,
+    )
+    if released not in (None, []):
+        return None, ("subjective_mem_restore_tombstone_release_present",)
+    return (
+        (SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
+         proposal.expected_semantic_identity_digest, (states[0],)),
+        (SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
+         proposal.expected_forget_tombstone_id, ()),
+    ), ()
 
 
 def _selector(
@@ -329,7 +489,7 @@ def _forget_lineage(
     proposal: SubjectiveMemRestoreProposal,
     receipt: dict[str, object],
     transition: dict[str, object],
-) -> tuple[str, ...]:
+) -> tuple[dict[str, object] | None, tuple[str, ...]]:
     if (
         receipt.get("operation_kind") != "forget"
         or receipt.get("transition_id") != proposal.expected_forget_transition_id
@@ -343,12 +503,12 @@ def _forget_lineage(
         or receipt.get("semantic_identity_digest")
         != proposal.expected_semantic_identity_digest
     ):
-        return ("subjective_mem_restore_forget_lineage_not_exact",)
+        return None, ("subjective_mem_restore_forget_lineage_not_exact",)
     tombstone = tx.read_record(
         record_kind=_TOMBSTONE, record_id=proposal.expected_forget_tombstone_id
     )
     if not _tombstone_exact(tombstone, space, character_id, predecessor, proposal):
-        return ("subjective_mem_restore_forget_tombstone_not_exact",)
+        return None, ("subjective_mem_restore_forget_tombstone_not_exact",)
     check = inspect_subjective_mem_reformation_digest_locked(
         tx=tx,
         evidence_space_id=space,
@@ -359,8 +519,9 @@ def _forget_lineage(
         check.status != "blocked"
         or check.tombstone_ids != (proposal.expected_forget_tombstone_id,)
     ):
-        return ("subjective_mem_restore_forget_tombstone_not_effective",)
-    return ()
+        return None, ("subjective_mem_restore_forget_tombstone_not_effective",)
+    assert isinstance(tombstone, dict)
+    return tombstone, ()
 
 
 def _request_errors(

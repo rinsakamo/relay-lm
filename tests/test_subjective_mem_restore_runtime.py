@@ -17,9 +17,15 @@ from relaylm.subjective_mem_markdown import (
     RENDERER_REVISION,
     parse_subjective_mem_page_bytes,
 )
+from relaylm.subjective_mem_lifecycle_engine import validate_lifecycle_plan
+from relaylm.subjective_mem_reformation import (
+    SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
+    SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
+)
 from relaylm.subjective_mem_restore import (
     SubjectiveMemRestoreBoundary,
     SubjectiveMemRestoreProposal,
+    derive_subjective_mem_restore_operation_identity,
 )
 import relaylm.subjective_mem_restore_runtime as restore_runtime
 from relaylm.subjective_mem_restore_runtime import restore_subjective_mem
@@ -202,3 +208,228 @@ def test_restore_runtime_uses_shared_authority_without_private_runtime_imports()
     assert "relaymem_primary" not in source
     assert "ContextVar" not in source
     assert "publish_canonical_page" not in source
+
+
+def _prepared_plan(env, proposal, *, key="lc1d-restore-plan"):
+    space = env["captured"].evidence_space_id
+    committed_at = (NOW + timedelta(seconds=4)).isoformat()
+    identity, reasons = derive_subjective_mem_restore_operation_identity(
+        evidence_space_id=space,
+        character_authority_digest=canonical_digest(env["authority"].to_dict()),
+        memory_id=proposal.expected_memory_id,
+        operation_idempotency_key=key,
+        proposal=proposal,
+        operation_time=committed_at,
+    )
+    assert identity is not None, reasons
+    prepared, reasons = restore_runtime._prepare(  # noqa: SLF001
+        env["store"], space, env["authority"], str(env["workspace_root"]),
+        proposal, identity, committed_at,
+    )
+    return prepared, reasons, identity, committed_at
+
+
+def _store_files(env):
+    return sorted(
+        str(path.relative_to(env["store"].root))
+        for path in env["store"].root.rglob("*")
+        if path.is_file()
+    )
+
+
+def test_restore_prepares_engine_valid_publication_plan(lifecycle_env) -> None:
+    _forgotten, proposal = _proposal(lifecycle_env)
+    prepared, reasons, identity, committed_at = _prepared_plan(lifecycle_env, proposal)
+    assert prepared is not None, reasons
+
+    plan = prepared.plan
+    assert validate_lifecycle_plan(plan) == ()
+    assert plan.operation_kind == "restore"
+    assert plan.evidence_space_id == lifecycle_env["captured"].evidence_space_id
+    assert plan.character_id == lifecycle_env["authority"].character_id
+    assert plan.from_revision == proposal.expected_current_revision
+    assert plan.to_revision == proposal.expected_current_revision + 1
+    assert plan.to_lifecycle_state == "active"
+    assert plan.operation_slot_id == identity.operation_slot_id
+    assert plan.transition_id == identity.transition_id
+    assert plan.receipt_id == identity.receipt_id
+    assert plan.result_id == identity.result_id
+    assert plan.intent_id == identity.intent_id
+    assert plan.selector_id == proposal.expected_current_selector_id
+    assert plan.page_id == proposal.expected_page_id
+    assert plan.page_relative_path == proposal.expected_relative_path
+    assert plan.pre_image_state == "present"
+    assert plan.pre_image_digest == proposal.expected_page_digest
+    assert plan.post_image_digest == prepared.page.post_image_digest
+    assert plan.predecessor_revision_digest == canonical_digest(
+        prepared.predecessor.to_dict()
+    )
+    assert plan.successor_revision_digest == canonical_digest(
+        prepared.successor.to_dict()
+    )
+    assert plan.successor_block_id == prepared.page.block_id
+    assert plan.artifact_id == prepared.page.artifact_id
+    assert plan.prepared_at == committed_at
+    assert plan.prepared_intent["release_id"] == identity.release_id
+    assert plan.prepared_intent["forget_tombstone_id"] == (
+        proposal.expected_forget_tombstone_id
+    )
+    assert plan.prepared_intent["forget_transition_digest"] == (
+        proposal.expected_forget_transition_digest
+    )
+    assert plan.prepared_intent["semantic_identity_digest"] == (
+        proposal.expected_semantic_identity_digest
+    )
+    assert prepared.successor.lifecycle_state == "active"
+    assert prepared.successor.retrieval_visible is True
+    assert prepared.successor.memory_revision == prepared.predecessor.memory_revision + 1
+
+
+def test_restore_prepared_selector_fences_only_reservation_fields(lifecycle_env) -> None:
+    _forgotten, proposal = _proposal(lifecycle_env)
+    prepared, reasons, _identity, committed_at = _prepared_plan(lifecycle_env, proposal)
+    assert prepared is not None, reasons
+
+    current, reserved = prepared.current, prepared.prepared
+    assert current.mutation_state == "none"
+    assert reserved.mutation_state == "prepared"
+    assert reserved.updated_at == committed_at
+    assert reserved.retrieval_eligible is False
+    assert current.retrieval_eligible is False
+    assert reserved.lifecycle_state == current.lifecycle_state == "hidden"
+    assert replace(
+        reserved, mutation_state=current.mutation_state, updated_at=current.updated_at
+    ) == current
+    for field in (
+        "workspace_authority_digest", "scope_binding_digest", "page_id", "block_id",
+        "canonical_page_digest", "authorization_kind", "authorization_id",
+        "current_receipt_id",
+    ):
+        assert getattr(reserved, field) == getattr(current, field)
+    assert prepared.plan.prepared_state == reserved
+    assert prepared.plan.current_state == current
+
+
+def test_restore_plan_binds_shared_authority_and_forget_tombstone(lifecycle_env) -> None:
+    forgotten, proposal = _proposal(lifecycle_env)
+    prepared, reasons, _identity, _at = _prepared_plan(lifecycle_env, proposal)
+    assert prepared is not None, reasons
+
+    kinds = [kind for kind, _id, _body in prepared.plan.record_bindings]
+    assert kinds == [
+        "evidence_space_descriptor",
+        "subjective_mem_lifecycle_receipt",
+        "subjective_mem_lifecycle_transition",
+        "subjective_mem_forget_tombstone",
+    ]
+    bound = {kind: (record_id, body) for kind, record_id, body in prepared.plan.record_bindings}
+    tombstone_id, tombstone = bound["subjective_mem_forget_tombstone"]
+    assert tombstone_id == proposal.expected_forget_tombstone_id
+    assert tombstone["tombstone_digest"] == proposal.expected_forget_tombstone_digest
+    assert tombstone["effective"] is True and tombstone["content_free"] is True
+    receipt_id, receipt = bound["subjective_mem_lifecycle_receipt"]
+    assert receipt_id == proposal.expected_current_receipt_id
+    assert receipt["operation_kind"] == "forget"
+    assert receipt["tombstone_id"] == forgotten.tombstone_id
+
+
+def test_restore_plan_binds_singleton_tombstone_state_and_empty_release(
+    lifecycle_env,
+) -> None:
+    _forgotten, proposal = _proposal(lifecycle_env)
+    prepared, reasons, _identity, _at = _prepared_plan(lifecycle_env, proposal)
+    assert prepared is not None, reasons
+
+    logs = prepared.plan.log_bindings
+    assert [kind for kind, _key, _events in logs] == [
+        SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
+        SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
+    ]
+    state_kind, state_key, state_events = logs[0]
+    assert state_kind == SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND
+    assert state_key == proposal.expected_semantic_identity_digest
+    assert len(state_events) == 1
+    assert state_events[0]["tombstone_id"] == proposal.expected_forget_tombstone_id
+    release_kind, release_key, release_events = logs[1]
+    assert release_kind == SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND
+    assert release_key == proposal.expected_forget_tombstone_id
+    assert release_events == ()
+
+
+def test_restore_dry_run_and_apply_paths_make_no_mutation(lifecycle_env) -> None:
+    _forgotten, proposal = _proposal(lifecycle_env)
+    before_page = lifecycle_env["page_path"].read_bytes()
+    before_files = _store_files(lifecycle_env)
+
+    dry = _restore(lifecycle_env, proposal, key="no-mutation-dry")
+    assert dry.status == "dry_run_ready", dry.blocked_reasons
+    applied = _restore(lifecycle_env, proposal, apply=True, key="no-mutation-apply")
+    assert applied.status == "fail_closed"
+    assert applied.blocked_reasons == ("subjective_mem_restore_apply_not_implemented",)
+    assert applied.persisted is False
+    assert applied.current_state is not None
+    assert applied.post_image_digest is not None
+
+    assert lifecycle_env["page_path"].read_bytes() == before_page
+    assert _store_files(lifecycle_env) == before_files
+    assert not any("restore" in item for item in _store_files(lifecycle_env))
+
+
+def test_restore_fails_closed_on_existing_release_or_changed_forget_authority(
+    lifecycle_env,
+) -> None:
+    forgotten, proposal = _proposal(lifecycle_env)
+    space = lifecycle_env["captured"].evidence_space_id
+    before_page = lifecycle_env["page_path"].read_bytes()
+
+    tombstone_path = lifecycle_env["store"]._record_path(  # noqa: SLF001
+        space, "subjective_mem_forget_tombstone", forgotten.tombstone_id
+    )
+    saved = tombstone_path.read_text(encoding="utf-8")
+    tombstone_path.unlink()
+    missing = _restore(lifecycle_env, proposal, key="changed-forget-authority")
+    assert missing.status == "fail_closed"
+    assert (
+        "subjective_mem_restore_forget_tombstone_not_exact" in missing.blocked_reasons
+        or "subjective_mem_restore_forget_tombstone_not_effective"
+        in missing.blocked_reasons
+    )
+    tombstone_path.write_text(saved, encoding="utf-8")
+
+    written = lifecycle_env["store"].write_log(
+        evidence_space_id=space,
+        log_kind=SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
+        key=forgotten.tombstone_id,
+        events=({"schema": "already-released"},),
+    )
+    assert written.status == "created"
+    before_files = _store_files(lifecycle_env)
+    released = _restore(lifecycle_env, proposal, key="already-released")
+    assert released.status == "fail_closed"
+    # An existing release state is fenced twice: the anti-reformation evaluator
+    # stops treating the tombstone as effective, and the plan refuses to bind a
+    # non-empty release log. Either fence must stop the operation before a write.
+    assert set(released.blocked_reasons) <= {
+        "subjective_mem_restore_forget_tombstone_not_effective",
+        "subjective_mem_restore_tombstone_release_present",
+    }
+    assert released.blocked_reasons
+    assert lifecycle_env["page_path"].read_bytes() == before_page
+    assert _store_files(lifecycle_env) == before_files
+
+
+def test_restore_plans_through_shared_engine_without_direct_publication() -> None:
+    source = inspect.getsource(restore_runtime)
+    assert "subjective_mem_lifecycle_engine import" in source
+    assert "validate_lifecycle_plan(" in source
+    assert "LifecyclePublicationPlan(" in source
+    for forbidden in (
+        "reserve_lifecycle_publication",
+        "publish_lifecycle_post_image",
+        "resolve_finalized_replay",
+        "write_immutable_rendered_artifact",
+        "tx.commit(",
+        "write_record(",
+        "write_log(",
+    ):
+        assert forbidden not in source
