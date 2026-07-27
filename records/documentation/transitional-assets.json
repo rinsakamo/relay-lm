@@ -56,21 +56,10 @@
         "docs/evidence/migrations/cutover-1b-mvp-snapshot-deletions.tsv",
         "docs/evidence/migrations/cutover-1c2-early-mvp-smokes.tsv",
         "docs/evidence/migrations/cutover-1c3-mvp2-compile-smokes.tsv",
-        "docs/evidence/migrations/cutover-1c47-phase55a.md",
-        "docs/evidence/migrations/cutover-1c48-phase55b1.md",
-        "docs/evidence/migrations/cutover-1c49-phase55c0.md",
-        "docs/evidence/migrations/cutover-1c50-phase55c4.md",
-        "docs/evidence/migrations/cutover-1c51-phase55b2.md",
-        "docs/evidence/migrations/cutover-1c52-i1ge.md",
-        "docs/evidence/migrations/cutover-1c53-i4c1.md",
-        "docs/evidence/migrations/cutover-1c54-i4c2.md",
-        "docs/evidence/migrations/cutover-1c55-phase-i2.md",
-        "docs/evidence/migrations/cutover-1c56-phase-i3.md",
-        "docs/evidence/migrations/cutover-1c57-relaymem-m3a.md",
         "docs/evidence/migrations/documentation-hard-cutover-receipt.md"
       ],
       "owner": "documentation",
-      "protected_boundary": "Legacy one-document cutover provenance until its durable fields are represented by the generic retirement manifest or an allowlisted retained record.",
+      "protected_boundary": "Legacy collection-level cutover history and file-level batch provenance retained until every continuing recovery or audit fact is represented by the generic retirement manifest or another allowlisted retained record.",
       "current_consumers": [
         "documentation migration provenance review"
       ],
