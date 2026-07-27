@@ -914,39 +914,74 @@ def test_restore_prepared_claim_dry_run_is_no_write_recovery_pending(
     lifecycle_env,
 ) -> None:
     _forgotten, proposal = _proposal(lifecycle_env)
-    prepared, reasons, _identity, _at = _prepared_plan(
-        lifecycle_env, proposal, key="prepared-claim"
-    )
-    assert prepared is not None, reasons
-    plan = prepared.plan
-    space = lifecycle_env["captured"].evidence_space_id
-    for kind, record_id, payload in (
-        ("subjective_mem_lifecycle_claim", plan.operation_slot_id,
-         {"input_digest": plan.input_digest, "schema": "claim"}),
-        ("subjective_mem_lifecycle_intent", plan.intent_id, dict(plan.prepared_intent)),
-    ):
-        written = lifecycle_env["store"].write_record(
-            evidence_space_id=space, record_kind=kind, record_id=record_id,
-            payload=payload,
-        )
-        assert written.status == "created"
+    # an exact reservation written by the shared engine, not a hand-built claim
+    _reserved(lifecycle_env, proposal, key="prepared-claim")
     before_page = lifecycle_env["page_path"].read_bytes()
     before_files = _store_files(lifecycle_env)
 
     pending = _restore(lifecycle_env, proposal, apply=False, key="prepared-claim")
-    assert pending.status == "recovery_pending"
+    assert pending.status == "recovery_pending", pending.blocked_reasons
     assert pending.recovery_outcome == "pre_image_pending_publication"
+    assert pending.blocked_reasons == (
+        "subjective_mem_restore_prepared_recovery_required",
+    )
     assert pending.canonical_markdown_published is False
+    assert pending.lifecycle_receipt_present is False
     assert pending.tombstone_release_present is False
+    assert pending.persisted is True
     assert lifecycle_env["page_path"].read_bytes() == before_page
     assert _store_files(lifecycle_env) == before_files
+    assert _release_events(lifecycle_env, proposal) in (None, [])
 
-    # an inexact claim can never be carried forward either
-    blocked = _restore(lifecycle_env, proposal, apply=True, key="prepared-claim")
-    assert blocked.status == "fail_closed"
-    assert blocked.blocked_reasons == (
-        "subjective_mem_restore_reservation_claim_not_exact",
+    # the same exact reservation still recovers forward once apply is enabled
+    recovered = _restore(lifecycle_env, proposal, apply=True, key="prepared-claim")
+    assert recovered.status == "committed", recovered.blocked_reasons
+
+
+def test_restore_no_apply_pending_requires_exact_durable_authority(
+    lifecycle_env,
+) -> None:
+    _forgotten, proposal = _proposal(lifecycle_env)
+    prepared = _reserved(lifecycle_env, proposal, key="pending-linkage")
+    space = lifecycle_env["captured"].evidence_space_id
+    plan = prepared.plan
+    before_page = lifecycle_env["page_path"].read_bytes()
+    before_files = _store_files(lifecycle_env)
+
+    cases = (
+        ("subjective_mem_lifecycle_claim", plan.operation_slot_id, "claimed_at"),
+        ("subjective_mem_lifecycle_intent", plan.intent_id, "prepared_at"),
     )
+    for kind, record_id, field in cases:
+        original = _record(lifecycle_env, kind, record_id)
+        assert isinstance(original, dict)
+        # the alteration keeps the exact input digest, so this is not a conflict
+        assert original["input_digest"] == plan.input_digest
+        path = lifecycle_env["store"]._record_path(space, kind, record_id)  # noqa: SLF001
+        saved = path.read_text(encoding="utf-8")
+        path.unlink()
+        written = lifecycle_env["store"].write_record(
+            evidence_space_id=space, record_kind=kind, record_id=record_id,
+            payload={**original, field: "2020-01-01T00:00:00+00:00"},
+        )
+        assert written.status == "created"
+
+        blocked = _restore(
+            lifecycle_env, proposal, apply=False, key="pending-linkage"
+        )
+        assert blocked.status == "fail_closed", f"{kind} returned {blocked.status}"
+        assert blocked.recovery_outcome is None
+        assert blocked.canonical_markdown_published is False
+        assert blocked.lifecycle_receipt_present is False
+        assert blocked.tombstone_release_present is False
+        assert lifecycle_env["page_path"].read_bytes() == before_page
+        assert _store_files(lifecycle_env) == before_files
+        assert _release_events(lifecycle_env, proposal) in (None, [])
+        path.unlink()
+        path.write_text(saved, encoding="utf-8")
+
+    restored = _restore(lifecycle_env, proposal, apply=False, key="pending-linkage")
+    assert restored.status == "recovery_pending", restored.blocked_reasons
     assert lifecycle_env["page_path"].read_bytes() == before_page
     assert _store_files(lifecycle_env) == before_files
 

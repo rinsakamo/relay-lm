@@ -482,7 +482,7 @@ def _utc(value: datetime) -> datetime:
 
 
 def _apply(
-    store: EvidenceRecordStore, prepared: _Prepared, *,
+    store: EvidenceRecordStore, prepared: SubjectiveMemRestorePreparedOperation, *,
     identity: SubjectiveMemRestoreOperationIdentity,
     proposal: SubjectiveMemRestoreProposal,
 ) -> SubjectiveMemRestoreResult:
@@ -509,9 +509,9 @@ def _existing_operation(
 ) -> SubjectiveMemRestoreResult:
     """Resolve one durable idempotency slot without starting a new reservation.
 
-    An exact finalized result replays through the shared resolver. An exact
-    prepared claim is carried forward only when the caller enabled apply;
-    otherwise it stays pending and nothing is written.
+    Only the two cheap slot-shape rejections live here: proving the durable
+    authority itself requires the reconstructed plan, so it belongs to the one
+    resume path that every remaining outcome is decided from.
     """
 
     stored = final if final is not None else claim
@@ -525,15 +525,10 @@ def _existing_operation(
             "fail_closed", identity=identity, proposal=proposal, persisted=True,
             reasons=("subjective_mem_restore_reservation_slot_not_exact",),
         )
-    if final is None and not apply_enabled:
-        return _result(
-            "recovery_pending", identity=identity, proposal=proposal, persisted=True,
-            reasons=("subjective_mem_restore_prepared_recovery_required",),
-            recovery_outcome="pre_image_pending_publication",
-        )
     return _resume(
         store, space, authority, workspace, claim=claim, intent=intent,
         final=final, identity=identity, proposal=proposal,
+        apply_enabled=apply_enabled,
     )
 
 
@@ -586,14 +581,16 @@ def _resume(
     authority: SubjectiveMemCharacterAuthority, workspace: str, *,
     claim: object, intent: object, final: object,
     identity: SubjectiveMemRestoreOperationIdentity,
-    proposal: SubjectiveMemRestoreProposal,
+    proposal: SubjectiveMemRestoreProposal, apply_enabled: bool,
 ) -> SubjectiveMemRestoreResult:
     """Carry one durable Restore reservation forward through the shared engine.
 
-    Both durable outcomes share the one reconstructed plan: a finalized result
-    is proven by the shared replay resolver, and an exact prepared claim
-    republishes its own immutable post-image. Neither reserves again, and
-    neither rolls an active successor back to its hidden predecessor.
+    Every durable outcome is decided from the one reconstructed plan and the
+    exact claim it proves: a finalized result is resolved by the shared replay
+    resolver regardless of apply mode, a prepared claim stays pending without
+    apply, and only an apply-enabled caller republishes the immutable
+    post-image. Nothing here reserves again, and nothing rolls an active
+    successor back to its hidden predecessor.
     """
 
     plan, reasons = _durable_plan(
@@ -615,6 +612,12 @@ def _resume(
                 reasons=("subjective_mem_restore_final_result_incomplete",),
             )
         return _from_outcome(outcome, identity=identity, proposal=proposal, plan=plan)
+    if not apply_enabled:
+        return _result(
+            "recovery_pending", identity=identity, proposal=proposal, persisted=True,
+            reasons=("subjective_mem_restore_prepared_recovery_required",),
+            recovery_outcome="pre_image_pending_publication",
+        )
     artifact, reasons = read_prepared_post_image(
         workspace_root=plan.workspace_root, character_id=plan.character_id,
         artifact_id=plan.artifact_id,
