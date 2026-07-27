@@ -1,12 +1,15 @@
-"""Deterministic reconstruction for one exact finalized Restore replay.
+"""Deterministic reconstruction of exact Restore material from durable images.
 
-This module owns only the operation-pure material a finalized Restore replay
-needs: it rebuilds the publication plan the original operation was reserved
-with, from the persisted content-free intent and the durable bindings the
-runtime already read. It opens no transaction, touches no file, and never
-reserves, publishes, finalizes, or recovers: ``resolve_finalized_replay`` in the
-shared lifecycle engine remains the sole replay authority, and
-``relaylm.subjective_mem_restore_runtime`` remains the single Restore owner.
+This module owns the operation-pure reconstruction one Restore operation needs.
+It rebuilds the publication plan the original operation was reserved with, from
+the persisted content-free intent and the durable bindings the runtime already
+read, and it reconstructs the exact page identity and hidden predecessor a
+canonical or prepared page image encodes. Both rest on the same page-identity
+authority, so they live together here. It opens no transaction, touches no
+file, and never reserves, publishes, finalizes, or recovers:
+``resolve_finalized_replay`` in the shared lifecycle engine remains the sole
+replay authority, and ``relaylm.subjective_mem_restore_runtime`` remains the
+single Restore owner.
 """
 from __future__ import annotations
 
@@ -14,11 +17,15 @@ from relaylm.evidence_common import canonical_digest
 from relaylm.subjective_mem import (
     SubjectiveMemCharacterAuthority,
     SubjectiveMemCurrentState,
+    SubjectiveMemRevision,
 )
 from relaylm.subjective_mem_forget import FORGET_TOMBSTONE_STATE_SCHEMA
 from relaylm.subjective_mem_lifecycle import LIFECYCLE_INTENT_SCHEMA
 from relaylm.subjective_mem_lifecycle_engine import LifecyclePublicationPlan
-from relaylm.subjective_mem_markdown import subjective_mem_page_identity
+from relaylm.subjective_mem_markdown import (
+    parse_subjective_mem_page_bytes,
+    subjective_mem_page_identity,
+)
 from relaylm.subjective_mem_reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND as SUBJECTIVE_MEM_FORGET_TOMBSTONE_STATE_LOG_KIND,
 )
@@ -333,4 +340,69 @@ def _replay_prepared_state(
     return state
 
 
-__all__ = ["build_subjective_mem_restore_replay_plan"]
+def subjective_mem_restore_page_binding(
+    character_authority: SubjectiveMemCharacterAuthority,
+    proposal: SubjectiveMemRestoreProposal,
+) -> tuple[tuple[str, str, str] | None, tuple[str, ...]]:
+    """Derive the exact page identity one Restore proposal claims to address.
+
+    This decides where the canonical image lives; it never reads it. The caller
+    owns the filesystem access and passes the bytes back for selection.
+    """
+
+    try:
+        page_id, relative_path, partition = subjective_mem_page_identity(
+            character_id=character_authority.character_id,
+            memory_kind=proposal.expected_memory_kind,
+        )
+    except ValueError:
+        return None, ("subjective_mem_restore_page_identity_invalid",)
+    if (page_id, relative_path) != (
+        proposal.expected_page_id, proposal.expected_relative_path
+    ):
+        return None, ("subjective_mem_restore_page_identity_mismatch",)
+    return (page_id, relative_path, partition), ()
+
+
+def subjective_mem_restore_page_predecessor(
+    page_bytes: bytes, *,
+    binding: tuple[str, str, str],
+    character_authority: SubjectiveMemCharacterAuthority,
+    proposal: SubjectiveMemRestoreProposal,
+) -> tuple[SubjectiveMemRevision | None, tuple[str, ...]]:
+    """Select the exact hidden predecessor block encoded by one page image.
+
+    The logical memory must be present exactly once at the expected revision,
+    in the expected block, with nothing later already published for it.
+    """
+
+    page_id, _relative_path, partition = binding
+    page, reasons = parse_subjective_mem_page_bytes(
+        page_bytes, expected_page_id=page_id,
+        expected_character_id=character_authority.character_id,
+        expected_partition=partition,
+    )
+    if page is None:
+        return None, reasons
+    logical = [
+        item for item in page.blocks
+        if item.revision.memory_id == proposal.expected_memory_id
+    ]
+    exact = [
+        item for item in logical
+        if item.revision.memory_revision == proposal.expected_current_revision
+    ]
+    later = [
+        item for item in logical
+        if item.revision.memory_revision > proposal.expected_current_revision
+    ]
+    if len(exact) != 1 or exact[0].block_id != proposal.expected_block_id or later:
+        return None, ("subjective_mem_restore_current_revision_not_exact",)
+    return exact[0].revision, ()
+
+
+__all__ = [
+    "build_subjective_mem_restore_replay_plan",
+    "subjective_mem_restore_page_binding",
+    "subjective_mem_restore_page_predecessor",
+]

@@ -1,14 +1,16 @@
-"""LC-1D Subjective MEM Restore preflight, publication, and finalized replay.
+"""LC-1D Subjective MEM Restore preflight, publication, replay, and recovery.
 
 This Draft-PR slice validates one exact ``hidden -> active`` Restore request,
-plans its immutable successor, executes a single fresh apply, and resolves an
-exact finalized repeat through the shared lifecycle engine. The dry-run path
-stays write-free. Prepared-state resume and caller-invoked recovery remain
-later commits in the same LC-1D PR.
+plans its immutable successor, executes a single fresh apply, resolves an exact
+finalized repeat, and carries an exact prepared reservation forward when the
+caller asks to apply. The dry-run path stays write-free, and a prepared claim
+observed without apply stays pending instead of resuming. Recovery is
+caller-invoked and forward-only: no background worker exists here, and an
+active successor is never rolled back to its hidden predecessor.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -30,7 +32,8 @@ from relaylm.subjective_mem_lifecycle_authority import (
 from relaylm.subjective_mem_lifecycle_engine import (
     LifecycleExecutionOutcome, LifecycleFinalRecords, LifecycleFinalizer,
     LifecyclePublicationPlan, LogBinding, RecordBinding,
-    publish_lifecycle_post_image, read_lifecycle_reservation,
+    lifecycle_claim_record, publish_lifecycle_post_image,
+    read_lifecycle_reservation, read_prepared_post_image,
     reserve_lifecycle_publication, resolve_finalized_replay, validate_lifecycle_plan,
 )
 from relaylm.subjective_mem_markdown import (
@@ -38,10 +41,6 @@ from relaylm.subjective_mem_markdown import (
     PAGE_PARTITION_REVISION,
     PAGE_SCHEMA,
     RENDERER_REVISION,
-    SubjectiveMemPagePlan,
-    parse_subjective_mem_page_bytes,
-    plan_subjective_mem_revision_successor,
-    subjective_mem_page_identity,
 )
 from relaylm.subjective_mem_reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
@@ -54,8 +53,9 @@ from relaylm.subjective_mem_restore import (
     validate_subjective_mem_restore_proposal,
 )
 from relaylm.subjective_mem_restore_plan import (
-    SubjectiveMemRestorePlanInputs, build_subjective_mem_restore_final_records,
-    build_subjective_mem_restore_lifecycle_plan,
+    SubjectiveMemRestorePreparedOperation,
+    build_subjective_mem_restore_final_records,
+    build_subjective_mem_restore_prepared_operation,
     subjective_mem_restore_current_state,
     subjective_mem_restore_predecessor_exact,
     subjective_mem_restore_predecessor_expectation,
@@ -64,6 +64,8 @@ from relaylm.subjective_mem_restore_plan import (
 )
 from relaylm.subjective_mem_restore_replay import (
     build_subjective_mem_restore_replay_plan,
+    subjective_mem_restore_page_binding,
+    subjective_mem_restore_page_predecessor,
 )
 from relaylm.subjective_mem_tombstone_release import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
@@ -86,16 +88,6 @@ class _Bound:
     current: SubjectiveMemCurrentState
     records: tuple[RecordBinding, ...]
     logs: tuple[LogBinding, ...]
-
-
-@dataclass(frozen=True)
-class _Prepared:
-    current: SubjectiveMemCurrentState
-    prepared: SubjectiveMemCurrentState
-    predecessor: SubjectiveMemRevision
-    successor: SubjectiveMemRevision
-    page: SubjectiveMemPagePlan
-    plan: LifecyclePublicationPlan
 
 
 @dataclass(frozen=True, repr=False)
@@ -201,8 +193,8 @@ def restore_subjective_mem(
     if claim is not None or intent is not None or final is not None:
         return _existing_operation(
             store, evidence_space_id, character_authority, workspace_root,
-            claim=claim, intent=intent, final=final,
-            identity=identity, proposal=proposal,
+            claim=claim, intent=intent, final=final, identity=identity,
+            proposal=proposal, apply_enabled=apply_enabled,
         )
     prepared, reasons = _prepare(
         store, evidence_space_id, character_authority, workspace_root,
@@ -225,7 +217,7 @@ def _prepare(
     authority: SubjectiveMemCharacterAuthority, workspace: str,
     proposal: SubjectiveMemRestoreProposal,
     identity: SubjectiveMemRestoreOperationIdentity, committed_at: str,
-) -> tuple[_Prepared | None, tuple[str, ...]]:
+) -> tuple[SubjectiveMemRestorePreparedOperation | None, tuple[str, ...]]:
     predecessor, page_bytes, errors = _page_predecessor(workspace, authority, proposal)
     if predecessor is None or page_bytes is None:
         return None, errors
@@ -236,91 +228,46 @@ def _prepare(
         space, predecessor, bound.current, proposal, authority, workspace, committed_at
     ):
         return None, ("subjective_mem_restore_current_revision_invalid",)
-    successor = replace(
-        predecessor, decision_id=identity.transition_id, created_at=committed_at,
-        memory_revision=predecessor.memory_revision + 1, lifecycle_state="active",
-        retrieval_visible=True, authorization_kind="lifecycle_transition",
-        predecessor_revision_or_null=predecessor.memory_revision,
+    prepared, errors = build_subjective_mem_restore_prepared_operation(
+        evidence_space_id=space, character_authority=authority,
+        workspace_root=workspace, proposal=proposal, identity=identity,
+        predecessor=predecessor, current_state=bound.current,
+        page_bytes=page_bytes, record_bindings=bound.records,
+        log_bindings=bound.logs, prepared_at=committed_at,
     )
-    planned = plan_subjective_mem_revision_successor(
-        predecessor=predecessor, successor=successor, existing_bytes=page_bytes
-    )
-    if planned.plan is None:
-        return None, planned.reasons
-    # The hidden selector is fenced by reserving it: only the mutation state and
-    # the exact operation time change, and it stays retrieval-ineligible.
-    prepared = replace(
-        bound.current, mutation_state="prepared", retrieval_eligible=False,
-        updated_at=committed_at,
-    )
-    plan = build_subjective_mem_restore_lifecycle_plan(
-        SubjectiveMemRestorePlanInputs(
-            evidence_space_id=space, character_authority=authority,
-            workspace_root=workspace, proposal=proposal, identity=identity,
-            workspace_authority_digest=(
-                subjective_mem_restore_workspace_authority_digest(workspace, authority)
-            ),
-            predecessor=predecessor, successor=successor,
-            current_state=bound.current, prepared_state=prepared,
-            page=planned.plan, record_bindings=bound.records,
-            log_bindings=bound.logs, prepared_at=committed_at,
-        )
-    )
-    errors = validate_lifecycle_plan(plan)
+    if prepared is None:
+        return None, errors
+    errors = validate_lifecycle_plan(prepared.plan)
     if errors:
         return None, errors
-    return _Prepared(
-        current=bound.current, prepared=prepared, predecessor=predecessor,
-        successor=successor, page=planned.plan, plan=plan,
-    ), ()
+    return prepared, ()
 
 
 def _page_predecessor(
     workspace: str, authority: SubjectiveMemCharacterAuthority,
     proposal: SubjectiveMemRestoreProposal,
 ) -> tuple[SubjectiveMemRevision | None, bytes | None, tuple[str, ...]]:
-    try:
-        page_id, relative, partition = subjective_mem_page_identity(
-            character_id=authority.character_id,
-            memory_kind=proposal.expected_memory_kind)
-    except ValueError:
-        return None, None, ("subjective_mem_restore_page_identity_invalid",)
-    if (page_id, relative) != (
-        proposal.expected_page_id, proposal.expected_relative_path
-    ):
-        return None, None, ("subjective_mem_restore_page_identity_mismatch",)
+    binding, reasons = subjective_mem_restore_page_binding(authority, proposal)
+    if binding is None:
+        return None, None, reasons
     inspected = inspect_canonical_page(
         workspace_root=workspace, character_id=authority.character_id,
-        relative_path=relative,
+        relative_path=binding[1],
     )
-    if inspected.snapshot is None or inspected.snapshot.data is None:
+    snapshot = inspected.snapshot
+    if snapshot is None or snapshot.data is None:
         return None, None, inspected.reasons or (
             "subjective_mem_restore_canonical_page_missing",
         )
-    snapshot = inspected.snapshot
     if snapshot.digest != proposal.expected_page_digest:
         return None, None, ("subjective_mem_restore_page_digest_mismatch",)
-    page, reasons = parse_subjective_mem_page_bytes(
-        snapshot.data, expected_page_id=page_id,
-        expected_character_id=authority.character_id, expected_partition=partition,
+    predecessor, reasons = subjective_mem_restore_page_predecessor(
+        snapshot.data, binding=binding, character_authority=authority,
+        proposal=proposal,
     )
-    if page is None:
+    if predecessor is None:
         return None, None, reasons
-    logical = [
-        item for item in page.blocks
-        if item.revision.memory_id == proposal.expected_memory_id
-    ]
-    exact = [
-        item for item in logical
-        if item.revision.memory_revision == proposal.expected_current_revision
-    ]
-    later = [
-        item for item in logical
-        if item.revision.memory_revision > proposal.expected_current_revision
-    ]
-    if len(exact) != 1 or exact[0].block_id != proposal.expected_block_id or later:
-        return None, None, ("subjective_mem_restore_current_revision_not_exact",)
-    return exact[0].revision, snapshot.data, ()
+    return predecessor, snapshot.data, ()
 
 
 def _stored_authority(
@@ -405,6 +352,22 @@ def _selector(
         or canonical_digest(raw) != proposal.expected_current_selector_digest
     ):
         return None, ("subjective_mem_restore_current_selector_not_exact",)
+    if not _sole_logical_selector(tx, proposal, character_id, events):
+        return None, ("subjective_mem_lifecycle_duplicate_logical_current_selector",)
+    return state, ()
+
+
+def _sole_logical_selector(
+    tx: EvidenceStoreTransaction, proposal: SubjectiveMemRestoreProposal,
+    character_id: str, expected: list[object],
+) -> bool:
+    """Prove exactly one durable selector owns this logical memory right now.
+
+    Fresh preparation, finalized replay, and forward recovery all rest on the
+    same singleton: another selector for the same logical memory means the
+    operation may no longer publish or prove anything about it.
+    """
+
     matches = [
         (key, bodies)
         for key, bodies in tx.list_logs(log_kind=_CURRENT, limit=4096)
@@ -413,9 +376,7 @@ def _selector(
             and item.get("memory_id") == proposal.expected_memory_id
             for item in bodies)
     ]
-    if matches != [(proposal.expected_current_selector_id, [raw])]:
-        return None, ("subjective_mem_lifecycle_duplicate_logical_current_selector",)
-    return state, ()
+    return matches == [(proposal.expected_current_selector_id, expected)]
 
 
 def _forget_lineage(
@@ -544,12 +505,13 @@ def _existing_operation(
     authority: SubjectiveMemCharacterAuthority, workspace: str, *,
     claim: object, intent: object, final: object,
     identity: SubjectiveMemRestoreOperationIdentity,
-    proposal: SubjectiveMemRestoreProposal,
+    proposal: SubjectiveMemRestoreProposal, apply_enabled: bool,
 ) -> SubjectiveMemRestoreResult:
     """Resolve one durable idempotency slot without starting a new reservation.
 
-    An exact finalized result replays through the shared resolver. A prepared
-    claim without a result stays bounded: resume belongs to a later slice.
+    An exact finalized result replays through the shared resolver. An exact
+    prepared claim is carried forward only when the caller enabled apply;
+    otherwise it stays pending and nothing is written.
     """
 
     stored = final if final is not None else claim
@@ -558,35 +520,30 @@ def _existing_operation(
             "integrity_conflict", identity=identity, proposal=proposal, persisted=True,
             reasons=("subjective_mem_lifecycle_idempotency_conflict",),
         )
-    if final is None:
-        if claim is None or intent is None:
-            return _result(
-                "fail_closed", identity=identity, proposal=proposal, persisted=True,
-                reasons=("subjective_mem_restore_reservation_slot_not_exact",),
-            )
-        return _result(
-            "recovery_pending", identity=identity, proposal=proposal, persisted=True,
-            reasons=("subjective_mem_restore_prepared_resume_not_implemented",),
-            recovery_outcome="pre_image_pending_publication",
-        )
-    if claim is None:
+    if claim is None or (final is None and intent is None):
         return _result(
             "fail_closed", identity=identity, proposal=proposal, persisted=True,
             reasons=("subjective_mem_restore_reservation_slot_not_exact",),
         )
-    return _replay(
-        store, space, authority, workspace,
-        intent=intent, identity=identity, proposal=proposal,
+    if final is None and not apply_enabled:
+        return _result(
+            "recovery_pending", identity=identity, proposal=proposal, persisted=True,
+            reasons=("subjective_mem_restore_prepared_recovery_required",),
+            recovery_outcome="pre_image_pending_publication",
+        )
+    return _resume(
+        store, space, authority, workspace, claim=claim, intent=intent,
+        final=final, identity=identity, proposal=proposal,
     )
 
 
-def _replay(
+def _durable_plan(
     store: EvidenceRecordStore, space: str,
     authority: SubjectiveMemCharacterAuthority, workspace: str, *,
     intent: object, identity: SubjectiveMemRestoreOperationIdentity,
     proposal: SubjectiveMemRestoreProposal,
-) -> SubjectiveMemRestoreResult:
-    """Prove one exact finalized Restore through the shared replay resolver."""
+) -> tuple[LifecyclePublicationPlan | None, tuple[str, ...]]:
+    """Read the durable Forget authority and rebuild the exact reserved plan."""
 
     try:
         with store.transaction(space) as tx:
@@ -602,12 +559,18 @@ def _replay(
                 log_kind=SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
                 key=proposal.expected_semantic_identity_digest,
             )
+            selector = tx.read_log(
+                log_kind=_CURRENT, key=proposal.expected_current_selector_id
+            )
+            if not isinstance(selector, list) or not _sole_logical_selector(
+                tx, proposal, authority.character_id, selector
+            ):
+                return None, (
+                    "subjective_mem_lifecycle_duplicate_logical_current_selector",
+                )
     except (OSError, RuntimeError, TypeError, ValueError):
-        return _result(
-            "fail_closed", identity=identity, proposal=proposal, persisted=True,
-            reasons=("subjective_mem_restore_store_unavailable",),
-        )
-    plan, reasons = build_subjective_mem_restore_replay_plan(
+        return None, ("subjective_mem_restore_store_unavailable",)
+    return build_subjective_mem_restore_replay_plan(
         intent=intent, identity=identity, proposal=proposal,
         evidence_space_id=space, character_authority=authority,
         workspace_root=workspace,
@@ -616,19 +579,56 @@ def _replay(
         ),
         forget_receipt=receipt, tombstone=tombstone, tombstone_state=states,
     )
-    if plan is None:
-        return _result(
-            "fail_closed", identity=identity, proposal=proposal, reasons=reasons,
-            persisted=True,
-        )
-    outcome = resolve_finalized_replay(
-        store=store, plan=plan, finalizer=_finalizer(plan)
+
+
+def _resume(
+    store: EvidenceRecordStore, space: str,
+    authority: SubjectiveMemCharacterAuthority, workspace: str, *,
+    claim: object, intent: object, final: object,
+    identity: SubjectiveMemRestoreOperationIdentity,
+    proposal: SubjectiveMemRestoreProposal,
+) -> SubjectiveMemRestoreResult:
+    """Carry one durable Restore reservation forward through the shared engine.
+
+    Both durable outcomes share the one reconstructed plan: a finalized result
+    is proven by the shared replay resolver, and an exact prepared claim
+    republishes its own immutable post-image. Neither reserves again, and
+    neither rolls an active successor back to its hidden predecessor.
+    """
+
+    plan, reasons = _durable_plan(
+        store, space, authority, workspace,
+        intent=intent, identity=identity, proposal=proposal,
     )
-    if outcome is None:
+    if plan is None or claim != lifecycle_claim_record(plan):
         return _result(
             "fail_closed", identity=identity, proposal=proposal, persisted=True,
-            reasons=("subjective_mem_restore_final_result_incomplete",),
+            reasons=reasons or ("subjective_mem_restore_reservation_claim_not_exact",),
         )
+    if final is not None:
+        outcome = resolve_finalized_replay(
+            store=store, plan=plan, finalizer=_finalizer(plan)
+        )
+        if outcome is None:
+            return _result(
+                "fail_closed", identity=identity, proposal=proposal, persisted=True,
+                reasons=("subjective_mem_restore_final_result_incomplete",),
+            )
+        return _from_outcome(outcome, identity=identity, proposal=proposal, plan=plan)
+    artifact, reasons = read_prepared_post_image(
+        workspace_root=plan.workspace_root, character_id=plan.character_id,
+        artifact_id=plan.artifact_id,
+        expected_post_image_digest=plan.post_image_digest,
+    )
+    if artifact is None:
+        return _result(
+            "recovery_required", identity=identity, proposal=proposal, persisted=True,
+            reasons=reasons or ("subjective_mem_restore_artifact_unavailable",),
+            recovery_outcome="artifact_unavailable",
+        )
+    outcome = publish_lifecycle_post_image(
+        store=store, plan=plan, post_image=artifact, finalizer=_finalizer(plan)
+    )
     return _from_outcome(outcome, identity=identity, proposal=proposal, plan=plan)
 
 

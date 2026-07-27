@@ -11,7 +11,7 @@ reservation, publication, and finalization remain owned by the shared engine.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 
 from relaylm._subjective_mem_commit_io import PLATFORM_REVISION
@@ -46,6 +46,7 @@ from relaylm.subjective_mem_markdown import (
     PAGE_SCHEMA,
     RENDERER_REVISION,
     SubjectiveMemPagePlan,
+    plan_subjective_mem_revision_successor,
 )
 from relaylm.subjective_mem_reformation import (
     subjective_mem_semantic_identity_digest,
@@ -82,6 +83,74 @@ class SubjectiveMemRestorePlanInputs:
     record_bindings: tuple[RecordBinding, ...]
     log_bindings: tuple[LogBinding, ...]
     prepared_at: str
+
+
+@dataclass(frozen=True)
+class SubjectiveMemRestorePreparedOperation:
+    """One deterministic fresh Restore publication, composed but not reserved."""
+
+    current: SubjectiveMemCurrentState
+    prepared: SubjectiveMemCurrentState
+    predecessor: SubjectiveMemRevision
+    successor: SubjectiveMemRevision
+    page: SubjectiveMemPagePlan
+    plan: LifecyclePublicationPlan
+
+
+def build_subjective_mem_restore_prepared_operation(
+    *,
+    evidence_space_id: str,
+    character_authority: SubjectiveMemCharacterAuthority,
+    workspace_root: str,
+    proposal: SubjectiveMemRestoreProposal,
+    identity: SubjectiveMemRestoreOperationIdentity,
+    predecessor: SubjectiveMemRevision,
+    current_state: SubjectiveMemCurrentState,
+    page_bytes: bytes,
+    record_bindings: tuple[RecordBinding, ...],
+    log_bindings: tuple[LogBinding, ...],
+    prepared_at: str,
+) -> tuple[SubjectiveMemRestorePreparedOperation | None, tuple[str, ...]]:
+    """Compose the exact active successor and reserved plan for one fresh Restore."""
+
+    successor = replace(
+        predecessor, decision_id=identity.transition_id, created_at=prepared_at,
+        memory_revision=predecessor.memory_revision + 1, lifecycle_state="active",
+        retrieval_visible=True, authorization_kind="lifecycle_transition",
+        predecessor_revision_or_null=predecessor.memory_revision,
+    )
+    planned = plan_subjective_mem_revision_successor(
+        predecessor=predecessor, successor=successor, existing_bytes=page_bytes
+    )
+    if planned.plan is None:
+        return None, planned.reasons
+    # The hidden selector is fenced by reserving it: only the mutation state and
+    # the exact operation time change, and it stays retrieval-ineligible.
+    prepared = replace(
+        current_state, mutation_state="prepared", retrieval_eligible=False,
+        updated_at=prepared_at,
+    )
+    plan = build_subjective_mem_restore_lifecycle_plan(
+        SubjectiveMemRestorePlanInputs(
+            evidence_space_id=evidence_space_id,
+            character_authority=character_authority,
+            workspace_root=workspace_root,
+            workspace_authority_digest=(
+                subjective_mem_restore_workspace_authority_digest(
+                    workspace_root, character_authority
+                )
+            ),
+            proposal=proposal, identity=identity, predecessor=predecessor,
+            successor=successor, current_state=current_state,
+            prepared_state=prepared, page=planned.plan,
+            record_bindings=record_bindings, log_bindings=log_bindings,
+            prepared_at=prepared_at,
+        )
+    )
+    return SubjectiveMemRestorePreparedOperation(
+        current=current_state, prepared=prepared, predecessor=predecessor,
+        successor=successor, page=planned.plan, plan=plan,
+    ), ()
 
 
 def build_subjective_mem_restore_lifecycle_plan(
@@ -574,9 +643,11 @@ def subjective_mem_restore_current_state(
 
 __all__ = [
     "SubjectiveMemRestorePlanInputs",
+    "SubjectiveMemRestorePreparedOperation",
     "build_subjective_mem_restore_final_records",
     "build_subjective_mem_restore_lifecycle_plan",
     "build_subjective_mem_restore_prepared_intent",
+    "build_subjective_mem_restore_prepared_operation",
     "subjective_mem_restore_current_state",
     "subjective_mem_restore_predecessor_exact",
     "subjective_mem_restore_predecessor_expectation",
