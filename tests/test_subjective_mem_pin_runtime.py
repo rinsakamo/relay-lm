@@ -25,6 +25,7 @@ from relaylm.subjective_mem_pin import SubjectiveMemPinBoundary, SubjectiveMemPi
 import relaylm.subjective_mem_pin_runtime as pin_runtime
 from relaylm.subjective_mem_pin_runtime import pin_subjective_mem, unpin_subjective_mem
 from test_subjective_mem_commit_runtime import _commit, _make_workspace
+from test_subjective_mem_lifecycle_runtime import _correct, lifecycle_env
 from test_subjective_mem_runtime import (
     CHARACTER_CONFIG,
     NOW,
@@ -284,3 +285,177 @@ def test_runtime_has_one_owner_and_only_uses_shared_publication_engine() -> None
     assert "reserve_lifecycle_publication(" in source
     assert "publish_lifecycle_post_image(" in source
     assert "resolve_finalized_replay(" in source
+
+
+def _record_path(env, kind: str, record_id: str) -> Path:
+    return env["store"]._record_path(  # noqa: SLF001
+        env["captured"].evidence_space_id, kind, record_id
+    )
+
+
+def _write_json(path: Path, payload: dict) -> None:
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True),
+        encoding="utf-8",
+    )
+
+
+def test_pin_owns_predecessor_authority_through_shared_owner() -> None:
+    source = inspect.getsource(pin_runtime)
+    assert "from relaylm.subjective_mem_lifecycle_authority import" in source
+    assert source.count("load_subjective_mem_predecessor_authority_locked(") == 2
+    for removed in (
+        "_authority_bindings",
+        "_receipt_exact",
+        "_authority_exact",
+        "_PREDECESSOR_OPERATIONS",
+        "EvidenceSpaceDescriptor",
+        "ST1_RECEIPT_SCHEMA",
+    ):
+        assert removed not in source
+
+
+def test_exact_st1_predecessor_authority_permits_pin(pin_env) -> None:
+    predecessor = _current_page(pin_env).blocks[0].revision
+    assert predecessor.memory_revision == 1
+    assert predecessor.authorization_kind == "formation_decision"
+    result = _call(pin_env, _proposal(pin_env, "pin"), key="pin-st1-predecessor")
+    assert result.status == "committed", result.blocked_reasons
+    assert result.current_state is not None
+    assert result.current_state.lifecycle_state == "pinned"
+    assert result.current_state.current_revision == 2
+
+
+def test_exact_committed_pin_predecessor_authority_permits_unpin(pin_env) -> None:
+    pinned = _call(pin_env, _proposal(pin_env, "pin"), key="pin-before-unpin")
+    assert pinned.status == "committed", pinned.blocked_reasons
+    assert pinned.current_state is not None
+    predecessor = _current_page(pin_env).blocks[-1].revision
+    assert predecessor.memory_revision == 2
+    assert predecessor.authorization_kind == "lifecycle_transition"
+    unpinned = _call(
+        pin_env,
+        _proposal(pin_env, "unpin", state=pinned.current_state),
+        key="unpin-committed-predecessor",
+        seconds=4,
+    )
+    assert unpinned.status == "committed", unpinned.blocked_reasons
+    assert unpinned.current_state is not None
+    assert unpinned.current_state.lifecycle_state == "active"
+    assert unpinned.current_state.current_revision == 3
+
+
+def test_exact_committed_correct_predecessor_authority_permits_pin(lifecycle_env) -> None:
+    corrected = _correct(lifecycle_env)
+    assert corrected.status == "committed", corrected.blocked_reasons
+    assert corrected.current_state is not None
+    env = {**lifecycle_env, "workspace": lifecycle_env["workspace_root"]}
+    predecessor = _current_page(env).blocks[-1].revision
+    assert predecessor.memory_revision == 2
+    assert predecessor.authorization_kind == "lifecycle_transition"
+    result = _call(
+        env,
+        _proposal(env, "pin", state=corrected.current_state),
+        key="pin-after-correct",
+        seconds=4,
+    )
+    assert result.status == "committed", result.blocked_reasons
+    assert result.current_state is not None
+    assert result.current_state.lifecycle_state == "pinned"
+    assert result.current_state.current_revision == 3
+
+
+def test_missing_and_non_exact_st1_decision_authority_fail_closed(pin_env) -> None:
+    before = pin_env["page_path"].read_bytes()
+    predecessor = _current_page(pin_env).blocks[0].revision
+    path = _record_path(pin_env, "subjective_mem_decision", predecessor.authorization_id)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    path.unlink()
+
+    missing = _call(pin_env, _proposal(pin_env, "pin"), key="pin-missing-decision")
+    assert missing.status == "fail_closed"
+    assert (
+        "subjective_mem_lifecycle_predecessor_authority_missing"
+        in missing.blocked_reasons
+    )
+
+    payload["result_memory_ref_or_null"] = {
+        "memory_id": predecessor.memory_id,
+        "memory_revision": 99,
+    }
+    _write_json(path, payload)
+    tampered = _call(pin_env, _proposal(pin_env, "pin"), key="pin-non-exact-decision")
+    assert tampered.status == "fail_closed"
+    assert (
+        "subjective_mem_lifecycle_predecessor_authority_not_exact"
+        in tampered.blocked_reasons
+    )
+    assert pin_env["page_path"].read_bytes() == before
+
+
+def test_missing_and_non_exact_transition_authority_fail_closed(pin_env) -> None:
+    pinned = _call(pin_env, _proposal(pin_env, "pin"), key="pin-first")
+    assert pinned.status == "committed", pinned.blocked_reasons
+    assert pinned.current_state is not None and pinned.transition_id is not None
+    before = pin_env["page_path"].read_bytes()
+    path = _record_path(
+        pin_env, "subjective_mem_lifecycle_transition", pinned.transition_id
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    path.unlink()
+
+    missing = _call(
+        pin_env,
+        _proposal(pin_env, "unpin", state=pinned.current_state),
+        key="unpin-missing-transition",
+        seconds=4,
+    )
+    assert missing.status == "fail_closed"
+    assert (
+        "subjective_mem_lifecycle_predecessor_authority_missing"
+        in missing.blocked_reasons
+    )
+
+    payload["to_formation_stage"] = "consolidated"
+    _write_json(path, payload)
+    tampered = _call(
+        pin_env,
+        _proposal(pin_env, "unpin", state=pinned.current_state),
+        key="unpin-non-exact-transition",
+        seconds=6,
+    )
+    assert tampered.status == "fail_closed"
+    assert (
+        "subjective_mem_lifecycle_predecessor_authority_not_exact"
+        in tampered.blocked_reasons
+    )
+    assert pin_env["page_path"].read_bytes() == before
+
+
+def test_prepared_recovery_revalidates_shared_predecessor_authority(pin_env) -> None:
+    def crash(stage: str) -> None:
+        if stage == "after_intent_before_page":
+            raise RuntimeError("simulated")
+
+    proposal = _proposal(pin_env, "pin")
+    first = _call(pin_env, proposal, fault=crash)
+    assert first.status == "recovery_pending", first.blocked_reasons
+    predecessor = _current_page(pin_env).blocks[0].revision
+    path = _record_path(pin_env, "subjective_mem_decision", predecessor.authorization_id)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    before = pin_env["page_path"].read_bytes()
+    path.unlink()
+
+    blocked = _call(pin_env, proposal)
+    assert blocked.status == "recovery_pending"
+    assert (
+        "subjective_mem_commit_pre_image_authority_changed" in blocked.blocked_reasons
+    )
+    assert blocked.recovery_outcome == "pre_image_pending_publication"
+    assert pin_env["page_path"].read_bytes() == before
+
+    _write_json(path, payload)
+    resumed = _call(pin_env, proposal)
+    assert resumed.status == "committed", resumed.blocked_reasons
+    assert resumed.current_state is not None
+    assert resumed.current_state.lifecycle_state == "pinned"

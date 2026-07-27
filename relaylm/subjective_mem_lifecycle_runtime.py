@@ -20,13 +20,15 @@ from relaylm._subjective_mem_commit_io import (
     secure_platform_supported,
 )
 from relaylm.evidence_common import canonical_digest, sha256_hex, utf8_text_digest
-from relaylm.evidence_space import EvidenceSpaceDescriptor
-from relaylm.subjective_mem_commit import ST1_RECEIPT_SCHEMA
 from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreTransaction
 from relaylm.shared_assessment import SharedAssessmentCurrentState, SharedAssessmentRevision
 from relaylm.shared_assessment_runtime import (
     shared_assessment_current_state_key,
     shared_assessment_revision_record_id,
+)
+from relaylm.subjective_mem_lifecycle_authority import (
+    SubjectiveMemPredecessorExpectation,
+    load_subjective_mem_predecessor_authority_locked,
 )
 from relaylm.subjective_mem_lifecycle_engine import (
     LifecycleExecutionOutcome,
@@ -465,13 +467,6 @@ def _prepare_new(
 
     try:
         with store.transaction(evidence_space_id) as tx:
-            evidence_reasons = _validate_evidence_space_locked(
-                tx=tx,
-                evidence_space_id=evidence_space_id,
-                character_authority=character_authority,
-            )
-            if evidence_reasons:
-                return None, evidence_reasons
             selector_raw, selector_reasons = _load_exact_selector_locked(
                 tx=tx,
                 proposal=proposal,
@@ -482,14 +477,6 @@ def _prepare_new(
             assessment_reasons = _validate_assessment_locked(tx=tx, proposal=proposal)
             if assessment_reasons:
                 return None, assessment_reasons
-            receipt_reasons = _validate_current_receipt_locked(
-                tx=tx,
-                proposal=proposal,
-                character_id=character_authority.character_id,
-                evidence_space_id=evidence_space_id,
-            )
-            if receipt_reasons:
-                return None, receipt_reasons
     except (OSError, RuntimeError, TypeError, ValueError):
         return None, ("subjective_mem_lifecycle_store_unavailable",)
 
@@ -1029,76 +1016,52 @@ def _read_authority_bindings_locked(
 ) -> tuple[tuple[RecordBinding, ...], tuple[LogBinding, ...], tuple[str, ...]]:
     """Validate and bind the exact Correct-specific authority this plan depends on."""
 
-    reasons = _validate_evidence_space_locked(
+    authority, authority_reasons = load_subjective_mem_predecessor_authority_locked(
         tx=tx,
         evidence_space_id=evidence_space_id,
         character_authority=character_authority,
-    )
-    reasons = reasons or _validate_assessment_locked(tx=tx, proposal=proposal)
-    reasons = reasons or _validate_predecessor_authority_locked(
-        tx=tx,
-        proposal=proposal,
         predecessor=predecessor,
-        character_id=character_authority.character_id,
-        evidence_space_id=evidence_space_id,
+        expectation=SubjectiveMemPredecessorExpectation(
+            receipt_id=proposal.expected_current_receipt_id,
+            receipt_digest=proposal.expected_current_receipt_digest,
+            current_state_digest=proposal.expected_current_selector_digest,
+            page_id=proposal.expected_page_id,
+            block_id=proposal.expected_block_id,
+            page_digest=proposal.expected_page_digest,
+            revision_schema=proposal.expected_revision_schema,
+            page_schema=proposal.expected_page_schema,
+            block_schema=proposal.expected_block_schema,
+            renderer_revision=proposal.expected_renderer_revision,
+            partition_revision=proposal.expected_partition_revision,
+            platform_revision=proposal.expected_platform_revision,
+        ),
     )
+    if authority is None:
+        return (), (), authority_reasons
+    reasons = _validate_assessment_locked(tx=tx, proposal=proposal)
     if reasons:
         return (), (), reasons
-    receipt_kind = (
-        "subjective_mem_st1_commit_receipt"
-        if proposal.expected_current_revision == 1
-        else "subjective_mem_lifecycle_receipt"
-    )
-    authority_kind = (
-        "subjective_mem_decision"
-        if predecessor.memory_revision == 1
-        else "subjective_mem_lifecycle_transition"
-    )
     assessment_id = proposal.assessment_revision.assessment_id
     assessment_key = shared_assessment_current_state_key(assessment_id)
-    records = (
-        (
-            "evidence_space_descriptor",
-            "revision-1",
-            tx.read_record(
-                record_kind="evidence_space_descriptor", record_id="revision-1"
-            ),
-        ),
-        (
-            receipt_kind,
-            proposal.expected_current_receipt_id,
-            tx.read_record(
-                record_kind=receipt_kind,
-                record_id=proposal.expected_current_receipt_id,
-            ),
-        ),
-        (
-            authority_kind,
-            predecessor.authorization_id,
-            tx.read_record(
-                record_kind=authority_kind, record_id=predecessor.authorization_id
-            ),
-        ),
-        (
-            "shared_assessment_revision",
-            shared_assessment_revision_record_id(
-                assessment_id, proposal.assessment_revision.assessment_revision
-            ),
-            tx.read_record(
-                record_kind="shared_assessment_revision",
-                record_id=shared_assessment_revision_record_id(
-                    assessment_id, proposal.assessment_revision.assessment_revision
-                ),
-            ),
-        ),
+    assessment_record_id = shared_assessment_revision_record_id(
+        assessment_id, proposal.assessment_revision.assessment_revision
+    )
+    assessment_revision = tx.read_record(
+        record_kind="shared_assessment_revision",
+        record_id=assessment_record_id,
     )
     events = tx.read_log(log_kind="shared_assessment_current_state", key=assessment_key)
-    if any(not isinstance(body, dict) or not body for _kind, _id, body in records) or not isinstance(
-        events, list
+    if (
+        not isinstance(assessment_revision, dict)
+        or not assessment_revision
+        or not isinstance(events, list)
     ):
         return (), (), ("subjective_mem_lifecycle_predecessor_authority_missing",)
+    records = authority.record_bindings + (
+        ("shared_assessment_revision", assessment_record_id, assessment_revision),
+    )
     logs = (("shared_assessment_current_state", assessment_key, tuple(events)),)
-    return records, logs, ()  # type: ignore[return-value]
+    return records, logs, ()
 
 
 def _correct_finalizer(
@@ -1458,33 +1421,6 @@ def _evidence_space_directory_present(
     except OSError:
         return False
 
-
-def _validate_evidence_space_locked(
-    *,
-    tx: EvidenceStoreTransaction,
-    evidence_space_id: str,
-    character_authority: SubjectiveMemCharacterAuthority,
-) -> tuple[str, ...]:
-    raw = tx.read_record(
-        record_kind="evidence_space_descriptor",
-        record_id="revision-1",
-    )
-    try:
-        descriptor = EvidenceSpaceDescriptor.from_dict(raw) if isinstance(raw, dict) else None
-    except (KeyError, TypeError, ValueError):
-        descriptor = None
-    if (
-        descriptor is None
-        or descriptor.to_dict() != raw
-        or descriptor.evidence_space_id != evidence_space_id
-        or descriptor.workspace_or_tenant_ref != character_authority.workspace_or_tenant_ref
-        or descriptor.isolation_mode != "private_conversation"
-        or descriptor.retired_at_or_null is not None
-    ):
-        return ("subjective_mem_lifecycle_evidence_space_authority_mismatch",)
-    return ()
-
-
 def _validate_assessment_locked(*, tx: EvidenceStoreTransaction, proposal: SubjectiveMemCorrectProposal) -> tuple[str, ...]:
     raw_revision = tx.read_record(
         record_kind="shared_assessment_revision",
@@ -1560,136 +1496,6 @@ def _validate_selector_uniqueness_locked(
     if len(matches) != 1 or matches[0] != (selector_id, [expected]):
         return ("subjective_mem_lifecycle_duplicate_logical_current_selector",)
     return ()
-
-
-def _validate_current_receipt_locked(
-    *,
-    tx: EvidenceStoreTransaction,
-    proposal: SubjectiveMemCorrectProposal,
-    character_id: str,
-    evidence_space_id: str,
-) -> tuple[str, ...]:
-    kind = (
-        "subjective_mem_st1_commit_receipt"
-        if proposal.expected_current_revision == 1
-        else "subjective_mem_lifecycle_receipt"
-    )
-    receipt = tx.read_record(record_kind=kind, record_id=proposal.expected_current_receipt_id)
-    if not _receipt_self_authentic(receipt):
-        return ("subjective_mem_lifecycle_current_receipt_missing_or_corrupt",)
-    assert isinstance(receipt, dict)
-    memory_ref = receipt.get("memory_ref")
-    page_id = (
-        receipt.get("target_page_id")
-        if proposal.expected_current_revision == 1
-        else receipt.get("page_id")
-    )
-    block_id = (
-        receipt.get("memory_block_id")
-        if proposal.expected_current_revision == 1
-        else receipt.get("successor_block_id")
-    )
-    expected_schema = (
-        ST1_RECEIPT_SCHEMA
-        if proposal.expected_current_revision == 1
-        else LIFECYCLE_RECEIPT_SCHEMA
-    )
-    expected_operation = "create" if proposal.expected_current_revision == 1 else "correct"
-    if (
-        receipt.get("schema") != expected_schema
-        or receipt.get("operation_kind") != expected_operation
-        or receipt.get("operation_outcome") != "committed"
-        or receipt.get("receipt_digest") != proposal.expected_current_receipt_digest
-        or receipt.get("evidence_space_id") != evidence_space_id
-        or receipt.get("character_id") != character_id
-        or not isinstance(memory_ref, dict)
-        or memory_ref.get("memory_id") != proposal.expected_memory_id
-        or memory_ref.get("memory_revision") != proposal.expected_current_revision
-        or receipt.get("post_image_digest") != proposal.expected_page_digest
-        or receipt.get("current_state_digest") != proposal.expected_current_selector_digest
-        or page_id != proposal.expected_page_id
-        or block_id != proposal.expected_block_id
-        or receipt.get("renderer_revision") != proposal.expected_renderer_revision
-        or receipt.get("partition_revision") != proposal.expected_partition_revision
-        or receipt.get("platform_revision") != proposal.expected_platform_revision
-    ):
-        return ("subjective_mem_lifecycle_current_receipt_not_exact",)
-    if proposal.expected_current_revision > 1 and (
-        receipt.get("revision_schema") != proposal.expected_revision_schema
-        or receipt.get("page_schema") != proposal.expected_page_schema
-        or receipt.get("block_schema") != proposal.expected_block_schema
-        or receipt.get("policy_revision") != LIFECYCLE_POLICY_REVISION
-    ):
-        return ("subjective_mem_lifecycle_current_receipt_not_exact",)
-    return ()
-
-
-def _validate_predecessor_authority_locked(
-    *,
-    tx: EvidenceStoreTransaction,
-    proposal: SubjectiveMemCorrectProposal,
-    predecessor: SubjectiveMemRevision,
-    character_id: str,
-    evidence_space_id: str,
-) -> tuple[str, ...]:
-    receipt_reasons = _validate_current_receipt_locked(
-        tx=tx,
-        proposal=proposal,
-        character_id=character_id,
-        evidence_space_id=evidence_space_id,
-    )
-    if receipt_reasons:
-        return receipt_reasons
-    kind = (
-        "subjective_mem_st1_commit_receipt"
-        if predecessor.memory_revision == 1
-        else "subjective_mem_lifecycle_receipt"
-    )
-    receipt = tx.read_record(record_kind=kind, record_id=proposal.expected_current_receipt_id)
-    if not isinstance(receipt, dict):
-        return ("subjective_mem_lifecycle_predecessor_authority_missing",)
-    if predecessor.memory_revision == 1:
-        decision = tx.read_record(
-            record_kind="subjective_mem_decision",
-            record_id=predecessor.authorization_id,
-        )
-        result_ref = (
-            decision.get("result_memory_ref_or_null")
-            if isinstance(decision, dict)
-            else None
-        )
-        if (
-            predecessor.authorization_kind != "formation_decision"
-            or receipt.get("decision_id") != predecessor.authorization_id
-            or not isinstance(result_ref, dict)
-            or result_ref.get("memory_id") != predecessor.memory_id
-            or result_ref.get("memory_revision") != 1
-        ):
-            return ("subjective_mem_lifecycle_predecessor_authority_not_exact",)
-        return ()
-    transition_id = receipt.get("transition_id")
-    transition = tx.read_record(
-        record_kind="subjective_mem_lifecycle_transition",
-        record_id=str(transition_id),
-    )
-    if (
-        predecessor.authorization_kind != "lifecycle_transition"
-        or transition_id != predecessor.authorization_id
-        or not isinstance(transition, dict)
-        or transition.get("schema") != LIFECYCLE_TRANSITION_SCHEMA
-        or transition.get("transition_id") != predecessor.authorization_id
-        or transition.get("character_id") != predecessor.character_id
-        or transition.get("memory_id") != predecessor.memory_id
-        or transition.get("to_revision") != predecessor.memory_revision
-        or transition.get("to_lifecycle_state") != predecessor.lifecycle_state
-        or transition.get("to_formation_stage") != predecessor.formation_stage
-        or receipt.get("successor_revision_digest")
-        != canonical_digest(predecessor.to_dict())
-    ):
-        return ("subjective_mem_lifecycle_predecessor_authority_not_exact",)
-    return ()
-
-
 def _predecessor_from_artifact(
     artifact: bytes,
     *,
@@ -1797,15 +1603,6 @@ def _workspace_authority_digest(
         "workspace_root_digest": sha256_hex(workspace_root.encode("utf-8")),
         "character_authority": character_authority.to_dict(),
     })
-
-
-def _receipt_self_authentic(raw: object) -> bool:
-    return (
-        isinstance(raw, dict)
-        and isinstance(raw.get("receipt_digest"), str)
-        and raw["receipt_digest"] == canonical_digest({k: v for k, v in raw.items() if k != "receipt_digest"})
-    )
-
 
 def _intent_exact(
     intent: dict[str, object],

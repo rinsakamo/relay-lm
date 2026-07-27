@@ -794,7 +794,7 @@ def test_correct_requires_reachable_predecessor_transition(lifecycle_env) -> Non
         observed_at=NOW + timedelta(seconds=5),
     )
     assert result.status == "fail_closed"
-    assert "subjective_mem_lifecycle_predecessor_authority_not_exact" in result.blocked_reasons
+    assert "subjective_mem_lifecycle_predecessor_authority_missing" in result.blocked_reasons
 
 
 def test_markdown_successor_rejects_changed_formation_snapshot(lifecycle_env) -> None:
@@ -902,6 +902,21 @@ def test_correct_keeps_one_engine_execution_path_without_fallback() -> None:
     assert source.count("from relaylm.subjective_mem_lifecycle_engine import") == 1
     for bypass in ("ImportError", "importlib", "sys.modules", "fallback", "ContextVar"):
         assert bypass not in source
+
+
+def test_correct_retired_legacy_predecessor_validators() -> None:
+    source = Path("relaylm/subjective_mem_lifecycle_runtime.py").read_text(encoding="utf-8")
+    assert "from relaylm.subjective_mem_lifecycle_authority import" in source
+    assert "load_subjective_mem_predecessor_authority_locked(" in source
+    for retired in (
+        "_validate_evidence_space_locked",
+        "_validate_current_receipt_locked",
+        "_validate_predecessor_authority_locked",
+        "_receipt_self_authentic",
+        "EvidenceSpaceDescriptor",
+        "ST1_RECEIPT_SCHEMA",
+    ):
+        assert retired not in source
 
 
 def test_shared_engine_records_and_outcomes_stay_content_free() -> None:
