@@ -1,6 +1,6 @@
 ---
 name: relaylm-stable
-description: Advance one explicitly bound RelayLM lane or pull request from bare continuation commands such as 次に進めて, 進めて, 続けて, or 次へ. Cross-lane execution requires an explicit portfolio command. Enforces current-main re-bootstrap, lane-local and single-writer execution, ChatGPT-first implementation-backend routing, architecture-first design, No-Patch and Stable-Structure gates, machine-owned failure stopping, complete-diff review, exact-head verification, and P0-P8 convergence.
+description: Advance one explicitly bound RelayLM lane or pull request from bare continuation commands such as 次に進めて, 進めて, 続けて, or 次へ. Cross-lane execution requires an explicit portfolio command. Enforces current-main re-bootstrap, lane-local and single-writer execution, ChatGPT-first implementation-backend routing, architecture-first design, No-Patch and Stable-Structure gates, machine-owned failure stopping, complete-diff review, exact-head verification, and mandatory post-merge P8 authority-sync convergence.
 ---
 
 # RelayLM Stable
@@ -131,6 +131,8 @@ Never use:
 - a second PR or branch only to apply, validate, or transfer a correction;
 - automatic retry, rebase, force-push, or conflict resolution after a head mismatch.
 
+A required same-lane P8 authority-sync PR is not a corrective, validation-transfer, or replacement PR. It is the second transaction of post-merge convergence and is governed by the P7/P8 rules below.
+
 The failure-budget monitor may change only its hidden state comment, execution labels, and Draft state. It never changes branch content or the PR body.
 
 Fetch the exact head immediately before a write. A mismatch stops execution and requires re-bootstrap.
@@ -218,8 +220,8 @@ P0 scope and authority lock
        -> writer collision or temporary recurrence: P6-STOP
        -> cross-lane dependency: record blocker; do not edit other lane
        -> clean: P7
-  -> P7 expected-head-protected merge
-  -> P8 same-lane post-merge convergence
+  -> P7 expected-head-protected implementation merge
+  -> P8 same-lane post-merge authority-sync convergence
 ```
 
 ## P0: Scope and authority lock
@@ -344,7 +346,31 @@ Merge only when:
 
 A lane-local command authorizes only the selected lane's merge unless the user says review-only or do not merge.
 
-After merge, verify the merge and resulting `main`, verify post-merge checks, perform same-lane bookkeeping, release the slot, and select only the next item in the same lane.
+For an implementation-boundary PR, P8 is a required second PR transaction whenever the merged change advances or changes current implementation status, caveats, authority boundaries, the next ordered slice, or an accepted implementation budget.
+
+```text
+implementation PR exact-head validation
+  -> P7 expected-head-protected merge
+  -> verify resulting main
+  -> create one same-lane P8 authority-sync PR from that exact main
+  -> validate and merge the P8 authority-sync PR
+  -> verify resulting main
+  -> release the lane slot
+  -> begin the next implementation slice
+```
+
+The P8 authority-sync PR:
+
+- changes only the current-state, sequencing, direct implementation-budget authority, generated registry, or generic current-boundary validator paths required by the merged boundary;
+- contains no runtime, feature, migration, fallback, or unrelated cleanup change;
+- has its own exact-main branch, current receipt, P0-P7 review, exact-head checks, and expected-head-protected merge;
+- preserves the merged implementation PR as immutable evidence.
+
+Do not open, write, review for merge, or merge the next implementation PR until the required P8 authority-sync PR is merged and the resulting `main` is verified. The lane slot remains occupied while P8 is pending.
+
+When the merged PR does not change current status, sequencing, authority, or implementation budget, record the exact evidence that no P8 authority-sync PR is required before releasing the lane slot.
+
+Start the P8 authority-sync transaction in the same continuation interaction as the implementation merge whenever connected capabilities and required checks permit. If CI, permissions, a newer `main`, or another authority owner blocks completion, leave the lane explicitly at P8, name the blocker, and stop without starting the next slice. Never defer P8 as untracked background work.
 
 ## Stop conditions
 
