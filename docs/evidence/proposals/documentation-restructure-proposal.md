@@ -44,4 +44,4 @@ The source retains its pre-adoption front matter and statements because it is an
 
 ## Cutover record
 
-The path migration and blob verification are recorded in [Documentation Hard-Cutover Migration Receipt](../migrations/documentation-hard-cutover-receipt.md).
+The former migration ledger that recorded this path migration and its blob verification is retired from the current tree. Its exact content remains recoverable from Git history, and the [retirement manifest](../../../records/documentation/retirement-manifest.json) carries the file's exact recovery identity.
