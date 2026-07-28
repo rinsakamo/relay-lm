@@ -113,7 +113,6 @@ PYTHONPATH=.:scripts python scripts/relaylm_o1f_operational_validation_saturatio
 PYTHONPATH=.:scripts python scripts/relaylm_o1f_operational_validation_restart_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_o1f_operational_validation_security_smoke.py
 
-PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/o1f_completion_report.md
 PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
 ```

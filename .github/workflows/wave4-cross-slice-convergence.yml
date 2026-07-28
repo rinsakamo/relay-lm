@@ -7,7 +7,6 @@ on:
       - "docs/**"
       - "scripts/relaylm_wave4_cross_slice_convergence_smoke.py"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
-      - "scripts/relaylm_mvp_completion_report_smoke.py"
       - "scripts/relaylm_mvp_completion_report_pr_link_smoke.py"
       - "scripts/relaylm_docs_link_check.py"
       - ".github/workflows/wave4-cross-slice-convergence.yml"
@@ -18,7 +17,6 @@ on:
       - "docs/**"
       - "scripts/relaylm_wave4_cross_slice_convergence_smoke.py"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
-      - "scripts/relaylm_mvp_completion_report_smoke.py"
       - "scripts/relaylm_mvp_completion_report_pr_link_smoke.py"
       - "scripts/relaylm_docs_link_check.py"
       - ".github/workflows/wave4-cross-slice-convergence.yml"
@@ -37,14 +35,7 @@ jobs:
         run: PYTHONPATH=.:scripts python scripts/relaylm_wave4_cross_slice_convergence_smoke.py
       - name: Documentation current boundary smoke
         run: PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
-      - name: Validate Wave 4 completion reports
-        run: |
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/o1d2_completion_report.md
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/i4e_completion_report.md
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/ui_b1a_completion_report.md
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/i5a_completion_report.md
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/i7ab_completion_report.md
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-all
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+      - name: Validate completion report source PR links
+        run: PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
       - name: Documentation link check
         run: PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py

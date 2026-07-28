@@ -33,9 +33,5 @@ jobs:
         run: PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
       - name: Validate docs links
         run: PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
-      - name: Validate Wave 5 completion reports
-        run: |
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e1_completion_report.md
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/o1e_completion_report.md
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/i4f_completion_report.md
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+      - name: Validate completion report source PR links
+        run: PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py

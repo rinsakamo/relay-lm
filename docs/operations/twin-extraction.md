@@ -171,7 +171,7 @@ PYTHONPATH=.:scripts python scripts/relaylm_twin_review_import_bridge_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_twin_review_import_bridge_security_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_twin_review_import_bridge_cw_a4_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_twin_review_to_cw_a4_flow_smoke.py
-PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/twin_extraction_completion_report.md
+PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
 PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
 ```

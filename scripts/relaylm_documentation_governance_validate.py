@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Validate RelayLM's D1 documentation-governance lock.
 
-The validator is deliberately transitional: it enforces the complete canonical
-metadata contract for documents that opt into the D1 graph fields, while older
-source families remain governed by their explicit removal registry until D2-D6.
+The validator enforces the complete canonical metadata contract for documents
+that opt into the D1 graph fields. No transitional source family remains
+registered: `records/documentation/transitional-assets.json` is the canonical
+registry and currently holds zero families. It stays required and fully
+validated, so any future family must be added as a reviewed atomic governance
+change and is then held to the same path, consumer, removal-gate, replacement
+and closed-growth constraints.
 """
 from __future__ import annotations
 
@@ -735,6 +739,32 @@ relaylm_authority_level: exact_contract
 """
 
 
+def self_test_transitional_family(paths: list[str]) -> dict[str, Any]:
+    """A synthetic, schema-valid transitional family for self-test use only.
+
+    The real registry is empty. Family-level validation must keep working for
+    any family a future governance change registers, so the self-tests build
+    one explicitly instead of depending on a registered production family.
+    """
+    return {
+        "family_id": "self-test-transitional-family",
+        "paths": sorted(paths),
+        "owner": "documentation",
+        "protected_boundary": "Self-test only: proves family validation still applies when a family exists.",
+        "current_consumers": ["self-test"],
+        "removal_gate": "Self-test only; never registered as a production transitional family.",
+        "replacement_validation": ["active_document_authority"],
+        "growth_policy": "closed",
+    }
+
+
+def self_test_transitional_registry(paths: list[str]) -> dict[str, Any]:
+    return {
+        "schema_version": "relaylm.documentation.transitional-asset-registry.v1",
+        "families": [self_test_transitional_family(paths)],
+    }
+
+
 def build_self_test_root() -> Path:
     temp = Path(tempfile.mkdtemp(prefix="relaylm-doc-governance-"))
     shutil.copytree(SCHEMA_ROOT, temp / "docs/contracts/schemas/documentation-governance-v1")
@@ -864,12 +894,46 @@ def self_test() -> int:
         )
         slice_named.unlink()
 
+        empty_registry = read_json(root / "records/documentation/transitional-assets.json")
+        expect(
+            "the production transitional registry is present and holds zero families",
+            isinstance(empty_registry, dict) and empty_registry.get("families") == [],
+            failures,
+        )
+        expect(
+            "an empty transitional registry is accepted",
+            not validate_transitional_assets(root, empty_registry),
+            failures,
+        )
+
         closed_addition_errors = validate_transitional_assets(
             root,
-            read_json(root / "records/documentation/transitional-assets.json"),
+            self_test_transitional_registry(["docs/evidence/implementation/*_completion_report.md"]),
             {"docs/evidence/implementation/added_completion_report.md"},
         )
         expect("closed transitional families reject added or renamed paths", any("new path is forbidden by closed transitional family" in item for item in closed_addition_errors), failures)
+
+        # A registered family whose protected path no longer exists must fail:
+        # this is how removal validation proves removed family paths and
+        # consumers were actually repaired rather than silently abandoned.
+        stale_family_errors = validate_transitional_assets(
+            root,
+            self_test_transitional_registry(["scripts/relaylm_self_test_removed_asset.py"]),
+        )
+        expect(
+            "a registered family whose protected path was removed is rejected",
+            any("transitional asset missing" in item for item in stale_family_errors),
+            failures,
+        )
+        stale_pattern_errors = validate_transitional_assets(
+            root,
+            self_test_transitional_registry(["scripts/relaylm_self_test_removed_asset_*.py"]),
+        )
+        expect(
+            "a registered family whose protected pattern matches nothing is rejected",
+            any("pattern has no current match" in item for item in stale_pattern_errors),
+            failures,
+        )
 
         free_form = root / "records/documentation/history.md"
         free_form.write_text("# archive\n", encoding="utf-8")
@@ -906,17 +970,59 @@ def self_test() -> int:
         shutil.copy2(CATALOG_PATH, catalog_path)
 
         transitional_path = root / "records/documentation/transitional-assets.json"
-        transitional = read_json(transitional_path)
-        transitional["families"][0]["paths"].append("docs/../outside.md")
-        transitional["families"][0]["paths"].sort()
-        write_json(transitional_path, transitional)
+        valid_family_asset = root / "docs/contracts/self-test-transitional-asset.md"
+        valid_family_asset.parent.mkdir(parents=True, exist_ok=True)
+        valid_family_asset.write_text("# self-test transitional asset\n", encoding="utf-8")
+        write_json(
+            transitional_path,
+            self_test_transitional_registry(["docs/contracts/self-test-transitional-asset.md"]),
+        )
+        errors = validate_repository(root)
+        expect(
+            "one valid registered transitional family is still accepted",
+            not errors,
+            failures,
+        )
+
+        malformed = self_test_transitional_registry(
+            ["docs/../outside.md", "docs/contracts/self-test-transitional-asset.md"]
+        )
+        write_json(transitional_path, malformed)
         errors = validate_repository(root)
         expect(
             "transitional paths cannot contain traversal segments",
             any("must not contain dot path segments" in item for item in errors),
             failures,
         )
+
+        unsorted = self_test_transitional_registry(["docs/contracts/self-test-transitional-asset.md"])
+        unsorted["families"][0]["current_consumers"] = ["second", "first"]
+        write_json(transitional_path, unsorted)
+        errors = validate_repository(root)
+        expect(
+            "a malformed family with unsorted current consumers is rejected",
+            any("current_consumers must be sorted and unique" in item for item in errors),
+            failures,
+        )
+
+        open_growth = self_test_transitional_registry(["docs/contracts/self-test-transitional-asset.md"])
+        open_growth["families"][0]["growth_policy"] = "open"
+        write_json(transitional_path, open_growth)
+        errors = validate_repository(root)
+        expect(
+            "a family that is not closed-growth is rejected by the registry schema",
+            any("growth_policy" in item for item in errors),
+            failures,
+        )
+
+        valid_family_asset.unlink()
         shutil.copy2(TRANSITIONAL_PATH, transitional_path)
+        errors = validate_repository(root)
+        expect(
+            "the empty production registry is accepted end to end",
+            not errors,
+            failures,
+        )
 
         registry_path = root / "records/documentation/retained-record-registry.json"
         registry = read_json(registry_path)

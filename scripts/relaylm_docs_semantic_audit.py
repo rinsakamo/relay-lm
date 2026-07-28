@@ -2572,6 +2572,178 @@ def check_implementation_evidence_index(errors: list[str]) -> None:
         errors.append(f"{index_path}: unindexed implementation completion reports {missing!r}")
 
 
+# ---------------------------------------------------------------------------
+# Generic implementation-evidence completion-report validation.
+#
+# This family owns the continuing structural invariants for the completion
+# reports that live in the canonical implementation-evidence directory:
+# path boundary, the two accepted metadata profiles, shared and legacy-only
+# metadata, required sections, the legacy exact-source snapshot, and
+# unresolved placeholders. Exact source-PR number/URL agreement is owned
+# independently by scripts/relaylm_mvp_completion_report_pr_link_smoke.py and
+# is deliberately not duplicated or weakened here.
+# ---------------------------------------------------------------------------
+COMPLETION_REPORT_DIRECTORY = "docs/evidence/implementation"
+COMPLETION_REPORT_SUFFIX = "_completion_report.md"
+
+COMPLETION_REPORT_PROFILE_KEYS = (
+    "relaylm_doc_type",
+    "relaylm_status",
+    "relaylm_volatility",
+)
+COMPLETION_REPORT_LEGACY_PROFILE = {
+    "relaylm_doc_type": "implementation_completion_report",
+    "relaylm_status": "historical_after_merge",
+    "relaylm_volatility": "frozen",
+}
+COMPLETION_REPORT_CANONICAL_PROFILE = {
+    "relaylm_doc_type": "evidence",
+    "relaylm_status": "frozen",
+    "relaylm_volatility": "low",
+}
+
+COMPLETION_REPORT_SHARED_METADATA = (
+    "relaylm_current_status_source",
+    "relaylm_source_pr",
+    "relaylm_recorded_on",
+)
+COMPLETION_REPORT_LEGACY_METADATA = (
+    "relaylm_source_commit",
+    "relaylm_source_blob",
+    "relaylm_source_content_sha256",
+    "relaylm_exact_source_snapshot",
+)
+
+COMPLETION_REPORT_SECTIONS = (
+    "Scope",
+    "Implemented production boundary",
+    "Preserved authorities and non-goals",
+    "Changed files",
+    "Validation evidence",
+    "Known limitations",
+    "Shared documentation update inputs",
+    "Source pull request",
+)
+COMPLETION_REPORT_LEGACY_SECTIONS = ("Status and authority",)
+
+COMPLETION_REPORT_PLACEHOLDERS = ("<slice>", "<number>", "TBD", "TO BE FILLED")
+
+
+def _completion_report_paths() -> list[str]:
+    directory = ROOT / COMPLETION_REPORT_DIRECTORY
+    if not directory.is_dir():
+        return []
+    return [
+        path.relative_to(ROOT).as_posix()
+        for path in sorted(directory.glob("*" + COMPLETION_REPORT_SUFFIX))
+    ]
+
+
+def _completion_report_path_error(relative_path: str) -> str | None:
+    """Reject anything outside the canonical evidence directory."""
+    parts = Path(relative_path).parts
+    if any(part in {".", ".."} for part in parts):
+        return f"{relative_path}: completion-report path must not traverse directories"
+    expected = Path(COMPLETION_REPORT_DIRECTORY).parts
+    if len(parts) != len(expected) + 1 or parts[: len(expected)] != expected:
+        return (
+            f"{relative_path}: completion report must live directly under "
+            f"{COMPLETION_REPORT_DIRECTORY}/"
+        )
+    if not parts[-1].endswith(COMPLETION_REPORT_SUFFIX):
+        return f"{relative_path}: completion-report filename must end with {COMPLETION_REPORT_SUFFIX}"
+    return None
+
+
+def _completion_report_profile(relative_path: str, metadata: dict[str, Any]) -> tuple[str | None, str | None]:
+    candidate = {key: metadata.get(key) for key in COMPLETION_REPORT_PROFILE_KEYS}
+    if candidate == COMPLETION_REPORT_LEGACY_PROFILE:
+        return "legacy", None
+    if candidate == COMPLETION_REPORT_CANONICAL_PROFILE:
+        return "canonical", None
+    return None, (
+        f"{relative_path}: unrecognized or mixed completion-report profile "
+        f"(doc_type={candidate['relaylm_doc_type']!r}, "
+        f"status={candidate['relaylm_status']!r}, "
+        f"volatility={candidate['relaylm_volatility']!r})"
+    )
+
+
+def check_implementation_evidence_completion_report(errors: list[str], relative_path: str) -> None:
+    path_error = _completion_report_path_error(relative_path)
+    if path_error is not None:
+        errors.append(path_error)
+        return
+
+    try:
+        metadata, body = parse_front_matter(relative_path)
+    except (AssertionError, OSError, UnicodeError, yaml.YAMLError) as exc:
+        errors.append(str(exc))
+        return
+
+    profile, profile_error = _completion_report_profile(relative_path, metadata)
+    if profile is None:
+        errors.append(profile_error or f"{relative_path}: unusable completion-report profile")
+        return
+
+    required_metadata = COMPLETION_REPORT_SHARED_METADATA
+    required_sections = COMPLETION_REPORT_SECTIONS
+    if profile == "legacy":
+        required_metadata += COMPLETION_REPORT_LEGACY_METADATA
+        required_sections = COMPLETION_REPORT_LEGACY_SECTIONS + required_sections
+
+    missing_metadata = [key for key in required_metadata if metadata.get(key) in (None, "")]
+    if missing_metadata:
+        errors.append(f"{relative_path}: missing completion-report metadata {missing_metadata!r}")
+
+    missing_sections = [heading for heading in required_sections if f"## {heading}" not in body]
+    if missing_sections:
+        errors.append(f"{relative_path}: missing completion-report sections {missing_sections!r}")
+
+    text = read_text(relative_path)
+    for placeholder in COMPLETION_REPORT_PLACEHOLDERS:
+        if placeholder in text:
+            errors.append(f"{relative_path}: unresolved placeholder {placeholder!r}")
+
+    current_source = metadata.get("relaylm_current_status_source")
+    if isinstance(current_source, str) and current_source:
+        target = ((ROOT / relative_path).parent / current_source).resolve()
+        try:
+            target.relative_to(ROOT.resolve())
+        except ValueError:
+            errors.append(f"{relative_path}: current-status source escapes repository")
+        else:
+            if not target.is_file():
+                errors.append(
+                    f"{relative_path}: missing relaylm_current_status_source {current_source}"
+                )
+
+    if profile != "legacy":
+        return
+
+    snapshot = metadata.get("relaylm_exact_source_snapshot")
+    if not isinstance(snapshot, str) or not snapshot:
+        return
+    if "/" in snapshot or "\\" in snapshot or snapshot in {".", ".."}:
+        errors.append(
+            f"{relative_path}: relaylm_exact_source_snapshot must name a file beside the report"
+        )
+        return
+    target = ((ROOT / relative_path).parent / snapshot).resolve()
+    try:
+        target.relative_to(ROOT.resolve())
+    except ValueError:
+        errors.append(f"{relative_path}: exact source snapshot escapes repository")
+        return
+    if not target.is_file():
+        errors.append(f"{relative_path}: missing exact source snapshot {snapshot}")
+
+
+def check_implementation_evidence_completion_reports(errors: list[str]) -> None:
+    for relative_path in _completion_report_paths():
+        check_implementation_evidence_completion_report(errors, relative_path)
+
+
 def check_operations_docs(errors: list[str]) -> None:
     mobile_path = "docs/operations/mobile-dogfood-entry.md"
     mobile_meta, mobile = parse_front_matter(mobile_path)
@@ -6882,6 +7054,230 @@ def self_test() -> None:
         )
     ROOT = real_root
 
+    # -----------------------------------------------------------------------
+    # Generic implementation-evidence completion-report validation. Coverage
+    # migrated here from the retired dedicated completion-report validator.
+    # -----------------------------------------------------------------------
+    completion_report_relative = (
+        f"{COMPLETION_REPORT_DIRECTORY}/example_slice{COMPLETION_REPORT_SUFFIX}"
+    )
+    completion_report_canonical = """---
+relaylm_doc_type: evidence
+relaylm_authority: example_slice_implementation_evidence
+relaylm_status: frozen
+relaylm_volatility: low
+relaylm_owner: implementation
+relaylm_update_trigger:
+  - metadata or link repair only
+relaylm_current_status_source: ../../PROJECT_STATUS.md
+relaylm_source_pr: 999999
+relaylm_recorded_on: 2026-07-15
+---
+# Example Slice Completion Report
+
+## Scope
+Example scope.
+## Implemented production boundary
+Example boundary.
+## Preserved authorities and non-goals
+Example non-goals.
+## Changed files
+Example files.
+## Validation evidence
+Example evidence.
+## Known limitations
+Example limitations.
+## Shared documentation update inputs
+Example inputs.
+## Source pull request
+- PR: #999999
+- URL: https://github.com/rinsakamo/relay-lm/pull/999999
+"""
+    completion_report_legacy = """---
+relaylm_doc_type: implementation_completion_report
+relaylm_authority: example_slice_evidence
+relaylm_status: historical_after_merge
+relaylm_volatility: frozen
+relaylm_owner: implementation
+relaylm_update_trigger:
+  - metadata or link repair only
+relaylm_current_status_source: ../../PROJECT_STATUS.md
+relaylm_source_commit: 000000000000000000000000000000000000000a
+relaylm_source_pr: 999998
+relaylm_recorded_on: 2026-07-15
+relaylm_source_blob: 000000000000000000000000000000000000000b
+relaylm_source_content_sha256: 000000000000000000000000000000000000000000000000000000000000000c
+relaylm_exact_source_snapshot: example_slice_completion_report-source.txt
+---
+# Example Slice Completion Report
+
+## Status and authority
+Example status.
+## Scope
+Example scope.
+## Implemented production boundary
+Example boundary.
+## Preserved authorities and non-goals
+Example non-goals.
+## Changed files
+Example files.
+## Validation evidence
+Example evidence.
+## Known limitations
+Example limitations.
+## Shared documentation update inputs
+Example inputs.
+## Source pull request
+- PR: #999998
+- URL: https://github.com/rinsakamo/relay-lm/pull/999998
+"""
+
+    def _write_completion_report(base: Path, text: str, *, snapshot: bool = False) -> None:
+        _mvp_write(base, "docs/PROJECT_STATUS.md", "# Status\n")
+        _mvp_write(base, completion_report_relative, text)
+        if snapshot:
+            _mvp_write(
+                base,
+                f"{COMPLETION_REPORT_DIRECTORY}/example_slice_completion_report-source.txt",
+                "snapshot\n",
+            )
+
+    # Every real repository completion report satisfies the generic family.
+    real_report_errors: list[str] = []
+    check_implementation_evidence_completion_reports(real_report_errors)
+    results.append(
+        (
+            "real repository completion reports pass generic evidence validation",
+            not real_report_errors,
+            "" if not real_report_errors else repr(real_report_errors),
+        )
+    )
+    check(
+        "the generic completion-report family scans every current report",
+        lambda: len(_completion_report_paths())
+        == len(tuple((real_root / COMPLETION_REPORT_DIRECTORY).glob("*" + COMPLETION_REPORT_SUFFIX)))
+        and len(_completion_report_paths()) > 0,
+    )
+
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _write_completion_report(base, completion_report_canonical)
+        check_silent(
+            "a canonical-profile completion report is accepted",
+            check_implementation_evidence_completion_reports,
+        )
+    ROOT = real_root
+
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _write_completion_report(base, completion_report_legacy, snapshot=True)
+        check_silent(
+            "a legacy-profile completion report is accepted",
+            check_implementation_evidence_completion_reports,
+        )
+    ROOT = real_root
+
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _write_completion_report(
+            base,
+            completion_report_canonical.replace(
+                "relaylm_status: frozen", "relaylm_status: historical_after_merge", 1
+            ),
+        )
+        check_rejects(
+            "a mixed completion-report profile is rejected",
+            check_implementation_evidence_completion_reports,
+            "unrecognized or mixed completion-report profile",
+        )
+    ROOT = real_root
+
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _write_completion_report(
+            base, completion_report_canonical.replace("Example limitations.", "TBD", 1)
+        )
+        check_rejects(
+            "an unresolved completion-report placeholder is rejected",
+            check_implementation_evidence_completion_reports,
+            "unresolved placeholder",
+        )
+    ROOT = real_root
+
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _write_completion_report(
+            base,
+            completion_report_canonical.replace(
+                "## Known limitations\nExample limitations.\n", "", 1
+            ),
+        )
+        check_rejects(
+            "a completion report missing a required section is rejected",
+            check_implementation_evidence_completion_reports,
+            "missing completion-report sections",
+        )
+    ROOT = real_root
+
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _write_completion_report(
+            base,
+            completion_report_legacy.replace(
+                "relaylm_exact_source_snapshot: example_slice_completion_report-source.txt\n", "", 1
+            ),
+        )
+        check_rejects(
+            "a legacy completion report missing its exact-source metadata is rejected",
+            check_implementation_evidence_completion_reports,
+            "missing completion-report metadata",
+        )
+    ROOT = real_root
+
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _write_completion_report(base, completion_report_legacy, snapshot=False)
+        check_rejects(
+            "a legacy completion report with an absent exact-source snapshot is rejected",
+            check_implementation_evidence_completion_reports,
+            "missing exact source snapshot",
+        )
+    ROOT = real_root
+
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, "docs/PROJECT_STATUS.md", "# Status\n")
+        _mvp_write(base, "docs/elsewhere/example_slice_completion_report.md", completion_report_canonical)
+        check_rejects(
+            "a completion report outside the canonical evidence directory is rejected",
+            lambda errors: check_implementation_evidence_completion_report(
+                errors, "docs/elsewhere/example_slice_completion_report.md"
+            ),
+            "must live directly under",
+        )
+        check_rejects(
+            "a traversing completion-report path is rejected",
+            lambda errors: check_implementation_evidence_completion_report(
+                errors, f"{COMPLETION_REPORT_DIRECTORY}/../example_slice_completion_report.md"
+            ),
+            "must not traverse directories",
+        )
+    ROOT = real_root
+
+    check(
+        "the generic completion-report family is registered in the production semantic-audit tuple",
+        lambda: check_implementation_evidence_completion_reports
+        in DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS,
+    )
+
     failed = [(name, message) for name, ok, message in results if not ok]
     for name, ok, message in results:
         status = "PASS" if ok else "FAIL"
@@ -6901,6 +7297,7 @@ DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS = (
     check_client_instruction_boundary,
     check_release_assessment,
     check_implementation_evidence_index,
+    check_implementation_evidence_completion_reports,
     check_no_live_mvp_tree,
     check_no_live_lat1_scaffold,
     check_lat1_evaluation_split,

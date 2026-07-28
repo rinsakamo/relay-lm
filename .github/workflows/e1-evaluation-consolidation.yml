@@ -7,7 +7,6 @@ on:
       - "docs/**"
       - "scripts/relaylm_e1_evaluation_consolidation_smoke.py"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
-      - "scripts/relaylm_mvp_completion_report_smoke.py"
       - "scripts/relaylm_mvp_completion_report_pr_link_smoke.py"
       - "scripts/relaylm_docs_link_check.py"
       - ".github/workflows/e1-evaluation-consolidation.yml"
@@ -18,7 +17,6 @@ on:
       - "docs/**"
       - "scripts/relaylm_e1_evaluation_consolidation_smoke.py"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
-      - "scripts/relaylm_mvp_completion_report_smoke.py"
       - "scripts/relaylm_mvp_completion_report_pr_link_smoke.py"
       - "scripts/relaylm_docs_link_check.py"
       - ".github/workflows/e1-evaluation-consolidation.yml"
@@ -46,6 +44,5 @@ jobs:
       - name: Run documentation boundary checks
         run: |
           PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e1_completion_report.md
           PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
           PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
