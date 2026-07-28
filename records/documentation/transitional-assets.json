@@ -35,7 +35,7 @@
       "owner": "documentation",
       "protected_boundary": "Legacy collection-level cutover history and file-level batch provenance retained until every continuing recovery or audit fact is represented by the generic retirement manifest or another allowlisted retained record.",
       "current_consumers": [
-        "documentation migration provenance review"
+        "D6 retirement review only"
       ],
       "removal_gate": "All continuing recovery or audit facts are represented by allowlisted records, and historical-only narratives remain recoverable from Git.",
       "replacement_validation": [
