@@ -1,29 +1,4 @@
 {
   "schema_version": "relaylm.documentation.transitional-asset-registry.v1",
-  "families": [
-    {
-      "family_id": "legacy-completion-report-validation",
-      "paths": [
-        ".github/workflows/documentation-completion-report-files.yml",
-        "docs/evidence/implementation/*_completion_report.md",
-        "scripts/relaylm_mvp_completion_report_smoke.py"
-      ],
-      "owner": "documentation",
-      "protected_boundary": "Existing completion-report metadata profiles, required sections, source-PR evidence anchors, and unresolved-placeholder rejection. This family has no authority over Documentation Model prose, new-record creation, templates, active-document semantics, or retired-path detection.",
-      "current_consumers": [
-        ".github/workflows/documentation-completion-report-files.yml",
-        ".github/workflows/wave4-cross-slice-convergence.yml",
-        "scripts/relaylm_ci_consolidated_smoke.py",
-        "scripts/relaylm_mvp_eval_runner_registry.py"
-      ],
-      "removal_gate": "All existing completion reports are synthesized, reclassified into allowlisted retained records, or retired to Git; no workflow, consolidated smoke group, evaluation runner, operator procedure, or current architecture document consumes the validator; and generic authority, retained-record, link, semantic-audit, and Git-recoverability checks protect every continuing invariant.",
-      "replacement_validation": [
-        "active_document_authority",
-        "git_recoverability",
-        "links_and_routers",
-        "retained_record_allowlist"
-      ],
-      "growth_policy": "closed"
-    }
-  ]
+  "families": []
 }
