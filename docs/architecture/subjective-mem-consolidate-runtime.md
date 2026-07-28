@@ -312,10 +312,37 @@ apply-enabled only with ST-1 secure apply, single-host, POSIX-apply-only,
 caller-invoked, and unwired from ordinary Retrieval, API, UI, queue, worker, and
 scheduler paths.
 
-A closed `subjective_mem_lifecycle_enabled` gate returns a bounded `disabled`
-outcome, and a caller that does not request apply returns content-free `dry-run`
-readiness. Neither path writes an artifact, claim, intent, record, selector
-event, or canonical page byte.
+The gate is the exact existing configuration triple, not a single boolean. Both
+the lifecycle gate and the lower Subjective MEM commit gate are read as
+`(enabled, dry_run_only, apply_enabled)` and must be one of exactly:
+
+```text
+disabled  (False, True,  False)
+dry-run   (True,  True,  False)
+apply     (True,  False, True)
+```
+
+Enforcement is bounded and operation-local. LC-1E introduces no configuration
+field and no general-purpose gate resolver:
+
+- lifecycle `disabled` returns a bounded `disabled` outcome for any caller mode,
+  and is distinct from dry-run;
+- lifecycle `dry-run` with a caller that does not request apply returns
+  content-free dry-run readiness;
+- lifecycle `dry-run` with a caller that requests apply fails closed: a caller
+  can never escalate a configured dry-run mode;
+- canonical publication requires the lifecycle triple to be exactly `apply`, the
+  lower commit triple to be exactly `apply`, and the caller to request apply;
+- lifecycle `apply` with the lower commit gate `disabled` or `dry-run` fails
+  closed, because lower commit apply authority is mandatory for lifecycle apply;
+- lifecycle `apply` with a caller that does not request apply stays content-free
+  dry-run;
+- non-boolean values, unsupported triples, and any lifecycle/commit dependency
+  mismatch fail closed before the first durable read.
+
+Every rejected and every non-apply path writes no post-image artifact, lifecycle
+claim, intent, transition, receipt, idempotency result, selector event, or
+canonical page byte.
 
 ## Implementation budget
 

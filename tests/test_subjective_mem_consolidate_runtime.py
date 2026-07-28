@@ -44,8 +44,9 @@ from relaylm.subjective_mem_forget_runtime import forget_subjective_mem
 from test_subjective_mem_commit_runtime import _commit, _make_workspace
 from test_subjective_mem_lifecycle_runtime import _correct, lifecycle_env  # noqa: F401
 from test_subjective_mem_pin_runtime import _proposal as _pin_proposal
+from relaylm.config import RelayLMConfig
 from test_subjective_mem_runtime import (
-    CHARACTER_CONFIG,
+    BASE_CONFIG,
     NOW,
     _asm_ready,
     _character,
@@ -65,13 +66,60 @@ _PROHIBITED_RECORD_KINDS = (
 )
 
 
-def _lifecycle_config(workspace: Path):
-    return CHARACTER_CONFIG.model_copy(
-        update={
-            "subjective_mem_workspace_root": str(workspace),
-            "subjective_mem_lifecycle_enabled": True,
-        }
-    )
+_GATE_TRIPLES = {
+    "disabled": (False, True, False),
+    "dry_run": (True, True, False),
+    "apply": (True, False, True),
+}
+
+
+def _gate_fields(gate: str, mode: str) -> dict[str, bool]:
+    enabled, dry_run_only, apply_enabled = _GATE_TRIPLES[mode]
+    return {
+        f"subjective_mem_{gate}_enabled": enabled,
+        f"subjective_mem_{gate}_dry_run_only": dry_run_only,
+        f"subjective_mem_{gate}_apply_enabled": apply_enabled,
+    }
+
+
+def _lifecycle_config(workspace: Path, *, lifecycle: str = "apply", commit: str | None = None):
+    """Build a configuration the repository config authority itself accepts.
+
+    The lifecycle gate depends on the lower Subjective MEM commit, create, and
+    shared-assessment gates, so every coherent mode is produced through
+    ``RelayLMConfig.model_validate`` rather than an unvalidated ``model_copy``.
+    """
+
+    commit = commit or ("apply" if lifecycle == "apply" else "dry_run")
+    lower = "apply" if commit == "apply" else "dry_run"
+    payload = {
+        **BASE_CONFIG,
+        "evidence_data_root": str((workspace.parent / "evidence").resolve()),
+        "subjective_mem_workspace_root": str(workspace),
+        **_gate_fields("lifecycle", lifecycle),
+        **_gate_fields("commit", commit),
+    }
+    if lifecycle == "disabled" and commit == "disabled":
+        payload.update(_gate_fields("create", "disabled"))
+    else:
+        payload.update(_gate_fields("create", lower))
+        payload.update({
+            "shared_assessment_enabled": True,
+            "shared_assessment_dry_run_only": lower != "apply",
+            "shared_assessment_apply_enabled": lower == "apply",
+        })
+    return RelayLMConfig.model_validate(payload)
+
+
+def _incoherent_config(workspace: Path, **overrides: object):
+    """Synthesize a gate state the config authority would reject.
+
+    ``model_copy`` bypasses validation on purpose here: these configurations
+    can only reach the runtime if some future caller constructs them outside
+    the validated authority, and the runtime must still fail closed.
+    """
+
+    return _lifecycle_config(workspace, lifecycle="apply").model_copy(update=overrides)
 
 
 @pytest.fixture()
@@ -90,15 +138,7 @@ def consolidate_env(tmp_path: Path):
         "assessment_revision": assessment_revision,
         "assessment_state": assessment_state,
     }
-    st1 = _commit({
-        **env,
-        "config": CHARACTER_CONFIG.model_copy(
-            update={"subjective_mem_workspace_root": str(workspace)}
-        ),
-        "assessment_revision": assessment_revision,
-        "assessment_state": assessment_state,
-        "sm1": sm1,
-    })
+    st1 = _commit({**env, "sm1": sm1})
     assert st1.status == "committed" and st1.current_state is not None
     env.update({
         "st1": st1,
@@ -282,37 +322,188 @@ def _semantic_projection(revision):
     return raw
 
 
-# --- gate ----------------------------------------------------------------
+# --- exact lifecycle and lower-commit gate --------------------------------
 
 
-def test_disabled_lifecycle_gate_writes_nothing(consolidate_env) -> None:
-    before = consolidate_env["page_path"].read_bytes()
-    disabled = CHARACTER_CONFIG.model_copy(
-        update={"subjective_mem_workspace_root": str(consolidate_env["workspace"])}
+def _fingerprint(env) -> dict[str, object]:
+    """Capture every durable surface an apply would have to touch."""
+
+    root = env["store"].root
+    state = env["st1"].current_state
+    assert state is not None
+    return {
+        "page": env["page_path"].read_bytes(),
+        "private": sorted(
+            path.relative_to(env["workspace"]).as_posix()
+            for path in (env["workspace"] / "char1/.relaylm").rglob("*")
+            if path.is_file()
+        ),
+        "claims": sorted(str(path) for path in root.rglob("*lifecycle_claim*")),
+        "intents": sorted(str(path) for path in root.rglob("*lifecycle_intent*")),
+        "transitions": sorted(str(path) for path in root.rglob("*lifecycle_transition*")),
+        "receipts": sorted(str(path) for path in root.rglob("*lifecycle_receipt*")),
+        "results": sorted(str(path) for path in root.rglob("*idempotency_result*")),
+        "selector": _selector_events(env, state.memory_state_id),
+    }
+
+
+def _assert_no_write(env, before: dict[str, object]) -> None:
+    after = _fingerprint(env)
+    for surface in before:
+        assert after[surface] == before[surface], surface
+    assert after["claims"] == [] and after["intents"] == []
+    assert after["transitions"] == [] and after["receipts"] == []
+
+
+def test_lifecycle_disabled_writes_nothing_for_either_caller_mode(consolidate_env) -> None:
+    disabled = _lifecycle_config(
+        consolidate_env["workspace"], lifecycle="disabled", commit="disabled"
     )
-    result = _call(consolidate_env, _proposal(consolidate_env), config=disabled)
-    assert result.status == "disabled"
-    assert result.blocked_reasons == ("subjective_mem_consolidate_lifecycle_disabled",)
-    assert consolidate_env["page_path"].read_bytes() == before
-    assert not list(consolidate_env["store"].root.rglob("*lifecycle_claim*"))
+    for apply_requested in (False, True):
+        before = _fingerprint(consolidate_env)
+        result = _call(
+            consolidate_env,
+            _proposal(consolidate_env),
+            config=disabled,
+            apply=apply_requested,
+            key=f"disabled-{apply_requested}",
+        )
+        assert result.status == "disabled", apply_requested
+        assert result.blocked_reasons == (
+            "subjective_mem_consolidate_lifecycle_disabled",
+        )
+        _assert_no_write(consolidate_env, before)
 
 
-def test_dry_run_is_write_free_and_content_free(consolidate_env) -> None:
-    before = consolidate_env["page_path"].read_bytes()
+def test_lifecycle_dry_run_cannot_be_escalated_by_the_caller(consolidate_env) -> None:
+    dry_run = _lifecycle_config(consolidate_env["workspace"], lifecycle="dry_run")
+
+    before = _fingerprint(consolidate_env)
+    ready = _call(consolidate_env, _proposal(consolidate_env), config=dry_run, apply=False)
+    assert ready.status == "dry_run_ready", ready.blocked_reasons
+    assert ready.recovery_outcome == "new_intent_ready"
+    _assert_no_write(consolidate_env, before)
+
+    escalated = _call(
+        consolidate_env,
+        _proposal(consolidate_env),
+        config=dry_run,
+        apply=True,
+        key="dry-run-escalation",
+    )
+    assert escalated.status == "fail_closed"
+    assert escalated.blocked_reasons == (
+        "subjective_mem_consolidate_apply_not_configured",
+    )
+    _assert_no_write(consolidate_env, before)
+
+
+def test_lifecycle_apply_requires_the_exact_lower_commit_apply_gate(consolidate_env) -> None:
+    cases = {
+        "commit_disabled": (
+            _incoherent_config(
+                consolidate_env["workspace"], **_gate_fields("commit", "disabled")
+            ),
+            "subjective_mem_consolidate_commit_gate_not_enabled",
+        ),
+        "commit_dry_run": (
+            _incoherent_config(
+                consolidate_env["workspace"], **_gate_fields("commit", "dry_run")
+            ),
+            "subjective_mem_consolidate_commit_gate_not_apply_enabled",
+        ),
+    }
+    for label, (config, reason) in cases.items():
+        before = _fingerprint(consolidate_env)
+        result = _call(
+            consolidate_env, _proposal(consolidate_env), config=config, key=label
+        )
+        assert result.status == "fail_closed", label
+        assert result.blocked_reasons == (reason,), label
+        _assert_no_write(consolidate_env, before)
+
+
+def test_malformed_and_incoherent_gate_values_fail_closed(consolidate_env) -> None:
+    workspace = consolidate_env["workspace"]
+    cases = {
+        "lifecycle_non_boolean": _incoherent_config(
+            workspace, subjective_mem_lifecycle_dry_run_only="no"
+        ),
+        "lifecycle_unsupported_triple": _incoherent_config(
+            workspace, subjective_mem_lifecycle_dry_run_only=True
+        ),
+        "commit_non_boolean": _incoherent_config(
+            workspace, subjective_mem_commit_apply_enabled=1
+        ),
+        "commit_unsupported_triple": _incoherent_config(
+            workspace, subjective_mem_commit_enabled=False
+        ),
+        "dependency_mismatch": _incoherent_config(
+            workspace,
+            **_gate_fields("lifecycle", "dry_run"),
+            **_gate_fields("commit", "disabled"),
+        ),
+    }
+    expected = {
+        "lifecycle_non_boolean": "subjective_mem_consolidate_gate_configuration_invalid",
+        "lifecycle_unsupported_triple": "subjective_mem_consolidate_gate_configuration_invalid",
+        "commit_non_boolean": "subjective_mem_consolidate_gate_configuration_invalid",
+        "commit_unsupported_triple": "subjective_mem_consolidate_gate_configuration_invalid",
+        "dependency_mismatch": "subjective_mem_consolidate_commit_gate_not_enabled",
+    }
+    for label, config in cases.items():
+        before = _fingerprint(consolidate_env)
+        result = _call(
+            consolidate_env, _proposal(consolidate_env), config=config, key=label
+        )
+        assert result.status == "fail_closed", label
+        assert result.blocked_reasons == (expected[label],), (label, result.blocked_reasons)
+        _assert_no_write(consolidate_env, before)
+
+
+def test_configured_apply_with_caller_dry_run_is_write_free_and_content_free(
+    consolidate_env,
+) -> None:
+    before = _fingerprint(consolidate_env)
     result = _call(consolidate_env, _proposal(consolidate_env), apply=False)
     assert result.status == "dry_run_ready", result.blocked_reasons
     assert result.recovery_outcome == "new_intent_ready"
     assert result.from_formation_stage == "primary"
     assert result.to_formation_stage == "secondary"
-    assert consolidate_env["page_path"].read_bytes() == before
-    assert not list(consolidate_env["store"].root.rglob("*lifecycle_claim*"))
-    assert not list(consolidate_env["store"].root.rglob("*lifecycle_intent*"))
+    _assert_no_write(consolidate_env, before)
     projection = result.to_log_dict()
     assert projection["content_free"] is True
     assert all(
         value not in json.dumps(projection)
         for value in ("I felt relieved", "safe again", str(consolidate_env["workspace"]))
     )
+
+
+def test_exact_lifecycle_and_commit_apply_permits_publication(consolidate_env) -> None:
+    config = consolidate_env["config"]
+    assert (
+        config.subjective_mem_lifecycle_enabled,
+        config.subjective_mem_lifecycle_dry_run_only,
+        config.subjective_mem_lifecycle_apply_enabled,
+    ) == (True, False, True)
+    assert (
+        config.subjective_mem_commit_enabled,
+        config.subjective_mem_commit_dry_run_only,
+        config.subjective_mem_commit_apply_enabled,
+    ) == (True, False, True)
+    result = _call(consolidate_env, _proposal(consolidate_env), apply=True)
+    assert result.status == "committed", result.blocked_reasons
+    assert result.current_state is not None
+    assert result.current_state.current_revision == 2
+    assert _current_page(consolidate_env).blocks[-1].revision.formation_stage == "secondary"
+
+
+def test_runtime_declares_no_second_gate_authority() -> None:
+    source = inspect.getsource(consolidate_runtime)
+    assert "resolve_subjective_mem_lifecycle_gate" not in source
+    assert "SubjectiveMemLifecycleGate" not in source
+    assert source.count("_GATE_MODES") == 2
+    assert source.count("def _gate_mode_or_errors(") == 1
 
 
 # --- exact primary -> secondary publication ------------------------------

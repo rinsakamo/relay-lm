@@ -13,6 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
+from types import MappingProxyType
 from typing import Callable, Literal
 
 from relaylm._subjective_mem_commit_io import PLATFORM_REVISION, inspect_canonical_page, secure_platform_supported
@@ -29,6 +30,17 @@ ConsolidateStatus = Literal["disabled", "dry_run_ready", "committed", "duplicate
 FaultInjector = Callable[[str], None]
 _CURRENT = "subjective_mem_current_state"
 _OPERATION = CONSOLIDATE_OPERATION_FAMILY
+# The exact existing Subjective MEM gate triples, read here as a bounded
+# operation-local precondition.  This module owns no gate authority of its own:
+# it names no new configuration and resolves nothing a caller could widen.
+_GATE_FIELDS = ("enabled", "dry_run_only", "apply_enabled")
+_GATE_MODES = MappingProxyType(
+    {
+        (False, True, False): "disabled",
+        (True, True, False): "dry_run",
+        (True, False, True): "apply",
+    }
+)
 
 
 @dataclass(frozen=True, repr=False)
@@ -104,7 +116,10 @@ def consolidate_subjective_mem(
     if reasons:
         return _result("fail_closed", reasons=tuple(dict.fromkeys(reasons)))
     assert operation_time is not None
-    if not _lifecycle_enabled(character_config):
+    mode, gate_errors = _gate_mode_or_errors(character_config, apply_enabled)
+    if mode is None:
+        return _result("fail_closed", proposal=proposal, reasons=gate_errors)
+    if mode == "disabled":
         return _result("disabled", proposal=proposal,
                        reasons=("subjective_mem_consolidate_lifecycle_disabled",))
     if not _space_present(store, evidence_space_id):
@@ -761,8 +776,41 @@ def _corrupt(identity: SubjectiveMemConsolidateOperationIdentity,
                    reasons=("subjective_mem_consolidate_intent_corrupt",))
 
 
-def _lifecycle_enabled(config: object) -> bool:
-    return getattr(config, "subjective_mem_lifecycle_enabled", False) is True
+def _gate_triple_mode(config: object, gate: str) -> str | None:
+    """Resolve one exact existing gate triple, or None when it is unsupported."""
+
+    triple = tuple(
+        getattr(config, f"subjective_mem_{gate}_{field}", None) for field in _GATE_FIELDS
+    )
+    if any(type(value) is not bool for value in triple):
+        return None
+    return _GATE_MODES.get(triple)
+
+
+def _gate_mode_or_errors(
+    config: object, apply_enabled: bool
+) -> tuple[str | None, tuple[str, ...]]:
+    """Enforce the exact lifecycle and lower-commit gate authority for this operation.
+
+    Publication requires the exact lifecycle apply triple, the exact lower
+    Subjective MEM commit apply triple, and a caller that asks to apply.  A
+    caller can never escalate a configured dry-run mode, and any malformed,
+    unsupported, or dependency-incoherent pair fails closed before a read.
+    """
+
+    lifecycle = _gate_triple_mode(config, "lifecycle")
+    commit = _gate_triple_mode(config, "commit")
+    if lifecycle is None or commit is None:
+        return None, ("subjective_mem_consolidate_gate_configuration_invalid",)
+    if lifecycle == "disabled":
+        return "disabled", ()
+    if commit == "disabled":
+        return None, ("subjective_mem_consolidate_commit_gate_not_enabled",)
+    if lifecycle == "apply" and commit != "apply":
+        return None, ("subjective_mem_consolidate_commit_gate_not_apply_enabled",)
+    if apply_enabled and lifecycle != "apply":
+        return None, ("subjective_mem_consolidate_apply_not_configured",)
+    return lifecycle, ()
 
 
 def _workspace_digest(workspace: str, authority: SubjectiveMemCharacterAuthority) -> str:
