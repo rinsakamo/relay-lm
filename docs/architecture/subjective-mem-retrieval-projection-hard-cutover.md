@@ -277,22 +277,40 @@ lifecycle, or canonical representation. The snapshot is therefore a fixed value
 carrying canonical page images rather than workspace or page paths, and the
 builder resolves no filesystem location of its own.
 
-Three consequences follow for the eligibility conditions above:
+Committed receipt and authorization exactness is not re-implemented by the
+builder. The shared committed-authority owner exposes its storage-neutral
+validation stages, the Evidence-store-bound loader sequences the same stages,
+and the builder calls them with the fixed source material, so exactly one
+committed-authority evaluator exists.
+
+Four consequences follow for the eligibility conditions above:
 
 - build time binds to the fixed snapshot, never to an uncontrolled wall clock,
   so the same snapshot rebuilds to the same manifest identity;
-- a recorded canonical page digest is a point-in-time publication fact that
-  changes whenever a later memory is appended to the same page, so currentness
-  binds through the exact selector digest, memory reference, and block identity
-  instead, and the projected page digest is the exact image the row was derived
-  from;
+- a published canonical page digest is a point-in-time fact that changes
+  whenever a later memory is appended to the same page, so the selector's own
+  recorded page image is checked against the receipt's post-image — both written
+  by the same commit — while the projected page digest is the exact image the
+  row was derived from;
 - a duplicate or otherwise conflicting logical current selector refuses the
-  build for that snapshot instead of projecting an ambiguous current row.
+  build for that snapshot instead of projecting an ambiguous current row;
+- only a complete authority-bound current selector is a supported source. A
+  legacy unbound selector cannot name its canonical page, block, receipt, and
+  authorization, so it is refused rather than projected as exact, and it can
+  never become ordinarily eligible.
 
 The projection bundle is one replace-only local file holding exactly one
 generation. It is not durable operations authority, and deleting it changes no
 canonical Markdown, selector, receipt, lifecycle record, tombstone, or
 transition.
+
+Its serialized digests are ordinary recomputable hashes and authenticate
+nothing: an internally consistent altered bundle can always be re-digested.
+A persisted projection therefore becomes trusted only by rebuilding the expected
+projection from the exact fixed source snapshot and requiring the decoded
+manifest and ordered row population to equal that rebuild. There is no
+source-less trusted read, no repair-on-read, and no stale-generation fallback,
+and persistence accepts only a projection equal to that rebuild.
 
 ## Runtime-private retrieval handoff
 
@@ -521,10 +539,17 @@ RT-1A is implemented. The next authorized implementation is RT-1B only.
 Expected bounded paths are:
 
 ```text
-relaylm/subjective_mem_retrieval_projection.py      new projection builder owner
-tests/test_subjective_mem_retrieval_projection.py   focused fixtures
+relaylm/subjective_mem_retrieval_projection.py         projection derivation owner
+relaylm/subjective_mem_retrieval_projection_store.py   disposable bundle store
+tests/test_subjective_mem_retrieval_projection.py      focused fixtures
+relaylm/subjective_mem_lifecycle_authority.py          committed-authority reuse
+tests/test_subjective_mem_lifecycle_authority.py       shared-authority fixtures
 docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md
 ```
+
+Derivation and disposable persistence are separate owners with one-way
+dependency, because a single file accumulated two unrelated reasons to change
+and crossed the structural size trigger.
 
 A small existing smoke registration path may be added only if P1 proves generic
 test discovery cannot cover the slice. RT-1B must not modify
