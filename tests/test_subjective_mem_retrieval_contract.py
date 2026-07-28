@@ -80,6 +80,17 @@ def _row(**changes) -> SubjectiveMemRetrievalProjectionRow:
     return replace(base, **changes)
 
 
+def _other_row(**changes) -> SubjectiveMemRetrievalProjectionRow:
+    return _row(
+        memory_id="memory2",
+        block_id="subjective-mem-block-memory2-r2",
+        current_selector_id="subjective-mem-state-memory2",
+        current_receipt_id="subjective-mem-receipt-memory2-r2",
+        authorization_id="subjective-mem-transition-memory2-r2",
+        **changes,
+    )
+
+
 def _manifest(*rows: SubjectiveMemRetrievalProjectionRow, **changes):
     base = SubjectiveMemRetrievalProjectionManifest(
         projection_generation_id="projection-generation-1",
@@ -113,6 +124,11 @@ def _request(manifest: SubjectiveMemRetrievalProjectionManifest, **changes):
 
 
 def _selection(request, manifest, *rows, **changes):
+    """Build a selection whose reported counts match a population of exactly ``rows``.
+
+    Cases that supply a wider or inconsistent candidate population override the
+    reported counts explicitly, so the fixture never repairs a caller's numbers.
+    """
     digests = tuple(sorted(row.row_digest for row in rows))
     base = SubjectiveMemRetrievalSelection(
         request_input_digest=request.input_digest,
@@ -316,6 +332,148 @@ def test_selection_rejects_ineligible_or_foreign_generation_row() -> None:
     )
 
 
+def _mixed_population():
+    """One eligible and one hidden candidate, both bound to the same manifest."""
+    eligible = _row()
+    hidden = _other_row(lifecycle_state="hidden", retrieval_eligible=False)
+    manifest = _manifest(eligible, hidden)
+    request = _request(manifest)
+    return eligible, hidden, manifest, request
+
+
+def test_selection_accepts_exact_mixed_eligible_and_ineligible_population() -> None:
+    eligible, hidden, manifest, request = _mixed_population()
+    selection = _selection(request, manifest, eligible, candidate_count=2, eligible_count=1)
+    assert validate_subjective_mem_retrieval_selection(
+        request=request, manifest=manifest, rows=(eligible, hidden), selection=selection
+    ) == ()
+    assert selection.candidate_count == 2
+    assert (selection.eligible_count, selection.selected_count) == (1, 1)
+
+
+@pytest.mark.parametrize(
+    ("changes", "reason"),
+    [
+        ({"candidate_count": 1}, "subjective_mem_retrieval_selection_candidate_count_mismatch"),
+        ({"candidate_count": 3}, "subjective_mem_retrieval_selection_candidate_count_mismatch"),
+        ({"eligible_count": 0}, "subjective_mem_retrieval_selection_eligible_count_mismatch"),
+        ({"eligible_count": 2}, "subjective_mem_retrieval_selection_eligible_count_mismatch"),
+    ],
+)
+def test_selection_rejects_misreported_population_counts(changes, reason) -> None:
+    eligible, hidden, manifest, request = _mixed_population()
+    counts = {"candidate_count": 2, "eligible_count": 1, **changes}
+    selection = _selection(request, manifest, eligible, **counts)
+    assert reason in validate_subjective_mem_retrieval_selection(
+        request=request, manifest=manifest, rows=(eligible, hidden), selection=selection
+    )
+
+
+def test_selection_rejects_a_duplicate_supplied_candidate_row() -> None:
+    row = _row()
+    manifest = _manifest(row)
+    request = _request(manifest)
+    selection = _selection(request, manifest, row, candidate_count=2, eligible_count=2)
+    reasons = validate_subjective_mem_retrieval_selection(
+        request=request, manifest=manifest, rows=(row, row), selection=selection
+    )
+    assert "subjective_mem_retrieval_selection_rows_duplicated" in reasons
+    assert "subjective_mem_retrieval_selection_row_missing" in reasons
+
+
+def test_selection_rejects_a_duplicate_selected_row_digest() -> None:
+    row = _row()
+    manifest = _manifest(row)
+    request = _request(manifest)
+    selection = _selection(
+        request, manifest, row,
+        selected_row_digests=(row.row_digest, row.row_digest), selected_count=2,
+    )
+    reasons = validate_subjective_mem_retrieval_selection(
+        request=request, manifest=manifest, rows=(row,), selection=selection
+    )
+    assert "subjective_mem_retrieval_selection_row_digests_invalid" in reasons
+    assert "subjective_mem_retrieval_selection_selected_count_mismatch" in reasons
+
+
+def test_selection_requires_selected_count_to_equal_unique_selected_digests() -> None:
+    row = _row()
+    manifest = _manifest(row)
+    request = _request(manifest)
+    selection = _selection(request, manifest, row, selected_count=0)
+    assert "subjective_mem_retrieval_selection_selected_count_mismatch" in (
+        validate_subjective_mem_retrieval_selection(
+            request=request, manifest=manifest, rows=(row,), selection=selection
+        )
+    )
+
+
+def test_selection_rejects_an_unselected_foreign_generation_candidate() -> None:
+    eligible = _row()
+    foreign = _other_row(projection_generation_id="projection-generation-2")
+    manifest = _manifest(eligible, foreign)
+    request = _request(manifest)
+    selection = _selection(request, manifest, eligible, candidate_count=2, eligible_count=2)
+    assert "subjective_mem_retrieval_selection_row_generation_mismatch" in (
+        validate_subjective_mem_retrieval_selection(
+            request=request, manifest=manifest, rows=(eligible, foreign), selection=selection
+        )
+    )
+
+
+def test_selection_rejects_an_unselected_manifest_unbound_candidate() -> None:
+    eligible = _row()
+    unbound = _other_row()
+    manifest = _manifest(eligible)
+    request = _request(manifest)
+    selection = _selection(request, manifest, eligible, candidate_count=2, eligible_count=2)
+    assert "subjective_mem_retrieval_selection_row_unmanifested" in (
+        validate_subjective_mem_retrieval_selection(
+            request=request, manifest=manifest, rows=(eligible, unbound), selection=selection
+        )
+    )
+
+
+def test_selection_rejects_a_candidate_population_above_the_request_limit() -> None:
+    first, second = _row(), _other_row()
+    manifest = _manifest(first, second)
+    request = _request(manifest, candidate_limit=1)
+    selection = _selection(request, manifest, first, candidate_count=2, eligible_count=2)
+    assert "subjective_mem_retrieval_selection_candidate_limit_exceeded" in (
+        validate_subjective_mem_retrieval_selection(
+            request=request, manifest=manifest, rows=(first, second), selection=selection
+        )
+    )
+
+
+def test_selection_rejects_a_token_budget_overflow() -> None:
+    row = _row()
+    manifest = _manifest(row)
+    request = _request(manifest)
+    selection = _selection(
+        request, manifest, row, total_token_estimate=request.token_budget + 1
+    )
+    assert "subjective_mem_retrieval_selection_budget_invalid" in (
+        validate_subjective_mem_retrieval_selection(
+            request=request, manifest=manifest, rows=(row,), selection=selection
+        )
+    )
+
+
+def test_usage_event_derivation_rejects_a_population_binding_failure() -> None:
+    row = _row()
+    unbound = _other_row()
+    manifest = _manifest(row)
+    request = _request(manifest)
+    selection = _selection(request, manifest, row, candidate_count=2, eligible_count=2)
+    event, reasons = derive_subjective_mem_retrieval_usage_event(
+        request=request, manifest=manifest, rows=(row, unbound), selection=selection, row=row,
+        event_kind="grounded_context_admitted", occurred_at=NOW, idempotency_key="use-key",
+    )
+    assert event is None
+    assert "subjective_mem_retrieval_selection_row_unmanifested" in reasons
+
+
 def test_usage_event_is_deterministic_content_free_and_raw_key_never_serialized() -> None:
     row = _row()
     manifest = _manifest(row)
@@ -350,9 +508,9 @@ def test_usage_event_requires_an_exact_selected_eligible_row() -> None:
     row = _row()
     manifest = _manifest(row)
     request = _request(manifest)
-    empty = _selection(request, manifest)
+    unselected = _selection(request, manifest, candidate_count=1, eligible_count=1)
     event, reasons = derive_subjective_mem_retrieval_usage_event(
-        request=request, manifest=manifest, rows=(row,), selection=empty, row=row,
+        request=request, manifest=manifest, rows=(row,), selection=unselected, row=row,
         event_kind="grounded_context_admitted", occurred_at=NOW,
         idempotency_key="use-key",
     )
