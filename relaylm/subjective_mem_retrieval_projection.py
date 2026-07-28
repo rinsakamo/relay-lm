@@ -241,15 +241,20 @@ def _validate_source(source: object) -> tuple[str, ...]:
 def _canonicalizable(source: SubjectiveMemRetrievalProjectionSource) -> tuple[str, ...]:
     """Prove every identity-bearing source value encodes before any digest use.
 
-    ``canonical_json_bytes`` rejects unsupported types, non-finite numbers, and
-    unencodable text, so no malformed record escapes as a later exception.
+    ``canonical_json_bytes`` rejects unsupported types on serialization,
+    non-finite numbers on the finite check, and text that cannot be encoded —
+    invalid lone surrogates in particular — on the trailing UTF-8 encode.
+    ``UnicodeEncodeError`` names that last stage explicitly; it is already a
+    ``ValueError`` subclass, so listing it widens nothing and only records which
+    failure each caught class stands for. No malformed source value can escape
+    as an exception from a later sort or digest.
     """
 
     try:
         for entry in source.entries:
             canonical_json_bytes(entry.to_digest_input())
         canonical_json_bytes(source.to_digest_input())
-    except (TypeError, ValueError):
+    except (TypeError, UnicodeEncodeError, ValueError):
         return ("subjective_mem_retrieval_projection_source_not_canonical",)
     return ()
 

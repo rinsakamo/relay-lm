@@ -630,6 +630,9 @@ def test_a_selector_naming_another_receipt_is_never_receipt_verified() -> None:
         {"schema": "x", 1: "non-string-key"},
         {"schema": "x", "value": object()},
         {"schema": "x", "value": {"nested": [1, {float("inf"): 2}]}},
+        {"schema": "x", "value": "\ud800"},
+        {"schema": "x", "value": {"nested": ["ok", "lone-\udfff-surrogate"]}},
+        {"schema": "x", "\ud800": "surrogate-key"},
     ],
 )
 def test_a_non_canonical_source_record_fails_closed_without_raising(record) -> None:
@@ -638,6 +641,74 @@ def test_a_non_canonical_source_record_fails_closed_without_raising(record) -> N
     built, reasons = build_subjective_mem_retrieval_projection(_source(entry))
     assert built is None
     assert reasons == ("subjective_mem_retrieval_projection_source_not_canonical",)
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["evidence_space_id", "character_id", "snapshot_taken_at"],
+)
+def test_unencodable_text_in_an_identity_bearing_source_string_fails_closed(
+    field: str,
+) -> None:
+    """A lone surrogate cannot be UTF-8 encoded, so canonicalization must refuse it.
+
+    The builder contract is ``(value_or_none, reasons)``; an unencodable
+    identity value must never surface as ``UnicodeEncodeError``.
+    """
+
+    revision, page, committed, _unused = _one_active()
+    entry = _entry(revision, page, committed)
+    source = _source(entry, **{field: f"bound-\ud800-{field}"})
+    built, reasons = build_subjective_mem_retrieval_projection(source)
+    assert built is None
+    assert reasons == ("subjective_mem_retrieval_projection_source_not_canonical",)
+
+
+def test_unencodable_text_in_a_selector_or_receipt_record_fails_closed() -> None:
+    revision, page, committed, _unused = _one_active()
+    entry = _entry(revision, page, committed)
+    for changed in (
+        replace(
+            entry,
+            current_selector_record={
+                **entry.current_selector_record,
+                "updated_at": "2026-07-28T00:00:00+00:00\ud800",
+            },
+        ),
+        replace(
+            entry,
+            current_receipt_record={
+                **entry.current_receipt_record,
+                "reason_category": "user-\udfff-requested",
+            },
+        ),
+    ):
+        built, reasons = build_subjective_mem_retrieval_projection(_source(changed))
+        assert built is None
+        assert reasons == ("subjective_mem_retrieval_projection_source_not_canonical",)
+
+
+def test_canonicalization_names_the_exact_expected_failure_classes() -> None:
+    """The guard catches the three exact stages and never a broad exception."""
+
+    handlers = [
+        node
+        for node in ast.walk(ast.parse(inspect.getsource(projection_module)))
+        if isinstance(node, ast.ExceptHandler)
+    ]
+    caught = {
+        tuple(sorted(item.id for item in node.type.elts))
+        for node in handlers
+        if isinstance(node.type, ast.Tuple)
+    }
+    assert ("TypeError", "UnicodeEncodeError", "ValueError") in caught
+    for node in handlers:
+        names = (
+            {item.id for item in node.type.elts}
+            if isinstance(node.type, ast.Tuple)
+            else {getattr(node.type, "id", "")}
+        )
+        assert not names & {"Exception", "BaseException"}, names
 
 
 @pytest.mark.parametrize(
