@@ -34,6 +34,9 @@ import relaylm.subjective_mem_lifecycle_authority as authority_module
 from relaylm.subjective_mem_lifecycle_authority import (
     SubjectiveMemPredecessorExpectation,
     load_subjective_mem_predecessor_authority_locked,
+    subjective_mem_committed_authorization_ref,
+    validate_subjective_mem_committed_authorization,
+    validate_subjective_mem_committed_receipt,
 )
 from relaylm.subjective_mem_markdown import (
     LIFECYCLE_BLOCK_SCHEMA,
@@ -460,6 +463,126 @@ def test_secondary_predecessor_is_accepted_by_later_lifecycle_operations() -> No
         assert authority is not None, (operation, reasons)
         assert revision.formation_stage == "secondary"
         assert authority.authorization_record["to_formation_stage"] == "secondary"
+
+
+def _records_of(records, expectation, revision):
+    """Pull the exact receipt and authorization pair out of a record inventory."""
+
+    receipt = records[("subjective_mem_lifecycle_receipt", expectation.receipt_id)]
+    transition = records[
+        ("subjective_mem_lifecycle_transition", revision.authorization_id)
+    ]
+    return receipt, transition
+
+
+def _validate_directly(receipt, authorization, revision, expectation):
+    """Run the storage-neutral stages the way a caller holding records does."""
+
+    reasons = validate_subjective_mem_committed_receipt(
+        receipt=receipt,
+        evidence_space_id=SPACE,
+        character_id=CHARACTER.character_id,
+        predecessor=revision,
+        expectation=expectation,
+    )
+    if reasons:
+        return reasons
+    _kind, identifier = subjective_mem_committed_authorization_ref(
+        predecessor=revision, receipt=receipt
+    )
+    if identifier is None:
+        return ("subjective_mem_lifecycle_predecessor_authority_missing",)
+    return validate_subjective_mem_committed_authorization(
+        authorization=authorization, receipt=receipt, predecessor=revision
+    )
+
+
+def test_storage_neutral_stages_accept_the_exact_committed_pair() -> None:
+    revision, records, expectation = _lifecycle_records(
+        operation="forget", from_state="active", to_state="hidden"
+    )
+    receipt, transition = _records_of(records, expectation, revision)
+    assert _validate_directly(receipt, transition, revision, expectation) == ()
+
+
+def test_storage_neutral_stages_agree_with_the_locked_loader() -> None:
+    cases = (
+        {"operation_kind": "restore"},
+        {"policy_revision": "relaylm.subjective_mem_other_policy.v1"},
+        {"predecessor_revision": 99},
+    )
+    for changes in cases:
+        revision, records, expectation = _lifecycle_records(
+            operation="forget", from_state="active", to_state="hidden"
+        )
+        receipt_key = ("subjective_mem_lifecycle_receipt", expectation.receipt_id)
+        body = {
+            key: value
+            for key, value in {**records[receipt_key], **changes}.items()
+            if key != "receipt_digest"
+        }
+        receipt = {**body, "receipt_digest": canonical_digest(body)}
+        records[receipt_key] = receipt
+        expectation = replace(expectation, receipt_digest=str(receipt["receipt_digest"]))
+        transition = records[
+            ("subjective_mem_lifecycle_transition", revision.authorization_id)
+        ]
+
+        authority, locked_reasons = _load(revision, records, expectation)
+        assert authority is None, changes
+        assert locked_reasons == _validate_directly(
+            receipt, transition, revision, expectation
+        ), changes
+
+
+def test_authorization_ref_names_the_decision_or_transition_record() -> None:
+    revision, records, expectation = _lifecycle_records(
+        operation="pin", from_state="active", to_state="pinned"
+    )
+    receipt, _transition = _records_of(records, expectation, revision)
+    assert subjective_mem_committed_authorization_ref(
+        predecessor=revision, receipt=receipt
+    ) == ("subjective_mem_lifecycle_transition", revision.authorization_id)
+
+    create = replace(
+        _revision(operation="create", lifecycle_state="active"),
+        memory_revision=1,
+        predecessor_revision_or_null=None,
+        decision_id="decision-1",
+        authorization_kind="formation_decision",
+    )
+    assert subjective_mem_committed_authorization_ref(
+        predecessor=create, receipt={"decision_id": "decision-1"}
+    ) == ("subjective_mem_decision", "decision-1")
+    assert subjective_mem_committed_authorization_ref(
+        predecessor=create, receipt={}
+    ) == ("subjective_mem_decision", None)
+
+
+def test_storage_neutral_receipt_validation_needs_no_transaction() -> None:
+    revision, records, expectation = _lifecycle_records(
+        operation="forget", from_state="active", to_state="hidden"
+    )
+    receipt, transition = _records_of(records, expectation, revision)
+    assert validate_subjective_mem_committed_receipt(
+        receipt=receipt,
+        evidence_space_id="another-space",
+        character_id=CHARACTER.character_id,
+        predecessor=revision,
+        expectation=expectation,
+    ) == ("subjective_mem_lifecycle_current_receipt_not_exact",)
+    assert validate_subjective_mem_committed_authorization(
+        authorization={**transition, "to_revision": 99},
+        receipt=receipt,
+        predecessor=revision,
+    ) == ("subjective_mem_lifecycle_predecessor_authority_not_exact",)
+    assert validate_subjective_mem_committed_receipt(
+        receipt=None,
+        evidence_space_id=SPACE,
+        character_id=CHARACTER.character_id,
+        predecessor=revision,
+        expectation=expectation,
+    ) == ("subjective_mem_lifecycle_current_receipt_missing_or_corrupt",)
 
 
 def test_shared_authority_has_no_operation_runtime_dependency() -> None:
