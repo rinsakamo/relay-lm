@@ -211,10 +211,41 @@ Construction helpers belong outside the repository tree when possible. The final
 
 A permanent automation requires accepted authority, stable responsibility naming, tests, repository-content read-only operation unless separately governed, and rollback/removal analysis.
 
+## Mandatory P8 authority-sync transaction
+
+For an implementation-boundary PR, P8 is a required second PR transaction after the implementation merge whenever the merged change advances or changes any current implementation status, caveat, authority boundary, next ordered slice, or accepted implementation budget.
+
+The implementation PR and its P8 authority-sync PR are separate by default:
+
+```text
+implementation PR exact-head validation
+  -> P7 expected-head-protected merge
+  -> verify resulting main
+  -> create one same-lane P8 authority-sync PR from that exact main
+  -> validate and merge the P8 authority-sync PR
+  -> verify resulting main
+  -> release the lane slot
+  -> begin the next implementation slice
+```
+
+The P8 authority-sync PR:
+
+- is a required post-merge convergence PR, not a corrective, validation-transfer, or replacement PR;
+- changes only the current-state, sequencing, direct implementation-budget authority, generated registry, or generic current-boundary validator paths required by the merged boundary;
+- contains no runtime, feature, migration, fallback, or unrelated cleanup change;
+- has its own exact-main branch, current execution receipt, P0-P7 review, exact-head checks, and expected-head-protected merge;
+- preserves the merged implementation PR as immutable evidence rather than reopening or amending it.
+
+Do not open, write, review for merge, or merge the next implementation PR until the required P8 authority-sync PR is merged and the resulting `main` is verified. The lane slot remains occupied while P8 is pending.
+
+When the merged PR does not change current status, sequencing, authority, or implementation budget, record the exact evidence that no P8 authority-sync PR is required before releasing the lane slot.
+
+Start the P8 authority-sync transaction in the same continuation interaction as the implementation merge whenever connected capabilities and required checks permit. If CI, permissions, a newer `main`, or another authority owner blocks completion, leave the lane explicitly at P8, name the blocker, and stop without starting the next slice. Never defer it as untracked background work.
+
 ## Completion and merge
 
 CI success does not replace thorough review or fresh final review. Correct findings at the root, validate the exact head, and repeat complete-diff review until clean.
 
-Merge only with a current receipt, exact current-main bootstrap, no stop label, no temporary artifact, no branch-writing workflow, successful exact-head checks, clean fresh review, and the owning lane's P7 authorization. Use expected-head protection where available, verify resulting `main`, perform P8, and remain in the same lane.
+Merge only with a current receipt, exact current-main bootstrap, no stop label, no temporary artifact, no branch-writing workflow, successful exact-head checks, clean fresh review, and the owning lane's P7 authorization. Use expected-head protection where available, verify resulting `main`, complete the mandatory P8 authority-sync transaction when required, and remain in the same lane.
 
 Never claim completion without fresh evidence. Never promise hidden background work.
