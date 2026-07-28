@@ -321,6 +321,30 @@
       "retention_reason": "D6-R1 removed the redundant per-source receipt after its continuing collection-level history was retained by the central migration ledger and its exact path/blob recovery identity was added to the generic retirement manifest; the full receipt remains recoverable from Git."
     },
     {
+      "old_path": "docs/planning/documentation-cutover-rules.yaml",
+      "last_live_commit": "91850d2230600ea70f8a8f946cec80eb13ed9627",
+      "old_blob_sha": "ac85d244216278edbbfc6541806c881b95c1b496",
+      "removed_by_pr": 771,
+      "replacement_paths": [
+        "docs/contracts/documentation-governance.md",
+        "records/documentation/retirement-manifest.json"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R2 retired the commit-fixed source-by-source classification model after Documentation Hard Cutover 1C-57 closed the legacy slice sequence; continuing active-document, normative-disposition, link, and Git-recovery invariants are owned by generic documentation governance, and the exact YAML remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/planning/documentation-cutover-tooling.md",
+      "last_live_commit": "91850d2230600ea70f8a8f946cec80eb13ed9627",
+      "old_blob_sha": "d52550c81c69883e767264f5802239917cf53ecb",
+      "removed_by_pr": 771,
+      "replacement_paths": [
+        "docs/contracts/documentation-governance.md",
+        "records/documentation/retirement-manifest.json"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R2 retired the Preparation C planning and dry-run contract after no current workflow or migration consumer remained; continuing authority is carried by the Documentation Governance Contract and generic validators, while the complete historical tooling specification remains recoverable from Git."
+    },
+    {
       "old_path": "docs/proposals/repository-simplification.md",
       "last_live_commit": "b484babc2093422f6c0b8d55b897266abf936107",
       "old_blob_sha": "3398aaffa7937f7857686c7f86af754a6fb5558b",

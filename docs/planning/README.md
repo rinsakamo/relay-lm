@@ -17,7 +17,9 @@ relaylm_decision_source: ../adr/0002-documentation-information-architecture.md
 ---
 # Documentation Cutover Planning
 
-This collection contains the adopted planning artifacts for the authority-first documentation hard cutover. The v0.1 validation and tag gate is complete, and Cutover 1 has started. Only merged entries in the migration receipt change canonical paths; planned targets remain non-current until their PR merges.
+This collection retains the adopted planning artifacts of the authority-first documentation hard cutover. Source-by-source Documentation Hard Cutover ended at 1C-57, which closed the numbered legacy slice sequence; no further per-source slice, per-source receipt, or bespoke source guard follows.
+
+Current documentation synthesis and retirement are governed by the [Documentation Governance Contract](../contracts/documentation-governance.md), the canonical active graph generated from current-tree metadata, the generic documentation validators, and the [retirement manifest](../../records/documentation/retirement-manifest.json). The planning documents below record how the historical cutover was decided; they are not current authority for documentation placement, normative disposition, or retirement.
 
 ## Preparation B artifacts
 
@@ -25,18 +27,12 @@ This collection contains the adopted planning artifacts for the authority-first 
 - [Target architecture graph](documentation-target-architecture-graph.md) — defines the planned canonical system, subsystem, and concept/policy document graph.
 - [Placement decisions](documentation-placement-decisions.md) — records how the placement and granularity tie-breakers apply to ambiguous current document families.
 
-## Preparation C artifacts
-
-- [Cutover tooling](documentation-cutover-tooling.md) — defines the commit-fixed inventory, provenance, normative digest, absolute/relative path dependencies, reproducibility, and CI artifact boundary.
-- [`documentation-cutover-rules.yaml`](documentation-cutover-rules.yaml) — executable classification and graph-validation rules for the dry run.
-- `scripts/relaylm_docs_cutover_prepare.py` — emits the full inventory, migration-receipt preview, repository-root path dependencies, and summary.
-- `scripts/relaylm_docs_normative_digest.py` — emits source line ranges and SHA-256 digests for candidate normative blocks.
-- `scripts/relaylm_docs_relative_link_inventory.py` — resolves relative Markdown links against each frozen referrer and emits the companion dependency inventory.
-
 ## Active execution evidence
 
 - [Documentation hard-cutover migration receipt](../evidence/migrations/documentation-hard-cutover-receipt.md) — append-only record of merged path moves, evidence retention, deletions, synthesis, and exact-copy verification.
 
 ## Boundary
 
-Preparation B decides target ownership and synthesis shape. Preparation C supplies the strict reproducible baseline. Cutover PRs now execute those decisions one authority at a time without redirect stubs or dual live paths.
+Preparation B decided target ownership and synthesis shape for the source-by-source cutover that closed at 1C-57. Those decisions are historical: this collection does not carry current authority, and only merged entries in the migration receipt describe canonical paths the cutover actually changed.
+
+Continuing active-document, normative-disposition, link, and Git-recovery invariants are owned by the Documentation Governance Contract, the canonical active graph, the generic validators, and the retirement manifest.

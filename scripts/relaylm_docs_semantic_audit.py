@@ -264,8 +264,6 @@ MVP_REFERENCE_PATTERN = re.compile(r"docs/mvp(?:/|\b)")
 MVP_REFERENCE_ALLOWLISTED_FILES = frozenset(
     {
         "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
-        "docs/planning/documentation-cutover-rules.yaml",
-        "docs/planning/documentation-cutover-tooling.md",
         # This guard's own implementation necessarily names the retired
         # literal it detects; excluding it is the same self-reference every
         # signature-based detector requires for its own signature database.
@@ -281,28 +279,14 @@ MVP_REFERENCE_HISTORICAL_STATUSES = frozenset({"frozen", "historical_after_merge
 
 # Exact, reviewed line-content substrings that are legitimate occurrences of
 # the retired docs/mvp/ literal inside otherwise-active/current files: guard
-# code naming the path it rejects, committed self-test fixtures, and the one
-# pinned historical-baseline workflow assertion. Any occurrence of the
-# pattern NOT covered by a whole-file allowlist entry above and NOT matching
-# one of these exact substrings fails closed.
+# code naming the path it rejects and committed self-test fixtures. Any
+# occurrence of the pattern NOT covered by a whole-file allowlist entry above
+# and NOT matching one of these exact substrings fails closed.
 MVP_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
-    ".github/workflows/documentation-cutover-preparation.yml": (
-        '"docs/mvp/mvp10_summary.md=docs/mvp/README.md"',
-    ),
     "scripts/relaylm_ci_consolidated_smoke_contract.py": (
         'RETIRED_WAVE_REPORT_FAMILY = re.compile(r"^docs/mvp/wave\\d+/")',
         '["docs/mvp/wave3/i4d_completion_report.md"],',
         'fail(f"retired docs/mvp/wave<N>/ selector still present in {workflow}/{group}")',
-    ),
-    "scripts/relaylm_docs_cutover_prepare.py": (
-        '"relative_after_mvp": path.removeprefix("docs/mvp/"),',
-        'values = template_values("docs/mvp/wave9/example_completion_report.md")',
-    ),
-    "scripts/relaylm_docs_relative_link_inventory.py": (
-        '"docs/mvp/README.md", "mvp10_summary.md"',
-        ') == "docs/mvp/mvp10_summary.md"',
-        '"docs/mvp/README.md", "../architecture/example.md#section"',
-        '"docs/mvp/README.md", "https://example.com/x.md"',
     ),
     "scripts/relaylm_documentation_current_boundary_smoke.py": (
         "docs/mvp/wave6/e1r2_completion_report.md",
@@ -399,126 +383,6 @@ def check_no_live_mvp_tree(errors: list[str]) -> None:
             )
 
 
-CUTOVER_RULES_PATH = "docs/planning/documentation-cutover-rules.yaml"
-
-
-def check_cutover_rule_target_types(errors: list[str]) -> None:
-    """Every `path_overrides` entry's declared target document type(s) must
-    match the actual `relaylm_doc_type` of its target file(s), whenever that
-    target exists in the live tree. This planning document also records
-    overrides for a proposed future architecture layout that has not been
-    adopted, so an override whose target does not yet exist is skipped
-    rather than treated as an error; only a real, existing destination can
-    silently drift out of sync with its recorded type.
-
-    An entry may declare either a single `target_doc_type` shared by every
-    `target_paths` entry, or a `target_records` list of
-    `{target_path, target_doc_type}` mappings for a source that splits into
-    targets of different document types. A split entry must use
-    `target_records`, never a single `target_doc_type` applied to every
-    target, since that would silently misrepresent at least one target's
-    real type.
-    """
-    rules_path = ROOT / CUTOVER_RULES_PATH
-    try:
-        rules = yaml.safe_load(rules_path.read_text(encoding="utf-8"))
-    except (OSError, yaml.YAMLError) as exc:
-        errors.append(f"{CUTOVER_RULES_PATH}: could not parse: {exc}")
-        return
-    overrides = rules.get("path_overrides") if isinstance(rules, dict) else None
-    if not isinstance(overrides, dict):
-        errors.append(f"{CUTOVER_RULES_PATH}: missing or malformed path_overrides mapping")
-        return
-
-    def check_one(old_path: str, target_path: str, declared_type: Any) -> None:
-        target_file = ROOT / str(target_path)
-        if not target_file.is_file():
-            return
-        try:
-            metadata, _ = parse_front_matter(str(target_path))
-        except AssertionError:
-            return
-        actual_type = metadata.get("relaylm_doc_type")
-        if actual_type is not None and actual_type != declared_type:
-            errors.append(
-                f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}] target {target_path!r}'s "
-                f"declared target_doc_type {declared_type!r} does not match its actual "
-                f"relaylm_doc_type {actual_type!r}"
-            )
-
-    for old_path, entry in overrides.items():
-        if not isinstance(entry, dict):
-            errors.append(f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}] is not a mapping")
-            continue
-
-        has_target_records = "target_records" in entry
-        has_legacy_shape = "target_paths" in entry or "target_doc_type" in entry
-        if has_target_records and has_legacy_shape:
-            errors.append(
-                f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}] mixes target_records with "
-                "legacy target_paths/target_doc_type; use exactly one shape"
-            )
-            continue
-
-        if has_target_records:
-            target_records = entry["target_records"]
-            if not isinstance(target_records, list) or not target_records:
-                errors.append(
-                    f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_records must be a "
-                    "non-empty list"
-                )
-                continue
-            seen_types: dict[str, str] = {}
-            for record in target_records:
-                if not isinstance(record, dict):
-                    errors.append(
-                        f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_records has a "
-                        f"non-mapping entry: {record!r}"
-                    )
-                    continue
-                target_path = record.get("target_path")
-                target_type = record.get("target_doc_type")
-                if not isinstance(target_path, str) or not target_path:
-                    errors.append(
-                        f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_records entry is "
-                        f"missing a non-empty target_path: {record!r}"
-                    )
-                    continue
-                if not isinstance(target_type, str) or not target_type:
-                    errors.append(
-                        f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_records entry is "
-                        f"missing a non-empty target_doc_type: {record!r}"
-                    )
-                    continue
-                if target_path in seen_types:
-                    if seen_types[target_path] != target_type:
-                        errors.append(
-                            f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_records has "
-                            f"conflicting document types for target_path {target_path!r}: "
-                            f"{seen_types[target_path]!r} vs {target_type!r}"
-                        )
-                    else:
-                        errors.append(
-                            f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}].target_records has a "
-                            f"duplicate target_path: {target_path!r}"
-                        )
-                    continue
-                seen_types[target_path] = target_type
-                check_one(old_path, target_path, target_type)
-            continue
-
-        if not has_legacy_shape:
-            errors.append(
-                f"{CUTOVER_RULES_PATH}: path_overrides[{old_path!r}] must declare either "
-                "target_records or target_doc_type"
-            )
-            continue
-
-        declared_type = entry.get("target_doc_type")
-        for target_path in entry.get("target_paths", []) or []:
-            check_one(old_path, str(target_path), declared_type)
-
-
 # ---------------------------------------------------------------------------
 # Cutover 1C-39: docs/evaluation/lat1_retrieval_scaling_report.md retired,
 # split into a canonical evaluation_method and a canonical template. Narrow,
@@ -540,10 +404,7 @@ LAT1_TEMPLATE_PATH = "docs/templates/evaluation/lat1-retrieval-scaling-report.md
 
 # Files whose entire content is historical/migration record-keeping by
 # construction and may legitimately name the retired literal without
-# per-line review. Kept short and explicit: `documentation-cutover-rules.yaml`
-# is deliberately NOT here -- it is an active planning authority, not a
-# historical record, so its one legitimate occurrence is line-allowlisted
-# below instead of exempting the whole file. This guard's own implementation
+# per-line review. Kept short and explicit. This guard's own implementation
 # necessarily names the pattern it detects.
 LAT1_REFERENCE_ALLOWLISTED_FILES = frozenset(
     {
@@ -576,9 +437,6 @@ LAT1_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
     "scripts/relaylm_documentation_current_boundary_smoke.py": (
         'assert not (ROOT / "docs" / "evaluation" / "lat1_retrieval_scaling_report.md").exists(), (',
         '"retired docs/evaluation/lat1_retrieval_scaling_report.md reintroduced "',
-    ),
-    "docs/planning/documentation-cutover-rules.yaml": (
-        "docs/evaluation/lat1_retrieval_scaling_report.md:",
     ),
     "docs/evidence/implementation/lat1_latency_measurement_completion_report.md": (
         "- `docs/evaluation/lat1_retrieval_scaling_report.md`: report template with",
@@ -751,9 +609,6 @@ E1_LOCAL_RUNTIME_REFERENCE_EXACT_SNAPSHOT_ALLOWLIST = frozenset(
 E1_LOCAL_RUNTIME_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
     "docs/planning/documentation-architecture-inventory.md": (
         "(Cutover 1C-40: `moved` to `docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md`",
-    ),
-    "docs/planning/documentation-cutover-rules.yaml": (
-        "docs/architecture/e1_local_runtime_evaluation_2026_06_25.md:",
     ),
 }
 
@@ -946,9 +801,9 @@ MOBILE_DOGFOOD_REFERENCE_PATTERN = re.compile(
 MOBILE_DOGFOOD_EXTERNAL_SCHEMES = E1_LOCAL_RUNTIME_EXTERNAL_SCHEMES
 MOBILE_DOGFOOD_MD_LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 
-# Parses only the first "---"-delimited YAML front-matter block, mirroring
-# relaylm_docs_cutover_prepare.py's own FRONT_MATTER_RE (\A-anchored: a later
-# "---" inside the document body is never mistaken for a second block).
+# Parses only the first "---"-delimited YAML front-matter block (\A-anchored:
+# a later "---" inside the document body is never mistaken for a second
+# block).
 MOBILE_DOGFOOD_FRONT_MATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*(?:\n|\Z)", re.DOTALL)
 
 # Every path-bearing front-matter key docs/DOCUMENTATION_MODEL.md and
@@ -981,15 +836,11 @@ MOBILE_DOGFOOD_REFERENCE_ALLOWLISTED_FILES = frozenset(
 )
 
 # Exact, reviewed line-content substrings that are legitimate occurrences of
-# a retired literal inside an otherwise-active/current file: the five
-# path_overrides mapping keys in documentation-cutover-rules.yaml, each
-# naming its own retired source path once. No generic frozen/historical/
-# status bypass and no generic allowance beyond these exact lines.
-MOBILE_DOGFOOD_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
-    "docs/planning/documentation-cutover-rules.yaml": tuple(
-        f"{retired_path}:" for retired_path in MOBILE_DOGFOOD_RETIRED_PATHS
-    ),
-}
+# a retired literal inside an otherwise-active/current file. Empty: no active
+# current file legitimately names one of these retired literals. No generic
+# frozen/historical/status bypass and no generic allowance beyond exact
+# reviewed lines added here.
+MOBILE_DOGFOOD_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {}
 
 # This guard's own implementation file. Narrow, exact-line self-allowance
 # only -- not a whole-file exemption. The only lines in this file that may
@@ -1244,13 +1095,11 @@ def check_mobile_dogfood_family_types(errors: list[str]) -> None:
 # rather than maintaining a fixed positive suffix allowlist -- neither
 # Markdown link syntax nor a YAML front-matter block is the applicable
 # reference form, so this guard instead runs the literal
-# repository-root-qualified pattern match there. This is what makes
-# `documentation-cutover-rules.yaml`'s three `path_overrides` mapping keys
-# (plain YAML keys, not links), this guard's own
-# TWIN_EXTRACTION_RETIRED_TO_CANONICAL dict-key entries in its own `.py`
-# source (plain Python string literals, not links), and a retired literal in
-# a root-scanned file with no dedicated suffix entry such as
-# `pyproject.toml` all detectable, and is exactly why each legitimate
+# repository-root-qualified pattern match there. This is what makes this
+# guard's own TWIN_EXTRACTION_RETIRED_TO_CANONICAL dict-key entries in its
+# own `.py` source (plain Python string literals, not links) and a retired
+# literal in a root-scanned file with no dedicated suffix entry such as
+# `pyproject.toml` detectable, and is exactly why each legitimate
 # occurrence needs its own narrow, exact-stripped-line allowance below
 # (matched by exact equality, never substring containment) rather than
 # being silently invisible to the guard or wrongly allowed by mere
@@ -1290,19 +1139,14 @@ TWIN_EXTRACTION_REFERENCE_ALLOWLISTED_FILES = frozenset(
 )
 
 # Exact, reviewed whole-line contents that are legitimate occurrences of a
-# retired literal inside an otherwise-active/current file: the three
-# path_overrides mapping keys in documentation-cutover-rules.yaml, each
-# naming its own retired source path once. Matched by exact stripped-line
-# equality, never substring containment -- a line that merely contains one
-# of these strings as a fragment (extra prefix/suffix text on the same
-# line, or a second, unrelated reference tacked onto the same line) is not
-# allowed. No generic frozen/historical/status bypass and no generic
-# allowance beyond these exact lines.
-TWIN_EXTRACTION_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
-    "docs/planning/documentation-cutover-rules.yaml": tuple(
-        f"{retired_path}:" for retired_path in TWIN_EXTRACTION_RETIRED_PATHS
-    ),
-}
+# retired literal inside an otherwise-active/current file. Empty: no active
+# current file legitimately names one of these retired literals. Any entry
+# added here is matched by exact stripped-line equality, never substring
+# containment -- a line that merely contains such a string as a fragment
+# (extra prefix/suffix text on the same line, or a second, unrelated
+# reference tacked onto the same line) is not allowed. No generic
+# frozen/historical/status bypass.
+TWIN_EXTRACTION_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {}
 
 # This guard's own implementation file. Narrow, exact-line self-allowance
 # only -- not a whole-file exemption, following the
@@ -1467,14 +1311,10 @@ SMOKE_MAINTENANCE_REFERENCE_ALLOWLISTED_FILES = frozenset(
 )
 
 # Exact, reviewed whole-line contents that are legitimate occurrences of the
-# retired literal inside an otherwise-active/current file: the one
-# path_overrides mapping key in documentation-cutover-rules.yaml. Matched by
-# exact stripped-line equality, never substring containment.
-SMOKE_MAINTENANCE_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
-    "docs/planning/documentation-cutover-rules.yaml": tuple(
-        f"{retired_path}:" for retired_path in SMOKE_MAINTENANCE_RETIRED_PATHS
-    ),
-}
+# retired literal inside an otherwise-active/current file. Empty: no active
+# current file legitimately names this retired literal. Any entry added here
+# is matched by exact stripped-line equality, never substring containment.
+SMOKE_MAINTENANCE_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {}
 
 # This guard's own implementation file. Narrow, exact-line self-allowance
 # only -- not a whole-file exemption. The only line in this file that may
@@ -1672,14 +1512,10 @@ O1_MANUAL_ONE_ROUND_REFERENCE_ALLOWLISTED_FILES = frozenset(
 )
 
 # Exact, reviewed whole-line contents that are legitimate occurrences of the
-# retired literal inside an otherwise-active/current file: the one
-# path_overrides mapping key in documentation-cutover-rules.yaml. Matched by
-# exact stripped-line equality, never substring containment.
-O1_MANUAL_ONE_ROUND_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
-    "docs/planning/documentation-cutover-rules.yaml": tuple(
-        f"{retired_path}:" for retired_path in O1_MANUAL_ONE_ROUND_RETIRED_PATHS
-    ),
-}
+# retired literal inside an otherwise-active/current file. Empty: no active
+# current file legitimately names this retired literal. Any entry added here
+# is matched by exact stripped-line equality, never substring containment.
+O1_MANUAL_ONE_ROUND_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {}
 
 # This guard's own implementation file. Narrow, exact-line self-allowance
 # only -- not a whole-file exemption. The only line in this file that may
@@ -1940,7 +1776,6 @@ OPENWEBUI_MANUAL_VALIDATION_HTML_LINK_RE = re.compile(r"\b(?:href|src)\s*=\s*([\
 OPENWEBUI_MANUAL_VALIDATION_REFERENCE_DEFINITION_RE = re.compile(r"^[ \t]{0,3}\[[^\]\n]+\]:[ \t]*(?:<([^>\n]+)>|([^ \t\n]+))")
 OPENWEBUI_MANUAL_VALIDATION_ALLOWLISTED_FILES = frozenset({"docs/evidence/migrations/documentation-hard-cutover-receipt.md"})
 OPENWEBUI_MANUAL_VALIDATION_LINE_ALLOWLIST = {
-    "docs/planning/documentation-cutover-rules.yaml": tuple(f"{path}:" for path in OPENWEBUI_MANUAL_VALIDATION_RETIRED_PATHS),
     "docs/evidence/evaluations/openwebui-lmstudio-manual-smoke-2026-05-26.md": (
         "relaylm_source_path: docs/smoke/openwebui_lmstudio_manual_smoke_result_2026_05_26.md",
     ),
@@ -2155,14 +1990,10 @@ SHOWCASE_FIXTURE_REFERENCE_ALLOWLISTED_FILES = frozenset(
 )
 
 # Exact, reviewed whole-line contents that are legitimate occurrences of the
-# retired literal inside an otherwise-active/current file: the one
-# path_overrides mapping key in documentation-cutover-rules.yaml. Matched by
-# exact stripped-line equality, never substring containment.
-SHOWCASE_FIXTURE_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
-    "docs/planning/documentation-cutover-rules.yaml": tuple(
-        f"{retired_path}:" for retired_path in SHOWCASE_FIXTURE_RETIRED_PATHS
-    ),
-}
+# retired literal inside an otherwise-active/current file. Empty: no active
+# current file legitimately names this retired literal. Any entry added here
+# is matched by exact stripped-line equality, never substring containment.
+SHOWCASE_FIXTURE_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {}
 
 # This guard's own implementation file. Narrow, exact-line self-allowance
 # only -- not a whole-file exemption. The only line in this file that may
@@ -2947,25 +2778,6 @@ def self_test() -> None:
 
     check("exact -source.txt snapshot literal is allowlisted", _source_snapshot_allowlisted)
 
-    # 9. The pinned historical-baseline workflow assertion in
-    # documentation-cutover-preparation.yml remains allowed (line-bounded, not whole-file).
-    with tempfile.TemporaryDirectory() as td:
-        base = Path(td)
-        ROOT = base
-        _mvp_write(
-            base,
-            ".github/workflows/documentation-cutover-preparation.yml",
-            "run: |\n"
-            "  python scripts/relaylm_docs_relative_link_inventory.py \\\n"
-            '    --assert-dependency "docs/mvp/mvp10_summary.md=docs/mvp/README.md" \\\n'
-            "    --strict\n",
-        )
-        check_silent(
-            "pinned historical-baseline workflow assertion remains allowed",
-            check_no_live_mvp_tree,
-        )
-    ROOT = real_root
-
     # 10. A frozen/historical_after_merge evidence document's own retired-path
     # mention is allowed by its declared front-matter status, without being
     # individually line-allowlisted.
@@ -2998,40 +2810,6 @@ def self_test() -> None:
             "a current-status document's retired-path mention is not status-allowlisted",
             check_no_live_mvp_tree,
             "active reference to retired docs/mvp/ tree",
-        )
-    ROOT = real_root
-
-    # 12. The real repository's cutover-rules path_overrides target types all match
-    # their actual destination metadata.
-    check_silent(
-        "real repository: cutover-rules path_overrides target types match",
-        check_cutover_rule_target_types,
-    )
-
-    # 13. A path_overrides entry whose declared target_doc_type does not match its
-    # existing target file's real relaylm_doc_type is rejected.
-    with tempfile.TemporaryDirectory() as td:
-        base = Path(td)
-        ROOT = base
-        _mvp_write(
-            base,
-            "docs/planning/documentation-cutover-rules.yaml",
-            "path_overrides:\n"
-            "  docs/example/old.md:\n"
-            "    disposition: absorbed\n"
-            "    target_doc_type: evidence\n"
-            "    target_paths:\n"
-            "      - docs/example/new.md\n",
-        )
-        _mvp_write(
-            base,
-            "docs/example/new.md",
-            "---\nrelaylm_doc_type: documentation_index\nrelaylm_status: current\n---\n\nBody.\n",
-        )
-        check_rejects(
-            "a path_overrides entry with a drifted target_doc_type is rejected",
-            check_cutover_rule_target_types,
-            "does not match",
         )
     ROOT = real_root
 
@@ -3128,22 +2906,19 @@ def self_test() -> None:
         )
     ROOT = real_root
 
-    # 17c. An unallowlisted occurrence in the active cutover-rules planning file is
-    # rejected: that file is no longer whole-file allowlisted, only its one
-    # exact reviewed override-key line is.
+    # 17c. An unallowlisted occurrence in an active planning document is
+    # rejected: no planning file is whole-file allowlisted for this literal.
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
         _mvp_write(
             base,
-            "docs/planning/documentation-cutover-rules.yaml",
-            "path_overrides:\n"
-            "  docs/evaluation/lat1_retrieval_scaling_report.md:\n"
-            "    disposition: split\n"
-            "# stray unreviewed mention: lat1_retrieval_scaling_report\n",
+            "docs/planning/example_planning_note.md",
+            "---\nrelaylm_doc_type: planning\nrelaylm_status: current\n---\n\n"
+            "stray unreviewed mention: lat1_retrieval_scaling_report\n",
         )
         check_rejects(
-            "an unallowlisted occurrence in the active cutover-rules file is rejected",
+            "an unallowlisted occurrence in an active planning document is rejected",
             check_no_live_lat1_scaffold,
             "active reference to retired docs/evaluation/lat1_retrieval_scaling_report.md",
         )
@@ -3218,67 +2993,6 @@ def self_test() -> None:
             "a shared method/template authority is rejected",
             check_lat1_evaluation_split,
             "must not share one primary authority",
-        )
-    ROOT = real_root
-
-    # 21. An empty target_records list in the cutover rules is rejected.
-    with tempfile.TemporaryDirectory() as td:
-        base = Path(td)
-        ROOT = base
-        _mvp_write(
-            base,
-            "docs/planning/documentation-cutover-rules.yaml",
-            "path_overrides:\n  docs/example/old.md:\n    disposition: split\n    target_records: []\n",
-        )
-        check_rejects(
-            "an empty target_records list is rejected",
-            check_cutover_rule_target_types,
-            "must be a non-empty list",
-        )
-    ROOT = real_root
-
-    # 22. A target_records entry mixing legacy target_doc_type is rejected.
-    with tempfile.TemporaryDirectory() as td:
-        base = Path(td)
-        ROOT = base
-        _mvp_write(
-            base,
-            "docs/planning/documentation-cutover-rules.yaml",
-            "path_overrides:\n"
-            "  docs/example/old.md:\n"
-            "    disposition: split\n"
-            "    target_doc_type: evidence\n"
-            "    target_records:\n"
-            "      - target_path: docs/example/new.md\n"
-            "        target_doc_type: evidence\n",
-        )
-        check_rejects(
-            "target_records mixed with legacy target_doc_type is rejected",
-            check_cutover_rule_target_types,
-            "mixes target_records with legacy",
-        )
-    ROOT = real_root
-
-    # 23. Duplicate target_path entries with conflicting document types are rejected.
-    with tempfile.TemporaryDirectory() as td:
-        base = Path(td)
-        ROOT = base
-        _mvp_write(
-            base,
-            "docs/planning/documentation-cutover-rules.yaml",
-            "path_overrides:\n"
-            "  docs/example/old.md:\n"
-            "    disposition: split\n"
-            "    target_records:\n"
-            "      - target_path: docs/example/new.md\n"
-            "        target_doc_type: evidence\n"
-            "      - target_path: docs/example/new.md\n"
-            "        target_doc_type: template\n",
-        )
-        check_rejects(
-            "duplicate target_path entries with conflicting document types are rejected",
-            check_cutover_rule_target_types,
-            "conflicting document types",
         )
     ROOT = real_root
 
@@ -4319,29 +4033,18 @@ def self_test() -> None:
         )
     ROOT = real_root
 
-    # 74. The exact reviewed documentation-cutover-rules.yaml path_overrides
-    # key line is allowed ONLY because of the exact-line allowlist: the
-    # identical literal is first proven REJECTED in a non-allowlisted file,
-    # then proven SILENT only at the one exact allowlisted path.
+    # 74. A YAML mapping-key occurrence of the retired literal in an active
+    # planning file is rejected: this family has no line allowlist entry, so
+    # the plain-literal scan governs every such occurrence.
     override_key_line = f"  {mobile_dogfood_entry_retired}:\n    disposition: moved\n"
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
         _mvp_write(base, "docs/planning/example_not_allowlisted_rules.yaml", override_key_line)
         check_rejects(
-            "the exact cutover-rules.yaml override key literal is rejected in a non-allowlisted file",
+            "a YAML override key literal is rejected in an active planning file",
             check_no_live_mobile_dogfood_retired_paths,
             f"active reference to retired {mobile_dogfood_entry_retired}",
-        )
-    ROOT = real_root
-
-    with tempfile.TemporaryDirectory() as td:
-        base = Path(td)
-        ROOT = base
-        _mvp_write(base, "docs/planning/documentation-cutover-rules.yaml", override_key_line)
-        check_silent(
-            "the identical override key literal is silent only at the exact allowlisted cutover-rules.yaml path",
-            check_no_live_mobile_dogfood_retired_paths,
         )
     ROOT = real_root
 
@@ -4971,30 +4674,18 @@ def self_test() -> None:
         )
     ROOT = real_root
 
-    # 104/105. The exact reviewed documentation-cutover-rules.yaml
-    # path_overrides key line is allowed ONLY because of the exact-line
-    # allowlist: the identical literal is first proven REJECTED in a
-    # non-allowlisted file, then proven SILENT only at the one exact
-    # allowlisted path.
+    # 104/105. A YAML mapping-key occurrence of a retired twin-extraction
+    # literal in an active planning file is rejected: this family has no line
+    # allowlist entry, so the plain-literal scan governs every occurrence.
     twin_override_key_line = f"  {twin_runbook_retired}:\n    disposition: moved\n"
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
         _mvp_write(base, "docs/planning/example_not_allowlisted_rules.yaml", twin_override_key_line)
         check_rejects(
-            "the exact twin-extraction cutover-rules.yaml override key literal is rejected in a non-allowlisted file",
+            "a twin-extraction YAML override key literal is rejected in an active planning file",
             check_no_live_twin_extraction_retired_paths,
             f"active reference to retired {twin_runbook_retired}",
-        )
-    ROOT = real_root
-
-    with tempfile.TemporaryDirectory() as td:
-        base = Path(td)
-        ROOT = base
-        _mvp_write(base, "docs/planning/documentation-cutover-rules.yaml", twin_override_key_line)
-        check_silent(
-            "the identical override key literal is silent only at the exact allowlisted cutover-rules.yaml path",
-            check_no_live_twin_extraction_retired_paths,
         )
     ROOT = real_root
 
@@ -5171,57 +4862,63 @@ def self_test() -> None:
         )
     ROOT = real_root
 
-    # 114. The exact allowlisted cutover-rules.yaml override key line with an
-    # extra LEADING prefix on the same physical line is rejected: proves the
-    # allowlist match is exact stripped-line equality, not substring
-    # containment (Cutover 1C-42 correction).
+    # 113b. The guard's own exact self-file line is silent: the surviving
+    # exact-line allowance this family still carries, and the positive half
+    # that makes the three exact-equality rejections below non-vacuous.
+    twin_self_line = f'"{twin_runbook_retired}": "{twin_runbook_canonical}",'
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
-        _mvp_write(
-            base,
-            "docs/planning/documentation-cutover-rules.yaml",
-            f"# see also {twin_runbook_retired}:\n",
+        _mvp_write(base, TWIN_EXTRACTION_SELF_FILE, f"    {twin_self_line}\n")
+        check_silent(
+            "the guard's own exact self-file dict line is allowed",
+            check_no_live_twin_extraction_retired_paths,
         )
+    ROOT = real_root
+
+    # 114. The exact self-file allowance line with an extra LEADING prefix on
+    # the same physical line is rejected: proves the allowance match is exact
+    # stripped-line equality, not substring containment (Cutover 1C-42
+    # correction).
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, TWIN_EXTRACTION_SELF_FILE, f"    # see also {twin_self_line}\n")
         check_rejects(
-            "an allowlisted-path line with an extra leading prefix is rejected, not allowed by substring containment",
+            "a self-file line with an extra leading prefix is rejected, not allowed by substring containment",
             check_no_live_twin_extraction_retired_paths,
             f"active reference to retired {twin_runbook_retired}",
         )
     ROOT = real_root
 
-    # 115. The exact allowlisted cutover-rules.yaml override key line with an
-    # extra TRAILING suffix on the same physical line is rejected: same
-    # exact-equality proof as #114 from the other side.
+    # 115. The exact self-file allowance line with an extra TRAILING suffix on
+    # the same physical line is rejected: same exact-equality proof as #114
+    # from the other side.
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
-        _mvp_write(
-            base,
-            "docs/planning/documentation-cutover-rules.yaml",
-            f"  {twin_runbook_retired}:  # temporary note\n",
-        )
+        _mvp_write(base, TWIN_EXTRACTION_SELF_FILE, f"    {twin_self_line}  # temporary note\n")
         check_rejects(
-            "an allowlisted-path line with an extra trailing suffix is rejected, not allowed by substring containment",
+            "a self-file line with an extra trailing suffix is rejected, not allowed by substring containment",
             check_no_live_twin_extraction_retired_paths,
             f"active reference to retired {twin_runbook_retired}",
         )
     ROOT = real_root
 
-    # 116. A line at the allowlisted cutover-rules.yaml path that names the
-    # approved retired path plus a second, unrelated retired-path reference
-    # on the same physical line is rejected: the allowlist covers only its
-    # own exact single-path line, not any line that happens to contain it.
+    # 116. A self-file line that names the allowed retired path plus a second,
+    # unrelated retired-path reference on the same physical line is rejected:
+    # the allowance covers only its own exact single-path line, not any line
+    # that happens to contain it.
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
         _mvp_write(
             base,
-            "docs/planning/documentation-cutover-rules.yaml",
-            f"  {twin_runbook_retired}: {twin_prompts_retired}:\n",
+            TWIN_EXTRACTION_SELF_FILE,
+            f"    {twin_self_line} {twin_prompts_retired}\n",
         )
         check_rejects(
-            "a line combining the approved retired path with an unrelated second retired-path reference is rejected",
+            "a line combining the allowed retired path with an unrelated second retired-path reference is rejected",
             check_no_live_twin_extraction_retired_paths,
             "active reference to retired",
         )
@@ -5492,29 +5189,19 @@ def self_test() -> None:
         )
     ROOT = real_root
 
-    # 131/132. The exact reviewed documentation-cutover-rules.yaml
-    # path_overrides key line is allowed ONLY because of the exact-line
-    # allowlist: rejected in a non-allowlisted file first, then silent only
-    # at the one exact allowlisted path.
+    # 131/132. A YAML mapping-key occurrence of the retired
+    # smoke-workflow-maintenance literal in an active planning file is
+    # rejected: this family has no line allowlist entry, so the plain-literal
+    # scan governs every occurrence.
     smoke_maintenance_override_key_line = f"  {smoke_maintenance_retired}:\n    disposition: moved\n"
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
         _mvp_write(base, "docs/planning/example_not_allowlisted_rules.yaml", smoke_maintenance_override_key_line)
         check_rejects(
-            "the exact smoke-workflow-maintenance cutover-rules.yaml override key literal is rejected in a non-allowlisted file",
+            "a smoke-workflow-maintenance YAML override key literal is rejected in an active planning file",
             check_no_live_smoke_maintenance_retired_paths,
             f"active reference to retired {smoke_maintenance_retired}",
-        )
-    ROOT = real_root
-
-    with tempfile.TemporaryDirectory() as td:
-        base = Path(td)
-        ROOT = base
-        _mvp_write(base, "docs/planning/documentation-cutover-rules.yaml", smoke_maintenance_override_key_line)
-        check_silent(
-            "the identical override key literal is silent only at the exact allowlisted cutover-rules.yaml path",
-            check_no_live_smoke_maintenance_retired_paths,
         )
     ROOT = real_root
 
@@ -5728,59 +5415,55 @@ def self_test() -> None:
         )
     ROOT = real_root
 
-    # 141. The exact allowlisted cutover-rules.yaml override key line with an
-    # extra LEADING prefix on the same physical line is rejected: proves the
-    # allowlist match is exact stripped-line equality, not substring
-    # containment.
+    # 140b. The guard's own exact self-file line is silent: the surviving
+    # exact-line allowance this family still carries, and the positive half
+    # that makes the two exact-equality rejections below non-vacuous.
+    smoke_maintenance_self_line = (
+        f'"{smoke_maintenance_retired}": "{smoke_maintenance_canonical}",'
+    )
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, SMOKE_MAINTENANCE_SELF_FILE, f"    {smoke_maintenance_self_line}\n")
+        check_silent(
+            "the guard's own exact self-file dict line is allowed",
+            check_no_live_smoke_maintenance_retired_paths,
+        )
+    ROOT = real_root
+
+    # 141. The exact self-file allowance line with an extra LEADING prefix on
+    # the same physical line is rejected: proves the allowance match is exact
+    # stripped-line equality, not substring containment.
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
         _mvp_write(
             base,
-            "docs/planning/documentation-cutover-rules.yaml",
-            f"# see also {smoke_maintenance_retired}:\n",
+            SMOKE_MAINTENANCE_SELF_FILE,
+            f"    # see also {smoke_maintenance_self_line}\n",
         )
         check_rejects(
-            "an allowlisted-path line with an extra leading prefix is rejected, not allowed by substring containment",
+            "a self-file line with an extra leading prefix is rejected, not allowed by substring containment",
             check_no_live_smoke_maintenance_retired_paths,
             f"active reference to retired {smoke_maintenance_retired}",
         )
     ROOT = real_root
 
-    # 142. The exact allowlisted cutover-rules.yaml override key line with an
-    # extra TRAILING suffix on the same physical line is rejected: same
-    # exact-equality proof as #141 from the other side.
+    # 142. The exact self-file allowance line with an extra TRAILING suffix on
+    # the same physical line is rejected: same exact-equality proof as #141
+    # from the other side.
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
         _mvp_write(
             base,
-            "docs/planning/documentation-cutover-rules.yaml",
-            f"  {smoke_maintenance_retired}:  # temporary note\n",
+            SMOKE_MAINTENANCE_SELF_FILE,
+            f"    {smoke_maintenance_self_line}  # temporary note\n",
         )
         check_rejects(
-            "an allowlisted-path line with an extra trailing suffix is rejected, not allowed by substring containment",
+            "a self-file line with an extra trailing suffix is rejected, not allowed by substring containment",
             check_no_live_smoke_maintenance_retired_paths,
             f"active reference to retired {smoke_maintenance_retired}",
-        )
-    ROOT = real_root
-
-    # 143. A line at the allowlisted cutover-rules.yaml path that names the
-    # approved retired path twice on the same physical line is rejected: the
-    # allowlist covers only its own exact single-mention line, not any line
-    # that happens to contain the literal.
-    with tempfile.TemporaryDirectory() as td:
-        base = Path(td)
-        ROOT = base
-        _mvp_write(
-            base,
-            "docs/planning/documentation-cutover-rules.yaml",
-            f"  {smoke_maintenance_retired}: {smoke_maintenance_retired}:\n",
-        )
-        check_rejects(
-            "a line combining the approved retired path with a second mention on the same line is rejected",
-            check_no_live_smoke_maintenance_retired_paths,
-            "active reference to retired",
         )
     ROOT = real_root
 
@@ -6069,29 +5752,18 @@ def self_test() -> None:
         )
     ROOT = real_root
 
-    # 171/172. The exact reviewed documentation-cutover-rules.yaml
-    # path_overrides key line is allowed ONLY because of the exact-line
-    # allowlist: rejected in a non-allowlisted file first, then silent only
-    # at the one exact allowlisted path.
+    # 171/172. A YAML mapping-key occurrence of the retired o1-manual-one-round
+    # literal in an active planning file is rejected: this family has no line
+    # allowlist entry, so the plain-literal scan governs every occurrence.
     o1_override_key_line = f"  {o1_retired}:\n    disposition: moved\n"
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
         _mvp_write(base, "docs/planning/example_not_allowlisted_rules.yaml", o1_override_key_line)
         check_rejects(
-            "the exact o1-manual-one-round cutover-rules.yaml override key literal is rejected in a non-allowlisted file",
+            "an o1-manual-one-round YAML override key literal is rejected in an active planning file",
             check_no_live_o1_manual_one_round_retired_paths,
             f"active reference to retired {o1_retired}",
-        )
-    ROOT = real_root
-
-    with tempfile.TemporaryDirectory() as td:
-        base = Path(td)
-        ROOT = base
-        _mvp_write(base, "docs/planning/documentation-cutover-rules.yaml", o1_override_key_line)
-        check_silent(
-            "the identical override key literal is silent only at the exact allowlisted cutover-rules.yaml path",
-            check_no_live_o1_manual_one_round_retired_paths,
         )
     ROOT = real_root
 
@@ -6308,59 +5980,45 @@ def self_test() -> None:
         )
     ROOT = real_root
 
-    # 181. The exact allowlisted cutover-rules.yaml override key line with an
-    # extra LEADING prefix on the same physical line is rejected: proves the
-    # allowlist match is exact stripped-line equality, not substring
-    # containment.
+    # 180b. The guard's own exact self-file line is silent: the surviving
+    # exact-line allowance this family still carries, and the positive half
+    # that makes the two exact-equality rejections below non-vacuous.
+    o1_self_line = f'"{o1_retired}": "{o1_canonical}",'
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
-        _mvp_write(
-            base,
-            "docs/planning/documentation-cutover-rules.yaml",
-            f"# see also {o1_retired}:\n",
+        _mvp_write(base, O1_MANUAL_ONE_ROUND_SELF_FILE, f"    {o1_self_line}\n")
+        check_silent(
+            "the guard's own exact self-file dict line is allowed",
+            check_no_live_o1_manual_one_round_retired_paths,
         )
+    ROOT = real_root
+
+    # 181. The exact self-file allowance line with an extra LEADING prefix on
+    # the same physical line is rejected: proves the allowance match is exact
+    # stripped-line equality, not substring containment.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, O1_MANUAL_ONE_ROUND_SELF_FILE, f"    # see also {o1_self_line}\n")
         check_rejects(
-            "an allowlisted-path line with an extra leading prefix is rejected, not allowed by substring containment",
+            "a self-file line with an extra leading prefix is rejected, not allowed by substring containment",
             check_no_live_o1_manual_one_round_retired_paths,
             f"active reference to retired {o1_retired}",
         )
     ROOT = real_root
 
-    # 182. The exact allowlisted cutover-rules.yaml override key line with an
-    # extra TRAILING suffix on the same physical line is rejected: same
-    # exact-equality proof as #181 from the other side.
+    # 182. The exact self-file allowance line with an extra TRAILING suffix on
+    # the same physical line is rejected: same exact-equality proof as #181
+    # from the other side.
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
-        _mvp_write(
-            base,
-            "docs/planning/documentation-cutover-rules.yaml",
-            f"  {o1_retired}:  # temporary note\n",
-        )
+        _mvp_write(base, O1_MANUAL_ONE_ROUND_SELF_FILE, f"    {o1_self_line}  # temporary note\n")
         check_rejects(
-            "an allowlisted-path line with an extra trailing suffix is rejected, not allowed by substring containment",
+            "a self-file line with an extra trailing suffix is rejected, not allowed by substring containment",
             check_no_live_o1_manual_one_round_retired_paths,
             f"active reference to retired {o1_retired}",
-        )
-    ROOT = real_root
-
-    # 183. A line at the allowlisted cutover-rules.yaml path that names the
-    # approved retired path twice on the same physical line is rejected: the
-    # allowlist covers only its own exact single-mention line, not any line
-    # that happens to contain the literal.
-    with tempfile.TemporaryDirectory() as td:
-        base = Path(td)
-        ROOT = base
-        _mvp_write(
-            base,
-            "docs/planning/documentation-cutover-rules.yaml",
-            f"  {o1_retired}: {o1_retired}:\n",
-        )
-        check_rejects(
-            "a line combining the approved retired path with a second mention on the same line is rejected",
-            check_no_live_o1_manual_one_round_retired_paths,
-            "active reference to retired",
         )
     ROOT = real_root
 
@@ -6880,8 +6538,8 @@ def self_test() -> None:
         ROOT = real_root
     with tempfile.TemporaryDirectory() as td:
         base = Path(td); ROOT = base
-        _mvp_write(base, "docs/planning/documentation-cutover-rules.yaml", f"{openwebui_retired}:\n")
-        check_silent("OpenWebUI retired path exact cutover-rules key is allowlisted", check_no_live_openwebui_manual_validation_retired_paths)
+        _mvp_write(base, "docs/planning/example_not_allowlisted_rules.yaml", f"{openwebui_retired}:\n")
+        check_rejects("OpenWebUI retired path YAML key in an active planning file is rejected", check_no_live_openwebui_manual_validation_retired_paths, f"active reference to retired {openwebui_retired}")
     ROOT = real_root
     with tempfile.TemporaryDirectory() as td:
         base = Path(td); ROOT = base
@@ -7170,23 +6828,34 @@ def self_test() -> None:
         )
     ROOT = real_root
 
-    # An exact allowlisted `documentation-cutover-rules.yaml` path_overrides
-    # key line is silent, while a non-allowlisted line in the same file
-    # (extra trailing text after the retired path, not exact-equal to the
-    # allowlisted line) is still rejected -- proving the allowlist is exact
-    # stripped-line equality, not substring containment.
+    # The guard's own exact self-file dict line is silent, while the same
+    # line carrying extra trailing text is still rejected -- proving the
+    # surviving exact-line allowance is stripped-line equality, not substring
+    # containment.
+    showcase_fixture_self_line = (
+        f'"{showcase_fixture_retired}": "{showcase_fixture_canonical}",'
+    )
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        ROOT = base
+        _mvp_write(base, SHOWCASE_FIXTURE_SELF_FILE, f"    {showcase_fixture_self_line}\n")
+        check_silent(
+            "the guard's own exact self-file dict line is allowed",
+            check_no_live_showcase_fixture_retired_paths,
+        )
+    ROOT = real_root
+
     with tempfile.TemporaryDirectory() as td:
         base = Path(td)
         ROOT = base
         _mvp_write(
             base,
-            "docs/planning/documentation-cutover-rules.yaml",
-            f"path_overrides:\n  {showcase_fixture_retired}:  # trailing comment\n"
-            "    disposition: moved\n",
+            SHOWCASE_FIXTURE_SELF_FILE,
+            f"    {showcase_fixture_self_line}  # trailing comment\n",
         )
         check_rejects(
-            "a documentation-cutover-rules.yaml line with extra trailing text beyond the "
-            "allowlisted key is rejected (exact-line, not substring)",
+            "a self-file line with extra trailing text beyond the allowed line is "
+            "rejected (exact-line, not substring)",
             check_no_live_showcase_fixture_retired_paths,
             f"active reference to retired {showcase_fixture_retired}",
         )
@@ -7308,7 +6977,6 @@ DOCUMENTATION_SEMANTIC_AUDIT_PRODUCTION_CHECKS = (
     check_release_assessment,
     check_implementation_evidence_index,
     check_no_live_mvp_tree,
-    check_cutover_rule_target_types,
     check_no_live_lat1_scaffold,
     check_lat1_evaluation_split,
     check_lat1_evaluation_evidence_records,

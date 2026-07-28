@@ -26,30 +26,6 @@
       "growth_policy": "closed"
     },
     {
-      "family_id": "legacy-cutover-preparation",
-      "paths": [
-        ".github/workflows/documentation-cutover-preparation.yml",
-        "docs/planning/documentation-cutover-rules.yaml",
-        "docs/planning/documentation-cutover-tooling.md",
-        "scripts/relaylm_docs_cutover_prepare.py",
-        "scripts/relaylm_docs_normative_digest.py",
-        "scripts/relaylm_docs_relative_link_inventory.py"
-      ],
-      "owner": "documentation",
-      "protected_boundary": "Commit-fixed legacy classification, normative candidate extraction, and link-dependency evidence still referenced by unfinished source families.",
-      "current_consumers": [
-        "bounded D2-D6 source-family synthesis and retirement reviews"
-      ],
-      "removal_gate": "All remaining sources are governed by the canonical active graph, generic normative extraction, generic link checks, and the retirement manifest.",
-      "replacement_validation": [
-        "active_document_authority",
-        "generated_index_drift",
-        "links_and_routers",
-        "normative_extraction"
-      ],
-      "growth_policy": "closed"
-    },
-    {
       "family_id": "legacy-cutover-receipts",
       "paths": [
         "docs/evidence/migrations/README.md",
