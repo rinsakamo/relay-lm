@@ -266,6 +266,34 @@ and usage events must produce an equivalent content-free projection manifest and
 equivalent eligible candidate set for the same supported source snapshot.
 Cache deletion and rebuild are required validation cases.
 
+### RT-1B projection-builder boundary
+
+The implemented RT-1B builder owns snapshot-to-projection derivation and
+disposable projection persistence only. Acquiring the snapshot — enumerating an
+evidence space or workspace, locking, and loading canonical pages, selectors,
+receipts, and authorization records — stays with those authorities' existing
+owners, so the builder introduces no second enumeration, selector, receipt,
+lifecycle, or canonical representation. The snapshot is therefore a fixed value
+carrying canonical page images rather than workspace or page paths, and the
+builder resolves no filesystem location of its own.
+
+Three consequences follow for the eligibility conditions above:
+
+- build time binds to the fixed snapshot, never to an uncontrolled wall clock,
+  so the same snapshot rebuilds to the same manifest identity;
+- a recorded canonical page digest is a point-in-time publication fact that
+  changes whenever a later memory is appended to the same page, so currentness
+  binds through the exact selector digest, memory reference, and block identity
+  instead, and the projected page digest is the exact image the row was derived
+  from;
+- a duplicate or otherwise conflicting logical current selector refuses the
+  build for that snapshot instead of projecting an ambiguous current row.
+
+The projection bundle is one replace-only local file holding exactly one
+generation. It is not durable operations authority, and deleting it changes no
+canonical Markdown, selector, receipt, lifecycle record, tombstone, or
+transition.
+
 ## Runtime-private retrieval handoff
 
 RT-1 should preserve the accepted request-path separation by producing the same
@@ -488,18 +516,20 @@ later slice cannot claim completion of an earlier missing authority.
 
 ## First implementation budget
 
-The next authorized implementation is RT-1A only.
+RT-1A is implemented. The next authorized implementation is RT-1B only.
 
 Expected bounded paths are:
 
 ```text
-relaylm/subjective_mem_retrieval.py                 new pure contract owner
-tests/test_subjective_mem_retrieval_contract.py     focused fixtures
+relaylm/subjective_mem_retrieval_projection.py      new projection builder owner
+tests/test_subjective_mem_retrieval_projection.py   focused fixtures
 docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md
 ```
 
-A small existing smoke registration path may be added only if P1 proves it is
-required. RT-1A must not modify:
+A small existing smoke registration path may be added only if P1 proves generic
+test discovery cannot cover the slice. RT-1B must not modify
+`relaylm/subjective_mem_retrieval.py` unless an exact root-cause contract
+omission is demonstrated. Neither slice may modify:
 
 - `relaylm/relaymem_primary_recall.py`;
 - `relaylm/relaymem_retrieval.py`;
