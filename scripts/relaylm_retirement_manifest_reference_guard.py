@@ -41,6 +41,13 @@ HISTORICAL_EXACT_PATHS = {
 }
 EXTERNAL_SCHEMES = {"http", "https", "mailto", "tel", "data"}
 URL_RE = re.compile(r"https?://[^\s)>\]}'\"]+")
+# Basenames that do not identify a retired file on their own: the repository
+# carries one of these in almost every directory, so matching a relative
+# reference by basename alone would fire on unrelated routers. For these the
+# relative-reference pattern additionally requires the retired file's own
+# parent directory -- the shortest path-specific suffix that distinguishes
+# it. Exact full-path detection is unaffected.
+GENERIC_BASENAMES = frozenset({"README.md"})
 
 
 class GuardError(RuntimeError):
@@ -111,12 +118,21 @@ def _outside_external_url(line: str, start: int, end: int) -> bool:
     return True
 
 
+def _relative_suffix(old_path: str) -> str:
+    """Shortest trailing path fragment that identifies the retired file."""
+    path = Path(old_path)
+    if path.name not in GENERIC_BASENAMES:
+        return path.name
+    parent = path.parent.name
+    return f"{parent}/{path.name}" if parent else path.name
+
+
 def _reference_pattern(old_path: str) -> re.Pattern[str]:
-    basename = re.escape(Path(old_path).name)
+    suffix = re.escape(_relative_suffix(old_path))
     return re.compile(
         r"(?<![A-Za-z0-9_.-])"
         r"((?:(?:\.\.?/|[A-Za-z0-9_.-]+/){0,20})"
-        + basename
+        + suffix
         + r")(?:[?#][A-Za-z0-9_.~/%=&:-]+)?"
         r"(?![A-Za-z0-9_-])"
     )
@@ -303,6 +319,74 @@ def self_test() -> int:
             "docs/architecture/current.md",
             f"https://example.invalid/archive/{Path(old).name}\n",
         ),
+        None,
+    )
+
+    # A retired path whose basename is generic ("README.md"): the relative
+    # pattern must key on "migrations/README.md", never on the bare basename
+    # every other router in the repository also uses.
+    def run_generic(label: str, reference: str, expected: str | None) -> None:
+        old_path = "docs/evidence/migrations/README.md"
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _write(
+                root,
+                MANIFEST_PATH,
+                json.dumps(
+                    {
+                        "schema_version": "relaylm.documentation.retirement-manifest.v1",
+                        "entries": [
+                            {
+                                "old_path": old_path,
+                                "last_live_commit": "0" * 40,
+                                "old_blob_sha": "1" * 40,
+                                "removed_by_pr": 1,
+                                "replacement_paths": [],
+                                "disposition": "retired_git_history_only",
+                                "retention_reason": "self-test",
+                            }
+                        ],
+                    },
+                    indent=2,
+                )
+                + "\n",
+            )
+            _write(root, "docs/architecture/current.md", f"See {reference} for details.\n")
+            errors = validate(root)
+            passed = not errors if expected is None else any(expected in item for item in errors)
+            if passed:
+                print(f"PASS: {label}")
+            else:
+                print(f"FAIL: {label}: {errors!r}")
+                failures.append(label)
+
+    for unrelated in (
+        "README.md",
+        "docs/README.md",
+        "apps/soul-lab/README.md",
+        "docs/evidence/README.md",
+    ):
+        run_generic(
+            f"generic-basename retirement does not reject unrelated {unrelated}",
+            unrelated,
+            None,
+        )
+
+    for retired in (
+        "docs/evidence/migrations/README.md",
+        "migrations/README.md",
+        "../migrations/README.md",
+        "../../evidence/migrations/README.md",
+    ):
+        run_generic(
+            f"generic-basename retirement rejects {retired}",
+            retired,
+            "active reference",
+        )
+
+    run_generic(
+        "external URL containing the generic retired suffix is permitted",
+        "https://example.invalid/archive/migrations/README.md",
         None,
     )
 
