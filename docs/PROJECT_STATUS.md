@@ -25,6 +25,7 @@ relaylm_related_authority:
   - docs/architecture/lc1a_subjective_mem_correct.md
   - docs/architecture/subjective-mem-forget-runtime.md
   - docs/architecture/subjective-mem-restore-runtime.md
+  - docs/architecture/subjective-mem-consolidate-runtime.md
   - docs/contracts/governed-evidence-contract-family.md
   - docs/contracts/relayctx-session-evidence-overlay.md
   - docs/contracts/shared-assessment-subjective-mem.md
@@ -33,7 +34,7 @@ relaylm_related_authority:
 ---
 # RelayLM Project Status
 
-Last reviewed: 2026-07-27 JST
+Last reviewed: 2026-07-28 JST
 
 ## Purpose and authority
 
@@ -48,7 +49,7 @@ v0.1 readiness is recorded in [v0.1 Release Readiness](release/v0.1-release-read
 ```text
 RelayLM Core managed route, pre-stream hardening, Stream Unpack, and RelaySLP orchestration: complete for the accepted v0.1 boundary
 O1 local scheduler boundary: complete; O2/O3 remain opt-in local operation and are not app-embedded or default-on
-RelayMEM Primary path: current production memory/retrieval authority while the Subjective MEM migration remains incomplete
+RelayMEM Primary path: current production memory/retrieval authority while the Subjective MEM Retrieval hard cutover remains incomplete
 Character Workspace, Analyzer Candidate Governance, and current SOUL Lab management surfaces: complete for their bounded shipped slices
 
 EV-1 Governed Evidence runtime foundation: complete in PR #629; default-off
@@ -56,7 +57,7 @@ OVL-1 CTX-OVL participant-private vertical slice: complete in PR #639; default-o
 ASM-1 Shared Assessment runtime foundation: complete in PR #636; default-off
 SM-1 Subjective MEM create decision/result vertical slice: complete in PR #646; default-off and prepared-only
 ST-1 Markdown + operations commit protocol: complete; default-off, create-only, POSIX apply
-LC-1 lifecycle migration: in progress; LC-1A Correct, LC-1B Forget, LC-1C Pin/Unpin, and LC-1D Restore implemented; default-off, POSIX apply
+LC-1 lifecycle migration: complete; LC-1A Correct, LC-1B Forget, LC-1C Pin/Unpin, LC-1D Restore, and LC-1E Consolidate implemented; default-off, POSIX apply
 ```
 
 ## Contract-aligned implementation migration boundary
@@ -79,16 +80,18 @@ LC-1 lifecycle migration: in progress; LC-1A Correct, LC-1B Forget, LC-1C Pin/Un
 
 **LC-1D Restore** consumes one exact current hidden canonical revision, selector, receipt, predecessor authority, original Forget receipt, and immutable anti-reformation tombstone. It appends an immutable `hidden -> active` successor, authenticates the complete Forget lineage, finalizes one exact immutable release record for the singleton tombstone, and uses shared lifecycle reservation, exact replay, and caller-invoked forward recovery. The slice remains default-off, single-host, and POSIX-apply-only.
 
-LC-1 is not complete: Consolidate remains the next ordered slice. Logical eligibility still does not wire ordinary Retrieval, projection, ranking, cache, or request-path readers; RT-1 remains later.
+**LC-1E Consolidate** consumes one exact current active Primary canonical revision, selector, receipt, and predecessor authorization authority. It appends one immutable active Secondary successor while preserving semantic payload, assessment linkage, character, scope, formation snapshot, strength, memory kind, lifecycle state, and retrieval visibility. It enforces the exact lifecycle and lower-commit gate triples before durable reads, uses shared lifecycle publication, deterministic replay, and caller-invoked forward recovery, and remains default-off, single-host, and POSIX-apply-only.
+
+LC-1 lifecycle migration is complete through Consolidate. Logical eligibility still does not wire ordinary Retrieval, projection, ranking, cache, or request-path readers; RT-1 is the next ordered slice.
 
 ## Current caveats
 
-- EV-1, OVL-1, ASM-1, SM-1, ST-1, LC-1A, LC-1B, LC-1C, and LC-1D remain fully default-off.
+- EV-1, OVL-1, ASM-1, SM-1, ST-1, LC-1A, LC-1B, LC-1C, LC-1D, and LC-1E remain fully default-off.
 - OVL-1 supports only `participant` / `participant_private` process-local overlay state.
 - SM-1 performs no LLM, translation, embedding, classifier, RelaySOUL, queue, worker, scheduler, normal response-path, Primary MEM, or Retrieval call.
-- ST-1 supports revision-1 `create`; LC-1A supports exact current `active -> active` Correct successors; LC-1B supports exact current `active -> hidden` Forget successors and exact anti-reformation blocking; LC-1C supports exact current `active -> pinned` and `pinned -> active` successors; LC-1D supports exact current `hidden -> active` Restore successors with authenticated Forget lineage and atomic immutable release-record finalization. These secure apply paths remain limited to the checked POSIX single-host boundary. Windows startup remains supported while secure apply fails closed there.
-- ST-1 logical `retrieval_eligible: true` does not implement ordinary Subjective MEM Retrieval or projection.
-- Primary MEM remains the current ordinary memory and Retrieval authority until required lifecycle migration and RT-1 hard cutover are accepted.
+- ST-1 supports revision-1 `create`; LC-1A supports exact current `active -> active` Correct successors; LC-1B supports exact current `active -> hidden` Forget successors and exact anti-reformation blocking; LC-1C supports exact current `active -> pinned` and `pinned -> active` successors; LC-1D supports exact current `hidden -> active` Restore successors with authenticated Forget lineage and atomic immutable release-record finalization; LC-1E supports exact current active Primary-to-Secondary Consolidate successors without semantic rewrite. These secure apply paths remain limited to the checked POSIX single-host boundary. Windows startup remains supported while secure apply fails closed there.
+- ST-1 and LC-1 logical `retrieval_eligible: true` do not implement ordinary Subjective MEM Retrieval or projection.
+- Primary MEM remains the current ordinary memory and Retrieval authority until RT-1 hard cutover is accepted.
 - O2/O3 remain explicit local process layers, not browser authority, app-embedded services, or new memory mutation authority.
 - RelayCTX short-term runtime injection apply remains default-off and dry-run-only by default.
 - Open decision debt remains PM-D1 RelaySOUL gate design-freeze relation, PM-D2 legacy intent-artifact closure/absorption, PM-D4 client-history exclusion deployment policy, and PM-D9 multilingual analyzer/proposal policy.
@@ -96,9 +99,8 @@ LC-1 is not complete: Consolidate remains the next ordered slice. Logical eligib
 ## Immediate dependency-first work
 
 ```text
-LC-1 lifecycle migration                                    in progress; LC-1A Correct, LC-1B Forget, LC-1C Pin/Unpin, and LC-1D Restore implemented
-  -> LC-1E Consolidate                                      next ordered slice; not started
-  -> RT-1 Retrieval projection and hard cutover             registered; not started
+LC-1 lifecycle migration                                    complete; LC-1A Correct, LC-1B Forget, LC-1C Pin/Unpin, LC-1D Restore, and LC-1E Consolidate implemented
+  -> RT-1 Retrieval projection and hard cutover             next ordered slice; registered / not started
 
 Parallel decision work:
   PM-D1 RelaySOUL gate design-freeze relation
@@ -109,14 +111,12 @@ Parallel decision work:
 
 ## Not yet implemented
 
-- Subjective MEM Consolidate and every lifecycle transition beyond LC-1D Restore;
 - ordinary Subjective MEM Retrieval projection, ranking, cache, request-path wiring, and RT-1 hard cutover;
 - Primary MEM migration, Subjective MEM backup/restore completion, and multi-host publication;
 - shared-scene, relationship, and quarantine CTX-OVL partitions;
 - full RelayREL relationship Markdown parsing;
 - physical purge;
 - Merge / Supersession runtime apply;
-- Secondary MEM consolidation;
 - RelaySOUL proposal/intervention/rollback slices;
 - static SOUL Lab bundle serving;
 - media runtime execution;
