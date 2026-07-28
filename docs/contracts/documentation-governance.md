@@ -251,7 +251,11 @@ Validators fail closed on malformed input and emit bounded path-based diagnostic
 
 Documentation Hard Cutover 1C-57 is the final source-by-source legacy slice. Later PRs must not add another numbered 1C slice, an ordinary per-source receipt, or a bespoke source guard as the default migration mechanism.
 
-`records/documentation/transitional-assets.json` records the remaining registered transitional families. The only remaining registered transitional family is legacy completion-report validation. The legacy cutover-receipt family was retired by PR #775, and no current receipt or ledger surface remains registered.
+`records/documentation/transitional-assets.json` remains the canonical registry of registered transitional families and currently records zero families. The legacy cutover-receipt family was retired by PR #775, and PR #776 retired the final registered transitional family, legacy completion-report validation. No current receipt, ledger, or completion-report-validation surface remains registered.
+
+An empty registry does not implicitly permit new transitional families. Registering one requires a reviewed atomic governance change that states its owner, protected boundary, current consumers, removal gate, replacement validation, and a closed growth policy; the registry schema and the governance validator continue to enforce every one of those constraints for any family that is present.
+
+Continuing completion-report invariants moved to generic validation rather than disappearing. The documentation semantic audit owns completion-report metadata profiles, shared and legacy-only metadata, required sections, the legacy exact-source snapshot, and unresolved-placeholder rejection for every report under `docs/evidence/implementation/`. The independent `scripts/relaylm_mvp_completion_report_pr_link_smoke.py` validator continues to own exact source-PR number and URL agreement. Completion reports remain frozen evidence and are never current authority.
 
 Each registered family records:
 
@@ -272,7 +276,7 @@ A transitional family may be removed only when:
 4. no current workflow, operator, migration, rollback, or audit consumer remains;
 5. the removal PR proves negative references and equivalent validation.
 
-Until then the assets may remain, but closed families cannot grow. D6 owns their final retirement.
+Until then the assets may remain, but closed families cannot grow. D6 owns their final retirement, and with PR #776 no registered family remains.
 
 ## Domain synthesis order and authority gates
 
