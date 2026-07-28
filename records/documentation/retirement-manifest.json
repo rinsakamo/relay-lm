@@ -200,6 +200,44 @@
       "retention_reason": "D2-B2b4c30 migrated every current consumer to canonical compile/checkpoint architecture or the owning exact compile contracts and removed the closed transitional current-implementation note; its wording remains recoverable from Git."
     },
     {
+      "old_path": "docs/evidence/migrations/README.md",
+      "last_live_commit": "e8148093f7e6f3c7768ba17e19c9425af22cfc70",
+      "old_blob_sha": "f1008ba0300c8aecdc2246cbc45e977b1c5e6234",
+      "removed_by_pr": 775,
+      "replacement_paths": [
+        "records/documentation/retirement-manifest.json"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R3 retired the closed migration-evidence router after all current documentation navigation and recovery ownership moved to generic governance and the retirement manifest; the exact router remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/evidence/migrations/cutover-1b-mvp-snapshot-deletions.tsv",
+      "last_live_commit": "e8148093f7e6f3c7768ba17e19c9425af22cfc70",
+      "old_blob_sha": "029a35fabbc29961e3c208da504060356948c93a",
+      "removed_by_pr": 775,
+      "replacement_paths": [],
+      "disposition": "retired_git_history_only",
+      "retention_reason": "D6-R3 retired the historical C1B file-level deletion appendix after no current consumer remained; all 34 path, blob, digest, source-commit, and source-PR rows remain recoverable from the exact Git blob."
+    },
+    {
+      "old_path": "docs/evidence/migrations/cutover-1c2-early-mvp-smokes.tsv",
+      "last_live_commit": "e8148093f7e6f3c7768ba17e19c9425af22cfc70",
+      "old_blob_sha": "c0ebdfeac75b62fac858b6431c48ac4a15df888d",
+      "removed_by_pr": 775,
+      "replacement_paths": [],
+      "disposition": "retired_git_history_only",
+      "retention_reason": "D6-R3 retired the historical C1C2 evidence-move appendix after its canonical evidence destinations and exact source snapshots were independently retained; the complete provenance table remains recoverable from the exact Git blob."
+    },
+    {
+      "old_path": "docs/evidence/migrations/cutover-1c3-mvp2-compile-smokes.tsv",
+      "last_live_commit": "e8148093f7e6f3c7768ba17e19c9425af22cfc70",
+      "old_blob_sha": "9b1b87a20d0e8f3b15716de15dd6293f7e73458c",
+      "removed_by_pr": 775,
+      "replacement_paths": [],
+      "disposition": "retired_git_history_only",
+      "retention_reason": "D6-R3 retired the historical C1C3 evidence-move appendix after its canonical evidence destinations and exact source snapshots were independently retained; the complete provenance table remains recoverable from the exact Git blob."
+    },
+    {
       "old_path": "docs/evidence/migrations/cutover-1c47-phase55a.md",
       "last_live_commit": "14f31ba70345f72b4d4a648e658eb567b8e8a596",
       "old_blob_sha": "606bd265ed58acb9b724b57350ab36a64ae3137a",
@@ -319,6 +357,15 @@
       ],
       "disposition": "superseded",
       "retention_reason": "D6-R1 removed the redundant per-source receipt after its continuing collection-level history was retained by the central migration ledger and its exact path/blob recovery identity was added to the generic retirement manifest; the full receipt remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
+      "last_live_commit": "e8148093f7e6f3c7768ba17e19c9425af22cfc70",
+      "old_blob_sha": "ec70e85aff2d34255545ad6c8ffb17c849abc302",
+      "removed_by_pr": 775,
+      "replacement_paths": [],
+      "disposition": "retired_git_history_only",
+      "retention_reason": "D6-R3 retired the completed source-by-source hard-cutover ledger after 1C-57 and the later D6 retirement slices removed its current workflow and audit consumers; its complete append-only history remains recoverable from the recorded Git blob."
     },
     {
       "old_path": "docs/planning/documentation-cutover-rules.yaml",

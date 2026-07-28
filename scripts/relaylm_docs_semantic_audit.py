@@ -257,13 +257,12 @@ def check_release_assessment(errors: list[str]) -> None:
 
 MVP_REFERENCE_PATTERN = re.compile(r"docs/mvp(?:/|\b)")
 
-# Files whose *entire* content is historical/migration record-keeping by
-# construction, never live current navigation. Kept short and explicit
-# deliberately: this is not a place to hide a file merely because it is
-# inconvenient to line-allowlist.
+# Files whose *entire* content is historical record-keeping by construction,
+# never live current navigation. Kept short and explicit deliberately: this
+# is not a place to hide a file merely because it is inconvenient to
+# line-allowlist.
 MVP_REFERENCE_ALLOWLISTED_FILES = frozenset(
     {
-        "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
         # This guard's own implementation necessarily names the retired
         # literal it detects; excluding it is the same self-reference every
         # signature-based detector requires for its own signature database.
@@ -326,8 +325,6 @@ def _mvp_reference_file_allowlisted(relative_path: str) -> bool:
     if relative_path in MVP_REFERENCE_ALLOWLISTED_FILES:
         return True
     if relative_path.startswith("docs/evidence/") and relative_path.endswith("-source.txt"):
-        return True
-    if relative_path.startswith("docs/evidence/migrations/") and relative_path.endswith(".tsv"):
         return True
     return False
 
@@ -402,13 +399,12 @@ LAT1_REFERENCE_PATTERN = re.compile(r"\blat1_retrieval_scaling_report\b")
 LAT1_METHOD_PATH = "docs/evaluation/lat1-retrieval-scaling.md"
 LAT1_TEMPLATE_PATH = "docs/templates/evaluation/lat1-retrieval-scaling-report.md"
 
-# Files whose entire content is historical/migration record-keeping by
-# construction and may legitimately name the retired literal without
-# per-line review. Kept short and explicit. This guard's own implementation
-# necessarily names the pattern it detects.
+# Files whose entire content is historical record-keeping by construction
+# and may legitimately name the retired literal without per-line review.
+# Kept short and explicit. This guard's own implementation necessarily names
+# the pattern it detects.
 LAT1_REFERENCE_ALLOWLISTED_FILES = frozenset(
     {
-        "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
         "scripts/relaylm_docs_semantic_audit.py",
     }
 )
@@ -572,13 +568,11 @@ E1_LOCAL_RUNTIME_MD_LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 E1_LOCAL_RUNTIME_RELATED_AUTHORITY_KEY_RE = re.compile(r"^relaylm_related_authority:\s*$")
 E1_LOCAL_RUNTIME_LIST_ITEM_RE = re.compile(r"^\s+-\s+(.+?)\s*$")
 
-# Files whose entire content is historical/migration record-keeping by
-# construction and may legitimately name the retired literal without
-# per-line review. This guard's own implementation necessarily names the
-# pattern it detects.
+# Files whose entire content is historical record-keeping by construction
+# and may legitimately name the retired literal without per-line review.
+# This guard's own implementation necessarily names the pattern it detects.
 E1_LOCAL_RUNTIME_REFERENCE_ALLOWLISTED_FILES = frozenset(
     {
-        "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
         "scripts/relaylm_docs_semantic_audit.py",
     }
 )
@@ -824,16 +818,12 @@ MOBILE_DOGFOOD_PATH_BEARING_LIST_KEYS = (
     "relaylm_verified_by",
 )
 
-# Files whose entire content is historical/migration record-keeping by
-# construction and may legitimately name a retired literal without per-line
-# review: this receipt's own Cutover 1C-40 entry narrates why the family was
-# left open at the time. This guard's own implementation file is
-# deliberately NOT whole-file-exempted (see MOBILE_DOGFOOD_SELF_FILE below).
-MOBILE_DOGFOOD_REFERENCE_ALLOWLISTED_FILES = frozenset(
-    {
-        "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
-    }
-)
+# Files whose entire content is historical record-keeping by construction
+# and may legitimately name a retired literal without per-line review.
+# Empty: no current file carries this retired literal as whole-file history.
+# This guard's own implementation file is deliberately NOT whole-file-exempted
+# (see MOBILE_DOGFOOD_SELF_FILE below).
+MOBILE_DOGFOOD_REFERENCE_ALLOWLISTED_FILES: frozenset[str] = frozenset()
 
 # Exact, reviewed line-content substrings that are legitimate occurrences of
 # a retired literal inside an otherwise-active/current file. Empty: no active
@@ -1127,16 +1117,11 @@ TWIN_EXTRACTION_REFERENCE_PATTERN = re.compile(
     "(?:" + "|".join(re.escape(path) for path in TWIN_EXTRACTION_RETIRED_PATHS) + ")"
 )
 
-# Files whose entire content is historical/migration record-keeping by
-# construction: the migration receipt's own Cutover 1C-42 entry narrates the
-# three retired paths by design. The frozen completion report is
-# deliberately NOT here -- see the module comment above; its one live link is
-# repaired instead of allowlisted.
-TWIN_EXTRACTION_REFERENCE_ALLOWLISTED_FILES = frozenset(
-    {
-        "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
-    }
-)
+# Files whose entire content is historical record-keeping by construction.
+# Empty: no current file narrates the three retired paths as whole-file
+# history. The frozen completion report is deliberately NOT here -- see the
+# module comment above; its one live link is repaired instead of allowlisted.
+TWIN_EXTRACTION_REFERENCE_ALLOWLISTED_FILES: frozenset[str] = frozenset()
 
 # Exact, reviewed whole-line contents that are legitimate occurrences of a
 # retired literal inside an otherwise-active/current file. Empty: no active
@@ -1301,14 +1286,10 @@ SMOKE_MAINTENANCE_REFERENCE_PATTERN = re.compile(
     "(?:" + "|".join(re.escape(path) for path in SMOKE_MAINTENANCE_RETIRED_PATHS) + ")"
 )
 
-# The migration receipt's own Cutover 1C-43 entry narrates the retired path
-# by design; whole-file allowlisted, matching the established
-# mobile-dogfood/twin-extraction precedent.
-SMOKE_MAINTENANCE_REFERENCE_ALLOWLISTED_FILES = frozenset(
-    {
-        "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
-    }
-)
+# Files whose entire content is historical record-keeping by construction.
+# Empty: no current file names this retired path as whole-file history,
+# matching the established mobile-dogfood/twin-extraction precedent.
+SMOKE_MAINTENANCE_REFERENCE_ALLOWLISTED_FILES: frozenset[str] = frozenset()
 
 # Exact, reviewed whole-line contents that are legitimate occurrences of the
 # retired literal inside an otherwise-active/current file. Empty: no active
@@ -1502,14 +1483,10 @@ O1_MANUAL_ONE_ROUND_REFERENCE_DEFINITION_RE = re.compile(
     r"^[ \t]{0,3}\[[^\]\n]+\]:[ \t]*(?:<([^>\n]+)>|([^ \t\n]+))"
 )
 
-# The migration receipt's own Cutover 1C-44 entry (and the C1C43 entry's
-# selection-provenance record) narrates the retired path by design;
-# whole-file allowlisted, matching the established precedent.
-O1_MANUAL_ONE_ROUND_REFERENCE_ALLOWLISTED_FILES = frozenset(
-    {
-        "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
-    }
-)
+# Files whose entire content is historical record-keeping by construction.
+# Empty: no current file names this retired path as whole-file history,
+# matching the established precedent.
+O1_MANUAL_ONE_ROUND_REFERENCE_ALLOWLISTED_FILES: frozenset[str] = frozenset()
 
 # Exact, reviewed whole-line contents that are legitimate occurrences of the
 # retired literal inside an otherwise-active/current file. Empty: no active
@@ -1774,7 +1751,7 @@ OPENWEBUI_MANUAL_VALIDATION_PROSE_PATH_TOKEN_RE = re.compile(
 )
 OPENWEBUI_MANUAL_VALIDATION_HTML_LINK_RE = re.compile(r"\b(?:href|src)\s*=\s*([\"'])([^\"'<>\s][^\"'<>]*)\1", re.IGNORECASE)
 OPENWEBUI_MANUAL_VALIDATION_REFERENCE_DEFINITION_RE = re.compile(r"^[ \t]{0,3}\[[^\]\n]+\]:[ \t]*(?:<([^>\n]+)>|([^ \t\n]+))")
-OPENWEBUI_MANUAL_VALIDATION_ALLOWLISTED_FILES = frozenset({"docs/evidence/migrations/documentation-hard-cutover-receipt.md"})
+OPENWEBUI_MANUAL_VALIDATION_ALLOWLISTED_FILES: frozenset[str] = frozenset()
 OPENWEBUI_MANUAL_VALIDATION_LINE_ALLOWLIST = {
     "docs/evidence/evaluations/openwebui-lmstudio-manual-smoke-2026-05-26.md": (
         "relaylm_source_path: docs/smoke/openwebui_lmstudio_manual_smoke_result_2026_05_26.md",
@@ -1978,16 +1955,11 @@ SHOWCASE_FIXTURE_PROSE_PATH_TOKEN_RE = re.compile(
 SHOWCASE_FIXTURE_HTML_LINK_RE = re.compile(r"\b(?:href|src)\s*=\s*([\"'])([^\"'<>\s][^\"'<>]*)\1", re.IGNORECASE)
 SHOWCASE_FIXTURE_REFERENCE_DEFINITION_RE = re.compile(r"^[ \t]{0,3}\[[^\]\n]+\]:[ \t]*(?:<([^>\n]+)>|([^ \t\n]+))")
 
-# The migration receipt's own Cutover 1C-46 entry (and its earlier Cutover
-# 1C-42 twin-extraction entry, which historically narrates this same file's
-# then-current docs/tools/ path before this cutover moved it) narrate the
-# retired path by design; whole-file allowlisted, matching the established
+# Files whose entire content is historical record-keeping by construction.
+# Empty: no current file names this retired path as whole-file history,
+# matching the established
 # mobile-dogfood/twin-extraction/smoke-maintenance/O1/openwebui precedent.
-SHOWCASE_FIXTURE_REFERENCE_ALLOWLISTED_FILES = frozenset(
-    {
-        "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
-    }
-)
+SHOWCASE_FIXTURE_REFERENCE_ALLOWLISTED_FILES: frozenset[str] = frozenset()
 
 # Exact, reviewed whole-line contents that are legitimate occurrences of the
 # retired literal inside an otherwise-active/current file. Empty: no active
@@ -2761,14 +2733,6 @@ def self_test() -> None:
             "active reference to retired docs/mvp/ tree",
         )
     ROOT = real_root
-
-    # 7. The migration receipt's whole-file historical allowlist entry is recognized.
-    def _receipt_allowlisted() -> None:
-        assert _mvp_reference_file_allowlisted(
-            "docs/evidence/migrations/documentation-hard-cutover-receipt.md"
-        ), "migration receipt not allowlisted"
-
-    check("migration receipt historical literal is allowlisted", _receipt_allowlisted)
 
     # 8. An exact -source.txt snapshot literal is allowlisted by filename pattern.
     def _source_snapshot_allowlisted() -> None:
@@ -6109,26 +6073,6 @@ def self_test() -> None:
         )
     ROOT = real_root
 
-    # 188. The exact same prose/backtick literal at the whole-file
-    # allowlisted migration receipt path is accepted: rejection-then-
-    # acceptance pair proving the receipt allowlist covers the new literal
-    # scan too, not only the pre-existing link/front-matter passes.
-    with tempfile.TemporaryDirectory() as td:
-        base = Path(td)
-        ROOT = base
-        _mvp_write(
-            base,
-            "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
-            "---\nrelaylm_doc_type: evidence\nrelaylm_status: current\n---\n\n"
-            f"Receipt narrative mentioning `{o1_retired}` many times: "
-            f"{o1_retired}, {o1_retired}.\n",
-        )
-        check_silent(
-            "the same retired o1-manual-one-round literal is accepted at the exact whole-file-allowlisted migration receipt path",
-            check_no_live_o1_manual_one_round_retired_paths,
-        )
-    ROOT = real_root
-
     # 189. A .txt file carrying the literal (not covered by the shared
     # scanner's suffix list, so scanned only via this guard's own
     # docs/**/*.txt extension) is rejected when not allowlisted.
@@ -6448,25 +6392,6 @@ def self_test() -> None:
         )
         check_silent(
             "the canonical o1-manual-one-round hyphenated basename in docs/smoke/ backtick prose is accepted, distinguished from the retired underscored basename",
-            check_no_live_o1_manual_one_round_retired_paths,
-        )
-    ROOT = real_root
-
-    # 194. The identical bare-basename literal is silent at the exact
-    # whole-file-allowlisted migration receipt path (rejection-then-
-    # acceptance pair, reusing the existing receipt allowlist for the new
-    # bare-basename pass too).
-    with tempfile.TemporaryDirectory() as td:
-        base = Path(td)
-        ROOT = base
-        _mvp_write(
-            base,
-            "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
-            "---\nrelaylm_doc_type: evidence\nrelaylm_status: current\n---\n\n"
-            f"Receipt narrative mentioning the bare basename `{o1_retired.rsplit('/', 1)[-1]}`.\n",
-        )
-        check_silent(
-            "the bare retired o1-manual-one-round basename is accepted at the exact whole-file-allowlisted migration receipt path",
             check_no_live_o1_manual_one_round_retired_paths,
         )
     ROOT = real_root

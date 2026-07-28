@@ -24,25 +24,6 @@
         "retained_record_allowlist"
       ],
       "growth_policy": "closed"
-    },
-    {
-      "family_id": "legacy-cutover-receipts",
-      "paths": [
-        "docs/evidence/migrations/README.md",
-        "docs/evidence/migrations/cutover-*",
-        "docs/evidence/migrations/documentation-hard-cutover-receipt.md"
-      ],
-      "owner": "documentation",
-      "protected_boundary": "Legacy collection-level cutover history and file-level batch provenance retained until every continuing recovery or audit fact is represented by the generic retirement manifest or another allowlisted retained record.",
-      "current_consumers": [
-        "documentation migration provenance review"
-      ],
-      "removal_gate": "All continuing recovery or audit facts are represented by allowlisted records, and historical-only narratives remain recoverable from Git.",
-      "replacement_validation": [
-        "git_recoverability",
-        "retained_record_allowlist"
-      ],
-      "growth_policy": "closed_after_1c57"
     }
   ]
 }

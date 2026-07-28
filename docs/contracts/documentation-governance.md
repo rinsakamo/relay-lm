@@ -251,7 +251,9 @@ Validators fail closed on malformed input and emit bounded path-based diagnostic
 
 Documentation Hard Cutover 1C-57 is the final source-by-source legacy slice. Later PRs must not add another numbered 1C slice, an ordinary per-source receipt, or a bespoke source guard as the default migration mechanism.
 
-`records/documentation/transitional-assets.json` records the remaining legacy validation, receipt, and ledger surfaces with:
+`records/documentation/transitional-assets.json` records the remaining registered transitional families. The only remaining registered transitional family is legacy completion-report validation. The legacy cutover-receipt family was retired by PR #775, and no current receipt or ledger surface remains registered.
+
+Each registered family records:
 
 ```text
 owner

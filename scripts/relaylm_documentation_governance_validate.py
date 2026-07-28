@@ -82,8 +82,7 @@ RELATIONSHIP_FIELDS = {
     "relaylm_verified_by",
 }
 FRONT_MATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*(?:\n|\Z)", re.DOTALL)
-CUTOVER_1C_RE = re.compile(r"cutover-1c(\d+)", re.IGNORECASE)
-ACTIVE_COLLECTIONS = {"adr", "architecture", "contracts", "planning", "reference", "operations", "guides", "release", "templates"}
+ACTIVE_COLLECTIONS ={"adr", "architecture", "contracts", "planning", "reference", "operations", "guides", "release", "templates"}
 ACTIVE_FILENAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*\.md$")
 MILESTONE_STEM_RE = re.compile(
     r"^(?:phase[-_]?\d+[a-h0-9]*|wave[-_]?\d+[a-h0-9]*|mvp[-_]?\d+[a-h0-9]*|i\d+[a-h0-9]*|o\d+[a-h0-9]*|e\d+(?:r\d+)?[a-h0-9]*|acg\d+[a-h0-9]*|cw[-_]?a\d+[a-h0-9]*|lc[-_]?\d+[a-h0-9]*|rt[-_]?\d+[a-h0-9]*|pm[-_]?d\d+[a-h0-9]*|ui[-_]?b\d+[a-h0-9]*)(?:[-_]|$)",
@@ -546,7 +545,7 @@ def validate_transitional_assets(
     exact, errors = expand_registry_paths(root, transitional)
     new_paths = new_paths or set()
     for family in transitional.get("families", []):
-        if not isinstance(family, dict) or family.get("growth_policy") not in {"closed", "closed_after_1c57"}:
+        if not isinstance(family, dict) or family.get("growth_policy") != "closed":
             continue
         patterns = [item for item in family.get("paths", []) if isinstance(item, str)]
         for path in sorted(new_paths):
@@ -564,11 +563,6 @@ def validate_transitional_assets(
         errors.append(f"{path}: new bespoke handoff cutover guard is not permitted after D1")
     for path in sorted(allowed_guards - current_guards):
         errors.append(f"{path}: registered bespoke guard is absent; remove its registry entry in the owning cleanup PR")
-
-    for path in sorted(item for item in root.rglob("*") if item.is_file()):
-        match = CUTOVER_1C_RE.search(relative(path, root))
-        if match and int(match.group(1)) > 57:
-            errors.append(f"{relative(path, root)}: Documentation Hard Cutover 1C-57 is the final legacy slice")
     return errors
 
 
@@ -773,7 +767,7 @@ def build_self_test_root() -> Path:
     for family in transitional["families"]:
         for raw in family["paths"]:
             if "*" in raw:
-                target = temp / raw.replace("*", "cutover-1c57-self-test.json")
+                target = temp / raw.replace("*", "self-test")
             else:
                 target = temp / raw
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -873,7 +867,7 @@ def self_test() -> int:
         closed_addition_errors = validate_transitional_assets(
             root,
             read_json(root / "records/documentation/transitional-assets.json"),
-            {"docs/evidence/migrations/cutover-1c57-extra.md"},
+            {"docs/evidence/implementation/added_completion_report.md"},
         )
         expect("closed transitional families reject added or renamed paths", any("new path is forbidden by closed transitional family" in item for item in closed_addition_errors), failures)
 
@@ -938,13 +932,6 @@ def self_test() -> int:
         errors = validate_repository(root)
         expect("new bespoke cutover guard is rejected", any("new bespoke handoff cutover guard" in item for item in errors), failures)
         new_guard.unlink()
-
-        future_cutover = root / "docs/evidence/migrations/cutover-1c58-forbidden.md"
-        future_cutover.parent.mkdir(parents=True, exist_ok=True)
-        future_cutover.touch()
-        errors = validate_repository(root)
-        expect("Cutover 1C-58 path is rejected", any("1C-57 is the final" in item for item in errors), failures)
-        future_cutover.unlink()
 
         manifest_path = root / "records/documentation/retirement-manifest.json"
         manifest = read_json(manifest_path)

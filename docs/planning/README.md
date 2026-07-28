@@ -9,7 +9,7 @@ relaylm_update_trigger:
   - a preparation artifact is added or retired
   - a cutover batch starts or completes
 relaylm_not_authoritative_for:
-  - current documentation placement outside merged cutover entries
+  - current documentation placement
   - current runtime behavior
   - proof that the complete cutover is finished
 relaylm_current_status_source: ../PROJECT_STATUS.md
@@ -27,12 +27,8 @@ Current documentation synthesis and retirement are governed by the [Documentatio
 - [Target architecture graph](documentation-target-architecture-graph.md) — defines the planned canonical system, subsystem, and concept/policy document graph.
 - [Placement decisions](documentation-placement-decisions.md) — records how the placement and granularity tie-breakers apply to ambiguous current document families.
 
-## Active execution evidence
-
-- [Documentation hard-cutover migration receipt](../evidence/migrations/documentation-hard-cutover-receipt.md) — append-only record of merged path moves, evidence retention, deletions, synthesis, and exact-copy verification.
-
 ## Boundary
 
-Preparation B decided target ownership and synthesis shape for the source-by-source cutover that closed at 1C-57. Those decisions are historical: this collection does not carry current authority, and only merged entries in the migration receipt describe canonical paths the cutover actually changed.
+Preparation B decided target ownership and synthesis shape for the source-by-source cutover that closed at 1C-57. Those decisions are historical: this collection does not carry current authority. Merged Git history and the [retirement manifest](../../records/documentation/retirement-manifest.json) preserve the recovery identity of retired paths.
 
 Continuing active-document, normative-disposition, link, and Git-recovery invariants are owned by the Documentation Governance Contract, the canonical active graph, the generic validators, and the retirement manifest.

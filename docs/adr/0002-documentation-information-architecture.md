@@ -30,6 +30,10 @@ Accepted as target documentation architecture on 2026-07-11.
 
 Preparation begins immediately. Canonical path moves and deletions begin only after the v0.1 final main-HEAD validation and frozen tag receipt are finalized.
 
+Source-by-source Documentation Hard Cutover closed at 1C-57; no further numbered legacy slice or per-source receipt follows. D6 subsequently retired the current-tree migration receipt collection after generic documentation governance and Git recoverability replaced its continuing current-tree role. Retired documentation paths and their exact recovery identity are recorded in [`records/documentation/retirement-manifest.json`](../../records/documentation/retirement-manifest.json).
+
+This ADR remains authoritative only for the decision recorded below. It is not proof of current implementation or runtime state.
+
 ## Context
 
 RelayLM currently has hundreds of Markdown files whose directory, type, status, and granularity do not reliably identify their authority. Architecture, exact contracts, implementation handoffs, evaluation records, release evidence, strategic direction, and historical snapshots frequently share the same directory and retrieval vocabulary.
@@ -156,4 +160,3 @@ Only three migration safeguards are retained:
 - [Document templates](../templates/README.md)
 - [Canonical glossary draft](../reference/glossary.md)
 - [Documentation cutover planning](../planning/README.md)
-- [Documentation hard-cutover migration receipt](../evidence/migrations/documentation-hard-cutover-receipt.md)
