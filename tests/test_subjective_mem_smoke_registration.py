@@ -30,6 +30,19 @@ def test_subjective_mem_pin_runtime_change_selects_lifecycle_group() -> None:
     assert sum(selected.values()) == 1
 
 
+def test_subjective_mem_consolidate_runtime_change_selects_lifecycle_group() -> None:
+    for path in (
+        "relaylm/subjective_mem_consolidate_runtime.py",
+        "relaylm/subjective_mem_consolidate.py",
+        "tests/test_subjective_mem_consolidate_runtime.py",
+        "scripts/relaylm_subjective_mem_consolidate_smoke.py",
+        "docs/architecture/subjective-mem-consolidate-runtime.md",
+    ):
+        selected = changed_outputs("runtime", [path], False)
+        assert selected["subjective_mem_lifecycle"] is True, path
+        assert sum(selected.values()) == 1, path
+
+
 def test_subjective_mem_lifecycle_group_is_emitted_in_runtime_matrix() -> None:
     selected = changed_outputs(
         "runtime", ["relaylm/subjective_mem_pin_runtime.py"], False
@@ -57,10 +70,12 @@ def test_subjective_mem_lifecycle_group_runs_regression_and_process_smokes() -> 
         "tests/test_subjective_mem_lifecycle_runtime.py",
         "tests/test_subjective_mem_forget_runtime.py",
         "tests/test_subjective_mem_pin_runtime.py",
+        "tests/test_subjective_mem_consolidate_runtime.py",
     ] in commands
     assert ["scripts/relaylm_lc1a_subjective_mem_correct_smoke.py"] in commands
     assert ["scripts/relaylm_subjective_mem_forget_smoke.py"] in commands
     assert ["scripts/relaylm_subjective_mem_pin_unpin_smoke.py"] in commands
+    assert ["scripts/relaylm_subjective_mem_consolidate_smoke.py"] in commands
 
 
 def test_subjective_mem_create_has_one_direct_owner_without_core_bypass() -> None:

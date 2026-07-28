@@ -19,6 +19,12 @@ from relaylm.subjective_mem import (
     SubjectiveMemStrength,
 )
 from relaylm.subjective_mem_commit import ST1_RECEIPT_SCHEMA
+from relaylm.subjective_mem_consolidate import (
+    CONSOLIDATE_AUTHORIZATION_CLASS,
+    CONSOLIDATE_OPERATION_FAMILY,
+    CONSOLIDATE_POLICY_REVISION,
+    CONSOLIDATE_REASON_CATEGORY,
+)
 from relaylm.subjective_mem_lifecycle import (
     LIFECYCLE_POLICY_REVISION,
     LIFECYCLE_RECEIPT_SCHEMA,
@@ -80,6 +86,7 @@ def _revision(
     operation: str,
     lifecycle_state: str,
     revision: int = 2,
+    formation_stage: str = "primary",
 ) -> SubjectiveMemRevision:
     return SubjectiveMemRevision(
         memory_id="memory-1",
@@ -110,7 +117,7 @@ def _revision(
         decision_id=f"{operation}-transition-1",
         created_at=AT,
         memory_revision=revision,
-        formation_stage="primary",
+        formation_stage=formation_stage,
         lifecycle_state=lifecycle_state,
         retrieval_visible=lifecycle_state in {"active", "pinned"},
         predecessor_revision_or_null=revision - 1,
@@ -140,12 +147,20 @@ def _lifecycle_records(
     operation: str,
     from_state: str,
     to_state: str,
+    from_stage: str = "primary",
+    to_stage: str | None = None,
+    authorization_class: str = "user_management",
+    reason_category: str | None = None,
+    policy_revision: str = LIFECYCLE_POLICY_REVISION,
 ) -> tuple[
     SubjectiveMemRevision,
     dict[tuple[str, str], dict[str, object]],
     SubjectiveMemPredecessorExpectation,
 ]:
-    revision = _revision(operation=operation, lifecycle_state=to_state)
+    to_stage = to_stage or from_stage
+    revision = _revision(
+        operation=operation, lifecycle_state=to_state, formation_stage=to_stage
+    )
     transition = {
         "schema": LIFECYCLE_TRANSITION_SCHEMA,
         "transition_id": revision.authorization_id,
@@ -156,9 +171,9 @@ def _lifecycle_records(
         "operation": operation,
         "from_lifecycle_state": from_state,
         "to_lifecycle_state": to_state,
-        "from_formation_stage": revision.formation_stage,
-        "to_formation_stage": revision.formation_stage,
-        "authorized_by": "user_management",
+        "from_formation_stage": from_stage,
+        "to_formation_stage": to_stage,
+        "authorized_by": authorization_class,
         "committed_at": AT,
     }
     receipt_body = {
@@ -178,10 +193,10 @@ def _lifecycle_records(
         },
         "predecessor_revision": revision.memory_revision - 1,
         "transition_id": revision.authorization_id,
-        "authorization_class": "user_management",
+        "authorization_class": authorization_class,
         "authorization_id": "authorization-1",
-        "reason_category": f"user_requested_{operation}",
-        "policy_revision": LIFECYCLE_POLICY_REVISION,
+        "reason_category": reason_category or f"user_requested_{operation}",
+        "policy_revision": policy_revision,
         "revision_schema": SUBJECTIVE_MEM_REVISION_SCHEMA,
         "page_schema": PAGE_SCHEMA,
         "block_schema": LIFECYCLE_BLOCK_SCHEMA,
@@ -349,9 +364,108 @@ def test_create_predecessor_remains_supported() -> None:
     assert authority.authorization_kind == "subjective_mem_decision"
 
 
+def _consolidate_records(**changes: object):
+    arguments: dict[str, object] = {
+        "operation": CONSOLIDATE_OPERATION_FAMILY,
+        "from_state": "active",
+        "to_state": "active",
+        "from_stage": "primary",
+        "to_stage": "secondary",
+        "authorization_class": CONSOLIDATE_AUTHORIZATION_CLASS,
+        "reason_category": CONSOLIDATE_REASON_CATEGORY,
+        "policy_revision": CONSOLIDATE_POLICY_REVISION,
+    }
+    return _lifecycle_records(**{**arguments, **changes})  # type: ignore[arg-type]
+
+
+def test_committed_consolidate_secondary_predecessor_is_exact_authority() -> None:
+    revision, records, expectation = _consolidate_records()
+    authority, reasons = _load(revision, records, expectation)
+    assert authority is not None, reasons
+    assert revision.formation_stage == "secondary"
+    assert authority.receipt["operation_kind"] == CONSOLIDATE_OPERATION_FAMILY
+    assert authority.authorization_record["from_formation_stage"] == "primary"
+    assert authority.authorization_record["to_formation_stage"] == "secondary"
+
+
+def test_consolidate_requires_the_exact_consolidation_policy_revision() -> None:
+    revision, records, expectation = _consolidate_records(
+        policy_revision=LIFECYCLE_POLICY_REVISION
+    )
+    authority, reasons = _load(revision, records, expectation)
+    assert authority is None
+    assert reasons == ("subjective_mem_lifecycle_current_receipt_not_exact",)
+
+
+def test_consolidate_requires_exact_policy_authorization_and_reason() -> None:
+    for changes in (
+        {"authorization_class": "user_management"},
+        {"reason_category": "user_requested_consolidation"},
+    ):
+        revision, records, expectation = _consolidate_records(**changes)
+        authority, reasons = _load(revision, records, expectation)
+        assert authority is None, changes
+        assert reasons == ("subjective_mem_lifecycle_current_receipt_not_exact",)
+
+
+def test_consolidate_accepts_only_the_primary_to_secondary_stage_change() -> None:
+    for changes in (
+        {"from_stage": "secondary", "to_stage": "secondary"},
+        {"from_stage": "primary", "to_stage": "primary"},
+    ):
+        revision, records, expectation = _consolidate_records(**changes)
+        authority, reasons = _load(revision, records, expectation)
+        assert authority is None, changes
+        assert reasons == (
+            "subjective_mem_lifecycle_predecessor_authority_not_exact",
+        )
+
+
+def test_formation_stage_change_is_rejected_for_every_other_operation() -> None:
+    directions = {
+        "correct": ("active", "active"),
+        "forget": ("active", "hidden"),
+        "pin": ("active", "pinned"),
+        "unpin": ("pinned", "active"),
+        "restore": ("hidden", "active"),
+    }
+    for operation, (from_state, to_state) in directions.items():
+        revision, records, expectation = _lifecycle_records(
+            operation=operation,
+            from_state=from_state,
+            to_state=to_state,
+            from_stage="primary",
+            to_stage="secondary",
+        )
+        authority, reasons = _load(revision, records, expectation)
+        assert authority is None, operation
+        assert reasons == (
+            "subjective_mem_lifecycle_predecessor_authority_not_exact",
+        )
+
+
+def test_secondary_predecessor_is_accepted_by_later_lifecycle_operations() -> None:
+    for operation, (from_state, to_state) in {
+        "correct": ("active", "active"),
+        "forget": ("active", "hidden"),
+        "pin": ("active", "pinned"),
+    }.items():
+        revision, records, expectation = _lifecycle_records(
+            operation=operation,
+            from_state=from_state,
+            to_state=to_state,
+            from_stage="secondary",
+        )
+        authority, reasons = _load(revision, records, expectation)
+        assert authority is not None, (operation, reasons)
+        assert revision.formation_stage == "secondary"
+        assert authority.authorization_record["to_formation_stage"] == "secondary"
+
+
 def test_shared_authority_has_no_operation_runtime_dependency() -> None:
     source = inspect.getsource(authority_module)
     assert "subjective_mem_lifecycle_runtime import" not in source
     assert "subjective_mem_forget_runtime import" not in source
     assert "subjective_mem_pin_runtime import" not in source
     assert "subjective_mem_restore_runtime import" not in source
+    assert "subjective_mem_consolidate_runtime" not in source

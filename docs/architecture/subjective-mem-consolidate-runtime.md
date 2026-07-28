@@ -114,7 +114,8 @@ The proposal binds:
 
 - exact memory ID and current active Primary revision;
 - exact singleton selector ID and digest;
-- exact current lifecycle receipt and transition authority;
+- exact current lifecycle receipt ID and digest;
+- exact current predecessor authorization kind, ID, and digest;
 - exact page, relative path, current block, and page digest;
 - exact memory kind and `formation_stage: primary`;
 - exact scope-binding, formation-snapshot, and strength digests;
@@ -126,6 +127,36 @@ The proposal binds:
   mutation.
 
 Changing any expected authority binding changes the proposal input digest.
+
+An active Primary revision may still be revision 1, whose exact authority is the
+ST-1 formation decision rather than a lifecycle transition. Consolidate therefore
+binds the generic current authorization the shared predecessor authority already
+selects, and never requires an unrelated prior lifecycle operation:
+
+```text
+expected_current_authorization_kind
+expected_current_authorization_id
+expected_current_authorization_digest
+```
+
+The accepted kinds are exactly the two the shared authority returns:
+
+```text
+revision 1                        subjective_mem_decision
+later committed lifecycle revision subjective_mem_lifecycle_transition
+```
+
+The runtime compares all three to the exact loaded predecessor authority and to
+the canonical digest of its exact authorization record. No transition-only alias,
+compatibility fallback, dual field name, or precedence rule exists.
+
+`authorization_id` on the proposal is a different value: it is the new Consolidate
+operation's RelayMEM policy authorization ID. It is bound and persisted through
+the existing lifecycle intent, transition, and receipt family together with the
+authorization class, reason category, and exact policy revision. No new durable
+policy-authorization record schema is introduced. The proposal must carry exactly
+`CONSOLIDATE_POLICY_REVISION`; a well-formed but different policy revision fails
+closed.
 
 This architecture does not define how a policy discovers or prioritizes
 candidates. No usage threshold, age threshold, retrieval count, embedding,
@@ -177,6 +208,28 @@ committed lifecycle receipt and transition validation. LC-1E extends that owner
 to accept a valid committed `consolidate` predecessor exactly once and removes
 any operation-local allowlist that would otherwise duplicate the semantic. No
 fallback, compatibility wrapper, or second receipt validator is added.
+
+That owner replaces its lifecycle-direction table with one bounded operation
+specification per accepted operation:
+
+```text
+correct      active -> active     stage preserved   lifecycle policy revision
+forget       active -> hidden     stage preserved   lifecycle policy revision
+pin          active -> pinned     stage preserved   lifecycle policy revision
+unpin        pinned -> active     stage preserved   lifecycle policy revision
+restore      hidden -> active     stage preserved   lifecycle policy revision
+consolidate  active -> active     primary -> secondary
+             relaymem_policy / policy_authorized_consolidation
+             consolidation policy revision
+```
+
+An operation that does not name a formation-stage change still requires both ends
+of its committed transition to equal the exact predecessor stage, so no other
+operation can widen the stage boundary. A named change is compared against both
+the specification and the exact committed revision, so only Consolidate may have
+produced a Secondary revision. Authorization class and reason category are bound
+here only for Consolidate; every other operation keeps its owner-bounded
+authority unchanged.
 
 Operation owners retain their transition direction, proposal, reason,
 authorization, payload, and successor rules. Consolidate never broadens another
@@ -258,6 +311,38 @@ LC-1E uses the existing lifecycle gate and remains default-off, dry-run-capable,
 apply-enabled only with ST-1 secure apply, single-host, POSIX-apply-only,
 caller-invoked, and unwired from ordinary Retrieval, API, UI, queue, worker, and
 scheduler paths.
+
+The gate is the exact existing configuration triple, not a single boolean. Both
+the lifecycle gate and the lower Subjective MEM commit gate are read as
+`(enabled, dry_run_only, apply_enabled)` and must be one of exactly:
+
+```text
+disabled  (False, True,  False)
+dry-run   (True,  True,  False)
+apply     (True,  False, True)
+```
+
+Enforcement is bounded and operation-local. LC-1E introduces no configuration
+field and no general-purpose gate resolver:
+
+- lifecycle `disabled` returns a bounded `disabled` outcome for any caller mode,
+  and is distinct from dry-run;
+- lifecycle `dry-run` with a caller that does not request apply returns
+  content-free dry-run readiness;
+- lifecycle `dry-run` with a caller that requests apply fails closed: a caller
+  can never escalate a configured dry-run mode;
+- canonical publication requires the lifecycle triple to be exactly `apply`, the
+  lower commit triple to be exactly `apply`, and the caller to request apply;
+- lifecycle `apply` with the lower commit gate `disabled` or `dry-run` fails
+  closed, because lower commit apply authority is mandatory for lifecycle apply;
+- lifecycle `apply` with a caller that does not request apply stays content-free
+  dry-run;
+- non-boolean values, unsupported triples, and any lifecycle/commit dependency
+  mismatch fail closed before the first durable read.
+
+Every rejected and every non-apply path writes no post-image artifact, lifecycle
+claim, intent, transition, receipt, idempotency result, selector event, or
+canonical page byte.
 
 ## Implementation budget
 
