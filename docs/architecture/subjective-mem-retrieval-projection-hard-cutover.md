@@ -532,51 +532,267 @@ RT-1 is implemented in bounded order.
 Each slice remains a separate atomic PR or explicitly coordinated atomic set. A
 later slice cannot claim completion of an earlier missing authority.
 
-## First implementation budget
+## Authorized implementation budget
 
-RT-1A is implemented. The next authorized implementation is RT-1B only.
+### Accepted position
 
-Expected bounded paths are:
+RT-1A contract and projection foundation is complete. RT-1B projection builder
+and deterministic rebuild is complete.
+
+RT-1C shadow adapter, grounding handoff, and usage ledger alone is the next
+authorized implementation.
+
+RT-1D hard cutover, Primary retirement, and authority transfer remain
+unauthorized and not started.
+
+This section authorizes an implementation budget. It does not claim RT-1C is
+implemented, started, or validated; `../PROJECT_STATUS.md` remains the only
+current-status authority.
+
+Four accepted boundaries survive RT-1C unchanged:
+
+- Primary MEM remains the sole served ordinary memory and Retrieval authority.
+- RT-1B remains disposable, default-off, and unwired from ordinary Retrieval.
+- ST-1 revision-1 `create` still produces a legacy unbound current selector that
+  RT-1B rejects fail-closed, so those revision-1 memories stay outside every
+  RT-1C selection until a later accepted slice publishes authority-bound
+  selectors.
+- E1-R4 remains the grounded-recall response-policy owner.
+
+### RT-1C bounded scope
+
+#### 1. Exact projection selection
+
+- consume exactly one verified and supported projection generation;
+- select only exact-current, exact-scope, eligible Subjective revisions under the
+  accepted eligibility conjunction above;
+- enforce the request's candidate limit and token budget;
+- fail closed on generation, manifest, row, request, scope, policy, digest,
+  lifecycle, mutation, currentness, or authority disagreement;
+- never broaden the query, relax a scope partition, or bypass lifecycle
+  eligibility to fill an empty result.
+
+#### 2. Shadow-only adapter
+
+- RT-1C runs the Subjective path in explicit shadow mode only, and RT-1D alone
+  may serve it;
+- never inject shadow evidence into the served RelayCTX or Main-LLM request;
+- never combine Primary and Subjective runtime-private content;
+- never use either path as a fallback for the other, including on an empty
+  result;
+- Primary remains the only served ordinary path for the whole slice.
+
+#### 3. Runtime-private grounding handoff
+
+- define the bounded runtime-private handoff required by the existing
+  RelayCTX/E1-R4 grounding policy, carrying only selected Subjective content and
+  opaque lineage;
+- keep E1-R4 as the grounding-policy owner and change no grounding behavior;
+- do not rewrite the visible response;
+- expose no private handoff content through public diagnostics;
+- fail closed rather than admitting a mismatched, oversized, or incomplete
+  handoff.
+
+#### 4. Deterministic characterization
+
+- compare Primary served behavior with Subjective shadow behavior without
+  combining their results;
+- keep comparison output content-free and bounded;
+- never compare raw memory prose and never assume Primary and Subjective logical
+  identities correspond;
+- cover attempt class, candidate/selected counts, exclusion-reason classes,
+  empty/non-empty agreement, handoff-shape class, token-budget class,
+  deterministic replay, latency class, projection rebuild equivalence, and
+  leakage outcomes.
+
+#### 5. Durable usage ledger
+
+- persist content-free events only for exact Subjective selections actually
+  admitted to a backend-bound grounded context;
+- write no event for shadow comparison, candidate consideration, exclusion,
+  ranking consideration, or public projection;
+- finalize the event durably before releasing the corresponding private evidence
+  handoff;
+- on finalization failure, admit no Subjective evidence and return a bounded
+  fail-closed result with no fallback;
+- enforce deterministic idempotency for the same request and exact selected row;
+- preserve usage events across projection deletion and deterministic rebuild;
+- never make usage an eligibility, truth, lifecycle, disclosure, formation,
+  reinforcement, or consolidation authority.
+
+### RT-1C invariants
+
+- exactly one served ordinary memory authority: Primary MEM;
+- exactly one Subjective projection generation per selection;
+- exactly one canonical current selector authority;
+- no projection repair and no canonical-memory mutation;
+- no Primary fallback from Subjective results;
+- no Subjective fallback from Primary results;
+- no dual-read serving;
+- no ordinary route injection from shadow mode;
+- no hidden, held, superseded, purged, prepared, recovery-required, corrupt,
+  prior, dangling, stale, conflicting, cross-character, or cross-scope candidate
+  admission;
+- no public raw query, memory prose, subjective meaning, protected evidence,
+  prompt content, private path, unrestricted identifier, selector digest,
+  receipt digest, authorization lineage, or usage-correlation leakage;
+- durable usage finalization precedes private evidence admission;
+- failed usage finalization produces no handoff and no fallback;
+- deterministic replay for identical supported inputs;
+- all validation and CI remain repository-content read-only.
+
+### Expected implementation paths
+
+The bounded path budget for the future RT-1C implementation is:
 
 ```text
-relaylm/subjective_mem_retrieval_projection.py         projection derivation owner
-relaylm/subjective_mem_retrieval_projection_store.py   disposable bundle store
-tests/test_subjective_mem_retrieval_projection.py      focused fixtures
-relaylm/subjective_mem_lifecycle_authority.py          committed-authority reuse
-tests/test_subjective_mem_lifecycle_authority.py       shared-authority fixtures
+relaylm/subjective_mem_retrieval_selection.py       exact selection, runtime-private
+                                                    handoff, and shadow characterization owner
+relaylm/subjective_mem_retrieval_usage_ledger.py    durable content-free usage-event owner
+tests/test_subjective_mem_retrieval_selection.py    focused selection, handoff, and
+                                                    characterization fixtures
+tests/test_subjective_mem_retrieval_usage_ledger.py focused durable idempotency, ordering,
+                                                    and finalization-failure fixtures
 docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md
 ```
 
-Derivation and disposable persistence are separate owners with one-way
-dependency, because a single file accumulated two unrelated reasons to change
-and crossed the structural size trigger.
+Selection and durable usage are separate owners with a one-way dependency:
+selection is a pure, rebuildable read over one projection generation, while the
+usage ledger is durable operations authority that outlives the disposable
+projection. Merging them would put a disposable derived read and a durable
+non-rebuildable write in one file with two unrelated reasons to change.
 
-A small existing smoke registration path may be added only if P1 proves generic
-test discovery cannot cover the slice. RT-1B must not modify
-`relaylm/subjective_mem_retrieval.py` unless an exact root-cause contract
-omission is demonstrated. Neither slice may modify:
+The selection owner carries the temporary characterization surface because
+shadow characterization is a content-free comparison over two already-bounded
+result projections, not a third semantic authority. If P1 finds that
+characterization cannot stay bounded inside that owner, return to P1 for an
+explicit architecture split rather than silently adding a third production file.
+
+Two conditional paths are permitted only on demonstrated need:
+
+```text
+relaylm/subjective_mem_retrieval.py                 only when an exact missing RT-1C
+tests/test_subjective_mem_retrieval_contract.py     contract identity is demonstrated
+scripts/relaylm_ci_consolidated_smoke.py            at most one registration entry, only when
+                                                    focused pytest discovery cannot validate
+                                                    the request-path boundary
+```
+
+The storage-neutral contract already owns the retrieval request, projection row
+and manifest, closed exclusion vocabulary, bounded selection, and content-free
+usage-event identities, including the usage idempotency slot and result
+identity. P1 must therefore demonstrate the exact absent identity — for example
+a bounded runtime-private handoff shape or a content-free characterization
+projection — before touching it, and must add the matching focused fixtures in
+the same slice. A milestone-only or wrapper-only name is not an acceptable
+substitute for either responsibility name above.
+
+### Not authorized for modification
+
+RT-1C must not modify:
 
 - `relaylm/relaymem_primary_recall.py`;
 - `relaylm/relaymem_retrieval.py`;
-- request routing or RelayCTX injection;
+- ordinary request routing;
+- ordinary RelayCTX injection;
 - E1-R4 grounding behavior;
-- Subjective lifecycle runtimes or publication engine;
-- config, API, UI, workflow YAML, scheduler, worker, queue, or Primary writer
-  modules;
-- project status or cutover state.
+- Primary MEM lifecycle, reader, writer, fallback, or precedence;
+- Subjective lifecycle runtimes;
+- canonical publication;
+- API, UI, configuration, workflow YAML, scheduler, worker, queue, daemon, or
+  background polling surfaces;
+- `docs/PROJECT_STATUS.md`;
+- `docs/architecture/project_execution_plan.md`.
 
-Review triggers return the work to P1:
+If P1 inspection proves that one of the first four read-only integration
+surfaces must later receive a minimal RT-1C hook, record it as a review-trigger
+exception that returns the work to P1 for an explicit authority decision. It is
+never silently authorized inside the implementation slice.
 
-- materially more than three ordinary paths;
-- roughly 200 added lines to an existing file;
-- a new file above roughly 700 lines;
-- a function above roughly 80 lines;
-- production logic duplicated in tests;
-- an implementation-specific cache schema introduced before RT-1B;
-- any ordinary request-path wiring, Primary fallback, dual authority, or writer
+### Required negative cases
+
+- unsupported or mixed projection generation;
+- request/manifest generation mismatch;
+- stale, missing, duplicate, dangling, or conflicting projection row or current
+  selector;
+- wrong character, workspace, participant, relationship, scene, or scope;
+- hidden, held, superseded, purged, prepared, recovery-required, corrupt, and
+  prior revisions;
+- unresolved intent;
+- receipt, authorization, page, block, selector, scope, schema, renderer,
+  policy, or platform mismatch;
+- candidate-limit and token-budget overflow;
+- shadow result attempted as ordinary served evidence;
+- Primary/Subjective content combination;
+- cross-authority empty-result fallback;
+- usage event attempted for a shadow, excluded, or merely considered candidate;
+- duplicate usage event for the same exact request and selection;
+- usage finalization failure followed by a handoff;
+- public diagnostics containing content, paths, raw query, or private IDs;
+- non-deterministic replay for identical supported inputs.
+
+### Compatibility owner and removal gate
+
+- Primary MEM and its current canonical recall adapter remain the served-path
+  and characterization-source owners until RT-1D.
+- E1-R4 remains the grounding-policy owner.
+- The RT-1C shadow adapter owns only temporary Subjective characterization and
+  private handoff construction.
+- The durable usage ledger is durable operations authority; it is not deleted
+  with the disposable projection and survives its rebuild.
+- The temporary Primary-vs-Subjective characterization surface and every
+  shadow-only wiring point must be removed or disabled as part of the RT-1D
+  one-authority transfer, after exact post-transfer validation.
+- RT-1C must not introduce a permanent compatibility layer, fallback,
+  precedence rule, or second semantic authority.
+
+### Structural-growth review triggers
+
+These return the future implementation to P1:
+
+- more than the documented bounded path set;
+- more than two new production responsibility files without an architecture
+  split;
+- roughly more than 200 added lines in one existing file;
+- a new file growing beyond roughly 700 lines;
+- a function growing beyond roughly 80 lines;
+- production behavior duplicated in tests;
+- a wrapper or adapter without an accepted current consumer and removal gate;
+- a new configuration, API, UI, registry, workflow, scheduler, worker, queue,
+  daemon, or polling surface;
+- ordinary request-path wiring;
+- a Primary fallback, precedence, reader, writer, lifecycle, or authority
   change;
-- temporary patch scripts, generated repair files, Base64 fragments, partial
-  assembly, or compatibility aliases.
+- any RT-1D hard-cutover behavior;
+- temporary patch scripts, Base64 fragments, partial assembly, placeholder or
+  noop files, generated repair files, or repository construction helpers.
+
+A trigger is not an automatic rejection. P1 must either reduce or split the
+design along authority boundaries, or record why the current structure is
+simpler and safer.
+
+### RT-1C validation matrix
+
+The RT-1C implementation must prove:
+
+- exact active and pinned current-revision inclusion;
+- exclusion of every prohibited lifecycle, mutation, currentness, and scope case;
+- one-generation and exact-manifest enforcement;
+- deterministic bounded selection and token-budget enforcement;
+- content-free deterministic characterization;
+- no runtime-private content combination between the two paths;
+- private grounding-handoff shape validation;
+- no public query, content, path, or private-identifier leakage;
+- usage-event exact identity and idempotency;
+- no usage event for shadow, excluded, or considered-only rows;
+- durable event finalization before handoff;
+- finalization failure means no Subjective handoff;
+- usage ledger survives projection deletion and deterministic rebuild;
+- Primary remains the sole served ordinary authority;
+- no ordinary request-path behavior change;
+- no cross-authority empty-result fallback;
+- unsupported schema, platform, and policy refusal;
+- complete main-relative diff and temporary-artifact review.
 
 ## Validation matrix
 
