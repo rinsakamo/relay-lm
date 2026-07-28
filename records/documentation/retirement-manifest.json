@@ -201,7 +201,7 @@
     },
     {
       "old_path": "docs/evidence/migrations/README.md",
-      "last_live_commit": "1c7dc83256c402e6c6d36ec7898b82aaec6ac660",
+      "last_live_commit": "e8148093f7e6f3c7768ba17e19c9425af22cfc70",
       "old_blob_sha": "f1008ba0300c8aecdc2246cbc45e977b1c5e6234",
       "removed_by_pr": 775,
       "replacement_paths": [
@@ -212,7 +212,7 @@
     },
     {
       "old_path": "docs/evidence/migrations/cutover-1b-mvp-snapshot-deletions.tsv",
-      "last_live_commit": "1c7dc83256c402e6c6d36ec7898b82aaec6ac660",
+      "last_live_commit": "e8148093f7e6f3c7768ba17e19c9425af22cfc70",
       "old_blob_sha": "029a35fabbc29961e3c208da504060356948c93a",
       "removed_by_pr": 775,
       "replacement_paths": [],
@@ -221,7 +221,7 @@
     },
     {
       "old_path": "docs/evidence/migrations/cutover-1c2-early-mvp-smokes.tsv",
-      "last_live_commit": "1c7dc83256c402e6c6d36ec7898b82aaec6ac660",
+      "last_live_commit": "e8148093f7e6f3c7768ba17e19c9425af22cfc70",
       "old_blob_sha": "c0ebdfeac75b62fac858b6431c48ac4a15df888d",
       "removed_by_pr": 775,
       "replacement_paths": [],
@@ -230,7 +230,7 @@
     },
     {
       "old_path": "docs/evidence/migrations/cutover-1c3-mvp2-compile-smokes.tsv",
-      "last_live_commit": "1c7dc83256c402e6c6d36ec7898b82aaec6ac660",
+      "last_live_commit": "e8148093f7e6f3c7768ba17e19c9425af22cfc70",
       "old_blob_sha": "9b1b87a20d0e8f3b15716de15dd6293f7e73458c",
       "removed_by_pr": 775,
       "replacement_paths": [],
@@ -360,7 +360,7 @@
     },
     {
       "old_path": "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
-      "last_live_commit": "1c7dc83256c402e6c6d36ec7898b82aaec6ac660",
+      "last_live_commit": "e8148093f7e6f3c7768ba17e19c9425af22cfc70",
       "old_blob_sha": "ec70e85aff2d34255545ad6c8ffb17c849abc302",
       "removed_by_pr": 775,
       "replacement_paths": [],
