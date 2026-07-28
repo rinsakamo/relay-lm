@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - "scripts/relaylm_mvp_eval_runner*.py"
+      - "scripts/relaylm_mvp_completion_report_pr_link_smoke.py"
       - "docs/evidence/implementation/mvp_eval_runner_completion_report.md"
       - ".github/workflows/mvp-eval-runner.yml"
       - "pyproject.toml"
@@ -13,6 +14,7 @@ on:
       - main
     paths:
       - "scripts/relaylm_mvp_eval_runner*.py"
+      - "scripts/relaylm_mvp_completion_report_pr_link_smoke.py"
       - "docs/evidence/implementation/mvp_eval_runner_completion_report.md"
       - ".github/workflows/mvp-eval-runner.yml"
       - "pyproject.toml"
@@ -35,7 +37,7 @@ jobs:
         run: PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner_security_smoke.py
       - name: Static runner summary
         run: PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner.py --mode static --json-out runtime/eval/mvp_eval_static_latest.json
-      - name: Completion report smoke
-        run: PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/mvp_eval_runner_completion_report.md
+      - name: Completion report source PR link smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
       - name: Docs link check
         run: PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py

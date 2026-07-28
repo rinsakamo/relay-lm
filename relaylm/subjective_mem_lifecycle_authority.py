@@ -4,6 +4,14 @@ This module is storage-neutral and operation-neutral.  It validates the one
 committed receipt and authorization record that make an exact canonical revision
 eligible to be the predecessor of a later lifecycle operation.  Operation owners
 retain proposal, transition-direction, successor, and publication authority.
+
+``validate_subjective_mem_committed_receipt``,
+``subjective_mem_committed_authorization_ref``, and
+``validate_subjective_mem_committed_authorization`` are the storage-neutral
+validation stages.  ``load_subjective_mem_predecessor_authority_locked`` is the
+Evidence-store-bound reader that sequences them; a caller that already holds the
+exact records — such as the RT-1B retrieval projection builder — calls the same
+stages directly so exactly one committed-authority evaluator exists.
 """
 from __future__ import annotations
 
@@ -151,7 +159,7 @@ def load_subjective_mem_predecessor_authority_locked(
         record_kind=receipt_kind,
         record_id=expectation.receipt_id,
     )
-    reasons = _receipt_reasons(
+    reasons = validate_subjective_mem_committed_receipt(
         receipt=receipt,
         evidence_space_id=evidence_space_id,
         character_id=character_authority.character_id,
@@ -161,7 +169,7 @@ def load_subjective_mem_predecessor_authority_locked(
     if reasons:
         return None, reasons
     assert isinstance(receipt, dict)
-    authorization_kind, authorization_id = _authorization_identity(
+    authorization_kind, authorization_id = subjective_mem_committed_authorization_ref(
         predecessor=predecessor,
         receipt=receipt,
     )
@@ -171,7 +179,7 @@ def load_subjective_mem_predecessor_authority_locked(
         record_kind=authorization_kind,
         record_id=authorization_id,
     )
-    reasons = _authorization_reasons(
+    reasons = validate_subjective_mem_committed_authorization(
         authorization=authorization,
         receipt=receipt,
         predecessor=predecessor,
@@ -227,7 +235,7 @@ def _evidence_space_descriptor(
     return raw, ()
 
 
-def _receipt_reasons(
+def validate_subjective_mem_committed_receipt(
     *,
     receipt: object,
     evidence_space_id: str,
@@ -235,6 +243,8 @@ def _receipt_reasons(
     predecessor: SubjectiveMemRevision,
     expectation: SubjectiveMemPredecessorExpectation,
 ) -> tuple[str, ...]:
+    """Return the exactness reasons for one committed receipt, storage-neutrally."""
+
     if not _self_digest_exact(receipt, "receipt_digest"):
         return ("subjective_mem_lifecycle_current_receipt_missing_or_corrupt",)
     assert isinstance(receipt, dict)
@@ -323,11 +333,13 @@ def _lifecycle_receipt_exact(
     )
 
 
-def _authorization_identity(
+def subjective_mem_committed_authorization_ref(
     *,
     predecessor: SubjectiveMemRevision,
     receipt: dict[str, object],
 ) -> tuple[str, str | None]:
+    """Return the authorization record kind and identity the receipt names."""
+
     if predecessor.memory_revision == 1:
         identifier = receipt.get("decision_id")
         return (
@@ -341,12 +353,14 @@ def _authorization_identity(
     )
 
 
-def _authorization_reasons(
+def validate_subjective_mem_committed_authorization(
     *,
     authorization: object,
     receipt: dict[str, object],
     predecessor: SubjectiveMemRevision,
 ) -> tuple[str, ...]:
+    """Return the exactness reasons for the authorizing decision or transition."""
+
     if not isinstance(authorization, dict):
         return ("subjective_mem_lifecycle_predecessor_authority_missing",)
     if predecessor.memory_revision == 1:

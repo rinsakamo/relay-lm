@@ -70,7 +70,6 @@ PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_concurre
 PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_security_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_ui_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
-PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/i4f_completion_report.md
 PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
 ```
 
