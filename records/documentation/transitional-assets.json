@@ -38,7 +38,7 @@
       "owner": "documentation",
       "protected_boundary": "Commit-fixed legacy classification, normative candidate extraction, and link-dependency evidence still referenced by unfinished source families.",
       "current_consumers": [
-        "bounded D2-D6 source-family synthesis and retirement reviews"
+        "D6 retirement review only"
       ],
       "removal_gate": "All remaining sources are governed by the canonical active graph, generic normative extraction, generic link checks, and the retirement manifest.",
       "replacement_validation": [
