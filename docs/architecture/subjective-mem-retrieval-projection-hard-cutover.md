@@ -1,5 +1,5 @@
 ---
-relaylm_doc_type: architecture_target
+relaylm_doc_type: subsystem_architecture
 relaylm_authority: rt1_subjective_mem_retrieval_projection_and_hard_cutover
 relaylm_status: target
 relaylm_volatility: medium
@@ -18,6 +18,12 @@ relaylm_not_authoritative_for:
   - deployment approval, default-on policy, backup, restore, or rollback procedure
   - multi-host writer coordination
 relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_lifecycle: accepted_target
+relaylm_primary_consumers:
+  - Subjective MEM retrieval and projection implementers
+  - RelayCTX and grounded-recall integration reviewers
+  - Primary-to-Subjective cutover and retirement reviewers
+relaylm_authority_level: subsystem
 relaylm_decision_source:
   - ../adr/0003-subjective-mem-direction.md
   - ../adr/0005-subjective-mem-storage-authority.md
