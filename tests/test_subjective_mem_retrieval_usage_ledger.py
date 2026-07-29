@@ -11,6 +11,7 @@ import pytest
 import relaylm.subjective_mem_retrieval_usage_ledger as ledger_owner
 from relaylm.evidence_common import utf8_text_digest
 from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreResult
+from relaylm.relaymem_grounded_recall_response import build_grounded_recall_context
 from relaylm.subjective_mem_retrieval import (
     RETRIEVAL_USAGE_EVENT_KIND,
     SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
@@ -27,11 +28,13 @@ from relaylm.subjective_mem_retrieval_projection_store import (
 )
 from relaylm.subjective_mem_retrieval_selection import (
     SubjectiveMemRetrievalContentBinding,
+    SubjectiveMemRetrievalPreparedHandoff,
     select_subjective_mem_retrieval_handoff,
 )
 from relaylm.subjective_mem_retrieval_usage_ledger import (
     SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND,
     SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND,
+    SubjectiveMemRetrievalAdmittedHandoff,
     finalize_subjective_mem_retrieval_usage,
 )
 
@@ -207,14 +210,75 @@ def store(tmp_path: Path) -> EvidenceRecordStore:
 def test_usage_events_are_finalized_atomically_before_the_handoff_is_admitted(store) -> None:
     first, second = _row(), _other_row()
     handoff, bound = _prepared(first, second)
-    assert handoff.admitted_grounding_evidence()[0] is None
+    assert type(handoff) is SubjectiveMemRetrievalPreparedHandoff
 
     admitted, outcome = finalize_subjective_mem_retrieval_usage(**_arguments(store, handoff, bound))
     assert outcome.status == "finalized" and outcome.event_count == 2 and outcome.admitted is True
-    assert admitted is not None and admitted.admitted is True
-    assert admitted.admitted_grounding_evidence() == (handoff.evidence_items, ())
+    assert type(admitted) is SubjectiveMemRetrievalAdmittedHandoff
+    assert admitted.finalization_status == "finalized"
+    assert admitted.release_grounding_evidence() == tuple(
+        item.to_grounding_dict() for item in handoff.private_items
+    )
     assert len(_record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND)) == 2
     assert len(_record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND)) == 2
+
+
+def test_only_an_admitted_handoff_releases_fresh_dictionaries_for_the_grounding_owner(store) -> None:
+    first, second = _row(), _other_row(lifecycle_state="pinned")
+    handoff, bound = _prepared(first, second)
+    admitted, outcome = finalize_subjective_mem_retrieval_usage(**_arguments(store, handoff, bound))
+    assert outcome.status == "finalized" and admitted is not None
+
+    released = admitted.release_grounding_evidence()
+    assert all(type(item) is dict for item in released)
+    result = build_grounded_recall_context(
+        retrieved_memories=list(released), query_text="", character_id="char1"
+    )
+    assert result.status == "grounding_applied"
+    log = result.to_log_dict()
+    assert log["grounded_item_count"] == 2 and log["excluded_evidence_count"] == 0
+
+    released[0]["fact_text"] = "tampered"
+    again = admitted.release_grounding_evidence()
+    assert again[0]["fact_text"] == CONTENT and again[0] is not released[0]
+
+
+@pytest.mark.parametrize(
+    ("tamper", "reason"),
+    [
+        ("prose", "subjective_mem_retrieval_private_item_content_digest_mismatch"),
+        ("digest", "subjective_mem_retrieval_private_item_content_digest_mismatch"),
+        ("identity", "subjective_mem_retrieval_private_item_row_mismatch"),
+        ("lifecycle", "subjective_mem_retrieval_private_item_row_mismatch"),
+        ("provenance", "subjective_mem_retrieval_private_item_row_mismatch"),
+        ("row_digest", "subjective_mem_retrieval_usage_private_item_order_mismatch"),
+        ("reorder", "subjective_mem_retrieval_usage_private_item_order_mismatch"),
+        ("dropped", "subjective_mem_retrieval_usage_private_item_count_mismatch"),
+        ("duplicated", "subjective_mem_retrieval_usage_private_item_count_mismatch"),
+    ],
+)
+def test_tampered_private_evidence_is_refused_before_any_durable_write(store, tamper, reason) -> None:
+    first, second = _row(), _other_row()
+    handoff, bound = _prepared(first, second)
+    items = handoff.private_items
+    tampered = {
+        "prose": (replace(items[0], grounded_content="forged prose"), items[1]),
+        "digest": (replace(items[0], grounded_content_digest=D2), items[1]),
+        "identity": (replace(items[0], memory_id="memory9"), items[1]),
+        "lifecycle": (replace(items[0], lifecycle_state="pinned", pinned=True), items[1]),
+        "provenance": (replace(items[0], provenance_source="user_assertion"), items[1]),
+        "row_digest": (replace(items[0], row_digest=items[1].row_digest), items[1]),
+        "reorder": (items[1], items[0]),
+        "dropped": (items[0],),
+        "duplicated": (items[0], items[0], items[1]),
+    }[tamper]
+    admitted, outcome = finalize_subjective_mem_retrieval_usage(
+        **_arguments(store, replace(handoff, private_items=tampered), bound)
+    )
+    assert admitted is None and outcome.status == "refused"
+    assert reason in outcome.blocked_reason_classes
+    assert _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND) == []
+    assert _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND) == []
 
 
 def test_persisted_usage_event_has_the_exact_contract_identity_and_is_content_free(store) -> None:
@@ -254,7 +318,8 @@ def test_the_same_exact_usage_slot_is_idempotent_without_an_extra_event(store) -
     admitted, second = finalize_subjective_mem_retrieval_usage(**arguments)
     assert second.status == "duplicate_finalized"
     assert (second.event_count, second.duplicate_count) == (0, 2)
-    assert admitted is not None and admitted.admitted is True
+    assert type(admitted) is SubjectiveMemRetrievalAdmittedHandoff
+    assert admitted.finalization_status == "duplicate_finalized"
     assert _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND) == before
 
 
@@ -272,36 +337,80 @@ def test_a_divergent_event_in_the_same_slot_is_an_integrity_conflict(store) -> N
     assert _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND) == before
 
 
-def test_a_partial_existing_durable_result_fails_closed(store) -> None:
+def _records(store: EvidenceRecordStore, record_kind: str) -> list[Path]:
+    return sorted((Path(store.root) / SPACE / "records" / record_kind).glob("*.json"))
+
+
+@pytest.mark.parametrize(
+    ("damage", "reason"),
+    [
+        ("result_present_event_missing", "subjective_mem_retrieval_usage_pair_incomplete"),
+        ("event_present_result_missing", "subjective_mem_retrieval_usage_pair_incomplete"),
+        ("exact_result_divergent_event", "subjective_mem_retrieval_usage_slot_integrity_conflict"),
+        ("exact_event_divergent_result", "subjective_mem_retrieval_usage_slot_integrity_conflict"),
+    ],
+)
+def test_an_incomplete_or_divergent_event_result_pair_fails_closed(store, damage, reason) -> None:
+    handoff, bound = _prepared(_row())
+    arguments = _arguments(store, handoff, bound)
+    _admitted, outcome = finalize_subjective_mem_retrieval_usage(**arguments)
+    assert outcome.status == "finalized"
+
+    events = _records(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND)
+    results = _records(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND)
+    if damage == "result_present_event_missing":
+        events[0].unlink()
+    elif damage == "event_present_result_missing":
+        results[0].unlink()
+    elif damage == "exact_result_divergent_event":
+        events[0].write_text('{"schema": "relaylm.forged.v1"}', encoding="utf-8")
+    else:
+        results[0].write_text('{"schema": "relaylm.forged.v1"}', encoding="utf-8")
+    before = (
+        [path.name for path in _records(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND)],
+        [path.name for path in _records(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND)],
+    )
+
+    admitted, conflict = finalize_subjective_mem_retrieval_usage(**arguments)
+    assert admitted is None and conflict.status == "conflict"
+    assert conflict.blocked_reason_classes == (reason,)
+    assert before == (
+        [path.name for path in _records(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND)],
+        [path.name for path in _records(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND)],
+    )
+
+
+def test_one_exact_pair_beside_one_absent_pair_fails_closed(store) -> None:
     first, second = _row(), _other_row()
     handoff, bound = _prepared(first, second)
     arguments = _arguments(store, handoff, bound)
     _admitted, outcome = finalize_subjective_mem_retrieval_usage(**arguments)
     assert outcome.status == "finalized"
 
-    results = Path(store.root) / SPACE / "records" / SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND
-    sorted(results.glob("*.json"))[0].unlink()
+    _records(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND)[0].unlink()
+    _records(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND)[0].unlink()
 
     admitted, partial = finalize_subjective_mem_retrieval_usage(**arguments)
     assert admitted is None and partial.status == "conflict"
-    assert "subjective_mem_retrieval_usage_partial_existing_result" in partial.blocked_reason_classes
+    assert partial.blocked_reason_classes == (
+        "subjective_mem_retrieval_usage_partial_existing_result",
+    )
+    assert len(_records(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND)) == 1
 
 
 @pytest.mark.parametrize(
     ("handoff_change", "reason"),
     [
         ("shadow", "subjective_mem_retrieval_usage_shadow_not_admissible"),
-        ("admitted", "subjective_mem_retrieval_usage_handoff_already_admitted"),
+        ("emptied", "subjective_mem_retrieval_usage_selection_empty"),
     ],
 )
-def test_no_usage_event_is_written_for_a_shadow_or_already_admitted_handoff(
+def test_no_usage_event_is_written_for_a_shadow_or_emptied_handoff(
     store, handoff_change, reason
 ) -> None:
-    if handoff_change == "shadow":
-        handoff, bound = _prepared(_row(), shadow=True)
-    else:
-        prepared, bound = _prepared(_row())
-        handoff = replace(prepared, admitted=True)
+    handoff, bound = _prepared(_row(), shadow=handoff_change == "shadow")
+    if handoff_change != "shadow":
+        handoff = replace(handoff, ranked_row_digests=())
     admitted, outcome = finalize_subjective_mem_retrieval_usage(**_arguments(store, handoff, bound))
     assert admitted is None and outcome.status == "refused"
     assert outcome.blocked_reason_classes == (reason,)
@@ -376,7 +485,7 @@ def test_durable_events_survive_projection_deletion_and_deterministic_rebuild(
         **_arguments(store, rebuilt_handoff, rebuilt_bound)
     )
     assert replayed.status == "duplicate_finalized" and replayed.event_count == 0
-    assert admitted is not None
+    assert type(admitted) is SubjectiveMemRetrievalAdmittedHandoff
 
 
 def test_ledger_depends_one_way_on_selection_and_reuses_the_evidence_store() -> None:
@@ -395,6 +504,9 @@ def test_ledger_depends_one_way_on_selection_and_reuses_the_evidence_store() -> 
         "relaylm.evidence_store", "relaylm.subjective_mem_retrieval",
         "relaylm.subjective_mem_retrieval_selection",
     }
+    assert "SubjectiveMemRetrievalAdmittedHandoff" not in inspect.getsource(
+        inspect.getmodule(select_subjective_mem_retrieval_handoff)
+    )
     selection_source = inspect.getsource(
         inspect.getmodule(select_subjective_mem_retrieval_handoff)
     )

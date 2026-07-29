@@ -2,30 +2,39 @@
 
 Accepted by ``docs/architecture/subjective-mem-retrieval-projection-hard-
 cutover.md``: durably finalize the exact content-free usage events of one
-prepared runtime-private handoff, and only then release that handoff as
-admitted.
+prepared runtime-private handoff, and only then build the admitted handoff that
+can release that evidence.
 
 ```text
 prepared pure handoff from the selection owner
-  -> this ledger validates and atomically finalizes the exact usage events
-  -> only then an admitted private handoff is returned
+  -> this ledger revalidates every private item against its exact row
+  -> exact event+result pairs are read, then atomically finalized
+  -> only then an admitted handoff type is constructed and returned
 ```
 
-The dependency is one-way: the selection owner never imports this module. All
-durability is the existing ``EvidenceRecordStore`` per-evidence-space
-transaction with its create-or-verify and prepared-journal recovery semantics —
-no second lock, journal, durable root, atomic writer, or recovery model is
-introduced here.
+Admission is a type, not a flag. The prepared handoff carries no admission state
+and no release path, so nothing outside this boundary can produce an admitted
+handoff, and this boundary produces one only for exact finalized or exact
+duplicate-finalized durable state. The dependency is one-way: the selection
+owner never imports this module.
+
+All durability is the existing ``EvidenceRecordStore`` per-evidence-space
+transaction with its create-or-verify and prepared-transaction recovery
+semantics — no second lock, durable root, atomic writer, or recovery model is
+introduced here, and a partial or divergent durable pair is never repaired or
+overwritten.
 
 Nothing durable is written for a shadow comparison, a considered candidate, an
 exclusion, or an empty result, and a validation or commit failure returns a
-bounded content-free outcome with no admitted handoff and no fallback to
-Primary MEM, a stale projection, or a cache-only counter. The durable records
-outlive the disposable projection bundle and survive its deterministic rebuild.
+bounded content-free outcome with no admitted handoff and no fallback to Primary
+MEM, a stale projection, or a cache-only counter. Durable usage records carry the
+exact opaque RT-1A identities and digests the contract requires; they carry no
+prose, query, prompt, or path. The records outlive the disposable projection
+bundle and survive its deterministic rebuild.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field
 from typing import Literal
 
 from relaylm.evidence_common import canonical_digest, dedupe
@@ -33,17 +42,47 @@ from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreTransaction
 from relaylm.subjective_mem_retrieval import (
     RETRIEVAL_USAGE_EVENT_KIND, SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
     SubjectiveMemRetrievalProjectionManifest, SubjectiveMemRetrievalProjectionRow,
-    SubjectiveMemRetrievalRequest, SubjectiveMemRetrievalUsageEvent,
-    derive_subjective_mem_retrieval_usage_event, validate_subjective_mem_retrieval_usage_event,
+    SubjectiveMemRetrievalRequest, SubjectiveMemRetrievalSelection,
+    SubjectiveMemRetrievalUsageEvent, derive_subjective_mem_retrieval_usage_event,
+    validate_subjective_mem_retrieval_usage_event,
 )
-from relaylm.subjective_mem_retrieval_selection import SubjectiveMemRetrievalPreparedHandoff
+from relaylm.subjective_mem_retrieval_selection import (
+    SubjectiveMemRetrievalPreparedHandoff, SubjectiveMemRetrievalPrivateItem,
+    subjective_mem_retrieval_private_item_reasons,
+)
 
 SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND = "subjective_mem_retrieval_usage_event"
 SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND = "subjective_mem_retrieval_usage_result"
 SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_SCHEMA = "relaylm.subjective_mem_retrieval_usage_result.v1"
+SUBJECTIVE_MEM_RETRIEVAL_ADMITTED_HANDOFF_SCHEMA = "relaylm.subjective_mem_retrieval_admitted_handoff.v1"
 SUBJECTIVE_MEM_RETRIEVAL_USAGE_TRANSACTION_PREFIX = "smretrievalusetx_"
 
 UsageStatus = Literal["finalized", "duplicate_finalized", "refused", "conflict", "failed"]
+SlotState = Literal["absent", "exact", "incomplete", "divergent"]
+
+
+@dataclass(frozen=True)
+class SubjectiveMemRetrievalAdmittedHandoff:
+    """One admitted handoff, constructible only after exact durable finalization.
+
+    ``finalization_status`` records which exact durable state authorized it.
+    Releasing evidence materializes fresh plain dictionaries every time, because
+    the existing E1-R4 owner requires ``type(raw) is dict``; mutating a released
+    dictionary therefore cannot affect the immutable private items or any later
+    release.
+    """
+
+    schema: str
+    handoff_shape: str
+    finalization_status: Literal["finalized", "duplicate_finalized"]
+    selected_count: int
+    total_token_estimate: int
+    selection: SubjectiveMemRetrievalSelection = field(repr=False)
+    ranked_row_digests: tuple[str, ...] = field(repr=False)
+    private_items: tuple[SubjectiveMemRetrievalPrivateItem, ...] = field(repr=False)
+
+    def release_grounding_evidence(self) -> tuple[dict[str, object], ...]:
+        return tuple(item.to_grounding_dict() for item in self.private_items)
 
 
 @dataclass(frozen=True)
@@ -81,7 +120,7 @@ def finalize_subjective_mem_retrieval_usage(
     handoff: object,
     occurred_at: str,
     idempotency_key: str,
-) -> tuple[SubjectiveMemRetrievalPreparedHandoff | None, SubjectiveMemRetrievalUsageOutcome]:
+) -> tuple[SubjectiveMemRetrievalAdmittedHandoff | None, SubjectiveMemRetrievalUsageOutcome]:
     """Atomically finalize every usage event of one handoff before admitting it."""
 
     events, reasons = _derive_events(
@@ -103,29 +142,25 @@ def _finalize_locked(
     *,
     handoff: SubjectiveMemRetrievalPreparedHandoff,
     events: tuple[SubjectiveMemRetrievalUsageEvent, ...],
-) -> tuple[SubjectiveMemRetrievalPreparedHandoff | None, SubjectiveMemRetrievalUsageOutcome]:
-    """Resolve the exact usage slots, then commit or report why nothing was written."""
+) -> tuple[SubjectiveMemRetrievalAdmittedHandoff | None, SubjectiveMemRetrievalUsageOutcome]:
+    """Resolve every exact event+result pair, then commit or report what blocked it."""
 
-    occupied = 0
-    for event in events:
-        stored = transaction.read_record(
-            record_kind=SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND,
-            record_id=event.result_id,
+    states = tuple(_slot_state(transaction, event) for event in events)
+    if "divergent" in states:
+        return None, _outcome(
+            "conflict", reasons=("subjective_mem_retrieval_usage_slot_integrity_conflict",)
         )
-        if stored is None:
-            continue
-        if stored != _result_body(event):
-            return None, _outcome(
-                "conflict", reasons=("subjective_mem_retrieval_usage_slot_integrity_conflict",)
-            )
-        occupied += 1
-    if occupied and occupied != len(events):
+    if "incomplete" in states:
+        return None, _outcome(
+            "conflict", reasons=("subjective_mem_retrieval_usage_pair_incomplete",)
+        )
+    if "exact" in states and "absent" in states:
         return None, _outcome(
             "conflict", reasons=("subjective_mem_retrieval_usage_partial_existing_result",)
         )
-    if occupied:
-        return replace(handoff, admitted=True), _outcome(
-            "duplicate_finalized", admitted=True, events=0, duplicates=len(events)
+    if "exact" in states:
+        return _admitted(handoff, "duplicate_finalized"), _outcome(
+            "duplicate_finalized", admitted=True, duplicates=len(events)
         )
 
     result = transaction.commit(
@@ -150,15 +185,46 @@ def _finalize_locked(
     )
     if result.status == "collision":
         return None, _outcome(
-            "conflict", reasons=result.reasons or ("subjective_mem_retrieval_usage_slot_integrity_conflict",)
+            "conflict",
+            reasons=result.reasons or ("subjective_mem_retrieval_usage_slot_integrity_conflict",),
         )
     if result.status not in {"created", "duplicate_existing"}:
         return None, _outcome(
-            "failed", reasons=result.reasons or ("subjective_mem_retrieval_usage_finalization_failed",)
+            "failed",
+            reasons=result.reasons or ("subjective_mem_retrieval_usage_finalization_failed",),
         )
-    return replace(handoff, admitted=True), _outcome(
+    return _admitted(handoff, "finalized"), _outcome(
         "finalized", admitted=True, events=len(events)
     )
+
+
+def _slot_state(
+    transaction: EvidenceStoreTransaction, event: SubjectiveMemRetrievalUsageEvent
+) -> SlotState:
+    """Classify one usage slot from its exact durable event and result pair.
+
+    A slot is occupied only when both records exist with their exact expected
+    bodies. One record alone is partial durable state, and any divergent body is
+    an integrity conflict; neither is ever repaired or overwritten.
+    """
+
+    stored_event = transaction.read_record(
+        record_kind=SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND,
+        record_id=event.usage_event_id,
+    )
+    stored_result = transaction.read_record(
+        record_kind=SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND,
+        record_id=event.result_id,
+    )
+    if stored_event is None and stored_result is None:
+        return "absent"
+    if stored_result is not None and stored_result != _result_body(event):
+        return "divergent"
+    if stored_event is not None and stored_event != event.to_dict():
+        return "divergent"
+    if stored_event is not None and stored_result is not None:
+        return "exact"
+    return "incomplete"
 
 
 def _derive_events(
@@ -170,7 +236,7 @@ def _derive_events(
     occurred_at: str,
     idempotency_key: str,
 ) -> tuple[tuple[SubjectiveMemRetrievalUsageEvent, ...] | None, tuple[str, ...]]:
-    """Derive one exact event per selected row of a non-shadow, unadmitted handoff."""
+    """Derive one exact event per selected row of a non-shadow prepared handoff."""
 
     reasons = _handoff_reasons(request, manifest, rows, handoff)
     if reasons:
@@ -181,16 +247,16 @@ def _derive_events(
     assert isinstance(handoff, SubjectiveMemRetrievalPreparedHandoff)
 
     by_digest = {row.row_digest: row for row in rows}
+    reasons = _private_item_reasons(request, by_digest, handoff)
+    if reasons:
+        return None, reasons
     derived: list[SubjectiveMemRetrievalUsageEvent] = []
     collected: list[str] = []
     for digest in handoff.ranked_row_digests:
-        row = by_digest.get(digest)
-        if row is None:
-            return None, ("subjective_mem_retrieval_usage_selected_row_missing",)
         event, event_reasons = derive_subjective_mem_retrieval_usage_event(
-            request=request, manifest=manifest, rows=rows, selection=handoff.selection, row=row,
-            event_kind=RETRIEVAL_USAGE_EVENT_KIND, occurred_at=occurred_at,
-            idempotency_key=idempotency_key,
+            request=request, manifest=manifest, rows=rows, selection=handoff.selection,
+            row=by_digest[digest], event_kind=RETRIEVAL_USAGE_EVENT_KIND,
+            occurred_at=occurred_at, idempotency_key=idempotency_key,
         )
         if event is None:
             collected.extend(event_reasons)
@@ -199,23 +265,55 @@ def _derive_events(
         derived.append(event)
     if collected:
         return None, dedupe(collected)
-    slots = {event.usage_slot_id for event in derived}
-    if len(slots) != len(derived):
+    if len({event.usage_slot_id for event in derived}) != len(derived):
         return None, ("subjective_mem_retrieval_usage_slot_duplicated",)
     return tuple(derived), ()
+
+
+def _private_item_reasons(
+    request: SubjectiveMemRetrievalRequest,
+    by_digest: dict[str, SubjectiveMemRetrievalProjectionRow],
+    handoff: SubjectiveMemRetrievalPreparedHandoff,
+) -> tuple[str, ...]:
+    """Revalidate every private item against its exact row before any durable write.
+
+    The prepared items are immutable, but the handoff value itself can be rebuilt
+    by a caller, so exact count, exact order, and exact per-item agreement are
+    proven here rather than assumed. Missing, duplicate, extra, reordered, or
+    substituted items all fail closed.
+    """
+
+    items = handoff.private_items
+    ranked = handoff.ranked_row_digests
+    if type(items) is not tuple or any(
+        type(item) is not SubjectiveMemRetrievalPrivateItem for item in items
+    ):
+        return ("subjective_mem_retrieval_usage_private_item_invalid",)
+    if len(items) != len(ranked) or len(items) != handoff.selection.selected_count:
+        return ("subjective_mem_retrieval_usage_private_item_count_mismatch",)
+    if tuple(item.row_digest for item in items) != ranked:
+        return ("subjective_mem_retrieval_usage_private_item_order_mismatch",)
+    for item in items:
+        row = by_digest.get(item.row_digest)
+        if row is None:
+            return ("subjective_mem_retrieval_usage_private_item_unbound",)
+        reasons = subjective_mem_retrieval_private_item_reasons(
+            request=request, row=row, item=item
+        )
+        if reasons:
+            return reasons
+    return ()
 
 
 def _handoff_reasons(
     request: object, manifest: object, rows: object, handoff: object
 ) -> tuple[str, ...]:
-    """Refuse a shadow, already-admitted, empty, or internally disagreeing handoff."""
+    """Refuse a shadow, empty, unbound, or internally disagreeing prepared handoff."""
 
     if type(handoff) is not SubjectiveMemRetrievalPreparedHandoff:
         return ("subjective_mem_retrieval_usage_handoff_invalid",)
     if handoff.shadow:
         return ("subjective_mem_retrieval_usage_shadow_not_admissible",)
-    if handoff.admitted:
-        return ("subjective_mem_retrieval_usage_handoff_already_admitted",)
     if type(request) is not SubjectiveMemRetrievalRequest or (
         type(manifest) is not SubjectiveMemRetrievalProjectionManifest
     ):
@@ -226,18 +324,37 @@ def _handoff_reasons(
         return ("subjective_mem_retrieval_usage_rows_invalid",)
 
     selection = handoff.selection
+    if type(selection) is not SubjectiveMemRetrievalSelection:
+        return ("subjective_mem_retrieval_usage_handoff_invalid",)
     if not handoff.ranked_row_digests:
         return ("subjective_mem_retrieval_usage_selection_empty",)
     if (
         tuple(sorted(handoff.ranked_row_digests)) != selection.selected_row_digests
+        or len(set(handoff.ranked_row_digests)) != len(handoff.ranked_row_digests)
         or handoff.selected_count != selection.selected_count
         or handoff.total_token_estimate != selection.total_token_estimate
-        or len(handoff.evidence_items) != selection.selected_count
         or selection.request_input_digest != request.input_digest
         or selection.policy_revision != SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION
     ):
         return ("subjective_mem_retrieval_usage_handoff_selection_mismatch",)
+    if any(digest not in {row.row_digest for row in rows} for digest in handoff.ranked_row_digests):
+        return ("subjective_mem_retrieval_usage_selected_row_missing",)
     return ()
+
+
+def _admitted(
+    handoff: SubjectiveMemRetrievalPreparedHandoff,
+    finalization_status: Literal["finalized", "duplicate_finalized"],
+) -> SubjectiveMemRetrievalAdmittedHandoff:
+    """Construct the admitted handoff; reached only from exact durable success."""
+
+    return SubjectiveMemRetrievalAdmittedHandoff(
+        schema=SUBJECTIVE_MEM_RETRIEVAL_ADMITTED_HANDOFF_SCHEMA,
+        handoff_shape=handoff.handoff_shape, finalization_status=finalization_status,
+        selected_count=handoff.selected_count, total_token_estimate=handoff.total_token_estimate,
+        selection=handoff.selection, ranked_row_digests=handoff.ranked_row_digests,
+        private_items=handoff.private_items,
+    )
 
 
 def _result_body(event: SubjectiveMemRetrievalUsageEvent) -> dict[str, object]:
@@ -282,10 +399,12 @@ def _outcome(
 
 
 __all__ = [
+    "SUBJECTIVE_MEM_RETRIEVAL_ADMITTED_HANDOFF_SCHEMA",
     "SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND",
     "SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND",
     "SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_SCHEMA",
     "SUBJECTIVE_MEM_RETRIEVAL_USAGE_TRANSACTION_PREFIX",
+    "SubjectiveMemRetrievalAdmittedHandoff",
     "SubjectiveMemRetrievalUsageOutcome",
     "finalize_subjective_mem_retrieval_usage",
 ]
