@@ -79,11 +79,14 @@ class SubjectiveMemRetrievalCanonicalPageBinding:
 
 
 @dataclass(frozen=True)
-class SubjectiveMemRetrievalPrivateItem:
+class _SubjectiveMemRetrievalPrivateItem:
     """One immutable private evidence item recovered from canonical page bytes.
 
-    It carries the exact E1-R4 fields, the row and prose digests that bind it,
-    and the prose itself. Only an admitted handoff materializes dictionaries.
+    It carries the exact E1-R4 field values, the row and prose digests that bind
+    it, and the prose itself. The type is module-private and exports no
+    materialization method, so prepared state offers no route to a release-ready
+    dictionary; only the ledger-owned admitted handoff builds one, after exact
+    durable success.
     """
 
     row_digest: str
@@ -99,30 +102,16 @@ class SubjectiveMemRetrievalPrivateItem:
     grounded_content_digest: str
     token_estimate: int
 
-    def to_grounding_dict(self) -> dict[str, object]:
-        """A fresh plain dict in the shape the existing E1-R4 owner consumes."""
-
-        return {
-            "memory_layer": self.memory_layer,
-            "memory_id": self.memory_id,
-            "revision": self.memory_revision,
-            "character_id": self.character_id,
-            "lifecycle_state": self.lifecycle_state,
-            "current": self.current,
-            "pinned": self.pinned,
-            "provenance_source": self.provenance_source,
-            "fact_text": self.grounded_content,
-        }
-
 
 @dataclass(frozen=True)
 class SubjectiveMemRetrievalPreparedHandoff:
     """One prepared runtime-private handoff that can never release its evidence.
 
-    There is no admission state to toggle and no accessor that yields grounding
-    evidence, so a prepared value cannot self-admit. It retains the exact
-    canonical page bindings it was built from, so the whole handoff stays
-    revalidatable against canonical authority.
+    There is no admission state to toggle, no accessor that yields grounding
+    evidence, and no nested public value that can materialize one, so a prepared
+    value cannot self-admit. It retains its canonical page bindings in normalized
+    parsed order, so the whole handoff stays revalidatable against canonical
+    authority and stays independent of caller input order.
     """
 
     schema: str
@@ -132,8 +121,8 @@ class SubjectiveMemRetrievalPreparedHandoff:
     total_token_estimate: int
     selection: SubjectiveMemRetrievalSelection = field(repr=False)
     ranked_row_digests: tuple[str, ...] = field(repr=False)
-    private_items: tuple[SubjectiveMemRetrievalPrivateItem, ...] = field(repr=False)
-    canonical_pages: tuple[SubjectiveMemRetrievalCanonicalPageBinding, ...] = field(repr=False)
+    _private_items: tuple[_SubjectiveMemRetrievalPrivateItem, ...] = field(repr=False)
+    _canonical_pages: tuple[SubjectiveMemRetrievalCanonicalPageBinding, ...] = field(repr=False)
 
 
 @dataclass(frozen=True)
@@ -199,7 +188,7 @@ def select_subjective_mem_retrieval_handoff(
     exclusions, eligible, ranked = _classify_population(request, rows)
     population = (rows, exclusions, eligible, ranked)
     budget = request.token_budget
-    items, reasons = _canonical_private_items(request, ranked, canonical_pages)
+    items, normalized_pages, reasons = _canonical_private_items(request, ranked, canonical_pages)
     if items is None:
         return None, _refused(reasons, shadow=shadow, population=population, token_budget=budget)
     total = sum(item.token_estimate for item in items)
@@ -231,8 +220,8 @@ def select_subjective_mem_retrieval_handoff(
         schema=SUBJECTIVE_MEM_RETRIEVAL_HANDOFF_SCHEMA,
         handoff_shape=SUBJECTIVE_MEM_RETRIEVAL_HANDOFF_SHAPE, shadow=shadow,
         selected_count=len(ranked), total_token_estimate=total, selection=selection,
-        ranked_row_digests=tuple(row.row_digest for row in ranked), private_items=items,
-        canonical_pages=tuple(canonical_pages),
+        ranked_row_digests=tuple(row.row_digest for row in ranked), _private_items=items,
+        _canonical_pages=normalized_pages,
     )
     return handoff, _projection(
         "prepared_empty" if not ranked else "prepared", shadow=shadow, blocked=(),
@@ -255,12 +244,12 @@ def validate_subjective_mem_retrieval_prepared_handoff(
     """
 
     if type(handoff) is not SubjectiveMemRetrievalPreparedHandoff or (
-        type(handoff.shadow) is not bool or type(handoff.canonical_pages) is not tuple
+        type(handoff.shadow) is not bool or type(handoff._canonical_pages) is not tuple
     ):
         return ("subjective_mem_retrieval_prepared_handoff_invalid",)
     rebuilt, projection = select_subjective_mem_retrieval_handoff(
         request=request, manifest=manifest, rows=rows,
-        canonical_pages=handoff.canonical_pages, shadow=handoff.shadow,
+        canonical_pages=handoff._canonical_pages, shadow=handoff.shadow,
     )
     if rebuilt is None:
         return projection.blocked_reason_classes or (
@@ -345,9 +334,15 @@ def _parse_canonical_pages(
     request: SubjectiveMemRetrievalRequest,
     ranked: tuple[SubjectiveMemRetrievalProjectionRow, ...],
     canonical_pages: object,
-) -> tuple[dict[str, SubjectiveMemMarkdownPage] | None, tuple[str, ...]]:
+) -> tuple[
+    dict[str, SubjectiveMemMarkdownPage] | None,
+    tuple[SubjectiveMemRetrievalCanonicalPageBinding, ...],
+    tuple[str, ...],
+]:
     """Parse each supplied page exactly once and index it by its parsed identity.
 
+    The retained binding order is normalized by parsed page ID, never by caller
+    tuple order, so the same page set always produces the same prepared handoff.
     A duplicate submission, duplicate parsed identity, duplicate parsed digest,
     extra page no selected row needs, or missing page a selected row needs all
     fail closed. No second parser and no filesystem access is introduced.
@@ -356,56 +351,63 @@ def _parse_canonical_pages(
     if type(canonical_pages) is not tuple or any(
         type(item) is not SubjectiveMemRetrievalCanonicalPageBinding for item in canonical_pages
     ):
-        return None, ("subjective_mem_retrieval_selection_canonical_page_invalid",)
+        return None, (), ("subjective_mem_retrieval_selection_canonical_page_invalid",)
     parsed: dict[str, SubjectiveMemMarkdownPage] = {}
+    bindings: dict[str, SubjectiveMemRetrievalCanonicalPageBinding] = {}
     digests: set[str] = set()
     for binding in canonical_pages:
         data = binding.canonical_page_bytes
         if type(data) is not bytes or not 1 <= len(data) <= MAX_CANONICAL_PAGE_BYTES:
-            return None, ("subjective_mem_retrieval_selection_canonical_page_out_of_bounds",)
+            return None, (), ("subjective_mem_retrieval_selection_canonical_page_out_of_bounds",)
         page, _reasons = parse_subjective_mem_page_bytes(
             data, expected_character_id=request.character_id
         )
         if page is None:
-            return None, ("subjective_mem_retrieval_selection_canonical_page_unsupported",)
+            return None, (), ("subjective_mem_retrieval_selection_canonical_page_unsupported",)
         if page.page_id in parsed or page.page_digest in digests:
-            return None, ("subjective_mem_retrieval_selection_canonical_page_duplicated",)
+            return None, (), ("subjective_mem_retrieval_selection_canonical_page_duplicated",)
         parsed[page.page_id] = page
+        bindings[page.page_id] = binding
         digests.add(page.page_digest)
     required = {row.page_id for row in ranked}
     if required - set(parsed):
-        return None, ("subjective_mem_retrieval_selection_canonical_page_missing",)
+        return None, (), ("subjective_mem_retrieval_selection_canonical_page_missing",)
     if set(parsed) - required:
-        return None, ("subjective_mem_retrieval_selection_canonical_page_extra",)
-    return parsed, ()
+        return None, (), ("subjective_mem_retrieval_selection_canonical_page_extra",)
+    normalized = tuple(bindings[page_id] for page_id in sorted(bindings))
+    return parsed, normalized, ()
 
 
 def _canonical_private_items(
     request: SubjectiveMemRetrievalRequest,
     ranked: tuple[SubjectiveMemRetrievalProjectionRow, ...],
     canonical_pages: object,
-) -> tuple[tuple[SubjectiveMemRetrievalPrivateItem, ...] | None, tuple[str, ...]]:
+) -> tuple[
+    tuple[_SubjectiveMemRetrievalPrivateItem, ...] | None,
+    tuple[SubjectiveMemRetrievalCanonicalPageBinding, ...],
+    tuple[str, ...],
+]:
     """Recover one private item per selected row from its exact canonical block."""
 
-    parsed, reasons = _parse_canonical_pages(request, ranked, canonical_pages)
+    parsed, normalized, reasons = _parse_canonical_pages(request, ranked, canonical_pages)
     if parsed is None:
-        return None, reasons
-    items: list[SubjectiveMemRetrievalPrivateItem] = []
+        return None, (), reasons
+    items: list[_SubjectiveMemRetrievalPrivateItem] = []
     for row in ranked:
         page = parsed[row.page_id]
         blocks = [item for item in page.blocks if item.block_id == row.block_id]
         if len(blocks) != 1:
-            return None, ("subjective_mem_retrieval_selection_canonical_block_ambiguous",)
+            return None, (), ("subjective_mem_retrieval_selection_canonical_block_ambiguous",)
         reasons = _canonical_block_reasons(request, row, page, blocks[0])
         if reasons:
-            return None, reasons
+            return None, (), reasons
         revision = blocks[0].revision
         if not 1 <= len(revision.grounded_content) <= MAX_FACT_TEXT_CHARS:
-            return None, ("subjective_mem_retrieval_selection_canonical_content_out_of_bounds",)
+            return None, (), ("subjective_mem_retrieval_selection_canonical_content_out_of_bounds",)
         items.append(
-            _private_item(row, revision.grounded_content, revision.grounded_content_digest)
+            _build_private_item(row, revision.grounded_content, revision.grounded_content_digest)
         )
-    return tuple(items), ()
+    return tuple(items), normalized, ()
 
 
 def _canonical_block_reasons(
@@ -464,9 +466,9 @@ def _authorization_record_kind(block: SubjectiveMemMarkdownBlock) -> str:
     return "subjective_mem_decision" if legacy else "subjective_mem_lifecycle_transition"
 
 
-def _private_item(
+def _build_private_item(
     row: SubjectiveMemRetrievalProjectionRow, content: str, content_digest: str
-) -> SubjectiveMemRetrievalPrivateItem:
+) -> _SubjectiveMemRetrievalPrivateItem:
     """Build the private item ``row`` admits from its exact canonical prose.
 
     Formation stage classifies the already authorized revision into E1-R4's
@@ -475,7 +477,7 @@ def _private_item(
     no grounding policy changes.
     """
 
-    return SubjectiveMemRetrievalPrivateItem(
+    return _SubjectiveMemRetrievalPrivateItem(
         row_digest=row.row_digest, memory_id=row.memory_id, memory_revision=row.memory_revision,
         character_id=row.character_id, lifecycle_state=row.lifecycle_state,
         pinned=row.lifecycle_state == "pinned", current=True,
@@ -544,7 +546,7 @@ __all__ = [
     "SUBJECTIVE_MEM_RETRIEVAL_SELECTION_PROJECTION_SCHEMA",
     "SUBJECTIVE_MEM_RETRIEVAL_SERVED_AUTHORITY",
     "SubjectiveMemRetrievalCanonicalPageBinding", "SubjectiveMemRetrievalPreparedHandoff",
-    "SubjectiveMemRetrievalPrivateItem", "SubjectiveMemRetrievalSelectionProjection",
+    "SubjectiveMemRetrievalSelectionProjection",
     "select_subjective_mem_retrieval_handoff",
     "validate_subjective_mem_retrieval_prepared_handoff",
 ]

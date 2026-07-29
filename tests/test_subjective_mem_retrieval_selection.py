@@ -37,7 +37,6 @@ from relaylm.subjective_mem_retrieval_selection import (
     SUBJECTIVE_MEM_RETRIEVAL_HANDOFF_SHAPE,
     SubjectiveMemRetrievalCanonicalPageBinding,
     SubjectiveMemRetrievalPreparedHandoff,
-    SubjectiveMemRetrievalPrivateItem,
     select_subjective_mem_retrieval_handoff,
     validate_subjective_mem_retrieval_prepared_handoff,
 )
@@ -257,7 +256,7 @@ def test_exact_active_and_pinned_rows_bind_to_their_canonical_block(lifecycle: s
         canonical_pages=(_binding(data),),
     )
     assert handoff is not None and projection.status == "prepared"
-    item = handoff.private_items[0]
+    item = handoff._private_items[0]
     assert item.grounded_content == GROUNDED
     assert item.grounded_content_digest == utf8_text_digest(GROUNDED)
     assert item.pinned is (lifecycle == "pinned")
@@ -268,7 +267,7 @@ def test_token_estimate_comes_from_the_existing_deterministic_estimator(single) 
     handoff, _projection = _select(single)
     assert handoff is not None
     expected = estimate_text_tokens(GROUNDED).estimated_tokens
-    assert handoff.private_items[0].token_estimate == expected
+    assert handoff._private_items[0].token_estimate == expected
     assert handoff.total_token_estimate == expected
     assert handoff.selection.total_token_estimate == expected
 
@@ -420,8 +419,8 @@ def test_one_page_with_several_memories_resolves_only_the_exact_selected_blocks(
         canonical_pages=(_binding(data),),
     )
     assert handoff is not None and projection.selected_count == 2
-    assert {item.memory_id for item in handoff.private_items} == {"memory1", "memory2"}
-    assert {item.memory_revision for item in handoff.private_items} == {2}
+    assert {item.memory_id for item in handoff._private_items} == {"memory1", "memory2"}
+    assert {item.memory_revision for item in handoff._private_items} == {2}
 
 
 def test_extraction_is_deterministic_under_binding_and_row_reordering() -> None:
@@ -469,7 +468,7 @@ def test_prohibited_rows_are_excluded_and_need_no_canonical_page(changes, reason
     )
     assert handoff is not None and projection.status == "prepared_empty"
     assert (projection.eligible_count, projection.selected_count) == (0, 0)
-    assert handoff.private_items == () and handoff.canonical_pages == ()
+    assert handoff._private_items == () and handoff._canonical_pages == ()
     assert (reason, 1) in projection.excluded_count_by_reason_class
 
 
@@ -570,11 +569,10 @@ def test_a_prepared_handoff_carries_no_admission_state_and_cannot_self_admit(sin
         handoff.shadow = False
 
 
-def test_prepared_private_items_are_immutable_and_expose_no_mutable_mapping(single) -> None:
+def test_prepared_private_items_are_immutable_and_expose_no_release_api(single) -> None:
     handoff, _projection = _select(single)
-    item = handoff.private_items[0]
-    assert type(handoff.private_items) is tuple
-    assert type(item) is SubjectiveMemRetrievalPrivateItem
+    item = handoff._private_items[0]
+    assert type(handoff._private_items) is tuple
     with pytest.raises(dataclasses.FrozenInstanceError):
         item.grounded_content = "tampered"
     assert not [
@@ -584,22 +582,68 @@ def test_prepared_private_items_are_immutable_and_expose_no_mutable_mapping(sing
             isinstance(value, tuple) and any(isinstance(entry, (dict, list)) for entry in value)
         )
     ]
-    first, second = item.to_grounding_dict(), item.to_grounding_dict()
-    assert first == second and first is not second
-    first["fact_text"] = "tampered"
-    assert item.to_grounding_dict()["fact_text"] == GROUNDED
+    assert not [
+        name
+        for name in dir(item)
+        if not name.startswith("_") and callable(getattr(item, name, None))
+    ]
+    assert not hasattr(item, "to_grounding_dict")
 
 
-def test_private_items_carry_the_exact_field_set_the_grounding_owner_consumes(single) -> None:
+def test_prepared_state_exposes_no_supported_evidence_materialization(single) -> None:
+    """No public selection API turns prepared state into an E1-R4 dictionary."""
     handoff, _projection = _select(single)
-    assert tuple(item.row_digest for item in handoff.private_items) == handoff.ranked_row_digests
-    for item in handoff.private_items:
-        assert set(item.to_grounding_dict()) == {
-            "memory_layer", "memory_id", "revision", "character_id", "lifecycle_state",
-            "current", "pinned", "provenance_source", "fact_text",
-        }
+    assert not hasattr(selection_owner, "SubjectiveMemRetrievalPrivateItem")
+    assert "SubjectiveMemRetrievalPrivateItem" not in selection_owner.__all__
+    assert not [name for name in selection_owner.__all__ if name.startswith("_")]
+    assert "to_grounding_dict" not in _executable_source(selection_owner)
+
+    public_names = [name for name in dir(handoff) if not name.startswith("_")]
+    assert public_names == [
+        "handoff_shape", "ranked_row_digests", "schema", "selected_count", "selection",
+        "shadow", "total_token_estimate",
+    ]
+    for name in public_names:
+        value = getattr(handoff, name)
+        assert not callable(value)
+        assert not isinstance(value, (dict, list))
+    assert tuple(item.row_digest for item in handoff._private_items) == handoff.ranked_row_digests
+    for item in handoff._private_items:
         assert item.provenance_source == "user_assertion"
         assert item.memory_layer == "subjective"
+
+
+def test_canonical_page_binding_order_is_normalized_by_parsed_page_identity() -> None:
+    """Two distinct required pages produce one handoff regardless of input order."""
+    episodic, semantic = _revision("memory1"), _revision("memory2", memory_kind="semantic")
+    episodic_bytes, episodic_page = _page((episodic, _successor(episodic)))
+    semantic_bytes, semantic_page = _page((semantic, _successor(semantic)))
+    assert episodic_page.page_id != semantic_page.page_id
+    rows = (
+        _row(episodic_page, _block(episodic_page, "memory1", 2)),
+        _row(semantic_page, _block(semantic_page, "memory2", 2)),
+    )
+    manifest = _manifest(*rows)
+    request = _request(manifest)
+    forward, forward_projection = select_subjective_mem_retrieval_handoff(
+        request=request, manifest=manifest, rows=rows,
+        canonical_pages=(_binding(episodic_bytes), _binding(semantic_bytes)),
+    )
+    reversed_handoff, reversed_projection = select_subjective_mem_retrieval_handoff(
+        request=request, manifest=manifest, rows=rows,
+        canonical_pages=(_binding(semantic_bytes), _binding(episodic_bytes)),
+    )
+    assert forward is not None and forward.selected_count == 2
+    assert forward == reversed_handoff
+    assert forward_projection == reversed_projection
+    assert forward._private_items == reversed_handoff._private_items
+    assert forward._canonical_pages == reversed_handoff._canonical_pages
+    assert forward.total_token_estimate == reversed_handoff.total_token_estimate
+
+    reordered = replace(forward, _canonical_pages=tuple(reversed(forward._canonical_pages)))
+    assert validate_subjective_mem_retrieval_prepared_handoff(
+        request=request, manifest=manifest, rows=rows, handoff=reordered
+    ) == ("subjective_mem_retrieval_prepared_handoff_not_canonical",)
 
 
 def test_an_exact_prepared_handoff_revalidates_against_its_canonical_bytes(single) -> None:
@@ -630,12 +674,12 @@ def test_a_caller_authored_handoff_fails_canonical_revalidation(tamper) -> None:
         request=request, manifest=manifest, rows=rows, canonical_pages=(_binding(data),)
     )
     assert handoff is not None
-    items = handoff.private_items
+    items = handoff._private_items
     forged = "forged prose the canonical page never contained"
     tampered = {
         "forged_prose": replace(
             handoff,
-            private_items=(
+            _private_items=(
                 replace(
                     items[0], grounded_content=forged,
                     grounded_content_digest=utf8_text_digest(forged),
@@ -644,21 +688,21 @@ def test_a_caller_authored_handoff_fails_canonical_revalidation(tamper) -> None:
             ),
         ),
         "forged_digest": replace(
-            handoff, private_items=(replace(items[0], grounded_content_digest=D3), items[1])
+            handoff, _private_items=(replace(items[0], grounded_content_digest=D3), items[1])
         ),
         "forged_identity": replace(
-            handoff, private_items=(replace(items[0], memory_id="memory9"), items[1])
+            handoff, _private_items=(replace(items[0], memory_id="memory9"), items[1])
         ),
         "forged_token_estimate": replace(
-            handoff, private_items=(replace(items[0], token_estimate=1), items[1])
+            handoff, _private_items=(replace(items[0], token_estimate=1), items[1])
         ),
-        "reordered_items": replace(handoff, private_items=(items[1], items[0])),
-        "dropped_item": replace(handoff, private_items=(items[0],)),
-        "duplicated_item": replace(handoff, private_items=(items[0], items[0])),
+        "reordered_items": replace(handoff, _private_items=(items[1], items[0])),
+        "dropped_item": replace(handoff, _private_items=(items[0],)),
+        "duplicated_item": replace(handoff, _private_items=(items[0], items[0])),
         "forged_total": replace(handoff, total_token_estimate=1),
-        "dropped_page": replace(handoff, canonical_pages=()),
+        "dropped_page": replace(handoff, _canonical_pages=()),
         "substituted_page": replace(
-            handoff, canonical_pages=(_binding(b"not canonical markdown\n"),)
+            handoff, _canonical_pages=(_binding(b"not canonical markdown\n"),)
         ),
     }[tamper]
     reasons = validate_subjective_mem_retrieval_prepared_handoff(

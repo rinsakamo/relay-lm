@@ -9,7 +9,7 @@ can release that evidence.
 prepared pure handoff from the selection owner
   -> the selection owner revalidates the whole handoff against canonical bytes
   -> exact event+result pairs are read, then atomically finalized
-  -> only then an admitted handoff type is constructed and returned
+  -> only then a sealed admitted handoff type is constructed and returned
 ```
 
 Canonical revalidation is delegated, not reimplemented: this ledger calls the
@@ -17,10 +17,11 @@ selection owner's ``validate_subjective_mem_retrieval_prepared_handoff`` before
 opening durable records, so it never becomes a parser or a canonical content
 authority.
 
-Admission is a type, not a flag. The prepared handoff carries no admission state
-and no release path, so nothing outside this boundary can produce an admitted
-handoff, and this boundary produces one only for exact finalized or exact
-duplicate-finalized durable state. The dependency is one-way: the selection
+Admission is a sealed type, not a flag. The prepared handoff carries no admission
+state and no release path, the admitted type's public constructor always raises,
+and release re-checks a module-private seal, so nothing outside this boundary can
+mint, modify, or smuggle an admitted handoff. This boundary applies the seal only
+for exact finalized or exact duplicate-finalized durable state. The dependency is one-way: the selection
 owner never imports this module.
 
 All durability is the existing ``EvidenceRecordStore`` per-evidence-space
@@ -52,7 +53,7 @@ from relaylm.subjective_mem_retrieval import (
     validate_subjective_mem_retrieval_usage_event,
 )
 from relaylm.subjective_mem_retrieval_selection import (
-    SubjectiveMemRetrievalPreparedHandoff, SubjectiveMemRetrievalPrivateItem,
+    SubjectiveMemRetrievalPreparedHandoff, _SubjectiveMemRetrievalPrivateItem,
     validate_subjective_mem_retrieval_prepared_handoff,
 )
 
@@ -64,11 +65,22 @@ SUBJECTIVE_MEM_RETRIEVAL_USAGE_TRANSACTION_PREFIX = "smretrievalusetx_"
 
 UsageStatus = Literal["finalized", "duplicate_finalized", "refused", "conflict", "failed"]
 SlotState = Literal["absent", "exact", "incomplete", "divergent"]
+FinalizationStatus = Literal["finalized", "duplicate_finalized"]
+
+_ADMISSION_SEAL = object()
+"""The one admission witness. Only ``_seal_admitted_handoff`` ever applies it."""
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class SubjectiveMemRetrievalAdmittedHandoff:
     """One admitted handoff, constructible only after exact durable finalization.
+
+    The public constructor always raises, so neither a direct call nor
+    ``dataclasses.replace`` can mint or modify an admitted value; only this
+    module's private factory can, and only from the exact ``finalized`` or exact
+    ``duplicate_finalized`` branch of ``_finalize_locked``. Release additionally
+    re-checks the module-private admission seal, so an object smuggled in through
+    ``object.__new__`` releases nothing.
 
     ``finalization_status`` records which exact durable state authorized it.
     Releasing evidence materializes fresh plain dictionaries every time, because
@@ -79,15 +91,39 @@ class SubjectiveMemRetrievalAdmittedHandoff:
 
     schema: str
     handoff_shape: str
-    finalization_status: Literal["finalized", "duplicate_finalized"]
+    finalization_status: FinalizationStatus
     selected_count: int
     total_token_estimate: int
     selection: SubjectiveMemRetrievalSelection = field(repr=False)
     ranked_row_digests: tuple[str, ...] = field(repr=False)
-    private_items: tuple[SubjectiveMemRetrievalPrivateItem, ...] = field(repr=False)
+    _private_items: tuple[_SubjectiveMemRetrievalPrivateItem, ...] = field(repr=False)
+    _admission_seal: object = field(repr=False, compare=False)
+
+    def __init__(self, *_args: object, **_kwargs: object) -> None:
+        raise TypeError("subjective_mem_retrieval_admitted_handoff_not_directly_constructible")
 
     def release_grounding_evidence(self) -> tuple[dict[str, object], ...]:
-        return tuple(item.to_grounding_dict() for item in self.private_items)
+        """Materialize fresh E1-R4 dictionaries, but only for a sealed admission."""
+
+        if getattr(self, "_admission_seal", None) is not _ADMISSION_SEAL:
+            raise RuntimeError("subjective_mem_retrieval_admitted_handoff_unsealed")
+        return tuple(_grounding_dict(item) for item in self._private_items)
+
+
+def _grounding_dict(item: _SubjectiveMemRetrievalPrivateItem) -> dict[str, object]:
+    """One fresh plain dict in the shape the existing E1-R4 owner consumes."""
+
+    return {
+        "memory_layer": item.memory_layer,
+        "memory_id": item.memory_id,
+        "revision": item.memory_revision,
+        "character_id": item.character_id,
+        "lifecycle_state": item.lifecycle_state,
+        "current": item.current,
+        "pinned": item.pinned,
+        "provenance_source": item.provenance_source,
+        "fact_text": item.grounded_content,
+    }
 
 
 @dataclass(frozen=True)
@@ -164,7 +200,7 @@ def _finalize_locked(
             "conflict", reasons=("subjective_mem_retrieval_usage_partial_existing_result",)
         )
     if "exact" in states:
-        return _admitted(handoff, "duplicate_finalized"), _outcome(
+        return _seal_admitted_handoff(handoff, "duplicate_finalized"), _outcome(
             "duplicate_finalized", admitted=True, duplicates=len(events)
         )
 
@@ -198,7 +234,7 @@ def _finalize_locked(
             "failed",
             reasons=result.reasons or ("subjective_mem_retrieval_usage_finalization_failed",),
         )
-    return _admitted(handoff, "finalized"), _outcome(
+    return _seal_admitted_handoff(handoff, "finalized"), _outcome(
         "finalized", admitted=True, events=len(events)
     )
 
@@ -314,19 +350,29 @@ def _handoff_reasons(
     return ()
 
 
-def _admitted(
-    handoff: SubjectiveMemRetrievalPreparedHandoff,
-    finalization_status: Literal["finalized", "duplicate_finalized"],
+def _seal_admitted_handoff(
+    handoff: SubjectiveMemRetrievalPreparedHandoff, finalization_status: FinalizationStatus
 ) -> SubjectiveMemRetrievalAdmittedHandoff:
-    """Construct the admitted handoff; reached only from exact durable success."""
+    """Seal one admitted handoff; reached only from exact durable success.
 
-    return SubjectiveMemRetrievalAdmittedHandoff(
-        schema=SUBJECTIVE_MEM_RETRIEVAL_ADMITTED_HANDOFF_SCHEMA,
-        handoff_shape=handoff.handoff_shape, finalization_status=finalization_status,
-        selected_count=handoff.selected_count, total_token_estimate=handoff.total_token_estimate,
-        selection=handoff.selection, ranked_row_digests=handoff.ranked_row_digests,
-        private_items=handoff.private_items,
-    )
+    The public constructor raises, so the fields are installed directly and the
+    admission seal is applied last. This is the only site that applies it.
+    """
+
+    admitted = object.__new__(SubjectiveMemRetrievalAdmittedHandoff)
+    for name, value in (
+        ("schema", SUBJECTIVE_MEM_RETRIEVAL_ADMITTED_HANDOFF_SCHEMA),
+        ("handoff_shape", handoff.handoff_shape),
+        ("finalization_status", finalization_status),
+        ("selected_count", handoff.selected_count),
+        ("total_token_estimate", handoff.total_token_estimate),
+        ("selection", handoff.selection),
+        ("ranked_row_digests", handoff.ranked_row_digests),
+        ("_private_items", handoff._private_items),
+        ("_admission_seal", _ADMISSION_SEAL),
+    ):
+        object.__setattr__(admitted, name, value)
+    return admitted
 
 
 def _result_body(event: SubjectiveMemRetrievalUsageEvent) -> dict[str, object]:

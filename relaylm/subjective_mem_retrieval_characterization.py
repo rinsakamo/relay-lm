@@ -1,19 +1,14 @@
 """RT-1C temporary content-free Primary-vs-Subjective shadow characterization.
 
-Accepted by ``docs/architecture/subjective-mem-retrieval-projection-hard-
-cutover.md`` under the RT-1C P1 amendment, which authorized this owner as the
-third RT-1C production responsibility file.
-
-It owns exactly two things: the strict admission validation of the public
-selection projection, and the deterministic content-free comparison built from
-already-bounded values. It owns no selection, private evidence, canonical
-parsing, durability, admission, E1-R4 policy, Primary reader, ordinary route,
-fallback, or authority, and it performs no I/O.
-
-Only values proven to come from the selection owner's closed vocabularies cross
-this boundary, so a forged content-bearing projection is refused rather than
-copied into the output. No prepared or admitted handoff, private item, canonical
-page byte, prose, path, query, prompt, or durability value is accepted.
+Authorized by the RT-1C P1 amendment in
+``docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md`` as the
+third RT-1C production responsibility file. It owns strict admission validation
+of the public selection projection and the deterministic comparison built from
+those bounded values, and nothing else: no selection, private evidence,
+canonical parsing, durability, admission, E1-R4 policy, Primary reader, ordinary
+route, fallback, authority, or I/O. No handoff, private item, canonical page
+byte, prose, path, query, prompt, or durability value is accepted, and a forged
+projection is refused rather than copied into the output.
 
 This surface is temporary. It and its focused tests are removed or disabled by
 the RT-1D one-authority transfer, after exact post-transfer validation. The
@@ -39,6 +34,12 @@ RETRIEVAL_LEAKAGE_OUTCOME_ADMITTED = "no_leakage_detected"
 
 _MAX_BLOCKED_REASONS = 32
 _REASON_TOKEN_RE = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+\Z")
+
+_STATUS_STATE = {
+    "prepared": ("bounded_private_items", frozenset({"within_budget", "at_budget"})),
+    "prepared_empty": ("empty", frozenset({"empty"})),
+    "refused": ("absent", RETRIEVAL_TOKEN_BUDGET_CLASSES),
+}
 
 
 @dataclass(frozen=True)
@@ -75,9 +76,7 @@ class SubjectiveMemRetrievalShadowCharacterization:
 
     def to_dict(self) -> dict[str, object]:
         body: dict[str, object] = asdict(self)
-        body["exclusion_reason_class_counts"] = [
-            [reason, count] for reason, count in self.exclusion_reason_class_counts
-        ]
+        body["exclusion_reason_class_counts"] = [list(item) for item in self.exclusion_reason_class_counts]
         return {
             "schema": SUBJECTIVE_MEM_RETRIEVAL_CHARACTERIZATION_SCHEMA,
             "content_free": True,
@@ -90,83 +89,102 @@ class SubjectiveMemRetrievalShadowCharacterization:
 def validate_subjective_mem_retrieval_selection_projection(projection: object) -> tuple[str, ...]:
     """Return why ``projection`` is not one exact owner-produced public projection.
 
-    Every reported value must come from the selection owner's closed
-    vocabularies, so no caller-supplied prose can be admitted here and copied
-    onward. Anything outside them fails closed rather than being sanitized.
+    Stage one proves every field is an exact typed closed-vocabulary value; stage
+    two proves the combination is one the owner can actually emit, because a
+    value can be perfectly content-free and still be impossible.
     """
 
     if type(projection) is not SubjectiveMemRetrievalSelectionProjection:
         return ("subjective_mem_retrieval_selection_projection_invalid",)
-    reasons: list[str] = []
-    if projection.status not in RETRIEVAL_SELECTION_STATUSES:
-        reasons.append("subjective_mem_retrieval_selection_projection_status_invalid")
-    boundary = (
+    reasons = _projection_type_reasons(projection)
+    return dedupe(reasons or _projection_state_reasons(projection))
+
+
+def _projection_type_reasons(projection: SubjectiveMemRetrievalSelectionProjection) -> list[str]:
+    """Prove every field is an exact typed value from a closed vocabulary."""
+
+    booleans = (
+        projection.shadow, projection.attempted, projection.projection_generation_ready,
         projection.runtime_private_evidence_omitted, projection.ordinary_route_admitted,
         projection.usage_event_recorded,
     )
-    if any(
-        type(value) is not bool
-        for value in (projection.shadow, projection.attempted,
-                      projection.projection_generation_ready, *boundary)
-    ):
-        reasons.append("subjective_mem_retrieval_selection_projection_boolean_invalid")
-    elif boundary != (True, False, False):
-        reasons.append("subjective_mem_retrieval_selection_projection_boundary_invalid")
-    reasons.extend(_projection_count_reasons(projection))
-    reasons.extend(_projection_vocabulary_reasons(projection))
-    if projection.to_dict().get("served_authority") != SUBJECTIVE_MEM_RETRIEVAL_SERVED_AUTHORITY:
-        reasons.append("subjective_mem_retrieval_selection_projection_served_authority_invalid")
-    return dedupe(reasons)
-
-
-def _projection_count_reasons(
-    projection: SubjectiveMemRetrievalSelectionProjection,
-) -> list[str]:
-    """Reject counts that are not exact non-negative ints in the owner's relation."""
-
     counts = (
         projection.candidate_count, projection.eligible_count,
         projection.selected_count, projection.not_requested_kind_count,
     )
-    if any(type(value) is not int or value < 0 for value in counts):
-        return ["subjective_mem_retrieval_selection_projection_counts_invalid"]
-    if not projection.candidate_count >= projection.eligible_count >= projection.selected_count:
-        return ["subjective_mem_retrieval_selection_projection_count_order_invalid"]
-    if projection.not_requested_kind_count != projection.eligible_count - projection.selected_count:
-        return ["subjective_mem_retrieval_selection_projection_count_relation_invalid"]
-    return []
-
-
-def _projection_vocabulary_reasons(
-    projection: SubjectiveMemRetrievalSelectionProjection,
-) -> list[str]:
-    """Reject any class or reason name outside the exact closed vocabularies."""
-
-    entries = projection.excluded_count_by_reason_class
-    reasons: list[str] = []
-    if type(entries) is not tuple or any(
-        type(entry) is not tuple or len(entry) != 2 or entry[0] not in RETRIEVAL_EXCLUSION_REASONS
-        or type(entry[1]) is not int or entry[1] < 1
-        for entry in entries
-    ):
-        reasons.append("subjective_mem_retrieval_selection_projection_exclusion_class_invalid")
-    else:
-        names = [entry[0] for entry in entries]
-        if names != sorted(set(names)):
-            reasons.append("subjective_mem_retrieval_selection_projection_exclusion_class_invalid")
-    if projection.handoff_shape_class not in RETRIEVAL_HANDOFF_SHAPE_CLASSES:
-        reasons.append("subjective_mem_retrieval_selection_projection_handoff_shape_class_invalid")
-    if projection.token_budget_class not in RETRIEVAL_TOKEN_BUDGET_CLASSES:
-        reasons.append("subjective_mem_retrieval_selection_projection_token_budget_class_invalid")
     blocked = projection.blocked_reason_classes
-    if type(blocked) is not tuple or len(blocked) > _MAX_BLOCKED_REASONS or any(
-        type(value) is not str or len(value) > 96 or _REASON_TOKEN_RE.fullmatch(value) is None
-        for value in blocked
-    ):
-        reasons.append("subjective_mem_retrieval_selection_projection_blocked_reason_invalid")
-    elif bool(blocked) is not (projection.status == "refused"):
-        reasons.append("subjective_mem_retrieval_selection_projection_blocked_reason_state_invalid")
-    return reasons
+    entries = projection.excluded_count_by_reason_class
+    rules = (
+        (projection.status not in RETRIEVAL_SELECTION_STATUSES,
+         "subjective_mem_retrieval_selection_projection_status_invalid"),
+        (any(type(value) is not bool for value in booleans),
+         "subjective_mem_retrieval_selection_projection_boolean_invalid"),
+        (any(type(value) is not int or value < 0 for value in counts),
+         "subjective_mem_retrieval_selection_projection_counts_invalid"),
+        (type(entries) is not tuple or any(
+            type(entry) is not tuple or len(entry) != 2
+            or entry[0] not in RETRIEVAL_EXCLUSION_REASONS
+            or type(entry[1]) is not int or entry[1] < 1
+            for entry in entries
+         ) or [entry[0] for entry in entries] != sorted({entry[0] for entry in entries}),
+         "subjective_mem_retrieval_selection_projection_exclusion_class_invalid"),
+        (projection.handoff_shape_class not in RETRIEVAL_HANDOFF_SHAPE_CLASSES,
+         "subjective_mem_retrieval_selection_projection_handoff_shape_class_invalid"),
+        (projection.token_budget_class not in RETRIEVAL_TOKEN_BUDGET_CLASSES,
+         "subjective_mem_retrieval_selection_projection_token_budget_class_invalid"),
+        (type(blocked) is not tuple or len(blocked) > _MAX_BLOCKED_REASONS or any(
+            type(value) is not str or len(value) > 96
+            or _REASON_TOKEN_RE.fullmatch(value) is None
+            for value in blocked
+         ),
+         "subjective_mem_retrieval_selection_projection_blocked_reason_invalid"),
+    )
+    return [reason for failed, reason in rules if failed]
+
+
+def _projection_state_reasons(projection: SubjectiveMemRetrievalSelectionProjection) -> list[str]:
+    """Prove the exact-typed combination is one the selection owner can emit.
+
+    ``prepared`` with an empty shape, ``prepared_empty`` with a selected row, an
+    exclusion class counted more often than there were candidates, and an
+    unverified refusal still carrying a population are all impossible.
+    """
+
+    status, ready = projection.status, projection.projection_generation_ready
+    shape, budgets = _STATUS_STATE[status]
+    entries = projection.excluded_count_by_reason_class
+    population = (
+        projection.candidate_count, projection.eligible_count,
+        projection.selected_count, projection.not_requested_kind_count,
+    )
+    rules = (
+        (projection.attempted is not True,
+         "subjective_mem_retrieval_selection_projection_attempt_invalid"),
+        ((projection.runtime_private_evidence_omitted, projection.ordinary_route_admitted,
+          projection.usage_event_recorded) != (True, False, False),
+         "subjective_mem_retrieval_selection_projection_boundary_invalid"),
+        (not projection.candidate_count >= projection.eligible_count >= projection.selected_count,
+         "subjective_mem_retrieval_selection_projection_count_order_invalid"),
+        (projection.not_requested_kind_count
+         != projection.eligible_count - projection.selected_count,
+         "subjective_mem_retrieval_selection_projection_count_relation_invalid"),
+        (projection.handoff_shape_class != shape,
+         "subjective_mem_retrieval_selection_projection_shape_state_invalid"),
+        (projection.token_budget_class not in budgets,
+         "subjective_mem_retrieval_selection_projection_budget_state_invalid"),
+        (bool(projection.blocked_reason_classes) is not (status == "refused"),
+         "subjective_mem_retrieval_selection_projection_blocked_reason_state_invalid"),
+        (status != "refused" and (
+            ready is not True or (projection.selected_count >= 1) is not (status == "prepared")
+         ),
+         "subjective_mem_retrieval_selection_projection_prepared_state_invalid"),
+        (any(count > projection.candidate_count for _reason, count in entries),
+         "subjective_mem_retrieval_selection_projection_exclusion_count_invalid"),
+        (status == "refused" and ready is False
+         and (any(population) or bool(entries) or projection.token_budget_class != "empty"),
+         "subjective_mem_retrieval_selection_projection_unverified_state_invalid"),
+    )
+    return [reason for failed, reason in rules if failed]
 
 
 def characterize_subjective_mem_retrieval_shadow(
@@ -179,9 +197,8 @@ def characterize_subjective_mem_retrieval_shadow(
 ) -> tuple[SubjectiveMemRetrievalShadowCharacterization | None, tuple[str, ...]]:
     """Compare two exact content-free result projections deterministically.
 
-    A forged content-bearing projection is refused rather than copied into the
-    output. That admission check is what ``leakage_outcome`` reports, and the two
-    paths' runtime-private content is never combined or even accepted.
+    ``leakage_outcome`` reports the admission check above; the two paths'
+    runtime-private content is never combined or even accepted.
     """
 
     reasons = _characterization_input_reasons(
@@ -224,36 +241,47 @@ def characterize_subjective_mem_retrieval_shadow(
 
 
 def _characterization_input_reasons(
-    primary: object,
-    shadow: object,
-    replay: object | None,
-    subjective_latency_class: object,
-    projection_rebuild_equivalent: object,
+    primary: object, shadow: object, replay: object | None,
+    subjective_latency_class: object, projection_rebuild_equivalent: object,
 ) -> tuple[str, ...]:
     """Accept only exact content-free inputs describing an explicit shadow run."""
 
-    reasons: list[str] = []
-    if type(primary) is not SubjectiveMemRetrievalPrimaryServedMetrics or (
-        primary.latency_class not in RETRIEVAL_LATENCY_CLASSES
-    ) or any(
-        type(value) is not int or value < 0
-        for value in (primary.candidate_count, primary.selected_count)
-    ) or type(primary.attempted) is not bool:
-        reasons.append("subjective_mem_retrieval_characterization_primary_metrics_invalid")
     projection_reasons = validate_subjective_mem_retrieval_selection_projection(shadow)
     if replay is not None:
         projection_reasons += validate_subjective_mem_retrieval_selection_projection(replay)
-    if projection_reasons:
-        reasons.append("subjective_mem_retrieval_characterization_projection_invalid")
-    elif not shadow.shadow or (replay is not None and not replay.shadow):
-        reasons.append("subjective_mem_retrieval_characterization_shadow_mode_required")
-    if subjective_latency_class not in RETRIEVAL_LATENCY_CLASSES:
-        reasons.append("subjective_mem_retrieval_characterization_latency_class_invalid")
-    if projection_rebuild_equivalent is not None and (
-        type(projection_rebuild_equivalent) is not bool
+    rules = (
+        (_primary_metrics_invalid(primary),
+         "subjective_mem_retrieval_characterization_primary_metrics_invalid"),
+        (bool(projection_reasons),
+         "subjective_mem_retrieval_characterization_projection_invalid"),
+        (not projection_reasons and (
+            not shadow.shadow or (replay is not None and not replay.shadow)
+         ),
+         "subjective_mem_retrieval_characterization_shadow_mode_required"),
+        (subjective_latency_class not in RETRIEVAL_LATENCY_CLASSES,
+         "subjective_mem_retrieval_characterization_latency_class_invalid"),
+        (projection_rebuild_equivalent is not None
+         and type(projection_rebuild_equivalent) is not bool,
+         "subjective_mem_retrieval_characterization_rebuild_flag_invalid"),
+    )
+    return dedupe([reason for failed, reason in rules if failed])
+
+
+def _primary_metrics_invalid(primary: object) -> bool:
+    """Only exact bounded Primary served-path metrics are admitted for comparison."""
+
+    if type(primary) is not SubjectiveMemRetrievalPrimaryServedMetrics:
+        return True
+    if primary.latency_class not in RETRIEVAL_LATENCY_CLASSES:
+        return True
+    if type(primary.attempted) is not bool or any(
+        type(value) is not int or value < 0
+        for value in (primary.candidate_count, primary.selected_count)
     ):
-        reasons.append("subjective_mem_retrieval_characterization_rebuild_flag_invalid")
-    return dedupe(reasons)
+        return True
+    if primary.selected_count > primary.candidate_count:
+        return True
+    return not primary.attempted and bool(primary.candidate_count or primary.selected_count)
 
 
 def _attempt_class(attempted: bool) -> str:
@@ -261,11 +289,7 @@ def _attempt_class(attempted: bool) -> str:
 
 
 def _count_class(count: int) -> str:
-    if count <= 0:
-        return "none"
-    if count == 1:
-        return "one"
-    return "few" if count <= 8 else "many"
+    return "none" if count <= 0 else "one" if count == 1 else "few" if count <= 8 else "many"
 
 
 def _agreement_class(primary_selected: int, subjective_selected: int) -> str:
@@ -279,8 +303,7 @@ def _agreement_class(primary_selected: int, subjective_selected: int) -> str:
 __all__ = [
     "RETRIEVAL_LATENCY_CLASSES", "RETRIEVAL_LEAKAGE_OUTCOME_ADMITTED",
     "SUBJECTIVE_MEM_RETRIEVAL_CHARACTERIZATION_SCHEMA",
-    "SubjectiveMemRetrievalPrimaryServedMetrics",
-    "SubjectiveMemRetrievalShadowCharacterization",
+    "SubjectiveMemRetrievalPrimaryServedMetrics", "SubjectiveMemRetrievalShadowCharacterization",
     "characterize_subjective_mem_retrieval_shadow",
     "validate_subjective_mem_retrieval_selection_projection",
 ]

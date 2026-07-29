@@ -128,9 +128,9 @@ def test_usage_events_are_finalized_atomically_before_the_handoff_is_admitted(st
     assert outcome.status == "finalized" and outcome.event_count == 2 and outcome.admitted is True
     assert type(admitted) is SubjectiveMemRetrievalAdmittedHandoff
     assert admitted.finalization_status == "finalized"
-    assert admitted.release_grounding_evidence() == tuple(
-        item.to_grounding_dict() for item in handoff.private_items
-    )
+    released = admitted.release_grounding_evidence()
+    assert len(released) == 2 and all(type(item) is dict for item in released)
+    assert {item["fact_text"] for item in released} == {CONTENT}
     assert len(_record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND)) == 2
     assert len(_record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND)) == 2
 
@@ -167,12 +167,12 @@ FORGED = "forged prose the canonical page never contained"
 )
 def test_tampered_canonical_evidence_is_refused_before_any_durable_write(store, tamper) -> None:
     handoff, bound, _data = _prepared("memory1", "memory2")
-    items = handoff.private_items
+    items = handoff._private_items
     tampered = {
-        "prose": replace(handoff, private_items=(replace(items[0], grounded_content=FORGED), items[1])),
+        "prose": replace(handoff, _private_items=(replace(items[0], grounded_content=FORGED), items[1])),
         "prose_with_matching_digest": replace(
             handoff,
-            private_items=(
+            _private_items=(
                 replace(
                     items[0], grounded_content=FORGED,
                     grounded_content_digest=utf8_text_digest(FORGED),
@@ -180,25 +180,25 @@ def test_tampered_canonical_evidence_is_refused_before_any_durable_write(store, 
                 items[1],
             ),
         ),
-        "digest": replace(handoff, private_items=(replace(items[0], grounded_content_digest=D3), items[1])),
-        "identity": replace(handoff, private_items=(replace(items[0], memory_id="memory9"), items[1])),
+        "digest": replace(handoff, _private_items=(replace(items[0], grounded_content_digest=D3), items[1])),
+        "identity": replace(handoff, _private_items=(replace(items[0], memory_id="memory9"), items[1])),
         "lifecycle": replace(
-            handoff, private_items=(replace(items[0], lifecycle_state="pinned", pinned=True), items[1])
+            handoff, _private_items=(replace(items[0], lifecycle_state="pinned", pinned=True), items[1])
         ),
         "provenance": replace(
-            handoff, private_items=(replace(items[0], provenance_source="other_allowed_source"), items[1])
+            handoff, _private_items=(replace(items[0], provenance_source="other_allowed_source"), items[1])
         ),
-        "token_estimate": replace(handoff, private_items=(replace(items[0], token_estimate=1), items[1])),
+        "token_estimate": replace(handoff, _private_items=(replace(items[0], token_estimate=1), items[1])),
         "row_digest": replace(
-            handoff, private_items=(replace(items[0], row_digest=items[1].row_digest), items[1])
+            handoff, _private_items=(replace(items[0], row_digest=items[1].row_digest), items[1])
         ),
-        "reorder": replace(handoff, private_items=(items[1], items[0])),
-        "dropped": replace(handoff, private_items=(items[0],)),
-        "duplicated": replace(handoff, private_items=(items[0], items[0])),
-        "dropped_page": replace(handoff, canonical_pages=()),
+        "reorder": replace(handoff, _private_items=(items[1], items[0])),
+        "dropped": replace(handoff, _private_items=(items[0],)),
+        "duplicated": replace(handoff, _private_items=(items[0], items[0])),
+        "dropped_page": replace(handoff, _canonical_pages=()),
         "substituted_page": replace(
             handoff,
-            canonical_pages=(
+            _canonical_pages=(
                 SubjectiveMemRetrievalCanonicalPageBinding(
                     canonical_page_bytes=b"not canonical markdown\n"
                 ),
@@ -446,6 +446,74 @@ def test_durable_events_survive_projection_deletion_and_deterministic_rebuild(
     assert type(admitted) is SubjectiveMemRetrievalAdmittedHandoff
 
 
+ADMITTED_FIELDS = {
+    "schema": "forged", "handoff_shape": "forged", "finalization_status": "finalized",
+    "selected_count": 1, "total_token_estimate": 1, "selection": None,
+    "ranked_row_digests": (), "_private_items": (), "_admission_seal": object(),
+}
+
+
+def test_an_admitted_handoff_cannot_be_directly_constructed_or_replaced(store) -> None:
+    handoff, bound, _data = _prepared("memory1", "memory2")
+    with pytest.raises(TypeError):
+        SubjectiveMemRetrievalAdmittedHandoff()
+    with pytest.raises(TypeError):
+        SubjectiveMemRetrievalAdmittedHandoff(**ADMITTED_FIELDS)
+    with pytest.raises(TypeError):
+        SubjectiveMemRetrievalAdmittedHandoff(
+            **{**ADMITTED_FIELDS, "_private_items": handoff._private_items}
+        )
+
+    admitted, outcome = finalize_subjective_mem_retrieval_usage(**_arguments(store, handoff, bound))
+    assert outcome.status == "finalized" and admitted is not None
+    for changes in (
+        {"_private_items": ()},
+        {"selected_count": 99},
+        {"finalization_status": "finalized"},
+        {"selection": handoff.selection},
+    ):
+        with pytest.raises(TypeError):
+            replace(admitted, **changes)
+    assert len(admitted.release_grounding_evidence()) == 2
+
+
+def test_an_unsealed_admitted_object_cannot_release_evidence(store) -> None:
+    handoff, bound, _data = _prepared("memory1")
+    unsealed = object.__new__(SubjectiveMemRetrievalAdmittedHandoff)
+    with pytest.raises(RuntimeError):
+        unsealed.release_grounding_evidence()
+
+    for name, value in ADMITTED_FIELDS.items():
+        object.__setattr__(
+            unsealed, name, handoff._private_items if name == "_private_items" else value
+        )
+    with pytest.raises(RuntimeError):
+        unsealed.release_grounding_evidence()
+    assert _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND) == []
+
+
+def test_only_the_finalizer_seals_an_admitted_handoff_including_duplicates(store) -> None:
+    handoff, bound, _data = _prepared("memory1", "memory2")
+    arguments = _arguments(store, handoff, bound)
+    admitted, first = finalize_subjective_mem_retrieval_usage(**arguments)
+    assert first.status == "finalized"
+    assert len(admitted.release_grounding_evidence()) == 2
+
+    duplicate, second = finalize_subjective_mem_retrieval_usage(**arguments)
+    assert second.status == "duplicate_finalized"
+    assert duplicate is not None and duplicate.finalization_status == "duplicate_finalized"
+    assert duplicate.release_grounding_evidence() == admitted.release_grounding_evidence()
+
+    blocked, conflict = finalize_subjective_mem_retrieval_usage(
+        **_arguments(store, handoff, bound, occurred_at=LATER)
+    )
+    assert blocked is None and conflict.status == "conflict"
+
+    source = inspect.getsource(ledger_owner)
+    assert source.count("_seal_admitted_handoff(") == 3
+    assert source.count("_ADMISSION_SEAL") == 3
+
+
 def test_ledger_depends_one_way_on_selection_and_reuses_the_evidence_store() -> None:
     tree = ast.parse(inspect.getsource(ledger_owner))
     imports = {
@@ -462,6 +530,9 @@ def test_ledger_depends_one_way_on_selection_and_reuses_the_evidence_store() -> 
         "relaylm.evidence_store", "relaylm.subjective_mem_retrieval",
         "relaylm.subjective_mem_retrieval_selection",
     }
+    assert "SubjectiveMemRetrievalAdmittedHandoff" not in inspect.getsource(
+        inspect.getmodule(select_subjective_mem_retrieval_handoff)
+    )
     assert "SubjectiveMemRetrievalAdmittedHandoff" not in inspect.getsource(
         inspect.getmodule(select_subjective_mem_retrieval_handoff)
     )
