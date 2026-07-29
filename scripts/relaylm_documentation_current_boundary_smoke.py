@@ -28,7 +28,8 @@ REQUIRED = {
         "RT-1C shadow adapter, grounding handoff, usage ledger complete in PR #784; default-off, shadow-only, unwired",
         "RT-1D hard cutover and retirement                  next ordered target; unauthorized / not started",
         "RT-1C shadow adapter, grounding handoff, and usage ledger complete in PR #784",
-        "RT-1B and RT-1C remain default-off, explicit shadow-only, and unwired from ordinary Retrieval",
+        "RT-1B remains default-off and unwired from ordinary Retrieval",
+        "RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval",
         "**RT-1C Shadow adapter, grounding handoff, and usage ledger** selects exact current eligible Subjective revisions",
         "caller-attested prose with a matching caller digest cannot be admitted",
         "only then seals an admitted handoff that materializes fresh grounding dictionaries",
@@ -77,6 +78,8 @@ REQUIRED = {
         "implementation program is complete through RT-1C",
         "RT-1C shadow adapter, grounding handoff, and usage ledger is implemented in PR #784 as three bounded owners",
         "RT-1 Retrieval projection and hard cutover in progress / RT-1A, RT-1B, and RT-1C complete",
+        "RT-1B remains default-off and unwired from ordinary Retrieval",
+        "RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval",
     ),
     "docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md": (
         "relaylm_authority: rt1_subjective_mem_retrieval_projection_and_hard_cutover",
@@ -242,6 +245,8 @@ STALE = (
     "implementation program is complete through RT-1B",
     "RT-1 Retrieval projection and hard cutover in progress / RT-1A and RT-1B complete",
     "RT-1D hard cutover and retirement                  registered / not started",
+    "RT-1D hard cutover and retirement registered / not started",
+    "RT-1B and RT-1C remain default-off, explicit shadow-only, and unwired from ordinary Retrieval",
     "It does not claim RT-1C is\nimplemented, started, or validated",
     "This document defines the accepted target architecture for RT-1 before runtime\nimplementation.",
     "The bounded path budget for the future RT-1C implementation is:",
@@ -271,6 +276,10 @@ PROBES = (
     (STATUS, "- ordinary served Subjective MEM Retrieval, query matching, ranking, cache, and request-path wiring;"),
     (PLAN, "RT-1C shadow adapter, grounding handoff, and usage ledger complete in PR #784 / default-off / shadow-only / unwired"),
     (PLAN, "RT-1D hard cutover and retirement next ordered target / unauthorized / not started"),
+    (STATUS, "RT-1B remains default-off and unwired from ordinary Retrieval"),
+    (STATUS, "RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval"),
+    (PLAN, "RT-1B remains default-off and unwired from ordinary Retrieval"),
+    (PLAN, "RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval"),
     (PLAN, "implementation program is complete through RT-1C"),
     (RT1C, "#### Second P1 characterization budget-review disposition"),
     (RT1C, "relaylm/subjective_mem_retrieval_characterization.py   below roughly 320 lines"),
@@ -307,6 +316,9 @@ STALE_PROBES = (
     (STATUS, "RT-1C shadow adapter, grounding handoff, usage ledger next ordered slice; registered / not started"),
     (PLAN, "RT-1C shadow adapter, grounding handoff, and usage ledger next ordered slice / registered / not started"),
     (RT1C, "RT-1C remains authorized and not implemented on\n`main`"),
+    (PLAN, "RT-1D hard cutover and retirement registered / not started"),
+    (STATUS, "RT-1B and RT-1C remain default-off, explicit shadow-only, and unwired from ordinary Retrieval"),
+    (PLAN, "RT-1B and RT-1C remain default-off, explicit shadow-only, and unwired from ordinary Retrieval"),
 )
 
 
