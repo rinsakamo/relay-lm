@@ -2,6 +2,7 @@
 """Validate the small set of documents that own RelayLM's current boundary."""
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -93,7 +94,22 @@ REQUIRED = {
         "that block's `revision_digest` equals `row.revision_digest`;",
         "No RT-1A projection-row\ndigest addition is required",
         "#### Revised three-owner structural budget",
+        "relaylm/subjective_mem_retrieval_characterization.py   below roughly 320 lines",
+        "The characterization owner's budget was amended from below roughly 300 lines to\nbelow roughly 320 lines by the second P1 budget-review disposition",
+        "#### Second P1 characterization budget-review disposition",
+        "Independent review examined the responsibility-preserving implementation of the\ncharacterization owner after genuine consolidation had already been applied.",
+        "`relaylm/subjective_mem_retrieval_characterization.py`\nis 309 lines.",
+        "Admission\nvalidation and comparison are one coherent temporary shadow-characterization\nresponsibility, not two separable production responsibilities",
+        "- a fourth production owner is rejected, because it would split one\n  responsibility across two files and add dependency surface for no authority\n  gain;",
+        "- deleting security or state checks, or line-golfing the code, to reach the\n  former roughly-300-line target is rejected",
+        "The characterization structural budget is therefore amended from below roughly\n300 lines to below roughly 320 lines.",
+        "This is a bounded, reviewed exception for\nthis exact owner. It is not a general structural-budget relaxation",
+        "Exactly three production owners remain authorized:",
+        "Strict validation and deterministic comparison remain in the same temporary\ncharacterization owner, which keeps its RT-1D removal/disable gate and its\none-way dependency direction unchanged.",
+        "This disposition adjusts an implementation budget only. RT-1C remains authorized\nand not implemented on `main`, Primary MEM remains the sole served ordinary\nmemory and Retrieval authority, RT-1C remains default-off, shadow-only, and\nunwired from the ordinary request path, no ordinary request-path wiring is\nauthorized, and RT-1D remains unauthorized and not started.",
         "#### Revised P1 return triggers",
+        "- the characterization owner reaches 320 lines;",
+        "- the characterization owner gains another responsibility, consumes private\n  content, or becomes a general validation framework;",
         "### Expected implementation paths",
         "relaylm/subjective_mem_retrieval_selection.py",
         "relaylm/subjective_mem_retrieval_characterization.py",
@@ -212,16 +228,79 @@ HISTORY_ONLY_STATUS_ANCHORS = (
 )
 
 
+RT1C = "docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md"
+
+PROBES = (
+    (RT1C, "#### Second P1 characterization budget-review disposition"),
+    (RT1C, "`relaylm/subjective_mem_retrieval_characterization.py`\nis 309 lines."),
+    (RT1C, "relaylm/subjective_mem_retrieval_characterization.py   below roughly 320 lines"),
+    (
+        RT1C,
+        "- a fourth production owner is rejected, because it would split one\n"
+        "  responsibility across two files and add dependency surface for no authority\n  gain;",
+    ),
+    (
+        RT1C,
+        "This is a bounded, reviewed exception for\nthis exact owner. It is not a general "
+        "structural-budget relaxation",
+    ),
+    (
+        RT1C,
+        "Admission\nvalidation and comparison are one coherent temporary shadow-characterization"
+        "\nresponsibility, not two separable production responsibilities",
+    ),
+    (RT1C, "Exactly three production owners remain authorized:"),
+    (RT1C, "- the characterization owner reaches 320 lines;"),
+    (
+        RT1C,
+        "This disposition adjusts an implementation budget only. RT-1C remains authorized\n"
+        "and not implemented on `main`, Primary MEM remains the sole served ordinary\n"
+        "memory and Retrieval authority, RT-1C remains default-off, shadow-only, and\n"
+        "unwired from the ordinary request path, no ordinary request-path wiring is\n"
+        "authorized, and RT-1D remains unauthorized and not started.",
+    ),
+    (RT1C, "Primary MEM remains the sole served ordinary memory and Retrieval authority."),
+    (
+        RT1C,
+        "RT-1D hard cutover, Primary retirement, and authority transfer remain\n"
+        "unauthorized and not started.",
+    ),
+    (RT1C, "It does not claim RT-1C is\nimplemented, started, or validated"),
+)
+
+
 def read(path: str) -> str:
     location = ROOT / path
     assert location.exists(), f"missing file: {path}"
     return location.read_text(encoding="utf-8")
 
 
-def require(path: str, anchors: tuple[str, ...]) -> None:
-    body = read(path)
+def require_body(path: str, anchors: tuple[str, ...], body: str) -> None:
     missing = [anchor for anchor in anchors if anchor not in body]
     assert not missing, f"{path}: missing current-boundary anchors: {missing!r}"
+
+
+def require(path: str, anchors: tuple[str, ...]) -> None:
+    require_body(path, anchors, read(path))
+
+
+def self_test() -> None:
+    """Prove each material boundary anchor fails closed when removed or altered.
+
+    The probe damages an in-memory copy only; no repository content is written.
+    """
+
+    for path, anchor in PROBES:
+        body = read(path)
+        assert anchor in body, f"{path}: probe anchor absent: {anchor!r}"
+        for damaged in (body.replace(anchor, "", 1), body.replace(anchor, "REMOVED", 1)):
+            try:
+                require_body(path, REQUIRED[path], damaged)
+            except AssertionError:
+                continue
+            raise AssertionError(f"{path}: anchor is not enforced: {anchor!r}")
+        print(f"PASS: removal and alteration of {anchor.splitlines()[0]!r} fail closed")
+    print("SELF-TEST PASS")
 
 
 def forbid(path: str, anchors: tuple[str, ...]) -> None:
@@ -230,7 +309,10 @@ def forbid(path: str, anchors: tuple[str, ...]) -> None:
     assert not stale, f"{path}: stale current-boundary anchors: {stale!r}"
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    if argv and argv[0] == "--self-test":
+        self_test()
+        return
     for path, anchors in REQUIRED.items():
         require(path, anchors)
     for path in CURRENT_DOCS:
@@ -240,4 +322,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
