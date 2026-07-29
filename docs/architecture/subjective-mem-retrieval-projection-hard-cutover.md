@@ -48,8 +48,8 @@ relaylm_related_authority:
 
 ## Status and purpose
 
-This document defines the accepted target architecture for RT-1 before runtime
-implementation.
+This document defines the accepted target architecture for RT-1. RT-1A, RT-1B,
+and RT-1C are implemented within it; RT-1D remains the unimplemented target.
 
 RT-1 replaces the current Primary MEM ordinary-recall authority with one
 Subjective MEM ordinary-Retrieval authority. It does so through a disposable
@@ -57,9 +57,9 @@ projection, exact current-revision eligibility, content-free durable usage
 events, shadow-only characterization, one explicit authority transfer, and
 retirement of the replaced Primary readers and writers.
 
-This architecture does not claim RT-1 is implemented. It does not enable
-Subjective MEM Retrieval, change feature defaults, migrate user data, or retire
-Primary MEM by itself.
+This architecture does not claim the RT-1 series or its hard cutover is
+implemented. It does not enable ordinary Subjective MEM Retrieval, change feature
+defaults, migrate user data, or retire Primary MEM by itself.
 
 ## P0 current boundary
 
@@ -537,17 +537,18 @@ later slice cannot claim completion of an earlier missing authority.
 ### Accepted position
 
 RT-1A contract and projection foundation is complete. RT-1B projection builder
-and deterministic rebuild is complete.
-
-RT-1C shadow adapter, grounding handoff, and usage ledger alone is the next
-authorized implementation.
+and deterministic rebuild is complete. RT-1C shadow adapter, grounding handoff,
+and usage ledger is implemented in PR #784 within the budget this section
+authorizes, and remains default-off, explicit shadow-only, and unwired from
+ordinary Retrieval.
 
 RT-1D hard cutover, Primary retirement, and authority transfer remain
 unauthorized and not started.
 
-This section authorizes an implementation budget. It does not claim RT-1C is
-implemented, started, or validated; `../PROJECT_STATUS.md` remains the only
-current-status authority.
+This section authorizes an implementation budget and records which slices have
+since landed within it. It claims no ordinary served Subjective MEM Retrieval,
+no authority cutover, and no completed RT-1 series; `../PROJECT_STATUS.md`
+remains the only current-status authority.
 
 Four accepted boundaries survive RT-1C unchanged:
 
@@ -625,9 +626,11 @@ Four accepted boundaries survive RT-1C unchanged:
 ### RT-1C P1 amendment
 
 This section records one accepted P1 amendment to the RT-1C budget above. It
-changes authorization only. RT-1C remains authorized and not implemented on
-`main`, Primary MEM remains the sole served ordinary authority, RT-1D remains
-unauthorized and not started, and no ordinary request-path wiring is authorized.
+changed authorization only. At the time of that review RT-1C was authorized and
+not yet implemented on `main`; the implementation landed later in PR #784 within
+this amended budget. Primary MEM remains the sole served ordinary authority,
+RT-1D remains unauthorized and not started, and no ordinary request-path wiring
+is authorized.
 
 #### Accepted P1 characterization split
 
@@ -775,11 +778,12 @@ Strict validation and deterministic comparison remain in the same temporary
 characterization owner, which keeps its RT-1D removal/disable gate and its
 one-way dependency direction unchanged.
 
-This disposition adjusts an implementation budget only. RT-1C remains authorized
-and not implemented on `main`, Primary MEM remains the sole served ordinary
-memory and Retrieval authority, RT-1C remains default-off, shadow-only, and
-unwired from the ordinary request path, no ordinary request-path wiring is
-authorized, and RT-1D remains unauthorized and not started.
+This disposition adjusted an implementation budget only, and RT-1C was not yet
+implemented on `main` when it was recorded; the implementation landed later in
+PR #784 within this budget. Primary MEM remains the sole served ordinary memory
+and Retrieval authority, RT-1C remains default-off, shadow-only, and unwired from
+the ordinary request path, no ordinary request-path wiring is authorized, and
+RT-1D remains unauthorized and not started.
 
 #### Revised P1 return triggers
 
@@ -821,7 +825,7 @@ Return to P1 rather than continuing if:
 
 ### Expected implementation paths
 
-The bounded path budget for the future RT-1C implementation is:
+The bounded path budget the RT-1C implementation landed within is:
 
 ```text
 relaylm/subjective_mem_retrieval_selection.py          exact selection, canonical-page
