@@ -7,10 +7,15 @@ can release that evidence.
 
 ```text
 prepared pure handoff from the selection owner
-  -> this ledger revalidates every private item against its exact row
+  -> the selection owner revalidates the whole handoff against canonical bytes
   -> exact event+result pairs are read, then atomically finalized
   -> only then an admitted handoff type is constructed and returned
 ```
+
+Canonical revalidation is delegated, not reimplemented: this ledger calls the
+selection owner's ``validate_subjective_mem_retrieval_prepared_handoff`` before
+opening durable records, so it never becomes a parser or a canonical content
+authority.
 
 Admission is a type, not a flag. The prepared handoff carries no admission state
 and no release path, so nothing outside this boundary can produce an admitted
@@ -48,7 +53,7 @@ from relaylm.subjective_mem_retrieval import (
 )
 from relaylm.subjective_mem_retrieval_selection import (
     SubjectiveMemRetrievalPreparedHandoff, SubjectiveMemRetrievalPrivateItem,
-    subjective_mem_retrieval_private_item_reasons,
+    validate_subjective_mem_retrieval_prepared_handoff,
 )
 
 SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND = "subjective_mem_retrieval_usage_event"
@@ -246,10 +251,12 @@ def _derive_events(
     assert isinstance(rows, tuple)
     assert isinstance(handoff, SubjectiveMemRetrievalPreparedHandoff)
 
-    by_digest = {row.row_digest: row for row in rows}
-    reasons = _private_item_reasons(request, by_digest, handoff)
+    reasons = validate_subjective_mem_retrieval_prepared_handoff(
+        request=request, manifest=manifest, rows=rows, handoff=handoff
+    )
     if reasons:
         return None, reasons
+    by_digest = {row.row_digest: row for row in rows}
     derived: list[SubjectiveMemRetrievalUsageEvent] = []
     collected: list[str] = []
     for digest in handoff.ranked_row_digests:
@@ -268,41 +275,6 @@ def _derive_events(
     if len({event.usage_slot_id for event in derived}) != len(derived):
         return None, ("subjective_mem_retrieval_usage_slot_duplicated",)
     return tuple(derived), ()
-
-
-def _private_item_reasons(
-    request: SubjectiveMemRetrievalRequest,
-    by_digest: dict[str, SubjectiveMemRetrievalProjectionRow],
-    handoff: SubjectiveMemRetrievalPreparedHandoff,
-) -> tuple[str, ...]:
-    """Revalidate every private item against its exact row before any durable write.
-
-    The prepared items are immutable, but the handoff value itself can be rebuilt
-    by a caller, so exact count, exact order, and exact per-item agreement are
-    proven here rather than assumed. Missing, duplicate, extra, reordered, or
-    substituted items all fail closed.
-    """
-
-    items = handoff.private_items
-    ranked = handoff.ranked_row_digests
-    if type(items) is not tuple or any(
-        type(item) is not SubjectiveMemRetrievalPrivateItem for item in items
-    ):
-        return ("subjective_mem_retrieval_usage_private_item_invalid",)
-    if len(items) != len(ranked) or len(items) != handoff.selection.selected_count:
-        return ("subjective_mem_retrieval_usage_private_item_count_mismatch",)
-    if tuple(item.row_digest for item in items) != ranked:
-        return ("subjective_mem_retrieval_usage_private_item_order_mismatch",)
-    for item in items:
-        row = by_digest.get(item.row_digest)
-        if row is None:
-            return ("subjective_mem_retrieval_usage_private_item_unbound",)
-        reasons = subjective_mem_retrieval_private_item_reasons(
-            request=request, row=row, item=item
-        )
-        if reasons:
-            return reasons
-    return ()
 
 
 def _handoff_reasons(

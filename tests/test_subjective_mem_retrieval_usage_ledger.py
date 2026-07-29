@@ -14,12 +14,6 @@ from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreResult
 from relaylm.relaymem_grounded_recall_response import build_grounded_recall_context
 from relaylm.subjective_mem_retrieval import (
     RETRIEVAL_USAGE_EVENT_KIND,
-    SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
-    SUBJECTIVE_MEM_RETRIEVAL_PROJECTION_POLICY_REVISION,
-    SubjectiveMemRetrievalBoundary,
-    SubjectiveMemRetrievalProjectionManifest,
-    SubjectiveMemRetrievalProjectionRow,
-    SubjectiveMemRetrievalRequest,
     derive_subjective_mem_retrieval_usage_event,
 )
 from relaylm.subjective_mem_retrieval_projection_store import (
@@ -27,7 +21,7 @@ from relaylm.subjective_mem_retrieval_projection_store import (
     delete_subjective_mem_retrieval_projection,
 )
 from relaylm.subjective_mem_retrieval_selection import (
-    SubjectiveMemRetrievalContentBinding,
+    SubjectiveMemRetrievalCanonicalPageBinding,
     SubjectiveMemRetrievalPreparedHandoff,
     select_subjective_mem_retrieval_handoff,
 )
@@ -38,129 +32,48 @@ from relaylm.subjective_mem_retrieval_usage_ledger import (
     finalize_subjective_mem_retrieval_usage,
 )
 
-D = "a" * 64
-D2 = "b" * 64
-PAGE = "sha256:" + "c" * 64
+from test_subjective_mem_retrieval_selection import (  # noqa: E402  (shared fixture builders)
+    D2,
+    D3,
+    GROUNDED as CONTENT,
+    MEANING,
+    _block,
+    _manifest,
+    _page,
+    _request,
+    _revision,
+    _row,
+    _successor,
+)
+
 NOW = "2026-07-28T00:00:00+00:00"
 LATER = "2026-07-28T00:00:01+00:00"
 SPACE = "evidence-space-1"
-CONTENT = "The recital finished before the rain started."
 
 
-def _row(**changes) -> SubjectiveMemRetrievalProjectionRow:
-    base = SubjectiveMemRetrievalProjectionRow(
-        projection_generation_id="projection-generation-1",
-        character_id="char1",
-        memory_id="memory1",
-        memory_revision=2,
-        page_id="subjective-mem-page-char1-episodic",
-        block_id="subjective-mem-block-memory1-r2",
-        canonical_page_digest=PAGE,
-        block_digest=D,
-        revision_digest=D2,
-        current_selector_id="subjective-mem-state-memory1",
-        current_selector_digest=D,
-        current_receipt_id="subjective-mem-receipt-memory1-r2",
-        current_receipt_digest=D2,
-        authorization_record_kind="subjective_mem_lifecycle_transition",
-        authorization_id="subjective-mem-transition-memory1-r2",
-        authorization_digest=D,
-        workspace_authority_digest=D2,
-        scope_binding_digest=D,
-        lifecycle_state="active",
-        mutation_state="none",
-        retrieval_eligible=True,
-        retrieval_visible=True,
-        memory_kind="episodic",
-        formation_stage="secondary",
-        current_selector_unambiguous=True,
-        latest_persisted_revision=True,
-        finalized_receipt_verified=True,
-        authorization_verified=True,
-        canonical_binding_verified=True,
-        scope_admitted=True,
-        unresolved_intent_present=False,
-        source_revision_schema="relaylm.subjective_mem_revision.v1",
-        source_current_state_schema="relaylm.subjective_mem_current_state.v2",
-        source_page_schema="relaylm.subjective_mem_page.v1",
-        source_block_schema="relaylm.subjective_mem_lifecycle_block.v1",
-        source_renderer_revision="relaylm.subjective_mem_renderer.v1",
-        source_partition_revision="relaylm.subjective_mem_partition.v1",
-        source_platform_revision="relaylm.subjective_mem_posix_commit.v1",
-        projection_policy_revision=SUBJECTIVE_MEM_RETRIEVAL_PROJECTION_POLICY_REVISION,
-    )
-    return replace(base, **changes)
-
-
-def _other_row(**changes) -> SubjectiveMemRetrievalProjectionRow:
-    return _row(
-        memory_id="memory2",
-        block_id="subjective-mem-block-memory2-r2",
-        current_selector_id="subjective-mem-state-memory2",
-        current_receipt_id="subjective-mem-receipt-memory2-r2",
-        authorization_id="subjective-mem-transition-memory2-r2",
-        **changes,
-    )
-
-
-def _manifest(*rows: SubjectiveMemRetrievalProjectionRow):
-    return SubjectiveMemRetrievalProjectionManifest(
-        projection_generation_id="projection-generation-1",
-        source_snapshot_digest=D,
-        source_schema_revision_digest=D2,
-        row_digests=tuple(sorted(row.row_digest for row in rows)),
-        built_at=NOW,
-        complete=True,
-        mixed_generation=False,
-        policy_revision=SUBJECTIVE_MEM_RETRIEVAL_PROJECTION_POLICY_REVISION,
-    )
-
-
-def _request(manifest: SubjectiveMemRetrievalProjectionManifest):
-    return SubjectiveMemRetrievalRequest(
-        character_id="char1",
-        workspace_authority_digest=D2,
-        admitted_scope_binding_digest=D,
-        query_plan_digest=D2,
-        request_correlation_digest=D,
-        projection_generation_id=manifest.projection_generation_id,
-        projection_manifest_digest=manifest.manifest_digest,
-        memory_kinds=("episodic", "semantic"),
-        candidate_limit=8,
-        token_budget=1024,
-        policy_revision=SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
-        boundary=SubjectiveMemRetrievalBoundary(),
-    )
-
-
-def _binding(row: SubjectiveMemRetrievalProjectionRow):
-    return SubjectiveMemRetrievalContentBinding(
-        row_digest=row.row_digest,
-        memory_id=row.memory_id,
-        memory_revision=row.memory_revision,
-        character_id="char1",
-        workspace_authority_digest=D2,
-        scope_binding_digest=D,
-        grounded_content=CONTENT,
-        grounded_content_digest=utf8_text_digest(CONTENT),
-        token_estimate=16,
-    )
-
-
-def _prepared(*rows: SubjectiveMemRetrievalProjectionRow, shadow: bool = False):
+def _prepared(*memory_ids: str, shadow: bool = False, row_changes: dict | None = None):
     """Prepare one backend-bound handoff plus the ledger arguments it belongs to."""
-    from relaylm.subjective_mem_retrieval import subjective_mem_retrieval_exclusion_reasons
 
+    chains = []
+    for memory_id in memory_ids:
+        base = _revision(memory_id)
+        chains.append((base, _successor(base)))
+    data, page = _page(*chains)
+    rows = tuple(
+        _row(page, _block(page, memory_id, 2), **((row_changes or {}) if index == 0 else {}))
+        for index, memory_id in enumerate(memory_ids)
+    )
     manifest = _manifest(*rows)
     request = _request(manifest)
-    bindings = tuple(
-        _binding(row) for row in rows if not subjective_mem_retrieval_exclusion_reasons(row)
+    pages = (
+        () if row_changes
+        else (SubjectiveMemRetrievalCanonicalPageBinding(canonical_page_bytes=data),)
     )
     handoff, projection = select_subjective_mem_retrieval_handoff(
-        request=request, manifest=manifest, rows=rows, content_bindings=bindings, shadow=shadow
+        request=request, manifest=manifest, rows=rows, canonical_pages=pages, shadow=shadow
     )
-    assert projection.status != "refused"
-    return handoff, {"request": request, "manifest": manifest, "rows": rows}
+    assert projection.status != "refused", projection.blocked_reason_classes
+    return handoff, {"request": request, "manifest": manifest, "rows": rows}, data
 
 
 def _arguments(store: EvidenceRecordStore, handoff, bound, **changes):
@@ -208,8 +121,7 @@ def store(tmp_path: Path) -> EvidenceRecordStore:
 
 
 def test_usage_events_are_finalized_atomically_before_the_handoff_is_admitted(store) -> None:
-    first, second = _row(), _other_row()
-    handoff, bound = _prepared(first, second)
+    handoff, bound, _data = _prepared("memory1", "memory2")
     assert type(handoff) is SubjectiveMemRetrievalPreparedHandoff
 
     admitted, outcome = finalize_subjective_mem_retrieval_usage(**_arguments(store, handoff, bound))
@@ -224,8 +136,7 @@ def test_usage_events_are_finalized_atomically_before_the_handoff_is_admitted(st
 
 
 def test_only_an_admitted_handoff_releases_fresh_dictionaries_for_the_grounding_owner(store) -> None:
-    first, second = _row(), _other_row(lifecycle_state="pinned")
-    handoff, bound = _prepared(first, second)
+    handoff, bound, _data = _prepared("memory1", "memory2")
     admitted, outcome = finalize_subjective_mem_retrieval_usage(**_arguments(store, handoff, bound))
     assert outcome.status == "finalized" and admitted is not None
 
@@ -243,47 +154,70 @@ def test_only_an_admitted_handoff_releases_fresh_dictionaries_for_the_grounding_
     assert again[0]["fact_text"] == CONTENT and again[0] is not released[0]
 
 
+FORGED = "forged prose the canonical page never contained"
+
+
 @pytest.mark.parametrize(
-    ("tamper", "reason"),
+    "tamper",
     [
-        ("prose", "subjective_mem_retrieval_private_item_content_digest_mismatch"),
-        ("digest", "subjective_mem_retrieval_private_item_content_digest_mismatch"),
-        ("identity", "subjective_mem_retrieval_private_item_row_mismatch"),
-        ("lifecycle", "subjective_mem_retrieval_private_item_row_mismatch"),
-        ("provenance", "subjective_mem_retrieval_private_item_row_mismatch"),
-        ("row_digest", "subjective_mem_retrieval_usage_private_item_order_mismatch"),
-        ("reorder", "subjective_mem_retrieval_usage_private_item_order_mismatch"),
-        ("dropped", "subjective_mem_retrieval_usage_private_item_count_mismatch"),
-        ("duplicated", "subjective_mem_retrieval_usage_private_item_count_mismatch"),
+        "prose", "prose_with_matching_digest", "digest", "identity", "lifecycle",
+        "provenance", "token_estimate", "row_digest", "reorder", "dropped", "duplicated",
+        "dropped_page", "substituted_page",
     ],
 )
-def test_tampered_private_evidence_is_refused_before_any_durable_write(store, tamper, reason) -> None:
-    first, second = _row(), _other_row()
-    handoff, bound = _prepared(first, second)
+def test_tampered_canonical_evidence_is_refused_before_any_durable_write(store, tamper) -> None:
+    handoff, bound, _data = _prepared("memory1", "memory2")
     items = handoff.private_items
     tampered = {
-        "prose": (replace(items[0], grounded_content="forged prose"), items[1]),
-        "digest": (replace(items[0], grounded_content_digest=D2), items[1]),
-        "identity": (replace(items[0], memory_id="memory9"), items[1]),
-        "lifecycle": (replace(items[0], lifecycle_state="pinned", pinned=True), items[1]),
-        "provenance": (replace(items[0], provenance_source="user_assertion"), items[1]),
-        "row_digest": (replace(items[0], row_digest=items[1].row_digest), items[1]),
-        "reorder": (items[1], items[0]),
-        "dropped": (items[0],),
-        "duplicated": (items[0], items[0], items[1]),
+        "prose": replace(handoff, private_items=(replace(items[0], grounded_content=FORGED), items[1])),
+        "prose_with_matching_digest": replace(
+            handoff,
+            private_items=(
+                replace(
+                    items[0], grounded_content=FORGED,
+                    grounded_content_digest=utf8_text_digest(FORGED),
+                ),
+                items[1],
+            ),
+        ),
+        "digest": replace(handoff, private_items=(replace(items[0], grounded_content_digest=D3), items[1])),
+        "identity": replace(handoff, private_items=(replace(items[0], memory_id="memory9"), items[1])),
+        "lifecycle": replace(
+            handoff, private_items=(replace(items[0], lifecycle_state="pinned", pinned=True), items[1])
+        ),
+        "provenance": replace(
+            handoff, private_items=(replace(items[0], provenance_source="other_allowed_source"), items[1])
+        ),
+        "token_estimate": replace(handoff, private_items=(replace(items[0], token_estimate=1), items[1])),
+        "row_digest": replace(
+            handoff, private_items=(replace(items[0], row_digest=items[1].row_digest), items[1])
+        ),
+        "reorder": replace(handoff, private_items=(items[1], items[0])),
+        "dropped": replace(handoff, private_items=(items[0],)),
+        "duplicated": replace(handoff, private_items=(items[0], items[0])),
+        "dropped_page": replace(handoff, canonical_pages=()),
+        "substituted_page": replace(
+            handoff,
+            canonical_pages=(
+                SubjectiveMemRetrievalCanonicalPageBinding(
+                    canonical_page_bytes=b"not canonical markdown\n"
+                ),
+            ),
+        ),
     }[tamper]
     admitted, outcome = finalize_subjective_mem_retrieval_usage(
-        **_arguments(store, replace(handoff, private_items=tampered), bound)
+        **_arguments(store, tampered, bound)
     )
     assert admitted is None and outcome.status == "refused"
-    assert reason in outcome.blocked_reason_classes
+    assert outcome.blocked_reason_classes != ()
+    assert FORGED not in repr(outcome.to_dict())
     assert _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND) == []
     assert _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND) == []
 
 
 def test_persisted_usage_event_has_the_exact_contract_identity_and_is_content_free(store) -> None:
-    row = _row()
-    handoff, bound = _prepared(row)
+    handoff, bound, _data = _prepared("memory1")
+    row = bound["rows"][0]
     _admitted, outcome = finalize_subjective_mem_retrieval_usage(**_arguments(store, handoff, bound))
     assert outcome.status == "finalized"
 
@@ -309,7 +243,7 @@ def test_persisted_usage_event_has_the_exact_contract_identity_and_is_content_fr
 
 
 def test_the_same_exact_usage_slot_is_idempotent_without_an_extra_event(store) -> None:
-    handoff, bound = _prepared(_row(), _other_row())
+    handoff, bound, _data = _prepared("memory1", "memory2")
     arguments = _arguments(store, handoff, bound)
     _admitted, first = finalize_subjective_mem_retrieval_usage(**arguments)
     assert first.status == "finalized"
@@ -324,7 +258,7 @@ def test_the_same_exact_usage_slot_is_idempotent_without_an_extra_event(store) -
 
 
 def test_a_divergent_event_in_the_same_slot_is_an_integrity_conflict(store) -> None:
-    handoff, bound = _prepared(_row())
+    handoff, bound, _data = _prepared("memory1")
     _admitted, outcome = finalize_subjective_mem_retrieval_usage(**_arguments(store, handoff, bound))
     assert outcome.status == "finalized"
     before = _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND)
@@ -351,7 +285,7 @@ def _records(store: EvidenceRecordStore, record_kind: str) -> list[Path]:
     ],
 )
 def test_an_incomplete_or_divergent_event_result_pair_fails_closed(store, damage, reason) -> None:
-    handoff, bound = _prepared(_row())
+    handoff, bound, _data = _prepared("memory1")
     arguments = _arguments(store, handoff, bound)
     _admitted, outcome = finalize_subjective_mem_retrieval_usage(**arguments)
     assert outcome.status == "finalized"
@@ -381,14 +315,19 @@ def test_an_incomplete_or_divergent_event_result_pair_fails_closed(store, damage
 
 
 def test_one_exact_pair_beside_one_absent_pair_fails_closed(store) -> None:
-    first, second = _row(), _other_row()
-    handoff, bound = _prepared(first, second)
+    handoff, bound, _data = _prepared("memory1", "memory2")
     arguments = _arguments(store, handoff, bound)
     _admitted, outcome = finalize_subjective_mem_retrieval_usage(**arguments)
     assert outcome.status == "finalized"
 
-    _records(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND)[0].unlink()
-    _records(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND)[0].unlink()
+    event, reasons = derive_subjective_mem_retrieval_usage_event(
+        selection=handoff.selection, row=bound["rows"][0], event_kind=RETRIEVAL_USAGE_EVENT_KIND,
+        occurred_at=NOW, idempotency_key="request-memory-use-1", **bound,
+    )
+    assert reasons == () and event is not None
+    space = Path(store.root) / SPACE / "records"
+    (space / SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND / f"{event.usage_event_id}.json").unlink()
+    (space / SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND / f"{event.result_id}.json").unlink()
 
     admitted, partial = finalize_subjective_mem_retrieval_usage(**arguments)
     assert admitted is None and partial.status == "conflict"
@@ -408,7 +347,7 @@ def test_one_exact_pair_beside_one_absent_pair_fails_closed(store) -> None:
 def test_no_usage_event_is_written_for_a_shadow_or_emptied_handoff(
     store, handoff_change, reason
 ) -> None:
-    handoff, bound = _prepared(_row(), shadow=handoff_change == "shadow")
+    handoff, bound, _data = _prepared("memory1", shadow=handoff_change == "shadow")
     if handoff_change != "shadow":
         handoff = replace(handoff, ranked_row_digests=())
     admitted, outcome = finalize_subjective_mem_retrieval_usage(**_arguments(store, handoff, bound))
@@ -418,24 +357,44 @@ def test_no_usage_event_is_written_for_a_shadow_or_emptied_handoff(
 
 
 def test_no_usage_event_is_written_for_an_empty_or_considered_only_result(store) -> None:
-    handoff, bound = _prepared(_row(lifecycle_state="hidden", retrieval_eligible=False))
+    handoff, bound, _data = _prepared(
+        "memory1", row_changes={"lifecycle_state": "hidden", "retrieval_eligible": False}
+    )
     admitted, outcome = finalize_subjective_mem_retrieval_usage(**_arguments(store, handoff, bound))
     assert admitted is None and outcome.status == "refused"
     assert outcome.blocked_reason_classes == ("subjective_mem_retrieval_usage_selection_empty",)
     assert _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND) == []
 
-    selected = _row()
-    considered = _other_row(mutation_state="corrupt", retrieval_eligible=False)
-    handoff, bound = _prepared(selected, considered)
-    _admitted, outcome = finalize_subjective_mem_retrieval_usage(**_arguments(store, handoff, bound))
+    selected_base, considered_base = _revision("memory1"), _revision("memory2")
+    data, page = _page(
+        (selected_base, _successor(selected_base)),
+        (considered_base, _successor(considered_base)),
+    )
+    rows = (
+        _row(page, _block(page, "memory1", 2)),
+        _row(page, _block(page, "memory2", 2), mutation_state="corrupt", retrieval_eligible=False),
+    )
+    manifest = _manifest(*rows)
+    request = _request(manifest)
+    considered_handoff, projection = select_subjective_mem_retrieval_handoff(
+        request=request, manifest=manifest, rows=rows,
+        canonical_pages=(SubjectiveMemRetrievalCanonicalPageBinding(canonical_page_bytes=data),),
+        shadow=False,
+    )
+    assert projection.selected_count == 1 and projection.candidate_count == 2
+    _admitted, outcome = finalize_subjective_mem_retrieval_usage(
+        **_arguments(
+            store, considered_handoff,
+            {"request": request, "manifest": manifest, "rows": rows},
+        )
+    )
     assert outcome.status == "finalized" and outcome.event_count == 1
     assert len(_record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND)) == 1
 
 
 def test_a_handoff_that_disagrees_with_its_selection_is_refused(store) -> None:
-    first, second = _row(), _other_row()
-    handoff, bound = _prepared(first, second)
-    tampered = replace(handoff, ranked_row_digests=(first.row_digest,))
+    handoff, bound, _data = _prepared("memory1", "memory2")
+    tampered = replace(handoff, ranked_row_digests=handoff.ranked_row_digests[:1])
     admitted, outcome = finalize_subjective_mem_retrieval_usage(
         **_arguments(store, tampered, bound)
     )
@@ -447,7 +406,7 @@ def test_a_handoff_that_disagrees_with_its_selection_is_refused(store) -> None:
 
 
 def test_an_injected_durable_failure_returns_no_admitted_handoff(tmp_path: Path) -> None:
-    handoff, bound = _prepared(_row(), _other_row())
+    handoff, bound, _data = _prepared("memory1", "memory2")
     failing = _FailingCommitStore(str(tmp_path / "evidence"))
     admitted, outcome = finalize_subjective_mem_retrieval_usage(**_arguments(failing, handoff, bound))
     assert admitted is None and outcome.status == "failed" and outcome.admitted is False
@@ -465,8 +424,7 @@ def test_an_injected_durable_failure_returns_no_admitted_handoff(tmp_path: Path)
 def test_durable_events_survive_projection_deletion_and_deterministic_rebuild(
     store, tmp_path: Path
 ) -> None:
-    row = _row()
-    handoff, bound = _prepared(row)
+    handoff, bound, _data = _prepared("memory1")
     _admitted, outcome = finalize_subjective_mem_retrieval_usage(**_arguments(store, handoff, bound))
     assert outcome.status == "finalized"
     persisted = _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND)
@@ -479,7 +437,7 @@ def test_durable_events_survive_projection_deletion_and_deterministic_rebuild(
     assert not bundle.exists()
     assert _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND) == persisted
 
-    rebuilt_handoff, rebuilt_bound = _prepared(_row())
+    rebuilt_handoff, rebuilt_bound, _data = _prepared("memory1")
     assert rebuilt_handoff.selection == handoff.selection
     admitted, replayed = finalize_subjective_mem_retrieval_usage(
         **_arguments(store, rebuilt_handoff, rebuilt_bound)

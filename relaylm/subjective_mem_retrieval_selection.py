@@ -1,91 +1,86 @@
-"""RT-1C exact selection, runtime-private handoff, and shadow characterization.
+"""RT-1C exact selection, canonical-page binding, and runtime-private handoff.
 
 Accepted by ``docs/architecture/subjective-mem-retrieval-projection-hard-
 cutover.md``: select the exact current eligible Subjective revisions of exactly
-one verified projection generation, prepare the bounded runtime-private handoff
-the existing E1-R4 grounding owner already consumes, and characterize the
-Primary served path against the Subjective shadow path without combining them.
+one verified projection generation and prepare the bounded runtime-private
+handoff the existing E1-R4 grounding owner already consumes.
+
+Private evidence is bound to canonical authority, not to a caller's word. The
+caller supplies bounded canonical page bytes; this owner parses them with the
+existing ``relaylm.subjective_mem_markdown`` parser, proves the complete page,
+block, and revision identity against the exact projection row and admitted
+request scope, and takes ``grounded_content`` and its digest only from that exact
+parsed revision. Arbitrary prose plus a matching caller-supplied digest is only
+self-consistent, which is not canonical authority, and there is no API through
+which it can be admitted. Token estimates are likewise derived from the parsed
+prose through the existing deterministic estimator rather than accepted from a
+caller.
 
 Nothing here serves memory. A prepared handoff has no admission state and no
 release path at all: only the durable usage ledger may build an admitted handoff,
-from a prepared value it has revalidated after exact durable finalization. This
-owner therefore cannot be talked into releasing evidence, and the ledger depends
-on it rather than the other way round. There is no ordinary request-path call,
-RelayCTX injection, backend call, response rewrite, projection repair, canonical
-read, path resolution, or Primary MEM access, and E1-R4 grounding behaviour is
-unchanged — its bounded constants are imported read-only so no second copy of
-its limits exists.
+after ``validate_subjective_mem_retrieval_prepared_handoff`` proves the whole
+handoff is exactly what those canonical bytes produce. There is no ordinary
+request-path call, RelayCTX injection, backend call, response rewrite, projection
+repair, filesystem access, path resolution, or Primary MEM access, and E1-R4
+grounding behaviour is unchanged — its bounded constants are imported read-only.
 
-Canonical prose arrives only as bounded content bindings from the canonical
-owner and is held as immutable typed private items, so no mutable mapping is
-ever exposed on a prepared handoff. Public projections carry only values from
-this module's closed vocabularies, which is what lets characterization copy a
-few of them without copying caller text. Every entry point returns content-free
-reasons instead of raising.
+Shadow characterization is a separate owner and is never imported here. Every
+entry point returns content-free reasons instead of raising.
 """
 from __future__ import annotations
 
-import re
 from dataclasses import asdict, dataclass, field
 from typing import Literal
 
-from relaylm.evidence_common import dedupe, utf8_text_digest
+from relaylm.evidence_common import canonical_digest, dedupe
 from relaylm.relaymem_grounded_recall_response import (
     GROUNDED_RECALL_CONTEXT_SCHEMA, MAX_EVIDENCE_ITEMS, MAX_FACT_TEXT_CHARS,
 )
+from relaylm.subjective_mem_markdown import (
+    MAX_CANONICAL_PAGE_BYTES, SubjectiveMemMarkdownBlock, SubjectiveMemMarkdownPage,
+    parse_subjective_mem_page_bytes,
+)
 from relaylm.subjective_mem_retrieval import (
-    RETRIEVAL_EXCLUSION_REASONS, SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
-    SubjectiveMemRetrievalProjectionManifest, SubjectiveMemRetrievalProjectionRow,
-    SubjectiveMemRetrievalRequest, SubjectiveMemRetrievalSelection,
-    subjective_mem_retrieval_exclusion_reasons,
+    SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION, SubjectiveMemRetrievalProjectionManifest,
+    SubjectiveMemRetrievalProjectionRow, SubjectiveMemRetrievalRequest,
+    SubjectiveMemRetrievalSelection, subjective_mem_retrieval_exclusion_reasons,
     validate_subjective_mem_retrieval_projection_manifest,
     validate_subjective_mem_retrieval_projection_row, validate_subjective_mem_retrieval_request,
     validate_subjective_mem_retrieval_selection,
 )
+from relaylm.token_budget import estimate_text_tokens
 
 SUBJECTIVE_MEM_RETRIEVAL_HANDOFF_SCHEMA = "relaylm.subjective_mem_retrieval_private_handoff.v1"
 SUBJECTIVE_MEM_RETRIEVAL_SELECTION_PROJECTION_SCHEMA = "relaylm.subjective_mem_retrieval_selection_projection.v1"
-SUBJECTIVE_MEM_RETRIEVAL_CHARACTERIZATION_SCHEMA = "relaylm.subjective_mem_retrieval_shadow_characterization.v1"
 SUBJECTIVE_MEM_RETRIEVAL_HANDOFF_SHAPE = f"{GROUNDED_RECALL_CONTEXT_SCHEMA}.evidence_items"
 SUBJECTIVE_MEM_RETRIEVAL_SERVED_AUTHORITY = "primary_mem"
 SUBJECTIVE_MEM_RETRIEVAL_MEMORY_LAYER = "subjective"
 
-RETRIEVAL_LATENCY_CLASSES = frozenset({"unmeasured", "within_bound", "exceeded_bound"})
 RETRIEVAL_SELECTION_STATUSES = frozenset({"prepared", "prepared_empty", "refused"})
 RETRIEVAL_HANDOFF_SHAPE_CLASSES = frozenset({"absent", "empty", "bounded_private_items"})
 RETRIEVAL_TOKEN_BUDGET_CLASSES = frozenset({"empty", "within_budget", "at_budget", "exceeded"})
-RETRIEVAL_LEAKAGE_OUTCOME_ADMITTED = "no_leakage_detected"
 
 SelectionStatus = Literal["prepared", "prepared_empty", "refused"]
 
 _FORMATION_PROVENANCE = {"primary": "user_assertion", "secondary": "other_allowed_source"}
-_MAX_TOKEN_ESTIMATE = 8192
 _MAX_BLOCKED_REASONS = 32
-_REASON_TOKEN_RE = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+\Z")
 
 
 @dataclass(frozen=True)
-class SubjectiveMemRetrievalContentBinding:
-    """One bounded canonical-content binding for exactly one projection row.
+class SubjectiveMemRetrievalCanonicalPageBinding:
+    """One bounded canonical page image supplied by the existing canonical owner.
 
-    The canonical owner supplies the prose, its exact digest, and the bounded
-    token estimate; this owner resolves no path and repairs no row.
+    The bytes are the only authority this owner accepts for memory prose. No
+    caller-supplied page identity, digest, block identity, prose, or prose digest
+    accompanies them, because every one of those is derived from the parse.
     """
 
-    row_digest: str
-    memory_id: str
-    memory_revision: int
-    character_id: str
-    workspace_authority_digest: str
-    scope_binding_digest: str
-    grounded_content: str = field(repr=False)
-    grounded_content_digest: str
-    token_estimate: int
+    canonical_page_bytes: bytes = field(repr=False)
 
 
 @dataclass(frozen=True)
 class SubjectiveMemRetrievalPrivateItem:
-    """One immutable private evidence item bound to exactly one selected row.
+    """One immutable private evidence item recovered from canonical page bytes.
 
     It carries the exact E1-R4 fields, the row and prose digests that bind it,
     and the prose itself. Only an admitted handoff materializes dictionaries.
@@ -102,6 +97,7 @@ class SubjectiveMemRetrievalPrivateItem:
     provenance_source: str
     grounded_content: str = field(repr=False)
     grounded_content_digest: str
+    token_estimate: int
 
     def to_grounding_dict(self) -> dict[str, object]:
         """A fresh plain dict in the shape the existing E1-R4 owner consumes."""
@@ -124,7 +120,9 @@ class SubjectiveMemRetrievalPreparedHandoff:
     """One prepared runtime-private handoff that can never release its evidence.
 
     There is no admission state to toggle and no accessor that yields grounding
-    evidence, so a prepared value cannot self-admit.
+    evidence, so a prepared value cannot self-admit. It retains the exact
+    canonical page bindings it was built from, so the whole handoff stays
+    revalidatable against canonical authority.
     """
 
     schema: str
@@ -135,6 +133,7 @@ class SubjectiveMemRetrievalPreparedHandoff:
     selection: SubjectiveMemRetrievalSelection = field(repr=False)
     ranked_row_digests: tuple[str, ...] = field(repr=False)
     private_items: tuple[SubjectiveMemRetrievalPrivateItem, ...] = field(repr=False)
+    canonical_pages: tuple[SubjectiveMemRetrievalCanonicalPageBinding, ...] = field(repr=False)
 
 
 @dataclass(frozen=True)
@@ -171,66 +170,21 @@ class SubjectiveMemRetrievalSelectionProjection:
         }
 
 
-@dataclass(frozen=True)
-class SubjectiveMemRetrievalPrimaryServedMetrics:
-    """Bounded content-free metrics of the Primary served path for one request."""
-
-    attempted: bool
-    candidate_count: int
-    selected_count: int
-    latency_class: str = "unmeasured"
-
-
-@dataclass(frozen=True)
-class SubjectiveMemRetrievalShadowCharacterization:
-    """One deterministic content-free Primary-vs-Subjective comparison."""
-
-    primary_attempt_class: str
-    subjective_attempt_class: str
-    primary_candidate_count_class: str
-    subjective_candidate_count_class: str
-    subjective_eligible_count_class: str
-    primary_selected_count_class: str
-    subjective_selected_count_class: str
-    exclusion_reason_class_counts: tuple[tuple[str, int], ...]
-    outcome_agreement_class: str
-    handoff_shape_class: str
-    token_budget_class: str
-    deterministic_replay_class: str
-    primary_latency_class: str
-    subjective_latency_class: str
-    projection_rebuild_equivalence_class: str
-    leakage_outcome: str
-    runtime_private_content_combined: bool = False
-
-    def to_dict(self) -> dict[str, object]:
-        body: dict[str, object] = asdict(self)
-        body["exclusion_reason_class_counts"] = [
-            [reason, count] for reason, count in self.exclusion_reason_class_counts
-        ]
-        return {
-            "schema": SUBJECTIVE_MEM_RETRIEVAL_CHARACTERIZATION_SCHEMA,
-            "content_free": True,
-            "temporary_characterization": True,
-            "served_authority": SUBJECTIVE_MEM_RETRIEVAL_SERVED_AUTHORITY,
-            **body,
-        }
-
-
 def select_subjective_mem_retrieval_handoff(
     *,
     request: object,
     manifest: object,
     rows: object,
-    content_bindings: object,
+    canonical_pages: object,
     shadow: bool = True,
 ) -> tuple[SubjectiveMemRetrievalPreparedHandoff | None, SubjectiveMemRetrievalSelectionProjection]:
-    """Select exact eligible rows and prepare one bounded runtime-private handoff.
+    """Select exact eligible rows and prepare one canonical-bound private handoff.
 
     ``rows`` is the complete candidate population of ``manifest``. Selection is a
     pure read: it never broadens the query, relaxes a partition, repairs a row,
-    or fills an empty result. Candidate-limit, token-budget and handoff-shape
-    overflow all fail closed rather than truncating an oversized handoff.
+    fills an empty result, or touches the filesystem. Candidate-limit,
+    token-budget, fact-length, and handoff-shape overflow all fail closed rather
+    than truncating an oversized handoff.
     """
 
     if type(shadow) is not bool:
@@ -245,9 +199,10 @@ def select_subjective_mem_retrieval_handoff(
     exclusions, eligible, ranked = _classify_population(request, rows)
     population = (rows, exclusions, eligible, ranked)
     budget = request.token_budget
-    items, total, reasons = _private_items(request, ranked, content_bindings)
+    items, reasons = _canonical_private_items(request, ranked, canonical_pages)
     if items is None:
         return None, _refused(reasons, shadow=shadow, population=population, token_budget=budget)
+    total = sum(item.token_estimate for item in items)
     if total > budget:
         reasons = ("subjective_mem_retrieval_selection_token_budget_exceeded",)
     elif len(ranked) > MAX_EVIDENCE_ITEMS:
@@ -277,11 +232,43 @@ def select_subjective_mem_retrieval_handoff(
         handoff_shape=SUBJECTIVE_MEM_RETRIEVAL_HANDOFF_SHAPE, shadow=shadow,
         selected_count=len(ranked), total_token_estimate=total, selection=selection,
         ranked_row_digests=tuple(row.row_digest for row in ranked), private_items=items,
+        canonical_pages=tuple(canonical_pages),
     )
     return handoff, _projection(
         "prepared_empty" if not ranked else "prepared", shadow=shadow, blocked=(),
         population=population, total=total, token_budget=budget, prepared=True,
     )
+
+
+def validate_subjective_mem_retrieval_prepared_handoff(
+    *, request: object, manifest: object, rows: object, handoff: object
+) -> tuple[str, ...]:
+    """Prove one prepared handoff is exactly what its canonical bytes produce.
+
+    The whole handoff — selected order, selection value, private items, canonical
+    bindings, and totals — is rebuilt from the retained canonical page bytes and
+    compared as one exact value. A caller-authored handoff whose prose and digest
+    merely agree with each other cannot survive that comparison, because the
+    admitted prose is recovered from the row-bound canonical page rather than
+    accepted. Missing, substituted, reordered, duplicated, and extra items or page
+    bindings fail the same way. The check is pure and performs no I/O.
+    """
+
+    if type(handoff) is not SubjectiveMemRetrievalPreparedHandoff or (
+        type(handoff.shadow) is not bool or type(handoff.canonical_pages) is not tuple
+    ):
+        return ("subjective_mem_retrieval_prepared_handoff_invalid",)
+    rebuilt, projection = select_subjective_mem_retrieval_handoff(
+        request=request, manifest=manifest, rows=rows,
+        canonical_pages=handoff.canonical_pages, shadow=handoff.shadow,
+    )
+    if rebuilt is None:
+        return projection.blocked_reason_classes or (
+            "subjective_mem_retrieval_prepared_handoff_not_reproducible",
+        )
+    if rebuilt != handoff:
+        return ("subjective_mem_retrieval_prepared_handoff_not_canonical",)
+    return ()
 
 
 def _population_reasons(request: object, manifest: object, rows: object) -> tuple[str, ...]:
@@ -354,74 +341,138 @@ def _classify_population(
     return tuple(sorted(counts.items())), tuple(eligible), tuple(ranked)
 
 
-def _private_items(
+def _parse_canonical_pages(
     request: SubjectiveMemRetrievalRequest,
     ranked: tuple[SubjectiveMemRetrievalProjectionRow, ...],
-    content_bindings: object,
-) -> tuple[tuple[SubjectiveMemRetrievalPrivateItem, ...] | None, int, tuple[str, ...]]:
-    """Bind exactly one supplied content item to each selected row, or fail closed."""
+    canonical_pages: object,
+) -> tuple[dict[str, SubjectiveMemMarkdownPage] | None, tuple[str, ...]]:
+    """Parse each supplied page exactly once and index it by its parsed identity.
 
-    if type(content_bindings) is not tuple or any(
-        type(item) is not SubjectiveMemRetrievalContentBinding for item in content_bindings
-    ):
-        return None, 0, ("subjective_mem_retrieval_selection_content_binding_invalid",)
-    by_digest: dict[str, SubjectiveMemRetrievalContentBinding] = {}
-    for binding in content_bindings:
-        if binding.row_digest in by_digest:
-            return None, 0, ("subjective_mem_retrieval_selection_content_binding_duplicated",)
-        by_digest[binding.row_digest] = binding
-    if set(by_digest) - {row.row_digest for row in ranked}:
-        return None, 0, ("subjective_mem_retrieval_selection_content_binding_unselected",)
-    items: list[SubjectiveMemRetrievalPrivateItem] = []
-    total = 0
-    for row in ranked:
-        binding = by_digest.get(row.row_digest)
-        if binding is None:
-            return None, 0, ("subjective_mem_retrieval_selection_content_binding_missing",)
-        reasons = _content_binding_reasons(request, row, binding)
-        if reasons:
-            return None, 0, reasons
-        item = _expected_private_item(
-            row, binding.grounded_content, binding.grounded_content_digest
-        )
-        reasons = subjective_mem_retrieval_private_item_reasons(request=request, row=row, item=item)
-        if reasons:
-            return None, 0, reasons
-        items.append(item)
-        total += binding.token_estimate
-    return tuple(items), total, ()
-
-
-def _content_binding_reasons(
-    request: SubjectiveMemRetrievalRequest,
-    row: SubjectiveMemRetrievalProjectionRow,
-    binding: SubjectiveMemRetrievalContentBinding,
-) -> tuple[str, ...]:
-    """Reject a binding foreign to this exact row, scope, or token budget.
-
-    Prose bounds and the prose digest belong to the private item's exactness rule.
+    A duplicate submission, duplicate parsed identity, duplicate parsed digest,
+    extra page no selected row needs, or missing page a selected row needs all
+    fail closed. No second parser and no filesystem access is introduced.
     """
 
-    if (
-        binding.memory_id != row.memory_id
-        or binding.memory_revision != row.memory_revision
-        or binding.character_id != request.character_id
-        or binding.workspace_authority_digest != request.workspace_authority_digest
-        or binding.scope_binding_digest != request.admitted_scope_binding_digest
+    if type(canonical_pages) is not tuple or any(
+        type(item) is not SubjectiveMemRetrievalCanonicalPageBinding for item in canonical_pages
     ):
-        return ("subjective_mem_retrieval_selection_content_binding_mismatch",)
-    if type(binding.token_estimate) is not int or not 1 <= binding.token_estimate <= _MAX_TOKEN_ESTIMATE:
-        return ("subjective_mem_retrieval_selection_content_binding_token_estimate_invalid",)
+        return None, ("subjective_mem_retrieval_selection_canonical_page_invalid",)
+    parsed: dict[str, SubjectiveMemMarkdownPage] = {}
+    digests: set[str] = set()
+    for binding in canonical_pages:
+        data = binding.canonical_page_bytes
+        if type(data) is not bytes or not 1 <= len(data) <= MAX_CANONICAL_PAGE_BYTES:
+            return None, ("subjective_mem_retrieval_selection_canonical_page_out_of_bounds",)
+        page, _reasons = parse_subjective_mem_page_bytes(
+            data, expected_character_id=request.character_id
+        )
+        if page is None:
+            return None, ("subjective_mem_retrieval_selection_canonical_page_unsupported",)
+        if page.page_id in parsed or page.page_digest in digests:
+            return None, ("subjective_mem_retrieval_selection_canonical_page_duplicated",)
+        parsed[page.page_id] = page
+        digests.add(page.page_digest)
+    required = {row.page_id for row in ranked}
+    if required - set(parsed):
+        return None, ("subjective_mem_retrieval_selection_canonical_page_missing",)
+    if set(parsed) - required:
+        return None, ("subjective_mem_retrieval_selection_canonical_page_extra",)
+    return parsed, ()
+
+
+def _canonical_private_items(
+    request: SubjectiveMemRetrievalRequest,
+    ranked: tuple[SubjectiveMemRetrievalProjectionRow, ...],
+    canonical_pages: object,
+) -> tuple[tuple[SubjectiveMemRetrievalPrivateItem, ...] | None, tuple[str, ...]]:
+    """Recover one private item per selected row from its exact canonical block."""
+
+    parsed, reasons = _parse_canonical_pages(request, ranked, canonical_pages)
+    if parsed is None:
+        return None, reasons
+    items: list[SubjectiveMemRetrievalPrivateItem] = []
+    for row in ranked:
+        page = parsed[row.page_id]
+        blocks = [item for item in page.blocks if item.block_id == row.block_id]
+        if len(blocks) != 1:
+            return None, ("subjective_mem_retrieval_selection_canonical_block_ambiguous",)
+        reasons = _canonical_block_reasons(request, row, page, blocks[0])
+        if reasons:
+            return None, reasons
+        revision = blocks[0].revision
+        if not 1 <= len(revision.grounded_content) <= MAX_FACT_TEXT_CHARS:
+            return None, ("subjective_mem_retrieval_selection_canonical_content_out_of_bounds",)
+        items.append(
+            _private_item(row, revision.grounded_content, revision.grounded_content_digest)
+        )
+    return tuple(items), ()
+
+
+def _canonical_block_reasons(
+    request: SubjectiveMemRetrievalRequest,
+    row: SubjectiveMemRetrievalProjectionRow,
+    page: SubjectiveMemMarkdownPage,
+    block: SubjectiveMemMarkdownBlock,
+) -> tuple[str, ...]:
+    """Prove one parsed page and block are exactly the ones ``row`` names."""
+
+    revision = block.revision
+    if (
+        page.page_id != row.page_id
+        or page.character_id != row.character_id
+        or page.character_id != request.character_id
+        or page.page_digest != row.canonical_page_digest
+    ):
+        return ("subjective_mem_retrieval_selection_canonical_page_mismatch",)
+    if (
+        block.block_id != row.block_id
+        or revision.memory_id != row.memory_id
+        or revision.memory_revision != row.memory_revision
+        or block.block_digest.removeprefix("sha256:") != row.block_digest
+        or block.revision_digest != row.revision_digest
+    ):
+        return ("subjective_mem_retrieval_selection_canonical_block_mismatch",)
+    scope_digest = canonical_digest(revision.scope_binding.to_dict())
+    if (
+        scope_digest != row.scope_binding_digest
+        or scope_digest != request.admitted_scope_binding_digest
+    ):
+        return ("subjective_mem_retrieval_selection_canonical_scope_mismatch",)
+    if (
+        revision.character_id != row.character_id
+        or revision.memory_kind != row.memory_kind
+        or revision.formation_stage != row.formation_stage
+        or revision.lifecycle_state != row.lifecycle_state
+        or revision.retrieval_visible != row.retrieval_visible
+    ):
+        return ("subjective_mem_retrieval_selection_canonical_revision_mismatch",)
+    if (
+        revision.authorization_id != row.authorization_id
+        or _authorization_record_kind(block) != row.authorization_record_kind
+    ):
+        return ("subjective_mem_retrieval_selection_canonical_authorization_mismatch",)
     return ()
 
 
-def _expected_private_item(
+def _authorization_record_kind(block: SubjectiveMemMarkdownBlock) -> str:
+    """Map one parsed revision's authorizing operation to its RT-1A record kind."""
+
+    revision = block.revision
+    legacy = revision.memory_revision == 1 and (
+        revision.authorization_kind == "formation_decision"
+    )
+    return "subjective_mem_decision" if legacy else "subjective_mem_lifecycle_transition"
+
+
+def _private_item(
     row: SubjectiveMemRetrievalProjectionRow, content: str, content_digest: str
 ) -> SubjectiveMemRetrievalPrivateItem:
-    """The one private item ``row`` admits for this prose; build and check agree.
+    """Build the private item ``row`` admits from its exact canonical prose.
 
     Formation stage classifies the already authorized revision into E1-R4's
-    support vocabulary; no lineage is invented and no grounding policy changes.
+    support vocabulary, and the token estimate comes from the existing
+    deterministic estimator rather than from a caller. No lineage is invented and
+    no grounding policy changes.
     """
 
     return SubjectiveMemRetrievalPrivateItem(
@@ -431,39 +482,8 @@ def _expected_private_item(
         memory_layer=SUBJECTIVE_MEM_RETRIEVAL_MEMORY_LAYER,
         provenance_source=_FORMATION_PROVENANCE.get(row.formation_stage, ""),
         grounded_content=content, grounded_content_digest=content_digest,
+        token_estimate=estimate_text_tokens(content).estimated_tokens,
     )
-
-
-def subjective_mem_retrieval_private_item_reasons(
-    *, request: object, row: object, item: object
-) -> tuple[str, ...]:
-    """Return why ``item`` is not the exact private item of ``row`` for ``request``.
-
-    This owner builds the private item, so it also owns the exactness rule the
-    durable ledger re-applies before any write. The rule is one exact-value
-    comparison against the item ``row`` admits, so no field can be forgotten:
-    a substituted, re-identified, re-classified, or re-worded item never matches.
-    """
-
-    if type(item) is not SubjectiveMemRetrievalPrivateItem:
-        return ("subjective_mem_retrieval_private_item_invalid",)
-    if type(row) is not SubjectiveMemRetrievalProjectionRow or (
-        type(request) is not SubjectiveMemRetrievalRequest
-    ):
-        return ("subjective_mem_retrieval_private_item_binding_invalid",)
-    if type(item.grounded_content) is not str or not 1 <= len(
-        item.grounded_content
-    ) <= MAX_FACT_TEXT_CHARS:
-        return ("subjective_mem_retrieval_private_item_content_out_of_bounds",)
-    if utf8_text_digest(item.grounded_content) != item.grounded_content_digest:
-        return ("subjective_mem_retrieval_private_item_content_digest_mismatch",)
-    if row.character_id != request.character_id:
-        return ("subjective_mem_retrieval_private_item_request_scope_mismatch",)
-    if item != _expected_private_item(
-        row, item.grounded_content, item.grounded_content_digest
-    ):
-        return ("subjective_mem_retrieval_private_item_row_mismatch",)
-    return ()
 
 
 def _refused(
@@ -517,208 +537,14 @@ def _token_budget_class(total: int, token_budget: int) -> str:
     return "at_budget" if total == token_budget else "within_budget"
 
 
-def validate_subjective_mem_retrieval_selection_projection(projection: object) -> tuple[str, ...]:
-    """Return why ``projection`` is not one exact owner-produced public projection.
-
-    Every reported value must come from this owner's closed vocabularies, so no
-    caller-supplied prose can be copied onward. Anything outside them fails
-    closed rather than being sanitized or truncated.
-    """
-
-    if type(projection) is not SubjectiveMemRetrievalSelectionProjection:
-        return ("subjective_mem_retrieval_selection_projection_invalid",)
-    reasons: list[str] = []
-    if projection.status not in RETRIEVAL_SELECTION_STATUSES:
-        reasons.append("subjective_mem_retrieval_selection_projection_status_invalid")
-    boundary = (
-        projection.runtime_private_evidence_omitted, projection.ordinary_route_admitted,
-        projection.usage_event_recorded,
-    )
-    if any(
-        type(value) is not bool
-        for value in (projection.shadow, projection.attempted,
-                      projection.projection_generation_ready, *boundary)
-    ):
-        reasons.append("subjective_mem_retrieval_selection_projection_boolean_invalid")
-    elif boundary != (True, False, False):
-        reasons.append("subjective_mem_retrieval_selection_projection_boundary_invalid")
-    reasons.extend(_projection_count_reasons(projection))
-    reasons.extend(_projection_vocabulary_reasons(projection))
-    if projection.to_dict().get("served_authority") != SUBJECTIVE_MEM_RETRIEVAL_SERVED_AUTHORITY:
-        reasons.append("subjective_mem_retrieval_selection_projection_served_authority_invalid")
-    return dedupe(reasons)
-
-
-def _projection_count_reasons(
-    projection: SubjectiveMemRetrievalSelectionProjection,
-) -> list[str]:
-    """Reject counts that are not exact non-negative ints in the owner's relation."""
-
-    counts = (
-        projection.candidate_count, projection.eligible_count,
-        projection.selected_count, projection.not_requested_kind_count,
-    )
-    if any(type(value) is not int or value < 0 for value in counts):
-        return ["subjective_mem_retrieval_selection_projection_counts_invalid"]
-    if not projection.candidate_count >= projection.eligible_count >= projection.selected_count:
-        return ["subjective_mem_retrieval_selection_projection_count_order_invalid"]
-    if projection.not_requested_kind_count != projection.eligible_count - projection.selected_count:
-        return ["subjective_mem_retrieval_selection_projection_count_relation_invalid"]
-    return []
-
-
-def _projection_vocabulary_reasons(
-    projection: SubjectiveMemRetrievalSelectionProjection,
-) -> list[str]:
-    """Reject any class or reason name outside the exact closed vocabularies."""
-
-    entries = projection.excluded_count_by_reason_class
-    reasons: list[str] = []
-    if type(entries) is not tuple or any(
-        type(entry) is not tuple or len(entry) != 2 or entry[0] not in RETRIEVAL_EXCLUSION_REASONS
-        or type(entry[1]) is not int or entry[1] < 1
-        for entry in entries
-    ):
-        reasons.append("subjective_mem_retrieval_selection_projection_exclusion_class_invalid")
-    else:
-        names = [entry[0] for entry in entries]
-        if names != sorted(set(names)):
-            reasons.append("subjective_mem_retrieval_selection_projection_exclusion_class_invalid")
-    if projection.handoff_shape_class not in RETRIEVAL_HANDOFF_SHAPE_CLASSES:
-        reasons.append("subjective_mem_retrieval_selection_projection_handoff_shape_class_invalid")
-    if projection.token_budget_class not in RETRIEVAL_TOKEN_BUDGET_CLASSES:
-        reasons.append("subjective_mem_retrieval_selection_projection_token_budget_class_invalid")
-    blocked = projection.blocked_reason_classes
-    if type(blocked) is not tuple or len(blocked) > _MAX_BLOCKED_REASONS or any(
-        type(value) is not str or len(value) > 96 or _REASON_TOKEN_RE.fullmatch(value) is None
-        for value in blocked
-    ):
-        reasons.append("subjective_mem_retrieval_selection_projection_blocked_reason_invalid")
-    elif bool(blocked) is not (projection.status == "refused"):
-        reasons.append("subjective_mem_retrieval_selection_projection_blocked_reason_state_invalid")
-    return reasons
-
-
-def characterize_subjective_mem_retrieval_shadow(
-    *,
-    primary: object,
-    shadow: object,
-    replay: object | None = None,
-    subjective_latency_class: str = "unmeasured",
-    projection_rebuild_equivalent: bool | None = None,
-) -> tuple[SubjectiveMemRetrievalShadowCharacterization | None, tuple[str, ...]]:
-    """Compare two exact content-free result projections deterministically.
-
-    Only values proven to come from this owner's closed vocabularies cross the
-    boundary, so a forged content-bearing projection is refused rather than
-    copied into the output. That admission check is what ``leakage_outcome``
-    reports, and the two paths' runtime-private content is never combined.
-    """
-
-    reasons = _characterization_input_reasons(
-        primary, shadow, replay, subjective_latency_class, projection_rebuild_equivalent
-    )
-    if reasons:
-        return None, reasons
-    assert isinstance(primary, SubjectiveMemRetrievalPrimaryServedMetrics)
-    assert isinstance(shadow, SubjectiveMemRetrievalSelectionProjection)
-    return (
-        SubjectiveMemRetrievalShadowCharacterization(
-            primary_attempt_class=_attempt_class(primary.attempted),
-            subjective_attempt_class=_attempt_class(shadow.attempted),
-            primary_candidate_count_class=_count_class(primary.candidate_count),
-            subjective_candidate_count_class=_count_class(shadow.candidate_count),
-            subjective_eligible_count_class=_count_class(shadow.eligible_count),
-            primary_selected_count_class=_count_class(primary.selected_count),
-            subjective_selected_count_class=_count_class(shadow.selected_count),
-            exclusion_reason_class_counts=shadow.excluded_count_by_reason_class,
-            outcome_agreement_class=_agreement_class(
-                primary.selected_count, shadow.selected_count
-            ),
-            handoff_shape_class=shadow.handoff_shape_class,
-            token_budget_class=shadow.token_budget_class,
-            deterministic_replay_class=(
-                "not_evaluated" if replay is None
-                else "deterministic" if replay.to_dict() == shadow.to_dict()
-                else "non_deterministic"
-            ),
-            primary_latency_class=primary.latency_class,
-            subjective_latency_class=subjective_latency_class,
-            projection_rebuild_equivalence_class=(
-                "not_evaluated" if projection_rebuild_equivalent is None
-                else "equivalent" if projection_rebuild_equivalent else "not_equivalent"
-            ),
-            leakage_outcome=RETRIEVAL_LEAKAGE_OUTCOME_ADMITTED,
-        ),
-        (),
-    )
-
-
-def _characterization_input_reasons(
-    primary: object,
-    shadow: object,
-    replay: object | None,
-    subjective_latency_class: object,
-    projection_rebuild_equivalent: object,
-) -> tuple[str, ...]:
-    """Accept only exact content-free inputs describing an explicit shadow run."""
-
-    reasons: list[str] = []
-    if type(primary) is not SubjectiveMemRetrievalPrimaryServedMetrics or (
-        primary.latency_class not in RETRIEVAL_LATENCY_CLASSES
-    ) or any(
-        type(value) is not int or value < 0
-        for value in (primary.candidate_count, primary.selected_count)
-    ) or type(primary.attempted) is not bool:
-        reasons.append("subjective_mem_retrieval_characterization_primary_metrics_invalid")
-    projection_reasons = validate_subjective_mem_retrieval_selection_projection(shadow)
-    if replay is not None:
-        projection_reasons += validate_subjective_mem_retrieval_selection_projection(replay)
-    if projection_reasons:
-        reasons.append("subjective_mem_retrieval_characterization_projection_invalid")
-    elif not shadow.shadow or (replay is not None and not replay.shadow):
-        reasons.append("subjective_mem_retrieval_characterization_shadow_mode_required")
-    if subjective_latency_class not in RETRIEVAL_LATENCY_CLASSES:
-        reasons.append("subjective_mem_retrieval_characterization_latency_class_invalid")
-    if projection_rebuild_equivalent is not None and (
-        type(projection_rebuild_equivalent) is not bool
-    ):
-        reasons.append("subjective_mem_retrieval_characterization_rebuild_flag_invalid")
-    return dedupe(reasons)
-
-
-def _attempt_class(attempted: bool) -> str:
-    return "attempted" if attempted else "not_attempted"
-
-
-def _count_class(count: int) -> str:
-    if count <= 0:
-        return "none"
-    if count == 1:
-        return "one"
-    return "few" if count <= 8 else "many"
-
-
-def _agreement_class(primary_selected: int, subjective_selected: int) -> str:
-    if primary_selected <= 0 and subjective_selected <= 0:
-        return "both_empty"
-    if primary_selected > 0 and subjective_selected > 0:
-        return "both_non_empty"
-    return "primary_only" if primary_selected > 0 else "subjective_only"
-
-
 __all__ = [
-    "RETRIEVAL_HANDOFF_SHAPE_CLASSES", "RETRIEVAL_LATENCY_CLASSES",
-    "RETRIEVAL_LEAKAGE_OUTCOME_ADMITTED", "RETRIEVAL_SELECTION_STATUSES",
-    "RETRIEVAL_TOKEN_BUDGET_CLASSES", "SUBJECTIVE_MEM_RETRIEVAL_CHARACTERIZATION_SCHEMA",
-    "SUBJECTIVE_MEM_RETRIEVAL_HANDOFF_SCHEMA", "SUBJECTIVE_MEM_RETRIEVAL_HANDOFF_SHAPE",
-    "SUBJECTIVE_MEM_RETRIEVAL_MEMORY_LAYER",
+    "RETRIEVAL_HANDOFF_SHAPE_CLASSES", "RETRIEVAL_SELECTION_STATUSES",
+    "RETRIEVAL_TOKEN_BUDGET_CLASSES", "SUBJECTIVE_MEM_RETRIEVAL_HANDOFF_SCHEMA",
+    "SUBJECTIVE_MEM_RETRIEVAL_HANDOFF_SHAPE", "SUBJECTIVE_MEM_RETRIEVAL_MEMORY_LAYER",
     "SUBJECTIVE_MEM_RETRIEVAL_SELECTION_PROJECTION_SCHEMA",
-    "SUBJECTIVE_MEM_RETRIEVAL_SERVED_AUTHORITY", "SubjectiveMemRetrievalContentBinding",
-    "SubjectiveMemRetrievalPreparedHandoff", "SubjectiveMemRetrievalPrimaryServedMetrics",
+    "SUBJECTIVE_MEM_RETRIEVAL_SERVED_AUTHORITY",
+    "SubjectiveMemRetrievalCanonicalPageBinding", "SubjectiveMemRetrievalPreparedHandoff",
     "SubjectiveMemRetrievalPrivateItem", "SubjectiveMemRetrievalSelectionProjection",
-    "SubjectiveMemRetrievalShadowCharacterization",
-    "characterize_subjective_mem_retrieval_shadow", "select_subjective_mem_retrieval_handoff",
-    "subjective_mem_retrieval_private_item_reasons",
-    "validate_subjective_mem_retrieval_selection_projection",
+    "select_subjective_mem_retrieval_handoff",
+    "validate_subjective_mem_retrieval_prepared_handoff",
 ]
