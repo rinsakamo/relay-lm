@@ -591,7 +591,9 @@ Four accepted boundaries survive RT-1C unchanged:
 - do not rewrite the visible response;
 - expose no private handoff content through public diagnostics;
 - fail closed rather than admitting a mismatched, oversized, or incomplete
-  handoff.
+  handoff;
+- take the selected content only from the exact canonical page binding described
+  under the P1 amendment below, never from caller-attested prose.
 
 #### 4. Deterministic characterization
 
@@ -620,6 +622,130 @@ Four accepted boundaries survive RT-1C unchanged:
 - never make usage an eligibility, truth, lifecycle, disclosure, formation,
   reinforcement, or consolidation authority.
 
+### RT-1C P1 amendment
+
+This section records one accepted P1 amendment to the RT-1C budget above. It
+changes authorization only. RT-1C remains authorized and not implemented on
+`main`, Primary MEM remains the sole served ordinary authority, RT-1D remains
+unauthorized and not started, and no ordinary request-path wiring is authorized.
+
+#### Accepted P1 characterization split
+
+The original budget placed temporary shadow characterization inside the
+selection owner and required a return to P1 if it could not stay bounded there.
+Independent review of a paused RT-1C implementation confirmed that trigger: once
+the integrity validation RT-1C requires was present, the co-located selection and
+characterization owner crossed the roughly-700-line structural review trigger.
+That is the exact architecture condition this document already named, so the
+split is now decided explicitly rather than left to the implementation.
+
+One third production responsibility file is therefore authorized:
+
+```text
+relaylm/subjective_mem_retrieval_characterization.py       temporary shadow
+                                                           characterization owner
+tests/test_subjective_mem_retrieval_characterization.py    its focused test owner
+```
+
+The characterization owner:
+
+- owns only temporary, content-free Primary-vs-Subjective shadow
+  characterization and the strict public-projection validation that
+  characterization needs;
+- owns no selection, private evidence, canonical parsing, durability, admission,
+  E1-R4 policy, Primary reader, ordinary route, fallback, or authority;
+- may import only storage-neutral public characterization values from the
+  selection owner plus read-only content-free Primary served-path metrics;
+- is temporary and carries the same RT-1D removal/disable gate as every other
+  shadow-only surface;
+- is never imported by the selection owner or by the durable usage ledger, so
+  the dependency stays one-way.
+
+No generic adapter framework, registry, plugin, API, configuration, or workflow
+surface is authorized by this split.
+
+#### Canonical-page-bound private evidence
+
+Review of the same paused implementation demonstrated one exact authority gap.
+A private evidence item built from caller-supplied grounded prose plus a
+caller-supplied matching `grounded_content_digest` is only self-consistent. Self
+consistency between prose and its own supplied digest is not canonical authority
+and must not authorize a private handoff. That design is rejected.
+
+The authorized binding is a pure read over bounded values the existing canonical
+owner already supplies:
+
+1. the canonical owner supplies bounded canonical page bytes as an in-memory
+   value; RT-1C resolves no path and reads no file;
+2. selection parses them with the existing
+   `relaylm.subjective_mem_markdown.parse_subjective_mem_page_bytes` owner, and
+   introduces no second canonical parser;
+3. selection verifies, for each selected row, that:
+   - the supplied value is `bytes` and within the existing canonical page bounds;
+   - the parsed `page_id` and `character_id` match the exact projection row and
+     request;
+   - the parsed page digest equals `row.canonical_page_digest`;
+   - exactly one parsed block matches `row.block_id`, `memory_id`, and
+     `memory_revision`;
+   - that block's `block_digest` equals `row.block_digest`;
+   - that block's `revision_digest` equals `row.revision_digest`;
+   - the parsed revision's character, memory kind, formation stage, lifecycle
+     state, retrieval visibility, scope binding, and authorization identity agree
+     with the exact projection row and the admitted request scope;
+   - the parsed `grounded_content_digest` is internally valid under the existing
+     Subjective MEM and canonical Markdown validators;
+4. `grounded_content` and `grounded_content_digest` are extracted only from that
+   exact parsed canonical revision, and the private item is constructed only from
+   those parsed values;
+5. duplicate, missing, extra, foreign, stale, conflicting, wrong-page,
+   wrong-block, wrong-revision, wrong-digest, unsupported-schema, malformed, and
+   oversized canonical page bindings all fail closed;
+6. one canonical page may serve several selected rows only when each row
+   independently resolves to exactly one matching block; a duplicate page
+   submission or an ambiguous row-to-page binding fails closed;
+7. no canonical page bytes, raw prose, subjective meaning, path, or private
+   lineage enters a public projection, characterization output, usage outcome, or
+   durable usage record;
+8. selection remains a pure function over already supplied bounded values, with
+   no filesystem access, workspace scan, path resolution, selector/receipt/
+   authorization reconstruction, projection repair, or canonical mutation;
+9. the durable ledger revalidates the immutable prepared private item against the
+   exact projection row and the canonical binding identity selection established.
+   It must not accept a reconstructed caller-authored private item as equivalent
+   merely because its prose and digest agree with each other.
+
+This closes the reviewed residual authority gap without adding a free-standing
+`grounded_content_digest` to the RT-1A projection row. No RT-1A projection-row
+digest addition is required, because the row already binds the canonical page,
+block, and revision digests from which the canonical grounded content is
+deterministically recovered.
+
+#### Revised three-owner structural budget
+
+```text
+relaylm/subjective_mem_retrieval_selection.py          below roughly 700 lines
+relaylm/subjective_mem_retrieval_characterization.py   below roughly 300 lines
+relaylm/subjective_mem_retrieval_usage_ledger.py       below roughly 700 lines
+each function                                          at or below roughly 80 lines
+```
+
+The characterization owner's 300-line budget holds unless a later P1 review
+authorizes otherwise. No production behaviour may be duplicated in tests.
+
+#### Revised P1 return triggers
+
+Return to P1 rather than continuing if:
+
+- canonical parsing cannot reuse the existing Markdown owner;
+- the RT-1A row, the RT-1B projection builder or store, the canonical Markdown
+  owner, E1-R4, Primary, or ordinary request routing would require modification;
+- more than these three new production files are required;
+- characterization starts consuming private content;
+- selection starts performing I/O;
+- the durable ledger becomes a canonical content authority;
+- a new configuration, API, UI, workflow, scheduler, worker, queue, daemon, or
+  polling surface is proposed.
+
 ### RT-1C invariants
 
 - exactly one served ordinary memory authority: Primary MEM;
@@ -646,13 +772,16 @@ Four accepted boundaries survive RT-1C unchanged:
 The bounded path budget for the future RT-1C implementation is:
 
 ```text
-relaylm/subjective_mem_retrieval_selection.py       exact selection, runtime-private
-                                                    handoff, and shadow characterization owner
-relaylm/subjective_mem_retrieval_usage_ledger.py    durable content-free usage-event owner
-tests/test_subjective_mem_retrieval_selection.py    focused selection, handoff, and
-                                                    characterization fixtures
-tests/test_subjective_mem_retrieval_usage_ledger.py focused durable idempotency, ordering,
-                                                    and finalization-failure fixtures
+relaylm/subjective_mem_retrieval_selection.py          exact selection, canonical-page
+                                                       binding, and runtime-private handoff owner
+relaylm/subjective_mem_retrieval_characterization.py   temporary shadow characterization owner
+relaylm/subjective_mem_retrieval_usage_ledger.py       durable content-free usage-event owner
+tests/test_subjective_mem_retrieval_selection.py       focused selection, canonical-binding,
+                                                       and handoff fixtures
+tests/test_subjective_mem_retrieval_characterization.py focused content-free comparison and
+                                                       projection-validation fixtures
+tests/test_subjective_mem_retrieval_usage_ledger.py    focused durable idempotency, ordering,
+                                                       and finalization-failure fixtures
 docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md
 ```
 
@@ -662,11 +791,12 @@ usage ledger is durable operations authority that outlives the disposable
 projection. Merging them would put a disposable derived read and a durable
 non-rebuildable write in one file with two unrelated reasons to change.
 
-The selection owner carries the temporary characterization surface because
-shadow characterization is a content-free comparison over two already-bounded
-result projections, not a third semantic authority. If P1 finds that
-characterization cannot stay bounded inside that owner, return to P1 for an
-explicit architecture split rather than silently adding a third production file.
+Shadow characterization is the third owner. It was originally co-located with
+selection because it is a content-free comparison over two already-bounded
+result projections rather than a third semantic authority. The accepted P1
+amendment above records why that co-location no longer holds and authorizes the
+split explicitly; it remains a temporary surface under the RT-1D removal gate,
+not a new authority.
 
 Two conditional paths are permitted only on demonstrated need:
 
@@ -685,7 +815,12 @@ identity. P1 must therefore demonstrate the exact absent identity — for exampl
 a bounded runtime-private handoff shape or a content-free characterization
 projection — before touching it, and must add the matching focused fixtures in
 the same slice. A milestone-only or wrapper-only name is not an acceptable
-substitute for either responsibility name above.
+substitute for any responsibility name above.
+
+The canonical grounded content is not such an absent identity. The accepted P1
+amendment binds it through the existing canonical page, block, and revision
+digests the row already carries, so no RT-1A projection-row digest addition is
+required or authorized for it.
 
 ### Not authorized for modification
 
@@ -710,6 +845,49 @@ exception that returns the work to P1 for an explicit authority decision. It is
 never silently authorized inside the implementation slice.
 
 ### Required negative cases
+
+Canonical binding:
+
+- arbitrary prose plus a matching caller-supplied digest is refused, or made
+  impossible by the accepted API shape;
+- canonical page digest mismatch;
+- wrong page ID or wrong character;
+- missing, duplicate, or extra canonical page binding;
+- missing, duplicate, or wrong block;
+- block digest mismatch;
+- revision digest mismatch;
+- memory ID or memory revision mismatch;
+- memory kind, formation stage, lifecycle, visibility, scope, or authorization
+  disagreement between the parsed revision and the exact row;
+- malformed, noncanonical, unsupported-schema, or oversized page bytes;
+- one canonical page carrying several memories resolves only the exact selected
+  block;
+- deterministic extraction under input reordering;
+- no canonical page bytes, prose, or path leakage.
+
+Characterization split:
+
+- only exact content-free public projection values are accepted;
+- no private handoff and no canonical page input is accepted;
+- no raw prose or free-text reason injection is accepted or copied onward;
+- deterministic replay over a bounded class vocabulary;
+- Primary remains the only served ordinary authority;
+- an explicit RT-1D removal gate exists;
+- no reverse import into the selection owner or the durable ledger.
+
+Durable ledger:
+
+- prepared and admitted handoffs are separate types;
+- private items are immutable;
+- the exact event and result pair state matrix is enforced;
+- finalization precedes admission;
+- no event for a shadow, empty, or considered-only result;
+- no content, path, or canonical page bytes in durable usage records;
+- exact duplicate finalization;
+- partial or divergent pair failure;
+- persistence across projection deletion and deterministic rebuild.
+
+Selection and projection:
 
 - unsupported or mixed projection generation;
 - request/manifest generation mismatch;
@@ -738,6 +916,9 @@ never silently authorized inside the implementation slice.
 - E1-R4 remains the grounding-policy owner.
 - The RT-1C shadow adapter owns only temporary Subjective characterization and
   private handoff construction.
+- `relaylm/subjective_mem_retrieval_characterization.py` is a temporary
+  shadow-only owner. It and its focused tests are removed or disabled by the
+  RT-1D one-authority transfer, after exact post-transfer validation.
 - The durable usage ledger is durable operations authority; it is not deleted
   with the disposable projection and survives its rebuild.
 - The temporary Primary-vs-Subjective characterization surface and every
@@ -751,8 +932,8 @@ never silently authorized inside the implementation slice.
 These return the future implementation to P1:
 
 - more than the documented bounded path set;
-- more than two new production responsibility files without an architecture
-  split;
+- more than the three new production responsibility files the accepted P1
+  amendment authorizes;
 - roughly more than 200 added lines in one existing file;
 - a new file growing beyond roughly 700 lines;
 - a function growing beyond roughly 80 lines;
@@ -775,6 +956,14 @@ simpler and safer.
 
 The RT-1C implementation must prove:
 
+- exact canonical-page binding of every selected private item, including page,
+  block, and revision digest agreement;
+- refusal of caller-attested prose and of a caller-supplied matching digest;
+- reuse of the existing canonical Markdown parser rather than a second parser;
+- content-free deterministic characterization in its own owner, with no private
+  handoff, canonical page bytes, or free-text reason accepted;
+- prepared and admitted handoff type separation with finalization before
+  admission;
 - exact active and pinned current-revision inclusion;
 - exclusion of every prohibited lifecycle, mutation, currentness, and scope case;
 - one-generation and exact-manifest enforcement;
