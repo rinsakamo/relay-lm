@@ -724,13 +724,62 @@ deterministically recovered.
 
 ```text
 relaylm/subjective_mem_retrieval_selection.py          below roughly 700 lines
-relaylm/subjective_mem_retrieval_characterization.py   below roughly 300 lines
+relaylm/subjective_mem_retrieval_characterization.py   below roughly 320 lines
 relaylm/subjective_mem_retrieval_usage_ledger.py       below roughly 700 lines
 each function                                          at or below roughly 80 lines
 ```
 
-The characterization owner's 300-line budget holds unless a later P1 review
-authorizes otherwise. No production behaviour may be duplicated in tests.
+The characterization owner's budget was amended from below roughly 300 lines to
+below roughly 320 lines by the second P1 budget-review disposition recorded
+immediately below. No production behaviour may be duplicated in tests.
+
+#### Second P1 characterization budget-review disposition
+
+Independent review examined the responsibility-preserving implementation of the
+characterization owner after genuine consolidation had already been applied. In
+that reviewed implementation `relaylm/subjective_mem_retrieval_characterization.py`
+is 309 lines.
+
+Those 309 lines retain both strict fail-closed admission validation of the public
+selection projection and deterministic content-free Primary-vs-Subjective
+comparison, including the exact state relationships RT-1C requires. Admission
+validation and comparison are one coherent temporary shadow-characterization
+responsibility, not two separable production responsibilities: the comparison is
+only safe because the projection it consumes was admitted by exactly those
+checks, and no other consumer exists for either half.
+
+Two alternatives were considered and are explicitly rejected:
+
+- a fourth production owner is rejected, because it would split one
+  responsibility across two files and add dependency surface for no authority
+  gain;
+- deleting security or state checks, or line-golfing the code, to reach the
+  former roughly-300-line target is rejected, because the reviewed size is
+  carried by required exactness rules rather than by prose or duplication.
+
+The characterization structural budget is therefore amended from below roughly
+300 lines to below roughly 320 lines. This is a bounded, reviewed exception for
+this exact owner. It is not a general structural-budget relaxation, and it
+changes no other owner's budget, the roughly-80-line function budget, or any
+authority boundary.
+
+Exactly three production owners remain authorized:
+
+```text
+relaylm/subjective_mem_retrieval_selection.py
+relaylm/subjective_mem_retrieval_characterization.py
+relaylm/subjective_mem_retrieval_usage_ledger.py
+```
+
+Strict validation and deterministic comparison remain in the same temporary
+characterization owner, which keeps its RT-1D removal/disable gate and its
+one-way dependency direction unchanged.
+
+This disposition adjusts an implementation budget only. RT-1C remains authorized
+and not implemented on `main`, Primary MEM remains the sole served ordinary
+memory and Retrieval authority, RT-1C remains default-off, shadow-only, and
+unwired from the ordinary request path, no ordinary request-path wiring is
+authorized, and RT-1D remains unauthorized and not started.
 
 #### Revised P1 return triggers
 
@@ -740,6 +789,9 @@ Return to P1 rather than continuing if:
 - the RT-1A row, the RT-1B projection builder or store, the canonical Markdown
   owner, E1-R4, Primary, or ordinary request routing would require modification;
 - more than these three new production files are required;
+- the characterization owner reaches 320 lines;
+- the characterization owner gains another responsibility, consumes private
+  content, or becomes a general validation framework;
 - characterization starts consuming private content;
 - selection starts performing I/O;
 - the durable ledger becomes a canonical content authority;

@@ -348,16 +348,15 @@ def _executable_source(module) -> str:
 def test_review_triggers_remain_bounded() -> None:
     """Pin the owner's size and the share of it the exactness validator occupies.
 
-    The accepted P1 budget for this owner is "below roughly 300 lines". Adding
-    the complete exactness validation the review required takes it to 309: the
-    two validation stages alone carry seventeen distinct rules. Structural
-    consolidation was applied first — three validator helpers became a two-stage
-    ordered rule table, the Primary-metrics predicate joined the same idiom, and
-    the two status tables merged — which took the file from 348 to 309. Closing
-    the last nine lines would mean deleting required checks or unreadable
-    one-lining, so the measured size is pinned here and reported rather than
-    silently relaxed. Both numbers are asserted so any further growth still
-    fails, and the exact overflow is visible for the P1 decision.
+    Independent P1 review accepted one bounded characterization budget of below
+    roughly 320 lines for this owner, after responsibility-preserving
+    consolidation had already been applied. The reviewed owner remains 309 lines
+    and keeps both the required exactness validation and the deterministic
+    content-free comparison; a fourth production owner, deleting security or
+    state checks, and line-golfing the code were all rejected. Reaching 320 lines
+    returns the work to P1, so the size assertion fails there. The responsibility
+    shape is pinned alongside it, so growth that merely moves lines between the
+    validator and the comparison still fails.
     """
 
     source = inspect.getsource(characterization_owner)
@@ -375,7 +374,7 @@ def test_review_triggers_remain_bounded() -> None:
             "_projection_type_reasons", "_projection_state_reasons", "_primary_metrics_invalid",
         )
     )
-    assert len(source.splitlines()) <= 309
+    assert len(source.splitlines()) < 320
     assert validation <= 120
     assert len(source.splitlines()) - validation < 200
     tree = ast.parse(source)
