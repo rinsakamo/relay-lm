@@ -542,8 +542,8 @@ and usage ledger is implemented in PR #784 within the budget this section
 authorizes, and remains default-off, explicit shadow-only, and unwired from
 ordinary Retrieval.
 
-RT-1D hard cutover, Primary retirement, and authority transfer remain
-unauthorized and not started.
+RT-1D hard cutover, Primary retirement, and authority transfer are now
+architecture-authorized as the next ordered Lane C slice and are not started.
 
 This section authorizes an implementation budget and records which slices have
 since landed within it. It claims no ordinary served Subjective MEM Retrieval,
@@ -629,7 +629,7 @@ This section records one accepted P1 amendment to the RT-1C budget above. It
 changed authorization only. At the time of that review RT-1C was authorized and
 not yet implemented on `main`; the implementation landed later in PR #784 within
 this amended budget. Primary MEM remains the sole served ordinary authority,
-RT-1D remains unauthorized and not started, and no ordinary request-path wiring
+RT-1D is architecture-authorized and not started, and no ordinary request-path wiring
 is authorized.
 
 #### Accepted P1 characterization split
@@ -783,7 +783,7 @@ implemented on `main` when it was recorded; the implementation landed later in
 PR #784 within this budget. Primary MEM remains the sole served ordinary memory
 and Retrieval authority, RT-1C remains default-off, shadow-only, and unwired from
 the ordinary request path, no ordinary request-path wiring is authorized, and
-RT-1D remains unauthorized and not started.
+RT-1D is architecture-authorized and not started.
 
 #### Revised P1 return triggers
 
@@ -1085,3 +1085,78 @@ RT-1 does not authorize:
 - post-hoc visible-response rewriting;
 - deletion of old Primary assets before a separate retirement or migration
   authority proves they are no longer needed.
+
+## RT-1D architecture authorization and implementation budget
+
+### Authorization boundary and owners
+
+RT-1D is architecture-authorized, not started, and is the next ordered Lane C implementation slice. Its single atomic boundary transfers ordinary served memory authority from Primary to Subjective, records that transfer durably, and retires replaced surfaces only after exact post-transfer validation. One logical Lane C writer owns the transaction and no interval may contain two semantic authorities.
+
+`relaylm/relaymem_retrieval.py` owns the ordinary reader entry point; `relaylm/relaymem_primary_recall.py` owns Primary candidate discovery, bounded fallback, and the Primary runtime artifact; the durable cutover intent/fences/receipt belong to `relaylm/evidence_store.py`; and `relaylm/relaymem_grounded_recall_response.py` remains the E1-R4 grounding-policy owner. The governed Subjective formation/writer family remains `relaylm/subjective_mem_commit_runtime.py` plus the existing LC-1 runtime owners (`subjective_mem_lifecycle_runtime.py`, `subjective_mem_forget_runtime.py`, `subjective_mem_pin_runtime.py`, `subjective_mem_restore_runtime.py`, and `subjective_mem_consolidate_runtime.py`). The current Primary reader, candidate fallback, `primary_recall_runtime` lifecycle projection, Primary page/index/log writer family, the two compatibility no-op runtime modules, and RT-1C shadow characterizer are temporary pre-cutover compatibility surfaces, not permanent authorities.
+
+### Prerequisites and exact execution order
+
+An attempt requires RT-1A, RT-1B, RT-1C, exact-current-main authority, and an accepted deployment-specific readiness and characterization record. The order is fixed: (1) read-only pre-cutover validation and readiness proof; (2) durable intent, then old-reader fence, then old-writer fence; (3) exact one-authority transfer; (4) Subjective ordinary-reader enablement; (5) durable cutover-receipt finalization; (6) exact post-transfer request-path validation; (7) temporary shadow/adapter disablement or removal; and (8) retirement only after every removal gate passes. No mixed, ambiguous, dual-live, or precedence interval is accepted.
+
+### Required semantic invariants
+
+- Every accepted stable state has exactly one ordinary served memory/Retrieval authority: Primary before cutover and Subjective after the finalized receipt.
+- Dual-read serving, fusion, precedence, and fallback are forbidden. Subjective cannot serve before receipt finalization; Primary cannot serve afterward, including when Subjective is empty, stale, corrupt, unavailable, or unsupported.
+- Every Subjective item binds the exact current revision, selector, receipt, authorization, lifecycle, visibility, scope, canonical page and block, and projection generation. Legacy unbound selectors never enter ordinary Retrieval.
+- Usage finalization is durable before private evidence admission. E1-R4 remains grounding-policy authority; no response rewriting occurs.
+- Similarity, ranking, or embedding output is never eligibility, identity, authorization, truth, lifecycle, or disclosure authority.
+- No Primary writer remains live after its ordinary reader retires. Subjective formation/commit/lifecycle gates remain governed and default-off unless separate accepted deployment authority changes them.
+- This slice migrates no Primary prose. Stale, malformed, ambiguous, tampered, mixed-generation, cross-scope, recovery-required, or authority-inexact state fails closed.
+
+### Durable cutover state and forward recovery
+
+The durable state machine is `primary_live -> intent_recorded -> reader_fenced -> writer_fenced -> subjective_enabled -> receipt_finalized -> validated -> retired`. Each record binds its predecessor, exact configuration and authority revisions, projection generation, scope, and idempotency identity. Before `intent_recorded` is the last safe rollback point. From durable intent or either fence onward, recovery is caller/operator-invoked and forward-only; operational rollback is a separate governed authority transfer and this repository authorization is not deployment approval.
+
+- A crash before fencing leaves Primary solely live after exact proof that no intent/fence advanced.
+- A crash after reader fence but before writer fence resumes by fencing the writer; it does not reopen the Primary reader.
+- A crash after writer fence but before Subjective enablement resumes enablement from the exact fenced state; neither reader serves meanwhile.
+- A crash after enablement but before receipt finalization keeps Primary fenced and Subjective non-serving until forward finalization proves the exact state.
+- A crash after finalization but before retirement serves only Subjective and resumes validation/removal from the finalized receipt.
+
+Restart reconstructs the exact state from the durable chain and revalidates all bound revisions before the next transition. Silent reset, repair-on-read, automatic retry after a head/state mismatch, and fallback to Primary are prohibited.
+
+### Characterization and deployment gate
+
+Before intent, an accepted operator/deployment authority must record exact build, configuration, scope, Primary and Subjective policy/schema/platform/renderer revisions, projection generation, rebuild result, and deterministic replay. The read-only Primary-versus-Subjective comparison is content-free and bounded to attempt/outcome classes, counts, exclusions, empty/non-empty class, handoff and token-budget classes, latency class, and leakage result. It neither compares raw content nor asserts identity equivalence. Acceptance requires deterministic replay, exact projection deletion/rebuild equivalence, all required eligibility and lifecycle exclusions, no private/public leakage, and an explicit disposition for every mismatch class. Architecture-gate success alone does not approve production deployment, default-on policy, or formation gates.
+
+### Future implementation path budget
+
+Modified production paths are bounded to:
+
+```text
+relaylm/relaymem_retrieval.py
+relaylm/relaymem_primary_recall.py
+relaylm/relayctx_repack.py
+relaylm/evidence_store.py
+relaylm/subjective_mem_retrieval_selection.py
+relaylm/subjective_mem_retrieval_usage_ledger.py
+relaylm/subjective_mem_retrieval_projection.py
+relaylm/subjective_mem_retrieval_projection_store.py
+```
+
+The first three own the ordinary Primary read/candidate/runtime-private handoff; the Evidence store owns durable receipt/fence state; and the last four reuse the RT-1B/RT-1C projection, exact selection, and usage-finalization owners. The E1-R4 owner is deliberately unchanged. Primary writer fencing is limited to the existing entry owners `relaylm/relaymem_primary_pipeline.py`, `relaylm/relaymem_primary_page_writer.py`, `relaylm/relaymem_primary_writer_handoff.py`, and `relaylm/relaymem_slp_primary_worker.py`; lifecycle-overlay retirement, if exact call-graph evidence requires it, is limited to `relaylm/relaymem_primary_retrieval_eligibility.py` and `relaylm/relaymem_primary_current_state.py`.
+
+Focused modified or new tests are bounded to `tests/test_subjective_mem_retrieval_selection.py`, `tests/test_subjective_mem_retrieval_usage_ledger.py`, `tests/test_subjective_mem_retrieval_projection.py`, and one new `tests/test_subjective_mem_retrieval_cutover.py` process/integration owner. Existing Primary request-path evidence may be updated only in `tests/test_memory_stage_extraction.py`. At most one generic registration path, `tests/test_subjective_mem_smoke_registration.py`, may change if the new focused test requires registration. Deletion candidates after their gates pass are `relaylm/subjective_mem_retrieval_characterization.py`, its focused test, and compatibility no-ops `relaymem_primary_recall_runtime.py` and `relaymem_primary_recall_candidate_bridge_runtime.py`. No other new production path is authorized.
+
+A new selector, receipt evaluator, lifecycle evaluator, adapter, registry, factory, plugin framework, milestone wrapper, or generic compatibility owner is forbidden. Return to P1 if the inspected call graph needs another path, if an existing file gains roughly 200 lines, grows past roughly 700 lines, a function grows past roughly 80 lines, or a file accumulates multiple authorities.
+
+### Compatibility consumers and removal gates
+
+Live Primary consumers are the ordinary retrieval compiler, RelayCTX repack, Soul Lab observation projection, memory-stage extraction and request-path tests, Primary formation/page/index/log/SLP writers, lifecycle eligibility/current-state overlays, and their registered smokes. After exact finalized-receipt replay, restart testing, only-Subjective request-path probes, writer-fence proof, negative search for Primary ordinary serving, and disclosure/rebuild equivalence pass, the old reader/fallback and writer entry points are removed or disabled. The lifecycle overlay retires only when no accepted Primary operational/historical consumer requires it. Shadow characterization retires after its accepted gate record and post-transfer evidence are preserved. Frozen historical/evaluation fixtures remain only where a continuing accepted purpose is documented; they cannot be live authority. Primary and Subjective are never both canonical, and no permanent compatibility owner remains.
+
+### Required RT-1D negative matrix
+
+Tests must refuse stale, missing, duplicate, or conflicting selectors; legacy unbound selectors; missing or mismatched receipts, authorizations, page, block, scope, policy, schema, renderer, or platform; mixed or stale generations; hidden, held, superseded, purged, prepared, recovery-required, corrupt, prior, cross-character, or cross-scope revisions; unresolved lifecycle/publication intent; combined Primary/Subjective results; fallback after an empty Subjective result; Subjective serving before finalization; Primary serving afterward; a Primary writer live after reader retirement; usage-finalization failure followed by evidence admission; public leakage of prose, query text, paths, private IDs, digests, or correlation material; crash/restart at every transition; non-deterministic replay; and partial retirement before exact validation.
+
+### RT-1D validation matrix
+
+Focused unit tests own state validation, exact bindings, and negative classes. Request-path integration tests own one-authority routing, E1-R4 handoff, empty results, and writer fences. Process tests kill/restart every durable transition. Characterization tests own content-free deterministic comparison and leakage; projection tests own deletion/rebuild equivalence. Security tests own scope and private-disclosure refusal. An exact one-authority smoke and repository-wide ordinary-path negative search prove no alternate Primary route remains. The future PR also requires exact-head CI, complete-diff review, resulting-main validation after merge, and a mandatory same-lane P8 authority-synchronization PR before Lane C advances.
+
+### RT-1D explicit non-goals
+
+This authorization PR contains no runtime implementation, deployment approval, default-on policy, Primary-to-Subjective migration, backup/restore completion, multi-host coordination, physical purge, Merge/Supersession operations, RelaySOUL apply/rollback, API/UI/config/scheduler/worker/queue/daemon/background automation, ranking or embedding redesign, E1-R4 policy change, response rewriting, unrelated documentation cleanup, or repository maintenance.
