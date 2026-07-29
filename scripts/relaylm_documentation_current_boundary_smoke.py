@@ -282,6 +282,7 @@ PROBES = (
     (PLAN, "RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval"),
     (PLAN, "implementation program is complete through RT-1C"),
     (RT1C, "#### Second P1 characterization budget-review disposition"),
+    (RT1C, "`relaylm/subjective_mem_retrieval_characterization.py`\nis 309 lines."),
     (RT1C, "relaylm/subjective_mem_retrieval_characterization.py   below roughly 320 lines"),
     (
         RT1C,
@@ -302,6 +303,16 @@ PROBES = (
         RT1C,
         "- a fourth production owner is rejected, because it would split one\n"
         "  responsibility across two files and add dependency surface for no authority\n  gain;",
+    ),
+    (
+        RT1C,
+        "This is a bounded, reviewed exception for\nthis exact owner. It is not a general "
+        "structural-budget relaxation",
+    ),
+    (
+        RT1C,
+        "Admission\nvalidation and comparison are one coherent temporary shadow-characterization"
+        "\nresponsibility, not two separable production responsibilities",
     ),
     (RT1C, "Primary MEM remains the sole served ordinary memory and Retrieval authority."),
     (
