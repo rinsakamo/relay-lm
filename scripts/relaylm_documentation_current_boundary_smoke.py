@@ -26,8 +26,8 @@ REQUIRED = {
         "RT-1A contract and projection foundation           complete in PR #774",
         "RT-1B projection builder and rebuild               complete in PR #779",
         "RT-1C shadow adapter, grounding handoff, usage ledger complete in PR #784; default-off, shadow-only, unwired",
-        "RT-1D authority-carriage amendment                 PR #787 architecture authority only; runtime not started",
-        "fresh RT-1D runtime transaction                only after amendment merge and resulting-main verification",
+        "RT-1D structural-seam architecture amendment      P1 Return recorded; runtime not started",
+        "RT-1D-S1 reader seams                          behavior-preserving prerequisite; then mandatory P8 and resulting-main verification",
         "RT-1C shadow adapter, grounding handoff, and usage ledger complete in PR #784",
         "RT-1B remains default-off and unwired from ordinary Retrieval",
         "RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval",
@@ -38,7 +38,7 @@ REQUIRED = {
         "they still do not implement ordinary served Subjective MEM Retrieval, query matching or ranking, cache, request-path wiring, or authority cutover",
         "- Durable RT-1C usage persistence exists only for an explicitly non-shadow prepared handoff",
         "RT-1 is in progress with RT-1A, RT-1B, and RT-1C complete; RT-1D hard cutover and retirement is architecture-authorized but runtime remains not started.",
-        "PR #787 is architecture authority only",
+        "Exact-current inspection returned RT-1D to P1",
         "- RT-1D hard cutover and retirement;",
         "- ordinary served Subjective MEM Retrieval, query matching, ranking, cache, and request-path wiring;",
         "- Subjective MEM authority cutover and Primary MEM reader/writer retirement;",
@@ -69,15 +69,15 @@ REQUIRED = {
         "LC-1 lifecycle migration                        complete / LC-1A Correct, LC-1B Forget, LC-1C Pin/Unpin, LC-1D Restore, and LC-1E Consolidate implemented / default-off",
         "RT-1B projection builder and rebuild complete in PR #779 / default-off / unwired",
         "RT-1C shadow adapter, grounding handoff, and usage ledger complete in PR #784 / default-off / shadow-only / unwired",
-        "RT-1D authority-carriage amendment PR #787 / architecture authority only / runtime not started",
-        "verify resulting main -> fresh RT-1D runtime transaction / no concurrent runtime PR",
+        "RT-1D structural P1 Return / runtime not started",
+        "RT-1D-S1 reader seams -> mandatory P8 -> verify resulting main",
         "LC-1C Pin/Unpin implements exact current `active -> pinned` and `pinned -> active` immutable successors",
         "[LC-1D Subjective MEM Restore Runtime](subjective-mem-restore-runtime.md) implements the exact current `hidden -> active` immutable successor",
         "[LC-1E Subjective MEM Consolidate Runtime](subjective-mem-consolidate-runtime.md) implements the exact current active Primary-to-Secondary immutable successor",
         "[RT-1 Subjective MEM Retrieval Projection and Hard Cutover](subjective-mem-retrieval-projection-hard-cutover.md) defines the accepted ordered RT-1A through RT-1D boundary",
         "LC-1 is complete through Consolidate.",
         "RT-1A contract and projection foundation is complete in PR #774; RT-1B projection builder and deterministic rebuild is complete in PR #779",
-        "RT-1 is in progress through RT-1C; RT-1D hard cutover and retirement is the next ordered Lane C slice, is architecture-authorized, and is not started.",
+        "RT-1D runtime is not started, and RT-1D-S1 reader seams is the next executable Lane C prerequisite after the structural-seam architecture amendment merges.",
         "implementation program is complete through RT-1C",
         "RT-1C shadow adapter, grounding handoff, and usage ledger is implemented in PR #784 as three bounded owners",
         "RT-1 Retrieval projection and hard cutover in progress / RT-1A, RT-1B, and RT-1C complete",
@@ -91,7 +91,7 @@ REQUIRED = {
         "RT-1A, RT-1B,\nand RT-1C are implemented within it; RT-1D remains the unimplemented target.",
         "This architecture does not claim the RT-1 series or its hard cutover is\nimplemented.",
         "It claims no ordinary served Subjective MEM Retrieval,\nno authority cutover, and no completed RT-1 series",
-        "RT-1D hard cutover, Primary retirement, and authority transfer are now\narchitecture-authorized as the next ordered Lane C slice and are not started.",
+        "RT-1D hard cutover, Primary retirement, and authority transfer are\narchitecture-authorized and are not started.",
         "Primary MEM remains the sole served ordinary memory and Retrieval authority.",
         "RT-1B remains disposable, default-off, and unwired from ordinary Retrieval.",
         "ST-1 revision-1 `create` still produces a legacy unbound current selector that\n  RT-1B rejects fail-closed",
@@ -128,6 +128,15 @@ REQUIRED = {
         "Runtime implementation remains not started.",
         "### Future implementation path budget",
         "### Compatibility consumers and removal gates",
+        "### Structural P1 Return and ordered prerequisite seams",
+        "RT-1D-S1 reader seams",
+        "RT-1D-S2 worker seams",
+        "RT-1D-S3 mutation seams",
+        "mandatory same-lane P8",
+        "relaylm/managed_chat_pipeline_runtime.py",
+        "relaylm/_relaymem_slp_primary_worker_pipeline.py",
+        "_relaymem_primary_correction_preflight.py",
+        "S1-S3 preserve Primary-only behavior",
         "### Required RT-1D negative matrix",
         "### RT-1D validation matrix",
         "### RT-1D explicit non-goals",
@@ -337,17 +346,89 @@ RT1C = "docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md"
 STATUS = "docs/PROJECT_STATUS.md"
 PLAN = "docs/architecture/project_execution_plan.md"
 
+RT1_STRUCTURAL_ANCHORS = (
+    "These are review triggers, not permanent exemptions.",
+    "Responsibility-driven extraction may move existing behavior only when one exact\n"
+    "current responsibility, accepted caller, explicit input and output, and public\n"
+    "facade are identified.",
+    "splitting merely to lower line counts would\nnot transfer a coherent responsibility",
+    "Moving one giant\nblock into another file over roughly 700 lines is not an accepted seam.",
+    "RT-1D-S1 reader seams\n"
+    "  -> mandatory same-lane P8 -> verify resulting main\n"
+    "  -> RT-1D-S2 worker seams\n"
+    "     -> mandatory same-lane P8 -> verify resulting main\n"
+    "     -> RT-1D-S3 mutation seams\n"
+    "        -> mandatory same-lane P8 -> verify resulting main\n"
+    "        -> fresh RT-1D runtime implementation\n"
+    "           -> mandatory same-lane P8 after merge",
+    "relaylm/managed_chat_pipeline_runtime.py",
+    "relaylm/relaymem_retrieval_dry_run.py",
+    "_relaymem_retrieval_candidates.py",
+    "_relaymem_retrieval_snippet.py",
+    "relaylm/relaymem_primary_recall_selection.py",
+    "relaylm/relaymem_primary_recall_store.py",
+    "relaylm/_relaymem_slp_primary_worker_pipeline.py",
+    "relaylm/_relaymem_slp_one_queued_job_runner_execute.py",
+    "_relaymem_primary_correction_preflight.py",
+    "_relaymem_primary_correction_apply.py",
+    "_relaymem_primary_correction_history.py",
+    "_relaymem_primary_forget_apply.py",
+    "soul_lab_memory_correction_runtime.py",
+    "soul_lab_memory_forget_runtime.py",
+    "public API/schema/import equivalence, byte-equivalent projections and HTTP\n"
+    "responses where applicable, unchanged durable bytes and fault/recovery\nbehavior",
+    "S1-S3 preserve Primary-only behavior and must not add the cutover\n"
+    "binding, cutover records, configuration fields, reader/writer decisions,\n"
+    "Primary fences, Subjective serving, fallback changes, authority selection,\n"
+    "retirement, `EvidenceRecordStore` changes, or another persistence/recovery\n"
+    "mechanism.",
+    "its complete\nmain-relative path budget was fixed before writing",
+    "every touched public API,\nimport, and schema remains exact",
+    "durable filesystem bytes and fault,\ncrash, and recovery outcomes remain unchanged",
+    "no import cycle, import-time side effect, duplicated semantics,\n"
+    "generic framework, new authority, new configuration authority, or new\n"
+    "persistence or recovery owner",
+    "Every touched orchestration function is at or below the approximate 80-line\n"
+    "review target.",
+    "Any exception to that target requires an exact reviewed P1\n"
+    "Return before any branch write, never a post-hoc exemption.",
+    "Every new\nproduction module remains below the approximate 700-line review trigger.",
+    "Every\ntouched pre-existing oversized facade is materially reduced and brought toward\n"
+    "or below approximately 700 lines where the accepted responsibility-driven\n"
+    "extraction can do so",
+    "no destination module becomes another oversized dumping\nground.",
+    "A slice unable to meet these gates returns to P1: it does not waive,\n"
+    "line-golf, bypass, or reinterpret the thresholds.",
+)
+
+RT1_STRUCTURAL_STALE = (
+    "RT-1D runtime is the next implementation immediately after PR #788.",
+    "S1-S3 and RT-1D runtime may be implemented in one combined PR.",
+    "Existing oversized files are exempt from the structural thresholds.",
+    "Wrapper-only extraction is sufficient for RT-1D authority carriage.",
+    "Splitting code only to reduce line counts is authorized.",
+    "A replacement module may exceed the approximate 700-line trigger.",
+    "S1-S3 may add the RT-1D binding, configuration fields, or authority decisions.",
+    "RT-1D-S1, RT-1D-S2, and RT-1D-S3 may run concurrently.",
+    "The same-lane P8 authority sync may be skipped after a structural slice.",
+    "Subjective ordinary serving is active during S1-S3.",
+    "Primary RT-1D writer fencing is active during S1-S3.",
+)
+
+REQUIRED[RT1C] += RT1_STRUCTURAL_ANCHORS
+STALE += RT1_STRUCTURAL_STALE
+
 PROBES = (
     (STATUS, "RT-1C shadow adapter, grounding handoff, usage ledger complete in PR #784; default-off, shadow-only, unwired"),
     (STATUS, "- RT-1C is default-off, explicit shadow-only, and unwired from ordinary request-path Retrieval."),
     (STATUS, "- Durable RT-1C usage persistence exists only for an explicitly non-shadow prepared handoff"),
-    (STATUS, "RT-1D authority-carriage amendment                 PR #787 architecture authority only; runtime not started"),
-    (STATUS, "fresh RT-1D runtime transaction                only after amendment merge and resulting-main verification"),
+    (STATUS, "RT-1D structural-seam architecture amendment      P1 Return recorded; runtime not started"),
+    (STATUS, "RT-1D-S1 reader seams                          behavior-preserving prerequisite; then mandatory P8 and resulting-main verification"),
     (STATUS, "Primary MEM remains the sole ordinary served memory and Retrieval authority until a future RT-1D implementation is validated, merged, and its cutover receipt is finalized."),
     (STATUS, "- ordinary served Subjective MEM Retrieval, query matching, ranking, cache, and request-path wiring;"),
     (PLAN, "RT-1C shadow adapter, grounding handoff, and usage ledger complete in PR #784 / default-off / shadow-only / unwired"),
-    (PLAN, "RT-1D authority-carriage amendment PR #787 / architecture authority only / runtime not started"),
-    (PLAN, "verify resulting main -> fresh RT-1D runtime transaction / no concurrent runtime PR"),
+    (PLAN, "RT-1D structural P1 Return / runtime not started"),
+    (PLAN, "RT-1D-S1 reader seams -> mandatory P8 -> verify resulting main"),
     (STATUS, "RT-1B remains default-off and unwired from ordinary Retrieval"),
     (STATUS, "RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval"),
     (PLAN, "RT-1B remains default-off and unwired from ordinary Retrieval"),
@@ -389,8 +470,8 @@ PROBES = (
     (RT1C, "Primary MEM remains the sole served ordinary memory and Retrieval authority."),
     (
         RT1C,
-        "RT-1D hard cutover, Primary retirement, and authority transfer are now\n"
-        "architecture-authorized as the next ordered Lane C slice and are not started.",
+        "RT-1D hard cutover, Primary retirement, and authority transfer are\n"
+        "architecture-authorized and are not started.",
     ),
     (RT1C, "no ordinary request-path wiring\nis authorized."),
     (RT1C, "#### Dedicated RT-1D cutover domain owner"),
@@ -465,7 +546,7 @@ PROBES = (
     (RT1C, "Configuration may add explicit locator/binding fields"),
     (RT1C, "No configuration value, enable boolean, or load success\nauthorizes deployment or serving"),
     (RT1C, "Runtime implementation remains not started."),
-)
+) + tuple((RT1C, anchor) for anchor in RT1_STRUCTURAL_ANCHORS)
 
 STALE_PROBES = (
     (STATUS, "RT-1C shadow adapter, grounding handoff, usage ledger next ordered slice; registered / not started"),
@@ -495,7 +576,7 @@ STALE_PROBES = (
     (RT1C, "configuration or an enable flag selects served authority"),
     (RT1C, "Subjective serves before the finalized receipt"),
     (RT1C, "Primary serves after the finalized receipt"),
-)
+) + tuple((RT1C, stale) for stale in RT1_STRUCTURAL_STALE)
 
 
 def read(path: str) -> str:
