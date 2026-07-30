@@ -94,6 +94,8 @@ REQUIRED = {
         "ST-1 revision-1 `create` still produces a legacy unbound current selector that\n  RT-1B rejects fail-closed",
         "## RT-1D architecture authorization and implementation budget",
         "### Authorization boundary and owners",
+        "#### Dedicated RT-1D cutover domain owner",
+        "#### EvidenceRecordStore is a reused generic dependency",
         "### Prerequisites and exact execution order",
         "### Required semantic invariants",
         "### Durable cutover state and forward recovery",
@@ -103,7 +105,21 @@ REQUIRED = {
         "### Required RT-1D negative matrix",
         "### RT-1D validation matrix",
         "### RT-1D explicit non-goals",
-        "primary_live -> intent_recorded -> reader_fenced -> writer_fenced -> subjective_enabled -> receipt_finalized -> validated -> retired",
+        "`relaylm/subjective_mem_retrieval_cutover.py` is the one dedicated RT-1D cutover domain owner",
+        "One dedicated domain owner, `relaylm/subjective_mem_retrieval_cutover.py`, owns the whole semantic RT-1D authority transfer.",
+        "`relaylm/evidence_store.py` is generic persistence infrastructure, not the RT-1D semantic authority.",
+        "ordinary route / cutover orchestration\n  -> subjective_mem_retrieval_cutover domain owner\n       -> EvidenceRecordStore generic persistence",
+        "The generic store must never import the cutover owner.",
+        "The cutover owner reuses `EvidenceRecordStore` only for:",
+        "Therefore RT-1D introduces no second lock, no second durable root, no second transaction journal, and no second generic recovery mechanism, and adds no RT-1D policy or state-machine logic to `relaylm/evidence_store.py`.",
+        "Modifying `relaylm/evidence_store.py` is allowed only through a documented P1 return that proves, from exact evidence, a missing generic persistence capability that is not RT-1D-specific. This authorization does not pre-authorize such a change.",
+        "`relaylm/evidence_store.py` is an imported and reused generic infrastructure dependency, not an expected modified production path and not the RT-1D semantic owner.",
+        "primary_live\n  -> intent_recorded\n  -> reader_fenced\n  -> writer_fenced\n  -> subjective_prepared\n  -> receipt_finalized\n  -> validated\n  -> retired",
+        "`subjective_prepared` constructs or validates the exact Subjective route inputs but releases no ordinary evidence and serves no ordinary request.",
+        "Ordinary Subjective serving is authorized only by the exact finalized receipt.",
+        "After `receipt_finalized`, only Subjective may serve.",
+        "A crash in `subjective_prepared` resumes forward finalization with both ordinary authorities non-serving.",
+        "(5) durable cutover-receipt finalization, which alone authorizes ordinary Subjective serving;",
         "tests/test_subjective_mem_retrieval_cutover.py",
         "### RT-1C bounded scope",
         "RT-1C runs the Subjective path in explicit shadow mode only, and RT-1D alone\n  may serve it",
@@ -200,6 +216,12 @@ CURRENT_DOCS = tuple(REQUIRED)
 
 STALE = (
     "RT-1D hard cutover, Primary retirement, and authority transfer remain\nunauthorized and not started.",
+    "the durable cutover intent/fences/receipt belong to `relaylm/evidence_store.py`",
+    "the Evidence store owns durable receipt/fence state",
+    "relaylm/relayctx_repack.py\nrelaylm/evidence_store.py",
+    "subjective_enabled -> receipt_finalized",
+    "(4) Subjective ordinary-reader enablement;",
+    "A crash after enablement but before receipt finalization keeps Primary fenced and Subjective non-serving until forward finalization proves the exact state.",
     "OVL-1 CTX-OVL participant-private vertical slice               registered / not started",
     "ASM-1 Shared Assessment runtime foundation                     registered / not started",
     "SM-1 Subjective MEM decision/result vertical slice        registered / not started",
@@ -335,6 +357,71 @@ PROBES = (
         "architecture-authorized as the next ordered Lane C slice and are not started.",
     ),
     (RT1C, "no ordinary request-path wiring\nis authorized."),
+    (RT1C, "#### Dedicated RT-1D cutover domain owner"),
+    (RT1C, "#### EvidenceRecordStore is a reused generic dependency"),
+    (
+        RT1C,
+        "One dedicated domain owner, `relaylm/subjective_mem_retrieval_cutover.py`, owns "
+        "the whole semantic RT-1D authority transfer.",
+    ),
+    (
+        RT1C,
+        "`relaylm/subjective_mem_retrieval_cutover.py` is the one dedicated RT-1D cutover "
+        "domain owner",
+    ),
+    (
+        RT1C,
+        "`relaylm/evidence_store.py` is generic persistence infrastructure, not the RT-1D "
+        "semantic authority.",
+    ),
+    (
+        RT1C,
+        "ordinary route / cutover orchestration\n"
+        "  -> subjective_mem_retrieval_cutover domain owner\n"
+        "       -> EvidenceRecordStore generic persistence",
+    ),
+    (RT1C, "The generic store must never import the cutover owner."),
+    (RT1C, "The cutover owner reuses `EvidenceRecordStore` only for:"),
+    (
+        RT1C,
+        "Therefore RT-1D introduces no second lock, no second durable root, no second "
+        "transaction journal, and no second generic recovery mechanism, and adds no RT-1D "
+        "policy or state-machine logic to `relaylm/evidence_store.py`.",
+    ),
+    (
+        RT1C,
+        "Modifying `relaylm/evidence_store.py` is allowed only through a documented P1 "
+        "return that proves, from exact evidence, a missing generic persistence capability "
+        "that is not RT-1D-specific. This authorization does not pre-authorize such a change.",
+    ),
+    (
+        RT1C,
+        "`relaylm/evidence_store.py` is an imported and reused generic infrastructure "
+        "dependency, not an expected modified production path and not the RT-1D semantic owner.",
+    ),
+    (
+        RT1C,
+        "primary_live\n  -> intent_recorded\n  -> reader_fenced\n  -> writer_fenced\n"
+        "  -> subjective_prepared\n  -> receipt_finalized\n  -> validated\n  -> retired",
+    ),
+    (
+        RT1C,
+        "`subjective_prepared` constructs or validates the exact Subjective route inputs "
+        "but releases no ordinary evidence and serves no ordinary request.",
+    ),
+    (RT1C, "Ordinary Subjective serving is authorized only by the exact finalized receipt."),
+    (RT1C, "After `receipt_finalized`, only Subjective may serve."),
+    (
+        RT1C,
+        "A crash in `subjective_prepared` resumes forward finalization with both ordinary "
+        "authorities non-serving.",
+    ),
+    (
+        RT1C,
+        "(5) durable cutover-receipt finalization, which alone authorizes ordinary "
+        "Subjective serving;",
+    ),
+    (RT1C, "tests/test_subjective_mem_retrieval_cutover.py"),
 )
 
 STALE_PROBES = (
@@ -344,6 +431,19 @@ STALE_PROBES = (
     (PLAN, "RT-1D hard cutover and retirement registered / not started"),
     (STATUS, "RT-1B and RT-1C remain default-off, explicit shadow-only, and unwired from ordinary Retrieval"),
     (PLAN, "RT-1B and RT-1C remain default-off, explicit shadow-only, and unwired from ordinary Retrieval"),
+    (
+        RT1C,
+        "the durable cutover intent/fences/receipt belong to `relaylm/evidence_store.py`",
+    ),
+    (RT1C, "the Evidence store owns durable receipt/fence state"),
+    (RT1C, "relaylm/relayctx_repack.py\nrelaylm/evidence_store.py"),
+    (RT1C, "subjective_enabled -> receipt_finalized"),
+    (RT1C, "(4) Subjective ordinary-reader enablement;"),
+    (
+        RT1C,
+        "A crash after enablement but before receipt finalization keeps Primary fenced and "
+        "Subjective non-serving until forward finalization proves the exact state.",
+    ),
 )
 
 

@@ -1092,11 +1092,68 @@ RT-1 does not authorize:
 
 RT-1D is architecture-authorized, not started, and is the next ordered Lane C implementation slice. Its single atomic boundary transfers ordinary served memory authority from Primary to Subjective, records that transfer durably, and retires replaced surfaces only after exact post-transfer validation. One logical Lane C writer owns the transaction and no interval may contain two semantic authorities.
 
-`relaylm/relaymem_retrieval.py` owns the ordinary reader entry point; `relaylm/relaymem_primary_recall.py` owns Primary candidate discovery, bounded fallback, and the Primary runtime artifact; the durable cutover intent/fences/receipt belong to `relaylm/evidence_store.py`; and `relaylm/relaymem_grounded_recall_response.py` remains the E1-R4 grounding-policy owner. The governed Subjective formation/writer family remains `relaylm/subjective_mem_commit_runtime.py` plus the existing LC-1 runtime owners (`subjective_mem_lifecycle_runtime.py`, `subjective_mem_forget_runtime.py`, `subjective_mem_pin_runtime.py`, `subjective_mem_restore_runtime.py`, and `subjective_mem_consolidate_runtime.py`). The current Primary reader, candidate fallback, `primary_recall_runtime` lifecycle projection, Primary page/index/log writer family, the two compatibility no-op runtime modules, and RT-1C shadow characterizer are temporary pre-cutover compatibility surfaces, not permanent authorities.
+`relaylm/relaymem_retrieval.py` owns the ordinary reader entry point; `relaylm/relaymem_primary_recall.py` owns Primary candidate discovery, bounded fallback, and the Primary runtime artifact; `relaylm/subjective_mem_retrieval_cutover.py` is the one dedicated RT-1D cutover domain owner; and `relaylm/relaymem_grounded_recall_response.py` remains the E1-R4 grounding-policy owner. The governed Subjective formation/writer family remains `relaylm/subjective_mem_commit_runtime.py` plus the existing LC-1 runtime owners (`subjective_mem_lifecycle_runtime.py`, `subjective_mem_forget_runtime.py`, `subjective_mem_pin_runtime.py`, `subjective_mem_restore_runtime.py`, and `subjective_mem_consolidate_runtime.py`). The current Primary reader, candidate fallback, `primary_recall_runtime` lifecycle projection, Primary page/index/log writer family, the two compatibility no-op runtime modules, and RT-1C shadow characterizer are temporary pre-cutover compatibility surfaces, not permanent authorities.
+
+#### Dedicated RT-1D cutover domain owner
+
+One dedicated domain owner, `relaylm/subjective_mem_retrieval_cutover.py`, owns the whole semantic RT-1D authority transfer. Its function-oriented name states its responsibility, not a milestone.
+
+That owner owns:
+
+- the content-free cutover intent schema;
+- the reader-fence schema and its transition;
+- the writer-fence schema and its transition;
+- the prepared, non-serving Subjective transition state;
+- the finalized cutover receipt schema;
+- exact predecessor binding of every durable record;
+- configuration, authority, projection-generation, and scope binding;
+- deterministic idempotency identity;
+- transition validation;
+- restart state reconstruction from the durable chain;
+- caller/operator-invoked forward recovery;
+- one bounded content-free public outcome;
+- refusal of divergent, incomplete, stale, or mixed durable state.
+
+That owner does not own:
+
+- generic filesystem layout;
+- generic locks;
+- generic transaction journaling;
+- canonical Subjective content;
+- current selector evaluation;
+- lifecycle evaluation;
+- projection derivation;
+- ordinary ranking;
+- E1-R4 grounding policy;
+- Primary or Subjective memory prose.
+
+#### EvidenceRecordStore is a reused generic dependency
+
+`relaylm/evidence_store.py` is generic persistence infrastructure, not the RT-1D semantic authority. `EvidenceRecordStore` already owns per-evidence-space locking, atomic record/log commit, create-or-verify identity, prepared-transaction replay, and bounded persistence mechanics, and it imports no domain module. RT-1C already follows this direction in `relaylm/subjective_mem_retrieval_usage_ledger.py`, and LC-1 follows it in its lifecycle runtime/engine owners. RT-1D preserves that same dependency direction:
+
+```text
+ordinary route / cutover orchestration
+  -> subjective_mem_retrieval_cutover domain owner
+       -> EvidenceRecordStore generic persistence
+```
+
+The generic store must never import the cutover owner.
+
+The cutover owner reuses `EvidenceRecordStore` only for:
+
+- one evidence-space lock;
+- atomic record/log transactions;
+- create-or-verify semantics;
+- prepared-transaction recovery;
+- generic bounded persistence.
+
+Therefore RT-1D introduces no second lock, no second durable root, no second transaction journal, and no second generic recovery mechanism, and adds no RT-1D policy or state-machine logic to `relaylm/evidence_store.py`.
+
+Modifying `relaylm/evidence_store.py` is allowed only through a documented P1 return that proves, from exact evidence, a missing generic persistence capability that is not RT-1D-specific. This authorization does not pre-authorize such a change.
 
 ### Prerequisites and exact execution order
 
-An attempt requires RT-1A, RT-1B, RT-1C, exact-current-main authority, and an accepted deployment-specific readiness and characterization record. The order is fixed: (1) read-only pre-cutover validation and readiness proof; (2) durable intent, then old-reader fence, then old-writer fence; (3) exact one-authority transfer; (4) Subjective ordinary-reader enablement; (5) durable cutover-receipt finalization; (6) exact post-transfer request-path validation; (7) temporary shadow/adapter disablement or removal; and (8) retirement only after every removal gate passes. No mixed, ambiguous, dual-live, or precedence interval is accepted.
+An attempt requires RT-1A, RT-1B, RT-1C, exact-current-main authority, and an accepted deployment-specific readiness and characterization record. The order is fixed: (1) read-only pre-cutover validation and readiness proof; (2) durable intent, then old-reader fence, then old-writer fence; (3) exact one-authority transfer; (4) exact Subjective route preparation in a non-serving prepared state; (5) durable cutover-receipt finalization, which alone authorizes ordinary Subjective serving; (6) exact post-transfer request-path validation; (7) temporary shadow/adapter disablement or removal; and (8) retirement only after every removal gate passes. No mixed, ambiguous, dual-live, or precedence interval is accepted.
 
 ### Required semantic invariants
 
@@ -1110,12 +1167,33 @@ An attempt requires RT-1A, RT-1B, RT-1C, exact-current-main authority, and an ac
 
 ### Durable cutover state and forward recovery
 
-The durable state machine is `primary_live -> intent_recorded -> reader_fenced -> writer_fenced -> subjective_enabled -> receipt_finalized -> validated -> retired`. Each record binds its predecessor, exact configuration and authority revisions, projection generation, scope, and idempotency identity. Before `intent_recorded` is the last safe rollback point. From durable intent or either fence onward, recovery is caller/operator-invoked and forward-only; operational rollback is a separate governed authority transfer and this repository authorization is not deployment approval.
+The durable state machine is:
+
+```text
+primary_live
+  -> intent_recorded
+  -> reader_fenced
+  -> writer_fenced
+  -> subjective_prepared
+  -> receipt_finalized
+  -> validated
+  -> retired
+```
+
+Each record binds its predecessor, exact configuration and authority revisions, projection generation, scope, and idempotency identity. Before `intent_recorded` is the last safe rollback point. From durable intent or either fence onward, recovery is caller/operator-invoked and forward-only; operational rollback is a separate governed authority transfer and this repository authorization is not deployment approval.
+
+No state authorizes ordinary Subjective serving before the finalized receipt is durable:
+
+- `subjective_prepared` constructs or validates the exact Subjective route inputs but releases no ordinary evidence and serves no ordinary request.
+- Ordinary Subjective serving is authorized only by the exact finalized receipt.
+- After `receipt_finalized`, only Subjective may serve.
+
+Crash behavior at every transition is therefore:
 
 - A crash before fencing leaves Primary solely live after exact proof that no intent/fence advanced.
 - A crash after reader fence but before writer fence resumes by fencing the writer; it does not reopen the Primary reader.
-- A crash after writer fence but before Subjective enablement resumes enablement from the exact fenced state; neither reader serves meanwhile.
-- A crash after enablement but before receipt finalization keeps Primary fenced and Subjective non-serving until forward finalization proves the exact state.
+- A crash after writer fence but before Subjective preparation resumes preparation from the exact fenced state; neither reader serves meanwhile.
+- A crash in `subjective_prepared` resumes forward finalization with both ordinary authorities non-serving.
 - A crash after finalization but before retirement serves only Subjective and resumes validation/removal from the finalized receipt.
 
 Restart reconstructs the exact state from the durable chain and revalidates all bound revisions before the next transition. Silent reset, repair-on-read, automatic retry after a head/state mismatch, and fallback to Primary are prohibited.
@@ -1132,18 +1210,18 @@ Modified production paths are bounded to:
 relaylm/relaymem_retrieval.py
 relaylm/relaymem_primary_recall.py
 relaylm/relayctx_repack.py
-relaylm/evidence_store.py
+relaylm/subjective_mem_retrieval_cutover.py
 relaylm/subjective_mem_retrieval_selection.py
 relaylm/subjective_mem_retrieval_usage_ledger.py
 relaylm/subjective_mem_retrieval_projection.py
 relaylm/subjective_mem_retrieval_projection_store.py
 ```
 
-The first three own the ordinary Primary read/candidate/runtime-private handoff; the Evidence store owns durable receipt/fence state; and the last four reuse the RT-1B/RT-1C projection, exact selection, and usage-finalization owners. The E1-R4 owner is deliberately unchanged. Primary writer fencing is limited to the existing entry owners `relaylm/relaymem_primary_pipeline.py`, `relaylm/relaymem_primary_page_writer.py`, `relaylm/relaymem_primary_writer_handoff.py`, and `relaylm/relaymem_slp_primary_worker.py`; lifecycle-overlay retirement, if exact call-graph evidence requires it, is limited to `relaylm/relaymem_primary_retrieval_eligibility.py` and `relaylm/relaymem_primary_current_state.py`.
+The first three own the ordinary Primary read/candidate/runtime-private handoff; `relaylm/subjective_mem_retrieval_cutover.py` is the one new dedicated RT-1D cutover domain owner; and the last four reuse the RT-1B/RT-1C projection, exact selection, and usage-finalization owners. `relaylm/evidence_store.py` is an imported and reused generic infrastructure dependency, not an expected modified production path and not the RT-1D semantic owner. The E1-R4 owner is deliberately unchanged. Primary writer fencing is limited to the existing entry owners `relaylm/relaymem_primary_pipeline.py`, `relaylm/relaymem_primary_page_writer.py`, `relaylm/relaymem_primary_writer_handoff.py`, and `relaylm/relaymem_slp_primary_worker.py`; lifecycle-overlay retirement, if exact call-graph evidence requires it, is limited to `relaylm/relaymem_primary_retrieval_eligibility.py` and `relaylm/relaymem_primary_current_state.py`.
 
 Focused modified or new tests are bounded to `tests/test_subjective_mem_retrieval_selection.py`, `tests/test_subjective_mem_retrieval_usage_ledger.py`, `tests/test_subjective_mem_retrieval_projection.py`, and one new `tests/test_subjective_mem_retrieval_cutover.py` process/integration owner. Existing Primary request-path evidence may be updated only in `tests/test_memory_stage_extraction.py`. At most one generic registration path, `tests/test_subjective_mem_smoke_registration.py`, may change if the new focused test requires registration. Deletion candidates after their gates pass are `relaylm/subjective_mem_retrieval_characterization.py`, its focused test, and compatibility no-ops `relaymem_primary_recall_runtime.py` and `relaymem_primary_recall_candidate_bridge_runtime.py`. No other new production path is authorized.
 
-A new selector, receipt evaluator, lifecycle evaluator, adapter, registry, factory, plugin framework, milestone wrapper, or generic compatibility owner is forbidden. Return to P1 if the inspected call graph needs another path, if an existing file gains roughly 200 lines, grows past roughly 700 lines, a function grows past roughly 80 lines, or a file accumulates multiple authorities.
+A new selector, receipt evaluator, lifecycle evaluator, generic cutover framework, adapter, adapter registry, registry, factory, plugin framework, milestone wrapper, or generic compatibility framework is forbidden. Return to P1 if the inspected call graph needs another path, if an existing file gains roughly 200 lines, grows past roughly 700 lines, a function grows past roughly 80 lines, or a file accumulates multiple authorities.
 
 ### Compatibility consumers and removal gates
 
