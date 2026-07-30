@@ -59,7 +59,7 @@ ASM-1 Shared Assessment runtime foundation: complete in PR #636; default-off
 SM-1 Subjective MEM create decision/result vertical slice: complete in PR #646; default-off and prepared-only
 ST-1 Markdown + operations commit protocol: complete; default-off, create-only, POSIX apply
 LC-1 lifecycle migration: complete; LC-1A Correct, LC-1B Forget, LC-1C Pin/Unpin, LC-1D Restore, and LC-1E Consolidate implemented; default-off, POSIX apply
-RT-1 Retrieval migration: in progress; RT-1A contract and projection foundation complete in PR #774; RT-1B projection builder and deterministic rebuild complete in PR #779; RT-1C shadow adapter, grounding handoff, and usage ledger complete in PR #784; RT-1B remains default-off and unwired from ordinary Retrieval; RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval; RT-1D hard cutover and retirement remains unauthorized and not started
+RT-1 Retrieval migration: in progress; RT-1A contract and projection foundation complete in PR #774; RT-1B projection builder and deterministic rebuild complete in PR #779; RT-1C shadow adapter, grounding handoff, and usage ledger complete in PR #784; RT-1B remains default-off and unwired from ordinary Retrieval; RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval; RT-1D hard cutover and retirement is architecture-authorized as the next ordered Lane C slice and is not started
 ```
 
 ## Contract-aligned implementation migration boundary
@@ -90,7 +90,7 @@ RT-1 Retrieval migration: in progress; RT-1A contract and projection foundation 
 
 **RT-1C Shadow adapter, grounding handoff, and usage ledger** selects exact current eligible Subjective revisions from one complete verified RT-1B projection generation and prepares one bounded runtime-private handoff. Selected prose comes only from bounded canonical page bytes parsed through the existing canonical Markdown owner, with exact page, block, revision, scope, memory-kind, formation-stage, lifecycle, retrieval-visibility, and authorization binding proven against the exact projection row and admitted request scope; caller-attested prose with a matching caller digest cannot be admitted. Each item's token estimate is derived deterministically from that parsed canonical prose. The prepared handoff stays non-admitted and exposes no evidence-release path; the durable ledger revalidates it against canonical bytes, finalizes exact content-free usage event and result pairs, and only then seals an admitted handoff that materializes fresh grounding dictionaries. A separate temporary owner performs content-free Primary-vs-Subjective characterization over admitted public projections only. It performs no ordinary request-path wiring, RelayCTX injection, Primary MEM access or fallback, E1-R4 behaviour change, canonical mutation, or RT-1D cutover.
 
-LC-1 lifecycle migration is complete through Consolidate. RT-1 is in progress with RT-1A, RT-1B, and RT-1C complete; RT-1D hard cutover and retirement remains unauthorized and not started. A disposable RT-1B projection builder and store plus a default-off shadow-only RT-1C selection, characterization, and usage ledger existing does not mean ordinary Retrieval is wired: logical eligibility still does not wire ordinary Retrieval, ranking, cache, or request-path readers.
+LC-1 lifecycle migration is complete through Consolidate. RT-1 is in progress with RT-1A, RT-1B, and RT-1C complete; RT-1D hard cutover and retirement is architecture-authorized as the next ordered Lane C slice and is not started. A disposable RT-1B projection builder and store plus a default-off shadow-only RT-1C selection, characterization, and usage ledger existing does not mean ordinary Retrieval is wired: logical eligibility still does not wire ordinary Retrieval, ranking, cache, or request-path readers.
 
 ## Current caveats
 
@@ -103,7 +103,7 @@ LC-1 lifecycle migration is complete through Consolidate. RT-1 is in progress wi
 - Durable RT-1C usage persistence exists only for an explicitly non-shadow prepared handoff that passed exact canonical revalidation and exact durable event/result finalization; no ordinary request-path use of it exists.
 - ST-1 revision-1 `create` still publishes a legacy unbound current selector, so those revision-1 memories cannot enter the RT-1B projection until a later accepted slice publishes authority-bound selectors.
 - ST-1 and LC-1 logical `retrieval_eligible: true` do not implement ordinary Subjective MEM Retrieval.
-- Primary MEM remains the current ordinary memory and Retrieval authority until RT-1 hard cutover is accepted.
+- Primary MEM remains the sole ordinary served memory and Retrieval authority until a future RT-1D implementation is validated, merged, and its cutover receipt is finalized.
 - O2/O3 remain explicit local process layers, not browser authority, app-embedded services, or new memory mutation authority.
 - RelayCTX short-term runtime injection apply remains default-off and dry-run-only by default.
 - Open decision debt remains PM-D1 RelaySOUL gate design-freeze relation, PM-D2 legacy intent-artifact closure/absorption, PM-D4 client-history exclusion deployment policy, and PM-D9 multilingual analyzer/proposal policy.
@@ -116,7 +116,7 @@ LC-1 lifecycle migration                                    complete; LC-1A Corr
        -> RT-1A contract and projection foundation           complete in PR #774
        -> RT-1B projection builder and rebuild               complete in PR #779
        -> RT-1C shadow adapter, grounding handoff, usage ledger complete in PR #784; default-off, shadow-only, unwired
-       -> RT-1D hard cutover and retirement                  next ordered target; unauthorized / not started
+       -> RT-1D hard cutover and retirement                  next ordered Lane C slice; architecture-authorized / not started
 
 Parallel decision work:
   PM-D1 RelaySOUL gate design-freeze relation
