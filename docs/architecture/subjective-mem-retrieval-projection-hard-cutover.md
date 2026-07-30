@@ -542,8 +542,9 @@ and usage ledger is implemented in PR #784 within the budget this section
 authorizes, and remains default-off, explicit shadow-only, and unwired from
 ordinary Retrieval.
 
-RT-1D hard cutover, Primary retirement, and authority transfer are now
-architecture-authorized as the next ordered Lane C slice and are not started.
+RT-1D hard cutover, Primary retirement, and authority transfer are
+architecture-authorized and are not started. The next ordered Lane C work is
+the S1-S3 structural prerequisite sequence defined below.
 
 This section authorizes an implementation budget and records which slices have
 since landed within it. It claims no ordinary served Subjective MEM Retrieval,
@@ -1399,6 +1400,151 @@ select authority, or the usual structural-growth triggers fire.
 ### Compatibility consumers and removal gates
 
 Live Primary consumers are the ordinary retrieval compiler, RelayCTX repack, Soul Lab observation projection, memory-stage extraction and request-path tests, Primary formation/page/index/log/SLP writers, lifecycle eligibility/current-state overlays, and their registered smokes. After exact finalized-receipt replay, restart testing, only-Subjective request-path probes, writer-fence proof, negative search for Primary ordinary serving, and disclosure/rebuild equivalence pass, the old reader/fallback and writer entry points are removed or disabled. The lifecycle overlay retires only when no accepted Primary operational/historical consumer requires it. Shadow characterization retires after its accepted gate record and post-transfer evidence are preserved. Frozen historical/evaluation fixtures remain only where a continuing accepted purpose is documented; they cannot be live authority. Primary and Subjective are never both canonical, and no permanent compatibility owner remains.
+
+### Structural P1 Return and ordered prerequisite seams
+
+Exact-current inspection returned runtime implementation to P1 before any
+runtime write. The measurements at commit
+`7c9afd62e6067b7476aeb10e7b165d8efde49bad` are:
+
+```text
+relaylm/managed_chat_runtime.py                       710 lines
+  handle_managed_chat_completion                     lines 132-382, 251 lines
+relaylm/relaymem_retrieval.py                        1435 lines
+relaylm/relaymem_primary_recall.py                   1198 lines
+relaylm/_relaymem_slp_primary_worker_execute.py       297 lines
+  execute_relaymem_slp_primary_worker                lines 47-290, 244 lines
+relaylm/relaymem_slp_one_queued_job_runner.py          700 lines
+relaylm/relaymem_primary_correction.py                1100 lines
+  apply_primary_memory_correction                    lines 157-279, 123 lines
+relaylm/relaymem_primary_forget_recovery.py            779 lines
+  apply_primary_memory_forget                        lines 155-304, 150 lines
+relaylm/soul_lab_memory_correction_routes.py           161 lines
+  install_primary_memory_correction_routes           lines 44-161, 118 lines
+relaylm/soul_lab_memory_forget_routes.py               231 lines
+  install_primary_memory_forget_routes               lines 53-231, 179 lines
+```
+
+These are review triggers, not permanent exemptions. Appending RT-1D carriage
+would make the existing structural debt worse; facade-only wrapping would leave
+private/direct writer bypasses; and splitting merely to lower line counts would
+not transfer a coherent responsibility. Runtime therefore remains not started.
+
+Responsibility-driven extraction may move existing behavior only when one exact
+current responsibility, accepted caller, explicit input and output, and public
+facade are identified. Semantics are moved rather than copied; no generic
+framework or unused abstraction is introduced; equivalence tests prove
+unchanged behavior; and source and destination remain bounded. Moving one giant
+block into another file over roughly 700 lines is not an accepted seam.
+
+The only accepted Lane C order is:
+
+```text
+RT-1D-S1 reader seams
+  -> mandatory same-lane P8 -> verify resulting main
+  -> RT-1D-S2 worker seams
+     -> mandatory same-lane P8 -> verify resulting main
+     -> RT-1D-S3 mutation seams
+        -> mandatory same-lane P8 -> verify resulting main
+        -> fresh RT-1D runtime implementation
+           -> mandatory same-lane P8 after merge
+```
+
+One logical writer owns each transaction, and none overlaps another Lane C
+transaction. S1-S3 preserve Primary-only behavior and must not add the cutover
+binding, cutover records, configuration fields, reader/writer decisions,
+Primary fences, Subjective serving, fallback changes, authority selection,
+retirement, `EvidenceRecordStore` changes, or another persistence/recovery
+mechanism.
+
+#### RT-1D-S1 reader seams
+
+S1 separates managed post-validation stage orchestration, legacy Retrieval
+dry-run construction, and Primary recall selection/store validation. Required
+existing paths are `relaylm/managed_chat_runtime.py`,
+`relaylm/relaymem_retrieval.py`, and `relaylm/relaymem_primary_recall.py`.
+Authorized new owners are:
+
+- `relaylm/managed_chat_pipeline_runtime.py` for post-validation
+  compile/scope/evidence/stage orchestration and one explicit private result;
+- `relaylm/relaymem_retrieval_dry_run.py` for the legacy M2 dry-run artifact;
+- `_relaymem_retrieval_candidates.py` and `_relaymem_retrieval_snippet.py` only
+  when exact extraction evidence is required to keep that owner bounded;
+- `relaylm/relaymem_primary_recall_selection.py` for selection,
+  relevance/fallback choice, and handoff construction;
+- `relaylm/relaymem_primary_recall_store.py` for read-only
+  control/index/log/page loading and exact validation.
+
+The current public handler, retrieval stage, and Primary recall facade remain
+authoritative. Public imports and schemas, stage order and timing, offload
+boundary, diagnostics, artifacts, bytes, relevance/fallback behavior, path
+safety, and lifecycle evaluation remain exact. Existing request-path,
+memory-stage, prebackend-payload, chat-characterization, app-orchestration,
+two-turn recall, and retrieval-exclusion tests/smokes may change only for
+import/equivalence ownership; at most
+`tests/test_rt1d_reader_seams.py` may be added. Managed response, RelayCTX
+repack, Retrieval priority/store, configuration, Subjective modules, the
+cutover owner, and current-authority documents are excluded from the S1 code
+PR absent a new P1 Return.
+
+#### RT-1D-S2 worker seams
+
+S2 separates the long SLP executor and one-queued-job runner into existing
+phases. Required existing paths are
+`relaylm/_relaymem_slp_primary_worker_execute.py` and
+`relaylm/relaymem_slp_one_queued_job_runner.py`. Authorized new owners are
+`relaylm/_relaymem_slp_primary_worker_pipeline.py` for source-to-pipeline
+request construction and checkpointed pipeline execution, and
+`relaylm/_relaymem_slp_one_queued_job_runner_execute.py` for claim, source
+preparation, worker invocation, and terminal cleanup.
+
+Worker types, validation, outcome adaptation, and the public worker facade may
+change only when exact type/import evidence requires it. Public functions and
+projections, claim revalidation, lease renewal counts, protected-source release
+order, status/reason bytes, retry, cleanup, and terminal transitions remain
+exact. The existing phase 6-C1/6-C2 and O0 contract/security smokes own
+equivalence; at most `tests/test_rt1d_worker_seams.py` may be added. Fence
+semantics, Primary pipeline semantics, queue/store semantics, scheduler policy,
+configuration, the cutover owner, and current-authority documents are excluded
+from the S2 code PR absent a new P1 Return.
+
+#### RT-1D-S3 mutation seams
+
+S3 separates Correct preflight/apply and Forget apply/recovery from loopback
+route handling. Required existing paths are
+`relaylm/relaymem_primary_correction.py`,
+`relaylm/relaymem_primary_forget_recovery.py`, and the two Soul Lab memory route
+owners. Authorized new owners are:
+
+- `_relaymem_primary_correction_preflight.py` for validation/token issuance;
+- `_relaymem_primary_correction_apply.py` for apply/replay/publication/recovery;
+- `_relaymem_primary_correction_history.py` only if read-only history extraction
+  is required to keep the public facade bounded;
+- `_relaymem_primary_forget_apply.py` for external apply/replay and handoff to
+  the existing hidden-successor/finalization owners;
+- `soul_lab_memory_correction_runtime.py` and
+  `soul_lab_memory_forget_runtime.py` for operation-specific parsing, scoped
+  calls, projections, and safe responses, but not route installation or global
+  lab authorization.
+
+The public Correct and Forget APIs, route installation call, URLs, methods,
+schemas, status codes, Cache-Control, token bytes/claims/expiry, idempotency,
+fault names, crash/recovery outcomes, locks, receipts, and every durable effect
+remain exact. Forget facades, `soul_lab_app.py`, and the mutation coordinator
+may receive import-only movement when exact evidence requires it; coordinator
+semantics do not move. Existing Correct, mutation-fence, Forget recovery, and
+concurrency smokes own equivalence; at most
+`tests/test_rt1d_mutation_seams.py` may be added. Evidence infrastructure,
+lifecycle/receipt semantics, route schemas, configuration, the cutover owner,
+and current-authority documents are excluded from the S3 code PR absent a new
+P1 Return.
+
+Each structural slice fixes its complete path budget before writing and proves
+public API/schema/import equivalence, byte-equivalent projections and HTTP
+responses where applicable, unchanged durable bytes and fault/recovery
+behavior, negative dependency direction, bounded source/destination structure,
+and exact Primary-only behavior. Unexpected owners, path growth, duplicated
+semantics, or inability to keep both sides bounded returns that slice to P1.
 
 ### Required RT-1D negative matrix
 
