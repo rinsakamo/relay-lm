@@ -1202,26 +1202,199 @@ Restart reconstructs the exact state from the durable chain and revalidates all 
 
 Before intent, an accepted operator/deployment authority must record exact build, configuration, scope, Primary and Subjective policy/schema/platform/renderer revisions, projection generation, rebuild result, and deterministic replay. The read-only Primary-versus-Subjective comparison is content-free and bounded to attempt/outcome classes, counts, exclusions, empty/non-empty class, handoff and token-budget classes, latency class, and leakage result. It neither compares raw content nor asserts identity equivalence. Acceptance requires deterministic replay, exact projection deletion/rebuild equivalence, all required eligibility and lifecycle exclusions, no private/public leakage, and an explicit disposition for every mismatch class. Architecture-gate success alone does not approve production deployment, default-on policy, or formation gates.
 
+### P1 authority-carriage return and amended API boundary
+
+Read-only inspection after the original authorization proved that its path/API
+budget was incomplete.  The managed request caller passes configuration, route,
+and the Primary root to the ordinary retrieval stage, but no explicit cutover
+store or evidence-space identity, Subjective projection location, canonical
+source authority, build/configuration identity, deployment/readiness authority,
+or finalized-receipt identity.  The projection store requires an explicit safe
+absolute root and exact source-bound validation; the projection builder consumes
+a fixed source and deliberately owns neither filesystem enumeration nor source
+loading.  The usage ledger already has the required dependency shape: an
+explicit `EvidenceRecordStore` and evidence-space identity, with durable
+finalization before admission.
+
+The writer graph also exceeds the old four-facade budget.  The Primary pipeline
+has per-call checkpoints before source consumption, page writing, and index/log
+reconciliation, but aliases private writer implementations.  SLP lease/claim
+fencing is not durable cutover fencing, and neither queued-runner nor worker
+requests carry RT-1D authority.  Correct and Forget are independent live writer
+entries whose apply and recovery paths do not receive it.  The Primary mutation
+coordinator remains a per-memory Correct/Forget coordinator, not a global
+cutover owner.
+
+The rejected alternatives are a marker in the Primary root (a second durable
+mechanism), a process-local flag (not restart-safe), implicit root derivation
+(hidden precedence), and facade-only fencing while a private/direct apply path
+remains.  Runtime implementation remains not started.  Primary remains the sole
+current ordinary served memory and Retrieval authority.
+
+#### Immutable runtime-private cutover binding
+
+The cutover owner must expose one immutable runtime-private
+`SubjectiveMemRetrievalCutoverBinding`, reconstructed from and revalidated
+against the exact durable chain.  It carries content-free identities for:
+
+- the explicit `EvidenceRecordStore` root dependency and cutover evidence space;
+- the explicit Subjective projection location and canonical workspace/page
+  source authority;
+- exact build identity, configuration identity, and accepted
+  deployment/readiness authority;
+- projection generation and exact manifest identity;
+- character, workspace, and admitted scope;
+- Primary and Subjective policy, schema, renderer, platform, and authority
+  revisions;
+- expected intent, reader-fence, writer-fence, and finalized-receipt identities;
+- the reconstructed cutover state and its exact predecessor/idempotency chain.
+
+Paths and configuration locate inputs but never select served authority.  The
+binding is not caller attestation: construction reads the durable chain through
+`EvidenceRecordStore`, checks every supplied locator and revision, and refuses a
+partial tuple, unsafe root, inferred default, stale value, or divergent record.
+
+#### Reader and writer decisions
+
+The cutover owner returns one bounded reader decision from that binding:
+
+- before the durable reader fence: `primary_only`;
+- after the reader fence and before the exact finalized receipt: `neither`;
+- after the exact finalized receipt: `subjective_only`;
+- for missing, incomplete, stale, divergent, unsupported, or mismatched durable
+  state: fail closed.
+
+The managed request caller explicitly constructs/carries the binding to the
+ordinary retrieval owner.  The latter invokes the existing Primary candidate
+path only for `primary_only`, releases neither authority for `neither`, and for
+`subjective_only` uses the exact source, projection, selection, canonical
+revalidation, usage finalization, admitted handoff, and unchanged E1-R4 owner.
+An empty, corrupt, unavailable, or unsupported Subjective outcome after
+finalization remains empty or fails closed; it never falls back to Primary.
+
+The same binding produces the one durable Primary-writer decision.  The existing
+pipeline checkpoint seam is reused before source consumption, M3e page write,
+and M3g reconciliation; no second generic fence framework is introduced.  Every
+live public, private, direct page/index/log apply either consumes the same
+decision immediately before its durable side effect or is removed under an
+explicit retirement gate.  Lease/claim fencing and cutover fencing are separate
+required conditions and neither overrides the other.
+
+#### Explicit SLP and Correct/Forget carriage
+
+The immutable binding is carried explicitly through the one-queued-job runner
+request, worker request, worker execution, pipeline invocation, and each exact
+scheduler/runner construction root.  No singleton, environment lookup, or
+Primary-root inference supplies it.
+
+Correct and Forget carry the same binding through their route/caller,
+preflight/apply, and recovery boundaries.  Each durable side effect reconstructs
+or rechecks current cutover authority immediately before writing.  In
+particular, a mutation token issued before `writer_fenced` cannot authorize an
+apply or recovery write after `writer_fenced`.  The mutation coordinator may
+receive only a narrow local checkpoint if exact implementation evidence needs
+one; it does not evaluate the global cutover chain.
+
+#### Canonical Subjective source acquisition and configuration
+
+The future cutover owner orchestrates source acquisition but delegates all
+semantic evaluation.  From the binding's explicit canonical workspace and
+projection location, the ordinary retrieval owner loads canonical page bytes,
+current selectors, receipts, authorization records, and admitted scope using
+the existing canonical Markdown parser, lifecycle/receipt evaluators, projection
+builder/store, selector, and usage ledger.  The projection builder continues to
+receive one fixed source value and does not enumerate files or acquire locks.
+
+Configuration may add explicit locator/binding fields following current naming
+conventions for the evidence root/space, projection root, canonical workspace,
+and exact build/configuration/deployment identities.  Validation rejects partial
+tuples, unsafe roots, and inferred defaults.  Absence preserves current Primary-
+only behavior.  No configuration value, enable boolean, or load success
+authorizes deployment or serving; only the exact durable reader decision and
+finalized receipt do so.
+
 ### Future implementation path budget
 
-Modified production paths are bounded to:
+The replacement budget below supersedes the earlier facade-only budget.  A
+fresh runtime transaction after this amendment merges must re-bootstrap and
+prove each conditional path from the then-current call graph.
+
+Required reader/config/source paths are:
 
 ```text
+relaylm/config.py
+config.example.yaml
+relaylm/managed_chat_runtime.py
 relaylm/relaymem_retrieval.py
 relaylm/relaymem_primary_recall.py
 relaylm/relayctx_repack.py
 relaylm/subjective_mem_retrieval_cutover.py
-relaylm/subjective_mem_retrieval_selection.py
-relaylm/subjective_mem_retrieval_usage_ledger.py
 relaylm/subjective_mem_retrieval_projection.py
 relaylm/subjective_mem_retrieval_projection_store.py
+relaylm/subjective_mem_retrieval_selection.py
+relaylm/subjective_mem_retrieval_usage_ledger.py
+relaylm/relaymem_primary_pipeline.py
+relaylm/relaymem_slp_primary_worker.py
+relaylm/_relaymem_slp_primary_worker_execute.py
+relaylm/_relaymem_slp_primary_worker_types.py
+relaylm/relaymem_slp_one_queued_job_runner.py
+relaylm/relaymem_primary_correction.py
+relaylm/relaymem_primary_forget.py
+relaylm/relaymem_primary_forget_public_apply.py
+relaylm/relaymem_primary_forget_recovery.py
+relaylm/soul_lab_memory_correction_routes.py
+relaylm/soul_lab_memory_forget_routes.py
 ```
 
-The first three own the ordinary Primary read/candidate/runtime-private handoff; `relaylm/subjective_mem_retrieval_cutover.py` is the one new dedicated RT-1D cutover domain owner; and the last four reuse the RT-1B/RT-1C projection, exact selection, and usage-finalization owners. `relaylm/evidence_store.py` is an imported and reused generic infrastructure dependency, not an expected modified production path and not the RT-1D semantic owner. The E1-R4 owner is deliberately unchanged. Primary writer fencing is limited to the existing entry owners `relaylm/relaymem_primary_pipeline.py`, `relaylm/relaymem_primary_page_writer.py`, `relaylm/relaymem_primary_writer_handoff.py`, and `relaylm/relaymem_slp_primary_worker.py`; lifecycle-overlay retirement, if exact call-graph evidence requires it, is limited to `relaylm/relaymem_primary_retrieval_eligibility.py` and `relaylm/relaymem_primary_current_state.py`.
+Conditional paths, permitted only with exact live bypass or construction-root
+evidence, are `_relaymem_primary_pipeline_impl.py`,
+`relaymem_primary_page_writer.py`, `relaymem_primary_writer_handoff.py`,
+`relaymem_primary_index_log_apply.py`, the exact scheduler/runner request
+construction roots, exact correction/forget route-install roots, and
+`relaymem_primary_mutation_coordinator.py` for a narrow local checkpoint only.
+Facade-only changes are insufficient where a direct/private apply remains.
 
-Focused modified or new tests are bounded to `tests/test_subjective_mem_retrieval_selection.py`, `tests/test_subjective_mem_retrieval_usage_ledger.py`, `tests/test_subjective_mem_retrieval_projection.py`, and one new `tests/test_subjective_mem_retrieval_cutover.py` process/integration owner. Existing Primary request-path evidence may be updated only in `tests/test_memory_stage_extraction.py`. At most one generic registration path, `tests/test_subjective_mem_smoke_registration.py`, may change if the new focused test requires registration. Deletion candidates after their gates pass are `relaylm/subjective_mem_retrieval_characterization.py`, its focused test, and compatibility no-ops `relaymem_primary_recall_runtime.py` and `relaymem_primary_recall_candidate_bridge_runtime.py`. No other new production path is authorized.
+`relaylm/evidence_store.py`, `relaylm/evidence_space.py`, the canonical Markdown,
+lifecycle, selector, receipt, and E1-R4 policy owners are reused and excluded
+from modification absent a new evidence-backed P1 return.  They do not become
+cutover authorities.  No generic registry, adapter, factory, plugin, second
+store, marker, journal, lock, recovery owner, environment lookup, or inferred
+root is authorized.
 
-A new selector, receipt evaluator, lifecycle evaluator, generic cutover framework, adapter, adapter registry, registry, factory, plugin framework, milestone wrapper, or generic compatibility framework is forbidden. Return to P1 if the inspected call graph needs another path, if an existing file gains roughly 200 lines, grows past roughly 700 lines, a function grows past roughly 80 lines, or a file accumulates multiple authorities.
+`relaylm/evidence_store.py` is an imported and reused generic infrastructure
+dependency, not an expected modified production path and not the RT-1D semantic
+owner.
+
+Retirement candidates remain the shadow characterizer and its focused test, the
+two Primary recall compatibility no-ops, old reader/fallback surfaces, and any
+direct writer callable whose consumers have moved to the exact binding.  Each is
+deleted or disabled only after its existing removal gate and complete negative
+call-graph search pass; lifecycle/historical Primary state remains where an
+accepted operational consumer still requires it.
+
+The future test budget includes focused cutover state and restart reconstruction,
+configuration tuple validation and absence behavior, one-authority ordinary
+routing, final-receipt-only serving, prepared non-serving, empty/corrupt/
+unavailable Subjective results without fallback, canonical source and projection
+rebuild equivalence, M3 source/M3e/M3g checkpoints, direct/private bypass
+searches, queued-runner/worker carriage, Correct and Forget token-before-fence/
+apply-after-fence races, post-fence recovery, and proof that no Primary durable
+write occurs after `writer_fenced`.  Security tests prove no second root/marker/
+journal and no private path, identifier, digest, prose, query, prompt, or
+correlation leakage.  Tests validate production semantics and do not duplicate
+them.
+
+The focused state/process owner is
+`tests/test_subjective_mem_retrieval_cutover.py`; existing focused projection,
+selection, usage, request-path, pipeline, worker, Correct, Forget, recovery, and
+configuration tests may change only for the responsibility they already own.
+
+A new selector, receipt evaluator, lifecycle evaluator, generic cutover
+framework, adapter/registry/factory/plugin, second persistence/recovery
+mechanism, implicit locator, or unbounded caller sweep is forbidden.  Return to
+P1 if a path outside the classified budget is needed, an additional authority
+owner appears, a direct writer cannot receive the binding, configuration would
+select authority, or the usual structural-growth triggers fire.
 
 ### Compatibility consumers and removal gates
 
@@ -1229,11 +1402,11 @@ Live Primary consumers are the ordinary retrieval compiler, RelayCTX repack, Sou
 
 ### Required RT-1D negative matrix
 
-Tests must refuse stale, missing, duplicate, or conflicting selectors; legacy unbound selectors; missing or mismatched receipts, authorizations, page, block, scope, policy, schema, renderer, or platform; mixed or stale generations; hidden, held, superseded, purged, prepared, recovery-required, corrupt, prior, cross-character, or cross-scope revisions; unresolved lifecycle/publication intent; combined Primary/Subjective results; fallback after an empty Subjective result; Subjective serving before finalization; Primary serving afterward; a Primary writer live after reader retirement; usage-finalization failure followed by evidence admission; public leakage of prose, query text, paths, private IDs, digests, or correlation material; crash/restart at every transition; non-deterministic replay; and partial retirement before exact validation.
+Tests must refuse stale, missing, duplicate, or conflicting selectors; legacy unbound selectors; missing, partial, inferred, or mismatched binding tuples; unsafe or Primary-derived roots; missing or mismatched receipts, authorizations, build, configuration, deployment/readiness authority, page, block, scope, policy, schema, renderer, or platform; mixed or stale generations; hidden, held, superseded, purged, prepared, recovery-required, corrupt, prior, cross-character, or cross-scope revisions; unresolved lifecycle/publication intent; combined Primary/Subjective results; fallback after an empty, corrupt, or unavailable Subjective result; Subjective serving before finalization; Primary serving afterward; a direct/private Primary writer bypass; a queued/worker request without the exact binding; a Correct/Forget token crossing `writer_fenced`; recovery writing after the fence; usage-finalization failure followed by evidence admission; a second root, marker, journal, lock, or process-local authority; public leakage of prose, query text, paths, private IDs, digests, or correlation material; crash/restart at every transition; non-deterministic replay; and partial retirement before exact validation.
 
 ### RT-1D validation matrix
 
-Focused unit tests own state validation, exact bindings, and negative classes. Request-path integration tests own one-authority routing, E1-R4 handoff, empty results, and writer fences. Process tests kill/restart every durable transition. Characterization tests own content-free deterministic comparison and leakage; projection tests own deletion/rebuild equivalence. Security tests own scope and private-disclosure refusal. An exact one-authority smoke and repository-wide ordinary-path negative search prove no alternate Primary route remains. The future PR also requires exact-head CI, complete-diff review, resulting-main validation after merge, and a mandatory same-lane P8 authority-synchronization PR before Lane C advances.
+Focused unit tests own state validation, immutable binding reconstruction, exact identities, configuration tuple validation, and negative classes. Request-path integration tests own explicit reader carriage, one-authority routing, E1-R4 handoff, prepared/empty/failure results, and finalized-receipt-only serving. Process tests kill/restart every durable transition. Pipeline tests exercise the existing source/M3e/M3g checkpoints; worker and route tests prove queued, Correct, Forget, apply, recovery, and mutation-token carriage. Characterization tests own content-free deterministic comparison and leakage; projection tests own source acquisition and deletion/rebuild equivalence. Security tests own scope, private-disclosure refusal, and absence of a second persistence mechanism. Exact one-authority and repository-wide direct-call negative searches prove no alternate Primary reader or writer route remains. The future PR also requires exact-head CI, complete-diff review, resulting-main validation after merge, and a mandatory same-lane P8 authority-synchronization PR before Lane C advances.
 
 ### RT-1D explicit non-goals
 
