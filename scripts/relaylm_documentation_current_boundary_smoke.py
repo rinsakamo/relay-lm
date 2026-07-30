@@ -346,6 +346,78 @@ RT1C = "docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md"
 STATUS = "docs/PROJECT_STATUS.md"
 PLAN = "docs/architecture/project_execution_plan.md"
 
+RT1_STRUCTURAL_ANCHORS = (
+    "These are review triggers, not permanent exemptions.",
+    "Responsibility-driven extraction may move existing behavior only when one exact\n"
+    "current responsibility, accepted caller, explicit input and output, and public\n"
+    "facade are identified.",
+    "splitting merely to lower line counts would\nnot transfer a coherent responsibility",
+    "Moving one giant\nblock into another file over roughly 700 lines is not an accepted seam.",
+    "RT-1D-S1 reader seams\n"
+    "  -> mandatory same-lane P8 -> verify resulting main\n"
+    "  -> RT-1D-S2 worker seams\n"
+    "     -> mandatory same-lane P8 -> verify resulting main\n"
+    "     -> RT-1D-S3 mutation seams\n"
+    "        -> mandatory same-lane P8 -> verify resulting main\n"
+    "        -> fresh RT-1D runtime implementation\n"
+    "           -> mandatory same-lane P8 after merge",
+    "relaylm/managed_chat_pipeline_runtime.py",
+    "relaylm/relaymem_retrieval_dry_run.py",
+    "_relaymem_retrieval_candidates.py",
+    "_relaymem_retrieval_snippet.py",
+    "relaylm/relaymem_primary_recall_selection.py",
+    "relaylm/relaymem_primary_recall_store.py",
+    "relaylm/_relaymem_slp_primary_worker_pipeline.py",
+    "relaylm/_relaymem_slp_one_queued_job_runner_execute.py",
+    "_relaymem_primary_correction_preflight.py",
+    "_relaymem_primary_correction_apply.py",
+    "_relaymem_primary_correction_history.py",
+    "_relaymem_primary_forget_apply.py",
+    "soul_lab_memory_correction_runtime.py",
+    "soul_lab_memory_forget_runtime.py",
+    "public API/schema/import equivalence, byte-equivalent projections and HTTP\n"
+    "responses where applicable, unchanged durable bytes and fault/recovery\nbehavior",
+    "S1-S3 preserve Primary-only behavior and must not add the cutover\n"
+    "binding, cutover records, configuration fields, reader/writer decisions,\n"
+    "Primary fences, Subjective serving, fallback changes, authority selection,\n"
+    "retirement, `EvidenceRecordStore` changes, or another persistence/recovery\n"
+    "mechanism.",
+    "its complete\nmain-relative path budget was fixed before writing",
+    "every touched public API,\nimport, and schema remains exact",
+    "durable filesystem bytes and fault,\ncrash, and recovery outcomes remain unchanged",
+    "no import cycle, import-time side effect, duplicated semantics,\n"
+    "generic framework, new authority, new configuration authority, or new\n"
+    "persistence or recovery owner",
+    "Every touched orchestration function is at or below the approximate 80-line\n"
+    "review target.",
+    "Any exception to that target requires an exact reviewed P1\n"
+    "Return before any branch write, never a post-hoc exemption.",
+    "Every new\nproduction module remains below the approximate 700-line review trigger.",
+    "Every\ntouched pre-existing oversized facade is materially reduced and brought toward\n"
+    "or below approximately 700 lines where the accepted responsibility-driven\n"
+    "extraction can do so",
+    "no destination module becomes another oversized dumping\nground.",
+    "A slice unable to meet these gates returns to P1: it does not waive,\n"
+    "line-golf, bypass, or reinterpret the thresholds.",
+)
+
+RT1_STRUCTURAL_STALE = (
+    "RT-1D runtime is the next implementation immediately after PR #788.",
+    "S1-S3 and RT-1D runtime may be implemented in one combined PR.",
+    "Existing oversized files are exempt from the structural thresholds.",
+    "Wrapper-only extraction is sufficient for RT-1D authority carriage.",
+    "Splitting code only to reduce line counts is authorized.",
+    "A replacement module may exceed the approximate 700-line trigger.",
+    "S1-S3 may add the RT-1D binding, configuration fields, or authority decisions.",
+    "RT-1D-S1, RT-1D-S2, and RT-1D-S3 may run concurrently.",
+    "The same-lane P8 authority sync may be skipped after a structural slice.",
+    "Subjective ordinary serving is active during S1-S3.",
+    "Primary RT-1D writer fencing is active during S1-S3.",
+)
+
+REQUIRED[RT1C] += RT1_STRUCTURAL_ANCHORS
+STALE += RT1_STRUCTURAL_STALE
+
 PROBES = (
     (STATUS, "RT-1C shadow adapter, grounding handoff, usage ledger complete in PR #784; default-off, shadow-only, unwired"),
     (STATUS, "- RT-1C is default-off, explicit shadow-only, and unwired from ordinary request-path Retrieval."),
@@ -474,7 +546,7 @@ PROBES = (
     (RT1C, "Configuration may add explicit locator/binding fields"),
     (RT1C, "No configuration value, enable boolean, or load success\nauthorizes deployment or serving"),
     (RT1C, "Runtime implementation remains not started."),
-)
+) + tuple((RT1C, anchor) for anchor in RT1_STRUCTURAL_ANCHORS)
 
 STALE_PROBES = (
     (STATUS, "RT-1C shadow adapter, grounding handoff, usage ledger next ordered slice; registered / not started"),
@@ -504,7 +576,7 @@ STALE_PROBES = (
     (RT1C, "configuration or an enable flag selects served authority"),
     (RT1C, "Subjective serves before the finalized receipt"),
     (RT1C, "Primary serves after the finalized receipt"),
-)
+) + tuple((RT1C, stale) for stale in RT1_STRUCTURAL_STALE)
 
 
 def read(path: str) -> str:

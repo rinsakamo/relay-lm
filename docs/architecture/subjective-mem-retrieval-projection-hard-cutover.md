@@ -1546,6 +1546,27 @@ behavior, negative dependency direction, bounded source/destination structure,
 and exact Primary-only behavior. Unexpected owners, path growth, duplicated
 semantics, or inability to keep both sides bounded returns that slice to P1.
 
+#### Structural completion gates for S1-S3
+
+Before Ready, every S1, S2, or S3 code PR proves that its complete
+main-relative path budget was fixed before writing; every touched public API,
+import, and schema remains exact; projections and HTTP responses remain
+byte-equivalent where applicable; and durable filesystem bytes and fault,
+crash, and recovery outcomes remain unchanged. It also proves that the slice
+introduces no import cycle, import-time side effect, duplicated semantics,
+generic framework, new authority, new configuration authority, or new
+persistence or recovery owner.
+
+Every touched orchestration function is at or below the approximate 80-line
+review target. Any exception to that target requires an exact reviewed P1
+Return before any branch write, never a post-hoc exemption. Every new
+production module remains below the approximate 700-line review trigger. Every
+touched pre-existing oversized facade is materially reduced and brought toward
+or below approximately 700 lines where the accepted responsibility-driven
+extraction can do so; no destination module becomes another oversized dumping
+ground. A slice unable to meet these gates returns to P1: it does not waive,
+line-golf, bypass, or reinterpret the thresholds.
+
 ### Required RT-1D negative matrix
 
 Tests must refuse stale, missing, duplicate, or conflicting selectors; legacy unbound selectors; missing, partial, inferred, or mismatched binding tuples; unsafe or Primary-derived roots; missing or mismatched receipts, authorizations, build, configuration, deployment/readiness authority, page, block, scope, policy, schema, renderer, or platform; mixed or stale generations; hidden, held, superseded, purged, prepared, recovery-required, corrupt, prior, cross-character, or cross-scope revisions; unresolved lifecycle/publication intent; combined Primary/Subjective results; fallback after an empty, corrupt, or unavailable Subjective result; Subjective serving before finalization; Primary serving afterward; a direct/private Primary writer bypass; a queued/worker request without the exact binding; a Correct/Forget token crossing `writer_fenced`; recovery writing after the fence; usage-finalization failure followed by evidence admission; a second root, marker, journal, lock, or process-local authority; public leakage of prose, query text, paths, private IDs, digests, or correlation material; crash/restart at every transition; non-deterministic replay; and partial retirement before exact validation.
