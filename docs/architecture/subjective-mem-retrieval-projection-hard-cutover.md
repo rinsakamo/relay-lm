@@ -1654,13 +1654,13 @@ S1 PR #789 result b272edb78602032009d4882a6244883cce610b86
   -> S2 P8 PR #792 result 7e4fb4383dc6c1229d488ac200132b66f6b65bba
   -> S3 P1 architecture amendment PR #793 result 5011eaaddd895b434f3d870dcf2206527725629c
   -> S3A PR #794 result 2d05a41235e396ac82d536437ed8e5568f617253
-  -> S3A mandatory P8 -> independently verify exact resulting main
+  -> S3A mandatory P8 PR #795 -> independently verify exact resulting main
   -> S3B next -> mandatory P8 -> verify exact resulting main
   -> S3C -> mandatory P8 -> verify exact resulting main
   -> fresh RT-1D runtime -> runtime P8
 ```
 
-S3A is complete; its mandatory P8 is current. S3B is next but has not started;
+S3A is complete; mandatory P8 PR #795 is current. S3B is next but has not started;
 S3C and RT-1D runtime have not started. S3B becomes executable only after the
 S3A P8 merges and its exact resulting main is independently verified. No Lane C
 transaction overlaps. Only the exact resulting main after S3C P8 verification may bootstrap
