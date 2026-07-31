@@ -29,6 +29,12 @@ from relaylm.app_request_validation import (
 )
 from relaylm.config import RelayLMConfig
 from relaylm.managed_chat_response import build_managed_chat_response
+from relaylm.managed_chat_pipeline_runtime import (
+    _compile_chat_payload_and_capture_context_blocks,
+    _extract_ctx_hints,
+    _extract_trace_messages,
+    run_managed_chat_pipeline,
+)
 from relaylm.relaymem_slp_primary_worker_source_registry import (
     RelayMEMSLPPrimaryWorkerSourceRegistry,
 )
@@ -81,7 +87,10 @@ from relaylm.relayrun_runtime_artifact import (
     _build_relayrun_runtime_artifact_for_context,
 )
 from relaylm.relayemo import run_relayemo_stage
-from relaylm.request_scope import build_scope_resolution_diagnostics, extract_request_scope_identity
+from relaylm.request_scope import (
+    build_scope_resolution_diagnostics,
+    extract_request_scope_identity,
+)
 from relaylm.routing import ResolvedRoute
 from relaylm.token_budget import estimate_text_tokens
 from relaylm.token_budget_truncation import (
@@ -102,33 +111,6 @@ from relaylm.relayctx_repack import (
 )
 
 
-def _compile_chat_payload_and_capture_context_blocks(
-    *,
-    config: RelayLMConfig,
-    route: ResolvedRoute,
-    payload: Mapping[str, Any],
-) -> tuple[CompiledRequest, tuple[Any, ...] | None]:
-    """Run the compile stage on a worker thread and capture its ContextVar handoff.
-
-    Executed inside ``asyncio.to_thread``. ``compile_chat_payload_if_enabled``
-    reads character workspace files (persona/soul/output policy, memory seed)
-    and is otherwise called unmodified with plain arguments. It also stashes
-    typed pre-render compiler blocks in a request-local ``ContextVar`` for
-    ``PipelineContext`` to pick up; that ``.set()`` would not survive the
-    worker thread's copied context, so it is consumed here and returned
-    alongside the compiled request for the async caller to replay (see
-    ``restore_compiled_context_blocks_runtime_private``).
-    """
-
-    compiled_request = compile_chat_payload_if_enabled(
-        config=config,
-        route=route,
-        payload=payload,
-    )
-    compiled_context_blocks = consume_compiled_context_blocks_runtime_private()
-    return compiled_request, compiled_context_blocks
-
-
 async def handle_managed_chat_completion(
     *,
     request: Request,
@@ -136,249 +118,55 @@ async def handle_managed_chat_completion(
     source_registry: RelayMEMSLPPrimaryWorkerSourceRegistry,
 ) -> JSONResponse | StreamingResponse:
     request_id = str(uuid.uuid4())
-    request_received_started_at, request_received_start_monotonic = _start_timing()
+    started_at, started_monotonic = _start_timing()
     validation = await _validate_and_resolve_managed_chat_request(
-        request,
-        request_id=request_id,
-        config=config,
+        request, request_id=request_id, config=config
     )
     if validation.error_response is not None:
         return validation.error_response
-    node_timings: dict[str, dict[str, Any] | None] = {
-        "request_received": _finalize_timing(
-            request_received_started_at, request_received_start_monotonic
-        )
-    }
-    payload = validation.payload
-    stream_enabled = validation.stream_enabled
-    route = validation.route
-
-    relayrun_run_id = new_run_id()
-
-    compiled_request, compiled_context_blocks = await asyncio.to_thread(
-        _compile_chat_payload_and_capture_context_blocks,
-        config=config,
-        route=route,
-        payload=payload,
-    )
-    # The worker thread's ContextVar.set (inside compile_chat_payload_if_enabled)
-    # ran in a copied context that asyncio.to_thread discards on return, so it
-    # never reaches this request's own context. Replay the captured blocks here
-    # before PipelineContext.__post_init__ consumes them.
-    restore_compiled_context_blocks_runtime_private(compiled_context_blocks)
-    pipeline_context = PipelineContext(
-        request_id=request_id,
-        run_id=relayrun_run_id,
-        original_payload=payload,
-        forwarded_payload=dict(compiled_request.payload),
-        route=route,
-        stream_enabled=stream_enabled,
-    )
-    request_scope_identity = extract_request_scope_identity(request.headers, payload)
-    scope_resolution_diagnostics = build_scope_resolution_diagnostics(route, request_scope_identity)
-    merged_scope = dict(scope_resolution_diagnostics.merged_scope)
-    evidence_user_input_node_result = capture_evidence_for_user_input(
-        config=config,
-        pipeline_context=pipeline_context,
-        resolved_scope=merged_scope,
-    )
-    if evidence_user_input_node_result is not None:
-        pipeline_context.record_node_result(evidence_user_input_node_result)
-        if (
-            config.evidence_capture_enabled
-            and config.evidence_capture_apply_enabled
-            and not config.evidence_capture_dry_run_only
-            and evidence_user_input_node_result.decision != "admitted"
-        ):
-            return openai_error(
-                status_code=500,
-                message="RelayLM could not commit governed user evidence.",
-                error_type="evidence_capture_error",
-            )
-    merged_scope["character_id"] = route.character_id
-    merged_scope["memory_namespace"] = route.memory_namespace
-    merged_scope["cache_namespace"] = route.cache_namespace
-
-    forwarded_payload = pipeline_context.forwarded_payload
-    token_budget_truncation: dict[str, Any] | None = None
-    relayrel_relationship_projection = await run_stage(
-        node_timings,
-        "relayrel",
-        run_relayrel_stage,
-        route=route,
-        request_scope_identity=request_scope_identity,
-    )
-    relayscn_scene_policy_artifact = await run_stage(
-        node_timings,
-        "relayscn",
-        run_relayscn_stage,
-        payload=payload,
-    )
-    relayemo_artifact: dict[str, Any] | None = None
-    if config.relayemo_enabled:
-        relayemo_artifact = await run_stage(
-            node_timings,
-            "relayemo",
-            run_relayemo_stage,
-            config=config,
-            route=route,
-            payload=payload,
-            request=request,
-            request_scope_identity=request_scope_identity,
-            scope_resolution_diagnostics=scope_resolution_diagnostics,
-            messages=_extract_trace_messages(forwarded_payload),
-        )
-
-    relayint_intent_artifact = await run_stage(
-        node_timings,
-        "relayint",
-        run_relayint_stage,
-        relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-        messages=_extract_trace_messages(payload),
-        ctx_hints=_extract_ctx_hints(payload),
-    )
-
-    relaymem_store_diagnostics, relaymem_retrieval_artifact = await run_stage(
-        node_timings,
-        "relaymem_retrieval",
-        run_relaymem_retrieval_stage,
-        config=config,
-        route=route,
-        relaymem_configured_store_root=config.memory.root_path,
-        relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-        relayint_intent_artifact=relayint_intent_artifact,
-        messages=_extract_trace_messages(payload),
-        offload=True,
-    )
-    (
-        forwarded_payload,
-        runtime_ctx_injection_result,
-        runtime_snippet_injection_result,
-    ) = await run_stage(
-        node_timings,
-        "relaymem_runtime_ctx",
-        run_relaymem_runtime_ctx_stage,
-        config=config,
-        pipeline_context=pipeline_context,
-        relaymem_retrieval_artifact=relaymem_retrieval_artifact,
-        compiled_payload=compiled_request.payload,
-    )
-    relaymem_primary_recall_projection = relaymem_retrieval_artifact.get(
-        "primary_recall_projection"
-    )
-    if isinstance(relaymem_primary_recall_projection, dict):
-        relaymem_primary_recall_projection["injection_performed"] = (
-            runtime_snippet_injection_result.get("applied") is True
-            or runtime_ctx_injection_result.get("applied") is True
-        )
-        relaymem_primary_recall_projection["memory_used"] = (
-            relaymem_primary_recall_projection["injection_performed"]
-        )
-    relaymem_diagnostics_artifact = {
-        "artifact_version": "relaymem_retrieval_projection.v0",
-        "diagnostics_only": True,
-        "content_free": True,
-        "primary_recall_projection": deepcopy(
-            relaymem_primary_recall_projection
-        )
-        if isinstance(relaymem_primary_recall_projection, dict)
-        else None,
-    }
-    inbound_messages = _extract_trace_messages(payload)
-    relayctx_short_term_extraction_dry_run = (
-        build_relayctx_short_term_extraction_dry_run(
-            messages=inbound_messages,
-            enabled=config.relayctx_short_term_extraction_dry_run_enabled,
-            memory_source=compiled_request.memory_source,
-        )
-    )
-    relayctx_short_term_block_assembly_dry_run = (
-        build_relayctx_short_term_block_assembly_dry_run(
-            extraction_artifact=relayctx_short_term_extraction_dry_run,
-            enabled=config.relayctx_short_term_block_assembly_dry_run_enabled,
-        )
-    )
-    relayctx_short_term_runtime_injection_preflight = (
-        build_relayctx_short_term_runtime_injection_preflight(
-            assembly_artifact=relayctx_short_term_block_assembly_dry_run,
-            enabled=config.relayctx_short_term_runtime_injection_preflight_enabled,
-            dry_run_only=config.relayctx_short_term_runtime_injection_dry_run_only,
-        )
-    )
-    (
-        forwarded_payload,
-        relayctx_short_term_runtime_injection_apply_result,
-    ) = await run_stage(
-        node_timings,
-        "relayctx_short_term_injection",
-        run_relayctx_short_term_injection_stage,
-        config=config,
-        pipeline_context=pipeline_context,
-        preflight_artifact=relayctx_short_term_runtime_injection_preflight,
-    )
-
-    # token_budget_truncation runs last among CTX Repack mutations so it is
-    # the final gate on the forwarded payload's estimated token total.
-    forwarded_payload, token_budget_truncation = await run_stage(
-        node_timings,
-        "token_budget_truncation",
-        run_token_budget_truncation_stage,
-        config=config,
-        pipeline_context=pipeline_context,
-    )
-
-    # runtime_artifact_context freezes the fields shared by every
-    # RelayRUN artifact build below; only backend_forward_status and the
-    # stream/backend-progress flags vary across the pending/failed/
-    # completed call sites.
-    runtime_artifact_context = _ManagedRuntimeArtifactContext(
+    node_timings = {"request_received": _finalize_timing(started_at, started_monotonic)}
+    result = await run_managed_chat_pipeline(
+        request=request,
         config=config,
         request_id=request_id,
-        run_id=relayrun_run_id,
-        route=route,
-        stream_enabled=stream_enabled,
-        relayrel_relationship_projection=relayrel_relationship_projection,
-        relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-        relayemo_artifact=relayemo_artifact,
-        relayint_intent_artifact=relayint_intent_artifact,
-        relaymem_retrieval_artifact=relaymem_retrieval_artifact,
-        runtime_ctx_injection_result=runtime_ctx_injection_result,
-        runtime_snippet_injection_result=runtime_snippet_injection_result,
-        relayctx_short_term_runtime_injection_apply_result=(
-            relayctx_short_term_runtime_injection_apply_result
-        ),
-        token_budget_truncation=token_budget_truncation,
+        route=validation.route,
+        payload=validation.payload,
+        stream_enabled=validation.stream_enabled,
         node_timings=node_timings,
+        capture_evidence=capture_evidence_for_user_input,
     )
-
+    if result.get("evidence_rejected"):
+        return openai_error(
+            status_code=500,
+            message="RelayLM could not commit governed user evidence.",
+            error_type="evidence_capture_error",
+        )
     diagnostics = _build_request_diagnostics(
-        runtime_artifact_context=runtime_artifact_context,
-        compiled_request=compiled_request,
-        payload=payload,
-        merged_scope=merged_scope,
-        relaymem_diagnostics_artifact=relaymem_diagnostics_artifact,
-        request_scope_identity=request_scope_identity,
-        scope_resolution_diagnostics=scope_resolution_diagnostics,
-        relayctx_short_term_extraction_dry_run=relayctx_short_term_extraction_dry_run,
-        relayctx_short_term_block_assembly_dry_run=relayctx_short_term_block_assembly_dry_run,
-        relayctx_short_term_runtime_injection_preflight=(
-            relayctx_short_term_runtime_injection_preflight
-        ),
+        runtime_artifact_context=result["runtime_context"],
+        compiled_request=result["compiled"],
+        payload=validation.payload,
+        merged_scope=result["scope"],
+        relaymem_diagnostics_artifact=result["memory_diagnostics"],
+        request_scope_identity=result["identity"],
+        scope_resolution_diagnostics=result["scope_diagnostics"],
+        relayctx_short_term_extraction_dry_run=result["extraction"],
+        relayctx_short_term_block_assembly_dry_run=result["assembly"],
+        relayctx_short_term_runtime_injection_preflight=result["preflight"],
     )
-
+    forwarded = result["forwarded"]
     return await build_managed_chat_response(
         request=request,
         config=config,
         source_registry=source_registry,
         request_id=request_id,
-        route=route,
-        stream_enabled=stream_enabled,
-        forwarded_payload=forwarded_payload,
-        forwarded_message_count=len(_extract_trace_messages(forwarded_payload)),
-        pipeline_context=pipeline_context,
-        merged_scope=merged_scope,
+        route=validation.route,
+        stream_enabled=validation.stream_enabled,
+        forwarded_payload=forwarded,
+        forwarded_message_count=len(_extract_trace_messages(forwarded)),
+        pipeline_context=result["context"],
+        merged_scope=result["scope"],
         diagnostics=diagnostics,
-        runtime_artifact_context=runtime_artifact_context,
+        runtime_artifact_context=result["runtime_context"],
     )
 
 
@@ -417,8 +205,12 @@ def _build_request_diagnostics(
     config = runtime_artifact_context.config
     route = runtime_artifact_context.route
 
-    effective_shadow_enabled, shadow_source = _resolve_token_policy_shadow_setting(config, route)
-    token_policy_signal = build_token_policy_signal(compiled_request.token_memory_dry_run)
+    effective_shadow_enabled, shadow_source = _resolve_token_policy_shadow_setting(
+        config, route
+    )
+    token_policy_signal = build_token_policy_signal(
+        compiled_request.token_memory_dry_run
+    )
     token_policy_decision = build_token_policy_decision_artifact(
         token_policy_signal,
         shadow_enabled=effective_shadow_enabled,
@@ -431,12 +223,16 @@ def _build_request_diagnostics(
         merged_scope=merged_scope,
     )
     memory_adapter_shadow_readiness = (
-        build_memory_adapter_readiness_check(memory_adapter_shadow_dry_run).to_log_dict()
+        build_memory_adapter_readiness_check(
+            memory_adapter_shadow_dry_run
+        ).to_log_dict()
         if memory_adapter_shadow_dry_run is not None
         else None
     )
     memory_adapter_shadow_conflicts = (
-        build_memory_adapter_conflict_diagnostics(memory_adapter_shadow_dry_run).to_log_dict()
+        build_memory_adapter_conflict_diagnostics(
+            memory_adapter_shadow_dry_run
+        ).to_log_dict()
         if memory_adapter_shadow_dry_run is not None
         else None
     )
@@ -457,12 +253,8 @@ def _build_request_diagnostics(
         messages=_extract_trace_messages(payload),
         ctx_hints=_extract_ctx_hints(payload),
         enabled=config.relayint_fast_path_dry_run_enabled,
-        high_confidence_threshold=(
-            config.relayint_fast_path_high_confidence_threshold
-        ),
-        low_confidence_threshold=(
-            config.relayint_fast_path_low_confidence_threshold
-        ),
+        high_confidence_threshold=(config.relayint_fast_path_high_confidence_threshold),
+        low_confidence_threshold=(config.relayint_fast_path_low_confidence_threshold),
     )
     relayint_quick_clarification_preflight = (
         build_relayint_quick_clarification_preflight(
@@ -483,17 +275,17 @@ def _build_request_diagnostics(
             dry_run_only=config.relayint_quick_clarification_apply_dry_run_only,
             stream_enabled=runtime_artifact_context.stream_enabled,
             response_max_chars=config.relayint_quick_clarification_response_max_chars,
-            request_compatibility_gate=build_relayint_request_compatibility_gate(payload),
+            request_compatibility_gate=build_relayint_request_compatibility_gate(
+                payload
+            ),
         )
     )
 
-    relayctx_short_term_source_diagnostics = (
-        build_relayctx_short_term_source_diagnostics(
-            messages=_extract_trace_messages(payload),
-            enabled=config.relayctx_short_term_source_diagnostics_enabled,
-            memory_source=compiled_request.memory_source,
-            relaymem_retrieval_artifact=runtime_artifact_context.relaymem_retrieval_artifact,
-        )
+    relayctx_short_term_source_diagnostics = build_relayctx_short_term_source_diagnostics(
+        messages=_extract_trace_messages(payload),
+        enabled=config.relayctx_short_term_source_diagnostics_enabled,
+        memory_source=compiled_request.memory_source,
+        relaymem_retrieval_artifact=runtime_artifact_context.relaymem_retrieval_artifact,
     )
 
     compile_decision_dry_run = _build_compile_decision_dry_run_artifact(
@@ -663,13 +455,6 @@ def _build_compile_decision_dry_run_artifact(
     )
 
 
-def _extract_trace_messages(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
-    raw_messages = payload.get("messages")
-    if not isinstance(raw_messages, list):
-        return []
-    return [message for message in raw_messages if isinstance(message, dict)]
-
-
 def _resolve_token_policy_shadow_setting(
     config: RelayLMConfig,
     route: ResolvedRoute,
@@ -697,14 +482,3 @@ def _estimate_text_tokens(text: str, chars_per_token: int) -> int:
         text,
         chars_per_token=max(1, int(chars_per_token)),
     ).estimated_tokens
-
-
-def _extract_ctx_hints(payload: Mapping[str, Any]) -> dict[str, Any]:
-    metadata = payload.get("metadata")
-    if not isinstance(metadata, Mapping):
-        return {}
-    ctx = metadata.get("ctx")
-    hints: dict[str, Any] = dict(ctx) if isinstance(ctx, Mapping) else {}
-    if "ctx_handoff_guess" in metadata and "ctx_handoff_guess" not in hints:
-        hints["ctx_handoff_guess"] = metadata.get("ctx_handoff_guess")
-    return hints

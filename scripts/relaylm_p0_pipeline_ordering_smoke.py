@@ -40,24 +40,46 @@ _STAGE_TO_ORDER_NODE: dict[str, str] = {
 }
 
 
-def _handle_managed_chat_completion_body(tree: ast.AST) -> list[ast.stmt]:
-    """Return the statement list making up handle_managed_chat_completion's body.
-
-    Restricting the walk to this function's body keeps module-level helpers
-    (e.g. ``_run_relaymem_retrieval_stage``, which is defined *before* the
-    handler in source order) from polluting the line-number ordering used
-    below.
-    """
-
-    for node in ast.walk(tree):
-        if (
-            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-            and node.name == "handle_managed_chat_completion"
-        ):
-            return node.body
-    raise AssertionError(
-        "managed_chat_runtime.py must define handle_managed_chat_completion"
+def _managed_pipeline_body(app_source: str) -> list[ast.stmt]:
+    """Follow the facade's one executable delegation to its imported owner."""
+    tree = ast.parse(app_source)
+    handler = next(
+        (node for node in tree.body if isinstance(node, ast.AsyncFunctionDef)
+         and node.name == "handle_managed_chat_completion"),
+        None,
     )
+    _assert(handler is not None, "managed_chat_runtime.py must define the handler")
+    imports = [
+        node for node in tree.body
+        if isinstance(node, ast.ImportFrom)
+        and node.module == "relaylm.managed_chat_pipeline_runtime"
+        and any(alias.name == "run_managed_chat_pipeline" for alias in node.names)
+    ]
+    _assert(len(imports) == 1, "facade must import exactly one pipeline owner")
+    calls = [
+        node for node in ast.walk(handler)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        and node.func.id == "run_managed_chat_pipeline"
+    ]
+    _assert(len(calls) == 1, "facade must delegate exactly once")
+    _assert(not any(_stage_anchor_lines(handler.body).values()),
+            "stage anchors must not remain in the facade")
+    owner_tree = ast.parse(
+        Path("relaylm/managed_chat_pipeline_runtime.py").read_text(encoding="utf-8")
+    )
+    owner = next(
+        (node for node in owner_tree.body if isinstance(node, ast.AsyncFunctionDef)
+         and node.name == "run_managed_chat_pipeline"),
+        None,
+    )
+    _assert(owner is not None, "managed pipeline owner callable must exist")
+    backward = [
+        node for node in owner_tree.body
+        if isinstance(node, ast.ImportFrom)
+        and node.module == "relaylm.managed_chat_runtime"
+    ]
+    _assert(not backward, "managed pipeline owner must not import its facade")
+    return owner.body
 
 
 def _stage_anchor_lines(body_stmts: list[ast.stmt]) -> dict[str, list[int]]:
@@ -125,8 +147,7 @@ def _stage_call_keyword_names(
 
 
 def _app_request_path_call_lines(app_source: str) -> dict[str, list[int]]:
-    tree = ast.parse(app_source)
-    body_stmts = _handle_managed_chat_completion_body(tree)
+    body_stmts = _managed_pipeline_body(app_source)
     anchors = _stage_anchor_lines(body_stmts)
 
     for stage, lines in anchors.items():
@@ -135,8 +156,7 @@ def _app_request_path_call_lines(app_source: str) -> dict[str, list[int]]:
 
 
 def _app_request_path_relayscn_has_relayemo_kwarg(app_source: str) -> bool:
-    tree = ast.parse(app_source)
-    body_stmts = _handle_managed_chat_completion_body(tree)
+    body_stmts = _managed_pipeline_body(app_source)
     keyword_names = _stage_call_keyword_names(body_stmts, _STAGE_IDENTIFIERS["relayscn"])
     return "relayemo_artifact" in keyword_names
 
