@@ -47,11 +47,15 @@ def _extract_trace_messages(payload: Mapping[str, Any]) -> list[Mapping[str, Any
     return [item for item in messages if isinstance(item, Mapping)]
 
 
-def _extract_ctx_hints(payload: Mapping[str, Any]) -> list[Mapping[str, Any]]:
-    ctx_hints = payload.get("ctx_hints")
-    if not isinstance(ctx_hints, list):
-        return []
-    return [item for item in ctx_hints if isinstance(item, Mapping)]
+def _extract_ctx_hints(payload: Mapping[str, Any]) -> dict[str, Any]:
+    metadata = payload.get("metadata")
+    if not isinstance(metadata, Mapping):
+        return {}
+    ctx = metadata.get("ctx")
+    hints: dict[str, Any] = dict(ctx) if isinstance(ctx, Mapping) else {}
+    if "ctx_handoff_guess" in metadata and "ctx_handoff_guess" not in hints:
+        hints["ctx_handoff_guess"] = metadata.get("ctx_handoff_guess")
+    return hints
 
 
 def _compile_chat_payload_and_capture_context_blocks(

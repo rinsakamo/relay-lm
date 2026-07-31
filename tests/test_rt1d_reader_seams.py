@@ -3,10 +3,14 @@
 from __future__ import annotations
 import ast
 import inspect
+from collections.abc import Mapping
 from pathlib import Path
 
 from relaylm.managed_chat_runtime import handle_managed_chat_completion
-from relaylm.managed_chat_pipeline_runtime import run_managed_chat_pipeline
+from relaylm.managed_chat_pipeline_runtime import (
+    _extract_ctx_hints,
+    run_managed_chat_pipeline,
+)
 from relaylm.relaymem_primary_recall import (
     apply_relaymem_primary_recall_scope,
     resolve_relaymem_character_store_root,
@@ -106,6 +110,53 @@ def test_managed_facade_delegates_once_and_owner_preserves_order() -> None:
         and node.value.value is True
         for node in ast.walk(_tree("relaylm/managed_chat_pipeline_runtime.py"))
     )
+
+
+def test_moved_ctx_hints_preserve_relayint_mapping_contract() -> None:
+    source_ctx = {"current_topic": "alpha"}
+    hints = _extract_ctx_hints({"metadata": {"ctx": source_ctx}})
+    assert hints == {"current_topic": "alpha"}
+    assert hints is not source_ctx
+    assert isinstance(hints, Mapping)
+    assert isinstance(hints, dict)
+
+    fallback = _extract_ctx_hints(
+        {
+            "metadata": {
+                "ctx": {"current_topic": "alpha"},
+                "ctx_handoff_guess": "candidate",
+            }
+        }
+    )
+    assert fallback == {
+        "current_topic": "alpha",
+        "ctx_handoff_guess": "candidate",
+    }
+
+    existing = _extract_ctx_hints(
+        {
+            "metadata": {
+                "ctx": {"ctx_handoff_guess": "existing"},
+                "ctx_handoff_guess": "fallback",
+            }
+        }
+    )
+    assert existing["ctx_handoff_guess"] == "existing"
+
+
+def test_moved_ctx_hints_fail_closed_and_ignore_top_level_list() -> None:
+    payloads = (
+        {},
+        {"metadata": None},
+        {"metadata": []},
+        {"metadata": {"ctx": []}},
+        {"ctx_hints": [{"current_topic": "wrong"}]},
+    )
+    for payload in payloads:
+        hints = _extract_ctx_hints(payload)
+        assert hints == {}
+        assert isinstance(hints, Mapping)
+        assert isinstance(hints, dict)
 
 
 def test_dependency_direction_and_moved_ownership() -> None:
