@@ -1508,43 +1508,143 @@ semantics, Primary pipeline semantics, queue/store semantics, scheduler policy,
 configuration, the cutover owner, and current-authority documents are excluded
 from the S2 code PR absent a new P1 Return.
 
-#### RT-1D-S3 mutation seams
+#### RT-1D-S3 monolithic P1 Return and ordered slices
 
-S3 separates Correct preflight/apply and Forget apply/recovery from loopback
-route handling. Required existing paths are
-`relaylm/relaymem_primary_correction.py`,
-`relaylm/relaymem_primary_forget_recovery.py`, and the two Soul Lab memory route
-owners. Authorized new owners are:
+The monolithic S3 behavior-preserving candidate was discarded with no commit,
+push, PR, receipt, P8, runtime, or authority update. Current-main measurements
+were:
 
-- `_relaymem_primary_correction_preflight.py` for validation/token issuance;
-- `_relaymem_primary_correction_apply.py` for apply/replay/publication/recovery;
-- `_relaymem_primary_correction_history.py` only if read-only history extraction
-  is required to keep the public facade bounded;
-- `_relaymem_primary_forget_apply.py` for external apply/replay and handoff to
-  the existing hidden-successor/finalization owners;
-- `soul_lab_memory_correction_runtime.py` and
-  `soul_lab_memory_forget_runtime.py` for operation-specific parsing, scoped
-  calls, projections, and safe responses, but not route installation or global
-  lab authorization.
+```text
+relaylm/relaymem_primary_correction.py                 1100 lines
+relaylm/relaymem_primary_forget_recovery.py             779 lines
+relaylm/soul_lab_memory_correction_routes.py             161 lines
+relaylm/soul_lab_memory_forget_routes.py                 231 lines
+preflight_primary_memory_correction                       72 lines
+apply_primary_memory_correction                          123 lines
+recover_primary_memory_corrections                        71 lines
+apply_primary_memory_forget                              150 lines
+recover_primary_memory_forget                             87 lines
+Correct route installer                                  118 lines
+Forget route installer                                   179 lines
+```
 
-The public Correct and Forget APIs, route installation call, URLs, methods,
-schemas, status codes, Cache-Control, token bytes/claims/expiry, idempotency,
-fault names, crash/recovery outcomes, locks, receipts, and every durable effect
-remain exact. Forget facades, `soul_lab_app.py`, and the mutation coordinator
-may receive import-only movement when exact evidence requires it; coordinator
-semantics do not move. Existing Correct, mutation-fence, Forget recovery, and
-concurrency smokes own equivalence; at most
-`tests/test_rt1d_mutation_seams.py` may be added. Evidence infrastructure,
-lifecycle/receipt semantics, route schemas, configuration, the cutover owner,
-and current-authority documents are excluded from the S3 code PR absent a new
-P1 Return.
+Although the candidate passed relevant Correct, Forget, route, mutation-fence,
+and lifecycle tests, it still measured 771 lines in
+`_relaymem_primary_correction_apply.py`, 125 lines in Correct apply, 120 lines
+in prepared-successor publication, 156 lines in Forget apply, 89 lines in Forget
+finalization, and 153 lines in the Forget runtime factory. It therefore failed
+the accepted approximate below-700-module and about-80-line orchestration gates.
+The thresholds are review gates, not targets to waive, line-golf, reinterpret,
+or evade with a monolithic move.
 
-Each structural slice fixes its complete path budget before writing and proves
-public API/schema/import equivalence, byte-equivalent projections and HTTP
-responses where applicable, unchanged durable bytes and fault/recovery
-behavior, negative dependency direction, bounded source/destination structure,
-and exact Primary-only behavior. Unexpected owners, path growth, duplicated
-semantics, or inability to keep both sides bounded returns that slice to P1.
+This transaction, PR #793, replaces monolithic S3 with
+three ordered, non-overlapping, behavior-preserving Primary-only slices. The
+amendment changes no runtime behavior and itself requires no P8, but its exact
+resulting main must be independently verified before S3A starts.
+
+##### RT-1D-S3A Correct core seams
+
+Exact future production budget:
+
+```text
+relaylm/relaymem_primary_correction.py
+relaylm/_relaymem_primary_correction_preflight.py
+relaylm/_relaymem_primary_correction_apply.py
+relaylm/_relaymem_primary_correction_publication.py
+relaylm/_relaymem_primary_correction_recovery.py
+relaylm/_relaymem_primary_correction_history.py
+```
+
+Optional focused test only: `tests/test_rt1d_s3a_correct_seams.py`.
+
+The facade keeps exact public imports, functions, signatures, schemas, and
+`__all__`. The extracted responsibilities are preflight/token issuance and
+validation; apply/replay/receipt orchestration; prepared-successor construction,
+publication, and index/log convergence; caller-invoked prepared-operation
+recovery; and read-only history/current-state compatibility. Token bytes,
+claims, TTL, digests, operation keys, fault names, lock order, receipts,
+page/index/log bytes, idempotency, and crash/recovery behavior remain exact.
+There is no generic mutation framework or second authority. The facade is
+materially reduced, new modules remain below roughly 700 lines, and touched
+orchestration remains about 80 lines or less. Another owner or path requires a
+fresh S3A P1 Return before writing.
+
+S3A excludes Forget, Soul Lab, mutation-coordinator semantics, documentation in
+the code PR, cutover, configuration, serving, and retirement.
+
+##### RT-1D-S3B Forget core seams
+
+Exact future production budget:
+
+```text
+relaylm/relaymem_primary_forget_recovery.py
+relaylm/_relaymem_primary_forget_apply.py
+```
+
+Optional focused test only: `tests/test_rt1d_s3b_forget_seams.py`.
+
+S3B owns external apply validation and exact replay; token/reason/operation
+binding; handoff to the existing hidden-successor owner; reacquisition and
+recovery/finalization handoff; caller-selected recovery; hidden-successor
+verify/resume; index/log/control convergence; and tombstone/applied-receipt
+finalization. `relaylm/relaymem_primary_forget.py` and
+`relaylm/relaymem_primary_forget_public_apply.py` remain byte-identical. Public
+symbols/import chains, schemas, result dataclasses, faults, locks, durable bytes,
+replay, and already-hidden normalization remain exact. The recovery module stays
+below roughly 700 lines and touched orchestration stays about 80 lines or less.
+Any additional path requires a fresh S3B P1 Return before writing.
+
+S3B excludes Correct, Soul Lab, Forget public facades, lifecycle/receipt
+authority changes, documentation in the code PR, cutover, configuration,
+serving, and retirement.
+
+##### RT-1D-S3C Soul Lab mutation route seams
+
+Exact future production budget:
+
+```text
+relaylm/soul_lab_memory_correction_routes.py
+relaylm/soul_lab_memory_forget_routes.py
+relaylm/soul_lab_memory_correction_runtime.py
+relaylm/soul_lab_memory_forget_runtime.py
+```
+
+Optional focused test only:
+`tests/test_rt1d_s3c_soul_lab_mutation_routes.py`.
+
+Route owners retain installation, paths, methods, loopback/global authorization,
+and explicit dependency injection. Runtime owners retain operation-specific JSON
+parsing, scope resolution, domain invocation, safe projection, error mapping,
+and no-store responses. Runtime is split by preflight/apply/history functions,
+not gathered into another oversized factory. Paths, methods, observable order,
+schemas, status codes, `Cache-Control`, loopback rejection, and leakage bounds
+remain exact. `patch.object` on route-module callables continues to affect
+requests; `relaylm/soul_lab_app.py` remains byte-identical; global authorization
+does not move into runtime. New modules stay below roughly 700 lines and touched
+installer/runtime orchestration stays about 80 lines or less. Any additional
+path requires a fresh S3C P1 Return before writing.
+
+##### Ordered convergence and shared exclusions
+
+```text
+S1 PR #789 result b272edb78602032009d4882a6244883cce610b86
+  -> S1 P8 PR #790 result 3e20274f18306f7db2410fd5239051411b9c052b
+  -> S2 PR #791 result 31b700a2db0af7819f761d51bd946ff6798eb4c9
+  -> S2 P8 PR #792 result 7e4fb4383dc6c1229d488ac200132b66f6b65bba
+  -> S3 P1 architecture amendment -> verify exact resulting main
+  -> S3A -> mandatory P8 -> verify exact resulting main
+  -> S3B -> mandatory P8 -> verify exact resulting main
+  -> S3C -> mandatory P8 -> verify exact resulting main
+  -> fresh RT-1D runtime -> runtime P8
+```
+
+S3A, S3B, S3C, and RT-1D runtime have not started. No Lane C transaction
+overlaps. Only the exact resulting main after S3C P8 verification may bootstrap
+fresh runtime implementation. All three slices preserve Primary-only behavior
+and exclude cutover binding, configuration, authority selection, Subjective
+serving, fallback change, retirement, new persistence authority, API behavior,
+and UI behavior. Every implementation merge requires its mandatory same-lane P8
+and exact resulting-main verification before the next slice. A fixed budget may not be silently expanded.
 
 #### Structural completion gates for S1-S3
 

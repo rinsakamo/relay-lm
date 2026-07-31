@@ -30,8 +30,8 @@ REQUIRED = {
         "RT-1D-S1 reader seams                          complete in PR #789; behavior-preserving",
         "S1 mandatory P8 current-authority sync      PR #790; exact resulting main 3e20274f18306f7db2410fd5239051411b9c052b",
         "RT-1D-S2 worker seams                    complete in PR #791; exact resulting main 31b700a2db0af7819f761d51bd946ff6798eb4c9",
-        "S2 mandatory P8 current-authority sync      PR #792; verify exact resulting main",
-        "RT-1D-S3 mutation seams             next after exact S2 P8 resulting-main verification",
+        "S2 mandatory P8 current-authority sync      PR #792; exact resulting main 7e4fb4383dc6c1229d488ac200132b66f6b65bba",
+        "RT-1D-S3A Correct core seams       not started -> mandatory P8 -> verify exact resulting main",
         "**RT-1D-S1 Reader seams** completed in PR #789",
         "**RT-1D-S2 Worker seams** completed in PR #791",
         "b272edb78602032009d4882a6244883cce610b86",
@@ -82,8 +82,8 @@ REQUIRED = {
         "RT-1D-S1 reader seams complete in PR #789",
         "S1 mandatory P8 current-authority sync in PR #790 -> exact resulting main 3e20274f18306f7db2410fd5239051411b9c052b",
         "RT-1D-S2 worker seams complete in PR #791 -> exact resulting main 31b700a2db0af7819f761d51bd946ff6798eb4c9",
-        "S2 mandatory P8 current-authority sync in PR #792 -> verify exact resulting main",
-        "RT-1D-S3 mutation seams next -> mandatory P8 -> verify resulting main",
+        "S2 mandatory P8 current-authority sync in PR #792 -> exact resulting main 7e4fb4383dc6c1229d488ac200132b66f6b65bba",
+        "RT-1D-S3A Correct core seams -> mandatory P8 -> verify resulting main",
         "LC-1C Pin/Unpin implements exact current `active -> pinned` and `pinned -> active` immutable successors",
         "[LC-1D Subjective MEM Restore Runtime](subjective-mem-restore-runtime.md) implements the exact current `hidden -> active` immutable successor",
         "[LC-1E Subjective MEM Consolidate Runtime](subjective-mem-consolidate-runtime.md) implements the exact current active Primary-to-Secondary immutable successor",
@@ -94,7 +94,7 @@ REQUIRED = {
         "RT-1D-S1 reader seams completed in PR #789",
         "RT-1D-S2 worker seams completed in PR #791",
         "Primary MEM remains the sole ordinary served memory and Retrieval authority.",
-        "S3 and RT-1D runtime have not started.",
+        "S3A, S3B, S3C, and RT-1D runtime have not started.",
         "RT-1C shadow adapter, grounding handoff, and usage ledger is implemented in PR #784 as three bounded owners",
         "RT-1 Retrieval projection and hard cutover in progress / RT-1A, RT-1B, and RT-1C complete",
         "RT-1B remains default-off and unwired from ordinary Retrieval",
@@ -263,6 +263,55 @@ REQUIRED = {
     ),
 }
 
+
+S3_AMENDMENT_ANCHORS = {
+    "docs/PROJECT_STATUS.md": (
+        "PR #793",
+        "1100 lines for `relaylm/relaymem_primary_correction.py`",
+        "771-line Correct apply module",
+        "**RT-1D-S3A Correct core seams**",
+        "**RT-1D-S3B Forget core seams**",
+        "**RT-1D-S3C Soul Lab mutation route seams**",
+        "`relaylm/_relaymem_primary_correction_publication.py`",
+        "`relaylm/_relaymem_primary_forget_apply.py`",
+        "`relaylm/soul_lab_memory_forget_runtime.py`",
+        "This architecture-only amendment itself requires no separate P8",
+        "S3A, S3B, S3C, and RT-1D runtime have not started.",
+        "Primary MEM remains the sole ordinary served memory and Retrieval authority",
+    ),
+    "docs/architecture/project_execution_plan.md": (
+        "PR #793",
+        "### RT-1D-S3 ordered structural budgets",
+        "**RT-1D-S3A Correct core seams**",
+        "**RT-1D-S3B Forget core seams**",
+        "**RT-1D-S3C Soul Lab mutation route seams**",
+        "`tests/test_rt1d_s3a_correct_seams.py`",
+        "`tests/test_rt1d_s3b_forget_seams.py`",
+        "`tests/test_rt1d_s3c_soul_lab_mutation_routes.py`",
+        "S3A implementation -> mandatory same-lane P8 -> exact resulting-main verification",
+        "No generic mutation framework, second authority",
+    ),
+    "docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md": (
+        "PR #793",
+        "#### RT-1D-S3 monolithic P1 Return and ordered slices",
+        "##### RT-1D-S3A Correct core seams",
+        "##### RT-1D-S3B Forget core seams",
+        "##### RT-1D-S3C Soul Lab mutation route seams",
+        "relaylm/_relaymem_primary_correction_publication.py",
+        "relaylm/_relaymem_primary_forget_apply.py",
+        "relaylm/soul_lab_memory_forget_runtime.py",
+        "tests/test_rt1d_s3a_correct_seams.py",
+        "tests/test_rt1d_s3b_forget_seams.py",
+        "tests/test_rt1d_s3c_soul_lab_mutation_routes.py",
+        "S2 P8 PR #792 result 7e4fb4383dc6c1229d488ac200132b66f6b65bba",
+        "S3A, S3B, S3C, and RT-1D runtime have not started.",
+        "Only the exact resulting main after S3C P8 verification may bootstrap",
+        "A fixed budget may not be silently expanded.",
+    ),
+}
+for _path, _anchors in S3_AMENDMENT_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+
 CURRENT_DOCS = tuple(REQUIRED)
 
 STALE = (
@@ -360,6 +409,16 @@ STALE = (
     "Primary serves after the finalized receipt",
 )
 
+
+STALE += (
+    "the current RT-1D-S3 P1 architecture amendment PR",
+    "The current RT-1D-S3 P1 architecture amendment PR",
+    "RT-1D-S3 mutation seams next -> mandatory P8 -> verify resulting main",
+    "RT-1D-S3 mutation seams             next after exact S2 P8 resulting-main verification",
+    "RT-1D-S3 has started",
+    "RT-1D-S3 is complete",
+)
+
 HISTORY_ONLY_STATUS_ANCHORS = (
     "Post-O1F next candidates:",
     "Character Workspace reset:",
@@ -404,8 +463,8 @@ RT1_STRUCTURAL_ANCHORS = (
     "_relaymem_primary_forget_apply.py",
     "soul_lab_memory_correction_runtime.py",
     "soul_lab_memory_forget_runtime.py",
-    "public API/schema/import equivalence, byte-equivalent projections and HTTP\n"
-    "responses where applicable, unchanged durable bytes and fault/recovery\nbehavior",
+    "Every implementation merge requires its mandatory same-lane P8\n"
+    "and exact resulting-main verification before the next slice.",
     "S1-S3 preserve Primary-only behavior and must not add the cutover\n"
     "binding, cutover records, configuration fields, reader/writer decisions,\n"
     "Primary fences, Subjective serving, fallback changes, authority selection,\n"
@@ -455,16 +514,16 @@ PROBES = (
     (STATUS, "RT-1D-S1 reader seams                          complete in PR #789; behavior-preserving"),
     (STATUS, "S1 mandatory P8 current-authority sync      PR #790; exact resulting main 3e20274f18306f7db2410fd5239051411b9c052b"),
     (STATUS, "RT-1D-S2 worker seams                    complete in PR #791; exact resulting main 31b700a2db0af7819f761d51bd946ff6798eb4c9"),
-    (STATUS, "S2 mandatory P8 current-authority sync      PR #792; verify exact resulting main"),
-    (STATUS, "RT-1D-S3 mutation seams             next after exact S2 P8 resulting-main verification"),
+    (STATUS, "S2 mandatory P8 current-authority sync      PR #792; exact resulting main 7e4fb4383dc6c1229d488ac200132b66f6b65bba"),
+    (STATUS, "RT-1D-S3A Correct core seams       not started -> mandatory P8 -> verify exact resulting main"),
     (STATUS, "Primary MEM remains the sole ordinary served memory and Retrieval authority until a future RT-1D implementation is validated, merged, and its cutover receipt is finalized."),
     (STATUS, "- ordinary served Subjective MEM Retrieval, query matching, ranking, cache, and request-path wiring;"),
     (PLAN, "RT-1C shadow adapter, grounding handoff, and usage ledger complete in PR #784 / default-off / shadow-only / unwired"),
     (PLAN, "RT-1D structural P1 Return / runtime not started"),
     (PLAN, "S1 mandatory P8 current-authority sync in PR #790 -> exact resulting main 3e20274f18306f7db2410fd5239051411b9c052b"),
     (PLAN, "RT-1D-S2 worker seams complete in PR #791 -> exact resulting main 31b700a2db0af7819f761d51bd946ff6798eb4c9"),
-    (PLAN, "S2 mandatory P8 current-authority sync in PR #792 -> verify exact resulting main"),
-    (PLAN, "RT-1D-S3 mutation seams next -> mandatory P8 -> verify resulting main"),
+    (PLAN, "S2 mandatory P8 current-authority sync in PR #792 -> exact resulting main 7e4fb4383dc6c1229d488ac200132b66f6b65bba"),
+    (PLAN, "RT-1D-S3A Correct core seams -> mandatory P8 -> verify resulting main"),
     (STATUS, "RT-1B remains default-off and unwired from ordinary Retrieval"),
     (STATUS, "RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval"),
     (PLAN, "RT-1B remains default-off and unwired from ordinary Retrieval"),
@@ -584,7 +643,11 @@ PROBES = (
     (RT1C, "Runtime implementation remains not started."),
 ) + tuple((RT1C, anchor) for anchor in RT1_STRUCTURAL_ANCHORS)
 
+PROBES += tuple((path, anchor) for path, anchors in S3_AMENDMENT_ANCHORS.items() for anchor in anchors)
+
 STALE_PROBES = (
+    (STATUS, "the current RT-1D-S3 P1 architecture amendment PR"),
+    (STATUS, "The current RT-1D-S3 P1 architecture amendment PR"),
     (STATUS, "RT-1C shadow adapter, grounding handoff, usage ledger next ordered slice; registered / not started"),
     (PLAN, "RT-1C shadow adapter, grounding handoff, and usage ledger next ordered slice / registered / not started"),
     (RT1C, "RT-1C remains authorized and not implemented on\n`main`"),
@@ -654,7 +717,7 @@ def self_test() -> None:
     for path, anchor in PROBES:
         body = read(path)
         assert anchor in body, f"{path}: probe anchor absent: {anchor!r}"
-        for damaged in (body.replace(anchor, "", 1), body.replace(anchor, "REMOVED", 1)):
+        for damaged in (body.replace(anchor, ""), body.replace(anchor, "REMOVED")):
             try:
                 require_body(path, REQUIRED[path], damaged)
             except AssertionError:
