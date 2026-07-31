@@ -266,7 +266,7 @@ REQUIRED = {
 
 S3_AMENDMENT_ANCHORS = {
     "docs/PROJECT_STATUS.md": (
-        "the current RT-1D-S3 P1 architecture amendment PR",
+        "PR #793",
         "1100 lines for `relaylm/relaymem_primary_correction.py`",
         "771-line Correct apply module",
         "**RT-1D-S3A Correct core seams**",
@@ -280,7 +280,7 @@ S3_AMENDMENT_ANCHORS = {
         "Primary MEM remains the sole ordinary served memory and Retrieval authority",
     ),
     "docs/architecture/project_execution_plan.md": (
-        "the current RT-1D-S3 P1 architecture amendment PR",
+        "PR #793",
         "### RT-1D-S3 ordered structural budgets",
         "**RT-1D-S3A Correct core seams**",
         "**RT-1D-S3B Forget core seams**",
@@ -292,7 +292,7 @@ S3_AMENDMENT_ANCHORS = {
         "No generic mutation framework, second authority",
     ),
     "docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md": (
-        "the current RT-1D-S3 P1 architecture amendment PR",
+        "PR #793",
         "#### RT-1D-S3 monolithic P1 Return and ordered slices",
         "##### RT-1D-S3A Correct core seams",
         "##### RT-1D-S3B Forget core seams",
@@ -411,6 +411,8 @@ STALE = (
 
 
 STALE += (
+    "the current RT-1D-S3 P1 architecture amendment PR",
+    "The current RT-1D-S3 P1 architecture amendment PR",
     "RT-1D-S3 mutation seams next -> mandatory P8 -> verify resulting main",
     "RT-1D-S3 mutation seams             next after exact S2 P8 resulting-main verification",
     "RT-1D-S3 has started",
@@ -644,6 +646,8 @@ PROBES = (
 PROBES += tuple((path, anchor) for path, anchors in S3_AMENDMENT_ANCHORS.items() for anchor in anchors)
 
 STALE_PROBES = (
+    (STATUS, "the current RT-1D-S3 P1 architecture amendment PR"),
+    (STATUS, "The current RT-1D-S3 P1 architecture amendment PR"),
     (STATUS, "RT-1C shadow adapter, grounding handoff, usage ledger next ordered slice; registered / not started"),
     (PLAN, "RT-1C shadow adapter, grounding handoff, and usage ledger next ordered slice / registered / not started"),
     (RT1C, "RT-1C remains authorized and not implemented on\n`main`"),

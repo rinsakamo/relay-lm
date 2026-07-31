@@ -1537,7 +1537,7 @@ the accepted approximate below-700-module and about-80-line orchestration gates.
 The thresholds are review gates, not targets to waive, line-golf, reinterpret,
 or evade with a monolithic move.
 
-This transaction, the current RT-1D-S3 P1 architecture amendment PR, replaces monolithic S3 with
+This transaction, PR #793, replaces monolithic S3 with
 three ordered, non-overlapping, behavior-preserving Primary-only slices. The
 amendment changes no runtime behavior and itself requires no P8, but its exact
 resulting main must be independently verified before S3A starts.
