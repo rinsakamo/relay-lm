@@ -35,7 +35,7 @@ relaylm_related_authority:
 ---
 # RelayLM Project Status
 
-Last reviewed: 2026-07-29 JST
+Last reviewed: 2026-07-31 JST
 
 ## Purpose and authority
 
@@ -59,7 +59,7 @@ ASM-1 Shared Assessment runtime foundation: complete in PR #636; default-off
 SM-1 Subjective MEM create decision/result vertical slice: complete in PR #646; default-off and prepared-only
 ST-1 Markdown + operations commit protocol: complete; default-off, create-only, POSIX apply
 LC-1 lifecycle migration: complete; LC-1A Correct, LC-1B Forget, LC-1C Pin/Unpin, LC-1D Restore, and LC-1E Consolidate implemented; default-off, POSIX apply
-RT-1 Retrieval migration: in progress; RT-1A contract and projection foundation complete in PR #774; RT-1B projection builder and deterministic rebuild complete in PR #779; RT-1C shadow adapter, grounding handoff, and usage ledger complete in PR #784; RT-1B remains default-off and unwired from ordinary Retrieval; RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval; RT-1D runtime remains not started after a structural P1 Return; three ordered behavior-preserving structural prerequisites, RT-1D-S1 reader seams, RT-1D-S2 worker seams, and RT-1D-S3 mutation seams, must each merge, complete mandatory P8 authority sync, and receive resulting-main verification before a fresh runtime transaction
+RT-1 Retrieval migration: in progress; RT-1A contract and projection foundation complete in PR #774; RT-1B projection builder and deterministic rebuild complete in PR #779; RT-1C shadow adapter, grounding handoff, and usage ledger complete in PR #784; RT-1D-S1 reader seams complete in PR #789 with resulting main `b272edb78602032009d4882a6244883cce610b86`; S1 mandatory P8 current-authority sync is PR #790, whose exact resulting main must be independently verified before RT-1D-S2 becomes executable; RT-1B remains default-off and unwired from ordinary Retrieval; RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval; RT-1D runtime remains not started after a structural P1 Return; RT-1D-S2 worker seams is the next ordered behavior-preserving prerequisite after that verification gate; S3 and a fresh runtime transaction remain ordered behind their preceding mandatory P8 and resulting-main gates
 ```
 
 ## Contract-aligned implementation migration boundary
@@ -90,7 +90,9 @@ RT-1 Retrieval migration: in progress; RT-1A contract and projection foundation 
 
 **RT-1C Shadow adapter, grounding handoff, and usage ledger** selects exact current eligible Subjective revisions from one complete verified RT-1B projection generation and prepares one bounded runtime-private handoff. Selected prose comes only from bounded canonical page bytes parsed through the existing canonical Markdown owner, with exact page, block, revision, scope, memory-kind, formation-stage, lifecycle, retrieval-visibility, and authorization binding proven against the exact projection row and admitted request scope; caller-attested prose with a matching caller digest cannot be admitted. Each item's token estimate is derived deterministically from that parsed canonical prose. The prepared handoff stays non-admitted and exposes no evidence-release path; the durable ledger revalidates it against canonical bytes, finalizes exact content-free usage event and result pairs, and only then seals an admitted handoff that materializes fresh grounding dictionaries. A separate temporary owner performs content-free Primary-vs-Subjective characterization over admitted public projections only. It performs no ordinary request-path wiring, RelayCTX injection, Primary MEM access or fallback, E1-R4 behaviour change, canonical mutation, or RT-1D cutover.
 
-LC-1 lifecycle migration is complete through Consolidate. RT-1 is in progress with RT-1A, RT-1B, and RT-1C complete; RT-1D hard cutover and retirement is architecture-authorized but runtime remains not started. Exact-current inspection returned RT-1D to P1 because its required reader, worker, and mutation carriage boundaries contain pre-existing structural debt. RT-1D-S1, RT-1D-S2, and RT-1D-S3 are ordered, non-overlapping, behavior-preserving prerequisites; every slice requires its own merge, mandatory P8 authority sync, and resulting-main verification before the next begins. Only the resulting main after S3 may bootstrap a fresh runtime implementation transaction. A disposable RT-1B projection builder and store plus a default-off shadow-only RT-1C selection, characterization, and usage ledger existing does not mean ordinary Retrieval is wired: logical eligibility still does not wire ordinary Retrieval, ranking, cache, or request-path readers.
+**RT-1D-S1 Reader seams** completed in PR #789, producing main `b272edb78602032009d4882a6244883cce610b86`. S1 extracted the existing managed-chat, Retrieval, and Primary recall reader responsibilities into bounded owners while preserving exact public behavior, stage order, offload, timing, diagnostics, Retrieval artifacts, Primary security/lifecycle/fallback behavior, and the RelayINT `metadata.ctx` / `ctx_handoff_guess` Mapping contract. It is a behavior-preserving structural prerequisite only: it enables no ordinary Subjective MEM Retrieval, changes no Primary MEM serving authority, and adds no RT-1D configuration, binding, durable cutover state, reader or writer decisions, fences, finalized receipt, retirement, persistence, recovery, worker, queue, scheduler, API, or UI behavior.
+
+LC-1 lifecycle migration is complete through Consolidate. RT-1 is in progress with RT-1A, RT-1B, RT-1C, and the behavior-preserving RT-1D-S1 reader seams complete; RT-1D hard cutover and retirement is architecture-authorized but runtime remains not started. Exact-current inspection returned RT-1D to P1 because its required reader, worker, and mutation carriage boundaries contain pre-existing structural debt. PR #790 is the S1 mandatory P8 current-authority sync. The exact resulting main of PR #790 must be independently verified before RT-1D-S2 worker seams becomes executable; S3 remains later, and every remaining slice requires its own merge, mandatory P8 authority sync, and resulting-main verification before the next begins. Only the resulting main after S3 may bootstrap a fresh runtime implementation transaction. A disposable RT-1B projection builder and store plus a default-off shadow-only RT-1C selection, characterization, and usage ledger existing does not mean ordinary Retrieval is wired: logical eligibility still does not wire ordinary Retrieval, ranking, cache, or request-path readers.
 
 ## Current caveats
 
@@ -117,8 +119,9 @@ LC-1 lifecycle migration                                    complete; LC-1A Corr
        -> RT-1B projection builder and rebuild               complete in PR #779
        -> RT-1C shadow adapter, grounding handoff, usage ledger complete in PR #784; default-off, shadow-only, unwired
        -> RT-1D structural-seam architecture amendment      P1 Return recorded; runtime not started
-          -> RT-1D-S1 reader seams                          behavior-preserving prerequisite; then mandatory P8 and resulting-main verification
-             -> RT-1D-S2 worker seams                       behavior-preserving prerequisite; then mandatory P8 and resulting-main verification
+          -> RT-1D-S1 reader seams                          complete in PR #789; behavior-preserving
+             -> S1 mandatory P8 current-authority sync      PR #790; verify exact resulting main
+                -> RT-1D-S2 worker seams                    next prerequisite after exact PR #790 resulting-main verification; then mandatory P8 and verification
                 -> RT-1D-S3 mutation seams                  behavior-preserving prerequisite; then mandatory P8 and resulting-main verification
                    -> fresh RT-1D runtime transaction        only from exact resulting main after S1-S3; no overlapping Lane C writer
 
