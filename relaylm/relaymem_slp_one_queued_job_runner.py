@@ -12,10 +12,14 @@ from pathlib import Path
 from typing import Literal
 
 from ._relaymem_slp_primary_worker_fence import _check_active_claim, _exact_claimed_record
+from ._relaymem_slp_one_queued_job_runner_execute import (
+    _OneQueuedJobDependencies,
+    _OneQueuedJobExecution,
+    _execute_one_queued_job,
+)
 from .pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
 from .relaymem_slp_primary_worker import (
     REQUEST_SCHEMA as PRIMARY_WORKER_REQUEST_SCHEMA,
-    RelayMEMSLPPrimaryWorkerRequest,
     RelayMEMSLPPrimaryWorkerResult,
     execute_relaymem_slp_primary_worker,
 )
@@ -42,7 +46,6 @@ from .relaymem_slp_queue_record import (
 )
 from .relaymem_slp_queue_state import (
     RelayMEMSLPQueueStateTransitionResult,
-    RelayMEMSLPQueueTransitionRequest,
     transition_relaymem_slp_queue_state,
 )
 
@@ -237,232 +240,43 @@ def execute_one_queued_relaymem_slp_primary_job(
             "invalid_input", exact, reasons=("protected_source_store_config_invalid",)
         )
 
-    claim_request = RelayMEMSLPQueueTransitionRequest(
-        transition_kind="claim",
-        job_id=str(exact.queued_record["job_id"]),
-        dispatch_idempotency_key=str(
-            exact.queued_record["dispatch_idempotency_key"]
-        ),
-        expected_record_revision=int(exact.queued_record["record_revision"]),
-        expected_state="queued",
-        claim_owner=exact.claim_owner,
-        claim_generation=int(exact.queued_record["claim_generation"]),
-        lease_duration_seconds=exact.lease_duration_seconds,
+    dependencies = _OneQueuedJobDependencies(
+        transition_queue_state=transition_relaymem_slp_queue_state,
+        check_active_claim=_check_active_claim,
+        exact_claimed_record=_exact_claimed_record,
+        prepare_source=prepare_relaymem_slp_primary_worker_source_for_claim,
+        execute_worker=execute_relaymem_slp_primary_worker,
+        release_terminal_source=release_relaymem_slp_primary_worker_source_after_terminal,
+        worker_request_schema=PRIMARY_WORKER_REQUEST_SCHEMA,
     )
-    try:
-        claim = transition_relaymem_slp_queue_state(
-            claim_request,
-            queue_root=exact.queue_root,
-            enabled=True,
-            dry_run_only=exact.dry_run_only,
-            apply_enabled=exact.apply_enabled,
-        )
-    except Exception:
-        return _result(
-            "claim_not_applied",
-            exact,
-            claim_attempted=True,
-            reasons=("one_queued_job_claim_failed",),
-        )
+    execution = _execute_one_queued_job(exact, source_store, dependencies)
+    return _result_from_execution(exact, execution)
 
-    claimed = claim.durable_record
-    expected_claim_status = "dry_run_ready" if exact.dry_run_only else "applied"
-    claim_ok = (
-        claim.status == expected_claim_status
-        and type(claimed) is dict
-        and _exact_claimed_record(claimed)
-        and (exact.dry_run_only or (claim.transition_applied and claim.durability_confirmed))
-    )
-    if not claim_ok:
-        return _result(
-            "claim_not_applied",
-            exact,
-            claim_attempted=True,
-            claim_result=claim,
-            claim_status=claim.status,
-            reasons=claim.blocked_reasons or ("one_queued_job_claim_not_applied",),
-        )
-    assert type(claimed) is dict
 
-    if exact.dry_run_only:
-        try:
-            loaded = source_store.load_for_claim(
-                claimed_record=claimed,
-                character_id=exact.character_id,
-            )
-        except Exception:
-            return _result(
-                "source_retryable",
-                exact,
-                claim_attempted=True,
-                claim_result=claim,
-                claim_status=claim.status,
-                source_lookup_status="retryable",
-                retryable=True,
-                reasons=("protected_source_dry_run_validation_failed",),
-            )
-        status = _dry_run_source_status(loaded.status)
-        return _result(
-            status,
-            exact,
-            claim_attempted=True,
-            claim_result=claim,
-            claim_status=claim.status,
-            source_lookup_status=loaded.status,
-            retryable=loaded.status == "retryable",
-            reasons=() if loaded.status == "loaded" else loaded.blocked_reasons,
-        )
-
-    try:
-        active, _, active_reasons = _check_active_claim(
-            claimed,
-            queue_root=exact.queue_root,
-            lease_duration_seconds=exact.lease_duration_seconds,
-            renew=False,
-        )
-    except Exception:
-        active = False
-        active_reasons = ("one_queued_job_claim_revalidation_failed",)
-    if not active:
-        return _result(
-            "claim_lost_before_rehydrate",
-            exact,
-            claim_attempted=True,
-            claim_performed=True,
-            claim_result=claim,
-            claim_status=claim.status,
-            reasons=active_reasons or ("one_queued_job_claim_not_current",),
-        )
-    # The canonical B3 dry-run fence rereads the durable record and proves that
-    # this exact claimed revision/owner/generation/token is current. Its returned
-    # durable_record is a renewal proposal, so the committed claim record remains
-    # the exact input for C1-5 and C1-2.
-    claimed = dict(claimed)
-
-    try:
-        prepared = prepare_relaymem_slp_primary_worker_source_for_claim(
-            exact.source_registry,
-            claimed_record=claimed,
-            character_id=exact.character_id,
-            source_store=source_store,
-        )
-    except Exception:
-        return _result(
-            "source_retryable",
-            exact,
-            claim_attempted=True,
-            claim_performed=True,
-            claim_result=claim,
-            claim_status=claim.status,
-            source_lookup_status="retryable",
-            retryable=True,
-            reasons=("protected_source_prepare_failed",),
-        )
-    if prepared.status != "prepared" or prepared.source is None or prepared.request_scope is None:
-        mapped = {
-            "source_unavailable": "source_unavailable",
-            "retryable": "source_retryable",
-            "blocked": "source_blocked",
-        }.get(prepared.status, "source_blocked")
-        return _result(
-            mapped,
-            exact,
-            claim_attempted=True,
-            claim_performed=True,
-            claim_result=claim,
-            claim_status=claim.status,
-            source_result=prepared,
-            source_lookup_status=prepared.status,
-            restart_rehydrated=prepared.restart_rehydrated,
-            retryable=prepared.status == "retryable",
-            reasons=prepared.blocked_reasons or ("protected_source_not_prepared",),
-        )
-
-    worker_request = RelayMEMSLPPrimaryWorkerRequest(
-        schema_version=PRIMARY_WORKER_REQUEST_SCHEMA,
-        runtime_private=True,
-        content_included=True,
-        claimed_record=dict(claimed),
-        worker_source=prepared.source,
-        request_scope=prepared.request_scope,
-        queue_root=exact.queue_root,
-        store_root=exact.store_root,
-        enabled=True,
-        dry_run_only=False,
-        apply_enabled=True,
-        lease_duration_seconds=exact.lease_duration_seconds,
-        retry_not_before=None,
-    )
-    try:
-        try:
-            worker = execute_relaymem_slp_primary_worker(worker_request)
-        except Exception:
-            return _result(
-                "worker_failed",
-                exact,
-                claim_attempted=True,
-                claim_performed=True,
-                claim_result=claim,
-                claim_status=claim.status,
-                source_result=prepared,
-                source_lookup_status=prepared.status,
-                source_prepared=True,
-                restart_rehydrated=prepared.restart_rehydrated,
-                worker_invoked=True,
-                reasons=("one_queued_job_worker_execution_failed",),
-            )
-    finally:
-        prepared.release_prepared_scope()
-
-    terminal = worker.status in {"terminal_succeeded", "terminal_failed"}
-    retryable = worker.status == "retry_released"
-    cleanup = None
-    cleanup_required = False
-    cleanup_reasons: tuple[str, ...] = ()
-    if terminal:
-        transition = worker.queue_transition_result
-        terminal_record = transition.durable_record if transition is not None else None
-        if type(terminal_record) is not dict:
-            cleanup_required = True
-            cleanup_reasons = ("terminal_queue_record_unavailable_for_cleanup",)
-        else:
-            try:
-                cleanup = release_relaymem_slp_primary_worker_source_after_terminal(
-                    exact.source_registry,
-                    terminal_record=terminal_record,
-                    character_id=exact.character_id,
-                    source_store=source_store,
-                )
-            except Exception:
-                cleanup_required = True
-                cleanup_reasons = ("protected_source_terminal_cleanup_failed",)
-            else:
-                cleanup_required = cleanup.status != "released"
-                if cleanup_required:
-                    cleanup_reasons = cleanup.blocked_reasons or (
-                        "protected_source_cleanup_required",
-                    )
-
+def _result_from_execution(
+    request: RelayMEMSLPOneQueuedJobRunnerRequest,
+    execution: _OneQueuedJobExecution,
+) -> RelayMEMSLPOneQueuedJobRunnerResult:
     return _result(
-        "cleanup_required" if cleanup_required else "worker_completed",
-        exact,
-        claim_attempted=True,
-        claim_performed=True,
-        claim_result=claim,
-        claim_status=claim.status,
-        source_result=prepared,
-        source_lookup_status=prepared.status,
-        source_prepared=True,
-        restart_rehydrated=prepared.restart_rehydrated,
-        worker_invoked=True,
-        worker_result=worker,
-        worker_status=worker.status,
-        queue_transition_performed=worker.queue_transition_performed,
-        retryable=retryable,
-        terminal=terminal,
-        cleanup_required=cleanup_required,
-        cleanup_result=cleanup,
-        reasons=(*worker.reason_ids, *cleanup_reasons),
+        execution.status,  # type: ignore[arg-type]
+        request,
+        claim_attempted=execution.claim_attempted,
+        claim_performed=execution.claim_performed,
+        claim_status=execution.claim_status,
+        source_lookup_status=execution.source_lookup_status,
+        source_prepared=execution.source_prepared,
+        restart_rehydrated=execution.restart_rehydrated,
+        worker_invoked=execution.worker_invoked,
+        worker_status=execution.worker_status,
+        queue_transition_performed=execution.queue_transition_performed,
+        retryable=execution.retryable,
+        terminal=execution.terminal,
+        cleanup_required=execution.cleanup_required,
+        reasons=execution.reasons,
+        claim_result=execution.claim_result,
+        source_result=execution.source_result,
+        worker_result=execution.worker_result,
+        cleanup_result=execution.cleanup_result,
     )
 
 
@@ -599,16 +413,6 @@ def _validate_request(
     ):
         reasons.append("protected_source_max_artifact_bytes_invalid")
     return (value, ()) if not reasons else (None, _reason_ids(reasons))
-
-
-def _dry_run_source_status(status: str) -> RunnerStatus:
-    if status == "loaded":
-        return "dry_run_ready"
-    if status == "missing":
-        return "source_unavailable"
-    if status == "retryable":
-        return "source_retryable"
-    return "source_blocked"
 
 
 def _result(
