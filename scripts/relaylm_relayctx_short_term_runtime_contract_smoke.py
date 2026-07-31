@@ -3,12 +3,14 @@
 
 from __future__ import annotations
 
+import ast
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = ROOT / "docs/contracts/relayctx_short_term_runtime_contract.md"
 MANAGED_RUNTIME_PATH = ROOT / "relaylm/managed_chat_runtime.py"
+MANAGED_PIPELINE_PATH = ROOT / "relaylm/managed_chat_pipeline_runtime.py"
 DIAGNOSTICS_PATH = ROOT / "relaylm/diagnostics.py"
 REPACK_PATH = ROOT / "relaylm/relayctx_repack.py"
 
@@ -27,6 +29,22 @@ def _ordered_positions(text: str, markers: tuple[str, ...], *, label: str) -> No
     _require(positions == sorted(positions), f"{label}: markers are out of order")
 
 
+def _unique_ordered_positions(text: str, markers: tuple[str, ...], *, label: str) -> None:
+    for marker in markers:
+        _require(text.count(marker) == 1, f"{label}: marker must occur exactly once: {marker}")
+    _ordered_positions(text, markers, label=label)
+
+
+def _named_function(tree: ast.Module, name: str, *, label: str) -> ast.FunctionDef | ast.AsyncFunctionDef:
+    matches = [
+        node
+        for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name
+    ]
+    _require(len(matches) == 1, f"{label}: expected exactly one function {name}")
+    return matches[0]
+
+
 def _function_slice(text: str, start_marker: str, end_marker: str) -> str:
     start = text.find(start_marker)
     _require(start >= 0, f"missing function marker: {start_marker}")
@@ -38,8 +56,51 @@ def _function_slice(text: str, start_marker: str, end_marker: str) -> str:
 def main() -> int:
     contract = CONTRACT_PATH.read_text(encoding="utf-8")
     managed_runtime = MANAGED_RUNTIME_PATH.read_text(encoding="utf-8")
+    managed_pipeline = MANAGED_PIPELINE_PATH.read_text(encoding="utf-8")
     diagnostics = DIAGNOSTICS_PATH.read_text(encoding="utf-8")
     repack = REPACK_PATH.read_text(encoding="utf-8")
+
+    facade_tree = ast.parse(managed_runtime, filename=str(MANAGED_RUNTIME_PATH))
+    pipeline_tree = ast.parse(managed_pipeline, filename=str(MANAGED_PIPELINE_PATH))
+    facade_imports = [
+        alias
+        for node in facade_tree.body
+        if isinstance(node, ast.ImportFrom)
+        and node.module == "relaylm.managed_chat_pipeline_runtime"
+        for alias in node.names
+        if alias.name == "run_managed_chat_pipeline"
+    ]
+    _require(
+        len(facade_imports) == 1,
+        "managed facade must import run_managed_chat_pipeline exactly once from its owner",
+    )
+    facade_handler = _named_function(
+        facade_tree, "handle_managed_chat_completion", label="managed facade"
+    )
+    facade_calls = [
+        node
+        for node in ast.walk(facade_handler)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "run_managed_chat_pipeline"
+    ]
+    _require(
+        len(facade_calls) == 1,
+        "managed facade must delegate exactly once to run_managed_chat_pipeline",
+    )
+    _named_function(pipeline_tree, "run_managed_chat_pipeline", label="managed pipeline owner")
+    backward_imports = [
+        node
+        for node in ast.walk(pipeline_tree)
+        if isinstance(node, ast.ImportFrom) and node.module == "relaylm.managed_chat_runtime"
+    ] + [
+        alias
+        for node in ast.walk(pipeline_tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+        if alias.name == "relaylm.managed_chat_runtime"
+    ]
+    _require(not backward_imports, "managed pipeline owner must not import its facade")
 
     runtime_section = contract.split("## Current runtime position and stage ordering", 1)[1].split(
         "## Enablement and artifact presence", 1
@@ -62,17 +123,29 @@ def main() -> int:
         "contract retains the retired incorrect preflight-before-RelayMEM diagram",
     )
 
-    _ordered_positions(
-        managed_runtime,
+    executable_markers = (
+        '"relaymem_runtime_ctx",',
+        "extraction = build_relayctx_short_term_extraction_dry_run(",
+        "assembly = build_relayctx_short_term_block_assembly_dry_run(",
+        "preflight = build_relayctx_short_term_runtime_injection_preflight(",
+        '"relayctx_short_term_injection",',
+        '"token_budget_truncation",',
+    )
+    _require(
+        not any(marker in managed_runtime for marker in executable_markers),
+        "managed facade ambiguously duplicates executable stage-order markers",
+    )
+    _unique_ordered_positions(
+        managed_pipeline,
         (
             '"relaymem_runtime_ctx",',
-            "relayctx_short_term_extraction_dry_run = (",
-            "relayctx_short_term_block_assembly_dry_run = (",
-            "relayctx_short_term_runtime_injection_preflight = (",
+            "extraction = build_relayctx_short_term_extraction_dry_run(",
+            "assembly = build_relayctx_short_term_block_assembly_dry_run(",
+            "preflight = build_relayctx_short_term_runtime_injection_preflight(",
             '"relayctx_short_term_injection",',
             '"token_budget_truncation",',
         ),
-        label="managed runtime order",
+        label="managed pipeline executable order",
     )
 
     for expected in (
