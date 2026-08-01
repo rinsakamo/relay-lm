@@ -1648,12 +1648,12 @@ S1 PR #789 result b272edb78602032009d4882a6244883cce610b86
   -> S3B implementation PR #796 result b75df848bf3982e00f67969c016ba1f28dd93427
   -> mandatory S3B P8 current-authority synchronization PR #797 result e221f17906682bdb077d8016e09843d176af5df4
   -> S3C implementation PR #798 result 56fa66fdba475a3d6e1a4bc4cbc3480ba238720e
-  -> mandatory S3C P8 current-authority synchronization PR #799 current
+  -> mandatory S3C P8 current-authority synchronization PR #799 result d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f
   -> independently verify S3C P8 PR #799 exact resulting main
   -> fresh RT-1D runtime next, not started -> separate implementation transaction -> runtime P8
 ```
 
-S3A and its mandatory P8 PR #795 are complete, with P8 result `bc27c25d0b745fc2d9927e9e21179b14cd337141`. S3B and its mandatory P8 PR #797 are complete, with P8 result `e221f17906682bdb077d8016e09843d176af5df4`. S3C completed in PR #798 with exact resulting main `56fa66fdba475a3d6e1a4bc4cbc3480ba238720e`. The mandatory S3C P8 current-authority synchronization PR #799 is current. Fresh RT-1D runtime is next but has not started and remains non-executable until this P8 merges and its exact resulting main is independently verified. Primary MEM remains the sole ordinary served memory and Retrieval authority. Subjective ordinary retrieval remains disabled and unwired. No cutover, authority switch, serving, fallback, or retirement change occurred. No Lane C
+S3A and its mandatory P8 PR #795 are complete, with P8 result `bc27c25d0b745fc2d9927e9e21179b14cd337141`. S3B and its mandatory P8 PR #797 are complete, with P8 result `e221f17906682bdb077d8016e09843d176af5df4`. S3C completed in PR #798 with exact resulting main `56fa66fdba475a3d6e1a4bc4cbc3480ba238720e`. The mandatory S3C P8 current-authority synchronization PR #799 merged with exact resulting main `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`. Fresh RT-1D runtime is architecture-authorized in five ordered slices but has not started. Primary MEM remains the sole ordinary served memory and Retrieval authority. Subjective ordinary retrieval remains disabled and unwired. No cutover, authority switch, serving, fallback, or retirement change occurred. No Lane C
 transaction overlaps. Only the exact resulting main after S3C P8 verification may bootstrap
 fresh runtime implementation. All three slices preserve Primary-only behavior
 and exclude cutover binding, configuration, authority selection, Subjective
@@ -1693,3 +1693,315 @@ Focused unit tests own state validation, immutable binding reconstruction, exact
 ### RT-1D explicit non-goals
 
 This authorization PR contains no runtime implementation, deployment approval, default-on policy, Primary-to-Subjective migration, backup/restore completion, multi-host coordination, physical purge, Merge/Supersession operations, RelaySOUL apply/rollback, API/UI/config/scheduler/worker/queue/daemon/background automation, ranking or embedding redesign, E1-R4 policy change, response rewriting, unrelated documentation cleanup, or repository maintenance.
+
+## Fresh exact-current RT-1D runtime P0/P1 authorization (2026-08-01)
+
+### Inspection basis and P2 disposition
+
+This architecture-only transaction selected **Codex Cloud**, inspected exact
+`origin/main` `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`, and authorizes budgets only.
+Fresh RT-1D runtime P0/P1 architecture authorization PR #800 is the current Lane
+C transaction. PR #800 is architecture-only and requires no P8. RT-1D-R1 is not
+started and is non-executable until PR #800 merges and its exact resulting main
+is independently verified; no implementation slice may start from the PR head,
+and only PR #800's independently verified resulting main may bootstrap R1.
+PR #799 is merged with head `b596ffc5cf9cf7f0d38d862dd7a81c12509aa182`
+and that exact resulting main; PR #798 is merged with result
+`56fa66fdba475a3d6e1a4bc4cbc3480ba238720e`. There was no open PR, target
+branch, competing Lane C writer, active workflow, branch-pushing validation, or
+`relaylm:p6-stop`; the governance epoch was
+`2c4dcdcee169e6056c2bb29124d52fdac96288c98446820d7c8a464b1cf5d1db`.
+The checkout and index were clean. No runtime implementation has started.
+
+The inspection enumerated direct imports, public/re-exported names, tests,
+smokes, scheduler and queue roots, routes, configuration, persistence, recovery,
+and operator entry points. The reader order is
+`managed_chat_pipeline_runtime.run_managed_chat_pipeline` ->
+`relaymem_retrieval.run_relaymem_retrieval_stage` ->
+`relaymem_primary_recall.prepare_primary_recall_selection` -> selection/store ->
+RelayCTX repack -> E1-R4. Primary fallback is owned by
+`relaymem_primary_recall_selection`; no Subjective owner is imported by the
+ordinary path. Subjective selection -> canonical-page revalidation -> prepared
+private handoff -> usage-ledger finalization -> admitted handoff is complete but
+has only focused test callers. The characterization owner is similarly test-only.
+
+The live Primary writer ingress families are: managed-response SLP enqueue and
+durable enqueue; local/supervised scheduler queue and replay lanes; one-job
+runner; worker and pipeline; direct M3e page and M3g index/log apply/recovery;
+Correct preflight/apply/recovery plus its Soul Lab routes; Forget
+preflight/apply/recovery plus its routes; and Pin/Unpin routes/runtime. Primary
+Restore and Consolidate have no live Primary apply route: their governed live
+implementations are Subjective-only. Primary observation, history, and frozen
+lifecycle projections may remain read-only admin/history surfaces, never an
+ordinary reader or writer. Queue claims and mutation tokens acquired before a
+fence confer no write authority after the durable writer fence.
+
+Exact-current structural measurements include: `managed_chat_pipeline_runtime.py`
+305 lines (largest orchestration 78), `relaymem_retrieval.py` 112 (60),
+`relaymem_primary_recall.py` 148 (43), `relaymem_primary_recall_selection.py`
+698 (92 and 160 review-trigger spans), `relaymem_primary_recall_store.py` 427
+(118), `subjective_mem_retrieval_selection.py` 552 (68),
+`subjective_mem_retrieval_characterization.py` 309 (51),
+`subjective_mem_retrieval_usage_ledger.py` 428 (59),
+`_relaymem_slp_primary_worker_execute.py` 294 (46),
+`_relaymem_slp_primary_worker_pipeline.py` 62 (17),
+`relaymem_slp_primary_worker.py` 141 (39),
+`relaymem_slp_one_queued_job_runner.py` 504 (59), and
+`_relaymem_slp_one_queued_job_runner_execute.py` 297 (41). Exact baseline
+SHA-256 values for the byte-sensitive reader/worker owners are, respectively,
+`382830637cae6c271aa9299510cdd8543f06515a816ffb696696c7321fc84469`,
+`92f147f0bb834357908b89410324412d7a4e61e396b3c61ce86500deda9f25f3`,
+`013da1ec84f472a6207a21176c778803843bb1fc8473fa528e4558d80813adcb`,
+`fa1df65bea95d2f5c27b318f3628c40497e67b394cedd9f80d51c26931cdc0fd`,
+and `6fd3846cdca9a4542b71c914c528513981d0d833c20a356d5b921881ce91cb4e`.
+`evidence_store.py` is 681 lines and remains byte-identical generic
+infrastructure, not semantic cutover authority.
+
+The No-Patch Gate and Stable-Structure Gate pass only for the five ordered slices
+below. Rejected alternatives are configuration-only authority, a Primary-root
+marker, a second store or journal, facade-only fencing, permanent dual mode,
+empty-result fallback, automatic rollback, and one broad runtime PR. Any extra
+path, reverse facade import, new generic registry, or inability to keep new
+production owners below about 700 lines and touched orchestration at about 80
+lines returns to P1.
+
+### Existing-data gate
+
+ST-1 revision-1 create selectors that lack the complete authority binding remain
+excluded by RT-1B and RT-1C. Current finalized, authority-bound revisions are
+accepted; legacy unbound revision-1 selectors are not silently bound, migrated,
+or projected. No pre-transfer migration is required for correctness: cutover may
+proceed with those memories absent, and users lose ordinary recall of unported
+Primary memories and excluded Subjective memories. A deployment requiring them
+must remain Primary-only until a separately accepted binding/migration authority
+completes. Frozen Primary assets are history, export, or governed rollback
+evidence only.
+
+### Ordered implementation slices and exact budgets
+
+Every slice starts from the independently verified resulting main of the prior
+slice's mandatory same-lane P8, has one writer, and ends with its own P8 and
+resulting-main verification. Paths not listed for that slice remain byte-identical.
+
+#### RT-1D-R1 — durable preparation (default-off)
+
+Purpose: add the one semantic cutover owner, content-free schemas, exact chain
+reconstruction, configuration tuple validation, and rehearsal-only operator API.
+
+Production/config budget:
+
+```text
+relaylm/subjective_mem_retrieval_cutover.py              new
+relaylm/config.py
+config.example.yaml
+```
+
+Focused evidence budget:
+
+```text
+tests/test_subjective_mem_retrieval_cutover.py           new
+scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py new
+```
+
+The owner depends on `EvidenceRecordStore`; the store, canonical Markdown,
+projection, selectors, lifecycle evaluators, usage ledger, all readers, and all
+writers remain byte-identical. Allowed behavior is fail-closed validation and
+explicit rehearsal only. Defaults remain Primary-only. It cannot create durable
+intent/fence/receipt records, serve Subjective evidence, or fence a writer.
+
+#### RT-1D-R2 — Primary writer-fence carriage (default-off)
+
+Purpose: carry one reconstructed writer decision to every live Primary formation
+and mutation side effect, while the durable state remains `primary_stable`.
+
+Production budget:
+
+```text
+relaylm/subjective_mem_retrieval_cutover.py
+relaylm/managed_chat_runtime.py
+relaylm/relaymem_slp_runtime_finalization.py
+relaylm/relaymem_slp_one_queued_job_runner.py
+relaylm/_relaymem_slp_one_queued_job_runner_execute.py
+relaylm/relaymem_slp_primary_worker.py
+relaylm/_relaymem_slp_primary_worker_types.py
+relaylm/_relaymem_slp_primary_worker_execute.py
+relaylm/_relaymem_slp_primary_worker_pipeline.py
+relaylm/relaymem_primary_pipeline.py
+relaylm/_relaymem_primary_pipeline_impl.py
+relaylm/relaymem_primary_correction.py
+relaylm/_relaymem_primary_correction_apply.py
+relaylm/_relaymem_primary_correction_recovery.py
+relaylm/relaymem_primary_forget_recovery.py
+relaylm/_relaymem_primary_forget_apply.py
+relaylm/soul_lab_memory_correction_runtime.py
+relaylm/soul_lab_memory_forget_runtime.py
+relaylm/soul_lab_memory_pin_routes.py
+relaylm/relaymem_primary_pin.py
+```
+
+Focused tests may modify only the existing worker, pipeline, queue, Correct,
+Forget, Pin, route, scheduler, and runtime-finalization tests plus
+`tests/test_subjective_mem_retrieval_cutover.py`. Direct M3e/M3g functions remain
+unchanged because the existing three pipeline checkpoints guard source
+consumption, page publication, and index/log reconciliation; a negative call
+graph test must prove no independent live apply root bypasses them. If it finds
+one, stop at P1 rather than adding a conditional path. Allowed behavior is only
+carriage and rejection when an injected test binding says fenced; production
+state remains Primary-only and no fence record can yet be written.
+
+#### RT-1D-R3 — rehearsal and readiness
+
+Purpose: acquire the exact fixed Subjective source, validate one projection
+generation, run deterministic content-free characterization, and persist no
+ordinary usage event or authority state.
+
+Production budget:
+
+```text
+relaylm/subjective_mem_retrieval_cutover.py
+relaylm/subjective_mem_retrieval_characterization.py
+```
+
+Focused budget:
+
+```text
+tests/test_subjective_mem_retrieval_cutover.py
+tests/test_subjective_mem_retrieval_characterization.py
+scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py
+```
+
+Projection builder/store, selection, usage ledger, Primary reader, managed route,
+and configuration remain byte-identical. Acceptance is content-free deterministic
+replay, deletion/rebuild equivalence, lifecycle/security/leakage cases,
+empty/non-empty and token-budget classes, bounded latency/request classes, and
+an exact readiness identity. Shadow output is never served and writes no ordinary
+usage event. No new diagnostic registry or control plane is allowed.
+
+#### RT-1D-R4 — one-authority activation
+
+Purpose: the sole authority-changing slice. It creates intent and fences, binds
+the exact projection, finalizes the receipt, and wires the one ordinary Subjective
+reader.
+
+Production budget:
+
+```text
+relaylm/subjective_mem_retrieval_cutover.py
+relaylm/managed_chat_pipeline_runtime.py
+relaylm/managed_chat_runtime.py
+relaylm/relaymem_retrieval.py
+relaylm/relaymem_primary_recall.py
+relaylm/relayctx_repack.py
+relaylm/subjective_mem_retrieval_selection.py
+relaylm/subjective_mem_retrieval_usage_ledger.py
+```
+
+Focused tests may modify the exact request-path, reader-seam, offload, pipeline
+ordering, RelayCTX, selection, usage-ledger, configuration, and cutover tests and
+`relaylm_p0_pipeline_ordering_smoke.py` plus the cutover smoke. E1-R4 policy,
+projection builder/store, Evidence store, writer modules, canonical/lifecycle
+owners, API/UI, scheduler, and deployment files remain byte-identical. Allowed
+behavior is exactly Primary-only -> neither -> Subjective-only. There is no
+result merge, empty-result fallback, stale-cache fallback, or Primary fallback.
+
+#### RT-1D-R5 — immediate retirement and proof
+
+Purpose: after exact R4 post-transfer probes, remove replaced ordinary Primary
+reader/fallback and temporary characterization surfaces and permanently disable
+the transferred Primary writer/mutation entry points while preserving explicitly
+classified read-only history/admin projections.
+
+Production deletion/modification budget:
+
+```text
+relaylm/relaymem_primary_recall.py
+relaylm/relaymem_primary_recall_selection.py
+relaylm/relaymem_primary_recall_store.py
+relaylm/subjective_mem_retrieval_characterization.py
+relaylm/relaymem_retrieval.py
+relaylm/subjective_mem_retrieval_cutover.py
+```
+
+Focused budget is limited to their current tests/smokes, request-path and package
+import tests, the cutover test/smoke, and `scripts/relaylm_p0_pipeline_ordering_smoke.py`.
+Writer modules remain byte-identical: R2's durable decision makes their live
+transferred-domain writes unreachable/rejected. Primary lifecycle overlays used
+by observation/history survive only as read-only admin surfaces. Removal requires
+negative import/call searches, Primary-reader rejection, Primary-writer rejection
+and drained queues, Subjective-only probes, leakage checks, and preserved frozen
+assets. Any continuing ordinary consumer blocks retirement and returns to P1.
+
+### Exact durable state machine and crash matrix
+
+The semantic owner accepts only this predecessor-linked chain:
+
+```text
+primary_stable (Primary only)
+  -> rehearsal_ready (Primary only)
+  -> transfer_intent (Primary only; forward recovery begins)
+  -> primary_reader_fenced (neither)
+  -> primary_writer_fenced (neither)
+  -> subjective_generation_bound (neither)
+  -> subjective_reader_enabled (Subjective only; same atomic transaction as receipt)
+  -> transfer_receipt_finalized (Subjective only)
+  -> post_transfer_validated (Subjective only)
+  -> retirement_complete (Subjective only)
+```
+
+`subjective_reader_enabled` and `transfer_receipt_finalized` are two validated
+records in one `EvidenceStoreTransaction`; no externally reconstructible state
+may contain only the first. Missing, partial, divergent, tampered, unsupported,
+or predecessor-inexact state is `recovery_required` and serves neither unless
+the last complete state is provably `primary_stable` or `rehearsal_ready`.
+Operator reconciliation is forward-only after intent. A post-transfer rollback
+is a separate governed transfer, never automatic fallback.
+
+Crash rules are: before intent, Primary resumes; after intent before fences,
+Primary may serve but no new transfer attempt starts; after reader fence, neither
+serves and recovery advances; after writer fence or generation binding, neither
+serves and queued/in-flight writes are rejected/reconciled; activation and receipt
+commit atomically, so there is no admitted crash point between them; after usage
+finalization but before backend handoff, retry returns the exact idempotent result
+and may release only the revalidated admitted handoff; after backend handoff a
+lost response never creates another usage pair; after receipt before probes,
+Subjective alone serves; during retirement, Subjective alone serves and removal
+resumes idempotently. Ordinary conversation may always continue without durable
+memory context under existing policy.
+
+### Receipt, startup, diagnostics, and validation
+
+The content-free receipt binds schema/digest, authority domain and transferred
+scope, bootstrap/resulting-main and policy revisions, exact projection generation
+and source digest, reader/writer fence IDs and digests, Subjective reader identity,
+configuration/deployment/readiness identity, intent/result/idempotency IDs,
+occurrence/finalization times, and post-transfer probe-result identity. It forbids
+memory prose, query/prompt/private context, source bodies, filesystem paths,
+private IDs, unrestricted lineage, and correlation material. Digesting uses the
+existing canonical JSON digest owner and create-or-verify semantics.
+
+Configuration is requested deployment mode and explicit safe locators only.
+Startup first reconstructs durable state, then validates the complete config tuple
+against it, then permits the reader decision. Missing config defaults to
+Primary-only only before intent; partial tuples, config/state disagreement,
+configuration-requested Subjective without a finalized receipt, finalized receipt
+with wrong generation, and unsupported combinations fail closed. Configuration
+alone never selects authority.
+
+Public diagnostics expose only state class, generation-ready boolean, bounded
+candidate/selected/exclusion counts, usage-finalized boolean, reader/writer fence
+booleans, probe class, recovery-required boolean, and
+`runtime_private_evidence_omitted=true`. Logs, receipts, errors, characterization,
+and projections forbid prose, raw query/prompt, paths, private handoff, page or
+workspace identity, selector/receipt/authorization digests, and private lineage.
+
+Each implementation slice must cover its owned portion of: rehearsal; cache
+deletion/rebuild; deterministic selection; usage-before-release; Subjective-only
+serving; Primary reader/writer rejection and queue drain; no fallback; empty and
+stale projection; malformed durable state; config disagreement; every fault
+position; restart/recovery; response-lost idempotency; concurrent transfer/write;
+security/leakage; post-transfer probes; retirement negative searches; package
+imports; structural spans; and exact-head checks. R4 activation is not authorized
+until R1-R3 and their P8 resulting mains are verified. No slice claims runtime
+completion before R5 and its mandatory P8 merge.
+
+The mandatory S3C P8 current-authority synchronization PR #799 merged as exact current main `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`. Fresh exact-current RT-1D P0/P1 inspection now authorizes the ordered runtime implementation budgets. This architecture transaction records that no cutover, authority switch, serving, fallback, writer fence, or retirement change occurred.
