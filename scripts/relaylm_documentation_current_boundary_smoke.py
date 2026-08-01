@@ -791,6 +791,10 @@ PROBES += tuple((path, anchor) for path, anchors in S3C_COMPLETION_ANCHORS.items
 R2_STRUCTURE_AMENDMENT_ANCHORS = {
     STATUS: (
         "## RT-1D-R2 P1 stable-structure amendment (current)",
+        "RT-1D-R1 implementation PR #801 completed with result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`, and mandatory R1 P8 PR #802 completed with exact resulting main `9ce7de054869ef29cc508d176023a93947489c25`",
+        "The initial R2 attempt returned at P1 with no repository mutation. The RT-1D-R2 P1 stable-structure amendment is current as Draft PR #803 and requires no P8.",
+        "R2 remains not started; renewed R2 may begin only after PR #803 merges and its exact resulting main is independently verified.",
+        "Only that verified amendment result, never PR #803 head, may bootstrap renewed R2 P0/P1.",
         "mandatory R1 P8 PR #802 completed with exact resulting main `9ce7de054869ef29cc508d176023a93947489c25`",
         "initial R2 attempt returned at P1 with no repository mutation",
         "Draft PR #803",
@@ -856,6 +860,15 @@ R2_STRUCTURE_AMENDMENT_ANCHORS = {
 for _path, _anchors in R2_STRUCTURE_AMENDMENT_ANCHORS.items():
     REQUIRED[_path] += _anchors
 PROBES += tuple((path, anchor) for path, anchors in R2_STRUCTURE_AMENDMENT_ANCHORS.items() for anchor in anchors)
+
+STATUS_TOP_SUMMARY_STALE = (
+    "Mandatory R1 P8 PR #802 is current",
+    "non-executable until PR #802 merges",
+    "only that verified P8 resulting main may bootstrap R2",
+    "R2 may restart from PR #803 head",
+    "R2 implementation is started",
+    "PR #803 requires P8",
+)
 
 R2_STRUCTURE_STALE = (
     "700-line rule is a universal hard cap",
@@ -972,6 +985,10 @@ def self_test() -> None:
         (STATUS, "Draft PR #803", "PR head may bootstrap R2", "PR-head bootstrap"),
         (PLAN, "R2 remains not started", "R2 is started", "started R2"),
         (RT1C, "requires no P8", "requires P8", "incorrect P8 requirement"),
+        (STATUS, "Draft PR #803", "Draft PR #804", "wrong amendment PR number"),
+        (STATUS, "never PR #803 head", "may restart from PR #803 head", "PR-head bootstrap"),
+        (STATUS, "R2 remains not started", "R2 implementation is started", "started R2 in top summary"),
+        (STATUS, "current as Draft PR #803 and requires no P8", "current as Draft PR #803 requires P8", "P8 requirement in top summary"),
     )
     for path, current, damaged, label in focused_mutations:
         body = read(path)
@@ -991,6 +1008,15 @@ def self_test() -> None:
             print(f"PASS: reintroducing {stale.splitlines()[0]!r} fails closed")
             continue
         raise AssertionError(f"{path}: stale anchor is not forbidden: {stale!r}")
+    for stale in STATUS_TOP_SUMMARY_STALE:
+        body = read(STATUS)
+        assert stale not in body, f"{STATUS}: top-summary stale anchor is present: {stale!r}"
+        try:
+            forbid_body(STATUS, STATUS_TOP_SUMMARY_STALE, body + "\n" + stale + "\n")
+        except AssertionError:
+            print(f"PASS: {STATUS}: reintroducing top-summary stale form {stale!r} fails closed")
+            continue
+        raise AssertionError(f"{STATUS}: top-summary stale form is not forbidden: {stale!r}")
     for path in R2_STRUCTURE_AMENDMENT_ANCHORS:
         for stale in R2_STRUCTURE_STALE:
             body = read(path)
@@ -1021,6 +1047,7 @@ def main(argv: list[str] | None = None) -> None:
         require(path, anchors)
     for path in CURRENT_DOCS:
         forbid(path, STALE)
+    forbid(STATUS, STATUS_TOP_SUMMARY_STALE)
     for path in R2_STRUCTURE_AMENDMENT_ANCHORS:
         forbid(path, R2_STRUCTURE_STALE)
     forbid("docs/PROJECT_STATUS.md", HISTORY_ONLY_STATUS_ANCHORS)
