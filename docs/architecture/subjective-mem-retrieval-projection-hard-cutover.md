@@ -1700,11 +1700,11 @@ This authorization PR contains no runtime implementation, deployment approval, d
 
 This architecture-only transaction selected **Codex Cloud**, inspected exact
 `origin/main` `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`, and authorizes budgets only.
-Fresh RT-1D runtime P0/P1 architecture authorization PR #800 is the current Lane
-C transaction. PR #800 is architecture-only and requires no P8. RT-1D-R1 is not
+Fresh RT-1D runtime P0/P1 architecture authorization PR #800 completed with
+result `68cc16b9d5ed7b999c22d27457390e53de851335`. PR #800 is architecture-only and requires no P8. RT-1D-R1 is not
 started and is non-executable until PR #800 merges and its exact resulting main
 is independently verified; no implementation slice may start from the PR head,
-and only PR #800's independently verified resulting main may bootstrap R1.
+and PR #800's independently verified resulting main bootstrapped R1.
 PR #799 is merged with head `b596ffc5cf9cf7f0d38d862dd7a81c12509aa182`
 and that exact resulting main; PR #798 is merged with result
 `56fa66fdba475a3d6e1a4bc4cbc3480ba238720e`. There was no open PR, target
@@ -2005,3 +2005,48 @@ until R1-R3 and their P8 resulting mains are verified. No slice claims runtime
 completion before R5 and its mandatory P8 merge.
 
 The mandatory S3C P8 current-authority synchronization PR #799 merged as exact current main `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`. Fresh exact-current RT-1D P0/P1 inspection now authorizes the ordered runtime implementation budgets. This architecture transaction records that no cutover, authority switch, serving, fallback, writer fence, or retirement change occurred.
+
+## RT-1D-R1 completion evidence and mandatory P8 gate
+
+### Identity and inventory
+
+PR #800 architecture authorization completed with result `68cc16b9d5ed7b999c22d27457390e53de851335`. RT-1D-R1 implementation PR #801 used branch `agent/rt1d-r1-durable-preparation` and that exact bootstrap. Commit `c8c65cdf0f49ca5e42c70079ac8034bc96ca28bf` is `feat: add RT-1D-R1 durable preparation`. Corrective commit `ac54854f82bd03c11425efa3014919ec004e72a5` is `test: stabilize unsupported cutover mode validation`, with parent `c8c65cdf0f49ca5e42c70079ac8034bc96ca28bf`. The final head is `ac54854f82bd03c11425efa3014919ec004e72a5` and exact result is `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`.
+
+The exact five-path R1 inventory is +894/-0: `config.example.yaml` +14/-0; `relaylm/config.py` +65/-0; `relaylm/subjective_mem_retrieval_cutover.py` +403/-0; `scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py` +99/-0; and `tests/test_subjective_mem_retrieval_cutover.py` +313/-0. A sixth R1 path is invalid.
+
+### Semantic owner, API, and configuration
+
+`relaylm/subjective_mem_retrieval_cutover.py` is the sole semantic owner: 403 physical lines, largest function 46 lines. Its sole operator API is `rehearse_subjective_mem_retrieval_cutover(*, store: EvidenceRecordStore, binding: SubjectiveMemRetrievalCutoverBinding, request: SubjectiveMemRetrievalCutoverRequest) -> SubjectiveMemRetrievalCutoverResult`. Binding, request, diagnostic, and result types are immutable and closed; error identities are stable and canonical encoding/digests deterministic. There is no semantic write API. Dependency direction is cutover owner -> `evidence_store` / `evidence_common` only. `EvidenceRecordStore` does not import the semantic owner and is not semantic authority.
+
+The exact fields are `subjective_mem_retrieval_cutover_mode`, `subjective_mem_retrieval_cutover_store_root`, `subjective_mem_retrieval_cutover_evidence_space_id`, `subjective_mem_retrieval_cutover_deployment_id`, `subjective_mem_retrieval_cutover_scope_id`, `subjective_mem_retrieval_cutover_bootstrap_main_sha`, `subjective_mem_retrieval_cutover_resulting_main_sha`, `subjective_mem_retrieval_cutover_policy_revision_id`, `subjective_mem_retrieval_cutover_projection_generation_id`, `subjective_mem_retrieval_cutover_projection_source_digest`, and `subjective_mem_retrieval_cutover_readiness_id`. Only `primary_only` and `rehearsal` exist. Default `primary_only` has all locators null and rejects a non-empty tuple; `rehearsal` requires the complete tuple. The root must be absolute and safe, identifiers bounded safe tokens, digest fields lowercase SHA-256, and unsupported mode is stably rejected. Configuration requests validation only and is never authority. Loading configuration performs no store access or semantic-owner import.
+
+### State and fail-closed rules
+
+The complete state chain is:
+
+```text
+primary_stable
+-> rehearsal_ready
+-> transfer_intent
+-> primary_reader_fenced
+-> primary_writer_fenced
+-> subjective_generation_bound
+-> subjective_reader_enabled
+-> transfer_receipt_finalized
+-> post_transfer_validated
+-> retirement_complete
+```
+
+`recovery_required` is derived only; an absent bounded log reconstructs `primary_stable`. Exact predecessor, binding, digest, order, uniqueness, and single-head shape are mandatory. Malformed, skipped, reordered, duplicate, divergent, unsupported, mismatched, tampered, partial, or multiple-chain state fails closed. R1 authorizes Primary-only only for `primary_stable` and `rehearsal_ready`; later complete chains parse, but R1 returns `recovery_required` / neither. Invalid post-intent state never triggers automatic Primary fallback. `rehearsal_ready` is in-memory only. No production semantic record constructor or writer exists.
+
+### Content-free and no-change boundary
+
+Public diagnostics/results expose no paths, memory prose, raw query/prompt, private context/handoff, page/source body, workspace identity, selector/receipt/authorization digests, unrestricted lineage, or arbitrary correlation material. Subjective serving is false, both fences are false, usage-finalized is false, counts are zero, probe is not applicable, and `runtime_private_evidence_omitted=true`. R1 is caller-invoked, default-off, and Primary-only. It adds no ordinary-path wiring; intent, fence, activation, final receipt, usage, or probe record; reader, writer, fallback, queue, worker, scheduler, mutation, API/UI/app, deployment, or retirement change.
+
+Immutable SHA-256 evidence: `relaylm/evidence_store.py` `41cfa9af6c32c1359be04f497924883ffbc4abb4e39313a44755494f92e2b41f`; `relaylm/evidence_common.py` `db03f3cb892bd43159d1b7e11d9d80cc923fd5c2a5c29891eea082c9a5bb7ec0`; `relaylm/subjective_mem_retrieval_selection.py` `13ef7dd7cd652e60db62bcc744c4361db49062c7beedd515b004139d0abe89e9`; `relaylm/subjective_mem_retrieval_usage_ledger.py` `eb2f9196f54a4aecf6ff63cc377df13df9f918881befdb8c59d505b8780a27d9`; `relaylm/managed_chat_pipeline_runtime.py` `382830637cae6c271aa9299510cdd8543f06515a816ffb696696c7321fc84469`; `relaylm/relaymem_retrieval.py` `92f147f0bb834357908b89410324412d7a4e61e396b3c61ce86500deda9f25f3`; `relaylm/relaymem_primary_recall.py` `013da1ec84f472a6207a21176c778803843bb1fc8473fa528e4558d80813adcb`; `relaylm/relaymem_primary_pipeline.py` `5a353151da197e9c43a25d4255f785777b739c2f9040cb517b4f8e2e2aceb22f`.
+
+Focused R1 validation was 38 passed and focused config/store/import validation was 60 passed. R1 smoke, consolidated Subjective lifecycle group, ruff, `py_compile`, `compileall`, diff/path/hash/structure checks, execution guard, and all applicable exact-head workflows passed. There were no reviews, comments, requested reviewers, or unresolved threads.
+
+### Current gate
+
+Mandatory R1 P8 current-authority synchronization PR #P8_PR is current. R2 is next but not started and is non-executable until this P8 merges and its exact resulting main is independently verified. Only that verified resulting main may bootstrap R2; the P8 head may not. Primary remains the sole ordinary served memory and Retrieval authority. Subjective ordinary Retrieval remains disabled and unwired. No cutover intent, fence, activation, final receipt, serving, fallback, writer-authority, or retirement change occurred.

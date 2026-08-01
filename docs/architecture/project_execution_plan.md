@@ -282,7 +282,7 @@ The external baseline/candidate differential matrix SHA-256 was `44547117872e449
 
 S3A owns Correct preflight/token, apply/replay/receipt, publication, caller recovery, and read-only history seams. S3B owns Forget validation/replay, hidden-successor handoff, caller recovery, convergence, and finalization seams while the public Forget facade files remain byte-identical. S3C keeps route installation and global authorization in route owners and moves operation-specific parsing, scope resolution, invocation, safe projection, error mapping, and no-store responses into operation runtimes; `soul_lab_app.py` remains byte-identical. Exact imports, APIs, schemas, tokens, faults, lock order, durable bytes, idempotency, recovery, paths, methods, status codes, Cache-Control, patchability, and leakage bounds remain unchanged.
 
-Each code PR is behavior-preserving and Primary-only, fixes its complete budget before writing, keeps new production modules below the approximate 700-line trigger and touched orchestration about 80 lines or less, and returns to its own P1 before any additional path. No generic mutation framework, second authority, cutover/configuration/serving/fallback/retirement change, or silent budget expansion is permitted. PR #793 is the merged architecture-only amendment, with exact result `5011eaaddd895b434f3d870dcf2206527725629c`, and requires no P8. The current order is S3A PR #794 result `2d05a41235e396ac82d536437ed8e5568f617253` -> S3A P8 PR #795 result `bc27c25d0b745fc2d9927e9e21179b14cd337141` -> S3B PR #796 result `b75df848bf3982e00f67969c016ba1f28dd93427` -> S3B P8 PR #797 result `e221f17906682bdb077d8016e09843d176af5df4` -> S3C PR #798 result `56fa66fdba475a3d6e1a4bc4cbc3480ba238720e` -> mandatory S3C P8 PR #799 result `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f` -> fresh RT-1D runtime P0/P1 architecture authorization PR #800 current -> independently verify PR #800 exact resulting main after merge -> RT-1D-R1 next, not started. PR #800 is architecture-only and requires no P8; no implementation slice may start from its PR head, and only PR #800's independently verified resulting main may bootstrap R1. No Lane C transaction overlaps. S3B may not silently expand beyond `relaylm/relaymem_primary_forget_recovery.py` and `relaylm/_relaymem_primary_forget_apply.py`; only `tests/test_rt1d_s3b_forget_seams.py` is optional, while `relaylm/relaymem_primary_forget.py` and `relaylm/relaymem_primary_forget_public_apply.py` remain byte-identical. Any additional S3B path requires a fresh P1 before writing.
+Each code PR is behavior-preserving and Primary-only, fixes its complete budget before writing, keeps new production modules below the approximate 700-line trigger and touched orchestration about 80 lines or less, and returns to its own P1 before any additional path. No generic mutation framework, second authority, cutover/configuration/serving/fallback/retirement change, or silent budget expansion is permitted. PR #793 is the merged architecture-only amendment, with exact result `5011eaaddd895b434f3d870dcf2206527725629c`, and requires no P8. The current order is S3A PR #794 result `2d05a41235e396ac82d536437ed8e5568f617253` -> S3A P8 PR #795 result `bc27c25d0b745fc2d9927e9e21179b14cd337141` -> S3B PR #796 result `b75df848bf3982e00f67969c016ba1f28dd93427` -> S3B P8 PR #797 result `e221f17906682bdb077d8016e09843d176af5df4` -> S3C PR #798 result `56fa66fdba475a3d6e1a4bc4cbc3480ba238720e` -> mandatory S3C P8 PR #799 result `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f` -> fresh RT-1D runtime P0/P1 architecture authorization PR #800 current -> independently verify PR #800 exact resulting main after merge -> RT-1D-R1 next, not started. PR #800 is architecture-only and requires no P8; no implementation slice may start from its PR head, and PR #800's independently verified resulting main bootstrapped R1. No Lane C transaction overlaps. S3B may not silently expand beyond `relaylm/relaymem_primary_forget_recovery.py` and `relaylm/_relaymem_primary_forget_apply.py`; only `tests/test_rt1d_s3b_forget_seams.py` is optional, while `relaylm/relaymem_primary_forget.py` and `relaylm/relaymem_primary_forget_public_apply.py` remain byte-identical. Any additional S3B path requires a fresh P1 before writing.
 
 ## MVP dependency waves
 
@@ -388,7 +388,7 @@ Within the pre-existing post-E1-R5 decision-debt registry: The remaining candida
 
 ## RT-1D fresh runtime implementation authorization
 
-Fresh RT-1D runtime P0/P1 architecture authorization PR #800 is the current Lane C transaction. Exact-current P0/P1 inspection at
+Fresh RT-1D runtime P0/P1 architecture authorization PR #800 completed with result `68cc16b9d5ed7b999c22d27457390e53de851335`. Exact-current P0/P1 inspection at
 `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f` authorizes, but does not start, the
 ordered Lane C runtime sequence `RT-1D-R1 durable preparation -> R2 Primary
 writer-fence carriage -> R3 rehearsal/readiness -> R4 one-authority activation ->
@@ -398,8 +398,14 @@ authority-transfer slice. Primary remains the sole ordinary served memory and
 Retrieval authority until that future transfer is durably finalized; no runtime,
 configuration, serving, writer fence, fallback, or retirement behavior changed in
 the architecture authorization. PR #800 is architecture-only and requires no P8.
-RT-1D-R1 is not started: no implementation slice may start from the PR head, and
-only PR #800's independently verified resulting main may bootstrap R1 after PR
+RT-1D-R1 implementation is complete in PR #801: no implementation slice may start from the PR head, and
+PR #800's independently verified resulting main bootstrapped R1 after PR
 #800 merges.
 
 The mandatory S3C P8 current-authority synchronization PR #799 merged as exact current main `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`. Fresh exact-current RT-1D P0/P1 inspection now authorizes the ordered runtime implementation budgets. This architecture transaction records that no cutover, authority switch, serving, fallback, writer fence, or retirement change occurred.
+
+## Current RT-1D execution gate after R1
+
+PR #800 completed the R1-R5 architecture budget with result `68cc16b9d5ed7b999c22d27457390e53de851335`. RT-1D-R1 implementation PR #801 completed at final head `ac54854f82bd03c11425efa3014919ec004e72a5` with exact result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`. Mandatory R1 P8 current-authority synchronization PR #P8_PR is current. R2 is next but not started. R2 is non-executable until this P8 merges and its exact resulting main is independently verified; only that verified resulting main may bootstrap R2, never the P8 head. No Lane C transaction may overlap this P8.
+
+Primary remains the sole ordinary served memory and Retrieval authority; Subjective ordinary Retrieval remains disabled and unwired. R1 changed no cutover intent, fence, activation, final receipt, serving, fallback, writer authority, or retirement behavior.
