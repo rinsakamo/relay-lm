@@ -165,9 +165,9 @@ LC-1 lifecycle migration                                    complete; LC-1A Corr
                                         -> mandatory S3C P8 current-authority synchronization PR #799 result d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f
                                            -> architecture PR #800 result 68cc16b9d5ed7b999c22d27457390e53de851335; no P8
                                               -> R1 PR #801 result 90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd
-                                                 -> mandatory R1 P8 PR #802 current
-                                                    -> independently verify PR #802 exact resulting main after merge
-                                                       -> R2 next, not started; only the verified P8 result may bootstrap R2
+                                                 -> mandatory R1 P8 PR #802 complete; exact resulting main 9ce7de054869ef29cc508d176023a93947489c25
+                                                    -> R2 P1 stable-structure amendment current; Draft PR number pending
+                                                       -> R2 not started; restart only from the amendment's independently verified resulting main
 
 Parallel decision work:
   PM-D1 RelaySOUL gate design-freeze relation
@@ -191,8 +191,14 @@ Parallel decision work:
 - media runtime execution;
 - ASR and peer communication transport.
 
-## RT-1D-R1 completion and mandatory P8 (current)
+## RT-1D-R2 P1 stable-structure amendment (current)
 
-PR #800 architecture authorization is complete with result `68cc16b9d5ed7b999c22d27457390e53de851335`. RT-1D-R1 durable preparation completed in PR #801 at final head `ac54854f82bd03c11425efa3014919ec004e72a5` with exact result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`. Mandatory R1 P8 current-authority synchronization PR #802 is current. R2 is next but not started and is non-executable until this P8 merges and its exact resulting main is independently verified; only that verified resulting main may bootstrap R2, never the P8 head.
+PR #800 architecture authorization completed with result `68cc16b9d5ed7b999c22d27457390e53de851335`. R1 PR #801 completed with result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`, and mandatory R1 P8 PR #802 completed with exact resulting main `9ce7de054869ef29cc508d176023a93947489c25`. The initial R2 attempt returned at P1 with no repository mutation because two pre-existing authorized modules triggered structural review. This architecture-only amendment is current as Draft PR number pending, requires no P8, and R2 remains not started. R2 may restart only after this amendment merges and its exact resulting main is independently verified; only that verified resulting main, never the amendment PR head, may bootstrap renewed R2 P0/P1.
 
 Primary MEM remains the sole ordinary served memory and Retrieval authority. Subjective ordinary Retrieval remains disabled and unwired. R1 is default-off, caller-invoked, Primary-only preparation: no cutover intent, fence, activation, final receipt, serving or fallback change, writer-authority change, or retirement occurred.
+
+The approximately-700-line rule is a P1 review trigger, not a repository-wide hard cap. The accepted exact-main baselines are `relaylm/_relaymem_primary_pipeline_impl.py` at 1,033 physical lines and blob `faf3fc71227da8e156f8d12f940591f189d1bb0c`, and `relaylm/relaymem_primary_pin.py` at 742 physical lines and blob `ee4db564faccb41e2354a639a527e3c8a3652f40`. These remain the accepted Primary pipeline implementation owner and Primary Pin owner. R2 adds only immutable writer-decision carriage, exact validation, and bounded pre-side-effect rejection; it transfers no ownership or semantic authority. A new owner created only to reduce physical line count would be prohibited meaningless fragmentation, wrapper-only indirection, and unrelated refactoring.
+
+The unchanged exact twenty-path R2 production budget remains authoritative in the RT-1 architecture. No structural extraction path or new file is authorized. This acceptance is narrow to R2 and the exact baseline blobs and sizes; it is not a general waiver. R2 limits are: pipeline implementation final maximum 1,083 lines and net growth +50; Primary Pin final maximum 777 and net growth +35; cutover semantic owner baseline 403 and final maximum 550; every other authorized module currently below 700 remains below 700 and gains at most 80 lines. Every new function is at most 80 lines and every new orchestration function at most 60. A touched pre-existing function above 80 records its baseline span, gains no responsibility or span, and delegates the writer check to a bounded helper in the same authorized owner; a pre-existing function at or below 80 remains at or below 80. Line-golfing and validation removal are prohibited.
+
+Renewed R2 P0/P1 must enumerate the complete live Primary formation/mutation call graph, freeze the exact focused existing tests, measure all twenty modules and touched/new functions, project the two oversized owners within 1,083 and 777, prove no genuine responsibility boundary justifies another owner, prove every side effect is dominated by an in-budget check, and prove no independent root requires a twenty-first path. Config, EvidenceRecordStore, direct M3e/M3g, ordinary readers, documentation, workflows, and scripts remain unchanged by R2. Exceeding an allowance or finding a genuine split returns to P1 for a new amendment. This amendment changes authority only: Primary-only operation remains exact and no production or runtime behavior changed.
