@@ -32,8 +32,8 @@ REQUIRED = {
         "RT-1D-S2 worker seams                    complete in PR #791; exact resulting main 31b700a2db0af7819f761d51bd946ff6798eb4c9",
         "S2 mandatory P8 current-authority sync      PR #792; exact resulting main 7e4fb4383dc6c1229d488ac200132b66f6b65bba",
         "RT-1D-S3A Correct core seams       complete in PR #794; exact resulting main 2d05a41235e396ac82d536437ed8e5568f617253",
-        "S3A mandatory P8 current-authority sync PR #795 in progress -> independently verify exact resulting main",
-        "RT-1D-S3B Forget core seams     next; not started -> mandatory P8 -> verify exact resulting main",
+        "S3A mandatory P8 current-authority sync PR #795 result bc27c25d0b745fc2d9927e9e21179b14cd337141",
+        "RT-1D-S3B Forget core seams complete in PR #796; exact resulting main b75df848bf3982e00f67969c016ba1f28dd93427",
         "**RT-1D-S1 Reader seams** completed in PR #789",
         "**RT-1D-S2 Worker seams** completed in PR #791",
         "b272edb78602032009d4882a6244883cce610b86",
@@ -48,7 +48,7 @@ REQUIRED = {
         "- RT-1C is default-off, explicit shadow-only, and unwired from ordinary request-path Retrieval.",
         "they still do not implement ordinary served Subjective MEM Retrieval, query matching or ranking, cache, request-path wiring, or authority cutover",
         "- Durable RT-1C usage persistence exists only for an explicitly non-shadow prepared handoff",
-        "RT-1 is in progress with RT-1A, RT-1B, RT-1C, and the behavior-preserving RT-1D-S1, RT-1D-S2, and RT-1D-S3A seams complete; RT-1D hard cutover and retirement is architecture-authorized but runtime remains not started.",
+        "RT-1 is in progress with RT-1A, RT-1B, RT-1C, and the behavior-preserving RT-1D-S1, RT-1D-S2, RT-1D-S3A, and RT-1D-S3B seams complete; RT-1D hard cutover and retirement is architecture-authorized but runtime remains not started.",
         "Exact-current inspection returned RT-1D to P1",
         "- RT-1D hard cutover and retirement;",
         "- ordinary served Subjective MEM Retrieval, query matching, ranking, cache, and request-path wiring;",
@@ -85,7 +85,7 @@ REQUIRED = {
         "S1 mandatory P8 current-authority sync in PR #790 -> exact resulting main 3e20274f18306f7db2410fd5239051411b9c052b",
         "RT-1D-S2 worker seams complete in PR #791 -> exact resulting main 31b700a2db0af7819f761d51bd946ff6798eb4c9",
         "S2 mandatory P8 current-authority sync in PR #792 -> exact resulting main 7e4fb4383dc6c1229d488ac200132b66f6b65bba",
-        "S3A complete in PR #794 at exact resulting main `2d05a41235e396ac82d536437ed8e5568f617253` -> mandatory S3A same-lane P8 PR #795",
+        "S3A mandatory P8 PR #795 result `bc27c25d0b745fc2d9927e9e21179b14cd337141`",
         "LC-1C Pin/Unpin implements exact current `active -> pinned` and `pinned -> active` immutable successors",
         "[LC-1D Subjective MEM Restore Runtime](subjective-mem-restore-runtime.md) implements the exact current `hidden -> active` immutable successor",
         "[LC-1E Subjective MEM Consolidate Runtime](subjective-mem-consolidate-runtime.md) implements the exact current active Primary-to-Secondary immutable successor",
@@ -96,7 +96,7 @@ REQUIRED = {
         "RT-1D-S1 reader seams completed in PR #789",
         "RT-1D-S2 worker seams completed in PR #791",
         "Primary MEM remains the sole ordinary served memory and Retrieval authority.",
-        "S3B is next but has not started; S3C and RT-1D runtime have not started.",
+        "RT-1D-S3B Forget core seams completed in PR #796 with exact resulting main `b75df848bf3982e00f67969c016ba1f28dd93427`; PR #797 is the mandatory S3B P8 current-authority synchronization.",
         "RT-1C shadow adapter, grounding handoff, and usage ledger is implemented in PR #784 as three bounded owners",
         "RT-1 Retrieval projection and hard cutover in progress / RT-1A, RT-1B, and RT-1C complete",
         "RT-1B remains default-off and unwired from ordinary Retrieval",
@@ -278,7 +278,7 @@ S3_AMENDMENT_ANCHORS = {
         "`relaylm/_relaymem_primary_forget_apply.py`",
         "`relaylm/soul_lab_memory_forget_runtime.py`",
         "This architecture-only amendment itself requires no separate P8",
-        "S3B is next but has not started; S3C and RT-1D runtime have not started.",
+        "RT-1D-S3B Forget core seams completed in PR #796 with exact resulting main `b75df848bf3982e00f67969c016ba1f28dd93427`; PR #797 is the mandatory S3B P8 current-authority synchronization.",
         "Primary MEM remains the sole ordinary served memory and Retrieval authority",
     ),
     "docs/architecture/project_execution_plan.md": (
@@ -290,7 +290,7 @@ S3_AMENDMENT_ANCHORS = {
         "`tests/test_rt1d_s3a_correct_seams.py`",
         "`tests/test_rt1d_s3b_forget_seams.py`",
         "`tests/test_rt1d_s3c_soul_lab_mutation_routes.py`",
-        "mandatory S3A same-lane P8 PR #795 -> independently verify exact resulting main -> S3B implementation next",
+        "S3A mandatory P8 PR #795 result `bc27c25d0b745fc2d9927e9e21179b14cd337141` -> S3B PR #796 result `b75df848bf3982e00f67969c016ba1f28dd93427`",
         "No generic mutation framework, second authority",
     ),
     "docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md": (
@@ -306,7 +306,7 @@ S3_AMENDMENT_ANCHORS = {
         "tests/test_rt1d_s3b_forget_seams.py",
         "tests/test_rt1d_s3c_soul_lab_mutation_routes.py",
         "S2 P8 PR #792 result 7e4fb4383dc6c1229d488ac200132b66f6b65bba",
-        "S3A is complete; mandatory P8 PR #795 is current.",
+        "S3B is complete in PR #796, and PR #797 is the mandatory S3B P8 current-authority synchronization.",
         "Only the exact resulting main after S3C P8 verification may bootstrap",
         "A fixed budget may not be silently expanded.",
     ),
@@ -332,7 +332,7 @@ S3A_COMPLETION_ANCHORS = {
     "docs/architecture/project_execution_plan.md": (
         "PR #793 merged the monolithic S3 P1 Return architecture amendment with exact result `5011eaaddd895b434f3d870dcf2206527725629c`",
         "RT-1D-S3A Correct core seams completed in PR #794 with exact resulting main `2d05a41235e396ac82d536437ed8e5568f617253`",
-        "S3B is next but has not started; S3C and RT-1D runtime have not started.",
+        "RT-1D-S3B Forget core seams completed in PR #796 with exact resulting main `b75df848bf3982e00f67969c016ba1f28dd93427`; PR #797 is the mandatory S3B P8 current-authority synchronization.",
         "`relaylm/relaymem_primary_forget_recovery.py` and `relaylm/_relaymem_primary_forget_apply.py`",
         "only `tests/test_rt1d_s3b_forget_seams.py` is optional",
         "`relaylm/relaymem_primary_forget.py` and `relaylm/relaymem_primary_forget_public_apply.py` remain byte-identical",
@@ -351,13 +351,53 @@ S3A_COMPLETION_ANCHORS = {
         "`relaylm/_relaymem_primary_correction_history.py` (137)",
         "largest touched\norchestration span is 73 lines",
         "No production monkeypatch",
-        "S3A is complete; mandatory P8 PR #795 is current.",
-        "S3B is next but has not started;\nS3C and RT-1D runtime have not started.",
-        "S3B becomes executable only after the\nS3A P8 merges and its exact resulting main is independently verified.",
+        "S3B is complete in PR #796, and PR #797 is the mandatory S3B P8 current-authority synchronization.",
+        "S3C is next but has not started; it becomes executable only after S3B P8 PR #797 merges",
+        "Fresh RT-1D runtime has not started.",
         "Primary MEM remains the sole served ordinary memory and Retrieval authority.",
     ),
 }
 for _path, _anchors in S3A_COMPLETION_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+
+S3B_COMPLETION_ANCHORS = {
+    "docs/PROJECT_STATUS.md": (
+        "**RT-1D-S3B Forget core seams** completed in PR #796",
+        "`126e88dc18c8a61e439a41c8da7e6e0eaa2ccfc2`",
+        "`b75df848bf3982e00f67969c016ba1f28dd93427`",
+        "`bc27c25d0b745fc2d9927e9e21179b14cd337141`",
+        "`relaylm/_relaymem_primary_forget_apply.py` (+400/-0)",
+        "`relaylm/relaymem_primary_forget_recovery.py` (+127/-274)",
+        "recovery facade is now 632 physical lines",
+        "internal apply owner is 400 physical lines",
+        "internal apply entry point 65",
+        "public apply signature remains unchanged",
+        "canonical public compatibility, recovery, finalization, result-class, schema, and export owner",
+        "frozen per-call dependency bundle from current module globals",
+        "No replacement public result dataclasses were introduced",
+        "No production monkeypatch",
+        "4fe026b1c87639c8cb248acce41ac4b2d875e1f05eb14d28fc79059dc0600f92",
+        "8a0af188df9ee1c037547de60f92fc8cf39e9d09a34f361292ea82133694021e",
+        "Primary MEM remains the sole ordinary served memory and Retrieval authority",
+        "PR #797 is the mandatory S3B P8 current-authority synchronization",
+        "S3C is next but has not started",
+        "Fresh RT-1D runtime has not started",
+    ),
+    "docs/architecture/project_execution_plan.md": (
+        "RT-1D-S3B Forget core seams completed in PR #796 with exact resulting main `b75df848bf3982e00f67969c016ba1f28dd93427`",
+        "PR #797 is the mandatory S3B P8 current-authority synchronization",
+        "S3C is next but has not started and is not executable until S3B P8 PR #797 merges and its exact resulting main is independently verified",
+        "No Lane C transaction overlaps",
+    ),
+    "docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md": (
+        "S3B implementation PR #796 result b75df848bf3982e00f67969c016ba1f28dd93427",
+        "mandatory S3B P8 current-authority synchronization PR #797",
+        "independently verify S3B P8 PR #797 exact resulting main",
+        "S3C next, not started -> mandatory P8 -> independently verify exact resulting main",
+        "Fresh RT-1D runtime has not started",
+    ),
+}
+for _path, _anchors in S3B_COMPLETION_ANCHORS.items():
     REQUIRED[_path] += _anchors
 
 CURRENT_DOCS = tuple(REQUIRED)
@@ -369,6 +409,12 @@ STALE = (
     "S3A, S3B, S3C, and RT-1D runtime have not started.",
     "S3A implementation next",
     "S3B is executable before S3A P8 merges and resulting-main verification",
+    "S3B is next but has not started",
+    "S3B implementation pending",
+    "S3C is executable before S3B P8 resulting-main verification",
+    "fresh RT-1D runtime is current",
+    "fresh RT-1D runtime has started",
+    "Primary MEM is no longer the sole ordinary served memory and Retrieval authority",
     "RT-1D hard cutover, Primary retirement, and authority transfer remain\nunauthorized and not started.",
     "the durable cutover intent/fences/receipt belong to `relaylm/evidence_store.py`",
     "the Evidence store owns durable receipt/fence state",
@@ -577,7 +623,7 @@ PROBES = (
     (PLAN, "S1 mandatory P8 current-authority sync in PR #790 -> exact resulting main 3e20274f18306f7db2410fd5239051411b9c052b"),
     (PLAN, "RT-1D-S2 worker seams complete in PR #791 -> exact resulting main 31b700a2db0af7819f761d51bd946ff6798eb4c9"),
     (PLAN, "S2 mandatory P8 current-authority sync in PR #792 -> exact resulting main 7e4fb4383dc6c1229d488ac200132b66f6b65bba"),
-    (PLAN, "S3A complete in PR #794 at exact resulting main `2d05a41235e396ac82d536437ed8e5568f617253` -> mandatory S3A same-lane P8 PR #795"),
+    (PLAN, "S3A mandatory P8 PR #795 result `bc27c25d0b745fc2d9927e9e21179b14cd337141`"),
     (STATUS, "RT-1B remains default-off and unwired from ordinary Retrieval"),
     (STATUS, "RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval"),
     (PLAN, "RT-1B remains default-off and unwired from ordinary Retrieval"),
@@ -699,6 +745,7 @@ PROBES = (
 
 PROBES += tuple((path, anchor) for path, anchors in S3_AMENDMENT_ANCHORS.items() for anchor in anchors)
 PROBES += tuple((path, anchor) for path, anchors in S3A_COMPLETION_ANCHORS.items() for anchor in anchors)
+PROBES += tuple((path, anchor) for path, anchors in S3B_COMPLETION_ANCHORS.items() for anchor in anchors)
 
 STALE_PROBES = (
     (STATUS, "PR #793 must merge before S3A"),
@@ -707,6 +754,12 @@ STALE_PROBES = (
     (RT1C, "S3A, S3B, S3C, and RT-1D runtime have not started."),
     (PLAN, "S3A implementation next"),
     (STATUS, "S3B is executable before S3A P8 merges and resulting-main verification"),
+    (STATUS, "S3B is next but has not started"),
+    (PLAN, "S3B implementation pending"),
+    (STATUS, "S3C is executable before S3B P8 resulting-main verification"),
+    (STATUS, "fresh RT-1D runtime is current"),
+    (PLAN, "fresh RT-1D runtime has started"),
+    (STATUS, "Primary MEM is no longer the sole ordinary served memory and Retrieval authority"),
     (STATUS, "the current RT-1D-S3 P1 architecture amendment PR"),
     (STATUS, "The current RT-1D-S3 P1 architecture amendment PR"),
     (STATUS, "RT-1C shadow adapter, grounding handoff, usage ledger next ordered slice; registered / not started"),

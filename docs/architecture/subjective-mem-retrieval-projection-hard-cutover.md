@@ -1619,6 +1619,12 @@ S3B excludes Correct, Soul Lab, Forget public facades, lifecycle/receipt
 authority changes, documentation in the code PR, cutover, configuration,
 serving, and retirement.
 
+
+**RT-1D-S3B Forget core seams** completed in PR #796 from bootstrap/parent main `bc27c25d0b745fc2d9927e9e21179b14cd337141`, with implementation head `126e88dc18c8a61e439a41c8da7e6e0eaa2ccfc2`, commit subject `refactor: extract RT-1D-S3B Forget seams`, and exact resulting main `b75df848bf3982e00f67969c016ba1f28dd93427`. Its exact two-path diff was `relaylm/_relaymem_primary_forget_apply.py` (+400/-0) and `relaylm/relaymem_primary_forget_recovery.py` (+127/-274), total +527/-274. The recovery facade is now 632 physical lines (from 779), and the internal apply owner is 400 physical lines (from absent). Touched orchestration spans are public apply wrapper 45, public recovery wrapper 42, locked recovery 48, finalization coordinator 17, hidden-state resolution 16, control convergence 25, tombstone finalization 52, internal apply entry point 65, validated apply coordinator 29, existing-operation replay 34, hidden-successor handoff 42, and reacquisition/finalization 22 lines; both modules are below the approximate 700-line trigger and every touched orchestration is below 80 lines.
+
+The public apply signature remains unchanged. `relaylm/relaymem_primary_forget_recovery.py` remains the canonical public compatibility, recovery, finalization, result-class, schema, and export owner; `relaylm/_relaymem_primary_forget_apply.py` owns bounded apply validation, exact replay, binding, initial lock/reread, hidden-successor handoff, reacquisition, and delegation to canonical finalization. The dependency direction is `relaymem_primary_forget_recovery -> _relaymem_primary_forget_apply`; the internal apply owner does not import the recovery facade. The facade constructs a frozen per-call dependency bundle from current module globals, preserving existing facade patch seams. No replacement public result dataclasses were introduced. Public schemas, signatures/defaults, class identities, inheritance, dataclass metadata, repr, schema behavior, `to_log_dict` projections, exception identity, and facade re-export identities remain exact. No production monkeypatch, pytest monkeypatch fixture, runtime patch installer, temporary patch module, `sys.modules` mutation, `importlib.reload`, or dynamic reverse import was introduced. Immutable facade hashes remain `relaylm/relaymem_primary_forget.py` SHA-256 `4fe026b1c87639c8cb248acce41ac4b2d875e1f05eb14d28fc79059dc0600f92` and `relaylm/relaymem_primary_forget_public_apply.py` SHA-256 `8a0af188df9ee1c037547de60f92fc8cf39e9d09a34f361292ea82133694021e`; both are byte-identical to the exact-main baseline.
+
+Validation/fault order, operation/token/reason binding, lock/replay/handoff/reacquisition behavior, caller-selected recovery, hidden resume, M3f/M3g/control convergence, tombstone publication/reread, deterministic timestamp, durable bytes, result/error/leakage behavior, response-lost, and reconciliation behavior remain exact. Python 3.12.13 validation and every applicable exact-head workflow succeeded for implementation head `126e88dc18c8a61e439a41c8da7e6e0eaa2ccfc2`; legitimate changed-path exclusions were skipped, with no failed, queued, or in-progress check remaining. PR #796 added no cutover, runtime, configuration, persistence, lifecycle, receipt, API, UI, S3C, or P8 behavior. Primary MEM remains the sole ordinary served memory and Retrieval authority.
 ##### RT-1D-S3C Soul Lab mutation route seams
 
 Exact future production budget:
@@ -1654,15 +1660,15 @@ S1 PR #789 result b272edb78602032009d4882a6244883cce610b86
   -> S2 P8 PR #792 result 7e4fb4383dc6c1229d488ac200132b66f6b65bba
   -> S3 P1 architecture amendment PR #793 result 5011eaaddd895b434f3d870dcf2206527725629c
   -> S3A PR #794 result 2d05a41235e396ac82d536437ed8e5568f617253
-  -> S3A mandatory P8 PR #795 -> independently verify exact resulting main
-  -> S3B next -> mandatory P8 -> verify exact resulting main
-  -> S3C -> mandatory P8 -> verify exact resulting main
+  -> S3A mandatory P8 PR #795 result bc27c25d0b745fc2d9927e9e21179b14cd337141
+  -> S3B implementation PR #796 result b75df848bf3982e00f67969c016ba1f28dd93427
+  -> mandatory S3B P8 current-authority synchronization PR #797
+  -> independently verify S3B P8 PR #797 exact resulting main
+  -> S3C next, not started -> mandatory P8 -> independently verify exact resulting main
   -> fresh RT-1D runtime -> runtime P8
 ```
 
-S3A is complete; mandatory P8 PR #795 is current. S3B is next but has not started;
-S3C and RT-1D runtime have not started. S3B becomes executable only after the
-S3A P8 merges and its exact resulting main is independently verified. No Lane C
+S3A and its mandatory P8 PR #795 are complete, with P8 result `bc27c25d0b745fc2d9927e9e21179b14cd337141`. S3B is complete in PR #796, and PR #797 is the mandatory S3B P8 current-authority synchronization. S3C is next but has not started; it becomes executable only after S3B P8 PR #797 merges and its exact resulting main is independently verified. Fresh RT-1D runtime has not started. No Lane C
 transaction overlaps. Only the exact resulting main after S3C P8 verification may bootstrap
 fresh runtime implementation. All three slices preserve Primary-only behavior
 and exclude cutover binding, configuration, authority selection, Subjective
