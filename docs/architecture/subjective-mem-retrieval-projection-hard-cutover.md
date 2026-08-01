@@ -1539,8 +1539,8 @@ or evade with a monolithic move.
 
 This transaction, PR #793, replaces monolithic S3 with
 three ordered, non-overlapping, behavior-preserving Primary-only slices. The
-amendment changes no runtime behavior and itself requires no P8, but its exact
-resulting main must be independently verified before S3A starts.
+amendment changes no runtime behavior and itself requires no P8. It merged with
+exact result `5011eaaddd895b434f3d870dcf2206527725629c`.
 
 ##### RT-1D-S3A Correct core seams
 
@@ -1571,6 +1571,27 @@ fresh S3A P1 Return before writing.
 
 S3A excludes Forget, Soul Lab, mutation-coordinator semantics, documentation in
 the code PR, cutover, configuration, serving, and retirement.
+
+S3A completed in PR #794 with exact resulting main
+`2d05a41235e396ac82d536437ed8e5568f617253`. Its final production owners are
+`relaylm/relaymem_primary_correction.py` (122 lines),
+`relaylm/_relaymem_primary_correction_preflight.py` (269),
+`relaylm/_relaymem_primary_correction_apply.py` (444),
+`relaylm/_relaymem_primary_correction_publication.py` (104),
+`relaylm/_relaymem_primary_correction_recovery.py` (60), and
+`relaylm/_relaymem_primary_correction_history.py` (137); the largest touched
+orchestration span is 73 lines. This was a behavior-preserving structural
+prerequisite only. The facade preserves exact public names,
+signatures/defaults, constants, `__all__`, canonical exception/state identities,
+and import locations. Existing `_utc` and
+`apply_relaymem_primary_page_write` compatibility seams remain effective
+through explicit internal dependency injection. No production monkeypatch,
+pytest monkeypatch fixture, runtime patch installer, temporary patch module,
+`sys.modules` manipulation, or `importlib` reload was introduced. Token
+claims/TTL, operation keys, lock/validation order, receipts,
+replay/idempotency, canonical page/index/log bytes, fault positions,
+caller-invoked recovery, history/current-state behavior, and durable effects
+remain exact.
 
 ##### RT-1D-S3B Forget core seams
 
@@ -1631,15 +1652,18 @@ S1 PR #789 result b272edb78602032009d4882a6244883cce610b86
   -> S1 P8 PR #790 result 3e20274f18306f7db2410fd5239051411b9c052b
   -> S2 PR #791 result 31b700a2db0af7819f761d51bd946ff6798eb4c9
   -> S2 P8 PR #792 result 7e4fb4383dc6c1229d488ac200132b66f6b65bba
-  -> S3 P1 architecture amendment -> verify exact resulting main
-  -> S3A -> mandatory P8 -> verify exact resulting main
-  -> S3B -> mandatory P8 -> verify exact resulting main
+  -> S3 P1 architecture amendment PR #793 result 5011eaaddd895b434f3d870dcf2206527725629c
+  -> S3A PR #794 result 2d05a41235e396ac82d536437ed8e5568f617253
+  -> S3A mandatory P8 PR #795 -> independently verify exact resulting main
+  -> S3B next -> mandatory P8 -> verify exact resulting main
   -> S3C -> mandatory P8 -> verify exact resulting main
   -> fresh RT-1D runtime -> runtime P8
 ```
 
-S3A, S3B, S3C, and RT-1D runtime have not started. No Lane C transaction
-overlaps. Only the exact resulting main after S3C P8 verification may bootstrap
+S3A is complete; mandatory P8 PR #795 is current. S3B is next but has not started;
+S3C and RT-1D runtime have not started. S3B becomes executable only after the
+S3A P8 merges and its exact resulting main is independently verified. No Lane C
+transaction overlaps. Only the exact resulting main after S3C P8 verification may bootstrap
 fresh runtime implementation. All three slices preserve Primary-only behavior
 and exclude cutover binding, configuration, authority selection, Subjective
 serving, fallback change, retirement, new persistence authority, API behavior,
