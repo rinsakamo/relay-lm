@@ -269,6 +269,15 @@ class RelayLMConfig(BaseModel):
     ctx_ovl_dry_run_only: StrictBool = True
     ctx_ovl_apply_enabled: StrictBool = False
 
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_cutover_requested_mode(cls, value: object) -> object:
+        if isinstance(value, dict):
+            mode = value.get("subjective_mem_retrieval_cutover_mode", "primary_only")
+            if mode not in {"primary_only", "rehearsal"}:
+                raise ValueError("subjective_mem_retrieval_cutover_mode_unsupported")
+        return value
+
     @model_validator(mode="after")
     def _validate_local_scheduler_mode(self) -> "RelayLMConfig":
         self._enable_route_owned_home_admission_trigger()

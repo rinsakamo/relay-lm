@@ -131,7 +131,7 @@ def test_config_example_loads_and_has_each_field_once() -> None:
 def test_valid_rehearsal_config_and_closed_modes(tmp_path: Path) -> None:
     config = _config(_config_tuple(tmp_path / "store"))
     assert config.subjective_mem_retrieval_cutover_mode == "rehearsal"
-    with pytest.raises(ValueError, match="literal_error"):
+    with pytest.raises(ValueError, match="subjective_mem_retrieval_cutover_mode_unsupported"):
         _config({"subjective_mem_retrieval_cutover_mode": "subjective"})
 
 
