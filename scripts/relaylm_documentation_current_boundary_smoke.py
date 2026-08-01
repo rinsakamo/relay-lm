@@ -391,10 +391,11 @@ S3B_COMPLETION_ANCHORS = {
     ),
     "docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md": (
         "S3B implementation PR #796 result b75df848bf3982e00f67969c016ba1f28dd93427",
-        "mandatory S3B P8 current-authority synchronization PR #797",
-        "independently verify S3B P8 PR #797 exact resulting main",
-        "S3C next, not started -> mandatory P8 -> independently verify exact resulting main",
-        "Fresh RT-1D runtime is next but has not started",
+        "mandatory S3B P8 current-authority synchronization PR #797 result e221f17906682bdb077d8016e09843d176af5df4",
+        "S3C implementation PR #798 result 56fa66fdba475a3d6e1a4bc4cbc3480ba238720e",
+        "mandatory S3C P8 current-authority synchronization PR #799 current",
+        "independently verify S3C P8 PR #799 exact resulting main",
+        "fresh RT-1D runtime next, not started -> separate implementation transaction -> runtime P8",
     ),
 }
 for _path, _anchors in S3B_COMPLETION_ANCHORS.items():
@@ -443,6 +444,7 @@ STALE = (
     "S3B is next but has not started",
     "S3B implementation pending",
     "S3C is executable before S3B P8 resulting-main verification",
+    "S3C next, not started -> mandatory P8 -> independently verify exact resulting main",
     "fresh RT-1D runtime is current",
     "fresh RT-1D runtime has started",
     "Primary MEM is no longer the sole ordinary served memory and Retrieval authority",
@@ -789,6 +791,7 @@ STALE_PROBES = (
     (STATUS, "S3B is next but has not started"),
     (PLAN, "S3B implementation pending"),
     (STATUS, "S3C is executable before S3B P8 resulting-main verification"),
+    (RT1C, "S3C next, not started -> mandatory P8 -> independently verify exact resulting main"),
     (STATUS, "fresh RT-1D runtime is current"),
     (PLAN, "fresh RT-1D runtime has started"),
     (STATUS, "Primary MEM is no longer the sole ordinary served memory and Retrieval authority"),

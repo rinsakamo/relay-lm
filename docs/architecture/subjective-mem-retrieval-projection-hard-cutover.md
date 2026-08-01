@@ -1646,13 +1646,14 @@ S1 PR #789 result b272edb78602032009d4882a6244883cce610b86
   -> S3A PR #794 result 2d05a41235e396ac82d536437ed8e5568f617253
   -> S3A mandatory P8 PR #795 result bc27c25d0b745fc2d9927e9e21179b14cd337141
   -> S3B implementation PR #796 result b75df848bf3982e00f67969c016ba1f28dd93427
-  -> mandatory S3B P8 current-authority synchronization PR #797
-  -> independently verify S3B P8 PR #797 exact resulting main
-  -> S3C next, not started -> mandatory P8 -> independently verify exact resulting main
-  -> fresh RT-1D runtime -> runtime P8
+  -> mandatory S3B P8 current-authority synchronization PR #797 result e221f17906682bdb077d8016e09843d176af5df4
+  -> S3C implementation PR #798 result 56fa66fdba475a3d6e1a4bc4cbc3480ba238720e
+  -> mandatory S3C P8 current-authority synchronization PR #799 current
+  -> independently verify S3C P8 PR #799 exact resulting main
+  -> fresh RT-1D runtime next, not started -> separate implementation transaction -> runtime P8
 ```
 
-S3A and its mandatory P8 PR #795 are complete, with P8 result `bc27c25d0b745fc2d9927e9e21179b14cd337141`. S3B and its mandatory P8 PR #797 are complete, with P8 result `e221f17906682bdb077d8016e09843d176af5df4`. S3C completed in PR #798 with exact resulting main `56fa66fdba475a3d6e1a4bc4cbc3480ba238720e`. The mandatory S3C P8 current-authority synchronization PR #799 is current. Fresh RT-1D runtime is next but has not started and remains non-executable until this P8 merges and its exact resulting main is independently verified. Primary MEM remains the sole ordinary served memory and Retrieval authority. Subjective ordinary retrieval remains disabled and unwired. No cutover, authority switch, serving, fallback, or retirement change occurred. Fresh RT-1D runtime is next but has not started and remains non-executable until this P8 merges and its exact resulting main is independently verified. No Lane C
+S3A and its mandatory P8 PR #795 are complete, with P8 result `bc27c25d0b745fc2d9927e9e21179b14cd337141`. S3B and its mandatory P8 PR #797 are complete, with P8 result `e221f17906682bdb077d8016e09843d176af5df4`. S3C completed in PR #798 with exact resulting main `56fa66fdba475a3d6e1a4bc4cbc3480ba238720e`. The mandatory S3C P8 current-authority synchronization PR #799 is current. Fresh RT-1D runtime is next but has not started and remains non-executable until this P8 merges and its exact resulting main is independently verified. Primary MEM remains the sole ordinary served memory and Retrieval authority. Subjective ordinary retrieval remains disabled and unwired. No cutover, authority switch, serving, fallback, or retirement change occurred. No Lane C
 transaction overlaps. Only the exact resulting main after S3C P8 verification may bootstrap
 fresh runtime implementation. All three slices preserve Primary-only behavior
 and exclude cutover binding, configuration, authority selection, Subjective
