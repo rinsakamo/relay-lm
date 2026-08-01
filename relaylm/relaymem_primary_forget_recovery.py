@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from hashlib import sha256
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -11,6 +10,10 @@ from ._relaymem_primary_forget_impl import PrimaryForgetError
 from ._relaymem_primary_index_log_apply_io import apply_or_inspect_reconciliation
 from ._relaymem_primary_page_writer_common import is_sha256
 from .relaymem_primary_current_state import resolve_primary_current_state
+from ._relaymem_primary_forget_apply import (
+    PrimaryForgetApplyDependencies,
+    apply_primary_memory_forget as _apply_primary_memory_forget,
+)
 from .relaymem_primary_forget_artifact import (
     PrimaryForgetArtifactError,
     forget_operation_key,
@@ -167,8 +170,24 @@ def apply_primary_memory_forget(
     fault_at: str | None = None,
 ) -> PrimaryForgetApplyResult:
     """Apply or exactly replay one Forget operation through tombstone finalization."""
-
-    _validate_apply_request(
+    dependencies = PrimaryForgetApplyDependencies(
+        error_type=PrimaryForgetError,
+        mutation_lock=primary_memory_mutation_lock,
+        read_prepared=read_forget_prepared,
+        read_tombstone=read_forget_tombstone,
+        tombstone_matches_prepared=tombstone_matches_prepared,
+        verify_hidden_page=verify_hidden_page_against_prepared,
+        controls_are_converged=controls_are_exactly_converged,
+        hidden_successor_apply=apply_primary_memory_forget_hidden_successor,
+        resolve_current_state=resolve_primary_current_state,
+        finalize_locked=_finalize_locked,
+        result_from_tombstone=_apply_result_from_tombstone,
+        already_hidden_result=_already_hidden_apply_result,
+        result_type=PrimaryForgetApplyResult,
+        allowed_faults=frozenset(_ALLOWED_FAULTS),
+    )
+    return _apply_primary_memory_forget(
+        dependencies=dependencies,
         store_root=store_root,
         character_id=character_id,
         namespace=namespace,
@@ -178,130 +197,9 @@ def apply_primary_memory_forget(
         reason=reason,
         operation_id=operation_id,
         apply_token=apply_token,
+        now=now,
         fault_at=fault_at,
     )
-    root = Path(store_root)
-    operation_key = _operation_key(operation_id)
-    token_digest = sha256(apply_token.encode("utf-8")).hexdigest()
-    reason_digest = sha256(reason.encode("utf-8")).hexdigest()
-
-    try:
-        with primary_memory_mutation_lock(root, memory_id):
-            _fault(fault_at, "after_lock_before_operation_reread")
-            tombstone = read_forget_tombstone(
-                root, memory_id=memory_id, operation_key=operation_key
-            )
-            prepared = read_forget_prepared(
-                root, memory_id=memory_id, operation_key=operation_key
-            )
-            if tombstone is not None:
-                _validate_external_tombstone_replay(
-                    tombstone,
-                    prepared=prepared,
-                    character_id=character_id,
-                    namespace=namespace,
-                    memory_id=memory_id,
-                    expected_revision=expected_revision,
-                    reason=reason,
-                    reason_digest=reason_digest,
-                    operation_id=operation_id,
-                    token_digest=token_digest,
-                    root=root,
-                )
-                return _apply_result_from_tombstone(
-                    tombstone, idempotent_replay=True, tombstone_created=False
-                )
-            if prepared is not None:
-                _validate_external_prepared_replay(
-                    prepared,
-                    character_id=character_id,
-                    namespace=namespace,
-                    memory_id=memory_id,
-                    expected_revision=expected_revision,
-                    reason=reason,
-                    reason_digest=reason_digest,
-                    operation_id=operation_id,
-                    token_digest=token_digest,
-                )
-                _fault(fault_at, "after_prepared_reread_before_hidden_resume")
-                return _finalize_locked(
-                    root,
-                    prepared=prepared,
-                    result_type=PrimaryForgetApplyResult,
-                    now=now,
-                    fault_at=fault_at,
-                )
-
-        # No durable operation exists for this exact key.  The completed I-4C1
-        # boundary performs live-token validation and the shared revision claim
-        # under the same canonical lock.  Releasing and reacquiring here cannot
-        # create a second winner because I-4C1 owns the no-clobber prepare commit.
-        i4c1_fault = (
-            "after_hidden_successor_publication_before_reread"
-            if fault_at == "after_hidden_successor_publish_before_reread"
-            else None
-        )
-        try:
-            apply_primary_memory_forget_hidden_successor(
-                store_root=store_root,
-                character_id=character_id,
-                namespace=namespace,
-                memory_id=memory_id,
-                expected_revision=expected_revision,
-                expected_lifecycle_state=expected_lifecycle_state,
-                reason=reason,
-                operation_id=operation_id,
-                apply_token=apply_token,
-                now=now,
-                fault_at=i4c1_fault,
-            )
-        except PrimaryForgetError as exc:
-            if exc.code in {"target_not_active", "operation_conflict"}:
-                state = resolve_primary_current_state(
-                    root, namespace=namespace, memory_id=memory_id
-                )
-                if state.lifecycle_state == "hidden" and state.mutation_state == "none":
-                    return _already_hidden_apply_result(
-                        expected_revision=expected_revision,
-                        result_revision=state.current_revision,
-                    )
-            raise
-
-        with primary_memory_mutation_lock(root, memory_id):
-            prepared = read_forget_prepared(
-                root, memory_id=memory_id, operation_key=operation_key
-            )
-            if prepared is None:
-                raise PrimaryForgetError("reconciliation_required")
-            _validate_external_prepared_replay(
-                prepared,
-                character_id=character_id,
-                namespace=namespace,
-                memory_id=memory_id,
-                expected_revision=expected_revision,
-                reason=reason,
-                reason_digest=reason_digest,
-                operation_id=operation_id,
-                token_digest=token_digest,
-            )
-            return _finalize_locked(
-                root,
-                prepared=prepared,
-                result_type=PrimaryForgetApplyResult,
-                now=now,
-                fault_at=fault_at,
-            )
-    except PrimaryForgetError:
-        raise
-    except (
-        PrimaryForgetArtifactError,
-        PrimaryMutationCoordinatorError,
-        PrimaryForgetHiddenResumeError,
-        PrimaryForgetControlConvergenceError,
-    ) as exc:
-        raise PrimaryForgetError(_map_error(getattr(exc, "code", "failed"))) from exc
-    except OSError as exc:
-        raise PrimaryForgetError("store_unavailable") from exc
 
 
 def recover_primary_memory_forget(
@@ -326,57 +224,12 @@ def recover_primary_memory_forget(
     operation_key = _operation_key(operation_id)
     try:
         with primary_memory_mutation_lock(root, memory_id):
-            _fault(fault_at, "after_lock_before_operation_reread")
-            tombstone = read_forget_tombstone(
-                root, memory_id=memory_id, operation_key=operation_key
-            )
-            prepared = read_forget_prepared(
-                root, memory_id=memory_id, operation_key=operation_key
-            )
-            if tombstone is not None:
-                _validate_internal_tombstone(
-                    tombstone,
-                    prepared=prepared,
-                    namespace=namespace,
-                    memory_id=memory_id,
-                    operation_id=operation_id,
-                    root=root,
-                )
-                return _recovery_result_from_tombstone(
-                    tombstone, idempotent_replay=True, tombstone_created=False
-                )
-            if prepared is None:
-                return PrimaryForgetRecoveryResult(
-                    status="not_recoverable",
-                    prepared_present=False,
-                    hidden_successor_present=False,
-                    page_converged=False,
-                    index_converged=False,
-                    log_converged=False,
-                    tombstone_present=False,
-                    tombstone_created=False,
-                    applied_receipt_present=False,
-                    idempotent_replay=False,
-                    lifecycle_state="unknown",
-                    mutation_state="none",
-                    retrieval_eligible=False,
-                    prior_revision=0,
-                    result_revision=0,
-                    recovery_required=False,
-                    reason_ids=("forget_operation_not_found",),
-                )
-            if (
-                prepared.get("namespace") != namespace
-                or prepared.get("memory_id") != memory_id
-                or prepared.get("operation_id") != operation_id
-                or prepared.get("operation_key") != operation_key
-            ):
-                raise PrimaryForgetError("operation_conflict")
-            _fault(fault_at, "after_prepared_reread_before_hidden_resume")
-            return _finalize_locked(
+            return _recover_locked(
                 root,
-                prepared=prepared,
-                result_type=PrimaryForgetRecoveryResult,
+                namespace=namespace,
+                memory_id=memory_id,
+                operation_id=operation_id,
+                operation_key=operation_key,
                 now=now,
                 fault_at=fault_at,
             )
@@ -393,6 +246,78 @@ def recover_primary_memory_forget(
         raise PrimaryForgetError("store_unavailable") from exc
 
 
+def _recover_locked(
+    root: Path,
+    *,
+    namespace: str,
+    memory_id: str,
+    operation_id: str,
+    operation_key: str,
+    now: datetime | None,
+    fault_at: str | None,
+) -> PrimaryForgetRecoveryResult:
+    _fault(fault_at, "after_lock_before_operation_reread")
+    tombstone = read_forget_tombstone(
+        root, memory_id=memory_id, operation_key=operation_key
+    )
+    prepared = read_forget_prepared(
+        root, memory_id=memory_id, operation_key=operation_key
+    )
+    if tombstone is not None:
+        _validate_internal_tombstone(
+            tombstone,
+            prepared=prepared,
+            namespace=namespace,
+            memory_id=memory_id,
+            operation_id=operation_id,
+            root=root,
+        )
+        return _recovery_result_from_tombstone(
+            tombstone, idempotent_replay=True, tombstone_created=False
+        )
+    if prepared is None:
+        return _not_recoverable_result()
+    if (
+        prepared.get("namespace") != namespace
+        or prepared.get("memory_id") != memory_id
+        or prepared.get("operation_id") != operation_id
+        or prepared.get("operation_key") != operation_key
+    ):
+        raise PrimaryForgetError("operation_conflict")
+    _fault(fault_at, "after_prepared_reread_before_hidden_resume")
+    result = _finalize_locked(
+        root,
+        prepared=prepared,
+        result_type=PrimaryForgetRecoveryResult,
+        now=now,
+        fault_at=fault_at,
+    )
+    assert isinstance(result, PrimaryForgetRecoveryResult)
+    return result
+
+
+def _not_recoverable_result() -> PrimaryForgetRecoveryResult:
+    return PrimaryForgetRecoveryResult(
+        status="not_recoverable",
+        prepared_present=False,
+        hidden_successor_present=False,
+        page_converged=False,
+        index_converged=False,
+        log_converged=False,
+        tombstone_present=False,
+        tombstone_created=False,
+        applied_receipt_present=False,
+        idempotent_replay=False,
+        lifecycle_state="unknown",
+        mutation_state="none",
+        retrieval_eligible=False,
+        prior_revision=0,
+        result_revision=0,
+        recovery_required=False,
+        reason_ids=("forget_operation_not_found",),
+    )
+
+
 def _finalize_locked(
     root: Path,
     *,
@@ -401,6 +326,20 @@ def _finalize_locked(
     now: datetime | None,
     fault_at: str | None,
 ) -> PrimaryForgetApplyResult | PrimaryForgetRecoveryResult:
+    _resolve_hidden_state(root, prepared=prepared, fault_at=fault_at)
+    _converge_hidden_controls(root, prepared=prepared, fault_at=fault_at)
+    return _finalize_tombstone(
+        root,
+        prepared=prepared,
+        result_type=result_type,
+        now=now,
+        fault_at=fault_at,
+    )
+
+
+def _resolve_hidden_state(
+    root: Path, *, prepared: Mapping[str, Any], fault_at: str | None
+) -> None:
     state = resolve_forget_current_state(
         root,
         namespace=str(prepared["namespace"]),
@@ -415,6 +354,10 @@ def _finalize_locked(
         raise PrimaryForgetError("target_corrupt")
     _fault(fault_at, "after_hidden_reread_before_m3f")
 
+
+def _converge_hidden_controls(
+    root: Path, *, prepared: Mapping[str, Any], fault_at: str | None
+) -> None:
     plan = build_hidden_control_reconciliation_plan(root, prepared=prepared)
     _fault(fault_at, "after_m3f_plan_before_m3g")
     if fault_at == "after_m3g_index_before_log":
@@ -438,6 +381,15 @@ def _finalize_locked(
         raise PrimaryForgetError("reconciliation_required")
     _fault(fault_at, "after_controls_reread_before_tombstone")
 
+
+def _finalize_tombstone(
+    root: Path,
+    *,
+    prepared: Mapping[str, Any],
+    result_type: type[PrimaryForgetApplyResult] | type[PrimaryForgetRecoveryResult],
+    now: datetime | None,
+    fault_at: str | None,
+) -> PrimaryForgetApplyResult | PrimaryForgetRecoveryResult:
     existing = read_forget_tombstone(
         root,
         memory_id=str(prepared["memory_id"]),
@@ -482,73 +434,6 @@ def _finalize_locked(
     if fault_at == "after_finalization_before_return":
         raise PrimaryForgetError("response_lost")
     return result
-
-
-def _validate_external_prepared_replay(
-    prepared: Mapping[str, Any],
-    *,
-    character_id: str,
-    namespace: str,
-    memory_id: str,
-    expected_revision: int,
-    reason: str,
-    reason_digest: str,
-    operation_id: str,
-    token_digest: str,
-) -> None:
-    expected = {
-        "character_id": character_id,
-        "namespace": namespace,
-        "memory_id": memory_id,
-        "prior_revision": expected_revision,
-        "result_revision": expected_revision + 1,
-        "prior_lifecycle_state": "active",
-        "result_lifecycle_state": "hidden",
-        "reason": reason,
-        "reason_digest": reason_digest,
-        "operation_id": operation_id,
-        "operation_key": _operation_key(operation_id),
-        "token_digest": token_digest,
-    }
-    if any(prepared.get(key) != value for key, value in expected.items()):
-        raise PrimaryForgetError("operation_conflict")
-
-
-def _validate_external_tombstone_replay(
-    tombstone: Mapping[str, Any],
-    *,
-    prepared: Mapping[str, Any] | None,
-    character_id: str,
-    namespace: str,
-    memory_id: str,
-    expected_revision: int,
-    reason: str,
-    reason_digest: str,
-    operation_id: str,
-    token_digest: str,
-    root: Path,
-) -> None:
-    if prepared is None or not tombstone_matches_prepared(tombstone, prepared):
-        raise PrimaryForgetError("target_corrupt")
-    expected = {
-        "character_id": character_id,
-        "namespace": namespace,
-        "memory_id": memory_id,
-        "prior_revision": expected_revision,
-        "result_revision": expected_revision + 1,
-        "reason": reason,
-        "reason_digest": reason_digest,
-        "operation_id": operation_id,
-        "operation_key": _operation_key(operation_id),
-        "token_digest": token_digest,
-    }
-    if any(tombstone.get(key) != value for key, value in expected.items()):
-        raise PrimaryForgetError("operation_conflict")
-    if (
-        not verify_hidden_page_against_prepared(root, prepared=prepared)
-        or not controls_are_exactly_converged(root, prepared=prepared)
-    ):
-        raise PrimaryForgetError("target_corrupt")
 
 
 def _validate_internal_tombstone(
@@ -650,38 +535,6 @@ def _already_hidden_apply_result(
         recovery_required=False,
         reason_ids=("target_already_hidden",),
     )
-
-
-def _validate_apply_request(
-    *,
-    store_root: str,
-    character_id: str,
-    namespace: str,
-    memory_id: str,
-    expected_revision: int,
-    expected_lifecycle_state: str,
-    reason: str,
-    operation_id: str,
-    apply_token: str,
-    fault_at: str | None,
-) -> None:
-    if not _bounded_store_root(store_root):
-        raise PrimaryForgetError("store_unavailable")
-    for value in (character_id, namespace, operation_id):
-        if not _bounded(value, 128, multiline=False):
-            raise PrimaryForgetError("invalid_request")
-    if not is_sha256(memory_id):
-        raise PrimaryForgetError("target_not_found")
-    if type(expected_revision) is not int or expected_revision < 1:
-        raise PrimaryForgetError("invalid_request")
-    if expected_lifecycle_state != "active":
-        raise PrimaryForgetError("invalid_request")
-    if not _bounded(reason, 512, multiline=True):
-        raise PrimaryForgetError("invalid_request")
-    if not isinstance(apply_token, str) or not apply_token or len(apply_token) > 8192:
-        raise PrimaryForgetError("token_invalid")
-    if fault_at not in _ALLOWED_FAULTS:
-        raise PrimaryForgetError("invalid_request")
 
 
 def _validate_recovery_request(
