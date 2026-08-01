@@ -1700,6 +1700,11 @@ This authorization PR contains no runtime implementation, deployment approval, d
 
 This architecture-only transaction selected **Codex Cloud**, inspected exact
 `origin/main` `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`, and authorizes budgets only.
+Fresh RT-1D runtime P0/P1 architecture authorization PR #800 is the current Lane
+C transaction. PR #800 is architecture-only and requires no P8. RT-1D-R1 is not
+started and is non-executable until PR #800 merges and its exact resulting main
+is independently verified; no implementation slice may start from the PR head,
+and only PR #800's independently verified resulting main may bootstrap R1.
 PR #799 is merged with head `b596ffc5cf9cf7f0d38d862dd7a81c12509aa182`
 and that exact resulting main; PR #798 is merged with result
 `56fa66fdba475a3d6e1a4bc4cbc3480ba238720e`. There was no open PR, target

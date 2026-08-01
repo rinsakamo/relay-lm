@@ -785,14 +785,26 @@ FRESH_RT1D_ANCHORS = {
     STATUS: (
         "Fresh exact-current RT-1D P0/P1 inspection now authorizes the ordered runtime implementation budgets",
         "No implementation slice has started",
+        "Fresh RT-1D runtime P0/P1 architecture authorization PR #800 is the current Lane C transaction",
+        "PR #800 requires no P8",
+        "RT-1D-R1 is not started",
+        "only PR #800's independently verified resulting main may bootstrap R1",
     ),
     PLAN: (
         "## RT-1D fresh runtime implementation authorization",
+        "Fresh RT-1D runtime P0/P1 architecture authorization PR #800 is the current Lane C transaction",
         "RT-1D-R1 durable preparation -> R2 Primary",
         "R5 immediate retirement/proof",
+        "PR #800 is architecture-only and requires no P8",
+        "RT-1D-R1 is not started",
+        "only PR #800's independently verified resulting main may bootstrap R1",
     ),
     RT1C: (
         "## Fresh exact-current RT-1D runtime P0/P1 authorization (2026-08-01)",
+        "Fresh RT-1D runtime P0/P1 architecture authorization PR #800 is the current Lane",
+        "PR #800 is architecture-only and requires no P8",
+        "RT-1D-R1 is not\nstarted and is non-executable until PR #800 merges and its exact resulting main\nis independently verified",
+        "only PR #800's independently verified resulting main may bootstrap R1",
         "#### RT-1D-R1 — durable preparation (default-off)",
         "#### RT-1D-R2 — Primary writer-fence carriage (default-off)",
         "#### RT-1D-R3 — rehearsal and readiness",
@@ -898,6 +910,37 @@ def self_test() -> None:
                 continue
             raise AssertionError(f"{path}: anchor is not enforced: {anchor!r}")
         print(f"PASS: removal and alteration of {anchor.splitlines()[0]!r} fail closed")
+    for path in FRESH_RT1D_ANCHORS:
+        body = read(path)
+        wrong_pr = body.replace("PR #800", "PR #801")
+        try:
+            require_body(path, REQUIRED[path], wrong_pr)
+        except AssertionError:
+            print(f"PASS: {path}: replacing PR #800 with PR #801 fails closed")
+        else:
+            raise AssertionError(f"{path}: PR #801 substitution is not rejected")
+
+        current_anchor = next(
+            anchor for anchor in FRESH_RT1D_ANCHORS[path] if "current Lane" in anchor
+        )
+        try:
+            require_body(path, REQUIRED[path], body.replace(current_anchor, ""))
+        except AssertionError:
+            print(f"PASS: {path}: removing the PR #800 current transaction fails closed")
+        else:
+            raise AssertionError(f"{path}: unnumbered current transaction is not rejected")
+
+        r1_anchor = next(
+            anchor for anchor in FRESH_RT1D_ANCHORS[path] if "RT-1D-R1 is not" in anchor
+        )
+        started_anchor = r1_anchor.replace("is not", "is")
+        started = body.replace(r1_anchor, started_anchor)
+        try:
+            require_body(path, REQUIRED[path], started)
+        except AssertionError:
+            print(f"PASS: {path}: describing RT-1D-R1 as started fails closed")
+        else:
+            raise AssertionError(f"{path}: started R1 is not rejected")
     for path, stale in STALE_PROBES:
         body = read(path)
         assert stale not in body, f"{path}: stale anchor is present: {stale!r}"
