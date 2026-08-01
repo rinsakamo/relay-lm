@@ -352,7 +352,7 @@ S3A_COMPLETION_ANCHORS = {
         "largest touched\norchestration span is 73 lines",
         "No production monkeypatch",
         "The mandatory S3C P8 current-authority synchronization PR #799 merged as exact current main `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`.",
-        "No runtime implementation has started",
+        "At that inspection, no runtime implementation had started",
         "Fresh exact-current RT-1D P0/P1 inspection now authorizes the ordered runtime implementation budgets",
         "Primary MEM remains the sole served ordinary memory and Retrieval authority.",
     ),
@@ -395,7 +395,7 @@ S3B_COMPLETION_ANCHORS = {
         "S3C implementation PR #798 result 56fa66fdba475a3d6e1a4bc4cbc3480ba238720e",
         "mandatory S3C P8 current-authority synchronization PR #799 result d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f",
         "independently verify S3C P8 PR #799 exact resulting main",
-        "fresh RT-1D runtime next, not started -> separate implementation transaction -> runtime P8",
+        "R1 PR #801 result 90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd -> mandatory R1 P8 PR #802 current -> R2 next, not started",
     ),
 }
 for _path, _anchors in S3B_COMPLETION_ANCHORS.items():
@@ -435,6 +435,13 @@ for _path, _anchors in S3C_COMPLETION_ANCHORS.items():
 CURRENT_DOCS = tuple(REQUIRED)
 
 STALE = (
+    "RT-1D-R1 is next but non-executable until PR #800 merges",
+    "fresh RT-1D runtime P0/P1 architecture authorization PR #800 current",
+    "Fresh RT-1D runtime P0/P1 architecture authorization PR #800 current",
+    "independently verify PR #800 exact resulting main after merge",
+    "RT-1D-R1 next, not started",
+    "RT-1D-R1 is not\nstarted and is non-executable until PR #800 merges",
+    "No runtime implementation has started.",
     "PR #793 must merge before S3A",
     "PR #793 must merge and its exact resulting main must be independently verified before S3A",
     "S3A has not started",
@@ -781,44 +788,59 @@ PROBES += tuple((path, anchor) for path, anchors in S3A_COMPLETION_ANCHORS.items
 PROBES += tuple((path, anchor) for path, anchors in S3B_COMPLETION_ANCHORS.items() for anchor in anchors)
 PROBES += tuple((path, anchor) for path, anchors in S3C_COMPLETION_ANCHORS.items() for anchor in anchors)
 
-FRESH_RT1D_ANCHORS = {
+R1_P8_ANCHORS = {
     STATUS: (
-        "Fresh exact-current RT-1D P0/P1 inspection now authorizes the ordered runtime implementation budgets",
-        "No implementation slice has started",
-        "Fresh RT-1D runtime P0/P1 architecture authorization PR #800 is the current Lane C transaction",
-        "PR #800 requires no P8",
-        "RT-1D-R1 is not started",
-        "only PR #800's independently verified resulting main may bootstrap R1",
+        "PR #800 architecture authorization is complete with result `68cc16b9d5ed7b999c22d27457390e53de851335`",
+        "PR #801 at final head `ac54854f82bd03c11425efa3014919ec004e72a5` with exact result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`",
+        "Mandatory R1 P8 current-authority synchronization PR #802 is current",
+        "R2 is next but not started and is non-executable until this P8 merges and its exact resulting main is independently verified",
+        "only that verified resulting main may bootstrap R2, never the P8 head",
+        "Subjective ordinary Retrieval remains disabled and unwired",
+        "Mandatory R1 P8 PR #802 is current. R2 is next but not started and is non-executable until PR #802 merges",
+        "only that verified P8 resulting main may bootstrap R2",
+        "architecture PR #800 result 68cc16b9d5ed7b999c22d27457390e53de851335; no P8",
+        "R1 PR #801 result 90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd",
+        "independently verify PR #802 exact resulting main after merge",
     ),
     PLAN: (
-        "## RT-1D fresh runtime implementation authorization",
-        "Fresh RT-1D runtime P0/P1 architecture authorization PR #800 is the current Lane C transaction",
-        "RT-1D-R1 durable preparation -> R2 Primary",
-        "R5 immediate retirement/proof",
-        "PR #800 is architecture-only and requires no P8",
-        "RT-1D-R1 is not started",
-        "only PR #800's independently verified resulting main may bootstrap R1",
+        "PR #800 completed the R1-R5 architecture budget with result `68cc16b9d5ed7b999c22d27457390e53de851335`",
+        "PR #801 completed at final head `ac54854f82bd03c11425efa3014919ec004e72a5` with exact result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`",
+        "Mandatory R1 P8 current-authority synchronization PR #802 is current",
+        "R2 is next but not started",
+        "R2 is non-executable until this P8 merges",
+        "only that verified resulting main may bootstrap R2, never the P8 head",
+        "architecture PR #800 result `68cc16b9d5ed7b999c22d27457390e53de851335` -> R1 PR #801 result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd` -> mandatory R1 P8 PR #802 current",
+        "independently verify PR #802 exact resulting main after merge -> R2 next, not started; only the verified P8 result may bootstrap R2",
     ),
     RT1C: (
-        "## Fresh exact-current RT-1D runtime P0/P1 authorization (2026-08-01)",
-        "Fresh RT-1D runtime P0/P1 architecture authorization PR #800 is the current Lane",
-        "PR #800 is architecture-only and requires no P8",
-        "RT-1D-R1 is not\nstarted and is non-executable until PR #800 merges and its exact resulting main\nis independently verified",
-        "only PR #800's independently verified resulting main may bootstrap R1",
-        "#### RT-1D-R1 — durable preparation (default-off)",
-        "#### RT-1D-R2 — Primary writer-fence carriage (default-off)",
-        "#### RT-1D-R3 — rehearsal and readiness",
-        "#### RT-1D-R4 — one-authority activation",
-        "#### RT-1D-R5 — immediate retirement and proof",
-        "subjective_reader_enabled (Subjective only; same atomic transaction as receipt)",
-        "Configuration\nalone never selects authority",
+        "## RT-1D-R1 completion evidence and mandatory P8 gate",
+        "The exact five-path R1 inventory is +894/-0",
+        "`relaylm/subjective_mem_retrieval_cutover.py` is the sole semantic owner: 403 physical lines, largest function 46 lines",
+        "rehearse_subjective_mem_retrieval_cutover(*, store: EvidenceRecordStore",
+        "Only `primary_only` and `rehearsal` exist",
+        "primary_stable\n-> rehearsal_ready\n-> transfer_intent\n-> primary_reader_fenced\n-> primary_writer_fenced\n-> subjective_generation_bound\n-> subjective_reader_enabled\n-> transfer_receipt_finalized\n-> post_transfer_validated\n-> retirement_complete",
+        "No production semantic record constructor or writer exists",
+        "Subjective serving is false, both fences are false",
+        "Mandatory R1 P8 current-authority synchronization PR #802 is current",
+        "Only that verified resulting main may bootstrap R2; the P8 head may not",
+        "`relaylm/evidence_store.py` `41cfa9af6c32c1359be04f497924883ffbc4abb4e39313a44755494f92e2b41f`",
+        "At that inspection, RT-1D-R1 had not started and was non-executable until PR",
+        "#800 merged and its exact resulting main was independently verified",
+        "At that inspection, no runtime implementation had started",
+        "independently verified resulting main bootstrapped R1",
     ),
 }
-for _path, _anchors in FRESH_RT1D_ANCHORS.items():
-    REQUIRED[_path] = REQUIRED[_path] + _anchors
-PROBES += tuple((path, anchor) for path, anchors in FRESH_RT1D_ANCHORS.items() for anchor in anchors)
+for _path, _anchors in R1_P8_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple((path, anchor) for path, anchors in R1_P8_ANCHORS.items() for anchor in anchors)
 
 STALE_PROBES = (
+    (STATUS, "RT-1D-R1 is next but non-executable until PR #800 merges"),
+    (STATUS, "fresh RT-1D runtime P0/P1 architecture authorization PR #800 current"),
+    (PLAN, "independently verify PR #800 exact resulting main after merge"),
+    (PLAN, "RT-1D-R1 next, not started"),
+    (RT1C, "RT-1D-R1 is not\nstarted and is non-executable until PR #800 merges"),
+    (RT1C, "No runtime implementation has started."),
     (STATUS, "PR #793 must merge before S3A"),
     (PLAN, "PR #793 must merge and its exact resulting main must be independently verified before S3A"),
     (STATUS, "S3A has not started"),
@@ -910,37 +932,24 @@ def self_test() -> None:
                 continue
             raise AssertionError(f"{path}: anchor is not enforced: {anchor!r}")
         print(f"PASS: removal and alteration of {anchor.splitlines()[0]!r} fail closed")
-    for path in FRESH_RT1D_ANCHORS:
+    focused_mutations = (
+        (STATUS, "Mandatory R1 P8 PR #802 is current", "Mandatory R1 P8 PR #803 is current", "wrong P8 PR number"),
+        (PLAN, "mandatory R1 P8 PR #802 current", "mandatory R1 P8 PR #803 current", "wrong P8 PR number"),
+        (RT1C, "Mandatory R1 P8 current-authority synchronization PR #802 is current", "Mandatory R1 P8 current-authority synchronization PR #803 is current", "wrong P8 PR number"),
+        (STATUS, "R2 is next but not started and is non-executable", "R2 is started and executable", "started R2"),
+        (PLAN, "R2 is non-executable until this P8 merges", "R2 is executable from the P8 head", "P8-head R2 execution"),
+        (RT1C, "Only that verified resulting main may bootstrap R2; the P8 head may not", "The P8 head may bootstrap R2", "P8-head R2 bootstrap"),
+        (RT1C, "At that inspection, RT-1D-R1 had not started", "RT-1D-R1 is not started", "present-tense historical regression"),
+    )
+    for path, current, damaged, label in focused_mutations:
         body = read(path)
-        wrong_pr = body.replace("PR #800", "PR #801")
+        assert current in body, f"{path}: focused anchor absent: {current!r}"
         try:
-            require_body(path, REQUIRED[path], wrong_pr)
+            require_body(path, REQUIRED[path], body.replace(current, damaged))
         except AssertionError:
-            print(f"PASS: {path}: replacing PR #800 with PR #801 fails closed")
+            print(f"PASS: {path}: {label} fails closed")
         else:
-            raise AssertionError(f"{path}: PR #801 substitution is not rejected")
-
-        current_anchor = next(
-            anchor for anchor in FRESH_RT1D_ANCHORS[path] if "current Lane" in anchor
-        )
-        try:
-            require_body(path, REQUIRED[path], body.replace(current_anchor, ""))
-        except AssertionError:
-            print(f"PASS: {path}: removing the PR #800 current transaction fails closed")
-        else:
-            raise AssertionError(f"{path}: unnumbered current transaction is not rejected")
-
-        r1_anchor = next(
-            anchor for anchor in FRESH_RT1D_ANCHORS[path] if "RT-1D-R1 is not" in anchor
-        )
-        started_anchor = r1_anchor.replace("is not", "is")
-        started = body.replace(r1_anchor, started_anchor)
-        try:
-            require_body(path, REQUIRED[path], started)
-        except AssertionError:
-            print(f"PASS: {path}: describing RT-1D-R1 as started fails closed")
-        else:
-            raise AssertionError(f"{path}: started R1 is not rejected")
+            raise AssertionError(f"{path}: {label} is not rejected")
     for path, stale in STALE_PROBES:
         body = read(path)
         assert stale not in body, f"{path}: stale anchor is present: {stale!r}"
