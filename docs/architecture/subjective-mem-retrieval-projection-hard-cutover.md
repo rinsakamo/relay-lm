@@ -2051,7 +2051,7 @@ Focused R1 validation was 38 passed and focused config/store/import validation w
 
 ### Current gate
 
-Mandatory R1 P8 PR #802 completed with exact resulting main `9ce7de054869ef29cc508d176023a93947489c25`. The initial R2 attempt returned at P1 with no repository mutation because exact-main `relaylm/_relaymem_primary_pipeline_impl.py` was 1,033 physical lines at blob `faf3fc71227da8e156f8d12f940591f189d1bb0c` and `relaylm/relaymem_primary_pin.py` was 742 physical lines at blob `ee4db564faccb41e2354a639a527e3c8a3652f40`, triggering structural review. This architecture-only stable-structure amendment is current as Draft PR number pending and requires no P8. R2 remains not started and may restart only after this amendment merges and its exact resulting main is independently verified; only that result, never the amendment PR head, may bootstrap renewed R2 P0/P1.
+Mandatory R1 P8 PR #802 completed with exact resulting main `9ce7de054869ef29cc508d176023a93947489c25`. The initial R2 attempt returned at P1 with no repository mutation because exact-main `relaylm/_relaymem_primary_pipeline_impl.py` was 1,033 physical lines at blob `faf3fc71227da8e156f8d12f940591f189d1bb0c` and `relaylm/relaymem_primary_pin.py` was 742 physical lines at blob `ee4db564faccb41e2354a639a527e3c8a3652f40`, triggering structural review. This architecture-only stable-structure amendment is current as Draft PR #803 and requires no P8. R2 remains not started and may restart only after this amendment merges and its exact resulting main is independently verified; only that result, never the amendment PR head, may bootstrap renewed R2 P0/P1.
 
 ### RT-1D-R2 P1 stable-structure amendment
 

@@ -166,7 +166,7 @@ LC-1 lifecycle migration                                    complete; LC-1A Corr
                                            -> architecture PR #800 result 68cc16b9d5ed7b999c22d27457390e53de851335; no P8
                                               -> R1 PR #801 result 90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd
                                                  -> mandatory R1 P8 PR #802 complete; exact resulting main 9ce7de054869ef29cc508d176023a93947489c25
-                                                    -> R2 P1 stable-structure amendment current; Draft PR number pending
+                                                    -> R2 P1 stable-structure amendment current; Draft PR #803
                                                        -> R2 not started; restart only from the amendment's independently verified resulting main
 
 Parallel decision work:
@@ -193,7 +193,7 @@ Parallel decision work:
 
 ## RT-1D-R2 P1 stable-structure amendment (current)
 
-PR #800 architecture authorization completed with result `68cc16b9d5ed7b999c22d27457390e53de851335`. R1 PR #801 completed with result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`, and mandatory R1 P8 PR #802 completed with exact resulting main `9ce7de054869ef29cc508d176023a93947489c25`. The initial R2 attempt returned at P1 with no repository mutation because two pre-existing authorized modules triggered structural review. This architecture-only amendment is current as Draft PR number pending, requires no P8, and R2 remains not started. R2 may restart only after this amendment merges and its exact resulting main is independently verified; only that verified resulting main, never the amendment PR head, may bootstrap renewed R2 P0/P1.
+PR #800 architecture authorization completed with result `68cc16b9d5ed7b999c22d27457390e53de851335`. R1 PR #801 completed with result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`, and mandatory R1 P8 PR #802 completed with exact resulting main `9ce7de054869ef29cc508d176023a93947489c25`. The initial R2 attempt returned at P1 with no repository mutation because two pre-existing authorized modules triggered structural review. This architecture-only amendment is current as Draft PR #803, requires no P8, and R2 remains not started. R2 may restart only after this amendment merges and its exact resulting main is independently verified; only that verified resulting main, never the amendment PR head, may bootstrap renewed R2 P0/P1.
 
 Primary MEM remains the sole ordinary served memory and Retrieval authority. Subjective ordinary Retrieval remains disabled and unwired. R1 is default-off, caller-invoked, Primary-only preparation: no cutover intent, fence, activation, final receipt, serving or fallback change, writer-authority change, or retirement occurred.
 
