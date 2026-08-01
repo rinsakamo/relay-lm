@@ -1650,10 +1650,10 @@ S1 PR #789 result b272edb78602032009d4882a6244883cce610b86
   -> S3C implementation PR #798 result 56fa66fdba475a3d6e1a4bc4cbc3480ba238720e
   -> mandatory S3C P8 current-authority synchronization PR #799 result d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f
   -> independently verify S3C P8 PR #799 exact resulting main
-  -> fresh RT-1D runtime next, not started -> separate implementation transaction -> runtime P8
+  -> R1 PR #801 result 90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd -> mandatory R1 P8 PR #802 current -> R2 next, not started
 ```
 
-S3A and its mandatory P8 PR #795 are complete, with P8 result `bc27c25d0b745fc2d9927e9e21179b14cd337141`. S3B and its mandatory P8 PR #797 are complete, with P8 result `e221f17906682bdb077d8016e09843d176af5df4`. S3C completed in PR #798 with exact resulting main `56fa66fdba475a3d6e1a4bc4cbc3480ba238720e`. The mandatory S3C P8 current-authority synchronization PR #799 merged with exact resulting main `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`. Fresh RT-1D runtime is architecture-authorized in five ordered slices but has not started. Primary MEM remains the sole ordinary served memory and Retrieval authority. Subjective ordinary retrieval remains disabled and unwired. No cutover, authority switch, serving, fallback, or retirement change occurred. No Lane C
+S3A and its mandatory P8 PR #795 are complete, with P8 result `bc27c25d0b745fc2d9927e9e21179b14cd337141`. S3B and its mandatory P8 PR #797 are complete, with P8 result `e221f17906682bdb077d8016e09843d176af5df4`. S3C completed in PR #798 with exact resulting main `56fa66fdba475a3d6e1a4bc4cbc3480ba238720e`. The mandatory S3C P8 current-authority synchronization PR #799 merged with exact resulting main `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`. At that structural-seam completion point, fresh RT-1D runtime was architecture-authorized in five ordered slices but had not started. Primary MEM remains the sole ordinary served memory and Retrieval authority. Subjective ordinary retrieval remains disabled and unwired. No cutover, authority switch, serving, fallback, or retirement change occurred. No Lane C
 transaction overlaps. Only the exact resulting main after S3C P8 verification may bootstrap
 fresh runtime implementation. All three slices preserve Primary-only behavior
 and exclude cutover binding, configuration, authority selection, Subjective
@@ -1700,18 +1700,20 @@ This authorization PR contains no runtime implementation, deployment approval, d
 
 This architecture-only transaction selected **Codex Cloud**, inspected exact
 `origin/main` `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`, and authorizes budgets only.
-Fresh RT-1D runtime P0/P1 architecture authorization PR #800 completed with
-result `68cc16b9d5ed7b999c22d27457390e53de851335`. PR #800 is architecture-only and requires no P8. RT-1D-R1 is not
-started and is non-executable until PR #800 merges and its exact resulting main
-is independently verified; no implementation slice may start from the PR head,
-and PR #800's independently verified resulting main bootstrapped R1.
+At that inspection, fresh RT-1D runtime P0/P1 architecture authorization PR
+#800 was the current Lane C transaction and was architecture-only, requiring no
+P8. At that inspection, RT-1D-R1 had not started and was non-executable until PR
+#800 merged and its exact resulting main was independently verified; no
+implementation slice could start from the PR head. PR #800 subsequently
+completed with result `68cc16b9d5ed7b999c22d27457390e53de851335`, and its
+independently verified resulting main bootstrapped R1.
 PR #799 is merged with head `b596ffc5cf9cf7f0d38d862dd7a81c12509aa182`
 and that exact resulting main; PR #798 is merged with result
 `56fa66fdba475a3d6e1a4bc4cbc3480ba238720e`. There was no open PR, target
 branch, competing Lane C writer, active workflow, branch-pushing validation, or
 `relaylm:p6-stop`; the governance epoch was
 `2c4dcdcee169e6056c2bb29124d52fdac96288c98446820d7c8a464b1cf5d1db`.
-The checkout and index were clean. No runtime implementation has started.
+The checkout and index were clean. At that inspection, no runtime implementation had started.
 
 The inspection enumerated direct imports, public/re-exported names, tests,
 smokes, scheduler and queue roots, routes, configuration, persistence, recovery,

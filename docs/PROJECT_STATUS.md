@@ -59,7 +59,7 @@ ASM-1 Shared Assessment runtime foundation: complete in PR #636; default-off
 SM-1 Subjective MEM create decision/result vertical slice: complete in PR #646; default-off and prepared-only
 ST-1 Markdown + operations commit protocol: complete; default-off, create-only, POSIX apply
 LC-1 lifecycle migration: complete; LC-1A Correct, LC-1B Forget, LC-1C Pin/Unpin, LC-1D Restore, and LC-1E Consolidate implemented; default-off, POSIX apply
-RT-1 Retrieval migration: in progress; RT-1A through RT-1C and the behavior-preserving RT-1D-S1, S2, S3A, S3B, and S3C structural seams are complete. RT-1D-S3C Soul Lab mutation route seams completed in PR #798 with exact resulting main `56fa66fdba475a3d6e1a4bc4cbc3480ba238720e`. The mandatory S3C P8 current-authority synchronization PR #799 merged as exact current main `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`. Fresh RT-1D runtime P0/P1 architecture authorization PR #800 completed with result `68cc16b9d5ed7b999c22d27457390e53de851335` and fixes the ordered R1-R5 implementation budgets; PR #800 is architecture-only and requires no P8. R1 implementation is complete; R2 has not started. RT-1D-R1 is next but non-executable until PR #800 merges and its exact resulting main is independently verified; only that verified resulting main may bootstrap R1. RT-1B remains default-off and unwired from ordinary Retrieval; RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval. Primary MEM remains the sole ordinary served memory and Retrieval authority; Subjective ordinary Retrieval remains disabled and unwired, and no cutover, authority switch, serving, fallback, writer fence, durable intent or receipt, or retirement change has occurred.
+RT-1 Retrieval migration: in progress; RT-1A through RT-1C and the behavior-preserving RT-1D-S1, S2, S3A, S3B, and S3C structural seams are complete. RT-1D-S3C Soul Lab mutation route seams completed in PR #798 with exact resulting main `56fa66fdba475a3d6e1a4bc4cbc3480ba238720e`. The mandatory S3C P8 current-authority synchronization PR #799 merged as exact current main `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`. Fresh RT-1D runtime P0/P1 architecture authorization PR #800 completed with result `68cc16b9d5ed7b999c22d27457390e53de851335` and fixes the ordered R1-R5 implementation budgets; PR #800 is architecture-only and requires no P8. R1 implementation is complete; R2 has not started. RT-1D-R1 implementation PR #801 completed with result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`. Mandatory R1 P8 PR #802 is current. R2 is next but not started and is non-executable until PR #802 merges and its exact resulting main is independently verified; only that verified P8 resulting main may bootstrap R2. RT-1B remains default-off and unwired from ordinary Retrieval; RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval. Primary MEM remains the sole ordinary served memory and Retrieval authority; Subjective ordinary Retrieval remains disabled and unwired, and no cutover, authority switch, serving, fallback, writer fence, durable intent or receipt, or retirement change has occurred.
 ```
 
 ## Contract-aligned implementation migration boundary
@@ -163,9 +163,11 @@ LC-1 lifecycle migration                                    complete; LC-1A Corr
                                   -> mandatory S3B P8 current-authority synchronization PR #797 result e221f17906682bdb077d8016e09843d176af5df4
                                      -> RT-1D-S3C Soul Lab mutation route seams complete in PR #798; exact resulting main 56fa66fdba475a3d6e1a4bc4cbc3480ba238720e
                                         -> mandatory S3C P8 current-authority synchronization PR #799 result d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f
-                                           -> fresh RT-1D runtime P0/P1 architecture authorization PR #800 current; no P8
-                                              -> verify PR #800 exact resulting main after merge
-                                                 -> RT-1D-R1 next, not started; only the verified resulting main may bootstrap R1
+                                           -> architecture PR #800 result 68cc16b9d5ed7b999c22d27457390e53de851335; no P8
+                                              -> R1 PR #801 result 90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd
+                                                 -> mandatory R1 P8 PR #802 current
+                                                    -> independently verify PR #802 exact resulting main after merge
+                                                       -> R2 next, not started; only the verified P8 result may bootstrap R2
 
 Parallel decision work:
   PM-D1 RelaySOUL gate design-freeze relation
