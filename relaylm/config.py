@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, HttpUrl, StrictBool, model_validator
 
 Mode = Literal["pass_through", "memory_light", "memory_full"]
 TrustedHomeSceneAdmissionMode = Literal["disabled", "dry_run", "apply"]
+SubjectiveMemRetrievalCutoverMode = Literal["primary_only", "rehearsal"]
 _RETIRED_CHARACTER_CONFIG_FIELDS = frozenset({"room_anchor", "room_state"})
 
 
@@ -253,6 +254,17 @@ class RelayLMConfig(BaseModel):
     subjective_mem_lifecycle_dry_run_only: StrictBool = True
     subjective_mem_lifecycle_apply_enabled: StrictBool = False
     subjective_mem_workspace_root: str | None = None
+    subjective_mem_retrieval_cutover_mode: SubjectiveMemRetrievalCutoverMode = "primary_only"
+    subjective_mem_retrieval_cutover_store_root: str | None = None
+    subjective_mem_retrieval_cutover_evidence_space_id: str | None = None
+    subjective_mem_retrieval_cutover_deployment_id: str | None = None
+    subjective_mem_retrieval_cutover_scope_id: str | None = None
+    subjective_mem_retrieval_cutover_bootstrap_main_sha: str | None = None
+    subjective_mem_retrieval_cutover_resulting_main_sha: str | None = None
+    subjective_mem_retrieval_cutover_policy_revision_id: str | None = None
+    subjective_mem_retrieval_cutover_projection_generation_id: str | None = None
+    subjective_mem_retrieval_cutover_projection_source_digest: str | None = None
+    subjective_mem_retrieval_cutover_readiness_id: str | None = None
     ctx_ovl_enabled: StrictBool = False
     ctx_ovl_dry_run_only: StrictBool = True
     ctx_ovl_apply_enabled: StrictBool = False
@@ -430,7 +442,39 @@ class RelayLMConfig(BaseModel):
             raise ValueError("ctx_ovl_requires_evidence_capture_enabled")
         if ctx_ovl_triple == _APPLY_GATE_TRIPLE and evidence_triple != _APPLY_GATE_TRIPLE:
             raise ValueError("ctx_ovl_apply_requires_evidence_capture_apply")
+        self._validate_subjective_mem_retrieval_cutover()
         return self
+
+    def _validate_subjective_mem_retrieval_cutover(self) -> None:
+        values = (
+            self.subjective_mem_retrieval_cutover_store_root,
+            self.subjective_mem_retrieval_cutover_evidence_space_id,
+            self.subjective_mem_retrieval_cutover_deployment_id,
+            self.subjective_mem_retrieval_cutover_scope_id,
+            self.subjective_mem_retrieval_cutover_bootstrap_main_sha,
+            self.subjective_mem_retrieval_cutover_resulting_main_sha,
+            self.subjective_mem_retrieval_cutover_policy_revision_id,
+            self.subjective_mem_retrieval_cutover_projection_generation_id,
+            self.subjective_mem_retrieval_cutover_projection_source_digest,
+            self.subjective_mem_retrieval_cutover_readiness_id,
+        )
+        if self.subjective_mem_retrieval_cutover_mode == "primary_only":
+            if any(value is not None for value in values):
+                raise ValueError("subjective_mem_retrieval_cutover_primary_only_requires_empty_tuple")
+            return
+        if any(value is None for value in values):
+            raise ValueError("subjective_mem_retrieval_cutover_rehearsal_requires_complete_tuple")
+        root = Path(self.subjective_mem_retrieval_cutover_store_root or "")
+        if not root.is_absolute():
+            raise ValueError("subjective_mem_retrieval_cutover_store_root_must_be_absolute")
+        if any(part in {".", ".."} for part in root.parts[1:]):
+            raise ValueError("subjective_mem_retrieval_cutover_store_root_invalid")
+        identifiers = values[1:4] + values[6:7] + values[9:]
+        if not all(_is_safe_cutover_identifier(value) for value in identifiers):
+            raise ValueError("subjective_mem_retrieval_cutover_identifier_invalid")
+        digests = values[4:6] + values[7:9]
+        if not all(_is_sha256(value) for value in digests):
+            raise ValueError("subjective_mem_retrieval_cutover_digest_invalid")
 
     def _enable_route_owned_home_admission_trigger(self) -> None:
         route_admission_requested = any(
@@ -451,6 +495,18 @@ _DISABLED_GATE_TRIPLE = (False, True, False)
 _DRY_RUN_GATE_TRIPLE = (True, True, False)
 _APPLY_GATE_TRIPLE = (True, False, True)
 _VALID_GATE_TRIPLES = {_DISABLED_GATE_TRIPLE, _DRY_RUN_GATE_TRIPLE, _APPLY_GATE_TRIPLE}
+
+
+def _is_safe_cutover_identifier(value: object) -> bool:
+    return type(value) is str and 1 <= len(value) <= 128 and all(
+        character.isalnum() or character in "._-" for character in value
+    )
+
+
+def _is_sha256(value: object) -> bool:
+    return type(value) is str and len(value) == 64 and all(
+        character in "0123456789abcdef" for character in value
+    )
 
 
 def default_config_path() -> Path:
