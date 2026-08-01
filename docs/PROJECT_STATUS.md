@@ -191,6 +191,6 @@ Parallel decision work:
 
 ## RT-1D-R1 completion and mandatory P8 (current)
 
-PR #800 architecture authorization is complete with result `68cc16b9d5ed7b999c22d27457390e53de851335`. RT-1D-R1 durable preparation completed in PR #801 at final head `ac54854f82bd03c11425efa3014919ec004e72a5` with exact result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`. Mandatory R1 P8 current-authority synchronization PR #P8_PR is current. R2 is next but not started and is non-executable until this P8 merges and its exact resulting main is independently verified; only that verified resulting main may bootstrap R2, never the P8 head.
+PR #800 architecture authorization is complete with result `68cc16b9d5ed7b999c22d27457390e53de851335`. RT-1D-R1 durable preparation completed in PR #801 at final head `ac54854f82bd03c11425efa3014919ec004e72a5` with exact result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`. Mandatory R1 P8 current-authority synchronization PR #802 is current. R2 is next but not started and is non-executable until this P8 merges and its exact resulting main is independently verified; only that verified resulting main may bootstrap R2, never the P8 head.
 
 Primary MEM remains the sole ordinary served memory and Retrieval authority. Subjective ordinary Retrieval remains disabled and unwired. R1 is default-off, caller-invoked, Primary-only preparation: no cutover intent, fence, activation, final receipt, serving or fallback change, writer-authority change, or retirement occurred.

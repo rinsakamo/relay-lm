@@ -406,6 +406,6 @@ The mandatory S3C P8 current-authority synchronization PR #799 merged as exact c
 
 ## Current RT-1D execution gate after R1
 
-PR #800 completed the R1-R5 architecture budget with result `68cc16b9d5ed7b999c22d27457390e53de851335`. RT-1D-R1 implementation PR #801 completed at final head `ac54854f82bd03c11425efa3014919ec004e72a5` with exact result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`. Mandatory R1 P8 current-authority synchronization PR #P8_PR is current. R2 is next but not started. R2 is non-executable until this P8 merges and its exact resulting main is independently verified; only that verified resulting main may bootstrap R2, never the P8 head. No Lane C transaction may overlap this P8.
+PR #800 completed the R1-R5 architecture budget with result `68cc16b9d5ed7b999c22d27457390e53de851335`. RT-1D-R1 implementation PR #801 completed at final head `ac54854f82bd03c11425efa3014919ec004e72a5` with exact result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`. Mandatory R1 P8 current-authority synchronization PR #802 is current. R2 is next but not started. R2 is non-executable until this P8 merges and its exact resulting main is independently verified; only that verified resulting main may bootstrap R2, never the P8 head. No Lane C transaction may overlap this P8.
 
 Primary remains the sole ordinary served memory and Retrieval authority; Subjective ordinary Retrieval remains disabled and unwired. R1 changed no cutover intent, fence, activation, final receipt, serving, fallback, writer authority, or retirement behavior.

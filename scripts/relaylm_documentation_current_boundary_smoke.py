@@ -785,7 +785,7 @@ R1_P8_ANCHORS = {
     STATUS: (
         "PR #800 architecture authorization is complete with result `68cc16b9d5ed7b999c22d27457390e53de851335`",
         "PR #801 at final head `ac54854f82bd03c11425efa3014919ec004e72a5` with exact result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`",
-        "Mandatory R1 P8 current-authority synchronization PR #P8_PR is current",
+        "Mandatory R1 P8 current-authority synchronization PR #802 is current",
         "R2 is next but not started and is non-executable until this P8 merges and its exact resulting main is independently verified",
         "only that verified resulting main may bootstrap R2, never the P8 head",
         "Subjective ordinary Retrieval remains disabled and unwired",
@@ -793,7 +793,7 @@ R1_P8_ANCHORS = {
     PLAN: (
         "PR #800 completed the R1-R5 architecture budget with result `68cc16b9d5ed7b999c22d27457390e53de851335`",
         "PR #801 completed at final head `ac54854f82bd03c11425efa3014919ec004e72a5` with exact result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`",
-        "Mandatory R1 P8 current-authority synchronization PR #P8_PR is current",
+        "Mandatory R1 P8 current-authority synchronization PR #802 is current",
         "R2 is next but not started",
         "only that verified resulting main may bootstrap R2, never the P8 head",
     ),
@@ -806,7 +806,7 @@ R1_P8_ANCHORS = {
         "primary_stable\n-> rehearsal_ready\n-> transfer_intent\n-> primary_reader_fenced\n-> primary_writer_fenced\n-> subjective_generation_bound\n-> subjective_reader_enabled\n-> transfer_receipt_finalized\n-> post_transfer_validated\n-> retirement_complete",
         "No production semantic record constructor or writer exists",
         "Subjective serving is false, both fences are false",
-        "Mandatory R1 P8 current-authority synchronization PR #P8_PR is current",
+        "Mandatory R1 P8 current-authority synchronization PR #802 is current",
         "Only that verified resulting main may bootstrap R2; the P8 head may not",
         "`relaylm/evidence_store.py` `41cfa9af6c32c1359be04f497924883ffbc4abb4e39313a44755494f92e2b41f`",
     ),

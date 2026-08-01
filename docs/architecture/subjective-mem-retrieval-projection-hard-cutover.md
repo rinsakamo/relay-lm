@@ -2049,4 +2049,4 @@ Focused R1 validation was 38 passed and focused config/store/import validation w
 
 ### Current gate
 
-Mandatory R1 P8 current-authority synchronization PR #P8_PR is current. R2 is next but not started and is non-executable until this P8 merges and its exact resulting main is independently verified. Only that verified resulting main may bootstrap R2; the P8 head may not. Primary remains the sole ordinary served memory and Retrieval authority. Subjective ordinary Retrieval remains disabled and unwired. No cutover intent, fence, activation, final receipt, serving, fallback, writer-authority, or retirement change occurred.
+Mandatory R1 P8 current-authority synchronization PR #802 is current. R2 is next but not started and is non-executable until this P8 merges and its exact resulting main is independently verified. Only that verified resulting main may bootstrap R2; the P8 head may not. Primary remains the sole ordinary served memory and Retrieval authority. Subjective ordinary Retrieval remains disabled and unwired. No cutover intent, fence, activation, final receipt, serving, fallback, writer-authority, or retirement change occurred.
