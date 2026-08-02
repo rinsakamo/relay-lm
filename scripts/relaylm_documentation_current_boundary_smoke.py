@@ -790,7 +790,7 @@ PROBES += tuple((path, anchor) for path, anchors in S3C_COMPLETION_ANCHORS.items
 
 R2_LIVE_ROOT_ANCHORS = {
     STATUS: (
-        "## RT-1D-R2 queued-runner root budget amendment (current)",
+        "## RT-1D-R2 staged writer-fence and smoke-carriage budget amendment (current)",
         "PR #803 completed with exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` and required no P8",
         "renewed R2 attempt also returned at P1 without mutation",
         "PR #804",
@@ -808,12 +808,12 @@ R2_LIVE_ROOT_ANCHORS = {
         "changes no production, runtime, config, durable state, serving, fallback, or retirement behavior",
     ),
     PLAN: (
-        "## Current RT-1D-R2 queued-runner root budget amendment gate",
+        "## Current RT-1D-R2 staged writer-fence and smoke-carriage budget amendment gate",
         "PR #803 exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` -> renewed R2 P1 Return without mutation",
         "PR #804",
-        "the PR #806 queued-runner root budget amendment gate remains current and R2 remains not started",
-        "renewed R2 implementation on a fresh branch, not started",
-        "Only the verified amendment result, never its PR head",
+        "the PR #PENDING staged writer-fence and smoke-carriage budget amendment gate remains current and RT-1D-R2A remains not started",
+        "RT-1D-R2A fresh implementation PR -> verify R2A exact result -> mandatory R2A P8",
+        "only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next, never a PR head and never an audit branch",
         "managed_chat_runtime.py`-only carriage is insufficient",
         "route-only Pin fence is insufficient",
         "exact twenty-three-path ordered list",
@@ -823,13 +823,13 @@ R2_LIVE_ROOT_ANCHORS = {
         "requires no P8 and changes no production/runtime behavior",
     ),
     RT1C: (
-        "Production budget (exact twenty-three paths, authoritative order)",
+        "Production budget (exact twenty-three paths, authoritative order, split across the four ordered stages RT-1D-R2A, RT-1D-R2B, RT-1D-R2C, and RT-1D-R2D)",
         "relaylm/managed_chat_response.py",
         "relaylm/relaymem_primary_pin_apply.py",
-        "### Current RT-1D-R2 queued-runner root amendment gate",
+        "### Current RT-1D-R2 staged writer-fence and smoke-carriage amendment gate",
         "PR #803 completed with exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` and required no P8",
         "PR #804",
-        "R2 remains not started",
+        "RT-1D-R2A remains not started",
         "it requires no P8",
         "same decision to both calls",
         "Managed-runtime-only carriage is insufficient",
@@ -870,9 +870,9 @@ R2_QUEUE_ROOT_ANCHORS = {
         "may validate the exact decision but may not re-derive or downgrade it",
     ),
     PLAN: (
-        "current queued-runner root budget amendment Draft PR #806",
-        "mandatory R2 P8 only after the implementation merges",
-        "never its PR head and never the PR #805 head, may bootstrap renewed R2",
+        "current staged writer-fence and smoke-carriage budget amendment Draft PR #PENDING",
+        "mandatory R2D P8 -> verify -> R3 may become next, not started by this amendment",
+        "Every implementation and P8 is a separate fresh-branch single-writer transaction",
         "sole production constructor of `RelayMEMSLPOneQueuedJobRunnerRequest`",
         "both already delegate request construction to that shared builder",
         "would duplicate derivation responsibility across three owners for no added coverage",
@@ -883,8 +883,8 @@ R2_QUEUE_ROOT_ANCHORS = {
     ),
     RT1C: (
         "relaylm/relaymem_slp_queue_candidate.py",
-        "Draft PR #806; it requires no P8",
-        "never its PR head and never the PR #805 head",
+        "Draft PR #PENDING; it requires no P8",
+        "never its PR head and never the PR #805 or PR #807 heads",
         "twenty-third authorized path and the sole remaining production construction gap proved by the PR #805 P1 evidence",
         "blob `3fc6f0f5a03bb717bcd163c692bc87e54c216f81`, 462 physical lines; final maximum 510, net +48",
         "Semantic-value equality is the contract",
@@ -898,6 +898,99 @@ R2_QUEUE_ROOT_ANCHORS = {
 for _path, _anchors in R2_QUEUE_ROOT_ANCHORS.items():
     REQUIRED[_path] += _anchors
 PROBES += tuple((path, anchor) for path, anchors in R2_QUEUE_ROOT_ANCHORS.items() for anchor in anchors)
+
+# PR #807 proved the strict-carriage conflict. RT-1D-R2 is now four ordered,
+# independently bounded stages, each authorizing only the exact existing
+# non-production call sites it must mechanically update.
+R2_STAGED_ANCHORS = {
+    STATUS: (
+        "## RT-1D-R2 staged writer-fence and smoke-carriage budget amendment (current)",
+        "PR #806 completed with exact result `cd8ce6e05b6476b08ecf25a5100fb0c3f0e77644` and required no P8",
+        "closed, unmerged, and tree-neutral at head `00991760b3070597d6b763a0b3ffc2eb820435f2` with one bootstrap commit, zero changed paths and exactly one execution receipt",
+        "PR #807 is an audit record only and must never be reopened, marked Ready, merged, deleted, reset, moved, or used as an implementation bootstrap",
+        "a permit-preserving unbound or default class is rejected",
+        "RT-1D-R2A is next and has not started",
+        "each gated behind independent verification of the preceding implementation result and its mandatory P8 current-authority synchronization",
+        "No stage may bootstrap from a PR head or an audit branch",
+        "### Strict semantics retained for every stage",
+        "A missing decision fails closed and a malformed decision fails closed, both before any side effect",
+        "no `primary_writer_unbound` or equivalent third class",
+        "no permit-valued dataclass, request, or function default",
+        "Every direct caller supplies an exact immutable bound decision",
+        "may validate the immutable value but may not resolve configuration or reconstruct state",
+        "No queue schema or persistence field carries the decision",
+        "direct M3e/M3g implementations remain byte-identical",
+        "### Ordered stage budgets",
+        "RT-1D-R2A — decision owner and managed finalization carriage",
+        "RT-1D-R2B — queue, runner, worker, and Primary pipeline carriage",
+        "RT-1D-R2C — Correct and Forget carriage",
+        "RT-1D-R2D — Pin and Unpin carriage",
+        "exactly 4 frozen existing caller files",
+        "exactly 29 frozen existing caller files",
+        "exactly 23 frozen existing caller files",
+        "exactly 5 frozen existing caller files",
+        "58 distinct existing files and 61 stage assignments",
+        "no wildcard `scripts/` or `tests/` authority",
+        "no new test, smoke, or support file may be created in any stage",
+    ),
+    PLAN: (
+        "## Current RT-1D-R2 staged writer-fence and smoke-carriage budget amendment gate",
+        "RT-1D-R2A fresh implementation PR -> verify R2A exact result -> mandatory R2A P8",
+        "mandatory R2D P8 -> verify -> R3 may become next, not started by this amendment",
+        "only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next, never a PR head and never an audit branch",
+        "the PR #PENDING staged writer-fence and smoke-carriage budget amendment gate remains current and RT-1D-R2A remains not started",
+        "RT-1D-R2A (paths 1-4), RT-1D-R2B (paths 5-13), RT-1D-R2C (paths 14-20), and RT-1D-R2D (paths 21-23)",
+        "4 for R2A, 29 for R2B, 23 for R2C, and 5 for R2D",
+        "There is no wildcard `scripts/` or `tests/` authority and no new test, smoke, or support file in any stage",
+    ),
+    RT1C: (
+        "### RT-1D-R2 staged implementation budgets",
+        "RT-1D-R2A frozen non-production callers (exactly 4 files)",
+        "RT-1D-R2B frozen non-production callers (exactly 29 files)",
+        "RT-1D-R2C frozen non-production callers (exactly 23 files)",
+        "RT-1D-R2D frozen non-production callers (exactly 5 files)",
+        "58 distinct existing files and 61 stage assignments",
+        "There is no wildcard `scripts/` or `tests/` authority, no stage authorizes all 58 files, and no new test, smoke, or support file may be created in any stage",
+        "A missing decision fails closed and a malformed decision fails closed, both before any side effect",
+        "no `primary_writer_unbound` or equivalent third class",
+        "A shared support helper is allowed only inside an already-existing authorized support file",
+        "Mandatory transaction ordering: PR #807 accepted P1 Return",
+        "scripts/relaylm_phase6c1_primary_worker_test_support.py",
+        "scripts/_relaylm_phase6c1_durable_source_support.py",
+        "tests/test_relaymem_lifecycle_characterization.py",
+        "tests/test_response_service.py",
+    ),
+}
+for _path, _anchors in R2_STAGED_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple((path, anchor) for path, anchors in R2_STAGED_ANCHORS.items() for anchor in anchors)
+
+R2_STAGED_STALE = (
+    "PR #806 is the current Lane C transaction",
+    "queued-runner root budget amendment Draft PR #806 is current",
+    "PR #807 remains open",
+    "PR #807 is the current Lane C transaction",
+    "PR #807 is Ready for review",
+    "PR #807 merged",
+    "a renewed R2 branch may bootstrap from the PR #807 head",
+    "RT-1D-R2 remains a single monolithic implementation transaction",
+    "a `primary_writer_unbound` class is allowed",
+    "an unbound decision class preserves current behavior",
+    "a missing decision preserves current behavior",
+    "a permit-valued default is allowed",
+    "a compatibility permit default is allowed",
+    "runner and worker leaves may re-derive the decision",
+    "leaf re-derivation is allowed",
+    "every `scripts/` file is authorized",
+    "every `tests/` file is authorized",
+    "all 50 files are authorized in every stage",
+    "all 58 files are authorized in every stage",
+    "the exact caller list is omitted",
+    "a stage may start before the preceding P8 result",
+    "R3 has started",
+    "the staged budget amendment requires P8",
+    "a new test, smoke, or support file may be created",
+)
 
 R2_QUEUE_ROOT_STALE = (
     "exact twenty-two-path R2 production budget",
@@ -1054,14 +1147,14 @@ def self_test() -> None:
         (STATUS, "`relaylm/relaymem_primary_pin_apply.py`", "`relaylm/soul_lab_memory_pin_routes.py`", "Pin apply root omission"),
         (PLAN, "route-only Pin fence is insufficient", "route-only Pin fence is sufficient", "route-only sufficiency"),
         (PLAN, "managed_chat_runtime.py`-only carriage is insufficient", "managed_chat_runtime-only carriage is sufficient", "runtime-only sufficiency"),
-        (PLAN, "Only the verified amendment result, never its PR head", "The PR head", "PR-head bootstrap"),
-        (PLAN, "the PR #806 queued-runner root budget amendment gate remains current and R2 remains not started", "the PR #804 live-root budget amendment gate remains current and R2 remains not started", "stale PR #804 current gate"),
+        (PLAN, "only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next, never a PR head and never an audit branch", "the preceding PR head may bootstrap the next stage", "PR-head bootstrap"),
+        (PLAN, "the PR #PENDING staged writer-fence and smoke-carriage budget amendment gate remains current and RT-1D-R2A remains not started", "the PR #806 queued-runner root budget amendment gate remains current and R2 remains not started", "stale PR #806 current gate"),
         (STATUS, "R2 remains not started", "R2 implementation is started", "started R2"),
         (RT1C, "it requires no P8", "live-root amendment requires P8", "incorrect P8"),
-        (RT1C, "Draft PR #806; it requires no P8", "Draft PR #806; the queued-runner root amendment requires P8", "queue-root amendment P8"),
+        (RT1C, "Draft PR #PENDING; it requires no P8", "Draft PR #PENDING; the staged budget amendment requires P8", "staged amendment P8"),
         (STATUS, "No twenty-fourth production path is authorized", "A twenty-fourth production path is authorized", "extra path"),
         (STATUS, "exact twenty-three-path R2 production budget", "exact twenty-two-path R2 production budget", "stale twenty-two-path budget"),
-        (RT1C, "Production budget (exact twenty-three paths, authoritative order)", "Production budget (exact twenty-two paths, authoritative order)", "stale twenty-two-path order"),
+        (RT1C, "Production budget (exact twenty-three paths, authoritative order, split across the four ordered stages RT-1D-R2A, RT-1D-R2B, RT-1D-R2C, and RT-1D-R2D)", "Production budget (exact twenty-two paths, authoritative order)", "stale twenty-two-path order"),
         (STATUS, "`relaylm/relaymem_slp_queue_candidate.py`", "`relaylm/local_worker_once.py`", "queued-runner root omission"),
         (STATUS, "3fc6f0f5a03bb717bcd163c692bc87e54c216f81", "0fc6f0f5a03bb717bcd163c692bc87e54c216f81", "queue candidate blob"),
         (STATUS, "final maximum 510 and net growth +48", "final maximum 511 and net growth +49", "queue candidate limit"),
@@ -1071,6 +1164,20 @@ def self_test() -> None:
         (STATUS, "may validate the exact decision but may not re-derive or downgrade it", "the worker leaf may derive the decision", "leaf re-derivation"),
         (STATUS, "PR #805 is an audit record only and must not be reopened, marked Ready, or merged", "PR #805 is the current Lane C transaction", "PR #805 reuse"),
         (STATUS, "no renewed R2 branch may bootstrap from the PR #805 head", "a renewed R2 branch may bootstrap from the PR #805 head", "PR #805 head bootstrap"),
+        (STATUS, "RT-1D-R2A is next and has not started", "RT-1D-R2 remains a single monolithic implementation transaction", "monolithic R2 still current"),
+        (STATUS, "a permit-preserving unbound or default class is rejected", "an unbound decision class preserves current behavior", "unbound compatibility class"),
+        (STATUS, "A missing decision fails closed and a malformed decision fails closed, both before any side effect", "a missing decision preserves current behavior", "missing preserves behavior"),
+        (STATUS, "no permit-valued dataclass, request, or function default", "a permit-valued default is allowed", "permit-valued default"),
+        (STATUS, "may validate the immutable value but may not resolve configuration or reconstruct state", "leaf re-derivation is allowed", "leaf re-derivation"),
+        (STATUS, "no wildcard `scripts/` or `tests/` authority", "every `scripts/` file is authorized", "wildcard script authority"),
+        (STATUS, "no new test, smoke, or support file may be created in any stage", "a new test, smoke, or support file may be created", "new helper file"),
+        (STATUS, "58 distinct existing files and 61 stage assignments", "all 58 files are authorized in every stage", "flat caller authority"),
+        (STATUS, "exactly 29 frozen existing caller files", "exactly 30 frozen existing caller files", "R2B caller count"),
+        (STATUS, "PR #807 is an audit record only and must never be reopened, marked Ready, merged, deleted, reset, moved, or used as an implementation bootstrap", "PR #807 is the current Lane C transaction", "PR #807 reuse"),
+        (STATUS, "each gated behind independent verification of the preceding implementation result and its mandatory P8 current-authority synchronization", "a stage may start before the preceding P8 result", "stage ordering"),
+        (PLAN, "mandatory R2D P8 -> verify -> R3 may become next, not started by this amendment", "R3 has started", "R3 started"),
+        (RT1C, "RT-1D-R2B frozen non-production callers (exactly 29 files)", "RT-1D-R2B frozen non-production callers (exactly 30 files)", "RT2B inventory count"),
+        (RT1C, "Mandatory transaction ordering: PR #807 accepted P1 Return", "the staged budget amendment requires P8", "amendment P8"),
         (STATUS, "final maximum 559 and net growth +16", "final maximum 560 and net growth +17", "managed limit"),
         (STATUS, "final maximum 697 and net growth +80", "final maximum 698 and net growth +81", "Pin apply limit"),
         (STATUS, "bcf8d6f42b21c23ea96e081d69f3c039c5da4f5c", "0cf8d6f42b21c23ea96e081d69f3c039c5da4f5c", "managed blob"),
@@ -1123,6 +1230,16 @@ def self_test() -> None:
                 print(f"PASS: {path}: reintroducing {stale!r} fails closed")
                 continue
             raise AssertionError(f"{path}: queue-root stale anchor is not forbidden: {stale!r}")
+    for path in R2_STAGED_ANCHORS:
+        for stale in R2_STAGED_STALE:
+            body = read(path)
+            assert stale not in body, f"{path}: staged stale anchor is present: {stale!r}"
+            try:
+                forbid_body(path, R2_STAGED_STALE, body + "\n" + stale + "\n")
+            except AssertionError:
+                print(f"PASS: {path}: reintroducing {stale!r} fails closed")
+                continue
+            raise AssertionError(f"{path}: staged stale anchor is not forbidden: {stale!r}")
     print("SELF-TEST PASS")
 
 
@@ -1148,6 +1265,8 @@ def main(argv: list[str] | None = None) -> None:
         forbid(path, R2_STRUCTURE_STALE)
     for path in R2_QUEUE_ROOT_ANCHORS:
         forbid(path, R2_QUEUE_ROOT_STALE)
+    for path in R2_STAGED_ANCHORS:
+        forbid(path, R2_STAGED_STALE)
     forbid("docs/PROJECT_STATUS.md", HISTORY_ONLY_STATUS_ANCHORS)
     print("Documentation current boundary smoke passed")
 

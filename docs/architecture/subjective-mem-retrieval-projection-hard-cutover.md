@@ -1816,7 +1816,7 @@ intent/fence/receipt records, serve Subjective evidence, or fence a writer.
 Purpose: carry one reconstructed writer decision to every live Primary formation
 and mutation side effect, while the durable state remains `primary_stable`.
 
-Production budget (exact twenty-three paths, authoritative order):
+Production budget (exact twenty-three paths, authoritative order, split across the four ordered stages RT-1D-R2A, RT-1D-R2B, RT-1D-R2C, and RT-1D-R2D):
 
 ```text
 relaylm/subjective_mem_retrieval_cutover.py
@@ -2052,9 +2052,9 @@ Immutable SHA-256 evidence: `relaylm/evidence_store.py` `41cfa9af6c32c1359be04f4
 
 Focused R1 validation was 38 passed and focused config/store/import validation was 60 passed. R1 smoke, consolidated Subjective lifecycle group, ruff, `py_compile`, `compileall`, diff/path/hash/structure checks, execution guard, and all applicable exact-head workflows passed. There were no reviews, comments, requested reviewers, or unresolved threads.
 
-### Current RT-1D-R2 queued-runner root amendment gate
+### Current RT-1D-R2 staged writer-fence and smoke-carriage amendment gate
 
-PR #803 completed with exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` and required no P8. After the first structural P1 Return, renewed negative call-graph inspection returned R2 to P1 again without mutation, and live-root budget amendment PR #804 completed with exact result `00ba475c689631520538b7531022603447f11bd0`; it required no P8. The following R2 attempt against the recorded twenty-two paths returned at P1 a third time without mutation. That P1 Return is recorded in Draft PR #805, now closed, unmerged, and tree-neutral at head `733b38fd3e74dcc542dd1c8f2ec1353a2cab6a95` with one bootstrap commit, zero changed paths, a tree identical to main, and exactly one execution receipt; it is an audit record only. The current architecture-only transaction is Draft PR #806; it requires no P8. R2 remains not started and can restart only from this amendment's independently verified resulting main on a fresh branch, never its PR head and never the PR #805 head.
+PR #803 completed with exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` and required no P8. After the first structural P1 Return, renewed negative call-graph inspection returned R2 to P1 again without mutation, and live-root budget amendment PR #804 completed with exact result `00ba475c689631520538b7531022603447f11bd0`; it required no P8. The following R2 attempt against the recorded twenty-two paths returned at P1 a third time without mutation. That P1 Return is recorded in Draft PR #805, now closed, unmerged, and tree-neutral at head `733b38fd3e74dcc542dd1c8f2ec1353a2cab6a95` with one bootstrap commit, zero changed paths, a tree identical to main, and exactly one execution receipt; it is an audit record only. The queued-runner root budget amendment PR #806 then completed with exact result `cd8ce6e05b6476b08ecf25a5100fb0c3f0e77644`. The current architecture-only transaction is the staged writer-fence and smoke-carriage budget amendment, Draft PR #PENDING; it requires no P8. RT-1D-R2A remains not started and can start only from this amendment's independently verified resulting main on a fresh branch, never its PR head and never the PR #805 or PR #807 heads.
 
 `relaylm/relaymem_slp_queue_candidate.py` is the twenty-third authorized path and the sole remaining production construction gap proved by the PR #805 P1 evidence. The queue construction graph is: `build_relaymem_slp_one_queued_job_request(...)` receives `RelayLMConfig` and is the sole production constructor of `RelayMEMSLPOneQueuedJobRunnerRequest`; `relaylm/local_worker_once.py` (reached from `relaylm/cli/worker.py`) and `relaylm/relaymem_slp_scheduler_queue_lane.py` (reached from `relaylm/relaymem_slp_scheduler_round.py`) both delegate construction to it and remain byte-identical, so authorizing the shared builder alone covers both live roots without duplicating derivation responsibility. The builder explicitly populates the immutable writer decision on the runner request. No permit-valued request-field default may conceal missing construction-root supply, and queued-runner execution, worker request, worker execution, worker pipeline, and Primary pipeline invocation may validate the exact decision but may not re-derive or downgrade it; replacing an explicitly supplied fenced or recovery-required decision with the `primary_only` permit decision is prohibited. Baseline: blob `3fc6f0f5a03bb717bcd163c692bc87e54c216f81`, 462 physical lines; final maximum 510, net +48; `build_relaymem_slp_one_queued_job_request` gains at most 8 physical lines and remains at or below 60, with at most one new same-owner decision derivation or validation helper of at most 40 physical lines.
 
@@ -2065,6 +2065,112 @@ The writer decision is never persisted in the B3 durable queue record, and R2 cr
 `relaylm/managed_chat_response.py` is the sole current bridge constructing both stream and non-stream runtime-finalization calls. It accepts the exact immutable Primary-writer decision by an explicit keyword-only argument and carries the same decision to both calls. It performs no durable resolution, config inference, fallback replacement, or independent side-effect gating. Baseline: blob `bcf8d6f42b21c23ea96e081d69f3c039c5da4f5c`, 543 physical lines; final maximum 559, net +16; `build_managed_chat_response` gains at most 8 lines and no new branch, loop, persistence responsibility, or state resolution. Managed-runtime-only carriage is insufficient.
 
 `relaylm/relaymem_primary_pin_apply.py` is the canonical Pin/Unpin apply and replay mutation owner. Its entries accept and carry the exact immutable decision without boolean or Mapping conversion. Validation precedes the first mutation and dominates replay `_publish_state`, new-operation `_publish_receipt` and `_publish_state`, shared-fence mutation, and every other durable mutation. Route-only fencing is insufficient. Baseline: blob `9dc4c8bd62623c0037821f19c8dab2d166dcbb01`, 617 physical lines; final maximum 697, net +80. `_apply_operation` remains at most 80 physical lines or, if its exact baseline is already larger, gains no span and delegates only to a bounded same-owner decision helper. Read-only preflight/history gain no write authority.
+
+### RT-1D-R2 staged implementation budgets
+
+The queued-runner root budget amendment PR #806 completed with exact result `cd8ce6e05b6476b08ecf25a5100fb0c3f0e77644` and required no P8. The R2 implementation attempt that followed returned at P1 without mutation and is recorded in Draft PR #807, closed, unmerged, and tree-neutral at head `00991760b3070597d6b763a0b3ffc2eb820435f2` with one bootstrap commit, zero changed paths, and exactly one execution receipt. PR #807 is an audit record only and must never be reopened, marked Ready, merged, deleted, reset, moved, or used as an implementation bootstrap.
+
+PR #807 proved two things. Every required production seam fits inside the twenty-three authorized paths, and no queue-schema change, direct M3e/M3g change, or twenty-fourth production path is needed for the carriage itself. It also proved the exact blocker: strict `missing/malformed -> fail closed`, no permit-valued default, and no leaf re-derivation cannot coexist with a frozen `scripts/` surface while every exact-head workflow must still succeed, because the changed entry points have direct existing smoke, support, and characterization callers.
+
+The accepted disposition rejects a permit-preserving unbound or default class and instead stages R2 into four ordered, independently bounded implementation transactions, each authorizing only the exact existing non-production call sites it must mechanically update.
+
+Strict semantics are retained unchanged for every stage. A missing decision fails closed and a malformed decision fails closed, both before any side effect. There is no `primary_writer_unbound` or equivalent third class, no missing-value compatibility path, no permit-valued dataclass, request, or function default, and no Optional decision used as an implicit permitted state. Every direct caller supplies an exact immutable bound decision. Production construction roots derive only through the sole semantic owner; runner, worker, pipeline, Correct, Forget, Pin, and Unpin leaves may validate the immutable value but may not resolve configuration or reconstruct state. No arbitrary Mapping reconstruction is allowed. Equality across durable boundaries is exact immutable semantic-value equality and never Python object identity. No queue schema or persistence field carries the decision, direct M3e/M3g implementations remain byte-identical, and no durable cutover, fence, activation, receipt, readiness, usage, probe, or retirement record is introduced by RT-1D-R2A through RT-1D-R2D.
+
+A shared support helper is allowed only inside an already-existing authorized support file, and only when it has no decision default, accepts an explicit config or explicit decision, delegates decision semantics to `relaylm/subjective_mem_retrieval_cutover.py`, and its dependent direct callers still explicitly pass the returned decision.
+
+The newly authorized non-production paths may change only as necessary to import the sole semantic owner or an authorized existing support helper, construct an explicit valid `primary_only` decision from explicit test configuration or receive an explicit decision parameter from an existing support factory, populate the new required request field or function argument, and add bounded negative coverage proving that missing and malformed values fail closed. They must preserve all prior success expectations, fixtures, durable bytes, status and reason bytes, ordering, and side-effect assertions. They may not alter a production expectation to accept a blocked result, skip, weaken, delete, or xfail an existing assertion, add a compatibility default, introduce a new semantic owner, create a new generic test helper file, modify unrelated smoke behavior, or broaden a stage's production budget.
+
+Stage production budgets:
+
+- RT-1D-R2A — decision owner and managed finalization carriage: paths 1-4 (`relaylm/subjective_mem_retrieval_cutover.py`, `relaylm/managed_chat_runtime.py`, `relaylm/managed_chat_response.py`, `relaylm/relaymem_slp_runtime_finalization.py`). It owns the sole immutable Primary writer-decision schema and resolver, exact `primary_only` binding-free derivation, exact rehearsal-bound reconstruction through the existing state machine, stream and non-stream finalization carriage, and pre-enqueue rejection before any durable enqueue or replay publication.
+- RT-1D-R2B — queue, runner, worker, and Primary pipeline carriage: paths 5-13. It owns exact semantic-value carriage into the sole queued-runner request constructor, runner validation and exact carriage into the sole worker-request constructor, worker request and type validation, worker and pipeline carriage, and writer-decision checks dominating source consumption, M3e page publication, and M3g reconciliation apply, with no direct M3e/M3g modification and no durable queue field for the decision.
+- RT-1D-R2C — Correct and Forget carriage: paths 14-20. Its checks dominate Correct replay, successor publication, selector, index, log, and receipt writes, recovery and finalization; and Forget replay, hidden-successor handoff, selector, index, log, receipt, and tombstone effects, recovery and finalization.
+- RT-1D-R2D — Pin and Unpin carriage: paths 21-23. Its checks dominate exact replay, receipt and state publication, shared-fence mutation, and every Pin/Unpin durable mutation.
+
+The frozen non-production budgets below are the independently reproduced exact current inventory: 58 distinct existing files and 61 stage assignments. There is no wildcard `scripts/` or `tests/` authority, no stage authorizes all 58 files, and no new test, smoke, or support file may be created in any stage. Three files appear in two stages for disjoint call sites and are marked `ALSO`; each individual call site still belongs to exactly one stage.
+
+RT-1D-R2A frozen non-production callers (exactly 4 files):
+
+```text
+scripts/_relaylm_i1ge_crash_child.py  b57771600b96  576 lines  patched run_relaymem_slp_runtime_enqueue_after_response
+scripts/relaylm_e1r1_trusted_home_scene_admission_smoke.py  c67cf940ae14  372 lines  run_relaymem_slp_runtime_enqueue_after_response
+scripts/relaylm_i1gc_durable_finalization_replay_smoke.py  e9f344c086d9  653 lines  run_relaymem_slp_runtime_enqueue_after_response
+tests/test_response_service.py  bb8f318740ce  335 lines  patched run_relaymem_slp_runtime_enqueue_after_response
+```
+
+RT-1D-R2B frozen non-production callers (exactly 29 files):
+
+```text
+scripts/_relaylm_phase6c1_durable_source_support.py  b764e54c37de  89 lines  RelayMEMSLPPrimaryWorkerRequest
+scripts/relaylm_o0_local_one_job_runner_contract_smoke.py  03c686e374bd  155 lines  via relaylm_phase6c1_primary_worker_test_support.build_request,patched execute_one_queued_relaymem_slp_primary_job
+scripts/relaylm_o0_local_one_job_runner_security_smoke.py  c4930a6d89bf  538 lines  via relaylm_phase6c1_primary_worker_test_support.build_request,patched execute_one_queued_relaymem_slp_primary_job
+scripts/relaylm_o0_local_one_job_runner_smoke.py  230d6923750b  236 lines  via relaylm_phase6c1_primary_worker_test_support.build_request,patched execute_relaymem_slp_primary_worker
+scripts/relaylm_o1b_sealed_replay_lane_smoke.py  5d9510b2841e  385 lines  patched execute_one_queued_relaymem_slp_primary_job
+scripts/relaylm_o1c_eligible_queue_lane_security_smoke.py  93bbb052b291  420 lines  patched execute_one_queued_relaymem_slp_primary_job
+scripts/relaylm_o1c_eligible_queue_lane_smoke.py  a305d11d4cd3  376 lines  patched execute_one_queued_relaymem_slp_primary_job
+scripts/relaylm_phase6c1_durable_source_restart_smoke.py  f3cf46b6b861  224 lines  execute_relaymem_slp_primary_worker,via _relaylm_phase6c1_durable_source_support.worker_request
+scripts/relaylm_phase6c1_fault_injection_smoke.py  8ca6fe9e0d33  374 lines  patched execute_relaymem_primary_pipeline
+scripts/relaylm_phase6c1_primary_worker_fault_smoke.py  7554b779e5b4  254 lines  execute_relaymem_slp_primary_worker,via relaylm_phase6c1_primary_worker_test_support.build_request
+scripts/relaylm_phase6c1_primary_worker_result_validation_smoke.py  1ae01f3115d6  85 lines  execute_relaymem_slp_primary_worker,via relaylm_phase6c1_primary_worker_test_support.build_request
+scripts/relaylm_phase6c1_primary_worker_review_fix_smoke.py  1efcdd003005  332 lines  RelayMEMSLPPrimaryWorkerRequest,execute_relaymem_slp_primary_worker,via relaylm_phase6c1_primary_worker_test_support.build_request
+scripts/relaylm_phase6c1_primary_worker_security_smoke.py  2eff9e3bc47b  174 lines  execute_relaymem_primary_pipeline,execute_relaymem_slp_primary_worker,via relaylm_phase6c1_primary_worker_test_support.build_request,via relaylm_phase6c1_primary_worker_test_support.pipeline_request_from_worker
+scripts/relaylm_phase6c1_primary_worker_smoke.py  9ca1ae3ffd36  310 lines  execute_relaymem_slp_primary_worker,via relaylm_phase6c1_primary_worker_test_support.build_request,patched execute_relaymem_primary_pipeline
+scripts/relaylm_phase6c1_primary_worker_test_support.py  e5f101f2c374  170 lines  RelayMEMPrimaryPipelineRequest,RelayMEMSLPPrimaryWorkerRequest
+scripts/relaylm_phase6c1_worker_content_leakage_smoke.py  2de0b21f6159  191 lines  execute_relaymem_slp_primary_worker,via relaylm_phase6c1_primary_worker_test_support.build_request
+scripts/relaylm_phase6c1_worker_contract_smoke.py  a67990cee6dc  71 lines  patched execute_relaymem_primary_pipeline
+scripts/relaylm_phase6c1_worker_crash_convergence_smoke.py  26ad2de89091  198 lines  execute_relaymem_slp_primary_worker,via relaylm_phase6c1_primary_worker_test_support.build_request
+scripts/relaylm_phase6c1_worker_fault_smoke.py  6e456f938a8d  264 lines  execute_relaymem_slp_primary_worker,via relaylm_phase6c1_primary_worker_test_support.build_request
+scripts/relaylm_phase6c1_worker_lease_race_smoke.py  5cb5a76408d1  163 lines  execute_relaymem_slp_primary_worker,via relaylm_phase6c1_primary_worker_test_support.build_request
+scripts/relaylm_phase6c2_one_queued_job_runner_security_smoke.py  116fef6dc45e  289 lines  execute_one_queued_relaymem_slp_primary_job,patched execute_relaymem_slp_primary_worker
+scripts/relaylm_phase6c2_one_queued_job_runner_smoke.py  5992b280ba75  342 lines  RelayMEMSLPOneQueuedJobRunnerRequest,execute_one_queued_relaymem_slp_primary_job,patched execute_relaymem_slp_primary_worker
+scripts/relaylm_phase_i1_two_turn_primary_recall_smoke.py  7e3fee7d9755  382 lines  RelayMEMSLPOneQueuedJobRunnerRequest,execute_one_queued_relaymem_slp_primary_job
+scripts/relaylm_phase_i2_lab_observation_smoke.py  5763e5820c3b  208 lines  RelayMEMSLPOneQueuedJobRunnerRequest,execute_one_queued_relaymem_slp_primary_job
+scripts/relaylm_phase_i3_primary_mem_correct_smoke.py  c3d7688e0917  288 lines  RelayMEMSLPOneQueuedJobRunnerRequest,execute_one_queued_relaymem_slp_primary_job  ALSO:R2C
+scripts/relaylm_relaymem_primary_pipeline_checkpoint_smoke.py  1ae7f8f339cc  194 lines  execute_relaymem_primary_pipeline,via relaylm_phase6c1_primary_worker_test_support.build_request,via relaylm_phase6c1_primary_worker_test_support.pipeline_request_from_worker
+scripts/relaylm_relaymem_primary_pipeline_result_validation_smoke.py  41ec334fdb59  66 lines  execute_relaymem_primary_pipeline
+scripts/relaylm_relaymem_primary_pipeline_security_smoke.py  1b04d67170af  186 lines  execute_relaymem_primary_pipeline
+scripts/relaylm_relaymem_primary_pipeline_smoke.py  45de87eb09b0  540 lines  RelayMEMPrimaryPipelineRequest,execute_relaymem_primary_pipeline
+```
+
+RT-1D-R2C frozen non-production callers (exactly 23 files):
+
+```text
+scripts/relaylm_phase_i3_primary_mem_correct_fault_smoke.py  f9182b3981b2  267 lines  apply_primary_memory_correction,recover_primary_memory_corrections
+scripts/relaylm_phase_i3_primary_mem_correct_smoke.py  c3d7688e0917  288 lines  apply_primary_memory_correction  ALSO:R2B
+scripts/relaylm_phase_i3_primary_mem_correct_validation_smoke.py  59bdd975b36c  241 lines  apply_primary_memory_correction
+scripts/relaylm_phase_i4b_final_review_regression_smoke.py  a83ed66a6e75  105 lines  apply_primary_memory_correction
+scripts/relaylm_phase_i4b_primary_current_state_resolver_smoke.py  dbbe3ae81c58  92 lines  apply_primary_memory_correction
+scripts/relaylm_phase_i4b_primary_mutation_fence_smoke.py  6b66386737c2  107 lines  apply_primary_memory_correction
+scripts/relaylm_phase_i4c1_primary_forget_concurrency_smoke.py  2d2917704aaf  161 lines  apply_primary_memory_correction
+scripts/relaylm_phase_i4c1_primary_forget_corrected_revision_smoke.py  f87cf712028d  113 lines  apply_primary_memory_correction
+scripts/relaylm_phase_i4c2_ownership_boundary_smoke.py  cd29dea82cc1  74 lines  apply_primary_memory_forget
+scripts/relaylm_phase_i4c2_primary_forget_concurrency_smoke.py  308718cd6fa6  207 lines  apply_primary_memory_correction,apply_primary_memory_forget,recover_primary_memory_forget
+scripts/relaylm_phase_i4c2_primary_forget_fault_smoke.py  409a9efb1a76  199 lines  apply_primary_memory_forget,recover_primary_memory_forget
+scripts/relaylm_phase_i4c2_primary_forget_recovery_smoke.py  e6201adc1841  262 lines  apply_primary_memory_correction,apply_primary_memory_forget,recover_primary_memory_forget
+scripts/relaylm_phase_i4c2_primary_forget_security_smoke.py  90f01e2deb30  195 lines  apply_primary_memory_forget,recover_primary_memory_forget
+scripts/relaylm_phase_i4d_fresh_conversation_smoke.py  a773d076fe70  151 lines  apply_primary_memory_forget
+scripts/relaylm_phase_i4d_historical_projection_smoke.py  4906387d8540  115 lines  apply_primary_memory_forget
+scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py  7664fb38a843  187 lines  apply_primary_memory_correction,apply_primary_memory_forget
+scripts/relaylm_phase_i4f_forget_validation_concurrency_smoke.py  c4409e4f0444  82 lines  apply_primary_memory_correction,apply_primary_memory_forget
+scripts/relaylm_phase_i4f_forget_validation_fault_smoke.py  9cdce879b805  48 lines  apply_primary_memory_forget
+scripts/relaylm_phase_i4f_forget_validation_security_smoke.py  2016dc8c88cc  57 lines  apply_primary_memory_forget
+scripts/relaylm_phase_i5a_pin_unpin_concurrency_smoke.py  3a2e5336027d  67 lines  apply_primary_memory_correction
+scripts/relaylm_phase_i5b_pin_unpin_apply_smoke.py  24e9f80ff004  86 lines  apply_primary_memory_forget  ALSO:R2D
+tests/test_relaymem_characterization_review_regressions.py  6d023a889700  124 lines  apply_primary_memory_correction
+tests/test_relaymem_lifecycle_characterization.py  f8cb7e53c99a  643 lines  apply_primary_memory_correction,apply_primary_memory_forget,recover_primary_memory_corrections  ALSO:R2D
+```
+
+RT-1D-R2D frozen non-production callers (exactly 5 files):
+
+```text
+scripts/relaylm_phase_i5b_pin_unpin_apply_smoke.py  24e9f80ff004  86 lines  apply_primary_memory_pin,apply_primary_memory_unpin  ALSO:R2C
+scripts/relaylm_phase_i5b_pin_unpin_concurrency_smoke.py  dbbd912605f8  31 lines  apply_primary_memory_pin,apply_primary_memory_unpin
+scripts/relaylm_phase_i5b_pin_unpin_ranking_smoke.py  61b495beb12c  53 lines  apply_primary_memory_pin,apply_primary_memory_unpin
+scripts/relaylm_phase_i5b_pin_unpin_security_smoke.py  16037d2f2da4  44 lines  apply_primary_memory_pin
+tests/test_relaymem_lifecycle_characterization.py  f8cb7e53c99a  643 lines  apply_primary_memory_pin,apply_primary_memory_unpin  ALSO:R2C
+```
+
+Mandatory transaction ordering: PR #807 accepted P1 Return -> this architecture-only staged-budget amendment -> independently verify its exact resulting main -> RT-1D-R2A fresh implementation PR -> verify R2A exact result -> mandatory R2A P8 -> verify R2A P8 result -> RT-1D-R2B -> verify -> mandatory R2B P8 -> verify -> RT-1D-R2C -> verify -> mandatory R2C P8 -> verify -> RT-1D-R2D -> verify -> mandatory R2D P8 -> verify -> R3 may become next, not started by this amendment. Every implementation and P8 is a separate fresh-branch single-writer transaction, and only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next; never a PR head and never an audit branch.
 
 No twenty-fourth production path is authorized. `relaylm/local_worker_once.py`, `relaylm/relaymem_slp_scheduler_queue_lane.py`, `relaylm/relaymem_slp_scheduler_round.py`, `relaylm/cli/worker.py`, every queue-record schema or persistence path, and every worker validator path remain unchanged and unauthorized. If a twenty-fourth production path is required, stop at P1 and raise a new architecture amendment rather than reinterpreting this budget. Direct M3e/M3g code remains unchanged because current worker/pipeline checkpoints dominate it. PR #803 limits remain exact: `_relaymem_primary_pipeline_impl.py` 1,033 -> maximum 1,083 (+50); `relaymem_primary_pin.py` 742 -> maximum 777 (+35); `subjective_mem_retrieval_cutover.py` 403 -> maximum 550; new functions maximum 80 and new orchestration functions maximum 60. If any limit fails, return to P1.
 
