@@ -278,9 +278,9 @@ class SubjectiveMemRetrievalPrimaryWriterDecision:
     def __post_init__(self) -> None:
         if self.schema_version != PRIMARY_WRITER_DECISION_SCHEMA_VERSION:
             raise _decision_invalid("schema_unsupported")
-        if self.state not in {*_FORWARD_STATES, "recovery_required"}:
+        if self.state not in (*_FORWARD_STATES, "recovery_required"):  # unhashable-safe
             raise _decision_invalid("state_invalid")
-        if self.writer_class not in {PRIMARY_WRITER_PERMITTED, PRIMARY_WRITER_REJECTED}:
+        if self.writer_class not in (PRIMARY_WRITER_PERMITTED, PRIMARY_WRITER_REJECTED):
             raise _decision_invalid("class_invalid")
         if (
             type(self.recovery_required) is not bool

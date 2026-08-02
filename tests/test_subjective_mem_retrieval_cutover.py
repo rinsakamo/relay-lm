@@ -453,6 +453,10 @@ def test_no_unbound_default_or_optional_permit_class_exists() -> None:
     assert "unbound" not in module
     for absent in (None, "permitted", 0, False, {"writer_class": PRIMARY_WRITER_PERMITTED}):
         assert not primary_writer_decision_permits_write(absent)
+    # The guard stays exact: it never became a generic exception swallower.
+    guard = inspect.getsource(primary_writer_decision_permits_write)
+    assert "except SubjectiveMemRetrievalCutoverError:" in guard
+    assert "except Exception" not in guard and "except:" not in guard
 
 
 @pytest.mark.parametrize(
@@ -485,6 +489,30 @@ def test_tampered_frozen_decision_is_revalidated_and_fails_closed() -> None:
     assert not primary_writer_decision_permits_write(fenced)
     object.__setattr__(fenced, "writer_class", PRIMARY_WRITER_PERMITTED)
     assert not primary_writer_decision_permits_write(fenced)
+    object.__setattr__(fenced, "writer_class", "unbound")
+    assert not primary_writer_decision_permits_write(fenced)
+
+
+@pytest.mark.parametrize("unhashable", [[], {}, set(), bytearray(b"x")])
+@pytest.mark.parametrize("field", ["state", "writer_class", "reasons"])
+def test_unhashable_tampered_field_fails_closed_without_raising(
+    field: str, unhashable: object
+) -> None:
+    """A corrupted decision must converge to False, never to a raised TypeError.
+
+    A frozen dataclass can still be corrupted through ``object.__setattr__``.
+    Validating a field with set membership would raise ``TypeError`` for an
+    unhashable value, escaping the single stable error identity every caller
+    catches, so the validator has to stay total over arbitrary field values.
+    """
+    decision = _decision()
+    assert primary_writer_decision_permits_write(decision) is True
+    object.__setattr__(decision, field, unhashable)
+    assert primary_writer_decision_permits_write(decision) is False
+    with pytest.raises(
+        SubjectiveMemRetrievalCutoverError, match="primary_writer_decision_"
+    ):
+        decision.__post_init__()
 
 
 def _imported_modules(path: str) -> set[str]:
