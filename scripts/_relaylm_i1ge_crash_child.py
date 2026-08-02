@@ -29,6 +29,9 @@ import relaylm_i1gc_durable_finalization_replay_smoke as gc  # noqa: E402
 import relaylm_i1gd_durable_finalization_retention_smoke as gd  # noqa: E402
 import relaylm_o1b_sealed_replay_lane_smoke as o1b  # noqa: E402
 from relaylm.app import create_app  # noqa: E402
+from relaylm.subjective_mem_retrieval_cutover import (  # noqa: E402
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+)
 from relaylm.relaymem_slp_durable_finalization_publication import (  # noqa: E402
     RelayMEMSLPDurableFinalizationStreamSession,
 )
@@ -272,7 +275,12 @@ def _run_app(root: Path, seam: str, *, stream: bool) -> None:
 
         if seam in {"during_normal_finalizer_before_c1_5"}:
             def finalizer_crash(*args: Any, **kwargs: Any) -> None:
-                del args, kwargs
+                # Stands in for the real finalization API, so it must be
+                # handed the same required immutable writer decision.
+                del args
+                decision = kwargs["primary_writer_decision"]
+                if type(decision) is not SubjectiveMemRetrievalPrimaryWriterDecision:
+                    raise AssertionError(("exact_primary_writer_decision_required", seam))
                 _crash(seam)
 
             stack.enter_context(

@@ -47,6 +47,10 @@ from relaylm.relaymem_slp_protected_source_store import (
 from relaylm.relaymem_slp_runtime_enqueue import (
     build_relaymem_slp_runtime_enqueue_failure_result,
 )
+from relaylm.subjective_mem_retrieval_cutover import (
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+    primary_writer_decision_permits_write,
+)
 from relaylm.trace_runtime import trace_runtime_event
 from relaylm.trusted_home_scene_admission import (
     build_trusted_home_scene_admission_node_result,
@@ -56,6 +60,7 @@ from relaylm.trusted_home_scene_admission import (
 
 _MAX_VISIBLE_CHARS = 32_768
 _SSE_SEPARATORS = (b"\r\n\r\n", b"\n\n")
+_WRITER_BLOCKED_REASON = "primary_writer_decision_not_permitted"
 
 
 @dataclass(repr=False)
@@ -233,6 +238,58 @@ async def _admit_frame_before_yield(
 
 
 def run_relaymem_slp_runtime_enqueue_after_response(
+    *,
+    config: RelayLMConfig,
+    diagnostics: RequestDiagnostics,
+    pipeline_context: PipelineContext,
+    registry: RelayMEMSLPPrimaryWorkerSourceRegistry,
+    status_code: int,
+    resolved_session_id: str | None,
+    relayscn_scene_policy_artifact: dict[str, Any],
+    relayemo_artifact: dict[str, Any] | None,
+    primary_writer_decision: SubjectiveMemRetrievalPrimaryWriterDecision,
+    assistant_visible_text: str | None = None,
+    stream_capture: RelayMEMSLPFinalizedVisibleTextCapture | None = None,
+    prepared_turn: RelayMEMSLPDurableFinalizationPreparedTurn | None = None,
+    prepared_turn_holder: RelayMEMSLPDurableFinalizationPreparedTurnHolder | None = None,
+    message_count: int = 0,
+) -> RelayMEMSLPDurableRuntimeEnqueueResult:
+    """Guard every governed finalization effect with the Primary writer decision.
+
+    The decision is required -- there is no default and no unbound class --
+    and it is validated here, before the internal effect owner below runs. A
+    missing, malformed, writer-rejected, or recovery-required value returns
+    one bounded content-free non-success result and performs zero durable
+    replay, protected-source write, or queue enqueue. It never raises for an
+    ordinary rejection, and it cannot affect response delivery: the chat
+    response has already been sent by the time this background task runs.
+    """
+    if not primary_writer_decision_permits_write(primary_writer_decision):
+        return build_relaymem_slp_durable_runtime_enqueue_failure_result(
+            build_relaymem_slp_runtime_enqueue_failure_result(_WRITER_BLOCKED_REASON),
+            _WRITER_BLOCKED_REASON,
+        )
+    return _execute_relaymem_slp_runtime_enqueue_after_response(
+        config=config,
+        diagnostics=diagnostics,
+        pipeline_context=pipeline_context,
+        registry=registry,
+        status_code=status_code,
+        resolved_session_id=resolved_session_id,
+        relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+        relayemo_artifact=relayemo_artifact,
+        assistant_visible_text=assistant_visible_text,
+        stream_capture=stream_capture,
+        prepared_turn=prepared_turn,
+        prepared_turn_holder=prepared_turn_holder,
+        message_count=message_count,
+    )
+
+
+# Private effect owner, reachable only through the public guard above. Its
+# body is unchanged from the pre-R2A public function; no external path may
+# call it directly.
+def _execute_relaymem_slp_runtime_enqueue_after_response(
     *,
     config: RelayLMConfig,
     diagnostics: RequestDiagnostics,

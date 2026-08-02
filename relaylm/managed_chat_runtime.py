@@ -92,6 +92,9 @@ from relaylm.request_scope import (
     extract_request_scope_identity,
 )
 from relaylm.routing import ResolvedRoute
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
 from relaylm.token_budget import estimate_text_tokens
 from relaylm.token_budget_truncation import (
     apply_token_budget_message_truncation,
@@ -154,6 +157,8 @@ async def handle_managed_chat_completion(
         relayctx_short_term_runtime_injection_preflight=result["preflight"],
     )
     forwarded = result["forwarded"]
+    # The one derivation of the immutable Primary writer decision.
+    writer_decision = resolve_subjective_mem_retrieval_primary_writer_decision(config)
     return await build_managed_chat_response(
         request=request,
         config=config,
@@ -167,6 +172,7 @@ async def handle_managed_chat_completion(
         merged_scope=result["scope"],
         diagnostics=diagnostics,
         runtime_artifact_context=result["runtime_context"],
+        primary_writer_decision=writer_decision,
     )
 
 

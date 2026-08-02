@@ -26,11 +26,17 @@ from relaylm.relaymem_slp_runtime_finalization import (
 )
 from relaylm.request_scope import extract_request_scope_identity
 from relaylm.routing import resolve_route
+from relaylm.subjective_mem_retrieval_cutover import (
+    PRIMARY_WRITER_PERMITTED,
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
 from relaylm.trusted_home_scene_admission import (
     resolve_trusted_home_scene_admission,
     trusted_home_scene_runtime_gate,
 )
 
+_FENCED_REASON = "cutover_primary_writer_fenced"
 USER_CANARY = "CANARY_E1R1_USER_TEXT_DO_NOT_LEAK"
 ASSISTANT_CANARY = "CANARY_E1R1_ASSISTANT_TEXT_DO_NOT_LEAK"
 PATH_CANARY = "CANARY_E1R1_PRIVATE_PATH_DO_NOT_LEAK"
@@ -138,11 +144,22 @@ def _context(
     )
 
 
+def _writer_decision(
+    config: RelayLMConfig,
+) -> SubjectiveMemRetrievalPrimaryWriterDecision:
+    """Derive the explicit primary_only decision from this smoke's own config."""
+    decision = resolve_subjective_mem_retrieval_primary_writer_decision(config)
+    require(decision.writer_class == PRIMARY_WRITER_PERMITTED, decision)
+    require((decision.state, decision.recovery_required) == ("primary_stable", False), decision)
+    return decision
+
+
 def _run_runtime(
     config: RelayLMConfig,
     payload: dict[str, object] | None = None,
     *,
     request_headers: dict[str, str] | None = None,
+    primary_writer_decision: object,
 ):
     context = _context(
         config,
@@ -158,6 +175,7 @@ def _run_runtime(
         resolved_session_id="e1r1-session",
         relayscn_scene_policy_artifact=_scene(),
         relayemo_artifact=None,
+        primary_writer_decision=primary_writer_decision,
         assistant_visible_text=ASSISTANT_CANARY,
         message_count=1,
     ), context
@@ -168,6 +186,20 @@ def _files(root: Path) -> tuple[list[Path], list[Path]]:
         sorted((root / "queue").glob("slp-dispatch-v0-*.json")),
         sorted((root / "protected").glob("protected-source-v0-*.json")),
     )
+
+
+def _durable_bytes(root: Path) -> dict[str, bytes]:
+    queue_files, source_files = _files(root)
+    return {path.name: path.read_bytes() for path in (*queue_files, *source_files)}
+
+
+def _tampered_decision() -> SubjectiveMemRetrievalPrimaryWriterDecision:
+    """Return a frozen decision whose invariants were broken after construction."""
+    decision = SubjectiveMemRetrievalPrimaryWriterDecision(
+        1, "primary_writer_fenced", "rejected", False, (_FENCED_REASON,), True
+    )
+    object.__setattr__(decision, "writer_class", PRIMARY_WRITER_PERMITTED)
+    return decision
 
 
 def _assert_public_content_free(value: object) -> None:
@@ -274,21 +306,21 @@ def test_runtime_admission_and_existing_lane() -> None:
         root = Path(tmp)
 
         disabled = _config(root / "disabled", admission_mode="disabled")
-        result, context = _run_runtime(disabled)
+        result, context = _run_runtime(disabled, primary_writer_decision=_writer_decision(disabled))
         require(result.status == "disabled", result)
         require(_files(root / "disabled") == ([], []), _files(root / "disabled"))
         _assert_public_content_free(result.to_log_dict())
         _assert_public_content_free(context.node_results_to_log_dicts())
 
         dry = _config(root / "dry", admission_mode="dry_run")
-        result, context = _run_runtime(dry)
+        result, context = _run_runtime(dry, primary_writer_decision=_writer_decision(dry))
         require(result.status == "dry_run_ready", result)
         require(_files(root / "dry") == ([], []), _files(root / "dry"))
         _assert_public_content_free(result.to_log_dict())
         _assert_public_content_free(context.node_results_to_log_dicts())
 
         apply = _config(root / "apply", admission_mode="apply")
-        result, context = _run_runtime(apply)
+        result, context = _run_runtime(apply, primary_writer_decision=_writer_decision(apply))
         require(result.status in {"enqueued", "duplicate_existing"}, result)
         queue_files, source_files = _files(root / "apply")
         require(len(queue_files) == 1 and len(source_files) == 1, (queue_files, source_files))
@@ -307,6 +339,7 @@ def test_runtime_admission_and_existing_lane() -> None:
         result, context = _run_runtime(
             browser,
             _payload(metadata={"relaylm_trusted_scene_admission": "apply"}),
+            primary_writer_decision=_writer_decision(browser),
         )
         require(result.status == "disabled", result)
         require(_files(root / "browser") == ([], []), _files(root / "browser"))
@@ -318,6 +351,7 @@ def test_runtime_admission_and_existing_lane() -> None:
         result, context = _run_runtime(
             browser_header,
             request_headers={"x-relaylm-trusted-home-scene-admission": "apply"},
+            primary_writer_decision=_writer_decision(browser_header),
         )
         require(result.status == "disabled", result)
         require(
@@ -347,6 +381,7 @@ def test_runtime_admission_and_existing_lane() -> None:
             resolved_session_id="e1r1-session",
             relayscn_scene_policy_artifact=_scene(),
             relayemo_artifact=None,
+            primary_writer_decision=_writer_decision(app_like),
             assistant_visible_text=ASSISTANT_CANARY,
             message_count=1,
         )
@@ -354,7 +389,7 @@ def test_runtime_admission_and_existing_lane() -> None:
         require(_files(root / "request-scope") == ([], []), _files(root / "request-scope"))
 
         explicit = _config(root / "explicit", admission_mode="disabled", global_enqueue=True)
-        result, context = _run_runtime(explicit)
+        result, context = _run_runtime(explicit, primary_writer_decision=_writer_decision(explicit))
         require(result.status in {"enqueued", "duplicate_existing"}, result)
         queue_files, source_files = _files(root / "explicit")
         require(len(queue_files) == 1 and len(source_files) == 1, (queue_files, source_files))
@@ -362,9 +397,76 @@ def test_runtime_admission_and_existing_lane() -> None:
         _assert_public_content_free(context.node_results_to_log_dicts())
 
 
+def test_primary_writer_decision_dominates_finalization() -> None:
+    """RT-1D-R2A: the writer decision dominates every governed finalization effect."""
+    fenced = SubjectiveMemRetrievalPrimaryWriterDecision(
+        1, "primary_writer_fenced", "rejected", False, (_FENCED_REASON,), True
+    )
+    recovery = SubjectiveMemRetrievalPrimaryWriterDecision(
+        1, "recovery_required", "rejected", True, ("cutover_writer_state_unsupported",), True
+    )
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+
+        # The decision is required: no default, no unbound class, no Optional.
+        missing = _config(root / "missing", admission_mode="disabled", global_enqueue=True)
+        context = _context(missing, _payload())
+        try:
+            run_relaymem_slp_runtime_enqueue_after_response(
+                config=missing,
+                diagnostics=RequestDiagnostics(
+                    request_id=context.request_id, trace_enabled=False
+                ),
+                pipeline_context=context,
+                registry=RelayMEMSLPPrimaryWorkerSourceRegistry(
+                    max_entries=16, ttl_seconds=60
+                ),
+                status_code=200,
+                resolved_session_id="e1r1-session",
+                relayscn_scene_policy_artifact=_scene(),
+                relayemo_artifact=None,
+                assistant_visible_text=ASSISTANT_CANARY,
+                message_count=1,
+            )
+        except TypeError as exc:
+            require("primary_writer_decision" in str(exc), exc)
+        else:
+            raise AssertionError("missing_primary_writer_decision_must_fail_closed")
+        require(_files(root / "missing") == ([], []), _files(root / "missing"))
+
+        # Rejected, recovery-required, foreign-typed, and tampered values all
+        # block before any replay, protected-source write, or queue enqueue.
+        for label, decision in (
+            ("fenced", fenced),
+            ("recovery", recovery),
+            ("foreign", "primary_only"),
+            ("tampered", _tampered_decision()),
+        ):
+            blocked = _config(root / label, admission_mode="apply", global_enqueue=True)
+            result, context = _run_runtime(blocked, primary_writer_decision=decision)
+            require(result.status not in {"enqueued", "duplicate_existing"}, (label, result))
+            require(_files(root / label) == ([], []), (label, _files(root / label)))
+            _assert_public_content_free(result.to_log_dict())
+            _assert_public_content_free(context.node_results_to_log_dicts())
+
+        # The permitted primary_only path keeps its exact existing outcome, and
+        # a later rejected call leaves those durable bytes byte-identical.
+        permitted = _config(root / "permitted", admission_mode="disabled", global_enqueue=True)
+        result, _ = _run_runtime(permitted, primary_writer_decision=_writer_decision(permitted))
+        require(result.status in {"enqueued", "duplicate_existing"}, result)
+        published = _durable_bytes(root / "permitted")
+        require(len(published) == 2, sorted(published))
+        blocked_result, _ = _run_runtime(permitted, primary_writer_decision=fenced)
+        require(
+            blocked_result.status not in {"enqueued", "duplicate_existing"}, blocked_result
+        )
+        require(_durable_bytes(root / "permitted") == published, "reject_mutated_durable_state")
+
+
 def main() -> None:
     test_decision_statuses()
     test_runtime_admission_and_existing_lane()
+    test_primary_writer_decision_dominates_finalization()
     print("relaylm_e1r1_trusted_home_scene_admission_smoke: ok")
 
 
