@@ -2053,7 +2053,7 @@ Focused R1 validation was 38 passed and focused config/store/import validation w
 
 ### Current RT-1D-R2 live-root amendment gate
 
-PR #803 completed with exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` and required no P8. After the first structural P1 Return, renewed negative call-graph inspection returned R2 to P1 again without mutation. The current architecture-only transaction is Draft PR `PR_NUMBER_PENDING`; it requires no P8. R2 remains not started and can restart only from this amendment's independently verified resulting main, never its PR head.
+PR #803 completed with exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` and required no P8. After the first structural P1 Return, renewed negative call-graph inspection returned R2 to P1 again without mutation. The current architecture-only transaction is Draft PR #804; it requires no P8. R2 remains not started and can restart only from this amendment's independently verified resulting main, never its PR head.
 
 `relaylm/managed_chat_response.py` is the sole current bridge constructing both stream and non-stream runtime-finalization calls. It accepts the exact immutable Primary-writer decision by an explicit keyword-only argument and carries the same decision to both calls. It performs no durable resolution, config inference, fallback replacement, or independent side-effect gating. Baseline: blob `bcf8d6f42b21c23ea96e081d69f3c039c5da4f5c`, 543 physical lines; final maximum 559, net +16; `build_managed_chat_response` gains at most 8 lines and no new branch, loop, persistence responsibility, or state resolution. Managed-runtime-only carriage is insufficient.
 
