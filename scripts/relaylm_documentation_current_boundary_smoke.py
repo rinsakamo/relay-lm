@@ -811,7 +811,7 @@ R2_LIVE_ROOT_ANCHORS = {
         "## Current RT-1D-R2 queued-runner root budget amendment gate",
         "PR #803 exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` -> renewed R2 P1 Return without mutation",
         "PR #804",
-        "the PR #PENDING queued-runner root budget amendment gate remains current and R2 remains not started",
+        "the PR #806 queued-runner root budget amendment gate remains current and R2 remains not started",
         "renewed R2 implementation on a fresh branch, not started",
         "Only the verified amendment result, never its PR head",
         "managed_chat_runtime.py`-only carriage is insufficient",
@@ -852,7 +852,7 @@ PROBES += tuple((path, anchor) for path, anchors in R2_LIVE_ROOT_ANCHORS.items()
 R2_QUEUE_ROOT_ANCHORS = {
     STATUS: (
         "PR #804 recorded those two roots and completed with exact result `00ba475c689631520538b7531022603447f11bd0`",
-        "Draft PR #PENDING",
+        "Draft PR #806",
         "closed, unmerged, and tree-neutral at head `733b38fd3e74dcc542dd1c8f2ec1353a2cab6a95`",
         "zero changed paths, a tree identical to main, and exactly one execution receipt",
         "PR #805 is an audit record only and must not be reopened, marked Ready, or merged",
@@ -870,7 +870,7 @@ R2_QUEUE_ROOT_ANCHORS = {
         "may validate the exact decision but may not re-derive or downgrade it",
     ),
     PLAN: (
-        "current queued-runner root budget amendment Draft PR #PENDING",
+        "current queued-runner root budget amendment Draft PR #806",
         "mandatory R2 P8 only after the implementation merges",
         "never its PR head and never the PR #805 head, may bootstrap renewed R2",
         "sole production constructor of `RelayMEMSLPOneQueuedJobRunnerRequest`",
@@ -883,7 +883,7 @@ R2_QUEUE_ROOT_ANCHORS = {
     ),
     RT1C: (
         "relaylm/relaymem_slp_queue_candidate.py",
-        "Draft PR #PENDING; it requires no P8",
+        "Draft PR #806; it requires no P8",
         "never its PR head and never the PR #805 head",
         "twenty-third authorized path and the sole remaining production construction gap proved by the PR #805 P1 evidence",
         "blob `3fc6f0f5a03bb717bcd163c692bc87e54c216f81`, 462 physical lines; final maximum 510, net +48",
@@ -1055,10 +1055,10 @@ def self_test() -> None:
         (PLAN, "route-only Pin fence is insufficient", "route-only Pin fence is sufficient", "route-only sufficiency"),
         (PLAN, "managed_chat_runtime.py`-only carriage is insufficient", "managed_chat_runtime-only carriage is sufficient", "runtime-only sufficiency"),
         (PLAN, "Only the verified amendment result, never its PR head", "The PR head", "PR-head bootstrap"),
-        (PLAN, "the PR #PENDING queued-runner root budget amendment gate remains current and R2 remains not started", "the PR #804 live-root budget amendment gate remains current and R2 remains not started", "stale PR #804 current gate"),
+        (PLAN, "the PR #806 queued-runner root budget amendment gate remains current and R2 remains not started", "the PR #804 live-root budget amendment gate remains current and R2 remains not started", "stale PR #804 current gate"),
         (STATUS, "R2 remains not started", "R2 implementation is started", "started R2"),
         (RT1C, "it requires no P8", "live-root amendment requires P8", "incorrect P8"),
-        (RT1C, "Draft PR #PENDING; it requires no P8", "Draft PR #PENDING; the queued-runner root amendment requires P8", "queue-root amendment P8"),
+        (RT1C, "Draft PR #806; it requires no P8", "Draft PR #806; the queued-runner root amendment requires P8", "queue-root amendment P8"),
         (STATUS, "No twenty-fourth production path is authorized", "A twenty-fourth production path is authorized", "extra path"),
         (STATUS, "exact twenty-three-path R2 production budget", "exact twenty-two-path R2 production budget", "stale twenty-two-path budget"),
         (RT1C, "Production budget (exact twenty-three paths, authoritative order)", "Production budget (exact twenty-two paths, authoritative order)", "stale twenty-two-path order"),
