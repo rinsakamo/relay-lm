@@ -788,78 +788,63 @@ PROBES += tuple((path, anchor) for path, anchors in S3A_COMPLETION_ANCHORS.items
 PROBES += tuple((path, anchor) for path, anchors in S3B_COMPLETION_ANCHORS.items() for anchor in anchors)
 PROBES += tuple((path, anchor) for path, anchors in S3C_COMPLETION_ANCHORS.items() for anchor in anchors)
 
-R2_STRUCTURE_AMENDMENT_ANCHORS = {
+R2_LIVE_ROOT_ANCHORS = {
     STATUS: (
-        "## RT-1D-R2 P1 stable-structure amendment (current)",
-        "RT-1D-R1 implementation PR #801 completed with result `90a3c4f1cedf54e007cf5c0a6a9abc69a30d2acd`, and mandatory R1 P8 PR #802 completed with exact resulting main `9ce7de054869ef29cc508d176023a93947489c25`",
-        "The initial R2 attempt returned at P1 with no repository mutation. The RT-1D-R2 P1 stable-structure amendment is current as Draft PR #803 and requires no P8.",
-        "R2 remains not started; renewed R2 may begin only after PR #803 merges and its exact resulting main is independently verified.",
-        "Only that verified amendment result, never PR #803 head, may bootstrap renewed R2 P0/P1.",
-        "mandatory R1 P8 PR #802 completed with exact resulting main `9ce7de054869ef29cc508d176023a93947489c25`",
-        "initial R2 attempt returned at P1 with no repository mutation",
-        "Draft PR #803",
-        "requires no P8, and R2 remains not started",
-        "only that verified resulting main, never the amendment PR head",
-        "approximately-700-line rule is a P1 review trigger, not a repository-wide hard cap",
-        "1,033 physical lines and blob `faf3fc71227da8e156f8d12f940591f189d1bb0c`",
-        "742 physical lines and blob `ee4db564faccb41e2354a639a527e3c8a3652f40`",
-        "unchanged exact twenty-path R2 production budget",
-        "pipeline implementation final maximum 1,083 lines and net growth +50",
-        "Primary Pin final maximum 777 and net growth +35",
-        "cutover semantic owner baseline 403 and final maximum 550",
-        "Every new function is at most 80 lines and every new orchestration function at most 60",
-        "Subjective ordinary Retrieval remains disabled and unwired",
-        "no production or runtime behavior changed",
-    ),
-    PLAN: (
-        "## Current RT-1D-R2 P1 stable-structure amendment gate",
-        "initial R2 attempt returned at P1 with no repository mutation",
-        "Draft PR #803 and requires no P8",
+        "## RT-1D-R2 live-root budget amendment (current)",
+        "PR #803 completed with exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` and required no P8",
+        "renewed R2 attempt also returned at P1 without mutation",
+        "Draft PR #804",
         "R2 remains not started",
         "amendment PR head cannot bootstrap R2",
-        "P1 review trigger, not a universal hard cap",
-        "1,033 physical lines, blob `faf3fc71227da8e156f8d12f940591f189d1bb0c`",
-        "742 physical lines, blob `ee4db564faccb41e2354a639a527e3c8a3652f40`",
-        "original exact twenty-path R2 production budget remains unchanged",
-        "1,083 lines (+50 net)",
-        "777 (+35 net)",
-        "403-line cutover semantic owner at no more than 550",
-        "New functions are at most 80 lines and new orchestration functions at most 60",
-        "changes no production/runtime behavior",
+        "`relaylm/managed_chat_response.py`",
+        "`bcf8d6f42b21c23ea96e081d69f3c039c5da4f5c`, 543 physical lines; final maximum 559 and net growth +16",
+        "same decision to both finalization constructions",
+        "`relaylm/relaymem_primary_pin_apply.py`",
+        "`9dc4c8bd62623c0037821f19c8dab2d166dcbb01`, 617 physical lines; final maximum 697 and net growth +80",
+        "prevent replay `_publish_state`, `_publish_receipt`, new-operation `_publish_state`",
+        "exact twenty-two-path R2 production budget",
+        "No twenty-third production path is authorized",
+        "Primary MEM remains the sole ordinary served memory and Retrieval authority",
+        "changes no production, runtime, config, durable state, serving, fallback, or retirement behavior",
+    ),
+    PLAN: (
+        "## Current RT-1D-R2 live-root budget amendment gate",
+        "PR #803 exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` -> renewed R2 P1 Return without mutation",
+        "Draft PR #804",
+        "the PR #804 live-root budget amendment gate remains current and R2 remains not started",
+        "R2 implementation next, not started",
+        "Only the verified amendment result, never its PR head",
+        "managed_chat_runtime.py`-only carriage is insufficient",
+        "route-only Pin fence is insufficient",
+        "exact twenty-two-path ordered list",
+        "no twenty-third production path",
+        "maximum 559 (+16)",
+        "maximum 697 (+80)",
+        "requires no P8 and changes no production/runtime behavior",
     ),
     RT1C: (
-        "## RT-1D-R1 completion evidence and mandatory P8 gate",
-        "The exact five-path R1 inventory is +894/-0",
-        "`relaylm/subjective_mem_retrieval_cutover.py` is the sole semantic owner: 403 physical lines, largest function 46 lines",
-        "rehearse_subjective_mem_retrieval_cutover(*, store: EvidenceRecordStore",
-        "Only `primary_only` and `rehearsal` exist",
-        "primary_stable\n-> rehearsal_ready\n-> transfer_intent\n-> primary_reader_fenced\n-> primary_writer_fenced\n-> subjective_generation_bound\n-> subjective_reader_enabled\n-> transfer_receipt_finalized\n-> post_transfer_validated\n-> retirement_complete",
-        "No production semantic record constructor or writer exists",
-        "Subjective serving is false, both fences are false",
-        "## RT-1D-R2 P1 stable-structure amendment",
-        "initial R2 attempt returned at P1 with no repository mutation",
-        "Draft PR #803 and requires no P8",
+        "Production budget (exact twenty-two paths, authoritative order)",
+        "relaylm/managed_chat_response.py",
+        "relaylm/relaymem_primary_pin_apply.py",
+        "### Current RT-1D-R2 live-root amendment gate",
+        "PR #803 completed with exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` and required no P8",
+        "Draft PR #804",
         "R2 remains not started",
-        "never the amendment PR head",
-        "P1 review trigger, not a repository-wide hard cap",
-        "1,033 physical lines at blob `faf3fc71227da8e156f8d12f940591f189d1bb0c`",
-        "742 physical lines at blob `ee4db564faccb41e2354a639a527e3c8a3652f40`",
-        "original exact twenty-path production budget above remains unchanged",
-        "1,083 physical lines (+50 net)",
-        "777 (+35 net)",
-        "baseline 403, at no more than 550",
-        "Every new function is at most 80 lines; every new orchestration function is at most 60",
-        "changes no durable cutover or production/runtime behavior",
-        "`relaylm/evidence_store.py` `41cfa9af6c32c1359be04f497924883ffbc4abb4e39313a44755494f92e2b41f`",
-        "At that inspection, RT-1D-R1 had not started and was non-executable until PR",
-        "#800 merged and its exact resulting main was independently verified",
-        "At that inspection, no runtime implementation had started",
-        "independently verified resulting main bootstrapped R1",
+        "it requires no P8",
+        "same decision to both calls",
+        "Managed-runtime-only carriage is insufficient",
+        "Route-only fencing is insufficient",
+        "blob `bcf8d6f42b21c23ea96e081d69f3c039c5da4f5c`, 543 physical lines; final maximum 559, net +16",
+        "blob `9dc4c8bd62623c0037821f19c8dab2d166dcbb01`, 617 physical lines; final maximum 697, net +80",
+        "dominates replay `_publish_state`, new-operation `_publish_receipt` and `_publish_state`",
+        "No twenty-third production path is authorized",
+        "Direct M3e/M3g code remains unchanged",
+        "changes no runtime, config, durable state, serving, fallback, authority, or retirement behavior",
     ),
 }
-for _path, _anchors in R2_STRUCTURE_AMENDMENT_ANCHORS.items():
+for _path, _anchors in R2_LIVE_ROOT_ANCHORS.items():
     REQUIRED[_path] += _anchors
-PROBES += tuple((path, anchor) for path, anchors in R2_STRUCTURE_AMENDMENT_ANCHORS.items() for anchor in anchors)
+PROBES += tuple((path, anchor) for path, anchors in R2_LIVE_ROOT_ANCHORS.items() for anchor in anchors)
 
 STATUS_TOP_SUMMARY_STALE = (
     "Mandatory R1 P8 PR #802 is current",
@@ -871,13 +856,19 @@ STATUS_TOP_SUMMARY_STALE = (
 )
 
 R2_STRUCTURE_STALE = (
-    "700-line rule is a universal hard cap",
-    "R2 is started",
+    "unchanged exact twenty-path R2 production budget",
+    "original exact twenty-path R2 production budget remains unchanged",
+    "managed_chat_runtime-only carriage is sufficient",
+    "route-only Pin fence is sufficient",
     "R2 may bootstrap from the amendment PR head",
-    "structure amendment requires P8",
-    "Primary MEM is no longer the sole ordinary served memory and Retrieval authority",
-    "R2 changes production/runtime behavior",
-    "new structural extraction owner",
+    "R2 implementation is started",
+    "live-root amendment requires P8",
+    "A twenty-third production path is authorized",
+    "bcf8d6f42b21c23ea96e081d69f3c039c5da4f5c`, 544",
+    "9dc4c8bd62623c0037821f19c8dab2d166dcbb01`, 618",
+    "final maximum 560",
+    "final maximum 698",
+    "the PR #803 amendment gate remains current",
 )
 
 STALE_PROBES = (
@@ -979,16 +970,20 @@ def self_test() -> None:
             raise AssertionError(f"{path}: anchor is not enforced: {anchor!r}")
         print(f"PASS: removal and alteration of {anchor.splitlines()[0]!r} fail closed")
     focused_mutations = (
-        (STATUS, "final maximum 1,083 lines", "final maximum 1,084 lines", "pipeline maximum increase"),
-        (PLAN, "777 (+35 net)", "778 (+36 net)", "Pin maximum increase"),
-        (RT1C, "baseline 403, at no more than 550", "baseline 403, at no more than 551", "semantic-owner maximum increase"),
-        (STATUS, "Draft PR #803", "PR head may bootstrap R2", "PR-head bootstrap"),
-        (PLAN, "R2 remains not started", "R2 is started", "started R2"),
-        (RT1C, "requires no P8", "requires P8", "incorrect P8 requirement"),
-        (STATUS, "Draft PR #803", "Draft PR #804", "wrong amendment PR number"),
-        (STATUS, "never PR #803 head", "may restart from PR #803 head", "PR-head bootstrap"),
-        (STATUS, "R2 remains not started", "R2 implementation is started", "started R2 in top summary"),
-        (STATUS, "current as Draft PR #803 and requires no P8", "current as Draft PR #803 requires P8", "P8 requirement in top summary"),
+        (STATUS, "exact twenty-two-path R2 production budget", "exact twenty-path R2 production budget", "old current budget"),
+        (STATUS, "`relaylm/managed_chat_response.py`", "`relaylm/managed_chat_runtime.py`", "managed response root omission"),
+        (STATUS, "`relaylm/relaymem_primary_pin_apply.py`", "`relaylm/soul_lab_memory_pin_routes.py`", "Pin apply root omission"),
+        (PLAN, "route-only Pin fence is insufficient", "route-only Pin fence is sufficient", "route-only sufficiency"),
+        (PLAN, "managed_chat_runtime.py`-only carriage is insufficient", "managed_chat_runtime-only carriage is sufficient", "runtime-only sufficiency"),
+        (PLAN, "Only the verified amendment result, never its PR head", "The PR head", "PR-head bootstrap"),
+        (PLAN, "the PR #804 live-root budget amendment gate remains current and R2 remains not started", "the PR #803 amendment gate remains current and R2 remains not started", "stale PR #803 current gate"),
+        (STATUS, "R2 remains not started", "R2 implementation is started", "started R2"),
+        (RT1C, "it requires no P8", "live-root amendment requires P8", "incorrect P8"),
+        (STATUS, "No twenty-third production path is authorized", "A twenty-third production path is authorized", "extra path"),
+        (STATUS, "final maximum 559 and net growth +16", "final maximum 560 and net growth +17", "managed limit"),
+        (STATUS, "final maximum 697 and net growth +80", "final maximum 698 and net growth +81", "Pin apply limit"),
+        (STATUS, "bcf8d6f42b21c23ea96e081d69f3c039c5da4f5c", "0cf8d6f42b21c23ea96e081d69f3c039c5da4f5c", "managed blob"),
+        (STATUS, "9dc4c8bd62623c0037821f19c8dab2d166dcbb01", "0dc4c8bd62623c0037821f19c8dab2d166dcbb01", "Pin apply blob"),
     )
     for path, current, damaged, label in focused_mutations:
         body = read(path)
@@ -1017,7 +1012,7 @@ def self_test() -> None:
             print(f"PASS: {STATUS}: reintroducing top-summary stale form {stale!r} fails closed")
             continue
         raise AssertionError(f"{STATUS}: top-summary stale form is not forbidden: {stale!r}")
-    for path in R2_STRUCTURE_AMENDMENT_ANCHORS:
+    for path in R2_LIVE_ROOT_ANCHORS:
         for stale in R2_STRUCTURE_STALE:
             body = read(path)
             assert stale not in body, f"{path}: R2 stale anchor is present: {stale!r}"
@@ -1048,7 +1043,7 @@ def main(argv: list[str] | None = None) -> None:
     for path in CURRENT_DOCS:
         forbid(path, STALE)
     forbid(STATUS, STATUS_TOP_SUMMARY_STALE)
-    for path in R2_STRUCTURE_AMENDMENT_ANCHORS:
+    for path in R2_LIVE_ROOT_ANCHORS:
         forbid(path, R2_STRUCTURE_STALE)
     forbid("docs/PROJECT_STATUS.md", HISTORY_ONLY_STATUS_ANCHORS)
     print("Documentation current boundary smoke passed")

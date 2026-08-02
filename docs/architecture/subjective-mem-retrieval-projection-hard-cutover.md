@@ -1816,11 +1816,12 @@ intent/fence/receipt records, serve Subjective evidence, or fence a writer.
 Purpose: carry one reconstructed writer decision to every live Primary formation
 and mutation side effect, while the durable state remains `primary_stable`.
 
-Production budget:
+Production budget (exact twenty-two paths, authoritative order):
 
 ```text
 relaylm/subjective_mem_retrieval_cutover.py
 relaylm/managed_chat_runtime.py
+relaylm/managed_chat_response.py
 relaylm/relaymem_slp_runtime_finalization.py
 relaylm/relaymem_slp_one_queued_job_runner.py
 relaylm/_relaymem_slp_one_queued_job_runner_execute.py
@@ -1839,6 +1840,7 @@ relaylm/soul_lab_memory_correction_runtime.py
 relaylm/soul_lab_memory_forget_runtime.py
 relaylm/soul_lab_memory_pin_routes.py
 relaylm/relaymem_primary_pin.py
+relaylm/relaymem_primary_pin_apply.py
 ```
 
 Focused tests may modify only the existing worker, pipeline, queue, Correct,
@@ -2049,14 +2051,14 @@ Immutable SHA-256 evidence: `relaylm/evidence_store.py` `41cfa9af6c32c1359be04f4
 
 Focused R1 validation was 38 passed and focused config/store/import validation was 60 passed. R1 smoke, consolidated Subjective lifecycle group, ruff, `py_compile`, `compileall`, diff/path/hash/structure checks, execution guard, and all applicable exact-head workflows passed. There were no reviews, comments, requested reviewers, or unresolved threads.
 
-### Current gate
+### Current RT-1D-R2 live-root amendment gate
 
-Mandatory R1 P8 PR #802 completed with exact resulting main `9ce7de054869ef29cc508d176023a93947489c25`. The initial R2 attempt returned at P1 with no repository mutation because exact-main `relaylm/_relaymem_primary_pipeline_impl.py` was 1,033 physical lines at blob `faf3fc71227da8e156f8d12f940591f189d1bb0c` and `relaylm/relaymem_primary_pin.py` was 742 physical lines at blob `ee4db564faccb41e2354a639a527e3c8a3652f40`, triggering structural review. This architecture-only stable-structure amendment is current as Draft PR #803 and requires no P8. R2 remains not started and may restart only after this amendment merges and its exact resulting main is independently verified; only that result, never the amendment PR head, may bootstrap renewed R2 P0/P1.
+PR #803 completed with exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` and required no P8. After the first structural P1 Return, renewed negative call-graph inspection returned R2 to P1 again without mutation. The current architecture-only transaction is Draft PR #804; it requires no P8. R2 remains not started and can restart only from this amendment's independently verified resulting main, never its PR head.
 
-### RT-1D-R2 P1 stable-structure amendment
+`relaylm/managed_chat_response.py` is the sole current bridge constructing both stream and non-stream runtime-finalization calls. It accepts the exact immutable Primary-writer decision by an explicit keyword-only argument and carries the same decision to both calls. It performs no durable resolution, config inference, fallback replacement, or independent side-effect gating. Baseline: blob `bcf8d6f42b21c23ea96e081d69f3c039c5da4f5c`, 543 physical lines; final maximum 559, net +16; `build_managed_chat_response` gains at most 8 lines and no new branch, loop, persistence responsibility, or state resolution. Managed-runtime-only carriage is insufficient.
 
-The approximately-700-line rule is a P1 review trigger, not a repository-wide hard cap. The two exact-main modules already own the accepted Primary pipeline implementation and Primary Pin responsibilities. R2 adds only immutable writer-decision field carriage, exact validation, and bounded rejection before side effects; it transfers neither responsibility nor semantic authority. Creating another production owner solely to reduce line count would be prohibited meaningless fragmentation, wrapper-only indirection, and unrelated refactoring. No structural extraction path or new file is authorized, and the original exact twenty-path production budget above remains unchanged.
+`relaylm/relaymem_primary_pin_apply.py` is the canonical Pin/Unpin apply and replay mutation owner. Its entries accept and carry the exact immutable decision without boolean or Mapping conversion. Validation precedes the first mutation and dominates replay `_publish_state`, new-operation `_publish_receipt` and `_publish_state`, shared-fence mutation, and every other durable mutation. Route-only fencing is insufficient. Baseline: blob `9dc4c8bd62623c0037821f19c8dab2d166dcbb01`, 617 physical lines; final maximum 697, net +80. `_apply_operation` remains at most 80 physical lines or, if its exact baseline is already larger, gains no span and delegates only to a bounded same-owner decision helper. Read-only preflight/history gain no write authority.
 
-This acceptance is narrow to R2 and the exact baseline blobs and sizes, not a general waiver. `_relaymem_primary_pipeline_impl.py` may finish at no more than 1,083 physical lines (+50 net), `relaymem_primary_pin.py` at no more than 777 (+35 net), and the sole cutover semantic owner, baseline 403, at no more than 550. Every other authorized module currently below 700 remains below 700 and gains at most 80 lines. Every new function is at most 80 lines; every new orchestration function is at most 60. A touched pre-existing function above 80 requires a recorded baseline, no responsibility expansion, no span increase, and a bounded same-owner helper; a pre-existing function at or below 80 stays at or below 80. Line-golfing, collapsed statements, removed validation, unrelated cleanup, extraction, rename, formatting sweep, schema redesign, and ownership movement are forbidden.
+No twenty-third production path is authorized. Direct M3e/M3g code remains unchanged because current worker/pipeline checkpoints dominate it. PR #803 limits remain exact: `_relaymem_primary_pipeline_impl.py` 1,033 -> maximum 1,083 (+50); `relaymem_primary_pin.py` 742 -> maximum 777 (+35); `subjective_mem_retrieval_cutover.py` 403 -> maximum 550; new functions maximum 80 and new orchestration functions maximum 60. If any limit fails, return to P1.
 
-Renewed R2 P0/P1 begins only from the amendment's independently verified resulting main. It must enumerate the complete live Primary formation/mutation graph, freeze existing focused tests, measure all twenty modules and touched/new functions, identify projected additions in the oversized owners, prove the 1,083 and 777 maxima, prove no genuine responsibility boundary warrants a new owner, prove in-budget checks dominate every live side effect, and prove no independent root needs a twenty-first production path. Config, EvidenceRecordStore, direct M3e/M3g implementation, ordinary readers, documentation, workflows, and scripts remain unchanged during R2. An exceeded allowance or genuine split returns to P1 for another amendment. Primary remains the sole ordinary served memory and Retrieval authority; Subjective ordinary Retrieval remains disabled and unwired; this amendment changes no durable cutover or production/runtime behavior.
+This amendment changes no runtime, config, durable state, serving, fallback, authority, or retirement behavior. Primary MEM remains the sole ordinary served memory and Retrieval authority, and Subjective ordinary Retrieval remains disabled and unwired.
