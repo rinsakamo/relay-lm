@@ -105,7 +105,9 @@ def build_request(
         runtime_private=True,
         content_included=True,
         primary_writer_decision=(
-            resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig())
+            resolve_subjective_mem_retrieval_primary_writer_decision(
+                RelayLMConfig.model_construct()
+            )
         ),
         claimed_record=exact_record,
         worker_source=built.source,
@@ -169,7 +171,9 @@ def pipeline_request_from_worker(
         runtime_private=True,
         content_included=True,
         primary_writer_decision=(
-            resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig())
+            resolve_subjective_mem_retrieval_primary_writer_decision(
+                RelayLMConfig.model_construct()
+            )
         ),
         worker_source=request.worker_source,
         claimed_record=request.claimed_record,

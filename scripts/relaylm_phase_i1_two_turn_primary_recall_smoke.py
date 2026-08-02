@@ -255,7 +255,9 @@ def main() -> None:
                 runtime_private=True,
                 content_included=False,
                 primary_writer_decision=(
-                    resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig())
+                    resolve_subjective_mem_retrieval_primary_writer_decision(
+                RelayLMConfig.model_construct()
+            )
                 ),
                 queued_record=dict(queued),
                 source_registry=RelayMEMSLPPrimaryWorkerSourceRegistry(),
@@ -286,7 +288,9 @@ def main() -> None:
                     runtime_private=True,
                     content_included=False,
                     primary_writer_decision=(
-                        resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig())
+                        resolve_subjective_mem_retrieval_primary_writer_decision(
+                RelayLMConfig.model_construct()
+            )
                     ),
                     queued_record=dict(queued),
                     source_registry=RelayMEMSLPPrimaryWorkerSourceRegistry(),

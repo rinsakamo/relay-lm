@@ -179,7 +179,9 @@ def create_request(
         runtime_private=True,
         content_included=True,
         primary_writer_decision=(
-            resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig())
+            resolve_subjective_mem_retrieval_primary_writer_decision(
+                RelayLMConfig.model_construct()
+            )
         ),
         worker_source=built.source,
         claimed_record=canonical,
@@ -406,7 +408,9 @@ def _input_and_stop_cases() -> None:
             runtime_private=True,
             content_included=True,
             primary_writer_decision=(
-                resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig())
+                resolve_subjective_mem_retrieval_primary_writer_decision(
+                RelayLMConfig.model_construct()
+            )
             ),
             worker_source=source_payload(record),
             claimed_record=record,
