@@ -215,6 +215,7 @@ def _build_worker_request(request: object, deps: _OneQueuedJobDependencies, clai
         schema_version=deps.worker_request_schema,
         runtime_private=True,
         content_included=True,
+        primary_writer_decision=request.primary_writer_decision,
         claimed_record=dict(claimed),
         worker_source=prepared.source,
         request_scope=prepared.request_scope,

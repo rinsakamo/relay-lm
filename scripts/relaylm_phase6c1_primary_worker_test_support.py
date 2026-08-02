@@ -1,6 +1,11 @@
 """Test-only support for the Phase 6-C1-2 one-claimed-job worker smokes."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
+
 import json
 import runpy
 from contextlib import contextmanager
@@ -99,6 +104,9 @@ def build_request(
         schema_version=REQUEST_SCHEMA,
         runtime_private=True,
         content_included=True,
+        primary_writer_decision=(
+            resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig())
+        ),
         claimed_record=exact_record,
         worker_source=built.source,
         request_scope=scope,
@@ -160,6 +168,9 @@ def pipeline_request_from_worker(
         schema_version="relaymem.primary_pipeline_request.v0",
         runtime_private=True,
         content_included=True,
+        primary_writer_decision=(
+            resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig())
+        ),
         worker_source=request.worker_source,
         claimed_record=request.claimed_record,
         request_scope=request.request_scope,

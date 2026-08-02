@@ -1,6 +1,11 @@
 """Focused smoke for the final-review fixes on Phase 6-C1-2."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
+
 import json
 import runpy
 from dataclasses import replace
@@ -217,6 +222,9 @@ def _worker_request(
         schema_version=REQUEST_SCHEMA,
         runtime_private=True,
         content_included=True,
+        primary_writer_decision=(
+            resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig())
+        ),
         claimed_record=dict(claimed),
         worker_source=prepared.source,
         request_scope=prepared.request_scope,

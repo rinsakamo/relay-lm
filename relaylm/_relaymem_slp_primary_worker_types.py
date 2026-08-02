@@ -4,6 +4,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
+from .subjective_mem_retrieval_cutover import (
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+)
+
 from .relaymem_primary_pipeline import RelayMEMPrimaryPipelineResult
 from .relaymem_slp_primary_worker_outcome import RelayMEMSLPPrimaryWorkerOutcome
 from .relaymem_slp_primary_worker_source import (
@@ -46,6 +50,7 @@ class RelayMEMSLPPrimaryWorkerRequest:
     schema_version: str
     runtime_private: bool
     content_included: bool
+    primary_writer_decision: SubjectiveMemRetrievalPrimaryWriterDecision
     claimed_record: dict[str, object] = field(repr=False)
     worker_source: RelayMEMSLPPrimaryWorkerSource = field(repr=False)
     request_scope: RelayMEMSLPPrimaryWorkerSourceScope = field(repr=False)

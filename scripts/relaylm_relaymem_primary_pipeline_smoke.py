@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
+
 import io
 import sys
 import tempfile
@@ -173,6 +178,9 @@ def create_request(
         schema_version=REQUEST_SCHEMA,
         runtime_private=True,
         content_included=True,
+        primary_writer_decision=(
+            resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig())
+        ),
         worker_source=built.source,
         claimed_record=canonical,
         request_scope=scope,
@@ -397,6 +405,9 @@ def _input_and_stop_cases() -> None:
             schema_version=REQUEST_SCHEMA,
             runtime_private=True,
             content_included=True,
+            primary_writer_decision=(
+                resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig())
+            ),
             worker_source=source_payload(record),
             claimed_record=record,
             request_scope=request.request_scope,

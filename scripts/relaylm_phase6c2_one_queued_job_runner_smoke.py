@@ -1,6 +1,11 @@
 """Functional smoke for Phase 6-C2 one queued-job integration."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
+
 import os
 import subprocess
 import sys
@@ -53,6 +58,9 @@ def request(
         schema_version=REQUEST_SCHEMA,
         runtime_private=True,
         content_included=False,
+        primary_writer_decision=(
+            resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig())
+        ),
         queued_record=dict(queued),
         source_registry=registry,
         character_id=CHARACTER_ID,

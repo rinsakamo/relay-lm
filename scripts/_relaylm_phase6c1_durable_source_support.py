@@ -1,6 +1,11 @@
 """Test-only support for Phase 6-C1-5 smokes."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
+
 import runpy
 from pathlib import Path
 
@@ -60,6 +65,9 @@ def worker_request(
         schema_version=REQUEST_SCHEMA,
         runtime_private=True,
         content_included=True,
+        primary_writer_decision=(
+            resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig())
+        ),
         claimed_record=dict(claimed),
         worker_source=source,
         request_scope=scope,

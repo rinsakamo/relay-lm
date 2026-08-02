@@ -38,6 +38,10 @@ from .relaymem_slp_primary_worker_source import (
     RelayMEMSLPPrimaryWorkerSourceScope,
     consume_relaymem_slp_primary_worker_source,
 )
+from .subjective_mem_retrieval_cutover import (
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+    primary_writer_decision_permits_write,
+)
 
 REQUEST_SCHEMA = "relaymem.primary_pipeline_request.v0"
 RESULT_SCHEMA = "relaymem.primary_pipeline_result.v0"
@@ -288,6 +292,7 @@ class RelayMEMPrimaryPipelineRequest:
     schema_version: str
     runtime_private: bool
     content_included: bool
+    primary_writer_decision: SubjectiveMemRetrievalPrimaryWriterDecision
     worker_source: RelayMEMSLPPrimaryWorkerSource = field(repr=False)
     claimed_record: dict[str, object] = field(repr=False)
     request_scope: RelayMEMSLPPrimaryWorkerSourceScope = field(repr=False)
@@ -477,6 +482,18 @@ def execute_relaymem_primary_pipeline(
             ledger=ledger,
             artifacts=artifacts,
             reasons=request_reasons,
+        )
+    if not primary_writer_decision_permits_write(
+        request_value.primary_writer_decision
+    ):
+        return _finish(
+            status="invalid_input",
+            enabled=False,
+            dry_run_only=True,
+            apply_enabled=False,
+            ledger=ledger,
+            artifacts=artifacts,
+            reasons=("primary_writer_decision_rejected",),
         )
     if not request_value.enabled:
         return _finish(

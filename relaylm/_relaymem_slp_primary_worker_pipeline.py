@@ -30,6 +30,7 @@ def _build_pipeline_request(
         schema_version=REQUEST_SCHEMA,
         runtime_private=True,
         content_included=True,
+        primary_writer_decision=request.primary_writer_decision,
         worker_source=source,
         claimed_record=dict(request.claimed_record),
         request_scope=request.request_scope,

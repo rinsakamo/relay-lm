@@ -29,6 +29,7 @@ from ._relaymem_slp_primary_worker_validate import (
     _result,
     _validate_request,
 )
+from .subjective_mem_retrieval_cutover import primary_writer_decision_permits_write
 
 _CORRELATION_REASONS = frozenset({
     "worker_source_job_id_mismatch",
@@ -54,6 +55,12 @@ def execute_relaymem_slp_primary_worker(
             status="invalid_input",
             request=request if type(request) is RelayMEMSLPPrimaryWorkerRequest else None,
             reasons=request_reasons,
+        )
+    if not primary_writer_decision_permits_write(exact.primary_writer_decision):
+        return _result(
+            status="invalid_input",
+            request=exact,
+            reasons=("primary_writer_decision_rejected",),
         )
     if not exact.enabled:
         return _result(status="disabled", request=exact)

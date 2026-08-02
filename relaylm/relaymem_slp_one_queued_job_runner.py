@@ -11,6 +11,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+from .subjective_mem_retrieval_cutover import (
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+    primary_writer_decision_permits_write,
+)
+
 from ._relaymem_slp_primary_worker_fence import _check_active_claim, _exact_claimed_record
 from ._relaymem_slp_one_queued_job_runner_execute import (
     _OneQueuedJobDependencies,
@@ -78,6 +83,7 @@ class RelayMEMSLPOneQueuedJobRunnerRequest:
     schema_version: str
     runtime_private: bool
     content_included: bool
+    primary_writer_decision: SubjectiveMemRetrievalPrimaryWriterDecision
     queued_record: dict[str, object] = field(repr=False)
     source_registry: RelayMEMSLPPrimaryWorkerSourceRegistry = field(repr=False)
     character_id: str = field(repr=False)
@@ -226,6 +232,10 @@ def execute_one_queued_relaymem_slp_primary_job(
         return _result("invalid_input", request, reasons=gate_reasons)
     if not request.enabled:
         return _result("disabled", request)
+    if not primary_writer_decision_permits_write(request.primary_writer_decision):
+        return _result(
+            "invalid_input", request, reasons=("primary_writer_decision_rejected",)
+        )
 
     exact, request_reasons = _validate_request(request)
     if exact is None:
