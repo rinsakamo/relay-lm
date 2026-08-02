@@ -2052,9 +2052,9 @@ Immutable SHA-256 evidence: `relaylm/evidence_store.py` `41cfa9af6c32c1359be04f4
 
 Focused R1 validation was 38 passed and focused config/store/import validation was 60 passed. R1 smoke, consolidated Subjective lifecycle group, ruff, `py_compile`, `compileall`, diff/path/hash/structure checks, execution guard, and all applicable exact-head workflows passed. There were no reviews, comments, requested reviewers, or unresolved threads.
 
-### Current RT-1D-R2 staged writer-fence and smoke-carriage amendment gate
+### RT-1D-R2 staged writer-fence and smoke-carriage amendment gate
 
-PR #803 completed with exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` and required no P8. After the first structural P1 Return, renewed negative call-graph inspection returned R2 to P1 again without mutation, and live-root budget amendment PR #804 completed with exact result `00ba475c689631520538b7531022603447f11bd0`; it required no P8. The following R2 attempt against the recorded twenty-two paths returned at P1 a third time without mutation. That P1 Return is recorded in Draft PR #805, now closed, unmerged, and tree-neutral at head `733b38fd3e74dcc542dd1c8f2ec1353a2cab6a95` with one bootstrap commit, zero changed paths, a tree identical to main, and exactly one execution receipt; it is an audit record only. The queued-runner root budget amendment PR #806 then completed with exact result `cd8ce6e05b6476b08ecf25a5100fb0c3f0e77644`. The current architecture-only transaction is the staged writer-fence and smoke-carriage budget amendment, Draft PR #808; it requires no P8. RT-1D-R2A remains not started and can start only from this amendment's independently verified resulting main on a fresh branch, never its PR head and never the PR #805 or PR #807 heads.
+PR #803 completed with exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` and required no P8. After the first structural P1 Return, renewed negative call-graph inspection returned R2 to P1 again without mutation, and live-root budget amendment PR #804 completed with exact result `00ba475c689631520538b7531022603447f11bd0`; it required no P8. The following R2 attempt against the recorded twenty-two paths returned at P1 a third time without mutation. That P1 Return is recorded in Draft PR #805, now closed, unmerged, and tree-neutral at head `733b38fd3e74dcc542dd1c8f2ec1353a2cab6a95` with one bootstrap commit, zero changed paths, a tree identical to main, and exactly one execution receipt; it is an audit record only. The queued-runner root budget amendment PR #806 then completed with exact result `cd8ce6e05b6476b08ecf25a5100fb0c3f0e77644`. The architecture-only staged writer-fence and smoke-carriage budget amendment was Draft PR #808; it required no P8 and completed with exact result `758c160e1ee71bb9ad67fe10234e5a38c03c6a3d`. RT-1D-R2A bootstrapped only from that amendment's independently verified resulting main on a fresh branch, never its PR head and never the PR #805 or PR #807 heads.
 
 `relaylm/relaymem_slp_queue_candidate.py` is the twenty-third authorized path and the sole remaining production construction gap proved by the PR #805 P1 evidence. The queue construction graph is: `build_relaymem_slp_one_queued_job_request(...)` receives `RelayLMConfig` and is the sole production constructor of `RelayMEMSLPOneQueuedJobRunnerRequest`; `relaylm/local_worker_once.py` (reached from `relaylm/cli/worker.py`) and `relaylm/relaymem_slp_scheduler_queue_lane.py` (reached from `relaylm/relaymem_slp_scheduler_round.py`) both delegate construction to it and remain byte-identical, so authorizing the shared builder alone covers both live roots without duplicating derivation responsibility. The builder explicitly populates the immutable writer decision on the runner request. No permit-valued request-field default may conceal missing construction-root supply, and queued-runner execution, worker request, worker execution, worker pipeline, and Primary pipeline invocation may validate the exact decision but may not re-derive or downgrade it; replacing an explicitly supplied fenced or recovery-required decision with the `primary_only` permit decision is prohibited. Baseline: blob `3fc6f0f5a03bb717bcd163c692bc87e54c216f81`, 462 physical lines; final maximum 510, net +48; `build_relaymem_slp_one_queued_job_request` gains at most 8 physical lines and remains at or below 60, with at most one new same-owner decision derivation or validation helper of at most 40 physical lines.
 
@@ -2199,8 +2199,86 @@ There are exactly three overlap files:
 
 The counts are unchanged: 58 distinct files, 61 stage assignments, R2A 4, R2B 29, R2C 23, R2D 5.
 
-Mandatory transaction ordering: PR #807 accepted P1 Return -> this architecture-only staged-budget amendment -> independently verify its exact resulting main -> RT-1D-R2A fresh implementation PR -> verify R2A exact result -> mandatory R2A P8 -> verify R2A P8 result -> RT-1D-R2B -> verify -> mandatory R2B P8 -> verify -> RT-1D-R2C -> verify -> mandatory R2C P8 -> verify -> RT-1D-R2D -> verify -> mandatory R2D P8 -> verify -> R3 may become next, not started by this amendment. Every implementation and P8 is a separate fresh-branch single-writer transaction, and only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next; never a PR head and never an audit branch.
+Mandatory transaction ordering: PR #807 accepted P1 Return -> the architecture-only staged-budget amendment PR #808 exact result `758c160e1ee71bb9ad67fe10234e5a38c03c6a3d` -> RT-1D-R2A implementation PR #809 exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430` -> current mandatory R2A P8 Draft PR #810 -> independently verify the R2A P8 exact resulting main -> RT-1D-R2B next, not started -> verify R2B exact result -> mandatory R2B P8 -> verify -> RT-1D-R2C -> verify -> mandatory R2C P8 -> verify -> RT-1D-R2D -> verify -> mandatory R2D P8 -> verify -> R3 may become next, not started by this amendment. Every implementation and P8 is a separate fresh-branch single-writer transaction, and only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next; never a PR head and never an audit branch.
+
+The RT-1D-R2A frozen non-production caller blobs and line counts recorded above are the pre-R2A amendment-time baselines. Their post-R2A values are recorded in the RT-1D-R2A completion section below, and every later stage remeasures its own fresh baseline after the preceding P8 result.
 
 No twenty-fourth production path is authorized. `relaylm/local_worker_once.py`, `relaylm/relaymem_slp_scheduler_queue_lane.py`, `relaylm/relaymem_slp_scheduler_round.py`, `relaylm/cli/worker.py`, every queue-record schema or persistence path, and every worker validator path remain unchanged and unauthorized. If a twenty-fourth production path is required, stop at P1 and raise a new architecture amendment rather than reinterpreting this budget. Direct M3e/M3g code remains unchanged because current worker/pipeline checkpoints dominate it. PR #803 limits remain exact: `_relaymem_primary_pipeline_impl.py` 1,033 -> maximum 1,083 (+50); `relaymem_primary_pin.py` 742 -> maximum 777 (+35); `subjective_mem_retrieval_cutover.py` 403 -> maximum 550; new functions maximum 80 and new orchestration functions maximum 60. If any limit fails, return to P1.
 
 This amendment changes no runtime, config, durable state, serving, fallback, authority, or retirement behavior. Primary MEM remains the sole ordinary served memory and Retrieval authority, and Subjective ordinary Retrieval remains disabled and unwired.
+
+## RT-1D-R2A completion evidence and mandatory P8 gate
+
+### Identity, result, and commits
+
+The staged writer-fence and smoke-carriage budget amendment PR #808 completed with exact result `758c160e1ee71bb9ad67fe10234e5a38c03c6a3d`, which bootstrapped RT-1D-R2A. RT-1D-R2A implementation PR #809 used branch `agent/rt1d-r2a-decision-finalization`, is closed and merged, and produced exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430`, which is exact current main.
+
+PR #809 carries exactly three normal commits: `62bb2a8ae4bff175ae8169210cbcf2e604b48835` `chore: bootstrap RT-1D-R2A execution`, tree-neutral with zero changed paths; `3a8f33a5b9c59108f5c2d4b3289481f587d1e090` `feat: implement RT-1D-R2A writer decision carriage`; and `eafdc0629fd307ed7c136488280ddb449c5787f1` `fix: bound malformed RT-1D-R2A writer decisions`. The final head is `eafdc0629fd307ed7c136488280ddb449c5787f1`. There was exactly one execution receipt, no comments, no reviews, and no review threads. The full suite was 1041/1041 and exact-head CI completed with no candidate-caused failure. RT-1D-R2A implementation is complete.
+
+### Exact nine paths, stats, final blobs, and lines
+
+PR #809 changed exactly 9 paths, +829/-7. A tenth R2A path is invalid.
+
+| Path | +/- | Final blob | Lines |
+|---|---|---|---|
+| `relaylm/subjective_mem_retrieval_cutover.py` | +146/-0 | `dd21090a80ec` | 549 |
+| `relaylm/managed_chat_runtime.py` | +6/-0 | `65ffa7983b24` | 490 |
+| `relaylm/managed_chat_response.py` | +10/-0 | `7d4c3e8a207a` | 553 |
+| `relaylm/relaymem_slp_runtime_finalization.py` | +57/-0 | `a6be671c66a1` | 585 |
+| `tests/test_subjective_mem_retrieval_cutover.py` | +268/-0 | `638bc77dad54` | 581 |
+| `scripts/_relaylm_i1ge_crash_child.py` | +9/-1 | `f4732cda4fa6` | 584 |
+| `scripts/relaylm_e1r1_trusted_home_scene_admission_smoke.py` | +106/-4 | `e396228045ed` | 474 |
+| `scripts/relaylm_i1gc_durable_finalization_replay_smoke.py` | +81/-0 | `c855eb0cebc3` | 734 |
+| `tests/test_response_service.py` | +146/-2 | `f226d495bbd0` | 479 |
+
+The first four are the R2A production paths 1-4; the remaining five are the exactly 4 frozen non-production callers plus the dedicated semantic-owner test.
+
+### Final spans and structural limits
+
+```text
+subjective_mem_retrieval_cutover.__post_init__ (decision)              278-302  (25)
+subjective_mem_retrieval_cutover.resolve_..._primary_writer_decision   312-352  (41)
+subjective_mem_retrieval_cutover.primary_writer_decision_permits_write 355-370  (16)
+subjective_mem_retrieval_cutover._writer_decision                      373-385  (13)
+subjective_mem_retrieval_cutover._decision_invalid                     388-389   (2)
+subjective_mem_retrieval_cutover.rehearse_..._cutover                  392-414  (23)  unchanged
+subjective_mem_retrieval_cutover._reconstruct                          417-429  (13)  unchanged
+managed_chat_runtime.handle_managed_chat_completion                    117-176  (60)
+managed_chat_response.build_managed_chat_response                       98-157  (60)
+managed_chat_response._build_stream_response                           160-324 (165)
+managed_chat_response._build_nonstream_response                        327-511 (185)
+relaymem_slp_runtime_finalization.run_..._enqueue_after_response       240-286  (47)  public guard
+relaymem_slp_runtime_finalization._execute_..._enqueue_after_response  292-465 (174)  body byte-identical
+```
+
+Every authorized limit held: `subjective_mem_retrieval_cutover.py` 549 against maximum 550; `managed_chat_response.py` 553 against maximum 559 with net +10 against +16; `build_managed_chat_response` 57 -> 60, a +3 gain against the +8 allowance and with no new branch; every authorized module below 700 with a maximum of 585; every module gain at most +57 against +80; new functions at most 41 against 80; and the one new orchestration function 47 against 60. The pre-existing 174-line effect owner gained no responsibility and no span.
+
+### Immutable decision schema and state mapping
+
+`SubjectiveMemRetrievalPrimaryWriterDecision` is the sole immutable decision: a frozen dataclass with six required fields and no default on any field — `schema_version`, `state`, `writer_class`, `recovery_required`, `reasons`, and `runtime_private_evidence_omitted`. There is no `primary_writer_unbound` or equivalent third class, no Optional decision used as an implicit permit, no permit-valued dataclass, request, or function default, and no arbitrary Mapping representation. Its projection and `repr` expose only those six fields and carry no path, binding, memory content, prompt, source body, workspace identity, lineage, or correlation material.
+
+The permitted set is derived from the fence rather than a hand-copied list. Every complete valid state strictly before `primary_writer_fenced` — `primary_stable`, `rehearsal_ready`, `transfer_intent`, and `primary_reader_fenced` — maps to permitted with `recovery_required` false and an empty reason tuple. `primary_writer_fenced` and every later state map to rejected with the stable reason `cutover_primary_writer_fenced`. Malformed, partial, divergent, tampered, duplicate, reordered, unsupported, unreadable, multiple-chain, and binding-inexact input maps to rejected with `recovery_required` true, and resolver input or configuration disagreement maps to rejected with `cutover_writer_config_invalid` or `cutover_writer_config_disagreement`.
+
+### Binding-free `primary_only` and rehearsal reconstruction
+
+For exact `primary_only` posture with the complete required empty cutover tuple, the resolver returns a bound `primary_stable` permit derived from the validated mode alone, with no `EvidenceRecordStore` access, no store root, no binding, no binding digest, and no durable read or write. It is not a missing-value fallback, a default argument, an Optional compatibility state, a downstream config boolean check, or projection-presence inference, and it rejects with `cutover_writer_config_disagreement` if any tuple field is non-null. For validated rehearsal posture the resolver builds the existing binding, opens the configured store root, and delegates to the existing exact reconstruction owner, which remains byte-identical.
+
+### Malformed, tampered, and unhashable fail-closed correction
+
+Independent review found a bounded fail-closed defect in the implementation commit, corrected in place on the same branch inside the existing nine-path budget. Validating `state` and `writer_class` with set membership raised `TypeError` for an unhashable corrupted value, and that exception escaped `primary_writer_decision_permits_write`, which catches only `SubjectiveMemRetrievalCutoverError`, so the public finalization guard raised instead of returning its bounded content-free non-success result. Both fields are now validated with tuple membership, which compares by equality rather than hashing, so the validator is total over arbitrary field values and every malformed value raises only the existing stable error identities.
+
+Unhashable corrupted values converge to `False` or a stable owner error and never to an uncontrolled `TypeError`. The guard was deliberately not broadened into a generic exception swallower: its single exact `except SubjectiveMemRetrievalCutoverError` clause is byte-identical and is pinned by test. The correction changed 2 lines and added none in the owner, added 28 test lines, changed no public schema or semantics, left all ten valid state mappings identical, and kept the owner at 549 lines with `__post_init__` unchanged at 25.
+
+### Single derivation, exact carriage, and finalization guard
+
+The immutable decision is derived exactly once, at the managed runtime construction root, from the exact request-scoped configuration, and is passed explicitly by keyword. It is never stored globally or in a diagnostics or context object. `relaylm/managed_chat_response.py` accepts it as a keyword-only parameter with no default and carries the same value into both the stream and the non-stream finalization `BackgroundTask`; it performs no state resolution, config interpretation, fallback, substitution, or independent authority decision, and it never imports the resolver.
+
+The public `run_relaymem_slp_runtime_enqueue_after_response` is a strict guard wrapper taking the decision as a keyword-only argument with no default. It rejects before any durable replay, source publication, protected-source write, or queue enqueue, returning one stable content-free bounded non-success result with the single reason `primary_writer_decision_not_permitted` and performing zero governed side effects. A missing argument raises from Python's own keyword-only enforcement and is never a permit. The permitted path delegates straight into the preserved effect owner, whose body is byte-identical to the pre-R2A public function, so durable outputs, statuses, reasons, node ordering, tracing, cleanup, and error behavior are byte-equivalent by construction. Response delivery, stream wrapping order, timing, and `BackgroundTask` attachment are unchanged, and an ordinary reject never raises an unhandled background exception.
+
+### Queue persistence and stage boundary
+
+No decision is persisted in any queue record, and R2A introduces no queue schema or persistence field for it. R2A ends at the durable enqueue boundary: the decision enters no queue record and no R2B request type. There is no R2B queue, runner, worker, or pipeline carriage yet, and no R2C, R2D, or R3 work has started. Primary MEM remains the sole ordinary served authority, Subjective ordinary Retrieval remains disabled and unwired, and no durable intent, fence, activation, receipt, readiness, usage, probe, fallback, authority-transfer, or retirement change has occurred.
+
+### Current P8 and RT-1D-R2B gate
+
+The mandatory RT-1D-R2A P8 current-authority synchronization is the current Lane C transaction as Draft PR #810. It is documentation-only, requires no further P8, and changes no production, runtime, test, config, workflow, contract, ADR, evidence, or completion-report path. RT-1D-R2B is next and has not started. RT-1D-R2B may start only from this P8's independently verified exact resulting main on a fresh branch, never from the PR #809 head, never from a PR head, and never from an audit branch. Its P1 remeasures the then-current blobs rather than the pre-R2A or amendment-time blobs, and the later-stage budgets are not expanded by this P8.

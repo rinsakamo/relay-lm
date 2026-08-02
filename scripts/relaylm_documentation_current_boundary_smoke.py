@@ -790,11 +790,10 @@ PROBES += tuple((path, anchor) for path, anchors in S3C_COMPLETION_ANCHORS.items
 
 R2_LIVE_ROOT_ANCHORS = {
     STATUS: (
-        "## RT-1D-R2 staged writer-fence and smoke-carriage budget amendment (current)",
+        "## RT-1D-R2 staged writer-fence and smoke-carriage budget amendment",
         "PR #803 completed with exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` and required no P8",
         "renewed R2 attempt also returned at P1 without mutation",
         "PR #804",
-        "R2 remains not started",
         "amendment PR head cannot bootstrap R2",
         "`relaylm/managed_chat_response.py`",
         "`bcf8d6f42b21c23ea96e081d69f3c039c5da4f5c`, 543 physical lines; final maximum 559 and net growth +16",
@@ -808,11 +807,11 @@ R2_LIVE_ROOT_ANCHORS = {
         "changes no production, runtime, config, durable state, serving, fallback, or retirement behavior",
     ),
     PLAN: (
-        "## Current RT-1D-R2 staged writer-fence and smoke-carriage budget amendment gate",
+        "## Current RT-1D-R2A P8 current-authority synchronization gate",
         "PR #803 exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` -> renewed R2 P1 Return without mutation",
         "PR #804",
-        "the PR #808 staged writer-fence and smoke-carriage budget amendment gate remains current and RT-1D-R2A remains not started",
-        "RT-1D-R2A fresh implementation PR -> verify R2A exact result -> mandatory R2A P8",
+        "The RT-1D-R2A P8 gate is current and RT-1D-R2B remains not started",
+        "RT-1D-R2A implementation PR #809 exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430` -> current mandatory R2A P8",
         "only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next, never a PR head and never an audit branch",
         "managed_chat_runtime.py`-only carriage is insufficient",
         "route-only Pin fence is insufficient",
@@ -820,17 +819,16 @@ R2_LIVE_ROOT_ANCHORS = {
         "no twenty-fourth production path",
         "maximum 559 (+16)",
         "maximum 697 (+80)",
-        "requires no P8 and changes no production/runtime behavior",
+        "requires no further P8 and changes no production/runtime behavior",
     ),
     RT1C: (
         "Production budget (exact twenty-three paths, authoritative order, split across the four ordered stages RT-1D-R2A, RT-1D-R2B, RT-1D-R2C, and RT-1D-R2D)",
         "relaylm/managed_chat_response.py",
         "relaylm/relaymem_primary_pin_apply.py",
-        "### Current RT-1D-R2 staged writer-fence and smoke-carriage amendment gate",
+        "### RT-1D-R2 staged writer-fence and smoke-carriage amendment gate",
         "PR #803 completed with exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` and required no P8",
         "PR #804",
-        "RT-1D-R2A remains not started",
-        "it requires no P8",
+        "it required no P8",
         "same decision to both calls",
         "Managed-runtime-only carriage is insufficient",
         "Route-only fencing is insufficient",
@@ -870,7 +868,7 @@ R2_QUEUE_ROOT_ANCHORS = {
         "may validate the exact decision but may not re-derive or downgrade it",
     ),
     PLAN: (
-        "current staged writer-fence and smoke-carriage budget amendment Draft PR #808",
+        "staged writer-fence and smoke-carriage budget amendment PR #808 exact result `758c160e1ee71bb9ad67fe10234e5a38c03c6a3d`",
         "mandatory R2D P8 -> verify -> R3 may become next, not started by this amendment",
         "Every implementation and P8 is a separate fresh-branch single-writer transaction",
         "sole production constructor of `RelayMEMSLPOneQueuedJobRunnerRequest`",
@@ -883,7 +881,7 @@ R2_QUEUE_ROOT_ANCHORS = {
     ),
     RT1C: (
         "relaylm/relaymem_slp_queue_candidate.py",
-        "Draft PR #808; it requires no P8",
+        "Draft PR #808; it required no P8",
         "never its PR head and never the PR #805 or PR #807 heads",
         "twenty-third authorized path and the sole remaining production construction gap proved by the PR #805 P1 evidence",
         "blob `3fc6f0f5a03bb717bcd163c692bc87e54c216f81`, 462 physical lines; final maximum 510, net +48",
@@ -904,12 +902,12 @@ PROBES += tuple((path, anchor) for path, anchors in R2_QUEUE_ROOT_ANCHORS.items(
 # non-production call sites it must mechanically update.
 R2_STAGED_ANCHORS = {
     STATUS: (
-        "## RT-1D-R2 staged writer-fence and smoke-carriage budget amendment (current)",
+        "## RT-1D-R2 staged writer-fence and smoke-carriage budget amendment",
         "PR #806 completed with exact result `cd8ce6e05b6476b08ecf25a5100fb0c3f0e77644` and required no P8",
         "closed, unmerged, and tree-neutral at head `00991760b3070597d6b763a0b3ffc2eb820435f2` with one bootstrap commit, zero changed paths and exactly one execution receipt",
         "PR #807 is an audit record only and must never be reopened, marked Ready, merged, deleted, reset, moved, or used as an implementation bootstrap",
         "a permit-preserving unbound or default class is rejected",
-        "RT-1D-R2A is next and has not started",
+        "RT-1D-R2A is complete in PR #809 with exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430`",
         "each gated behind independent verification of the preceding implementation result and its mandatory P8 current-authority synchronization",
         "No stage may bootstrap from a PR head or an audit branch",
         "### Strict semantics retained for every stage",
@@ -934,11 +932,11 @@ R2_STAGED_ANCHORS = {
         "no new test, smoke, or support file may be created in any stage",
     ),
     PLAN: (
-        "## Current RT-1D-R2 staged writer-fence and smoke-carriage budget amendment gate",
-        "RT-1D-R2A fresh implementation PR -> verify R2A exact result -> mandatory R2A P8",
+        "## Current RT-1D-R2A P8 current-authority synchronization gate",
+        "RT-1D-R2A implementation PR #809 exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430` -> current mandatory R2A P8",
         "mandatory R2D P8 -> verify -> R3 may become next, not started by this amendment",
         "only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next, never a PR head and never an audit branch",
-        "the PR #808 staged writer-fence and smoke-carriage budget amendment gate remains current and RT-1D-R2A remains not started",
+        "The RT-1D-R2A P8 gate is current and RT-1D-R2B remains not started",
         "RT-1D-R2A (paths 1-4), RT-1D-R2B (paths 5-13), RT-1D-R2C (paths 14-20), and RT-1D-R2D (paths 21-23)",
         "4 for R2A, 29 for R2B, 23 for R2C, and 5 for R2D",
         "There is no wildcard `scripts/` or `tests/` authority and no new test, smoke, or support file in any stage",
@@ -1009,6 +1007,123 @@ for _path, _anchors in R2_CALL_SITE_ANCHORS.items():
     REQUIRED[_path] += _anchors
 PROBES += tuple((path, anchor) for path, anchors in R2_CALL_SITE_ANCHORS.items() for anchor in anchors)
 
+# RT-1D-R2A is complete in PR #809 with exact result
+# 0f0b88a0bd601d1cd14b830ca209a26107f62430, which is exact current main. This
+# mandatory P8 records that result as current authority and makes RT-1D-R2B
+# next and not started; it requires no further P8.
+R2A_COMPLETION_ANCHORS = {
+    STATUS: (
+        "## RT-1D-R2A completion and mandatory P8 (current)",
+        "RT-1D-R2A decision owner and managed finalization carriage is complete.",
+        "it is closed and merged with exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430`, which is exact current main",
+        "PR #809 carries exactly three normal commits",
+        "`62bb2a8ae4bff175ae8169210cbcf2e604b48835`",
+        "`3a8f33a5b9c59108f5c2d4b3289481f587d1e090`",
+        "`eafdc0629fd307ed7c136488280ddb449c5787f1`",
+        "It changed exactly 9 paths, +829/-7, with exactly one execution receipt, no comments, no reviews, and no review threads.",
+        "The full suite was 1041/1041 and every applicable exact-head workflow completed with no candidate-caused failure.",
+        "blob `dd21090a80ec`, 549 lines",
+        "blob `a6be671c66a1`, 585 lines",
+        "blob `f226d495bbd0`, 479 lines",
+        "A tenth R2A path is invalid.",
+        "no Optional permit compatibility, and no unbound class",
+        "binding-free `primary_stable` permit with no store, store root, binding digest, or durable access",
+        "Unhashable corrupted values converge to `False` or a stable owner error and never to an uncontrolled `TypeError`",
+        "the guard was not broadened into a generic exception swallower",
+        "The decision is derived exactly once at the managed runtime root and carried exactly to both stream and non-stream finalization.",
+        "The public finalization guard rejects before any replay, source, or queue side effect, and the permitted path delegates to the preserved byte-identical effect owner.",
+        "No decision is persisted in any queue record.",
+        "The mandatory R2A P8 current-authority synchronization is the current Lane C transaction as Draft PR #810.",
+        "It is documentation-only, requires no further P8",
+        "RT-1D-R2B is next and has not started",
+        "RT-1D-R2C, RT-1D-R2D, and RT-1D-R3 remain not started.",
+        "No R2B queue, runner, worker, or pipeline carriage exists yet.",
+    ),
+    PLAN: (
+        "current mandatory R2A P8 current-authority synchronization Draft PR #810",
+        "independently verify the R2A P8 exact resulting main -> RT-1D-R2B next, not started",
+        "The RT-1D-R2A P8 gate is current and RT-1D-R2B remains not started.",
+        "RT-1D-R2A completed in PR #809 with exactly three commits, final head `eafdc0629fd307ed7c136488280ddb449c5787f1`, exactly 9 changed paths and +829/-7, a full suite of 1041/1041, and exact-head CI with no candidate-caused failure.",
+        "RT-1D-R2B may bootstrap only from this P8's independently verified exact resulting main, never from the PR #809 head or an audit branch.",
+        "RT-1D-R2C, RT-1D-R2D, and RT-1D-R3 remain not started, and no R2B queue, runner, worker, or pipeline carriage exists yet.",
+    ),
+    RT1C: (
+        "## RT-1D-R2A completion evidence and mandatory P8 gate",
+        "### Identity, result, and commits",
+        "produced exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430`, which is exact current main",
+        "`chore: bootstrap RT-1D-R2A execution`, tree-neutral with zero changed paths",
+        "`feat: implement RT-1D-R2A writer decision carriage`",
+        "`fix: bound malformed RT-1D-R2A writer decisions`",
+        "There was exactly one execution receipt, no comments, no reviews, and no review threads.",
+        "The full suite was 1041/1041 and exact-head CI completed with no candidate-caused failure. RT-1D-R2A implementation is complete.",
+        "PR #809 changed exactly 9 paths, +829/-7. A tenth R2A path is invalid.",
+        "| `relaylm/subjective_mem_retrieval_cutover.py` | +146/-0 | `dd21090a80ec` | 549 |",
+        "| `relaylm/relaymem_slp_runtime_finalization.py` | +57/-0 | `a6be671c66a1` | 585 |",
+        "| `tests/test_response_service.py` | +146/-2 | `f226d495bbd0` | 479 |",
+        "### Final spans and structural limits",
+        "549 against maximum 550",
+        "553 against maximum 559 with net +10 against +16",
+        "### Immutable decision schema and state mapping",
+        "a frozen dataclass with six required fields and no default on any field",
+        "There is no `primary_writer_unbound` or equivalent third class, no Optional decision used as an implicit permit, no permit-valued dataclass, request, or function default, and no arbitrary Mapping representation.",
+        "Every complete valid state strictly before `primary_writer_fenced`",
+        "`primary_writer_fenced` and every later state map to rejected with the stable reason `cutover_primary_writer_fenced`.",
+        "### Binding-free `primary_only` and rehearsal reconstruction",
+        "with no `EvidenceRecordStore` access, no store root, no binding, no binding digest, and no durable read or write",
+        "delegates to the existing exact reconstruction owner, which remains byte-identical",
+        "### Malformed, tampered, and unhashable fail-closed correction",
+        "Both fields are now validated with tuple membership, which compares by equality rather than hashing",
+        "The guard was deliberately not broadened into a generic exception swallower",
+        "### Single derivation, exact carriage, and finalization guard",
+        "derived exactly once, at the managed runtime construction root",
+        "carries the same value into both the stream and the non-stream finalization `BackgroundTask`",
+        "rejects before any durable replay, source publication, protected-source write, or queue enqueue",
+        "delegates straight into the preserved effect owner, whose body is byte-identical to the pre-R2A public function",
+        "### Queue persistence and stage boundary",
+        "No decision is persisted in any queue record, and R2A introduces no queue schema or persistence field for it.",
+        "There is no R2B queue, runner, worker, or pipeline carriage yet, and no R2C, R2D, or R3 work has started.",
+        "### Current P8 and RT-1D-R2B gate",
+        "The mandatory RT-1D-R2A P8 current-authority synchronization is the current Lane C transaction as Draft PR #810.",
+        "It is documentation-only, requires no further P8",
+        "RT-1D-R2B may start only from this P8's independently verified exact resulting main on a fresh branch, never from the PR #809 head, never from a PR head, and never from an audit branch.",
+        "the later-stage budgets are not expanded by this P8",
+    ),
+}
+for _path, _anchors in R2A_COMPLETION_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple((path, anchor) for path, anchors in R2A_COMPLETION_ANCHORS.items() for anchor in anchors)
+
+R2A_COMPLETION_STALE = (
+    "PR #809 is the current Lane C transaction",
+    "PR #809 remains open",
+    "PR #809 is Ready for review",
+    "PR #809 is unmerged",
+    "Draft PR #809",
+    "RT-1D-R2A is next and not started",
+    "RT-1D-R2A is next and has not started",
+    "RT-1D-R2A remains not started",
+    "RT-1D-R2A next, not started",
+    "RT-1D-R2A is pending",
+    "R2 remains not started",
+    "+801/-7",
+    "PR #809 carries exactly two normal commits",
+    "only two R2A commits",
+    "malformed unhashable values may raise TypeError",
+    "unhashable values may raise `TypeError`",
+    "the guard swallows every exception",
+    "a generic exception swallower is allowed",
+    "RT-1D-R2B has started",
+    "RT-1D-R2B is started",
+    "RT-1D-R2B may bootstrap from the PR #809 head",
+    "R2B bootstraps from the unmerged P8 head",
+    "a renewed R2 branch may bootstrap from the PR #809 head",
+    "this P8 requires another P8",
+    "the R2A P8 requires a further P8",
+    "RT-1D-R2C has started",
+    "RT-1D-R2D has started",
+    "RT-1D-R3 has started",
+)
+
 R2_CALL_SITE_STALE = (
     "stage assignment is file-granular",
     "file granularity is the accepted stage-assignment unit",
@@ -1069,7 +1184,6 @@ R2_QUEUE_ROOT_STALE = (
     "PR #805 is the current Lane C transaction",
     "PR #805 merged",
     "PR #805 is Ready for review",
-    "renewed R2 implementation has started",
     "`relaylm/local_worker_once.py` is an authorized R2 production path",
     "`relaylm/relaymem_slp_scheduler_queue_lane.py` is an authorized R2 production path",
     "the writer decision is stored in the durable queue record",
@@ -1086,7 +1200,6 @@ STATUS_TOP_SUMMARY_STALE = (
     "non-executable until PR #802 merges",
     "only that verified P8 resulting main may bootstrap R2",
     "R2 may restart from PR #803 head",
-    "R2 implementation is started",
     "PR #803 requires P8",
 )
 
@@ -1096,7 +1209,6 @@ R2_STRUCTURE_STALE = (
     "managed_chat_runtime-only carriage is sufficient",
     "route-only Pin fence is sufficient",
     "R2 may bootstrap from the amendment PR head",
-    "R2 implementation is started",
     "live-root amendment requires P8",
     "bcf8d6f42b21c23ea96e081d69f3c039c5da4f5c`, 544",
     "9dc4c8bd62623c0037821f19c8dab2d166dcbb01`, 618",
@@ -1210,10 +1322,9 @@ def self_test() -> None:
         (PLAN, "route-only Pin fence is insufficient", "route-only Pin fence is sufficient", "route-only sufficiency"),
         (PLAN, "managed_chat_runtime.py`-only carriage is insufficient", "managed_chat_runtime-only carriage is sufficient", "runtime-only sufficiency"),
         (PLAN, "only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next, never a PR head and never an audit branch", "the preceding PR head may bootstrap the next stage", "PR-head bootstrap"),
-        (PLAN, "the PR #808 staged writer-fence and smoke-carriage budget amendment gate remains current and RT-1D-R2A remains not started", "the PR #806 queued-runner root budget amendment gate remains current and R2 remains not started", "stale PR #806 current gate"),
-        (STATUS, "R2 remains not started", "R2 implementation is started", "started R2"),
-        (RT1C, "it requires no P8", "live-root amendment requires P8", "incorrect P8"),
-        (RT1C, "Draft PR #808; it requires no P8", "Draft PR #808; the staged budget amendment requires P8", "staged amendment P8"),
+        (PLAN, "The RT-1D-R2A P8 gate is current and RT-1D-R2B remains not started", "the PR #806 queued-runner root budget amendment gate remains current and R2 remains not started", "stale PR #806 current gate"),
+        (RT1C, "it required no P8", "live-root amendment requires P8", "incorrect P8"),
+        (RT1C, "Draft PR #808; it required no P8", "Draft PR #808; the staged budget amendment requires P8", "staged amendment P8"),
         (STATUS, "No twenty-fourth production path is authorized", "A twenty-fourth production path is authorized", "extra path"),
         (STATUS, "exact twenty-three-path R2 production budget", "exact twenty-two-path R2 production budget", "stale twenty-two-path budget"),
         (RT1C, "Production budget (exact twenty-three paths, authoritative order, split across the four ordered stages RT-1D-R2A, RT-1D-R2B, RT-1D-R2C, and RT-1D-R2D)", "Production budget (exact twenty-two paths, authoritative order)", "stale twenty-two-path order"),
@@ -1226,7 +1337,7 @@ def self_test() -> None:
         (STATUS, "may validate the exact decision but may not re-derive or downgrade it", "the worker leaf may derive the decision", "leaf re-derivation"),
         (STATUS, "PR #805 is an audit record only and must not be reopened, marked Ready, or merged", "PR #805 is the current Lane C transaction", "PR #805 reuse"),
         (STATUS, "no renewed R2 branch may bootstrap from the PR #805 head", "a renewed R2 branch may bootstrap from the PR #805 head", "PR #805 head bootstrap"),
-        (STATUS, "RT-1D-R2A is next and has not started", "RT-1D-R2 remains a single monolithic implementation transaction", "monolithic R2 still current"),
+        (STATUS, "RT-1D-R2A is complete in PR #809 with exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430`", "RT-1D-R2 remains a single monolithic implementation transaction", "monolithic R2 still current"),
         (STATUS, "a permit-preserving unbound or default class is rejected", "an unbound decision class preserves current behavior", "unbound compatibility class"),
         (STATUS, "A missing decision fails closed and a malformed decision fails closed, both before any side effect", "a missing decision preserves current behavior", "missing preserves behavior"),
         (STATUS, "no permit-valued dataclass, request, or function default", "a permit-valued default is allowed", "permit-valued default"),
@@ -1255,6 +1366,22 @@ def self_test() -> None:
         (STATUS, "final maximum 697 and net growth +80", "final maximum 698 and net growth +81", "Pin apply limit"),
         (STATUS, "bcf8d6f42b21c23ea96e081d69f3c039c5da4f5c", "0cf8d6f42b21c23ea96e081d69f3c039c5da4f5c", "managed blob"),
         (STATUS, "9dc4c8bd62623c0037821f19c8dab2d166dcbb01", "0dc4c8bd62623c0037821f19c8dab2d166dcbb01", "Pin apply blob"),
+        (STATUS, "0f0b88a0bd601d1cd14b830ca209a26107f62430", "1f0b88a0bd601d1cd14b830ca209a26107f62430", "R2A exact result"),
+        (STATUS, "It changed exactly 9 paths, +829/-7", "It changed exactly 9 paths, +801/-7", "stale R2A stats"),
+        (STATUS, "PR #809 carries exactly three normal commits", "PR #809 carries exactly two normal commits", "two R2A commits"),
+        (STATUS, "The full suite was 1041/1041", "The full suite was 1039/1041", "R2A suite count"),
+        (STATUS, "It is documentation-only, requires no further P8", "It is documentation-only, this P8 requires another P8", "further P8 required"),
+        (STATUS, "RT-1D-R2B is next and has not started", "RT-1D-R2B has started", "R2B started"),
+        (STATUS, "A tenth R2A path is invalid.", "A tenth R2A path is authorized.", "tenth R2A path"),
+        (STATUS, "the guard was not broadened into a generic exception swallower", "a generic exception swallower is allowed", "generic swallower"),
+        (STATUS, "blob `dd21090a80ec`, 549 lines", "blob `ed21090a80ec`, 549 lines", "cutover owner final blob"),
+        (PLAN, "current mandatory R2A P8 current-authority synchronization Draft PR #810", "mandatory R2A P8 not started", "current P8 binding"),
+        (PLAN, "independently verify the R2A P8 exact resulting main -> RT-1D-R2B next, not started", "RT-1D-R2B has started", "plan R2B started"),
+        (PLAN, "never from the PR #809 head or an audit branch", "R2B bootstraps from the unmerged P8 head", "R2B bootstrap source"),
+        (RT1C, "PR #809 changed exactly 9 paths, +829/-7. A tenth R2A path is invalid.", "PR #809 changed exactly 9 paths, +801/-7. A tenth R2A path is invalid.", "architecture R2A stats"),
+        (RT1C, "Both fields are now validated with tuple membership, which compares by equality rather than hashing", "malformed unhashable values may raise TypeError", "unhashable correction"),
+        (RT1C, "There is no R2B queue, runner, worker, or pipeline carriage yet, and no R2C, R2D, or R3 work has started.", "RT-1D-R2B has started", "architecture R2B started"),
+        (RT1C, "| `relaylm/relaymem_slp_runtime_finalization.py` | +57/-0 | `a6be671c66a1` | 585 |", "| `relaylm/relaymem_slp_runtime_finalization.py` | +57/-0 | `a6be671c66a1` | 586 |", "finalization final lines"),
     )
     for path, current, damaged, label in focused_mutations:
         body = read(path)
@@ -1323,6 +1450,16 @@ def self_test() -> None:
                 print(f"PASS: {path}: reintroducing {stale!r} fails closed")
                 continue
             raise AssertionError(f"{path}: call-site stale anchor is not forbidden: {stale!r}")
+    for path in R2A_COMPLETION_ANCHORS:
+        for stale in R2A_COMPLETION_STALE:
+            body = read(path)
+            assert stale not in body, f"{path}: R2A stale anchor is present: {stale!r}"
+            try:
+                forbid_body(path, R2A_COMPLETION_STALE, body + "\n" + stale + "\n")
+            except AssertionError:
+                print(f"PASS: {path}: reintroducing {stale!r} fails closed")
+                continue
+            raise AssertionError(f"{path}: R2A stale anchor is not forbidden: {stale!r}")
     print("SELF-TEST PASS")
 
 
@@ -1352,6 +1489,8 @@ def main(argv: list[str] | None = None) -> None:
         forbid(path, R2_STAGED_STALE)
     for path in R2_CALL_SITE_ANCHORS:
         forbid(path, R2_CALL_SITE_STALE)
+    for path in R2A_COMPLETION_ANCHORS:
+        forbid(path, R2A_COMPLETION_STALE)
     forbid("docs/PROJECT_STATUS.md", HISTORY_ONLY_STATUS_ANCHORS)
     print("Documentation current boundary smoke passed")
 
