@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import dataclasses
 import hashlib
 import inspect
@@ -17,10 +18,16 @@ from relaylm.subjective_mem_retrieval_cutover import (
     CUTOVER_LOG_KIND,
     CUTOVER_SCHEMA_VERSION,
     CUTOVER_TRANSFERRED_SCOPE,
+    PRIMARY_WRITER_DECISION_SCHEMA_VERSION,
+    PRIMARY_WRITER_PERMITTED,
+    PRIMARY_WRITER_REJECTED,
     SubjectiveMemRetrievalCutoverBinding,
     SubjectiveMemRetrievalCutoverError,
     SubjectiveMemRetrievalCutoverRequest,
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+    primary_writer_decision_permits_write,
     rehearse_subjective_mem_retrieval_cutover,
+    resolve_subjective_mem_retrieval_primary_writer_decision,
 )
 
 _DIGEST = "a" * 64
@@ -36,6 +43,9 @@ _STATES = (
     "post_transfer_validated",
     "retirement_complete",
 )
+_FENCE = _STATES.index("primary_writer_fenced")
+_PRE_FENCE_STATES = _STATES[:_FENCE]
+_FENCED_STATES = _STATES[_FENCE:]
 
 
 def _binding(**changes: object) -> SubjectiveMemRetrievalCutoverBinding:
@@ -284,6 +294,264 @@ def test_public_result_is_content_free(tmp_path: Path) -> None:
         "private_context",
     ):
         assert forbidden not in projection
+
+
+# ---------------------------------------------------------------------------
+# RT-1D-R2A: the sole immutable Primary writer decision, its resolver, and the
+# exact state-to-writer mapping.
+# ---------------------------------------------------------------------------
+
+
+def _decision(**changes: object) -> SubjectiveMemRetrievalPrimaryWriterDecision:
+    values: dict[str, object] = {
+        "schema_version": PRIMARY_WRITER_DECISION_SCHEMA_VERSION,
+        "state": "primary_stable",
+        "writer_class": PRIMARY_WRITER_PERMITTED,
+        "recovery_required": False,
+        "reasons": (),
+        "runtime_private_evidence_omitted": True,
+    }
+    values.update(changes)
+    return SubjectiveMemRetrievalPrimaryWriterDecision(**values)  # type: ignore[arg-type]
+
+
+def _rehearsal_config(tmp_path: Path, root_name: str = "store") -> RelayLMConfig:
+    return _config(_config_tuple(tmp_path / root_name))
+
+
+def _seeded_rehearsal_decision(
+    tmp_path: Path, count: int, *, mutate=None
+) -> SubjectiveMemRetrievalPrimaryWriterDecision:
+    """Seed an exact chain of ``count`` states, then resolve the writer decision."""
+    config = _rehearsal_config(tmp_path, f"store-{count}")
+    root = config.subjective_mem_retrieval_cutover_store_root
+    assert root is not None
+    store = EvidenceRecordStore(root)
+    binding = _binding()
+    records = _records(binding, count)
+    if mutate is not None:
+        mutate(records)
+    _seed(store, binding, records)
+    return resolve_subjective_mem_retrieval_primary_writer_decision(config)
+
+
+def test_decision_type_is_frozen_closed_and_content_free() -> None:
+    decision = _decision()
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        decision.writer_class = PRIMARY_WRITER_REJECTED  # type: ignore[misc]
+    assert decision == _decision()
+    assert set(decision.to_dict()) == {
+        "schema_version",
+        "state",
+        "writer_class",
+        "recovery_required",
+        "reasons",
+        "runtime_private_evidence_omitted",
+    }
+    assert decision.runtime_private_evidence_omitted is True
+    projection = repr(decision) + repr(decision.to_dict())
+    for forbidden in ("/", "query", "prompt", "memory prose", "private_context", "binding"):
+        assert forbidden not in projection
+
+
+def test_primary_only_binds_primary_stable_permit_with_no_store_access(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import relaylm.subjective_mem_retrieval_cutover as owner
+
+    def _forbidden(*args: object, **kwargs: object) -> None:
+        raise AssertionError("primary_only_must_not_touch_the_evidence_store")
+
+    monkeypatch.setattr(owner, "EvidenceRecordStore", _forbidden)
+    monkeypatch.setattr(owner, "_reconstruct", _forbidden)
+    decision = resolve_subjective_mem_retrieval_primary_writer_decision(_config())
+    assert decision == _decision()
+    assert primary_writer_decision_permits_write(decision)
+    assert decision.reasons == ()
+
+
+def test_primary_only_touches_no_filesystem_path(tmp_path: Path) -> None:
+    before = sorted(item.name for item in tmp_path.iterdir())
+    decision = resolve_subjective_mem_retrieval_primary_writer_decision(_config())
+    assert decision.state == "primary_stable"
+    assert sorted(item.name for item in tmp_path.iterdir()) == before
+
+
+@pytest.mark.parametrize("count", range(1, len(_PRE_FENCE_STATES) + 1))
+def test_every_complete_pre_writer_fence_state_permits(tmp_path: Path, count: int) -> None:
+    decision = _seeded_rehearsal_decision(tmp_path, count)
+    assert decision.state == _STATES[count - 1]
+    assert decision.state in _PRE_FENCE_STATES
+    assert decision.writer_class == PRIMARY_WRITER_PERMITTED
+    assert decision.recovery_required is False
+    assert decision.reasons == ()
+    assert primary_writer_decision_permits_write(decision)
+
+
+@pytest.mark.parametrize("count", range(len(_PRE_FENCE_STATES) + 1, len(_STATES) + 1))
+def test_writer_fence_and_every_later_state_rejects(tmp_path: Path, count: int) -> None:
+    decision = _seeded_rehearsal_decision(tmp_path, count)
+    assert decision.state == _STATES[count - 1]
+    assert decision.state in _FENCED_STATES
+    assert decision.writer_class == PRIMARY_WRITER_REJECTED
+    assert decision.recovery_required is False
+    assert decision.reasons == ("cutover_primary_writer_fenced",)
+    assert not primary_writer_decision_permits_write(decision)
+
+
+@pytest.mark.parametrize("mutation", ["tamper", "skip", "binding", "schema", "extra"])
+def test_malformed_state_rejects_with_recovery_required(
+    tmp_path: Path, mutation: str
+) -> None:
+    def _mutate(records: list[dict]) -> None:
+        if mutation == "tamper":
+            records[1]["record_digest"] = "0" * 64
+        if mutation == "skip":
+            records[1]["state"] = "transfer_intent"
+        if mutation == "binding":
+            records[1]["binding_digest"] = "0" * 64
+        if mutation == "schema":
+            records[1]["schema_version"] = 2
+        if mutation == "extra":
+            records[1]["private_context"] = "forbidden"
+
+    decision = _seeded_rehearsal_decision(tmp_path, 2, mutate=_mutate)
+    assert decision.state == "recovery_required"
+    assert decision.writer_class == PRIMARY_WRITER_REJECTED
+    assert decision.recovery_required is True
+    assert decision.reasons and all(reason.startswith("cutover_") for reason in decision.reasons)
+    assert not primary_writer_decision_permits_write(decision)
+
+
+def test_unreadable_store_and_config_disagreement_fail_closed(tmp_path: Path) -> None:
+    unreadable = _rehearsal_config(tmp_path, "unreadable")
+    root = Path(unreadable.subjective_mem_retrieval_cutover_store_root or "")
+    root.parent.mkdir(parents=True, exist_ok=True)
+    root.write_text("not a directory", encoding="utf-8")
+    unreadable_decision = resolve_subjective_mem_retrieval_primary_writer_decision(
+        unreadable
+    )
+    assert unreadable_decision.recovery_required is True
+    assert not primary_writer_decision_permits_write(unreadable_decision)
+    for foreign in (None, object(), {"subjective_mem_retrieval_cutover_mode": "primary_only"}):
+        decision = resolve_subjective_mem_retrieval_primary_writer_decision(foreign)
+        assert decision.reasons == ("cutover_writer_config_invalid",)
+        assert not primary_writer_decision_permits_write(decision)
+
+
+def test_no_unbound_default_or_optional_permit_class_exists() -> None:
+    signature = inspect.signature(SubjectiveMemRetrievalPrimaryWriterDecision)
+    assert all(
+        parameter.default is inspect.Parameter.empty
+        for parameter in signature.parameters.values()
+    )
+    resolver = inspect.signature(resolve_subjective_mem_retrieval_primary_writer_decision)
+    assert list(resolver.parameters) == ["config"]
+    assert resolver.parameters["config"].default is inspect.Parameter.empty
+    # Exactly two writer classes; no third `unbound` or compatibility class.
+    module = Path("relaylm/subjective_mem_retrieval_cutover.py").read_text()
+    assert "unbound" not in module
+    for absent in (None, "permitted", 0, False, {"writer_class": PRIMARY_WRITER_PERMITTED}):
+        assert not primary_writer_decision_permits_write(absent)
+    # The guard stays exact: it never became a generic exception swallower.
+    guard = inspect.getsource(primary_writer_decision_permits_write)
+    assert "except SubjectiveMemRetrievalCutoverError:" in guard
+    assert "except Exception" not in guard and "except:" not in guard
+
+
+@pytest.mark.parametrize(
+    ("change", "reason"),
+    [
+        ({"schema_version": 2}, "schema_unsupported"),
+        ({"state": "subjective_serving"}, "state_invalid"),
+        ({"writer_class": "unbound"}, "class_invalid"),
+        ({"recovery_required": 1}, "boolean_invalid"),
+        ({"runtime_private_evidence_omitted": False}, "boolean_invalid"),
+        ({"reasons": ["cutover_x"]}, "reasons_invalid"),
+        ({"reasons": ("../private",)}, "reasons_invalid"),
+        ({"reasons": tuple(f"cutover_r{index}" for index in range(9))}, "reasons_invalid"),
+        ({"state": "primary_writer_fenced"}, "class_state_mismatch"),
+        ({"recovery_required": True}, "recovery_mismatch"),
+        ({"reasons": ("cutover_extra",)}, "reasons_invalid"),
+    ],
+)
+def test_invalid_decision_construction_fails_closed(change: dict, reason: str) -> None:
+    with pytest.raises(SubjectiveMemRetrievalCutoverError, match=reason):
+        _decision(**change)
+
+
+def test_tampered_frozen_decision_is_revalidated_and_fails_closed() -> None:
+    fenced = _decision(
+        state="primary_writer_fenced",
+        writer_class=PRIMARY_WRITER_REJECTED,
+        reasons=("cutover_primary_writer_fenced",),
+    )
+    assert not primary_writer_decision_permits_write(fenced)
+    object.__setattr__(fenced, "writer_class", PRIMARY_WRITER_PERMITTED)
+    assert not primary_writer_decision_permits_write(fenced)
+    object.__setattr__(fenced, "writer_class", "unbound")
+    assert not primary_writer_decision_permits_write(fenced)
+
+
+@pytest.mark.parametrize("unhashable", [[], {}, set(), bytearray(b"x")])
+@pytest.mark.parametrize("field", ["state", "writer_class", "reasons"])
+def test_unhashable_tampered_field_fails_closed_without_raising(
+    field: str, unhashable: object
+) -> None:
+    """A corrupted decision must converge to False, never to a raised TypeError.
+
+    A frozen dataclass can still be corrupted through ``object.__setattr__``.
+    Validating a field with set membership would raise ``TypeError`` for an
+    unhashable value, escaping the single stable error identity every caller
+    catches, so the validator has to stay total over arbitrary field values.
+    """
+    decision = _decision()
+    assert primary_writer_decision_permits_write(decision) is True
+    object.__setattr__(decision, field, unhashable)
+    assert primary_writer_decision_permits_write(decision) is False
+    with pytest.raises(
+        SubjectiveMemRetrievalCutoverError, match="primary_writer_decision_"
+    ):
+        decision.__post_init__()
+
+
+def _imported_modules(path: str) -> set[str]:
+    tree = ast.parse(Path(path).read_text())
+    return {
+        "." * node.level + node.module
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module
+    } | {
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+    }
+
+
+def test_resolver_dependency_direction_creates_no_cycle() -> None:
+    import relaylm.config as config_module
+    import relaylm.subjective_mem_retrieval_cutover as owner
+
+    # The owner depends on the config model; the config model depends on
+    # nothing inside ``relaylm``, so taking `RelayLMConfig` as the resolver
+    # input cannot close a cycle.
+    assert _imported_modules(config_module.__file__ or "") == {
+        "__future__",
+        "os",
+        "pathlib",
+        "typing",
+        "yaml",
+        "pydantic",
+    }
+    assert _imported_modules(owner.__file__ or "") == {
+        "__future__",
+        "dataclasses",
+        "typing",
+        ".config",
+        ".evidence_common",
+        ".evidence_store",
+    }
 
 
 def test_structure_and_immutable_store() -> None:

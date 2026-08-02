@@ -48,6 +48,11 @@ from relaylm.relaymem_slp_runtime_enqueue import prepare_relaymem_slp_runtime_en
 from relaylm.relaymem_slp_runtime_finalization import (
     run_relaymem_slp_runtime_enqueue_after_response,
 )
+from relaylm.subjective_mem_retrieval_cutover import (
+    PRIMARY_WRITER_PERMITTED,
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LEAK_CANARY = "CANARY_I1GC_PRIVATE_EXCEPTION_DO_NOT_LEAK"
@@ -56,6 +61,16 @@ LEAK_CANARY = "CANARY_I1GC_PRIVATE_EXCEPTION_DO_NOT_LEAK"
 def require(condition: bool, detail: object) -> None:
     if not condition:
         raise AssertionError(detail)
+
+
+def _writer_decision(
+    config: RelayLMConfig,
+) -> SubjectiveMemRetrievalPrimaryWriterDecision:
+    """Derive the explicit primary_only decision from this smoke's own config."""
+    decision = resolve_subjective_mem_retrieval_primary_writer_decision(config)
+    require(decision.writer_class == PRIMARY_WRITER_PERMITTED, decision)
+    require((decision.state, decision.recovery_required) == ("primary_stable", False), decision)
+    return decision
 
 
 def _config(root: Path, *, dry_run: bool = False) -> RelayLMConfig:
@@ -344,6 +359,7 @@ def test_process_races_and_normal_finalizer() -> None:
             resolved_session_id=gb.SESSION_ID,
             relayscn_scene_policy_artifact=gb._scene(),
             relayemo_artifact=gb._emo(),
+            primary_writer_decision=_writer_decision(config),
             prepared_turn=prepared_turn,
             message_count=1,
         )
@@ -361,6 +377,7 @@ def test_process_races_and_normal_finalizer() -> None:
             resolved_session_id=gb.SESSION_ID,
             relayscn_scene_policy_artifact=gb._scene(),
             relayemo_artifact=gb._emo(),
+            primary_writer_decision=_writer_decision(config),
             prepared_turn=prepared_turn,
             message_count=1,
         )
@@ -638,6 +655,69 @@ def test_nonexecution_contract_and_fault_projection() -> None:
         require(result.to_log_dict()["writes_memory"] is False, result)
 
 
+def test_writer_decision_blocks_durable_replay_before_publication() -> None:
+    """RT-1D-R2A: a rejected decision blocks replay before any publication."""
+    owner = "_execute_relaymem_slp_runtime_enqueue_after_response"
+    finalization = (REPO_ROOT / "relaylm" / "relaymem_slp_runtime_finalization.py").resolve()
+    this_file = Path(__file__).resolve()
+    external = sorted(
+        path.relative_to(REPO_ROOT).as_posix()
+        for directory in ("relaylm", "scripts", "tests")
+        for path in (REPO_ROOT / directory).rglob("*.py")
+        if path.resolve() not in {finalization, this_file}
+        and owner in path.read_text("utf-8")
+    )
+    require(external == [], external)
+    # This smoke names the internal owner only to assert on it, never to call
+    # or import it, and the module never exports it.
+    require(f"{owner}(" not in this_file.read_text("utf-8"), owner)
+    require(owner not in _finalization_public_names(), owner)
+
+    fenced = SubjectiveMemRetrievalPrimaryWriterDecision(
+        1, "primary_writer_fenced", "rejected", False, ("cutover_primary_writer_fenced",), True
+    )
+    for decision in (fenced, None, {"writer_class": "permitted"}):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = _config(root)
+            base, _, source, preparation = _publish_sealed(root)
+            before = _replay_tree(root)
+            blocked = run_relaymem_slp_runtime_enqueue_after_response(
+                config=config,
+                diagnostics=RequestDiagnostics(request_id=gb.REQUEST_ID),
+                pipeline_context=gb._context(),
+                registry=RelayMEMSLPPrimaryWorkerSourceRegistry(),
+                status_code=200,
+                resolved_session_id=gb.SESSION_ID,
+                relayscn_scene_policy_artifact=gb._scene(),
+                relayemo_artifact=gb._emo(),
+                primary_writer_decision=decision,
+                prepared_turn=RelayMEMSLPDurableFinalizationPreparedTurn(
+                    source_result=source,
+                    runtime_preparation=preparation,
+                ),
+                message_count=1,
+            )
+            require(blocked.status not in {"enqueued", "duplicate_existing"}, blocked)
+            require(_replay_tree(root) == before, "reject_published_durable_state")
+            _assert_content_free(blocked, str(base["locator_digest"]))
+            require(_replay(config, str(base["locator_digest"])).status == "completed", base)
+
+
+def _finalization_public_names() -> tuple[str, ...]:
+    import relaylm.relaymem_slp_runtime_finalization as module
+
+    return tuple(module.__all__)
+
+
+def _replay_tree(root: Path) -> dict[str, bytes]:
+    return {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
+
+
 def main() -> None:
     test_basic_convergence_and_duplicates()
     test_incomplete_dry_run_and_missing()
@@ -646,6 +726,7 @@ def main() -> None:
     test_invariants_collisions_and_terminal()
     test_completion_corruption_schema_and_unsafe_types()
     test_nonexecution_contract_and_fault_projection()
+    test_writer_decision_blocks_durable_replay_before_publication()
     print("relaylm_i1gc_durable_finalization_replay_smoke: ok")
 
 

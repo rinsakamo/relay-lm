@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Mapping
 
+from .config import RelayLMConfig
 from .evidence_common import canonical_digest, canonical_json_bytes
 from .evidence_store import EvidenceRecordStore
 
@@ -28,6 +29,10 @@ CutoverState = Literal[
     "recovery_required",
 ]
 RequestedMode = Literal["primary_only", "rehearsal"]
+PrimaryWriterClass = Literal["permitted", "rejected"]
+PRIMARY_WRITER_DECISION_SCHEMA_VERSION = 1
+PRIMARY_WRITER_PERMITTED = "permitted"
+PRIMARY_WRITER_REJECTED = "rejected"
 _FORWARD_STATES = (
     "primary_stable",
     "rehearsal_ready",
@@ -68,6 +73,16 @@ _RECORD_FIELDS = (
     "binding",
     "binding_digest",
     "record_digest",
+)
+# Writes stay permitted only strictly before `primary_writer_fenced`.
+_WRITER_FENCE_INDEX = _FORWARD_STATES.index("primary_writer_fenced")
+_PRIMARY_WRITER_PERMITTED_STATES = _FORWARD_STATES[:_WRITER_FENCE_INDEX]
+_PRIMARY_WRITER_FENCED_REASON = "cutover_primary_writer_fenced"
+_MAX_PRIMARY_WRITER_REASONS = 8
+_CUTOVER_CONFIG_PREFIX = "subjective_mem_retrieval_cutover_"
+_CUTOVER_CONFIG_FIELDS = tuple(
+    f"{_CUTOVER_CONFIG_PREFIX}{field}"
+    for field in ("store_root", *_TOKEN_FIELDS, *_DIGEST_FIELDS)
 )
 
 
@@ -249,6 +264,131 @@ class SubjectiveMemRetrievalCutoverResult:
         }
 
 
+@dataclass(frozen=True, repr=False)
+class SubjectiveMemRetrievalPrimaryWriterDecision:
+    """The sole closed, immutable, content-free Primary writer authority."""
+
+    schema_version: int
+    state: CutoverState
+    writer_class: PrimaryWriterClass
+    recovery_required: bool
+    reasons: tuple[str, ...]
+    runtime_private_evidence_omitted: bool
+
+    def __post_init__(self) -> None:
+        if self.schema_version != PRIMARY_WRITER_DECISION_SCHEMA_VERSION:
+            raise _decision_invalid("schema_unsupported")
+        if self.state not in (*_FORWARD_STATES, "recovery_required"):  # unhashable-safe
+            raise _decision_invalid("state_invalid")
+        if self.writer_class not in (PRIMARY_WRITER_PERMITTED, PRIMARY_WRITER_REJECTED):
+            raise _decision_invalid("class_invalid")
+        if (
+            type(self.recovery_required) is not bool
+            or self.runtime_private_evidence_omitted is not True
+        ):
+            raise _decision_invalid("boolean_invalid")
+        if (
+            type(self.reasons) is not tuple
+            or len(self.reasons) > _MAX_PRIMARY_WRITER_REASONS
+            or not all(_safe_token(reason) for reason in self.reasons)
+        ):
+            raise _decision_invalid("reasons_invalid")
+        if self.recovery_required != (self.state == "recovery_required"):
+            raise _decision_invalid("recovery_mismatch")
+        permitted = self.state in _PRIMARY_WRITER_PERMITTED_STATES
+        if permitted != (self.writer_class == PRIMARY_WRITER_PERMITTED):
+            raise _decision_invalid("class_state_mismatch")
+        if permitted != (not self.reasons):
+            raise _decision_invalid("reasons_invalid")
+
+    def to_dict(self) -> dict[str, object]:
+        value = {field: getattr(self, field) for field in self.__dataclass_fields__}
+        return {**value, "reasons": list(self.reasons)}
+
+    def __repr__(self) -> str:
+        return f"SubjectiveMemRetrievalPrimaryWriterDecision({self.to_dict()})"
+
+
+def resolve_subjective_mem_retrieval_primary_writer_decision(
+    config: RelayLMConfig,
+) -> SubjectiveMemRetrievalPrimaryWriterDecision:
+    """Resolve the one Primary writer decision this module alone owns.
+
+    ``primary_only`` is explicit mode-derived authority: the complete empty
+    cutover tuple binds ``primary_stable`` with no store, store root,
+    binding, or durable read. ``rehearsal`` reconstructs the exact chain
+    through the existing validation. Anything else fails closed.
+    """
+    if type(config) is not RelayLMConfig:
+        return _writer_decision("recovery_required", ("cutover_writer_config_invalid",))
+    values = tuple(getattr(config, field) for field in _CUTOVER_CONFIG_FIELDS)
+    disagreement = ("cutover_writer_config_disagreement",)
+    mode = config.subjective_mem_retrieval_cutover_mode
+    if mode == "primary_only":
+        if any(value is not None for value in values):
+            return _writer_decision("recovery_required", disagreement)
+        return _writer_decision("primary_stable", ())
+    if mode != "rehearsal" or any(value is None for value in values):
+        return _writer_decision("recovery_required", disagreement)
+    try:
+        binding = SubjectiveMemRetrievalCutoverBinding(
+            schema_version=CUTOVER_SCHEMA_VERSION,
+            authority_domain=CUTOVER_AUTHORITY_DOMAIN,
+            transferred_scope=CUTOVER_TRANSFERRED_SCOPE,
+            **{
+                field: getattr(config, f"{_CUTOVER_CONFIG_PREFIX}{field}")
+                for field in (*_TOKEN_FIELDS, *_DIGEST_FIELDS)
+            },
+        )
+        store = EvidenceRecordStore(
+            config.subjective_mem_retrieval_cutover_store_root or ""
+        )
+    except (SubjectiveMemRetrievalCutoverError, OSError, TypeError, ValueError):
+        return _writer_decision("recovery_required", ("cutover_writer_binding_invalid",))
+    state, reasons = _reconstruct(store, binding)
+    if reasons or state == "recovery_required":
+        unsupported = ("cutover_writer_state_unsupported",)
+        return _writer_decision("recovery_required", reasons or unsupported)
+    return _writer_decision(state, ())
+
+
+def primary_writer_decision_permits_write(decision: object) -> bool:
+    """Return True only for the exact immutable decision that permits writes.
+
+    Missing, foreign-typed, tampered, rejected, and recovery-required values
+    all fail closed here -- the only place a downstream module may ask.
+    """
+    if type(decision) is not SubjectiveMemRetrievalPrimaryWriterDecision:
+        return False
+    try:
+        decision.__post_init__()
+    except SubjectiveMemRetrievalCutoverError:
+        return False
+    return (
+        decision.writer_class == PRIMARY_WRITER_PERMITTED
+        and not decision.recovery_required
+    )
+
+
+def _writer_decision(
+    state: CutoverState, reasons: tuple[str, ...]
+) -> SubjectiveMemRetrievalPrimaryWriterDecision:
+    recovery = state == "recovery_required"
+    permitted = state in _PRIMARY_WRITER_PERMITTED_STATES and not recovery
+    return SubjectiveMemRetrievalPrimaryWriterDecision(
+        PRIMARY_WRITER_DECISION_SCHEMA_VERSION,
+        state,
+        PRIMARY_WRITER_PERMITTED if permitted else PRIMARY_WRITER_REJECTED,
+        recovery,
+        () if permitted else (reasons or (_PRIMARY_WRITER_FENCED_REASON,)),
+        True,
+    )
+
+
+def _decision_invalid(reason: str) -> SubjectiveMemRetrievalCutoverError:
+    return SubjectiveMemRetrievalCutoverError(f"primary_writer_decision_{reason}")
+
+
 def rehearse_subjective_mem_retrieval_cutover(
     *,
     store: EvidenceRecordStore,
@@ -394,10 +534,16 @@ __all__ = [
     "CUTOVER_LOG_KIND",
     "CUTOVER_SCHEMA_VERSION",
     "CUTOVER_TRANSFERRED_SCOPE",
+    "PRIMARY_WRITER_DECISION_SCHEMA_VERSION",
+    "PRIMARY_WRITER_PERMITTED",
+    "PRIMARY_WRITER_REJECTED",
     "SubjectiveMemRetrievalCutoverBinding",
     "SubjectiveMemRetrievalCutoverDiagnostics",
     "SubjectiveMemRetrievalCutoverError",
     "SubjectiveMemRetrievalCutoverRequest",
     "SubjectiveMemRetrievalCutoverResult",
+    "SubjectiveMemRetrievalPrimaryWriterDecision",
+    "primary_writer_decision_permits_write",
     "rehearse_subjective_mem_retrieval_cutover",
+    "resolve_subjective_mem_retrieval_primary_writer_decision",
 ]

@@ -89,6 +89,9 @@ from relaylm.relayrun_stream_timing import (
     wrap_stream_with_relayrun_stream_timing,
 )
 from relaylm.routing import ResolvedRoute
+from relaylm.subjective_mem_retrieval_cutover import (
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+)
 from relaylm.trace_runtime import extract_response_text, trace_runtime_event
 
 
@@ -106,6 +109,7 @@ async def build_managed_chat_response(
     merged_scope: Mapping[str, Any],
     diagnostics: RequestDiagnostics,
     runtime_artifact_context: _ManagedRuntimeArtifactContext,
+    primary_writer_decision: SubjectiveMemRetrievalPrimaryWriterDecision,
 ) -> JSONResponse | StreamingResponse:
     """Forward ``forwarded_payload`` to the backend and build its response.
 
@@ -135,6 +139,7 @@ async def build_managed_chat_response(
             merged_scope=merged_scope,
             diagnostics=diagnostics,
             runtime_artifact_context=runtime_artifact_context,
+            primary_writer_decision=primary_writer_decision,
             http_client=http_client,
         )
     return await _build_nonstream_response(
@@ -147,6 +152,7 @@ async def build_managed_chat_response(
         merged_scope=merged_scope,
         diagnostics=diagnostics,
         runtime_artifact_context=runtime_artifact_context,
+        primary_writer_decision=primary_writer_decision,
         http_client=http_client,
     )
 
@@ -163,6 +169,7 @@ async def _build_stream_response(
     merged_scope: Mapping[str, Any],
     diagnostics: RequestDiagnostics,
     runtime_artifact_context: _ManagedRuntimeArtifactContext,
+    primary_writer_decision: SubjectiveMemRetrievalPrimaryWriterDecision,
     http_client: httpx.AsyncClient,
 ) -> JSONResponse | StreamingResponse:
     relayscn_scene_policy_artifact = runtime_artifact_context.relayscn_scene_policy_artifact
@@ -270,6 +277,7 @@ async def _build_stream_response(
                     relayscn_scene_policy_artifact
                 ),
                 relayemo_artifact=relayemo_artifact,
+                primary_writer_decision=primary_writer_decision,
                 stream_capture=stream_capture,
                 prepared_turn_holder=(
                     durable_holder if durable_session is not None else None
@@ -327,6 +335,7 @@ async def _build_nonstream_response(
     merged_scope: Mapping[str, Any],
     diagnostics: RequestDiagnostics,
     runtime_artifact_context: _ManagedRuntimeArtifactContext,
+    primary_writer_decision: SubjectiveMemRetrievalPrimaryWriterDecision,
     http_client: httpx.AsyncClient,
 ) -> JSONResponse:
     relayscn_scene_policy_artifact = runtime_artifact_context.relayscn_scene_policy_artifact
@@ -431,6 +440,7 @@ async def _build_nonstream_response(
                         relayscn_scene_policy_artifact
                     ),
                     relayemo_artifact=relayemo_artifact,
+                    primary_writer_decision=primary_writer_decision,
                     assistant_visible_text=assistant_visible_text,
                     prepared_turn=durable_prepared,
                     message_count=forwarded_message_count,

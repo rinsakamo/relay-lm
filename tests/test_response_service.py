@@ -32,7 +32,12 @@ import respx
 from fastapi.testclient import TestClient
 
 import relaylm.managed_chat_response as managed_chat_response
+import relaylm.managed_chat_runtime as managed_chat_runtime
 from relaylm.app import create_app
+from relaylm.subjective_mem_retrieval_cutover import (
+    PRIMARY_WRITER_PERMITTED,
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+)
 
 BACKEND_BASE_URL = "http://127.0.0.1:8000/v1"
 BACKEND_CHAT_COMPLETIONS_URL = f"{BACKEND_BASE_URL}/chat/completions"
@@ -134,6 +139,19 @@ def _chat_request(*, stream: bool) -> dict:
     }
 
 
+def _supplied_decision(kwargs: dict) -> SubjectiveMemRetrievalPrimaryWriterDecision:
+    """Return the exact writer decision the seam was called with.
+
+    ``run_relaymem_slp_runtime_enqueue_after_response`` takes the decision as
+    a required keyword-only argument, so any fake standing in for it must be
+    handed one; a ``KeyError`` here means a construction root stopped
+    supplying it.
+    """
+    decision = kwargs["primary_writer_decision"]
+    assert type(decision) is SubjectiveMemRetrievalPrimaryWriterDecision, decision
+    return decision
+
+
 # ---------------------------------------------------------------------------
 # 1. Stream wrap order: SLP finalized-turn capture before LAT-2 stream timing.
 # ---------------------------------------------------------------------------
@@ -203,9 +221,10 @@ def test_background_task_attached_for_stream_when_enqueue_enabled(
     )
     client = _make_client(config_path)
 
-    enqueue_calls: list[object] = []
+    enqueue_calls: list[dict] = []
 
     def _fake_enqueue(**kwargs: object) -> None:
+        _supplied_decision(kwargs)
         enqueue_calls.append(kwargs)
 
     monkeypatch.setattr(
@@ -228,6 +247,9 @@ def test_background_task_attached_for_stream_when_enqueue_enabled(
     # has been fully sent, so observing the fake enqueue call here proves a
     # BackgroundTask was actually attached to the StreamingResponse.
     assert len(enqueue_calls) == 1
+    decision = _supplied_decision(enqueue_calls[0])
+    assert decision.writer_class == PRIMARY_WRITER_PERMITTED
+    assert (decision.state, decision.recovery_required) == ("primary_stable", False)
 
 
 def test_background_task_attached_for_nonstream_when_enqueue_enabled(
@@ -238,9 +260,10 @@ def test_background_task_attached_for_nonstream_when_enqueue_enabled(
     )
     client = _make_client(config_path)
 
-    enqueue_calls: list[object] = []
+    enqueue_calls: list[dict] = []
 
     def _fake_enqueue(**kwargs: object) -> None:
+        _supplied_decision(kwargs)
         enqueue_calls.append(kwargs)
 
     monkeypatch.setattr(
@@ -255,6 +278,9 @@ def test_background_task_attached_for_nonstream_when_enqueue_enabled(
 
     assert response.status_code == 200
     assert len(enqueue_calls) == 1
+    decision = _supplied_decision(enqueue_calls[0])
+    assert decision.writer_class == PRIMARY_WRITER_PERMITTED
+    assert (decision.state, decision.recovery_required) == ("primary_stable", False)
 
 
 # ---------------------------------------------------------------------------
@@ -333,3 +359,121 @@ def test_invalid_durable_finalization_gate_short_circuits_nonstream(
     assert error["type"] == "server_error"
     assert error["message"] == "RelayLM could not safely finalize this response."
     assert enqueue_calls == []
+
+
+# ---------------------------------------------------------------------------
+# 4. RT-1D-R2A: the managed runtime derives one immutable Primary writer
+#    decision and both finalization calls receive exactly that value.
+# ---------------------------------------------------------------------------
+
+
+def _capture_enqueue_decisions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> list[SubjectiveMemRetrievalPrimaryWriterDecision]:
+    """Drive one stream and one non-stream turn, returning the carried decisions.
+
+    Both runs share a config and a patched enqueue seam, so the returned list
+    is ``[stream_decision, nonstream_decision]`` in that order.
+    """
+    config_path = _write_config(
+        tmp_path, enqueue_enabled=True, enqueue_dry_run_only=False
+    )
+    client = _make_client(config_path)
+    decisions: list[SubjectiveMemRetrievalPrimaryWriterDecision] = []
+    monkeypatch.setattr(
+        managed_chat_response,
+        "run_relaymem_slp_runtime_enqueue_after_response",
+        lambda **kwargs: decisions.append(_supplied_decision(kwargs)),
+    )
+    with respx.mock(assert_all_called=False) as mock:
+        mock.post(BACKEND_CHAT_COMPLETIONS_URL).mock(
+            return_value=httpx.Response(
+                200, headers={"content-type": "text/event-stream"}, content=STREAM_BODY
+            )
+        )
+        with client.stream(
+            "POST", "/v1/chat/completions", json=_chat_request(stream=True)
+        ) as response:
+            assert response.status_code == 200
+            _ = b"".join(response.iter_bytes())
+    with respx.mock(assert_all_called=False) as mock:
+        mock.post(BACKEND_CHAT_COMPLETIONS_URL).mock(
+            return_value=httpx.Response(200, json=BACKEND_CHAT_RESPONSE)
+        )
+        assert (
+            client.post("/v1/chat/completions", json=_chat_request(stream=False))
+        ).status_code == 200
+    assert len(decisions) == 2, decisions
+    return decisions
+
+
+def test_stream_and_nonstream_receive_the_same_primary_only_decision(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stream_decision, nonstream_decision = _capture_enqueue_decisions(
+        tmp_path, monkeypatch
+    )
+    assert stream_decision == nonstream_decision
+    for decision in (stream_decision, nonstream_decision):
+        assert decision.writer_class == PRIMARY_WRITER_PERMITTED
+        assert decision.state == "primary_stable"
+        assert decision.recovery_required is False
+        assert decision.reasons == ()
+        assert decision.runtime_private_evidence_omitted is True
+
+
+def test_explicit_reject_decision_is_never_replaced_with_a_permit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The response module carries whatever the runtime derived: it may not
+    # resolve, re-derive, default, or substitute a primary_only permit for an
+    # explicitly rejected decision on either path.
+    rejected = SubjectiveMemRetrievalPrimaryWriterDecision(
+        1, "recovery_required", "rejected", True, ("cutover_writer_state_unsupported",), True
+    )
+    monkeypatch.setattr(
+        managed_chat_runtime,
+        "resolve_subjective_mem_retrieval_primary_writer_decision",
+        lambda config: rejected,
+    )
+    for decision in _capture_enqueue_decisions(tmp_path, monkeypatch):
+        assert decision == rejected
+        assert decision.writer_class != PRIMARY_WRITER_PERMITTED
+        assert decision.recovery_required is True
+
+
+def test_response_delivery_is_unaffected_by_a_rejected_writer_decision(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A rejected decision blocks only the governed finalization side effect;
+    # the already-produced chat response must still be delivered in full.
+    monkeypatch.setattr(
+        managed_chat_runtime,
+        "resolve_subjective_mem_retrieval_primary_writer_decision",
+        lambda config: SubjectiveMemRetrievalPrimaryWriterDecision(
+            1, "primary_writer_fenced", "rejected", False,
+            ("cutover_primary_writer_fenced",), True,
+        ),
+    )
+    config_path = _write_config(
+        tmp_path, enqueue_enabled=True, enqueue_dry_run_only=False
+    )
+    client = _make_client(config_path)
+    with respx.mock(assert_all_called=False) as mock:
+        mock.post(BACKEND_CHAT_COMPLETIONS_URL).mock(
+            return_value=httpx.Response(200, json=BACKEND_CHAT_RESPONSE)
+        )
+        response = client.post("/v1/chat/completions", json=_chat_request(stream=False))
+    assert response.status_code == 200
+    assert response.json() == BACKEND_CHAT_RESPONSE
+    with respx.mock(assert_all_called=False) as mock:
+        mock.post(BACKEND_CHAT_COMPLETIONS_URL).mock(
+            return_value=httpx.Response(
+                200, headers={"content-type": "text/event-stream"}, content=STREAM_BODY
+            )
+        )
+        with client.stream(
+            "POST", "/v1/chat/completions", json=_chat_request(stream=True)
+        ) as streamed:
+            assert streamed.status_code == 200
+            assert b"".join(streamed.iter_bytes()) == STREAM_BODY
