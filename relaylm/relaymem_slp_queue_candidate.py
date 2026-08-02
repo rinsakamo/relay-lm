@@ -14,6 +14,9 @@ from pathlib import Path
 from typing import Callable, Literal
 
 from .config import RelayLMConfig
+from .subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
 from .relaymem_primary_recall import resolve_relaymem_character_store_root
 from .relaymem_slp_one_queued_job_runner import (
     REQUEST_SCHEMA as C2_REQUEST_SCHEMA,
@@ -391,6 +394,9 @@ def build_relaymem_slp_one_queued_job_request(
         schema_version=C2_REQUEST_SCHEMA,
         runtime_private=True,
         content_included=False,
+        primary_writer_decision=(
+            resolve_subjective_mem_retrieval_primary_writer_decision(config)
+        ),
         queued_record=dict(queued_record),
         source_registry=source_registry,
         character_id=character_id,

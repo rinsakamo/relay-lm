@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
+
 import io
 import sys
 import tempfile
 from contextlib import redirect_stderr, redirect_stdout
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -173,6 +179,11 @@ def create_request(
         schema_version=REQUEST_SCHEMA,
         runtime_private=True,
         content_included=True,
+        primary_writer_decision=(
+            resolve_subjective_mem_retrieval_primary_writer_decision(
+                RelayLMConfig(backends={}, model_routes={})
+            )
+        ),
         worker_source=built.source,
         claimed_record=canonical,
         request_scope=scope,
@@ -397,6 +408,11 @@ def _input_and_stop_cases() -> None:
             schema_version=REQUEST_SCHEMA,
             runtime_private=True,
             content_included=True,
+            primary_writer_decision=(
+                resolve_subjective_mem_retrieval_primary_writer_decision(
+                RelayLMConfig(backends={}, model_routes={})
+            )
+            ),
             worker_source=source_payload(record),
             claimed_record=record,
             request_scope=request.request_scope,
@@ -527,11 +543,28 @@ def _dry_run() -> None:
         _assert_safe(public, root)
 
 
+def _writer_decision_fails_closed() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        prepare_store(root)
+        request, _ = create_request(root)
+        foreign = replace(request, primary_writer_decision=object())
+        with (
+            patch.object(pipeline._impl, "consume_relaymem_slp_primary_worker_source") as source,
+            patch.object(pipeline, "apply_relaymem_primary_page_write") as m3e,
+            patch.object(pipeline, "apply_relaymem_primary_index_log_reconciliation") as m3g,
+        ):
+            result = execute_relaymem_primary_pipeline(foreign)
+        require(result.status == "invalid_input", result.to_log_dict())
+        require(not source.called and not m3e.called and not m3g.called, "writer gate bypass")
+
+
 def main() -> int:
     _normal_and_duplicate()
     _input_and_stop_cases()
     _failure_and_recovery_cases()
     _dry_run()
+    _writer_decision_fails_closed()
     print("RelayMEM Primary pipeline compose smoke passed")
     return 0
 

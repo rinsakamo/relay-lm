@@ -1,9 +1,15 @@
 """Functional smoke for Phase 6-C2 one queued-job integration."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
+
 import os
 import subprocess
 import sys
+from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -53,6 +59,11 @@ def request(
         schema_version=REQUEST_SCHEMA,
         runtime_private=True,
         content_included=False,
+        primary_writer_decision=(
+            resolve_subjective_mem_retrieval_primary_writer_decision(
+                RelayLMConfig(backends={}, model_routes={})
+            )
+        ),
         queued_record=dict(queued),
         source_registry=registry,
         character_id=CHARACTER_ID,
@@ -100,6 +111,23 @@ def dry_run_restart_success() -> None:
         queue_path = queue_root / record_filename(
             str(queued["dispatch_idempotency_key"])
         )
+
+        foreign = replace(
+            request(
+                queue_root,
+                protected_root,
+                memory_root,
+                queued,
+                RelayMEMSLPPrimaryWorkerSourceRegistry(),
+            ),
+            primary_writer_decision=object(),
+        )
+        with patch.object(runner, "_execute_one_queued_job") as claim_attempt:
+            rejected = execute_one_queued_relaymem_slp_primary_job(foreign)
+        require(rejected.status == "invalid_input", rejected.to_log_dict())
+        require(not claim_attempt.called, "writer gate permitted queue claim")
+        require(read_record(queue_path)["state"] == "queued", "writer gate mutated queue")
+        require(source_path.exists(), "writer gate consumed protected source")
 
         dry = execute_one_queued_relaymem_slp_primary_job(
             request(
