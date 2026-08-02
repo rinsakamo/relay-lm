@@ -1120,6 +1120,8 @@ R2A_COMPLETION_STALE = (
     "this P8 requires another P8",
     "the R2A P8 requires a further P8",
     "RT-1D-R2C has started",
+    "the RT-1D-R2A P8 gate is current and RT-1D-R2B remains not started",
+    "its mandatory P8 current-authority synchronization is Draft PR #810",
     "RT-1D-R2D has started",
     "RT-1D-R3 has started",
 )

@@ -221,7 +221,7 @@ PR #807 proved that every required production seam fits inside the accepted twen
 
 That architecture-only staged-budget amendment was Draft PR #808; it required no P8 and completed with exact result `758c160e1ee71bb9ad67fe10234e5a38c03c6a3d`. It resolved that conflict without weakening any semantics: the strict writer-fence contract is retained in full, a permit-preserving unbound or default class is rejected, and the single over-broad R2 transaction is replaced by four ordered, independently bounded implementation stages that each authorize only the exact existing non-production call sites they must mechanically update.
 
-RT-1D-R2A is complete in PR #809 with exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430`, and its mandatory P8 current-authority synchronization is Draft PR #810. RT-1D-R2B, RT-1D-R2C, and RT-1D-R2D are ordered later stages, each gated behind independent verification of the preceding implementation result and its mandatory P8 current-authority synchronization. No stage may bootstrap from a PR head or an audit branch.
+RT-1D-R2A is complete in PR #809 with exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430`, and mandatory R2A P8 PR #810 completed with exact result `5822b01fd4642c89c39a2518672191bf1a8da115`. RT-1D-R2B and mandatory P8 PR #812 are complete; RT-1D-R2C is next and RT-1D-R2D is a later stage, each gated behind independent verification of the preceding implementation result and its mandatory P8 current-authority synchronization. No stage may bootstrap from a PR head or an audit branch.
 
 ### Strict semantics retained for every stage
 
