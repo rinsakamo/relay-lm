@@ -224,7 +224,9 @@ RT-1D-R2C — Correct and Forget carriage. Production paths 14-20. Non-productio
 
 RT-1D-R2D — Pin and Unpin carriage. Production paths 21-23. Non-production budget: exactly 5 frozen existing caller files.
 
-The independently reproduced inventory is 58 distinct existing files and 61 stage assignments; three files appear in two stages for disjoint call sites and are recorded explicitly. Every path, blob, and line count is frozen in the RT-1D architecture. There is no wildcard `scripts/` or `tests/` authority, no stage authorizes all 58 files, and no new test, smoke, or support file may be created in any stage.
+The independently reproduced inventory is 58 distinct existing files and 61 stage assignments; three files appear in two stages for disjoint call sites and are recorded explicitly.
+
+Call-site granularity is the accepted and final stage-assignment unit; file granularity is rejected. A stage assignment is one direct call site, request-construction site, patch target, or explicitly named support-factory site, and each individual site belongs to exactly one stage. A repeated path never grants whole-file authority: there are exactly three overlap files, each stage changes only its own enumerated sites plus the minimum stage-owned scaffolding, and every other-stage site and unrelated behavior in that file stays byte-identical for that stage. Every stage P1 remeasures the then-current blob after the preceding implementation and its mandatory P8 result, never the pre-R2 or amendment-time blob. If an edit cannot be isolated without touching another stage's site or unrelated behavior, the stage returns to P1 rather than broadening file authority. Every path, blob, and line count is frozen in the RT-1D architecture. There is no wildcard `scripts/` or `tests/` authority, no stage authorizes all 58 files, and no new test, smoke, or support file may be created in any stage.
 
 ### Superseded transaction record
 

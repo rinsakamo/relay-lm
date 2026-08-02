@@ -2170,6 +2170,35 @@ scripts/relaylm_phase_i5b_pin_unpin_security_smoke.py  16037d2f2da4  44 lines  a
 tests/test_relaymem_lifecycle_characterization.py  f8cb7e53c99a  643 lines  apply_primary_memory_pin,apply_primary_memory_unpin  ALSO:R2C
 ```
 
+#### Overlap files and call-site ownership
+
+Call-site granularity is accepted as the final authoritative stage-assignment unit. File granularity is rejected.
+
+A stage assignment is one direct call site, one request-construction site, one patch target, or one explicitly named support-factory site. It is not unrestricted ownership of the containing file. Each individual site belongs to exactly one stage, and the same site may never be assigned to two stages. A repeated path in two stage budgets is not whole-file permission.
+
+A file may appear in multiple stage budgets only when its stage-owned sites are disjoint and explicitly enumerated, the path is marked as an overlap, each stage changes only its owned sites plus the minimum stage-owned scaffolding, every other-stage site and unrelated behavior remains byte-identical in that stage, and no stage treats the path listing as whole-file authority.
+
+Minimum stage-owned scaffolding means only the imports, an existing fixture or factory signature, or an existing support helper required to supply an explicit immutable decision to that stage's own sites. It never includes pre-implementation of a later stage's sites, a new generic helper file, a new semantic owner, a permit default, Optional compatibility, or a wildcard helper.
+
+Every stage P1 re-fetches and remeasures the exact current blob after the preceding implementation and its mandatory P8 result. A later stage must not use the pre-R2 or amendment-time blob as its write baseline, and completed earlier-stage sites remain protected and unchanged.
+
+Every stage implementation PR and its mandatory P8 must record the exact bootstrap blob, the exact owned site names with pre-edit line spans, the exact changed hunks, proof that all other-stage sites are unchanged, the final blob, and focused tests or smokes covering both the changed and the preserved sites.
+
+If an edit cannot be isolated without changing another stage's site or unrelated behavior, the stage returns to P1. File authority is never broadened.
+
+There are exactly three overlap files:
+
+| Overlap path | Stage | Owned sites |
+|---|---|---|
+| `scripts/relaylm_phase_i3_primary_mem_correct_smoke.py` | RT-1D-R2B | only `RelayMEMSLPOneQueuedJobRunnerRequest` construction, `execute_one_queued_relaymem_slp_primary_job` calls, and minimum R2B scaffolding; must not modify Correct sites |
+| `scripts/relaylm_phase_i3_primary_mem_correct_smoke.py` | RT-1D-R2C | only `apply_primary_memory_correction` calls and minimum R2C scaffolding; must not modify runner sites |
+| `scripts/relaylm_phase_i5b_pin_unpin_apply_smoke.py` | RT-1D-R2C | only `apply_primary_memory_forget` calls and minimum R2C scaffolding; must not modify Pin/Unpin sites |
+| `scripts/relaylm_phase_i5b_pin_unpin_apply_smoke.py` | RT-1D-R2D | only `apply_primary_memory_pin` and `apply_primary_memory_unpin` calls and minimum R2D scaffolding; must not modify Forget sites |
+| `tests/test_relaymem_lifecycle_characterization.py` | RT-1D-R2C | only Correct and Forget sites, including `apply_primary_memory_correction`, `apply_primary_memory_forget`, and `recover_primary_memory_corrections`, plus minimum R2C scaffolding; must not modify Pin/Unpin sites |
+| `tests/test_relaymem_lifecycle_characterization.py` | RT-1D-R2D | only `apply_primary_memory_pin` and `apply_primary_memory_unpin` sites and minimum R2D scaffolding; must not modify Correct/Forget sites |
+
+The counts are unchanged: 58 distinct files, 61 stage assignments, R2A 4, R2B 29, R2C 23, R2D 5.
+
 Mandatory transaction ordering: PR #807 accepted P1 Return -> this architecture-only staged-budget amendment -> independently verify its exact resulting main -> RT-1D-R2A fresh implementation PR -> verify R2A exact result -> mandatory R2A P8 -> verify R2A P8 result -> RT-1D-R2B -> verify -> mandatory R2B P8 -> verify -> RT-1D-R2C -> verify -> mandatory R2C P8 -> verify -> RT-1D-R2D -> verify -> mandatory R2D P8 -> verify -> R3 may become next, not started by this amendment. Every implementation and P8 is a separate fresh-branch single-writer transaction, and only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next; never a PR head and never an audit branch.
 
 No twenty-fourth production path is authorized. `relaylm/local_worker_once.py`, `relaylm/relaymem_slp_scheduler_queue_lane.py`, `relaylm/relaymem_slp_scheduler_round.py`, `relaylm/cli/worker.py`, every queue-record schema or persistence path, and every worker validator path remain unchanged and unauthorized. If a twenty-fourth production path is required, stop at P1 and raise a new architecture amendment rather than reinterpreting this budget. Direct M3e/M3g code remains unchanged because current worker/pipeline checkpoints dominate it. PR #803 limits remain exact: `_relaymem_primary_pipeline_impl.py` 1,033 -> maximum 1,083 (+50); `relaymem_primary_pin.py` 742 -> maximum 777 (+35); `subjective_mem_retrieval_cutover.py` 403 -> maximum 550; new functions maximum 80 and new orchestration functions maximum 60. If any limit fails, return to P1.

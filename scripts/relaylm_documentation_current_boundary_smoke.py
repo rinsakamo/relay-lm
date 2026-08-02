@@ -965,6 +965,68 @@ for _path, _anchors in R2_STAGED_ANCHORS.items():
     REQUIRED[_path] += _anchors
 PROBES += tuple((path, anchor) for path, anchors in R2_STAGED_ANCHORS.items() for anchor in anchors)
 
+# Call-site granularity is the final accepted stage-assignment unit. A repeated
+# overlap path never grants whole-file authority.
+R2_CALL_SITE_ANCHORS = {
+    STATUS: (
+        "Call-site granularity is the accepted and final stage-assignment unit; file granularity is rejected",
+        "each individual site belongs to exactly one stage",
+        "A repeated path never grants whole-file authority: there are exactly three overlap files",
+        "every other-stage site and unrelated behavior in that file stays byte-identical for that stage",
+        "Every stage P1 remeasures the then-current blob after the preceding implementation and its mandatory P8 result",
+        "the stage returns to P1 rather than broadening file authority",
+    ),
+    PLAN: (
+        "Each stage carries a path budget plus a call-site sub-budget",
+        "Call-site granularity is accepted and final and file granularity is rejected",
+        "the same site may never be assigned to two stages",
+        "A listed overlap path is not whole-file authority",
+        "the exact changed hunks, that all other-stage sites are unchanged, and the final blob",
+        "re-fetches and remeasures against a fresh baseline taken after the preceding P8 result",
+        "the stage returns to P1 and file authority is not broadened",
+    ),
+    RT1C: (
+        "#### Overlap files and call-site ownership",
+        "Call-site granularity is accepted as the final authoritative stage-assignment unit. File granularity is rejected.",
+        "Each individual site belongs to exactly one stage, and the same site may never be assigned to two stages",
+        "A repeated path in two stage budgets is not whole-file permission",
+        "every other-stage site and unrelated behavior remains byte-identical in that stage, and no stage treats the path listing as whole-file authority",
+        "Minimum stage-owned scaffolding means only the imports, an existing fixture or factory signature, or an existing support helper",
+        "A later stage must not use the pre-R2 or amendment-time blob as its write baseline",
+        "the exact owned site names with pre-edit line spans, the exact changed hunks, proof that all other-stage sites are unchanged, the final blob",
+        "the stage returns to P1. File authority is never broadened.",
+        "There are exactly three overlap files:",
+        "only `RelayMEMSLPOneQueuedJobRunnerRequest` construction, `execute_one_queued_relaymem_slp_primary_job` calls, and minimum R2B scaffolding; must not modify Correct sites",
+        "only `apply_primary_memory_correction` calls and minimum R2C scaffolding; must not modify runner sites",
+        "only `apply_primary_memory_forget` calls and minimum R2C scaffolding; must not modify Pin/Unpin sites",
+        "only `apply_primary_memory_pin` and `apply_primary_memory_unpin` calls and minimum R2D scaffolding; must not modify Forget sites",
+        "plus minimum R2C scaffolding; must not modify Pin/Unpin sites",
+        "only `apply_primary_memory_pin` and `apply_primary_memory_unpin` sites and minimum R2D scaffolding; must not modify Correct/Forget sites",
+        "The counts are unchanged: 58 distinct files, 61 stage assignments, R2A 4, R2B 29, R2C 23, R2D 5.",
+    ),
+}
+for _path, _anchors in R2_CALL_SITE_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple((path, anchor) for path, anchors in R2_CALL_SITE_ANCHORS.items() for anchor in anchors)
+
+R2_CALL_SITE_STALE = (
+    "stage assignment is file-granular",
+    "file granularity is the accepted stage-assignment unit",
+    "an overlap file grants whole-file authority",
+    "a listed stage may freely modify every site in the file",
+    "the same site may belong to multiple stages",
+    "R2B may modify Correct sites in phase_i3_primary_mem_correct_smoke.py",
+    "R2C may modify runner sites in phase_i3_primary_mem_correct_smoke.py",
+    "R2C may modify Pin/Unpin sites in phase_i5b_pin_unpin_apply_smoke.py",
+    "R2D may modify Forget sites in phase_i5b_pin_unpin_apply_smoke.py",
+    "R2C may modify Pin/Unpin sites in test_relaymem_lifecycle_characterization.py",
+    "R2D may modify Correct/Forget sites in test_relaymem_lifecycle_characterization.py",
+    "a later stage may use the original PR #808 blob without remeasurement",
+    "an isolation failure may broaden the stage",
+    "all content in an ALSO file is authorized",
+    "a fourth overlap file exists",
+)
+
 R2_STAGED_STALE = (
     "PR #806 is the current Lane C transaction",
     "queued-runner root budget amendment Draft PR #806 is current",
@@ -1178,6 +1240,17 @@ def self_test() -> None:
         (PLAN, "mandatory R2D P8 -> verify -> R3 may become next, not started by this amendment", "R3 has started", "R3 started"),
         (RT1C, "RT-1D-R2B frozen non-production callers (exactly 29 files)", "RT-1D-R2B frozen non-production callers (exactly 30 files)", "RT2B inventory count"),
         (RT1C, "Mandatory transaction ordering: PR #807 accepted P1 Return", "the staged budget amendment requires P8", "amendment P8"),
+        (STATUS, "Call-site granularity is the accepted and final stage-assignment unit; file granularity is rejected", "file granularity is the accepted stage-assignment unit", "file-granular assignment"),
+        (STATUS, "A repeated path never grants whole-file authority: there are exactly three overlap files", "an overlap file grants whole-file authority", "whole-file authority"),
+        (STATUS, "each individual site belongs to exactly one stage", "the same site may belong to multiple stages", "site in two stages"),
+        (STATUS, "the stage returns to P1 rather than broadening file authority", "an isolation failure may broaden the stage", "isolation broadening"),
+        (PLAN, "re-fetches and remeasures against a fresh baseline taken after the preceding P8 result", "a later stage may use the original PR #808 blob without remeasurement", "stale stage baseline"),
+        (RT1C, "There are exactly three overlap files:", "a fourth overlap file exists", "fourth overlap file"),
+        (RT1C, "minimum R2B scaffolding; must not modify Correct sites", "R2B may modify Correct sites in phase_i3_primary_mem_correct_smoke.py", "R2B Correct sites"),
+        (RT1C, "minimum R2C scaffolding; must not modify runner sites", "R2C may modify runner sites in phase_i3_primary_mem_correct_smoke.py", "R2C runner sites"),
+        (RT1C, "minimum R2D scaffolding; must not modify Forget sites", "R2D may modify Forget sites in phase_i5b_pin_unpin_apply_smoke.py", "R2D Forget sites"),
+        (RT1C, "minimum R2D scaffolding; must not modify Correct/Forget sites", "R2D may modify Correct/Forget sites in test_relaymem_lifecycle_characterization.py", "R2D Correct/Forget sites"),
+        (RT1C, "The counts are unchanged: 58 distinct files, 61 stage assignments, R2A 4, R2B 29, R2C 23, R2D 5.", "all content in an ALSO file is authorized", "ALSO whole-file"),
         (STATUS, "final maximum 559 and net growth +16", "final maximum 560 and net growth +17", "managed limit"),
         (STATUS, "final maximum 697 and net growth +80", "final maximum 698 and net growth +81", "Pin apply limit"),
         (STATUS, "bcf8d6f42b21c23ea96e081d69f3c039c5da4f5c", "0cf8d6f42b21c23ea96e081d69f3c039c5da4f5c", "managed blob"),
@@ -1240,6 +1313,16 @@ def self_test() -> None:
                 print(f"PASS: {path}: reintroducing {stale!r} fails closed")
                 continue
             raise AssertionError(f"{path}: staged stale anchor is not forbidden: {stale!r}")
+    for path in R2_CALL_SITE_ANCHORS:
+        for stale in R2_CALL_SITE_STALE:
+            body = read(path)
+            assert stale not in body, f"{path}: call-site stale anchor is present: {stale!r}"
+            try:
+                forbid_body(path, R2_CALL_SITE_STALE, body + "\n" + stale + "\n")
+            except AssertionError:
+                print(f"PASS: {path}: reintroducing {stale!r} fails closed")
+                continue
+            raise AssertionError(f"{path}: call-site stale anchor is not forbidden: {stale!r}")
     print("SELF-TEST PASS")
 
 
@@ -1267,6 +1350,8 @@ def main(argv: list[str] | None = None) -> None:
         forbid(path, R2_QUEUE_ROOT_STALE)
     for path in R2_STAGED_ANCHORS:
         forbid(path, R2_STAGED_STALE)
+    for path in R2_CALL_SITE_ANCHORS:
+        forbid(path, R2_CALL_SITE_STALE)
     forbid("docs/PROJECT_STATUS.md", HISTORY_ONLY_STATUS_ANCHORS)
     print("Documentation current boundary smoke passed")
 
