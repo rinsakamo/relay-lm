@@ -297,6 +297,7 @@ I-7A/B Held Apply / Discard contract/preflight
 ```
 
 Wave 4 closed the immediate policy, UI, and preflight convergence boundary without opening I-5B/I-7C runtime apply or O2/O3.
+
 ### Wave 5 completed
 
 ```text
