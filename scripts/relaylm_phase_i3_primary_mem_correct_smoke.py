@@ -152,7 +152,7 @@ def main() -> None:
                     content_included=False,
                     primary_writer_decision=(
                         resolve_subjective_mem_retrieval_primary_writer_decision(
-                RelayLMConfig.model_construct()
+                RelayLMConfig(backends={}, model_routes={})
             )
                     ),
                     queued_record=dict(queued),

@@ -106,7 +106,7 @@ def build_request(
         content_included=True,
         primary_writer_decision=(
             resolve_subjective_mem_retrieval_primary_writer_decision(
-                RelayLMConfig.model_construct()
+                RelayLMConfig(backends={}, model_routes={})
             )
         ),
         claimed_record=exact_record,
@@ -172,7 +172,7 @@ def pipeline_request_from_worker(
         content_included=True,
         primary_writer_decision=(
             resolve_subjective_mem_retrieval_primary_writer_decision(
-                RelayLMConfig.model_construct()
+                RelayLMConfig(backends={}, model_routes={})
             )
         ),
         worker_source=request.worker_source,

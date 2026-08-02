@@ -15,6 +15,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 import relaylm.relaymem_primary_pipeline as pipeline
+import relaylm._relaymem_slp_primary_worker_execute as worker_execute
 import relaylm.relaymem_slp_queue_state as queue_state
 from relaylm._relaymem_slp_primary_worker_outcome_adapter import (
     MAX_WORKER_ATTEMPTS,
@@ -224,7 +225,7 @@ def _worker_request(
         content_included=True,
         primary_writer_decision=(
             resolve_subjective_mem_retrieval_primary_writer_decision(
-                RelayLMConfig.model_construct()
+                RelayLMConfig(backends={}, model_routes={})
             )
         ),
         claimed_record=dict(claimed),
@@ -263,6 +264,14 @@ def registry_retry_retains_source_and_converges() -> None:
             claimed_record=claimed,
             character_id=CHARACTER_ID,
         )
+        foreign = replace(
+            _worker_request(queue_root, store_root, claimed, prepared),
+            primary_writer_decision=object(),
+        )
+        with patch.object(worker_execute, "_check_active_claim") as claim_check:
+            rejected = execute_relaymem_slp_primary_worker(foreign)
+        require(rejected.status == "invalid_input", rejected.to_log_dict())
+        require(not claim_check.called, "writer gate permitted claim validation")
         with patch.object(
             pipeline,
             "apply_relaymem_primary_index_log_reconciliation",

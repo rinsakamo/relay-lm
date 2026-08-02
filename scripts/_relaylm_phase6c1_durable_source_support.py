@@ -67,7 +67,7 @@ def worker_request(
         content_included=True,
         primary_writer_decision=(
             resolve_subjective_mem_retrieval_primary_writer_decision(
-                RelayLMConfig.model_construct()
+                RelayLMConfig(backends={}, model_routes={})
             )
         ),
         claimed_record=dict(claimed),
