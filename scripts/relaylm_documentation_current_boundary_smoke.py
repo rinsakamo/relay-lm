@@ -811,6 +811,7 @@ R2_LIVE_ROOT_ANCHORS = {
         "## Current RT-1D-R2 live-root budget amendment gate",
         "PR #803 exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` -> renewed R2 P1 Return without mutation",
         "Draft PR #804",
+        "the PR #804 live-root budget amendment gate remains current and R2 remains not started",
         "R2 implementation next, not started",
         "Only the verified amendment result, never its PR head",
         "managed_chat_runtime.py`-only carriage is insufficient",
@@ -867,6 +868,7 @@ R2_STRUCTURE_STALE = (
     "9dc4c8bd62623c0037821f19c8dab2d166dcbb01`, 618",
     "final maximum 560",
     "final maximum 698",
+    "the PR #803 amendment gate remains current",
 )
 
 STALE_PROBES = (
@@ -974,6 +976,7 @@ def self_test() -> None:
         (PLAN, "route-only Pin fence is insufficient", "route-only Pin fence is sufficient", "route-only sufficiency"),
         (PLAN, "managed_chat_runtime.py`-only carriage is insufficient", "managed_chat_runtime-only carriage is sufficient", "runtime-only sufficiency"),
         (PLAN, "Only the verified amendment result, never its PR head", "The PR head", "PR-head bootstrap"),
+        (PLAN, "the PR #804 live-root budget amendment gate remains current and R2 remains not started", "the PR #803 amendment gate remains current and R2 remains not started", "stale PR #803 current gate"),
         (STATUS, "R2 remains not started", "R2 implementation is started", "started R2"),
         (RT1C, "it requires no P8", "live-root amendment requires P8", "incorrect P8"),
         (STATUS, "No twenty-third production path is authorized", "A twenty-third production path is authorized", "extra path"),
