@@ -26,6 +26,7 @@ from relaylm.soul_lab_memory_pin import (
     LabMemoryUnpinPreflightRequest,
 )
 from relaylm.soul_lab_observation_projection import resolve_lab_observation_scope
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
 
 _MAX_MUTATION_BODY_BYTES = 16_384
 _ERROR_STATUS = {
@@ -211,6 +212,7 @@ def install_primary_memory_pin_routes(
         namespace: str = Query(min_length=1, max_length=128),
     ) -> JSONResponse:
         payload = await exact_json(request, LabMemoryPinApplyRequest)
+        writer_decision = resolve_subjective_mem_retrieval_primary_writer_decision(config)
         scope = pin_scope(character_id, namespace)
         try:
             result = apply_primary_memory_pin(
@@ -222,6 +224,7 @@ def install_primary_memory_pin_routes(
                 reason=payload.reason,
                 operation_id=payload.operation_id,
                 apply_token=payload.apply_token,
+                primary_writer_decision=writer_decision,
             )
         except PrimaryPinError as error:
             raise pin_failure(error) from None
@@ -289,6 +292,7 @@ def install_primary_memory_pin_routes(
         namespace: str = Query(min_length=1, max_length=128),
     ) -> JSONResponse:
         payload = await exact_json(request, LabMemoryUnpinApplyRequest)
+        writer_decision = resolve_subjective_mem_retrieval_primary_writer_decision(config)
         scope = pin_scope(character_id, namespace)
         try:
             result = apply_primary_memory_unpin(
@@ -300,6 +304,7 @@ def install_primary_memory_pin_routes(
                 reason=payload.reason,
                 operation_id=payload.operation_id,
                 apply_token=payload.apply_token,
+                primary_writer_decision=writer_decision,
             )
         except PrimaryPinError as error:
             raise pin_failure(error) from None

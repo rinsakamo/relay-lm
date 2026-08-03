@@ -19,6 +19,7 @@ from relaylm.relaymem_primary_pin_apply import (
     preflight_primary_memory_unpin_apply,
 )
 
+PRIMARY_WRITER_DECISION = resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={}))
 NOW = datetime(2026, 6, 27, 0, 0, tzinfo=timezone.utc)
 PIN_REASON = "I5B_PIN_REASON_CANARY"
 UNPIN_REASON = "I5B_UNPIN_REASON_CANARY"
@@ -56,11 +57,11 @@ def main() -> None:
         require(preflight["status"] == "ready", preflight)
         require(preflight["current_pin_state"] == "unpinned", preflight)
         token = preflight["apply_token"]
-        applied = apply_primary_memory_pin(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, reason=PIN_REASON, operation_id="phase-i5b-pin", apply_token=token, now=NOW)
+        applied = apply_primary_memory_pin(primary_writer_decision=PRIMARY_WRITER_DECISION, store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, reason=PIN_REASON, operation_id="phase-i5b-pin", apply_token=token, now=NOW)
         require(applied.status == "applied", applied)
         require(applied.target_pin_state == "pinned", applied)
         require(get_primary_memory_pin_state(str(root), namespace=NAMESPACE, memory_id=memory_id) == "pinned", "pinned state")
-        replay = apply_primary_memory_pin(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, reason=PIN_REASON, operation_id="phase-i5b-pin", apply_token=token, now=NOW)
+        replay = apply_primary_memory_pin(primary_writer_decision=PRIMARY_WRITER_DECISION, store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, reason=PIN_REASON, operation_id="phase-i5b-pin", apply_token=token, now=NOW)
         require(replay.idempotent_replay is True, replay)
         pin_history = list_primary_memory_pin_history(store_root=str(root), namespace=NAMESPACE, memory_id=memory_id)
         require(pin_history["pin_count"] == 1, pin_history)
@@ -69,7 +70,7 @@ def main() -> None:
 
         unpin_preflight = preflight_primary_memory_unpin_apply(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, reason=UNPIN_REASON, operation_id="phase-i5b-unpin", now=NOW)
         require(unpin_preflight["status"] == "ready", unpin_preflight)
-        unpinned = apply_primary_memory_unpin(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, reason=UNPIN_REASON, operation_id="phase-i5b-unpin", apply_token=unpin_preflight["apply_token"], now=NOW)
+        unpinned = apply_primary_memory_unpin(primary_writer_decision=PRIMARY_WRITER_DECISION, store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, reason=UNPIN_REASON, operation_id="phase-i5b-unpin", apply_token=unpin_preflight["apply_token"], now=NOW)
         require(unpinned.status == "applied", unpinned)
         require(get_primary_memory_pin_state(str(root), namespace=NAMESPACE, memory_id=memory_id) == "unpinned", "unpinned state")
         unpin_history = list_primary_memory_unpin_history(store_root=str(root), namespace=NAMESPACE, memory_id=memory_id)
