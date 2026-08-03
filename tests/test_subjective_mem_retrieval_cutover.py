@@ -60,7 +60,7 @@ def _binding(**changes: object) -> SubjectiveMemRetrievalCutoverBinding:
         "readiness_id": "ready-1",
         "bootstrap_main_sha": _DIGEST,
         "resulting_main_sha": "b" * 64,
-        "projection_generation_id": "c" * 64,
+        "projection_generation_id": "smretrievalgen_" + "c" * 64,
         "projection_source_digest": "d" * 64,
     }
     values.update(changes)
@@ -112,7 +112,7 @@ def _config_tuple(root: Path) -> dict[str, object]:
         "subjective_mem_retrieval_cutover_bootstrap_main_sha": "a" * 64,
         "subjective_mem_retrieval_cutover_resulting_main_sha": "b" * 64,
         "subjective_mem_retrieval_cutover_policy_revision_id": "policy-1",
-        "subjective_mem_retrieval_cutover_projection_generation_id": "c" * 64,
+        "subjective_mem_retrieval_cutover_projection_generation_id": "smretrievalgen_" + "c" * 64,
         "subjective_mem_retrieval_cutover_projection_source_digest": "d" * 64,
         "subjective_mem_retrieval_cutover_readiness_id": "ready-1",
     }
@@ -587,6 +587,7 @@ def test_resolver_dependency_direction_creates_no_cycle() -> None:
         ".config",
         ".evidence_common",
         ".evidence_store",
+        ".subjective_mem_retrieval_rehearsal",
     }
 
 

@@ -259,8 +259,10 @@ subjective_mem_retrieval_cutover_scope_id:
 subjective_mem_retrieval_cutover_bootstrap_main_sha:
 subjective_mem_retrieval_cutover_resulting_main_sha:
 subjective_mem_retrieval_cutover_policy_revision_id:
+# Rehearsal value format: smretrievalgen_<64-lowercase-hex>
 subjective_mem_retrieval_cutover_projection_generation_id:
 subjective_mem_retrieval_cutover_projection_source_digest:
+# Rehearsal value format: smretrievalready_<64-lowercase-hex>
 subjective_mem_retrieval_cutover_readiness_id:
 
 # OVL-1 is independently default-off and dry-run-first. Apply requires EV-1
