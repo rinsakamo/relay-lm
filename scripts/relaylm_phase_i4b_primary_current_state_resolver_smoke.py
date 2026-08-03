@@ -1,6 +1,9 @@
 """Canonical current-state resolver and Correct compatibility smoke."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 from relaylm.relaymem_primary_correction import (
     apply_primary_memory_correction,
     preflight_primary_memory_correction,
@@ -67,7 +70,7 @@ def main() -> None:
             expected_revision=1,
             operation_id="phase-i4b-correct-op",
             apply_token=preflight["apply_token"],
-        )
+                      primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         require(applied["result_revision"] == 2, applied)
 
         state2 = resolve_primary_current_state(

@@ -1,6 +1,9 @@
 """Phase I-5B durable Pin / Unpin apply smoke."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 from datetime import datetime, timezone
 
 from _relaylm_phase_i4b_test_support import CHARACTER, NAMESPACE, prepared_store, require
@@ -76,7 +79,8 @@ def main() -> None:
 
     with prepared_store() as (root, memory_id):
         forget = preflight_primary_memory_forget(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, expected_lifecycle_state="active", reason=FORGET_REASON, operation_id="phase-i5b-hide", now=NOW)
-        apply_primary_memory_forget(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, expected_lifecycle_state="active", reason=FORGET_REASON, operation_id="phase-i5b-hide", apply_token=forget["apply_token"], now=NOW)
+        apply_primary_memory_forget(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, expected_lifecycle_state="active", reason=FORGET_REASON, operation_id="phase-i5b-hide", apply_token=forget["apply_token"], now=NOW,
+            primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         expect({"target_not_active"}, lambda: preflight_primary_memory_pin_apply(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=2, reason=PIN_REASON, operation_id="phase-i5b-hidden-pin", now=NOW))
 
     print("Phase I-5B Pin/Unpin apply smoke passed")

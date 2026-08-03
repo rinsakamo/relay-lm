@@ -1,6 +1,9 @@
 """Phase I-4D lifecycle-aware Primary retrieval exclusion smoke."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 import json
 from datetime import datetime, timezone
 
@@ -66,7 +69,7 @@ def apply_forget(root, memory_id: str, operation_id: str, token: str, revision: 
         memory_id=memory_id, expected_revision=revision,
         expected_lifecycle_state="active", reason=REASON,
         operation_id=operation_id, apply_token=token, now=NOW, fault_at=fault_at,
-    )
+               primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
 
 
 def expect_fault(callable_) -> None:
@@ -96,7 +99,7 @@ def active_corrected_and_finalized() -> None:
             store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE,
             memory_id=memory_id, expected_revision=1, operation_id="i4d-correct",
             apply_token=str(correction["apply_token"]), now=NOW,
-        )
+            primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         corrected = resolve_primary_current_state(root, namespace=NAMESPACE, memory_id=memory_id)
         require(corrected.current_revision == 2, corrected)
         corrected_result = recall(root, [initial.relative_path, corrected.relative_path])

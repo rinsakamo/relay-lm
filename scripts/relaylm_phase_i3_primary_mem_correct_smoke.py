@@ -226,7 +226,7 @@ def main() -> None:
                 expected_revision=1,
                 operation_id="phase-i3-correct-op-1",
                 apply_token=preflight["apply_token"],
-            )
+                          primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
             require(applied["result_revision"] == 2, applied)
             require(applied["reconciled"] is True, applied)
 
@@ -238,7 +238,7 @@ def main() -> None:
                 expected_revision=1,
                 operation_id="phase-i3-correct-op-1",
                 apply_token=preflight["apply_token"],
-            )
+                         primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
             require(replay["idempotent_replay"] is True, replay)
             require(replay["correction_id"] == applied["correction_id"], replay)
 

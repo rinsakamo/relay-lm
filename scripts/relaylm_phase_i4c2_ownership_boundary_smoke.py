@@ -1,6 +1,9 @@
 """I-4C2 ownership smoke: governance finalizes without implementing I-4D M2 exclusion."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 from datetime import datetime, timezone
 
 from _relaylm_phase_i4b_test_support import CHARACTER, NAMESPACE, prepared_store, require
@@ -45,7 +48,7 @@ def main() -> None:
             operation_id="phase-i4c2-ownership-boundary",
             apply_token=token,
             now=NOW,
-        )
+                     primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         require(result.status == "applied", result)
 
         governance = resolve_primary_current_state(

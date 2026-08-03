@@ -8,6 +8,9 @@ from typing import Any, Callable
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
 
 _MAX_MUTATION_BODY_BYTES = 16_384
 _ERROR_STATUS = {
@@ -164,6 +167,7 @@ async def execute_forget_apply(
     deps: ForgetRuntimeDependencies,
 ) -> JSONResponse:
     payload = await _exact_json(request, deps.apply_model)
+    decision = resolve_subjective_mem_retrieval_primary_writer_decision(deps.config)
     scope = _scope(deps, character_id, namespace)
     try:
         result = deps.apply(
@@ -176,6 +180,7 @@ async def execute_forget_apply(
             reason=payload.reason,
             operation_id=payload.operation_id,
             apply_token=payload.apply_token,
+            primary_writer_decision=decision,
         )
     except deps.error_type as error:
         raise _failure(error) from None

@@ -1,6 +1,9 @@
 """Verify I-4C1 commits N+1 hidden after a real I-3 correction."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 from datetime import datetime, timezone
 
 from _relaylm_phase_i4b_test_support import (
@@ -46,7 +49,7 @@ def main() -> None:
             operation_id="phase-i4c1-correct-before-forget",
             apply_token=correction["apply_token"],
             now=NOW,
-        )
+                        primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         require(corrected["status"] == "applied", corrected)
         active = resolve_primary_current_state(
             root, namespace=NAMESPACE, memory_id=memory_id

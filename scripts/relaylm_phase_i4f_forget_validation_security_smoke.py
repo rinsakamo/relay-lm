@@ -1,6 +1,9 @@
 """Phase I-4F token, scope, and leakage validation smoke."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 from datetime import datetime, timedelta, timezone
 
 from _relaylm_phase_i4b_test_support import CHARACTER, NAMESPACE, prepared_store, require
@@ -40,9 +43,11 @@ def strict_token_binding_fail_closed() -> None:
             kwargs = {**base, **variant}
             expect_forget_error(lambda kwargs=kwargs: validate_primary_memory_forget_token(**kwargs), {"token_invalid", "stale_revision", "target_not_found"}, root, token)
         expect_forget_error(lambda: validate_primary_memory_forget_token(**{**base, "now": NOW + timedelta(minutes=6)}), {"token_expired"}, root, token)
-        result = apply_primary_memory_forget(**base)
+        result = apply_primary_memory_forget(**base,
+                     primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         require(result.status == "applied", result)
-        replay = apply_primary_memory_forget(**base)
+        replay = apply_primary_memory_forget(**base,
+                     primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         require(replay.idempotent_replay is True, replay)
 
 

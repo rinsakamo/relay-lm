@@ -1,6 +1,9 @@
 """I-4C2 shared-lock and one-winner concurrency smoke."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
@@ -55,7 +58,7 @@ def apply(root, memory_id: str, operation_id: str, token: str):
         operation_id=operation_id,
         apply_token=token,
         now=NOW,
-    )
+               primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
 
 
 def capture(callable_):
@@ -135,7 +138,7 @@ def correct_vs_forget() -> None:
                 operation_id=correction_operation,
                 apply_token=correction["apply_token"],
                 now=NOW,
-            )
+                       primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             forget_future = pool.submit(capture, lambda: apply(root, memory_id, forget_operation, forget_token))
@@ -182,7 +185,7 @@ def recovery_vs_explicit_retry() -> None:
                     memory_id=memory_id,
                     operation_id=operation_id,
                     now=NOW,
-                ),
+                            primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={}))),
             )
             explicit_future = pool.submit(
                 capture, lambda: apply(root, memory_id, operation_id, token)

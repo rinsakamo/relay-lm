@@ -1,6 +1,9 @@
 """I-4C2 fault/restart forward-only convergence smoke."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 from datetime import datetime, timedelta, timezone
 
 from _relaylm_phase_i4b_test_support import (
@@ -52,7 +55,7 @@ def apply(root, memory_id: str, operation_id: str, token: str, fault: str | None
         apply_token=token,
         now=NOW,
         fault_at=fault,
-    )
+               primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
 
 
 def recover(root, memory_id: str, operation_id: str, fault: str | None = None):
@@ -63,7 +66,7 @@ def recover(root, memory_id: str, operation_id: str, fault: str | None = None):
         operation_id=operation_id,
         now=NOW + timedelta(hours=1),
         fault_at=fault,
-    )
+               primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
 
 
 def assert_final(root, memory_id: str) -> None:
@@ -172,7 +175,7 @@ def generic_restart_fault(seam: str) -> None:
             operation_id=operation_id,
             apply_token=token,
             now=NOW + timedelta(days=1),
-        )
+                     primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         require(replay.idempotent_replay is True, replay)
 
 

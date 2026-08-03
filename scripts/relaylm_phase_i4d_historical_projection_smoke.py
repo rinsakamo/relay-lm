@@ -1,6 +1,9 @@
 """I-4D immutable used-memory receipt plus lifecycle overlay smoke."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 from datetime import datetime, timezone
 
 from _relaylm_phase_i4b_test_support import CHARACTER, NAMESPACE, prepared_store, require
@@ -95,7 +98,7 @@ def main() -> None:
             expected_lifecycle_state="active", reason=REASON,
             operation_id="i4d-history-forget",
             apply_token=str(preflight["apply_token"]), now=NOW,
-        )
+            primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         hidden = build_lab_memory_used_lifecycle_projection(scope)
         item = hidden.items[0]
         require(item.injected_summary == INJECTED, item)

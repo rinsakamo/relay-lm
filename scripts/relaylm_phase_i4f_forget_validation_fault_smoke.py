@@ -1,6 +1,9 @@
 """Phase I-4F crash/fault and fail-closed retrieval validation smoke."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 from datetime import datetime, timezone
 
 from _relaylm_phase_i4b_test_support import CHARACTER, NAMESPACE, prepared_store, require
@@ -30,7 +33,8 @@ def after_preflight_only_is_read_only() -> None:
         index = load_primary_retrieval_eligibility_index(root, namespace=NAMESPACE)
         require(index.evaluate(after.current_physical_id).reason_id == "eligible_current_active", index)
 
-        result = apply_primary_memory_forget(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, expected_lifecycle_state="active", reason=REASON, operation_id="i4f-after-preflight-only", apply_token=token, now=NOW)
+        result = apply_primary_memory_forget(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, expected_lifecycle_state="active", reason=REASON, operation_id="i4f-after-preflight-only", apply_token=token, now=NOW,
+                     primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         require(result.status == "applied", result)
         hidden = resolve_primary_current_state(root, namespace=NAMESPACE, memory_id=memory_id)
         require(hidden.lifecycle_state == "hidden", hidden)
