@@ -2298,7 +2298,7 @@ RT-1D-R2C completed in implementation PR #814 from bootstrap `ed078788e89d74caaa
 
 Correct and Forget roots derive the immutable Primary writer decision only through `relaylm/subjective_mem_retrieval_cutover.py`; public and internal apply/recovery boundaries fail closed before governed effects. No decision enters a durable schema or byte representation. R2B runner and R2D Pin/Unpin sites in the three overlap files remained byte-exact. Primary remains the sole ordinary authority; Subjective ordinary Retrieval remains disabled and unwired. No intent, fence record, readiness, activation, receipt, serving, fallback, or retirement behavior changed.
 
-The mandatory R2C P8 authority sync was the transaction at that historical point and requires no recursive P8. After its independently verified result, at that historical point, RT-1D-R2D was next and had not started; At that historical point, R3, R4, and R5 had not started.
+The mandatory R2C P8 authority sync was the transaction at that historical point and requires no recursive P8. After its independently verified result, at that historical point, RT-1D-R2D was next and had not started; at that historical point, R3, R4, and R5 had not started.
 
 
 ## RT-1D-R2D completion and mandatory P8 (current)

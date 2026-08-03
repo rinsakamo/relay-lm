@@ -291,7 +291,7 @@ This amendment changes documentation authority only. Primary MEM remains the sol
 
 RT-1D-R2B completed in implementation PR #811 from bootstrap `5822b01fd4642c89c39a2518672191bf1a8da115`, final reviewed head `9672a593b90dca06848e936c1099f828f913ae28`, and exact resulting main `a1fac7e4d3dee844990b680aa27130cee9051c3d`. The implementation contains exactly three commits, 15 changed paths, and +187/-0. External Python 3.12 validation completed with 1041 passed; every applicable exact-head check succeeded. Queue, runner, worker, and Primary pipeline carriage now requires the exact immutable decision owned by `subjective_mem_retrieval_cutover.py`; foreign or rejected decisions fail closed before governed effects, and the durable queue schema remains unchanged.
 
-The mandatory R2B P8 current-authority synchronization is Draft PR #812 and requires no recursive P8. RT-1D-R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; at that historical point, RT-1D-R2D was next and had not started. R2C may bootstrap only from this authority-correction transaction's independently verified exact resulting main. At that historical point, R2D, R3, R4, and R5 had not started. Primary remains the sole ordinary reader and writer; no intent, reader fence, writer fence record, readiness, activation, receipt, serving, fallback, or retirement change occurred.
+The mandatory R2B P8 current-authority synchronization completed historically in PR #812 and requires no recursive P8. RT-1D-R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; at that historical point, RT-1D-R2D was next and had not started. R2C may bootstrap only from this authority-correction transaction's independently verified exact resulting main. At that historical point, R2D, R3, R4, and R5 had not started. Primary remains the sole ordinary reader and writer; no intent, reader fence, writer fence record, readiness, activation, receipt, serving, fallback, or retirement change occurred.
 
 
 ## RT-1D-R2C completion and mandatory P8 (historical)
@@ -300,7 +300,7 @@ RT-1D-R2C completed in implementation PR #814 from bootstrap `ed078788e89d74caaa
 
 Correct and Forget roots derive the immutable Primary writer decision only through `relaylm/subjective_mem_retrieval_cutover.py`; public and internal apply/recovery boundaries fail closed before governed effects. No decision enters a durable schema or byte representation. R2B runner and R2D Pin/Unpin sites in the three overlap files remained byte-exact. Primary remains the sole ordinary authority; Subjective ordinary Retrieval remains disabled and unwired. No intent, fence record, readiness, activation, receipt, serving, fallback, or retirement behavior changed.
 
-The mandatory R2C P8 authority sync was the transaction at that historical point and requires no recursive P8. After its independently verified result, at that historical point, RT-1D-R2D was next and had not started; At that historical point, R3, R4, and R5 had not started.
+The mandatory R2C P8 authority sync was the transaction at that historical point and requires no recursive P8. After its independently verified result, at that historical point, RT-1D-R2D was next and had not started; at that historical point, R3, R4, and R5 had not started.
 
 
 ## RT-1D-R2D completion and mandatory P8 (current)
