@@ -52,6 +52,7 @@ _TOKEN_FIELDS = (
     "policy_revision_id",
     "readiness_id",
 )
+_PROJECTION_GENERATION_FIELD = "projection_generation_id"
 _DIGEST_FIELDS = (
     "bootstrap_main_sha",
     "resulting_main_sha",
@@ -63,6 +64,7 @@ _BINDING_FIELDS = (
     "transferred_scope",
     *_TOKEN_FIELDS,
     *_DIGEST_FIELDS,
+    _PROJECTION_GENERATION_FIELD,
 )
 _RECORD_FIELDS = (
     "schema_version",
@@ -81,7 +83,9 @@ _MAX_PRIMARY_WRITER_REASONS = 8
 _CUTOVER_CONFIG_PREFIX = "subjective_mem_retrieval_cutover_"
 _CUTOVER_CONFIG_FIELDS = tuple(
     f"{_CUTOVER_CONFIG_PREFIX}{field}"
-    for field in ("store_root", *_TOKEN_FIELDS, *_DIGEST_FIELDS)
+    for field in (
+        "store_root", *_TOKEN_FIELDS, *_DIGEST_FIELDS, _PROJECTION_GENERATION_FIELD
+    )
 )
 
 
