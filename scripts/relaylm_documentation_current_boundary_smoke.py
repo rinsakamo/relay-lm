@@ -1141,7 +1141,7 @@ PROBES += tuple((path, anchor) for path, anchors in R2D_P8_ANCHORS.items() for a
 R2D_P8_STALE = (
     "RT-1D-R2D is next and has not started",
     "RT-1D-R2D is next and not started",
-    "R2D, At that historical point, R3, R4, and R5 had not started",
+    "R2D, R3, R4, and R5 remain not started",
     "## RT-1D-R2C completion and mandatory P8 (current)",
     "The mandatory R2C P8 authority sync is the current transaction",
     "PR #818 remains open",
