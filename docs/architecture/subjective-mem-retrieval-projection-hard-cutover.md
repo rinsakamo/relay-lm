@@ -2085,7 +2085,7 @@ Stage production budgets:
 - RT-1D-R2A — decision owner and managed finalization carriage: paths 1-4 (`relaylm/subjective_mem_retrieval_cutover.py`, `relaylm/managed_chat_runtime.py`, `relaylm/managed_chat_response.py`, `relaylm/relaymem_slp_runtime_finalization.py`). It owns the sole immutable Primary writer-decision schema and resolver, exact `primary_only` binding-free derivation, exact rehearsal-bound reconstruction through the existing state machine, stream and non-stream finalization carriage, and pre-enqueue rejection before any durable enqueue or replay publication.
 - RT-1D-R2B — queue, runner, worker, and Primary pipeline carriage: paths 5-13. It owns exact semantic-value carriage into the sole queued-runner request constructor, runner validation and exact carriage into the sole worker-request constructor, worker request and type validation, worker and pipeline carriage, and writer-decision checks dominating source consumption, M3e page publication, and M3g reconciliation apply, with no direct M3e/M3g modification and no durable queue field for the decision.
 - RT-1D-R2C — Correct and Forget carriage: paths 14-20. Its checks dominate Correct replay, successor publication, selector, index, log, and receipt writes, recovery and finalization; and Forget replay, hidden-successor handoff, selector, index, log, receipt, and tombstone effects, recovery and finalization.
-- RT-1D-R2D — Pin and Unpin carriage: paths 21-23. Its checks dominate exact replay, receipt and state publication, shared-fence mutation, and every Pin/Unpin durable mutation.
+- Historical pre-P1-expansion RT-1D-R2D budget — Pin and Unpin carriage: paths 21-23. Its checks dominate exact replay, receipt and state publication, shared-fence mutation, and every Pin/Unpin durable mutation.
 
 The frozen non-production budgets below are the independently reproduced exact current inventory: 58 distinct existing files and 61 stage assignments. There is no wildcard `scripts/` or `tests/` authority, no stage authorizes all 58 files, and no new test, smoke, or support file may be created in any stage. Three files appear in two stages for disjoint call sites and are marked `ALSO`; each individual call site still belongs to exactly one stage.
 
@@ -2160,7 +2160,7 @@ tests/test_relaymem_characterization_review_regressions.py  6d023a889700  124 li
 tests/test_relaymem_lifecycle_characterization.py  f8cb7e53c99a  643 lines  apply_primary_memory_correction,apply_primary_memory_forget,recover_primary_memory_corrections  ALSO:R2D
 ```
 
-RT-1D-R2D frozen non-production callers (exactly 5 files):
+Historical pre-P1-expansion RT-1D-R2D frozen non-production callers (exactly 5 files):
 
 ```text
 scripts/relaylm_phase_i5b_pin_unpin_apply_smoke.py  24e9f80ff004  86 lines  apply_primary_memory_pin,apply_primary_memory_unpin  ALSO:R2C
@@ -2197,7 +2197,7 @@ There are exactly three overlap files:
 | `tests/test_relaymem_lifecycle_characterization.py` | RT-1D-R2C | only Correct and Forget sites, including `apply_primary_memory_correction`, `apply_primary_memory_forget`, and `recover_primary_memory_corrections`, plus minimum R2C scaffolding; must not modify Pin/Unpin sites |
 | `tests/test_relaymem_lifecycle_characterization.py` | RT-1D-R2D | only `apply_primary_memory_pin` and `apply_primary_memory_unpin` sites and minimum R2D scaffolding; must not modify Correct/Forget sites |
 
-The counts are unchanged: 58 distinct files, 61 stage assignments, R2A 4, R2B 29, R2C 23, R2D 5.
+The historical pre-P1-expansion counts were 58 distinct files, 61 stage assignments, R2A 4, R2B 29, R2C 23, and R2D 5.
 
 Mandatory transaction ordering: PR #807 accepted P1 Return -> the architecture-only staged-budget amendment PR #808 exact result `758c160e1ee71bb9ad67fe10234e5a38c03c6a3d` -> RT-1D-R2A implementation PR #809 exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430` -> completed mandatory R2A P8 PR #810 exact result `5822b01fd4642c89c39a2518672191bf1a8da115` -> independently verify the R2A P8 exact resulting main -> RT-1D-R2B complete in PR #811 exact result `a1fac7e4d3dee844990b680aa27130cee9051c3d` -> verify R2B exact result -> mandatory R2B P8 -> verify -> RT-1D-R2C -> verify -> mandatory R2C P8 -> verify -> RT-1D-R2D -> verify -> mandatory R2D P8 -> verify -> R3 may become next, not started by this amendment. Every implementation and P8 is a separate fresh-branch single-writer transaction, and only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next; never a PR head and never an audit branch.
 
@@ -2277,9 +2277,9 @@ The public `run_relaymem_slp_runtime_enqueue_after_response` is a strict guard w
 
 ### Queue persistence and stage boundary
 
-No decision is persisted in any queue record, and R2A introduces no queue schema or persistence field for it. R2A ends at the durable enqueue boundary: the decision enters no queue record and no R2B request type. R2B queue, runner, worker, and Primary pipeline carriage is complete; R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; R2D is next and has not started; R2D, R3, R4, and R5 remain not started. Primary MEM remains the sole ordinary served authority, Subjective ordinary Retrieval remains disabled and unwired, and no durable intent, fence, activation, receipt, readiness, usage, probe, fallback, authority-transfer, or retirement change has occurred.
+No decision is persisted in any queue record, and R2A introduces no queue schema or persistence field for it. R2A ends at the durable enqueue boundary: the decision enters no queue record and no R2B request type. R2B queue, runner, worker, and Primary pipeline carriage is complete; R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; at that historical point, R2D was next and had not started; at that historical point, R2D, R3, R4, and R5 had not started. Primary MEM remains the sole ordinary served authority, Subjective ordinary Retrieval remains disabled and unwired, and no durable intent, fence, activation, receipt, readiness, usage, probe, fallback, authority-transfer, or retirement change has occurred.
 
-### Current P8 and RT-1D-R2B gate
+### Historical R2B P8 gate
 
 Mandatory RT-1D-R2B P8 PR #812 completed with exact result `ca4eae55ab2dd053978d1dc7a4dd4b55fee5e5a8`. It is documentation-only, requires no further P8, and changes no production, runtime, test, config, workflow, contract, ADR, evidence, or completion-report path. RT-1D-R2B is complete in PR #811 with exact result `a1fac7e4d3dee844990b680aa27130cee9051c3d`. RT-1D-R2B completed from the independently verified R2A P8 result; R2C may bootstrap only from this correction transaction's independently verified exact resulting main. Its P1 remeasures the then-current blobs rather than the pre-R2A or amendment-time blobs, and the later-stage budgets are not expanded by this P8.
 
@@ -2289,13 +2289,24 @@ RT-1D-R2B completed in PR #811 with bootstrap `5822b01fd4642c89c39a2518672191bf1
 
 The queue candidate derives the immutable Primary writer decision only through `subjective_mem_retrieval_cutover.py`. The queued runner, worker, and pipeline carry and validate that exact semantic value without configuration interpretation or durable queue persistence. Foreign, malformed, tampered, fenced, and recovery-required values fail closed before queue claim/execution, protected-source consumption, worker claim validation, M3e publication, or M3g reconciliation. Valid `primary_only` behavior preserves queue schema and bytes, claims, leases, replay, recovery, checkpoint ordering, source release, worker results, and M3e/M3g effects.
 
-Mandatory R2B P8 PR #812 completed with exact result `ca4eae55ab2dd053978d1dc7a4dd4b55fee5e5a8` and requires no recursive P8. RT-1D-R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; RT-1D-R2D is next and has not started; it may bootstrap only from this P8's independently verified exact resulting main. R2D, R3, R4, and R5 remain not started. Primary remains the sole ordinary authority and R2B introduced no durable cutover intent, fence record, readiness, activation, receipt, serving, fallback, or retirement behavior.
+Mandatory R2B P8 PR #812 completed with exact result `ca4eae55ab2dd053978d1dc7a4dd4b55fee5e5a8` and requires no recursive P8. RT-1D-R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; at that historical point, RT-1D-R2D was next and had not started; it may bootstrap only from this P8's independently verified exact resulting main. At that historical point, R2D, R3, R4, and R5 had not started. Primary remains the sole ordinary authority and R2B introduced no durable cutover intent, fence record, readiness, activation, receipt, serving, fallback, or retirement behavior.
 
 
-## RT-1D-R2C completion and mandatory P8 (current)
+## RT-1D-R2C completion and mandatory P8 (historical)
 
 RT-1D-R2C completed in implementation PR #814 from bootstrap `ed078788e89d74caaa9219dec66fc3b1278dcb45`, final reviewed head `f2f42788348c00368085bba51bdb9130363564c9`, and exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`. Its two commits changed exactly 30 authorized paths, +260/-58: seven production Correct/Forget carriage paths and 23 frozen non-production caller assignments. External Python 3.12 validation passed 1049 tests in 683.23 seconds; every applicable exact-head workflow succeeded.
 
 Correct and Forget roots derive the immutable Primary writer decision only through `relaylm/subjective_mem_retrieval_cutover.py`; public and internal apply/recovery boundaries fail closed before governed effects. No decision enters a durable schema or byte representation. R2B runner and R2D Pin/Unpin sites in the three overlap files remained byte-exact. Primary remains the sole ordinary authority; Subjective ordinary Retrieval remains disabled and unwired. No intent, fence record, readiness, activation, receipt, serving, fallback, or retirement behavior changed.
 
-The mandatory R2C P8 authority sync is the current transaction and requires no recursive P8. After its independently verified result, RT-1D-R2D is next and has not started; R3, R4, and R5 remain not started.
+The mandatory R2C P8 authority sync was the transaction at that historical point and requires no recursive P8. After its independently verified result, at that historical point, RT-1D-R2D was next and had not started; At that historical point, R3, R4, and R5 had not started.
+
+
+## RT-1D-R2D completion and mandatory P8 (current)
+
+RT-1D-R2D completed in implementation PR #818 from reviewed head `992496748efc70d51a7ed356e23aea650220902c` with exact squash result `a2197e9f92a8067d733f8adba524bf54eb2708b6`. Its two pre-squash commits changed exactly 10 paths, +119/-43: four production paths (`relaylm/subjective_mem_retrieval_cutover.py`, `relaylm/relaymem_primary_pin.py`, `relaylm/relaymem_primary_pin_apply.py`, and `relaylm/soul_lab_memory_pin_routes.py`) and six non-production paths (the semantic-owner test, four I-5B Pin/Unpin smokes, and lifecycle characterization).
+
+`SubjectiveMemRetrievalPrimaryWriterDecision` remains the sole exact immutable Primary writer decision and `primary_writer_decision_permits_write` remains the sole semantic predicate. The P6 correction totalized malformed exact-type validation for uninitialized and partial instances, missing fields, wrong primitive types, unhashable values, and hostile equality values; all return `False`. The predicate retains its exact-type check and catches only `SubjectiveMemRetrievalCutoverError`. The downstream generic `except Exception` wrapper was removed. Pin/Unpin apply validates the exact decision before request validation, store-root resolution, store access, locking, replay, publication, or any durable effect. Soul Lab roots derive only through the sole resolver and carry that exact value.
+
+Focused semantic-owner/lifecycle validation passed 126 tests, all four I-5B Pin/Unpin smokes passed, the external Python 3.12 suite passed 1063 tests with one dependency deprecation warning, execution safety passed, and every applicable exact-head GitHub check passed. No decision is serialized or persisted and no durable schema or bytes changed. Primary MEM remains the sole ordinary served memory and Retrieval authority; Subjective ordinary Retrieval remains disabled and unwired. No durable intent, fence record, readiness, activation, transfer receipt, serving, fallback, retirement, or R3 behavior was introduced.
+
+The current transaction is the mandatory RT-1D-R2D P8 authority synchronization. This documentation-only P8 requires no recursive P8. Only after this P8 is merged and its exact resulting main is independently verified may RT-1D-R3 become uniquely next; RT-1D-R3 is not started, and RT-1D-R4 and RT-1D-R5 remain not started. R3 may bootstrap only from that verified P8 result, never PR #818 head or an unmerged P8 head.
