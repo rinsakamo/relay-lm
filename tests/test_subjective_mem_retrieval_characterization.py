@@ -10,6 +10,15 @@ import pytest
 import relaylm.subjective_mem_retrieval_characterization as characterization_owner
 import relaylm.subjective_mem_retrieval_selection as selection_owner
 import relaylm.subjective_mem_retrieval_usage_ledger as ledger_owner
+from relaylm.config import RelayLMConfig
+from relaylm.evidence_common import canonical_digest
+from relaylm.subjective_mem_retrieval_cutover import (
+    CUTOVER_AUTHORITY_DOMAIN, CUTOVER_SCHEMA_VERSION, CUTOVER_TRANSFERRED_SCOPE,
+    SubjectiveMemRetrievalCutoverBinding,
+    evaluate_subjective_mem_retrieval_rehearsal_readiness,
+    subjective_mem_retrieval_rehearsal_readiness_id,
+)
+from relaylm.subjective_mem_retrieval_projection import SubjectiveMemRetrievalProjectionSource
 from relaylm.subjective_mem_retrieval_characterization import (
     SubjectiveMemRetrievalPrimaryServedMetrics,
     characterize_subjective_mem_retrieval_shadow,
@@ -57,6 +66,160 @@ def _primary(**changes):
     )
     return replace(base, **changes)
 
+def _fixed_source(**changes):
+    values = {
+        "evidence_space_id": "space-1",
+        "character_id": "character-1",
+        "workspace_authority_digest": "a" * 64,
+        "admitted_scope_binding_digest": "b" * 64,
+        "snapshot_taken_at": "2026-08-03T00:00:00Z",
+        "entries": (),
+    }
+    values.update(changes)
+    return SubjectiveMemRetrievalProjectionSource(**values)
+
+
+def _readiness_binding(source, characterization, **changes):
+    values = {
+        "schema_version": CUTOVER_SCHEMA_VERSION,
+        "authority_domain": CUTOVER_AUTHORITY_DOMAIN,
+        "transferred_scope": CUTOVER_TRANSFERRED_SCOPE,
+        "evidence_space_id": source.evidence_space_id,
+        "deployment_id": "deployment-1",
+        "scope_id": "ordinary-memory",
+        "policy_revision_id": "policy-1",
+        "readiness_id": "pending",
+        "bootstrap_main_sha": "c" * 64,
+        "resulting_main_sha": "d" * 64,
+        "projection_generation_id": source.projection_generation_id,
+        "projection_source_digest": source.source_snapshot_digest,
+    }
+    binding = SubjectiveMemRetrievalCutoverBinding(**values)
+    values["readiness_id"] = subjective_mem_retrieval_rehearsal_readiness_id(
+        binding, source, characterization
+    )
+    values.update(changes)
+    return SubjectiveMemRetrievalCutoverBinding(**values)
+
+
+def _readiness_config(binding, **changes):
+    values = {
+        "subjective_mem_retrieval_cutover_mode": "rehearsal",
+        "subjective_mem_retrieval_cutover_evidence_space_id": binding.evidence_space_id,
+        "subjective_mem_retrieval_cutover_deployment_id": binding.deployment_id,
+        "subjective_mem_retrieval_cutover_scope_id": binding.scope_id,
+        "subjective_mem_retrieval_cutover_policy_revision_id": binding.policy_revision_id,
+        "subjective_mem_retrieval_cutover_readiness_id": binding.readiness_id,
+        "subjective_mem_retrieval_cutover_bootstrap_main_sha": binding.bootstrap_main_sha,
+        "subjective_mem_retrieval_cutover_resulting_main_sha": binding.resulting_main_sha,
+        "subjective_mem_retrieval_cutover_projection_generation_id": binding.projection_generation_id,
+        "subjective_mem_retrieval_cutover_projection_source_digest": binding.projection_source_digest,
+    }
+    values.update(changes)
+    return RelayLMConfig.model_construct(**values)
+
+
+def test_r3_readiness_binds_exact_source_rebuild_and_characterization() -> None:
+    source = _fixed_source()
+    shadow = _shadow({})
+    primary = _primary()
+    characterization, reasons = characterize_subjective_mem_retrieval_shadow(
+        primary=primary, shadow=shadow, replay=shadow,
+        subjective_latency_class="within_bound", projection_rebuild_equivalent=True,
+    )
+    assert reasons == () and characterization is not None
+    binding = _readiness_binding(source, characterization)
+    readiness, reasons = evaluate_subjective_mem_retrieval_rehearsal_readiness(
+        config=_readiness_config(binding), binding=binding,
+        source=source, rebuilt_source=_fixed_source(),
+        primary=primary, shadow=shadow, replay=shadow,
+        subjective_latency_class="within_bound",
+    )
+    assert reasons == () and readiness is not None
+    assert readiness.readiness_id == binding.readiness_id
+    assert readiness.projection_generation_id == source.projection_generation_id
+    assert readiness.projection_source_digest == source.source_snapshot_digest
+    assert readiness.characterization_digest == canonical_digest(characterization.to_dict())
+    assert (readiness.subjective_serving, readiness.ordinary_usage_event_recorded,
+            readiness.authority_state_written) == (False, False, False)
+
+
+@pytest.mark.parametrize(
+    ("binding_changes", "source_changes", "rebuilt_changes", "reason"),
+    [
+        ({"projection_generation_id": "smretrievalgen_" + "e" * 64}, {}, {},
+         "cutover_readiness_source_binding_disagreement"),
+        ({"projection_source_digest": "e" * 64}, {}, {},
+         "cutover_readiness_source_binding_disagreement"),
+        ({"evidence_space_id": "other-space"}, {}, {},
+         "cutover_readiness_source_binding_disagreement"),
+        ({"readiness_id": "wrong"}, {}, {},
+         "cutover_readiness_identity_disagreement"),
+        ({}, {}, {"snapshot_taken_at": "2026-08-04T00:00:00Z"},
+         "cutover_readiness_rebuild_disagreement"),
+    ],
+)
+def test_r3_readiness_fails_closed_on_source_binding_or_rebuild_disagreement(
+    binding_changes, source_changes, rebuilt_changes, reason
+) -> None:
+    source = _fixed_source(**source_changes)
+    shadow = _shadow({})
+    primary = _primary()
+    characterization, _ = characterize_subjective_mem_retrieval_shadow(
+        primary=primary, shadow=shadow, replay=shadow,
+        subjective_latency_class="within_bound", projection_rebuild_equivalent=True,
+    )
+    assert characterization is not None
+    binding = _readiness_binding(source, characterization, **binding_changes)
+    readiness, reasons = evaluate_subjective_mem_retrieval_rehearsal_readiness(
+        config=_readiness_config(binding), binding=binding,
+        source=source, rebuilt_source=_fixed_source(**rebuilt_changes),
+        primary=primary, shadow=shadow, replay=shadow,
+        subjective_latency_class="within_bound",
+    )
+    assert readiness is None and reasons == (reason,)
+
+def test_r3_readiness_rejects_config_binding_disagreement() -> None:
+    source = _fixed_source()
+    shadow, primary = _shadow({}), _primary()
+    characterization, _ = characterize_subjective_mem_retrieval_shadow(
+        primary=primary, shadow=shadow, replay=shadow,
+        subjective_latency_class="within_bound", projection_rebuild_equivalent=True,
+    )
+    assert characterization is not None
+    binding = _readiness_binding(source, characterization)
+    readiness, reasons = evaluate_subjective_mem_retrieval_rehearsal_readiness(
+        config=_readiness_config(
+            binding, subjective_mem_retrieval_cutover_deployment_id="other-deployment"
+        ),
+        binding=binding, source=source, rebuilt_source=_fixed_source(),
+        primary=primary, shadow=shadow, replay=shadow,
+        subjective_latency_class="within_bound",
+    )
+    assert readiness is None
+    assert reasons == ("cutover_readiness_config_binding_disagreement",)
+
+
+def test_r3_readiness_requires_deterministic_bounded_content_free_characterization() -> None:
+    source = _fixed_source()
+    shadow = _shadow({})
+    primary = _primary()
+    characterization, _ = characterize_subjective_mem_retrieval_shadow(
+        primary=primary, shadow=shadow, replay=shadow,
+        subjective_latency_class="within_bound", projection_rebuild_equivalent=True,
+    )
+    assert characterization is not None
+    binding = _readiness_binding(source, characterization)
+    for replay, latency in ((_shadow({"lifecycle_state": "held", "retrieval_eligible": False}),
+                             "within_bound"), (shadow, "exceeded_bound")):
+        readiness, reasons = evaluate_subjective_mem_retrieval_rehearsal_readiness(
+            config=_readiness_config(binding), binding=binding,
+            source=source, rebuilt_source=_fixed_source(),
+            primary=primary, shadow=shadow, replay=replay,
+            subjective_latency_class=latency,
+        )
+        assert readiness is None
+        assert reasons == ("cutover_readiness_characterization_not_ready",)
 
 def test_characterization_is_deterministic_bounded_and_content_free() -> None:
     shadow = _shadow({})

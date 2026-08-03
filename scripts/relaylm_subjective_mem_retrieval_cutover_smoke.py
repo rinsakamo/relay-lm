@@ -4,10 +4,18 @@
 from __future__ import annotations
 
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 
 from relaylm.evidence_common import canonical_digest
+from relaylm.config import RelayLMConfig
 from relaylm.evidence_store import EvidenceRecordStore
+from relaylm.subjective_mem_retrieval_characterization import (
+    SubjectiveMemRetrievalPrimaryServedMetrics,
+    characterize_subjective_mem_retrieval_shadow,
+)
+from relaylm.subjective_mem_retrieval_projection import SubjectiveMemRetrievalProjectionSource
+from relaylm.subjective_mem_retrieval_selection import SubjectiveMemRetrievalSelectionProjection
 from relaylm.subjective_mem_retrieval_cutover import (
     CUTOVER_AUTHORITY_DOMAIN,
     CUTOVER_LOG_KEY,
@@ -15,13 +23,20 @@ from relaylm.subjective_mem_retrieval_cutover import (
     CUTOVER_TRANSFERRED_SCOPE,
     SubjectiveMemRetrievalCutoverBinding,
     SubjectiveMemRetrievalCutoverRequest,
+    evaluate_subjective_mem_retrieval_rehearsal_readiness,
     rehearse_subjective_mem_retrieval_cutover,
+    subjective_mem_retrieval_rehearsal_readiness_id,
 )
 
 
 def main() -> None:
     with tempfile.TemporaryDirectory(prefix="relaylm-rt1d-r1-") as temporary:
         store = EvidenceRecordStore(str(Path(temporary) / "store"))
+        source = SubjectiveMemRetrievalProjectionSource(
+            evidence_space_id="smoke-space", character_id="character-1",
+            workspace_authority_digest="e" * 64, admitted_scope_binding_digest="f" * 64,
+            snapshot_taken_at="2026-08-03T00:00:00Z", entries=(),
+        )
         binding = SubjectiveMemRetrievalCutoverBinding(
             schema_version=1,
             authority_domain=CUTOVER_AUTHORITY_DOMAIN,
@@ -30,12 +45,53 @@ def main() -> None:
             deployment_id="smoke-deployment",
             scope_id="ordinary-memory",
             policy_revision_id="policy-1",
-            readiness_id="ready-1",
+            readiness_id="pending",
             bootstrap_main_sha="a" * 64,
             resulting_main_sha="b" * 64,
-            projection_generation_id="smretrievalgen_" + "c" * 64,
-            projection_source_digest="d" * 64,
+            projection_generation_id=source.projection_generation_id,
+            projection_source_digest=source.source_snapshot_digest,
         )
+        shadow = SubjectiveMemRetrievalSelectionProjection(
+            status="prepared_empty", shadow=True, attempted=True,
+            projection_generation_ready=True, candidate_count=0, eligible_count=0,
+            selected_count=0, not_requested_kind_count=0,
+            excluded_count_by_reason_class=(), handoff_shape_class="empty",
+            token_budget_class="empty", blocked_reason_classes=(),
+        )
+        primary = SubjectiveMemRetrievalPrimaryServedMetrics(
+            attempted=True, candidate_count=0, selected_count=0,
+            latency_class="within_bound",
+        )
+        characterization, reasons = characterize_subjective_mem_retrieval_shadow(
+            primary=primary, shadow=shadow, replay=shadow,
+            subjective_latency_class="within_bound", projection_rebuild_equivalent=True,
+        )
+        assert reasons == () and characterization is not None
+        binding = replace(
+            binding, readiness_id=subjective_mem_retrieval_rehearsal_readiness_id(
+                binding, source, characterization
+            )
+        )
+        config = RelayLMConfig.model_construct(
+            subjective_mem_retrieval_cutover_mode="rehearsal",
+            **{
+                f"subjective_mem_retrieval_cutover_{field}": getattr(binding, field)
+                for field in (
+                    "evidence_space_id", "deployment_id", "scope_id",
+                    "policy_revision_id", "readiness_id", "bootstrap_main_sha",
+                    "resulting_main_sha", "projection_generation_id",
+                    "projection_source_digest",
+                )
+            },
+        )
+        readiness, reasons = evaluate_subjective_mem_retrieval_rehearsal_readiness(
+            config=config, binding=binding, source=source, rebuilt_source=source,
+            primary=primary, shadow=shadow, replay=shadow,
+            subjective_latency_class="within_bound",
+        )
+        assert reasons == () and readiness is not None
+        assert not readiness.subjective_serving and not readiness.ordinary_usage_event_recorded
+        assert not readiness.authority_state_written
         default = rehearse_subjective_mem_retrieval_cutover(
             store=store, binding=binding, request=SubjectiveMemRetrievalCutoverRequest()
         )
@@ -91,7 +147,7 @@ def main() -> None:
             str(temporary) not in public and "subjective_serving': True" not in public
         )
     print(
-        "PASS rt1d-r1 primary-only rehearsal exact-chain fail-closed content-free no-write"
+        "PASS rt1d-r3 fixed-source deterministic-readiness primary-only no-write"
     )
 
 
