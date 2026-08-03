@@ -145,6 +145,8 @@ def test_r3_readiness_binds_exact_source_rebuild_and_characterization() -> None:
     assert readiness.characterization_digest == canonical_digest(characterization.to_dict())
     assert (readiness.subjective_serving, readiness.ordinary_usage_event_recorded,
             readiness.authority_state_written) == (False, False, False)
+    with pytest.raises(ValueError, match="init=False"):
+        replace(readiness, subjective_serving=True)
 
 
 @pytest.mark.parametrize(

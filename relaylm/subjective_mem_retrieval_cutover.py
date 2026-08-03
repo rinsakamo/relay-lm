@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal, Mapping
 
 from .config import RelayLMConfig
@@ -189,7 +189,7 @@ class SubjectiveMemRetrievalCutoverDiagnostics:
     probe_class: str
     recovery_required: bool
     subjective_serving: bool
-    runtime_private_evidence_omitted: bool = True
+    runtime_private_evidence_omitted: bool = field(default=True, init=False)
 
     def __post_init__(self) -> None:
         if self.state_class not in {*_FORWARD_STATES, "recovery_required"}:
@@ -285,12 +285,12 @@ class SubjectiveMemRetrievalRehearsalReadiness:
     projection_generation_id: str
     projection_source_digest: str
     characterization_digest: str
-    deterministic_replay: bool = True
-    deletion_rebuild_equivalent: bool = True
-    subjective_serving: bool = False
-    ordinary_usage_event_recorded: bool = False
-    authority_state_written: bool = False
-    runtime_private_evidence_omitted: bool = True
+    deterministic_replay: bool = field(default=True, init=False)
+    deletion_rebuild_equivalent: bool = field(default=True, init=False)
+    subjective_serving: bool = field(default=False, init=False)
+    ordinary_usage_event_recorded: bool = field(default=False, init=False)
+    authority_state_written: bool = field(default=False, init=False)
+    runtime_private_evidence_omitted: bool = field(default=True, init=False)
 
     def to_dict(self) -> dict[str, object]:
         return {field: getattr(self, field) for field in self.__dataclass_fields__}
@@ -309,12 +309,14 @@ def evaluate_subjective_mem_retrieval_rehearsal_readiness(
 ) -> tuple[SubjectiveMemRetrievalRehearsalReadiness | None, tuple[str, ...]]:
     """Validate one exact fixed source and deterministic content-free rehearsal."""
 
-    if (type(config) is not RelayLMConfig or config.subjective_mem_retrieval_cutover_mode != "rehearsal"
-            or type(binding) is not SubjectiveMemRetrievalCutoverBinding):
+    if (type(config) is not RelayLMConfig or getattr(
+            config, "subjective_mem_retrieval_cutover_mode", None
+        ) != "rehearsal" or type(binding) is not SubjectiveMemRetrievalCutoverBinding):
         return None, ("cutover_readiness_binding_invalid",)
     try:
         configured_binding = _binding_from_config(config)
-    except (SubjectiveMemRetrievalCutoverError, TypeError):
+        binding.__post_init__()
+    except (AttributeError, SubjectiveMemRetrievalCutoverError, TypeError):
         return None, ("cutover_readiness_config_invalid",)
     if configured_binding != binding:
         return None, ("cutover_readiness_config_binding_disagreement",)
@@ -324,7 +326,6 @@ def evaluate_subjective_mem_retrieval_rehearsal_readiness(
     ):
         return None, ("cutover_readiness_source_invalid",)
     try:
-        binding.__post_init__()
         source_identity = _source_identity(source)
         rebuilt_identity = _source_identity(rebuilt_source)
     except (AttributeError, SubjectiveMemRetrievalCutoverError, TypeError, ValueError):
