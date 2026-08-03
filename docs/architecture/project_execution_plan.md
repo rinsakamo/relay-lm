@@ -424,7 +424,7 @@ Each stage carries a path budget plus a call-site sub-budget. Call-site granular
 
 ### Current RT-1D-R2B P8 gate
 
-RT-1D-R2B implementation PR #811 completed from exact bootstrap `5822b01fd4642c89c39a2518672191bf1a8da115`, reviewed head `9672a593b90dca06848e936c1099f828f913ae28`, and exact result `a1fac7e4d3dee844990b680aa27130cee9051c3d`, with three commits, 15 paths, +187/-0, 1041/1041, and successful exact-head CI. Mandatory R2B P8 PR #812 completed with exact result `ca4eae55ab2dd053978d1dc7a4dd4b55fee5e5a8` and requires no further P8. RT-1D-R2C completed in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; mandatory P8 PR #815 completed with exact result pending this correction transaction, and RT-1D-R2D is next and has not started; R3, R4, and R5 remain not started. No stage may bootstrap from PR #811's head.
+RT-1D-R2B implementation PR #811 completed from exact bootstrap `5822b01fd4642c89c39a2518672191bf1a8da115`, reviewed head `9672a593b90dca06848e936c1099f828f913ae28`, and exact result `a1fac7e4d3dee844990b680aa27130cee9051c3d`, with three commits, 15 paths, +187/-0, 1041/1041, and successful exact-head CI. Mandatory R2B P8 PR #812 completed with exact result `ca4eae55ab2dd053978d1dc7a4dd4b55fee5e5a8` and requires no further P8. RT-1D-R2C completed in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; mandatory P8 PR #815 completed with exact result `4ab497e403f3c46b0808e0940ca583f0bd66a3f4`, and RT-1D-R2D is next and has not started; R3, R4, and R5 remain not started. No stage may bootstrap from PR #811's head.
 
 
 ## RT-1D-R2C completion and mandatory P8 (current)
