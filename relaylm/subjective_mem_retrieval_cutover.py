@@ -276,29 +276,30 @@ class SubjectiveMemRetrievalPrimaryWriterDecision:
     runtime_private_evidence_omitted: bool
 
     def __post_init__(self) -> None:
-        if self.schema_version != PRIMARY_WRITER_DECISION_SCHEMA_VERSION:
+        fields = tuple(
+            getattr(self, field, None) for field in type(self).__dataclass_fields__
+        )
+        schema_version, state, writer_class, recovery_required, reasons, omitted = fields
+        if type(schema_version) is not int or schema_version != PRIMARY_WRITER_DECISION_SCHEMA_VERSION:
             raise _decision_invalid("schema_unsupported")
-        if self.state not in (*_FORWARD_STATES, "recovery_required"):  # unhashable-safe
+        if type(state) is not str or state not in (*_FORWARD_STATES, "recovery_required"):
             raise _decision_invalid("state_invalid")
-        if self.writer_class not in (PRIMARY_WRITER_PERMITTED, PRIMARY_WRITER_REJECTED):
+        if type(writer_class) is not str or writer_class not in (PRIMARY_WRITER_PERMITTED, PRIMARY_WRITER_REJECTED):
             raise _decision_invalid("class_invalid")
-        if (
-            type(self.recovery_required) is not bool
-            or self.runtime_private_evidence_omitted is not True
-        ):
+        if type(recovery_required) is not bool or omitted is not True:
             raise _decision_invalid("boolean_invalid")
         if (
-            type(self.reasons) is not tuple
-            or len(self.reasons) > _MAX_PRIMARY_WRITER_REASONS
-            or not all(_safe_token(reason) for reason in self.reasons)
+            type(reasons) is not tuple
+            or len(reasons) > _MAX_PRIMARY_WRITER_REASONS
+            or not all(_safe_token(reason) for reason in reasons)
         ):
             raise _decision_invalid("reasons_invalid")
-        if self.recovery_required != (self.state == "recovery_required"):
+        if recovery_required != (state == "recovery_required"):
             raise _decision_invalid("recovery_mismatch")
-        permitted = self.state in _PRIMARY_WRITER_PERMITTED_STATES
-        if permitted != (self.writer_class == PRIMARY_WRITER_PERMITTED):
+        permitted = state in _PRIMARY_WRITER_PERMITTED_STATES
+        if permitted != (writer_class == PRIMARY_WRITER_PERMITTED):
             raise _decision_invalid("class_state_mismatch")
-        if permitted != (not self.reasons):
+        if permitted != (not reasons):
             raise _decision_invalid("reasons_invalid")
 
     def to_dict(self) -> dict[str, object]:

@@ -18,20 +18,15 @@ These tests describe today's behavior, not the target architecture.
 """
 from __future__ import annotations
 
-from relaylm.config import RelayLMConfig
-from relaylm.subjective_mem_retrieval_cutover import (
-    SubjectiveMemRetrievalPrimaryWriterDecision,
-    resolve_subjective_mem_retrieval_primary_writer_decision,
-)
-
 import pytest
-
 from _relaymem_characterization_support import (
     eligibility_of,
     form_primary_memory,
     held_candidate_template,
     prepare_store,
 )
+
+from relaylm.config import RelayLMConfig
 from relaylm.relaymem_held_governance import (
     HeldGovernanceRuntimeError,
     apply_held_governance_decision,
@@ -63,6 +58,10 @@ from relaylm.relaymem_primary_pin_apply import (
     apply_primary_memory_pin,
     apply_primary_memory_unpin,
     get_primary_memory_pin_state,
+)
+from relaylm.subjective_mem_retrieval_cutover import (
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+    resolve_subjective_mem_retrieval_primary_writer_decision,
 )
 
 PRIMARY_WRITER_DECISION = resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={}))

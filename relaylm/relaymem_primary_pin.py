@@ -70,11 +70,7 @@ class PrimaryPinError(RuntimeError):
 
 def require_primary_writer_decision(decision: object) -> None:
     """Fail closed unless the semantic owner's exact decision permits mutation."""
-    try:
-        permitted = primary_writer_decision_permits_write(decision)
-    except Exception:  # noqa: BLE001 - malformed authority must fail closed
-        permitted = False
-    if not permitted:
+    if not primary_writer_decision_permits_write(decision):
         raise PrimaryPinError("reconciliation_required")
 
 

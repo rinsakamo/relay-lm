@@ -11,7 +11,10 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
 
 from ._relaymem_primary_page_writer_common import is_sha256, stable_hash
-from .relaymem_primary_current_state import PrimaryCurrentStateError, resolve_primary_current_state
+from .relaymem_primary_current_state import (
+    PrimaryCurrentStateError,
+    resolve_primary_current_state,
+)
 from .relaymem_primary_mutation_coordinator import (
     PrimaryMutationCoordinatorError,
     inspect_primary_memory_operations,
@@ -23,12 +26,14 @@ from .relaymem_primary_pin import (
     UNPIN_HISTORY_SCHEMA,
     UNPIN_PREFLIGHT_RESPONSE_SCHEMA,
     PrimaryPinError,
-    _map_error as _contract_map_error,
     preflight_primary_memory_pin,
     preflight_primary_memory_unpin,
     require_primary_writer_decision,
     validate_primary_memory_pin_token,
     validate_primary_memory_unpin_token,
+)
+from .relaymem_primary_pin import (
+    _map_error as _contract_map_error,
 )
 
 PIN_RECEIPT_SCHEMA = "relaylm.mem.primary_pin_receipt.v0"

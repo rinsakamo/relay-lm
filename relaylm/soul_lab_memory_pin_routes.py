@@ -26,7 +26,9 @@ from relaylm.soul_lab_memory_pin import (
     LabMemoryUnpinPreflightRequest,
 )
 from relaylm.soul_lab_observation_projection import resolve_lab_observation_scope
-from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
 
 _MAX_MUTATION_BODY_BYTES = 16_384
 _ERROR_STATUS = {
