@@ -435,6 +435,9 @@ for _path, _anchors in S3C_COMPLETION_ANCHORS.items():
 CURRENT_DOCS = tuple(REQUIRED)
 
 STALE = (
+    "RT-1D-R2C is next and has not started",
+    "R2C is next and has not started",
+    "No R2C Correct or Forget carriage exists yet",
     "RT-1D-R1 is next but non-executable until PR #800 merges",
     "fresh RT-1D runtime P0/P1 architecture authorization PR #800 current",
     "Fresh RT-1D runtime P0/P1 architecture authorization PR #800 current",
@@ -630,6 +633,9 @@ RT1_STRUCTURAL_ANCHORS = (
 )
 
 RT1_STRUCTURAL_STALE = (
+    "RT-1D-R2C is next and has not started",
+    "R2C is next and has not started",
+    "No R2C Correct or Forget carriage exists yet",
     "RT-1D runtime is the next implementation immediately after PR #788.",
     "S1-S3 and RT-1D runtime may be implemented in one combined PR.",
     "Existing oversized files are exempt from the structural thresholds.",
@@ -810,7 +816,7 @@ R2_LIVE_ROOT_ANCHORS = {
         "## Current RT-1D-R2B P8 current-authority synchronization gate",
         "PR #803 exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` -> renewed R2 P1 Return without mutation",
         "PR #804",
-        "RT-1D-R2B and mandatory P8 PR #812 are complete; RT-1D-R2C is next and has not started",
+        "RT-1D-R2B and mandatory P8 PR #812 are complete; RT-1D-R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; RT-1D-R2D is next and has not started",
         "RT-1D-R2A implementation PR #809 exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430` -> completed mandatory R2A P8",
         "only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next, never a PR head and never an audit branch",
         "managed_chat_runtime.py`-only carriage is insufficient",
@@ -936,7 +942,7 @@ R2_STAGED_ANCHORS = {
         "RT-1D-R2A implementation PR #809 exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430` -> completed mandatory R2A P8",
         "mandatory R2D P8 -> verify -> R3 may become next, not started by this amendment",
         "only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next, never a PR head and never an audit branch",
-        "RT-1D-R2B and mandatory P8 PR #812 are complete; RT-1D-R2C is next and has not started",
+        "RT-1D-R2B and mandatory P8 PR #812 are complete; RT-1D-R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; RT-1D-R2D is next and has not started",
         "RT-1D-R2A (paths 1-4), RT-1D-R2B (paths 5-13), RT-1D-R2C (paths 14-20), and RT-1D-R2D (paths 21-23)",
         "4 for R2A, 29 for R2B, 23 for R2C, and 5 for R2D",
         "There is no wildcard `scripts/` or `tests/` authority and no new test, smoke, or support file in any stage",
@@ -1036,16 +1042,16 @@ R2A_COMPLETION_ANCHORS = {
         "Mandatory R2B P8 PR #812 completed with exact result `ca4eae55ab2dd053978d1dc7a4dd4b55fee5e5a8`.",
         "It is documentation-only, requires no further P8",
         "RT-1D-R2B is complete in PR #811 with exact result `a1fac7e4d3dee844990b680aa27130cee9051c3d`",
-        "RT-1D-R2C, RT-1D-R2D, and RT-1D-R3 remain not started.",
+        "RT-1D-R2C is complete in PR #814; RT-1D-R2D and RT-1D-R3 remain not started.",
         "No R2B queue, runner, worker, or pipeline carriage exists yet.",
     ),
     PLAN: (
         "completed mandatory R2A P8 PR #810 exact result `5822b01fd4642c89c39a2518672191bf1a8da115`",
         "independently verify the R2A P8 exact resulting main -> RT-1D-R2B complete in PR #811 exact result `a1fac7e4d3dee844990b680aa27130cee9051c3d`",
-        "RT-1D-R2B and mandatory P8 PR #812 are complete; RT-1D-R2C is next and has not started.",
+        "RT-1D-R2B and mandatory P8 PR #812 are complete; RT-1D-R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; RT-1D-R2D is next and has not started.",
         "RT-1D-R2A completed in PR #809 with exactly three commits, final head `eafdc0629fd307ed7c136488280ddb449c5787f1`, exactly 9 changed paths and +829/-7, a full suite of 1041/1041, and exact-head CI with no candidate-caused failure.",
         "RT-1D-R2B bootstrapped from the independently verified R2A P8 result and completed in PR #811.",
-        "RT-1D-R2C is next and has not started; R2D, R3, R4, and R5 remain not started. R2B queue, runner, worker, and pipeline carriage is complete.",
+        "RT-1D-R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; RT-1D-R2D is next and has not started; R2D, R3, R4, and R5 remain not started. R2B queue, runner, worker, and pipeline carriage is complete.",
     ),
     RT1C: (
         "## RT-1D-R2A completion evidence and mandatory P8 gate",
@@ -1081,7 +1087,7 @@ R2A_COMPLETION_ANCHORS = {
         "delegates straight into the preserved effect owner, whose body is byte-identical to the pre-R2A public function",
         "### Queue persistence and stage boundary",
         "No decision is persisted in any queue record, and R2A introduces no queue schema or persistence field for it.",
-        "R2B queue, runner, worker, and Primary pipeline carriage is complete; R2C is next and has not started; R2D, R3, R4, and R5 remain not started.",
+        "R2B queue, runner, worker, and Primary pipeline carriage is complete; R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; R2D is next and has not started; R2D, R3, R4, and R5 remain not started.",
         "### Current P8 and RT-1D-R2B gate",
         "Mandatory RT-1D-R2B P8 PR #812 completed with exact result `ca4eae55ab2dd053978d1dc7a4dd4b55fee5e5a8`.",
         "It is documentation-only, requires no further P8",
@@ -1093,7 +1099,19 @@ for _path, _anchors in R2A_COMPLETION_ANCHORS.items():
     REQUIRED[_path] += _anchors
 PROBES += tuple((path, anchor) for path, anchors in R2A_COMPLETION_ANCHORS.items() for anchor in anchors)
 
+R2C_COMPLETION_ANCHORS = {
+    STATUS: ("## RT-1D-R2C completion and mandatory P8 (current)", "RT-1D-R2C completed in implementation PR #814", "814157df4b82937244c51a34e8f1ebc71b2e03c4", "RT-1D-R2D is next and has not started"),
+    PLAN: ("## RT-1D-R2C completion and mandatory P8 (current)", "RT-1D-R2C completed in implementation PR #814", "814157df4b82937244c51a34e8f1ebc71b2e03c4", "RT-1D-R2D is next and has not started"),
+    RT1C: ("## RT-1D-R2C completion and mandatory P8 (current)", "RT-1D-R2C completed in implementation PR #814", "814157df4b82937244c51a34e8f1ebc71b2e03c4", "No decision enters a durable schema or byte representation", "RT-1D-R2D is next and has not started"),
+}
+for _path, _anchors in R2C_COMPLETION_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple((path, anchor) for path, anchors in R2C_COMPLETION_ANCHORS.items() for anchor in anchors)
+
 R2A_COMPLETION_STALE = (
+    "RT-1D-R2C is next and has not started",
+    "R2C is next and has not started",
+    "No R2C Correct or Forget carriage exists yet",
     "PR #809 is the current Lane C transaction",
     "PR #809 remains open",
     "PR #809 is Ready for review",
@@ -1127,6 +1145,9 @@ R2A_COMPLETION_STALE = (
 )
 
 R2_CALL_SITE_STALE = (
+    "RT-1D-R2C is next and has not started",
+    "R2C is next and has not started",
+    "No R2C Correct or Forget carriage exists yet",
     "stage assignment is file-granular",
     "file granularity is the accepted stage-assignment unit",
     "an overlap file grants whole-file authority",
@@ -1145,6 +1166,9 @@ R2_CALL_SITE_STALE = (
 )
 
 R2_STAGED_STALE = (
+    "RT-1D-R2C is next and has not started",
+    "R2C is next and has not started",
+    "No R2C Correct or Forget carriage exists yet",
     "PR #806 is the current Lane C transaction",
     "queued-runner root budget amendment Draft PR #806 is current",
     "PR #807 remains open",
@@ -1172,6 +1196,9 @@ R2_STAGED_STALE = (
 )
 
 R2_QUEUE_ROOT_STALE = (
+    "RT-1D-R2C is next and has not started",
+    "R2C is next and has not started",
+    "No R2C Correct or Forget carriage exists yet",
     "exact twenty-two-path R2 production budget",
     "exact twenty-two-path ordered list",
     "Production budget (exact twenty-two paths, authoritative order)",
@@ -1198,6 +1225,9 @@ R2_QUEUE_ROOT_STALE = (
 )
 
 STATUS_TOP_SUMMARY_STALE = (
+    "RT-1D-R2C is next and has not started",
+    "R2C is next and has not started",
+    "No R2C Correct or Forget carriage exists yet",
     "Mandatory R1 P8 PR #802 is current",
     "non-executable until PR #802 merges",
     "only that verified P8 resulting main may bootstrap R2",
@@ -1206,6 +1236,9 @@ STATUS_TOP_SUMMARY_STALE = (
 )
 
 R2_STRUCTURE_STALE = (
+    "RT-1D-R2C is next and has not started",
+    "R2C is next and has not started",
+    "No R2C Correct or Forget carriage exists yet",
     "unchanged exact twenty-path R2 production budget",
     "original exact twenty-path R2 production budget remains unchanged",
     "managed_chat_runtime-only carriage is sufficient",
@@ -1324,7 +1357,7 @@ def self_test() -> None:
         (PLAN, "route-only Pin fence is insufficient", "route-only Pin fence is sufficient", "route-only sufficiency"),
         (PLAN, "managed_chat_runtime.py`-only carriage is insufficient", "managed_chat_runtime-only carriage is sufficient", "runtime-only sufficiency"),
         (PLAN, "only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next, never a PR head and never an audit branch", "the preceding PR head may bootstrap the next stage", "PR-head bootstrap"),
-        (PLAN, "RT-1D-R2B and mandatory P8 PR #812 are complete; RT-1D-R2C is next and has not started", "the PR #806 queued-runner root budget amendment gate remains current and R2 remains not started", "stale PR #806 current gate"),
+        (PLAN, "RT-1D-R2B and mandatory P8 PR #812 are complete; RT-1D-R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; RT-1D-R2D is next and has not started", "the PR #806 queued-runner root budget amendment gate remains current and R2 remains not started", "stale PR #806 current gate"),
         (RT1C, "it required no P8", "live-root amendment requires P8", "incorrect P8"),
         (RT1C, "Draft PR #808; it required no P8", "Draft PR #808; the staged budget amendment requires P8", "staged amendment P8"),
         (STATUS, "No twenty-fourth production path is authorized", "A twenty-fourth production path is authorized", "extra path"),
@@ -1382,7 +1415,7 @@ def self_test() -> None:
         (PLAN, "RT-1D-R2B bootstrapped from the independently verified R2A P8 result and completed in PR #811.", "R2B bootstraps from the unmerged P8 head", "R2B bootstrap source"),
         (RT1C, "PR #809 changed exactly 9 paths, +829/-7. A tenth R2A path is invalid.", "PR #809 changed exactly 9 paths, +801/-7. A tenth R2A path is invalid.", "architecture R2A stats"),
         (RT1C, "Both fields are now validated with tuple membership, which compares by equality rather than hashing", "malformed unhashable values may raise TypeError", "unhashable correction"),
-        (RT1C, "R2B queue, runner, worker, and Primary pipeline carriage is complete; R2C is next and has not started; R2D, R3, R4, and R5 remain not started.", "RT-1D-R2B has started", "architecture R2B started"),
+        (RT1C, "R2B queue, runner, worker, and Primary pipeline carriage is complete; R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; R2D is next and has not started; R2D, R3, R4, and R5 remain not started.", "RT-1D-R2B has started", "architecture R2B started"),
         (RT1C, "| `relaylm/relaymem_slp_runtime_finalization.py` | +57/-0 | `a6be671c66a1` | 585 |", "| `relaylm/relaymem_slp_runtime_finalization.py` | +57/-0 | `a6be671c66a1` | 586 |", "finalization final lines"),
     )
     for path, current, damaged, label in focused_mutations:

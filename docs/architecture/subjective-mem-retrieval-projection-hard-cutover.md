@@ -2277,7 +2277,7 @@ The public `run_relaymem_slp_runtime_enqueue_after_response` is a strict guard w
 
 ### Queue persistence and stage boundary
 
-No decision is persisted in any queue record, and R2A introduces no queue schema or persistence field for it. R2A ends at the durable enqueue boundary: the decision enters no queue record and no R2B request type. R2B queue, runner, worker, and Primary pipeline carriage is complete; R2C is next and has not started; R2D, R3, R4, and R5 remain not started. Primary MEM remains the sole ordinary served authority, Subjective ordinary Retrieval remains disabled and unwired, and no durable intent, fence, activation, receipt, readiness, usage, probe, fallback, authority-transfer, or retirement change has occurred.
+No decision is persisted in any queue record, and R2A introduces no queue schema or persistence field for it. R2A ends at the durable enqueue boundary: the decision enters no queue record and no R2B request type. R2B queue, runner, worker, and Primary pipeline carriage is complete; R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; R2D is next and has not started; R2D, R3, R4, and R5 remain not started. Primary MEM remains the sole ordinary served authority, Subjective ordinary Retrieval remains disabled and unwired, and no durable intent, fence, activation, receipt, readiness, usage, probe, fallback, authority-transfer, or retirement change has occurred.
 
 ### Current P8 and RT-1D-R2B gate
 
@@ -2289,4 +2289,13 @@ RT-1D-R2B completed in PR #811 with bootstrap `5822b01fd4642c89c39a2518672191bf1
 
 The queue candidate derives the immutable Primary writer decision only through `subjective_mem_retrieval_cutover.py`. The queued runner, worker, and pipeline carry and validate that exact semantic value without configuration interpretation or durable queue persistence. Foreign, malformed, tampered, fenced, and recovery-required values fail closed before queue claim/execution, protected-source consumption, worker claim validation, M3e publication, or M3g reconciliation. Valid `primary_only` behavior preserves queue schema and bytes, claims, leases, replay, recovery, checkpoint ordering, source release, worker results, and M3e/M3g effects.
 
-Mandatory R2B P8 PR #812 completed with exact result `ca4eae55ab2dd053978d1dc7a4dd4b55fee5e5a8` and requires no recursive P8. RT-1D-R2C is next and has not started; it may bootstrap only from this P8's independently verified exact resulting main. R2D, R3, R4, and R5 remain not started. Primary remains the sole ordinary authority and R2B introduced no durable cutover intent, fence record, readiness, activation, receipt, serving, fallback, or retirement behavior.
+Mandatory R2B P8 PR #812 completed with exact result `ca4eae55ab2dd053978d1dc7a4dd4b55fee5e5a8` and requires no recursive P8. RT-1D-R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; RT-1D-R2D is next and has not started; it may bootstrap only from this P8's independently verified exact resulting main. R2D, R3, R4, and R5 remain not started. Primary remains the sole ordinary authority and R2B introduced no durable cutover intent, fence record, readiness, activation, receipt, serving, fallback, or retirement behavior.
+
+
+## RT-1D-R2C completion and mandatory P8 (current)
+
+RT-1D-R2C completed in implementation PR #814 from bootstrap `ed078788e89d74caaa9219dec66fc3b1278dcb45`, final reviewed head `f2f42788348c00368085bba51bdb9130363564c9`, and exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`. Its two commits changed exactly 30 authorized paths, +260/-58: seven production Correct/Forget carriage paths and 23 frozen non-production caller assignments. External Python 3.12 validation passed 1049 tests in 683.23 seconds; every applicable exact-head workflow succeeded.
+
+Correct and Forget roots derive the immutable Primary writer decision only through `relaylm/subjective_mem_retrieval_cutover.py`; public and internal apply/recovery boundaries fail closed before governed effects. No decision enters a durable schema or byte representation. R2B runner and R2D Pin/Unpin sites in the three overlap files remained byte-exact. Primary remains the sole ordinary authority; Subjective ordinary Retrieval remains disabled and unwired. No intent, fence record, readiness, activation, receipt, serving, fallback, or retirement behavior changed.
+
+The mandatory R2C P8 authority sync is the current transaction and requires no recursive P8. After its independently verified result, RT-1D-R2D is next and has not started; R3, R4, and R5 remain not started.
