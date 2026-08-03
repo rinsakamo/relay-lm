@@ -634,6 +634,9 @@ def test_resolver_dependency_direction_creates_no_cycle() -> None:
         ".evidence_store",
         ".subjective_mem_retrieval_characterization",
         ".subjective_mem_retrieval_projection",
+        ".subjective_mem_retrieval_projection_store",
+        ".subjective_mem_retrieval_selection",
+        ".subjective_mem_retrieval",
     }
 
 

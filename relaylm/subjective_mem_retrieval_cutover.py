@@ -13,7 +13,14 @@ from .subjective_mem_retrieval_characterization import (
     SubjectiveMemRetrievalShadowCharacterization,
     characterize_subjective_mem_retrieval_shadow,
 )
-from .subjective_mem_retrieval_projection import SubjectiveMemRetrievalProjectionSource
+from .subjective_mem_retrieval import SubjectiveMemRetrievalRequest
+from .subjective_mem_retrieval_projection import (
+    SubjectiveMemRetrievalProjection, build_subjective_mem_retrieval_projection,
+)
+from .subjective_mem_retrieval_projection_store import (
+    delete_subjective_mem_retrieval_projection, read_subjective_mem_retrieval_projection, write_subjective_mem_retrieval_projection,
+)
+from .subjective_mem_retrieval_selection import SubjectiveMemRetrievalCanonicalPageBinding, select_subjective_mem_retrieval_handoff
 
 CUTOVER_SCHEMA_VERSION = 1
 CUTOVER_AUTHORITY_DOMAIN = "relaylm.subjective_mem_retrieval"
@@ -238,8 +245,7 @@ class SubjectiveMemRetrievalCutoverDiagnostics:
                 "cutover_diagnostics_r1_authority_invalid"
             )
 
-    def to_dict(self) -> dict[str, object]:
-        return {field: getattr(self, field) for field in self.__dataclass_fields__}
+    def to_dict(self) -> dict[str, object]: return {field: getattr(self, field) for field in self.__dataclass_fields__}
 
 
 @dataclass(frozen=True)
@@ -280,35 +286,31 @@ class SubjectiveMemRetrievalCutoverResult:
 @dataclass(frozen=True)
 class SubjectiveMemRetrievalRehearsalReadiness:
     """Exact content-free R3 readiness proof; never serving authority."""
-
     readiness_id: str
     projection_generation_id: str
     projection_source_digest: str
+    projection_manifest_digest: str
     characterization_digest: str
-    deterministic_replay: bool = field(default=True, init=False)
-    deletion_rebuild_equivalent: bool = field(default=True, init=False)
     subjective_serving: bool = field(default=False, init=False)
     ordinary_usage_event_recorded: bool = field(default=False, init=False)
     authority_state_written: bool = field(default=False, init=False)
-    runtime_private_evidence_omitted: bool = field(default=True, init=False)
-
+    def __post_init__(self) -> None:
+        if not self.readiness_id.startswith("smretrievalready_") or not _sha256(
+                self.readiness_id.removeprefix("smretrievalready_")):
+            raise SubjectiveMemRetrievalCutoverError("cutover_readiness_identity_invalid")
+        digests = (self.projection_source_digest, self.projection_manifest_digest,
+                   self.characterization_digest)
+        if not _projection_generation_id(self.projection_generation_id) or not all(
+                _sha256(value) for value in digests):
+            raise SubjectiveMemRetrievalCutoverError("cutover_readiness_digest_invalid")
     def to_dict(self) -> dict[str, object]:
         return {field: getattr(self, field) for field in self.__dataclass_fields__}
 
-
 def evaluate_subjective_mem_retrieval_rehearsal_readiness(
-    *,
-    config: object,
-    binding: object,
-    source: object,
-    rebuilt_source: object,
-    primary: object,
-    shadow: object,
-    replay: object,
-    subjective_latency_class: str,
+    *, config: object, binding: object, source: object, projection_root: object,
+    request: object, primary: object, subjective_latency_class: str,
 ) -> tuple[SubjectiveMemRetrievalRehearsalReadiness | None, tuple[str, ...]]:
-    """Validate one exact fixed source and deterministic content-free rehearsal."""
-
+    """Build, store, delete, rebuild, and characterize one exact generation."""
     if (type(config) is not RelayLMConfig or getattr(
             config, "subjective_mem_retrieval_cutover_mode", None
         ) != "rehearsal" or type(binding) is not SubjectiveMemRetrievalCutoverBinding):
@@ -320,74 +322,77 @@ def evaluate_subjective_mem_retrieval_rehearsal_readiness(
         return None, ("cutover_readiness_config_invalid",)
     if configured_binding != binding:
         return None, ("cutover_readiness_config_binding_disagreement",)
-    if (
-        type(source) is not SubjectiveMemRetrievalProjectionSource
-        or type(rebuilt_source) is not SubjectiveMemRetrievalProjectionSource
-    ):
-        return None, ("cutover_readiness_source_invalid",)
-    try:
-        source_identity = _source_identity(source)
-        rebuilt_identity = _source_identity(rebuilt_source)
-    except (AttributeError, SubjectiveMemRetrievalCutoverError, TypeError, ValueError):
-        return None, ("cutover_readiness_source_invalid",)
-    expected = (
-        binding.evidence_space_id,
-        binding.projection_generation_id,
-        binding.projection_source_digest,
-    )
-    if source_identity != expected:
+    projection, characterization, reasons = _projection_rehearsal(
+        source, projection_root, request, primary, subjective_latency_class)
+    if reasons or projection is None or characterization is None:
+        return None, reasons or ("cutover_readiness_projection_invalid",)
+    manifest = projection.manifest
+    if (binding.evidence_space_id != source.evidence_space_id
+            or binding.projection_generation_id != manifest.projection_generation_id
+            or binding.projection_source_digest != manifest.source_snapshot_digest):
         return None, ("cutover_readiness_source_binding_disagreement",)
-    if rebuilt_identity != source_identity or rebuilt_source.to_digest_input() != source.to_digest_input():
-        return None, ("cutover_readiness_rebuild_disagreement",)
-    characterization, reasons = characterize_subjective_mem_retrieval_shadow(
-        primary=primary, shadow=shadow, replay=replay,
-        subjective_latency_class=subjective_latency_class,
-        projection_rebuild_equivalent=True,
-    )
-    if reasons or characterization is None:
-        return None, reasons or ("cutover_readiness_characterization_invalid",)
-    if not _characterization_ready(characterization):
-        return None, ("cutover_readiness_characterization_not_ready",)
     readiness_id = subjective_mem_retrieval_rehearsal_readiness_id(
-        binding, source, characterization
-    )
+        binding, projection, characterization)
     if binding.readiness_id != readiness_id:
         return None, ("cutover_readiness_identity_disagreement",)
     return SubjectiveMemRetrievalRehearsalReadiness(
-        readiness_id, source.projection_generation_id, source.source_snapshot_digest,
-        canonical_digest(characterization.to_dict()),
+        readiness_id, manifest.projection_generation_id, manifest.source_snapshot_digest,
+        manifest.manifest_digest, canonical_digest(characterization.to_dict()),
     ), ()
-
-def _source_identity(source: SubjectiveMemRetrievalProjectionSource) -> tuple[str, str, str]:
-    return (
-        source.evidence_space_id, source.projection_generation_id,
-        source.source_snapshot_digest,
+def _projection_rehearsal(
+    source: object, projection_root: object, request: object, primary: object, latency: str,
+) -> tuple[SubjectiveMemRetrievalProjection | None, SubjectiveMemRetrievalShadowCharacterization | None, tuple[str, ...]]:
+    built, reasons = build_subjective_mem_retrieval_projection(source)
+    if built is None or type(projection_root) is not str or type(request) is not SubjectiveMemRetrievalRequest:
+        return None, None, reasons or ("cutover_readiness_projection_input_invalid",)
+    if (request.projection_generation_id != built.manifest.projection_generation_id
+            or request.projection_manifest_digest != built.manifest.manifest_digest):
+        return None, None, ("cutover_readiness_request_projection_disagreement",)
+    reasons = write_subjective_mem_retrieval_projection(
+        projection_root=projection_root, source=source, projection=built
     )
-
+    stored, read_reasons = read_subjective_mem_retrieval_projection(
+        projection_root=projection_root, source=source
+    )
+    delete_reasons = delete_subjective_mem_retrieval_projection(projection_root=projection_root)
+    rebuilt, rebuild_reasons = build_subjective_mem_retrieval_projection(source)
+    if reasons or read_reasons or delete_reasons or rebuild_reasons or stored is None or rebuilt is None:
+        return None, None, reasons + read_reasons + delete_reasons + rebuild_reasons
+    if built != stored or stored != rebuilt:
+        return None, None, ("cutover_readiness_rebuild_disagreement",)
+    pages = tuple(SubjectiveMemRetrievalCanonicalPageBinding(entry.canonical_page_bytes)
+                  for entry in source.entries)
+    _handoff, shadow = select_subjective_mem_retrieval_handoff(
+        request=request, manifest=stored.manifest, rows=stored.rows,
+        canonical_pages=pages, shadow=True,
+    )
+    _replay_handoff, replay = select_subjective_mem_retrieval_handoff(
+        request=request, manifest=rebuilt.manifest, rows=rebuilt.rows,
+        canonical_pages=pages, shadow=True,
+    )
+    characterization, reasons = characterize_subjective_mem_retrieval_shadow(
+        primary=primary, shadow=shadow, replay=replay,
+        subjective_latency_class=latency, projection_rebuild_equivalent=(stored == rebuilt),
+    )
+    if reasons or characterization is None or not _characterization_ready(characterization):
+        return None, None, reasons or ("cutover_readiness_characterization_not_ready",)
+    return rebuilt, characterization, ()
 def _characterization_ready(value: SubjectiveMemRetrievalShadowCharacterization) -> bool:
-    return (
-        value.deterministic_replay_class == "deterministic"
-        and value.projection_rebuild_equivalence_class == "equivalent"
-        and value.leakage_outcome == RETRIEVAL_LEAKAGE_OUTCOME_ADMITTED
-        and value.primary_latency_class == "within_bound"
-        and value.subjective_latency_class == "within_bound"
-        and value.runtime_private_content_combined is False
-    )
-
+    return (value.deterministic_replay_class == "deterministic"
+            and value.projection_rebuild_equivalence_class == "equivalent"
+            and value.leakage_outcome == RETRIEVAL_LEAKAGE_OUTCOME_ADMITTED
+            and value.primary_latency_class == value.subjective_latency_class == "within_bound"
+            and value.runtime_private_content_combined is False)
 def subjective_mem_retrieval_rehearsal_readiness_id(
-    binding: SubjectiveMemRetrievalCutoverBinding,
-    source: SubjectiveMemRetrievalProjectionSource,
+    binding: SubjectiveMemRetrievalCutoverBinding, projection: SubjectiveMemRetrievalProjection,
     characterization: SubjectiveMemRetrievalShadowCharacterization,
 ) -> str:
-    binding_identity = {
-        field: getattr(binding, field)
-        for field in _BINDING_FIELDS
-        if field != "readiness_id"
-    }
+    binding_identity = {field: getattr(binding, field) for field in _BINDING_FIELDS
+                        if field != "readiness_id"}
     digest = canonical_digest({
         "schema": "relaylm.subjective_mem_retrieval_rehearsal_readiness.v1",
-        "binding": binding_identity,
-        "source": source.to_digest_input(),
+        "binding": binding_identity, "manifest": projection.manifest.to_digest_input(),
+        "rows": [row.row_digest for row in projection.rows],
         "characterization_digest": canonical_digest(characterization.to_dict()),
     })
     return f"smretrievalready_{digest}"

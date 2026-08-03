@@ -16,7 +16,13 @@ from relaylm.subjective_mem_retrieval_characterization import (
     SubjectiveMemRetrievalPrimaryServedMetrics,
     characterize_subjective_mem_retrieval_shadow,
 )
-from relaylm.subjective_mem_retrieval_projection import SubjectiveMemRetrievalProjectionSource
+from relaylm.subjective_mem_retrieval import (
+    SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION, SubjectiveMemRetrievalBoundary,
+    SubjectiveMemRetrievalRequest,
+)
+from relaylm.subjective_mem_retrieval_projection import (
+    SubjectiveMemRetrievalProjectionSource, build_subjective_mem_retrieval_projection,
+)
 from relaylm.subjective_mem_retrieval_selection import SubjectiveMemRetrievalSelectionProjection
 from relaylm.subjective_mem_retrieval_cutover import (
     CUTOVER_AUTHORITY_DOMAIN,
@@ -38,6 +44,19 @@ def main() -> None:
             evidence_space_id="smoke-space", character_id="character-1",
             workspace_authority_digest="e" * 64, admitted_scope_binding_digest="f" * 64,
             snapshot_taken_at="2026-08-03T00:00:00Z", entries=(),
+        )
+        projection, reasons = build_subjective_mem_retrieval_projection(source)
+        assert reasons == () and projection is not None
+        request = SubjectiveMemRetrievalRequest(
+            character_id=source.character_id,
+            workspace_authority_digest=source.workspace_authority_digest,
+            admitted_scope_binding_digest=source.admitted_scope_binding_digest,
+            query_plan_digest="1" * 64, request_correlation_digest="2" * 64,
+            projection_generation_id=projection.manifest.projection_generation_id,
+            projection_manifest_digest=projection.manifest.manifest_digest,
+            memory_kinds=("episodic", "semantic"), candidate_limit=8, token_budget=256,
+            policy_revision=SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
+            boundary=SubjectiveMemRetrievalBoundary(),
         )
         binding = SubjectiveMemRetrievalCutoverBinding(
             schema_version=1,
@@ -71,7 +90,7 @@ def main() -> None:
         assert reasons == () and characterization is not None
         binding = replace(
             binding, readiness_id=subjective_mem_retrieval_rehearsal_readiness_id(
-                binding, source, characterization
+                binding, projection, characterization
             )
         )
         config_values = yaml.safe_load(Path("config.example.yaml").read_text())
@@ -89,12 +108,15 @@ def main() -> None:
             },
         })
         config = RelayLMConfig.model_validate(config_values)
+        (Path(temporary) / "projection").mkdir()
         readiness, reasons = evaluate_subjective_mem_retrieval_rehearsal_readiness(
-            config=config, binding=binding, source=source, rebuilt_source=source,
-            primary=primary, shadow=shadow, replay=shadow,
+            config=config, binding=binding, source=source,
+            projection_root=str(Path(temporary) / "projection"), request=request,
+            primary=primary,
             subjective_latency_class="within_bound",
         )
-        assert reasons == () and readiness is not None
+        assert reasons == (), reasons
+        assert readiness is not None
         assert not readiness.subjective_serving and not readiness.ordinary_usage_event_recorded
         assert not readiness.authority_state_written
         default = rehearse_subjective_mem_retrieval_cutover(
