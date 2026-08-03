@@ -201,6 +201,16 @@ def test_r3_readiness_rejects_config_and_projection_population_disagreement(tmp_
     assert reasons == ("cutover_readiness_request_projection_disagreement",)
 
 
+def test_r3_readiness_rejects_invalid_request_budget(tmp_path) -> None:
+    source = _fixed_source()
+    projection, request, characterization = _actual_rehearsal(source)
+    binding = _readiness_binding(source, projection, characterization)
+    request = replace(request, candidate_limit=0)
+    (readiness, reasons), _ = _evaluate(tmp_path, source, binding, request)
+    assert readiness is None
+    assert reasons == ("cutover_readiness_projection_input_invalid",)
+
+
 def test_r3_readiness_requires_bounded_latency(tmp_path) -> None:
     source = _fixed_source()
     projection, request, characterization = _actual_rehearsal(source)

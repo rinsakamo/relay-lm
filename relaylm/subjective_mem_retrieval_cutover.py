@@ -13,7 +13,7 @@ from .subjective_mem_retrieval_characterization import (
     SubjectiveMemRetrievalShadowCharacterization,
     characterize_subjective_mem_retrieval_shadow,
 )
-from .subjective_mem_retrieval import SubjectiveMemRetrievalRequest
+from .subjective_mem_retrieval import SubjectiveMemRetrievalRequest, validate_subjective_mem_retrieval_request
 from .subjective_mem_retrieval_projection import (
     SubjectiveMemRetrievalProjection, build_subjective_mem_retrieval_projection,
 )
@@ -282,7 +282,6 @@ class SubjectiveMemRetrievalCutoverResult:
             "diagnostics": self.diagnostics.to_dict(),
         }
 
-
 @dataclass(frozen=True)
 class SubjectiveMemRetrievalRehearsalReadiness:
     """Exact content-free R3 readiness proof; never serving authority."""
@@ -343,7 +342,8 @@ def _projection_rehearsal(
     source: object, projection_root: object, request: object, primary: object, latency: str,
 ) -> tuple[SubjectiveMemRetrievalProjection | None, SubjectiveMemRetrievalShadowCharacterization | None, tuple[str, ...]]:
     built, reasons = build_subjective_mem_retrieval_projection(source)
-    if built is None or type(projection_root) is not str or type(request) is not SubjectiveMemRetrievalRequest:
+    if (built is None or type(projection_root) is not str or type(request) is not SubjectiveMemRetrievalRequest
+            or validate_subjective_mem_retrieval_request(request)):
         return None, None, reasons or ("cutover_readiness_projection_input_invalid",)
     if (request.projection_generation_id != built.manifest.projection_generation_id
             or request.projection_manifest_digest != built.manifest.manifest_digest):
