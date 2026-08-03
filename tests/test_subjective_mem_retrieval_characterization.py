@@ -15,7 +15,7 @@ from relaylm.config import RelayLMConfig
 from relaylm.evidence_common import canonical_digest
 from relaylm.subjective_mem_retrieval_cutover import (
     CUTOVER_AUTHORITY_DOMAIN, CUTOVER_SCHEMA_VERSION, CUTOVER_TRANSFERRED_SCOPE,
-    SubjectiveMemRetrievalCutoverBinding,
+    SubjectiveMemRetrievalCutoverBinding, SubjectiveMemRetrievalRehearsalReadiness,
     evaluate_subjective_mem_retrieval_rehearsal_readiness,
     subjective_mem_retrieval_rehearsal_readiness_id,
 )
@@ -217,10 +217,24 @@ def test_r3_readiness_requires_bounded_latency(tmp_path) -> None:
     assert reasons == ("cutover_readiness_characterization_not_ready",)
 
 
-def test_r3_readiness_value_rejects_forged_identities() -> None:
-    from relaylm.subjective_mem_retrieval_cutover import SubjectiveMemRetrievalRehearsalReadiness
-    with pytest.raises(Exception, match="cutover_readiness_identity_invalid"):
-        SubjectiveMemRetrievalRehearsalReadiness("wrong", "wrong", "x", "y", "z")
+@pytest.mark.parametrize(
+    ("values", "reason"),
+    [
+        (("wrong", "smretrievalgen_" + "a" * 64, "b" * 64, "c" * 64, "d" * 64),
+         "cutover_readiness_identity_invalid"),
+        (("smretrievalready_" + "a" * 64, "wrong", "b" * 64, "c" * 64, "d" * 64),
+         "cutover_readiness_digest_invalid"),
+        (("smretrievalready_" + "a" * 64, "smretrievalgen_" + "b" * 64,
+          "wrong", "c" * 64, "d" * 64), "cutover_readiness_digest_invalid"),
+        (("smretrievalready_" + "a" * 64, "smretrievalgen_" + "b" * 64,
+          "c" * 64, "wrong", "d" * 64), "cutover_readiness_digest_invalid"),
+        (("smretrievalready_" + "a" * 64, "smretrievalgen_" + "b" * 64,
+          "c" * 64, "d" * 64, "wrong"), "cutover_readiness_digest_invalid"),
+    ],
+)
+def test_r3_readiness_value_rejects_forged_identities(values, reason) -> None:
+    with pytest.raises(Exception, match=reason):
+        SubjectiveMemRetrievalRehearsalReadiness(*values)
 
 
 def test_characterization_is_deterministic_bounded_and_content_free() -> None:
