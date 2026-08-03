@@ -1043,7 +1043,7 @@ R2A_COMPLETION_ANCHORS = {
         "It is documentation-only, requires no further P8",
         "RT-1D-R2B is complete in PR #811 with exact result `a1fac7e4d3dee844990b680aa27130cee9051c3d`",
         "RT-1D-R2C is complete in PR #814; RT-1D-R2D and RT-1D-R3 remain not started.",
-        "No R2B queue, runner, worker, or pipeline carriage exists yet.",
+        "R2B queue, runner, worker, and Primary pipeline carriage is complete.",
     ),
     PLAN: (
         "completed mandatory R2A P8 PR #810 exact result `5822b01fd4642c89c39a2518672191bf1a8da115`",
