@@ -7,6 +7,8 @@ import tempfile
 from dataclasses import replace
 from pathlib import Path
 
+import yaml
+
 from relaylm.evidence_common import canonical_digest
 from relaylm.config import RelayLMConfig
 from relaylm.evidence_store import EvidenceRecordStore
@@ -72,8 +74,10 @@ def main() -> None:
                 binding, source, characterization
             )
         )
-        config = RelayLMConfig.model_construct(
-            subjective_mem_retrieval_cutover_mode="rehearsal",
+        config_values = yaml.safe_load(Path("config.example.yaml").read_text())
+        config_values.update({
+            "subjective_mem_retrieval_cutover_mode": "rehearsal",
+            "subjective_mem_retrieval_cutover_store_root": str(Path(temporary) / "store"),
             **{
                 f"subjective_mem_retrieval_cutover_{field}": getattr(binding, field)
                 for field in (
@@ -83,7 +87,8 @@ def main() -> None:
                     "projection_source_digest",
                 )
             },
-        )
+        })
+        config = RelayLMConfig.model_validate(config_values)
         readiness, reasons = evaluate_subjective_mem_retrieval_rehearsal_readiness(
             config=config, binding=binding, source=source, rebuilt_source=source,
             primary=primary, shadow=shadow, replay=shadow,

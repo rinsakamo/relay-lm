@@ -327,7 +327,7 @@ def evaluate_subjective_mem_retrieval_rehearsal_readiness(
         binding.__post_init__()
         source_identity = _source_identity(source)
         rebuilt_identity = _source_identity(rebuilt_source)
-    except (SubjectiveMemRetrievalCutoverError, TypeError, ValueError):
+    except (AttributeError, SubjectiveMemRetrievalCutoverError, TypeError, ValueError):
         return None, ("cutover_readiness_source_invalid",)
     expected = (
         binding.evidence_space_id,

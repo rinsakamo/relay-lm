@@ -262,6 +262,7 @@ subjective_mem_retrieval_cutover_policy_revision_id:
 # Rehearsal value format: smretrievalgen_<64-lowercase-hex>
 subjective_mem_retrieval_cutover_projection_generation_id:
 subjective_mem_retrieval_cutover_projection_source_digest:
+# Rehearsal value is the derived smretrievalready_<64-lowercase-hex> identity.
 subjective_mem_retrieval_cutover_readiness_id:
 
 # OVL-1 is independently default-off and dry-run-first. Apply requires EV-1

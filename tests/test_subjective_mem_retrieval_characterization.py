@@ -6,6 +6,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+import yaml
 
 import relaylm.subjective_mem_retrieval_characterization as characterization_owner
 import relaylm.subjective_mem_retrieval_selection as selection_owner
@@ -103,7 +104,8 @@ def _readiness_binding(source, characterization, **changes):
 
 
 def _readiness_config(binding, **changes):
-    values = {
+    values = yaml.safe_load(Path("config.example.yaml").read_text())
+    values.update({
         "subjective_mem_retrieval_cutover_mode": "rehearsal",
         "subjective_mem_retrieval_cutover_evidence_space_id": binding.evidence_space_id,
         "subjective_mem_retrieval_cutover_deployment_id": binding.deployment_id,
@@ -114,9 +116,10 @@ def _readiness_config(binding, **changes):
         "subjective_mem_retrieval_cutover_resulting_main_sha": binding.resulting_main_sha,
         "subjective_mem_retrieval_cutover_projection_generation_id": binding.projection_generation_id,
         "subjective_mem_retrieval_cutover_projection_source_digest": binding.projection_source_digest,
-    }
+    })
     values.update(changes)
-    return RelayLMConfig.model_construct(**values)
+    values["subjective_mem_retrieval_cutover_store_root"] = "/tmp/relaylm-r3-readiness"
+    return RelayLMConfig.model_validate(values)
 
 
 def test_r3_readiness_binds_exact_source_rebuild_and_characterization() -> None:
