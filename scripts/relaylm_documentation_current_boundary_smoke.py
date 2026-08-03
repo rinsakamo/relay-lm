@@ -1110,7 +1110,7 @@ PROBES += tuple((path, anchor) for path, anchors in R2C_COMPLETION_ANCHORS.items
 
 R2D_P8_ANCHORS = {
     path: (
-        "## RT-1D-R2D completion and mandatory P8 (current)",
+        "## RT-1D-R2D completion and mandatory P8 (completed current boundary)",
         "RT-1D-R2D completed in implementation PR #818",
         "992496748efc70d51a7ed356e23aea650220902c",
         "a2197e9f92a8067d733f8adba524bf54eb2708b6",
@@ -1126,11 +1126,11 @@ R2D_P8_ANCHORS = {
         "No decision is serialized or persisted and no durable schema or bytes changed",
         "Primary MEM remains the sole ordinary served memory and Retrieval authority",
         "Subjective ordinary Retrieval remains disabled and unwired",
-        "The current transaction is the mandatory RT-1D-R2D P8 authority synchronization",
+        "The mandatory RT-1D-R2D P8 authority synchronization completed in PR #819",
         "This documentation-only P8 requires no recursive P8",
-        "Only after this P8 is merged and its exact resulting main is independently verified may RT-1D-R3 become uniquely next",
-        "RT-1D-R3 is not started, and RT-1D-R4 and RT-1D-R5 remain not started",
-        "never PR #818 head or an unmerged P8 head",
+        "The post-P8 validator correction PR #820 completed with exact result",
+        "RT-1D-R3 is uniquely next and remains unstarted; RT-1D-R4 and RT-1D-R5 remain unstarted",
+        "never PR #818 head, PR #819 head, or any unmerged branch head",
     )
     for path in (STATUS, PLAN, RT1C)
 }
@@ -1143,6 +1143,8 @@ R2D_P8_STALE = (
     "RT-1D-R2D is next and not started",
     "R2D, R3, R4, and R5 remain not started",
     "## RT-1D-R2C completion and mandatory P8 (current)",
+    "## RT-1D-R2D completion and mandatory P8 (current)",
+    "The current transaction is the mandatory RT-1D-R2D P8 authority synchronization",
     "The mandatory R2C P8 authority sync is the current transaction",
     "PR #818 remains open",
     "Draft PR #818",
