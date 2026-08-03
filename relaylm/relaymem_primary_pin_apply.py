@@ -11,7 +11,10 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
 
 from ._relaymem_primary_page_writer_common import is_sha256, stable_hash
-from .relaymem_primary_current_state import PrimaryCurrentStateError, resolve_primary_current_state
+from .relaymem_primary_current_state import (
+    PrimaryCurrentStateError,
+    resolve_primary_current_state,
+)
 from .relaymem_primary_mutation_coordinator import (
     PrimaryMutationCoordinatorError,
     inspect_primary_memory_operations,
@@ -23,11 +26,14 @@ from .relaymem_primary_pin import (
     UNPIN_HISTORY_SCHEMA,
     UNPIN_PREFLIGHT_RESPONSE_SCHEMA,
     PrimaryPinError,
-    _map_error as _contract_map_error,
     preflight_primary_memory_pin,
     preflight_primary_memory_unpin,
+    require_primary_writer_decision,
     validate_primary_memory_pin_token,
     validate_primary_memory_unpin_token,
+)
+from .relaymem_primary_pin import (
+    _map_error as _contract_map_error,
 )
 
 PIN_RECEIPT_SCHEMA = "relaylm.mem.primary_pin_receipt.v0"
@@ -112,12 +118,12 @@ def preflight_primary_memory_unpin_apply(**kwargs: Any) -> dict[str, Any]:
     return _preflight_operation("unpin", **kwargs)
 
 
-def apply_primary_memory_pin(**kwargs: Any) -> PrimaryPinApplyResult:
-    return _apply_operation("pin", **kwargs)
+def apply_primary_memory_pin(*, primary_writer_decision: object, **kwargs: Any) -> PrimaryPinApplyResult:
+    return _apply_operation("pin", primary_writer_decision=primary_writer_decision, **kwargs)
 
 
-def apply_primary_memory_unpin(**kwargs: Any) -> PrimaryPinApplyResult:
-    return _apply_operation("unpin", **kwargs)
+def apply_primary_memory_unpin(*, primary_writer_decision: object, **kwargs: Any) -> PrimaryPinApplyResult:
+    return _apply_operation("unpin", primary_writer_decision=primary_writer_decision, **kwargs)
 
 
 def get_primary_memory_pin_state(store_root: str | Path, *, namespace: str, memory_id: str) -> str:
@@ -202,6 +208,7 @@ def _preflight_operation(operation_kind: str, **kwargs: Any) -> dict[str, Any]:
 
 
 def _apply_operation(operation_kind: str, **kwargs: Any) -> PrimaryPinApplyResult:
+    require_primary_writer_decision(kwargs.pop("primary_writer_decision", None))
     _validate_operation_kind(operation_kind)
     _validate_request(kwargs)
     root = _safe_root(kwargs["store_root"])

@@ -493,6 +493,42 @@ def test_tampered_frozen_decision_is_revalidated_and_fails_closed() -> None:
     assert not primary_writer_decision_permits_write(fenced)
 
 
+def test_exact_decision_with_no_initialized_fields_returns_false() -> None:
+    decision = object.__new__(SubjectiveMemRetrievalPrimaryWriterDecision)
+    assert primary_writer_decision_permits_write(decision) is False
+
+
+@pytest.mark.parametrize(
+    "missing_field",
+    (
+        "schema_version",
+        "state",
+        "writer_class",
+        "recovery_required",
+        "reasons",
+        "runtime_private_evidence_omitted",
+    ),
+)
+def test_partial_exact_decision_with_each_missing_field_returns_false(
+    missing_field: str,
+) -> None:
+    decision = _decision()
+    object.__delattr__(decision, missing_field)
+    assert primary_writer_decision_permits_write(decision) is False
+
+
+class _RaisingEquality:
+    def __eq__(self, other: object) -> bool:
+        raise AssertionError("malformed field equality must not execute")
+
+
+@pytest.mark.parametrize("field", ["schema_version", "state", "writer_class"])
+def test_hostile_equality_field_returns_false_without_comparison(field: str) -> None:
+    decision = _decision()
+    object.__setattr__(decision, field, _RaisingEquality())
+    assert primary_writer_decision_permits_write(decision) is False
+
+
 @pytest.mark.parametrize("unhashable", [[], {}, set(), bytearray(b"x")])
 @pytest.mark.parametrize("field", ["state", "writer_class", "reasons"])
 def test_unhashable_tampered_field_fails_closed_without_raising(

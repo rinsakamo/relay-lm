@@ -20,6 +20,7 @@ from .relaymem_primary_mutation_coordinator import (
     ensure_primary_memory_mutation_available,
     inspect_primary_memory_operations,
 )
+from .subjective_mem_retrieval_cutover import primary_writer_decision_permits_write
 
 PIN_PREFLIGHT_REQUEST_SCHEMA = "relaylm.lab.memory_pin_preflight_request.v0"
 PIN_PREFLIGHT_RESPONSE_SCHEMA = "relaylm.lab.memory_pin_preflight.v0"
@@ -65,6 +66,12 @@ class PrimaryPinError(RuntimeError):
     def __init__(self, code: str):
         super().__init__(code)
         self.code = code
+
+
+def require_primary_writer_decision(decision: object) -> None:
+    """Fail closed unless the semantic owner's exact decision permits mutation."""
+    if not primary_writer_decision_permits_write(decision):
+        raise PrimaryPinError("reconciliation_required")
 
 
 def preflight_primary_memory_pin(

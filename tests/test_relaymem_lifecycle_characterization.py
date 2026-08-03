@@ -18,20 +18,15 @@ These tests describe today's behavior, not the target architecture.
 """
 from __future__ import annotations
 
-from relaylm.config import RelayLMConfig
-from relaylm.subjective_mem_retrieval_cutover import (
-    SubjectiveMemRetrievalPrimaryWriterDecision,
-    resolve_subjective_mem_retrieval_primary_writer_decision,
-)
-
 import pytest
-
 from _relaymem_characterization_support import (
     eligibility_of,
     form_primary_memory,
     held_candidate_template,
     prepare_store,
 )
+
+from relaylm.config import RelayLMConfig
 from relaylm.relaymem_held_governance import (
     HeldGovernanceRuntimeError,
     apply_held_governance_decision,
@@ -64,6 +59,12 @@ from relaylm.relaymem_primary_pin_apply import (
     apply_primary_memory_unpin,
     get_primary_memory_pin_state,
 )
+from relaylm.subjective_mem_retrieval_cutover import (
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
+
+PRIMARY_WRITER_DECISION = resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={}))
 
 CHARACTER = "char-a"
 NAMESPACE = "characterization-ns-a"
@@ -82,6 +83,8 @@ OTHER_NAMESPACE = "characterization-ns-b"
         (recover_primary_memory_corrections, PrimaryCorrectionError),
         (apply_primary_memory_forget, PrimaryForgetError),
         (recover_primary_memory_forget, PrimaryForgetError),
+        (apply_primary_memory_pin, PrimaryPinError),
+        (apply_primary_memory_unpin, PrimaryPinError),
     ),
 )
 def test_primary_mutations_reject_foreign_writer_decision_before_store_access(
@@ -100,6 +103,8 @@ def test_primary_mutations_reject_foreign_writer_decision_before_store_access(
             operation_id="invalid",
             apply_token="invalid",
         )
+    elif operation in (apply_primary_memory_pin, apply_primary_memory_unpin):
+        arguments.update(character_id=CHARACTER, memory_id="not-a-memory-id", expected_revision=0, reason="invalid", operation_id="invalid", apply_token="invalid")
     elif operation is apply_primary_memory_forget:
         arguments.update(
             character_id=CHARACTER,
@@ -392,7 +397,7 @@ class TestPinUnpin:
             operation_id=operation_id,
         )
         assert preflight["status"] == "ready"
-        return apply_primary_memory_pin(
+        return apply_primary_memory_pin(primary_writer_decision=PRIMARY_WRITER_DECISION,
             store_root=str(store),
             character_id=CHARACTER,
             namespace=NAMESPACE,
@@ -445,8 +450,8 @@ class TestPinUnpin:
             operation_id="op-pin-1",
             apply_token=preflight["apply_token"],
         )
-        first = apply_primary_memory_pin(**kwargs)
-        replay = apply_primary_memory_pin(**kwargs)
+        first = apply_primary_memory_pin(primary_writer_decision=PRIMARY_WRITER_DECISION, **kwargs)
+        replay = apply_primary_memory_pin(primary_writer_decision=PRIMARY_WRITER_DECISION, **kwargs)
         assert first.idempotent_replay is False
         assert replay.idempotent_replay is True
         assert replay.status == "applied"
@@ -464,7 +469,7 @@ class TestPinUnpin:
             reason="not pinned yet",
             operation_id="op-unpin-1",
         )
-        result = apply_primary_memory_unpin(
+        result = apply_primary_memory_unpin(primary_writer_decision=PRIMARY_WRITER_DECISION,
             store_root=str(store),
             character_id=CHARACTER,
             namespace=NAMESPACE,
