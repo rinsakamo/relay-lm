@@ -1,6 +1,9 @@
 """Phase I-4F race/concurrency product validation smoke."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 from datetime import datetime, timezone
 
 from _relaylm_phase_i4b_test_support import CHARACTER, NAMESPACE, prepared_store, require
@@ -18,7 +21,8 @@ def issue_forget(root, memory_id: str, operation_id: str) -> str:
 
 
 def apply_forget(root, memory_id: str, operation_id: str, token: str):
-    return apply_primary_memory_forget(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, expected_lifecycle_state="active", reason=REASON, operation_id=operation_id, apply_token=token, now=NOW)
+    return apply_primary_memory_forget(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, expected_lifecycle_state="active", reason=REASON, operation_id=operation_id, apply_token=token, now=NOW,
+               primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
 
 
 def issue_correct(root, memory_id: str, operation_id: str) -> str:
@@ -26,7 +30,8 @@ def issue_correct(root, memory_id: str, operation_id: str) -> str:
 
 
 def apply_correct(root, memory_id: str, operation_id: str, token: str):
-    return apply_primary_memory_correction(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, operation_id=operation_id, apply_token=token, now=NOW)
+    return apply_primary_memory_correction(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, operation_id=operation_id, apply_token=token, now=NOW,
+               primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
 
 
 def require_error(callable_, allowed: set[str]) -> None:

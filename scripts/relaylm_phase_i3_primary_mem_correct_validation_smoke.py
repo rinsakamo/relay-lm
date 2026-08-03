@@ -1,6 +1,9 @@
 """Bounds, expiry, payload conflict, and true concurrency smoke for Phase I-3."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 import json
 import tempfile
 import threading
@@ -211,7 +214,7 @@ def main() -> None:
                     expected_revision=1,
                     operation_id=operation_id,
                     apply_token=token,
-                )
+                             primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
             except PrimaryCorrectionError as error:
                 return "error", error.code
             return "success", str(result["result_revision"])

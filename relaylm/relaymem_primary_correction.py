@@ -57,6 +57,10 @@ from ._relaymem_primary_correction_apply import (
 from ._relaymem_primary_correction_apply import apply_primary_memory_correction as _apply
 from ._relaymem_primary_correction_recovery import recover_primary_memory_corrections as _recover
 from ._relaymem_primary_correction_preflight import preflight_primary_memory_correction as _preflight
+from .subjective_mem_retrieval_cutover import (
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+    primary_writer_decision_permits_write,
+)
 
 _CORRECTION_ROOT = PurePosixPath("memory/mem/corrections/v0")
 
@@ -90,24 +94,40 @@ def apply_primary_memory_correction(
     expected_revision: int,
     operation_id: str,
     apply_token: str,
+    primary_writer_decision: SubjectiveMemRetrievalPrimaryWriterDecision,
     now: datetime | None = None,
     fault_at: str | None = None,
 ) -> dict[str, Any]:
+    try:
+        permitted = primary_writer_decision_permits_write(primary_writer_decision)
+    except Exception:  # noqa: BLE001 - malformed authority must fail closed
+        permitted = False
+    if not permitted:
+        raise PrimaryCorrectionError("reconciliation_required")
     return _apply(
         store_root=store_root, character_id=character_id, namespace=namespace,
         memory_id=memory_id, expected_revision=expected_revision,
         operation_id=operation_id, apply_token=apply_token, now=now,
-        fault_at=fault_at, _dependencies=_ApplyDependencies(
+        fault_at=fault_at, primary_writer_decision=primary_writer_decision,
+        _dependencies=_ApplyDependencies(
             publication=_publication_dependencies(), utc=_utc
         ),
     )
 
 
 def recover_primary_memory_corrections(
-    *, store_root: str, namespace: str
+    *, store_root: str, namespace: str,
+    primary_writer_decision: SubjectiveMemRetrievalPrimaryWriterDecision,
 ) -> dict[str, int]:
+    try:
+        permitted = primary_writer_decision_permits_write(primary_writer_decision)
+    except Exception:  # noqa: BLE001 - malformed authority must fail closed
+        permitted = False
+    if not permitted:
+        raise PrimaryCorrectionError("reconciliation_required")
     return _recover(
         store_root=store_root, namespace=namespace,
+        primary_writer_decision=primary_writer_decision,
         _publication_dependencies=_publication_dependencies(),
     )
 

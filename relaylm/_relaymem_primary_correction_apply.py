@@ -11,6 +11,7 @@ from .relaymem_primary_mutation_coordinator import PrimaryMutationCoordinatorErr
 from ._relaymem_primary_correction_preflight import (APPLY_RESPONSE_SCHEMA, PREPARED_SCHEMA, RECEIPT_SCHEMA, PrimaryCorrectionError, _canonical_json, _decode_token, _iso, _safe_store_root, _shared_error_code, _validate_scope_tokens, _validate_token_claims)
 from ._relaymem_primary_correction_history import load_primary_correction_state, _load_current_target
 from ._relaymem_primary_correction_publication import PublicationDependencies, publish_prepared_successor
+from .subjective_mem_retrieval_cutover import primary_writer_decision_permits_write
 _CORRECTION_ROOT = PurePosixPath("memory/mem/corrections/v0")
 
 
@@ -23,10 +24,17 @@ class ApplyDependencies:
 def apply_primary_memory_correction(
     *, store_root: str, character_id: str, namespace: str, memory_id: str,
     expected_revision: int, operation_id: str, apply_token: str,
+    primary_writer_decision: object,
     now: datetime | None = None, fault_at: str | None = None,
     _dependencies: ApplyDependencies,
 ) -> dict[str, Any]:
     """Apply one exact preflight candidate and converge through M3e-M3g."""
+    try:
+        permitted = primary_writer_decision_permits_write(primary_writer_decision)
+    except Exception:  # noqa: BLE001 - malformed authority must fail closed
+        permitted = False
+    if not permitted:
+        raise PrimaryCorrectionError("reconciliation_required")
     _validate_scope_tokens(character_id, namespace, memory_id, operation_id)
     if type(expected_revision) is not int or expected_revision < 1:
         raise PrimaryCorrectionError("invalid_request")

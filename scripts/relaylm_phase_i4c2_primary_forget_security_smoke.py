@@ -1,6 +1,9 @@
 """I-4C2 tombstone security, strict JSON, path, and error leakage smoke."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 import json
 import os
 from contextlib import contextmanager
@@ -49,7 +52,7 @@ def finalized_store() -> Iterator[tuple[Path, str, str, Path]]:
             operation_id=OPERATION,
             apply_token=token,
             now=NOW,
-        )
+                     primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         require(result.status == "applied", result)
         mutation_dir = root / "memory/mem/corrections/v0" / memory_id
         tombstones = list(mutation_dir.glob("*.tombstone.json"))
@@ -68,7 +71,7 @@ def require_corrupt(root: Path, memory_id: str) -> None:
             memory_id=memory_id,
             operation_id=OPERATION,
             now=NOW,
-        )
+            primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
     except PrimaryForgetError as exc:
         require(exc.code == "target_corrupt", exc.code)
         require(str(exc) == "target_corrupt", str(exc))
@@ -140,7 +143,7 @@ def wrong_scope_and_path() -> None:
                     operation_id=OPERATION,
                     apply_token=token,
                     now=NOW,
-                )
+                    primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
             except PrimaryForgetError as exc:
                 codes.append(exc.code)
             else:
@@ -154,7 +157,7 @@ def wrong_scope_and_path() -> None:
                 memory_id="../escape",
                 operation_id=OPERATION,
                 now=NOW,
-            )
+                primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         except PrimaryForgetError as exc:
             require(exc.code == "target_not_found", exc.code)
         else:
@@ -175,7 +178,7 @@ def mutation_dir_symlink() -> None:
                 memory_id=memory_id,
                 operation_id=OPERATION,
                 now=NOW,
-            )
+                primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         except PrimaryForgetError as exc:
             require(exc.code == "target_corrupt", exc.code)
         else:

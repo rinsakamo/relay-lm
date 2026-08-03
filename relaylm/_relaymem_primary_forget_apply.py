@@ -18,6 +18,7 @@ from .relaymem_primary_forget_control_convergence import (
 )
 from .relaymem_primary_forget_hidden_resume import PrimaryForgetHiddenResumeError
 from .relaymem_primary_mutation_coordinator import PrimaryMutationCoordinatorError
+from .subjective_mem_retrieval_cutover import primary_writer_decision_permits_write
 
 Result = Any
 
@@ -54,10 +55,17 @@ def apply_primary_memory_forget(
     reason: str,
     operation_id: str,
     apply_token: str,
+    primary_writer_decision: object,
     now: datetime | None = None,
     fault_at: str | None = None,
 ) -> Result:
     """Apply or exactly replay through facade-owned finalization."""
+    try:
+        permitted = primary_writer_decision_permits_write(primary_writer_decision)
+    except Exception:  # noqa: BLE001 - malformed authority must fail closed
+        permitted = False
+    if not permitted:
+        raise dependencies.error_type("reconciliation_required")
     _validate_apply_request(
         store_root=store_root,
         character_id=character_id,

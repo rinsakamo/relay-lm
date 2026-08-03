@@ -44,6 +44,10 @@ from .relaymem_primary_mutation_coordinator import (
     PrimaryMutationCoordinatorError,
     primary_memory_mutation_lock,
 )
+from .subjective_mem_retrieval_cutover import (
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+    primary_writer_decision_permits_write,
+)
 
 FORGET_APPLY_RESULT_SCHEMA = "relaylm.mem.forget_apply_result.v0"
 FORGET_RECOVERY_RESULT_SCHEMA = "relaylm.mem.forget_recovery_result.v0"
@@ -166,10 +170,17 @@ def apply_primary_memory_forget(
     reason: str,
     operation_id: str,
     apply_token: str,
+    primary_writer_decision: SubjectiveMemRetrievalPrimaryWriterDecision,
     now: datetime | None = None,
     fault_at: str | None = None,
 ) -> PrimaryForgetApplyResult:
     """Apply or exactly replay one Forget operation through tombstone finalization."""
+    try:
+        permitted = primary_writer_decision_permits_write(primary_writer_decision)
+    except Exception:  # noqa: BLE001 - malformed authority must fail closed
+        permitted = False
+    if not permitted:
+        raise PrimaryForgetError("reconciliation_required")
     dependencies = PrimaryForgetApplyDependencies(
         error_type=PrimaryForgetError,
         mutation_lock=primary_memory_mutation_lock,
@@ -197,6 +208,7 @@ def apply_primary_memory_forget(
         reason=reason,
         operation_id=operation_id,
         apply_token=apply_token,
+        primary_writer_decision=primary_writer_decision,
         now=now,
         fault_at=fault_at,
     )
@@ -208,11 +220,18 @@ def recover_primary_memory_forget(
     namespace: str,
     memory_id: str,
     operation_id: str,
+    primary_writer_decision: SubjectiveMemRetrievalPrimaryWriterDecision,
     now: datetime | None = None,
     fault_at: str | None = None,
 ) -> PrimaryForgetRecoveryResult:
     """Recover one caller-selected durable Forget operation; never scan a directory."""
 
+    try:
+        permitted = primary_writer_decision_permits_write(primary_writer_decision)
+    except Exception:  # noqa: BLE001 - malformed authority must fail closed
+        permitted = False
+    if not permitted:
+        raise PrimaryForgetError("reconciliation_required")
     _validate_recovery_request(
         store_root=store_root,
         namespace=namespace,

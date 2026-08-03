@@ -6,6 +6,9 @@ future storage architecture.
 """
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 import pytest
 
 from _relaymem_characterization_support import form_primary_memory, prepare_store
@@ -63,7 +66,7 @@ def test_correction_publishes_corrected_content_and_preserves_prior_page(tmp_pat
         expected_revision=1,
         operation_id="op-review-correction",
         apply_token=preflight["apply_token"],
-    )
+                 primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
 
     assert result["status"] == "applied"
     state = resolve_primary_current_state(

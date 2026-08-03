@@ -1,6 +1,9 @@
 """Final-review regression smoke for recovery and token canonicality."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 from datetime import datetime, timezone
 
 from relaylm.relaymem_primary_correction import (
@@ -45,7 +48,7 @@ def main() -> None:
                 operation_id="phase-i4b-recovery-required",
                 apply_token=str(preflight["apply_token"]),
                 fault_at="after_audit_prepared",
-            )
+                primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         except PrimaryCorrectionError as exc:
             require(exc.code == "reconciliation_required", exc.code)
         else:

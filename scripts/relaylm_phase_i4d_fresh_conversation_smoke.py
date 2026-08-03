@@ -1,6 +1,9 @@
 """Fresh ordinary request proof that a forgotten Primary never reaches backend."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 import json
 import tempfile
 import threading
@@ -128,7 +131,7 @@ def main() -> None:
                 reason="I4D fresh conversation forget",
                 operation_id="i4d-fresh-forget",
                 apply_token=str(preflight["apply_token"]), now=NOW,
-            )
+                primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
             with Backend.lock:
                 Backend.payloads.clear()
 

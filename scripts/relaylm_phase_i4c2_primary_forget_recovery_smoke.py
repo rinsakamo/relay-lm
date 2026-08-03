@@ -1,6 +1,9 @@
 """I-4C2 normal, corrected-revision, replay, resolver, and leakage smoke."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 import json
 from datetime import datetime, timedelta, timezone
 
@@ -59,7 +62,7 @@ def apply(root, memory_id: str, operation_id: str, token: str, revision: int, re
         operation_id=operation_id,
         apply_token=token,
         now=now,
-    )
+               primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
 
 
 def assert_finalized(root, memory_id: str, result_revision: int) -> tuple[str, dict]:
@@ -151,7 +154,7 @@ def normal_and_replay() -> None:
             memory_id=memory_id,
             operation_id="phase-i4c2-normal",
             now=NOW + timedelta(days=1),
-        )
+                        primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         require(recovered.idempotent_replay is True, recovered)
         require(recovered.status == "applied", recovered)
 
@@ -223,7 +226,7 @@ def corrected_revision() -> None:
             operation_id="phase-i4c2-correct-before-forget",
             apply_token=correction["apply_token"],
             now=NOW,
-        )
+                      primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         require(applied["status"] == "applied", applied)
         current = resolve_primary_current_state(root, namespace=NAMESPACE, memory_id=memory_id)
         require(current.current_revision == 2 and current.lifecycle_state == "active", current)
@@ -245,7 +248,7 @@ def no_durable_recovery() -> None:
             memory_id=memory_id,
             operation_id="phase-i4c2-no-operation",
             now=NOW,
-        )
+                     primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         require(result.status == "not_recoverable", result)
         require(result.prepared_present is False, result)
         require(result.tombstone_present is False, result)

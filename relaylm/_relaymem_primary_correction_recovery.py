@@ -7,14 +7,22 @@ from ._relaymem_primary_correction_preflight import PrimaryCorrectionError, _iso
 from ._relaymem_primary_correction_history import load_primary_correction_state
 from ._relaymem_primary_correction_publication import PublicationDependencies, publish_prepared_successor
 from ._relaymem_primary_correction_apply import (_memory_lock, _operation_path, _read_json, _valid_prepared, _write_immutable_json, build_applied_receipt)
+from .subjective_mem_retrieval_cutover import primary_writer_decision_permits_write
 _CORRECTION_ROOT = PurePosixPath("memory/mem/corrections/v0")
 
 
 def recover_primary_memory_corrections(
-    *, store_root: str, namespace: str, _publication_dependencies: PublicationDependencies
+    *, store_root: str, namespace: str, primary_writer_decision: object,
+    _publication_dependencies: PublicationDependencies
 ) -> dict[str, int]:
     """Converge prepared operations without exposing an HTTP mutation shortcut."""
 
+    try:
+        permitted = primary_writer_decision_permits_write(primary_writer_decision)
+    except Exception:  # noqa: BLE001 - malformed authority must fail closed
+        permitted = False
+    if not permitted:
+        raise PrimaryCorrectionError("reconciliation_required")
     root = _safe_store_root(store_root)
     base = root / _CORRECTION_ROOT
     if not base.exists() or base.is_symlink() or not base.is_dir():

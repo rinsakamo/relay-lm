@@ -1,6 +1,9 @@
 """Crash/recovery and fail-closed visibility smoke for Phase I-3."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -112,7 +115,7 @@ def assert_converged(
         expected_revision=1,
         operation_id=f"operation-{fault}",
         apply_token=token,
-    )
+                 primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
     require(replay["idempotent_replay"] is True, replay)
     require(replay["result_revision"] == 2, replay)
     require(len(list(scoped.glob("memory/mem/primary/*/*.md"))) == 2, fault)
@@ -132,7 +135,7 @@ def run_synthetic_fault(fault: str) -> None:
                 operation_id=f"operation-{fault}",
                 apply_token=token,
                 fault_at=fault,
-            )
+                primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         except PrimaryCorrectionError as error:
             expected = (
                 "response_lost"
@@ -148,8 +151,8 @@ def run_synthetic_fault(fault: str) -> None:
         if fault == "after_audit_finalization":
             require(before_recovery.items[0].revision == 2, before_recovery.model_dump())
             recovered = recover_primary_memory_corrections(
-                store_root=str(scoped), namespace=NAMESPACE
-            )
+                store_root=str(scoped), namespace=NAMESPACE,
+                            primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
             require(recovered == {"recovered": 0, "failed": 0}, recovered)
         else:
             require(before_recovery.items[0].revision == 1, before_recovery.model_dump())
@@ -158,8 +161,8 @@ def run_synthetic_fault(fault: str) -> None:
                 before_recovery.model_dump(),
             )
             recovered = recover_primary_memory_corrections(
-                store_root=str(scoped), namespace=NAMESPACE
-            )
+                store_root=str(scoped), namespace=NAMESPACE,
+                            primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
             require(recovered == {"recovered": 1, "failed": 0}, recovered)
         assert_converged(
             scoped=scoped,
@@ -208,7 +211,7 @@ def run_index_applied_log_pending_fault() -> None:
                 expected_revision=1,
                 operation_id=f"operation-{fault}",
                 apply_token=token,
-            )
+                primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         except InjectedIndexAppliedCrash:
             pass
         else:
@@ -240,8 +243,8 @@ def run_index_applied_log_pending_fault() -> None:
         )
 
         recovered = recover_primary_memory_corrections(
-            store_root=str(scoped), namespace=NAMESPACE
-        )
+            store_root=str(scoped), namespace=NAMESPACE,
+                        primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         require(recovered == {"recovered": 1, "failed": 0}, recovered)
         assert_converged(
             scoped=scoped,

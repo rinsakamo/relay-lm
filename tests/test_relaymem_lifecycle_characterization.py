@@ -18,6 +18,12 @@ These tests describe today's behavior, not the target architecture.
 """
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import (
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
+
 import pytest
 
 from _relaymem_characterization_support import (
@@ -42,9 +48,11 @@ from relaylm.relaymem_primary_correction import (
 )
 from relaylm.relaymem_primary_current_state import resolve_primary_current_state
 from relaylm.relaymem_primary_forget import (
+    PrimaryForgetError,
     apply_primary_memory_forget,
     apply_primary_memory_forget_hidden_successor,
     preflight_primary_memory_forget,
+    recover_primary_memory_forget,
 )
 from relaylm.relaymem_primary_forget_commit import PrimaryForgetCommitResult
 from relaylm.relaymem_primary_pin import (
@@ -60,6 +68,53 @@ from relaylm.relaymem_primary_pin_apply import (
 CHARACTER = "char-a"
 NAMESPACE = "characterization-ns-a"
 OTHER_NAMESPACE = "characterization-ns-b"
+
+
+@pytest.mark.parametrize(
+    "primary_writer_decision",
+    (object(), object.__new__(SubjectiveMemRetrievalPrimaryWriterDecision)),
+    ids=("foreign", "malformed_exact_type"),
+)
+@pytest.mark.parametrize(
+    ("operation", "error_type"),
+    (
+        (apply_primary_memory_correction, PrimaryCorrectionError),
+        (recover_primary_memory_corrections, PrimaryCorrectionError),
+        (apply_primary_memory_forget, PrimaryForgetError),
+        (recover_primary_memory_forget, PrimaryForgetError),
+    ),
+)
+def test_primary_mutations_reject_foreign_writer_decision_before_store_access(
+    tmp_path, operation, error_type, primary_writer_decision
+):
+    arguments = {
+        "store_root": str(tmp_path / "missing"),
+        "namespace": NAMESPACE,
+        "primary_writer_decision": primary_writer_decision,
+    }
+    if operation is apply_primary_memory_correction:
+        arguments.update(
+            character_id=CHARACTER,
+            memory_id="not-a-memory-id",
+            expected_revision=0,
+            operation_id="invalid",
+            apply_token="invalid",
+        )
+    elif operation is apply_primary_memory_forget:
+        arguments.update(
+            character_id=CHARACTER,
+            memory_id="not-a-memory-id",
+            expected_revision=0,
+            expected_lifecycle_state="invalid",
+            reason="invalid",
+            operation_id="invalid",
+            apply_token="invalid",
+        )
+    elif operation is recover_primary_memory_forget:
+        arguments.update(memory_id="not-a-memory-id", operation_id="invalid")
+    with pytest.raises(error_type, match="reconciliation_required"):
+        operation(**arguments)
+    assert not (tmp_path / "missing").exists()
 
 
 @pytest.fixture()
@@ -113,7 +168,7 @@ class TestCorrection:
             expected_revision=1,
             operation_id="op-corr-1",
             apply_token=preflight["apply_token"],
-        )
+                     primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         assert result["status"] == "applied"
         assert result["prior_revision"] == 1
         assert result["result_revision"] == 2
@@ -137,8 +192,10 @@ class TestCorrection:
             operation_id="op-corr-1",
             apply_token=preflight["apply_token"],
         )
-        first = apply_primary_memory_correction(**kwargs)
-        replay = apply_primary_memory_correction(**kwargs)
+        first = apply_primary_memory_correction(**kwargs,
+                    primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
+        replay = apply_primary_memory_correction(**kwargs,
+                     primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         assert replay["idempotent_replay"] is True
         assert replay["result_revision"] == first["result_revision"] == 2
         state = resolve_primary_current_state(
@@ -158,7 +215,7 @@ class TestCorrection:
                 expected_revision=1,
                 operation_id="op-corr-1",
                 apply_token=preflight["apply_token"],
-            )
+                primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         state = resolve_primary_current_state(
             store, namespace=NAMESPACE, memory_id=memory_id
         )
@@ -182,7 +239,7 @@ class TestCorrection:
                 operation_id="op-corr-1",
                 apply_token=preflight["apply_token"],
                 fault_at="after_audit_prepared",
-            )
+                primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         # The failed SLP-side apply does not report a committed result and the
         # prepared claim makes the memory ineligible until convergence.
         state = resolve_primary_current_state(
@@ -196,8 +253,8 @@ class TestCorrection:
         assert decision.reason_id == "excluded_prepared"
 
         recovered = recover_primary_memory_corrections(
-            store_root=str(store), namespace=NAMESPACE
-        )
+            store_root=str(store), namespace=NAMESPACE,
+                        primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         assert recovered == {"recovered": 1, "failed": 0}
         state = resolve_primary_current_state(
             store, namespace=NAMESPACE, memory_id=memory_id
@@ -229,7 +286,7 @@ class TestForgetHideAndRetrieval:
             reason="user asked to forget",
             operation_id=operation_id,
             apply_token=preflight["apply_token"],
-        )
+                   primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
 
     def test_forgotten_memory_is_excluded_from_ordinary_retrieval(self, formed):
         store, memory_id = formed
@@ -309,7 +366,7 @@ class TestForgetHideAndRetrieval:
             reason="fault probe",
             operation_id="op-forget-fault",
             apply_token=preflight["apply_token"],
-        ).to_log_dict()
+                    primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={}))).to_log_dict()
         assert retry["status"] == "applied"
         assert retry["lifecycle_state"] == "hidden"
         assert retry["result_revision"] == 2
@@ -442,7 +499,7 @@ class TestPinUnpin:
             reason="hide first",
             operation_id="op-forget-pin",
             apply_token=forget_preflight["apply_token"],
-        )
+            primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         with pytest.raises(PrimaryPinError, match="target_not_active"):
             preflight_primary_memory_pin(
                 store_root=str(store),

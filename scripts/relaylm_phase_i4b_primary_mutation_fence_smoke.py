@@ -1,6 +1,9 @@
 """Shared Correct/Forget mutation fence smoke."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 from relaylm.relaymem_primary_correction import (
     PrimaryCorrectionError,
     apply_primary_memory_correction,
@@ -62,7 +65,7 @@ def main() -> None:
                 operation_id="shared-op",
                 apply_token=correct["apply_token"],
                 fault_at="after_audit_prepared",
-            ),
+                        primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={}))),
             "reconciliation_required",
         )
         require(lock_path.is_file(), lock_path)

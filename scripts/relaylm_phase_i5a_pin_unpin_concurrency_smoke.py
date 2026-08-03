@@ -1,6 +1,9 @@
 """I-5A Correct/Forget interaction smoke for read-only Pin / Unpin tokens."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 from datetime import datetime, timezone
 
 from _relaylm_phase_i4b_test_support import CHARACTER, NAMESPACE, prepared_store, require
@@ -33,7 +36,8 @@ def pin_token_becomes_stale_after_correct_apply() -> None:
     with prepared_store() as (root, memory_id):
         pin = preflight_primary_memory_pin(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, reason=PIN_REASON, operation_id="phase-i5a-pin-before-correct", now=NOW)
         correction = preflight_primary_memory_correction(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, corrected_title="好きな飲み物（訂正）", corrected_summary="好きな飲み物は緑茶です。", reason="内容を訂正するため", operation_id="phase-i5a-correct-after-pin", now=NOW)
-        apply_primary_memory_correction(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, operation_id="phase-i5a-correct-after-pin", apply_token=correction["apply_token"], now=NOW)
+        apply_primary_memory_correction(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, operation_id="phase-i5a-correct-after-pin", apply_token=correction["apply_token"], now=NOW,
+            primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={})))
         _expect({"stale_revision"}, lambda: validate_primary_memory_pin_token(store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE, memory_id=memory_id, expected_revision=1, reason=PIN_REASON, operation_id="phase-i5a-pin-before-correct", apply_token=pin["apply_token"], now=NOW))
 
 

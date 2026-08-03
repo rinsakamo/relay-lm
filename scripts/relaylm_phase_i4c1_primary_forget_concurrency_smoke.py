@@ -1,6 +1,9 @@
 """I-4C1 Correct/Forget and Forget/Forget one-winner concurrency smoke."""
 from __future__ import annotations
 
+from relaylm.config import RelayLMConfig
+from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from threading import Barrier
@@ -129,7 +132,7 @@ def correct_forget_one_winner() -> None:
                     expected_revision=1,
                     operation_id="phase-i4c1-race-correct",
                     apply_token=correction["apply_token"], now=NOW,
-                ))
+                                             primary_writer_decision=resolve_subjective_mem_retrieval_primary_writer_decision(RelayLMConfig(backends={}, model_routes={}))))
             except PrimaryCorrectionError as exc:
                 return ("correct", "error", exc.code)
 
