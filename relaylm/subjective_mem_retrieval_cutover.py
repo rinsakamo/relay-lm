@@ -55,7 +55,6 @@ _TOKEN_FIELDS = (
 _DIGEST_FIELDS = (
     "bootstrap_main_sha",
     "resulting_main_sha",
-    "projection_generation_id",
     "projection_source_digest",
 )
 _BINDING_FIELDS = (
@@ -124,6 +123,10 @@ class SubjectiveMemRetrievalCutoverBinding:
             )
         if not all(_sha256(getattr(self, field)) for field in _DIGEST_FIELDS):
             raise SubjectiveMemRetrievalCutoverError("cutover_binding_digest_invalid")
+        if not _projection_generation_id(self.projection_generation_id):
+            raise SubjectiveMemRetrievalCutoverError(
+                "cutover_binding_projection_generation_invalid"
+            )
 
     @classmethod
     def from_dict(
@@ -518,6 +521,15 @@ def _safe_token(value: object) -> bool:
         type(value) is str
         and 1 <= len(value) <= 128
         and all(character.isalnum() or character in "._-" for character in value)
+    )
+
+
+def _projection_generation_id(value: object) -> bool:
+    prefix = "smretrievalgen_"
+    return (
+        type(value) is str
+        and value.startswith(prefix)
+        and _sha256(value[len(prefix):])
     )
 
 

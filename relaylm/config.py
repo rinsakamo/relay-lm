@@ -481,9 +481,13 @@ class RelayLMConfig(BaseModel):
         identifiers = values[1:4] + values[6:7] + values[9:]
         if not all(_is_safe_cutover_identifier(value) for value in identifiers):
             raise ValueError("subjective_mem_retrieval_cutover_identifier_invalid")
-        digests = values[4:6] + values[7:9]
+        digests = values[4:6] + values[8:9]
         if not all(_is_sha256(value) for value in digests):
             raise ValueError("subjective_mem_retrieval_cutover_digest_invalid")
+        if not _is_projection_generation_id(values[7]):
+            raise ValueError(
+                "subjective_mem_retrieval_cutover_projection_generation_id_invalid"
+            )
 
     def _enable_route_owned_home_admission_trigger(self) -> None:
         route_admission_requested = any(
@@ -509,6 +513,15 @@ _VALID_GATE_TRIPLES = {_DISABLED_GATE_TRIPLE, _DRY_RUN_GATE_TRIPLE, _APPLY_GATE_
 def _is_safe_cutover_identifier(value: object) -> bool:
     return type(value) is str and 1 <= len(value) <= 128 and all(
         character.isalnum() or character in "._-" for character in value
+    )
+
+
+def _is_projection_generation_id(value: object) -> bool:
+    prefix = "smretrievalgen_"
+    return (
+        type(value) is str
+        and value.startswith(prefix)
+        and _is_sha256(value[len(prefix):])
     )
 
 
