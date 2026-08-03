@@ -1138,6 +1138,28 @@ for _path, _anchors in R2D_P8_ANCHORS.items():
     REQUIRED[_path] += _anchors
 PROBES += tuple((path, anchor) for path, anchors in R2D_P8_ANCHORS.items() for anchor in anchors)
 
+R3_GENERATION_IDENTITY_AMENDMENT_ANCHORS = {
+    path: (
+        "## RT-1D-R3 projection-generation identity P1 amendment (current)",
+        "exact bootstrap `6a790486564b9d917ff8a3b20ef7e30417dd74f2`",
+        "exact `smretrievalgen_<64-lowercase-hex>` identity",
+        "RT-1D-R3 therefore remains unstarted",
+        "`projection_source_digest`, `bootstrap_main_sha`, and `resulting_main_sha` remain raw 64-character lowercase SHA-256 values",
+        "No prefix stripping, re-hashing, dual-read, fallback, or compatibility representation is authorized",
+        "`relaylm/config.py` and `config.example.yaml`",
+        "Projection builder/store, selection, usage ledger, Primary reader, managed route, and all R2 writer-carriage paths remain byte-identical",
+        "This architecture-only amendment requires no P8",
+    )
+    for path in (STATUS, PLAN, RT1C)
+}
+for _path, _anchors in R3_GENERATION_IDENTITY_AMENDMENT_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple(
+    (path, anchor)
+    for path, anchors in R3_GENERATION_IDENTITY_AMENDMENT_ANCHORS.items()
+    for anchor in anchors
+)
+
 R2D_P8_STALE = (
     "RT-1D-R2D is next and has not started",
     "RT-1D-R2D is next and not started",

@@ -1860,11 +1860,13 @@ Purpose: acquire the exact fixed Subjective source, validate one projection
 generation, run deterministic content-free characterization, and persist no
 ordinary usage event or authority state.
 
-Production budget:
+Production/config budget:
 
 ```text
 relaylm/subjective_mem_retrieval_cutover.py
 relaylm/subjective_mem_retrieval_characterization.py
+relaylm/config.py
+config.example.yaml
 ```
 
 Focused budget:
@@ -1875,8 +1877,13 @@ tests/test_subjective_mem_retrieval_characterization.py
 scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py
 ```
 
-Projection builder/store, selection, usage ledger, Primary reader, managed route,
-and configuration remain byte-identical. Acceptance is content-free deterministic
+Projection builder/store, selection, usage ledger, Primary reader, and managed route
+remain byte-identical. The cutover binding and configuration carry the one exact canonical
+RT-1B `smretrievalgen_<64-lowercase-hex>` projection-generation identity; source digest
+and commit SHA fields remain raw 64-character lowercase SHA-256 values. Missing, foreign,
+uppercase, non-hexadecimal, short, long, or source-disagreeing generation identities fail
+closed without prefix stripping, re-hashing, dual-read, fallback, or compatibility forms.
+Acceptance is content-free deterministic
 replay, deletion/rebuild equivalence, lifecycle/security/leakage cases,
 empty/non-empty and token-budget classes, bounded latency/request classes, and
 an exact readiness identity. Shadow output is never served and writes no ordinary
@@ -2023,7 +2030,7 @@ The exact five-path R1 inventory is +894/-0: `config.example.yaml` +14/-0; `rela
 
 `relaylm/subjective_mem_retrieval_cutover.py` is the sole semantic owner: 403 physical lines, largest function 46 lines. Its sole operator API is `rehearse_subjective_mem_retrieval_cutover(*, store: EvidenceRecordStore, binding: SubjectiveMemRetrievalCutoverBinding, request: SubjectiveMemRetrievalCutoverRequest) -> SubjectiveMemRetrievalCutoverResult`. Binding, request, diagnostic, and result types are immutable and closed; error identities are stable and canonical encoding/digests deterministic. There is no semantic write API. Dependency direction is cutover owner -> `evidence_store` / `evidence_common` only. `EvidenceRecordStore` does not import the semantic owner and is not semantic authority.
 
-The exact fields are `subjective_mem_retrieval_cutover_mode`, `subjective_mem_retrieval_cutover_store_root`, `subjective_mem_retrieval_cutover_evidence_space_id`, `subjective_mem_retrieval_cutover_deployment_id`, `subjective_mem_retrieval_cutover_scope_id`, `subjective_mem_retrieval_cutover_bootstrap_main_sha`, `subjective_mem_retrieval_cutover_resulting_main_sha`, `subjective_mem_retrieval_cutover_policy_revision_id`, `subjective_mem_retrieval_cutover_projection_generation_id`, `subjective_mem_retrieval_cutover_projection_source_digest`, and `subjective_mem_retrieval_cutover_readiness_id`. Only `primary_only` and `rehearsal` exist. Default `primary_only` has all locators null and rejects a non-empty tuple; `rehearsal` requires the complete tuple. The root must be absolute and safe, identifiers bounded safe tokens, digest fields lowercase SHA-256, and unsupported mode is stably rejected. Configuration requests validation only and is never authority. Loading configuration performs no store access or semantic-owner import.
+The exact fields are `subjective_mem_retrieval_cutover_mode`, `subjective_mem_retrieval_cutover_store_root`, `subjective_mem_retrieval_cutover_evidence_space_id`, `subjective_mem_retrieval_cutover_deployment_id`, `subjective_mem_retrieval_cutover_scope_id`, `subjective_mem_retrieval_cutover_bootstrap_main_sha`, `subjective_mem_retrieval_cutover_resulting_main_sha`, `subjective_mem_retrieval_cutover_policy_revision_id`, `subjective_mem_retrieval_cutover_projection_generation_id`, `subjective_mem_retrieval_cutover_projection_source_digest`, and `subjective_mem_retrieval_cutover_readiness_id`. Only `primary_only` and `rehearsal` exist. Default `primary_only` has all locators null and rejects a non-empty tuple; `rehearsal` requires the complete tuple. The root must be absolute and safe; identifiers are bounded safe tokens; `projection_generation_id` is the exact canonical RT-1B `smretrievalgen_<64-lowercase-hex>` identity; bootstrap, resulting-main, and source-digest fields are raw lowercase SHA-256 values; and unsupported mode is stably rejected. Configuration requests validation only and is never authority. Loading configuration performs no store access or semantic-owner import.
 
 ### State and fail-closed rules
 
@@ -2310,3 +2317,11 @@ RT-1D-R2D completed in implementation PR #818 from reviewed head `992496748efc70
 Focused semantic-owner/lifecycle validation passed 126 tests, all four I-5B Pin/Unpin smokes passed, the external Python 3.12 suite passed 1063 tests with one dependency deprecation warning, execution safety passed, and every applicable exact-head GitHub check passed. No decision is serialized or persisted and no durable schema or bytes changed. Primary MEM remains the sole ordinary served memory and Retrieval authority; Subjective ordinary Retrieval remains disabled and unwired. No durable intent, fence record, readiness, activation, transfer receipt, serving, fallback, retirement, or R3 behavior was introduced.
 
 The mandatory RT-1D-R2D P8 authority synchronization completed in PR #819 with exact result `dfdefcf89f16f2fb61abe00ef942af35f4c28053`. This documentation-only P8 requires no recursive P8. The post-P8 validator correction PR #820 completed with exact result `e87e6ee82e3626135993735ebe08aac123051e29` and also requires no P8. After independent verification of that exact resulting main, RT-1D-R3 is uniquely next and remains unstarted; RT-1D-R4 and RT-1D-R5 remain unstarted. R3 may bootstrap only from the independently verified exact PR #820 result, never PR #818 head, PR #819 head, or any unmerged branch head.
+
+## RT-1D-R3 projection-generation identity P1 amendment (current)
+
+Fresh RT-1D-R3 P0/P1 inspection from exact bootstrap `6a790486564b9d917ff8a3b20ef7e30417dd74f2` found one authority mismatch before runtime mutation. The canonical RT-1B owner represents a projection generation as the exact `smretrievalgen_<64-lowercase-hex>` identity, while the current cutover binding and configuration incorrectly validate `projection_generation_id` as an unprefixed 64-character digest. Stripping or re-hashing the prefix would create a second representation and would not bind the exact canonical generation. RT-1D-R3 therefore remains unstarted until this architecture-only amendment is merged and its exact resulting main is independently verified.
+
+The single canonical representation is the exact RT-1B `smretrievalgen_<64-lowercase-hex>` value. `projection_source_digest`, `bootstrap_main_sha`, and `resulting_main_sha` remain raw 64-character lowercase SHA-256 values. Binding and configuration must reject a missing prefix, a foreign prefix, uppercase hexadecimal, non-hexadecimal content, and every short or long value; they must also fail closed when the configured and source-derived generation identities disagree. No prefix stripping, re-hashing, dual-read, fallback, or compatibility representation is authorized.
+
+The R3 production/config budget is expanded only by `relaylm/config.py` and `config.example.yaml` alongside the existing `relaylm/subjective_mem_retrieval_cutover.py` and `relaylm/subjective_mem_retrieval_characterization.py` owners. The focused budget remains `tests/test_subjective_mem_retrieval_cutover.py`, `tests/test_subjective_mem_retrieval_characterization.py`, and `scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py`. Exact negative coverage owns malformed prefix, case, hexadecimal, length, and configuration/binding/source disagreement. Projection builder/store, selection, usage ledger, Primary reader, managed route, and all R2 writer-carriage paths remain byte-identical. Primary remains the sole ordinary served authority; the amendment writes no authority state or ordinary usage event and introduces no R4 activation, serving, fallback, transfer, or retirement behavior. This architecture-only amendment requires no P8.
