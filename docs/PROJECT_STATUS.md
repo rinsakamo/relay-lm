@@ -303,7 +303,7 @@ Correct and Forget roots derive the immutable Primary writer decision only throu
 The mandatory R2C P8 authority sync was the transaction at that historical point and requires no recursive P8. After its independently verified result, at that historical point, RT-1D-R2D was next and had not started; at that historical point, R3, R4, and R5 had not started.
 
 
-## RT-1D-R2D completion and mandatory P8 (current)
+## RT-1D-R2D completion and mandatory P8 (completed current boundary)
 
 RT-1D-R2D completed in implementation PR #818 from reviewed head `992496748efc70d51a7ed356e23aea650220902c` with exact squash result `a2197e9f92a8067d733f8adba524bf54eb2708b6`. Its two pre-squash commits changed exactly 10 paths, +119/-43: four production paths (`relaylm/subjective_mem_retrieval_cutover.py`, `relaylm/relaymem_primary_pin.py`, `relaylm/relaymem_primary_pin_apply.py`, and `relaylm/soul_lab_memory_pin_routes.py`) and six non-production paths (the semantic-owner test, four I-5B Pin/Unpin smokes, and lifecycle characterization).
 
@@ -311,4 +311,4 @@ RT-1D-R2D completed in implementation PR #818 from reviewed head `992496748efc70
 
 Focused semantic-owner/lifecycle validation passed 126 tests, all four I-5B Pin/Unpin smokes passed, the external Python 3.12 suite passed 1063 tests with one dependency deprecation warning, execution safety passed, and every applicable exact-head GitHub check passed. No decision is serialized or persisted and no durable schema or bytes changed. Primary MEM remains the sole ordinary served memory and Retrieval authority; Subjective ordinary Retrieval remains disabled and unwired. No durable intent, fence record, readiness, activation, transfer receipt, serving, fallback, retirement, or R3 behavior was introduced.
 
-The current transaction is the mandatory RT-1D-R2D P8 authority synchronization. This documentation-only P8 requires no recursive P8. Only after this P8 is merged and its exact resulting main is independently verified may RT-1D-R3 become uniquely next; RT-1D-R3 is not started, and RT-1D-R4 and RT-1D-R5 remain not started. R3 may bootstrap only from that verified P8 result, never PR #818 head or an unmerged P8 head.
+The mandatory RT-1D-R2D P8 authority synchronization completed in PR #819 with exact result `dfdefcf89f16f2fb61abe00ef942af35f4c28053`. This documentation-only P8 requires no recursive P8. The post-P8 validator correction PR #820 completed with exact result `e87e6ee82e3626135993735ebe08aac123051e29` and also requires no P8. After independent verification of that exact resulting main, RT-1D-R3 is uniquely next and remains unstarted; RT-1D-R4 and RT-1D-R5 remain unstarted. R3 may bootstrap only from the independently verified exact PR #820 result, never PR #818 head, PR #819 head, or any unmerged branch head.
