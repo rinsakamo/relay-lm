@@ -33,7 +33,7 @@ def main() -> None:
             readiness_id="ready-1",
             bootstrap_main_sha="a" * 64,
             resulting_main_sha="b" * 64,
-            projection_generation_id="c" * 64,
+            projection_generation_id="smretrievalgen_" + "c" * 64,
             projection_source_digest="d" * 64,
         )
         default = rehearse_subjective_mem_retrieval_cutover(

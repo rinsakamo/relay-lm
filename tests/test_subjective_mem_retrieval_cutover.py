@@ -60,7 +60,7 @@ def _binding(**changes: object) -> SubjectiveMemRetrievalCutoverBinding:
         "readiness_id": "ready-1",
         "bootstrap_main_sha": _DIGEST,
         "resulting_main_sha": "b" * 64,
-        "projection_generation_id": "c" * 64,
+        "projection_generation_id": "smretrievalgen_" + "c" * 64,
         "projection_source_digest": "d" * 64,
     }
     values.update(changes)
@@ -112,7 +112,7 @@ def _config_tuple(root: Path) -> dict[str, object]:
         "subjective_mem_retrieval_cutover_bootstrap_main_sha": "a" * 64,
         "subjective_mem_retrieval_cutover_resulting_main_sha": "b" * 64,
         "subjective_mem_retrieval_cutover_policy_revision_id": "policy-1",
-        "subjective_mem_retrieval_cutover_projection_generation_id": "c" * 64,
+        "subjective_mem_retrieval_cutover_projection_generation_id": "smretrievalgen_" + "c" * 64,
         "subjective_mem_retrieval_cutover_projection_source_digest": "d" * 64,
         "subjective_mem_retrieval_cutover_readiness_id": "ready-1",
     }
@@ -171,6 +171,34 @@ def test_binding_rejects_unsupported_or_unsafe_values(
 ) -> None:
     with pytest.raises(SubjectiveMemRetrievalCutoverError, match=reason):
         _binding(**change)
+
+
+@pytest.mark.parametrize(
+    "generation_id",
+    [
+        "c" * 64,
+        "other_" + "c" * 64,
+        "smretrievalgen_" + "C" * 64,
+        "smretrievalgen_" + "g" * 64,
+        "smretrievalgen_" + "c" * 63,
+        "smretrievalgen_" + "c" * 65,
+    ],
+)
+def test_binding_and_config_reject_noncanonical_projection_generation(
+    tmp_path: Path, generation_id: str
+) -> None:
+    with pytest.raises(
+        SubjectiveMemRetrievalCutoverError,
+        match="cutover_binding_projection_generation_invalid",
+    ):
+        _binding(projection_generation_id=generation_id)
+    values = _config_tuple(tmp_path / "store")
+    values["subjective_mem_retrieval_cutover_projection_generation_id"] = generation_id
+    with pytest.raises(
+        ValueError,
+        match="subjective_mem_retrieval_cutover_projection_generation_id_invalid",
+    ):
+        _config(values)
 
 
 def test_binding_is_immutable_closed_and_canonical() -> None:
@@ -587,6 +615,7 @@ def test_resolver_dependency_direction_creates_no_cycle() -> None:
         ".config",
         ".evidence_common",
         ".evidence_store",
+        ".subjective_mem_retrieval_rehearsal",
     }
 
 

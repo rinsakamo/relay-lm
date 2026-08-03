@@ -8,6 +8,15 @@ from typing import Literal, Mapping
 from .config import RelayLMConfig
 from .evidence_common import canonical_digest, canonical_json_bytes
 from .evidence_store import EvidenceRecordStore
+from .subjective_mem_retrieval_rehearsal import (
+    READINESS_PREFIX,
+    READINESS_SCHEMA,
+    SubjectiveMemRetrievalRehearsalReadiness,
+    SubjectiveMemRetrievalRehearsalSpecification,
+    derive_subjective_mem_retrieval_rehearsal_readiness_id,
+    evaluate_subjective_mem_retrieval_rehearsal,
+    validate_subjective_mem_retrieval_rehearsal_readiness,
+)
 
 CUTOVER_SCHEMA_VERSION = 1
 CUTOVER_AUTHORITY_DOMAIN = "relaylm.subjective_mem_retrieval"
@@ -52,10 +61,10 @@ _TOKEN_FIELDS = (
     "policy_revision_id",
     "readiness_id",
 )
+_PROJECTION_GENERATION_FIELD = "projection_generation_id"
 _DIGEST_FIELDS = (
     "bootstrap_main_sha",
     "resulting_main_sha",
-    "projection_generation_id",
     "projection_source_digest",
 )
 _BINDING_FIELDS = (
@@ -64,6 +73,7 @@ _BINDING_FIELDS = (
     "transferred_scope",
     *_TOKEN_FIELDS,
     *_DIGEST_FIELDS,
+    _PROJECTION_GENERATION_FIELD,
 )
 _RECORD_FIELDS = (
     "schema_version",
@@ -82,7 +92,9 @@ _MAX_PRIMARY_WRITER_REASONS = 8
 _CUTOVER_CONFIG_PREFIX = "subjective_mem_retrieval_cutover_"
 _CUTOVER_CONFIG_FIELDS = tuple(
     f"{_CUTOVER_CONFIG_PREFIX}{field}"
-    for field in ("store_root", *_TOKEN_FIELDS, *_DIGEST_FIELDS)
+    for field in (
+        "store_root", *_TOKEN_FIELDS, *_DIGEST_FIELDS, _PROJECTION_GENERATION_FIELD
+    )
 )
 
 
@@ -124,6 +136,10 @@ class SubjectiveMemRetrievalCutoverBinding:
             )
         if not all(_sha256(getattr(self, field)) for field in _DIGEST_FIELDS):
             raise SubjectiveMemRetrievalCutoverError("cutover_binding_digest_invalid")
+        if not _projection_generation_id(self.projection_generation_id):
+            raise SubjectiveMemRetrievalCutoverError(
+                "cutover_binding_projection_generation_invalid"
+            )
 
     @classmethod
     def from_dict(
@@ -264,6 +280,112 @@ class SubjectiveMemRetrievalCutoverResult:
         }
 
 
+def evaluate_subjective_mem_retrieval_rehearsal_readiness(
+    *,
+    config: object,
+    binding: object,
+    source: object,
+    projection_root: object,
+    request: object,
+    primary: object,
+    subjective_latency_class: object,
+) -> tuple[SubjectiveMemRetrievalRehearsalReadiness | None, tuple[str, ...]]:
+    """Validate cutover authority, then delegate the disposable R3 proof."""
+
+    if type(config) is not RelayLMConfig or type(binding) is not SubjectiveMemRetrievalCutoverBinding:
+        return None, ("cutover_readiness_binding_invalid",)
+    if config.subjective_mem_retrieval_cutover_mode != "rehearsal":
+        return None, ("cutover_readiness_config_invalid",)
+    try:
+        binding.__post_init__()
+        configured = _binding_from_config(config)
+    except (AttributeError, SubjectiveMemRetrievalCutoverError, TypeError):
+        return None, ("cutover_readiness_config_invalid",)
+    if configured != binding:
+        return None, ("cutover_readiness_config_binding_disagreement",)
+    specification = SubjectiveMemRetrievalRehearsalSpecification(
+        binding_identity=tuple(sorted(
+            (field, getattr(binding, field))
+            for field in _BINDING_FIELDS
+            if field != "readiness_id"
+        )),
+        evidence_space_id=binding.evidence_space_id,
+        projection_generation_id=binding.projection_generation_id,
+        projection_source_digest=binding.projection_source_digest,
+        readiness_id=binding.readiness_id,
+    )
+    readiness, reasons = evaluate_subjective_mem_retrieval_rehearsal(
+        specification=specification,
+        source=source,
+        projection_root=projection_root,
+        request=request,
+        primary=primary,
+        subjective_latency_class=subjective_latency_class,
+    )
+    if readiness is None:
+        return None, reasons
+    reasons = validate_subjective_mem_retrieval_rehearsal_readiness(
+        specification=specification, readiness=readiness
+    )
+    if reasons:
+        return None, reasons
+    expected_id = _cutover_readiness_identity(
+        binding_identity=specification.binding_identity,
+        projection_generation_id=readiness.projection_generation_id,
+        projection_source_digest=readiness.projection_source_digest,
+        projection_manifest_digest=readiness.projection_manifest_digest,
+        row_population_digest=readiness.row_population_digest,
+        characterization_digest=readiness.characterization_digest,
+    )
+    if (
+        readiness.readiness_id != binding.readiness_id
+        or readiness.readiness_id != expected_id
+        or readiness.binding_identity != specification.binding_identity
+        or readiness.projection_generation_id != binding.projection_generation_id
+        or readiness.projection_source_digest != binding.projection_source_digest
+    ):
+        return None, ("cutover_readiness_proof_disagreement",)
+    return readiness, ()
+
+
+def subjective_mem_retrieval_rehearsal_readiness_id(
+    binding: SubjectiveMemRetrievalCutoverBinding,
+    projection: object,
+    characterization: object,
+) -> str:
+    """Derive the binding-owned expected identity for an independently proven run."""
+
+    specification = SubjectiveMemRetrievalRehearsalSpecification(
+        binding_identity=tuple(sorted(
+            (field, getattr(binding, field))
+            for field in _BINDING_FIELDS
+            if field != "readiness_id"
+        )),
+        evidence_space_id=binding.evidence_space_id,
+        projection_generation_id=binding.projection_generation_id,
+        projection_source_digest=binding.projection_source_digest,
+        readiness_id=binding.readiness_id,
+    )
+    return derive_subjective_mem_retrieval_rehearsal_readiness_id(
+        binding_identity=specification.binding_identity,
+        projection_generation_id=projection.manifest.projection_generation_id,
+        projection_source_digest=projection.manifest.source_snapshot_digest,
+        projection_manifest_digest=projection.manifest.manifest_digest,
+        row_population_digest=canonical_digest(
+            [row.row_digest for row in projection.rows]
+        ),
+        characterization_digest=canonical_digest(characterization.to_dict()),
+    )
+
+
+def _cutover_readiness_identity(**identities: object) -> str:
+    """Independently re-derive the coordinator proof's complete identity."""
+
+    body = {"schema": READINESS_SCHEMA, **identities}
+    body["binding"] = dict(body.pop("binding_identity"))
+    return f"{READINESS_PREFIX}{canonical_digest(body)}"
+
+
 @dataclass(frozen=True, repr=False)
 class SubjectiveMemRetrievalPrimaryWriterDecision:
     """The sole closed, immutable, content-free Primary writer authority."""
@@ -332,15 +454,7 @@ def resolve_subjective_mem_retrieval_primary_writer_decision(
     if mode != "rehearsal" or any(value is None for value in values):
         return _writer_decision("recovery_required", disagreement)
     try:
-        binding = SubjectiveMemRetrievalCutoverBinding(
-            schema_version=CUTOVER_SCHEMA_VERSION,
-            authority_domain=CUTOVER_AUTHORITY_DOMAIN,
-            transferred_scope=CUTOVER_TRANSFERRED_SCOPE,
-            **{
-                field: getattr(config, f"{_CUTOVER_CONFIG_PREFIX}{field}")
-                for field in (*_TOKEN_FIELDS, *_DIGEST_FIELDS)
-            },
-        )
+        binding = _binding_from_config(config)
         store = EvidenceRecordStore(
             config.subjective_mem_retrieval_cutover_store_root or ""
         )
@@ -351,6 +465,18 @@ def resolve_subjective_mem_retrieval_primary_writer_decision(
         unsupported = ("cutover_writer_state_unsupported",)
         return _writer_decision("recovery_required", reasons or unsupported)
     return _writer_decision(state, ())
+
+
+def _binding_from_config(config: RelayLMConfig) -> SubjectiveMemRetrievalCutoverBinding:
+    return SubjectiveMemRetrievalCutoverBinding(
+        schema_version=CUTOVER_SCHEMA_VERSION,
+        authority_domain=CUTOVER_AUTHORITY_DOMAIN,
+        transferred_scope=CUTOVER_TRANSFERRED_SCOPE,
+        **{
+            field: getattr(config, f"{_CUTOVER_CONFIG_PREFIX}{field}")
+            for field in (*_TOKEN_FIELDS, *_DIGEST_FIELDS, _PROJECTION_GENERATION_FIELD)
+        },
+    )
 
 
 def primary_writer_decision_permits_write(decision: object) -> bool:
@@ -529,6 +655,15 @@ def _sha256(value: object) -> bool:
     )
 
 
+def _projection_generation_id(value: object) -> bool:
+    prefix = "smretrievalgen_"
+    return (
+        type(value) is str
+        and value.startswith(prefix)
+        and _sha256(value[len(prefix) :])
+    )
+
+
 __all__ = [
     "CUTOVER_AUTHORITY_DOMAIN",
     "CUTOVER_LOG_KEY",
@@ -544,7 +679,10 @@ __all__ = [
     "SubjectiveMemRetrievalCutoverRequest",
     "SubjectiveMemRetrievalCutoverResult",
     "SubjectiveMemRetrievalPrimaryWriterDecision",
+    "SubjectiveMemRetrievalRehearsalReadiness",
+    "evaluate_subjective_mem_retrieval_rehearsal_readiness",
     "primary_writer_decision_permits_write",
     "rehearse_subjective_mem_retrieval_cutover",
     "resolve_subjective_mem_retrieval_primary_writer_decision",
+    "subjective_mem_retrieval_rehearsal_readiness_id",
 ]
