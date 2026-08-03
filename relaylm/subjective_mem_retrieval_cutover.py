@@ -9,10 +9,13 @@ from .config import RelayLMConfig
 from .evidence_common import canonical_digest, canonical_json_bytes
 from .evidence_store import EvidenceRecordStore
 from .subjective_mem_retrieval_rehearsal import (
+    READINESS_PREFIX,
+    READINESS_SCHEMA,
     SubjectiveMemRetrievalRehearsalReadiness,
     SubjectiveMemRetrievalRehearsalSpecification,
     derive_subjective_mem_retrieval_rehearsal_readiness_id,
     evaluate_subjective_mem_retrieval_rehearsal,
+    validate_subjective_mem_retrieval_rehearsal_readiness,
 )
 
 CUTOVER_SCHEMA_VERSION = 1
@@ -301,11 +304,11 @@ def evaluate_subjective_mem_retrieval_rehearsal_readiness(
     if configured != binding:
         return None, ("cutover_readiness_config_binding_disagreement",)
     specification = SubjectiveMemRetrievalRehearsalSpecification(
-        binding_identity=tuple(
+        binding_identity=tuple(sorted(
             (field, getattr(binding, field))
             for field in _BINDING_FIELDS
             if field != "readiness_id"
-        ),
+        )),
         evidence_space_id=binding.evidence_space_id,
         projection_generation_id=binding.projection_generation_id,
         projection_source_digest=binding.projection_source_digest,
@@ -321,8 +324,23 @@ def evaluate_subjective_mem_retrieval_rehearsal_readiness(
     )
     if readiness is None:
         return None, reasons
+    reasons = validate_subjective_mem_retrieval_rehearsal_readiness(
+        specification=specification, readiness=readiness
+    )
+    if reasons:
+        return None, reasons
+    expected_id = _cutover_readiness_identity(
+        binding_identity=specification.binding_identity,
+        projection_generation_id=readiness.projection_generation_id,
+        projection_source_digest=readiness.projection_source_digest,
+        projection_manifest_digest=readiness.projection_manifest_digest,
+        row_population_digest=readiness.row_population_digest,
+        characterization_digest=readiness.characterization_digest,
+    )
     if (
         readiness.readiness_id != binding.readiness_id
+        or readiness.readiness_id != expected_id
+        or readiness.binding_identity != specification.binding_identity
         or readiness.projection_generation_id != binding.projection_generation_id
         or readiness.projection_source_digest != binding.projection_source_digest
     ):
@@ -338,21 +356,34 @@ def subjective_mem_retrieval_rehearsal_readiness_id(
     """Derive the binding-owned expected identity for an independently proven run."""
 
     specification = SubjectiveMemRetrievalRehearsalSpecification(
-        binding_identity=tuple(
+        binding_identity=tuple(sorted(
             (field, getattr(binding, field))
             for field in _BINDING_FIELDS
             if field != "readiness_id"
-        ),
+        )),
         evidence_space_id=binding.evidence_space_id,
         projection_generation_id=binding.projection_generation_id,
         projection_source_digest=binding.projection_source_digest,
         readiness_id=binding.readiness_id,
     )
     return derive_subjective_mem_retrieval_rehearsal_readiness_id(
-        specification=specification,
-        projection=projection,  # type: ignore[arg-type]
-        characterization=characterization,  # type: ignore[arg-type]
+        binding_identity=specification.binding_identity,
+        projection_generation_id=projection.manifest.projection_generation_id,
+        projection_source_digest=projection.manifest.source_snapshot_digest,
+        projection_manifest_digest=projection.manifest.manifest_digest,
+        row_population_digest=canonical_digest(
+            [row.row_digest for row in projection.rows]
+        ),
+        characterization_digest=canonical_digest(characterization.to_dict()),
     )
+
+
+def _cutover_readiness_identity(**identities: object) -> str:
+    """Independently re-derive the coordinator proof's complete identity."""
+
+    body = {"schema": READINESS_SCHEMA, **identities}
+    body["binding"] = dict(body.pop("binding_identity"))
+    return f"{READINESS_PREFIX}{canonical_digest(body)}"
 
 
 @dataclass(frozen=True, repr=False)

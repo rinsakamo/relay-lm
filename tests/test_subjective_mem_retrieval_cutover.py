@@ -173,6 +173,34 @@ def test_binding_rejects_unsupported_or_unsafe_values(
         _binding(**change)
 
 
+@pytest.mark.parametrize(
+    "generation_id",
+    [
+        "c" * 64,
+        "other_" + "c" * 64,
+        "smretrievalgen_" + "C" * 64,
+        "smretrievalgen_" + "g" * 64,
+        "smretrievalgen_" + "c" * 63,
+        "smretrievalgen_" + "c" * 65,
+    ],
+)
+def test_binding_and_config_reject_noncanonical_projection_generation(
+    tmp_path: Path, generation_id: str
+) -> None:
+    with pytest.raises(
+        SubjectiveMemRetrievalCutoverError,
+        match="cutover_binding_projection_generation_invalid",
+    ):
+        _binding(projection_generation_id=generation_id)
+    values = _config_tuple(tmp_path / "store")
+    values["subjective_mem_retrieval_cutover_projection_generation_id"] = generation_id
+    with pytest.raises(
+        ValueError,
+        match="subjective_mem_retrieval_cutover_projection_generation_id_invalid",
+    ):
+        _config(values)
+
+
 def test_binding_is_immutable_closed_and_canonical() -> None:
     binding = _binding()
     with pytest.raises(dataclasses.FrozenInstanceError):
