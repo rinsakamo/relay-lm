@@ -98,7 +98,11 @@ def apply_primary_memory_correction(
     now: datetime | None = None,
     fault_at: str | None = None,
 ) -> dict[str, Any]:
-    if not primary_writer_decision_permits_write(primary_writer_decision):
+    try:
+        permitted = primary_writer_decision_permits_write(primary_writer_decision)
+    except Exception:  # noqa: BLE001 - malformed authority must fail closed
+        permitted = False
+    if not permitted:
         raise PrimaryCorrectionError("reconciliation_required")
     return _apply(
         store_root=store_root, character_id=character_id, namespace=namespace,
@@ -115,7 +119,11 @@ def recover_primary_memory_corrections(
     *, store_root: str, namespace: str,
     primary_writer_decision: SubjectiveMemRetrievalPrimaryWriterDecision,
 ) -> dict[str, int]:
-    if not primary_writer_decision_permits_write(primary_writer_decision):
+    try:
+        permitted = primary_writer_decision_permits_write(primary_writer_decision)
+    except Exception:  # noqa: BLE001 - malformed authority must fail closed
+        permitted = False
+    if not permitted:
         raise PrimaryCorrectionError("reconciliation_required")
     return _recover(
         store_root=store_root, namespace=namespace,

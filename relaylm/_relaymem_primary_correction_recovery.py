@@ -17,7 +17,11 @@ def recover_primary_memory_corrections(
 ) -> dict[str, int]:
     """Converge prepared operations without exposing an HTTP mutation shortcut."""
 
-    if not primary_writer_decision_permits_write(primary_writer_decision):
+    try:
+        permitted = primary_writer_decision_permits_write(primary_writer_decision)
+    except Exception:  # noqa: BLE001 - malformed authority must fail closed
+        permitted = False
+    if not permitted:
         raise PrimaryCorrectionError("reconciliation_required")
     root = _safe_store_root(store_root)
     base = root / _CORRECTION_ROOT

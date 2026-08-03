@@ -175,7 +175,11 @@ def apply_primary_memory_forget(
     fault_at: str | None = None,
 ) -> PrimaryForgetApplyResult:
     """Apply or exactly replay one Forget operation through tombstone finalization."""
-    if not primary_writer_decision_permits_write(primary_writer_decision):
+    try:
+        permitted = primary_writer_decision_permits_write(primary_writer_decision)
+    except Exception:  # noqa: BLE001 - malformed authority must fail closed
+        permitted = False
+    if not permitted:
         raise PrimaryForgetError("reconciliation_required")
     dependencies = PrimaryForgetApplyDependencies(
         error_type=PrimaryForgetError,
@@ -222,7 +226,11 @@ def recover_primary_memory_forget(
 ) -> PrimaryForgetRecoveryResult:
     """Recover one caller-selected durable Forget operation; never scan a directory."""
 
-    if not primary_writer_decision_permits_write(primary_writer_decision):
+    try:
+        permitted = primary_writer_decision_permits_write(primary_writer_decision)
+    except Exception:  # noqa: BLE001 - malformed authority must fail closed
+        permitted = False
+    if not permitted:
         raise PrimaryForgetError("reconciliation_required")
     _validate_recovery_request(
         store_root=store_root,

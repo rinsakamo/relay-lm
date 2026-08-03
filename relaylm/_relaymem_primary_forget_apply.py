@@ -60,7 +60,11 @@ def apply_primary_memory_forget(
     fault_at: str | None = None,
 ) -> Result:
     """Apply or exactly replay through facade-owned finalization."""
-    if not primary_writer_decision_permits_write(primary_writer_decision):
+    try:
+        permitted = primary_writer_decision_permits_write(primary_writer_decision)
+    except Exception:  # noqa: BLE001 - malformed authority must fail closed
+        permitted = False
+    if not permitted:
         raise dependencies.error_type("reconciliation_required")
     _validate_apply_request(
         store_root=store_root,

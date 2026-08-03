@@ -8,6 +8,7 @@ from typing import Any, Callable
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
+
 from relaylm.subjective_mem_retrieval_cutover import (
     resolve_subjective_mem_retrieval_primary_writer_decision,
 )

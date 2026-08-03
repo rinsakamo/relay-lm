@@ -29,7 +29,11 @@ def apply_primary_memory_correction(
     _dependencies: ApplyDependencies,
 ) -> dict[str, Any]:
     """Apply one exact preflight candidate and converge through M3e-M3g."""
-    if not primary_writer_decision_permits_write(primary_writer_decision):
+    try:
+        permitted = primary_writer_decision_permits_write(primary_writer_decision)
+    except Exception:  # noqa: BLE001 - malformed authority must fail closed
+        permitted = False
+    if not permitted:
         raise PrimaryCorrectionError("reconciliation_required")
     _validate_scope_tokens(character_id, namespace, memory_id, operation_id)
     if type(expected_revision) is not int or expected_revision < 1:

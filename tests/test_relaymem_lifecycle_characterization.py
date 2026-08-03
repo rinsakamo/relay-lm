@@ -19,7 +19,10 @@ These tests describe today's behavior, not the target architecture.
 from __future__ import annotations
 
 from relaylm.config import RelayLMConfig
-from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+from relaylm.subjective_mem_retrieval_cutover import (
+    SubjectiveMemRetrievalPrimaryWriterDecision,
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
 
 import pytest
 
@@ -68,6 +71,11 @@ OTHER_NAMESPACE = "characterization-ns-b"
 
 
 @pytest.mark.parametrize(
+    "primary_writer_decision",
+    (object(), object.__new__(SubjectiveMemRetrievalPrimaryWriterDecision)),
+    ids=("foreign", "malformed_exact_type"),
+)
+@pytest.mark.parametrize(
     ("operation", "error_type"),
     (
         (apply_primary_memory_correction, PrimaryCorrectionError),
@@ -77,12 +85,12 @@ OTHER_NAMESPACE = "characterization-ns-b"
     ),
 )
 def test_primary_mutations_reject_foreign_writer_decision_before_store_access(
-    tmp_path, operation, error_type
+    tmp_path, operation, error_type, primary_writer_decision
 ):
     arguments = {
         "store_root": str(tmp_path / "missing"),
         "namespace": NAMESPACE,
-        "primary_writer_decision": object(),
+        "primary_writer_decision": primary_writer_decision,
     }
     if operation is apply_primary_memory_correction:
         arguments.update(
