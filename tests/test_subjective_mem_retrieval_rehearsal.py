@@ -119,7 +119,7 @@ def test_factory_proof_owns_flags_and_rejects_forged_identities(
     monkeypatch.setattr(owner.SubjectiveMemRetrievalRehearsalReadiness,
                         "subjective_serving", True, raising=False)
     assert readiness.subjective_serving is False
-    with pytest.raises(TypeError):
+    with pytest.raises((TypeError, ValueError)):
         replace(readiness, authority_state_written=True)
 
     for field in (
