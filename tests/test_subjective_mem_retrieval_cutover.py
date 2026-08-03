@@ -166,22 +166,28 @@ def test_every_partial_rehearsal_tuple_is_rejected(missing: str) -> None:
         ({"bootstrap_main_sha": "wrong"}, "digest_invalid"),
         ({"projection_generation_id": "c" * 64}, "projection_generation_invalid"),
         (
-            {"projection_generation_id": "other_" + "c" * 64}, "projection_generation_invalid"),
+            {"projection_generation_id": "other_" + "c" * 64},
+            "projection_generation_invalid",
         ),
         (
-            {"projection_generation_id": "smretrievalgen_" + "C" * 64}, "projection_generation_invalid"),
+            {"projection_generation_id": "smretrievalgen_" + "C" * 64},
+            "projection_generation_invalid",
         ),
         (
-            {"projection_generation_id": "smretrievalgen_" + "g" * 64}, "projection_generation_invalid"),
+            {"projection_generation_id": "smretrievalgen_" + "g" * 64},
+            "projection_generation_invalid",
         ),
         (
-            {"projection_generation_id": "smretrievalgen_" + "c" * 63}, "projection_generation_invalid"),
+            {"projection_generation_id": "smretrievalgen_" + "c" * 63},
+            "projection_generation_invalid",
         ),
         (
-            {"projection_generation_id": "smretrievalgen_" + "c" * 65}, "projection_generation_invalid"),
+            {"projection_generation_id": "smretrievalgen_" + "c" * 65},
+            "projection_generation_invalid",
         ),
     ],
 )
+
 def test_binding_rejects_unsupported_or_unsafe_values(
     change: dict, reason: str
 ) -> None:

@@ -345,7 +345,7 @@ def resolve_subjective_mem_retrieval_primary_writer_decision(
             transferred_scope=CUTOVER_TRANSFERRED_SCOPE,
             **{
                 field: getattr(config, f"{_CUTOVER_CONFIG_PREFIX}{field}")
-                for field in (*_TOKEN_FIELDS, *_DIGEST_FIELDS)
+                for field in (*_TOKEN_FIELDS, *_DIGEST_FIELDS, _PROJECTION_GENERATION_FIELD)
             },
         )
         store = EvidenceRecordStore(
