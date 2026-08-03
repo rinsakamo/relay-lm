@@ -1160,6 +1160,31 @@ PROBES += tuple(
     for anchor in anchors
 )
 
+R3_COORDINATOR_AMENDMENT_ANCHORS = {
+    path: (
+        "## RT-1D-R3 rehearsal coordinator P1 amendment (current)",
+        "PR #823 was closed unmerged at exact frozen head `d411d443e71d771be4ac1f93e994d876e3f73b3a`",
+        "`relaylm/subjective_mem_retrieval_rehearsal.py`",
+        "`tests/test_subjective_mem_retrieval_rehearsal.py`",
+        "below 500 normally formatted physical lines",
+        "every function stays below 80 normally formatted physical lines",
+        "Readiness is factory-only",
+        "bundle is exactly absent before any write",
+        "deletes only a bundle installed and trusted-read by that invocation",
+        "verifies exact post-delete absence",
+        "Projection builder/store, selection, usage ledger, Primary reader, managed route, and all R2 writer-carriage paths remain byte-identical",
+        "This architecture-only amendment requires no P8",
+    )
+    for path in (STATUS, PLAN, RT1C)
+}
+for _path, _anchors in R3_COORDINATOR_AMENDMENT_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple(
+    (path, anchor)
+    for path, anchors in R3_COORDINATOR_AMENDMENT_ANCHORS.items()
+    for anchor in anchors
+)
+
 R2D_P8_STALE = (
     "RT-1D-R2D is next and has not started",
     "RT-1D-R2D is next and not started",
