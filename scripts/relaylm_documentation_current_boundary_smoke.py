@@ -1187,7 +1187,7 @@ PROBES += tuple(
 
 R3_COMPLETION_ANCHORS = {
     path: (
-        "## RT-1D-R3 completion and mandatory P8 (current)",
+        "## RT-1D-R3 completion and mandatory P8 (completed)",
         "RT-1D-R3 rehearsal coordinator implementation completed in PR #825",
         "bootstrap `5f91be0efbaf2ba07777c973e260c40af343b7d6`",
         "final reviewed head `a21cfb0af9b0fbef3d466b145d81070b658e2540`",
@@ -1203,16 +1203,15 @@ R3_COMPLETION_ANCHORS = {
         "an R3-exclusive fresh projection root in which every exact, stale, foreign, corrupt, unsafe, or unreadable pre-existing bundle fails closed without mutation",
         "deletion only of a bundle installed and trusted-read by the same invocation, exact post-delete absence, and same-source rebuild equality",
         "RT-1D-R3 introduces no ordinary Subjective serving, ordinary usage event, authority-state write, intent, fence, receipt, activation, fallback, transfer, or retirement behavior",
-        "This transaction is the mandatory RT-1D-R3 P8 current-authority synchronization",
-        "It is documentation-only and requires no recursive P8",
-        "RT-1D-R4 may become uniquely next only after this P8 is merged and its exact resulting main is independently verified",
-        "RT-1D-R4 and RT-1D-R5 remain unstarted, and R4 activation is not authorized before the verified R3 P8 result",
+        "The mandatory RT-1D-R3 P8 current-authority synchronization completed in PR #826 from bootstrap `1eeb4c03151a20b8504819f6c72564b981c84157`, final reviewed head `3a9864839515d5787bd11c806fec655bffb9f0df`, and exact resulting main `c291e26f1c20e6479df427054142916dd7df57db`",
+        "It was documentation-only and required no recursive P8",
+        "the RT-1D-R4 implementation attempt then returned at P1 without repository mutation",
         "PR #823 remains closed, unmerged, and frozen at audit head `d411d443e71d771be4ac1f93e994d876e3f73b3a` as design evidence only, and its commits remain prohibited implementation history",
         "RT-1D implementation is complete through R3 rehearsal/readiness",
         "RT-1D-R1 durable preparation and RT-1D-R2A through RT-1D-R2D Primary writer-fence carriage, together with their mandatory P8 gates, are completed historical work, not future steps",
-        "RT-1D-R3 rehearsal/readiness implementation merged separately as PR #825, and its mandatory R3 P8 is this still-open PR #826, which is the current incomplete gate completed only after PR #826 merges and its exact resulting main is independently verified",
+        "RT-1D-R3 rehearsal/readiness implementation merged separately as PR #825, and its mandatory R3 P8 completed in PR #826 with exact resulting main `c291e26f1c20e6479df427054142916dd7df57db`",
         "The final RT-1D hard cutover, authority transfer, ordinary Subjective serving, Primary retirement, and RT-1D-R4 and RT-1D-R5 remain incomplete",
-        "RT-1D-R4 and RT-1D-R5 are unstarted, and RT-1D-R4 becomes uniquely next only after PR #826 merges and its exact resulting main is independently verified",
+        "RT-1D-R4 implementation and RT-1D-R5 are unstarted, and RT-1D-R4 implementation may bootstrap only from the independently verified exact resulting main of the current RT-1D-R4 activation budget amendment",
     )
     for path in (STATUS, PLAN, RT1C)
 }
@@ -1269,12 +1268,14 @@ R3_COMPLETION_STALE = (
     "RT-1D implementation is not complete through R3",
     "R1, R2A-R2D, and R3 merged with completed mandatory P8 gates",
     "and RT-1D-R3 rehearsal/readiness are merged historical work whose mandatory P8 gates are completed",
-    "the mandatory R3 P8 is complete",
-    "mandatory R3 P8 PR #826 is complete",
-    "the RT-1D-R3 P8 gate is completed",
-    "RT-1D-R3 P8 is completed",
-    "PR #826 is merged",
-    "PR #826 has merged",
+    "## RT-1D-R3 completion and mandatory P8 (current)",
+    "PR #826 remains open",
+    "PR #826 is unmerged",
+    "Draft PR #826",
+    "its mandatory R3 P8 is this still-open PR #826",
+    "the mandatory R3 P8 is the current incomplete gate",
+    "RT-1D-R4 becomes uniquely next only after PR #826 merges",
+    "This transaction is the mandatory RT-1D-R3 P8 current-authority synchronization",
 )
 
 R3_COMPLETION_MUTATIONS = tuple(
@@ -1307,14 +1308,19 @@ R3_COMPLETION_MUTATIONS = tuple(
             "R3 suite result",
         ),
         (
-            "It is documentation-only and requires no recursive P8",
-            "It is documentation-only and requires a recursive P8",
+            "It was documentation-only and required no recursive P8",
+            "It was documentation-only and required a recursive P8",
             "R3 P8 recursion",
         ),
         (
-            "RT-1D-R4 may become uniquely next only after this P8 is merged and its exact resulting main is independently verified",
-            "RT-1D-R4 may start before this P8 is merged",
-            "R4 gate",
+            "exact resulting main `c291e26f1c20e6479df427054142916dd7df57db`. It was documentation-only",
+            "exact resulting main `d291e26f1c20e6479df427054142916dd7df57db`. It was documentation-only",
+            "R3 P8 exact result",
+        ),
+        (
+            "final reviewed head `3a9864839515d5787bd11c806fec655bffb9f0df`",
+            "final reviewed head `4a9864839515d5787bd11c806fec655bffb9f0df`",
+            "R3 P8 reviewed head",
         ),
         (
             "RT-1D implementation is complete through R3 rehearsal/readiness",
@@ -1327,14 +1333,202 @@ R3_COMPLETION_MUTATIONS = tuple(
             "completed P8 gates as future steps",
         ),
         (
+            "its mandatory R3 P8 completed in PR #826 with exact resulting main `c291e26f1c20e6479df427054142916dd7df57db`",
             "its mandatory R3 P8 is this still-open PR #826, which is the current incomplete gate",
-            "its mandatory R3 P8 is complete",
-            "R3 P8 already complete",
+            "R3 P8 still incomplete",
         ),
         (
             "The final RT-1D hard cutover, authority transfer, ordinary Subjective serving, Primary retirement, and RT-1D-R4 and RT-1D-R5 remain incomplete",
             "The final RT-1D hard cutover and Primary retirement are complete",
             "cutover completeness",
+        ),
+    )
+)
+
+R4_BUDGET_ANCHORS = {
+    path: (
+        "## RT-1D-R4 P1 Return and activation budget amendment (current)",
+        "RT-1D-R4 one-authority activation returned at P1 without repository mutation from exact bootstrap main `c291e26f1c20e6479df427054142916dd7df57db`",
+        "The authorized implementation branch `agent/rt1d-r4-one-authority-activation` remains identical to that exact main, 0 ahead / 0 behind",
+        "That zero-diff implementation branch is frozen",
+        "RT-1D-R4 implementation and RT-1D-R5 are unstarted",
+        "The requested mode is owned exactly by `SubjectiveMemRetrievalCutoverMode` and "
+        "`RelayLMConfig` validation in `relaylm/config.py`, and by `RequestedMode` and "
+        "`SubjectiveMemRetrievalCutoverRequest.__post_init__` in "
+        "`relaylm/subjective_mem_retrieval_cutover.py`",
+        "the cutover binding carries no requested-mode field",
+        "Both owners admit only `primary_only` and `rehearsal`",
+        "The extension is applied to both exact requested-mode owners together, so the configuration mode and the cutover request schema never disagree",
+        "`relaylm/subjective_mem_retrieval_cutover.py` is 688 normally formatted physical lines before R4",
+        "This architecture-only amendment is the current Lane C transaction",
+        "and it requires no P8",
+        "RT-1D-R4 implementation may bootstrap only from this amendment's independently verified exact resulting main, never from a PR head, the frozen zero-diff implementation branch, or any other unmerged branch head",
+        "One new private R4 mechanics owner is authorized: `relaylm/_subjective_mem_retrieval_cutover_activation.py`",
+        "The allowed dependency direction is exactly one-way",
+        "The private activation owner must not import the cutover facade, the configuration owner, request-path owners, selection, the usage ledger, Primary owners, or RelayCTX",
+        "the private activation owner is not a second semantic authority",
+        "The public cutover owner alone owns the public binding, the requested-mode, result, and decision schemas, semantic validation, the exact reader and writer authority decisions, and validation of the private owner's returned content-free result",
+        "The cutover facade remains below roughly 700 normally formatted physical lines",
+        "The new private activation owner remains below roughly 600 normally formatted physical lines",
+        "Every new or materially changed orchestration remains at or below roughly 80 normally formatted physical lines",
+        "exactly these eleven paths: `relaylm/subjective_mem_retrieval_cutover.py`, "
+        "`relaylm/_subjective_mem_retrieval_cutover_activation.py`, `relaylm/config.py`, "
+        "`config.example.yaml`, `relaylm/managed_chat_pipeline_runtime.py`, "
+        "`relaylm/managed_chat_runtime.py`, `relaylm/relaymem_retrieval.py`, "
+        "`relaylm/relaymem_primary_recall.py`, `relaylm/relayctx_repack.py`, "
+        "`relaylm/subjective_mem_retrieval_selection.py`, and "
+        "`relaylm/subjective_mem_retrieval_usage_ledger.py`",
+        "The original exact-eight RT-1D-R4 production budget is superseded and is no longer executable",
+        "No twelfth RT-1D-R4 production path is authorized.",
+        "The RT-1D-R4 focused evidence budget is exactly the accepted existing evidence for "
+        "those production paths: existing request-path tests; reader-seam and offload tests; "
+        "pipeline-ordering tests; RelayCTX tests; Subjective selection and usage-ledger tests; "
+        "existing configuration and cutover tests; "
+        "`scripts/relaylm_p0_pipeline_ordering_smoke.py`; and "
+        "`scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py`",
+        "There is no wildcard `tests/` or `scripts/` authority",
+        "no new generic test, smoke, support, helper, framework, or control-plane file is authorized",
+        "The requested cutover mode is extended exactly to `primary_only`, `rehearsal`, and `subjective_only`",
+        "`subjective_only` requires the complete exact tuple and is only a requested deployment mode",
+        "Configuration alone never enables Subjective serving.",
+        "only an exact finalized transfer receipt bound to matching durable state may permit ordinary Subjective serving",
+        "Primary and Subjective are never simultaneously ordinary authorities",
+        "with no compatibility alias, permissive default, dual mode, precedence rule, or configuration-only authority",
+    )
+    for path in (STATUS, PLAN, RT1C)
+}
+for _path, _anchors in R4_BUDGET_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple(
+    (path, anchor)
+    for path, anchors in R4_BUDGET_ANCHORS.items()
+    for anchor in anchors
+)
+
+R4_BUDGET_STALE = (
+    "RT-1D-R4 implementation has started",
+    "RT-1D-R4 implementation is complete",
+    "RT-1D-R4 one-authority activation has started",
+    "RT-1D-R4 activation is implemented",
+    "## RT-1D-R4 P1 Return and activation budget amendment (historical)",
+    "the original exact-eight RT-1D-R4 production budget remains executable",
+    "the original exact-eight RT-1D-R4 production budget is still executable",
+    "the exact-eight RT-1D-R4 production budget remains current",
+    "the original exact-eight RT-1D-R4 production budget is authorized",
+    "A twelfth RT-1D-R4 production path is authorized.",
+    "a new generic test, smoke, support, helper, framework, or control-plane file is authorized",
+    "both the configuration and cutover-binding validators admit only `primary_only` and `rehearsal`",
+    "the cutover binding validator admits only `primary_only` and `rehearsal`",
+    "the cutover binding owns the requested mode",
+    "the cutover binding carries a requested-mode field",
+    "the requested mode is owned by the cutover binding",
+    "the requested mode is validated by the cutover binding",
+    "Only the existing configuration and cutover tests and smokes may be used",
+    "the RT-1D-R4 focused evidence budget is only the existing configuration and cutover tests",
+    "wildcard `tests/` authority applies to RT-1D-R4",
+    "every `tests/` file is authorized for RT-1D-R4",
+    "configuration alone enables Subjective serving",
+    "`subjective_only` alone authorizes Subjective serving",
+    "`subjective_only` authorizes ordinary Subjective serving by itself",
+    "`subjective_only` skips rehearsal and readiness",
+    "the private activation owner is a second semantic authority",
+    "the private activation owner may import the cutover facade",
+    "the private activation owner owns the public binding",
+    "the cutover facade may import the private activation owner dynamically",
+    "the frozen zero-diff implementation branch may bootstrap RT-1D-R4",
+    "RT-1D-R4 implementation may bootstrap from the frozen zero-diff implementation branch",
+    "this activation budget amendment requires P8",
+    "the activation budget amendment requires a recursive P8",
+    "Primary and Subjective may both serve",
+)
+
+R4_BUDGET_MUTATIONS = tuple(
+    (path, current, damaged, label)
+    for path in (STATUS, PLAN, RT1C)
+    for current, damaged, label in (
+        (
+            "returned at P1 without repository mutation from exact bootstrap main `c291e26f1c20e6479df427054142916dd7df57db`",
+            "returned at P1 without repository mutation from exact bootstrap main `d291e26f1c20e6479df427054142916dd7df57db`",
+            "R4 amendment bootstrap",
+        ),
+        (
+            "`relaylm/subjective_mem_retrieval_cutover.py` is 688 normally formatted physical lines before R4",
+            "`relaylm/subjective_mem_retrieval_cutover.py` is 588 normally formatted physical lines before R4",
+            "pre-R4 cutover owner size",
+        ),
+        (
+            "exactly these eleven paths: `relaylm/subjective_mem_retrieval_cutover.py`, "
+            "`relaylm/_subjective_mem_retrieval_cutover_activation.py`, `relaylm/config.py`,",
+            "exactly these eleven paths: `relaylm/subjective_mem_retrieval_cutover.py`, "
+            "`relaylm/config.py`,",
+            "private activation owner omitted from budget",
+        ),
+        (
+            "The original exact-eight RT-1D-R4 production budget is superseded and is no longer executable",
+            "The original exact-eight RT-1D-R4 production budget remains executable",
+            "superseded exact-eight budget",
+        ),
+        (
+            "That zero-diff implementation branch is frozen",
+            "That zero-diff implementation branch may be reused as a bootstrap",
+            "frozen implementation branch",
+        ),
+        (
+            "The cutover facade remains below roughly 700 normally formatted physical lines",
+            "The cutover facade remains below roughly 900 normally formatted physical lines",
+            "cutover facade limit",
+        ),
+        (
+            "The new private activation owner remains below roughly 600 normally formatted physical lines",
+            "The new private activation owner remains below roughly 1200 normally formatted physical lines",
+            "private activation owner limit",
+        ),
+        (
+            "The requested cutover mode is extended exactly to `primary_only`, `rehearsal`, and `subjective_only`",
+            "The requested cutover mode is extended exactly to `primary_only` and `rehearsal`",
+            "requested mode set",
+        ),
+        (
+            "The requested mode is owned exactly by `SubjectiveMemRetrievalCutoverMode` and "
+            "`RelayLMConfig` validation in `relaylm/config.py`, and by `RequestedMode` and "
+            "`SubjectiveMemRetrievalCutoverRequest.__post_init__` in "
+            "`relaylm/subjective_mem_retrieval_cutover.py`",
+            "The requested mode is owned exactly by the cutover binding validator",
+            "requested-mode ownership",
+        ),
+        (
+            "the cutover binding carries no requested-mode field",
+            "the cutover binding carries the requested-mode field",
+            "binding requested-mode field",
+        ),
+        (
+            "existing configuration and cutover tests; "
+            "`scripts/relaylm_p0_pipeline_ordering_smoke.py`; and "
+            "`scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py`",
+            "existing configuration and cutover tests; and "
+            "`scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py`",
+            "pipeline-ordering smoke omitted from focused budget",
+        ),
+        (
+            "existing request-path tests; reader-seam and offload tests; "
+            "pipeline-ordering tests; RelayCTX tests; Subjective selection and usage-ledger tests;",
+            "existing configuration and cutover tests only;",
+            "narrowed focused evidence budget",
+        ),
+        (
+            "Configuration alone never enables Subjective serving.",
+            "Configuration alone enables Subjective serving.",
+            "configuration serving authority",
+        ),
+        (
+            "the private activation owner is not a second semantic authority",
+            "the private activation owner is a second semantic authority",
+            "private owner semantic authority",
+        ),
+        (
+            "and it requires no P8",
+            "and it requires a further P8",
+            "amendment P8 status",
         ),
     )
 )
@@ -1672,7 +1866,7 @@ def self_test() -> None:
         (RT1C, "Both fields are now validated with tuple membership, which compares by equality rather than hashing", "malformed unhashable values may raise TypeError", "unhashable correction"),
         (RT1C, "R2B queue, runner, worker, and Primary pipeline carriage is complete; R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; at that historical point, R2D was next and had not started; at that historical point, R2D, R3, R4, and R5 had not started.", "RT-1D-R2B has started", "architecture R2B started"),
         (RT1C, "| `relaylm/relaymem_slp_runtime_finalization.py` | +57/-0 | `a6be671c66a1` | 585 |", "| `relaylm/relaymem_slp_runtime_finalization.py` | +57/-0 | `a6be671c66a1` | 586 |", "finalization final lines"),
-    ) + R3_COMPLETION_MUTATIONS
+    ) + R3_COMPLETION_MUTATIONS + R4_BUDGET_MUTATIONS
     for path, current, damaged, label in focused_mutations:
         body = read(path)
         assert current in body, f"{path}: focused anchor absent: {current!r}"
@@ -1770,6 +1964,16 @@ def self_test() -> None:
                 print(f"PASS: {path}: reintroducing {stale!r} fails closed")
                 continue
             raise AssertionError(f"{path}: R3 completion stale anchor is not forbidden: {stale!r}")
+    for path in R4_BUDGET_ANCHORS:
+        for stale in R4_BUDGET_STALE:
+            body = read(path)
+            assert stale not in body, f"{path}: R4 budget stale anchor is present: {stale!r}"
+            try:
+                forbid_body(path, R4_BUDGET_STALE, body + "\n" + stale + "\n")
+            except AssertionError:
+                print(f"PASS: {path}: reintroducing {stale!r} fails closed")
+                continue
+            raise AssertionError(f"{path}: R4 budget stale anchor is not forbidden: {stale!r}")
     print("SELF-TEST PASS")
 
 
@@ -1805,6 +2009,8 @@ def main(argv: list[str] | None = None) -> None:
         forbid(path, R2D_P8_STALE)
     for path in R3_COMPLETION_ANCHORS:
         forbid(path, R3_COMPLETION_STALE)
+    for path in R4_BUDGET_ANCHORS:
+        forbid(path, R4_BUDGET_STALE)
     forbid("docs/PROJECT_STATUS.md", HISTORY_ONLY_STATUS_ANCHORS)
     print("Documentation current boundary smoke passed")
 
