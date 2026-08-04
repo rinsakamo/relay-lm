@@ -1209,7 +1209,8 @@ R3_COMPLETION_ANCHORS = {
         "RT-1D-R4 and RT-1D-R5 remain unstarted, and R4 activation is not authorized before the verified R3 P8 result",
         "PR #823 remains closed, unmerged, and frozen at audit head `d411d443e71d771be4ac1f93e994d876e3f73b3a` as design evidence only, and its commits remain prohibited implementation history",
         "RT-1D implementation is complete through R3 rehearsal/readiness",
-        "RT-1D-R1 durable preparation, RT-1D-R2A through RT-1D-R2D Primary writer-fence carriage, and RT-1D-R3 rehearsal/readiness are merged historical work whose mandatory P8 gates are completed, not future steps",
+        "RT-1D-R1 durable preparation and RT-1D-R2A through RT-1D-R2D Primary writer-fence carriage, together with their mandatory P8 gates, are completed historical work, not future steps",
+        "RT-1D-R3 rehearsal/readiness implementation merged separately as PR #825, and its mandatory R3 P8 is this still-open PR #826, which is the current incomplete gate completed only after PR #826 merges and its exact resulting main is independently verified",
         "The final RT-1D hard cutover, authority transfer, ordinary Subjective serving, Primary retirement, and RT-1D-R4 and RT-1D-R5 remain incomplete",
         "RT-1D-R4 and RT-1D-R5 are unstarted, and RT-1D-R4 becomes uniquely next only after PR #826 merges and its exact resulting main is independently verified",
     )
@@ -1266,6 +1267,14 @@ R3_COMPLETION_STALE = (
     "the mandatory R1 P8 gate is a future step",
     "the mandatory R2D P8 gate is a future step",
     "RT-1D implementation is not complete through R3",
+    "R1, R2A-R2D, and R3 merged with completed mandatory P8 gates",
+    "and RT-1D-R3 rehearsal/readiness are merged historical work whose mandatory P8 gates are completed",
+    "the mandatory R3 P8 is complete",
+    "mandatory R3 P8 PR #826 is complete",
+    "the RT-1D-R3 P8 gate is completed",
+    "RT-1D-R3 P8 is completed",
+    "PR #826 is merged",
+    "PR #826 has merged",
 )
 
 R3_COMPLETION_MUTATIONS = tuple(
@@ -1313,9 +1322,14 @@ R3_COMPLETION_MUTATIONS = tuple(
             "RT-1D runtime completion",
         ),
         (
-            "mandatory P8 gates are completed, not future steps",
+            "together with their mandatory P8 gates, are completed historical work, not future steps",
             "the mandatory R2D P8 gate is a future step",
             "completed P8 gates as future steps",
+        ),
+        (
+            "its mandatory R3 P8 is this still-open PR #826, which is the current incomplete gate",
+            "its mandatory R3 P8 is complete",
+            "R3 P8 already complete",
         ),
         (
             "The final RT-1D hard cutover, authority transfer, ordinary Subjective serving, Primary retirement, and RT-1D-R4 and RT-1D-R5 remain incomplete",
