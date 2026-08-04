@@ -49,7 +49,9 @@ relaylm_related_authority:
 ## Status and purpose
 
 This document defines the accepted target architecture for RT-1. RT-1A, RT-1B,
-and RT-1C are implemented within it; RT-1D remains the unimplemented target.
+RT-1C, and RT-1D through R3 rehearsal/readiness are implemented within it; the
+RT-1D hard cutover, authority transfer, ordinary Subjective serving, and Primary
+retirement remain the unimplemented target.
 
 RT-1 replaces the current Primary MEM ordinary-recall authority with one
 Subjective MEM ordinary-Retrieval authority. It does so through a disposable
@@ -1229,7 +1231,9 @@ cutover owner.
 The rejected alternatives are a marker in the Primary root (a second durable
 mechanism), a process-local flag (not restart-safe), implicit root derivation
 (hidden precedence), and facade-only fencing while a private/direct apply path
-remains.  Runtime implementation remains not started.  Primary remains the sole
+remains.  RT-1D runtime implementation is complete through R3
+rehearsal/readiness; the hard cutover, authority transfer, and Primary
+retirement remain unimplemented.  Primary remains the sole
 current ordinary served memory and Retrieval authority.
 
 #### Immutable runtime-private cutover binding
@@ -2343,5 +2347,7 @@ The amended R3 production/config budget is exactly `relaylm/subjective_mem_retri
 RT-1D-R3 rehearsal coordinator implementation completed in PR #825 from bootstrap `5f91be0efbaf2ba07777c973e260c40af343b7d6`, final reviewed head `a21cfb0af9b0fbef3d466b145d81070b658e2540`, and exact squash result `1eeb4c03151a20b8504819f6c72564b981c84157`. Its three pre-squash commits changed exactly seven implementation paths, +914/-15: `config.example.yaml`, `relaylm/config.py`, `relaylm/subjective_mem_retrieval_cutover.py`, `relaylm/subjective_mem_retrieval_rehearsal.py`, `scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py`, `tests/test_subjective_mem_retrieval_cutover.py`, and `tests/test_subjective_mem_retrieval_rehearsal.py`. The coordinator `relaylm/subjective_mem_retrieval_rehearsal.py` is 398 physical lines with a maximum function span of 40 lines. The Python 3.12 full suite passed 1086 tests with 0 failures and 1 warning in 671.84 seconds, every applicable final exact-head workflow succeeded, the normalized failure state is none, and `p6_stop` is false. The final governed Claude Code correction changed only the bounded `TypeError`/`ValueError` test expectation and preserved the existing implementation receipt's logical writer.
 
 The accepted RT-1D-R3 semantics are one dedicated disposable rehearsal coordinator; an immutable specification validated before every projection or store effect; a factory-only readiness proof carrying complete binding, generation, source, manifest, ordered-row-population, characterization, readiness, and instance-owned closed-false authority fields; independent re-derivation and validation of the complete proof identity by the cutover semantic owner; an R3-exclusive fresh projection root in which every exact, stale, foreign, corrupt, unsafe, or unreadable pre-existing bundle fails closed without mutation; no read or delete after a failed write, deletion only of a bundle installed and trusted-read by the same invocation, exact post-delete absence, and same-source rebuild equality; and characterization proving deterministic replay, rebuild equivalence, admitted leakage outcome, bounded Primary and Subjective latency, and no private-content combination. RT-1D-R3 introduces no ordinary Subjective serving, ordinary usage event, authority-state write, intent, fence, receipt, activation, fallback, transfer, or retirement behavior, and Primary MEM remains the sole ordinary served memory and Retrieval authority.
+
+RT-1D implementation is complete through R3 rehearsal/readiness: RT-1D-R1 durable preparation, RT-1D-R2A through RT-1D-R2D Primary writer-fence carriage, and RT-1D-R3 rehearsal/readiness are merged historical work whose mandatory P8 gates are completed, not future steps. The final RT-1D hard cutover, authority transfer, ordinary Subjective serving, Primary retirement, and RT-1D-R4 and RT-1D-R5 remain incomplete. RT-1D-R4 and RT-1D-R5 are unstarted, and RT-1D-R4 becomes uniquely next only after PR #826 merges and its exact resulting main is independently verified.
 
 This transaction is the mandatory RT-1D-R3 P8 current-authority synchronization. It is documentation-only and requires no recursive P8. RT-1D-R4 may become uniquely next only after this P8 is merged and its exact resulting main is independently verified; RT-1D-R4 and RT-1D-R5 remain unstarted, and R4 activation is not authorized before the verified R3 P8 result. PR #823 remains closed, unmerged, and frozen at audit head `d411d443e71d771be4ac1f93e994d876e3f73b3a` as design evidence only, and its commits remain prohibited implementation history.

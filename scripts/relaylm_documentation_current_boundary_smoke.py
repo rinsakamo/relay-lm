@@ -26,7 +26,7 @@ REQUIRED = {
         "RT-1A contract and projection foundation           complete in PR #774",
         "RT-1B projection builder and rebuild               complete in PR #779",
         "RT-1C shadow adapter, grounding handoff, usage ledger complete in PR #784; default-off, shadow-only, unwired",
-        "RT-1D structural-seam architecture amendment      P1 Return recorded; runtime not started",
+        "RT-1D structural-seam architecture amendment      P1 Return recorded; runtime implementation complete through R3",
         "RT-1D-S1 reader seams                          complete in PR #789; behavior-preserving",
         "S1 mandatory P8 current-authority sync      PR #790; exact resulting main 3e20274f18306f7db2410fd5239051411b9c052b",
         "RT-1D-S2 worker seams                    complete in PR #791; exact resulting main 31b700a2db0af7819f761d51bd946ff6798eb4c9",
@@ -80,7 +80,7 @@ REQUIRED = {
         "LC-1 lifecycle migration                        complete / LC-1A Correct, LC-1B Forget, LC-1C Pin/Unpin, LC-1D Restore, and LC-1E Consolidate implemented / default-off",
         "RT-1B projection builder and rebuild complete in PR #779 / default-off / unwired",
         "RT-1D-S3C Soul Lab mutation route seams completed in PR #798",
-        "RT-1D structural P1 Return / runtime not started",
+        "RT-1D structural P1 Return / runtime implementation complete through R3",
         "RT-1D-S1 reader seams complete in PR #789",
         "S1 mandatory P8 current-authority sync in PR #790 -> exact resulting main 3e20274f18306f7db2410fd5239051411b9c052b",
         "RT-1D-S2 worker seams complete in PR #791 -> exact resulting main 31b700a2db0af7819f761d51bd946ff6798eb4c9",
@@ -106,7 +106,7 @@ REQUIRED = {
         "relaylm_authority: rt1_subjective_mem_retrieval_projection_and_hard_cutover",
         "## Authorized implementation budget",
         "RT-1A contract and projection foundation is complete. RT-1B projection builder\nand deterministic rebuild is complete. RT-1C shadow adapter, grounding handoff,\nand usage ledger is implemented in PR #784 within the budget this section\nauthorizes, and remains default-off, explicit shadow-only, and unwired from\nordinary Retrieval.",
-        "RT-1A, RT-1B,\nand RT-1C are implemented within it; RT-1D remains the unimplemented target.",
+        "RT-1A, RT-1B,\nRT-1C, and RT-1D through R3 rehearsal/readiness are implemented within it; the\nRT-1D hard cutover, authority transfer, ordinary Subjective serving, and Primary\nretirement remain the unimplemented target.",
         "This architecture does not claim the RT-1 series or its hard cutover is\nimplemented.",
         "It claims no ordinary served Subjective MEM Retrieval,\nno authority cutover, and no completed RT-1 series",
         "RT-1D hard cutover, Primary retirement, and authority transfer are\narchitecture-authorized and are not started.",
@@ -143,7 +143,7 @@ REQUIRED = {
         "The rejected alternatives are a marker in the Primary root",
         "a process-local flag",
         "implicit root derivation",
-        "Runtime implementation remains not started.",
+        "RT-1D runtime implementation is complete through R3\nrehearsal/readiness; the hard cutover, authority transfer, and Primary\nretirement remain unimplemented.",
         "### Future implementation path budget",
         "### Compatibility consumers and removal gates",
         "### Structural P1 Return and ordered prerequisite seams",
@@ -656,7 +656,7 @@ PROBES = (
     (STATUS, "RT-1C shadow adapter, grounding handoff, usage ledger complete in PR #784; default-off, shadow-only, unwired"),
     (STATUS, "- RT-1C is default-off, explicit shadow-only, and unwired from ordinary request-path Retrieval."),
     (STATUS, "- Durable RT-1C usage persistence exists only for an explicitly non-shadow prepared handoff"),
-    (STATUS, "RT-1D structural-seam architecture amendment      P1 Return recorded; runtime not started"),
+    (STATUS, "RT-1D structural-seam architecture amendment      P1 Return recorded; runtime implementation complete through R3"),
     (STATUS, "RT-1D-S1 reader seams                          complete in PR #789; behavior-preserving"),
     (STATUS, "S1 mandatory P8 current-authority sync      PR #790; exact resulting main 3e20274f18306f7db2410fd5239051411b9c052b"),
     (STATUS, "RT-1D-S2 worker seams                    complete in PR #791; exact resulting main 31b700a2db0af7819f761d51bd946ff6798eb4c9"),
@@ -665,7 +665,7 @@ PROBES = (
     (STATUS, "Primary MEM remains the sole ordinary served memory and Retrieval authority until a future RT-1D implementation is validated, merged, and its cutover receipt is finalized."),
     (STATUS, "- ordinary served Subjective MEM Retrieval, query matching, ranking, cache, and request-path wiring;"),
     (PLAN, "RT-1D-S3C Soul Lab mutation route seams completed in PR #798"),
-    (PLAN, "RT-1D structural P1 Return / runtime not started"),
+    (PLAN, "RT-1D structural P1 Return / runtime implementation complete through R3"),
     (PLAN, "S1 mandatory P8 current-authority sync in PR #790 -> exact resulting main 3e20274f18306f7db2410fd5239051411b9c052b"),
     (PLAN, "RT-1D-S2 worker seams complete in PR #791 -> exact resulting main 31b700a2db0af7819f761d51bd946ff6798eb4c9"),
     (PLAN, "S2 mandatory P8 current-authority sync in PR #792 -> exact resulting main 7e4fb4383dc6c1229d488ac200132b66f6b65bba"),
@@ -786,7 +786,7 @@ PROBES = (
     (RT1C, "a mutation token issued before `writer_fenced` cannot authorize an\napply or recovery write after `writer_fenced`"),
     (RT1C, "Configuration may add explicit locator/binding fields"),
     (RT1C, "No configuration value, enable boolean, or load success\nauthorizes deployment or serving"),
-    (RT1C, "Runtime implementation remains not started."),
+    (RT1C, "RT-1D runtime implementation is complete through R3\nrehearsal/readiness; the hard cutover, authority transfer, and Primary\nretirement remain unimplemented."),
 ) + tuple((RT1C, anchor) for anchor in RT1_STRUCTURAL_ANCHORS)
 
 PROBES += tuple((path, anchor) for path, anchors in S3_AMENDMENT_ANCHORS.items() for anchor in anchors)
@@ -1208,6 +1208,10 @@ R3_COMPLETION_ANCHORS = {
         "RT-1D-R4 may become uniquely next only after this P8 is merged and its exact resulting main is independently verified",
         "RT-1D-R4 and RT-1D-R5 remain unstarted, and R4 activation is not authorized before the verified R3 P8 result",
         "PR #823 remains closed, unmerged, and frozen at audit head `d411d443e71d771be4ac1f93e994d876e3f73b3a` as design evidence only, and its commits remain prohibited implementation history",
+        "RT-1D implementation is complete through R3 rehearsal/readiness",
+        "RT-1D-R1 durable preparation, RT-1D-R2A through RT-1D-R2D Primary writer-fence carriage, and RT-1D-R3 rehearsal/readiness are merged historical work whose mandatory P8 gates are completed, not future steps",
+        "The final RT-1D hard cutover, authority transfer, ordinary Subjective serving, Primary retirement, and RT-1D-R4 and RT-1D-R5 remain incomplete",
+        "RT-1D-R4 and RT-1D-R5 are unstarted, and RT-1D-R4 becomes uniquely next only after PR #826 merges and its exact resulting main is independently verified",
     )
     for path in (STATUS, PLAN, RT1C)
 }
@@ -1249,6 +1253,19 @@ R3_COMPLETION_STALE = (
     "PR #825 remains open",
     "PR #825 is unmerged",
     "Draft PR #825",
+    "RT-1D-R2C and RT-1D-R2D follow in order",
+    "RT-1D structural-seam architecture amendment      P1 Return recorded; runtime not started",
+    "RT-1D structural P1 Return / runtime not started",
+    "RT-1D remains the unimplemented target",
+    "Runtime implementation remains not started.",
+    "RT-1D runtime implementation has not started",
+    "RT-1D runtime is not started",
+    "fresh RT-1D runtime transaction / only after S3C P8 exact resulting-main verification",
+    "RT-1D-R1 is next and has not started",
+    "RT-1D-R2 is next and has not started",
+    "the mandatory R1 P8 gate is a future step",
+    "the mandatory R2D P8 gate is a future step",
+    "RT-1D implementation is not complete through R3",
 )
 
 R3_COMPLETION_MUTATIONS = tuple(
@@ -1289,6 +1306,21 @@ R3_COMPLETION_MUTATIONS = tuple(
             "RT-1D-R4 may become uniquely next only after this P8 is merged and its exact resulting main is independently verified",
             "RT-1D-R4 may start before this P8 is merged",
             "R4 gate",
+        ),
+        (
+            "RT-1D implementation is complete through R3 rehearsal/readiness",
+            "RT-1D implementation is not complete through R3",
+            "RT-1D runtime completion",
+        ),
+        (
+            "mandatory P8 gates are completed, not future steps",
+            "the mandatory R2D P8 gate is a future step",
+            "completed P8 gates as future steps",
+        ),
+        (
+            "The final RT-1D hard cutover, authority transfer, ordinary Subjective serving, Primary retirement, and RT-1D-R4 and RT-1D-R5 remain incomplete",
+            "The final RT-1D hard cutover and Primary retirement are complete",
+            "cutover completeness",
         ),
     )
 )
