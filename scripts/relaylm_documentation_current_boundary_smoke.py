@@ -1110,7 +1110,7 @@ PROBES += tuple((path, anchor) for path, anchors in R2C_COMPLETION_ANCHORS.items
 
 R2D_P8_ANCHORS = {
     path: (
-        "## RT-1D-R2D completion and mandatory P8 (completed current boundary)",
+        "## RT-1D-R2D completion and mandatory P8 (historical)",
         "RT-1D-R2D completed in implementation PR #818",
         "992496748efc70d51a7ed356e23aea650220902c",
         "a2197e9f92a8067d733f8adba524bf54eb2708b6",
@@ -1129,7 +1129,7 @@ R2D_P8_ANCHORS = {
         "The mandatory RT-1D-R2D P8 authority synchronization completed in PR #819",
         "This documentation-only P8 requires no recursive P8",
         "The post-P8 validator correction PR #820 completed with exact result",
-        "RT-1D-R3 is uniquely next and remains unstarted; RT-1D-R4 and RT-1D-R5 remain unstarted",
+        "at that historical point RT-1D-R3 was uniquely next and had not started, and RT-1D-R4 and RT-1D-R5 had not started",
         "never PR #818 head, PR #819 head, or any unmerged branch head",
     )
     for path in (STATUS, PLAN, RT1C)
@@ -1140,10 +1140,10 @@ PROBES += tuple((path, anchor) for path, anchors in R2D_P8_ANCHORS.items() for a
 
 R3_GENERATION_IDENTITY_AMENDMENT_ANCHORS = {
     path: (
-        "## RT-1D-R3 projection-generation identity P1 amendment (current)",
+        "## RT-1D-R3 projection-generation identity P1 amendment (historical)",
         "exact bootstrap `6a790486564b9d917ff8a3b20ef7e30417dd74f2`",
         "exact `smretrievalgen_<64-lowercase-hex>` identity",
-        "RT-1D-R3 therefore remains unstarted",
+        "RT-1D-R3 therefore remained unstarted",
         "`projection_source_digest`, `bootstrap_main_sha`, and `resulting_main_sha` remain raw 64-character lowercase SHA-256 values",
         "No prefix stripping, re-hashing, dual-read, fallback, or compatibility representation is authorized",
         "`relaylm/config.py` and `config.example.yaml`",
@@ -1162,7 +1162,7 @@ PROBES += tuple(
 
 R3_COORDINATOR_AMENDMENT_ANCHORS = {
     path: (
-        "## RT-1D-R3 rehearsal coordinator P1 amendment (current)",
+        "## RT-1D-R3 rehearsal coordinator P1 amendment (historical)",
         "PR #823 was closed unmerged at exact frozen head `d411d443e71d771be4ac1f93e994d876e3f73b3a`",
         "`relaylm/subjective_mem_retrieval_rehearsal.py`",
         "`tests/test_subjective_mem_retrieval_rehearsal.py`",
@@ -1183,6 +1183,114 @@ PROBES += tuple(
     (path, anchor)
     for path, anchors in R3_COORDINATOR_AMENDMENT_ANCHORS.items()
     for anchor in anchors
+)
+
+R3_COMPLETION_ANCHORS = {
+    path: (
+        "## RT-1D-R3 completion and mandatory P8 (current)",
+        "RT-1D-R3 rehearsal coordinator implementation completed in PR #825",
+        "bootstrap `5f91be0efbaf2ba07777c973e260c40af343b7d6`",
+        "final reviewed head `a21cfb0af9b0fbef3d466b145d81070b658e2540`",
+        "exact squash result `1eeb4c03151a20b8504819f6c72564b981c84157`",
+        "three pre-squash commits changed exactly seven implementation paths, +914/-15",
+        "`relaylm/subjective_mem_retrieval_rehearsal.py` is 398 physical lines with a maximum function span of 40 lines",
+        "passed 1086 tests with 0 failures and 1 warning in 671.84 seconds",
+        "the normalized failure state is none, and `p6_stop` is false",
+        "preserved the existing implementation receipt's logical writer",
+        "one dedicated disposable rehearsal coordinator",
+        "an immutable specification validated before every projection or store effect",
+        "a factory-only readiness proof carrying complete binding, generation, source, manifest, ordered-row-population, characterization, readiness, and instance-owned closed-false authority fields",
+        "an R3-exclusive fresh projection root in which every exact, stale, foreign, corrupt, unsafe, or unreadable pre-existing bundle fails closed without mutation",
+        "deletion only of a bundle installed and trusted-read by the same invocation, exact post-delete absence, and same-source rebuild equality",
+        "RT-1D-R3 introduces no ordinary Subjective serving, ordinary usage event, authority-state write, intent, fence, receipt, activation, fallback, transfer, or retirement behavior",
+        "This transaction is the mandatory RT-1D-R3 P8 current-authority synchronization",
+        "It is documentation-only and requires no recursive P8",
+        "RT-1D-R4 may become uniquely next only after this P8 is merged and its exact resulting main is independently verified",
+        "RT-1D-R4 and RT-1D-R5 remain unstarted, and R4 activation is not authorized before the verified R3 P8 result",
+        "PR #823 remains closed, unmerged, and frozen at audit head `d411d443e71d771be4ac1f93e994d876e3f73b3a` as design evidence only, and its commits remain prohibited implementation history",
+    )
+    for path in (STATUS, PLAN, RT1C)
+}
+for _path, _anchors in R3_COMPLETION_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple(
+    (path, anchor)
+    for path, anchors in R3_COMPLETION_ANCHORS.items()
+    for anchor in anchors
+)
+
+R3_COMPLETION_STALE = (
+    "RT-1D-R3 is uniquely next and remains unstarted",
+    "RT-1D-R3 remains unstarted",
+    "RT-1D-R3 is next and has not started",
+    "RT-1D-R3 remains not started",
+    "RT-1D-R3 runtime is not started",
+    "RT-1D runtime remains not started",
+    "the rehearsal coordinator is absent",
+    "`relaylm/subjective_mem_retrieval_rehearsal.py` does not exist",
+    "the rehearsal coordinator is authorized but not implemented",
+    "RT-1D-R3 is authorized and not implemented",
+    "## RT-1D-R3 projection-generation identity P1 amendment (current)",
+    "## RT-1D-R3 rehearsal coordinator P1 amendment (current)",
+    "## RT-1D-R2D completion and mandatory P8 (completed current boundary)",
+    "## RT-1D-R3 completion and mandatory P8 (historical)",
+    "RT-1D-R4 has started",
+    "RT-1D-R4 is complete",
+    "R4 activation is authorized before the verified R3 P8 result",
+    "R4 one-authority activation has started",
+    "Subjective ordinary Retrieval is enabled",
+    "RT-1D-R5 has started",
+    "the RT-1D-R3 P8 requires another P8",
+    "this P8 requires a recursive P8",
+    "PR #823 merged",
+    "PR #823 commits may be reused",
+    "PR #823 is reusable implementation history",
+    "RT-1D-R3 completed in PR #823",
+    "PR #825 remains open",
+    "PR #825 is unmerged",
+    "Draft PR #825",
+)
+
+R3_COMPLETION_MUTATIONS = tuple(
+    (path, current, damaged, label)
+    for path in (STATUS, PLAN, RT1C)
+    for current, damaged, label in (
+        (
+            "final reviewed head `a21cfb0af9b0fbef3d466b145d81070b658e2540`",
+            "final reviewed head `b21cfb0af9b0fbef3d466b145d81070b658e2540`",
+            "R3 reviewed head",
+        ),
+        (
+            "exact squash result `1eeb4c03151a20b8504819f6c72564b981c84157`",
+            "exact squash result `2eeb4c03151a20b8504819f6c72564b981c84157`",
+            "R3 exact result",
+        ),
+        (
+            "three pre-squash commits changed exactly seven implementation paths, +914/-15",
+            "three pre-squash commits changed exactly six implementation paths, +914/-15",
+            "R3 path inventory",
+        ),
+        (
+            "`relaylm/subjective_mem_retrieval_rehearsal.py` is 398 physical lines with a maximum function span of 40 lines",
+            "`relaylm/subjective_mem_retrieval_rehearsal.py` is 498 physical lines with a maximum function span of 40 lines",
+            "coordinator structure",
+        ),
+        (
+            "passed 1086 tests with 0 failures and 1 warning in 671.84 seconds",
+            "passed 1085 tests with 1 failure and 1 warning in 671.84 seconds",
+            "R3 suite result",
+        ),
+        (
+            "It is documentation-only and requires no recursive P8",
+            "It is documentation-only and requires a recursive P8",
+            "R3 P8 recursion",
+        ),
+        (
+            "RT-1D-R4 may become uniquely next only after this P8 is merged and its exact resulting main is independently verified",
+            "RT-1D-R4 may start before this P8 is merged",
+            "R4 gate",
+        ),
+    )
 )
 
 R2D_P8_STALE = (
@@ -1518,7 +1626,7 @@ def self_test() -> None:
         (RT1C, "Both fields are now validated with tuple membership, which compares by equality rather than hashing", "malformed unhashable values may raise TypeError", "unhashable correction"),
         (RT1C, "R2B queue, runner, worker, and Primary pipeline carriage is complete; R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; at that historical point, R2D was next and had not started; at that historical point, R2D, R3, R4, and R5 had not started.", "RT-1D-R2B has started", "architecture R2B started"),
         (RT1C, "| `relaylm/relaymem_slp_runtime_finalization.py` | +57/-0 | `a6be671c66a1` | 585 |", "| `relaylm/relaymem_slp_runtime_finalization.py` | +57/-0 | `a6be671c66a1` | 586 |", "finalization final lines"),
-    )
+    ) + R3_COMPLETION_MUTATIONS
     for path, current, damaged, label in focused_mutations:
         body = read(path)
         assert current in body, f"{path}: focused anchor absent: {current!r}"
@@ -1606,6 +1714,16 @@ def self_test() -> None:
                 print(f"PASS: {path}: reintroducing {stale!r} fails closed")
                 continue
             raise AssertionError(f"{path}: R2D P8 stale anchor is not forbidden: {stale!r}")
+    for path in R3_COMPLETION_ANCHORS:
+        for stale in R3_COMPLETION_STALE:
+            body = read(path)
+            assert stale not in body, f"{path}: R3 completion stale anchor is present: {stale!r}"
+            try:
+                forbid_body(path, R3_COMPLETION_STALE, body + "\n" + stale + "\n")
+            except AssertionError:
+                print(f"PASS: {path}: reintroducing {stale!r} fails closed")
+                continue
+            raise AssertionError(f"{path}: R3 completion stale anchor is not forbidden: {stale!r}")
     print("SELF-TEST PASS")
 
 
@@ -1639,6 +1757,8 @@ def main(argv: list[str] | None = None) -> None:
         forbid(path, R2A_COMPLETION_STALE)
     for path in R2D_P8_ANCHORS:
         forbid(path, R2D_P8_STALE)
+    for path in R3_COMPLETION_ANCHORS:
+        forbid(path, R3_COMPLETION_STALE)
     forbid("docs/PROJECT_STATUS.md", HISTORY_ONLY_STATUS_ANCHORS)
     print("Documentation current boundary smoke passed")
 
