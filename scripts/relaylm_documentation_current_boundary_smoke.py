@@ -1352,7 +1352,13 @@ R4_BUDGET_ANCHORS = {
         "The authorized implementation branch `agent/rt1d-r4-one-authority-activation` remains identical to that exact main, 0 ahead / 0 behind",
         "That zero-diff implementation branch is frozen",
         "RT-1D-R4 implementation and RT-1D-R5 are unstarted",
-        "`SubjectiveMemRetrievalCutoverMode` and both the configuration and cutover-binding validators admit only `primary_only` and `rehearsal`",
+        "The requested mode is owned exactly by `SubjectiveMemRetrievalCutoverMode` and "
+        "`RelayLMConfig` validation in `relaylm/config.py`, and by `RequestedMode` and "
+        "`SubjectiveMemRetrievalCutoverRequest.__post_init__` in "
+        "`relaylm/subjective_mem_retrieval_cutover.py`",
+        "the cutover binding carries no requested-mode field",
+        "Both owners admit only `primary_only` and `rehearsal`",
+        "The extension is applied to both exact requested-mode owners together, so the configuration mode and the cutover request schema never disagree",
         "`relaylm/subjective_mem_retrieval_cutover.py` is 688 normally formatted physical lines before R4",
         "This architecture-only amendment is the current Lane C transaction",
         "and it requires no P8",
@@ -1374,6 +1380,13 @@ R4_BUDGET_ANCHORS = {
         "`relaylm/subjective_mem_retrieval_usage_ledger.py`",
         "The original exact-eight RT-1D-R4 production budget is superseded and is no longer executable",
         "No twelfth RT-1D-R4 production path is authorized.",
+        "The RT-1D-R4 focused evidence budget is exactly the accepted existing evidence for "
+        "those production paths: existing request-path tests; reader-seam and offload tests; "
+        "pipeline-ordering tests; RelayCTX tests; Subjective selection and usage-ledger tests; "
+        "existing configuration and cutover tests; "
+        "`scripts/relaylm_p0_pipeline_ordering_smoke.py`; and "
+        "`scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py`",
+        "There is no wildcard `tests/` or `scripts/` authority",
         "no new generic test, smoke, support, helper, framework, or control-plane file is authorized",
         "The requested cutover mode is extended exactly to `primary_only`, `rehearsal`, and `subjective_only`",
         "`subjective_only` requires the complete exact tuple and is only a requested deployment mode",
@@ -1404,6 +1417,16 @@ R4_BUDGET_STALE = (
     "the original exact-eight RT-1D-R4 production budget is authorized",
     "A twelfth RT-1D-R4 production path is authorized.",
     "a new generic test, smoke, support, helper, framework, or control-plane file is authorized",
+    "both the configuration and cutover-binding validators admit only `primary_only` and `rehearsal`",
+    "the cutover binding validator admits only `primary_only` and `rehearsal`",
+    "the cutover binding owns the requested mode",
+    "the cutover binding carries a requested-mode field",
+    "the requested mode is owned by the cutover binding",
+    "the requested mode is validated by the cutover binding",
+    "Only the existing configuration and cutover tests and smokes may be used",
+    "the RT-1D-R4 focused evidence budget is only the existing configuration and cutover tests",
+    "wildcard `tests/` authority applies to RT-1D-R4",
+    "every `tests/` file is authorized for RT-1D-R4",
     "configuration alone enables Subjective serving",
     "`subjective_only` alone authorizes Subjective serving",
     "`subjective_only` authorizes ordinary Subjective serving by itself",
@@ -1464,6 +1487,33 @@ R4_BUDGET_MUTATIONS = tuple(
             "The requested cutover mode is extended exactly to `primary_only`, `rehearsal`, and `subjective_only`",
             "The requested cutover mode is extended exactly to `primary_only` and `rehearsal`",
             "requested mode set",
+        ),
+        (
+            "The requested mode is owned exactly by `SubjectiveMemRetrievalCutoverMode` and "
+            "`RelayLMConfig` validation in `relaylm/config.py`, and by `RequestedMode` and "
+            "`SubjectiveMemRetrievalCutoverRequest.__post_init__` in "
+            "`relaylm/subjective_mem_retrieval_cutover.py`",
+            "The requested mode is owned exactly by the cutover binding validator",
+            "requested-mode ownership",
+        ),
+        (
+            "the cutover binding carries no requested-mode field",
+            "the cutover binding carries the requested-mode field",
+            "binding requested-mode field",
+        ),
+        (
+            "existing configuration and cutover tests; "
+            "`scripts/relaylm_p0_pipeline_ordering_smoke.py`; and "
+            "`scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py`",
+            "existing configuration and cutover tests; and "
+            "`scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py`",
+            "pipeline-ordering smoke omitted from focused budget",
+        ),
+        (
+            "existing request-path tests; reader-seam and offload tests; "
+            "pipeline-ordering tests; RelayCTX tests; Subjective selection and usage-ledger tests;",
+            "existing configuration and cutover tests only;",
+            "narrowed focused evidence budget",
         ),
         (
             "Configuration alone never enables Subjective serving.",
