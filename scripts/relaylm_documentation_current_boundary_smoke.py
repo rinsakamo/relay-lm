@@ -1211,7 +1211,7 @@ R3_COMPLETION_ANCHORS = {
         "RT-1D-R1 durable preparation and RT-1D-R2A through RT-1D-R2D Primary writer-fence carriage, together with their mandatory P8 gates, are completed historical work, not future steps",
         "RT-1D-R3 rehearsal/readiness implementation merged separately as PR #825, and its mandatory R3 P8 completed in PR #826 with exact resulting main `c291e26f1c20e6479df427054142916dd7df57db`",
         "The final RT-1D hard cutover, authority transfer, ordinary Subjective serving, Primary retirement, and RT-1D-R4 and RT-1D-R5 remain incomplete",
-        "RT-1D-R4 implementation and RT-1D-R5 are unstarted, and RT-1D-R4 implementation may bootstrap only from the independently verified exact resulting main of the current RT-1D-R4 activation budget amendment",
+        "RT-1D-R4 implementation and RT-1D-R5 are unstarted, and RT-1D-R4 implementation may bootstrap only from the independently verified exact resulting main of the completed RT-1D-R4 activation budget amendment PR #828, `9aea56d6d61d69c390bd0c2dc740739ab155d76e`",
     )
     for path in (STATUS, PLAN, RT1C)
 }
@@ -1347,7 +1347,6 @@ R3_COMPLETION_MUTATIONS = tuple(
 
 R4_BUDGET_ANCHORS = {
     path: (
-        "## RT-1D-R4 P1 Return and activation budget amendment (current)",
         "RT-1D-R4 one-authority activation returned at P1 without repository mutation from exact bootstrap main `c291e26f1c20e6479df427054142916dd7df57db`",
         "The authorized implementation branch `agent/rt1d-r4-one-authority-activation` remains identical to that exact main, 0 ahead / 0 behind",
         "That zero-diff implementation branch is frozen",
@@ -1360,9 +1359,6 @@ R4_BUDGET_ANCHORS = {
         "Both owners admit only `primary_only` and `rehearsal`",
         "The extension is applied to both exact requested-mode owners together, so the configuration mode and the cutover request schema never disagree",
         "`relaylm/subjective_mem_retrieval_cutover.py` is 688 normally formatted physical lines before R4",
-        "This architecture-only amendment is the current Lane C transaction",
-        "and it requires no P8",
-        "RT-1D-R4 implementation may bootstrap only from this amendment's independently verified exact resulting main, never from a PR head, the frozen zero-diff implementation branch, or any other unmerged branch head",
         "One new private R4 mechanics owner is authorized: `relaylm/_subjective_mem_retrieval_cutover_activation.py`",
         "The allowed dependency direction is exactly one-way",
         "The private activation owner must not import the cutover facade, the configuration owner, request-path owners, selection, the usage ledger, Primary owners, or RelayCTX",
@@ -1440,6 +1436,108 @@ R4_BUDGET_STALE = (
     "this activation budget amendment requires P8",
     "the activation budget amendment requires a recursive P8",
     "Primary and Subjective may both serve",
+    "## RT-1D-R4 P1 Return and activation budget amendment (current)",
+    "This architecture-only amendment is the current Lane C transaction",
+    "the RT-1D-R4 activation budget amendment is the current Lane C transaction",
+    "the activation budget amendment is the current Lane C transaction",
+    "activation budget amendment current",
+    "activation budget amendment is current",
+    "activation budget amendment remains current",
+    "PR #828 remains open",
+    "PR #828 is unmerged",
+    "Draft PR #828",
+    "the PR #828 amendment requires P8",
+    "the completed activation budget amendment requires a recursive P8",
+    "RT-1D-R4 implementation is uniquely next and has started",
+    "RT-1D-R4 implementation is uniquely next and complete",
+    "RT-1D-R4 implementation may bootstrap from PR #828 head",
+    "RT-1D-R4 implementation may bootstrap from `be2218ac7c5ddd3a9f2a9672846101be482dd97b`",
+    "RT-1D-R4 implementation may bootstrap from `agent/rt1d-r4-activation-budget-amendment`",
+    "RT-1D-R4 implementation may bootstrap from `agent/rt1d-r4-one-authority-activation`",
+    "RT-1D-R4 implementation may bootstrap from the amendment branch",
+    "RT-1D-R4 implementation may bootstrap from a correction PR head",
+    "RT-1D-R4 implementation may bootstrap from this correction PR head",
+    "RT-1D-R5 is uniquely next",
+    "RT-1D-R5 is next and has started",
+    "Subjective MEM is the sole ordinary served memory and Retrieval authority",
+)
+
+# PR #828 merged with exact result `9aea56d…`. The amendment section is completed
+# authority, RT-1D-R4 implementation is uniquely next and unstarted, and the
+# bootstrap is pinned to the independently verified exact resulting main.
+R4_RESULT_ANCHORS = {
+    path: (
+        "## RT-1D-R4 P1 Return and activation budget amendment (completed)",
+        "This architecture-only amendment completed in PR #828 from bootstrap "
+        "`c291e26f1c20e6479df427054142916dd7df57db`, final reviewed head "
+        "`be2218ac7c5ddd3a9f2a9672846101be482dd97b`, and exact resulting main "
+        "`9aea56d6d61d69c390bd0c2dc740739ab155d76e`",
+        "Its two commits changed exactly the four amendment paths",
+        "and it required no P8",
+        "The revised RT-1D-R4 authority recorded in the rest of this section is the accepted current RT-1D-R4 architecture authority",
+        "RT-1D-R4 implementation is uniquely next and remains unstarted, and RT-1D-R5 remains unstarted",
+        "RT-1D-R4 implementation may bootstrap only from the independently verified exact PR #828 "
+        "resulting main `9aea56d6d61d69c390bd0c2dc740739ab155d76e`, or from a later independently "
+        "verified exact current `main` that advances it only by documentation-only "
+        "current-authority correction, never from PR #828 head "
+        "`be2218ac7c5ddd3a9f2a9672846101be482dd97b`, never from the frozen "
+        "`agent/rt1d-r4-one-authority-activation` branch, never from the "
+        "`agent/rt1d-r4-activation-budget-amendment` branch, and never from a correction PR head",
+        "it never received the amendment and must not be used as a bootstrap now that the amendment has merged",
+    )
+    for path in (STATUS, PLAN, RT1C)
+}
+for _path, _anchors in R4_RESULT_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple(
+    (path, anchor)
+    for path, anchors in R4_RESULT_ANCHORS.items()
+    for anchor in anchors
+)
+
+R4_RESULT_MUTATIONS = tuple(
+    (path, current, damaged, label)
+    for path in (STATUS, PLAN, RT1C)
+    for current, damaged, label in (
+        (
+            "and exact resulting main `9aea56d6d61d69c390bd0c2dc740739ab155d76e`",
+            "and exact resulting main `8aea56d6d61d69c390bd0c2dc740739ab155d76e`",
+            "R4 amendment exact result",
+        ),
+        (
+            "final reviewed head `be2218ac7c5ddd3a9f2a9672846101be482dd97b`",
+            "final reviewed head `ce2218ac7c5ddd3a9f2a9672846101be482dd97b`",
+            "R4 amendment reviewed head",
+        ),
+        (
+            "Its two commits changed exactly the four amendment paths",
+            "Its two commits changed exactly the five amendment paths",
+            "R4 amendment path inventory",
+        ),
+        (
+            "and it required no P8",
+            "and it required a further P8",
+            "R4 amendment result P8 status",
+        ),
+        (
+            "RT-1D-R4 implementation is uniquely next and remains unstarted, and RT-1D-R5 remains unstarted",
+            "RT-1D-R4 implementation is uniquely next and has started",
+            "R4 next-slice state",
+        ),
+        (
+            "may bootstrap only from the independently verified exact PR #828 resulting main "
+            "`9aea56d6d61d69c390bd0c2dc740739ab155d76e`",
+            "may bootstrap only from PR #828 head "
+            "`be2218ac7c5ddd3a9f2a9672846101be482dd97b`",
+            "R4 bootstrap source",
+        ),
+        (
+            "never from the frozen `agent/rt1d-r4-one-authority-activation` branch, never from the "
+            "`agent/rt1d-r4-activation-budget-amendment` branch, and never from a correction PR head",
+            "or from any convenient branch head",
+            "R4 prohibited bootstrap heads",
+        ),
+    )
 )
 
 R4_BUDGET_MUTATIONS = tuple(
@@ -1524,11 +1622,6 @@ R4_BUDGET_MUTATIONS = tuple(
             "the private activation owner is not a second semantic authority",
             "the private activation owner is a second semantic authority",
             "private owner semantic authority",
-        ),
-        (
-            "and it requires no P8",
-            "and it requires a further P8",
-            "amendment P8 status",
         ),
     )
 )
@@ -1866,7 +1959,7 @@ def self_test() -> None:
         (RT1C, "Both fields are now validated with tuple membership, which compares by equality rather than hashing", "malformed unhashable values may raise TypeError", "unhashable correction"),
         (RT1C, "R2B queue, runner, worker, and Primary pipeline carriage is complete; R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; at that historical point, R2D was next and had not started; at that historical point, R2D, R3, R4, and R5 had not started.", "RT-1D-R2B has started", "architecture R2B started"),
         (RT1C, "| `relaylm/relaymem_slp_runtime_finalization.py` | +57/-0 | `a6be671c66a1` | 585 |", "| `relaylm/relaymem_slp_runtime_finalization.py` | +57/-0 | `a6be671c66a1` | 586 |", "finalization final lines"),
-    ) + R3_COMPLETION_MUTATIONS + R4_BUDGET_MUTATIONS
+    ) + R3_COMPLETION_MUTATIONS + R4_BUDGET_MUTATIONS + R4_RESULT_MUTATIONS
     for path, current, damaged, label in focused_mutations:
         body = read(path)
         assert current in body, f"{path}: focused anchor absent: {current!r}"
