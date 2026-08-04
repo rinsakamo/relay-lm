@@ -1375,7 +1375,6 @@ R4_BUDGET_ANCHORS = {
         "`relaylm/subjective_mem_retrieval_selection.py`, and "
         "`relaylm/subjective_mem_retrieval_usage_ledger.py`",
         "The original exact-eight RT-1D-R4 production budget is superseded and is no longer executable",
-        "No twelfth RT-1D-R4 production path is authorized.",
         "The RT-1D-R4 focused evidence budget is exactly the accepted existing evidence for "
         "those production paths: existing request-path tests; reader-seam and offload tests; "
         "pipeline-ordering tests; RelayCTX tests; Subjective selection and usage-ledger tests; "
@@ -1411,7 +1410,6 @@ R4_BUDGET_STALE = (
     "the original exact-eight RT-1D-R4 production budget is still executable",
     "the exact-eight RT-1D-R4 production budget remains current",
     "the original exact-eight RT-1D-R4 production budget is authorized",
-    "A twelfth RT-1D-R4 production path is authorized.",
     "a new generic test, smoke, support, helper, framework, or control-plane file is authorized",
     "both the configuration and cutover-binding validators admit only `primary_only` and `rehearsal`",
     "the cutover binding validator admits only `primary_only` and `rehearsal`",
@@ -1474,7 +1472,9 @@ R4_RESULT_ANCHORS = {
         "`9aea56d6d61d69c390bd0c2dc740739ab155d76e`",
         "Its two commits changed exactly the four amendment paths",
         "and it required no P8",
-        "The revised RT-1D-R4 authority recorded in the rest of this section is the accepted current RT-1D-R4 architecture authority",
+        "The revised RT-1D-R4 authority recorded in the rest of this section was the "
+        "accepted RT-1D-R4 architecture authority until the RT-1D-R4 runtime-projection "
+        "budget amendment recorded below superseded its exact production/config budget",
         "RT-1D-R4 implementation is uniquely next and remains unstarted, and RT-1D-R5 remains unstarted",
         "RT-1D-R4 implementation may bootstrap only from the independently verified exact PR #828 "
         "resulting main `9aea56d6d61d69c390bd0c2dc740739ab155d76e`, or from a later independently "
@@ -1622,6 +1622,239 @@ R4_BUDGET_MUTATIONS = tuple(
             "the private activation owner is not a second semantic authority",
             "the private activation owner is a second semantic authority",
             "private owner semantic authority",
+        ),
+    )
+)
+
+# RT-1D-R4 returned at P1 a second time: ordinary Subjective serving has no
+# production exact-source acquisition owner and no distinct ordinary live-projection
+# root. The exact-eleven budget is superseded by an exact-twelve budget carrying one
+# new private runtime-projection owner and one new configuration field.
+R4_RUNTIME_PROJECTION_ANCHORS = {
+    path: (
+        "## RT-1D-R4 runtime-projection budget amendment",
+        "RT-1D-R4 one-authority activation returned at P1 a second time, without "
+        "repository mutation, from exact bootstrap main "
+        "`dc33626fe66ec79ee1d1a5cfc8a5aed23342032c`",
+        "Both zero-diff RT-1D-R4 implementation branches, "
+        "`agent/rt1d-r4-one-authority-activation` and "
+        "`agent/rt1d-r4-one-authority-activation-implementation`, are frozen and must "
+        "never be reused as a bootstrap",
+        "no production exact-source acquisition owner exists",
+        "production code does not construct that source, and existing construction is "
+        "test and rehearsal evidence only",
+        "no ordinary live-projection deployment authority exists",
+        "Current configuration carries the durable cutover store root and binding tuple "
+        "but no distinct ordinary projection root",
+        "the projection store accepts a bundle only through a trusted read against both "
+        "an exact fixed source and an explicit projection root",
+        "the RT-1D-R3 root is rehearsal-exclusive and disposable",
+        "Reusing the durable cutover store as the disposable ordinary projection root "
+        "would conflate two authorities and violate the accepted store separation",
+        "Ordinary Subjective serving cannot be safely implemented by laundering source "
+        "acquisition into selection, the cutover facade, the activation mechanics owner, "
+        "Primary owners, or RelayCTX",
+        "Exactly one additional private production owner is authorized: "
+        "`relaylm/_subjective_mem_retrieval_runtime_projection.py`",
+        "acquire one exact current `SubjectiveMemRetrievalProjectionSource` by "
+        "orchestrating the existing canonical workspace, Evidence-store, selector, "
+        "receipt, and authorization owners without reimplementing their semantics",
+        "install or exact-verify one disposable live projection bundle in a dedicated "
+        "projection root through the existing projection store",
+        "trusted-read that bundle against the same exact source",
+        "fail closed on missing, foreign, stale, mixed, corrupt, unsafe, unreadable, "
+        "incomplete, or source-disagreeing state",
+        "it must not become a second current selector, receipt validator, authorization "
+        "evaluator, projection builder, projection store, selection owner, usage ledger, "
+        "or cutover authority",
+        "the ordinary route and cutover facade depend on "
+        "`relaylm/_subjective_mem_retrieval_runtime_projection.py`, which depends on the "
+        "existing canonical source authorities, "
+        "`relaylm/subjective_mem_retrieval_projection.py`, and "
+        "`relaylm/subjective_mem_retrieval_projection_store.py`",
+        "No reverse import is allowed.",
+        "The existing projection builder and store and the canonical and lifecycle "
+        "owners remain byte-identical.",
+        "Exactly one configuration field is authorized: "
+        "`subjective_mem_retrieval_projection_root`",
+        "It must be an absolute, normalized, non-symlinked directory and must be "
+        "distinct from `subjective_mem_retrieval_cutover_store_root`, "
+        "`evidence_data_root`, `subjective_mem_workspace_root`, and the RT-1D-R3 "
+        "rehearsal root",
+        "`subjective_only` requires the complete existing cutover tuple and this "
+        "projection root, and configuration still grants no serving authority",
+        "twelve paths total",
+        "`relaylm/_subjective_mem_retrieval_runtime_projection.py`, `relaylm/config.py`,",
+        "The prior exact-eleven RT-1D-R4 production/config budget is superseded and is "
+        "no longer executable",
+        "No thirteenth RT-1D-R4 production or configuration path, schema owner, "
+        "registry, workflow, helper, generic smoke, control plane, fallback, or "
+        "compatibility layer is authorized",
+        "Before transfer intent, source and projection preparation may fail with Primary "
+        "still serving",
+        "After transfer intent, every source, generation, manifest, row-population, "
+        "readiness, and binding disagreement fails closed with neither authority "
+        "serving, and recovery remains forward-only",
+        "The final transfer receipt authorizes only the exact generation and source "
+        "state finalized atomically at activation",
+        "Source drift after activation never silently rebinds, never falls back, and "
+        "never restores Primary",
+        "the new private runtime-projection owner remains below roughly 600 normally "
+        "formatted physical lines",
+        "physical-line compression, wrapper splitting, dynamic import, hidden generated "
+        "source, and responsibility laundering are prohibited",
+        "This RT-1D-R4 runtime-projection budget amendment is documentation and "
+        "current-boundary only",
+        "and it requires no P8. RT-1D-R4 implementation is uniquely next and remains "
+        "unstarted, RT-1D-R5 remains unstarted",
+        "RT-1D-R4 implementation may bootstrap only from the independently verified "
+        "exact resulting `main` of this runtime-projection budget amendment, never from "
+        "either frozen RT-1D-R4 implementation branch, never from "
+        "`agent/rt1d-r4-runtime-projection-budget-amendment`, and never from this "
+        "amendment's PR head",
+    )
+    for path in (STATUS, PLAN, RT1C)
+}
+for _path, _anchors in R4_RUNTIME_PROJECTION_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple(
+    (path, anchor)
+    for path, anchors in R4_RUNTIME_PROJECTION_ANCHORS.items()
+    for anchor in anchors
+)
+
+R4_RUNTIME_PROJECTION_STALE = (
+    "the prior exact-eleven RT-1D-R4 production/config budget remains executable",
+    "the prior exact-eleven RT-1D-R4 production/config budget is still executable",
+    "the exact-eleven RT-1D-R4 production/config budget remains current",
+    "the exact-eleven RT-1D-R4 production/config budget is authorized",
+    "No twelfth RT-1D-R4 production path is authorized.",
+    "A thirteenth RT-1D-R4 production path is authorized.",
+    "RT-1D-R4 requires no runtime-projection owner",
+    "no runtime-projection owner is required",
+    "no ordinary exact-source acquisition owner is required",
+    "the ordinary route may acquire the Subjective source without the runtime-projection owner",
+    "source acquisition may be added to the selection owner",
+    "source acquisition may be added to the cutover facade",
+    "source acquisition may be added to the activation mechanics owner",
+    "source acquisition may be added to a Primary owner",
+    "the runtime-projection owner is a second semantic authority",
+    "the runtime-projection owner may import the cutover facade",
+    "the runtime-projection owner reimplements the canonical selector, receipt, or authorization semantics",
+    "RT-1D-R4 implementation may bootstrap from `agent/rt1d-r4-one-authority-activation-implementation`",
+    "RT-1D-R4 implementation may bootstrap from `agent/rt1d-r4-runtime-projection-budget-amendment`",
+    "either frozen RT-1D-R4 implementation branch may bootstrap RT-1D-R4",
+    "a frozen RT-1D-R4 implementation branch may be reused as a bootstrap",
+    "the durable cutover store root is the ordinary projection root",
+    "`subjective_mem_retrieval_cutover_store_root` may be reused as the ordinary projection root",
+    "the RT-1D-R3 rehearsal root is the ordinary projection root",
+    "the rehearsal projection root may be reused for ordinary serving",
+    "`subjective_mem_retrieval_projection_root` alone authorizes Subjective serving",
+    "the projection root grants Subjective serving authority",
+    "configuration and the projection root together authorize Subjective serving",
+    "the projection store accepts a bundle without an exact fixed source",
+    "a source-less trusted projection read is allowed",
+    "a stale trusted projection read is allowed",
+    "a stale projection generation may be trusted",
+    "source drift after activation silently rebinds the generation",
+    "source drift after activation restores Primary",
+    "Primary fallback is allowed after transfer intent",
+    "Primary falls back after transfer intent",
+    "RT-1D-R4 runtime-projection implementation has started",
+    "the RT-1D-R4 runtime-projection budget amendment requires P8",
+    "RT-1D-R5 has started",
+    "RT-1D-R5 implementation has started",
+)
+
+R4_RUNTIME_PROJECTION_MUTATIONS = tuple(
+    (path, current, damaged, label)
+    for path in (STATUS, PLAN, RT1C)
+    for current, damaged, label in (
+        (
+            "Exactly one additional private production owner is authorized: "
+            "`relaylm/_subjective_mem_retrieval_runtime_projection.py`",
+            "No additional private production owner is authorized",
+            "runtime-projection owner authorization",
+        ),
+        (
+            "twelve paths total",
+            "eleven paths total",
+            "R4 exact-twelve budget",
+        ),
+        (
+            "The prior exact-eleven RT-1D-R4 production/config budget is superseded and "
+            "is no longer executable",
+            "The prior exact-eleven RT-1D-R4 production/config budget remains executable",
+            "superseded exact-eleven budget",
+        ),
+        (
+            "Exactly one configuration field is authorized: "
+            "`subjective_mem_retrieval_projection_root`",
+            "No new configuration field is authorized",
+            "projection-root configuration field",
+        ),
+        (
+            "distinct from `subjective_mem_retrieval_cutover_store_root`, "
+            "`evidence_data_root`, `subjective_mem_workspace_root`, and the RT-1D-R3 "
+            "rehearsal root",
+            "the durable cutover store root is the ordinary projection root",
+            "projection-root separation",
+        ),
+        (
+            "No reverse import is allowed.",
+            "A reverse import is allowed.",
+            "runtime-projection dependency direction",
+        ),
+        (
+            "Source drift after activation never silently rebinds, never falls back, and "
+            "never restores Primary",
+            "source drift after activation silently rebinds the generation",
+            "post-activation source drift",
+        ),
+        (
+            "After transfer intent, every source, generation, manifest, row-population, "
+            "readiness, and binding disagreement fails closed with neither authority "
+            "serving, and recovery remains forward-only",
+            "Primary falls back after transfer intent",
+            "post-intent fail-closed",
+        ),
+        (
+            "the new private runtime-projection owner remains below roughly 600 normally "
+            "formatted physical lines",
+            "the new private runtime-projection owner remains below roughly 1800 "
+            "normally formatted physical lines",
+            "runtime-projection owner limit",
+        ),
+        (
+            "Both zero-diff RT-1D-R4 implementation branches, "
+            "`agent/rt1d-r4-one-authority-activation` and "
+            "`agent/rt1d-r4-one-authority-activation-implementation`, are frozen and "
+            "must never be reused as a bootstrap",
+            "either frozen RT-1D-R4 implementation branch may bootstrap RT-1D-R4",
+            "frozen R4 implementation branches",
+        ),
+        (
+            "no production exact-source acquisition owner exists",
+            "a production exact-source acquisition owner exists",
+            "exact-source acquisition blocker",
+        ),
+        (
+            "no ordinary live-projection deployment authority exists",
+            "an ordinary live-projection deployment authority exists",
+            "ordinary projection-root blocker",
+        ),
+        (
+            "`subjective_only` requires the complete existing cutover tuple and this "
+            "projection root, and configuration still grants no serving authority",
+            "the projection root grants Subjective serving authority",
+            "configuration-only serving",
+        ),
+        (
+            "RT-1D-R4 implementation may bootstrap only from the independently verified "
+            "exact resulting `main` of this runtime-projection budget amendment",
+            "RT-1D-R4 implementation may bootstrap from "
+            "`agent/rt1d-r4-runtime-projection-budget-amendment`",
+            "R4 runtime-projection bootstrap source",
         ),
     )
 )
@@ -1959,7 +2192,12 @@ def self_test() -> None:
         (RT1C, "Both fields are now validated with tuple membership, which compares by equality rather than hashing", "malformed unhashable values may raise TypeError", "unhashable correction"),
         (RT1C, "R2B queue, runner, worker, and Primary pipeline carriage is complete; R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; at that historical point, R2D was next and had not started; at that historical point, R2D, R3, R4, and R5 had not started.", "RT-1D-R2B has started", "architecture R2B started"),
         (RT1C, "| `relaylm/relaymem_slp_runtime_finalization.py` | +57/-0 | `a6be671c66a1` | 585 |", "| `relaylm/relaymem_slp_runtime_finalization.py` | +57/-0 | `a6be671c66a1` | 586 |", "finalization final lines"),
-    ) + R3_COMPLETION_MUTATIONS + R4_BUDGET_MUTATIONS + R4_RESULT_MUTATIONS
+    ) + (
+        R3_COMPLETION_MUTATIONS
+        + R4_BUDGET_MUTATIONS
+        + R4_RESULT_MUTATIONS
+        + R4_RUNTIME_PROJECTION_MUTATIONS
+    )
     for path, current, damaged, label in focused_mutations:
         body = read(path)
         assert current in body, f"{path}: focused anchor absent: {current!r}"
@@ -2067,6 +2305,20 @@ def self_test() -> None:
                 print(f"PASS: {path}: reintroducing {stale!r} fails closed")
                 continue
             raise AssertionError(f"{path}: R4 budget stale anchor is not forbidden: {stale!r}")
+    for path in R4_RUNTIME_PROJECTION_ANCHORS:
+        for stale in R4_RUNTIME_PROJECTION_STALE:
+            body = read(path)
+            assert stale not in body, (
+                f"{path}: R4 runtime-projection stale anchor is present: {stale!r}"
+            )
+            try:
+                forbid_body(path, R4_RUNTIME_PROJECTION_STALE, body + "\n" + stale + "\n")
+            except AssertionError:
+                print(f"PASS: {path}: reintroducing {stale!r} fails closed")
+                continue
+            raise AssertionError(
+                f"{path}: R4 runtime-projection stale anchor is not forbidden: {stale!r}"
+            )
     print("SELF-TEST PASS")
 
 
@@ -2104,6 +2356,8 @@ def main(argv: list[str] | None = None) -> None:
         forbid(path, R3_COMPLETION_STALE)
     for path in R4_BUDGET_ANCHORS:
         forbid(path, R4_BUDGET_STALE)
+    for path in R4_RUNTIME_PROJECTION_ANCHORS:
+        forbid(path, R4_RUNTIME_PROJECTION_STALE)
     forbid("docs/PROJECT_STATUS.md", HISTORY_ONLY_STATUS_ANCHORS)
     print("Documentation current boundary smoke passed")
 
