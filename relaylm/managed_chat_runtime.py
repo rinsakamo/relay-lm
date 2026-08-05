@@ -116,6 +116,29 @@ from relaylm.relayctx_repack import (
 )
 
 
+def resolve_subjective_mem_retrieval_authority(
+    config: RelayLMConfig,
+) -> tuple[object, object]:
+    """Activate once, then derive each immutable RT-1D decision, in that order.
+
+    This is one blocking synchronous boundary by design. A ``subjective_only``
+    transition may open Evidence stores and locks, inventory current selectors,
+    read canonical pages, build and install or trusted-read the live projection,
+    and commit several durable transactions before returning, and both decisions
+    reconstruct the durable chain. ``handle_managed_chat_completion`` therefore
+    runs the whole boundary on a worker thread through ``asyncio.to_thread``,
+    exactly as the ordinary retrieval stage is offloaded, so no durable cutover
+    work ever executes on the request event-loop thread. For every requested
+    mode but ``subjective_only`` the activation is a no-op that reads no store.
+    """
+
+    activate_subjective_mem_retrieval_cutover(config=config)
+    return (
+        resolve_subjective_mem_retrieval_primary_reader_decision(config),
+        resolve_subjective_mem_retrieval_primary_writer_decision(config),
+    )
+
+
 async def handle_managed_chat_completion(
     *,
     request: Request,
@@ -131,11 +154,12 @@ async def handle_managed_chat_completion(
         return validation.error_response
     node_timings = {"request_received": _finalize_timing(started_at, started_monotonic)}
     # The one governed production activation, then the one derivation of each
-    # immutable RT-1D authority decision from the resulting durable state. For
-    # every mode but `subjective_only` activation is a no-op that reads no store.
-    activate_subjective_mem_retrieval_cutover(config=config)
-    reader_decision = resolve_subjective_mem_retrieval_primary_reader_decision(config)
-    writer_decision = resolve_subjective_mem_retrieval_primary_writer_decision(config)
+    # immutable RT-1D authority decision from the resulting durable state. The
+    # ordering is preserved inside the offloaded boundary; the blocking durable
+    # work never runs on the event-loop thread.
+    reader_decision, writer_decision = await asyncio.to_thread(
+        resolve_subjective_mem_retrieval_authority, config
+    )
     result = await run_managed_chat_pipeline(
         request=request,
         config=config,

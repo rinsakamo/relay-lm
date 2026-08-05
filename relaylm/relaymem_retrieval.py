@@ -181,13 +181,24 @@ def _fenced_artifact(
     The inert apply decisions and null candidate slots keep the existing
     RelayCTX injection contract shape without any Primary candidate, snippet,
     evidence envelope, or recall content, because no Primary owner ran.
+
+    The Primary-fence diagnostics are unconditionally content-free, because no
+    Primary owner ran either way, and ``primary_fence_content_free`` states
+    exactly that. The whole-artifact classification is separate and truthful: a
+    successful Subjective release attaches runtime-private grounding evidence,
+    so the artifact is then content-bearing and ``runtime_private``, never
+    globally ``content_free``. A refused, blocked, or empty release carries no
+    released evidence and stays content-free, and ``neither`` always does.
     """
 
+    released = subjective is not None and subjective.get("content_included") is True
     artifact: dict[str, Any] = {
         "schema": FENCED_ARTIFACT_SCHEMA,
-        "content_free": True,
+        "content_free": not released,
+        "runtime_private": released,
         "primary_reader_fenced": True,
         "primary_store_read": False,
+        "primary_fence_content_free": True,
         "apply_decision": "not_eligible",
         "snippet_apply_decision": "not_eligible",
         "ctx_block": None,

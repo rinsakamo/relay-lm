@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 import ast
+import asyncio
 import inspect
+import threading
 from collections.abc import Mapping
 from pathlib import Path
+from types import SimpleNamespace
 
-from relaylm.managed_chat_runtime import handle_managed_chat_completion
+from relaylm import managed_chat_runtime
+from relaylm.managed_chat_runtime import (
+    handle_managed_chat_completion,
+    resolve_subjective_mem_retrieval_authority,
+)
 from relaylm.managed_chat_pipeline_runtime import (
     _extract_ctx_hints,
     run_managed_chat_pipeline,
@@ -715,6 +722,46 @@ def test_source_drift_after_activation_fails_closed_without_primary_fallback(
     ]
     assert "primary_recall_runtime" not in artifact
     assert _ordinary_selected_memories(artifact) == []
+    # A blocked release carries no evidence, so this artifact really is content-free.
+    assert (artifact["content_free"], artifact["runtime_private"]) == (True, False)
+
+
+def test_a_successful_subjective_release_is_never_labeled_content_free(
+    tmp_path: Path,
+) -> None:
+    """The Primary fence stays content-free; the whole artifact tells the truth."""
+
+    config, route, _source, revision, _root, _ready = _subjective_environment(
+        tmp_path, "transfer_receipt_finalized"
+    )
+    diagnostics, artifact = _run_stage(config, route)
+    assert artifact[ORDINARY_MEMORY_AUTHORITY_KEY] == "subjective_only"
+    assert artifact[SUBJECTIVE_RUNTIME_KEY]["content_included"] is True
+    assert [item["memory_id"] for item in _ordinary_selected_memories(artifact)] == [
+        revision.memory_id
+    ]
+    assert artifact["content_free"] is False
+    assert artifact["runtime_private"] is True
+    # The Primary-fence diagnostics stay content-free in every case, because no
+    # Primary owner ran either way.
+    assert artifact["primary_fence_content_free"] is True
+    assert artifact["primary_reader_fenced"] is True
+    assert artifact["primary_store_read"] is False
+    assert diagnostics["content_free"] is True
+    assert diagnostics["primary_store_read"] is False
+
+
+def test_a_fenced_artifact_serving_neither_authority_stays_content_free(
+    tmp_path: Path,
+) -> None:
+    config, route, _source, _revision, _root, _ready = _subjective_environment(
+        tmp_path, "primary_writer_fenced"
+    )
+    _diagnostics, artifact = _run_stage(config, route)
+    assert artifact[ORDINARY_MEMORY_AUTHORITY_KEY] == "neither"
+    assert SUBJECTIVE_RUNTIME_KEY not in artifact
+    assert (artifact["content_free"], artifact["runtime_private"]) == (True, False)
+    assert artifact["primary_fence_content_free"] is True
 
 
 def test_a_missing_or_tampered_reader_decision_releases_no_memory(tmp_path: Path) -> None:
@@ -860,26 +907,117 @@ def test_activation_is_a_no_op_for_every_other_requested_mode(tmp_path: Path) ->
 def test_the_managed_request_path_activates_then_resolves_both_decisions() -> None:
     """The production caller drives activation before deriving either authority."""
 
-    handler = _function("relaylm/managed_chat_runtime.py", "handle_managed_chat_completion")
+    boundary = _function(
+        "relaylm/managed_chat_runtime.py", "resolve_subjective_mem_retrieval_authority"
+    )
     order = {
         name: min(
             node.lineno
-            for node in ast.walk(handler)
+            for node in ast.walk(boundary)
             if isinstance(node, ast.Name) and node.id == name
         )
         for name in (
             "activate_subjective_mem_retrieval_cutover",
             "resolve_subjective_mem_retrieval_primary_reader_decision",
             "resolve_subjective_mem_retrieval_primary_writer_decision",
-            "run_managed_chat_pipeline",
         )
     }
     assert (
         order["activate_subjective_mem_retrieval_cutover"]
         < order["resolve_subjective_mem_retrieval_primary_reader_decision"]
         < order["resolve_subjective_mem_retrieval_primary_writer_decision"]
-        < order["run_managed_chat_pipeline"]
     )
+    assert not inspect.iscoroutinefunction(resolve_subjective_mem_retrieval_authority)
+    handler = _function(
+        "relaylm/managed_chat_runtime.py", "handle_managed_chat_completion"
+    )
+    offloaded = [
+        node
+        for node in ast.walk(handler)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "to_thread"
+        and any(
+            isinstance(argument, ast.Name)
+            and argument.id == "resolve_subjective_mem_retrieval_authority"
+            for argument in node.args
+        )
+    ]
+    assert len(offloaded) == 1
+    delegation = min(
+        node.lineno
+        for node in ast.walk(handler)
+        if isinstance(node, ast.Name) and node.id == "run_managed_chat_pipeline"
+    )
+    assert offloaded[0].lineno < delegation
+
+
+def test_the_managed_request_path_offloads_activation_off_the_event_loop(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A `subjective_only` transition is durable work; it never blocks the loop.
+
+    The real handler runs against the real activation and decision owners; only
+    the thread identity is recorded around them, and the pipeline is stopped
+    immediately after the boundary so the assertion is about that boundary.
+    """
+
+    config, route, _source, _revision, _root, _ready = _subjective_environment(
+        tmp_path, "transfer_receipt_finalized"
+    )
+    threads: dict[str, int] = {}
+    order: list[str] = []
+
+    def _recorded(name: str, function):
+        def _wrapped(*args, **kwargs):
+            threads[name] = threading.get_ident()
+            order.append(name)
+            return function(*args, **kwargs)
+
+        return _wrapped
+
+    for name, attribute in (
+        ("activate", "activate_subjective_mem_retrieval_cutover"),
+        ("reader", "resolve_subjective_mem_retrieval_primary_reader_decision"),
+        ("writer", "resolve_subjective_mem_retrieval_primary_writer_decision"),
+    ):
+        monkeypatch.setattr(
+            managed_chat_runtime,
+            attribute,
+            _recorded(name, getattr(managed_chat_runtime, attribute)),
+        )
+
+    class _PipelineReached(Exception):
+        """Raised once the offloaded boundary has completed."""
+
+    async def _validated(*_args, **_kwargs):
+        return SimpleNamespace(
+            error_response=None, payload={}, route=route, stream_enabled=False
+        )
+
+    async def _pipeline(**kwargs):
+        raise _PipelineReached(kwargs["primary_reader_decision"])
+
+    monkeypatch.setattr(
+        managed_chat_runtime,
+        "_validate_and_resolve_managed_chat_request",
+        _validated,
+    )
+    monkeypatch.setattr(managed_chat_runtime, "run_managed_chat_pipeline", _pipeline)
+
+    async def _drive() -> None:
+        threads["event_loop"] = threading.get_ident()
+        with pytest.raises(_PipelineReached) as raised:
+            await handle_managed_chat_completion(
+                request=SimpleNamespace(), config=config, source_registry=SimpleNamespace()
+            )
+        assert raised.value.args[0].reader_class == "subjective_only"
+
+    asyncio.run(_drive())
+
+    assert order == ["activate", "reader", "writer"]
+    assert threads["activate"] == threads["reader"] == threads["writer"]
+    assert threads["activate"] != threads["event_loop"]
 
 
 @pytest.mark.parametrize(
