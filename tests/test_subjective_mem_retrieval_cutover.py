@@ -638,6 +638,7 @@ def test_resolver_dependency_direction_creates_no_cycle() -> None:
         "dataclasses",
         "typing",
         "._subjective_mem_retrieval_cutover_activation",
+        "._subjective_mem_retrieval_runtime_projection",
         ".config",
         ".evidence_common",
         ".evidence_store",
@@ -712,6 +713,7 @@ from relaylm.subjective_mem_retrieval_characterization import (  # noqa: E402
 from relaylm.subjective_mem_retrieval_cutover import (  # noqa: E402
     SubjectiveMemRetrievalPrimaryReaderDecision,
     activate_subjective_mem_retrieval_cutover,
+    subjective_mem_retrieval_cutover_binding_from_config,
     resolve_subjective_mem_retrieval_primary_reader_decision,
     subjective_mem_retrieval_primary_reader_class,
 )
@@ -856,69 +858,26 @@ def test_only_a_valid_decision_value_can_release_an_authority() -> None:
         assert subjective_mem_retrieval_primary_reader_class(forged) == "neither"
 
 
-def _activation_inputs(tmp_path: Path):
-    """Build one exact binding whose readiness proof the R3 coordinator produces."""
+def _activation_environment(tmp_path: Path, last_state: str | None = None):
+    """One complete `subjective_only` deployment, its binding, and its proof."""
 
-    _revision, _page, _committed, source = _one_active()
-    projection, reasons = build_subjective_mem_retrieval_projection(source)
-    assert reasons == () and projection is not None
-    request = SubjectiveMemRetrievalRequest(
-        character_id=source.character_id,
-        workspace_authority_digest=source.workspace_authority_digest,
-        admitted_scope_binding_digest=source.admitted_scope_binding_digest,
-        query_plan_digest="c" * 64,
-        request_correlation_digest="d" * 64,
-        projection_generation_id=projection.manifest.projection_generation_id,
-        projection_manifest_digest=projection.manifest.manifest_digest,
-        memory_kinds=("episodic", "semantic"),
-        candidate_limit=8,
-        token_budget=256,
-        policy_revision=SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
-        boundary=SubjectiveMemRetrievalBoundary(),
+    from test_rt1d_reader_seams import _subjective_environment
+
+    config, _route, _source, _revision, _root, readiness = _subjective_environment(
+        tmp_path, last_state
     )
-    primary = SubjectiveMemRetrievalPrimaryServedMetrics(
-        attempted=True, candidate_count=len(projection.rows), selected_count=0,
-        latency_class="within_bound",
-    )
-    characterization, reasons = _rehearsal._characterize(
-        source, request, projection, projection, primary, "within_bound"
-    )
-    assert reasons == () and characterization is not None
-    identity = {
-        "evidence_space_id": source.evidence_space_id,
-        "projection_generation_id": source.projection_generation_id,
-        "projection_source_digest": source.source_snapshot_digest,
-    }
-    partial = _binding(readiness_id="pending", **identity)
-    readiness_id = subjective_mem_retrieval_rehearsal_readiness_id(
-        partial, projection, characterization
-    )
-    binding = _binding(readiness_id=readiness_id, **identity)
-    rehearsal_root = tmp_path / "rehearsal"
-    rehearsal_root.mkdir()
-    values = _config_tuple(tmp_path / "cutover")
-    values.update(
-        {
-            f"subjective_mem_retrieval_cutover_{name}": value
-            for name, value in {**identity, "readiness_id": readiness_id}.items()
-        }
-    )
-    readiness, reasons = evaluate_subjective_mem_retrieval_rehearsal_readiness(
-        config=_config(values), binding=binding, source=source,
-        projection_root=str(rehearsal_root), request=request, primary=primary,
-        subjective_latency_class="within_bound",
-    )
-    assert reasons == () and readiness is not None
-    return binding, readiness, EvidenceRecordStore(str(tmp_path / "cutover"))
+    binding = subjective_mem_retrieval_cutover_binding_from_config(config)
+    assert binding is not None
+    store = EvidenceRecordStore(str(config.subjective_mem_retrieval_cutover_store_root))
+    return config, binding, readiness, store
 
 
 def test_activation_publishes_the_whole_chain_and_replays_idempotently(
     tmp_path: Path,
 ) -> None:
-    binding, readiness, store = _activation_inputs(tmp_path)
-    request = SubjectiveMemRetrievalCutoverRequest("subjective_only")
+    config, binding, readiness, store = _activation_environment(tmp_path)
     result = activate_subjective_mem_retrieval_cutover(
-        store=store, binding=binding, request=request, readiness=readiness
+        config=config, readiness=readiness
     )
     assert result.state == "transfer_receipt_finalized"
     assert result.authority_class == "subjective_only"
@@ -933,7 +892,7 @@ def test_activation_publishes_the_whole_chain_and_replays_idempotently(
     )
 
     replay = activate_subjective_mem_retrieval_cutover(
-        store=store, binding=binding, request=request, readiness=readiness
+        config=config, readiness=readiness
     )
     assert replay == result
     with store.transaction(binding.evidence_space_id) as transaction:
@@ -943,7 +902,7 @@ def test_activation_publishes_the_whole_chain_and_replays_idempotently(
 def test_reader_enablement_and_the_receipt_publish_in_one_transaction(
     tmp_path: Path,
 ) -> None:
-    binding, readiness, store = _activation_inputs(tmp_path)
+    _config, binding, _readiness, store = _activation_environment(tmp_path)
     for step in ACTIVATION_STEPS[:-1]:
         state, reasons = advance_cutover_chain(store, binding.to_dict(), step)
         assert reasons == () and state == step[-1]
@@ -971,25 +930,38 @@ def _reader_class_of(store: EvidenceRecordStore, binding) -> str:
 def test_activation_refuses_a_foreign_readiness_proof_before_any_durable_write(
     tmp_path: Path,
 ) -> None:
-    binding, readiness, store = _activation_inputs(tmp_path)
-    for forged in (None, "ready-1", object()):
+    config, binding, readiness, store = _activation_environment(tmp_path)
+    for forged in ("ready-1", object()):
         result = activate_subjective_mem_retrieval_cutover(
-            store=store,
-            binding=binding,
-            request=SubjectiveMemRetrievalCutoverRequest("subjective_only"),
-            readiness=forged,
+            config=config, readiness=forged
         )
-        assert result.state == "recovery_required"
-        assert result.authority_class == "neither"
+        assert result.state == "primary_stable"
+        assert result.authority_class == "primary_only"
         assert result.diagnostics.subjective_serving is False
-    foreign = _binding(deployment_id="deployment-2")
-    result = activate_subjective_mem_retrieval_cutover(
-        store=store,
-        binding=foreign,
-        request=SubjectiveMemRetrievalCutoverRequest("subjective_only"),
-        readiness=readiness,
+    foreign = config.model_copy(
+        update={"subjective_mem_retrieval_cutover_deployment_id": "deployment-2"}
     )
-    assert result.state == "recovery_required"
+    result = activate_subjective_mem_retrieval_cutover(
+        config=foreign, readiness=readiness
+    )
+    assert result.state == "primary_stable"
+    with store.transaction(binding.evidence_space_id) as transaction:
+        assert not transaction.read_log(log_kind=CUTOVER_LOG_KIND, key=CUTOVER_LOG_KEY)
+
+
+def test_an_ambiguous_transferred_character_scope_fails_closed(tmp_path: Path) -> None:
+    """One generation per projection root means exactly one transferred character."""
+
+    config, binding, readiness, store = _activation_environment(tmp_path)
+    characters = dict(config.characters)
+    ambiguous = config.model_copy(
+        update={"characters": {**characters, "other": next(iter(characters.values()))}}
+    )
+    result = activate_subjective_mem_retrieval_cutover(
+        config=ambiguous, readiness=readiness
+    )
+    assert result.state == "primary_stable"
+    assert result.reasons == ("subjective_mem_retrieval_route_locator_missing",)
     with store.transaction(binding.evidence_space_id) as transaction:
         assert not transaction.read_log(log_kind=CUTOVER_LOG_KIND, key=CUTOVER_LOG_KEY)
 
@@ -997,7 +969,7 @@ def test_activation_refuses_a_foreign_readiness_proof_before_any_durable_write(
 def test_rehearsal_and_activation_never_accept_each_other_s_mode(
     tmp_path: Path,
 ) -> None:
-    binding, readiness, store = _activation_inputs(tmp_path)
+    config, binding, readiness, store = _activation_environment(tmp_path)
     with pytest.raises(
         SubjectiveMemRetrievalCutoverError, match="cutover_rehearsal_mode_unsupported"
     ):
@@ -1006,12 +978,14 @@ def test_rehearsal_and_activation_never_accept_each_other_s_mode(
             binding=binding,
             request=SubjectiveMemRetrievalCutoverRequest("subjective_only"),
         )
-    with pytest.raises(
-        SubjectiveMemRetrievalCutoverError, match="cutover_activation_mode_unsupported"
-    ):
-        activate_subjective_mem_retrieval_cutover(
-            store=store,
-            binding=binding,
-            request=SubjectiveMemRetrievalCutoverRequest("rehearsal"),
-            readiness=readiness,
-        )
+    rehearsal = config.model_copy(
+        update={
+            "subjective_mem_retrieval_cutover_mode": "rehearsal",
+            "subjective_mem_retrieval_projection_root": None,
+        }
+    )
+    result = activate_subjective_mem_retrieval_cutover(
+        config=rehearsal, readiness=readiness
+    )
+    assert result.reasons == ("cutover_activation_mode_unsupported",)
+    assert result.authority_class == "primary_only"

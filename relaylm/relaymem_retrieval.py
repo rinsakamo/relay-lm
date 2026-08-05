@@ -14,8 +14,8 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from typing import Any
 from relaylm._subjective_mem_retrieval_runtime_projection import (
-    SubjectiveMemRetrievalRuntimeProjectionSpec,
-    acquire_subjective_mem_retrieval_runtime_projection,
+    subjective_mem_retrieval_runtime_projection_spec,
+    verify_subjective_mem_retrieval_runtime_projection,
 )
 from relaylm.config import RelayLMConfig
 from relaylm.evidence_common import canonical_digest
@@ -27,6 +27,8 @@ from relaylm.relaymem_primary_recall import (
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
 from relaylm.routing import ResolvedRoute
 from relaylm.subjective_mem_retrieval_cutover import (
+    RUNTIME_PROJECTION_SPEC_SCHEMA,
+    subjective_mem_retrieval_ordinary_token_budget,
     subjective_mem_retrieval_primary_reader_class,
 )
 from relaylm.subjective_mem_retrieval_selection import (
@@ -51,9 +53,9 @@ from relaylm.relaymem_retrieval_dry_run import (
 
 ORDINARY_MEMORY_AUTHORITY_KEY = "ordinary_memory_authority"
 SUBJECTIVE_RUNTIME_KEY = "subjective_mem_retrieval_runtime"
-SUBJECTIVE_ROUTE_SCHEMA = "relaylm.subjective_mem_retrieval_ordinary_route.v1"
+SUBJECTIVE_ROUTE_SCHEMA = RUNTIME_PROJECTION_SPEC_SCHEMA
+FENCED_ARTIFACT_SCHEMA = "relaylm.subjective_mem_retrieval_fenced_artifact.v1"
 SUBJECTIVE_IDEMPOTENCY_PREFIX = "smretrievaluse."
-SUBJECTIVE_MEMORY_KINDS = ("episodic", "semantic")
 
 
 def run_relaymem_retrieval_stage(
@@ -69,11 +71,15 @@ def run_relaymem_retrieval_stage(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Stage entry point for the RelayMEM retrieval stage.
 
-    Runs the RelayMEM retrieval dry-run artifact build, then releases evidence
-    from exactly the one authority ``primary_reader_decision`` names. Scans and
-    reads the RelayMEM store on disk and, for ``subjective_only``, the Subjective
-    evidence store, canonical workspace, and disposable live projection bundle;
-    none of these callees touch ``PipelineContext`` or any ``ContextVar``.
+    The Primary reader fence dominates this read path. The exact authority
+    ``primary_reader_decision`` names is resolved first, and only
+    ``primary_only`` reaches Primary storage at all: no root resolution, store
+    diagnostics, candidate discovery, snippet extraction, or recall revalidation
+    runs for ``neither`` or ``subjective_only``, which receive one bounded fenced
+    artifact carrying no Primary-derived material. ``subjective_only``
+    additionally reads the Subjective evidence store, canonical workspace, and
+    disposable live projection bundle. None of these callees touch
+    ``PipelineContext`` or any ``ContextVar``.
 
     This is a blocking, synchronous callable by design:
     ``handle_managed_chat_completion`` invokes it via
@@ -84,6 +90,14 @@ def run_relaymem_retrieval_stage(
     """
 
     authority = subjective_mem_retrieval_primary_reader_class(primary_reader_decision)
+    if authority != "primary_only":
+        return _fenced_stage_result(
+            authority,
+            config=config,
+            route=route,
+            messages=messages,
+            request_correlation=request_correlation,
+        )
     relaymem_scoped_store_root = resolve_relaymem_character_store_root(
         relaymem_configured_store_root,
         route.character_id,
@@ -108,9 +122,7 @@ def run_relaymem_retrieval_stage(
         max_snippet_chars=config.memory.max_snippet_chars,
         max_snippet_candidates=config.memory.max_snippet_candidates,
     )
-    if authority == "primary_only" and _relaymem_primary_recall_scope_allowed(
-        relaymem_store_diagnostics
-    ):
+    if _relaymem_primary_recall_scope_allowed(relaymem_store_diagnostics):
         relaymem_retrieval_artifact = apply_relaymem_primary_recall_scope(
             relaymem_retrieval_artifact,
             scoped_store_root=relaymem_scoped_store_root,
@@ -120,17 +132,74 @@ def run_relaymem_retrieval_stage(
             snippet_budget=config.memory.snippet_budget,
             chars_per_token=config.memory.chars_per_token,
         )
-    elif authority == "subjective_only":
-        relaymem_retrieval_artifact[SUBJECTIVE_RUNTIME_KEY] = (
-            apply_subjective_mem_retrieval_ordinary_scope(
-                config=config,
-                route=route,
-                messages=messages,
-                request_correlation=request_correlation,
-            )
-        )
     relaymem_retrieval_artifact[ORDINARY_MEMORY_AUTHORITY_KEY] = authority
     return relaymem_store_diagnostics, relaymem_retrieval_artifact
+
+
+def _fenced_stage_result(
+    authority: str,
+    *,
+    config: RelayLMConfig,
+    route: ResolvedRoute,
+    messages: Sequence[Mapping[str, Any]],
+    request_correlation: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Answer a fenced request without touching Primary storage at all."""
+
+    subjective = (
+        apply_subjective_mem_retrieval_ordinary_scope(
+            config=config,
+            route=route,
+            messages=messages,
+            request_correlation=request_correlation,
+        )
+        if authority == "subjective_only"
+        else None
+    )
+    return _fenced_store_diagnostics(authority), _fenced_artifact(
+        authority, subjective=subjective
+    )
+
+
+def _fenced_store_diagnostics(authority: str) -> dict[str, Any]:
+    """One bounded content-free stand-in for the unread Primary store."""
+
+    return {
+        "schema": FENCED_ARTIFACT_SCHEMA,
+        "content_free": True,
+        "ordinary_memory_authority": authority,
+        "primary_reader_fenced": True,
+        "primary_store_read": False,
+    }
+
+
+def _fenced_artifact(
+    authority: str, *, subjective: dict[str, Any] | None
+) -> dict[str, Any]:
+    """One bounded fenced artifact carrying no Primary-derived material at all.
+
+    The inert apply decisions and null candidate slots keep the existing
+    RelayCTX injection contract shape without any Primary candidate, snippet,
+    evidence envelope, or recall content, because no Primary owner ran.
+    """
+
+    artifact: dict[str, Any] = {
+        "schema": FENCED_ARTIFACT_SCHEMA,
+        "content_free": True,
+        "primary_reader_fenced": True,
+        "primary_store_read": False,
+        "apply_decision": "not_eligible",
+        "snippet_apply_decision": "not_eligible",
+        "ctx_block": None,
+        "ctx_block_candidate": None,
+        "ctx_block_snippet_candidate": None,
+        "selected_mem_candidates": [],
+        "blocked_reason_ids": ["cutover_primary_reader_fenced"],
+    }
+    if subjective is not None:
+        artifact[SUBJECTIVE_RUNTIME_KEY] = subjective
+    artifact[ORDINARY_MEMORY_AUTHORITY_KEY] = authority
+    return artifact
 
 
 def apply_subjective_mem_retrieval_ordinary_scope(
@@ -143,26 +212,42 @@ def apply_subjective_mem_retrieval_ordinary_scope(
     """Release exact Subjective evidence, but only after durable usage finalization.
 
     The order is fixed and has no shortcut: acquire the exact source and its
-    trusted live projection, select only exact-current eligible revisions, then
-    finalize the content-free usage events durably. Only the sealed admitted
+    trusted live projection exactly as the finalized transfer receipt bound it,
+    select only exact-current eligible revisions, then finalize the content-free
+    usage events durably. Only the sealed admitted
     handoff the ledger returns can release grounding evidence, so a refused
     selection, a failed finalization, or any store, source, generation, or
     binding disagreement releases nothing and never falls back to Primary MEM,
     a stale bundle, or a cache-only counter.
     """
 
-    spec, store, reasons = _subjective_request(
-        config, route, messages, request_correlation
+    spec, store, reasons = subjective_mem_retrieval_runtime_projection_spec(
+        evidence_root=config.evidence_data_root,
+        workspace_root=config.subjective_mem_workspace_root,
+        projection_root=config.subjective_mem_retrieval_projection_root,
+        evidence_space_id=config.subjective_mem_retrieval_cutover_evidence_space_id,
+        character_id=route.character_id,
+        query_plan_digest=_request_digest("query_plan", sorted(_term_hints(messages))),
+        request_correlation_digest=_request_digest(
+            "request_correlation", request_correlation
+        ),
+        candidate_limit=config.memory.candidate_limit,
+        token_budget=subjective_mem_retrieval_ordinary_token_budget(config),
     )
     if spec is None or store is None:
         return _subjective_runtime([], reasons)
-    acquired, reasons = acquire_subjective_mem_retrieval_runtime_projection(
-        store=store, spec=spec
+    acquired, reasons = verify_subjective_mem_retrieval_runtime_projection(
+        store=store,
+        spec=spec,
+        expected_generation_id=(
+            config.subjective_mem_retrieval_cutover_projection_generation_id
+        ),
+        expected_source_digest=(
+            config.subjective_mem_retrieval_cutover_projection_source_digest
+        ),
     )
     if acquired is None:
         return _subjective_runtime([], reasons)
-    if not _receipt_bound_generation(config, acquired):
-        return _subjective_runtime([], ("subjective_mem_retrieval_source_drift",))
     handoff, projection = select_subjective_mem_retrieval_handoff(
         request=acquired.request,
         manifest=acquired.projection.manifest,
@@ -191,73 +276,6 @@ def apply_subjective_mem_retrieval_ordinary_scope(
         return _subjective_runtime([], outcome.blocked_reason_classes)
     return _subjective_runtime(
         list(admitted.release_grounding_evidence()), (), usage_finalized=True
-    )
-
-
-def _subjective_request(
-    config: RelayLMConfig,
-    route: ResolvedRoute,
-    messages: Sequence[Mapping[str, Any]],
-    request_correlation: str,
-) -> tuple[
-    SubjectiveMemRetrievalRuntimeProjectionSpec | None,
-    EvidenceRecordStore | None,
-    tuple[str, ...],
-]:
-    """Bind one bounded content-free acquisition request to this exact route.
-
-    Configuration only locates the evidence space, canonical workspace, and
-    disposable live projection root. It grants no serving authority: the caller
-    reaches this function only for an exact finalized durable reader decision.
-    """
-
-    locators = (
-        config.evidence_data_root,
-        config.subjective_mem_workspace_root,
-        config.subjective_mem_retrieval_projection_root,
-        config.subjective_mem_retrieval_cutover_evidence_space_id,
-        route.character_id,
-    )
-    if any(not isinstance(value, str) or not value for value in locators):
-        return None, None, ("subjective_mem_retrieval_route_locator_missing",)
-    evidence_root, workspace_root, projection_root, space, character_id = locators
-    try:
-        store = EvidenceRecordStore(str(evidence_root))
-    except (OSError, TypeError, ValueError):
-        return None, None, ("subjective_mem_retrieval_route_store_unavailable",)
-    return (
-        SubjectiveMemRetrievalRuntimeProjectionSpec(
-            evidence_space_id=str(space),
-            workspace_root=str(workspace_root),
-            projection_root=str(projection_root),
-            character_id=str(character_id),
-            query_plan_digest=_request_digest("query_plan", sorted(_term_hints(messages))),
-            request_correlation_digest=_request_digest(
-                "request_correlation", request_correlation
-            ),
-            memory_kinds=SUBJECTIVE_MEMORY_KINDS,
-            candidate_limit=max(1, min(64, int(config.memory.candidate_limit))),
-            token_budget=max(1, min(8192, _subjective_token_budget(config))),
-        ),
-        store,
-        (),
-    )
-
-
-def _receipt_bound_generation(config: RelayLMConfig, acquired: object) -> bool:
-    """Prove the acquired generation is the exact one the transfer receipt bound.
-
-    The finalized receipt authorizes only the exact generation and source state
-    finalized at activation. Drift afterwards never silently rebinds the live
-    projection, never falls back, and never restores Primary: it fails closed
-    pending separately governed exact state convergence.
-    """
-
-    return (
-        acquired.projection.manifest.projection_generation_id
-        == config.subjective_mem_retrieval_cutover_projection_generation_id
-        and acquired.source.source_snapshot_digest
-        == config.subjective_mem_retrieval_cutover_projection_source_digest
     )
 
 
@@ -312,11 +330,6 @@ def _idempotency_key(request_correlation: object) -> str:
         "idempotency",
         request_correlation if isinstance(request_correlation, str) else "",
     )
-
-
-def _subjective_token_budget(config: RelayLMConfig) -> int:
-    budget = _resolve_relaymem_retrieval_token_budget(config)
-    return budget if isinstance(budget, int) and budget > 0 else 1
 
 
 def _relaymem_primary_recall_scope_allowed(

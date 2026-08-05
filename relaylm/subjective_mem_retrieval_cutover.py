@@ -47,6 +47,10 @@ from ._subjective_mem_retrieval_cutover_activation import (
     safe_token,
     sha256_digest,
 )
+from ._subjective_mem_retrieval_runtime_projection import (
+    subjective_mem_retrieval_runtime_projection_spec,
+    verify_subjective_mem_retrieval_runtime_projection,
+)
 from .config import RelayLMConfig
 from .evidence_common import canonical_digest
 from .evidence_store import EvidenceRecordStore
@@ -71,6 +75,11 @@ PrimaryReaderClass = Literal["primary_only", "neither", "subjective_only"]
 REQUESTED_MODES = frozenset({"primary_only", "rehearsal", "subjective_only"})
 AUTHORITY_CLASSES = frozenset({"primary_only", "neither", "subjective_only"})
 PROBE_CLASSES = frozenset({"not_applicable", "subjective_only", "fail_closed"})
+RUNTIME_PROJECTION_SPEC_SCHEMA = "relaylm.subjective_mem_retrieval_ordinary_route.v1"
+_PREPARATION_DIGESTS = tuple(
+    canonical_digest({"schema": RUNTIME_PROJECTION_SPEC_SCHEMA, "kind": kind, "value": ""})
+    for kind in ("query_plan", "request_correlation")
+)
 
 PRIMARY_WRITER_DECISION_SCHEMA_VERSION = 1
 PRIMARY_READER_DECISION_SCHEMA_VERSION = 1
@@ -736,36 +745,34 @@ def rehearse_subjective_mem_retrieval_cutover(
 
 
 def activate_subjective_mem_retrieval_cutover(
-    *,
-    store: EvidenceRecordStore,
-    binding: SubjectiveMemRetrievalCutoverBinding,
-    request: SubjectiveMemRetrievalCutoverRequest,
-    readiness: object,
+    *, config: object, readiness: object = None
 ) -> SubjectiveMemRetrievalCutoverResult:
-    """Perform the one governed authority transfer, forward-only and idempotent.
+    """The one governed production activation orchestration, forward-only.
 
-    The exact readiness proof is revalidated against this binding before any
-    durable write. Each step is one create-or-verify durable transaction, and
-    Subjective-reader enablement publishes atomically with the finalized transfer
-    receipt, so no reconstructible state ever holds only the first. A replay
-    after a lost response returns the same exact state and writes nothing new;
-    a divergent chain fails closed and is never repaired or rolled back.
+    The order is fixed and has no shortcut. While Primary may still serve, this
+    reconstructs the exact durable state, then acquires and exact-verifies the
+    current ordinary source, generation, manifest, ordered row population, and
+    readiness against the binding. Only then does it advance the durable chain,
+    one create-or-verify transaction per step, with Subjective-reader enablement
+    publishing atomically with the finalized transfer receipt.
+
+    A preparation failure before transfer intent writes no cutover state at all
+    and leaves Primary serving. A failure after intent leaves neither authority
+    serving and recovery stays forward-only: nothing is repaired or rolled back,
+    and a replay returns the same exact state without a second durable pair.
     """
-    _validate_inputs(store, binding, request)
-    if request.requested_mode != "subjective_only":
-        raise SubjectiveMemRetrievalCutoverError("cutover_activation_mode_unsupported")
-    reasons = _readiness_proof_reasons(
-        binding, _rehearsal_specification(binding), readiness
-    )
+    binding, state, reasons = _activation_binding(config)
+    if binding is None:
+        return _result("subjective_only", state, reasons)
+    if _FORWARD_STATES.index(state) >= RECEIPT_INDEX:
+        return _result("subjective_only", state, ())
+    reasons = _preparation_reasons(config, binding, readiness, state)
     if reasons:
-        return _result("subjective_only", RECOVERY_REQUIRED, reasons)
-    state, reasons = reconstruct_cutover_chain(store, binding.to_dict())
-    if reasons or state == RECOVERY_REQUIRED:
-        return _result(
-            "subjective_only",
-            RECOVERY_REQUIRED,
-            reasons or ("cutover_activation_state_unsupported",),
-        )
+        return _result("subjective_only", state, reasons)
+    assert isinstance(config, RelayLMConfig)
+    store = EvidenceRecordStore(
+        config.subjective_mem_retrieval_cutover_store_root or ""
+    )
     for step in ACTIVATION_STEPS:
         if _FORWARD_STATES.index(state) >= _FORWARD_STATES.index(step[-1]):
             continue
@@ -777,6 +784,101 @@ def activate_subjective_mem_retrieval_cutover(
                 reasons or ("cutover_activation_failed",),
             )
     return _result("subjective_only", state, ())
+
+
+def _activation_binding(
+    config: object,
+) -> tuple[SubjectiveMemRetrievalCutoverBinding | None, str, tuple[str, ...]]:
+    """Admit only an exact `subjective_only` tuple over a supported durable state."""
+
+    mode = getattr(config, "subjective_mem_retrieval_cutover_mode", "primary_only")
+    if type(config) is not RelayLMConfig or mode != "subjective_only":
+        return None, "primary_stable", ("cutover_activation_mode_unsupported",)
+    state, reasons = _state_from_config(config, prefix="cutover_activation")
+    if reasons or state == RECOVERY_REQUIRED:
+        return None, RECOVERY_REQUIRED, reasons or ("cutover_activation_state_unsupported",)
+    try:
+        return _binding_from_config(config), state, ()
+    except (SubjectiveMemRetrievalCutoverError, TypeError):
+        return None, RECOVERY_REQUIRED, ("cutover_activation_binding_invalid",)
+
+
+def _preparation_reasons(
+    config: RelayLMConfig,
+    binding: SubjectiveMemRetrievalCutoverBinding,
+    readiness: object,
+    state: str,
+) -> tuple[str, ...]:
+    """Prove the exact current source and projection before any durable intent.
+
+    `rehearsal_ready` is recorded only by a call carrying a valid R3 readiness
+    proof; from that state onward the durable chain is itself the accepted
+    readiness evidence, so ordinary production advances without re-running the
+    disposable rehearsal. The acquisition installs or exact-verifies the live
+    bundle here, while Primary may still serve, so a drifted or unreachable
+    source blocks the transfer instead of stranding it after intent.
+    """
+
+    if state == "primary_stable" and readiness is None:
+        return ("cutover_activation_readiness_required",)
+    if readiness is not None:
+        reasons = _readiness_proof_reasons(
+            binding, _rehearsal_specification(binding), readiness
+        )
+        if reasons:
+            return reasons
+    spec, store, reasons = _activation_projection_spec(config)
+    if spec is None:
+        return reasons
+    acquired, reasons = verify_subjective_mem_retrieval_runtime_projection(
+        store=store,
+        spec=spec,
+        expected_generation_id=binding.projection_generation_id,
+        expected_source_digest=binding.projection_source_digest,
+    )
+    if acquired is None:
+        return reasons
+    manifest = acquired.projection.manifest
+    if readiness is not None and (
+        readiness.projection_manifest_digest != manifest.manifest_digest
+        or readiness.row_population_digest
+        != canonical_digest([row.row_digest for row in acquired.projection.rows])
+    ):
+        return ("cutover_activation_readiness_projection_disagreement",)
+    return ()
+
+
+def _activation_projection_spec(config: RelayLMConfig):
+    """Locate the one transferred character's exact ordinary source.
+
+    The accepted ordinary projection root holds exactly one generation, so a
+    `subjective_only` deployment transfers exactly one configured character.
+    Zero or several configured characters is an ambiguous transferred scope and
+    fails closed rather than guessing which source the binding names.
+    """
+
+    characters = sorted(config.characters)
+    query_plan_digest, request_correlation_digest = _PREPARATION_DIGESTS
+    return subjective_mem_retrieval_runtime_projection_spec(
+        evidence_root=config.evidence_data_root,
+        workspace_root=config.subjective_mem_workspace_root,
+        projection_root=config.subjective_mem_retrieval_projection_root,
+        evidence_space_id=config.subjective_mem_retrieval_cutover_evidence_space_id,
+        character_id=characters[0] if len(characters) == 1 else None,
+        query_plan_digest=query_plan_digest,
+        request_correlation_digest=request_correlation_digest,
+        candidate_limit=config.memory.candidate_limit,
+        token_budget=subjective_mem_retrieval_ordinary_token_budget(config),
+    )
+
+
+def subjective_mem_retrieval_ordinary_token_budget(config: RelayLMConfig) -> int:
+    """The one bounded ordinary Subjective token budget this deployment requests."""
+
+    budget = config.memory.token_budget
+    if not isinstance(budget, int) or budget <= 0:
+        budget = config.memory.token_budget_hint
+    return budget if isinstance(budget, int) and budget > 0 else 1
 
 
 def _validate_inputs(
@@ -829,6 +931,7 @@ __all__ = [
     "PRIMARY_WRITER_REJECTED",
     "PROBE_CLASSES",
     "REQUESTED_MODES",
+    "RUNTIME_PROJECTION_SPEC_SCHEMA",
     "SubjectiveMemRetrievalCutoverBinding",
     "SubjectiveMemRetrievalCutoverDiagnostics",
     "SubjectiveMemRetrievalCutoverError",
@@ -845,5 +948,6 @@ __all__ = [
     "resolve_subjective_mem_retrieval_primary_writer_decision",
     "subjective_mem_retrieval_cutover_binding_from_config",
     "subjective_mem_retrieval_primary_reader_class",
+    "subjective_mem_retrieval_ordinary_token_budget",
     "subjective_mem_retrieval_rehearsal_readiness_id",
 ]

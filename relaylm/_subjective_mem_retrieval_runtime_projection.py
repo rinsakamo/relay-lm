@@ -64,6 +64,7 @@ RUNTIME_PROJECTION_EMPTY_WORKSPACE_DIGEST = canonical_digest(
     {"schema": "relaylm.subjective_mem_retrieval_runtime_empty_workspace.v1"}
 )
 ADMITTED_SCOPE_BINDING_DIGEST = canonical_digest(SubjectiveMemScopeBinding().to_dict())
+RUNTIME_PROJECTION_MEMORY_KINDS = ("episodic", "semantic")
 
 _ST1_RECEIPT_RECORD_KIND = "subjective_mem_st1_commit_receipt"
 _LIFECYCLE_RECEIPT_RECORD_KIND = "subjective_mem_lifecycle_receipt"
@@ -143,6 +144,87 @@ def acquire_subjective_mem_retrieval_runtime_projection(
         ),
         (),
     )
+
+
+def subjective_mem_retrieval_runtime_projection_spec(
+    *,
+    evidence_root: object,
+    workspace_root: object,
+    projection_root: object,
+    evidence_space_id: object,
+    character_id: object,
+    query_plan_digest: str,
+    request_correlation_digest: str,
+    candidate_limit: int,
+    token_budget: int,
+) -> tuple[
+    SubjectiveMemRetrievalRuntimeProjectionSpec | None,
+    EvidenceRecordStore | None,
+    tuple[str, ...],
+]:
+    """Build the one bounded acquisition request from explicit safe locators.
+
+    Locators are passed as plain values, never read from a configuration object,
+    so this owner stays independent of the configuration owner. Locating inputs
+    grants no serving authority: only the exact finalized transfer receipt does.
+    """
+
+    locators = (
+        evidence_root, workspace_root, projection_root, evidence_space_id, character_id
+    )
+    if any(not _text(value) for value in locators):
+        return None, None, ("subjective_mem_retrieval_route_locator_missing",)
+    try:
+        store = EvidenceRecordStore(str(evidence_root))
+    except (OSError, TypeError, ValueError):
+        return None, None, ("subjective_mem_retrieval_route_store_unavailable",)
+    return (
+        SubjectiveMemRetrievalRuntimeProjectionSpec(
+            evidence_space_id=str(evidence_space_id),
+            workspace_root=str(workspace_root),
+            projection_root=str(projection_root),
+            character_id=str(character_id),
+            query_plan_digest=query_plan_digest,
+            request_correlation_digest=request_correlation_digest,
+            memory_kinds=RUNTIME_PROJECTION_MEMORY_KINDS,
+            candidate_limit=max(1, min(64, int(candidate_limit))),
+            token_budget=max(1, min(8192, int(token_budget))),
+        ),
+        store,
+        (),
+    )
+
+
+def verify_subjective_mem_retrieval_runtime_projection(
+    *,
+    store: object,
+    spec: object,
+    expected_generation_id: object,
+    expected_source_digest: object,
+) -> tuple[SubjectiveMemRetrievalRuntimeProjection | None, tuple[str, ...]]:
+    """Acquire, then require the exact expected generation and source snapshot.
+
+    The expected identities are supplied by the caller and compared here; no
+    cutover semantics are evaluated. A source that no longer reproduces them
+    fails closed rather than rebinding the live projection to a newer snapshot.
+    """
+
+    acquired, reasons = acquire_subjective_mem_retrieval_runtime_projection(
+        store=store, spec=spec
+    )
+    if acquired is None:
+        return None, reasons
+    manifest = acquired.projection.manifest
+    population = tuple(row.row_digest for row in acquired.projection.rows)
+    if (
+        manifest.projection_generation_id != expected_generation_id
+        or acquired.source.projection_generation_id != expected_generation_id
+        or manifest.source_snapshot_digest != expected_source_digest
+        or acquired.source.source_snapshot_digest != expected_source_digest
+        or population != manifest.row_digests
+    ):
+        return None, ("subjective_mem_retrieval_runtime_generation_disagreement",)
+    return acquired, ()
 
 
 def _spec_reasons(store: object, spec: object) -> tuple[str, ...]:
@@ -438,7 +520,10 @@ def _digest(value: object) -> bool:
 __all__ = [
     "ADMITTED_SCOPE_BINDING_DIGEST",
     "RUNTIME_PROJECTION_EMPTY_SNAPSHOT_AT",
+    "RUNTIME_PROJECTION_MEMORY_KINDS",
     "SubjectiveMemRetrievalRuntimeProjection",
     "SubjectiveMemRetrievalRuntimeProjectionSpec",
     "acquire_subjective_mem_retrieval_runtime_projection",
+    "subjective_mem_retrieval_runtime_projection_spec",
+    "verify_subjective_mem_retrieval_runtime_projection",
 ]

@@ -93,6 +93,7 @@ from relaylm.request_scope import (
 )
 from relaylm.routing import ResolvedRoute
 from relaylm.subjective_mem_retrieval_cutover import (
+    activate_subjective_mem_retrieval_cutover,
     resolve_subjective_mem_retrieval_primary_reader_decision,
     resolve_subjective_mem_retrieval_primary_writer_decision,
 )
@@ -129,7 +130,10 @@ async def handle_managed_chat_completion(
     if validation.error_response is not None:
         return validation.error_response
     node_timings = {"request_received": _finalize_timing(started_at, started_monotonic)}
-    # The one derivation of each immutable RT-1D authority decision.
+    # The one governed production activation, then the one derivation of each
+    # immutable RT-1D authority decision from the resulting durable state. For
+    # every mode but `subjective_only` activation is a no-op that reads no store.
+    activate_subjective_mem_retrieval_cutover(config=config)
     reader_decision = resolve_subjective_mem_retrieval_primary_reader_decision(config)
     writer_decision = resolve_subjective_mem_retrieval_primary_writer_decision(config)
     result = await run_managed_chat_pipeline(

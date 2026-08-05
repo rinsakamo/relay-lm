@@ -286,8 +286,23 @@ from relaylm.subjective_mem_retrieval_cutover import (
     CUTOVER_AUTHORITY_DOMAIN,
     CUTOVER_TRANSFERRED_SCOPE,
     SubjectiveMemRetrievalCutoverBinding,
+    activate_subjective_mem_retrieval_cutover,
+    evaluate_subjective_mem_retrieval_rehearsal_readiness,
     resolve_subjective_mem_retrieval_primary_reader_decision,
+    subjective_mem_retrieval_rehearsal_readiness_id,
 )
+from relaylm.subjective_mem_retrieval import (
+    SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
+    SubjectiveMemRetrievalBoundary,
+    SubjectiveMemRetrievalRequest,
+)
+from relaylm.subjective_mem_retrieval_characterization import (
+    SubjectiveMemRetrievalPrimaryServedMetrics,
+)
+from relaylm.subjective_mem_retrieval_projection import (
+    build_subjective_mem_retrieval_projection,
+)
+import relaylm.subjective_mem_retrieval_rehearsal as _rehearsal
 from relaylm.subjective_mem_retrieval_projection_store import (
     PROJECTION_BUNDLE_FILENAME,
 )
@@ -386,8 +401,12 @@ def _seed_cutover_chain(root: Path, binding, last_state: str) -> None:
     assert result.status == "created"
 
 
-def _subjective_environment(tmp_path: Path, last_state: str):
-    """One deployment whose durable chain ends exactly at ``last_state``."""
+def _subjective_environment(tmp_path: Path, last_state: str | None):
+    """One `subjective_only` deployment whose chain ends at ``last_state``.
+
+    ``last_state`` of ``None`` seeds no durable chain at all, which is the
+    exact starting point a production activation must be able to advance.
+    """
 
     revision, page, _committed, source = _one_active()
     workspace_root = _character_workspace(tmp_path)
@@ -398,6 +417,7 @@ def _subjective_environment(tmp_path: Path, last_state: str):
     projection_root = tmp_path / "projection"
     projection_root.mkdir()
     _seed_subjective_evidence(evidence_root, source)
+    readiness_id = _readiness_identity(source)
     binding = SubjectiveMemRetrievalCutoverBinding(
         schema_version=CUTOVER_SCHEMA_VERSION,
         authority_domain=CUTOVER_AUTHORITY_DOMAIN,
@@ -406,13 +426,14 @@ def _subjective_environment(tmp_path: Path, last_state: str):
         deployment_id="deployment-1",
         scope_id="ordinary-memory",
         policy_revision_id="policy-1",
-        readiness_id="ready-1",
+        readiness_id=readiness_id,
         bootstrap_main_sha="a" * 64,
         resulting_main_sha="b" * 64,
         projection_generation_id=source.projection_generation_id,
         projection_source_digest=source.source_snapshot_digest,
     )
-    _seed_cutover_chain(cutover_root, binding, last_state)
+    if last_state is not None:
+        _seed_cutover_chain(cutover_root, binding, last_state)
     payload = yaml.safe_load(Path("config.example.yaml").read_text())
     payload.update(
         {
@@ -430,7 +451,10 @@ def _subjective_environment(tmp_path: Path, last_state: str):
             "subjective_mem_retrieval_cutover_projection_source_digest": (
                 source.source_snapshot_digest
             ),
-            "subjective_mem_retrieval_cutover_readiness_id": "ready-1",
+            "subjective_mem_retrieval_cutover_readiness_id": readiness_id,
+            # Exactly one configured character: the accepted ordinary projection
+            # root holds exactly one generation, so the transferred scope is one.
+            "characters": {CHARACTER: payload["characters"]["default"]},
             "subjective_mem_retrieval_projection_root": str(projection_root),
             "evidence_data_root": str(evidence_root),
             "subjective_mem_workspace_root": str(workspace_root),
@@ -438,7 +462,96 @@ def _subjective_environment(tmp_path: Path, last_state: str):
     )
     config = RelayLMConfig.model_validate(payload)
     route = resolve_route(config, next(iter(config.model_routes)))
-    return config, replace(route, character_id=CHARACTER), source, revision, projection_root
+    readiness = _readiness_proof(tmp_path, config, binding, source)
+    return (
+        config,
+        replace(route, character_id=CHARACTER),
+        source,
+        revision,
+        projection_root,
+        readiness,
+    )
+
+
+def _readiness_identity(source) -> str:
+    """The readiness identity the accepted deployment record would carry."""
+
+    binding, _readiness, projection, characterization = _rehearsal_material(source)
+    return subjective_mem_retrieval_rehearsal_readiness_id(
+        binding, projection, characterization
+    )
+
+
+def _rehearsal_material(source):
+    """Derive the projection, characterization, and pending-identity binding."""
+
+    projection, reasons = build_subjective_mem_retrieval_projection(source)
+    assert reasons == () and projection is not None
+    request = SubjectiveMemRetrievalRequest(
+        character_id=source.character_id,
+        workspace_authority_digest=source.workspace_authority_digest,
+        admitted_scope_binding_digest=source.admitted_scope_binding_digest,
+        query_plan_digest="c" * 64,
+        request_correlation_digest="d" * 64,
+        projection_generation_id=projection.manifest.projection_generation_id,
+        projection_manifest_digest=projection.manifest.manifest_digest,
+        memory_kinds=("episodic", "semantic"),
+        candidate_limit=8,
+        token_budget=256,
+        policy_revision=SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
+        boundary=SubjectiveMemRetrievalBoundary(),
+    )
+    primary = SubjectiveMemRetrievalPrimaryServedMetrics(
+        attempted=True, candidate_count=len(projection.rows), selected_count=0,
+        latency_class="within_bound",
+    )
+    characterization, reasons = _rehearsal._characterize(
+        source, request, projection, projection, primary, "within_bound"
+    )
+    assert reasons == () and characterization is not None
+    binding = _pending_binding(source)
+    return binding, request, projection, characterization
+
+
+def _pending_binding(source) -> SubjectiveMemRetrievalCutoverBinding:
+    return SubjectiveMemRetrievalCutoverBinding(
+        schema_version=CUTOVER_SCHEMA_VERSION,
+        authority_domain=CUTOVER_AUTHORITY_DOMAIN,
+        transferred_scope=CUTOVER_TRANSFERRED_SCOPE,
+        evidence_space_id=SPACE,
+        deployment_id="deployment-1",
+        scope_id="ordinary-memory",
+        policy_revision_id="policy-1",
+        readiness_id="pending",
+        bootstrap_main_sha="a" * 64,
+        resulting_main_sha="b" * 64,
+        projection_generation_id=source.projection_generation_id,
+        projection_source_digest=source.source_snapshot_digest,
+    )
+
+
+def _readiness_proof(tmp_path: Path, config, binding, source):
+    """Run the disposable R3 coordinator once to mint the accepted proof."""
+
+    _pending, request, _projection, _characterization = _rehearsal_material(source)
+    rehearsal_root = tmp_path / "rehearsal"
+    rehearsal_root.mkdir()
+    primary = SubjectiveMemRetrievalPrimaryServedMetrics(
+        attempted=True, candidate_count=1, selected_count=0, latency_class="within_bound"
+    )
+    rehearsal_config = config.model_copy(
+        update={
+            "subjective_mem_retrieval_cutover_mode": "rehearsal",
+            "subjective_mem_retrieval_projection_root": None,
+        }
+    )
+    readiness, reasons = evaluate_subjective_mem_retrieval_rehearsal_readiness(
+        config=rehearsal_config, binding=binding, source=source,
+        projection_root=str(rehearsal_root), request=request, primary=primary,
+        subjective_latency_class="within_bound",
+    )
+    assert reasons == () and readiness is not None
+    return readiness
 
 
 def _usage_event_records(config) -> list[Path]:
@@ -471,7 +584,7 @@ def _run_stage(config, route):
 def test_runtime_projection_acquires_the_exact_source_and_installs_one_bundle(
     tmp_path: Path,
 ) -> None:
-    config, route, source, _revision, projection_root = _subjective_environment(
+    config, route, source, _revision, projection_root, _ready = _subjective_environment(
         tmp_path, "transfer_receipt_finalized"
     )
     spec = SubjectiveMemRetrievalRuntimeProjectionSpec(
@@ -520,7 +633,7 @@ def test_runtime_projection_acquires_the_exact_source_and_installs_one_bundle(
 def test_subjective_only_serves_subjective_and_finalizes_usage_before_admission(
     tmp_path: Path,
 ) -> None:
-    config, route, _source, revision, _root = _subjective_environment(
+    config, route, _source, revision, _root, _ready = _subjective_environment(
         tmp_path, "transfer_receipt_finalized"
     )
     _diagnostics, artifact = _run_stage(config, route)
@@ -550,7 +663,7 @@ def test_subjective_only_serves_subjective_and_finalizes_usage_before_admission(
 def test_subjective_replay_admits_the_same_evidence_without_a_second_usage_pair(
     tmp_path: Path,
 ) -> None:
-    config, route, _source, _revision, _root = _subjective_environment(
+    config, route, _source, _revision, _root, _ready = _subjective_environment(
         tmp_path, "transfer_receipt_finalized"
     )
     first = _run_stage(config, route)[1][SUBJECTIVE_RUNTIME_KEY]
@@ -566,7 +679,7 @@ def test_subjective_replay_admits_the_same_evidence_without_a_second_usage_pair(
 def test_between_the_reader_fence_and_the_receipt_neither_authority_serves(
     tmp_path: Path, last_state: str
 ) -> None:
-    config, route, _source, _revision, _root = _subjective_environment(
+    config, route, _source, _revision, _root, _ready = _subjective_environment(
         tmp_path, last_state
     )
     _diagnostics, artifact = _run_stage(config, route)
@@ -579,7 +692,7 @@ def test_between_the_reader_fence_and_the_receipt_neither_authority_serves(
 def test_source_drift_after_activation_fails_closed_without_primary_fallback(
     tmp_path: Path,
 ) -> None:
-    config, route, source, _revision, _root = _subjective_environment(
+    config, route, source, _revision, _root, _ready = _subjective_environment(
         tmp_path, "transfer_receipt_finalized"
     )
     # The canonical source moves on after activation; the finalized receipt still
@@ -597,13 +710,15 @@ def test_source_drift_after_activation_fails_closed_without_primary_fallback(
     runtime = artifact[SUBJECTIVE_RUNTIME_KEY]
     assert runtime["selected_memories"] == []
     assert runtime["usage_event_recorded"] is False
-    assert runtime["blocked_reason_classes"] == ["subjective_mem_retrieval_source_drift"]
+    assert runtime["blocked_reason_classes"] == [
+        "subjective_mem_retrieval_runtime_generation_disagreement"
+    ]
     assert "primary_recall_runtime" not in artifact
     assert _ordinary_selected_memories(artifact) == []
 
 
 def test_a_missing_or_tampered_reader_decision_releases_no_memory(tmp_path: Path) -> None:
-    config, route, _source, _revision, _root = _subjective_environment(
+    config, route, _source, _revision, _root, _ready = _subjective_environment(
         tmp_path, "transfer_receipt_finalized"
     )
     for decision in (None, "subjective_only", object()):
@@ -619,3 +734,201 @@ def test_a_missing_or_tampered_reader_decision_releases_no_memory(tmp_path: Path
         )
         assert artifact[ORDINARY_MEMORY_AUTHORITY_KEY] == "neither"
         assert _ordinary_selected_memories(artifact) == []
+
+
+# ---------------------------------------------------------------------------
+# RT-1D-R4 P6 corrections: the production activation path, and the Primary
+# reader fence dominating the read path.
+# ---------------------------------------------------------------------------
+
+_PRIMARY_OWNERS = (
+    "resolve_relaymem_character_store_root",
+    "build_relaymem_store_diagnostics",
+    "build_relaymem_retrieval_dry_run_artifact",
+    "apply_relaymem_primary_recall_scope",
+)
+
+
+def _poison_primary_owners(monkeypatch) -> None:
+    """Make every Primary diagnostic, discovery, and recall owner fail if called."""
+
+    import relaylm.relaymem_retrieval as owner
+
+    def _forbidden(*args: object, **kwargs: object) -> None:
+        raise AssertionError("primary_reader_fence_must_dominate_the_read_path")
+
+    for name in _PRIMARY_OWNERS:
+        monkeypatch.setattr(owner, name, _forbidden)
+
+
+def test_production_activation_transfers_from_an_absent_chain(tmp_path: Path) -> None:
+    """The whole transfer must be reachable through production, not only tests."""
+
+    config, route, _source, revision, _root, readiness = _subjective_environment(
+        tmp_path, None
+    )
+    # An absent chain reconstructs as Primary, so Primary alone serves first.
+    before = resolve_subjective_mem_retrieval_primary_reader_decision(config)
+    assert (before.state, before.reader_class) == ("primary_stable", "primary_only")
+
+    result = activate_subjective_mem_retrieval_cutover(config=config, readiness=readiness)
+    assert result.state == "transfer_receipt_finalized"
+    assert result.authority_class == "subjective_only"
+    assert result.reasons == ()
+
+    after = resolve_subjective_mem_retrieval_primary_reader_decision(config)
+    assert (after.state, after.reader_class) == (
+        "transfer_receipt_finalized",
+        "subjective_only",
+    )
+    _diagnostics, artifact = _run_stage(config, route)
+    assert artifact[ORDINARY_MEMORY_AUTHORITY_KEY] == "subjective_only"
+    assert [item["memory_id"] for item in _ordinary_selected_memories(artifact)] == [
+        revision.memory_id
+    ]
+    # Replay is a deterministic no-op on the same durable chain.
+    assert activate_subjective_mem_retrieval_cutover(
+        config=config, readiness=readiness
+    ) == result
+
+
+def test_production_activation_without_readiness_never_opens_the_chain(
+    tmp_path: Path,
+) -> None:
+    config, _route, _source, _revision, _root, _ready = _subjective_environment(
+        tmp_path, None
+    )
+    result = activate_subjective_mem_retrieval_cutover(config=config)
+    assert result.state == "primary_stable"
+    assert result.authority_class == "primary_only"
+    assert result.reasons == ("cutover_activation_readiness_required",)
+    store = EvidenceRecordStore(str(config.subjective_mem_retrieval_cutover_store_root))
+    with store.transaction(SPACE) as transaction:
+        assert not transaction.read_log(log_kind=CUTOVER_LOG_KIND, key=CUTOVER_LOG_KEY)
+
+
+def test_preparation_failure_before_intent_leaves_primary_and_writes_nothing(
+    tmp_path: Path,
+) -> None:
+    """Exact source/projection preparation happens while Primary may still serve."""
+
+    config, _route, source, _revision, _root, readiness = _subjective_environment(
+        tmp_path, None
+    )
+    selector = source.entries[0].current_selector_record
+    (
+        Path(str(config.evidence_data_root))
+        / SPACE
+        / "logs"
+        / "subjective_mem_current_state"
+        / f"{selector['memory_state_id']}.json"
+    ).unlink()
+    result = activate_subjective_mem_retrieval_cutover(config=config, readiness=readiness)
+    assert result.state == "primary_stable"
+    assert result.authority_class == "primary_only"
+    assert result.diagnostics.subjective_serving is False
+    assert result.reasons == (
+        "subjective_mem_retrieval_runtime_generation_disagreement",
+    )
+    store = EvidenceRecordStore(str(config.subjective_mem_retrieval_cutover_store_root))
+    with store.transaction(SPACE) as transaction:
+        assert not transaction.read_log(log_kind=CUTOVER_LOG_KIND, key=CUTOVER_LOG_KEY)
+    decision = resolve_subjective_mem_retrieval_primary_reader_decision(config)
+    assert decision.reader_class == "primary_only"
+
+
+def test_activation_is_a_no_op_for_every_other_requested_mode(tmp_path: Path) -> None:
+    config, _route, _source, _revision, _root, _ready = _subjective_environment(
+        tmp_path, None
+    )
+    primary_only = RelayLMConfig.model_validate(
+        {
+            key: value
+            for key, value in yaml.safe_load(
+                Path("config.example.yaml").read_text()
+            ).items()
+        }
+    )
+    result = activate_subjective_mem_retrieval_cutover(config=primary_only)
+    assert result.reasons == ("cutover_activation_mode_unsupported",)
+    assert result.authority_class == "primary_only"
+    for forged in (None, "subjective_only", object()):
+        refused = activate_subjective_mem_retrieval_cutover(config=forged)
+        assert refused.reasons == ("cutover_activation_mode_unsupported",)
+
+
+def test_the_managed_request_path_activates_then_resolves_both_decisions() -> None:
+    """The production caller drives activation before deriving either authority."""
+
+    handler = _function("relaylm/managed_chat_runtime.py", "handle_managed_chat_completion")
+    order = {
+        name: min(
+            node.lineno
+            for node in ast.walk(handler)
+            if isinstance(node, ast.Name) and node.id == name
+        )
+        for name in (
+            "activate_subjective_mem_retrieval_cutover",
+            "resolve_subjective_mem_retrieval_primary_reader_decision",
+            "resolve_subjective_mem_retrieval_primary_writer_decision",
+            "run_managed_chat_pipeline",
+        )
+    }
+    assert (
+        order["activate_subjective_mem_retrieval_cutover"]
+        < order["resolve_subjective_mem_retrieval_primary_reader_decision"]
+        < order["resolve_subjective_mem_retrieval_primary_writer_decision"]
+        < order["run_managed_chat_pipeline"]
+    )
+
+
+@pytest.mark.parametrize(
+    "last_state",
+    ["primary_reader_fenced", "primary_writer_fenced", "subjective_generation_bound"],
+)
+def test_no_primary_owner_is_called_once_the_reader_is_fenced(
+    tmp_path: Path, monkeypatch, last_state: str
+) -> None:
+    config, route, _source, _revision, _root, _ready = _subjective_environment(
+        tmp_path, last_state
+    )
+    _poison_primary_owners(monkeypatch)
+    diagnostics, artifact = _run_stage(config, route)
+    assert diagnostics["primary_store_read"] is False
+    assert artifact["primary_reader_fenced"] is True
+    assert artifact[ORDINARY_MEMORY_AUTHORITY_KEY] == "neither"
+    assert SUBJECTIVE_RUNTIME_KEY not in artifact
+    _assert_no_primary_material(artifact)
+
+
+def test_subjective_only_serving_touches_no_primary_owner(
+    tmp_path: Path, monkeypatch
+) -> None:
+    config, route, _source, revision, _root, _ready = _subjective_environment(
+        tmp_path, "transfer_receipt_finalized"
+    )
+    _poison_primary_owners(monkeypatch)
+    diagnostics, artifact = _run_stage(config, route)
+    assert diagnostics["primary_store_read"] is False
+    assert artifact["primary_reader_fenced"] is True
+    assert [item["memory_id"] for item in _ordinary_selected_memories(artifact)] == [
+        revision.memory_id
+    ]
+    _assert_no_primary_material(artifact)
+
+
+def _assert_no_primary_material(artifact: dict) -> None:
+    """No Primary candidate, snippet, evidence-envelope, or recall content survives."""
+
+    for key in (
+        "primary_recall_runtime",
+        "primary_recall_projection",
+        "grounded_recall_projection",
+        "store_diagnostics",
+        "ctx_block_candidate",
+        "ctx_block_snippet_candidate",
+    ):
+        assert artifact.get(key) in (None, [], {}), key
+    assert artifact["selected_mem_candidates"] == []
+    assert artifact["apply_decision"] == "not_eligible"
+    assert artifact["snippet_apply_decision"] == "not_eligible"
