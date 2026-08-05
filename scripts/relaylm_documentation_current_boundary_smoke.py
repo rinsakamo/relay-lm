@@ -1364,7 +1364,8 @@ R4_BUDGET_ANCHORS = {
         "The private activation owner must not import the cutover facade, the configuration owner, request-path owners, selection, the usage ledger, Primary owners, or RelayCTX",
         "the private activation owner is not a second semantic authority",
         "The public cutover owner alone owns the public binding, the requested-mode, result, and decision schemas, semantic validation, the exact reader and writer authority decisions, and validation of the private owner's returned content-free result",
-        "The cutover facade remains below roughly 700 normally formatted physical lines",
+        "The cutover facade remains strictly below 1000 normally formatted physical "
+        "lines under the RT-1D-R4 cutover-facade structural exception recorded below",
         "The new private activation owner remains below roughly 600 normally formatted physical lines",
         "Every new or materially changed orchestration remains at or below roughly 80 normally formatted physical lines",
         "exactly these eleven paths: `relaylm/subjective_mem_retrieval_cutover.py`, "
@@ -1572,8 +1573,9 @@ R4_BUDGET_MUTATIONS = tuple(
             "frozen implementation branch",
         ),
         (
+            "The cutover facade remains strictly below 1000 normally formatted physical "
+            "lines under the RT-1D-R4 cutover-facade structural exception recorded below",
             "The cutover facade remains below roughly 700 normally formatted physical lines",
-            "The cutover facade remains below roughly 900 normally formatted physical lines",
             "cutover facade limit",
         ),
         (
@@ -1855,6 +1857,165 @@ R4_RUNTIME_PROJECTION_MUTATIONS = tuple(
             "RT-1D-R4 implementation may bootstrap from "
             "`agent/rt1d-r4-runtime-projection-budget-amendment`",
             "R4 runtime-projection bootstrap source",
+        ),
+    )
+)
+
+# RT-1D-R4 returned at P1 a third time. The complete facade surface measures 966
+# normally formatted physical lines after the maximum authorized extraction, so the
+# roughly-700 facade gate is replaced by one measured, RT-1D-R4-only strict
+# below-1000 exception. The exact-twelve budget and every other gate are unchanged.
+R4_FACADE_ANCHORS = {
+    path: (
+        "## RT-1D-R4 cutover-facade structural budget amendment",
+        "RT-1D-R4 one-authority activation returned at P1 a third time, without "
+        "repository mutation, from exact bootstrap main "
+        "`afe18c86de7bbf7d5605ccc74f1fcdd32b68de65`",
+        "The authorized implementation branch "
+        "`agent/rt1d-r4-exact-twelve-activation-implementation` remains identical to "
+        "that exact main, 0 ahead / 0 behind",
+        "That branch is frozen and must never be reused as a bootstrap or as "
+        "implementation history",
+        "The current cutover facade `relaylm/subjective_mem_retrieval_cutover.py` is "
+        "688 normally formatted physical lines",
+        "the durable state list, the durable record schema and field tuple, chain "
+        "reconstruction, chain validation, exact record and predecessor binding, and "
+        "the content-free identity predicates, 136 physical lines",
+        "the facade stands at 566 lines",
+        "projects to 966 normally formatted physical lines: 278 lines above the "
+        "current file and 266 lines above the earlier roughly-700 gate",
+        "Further extraction sufficient to force the facade below roughly 700 lines "
+        "would move the public cutover contracts, the exact reader and writer "
+        "authority decisions, binding and readiness validation, or validation of the "
+        "private owner's returned content-free result into another semantic owner",
+        "The accepted decision is one explicit, measured, RT-1D-R4-only structural "
+        "exception rather than a thirteenth production path or a second semantic "
+        "evaluator",
+        "The exact-twelve RT-1D-R4 production/config budget recorded above is "
+        "unchanged, and no thirteenth RT-1D-R4 production or configuration path, "
+        "schema owner, registry, workflow, helper, generic smoke, control plane, "
+        "fallback, or compatibility layer is authorized",
+        "The RT-1D-R4 focused evidence budget is unchanged, there is no wildcard "
+        "`tests/` or `scripts/` authority",
+        "The final normally formatted RT-1D-R4 cutover facade must remain strictly "
+        "below 1000 physical lines, against the measured 966-line projection",
+        "This bounded RT-1D-R4-only exception supersedes the earlier roughly-700 "
+        "cutover-facade gate for RT-1D-R4 alone. It is not a repository-wide precedent "
+        "and it is not permission for physical-line compression.",
+        "`relaylm/_subjective_mem_retrieval_cutover_activation.py` and "
+        "`relaylm/_subjective_mem_retrieval_runtime_projection.py` each remain below "
+        "roughly 600 normally formatted physical lines, and every new or materially "
+        "changed orchestration remains at or below roughly 80 normally formatted "
+        "physical lines",
+        "Physical-line compression, wrapper splitting, hidden generated source, "
+        "dynamic import, duplicate semantic validation, second authority evaluation, "
+        "and responsibility laundering remain prohibited",
+        "If the final facade reaches 1000 physical lines, either private owner exceeds "
+        "its gate, or any orchestration exceeds its gate, the implementation returns "
+        "to P1 without broadening authority",
+        "Every accepted RT-1D-R4 semantic rule is unchanged",
+        "This RT-1D-R4 cutover-facade structural budget amendment is documentation and "
+        "current-boundary only",
+        "RT-1D-R4 implementation may restart only from a fresh branch created from the "
+        "independently verified exact resulting `main` of this cutover-facade "
+        "structural budget amendment",
+    )
+    for path in (STATUS, PLAN, RT1C)
+}
+for _path, _anchors in R4_FACADE_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple(
+    (path, anchor)
+    for path, anchors in R4_FACADE_ANCHORS.items()
+    for anchor in anchors
+)
+
+R4_FACADE_STALE = (
+    "The cutover facade remains below roughly 700 normally formatted physical lines",
+    "the roughly-700 cutover-facade gate remains executable",
+    "the roughly-700 cutover-facade gate is still executable",
+    "the RT-1D-R4 cutover facade must remain below roughly 700 physical lines",
+    "the cutover facade gate remains roughly 700 lines",
+    "a thirteenth RT-1D-R4 production path is authorized",
+    "A thirteenth RT-1D-R4 production or configuration path is authorized.",
+    "a second semantic cutover evaluator is authorized",
+    "a second public semantic cutover owner is authorized",
+    "the cutover facade may reach 1000 physical lines",
+    "the cutover facade may exceed 1000 physical lines",
+    "the RT-1D-R4 cutover facade limit is 1200 physical lines",
+    "the below-1000 facade exception is a repository-wide precedent",
+    "the below-1000 facade exception permits physical-line compression",
+    "the private activation owner may exceed roughly 600 normally formatted physical lines",
+    "the private runtime-projection owner may exceed roughly 600 normally formatted physical lines",
+    "an orchestration may exceed roughly 80 normally formatted physical lines",
+    "RT-1D-R4 implementation may bootstrap from `agent/rt1d-r4-exact-twelve-activation-implementation`",
+    "the exact-twelve activation implementation branch may be reused as a bootstrap",
+    "the RT-1D-R4 cutover-facade structural budget amendment requires P8",
+    "RT-1D-R4 implementation has restarted",
+    "RT-1D-R4 exact-twelve implementation has started",
+    "RT-1D-R5 retirement has started",
+)
+
+R4_FACADE_MUTATIONS = tuple(
+    (path, current, damaged, label)
+    for path in (STATUS, PLAN, RT1C)
+    for current, damaged, label in (
+        (
+            "The final normally formatted RT-1D-R4 cutover facade must remain strictly "
+            "below 1000 physical lines, against the measured 966-line projection",
+            "the cutover facade may exceed 1000 physical lines",
+            "R4 facade strict limit",
+        ),
+        (
+            "The current cutover facade `relaylm/subjective_mem_retrieval_cutover.py` is "
+            "688 normally formatted physical lines",
+            "The current cutover facade `relaylm/subjective_mem_retrieval_cutover.py` is "
+            "588 normally formatted physical lines",
+            "measured facade baseline",
+        ),
+        (
+            "the facade stands at 566 lines",
+            "the facade stands at 466 lines",
+            "measured post-extraction facade",
+        ),
+        (
+            "projects to 966 normally formatted physical lines: 278 lines above the "
+            "current file and 266 lines above the earlier roughly-700 gate",
+            "projects to 690 normally formatted physical lines",
+            "measured facade projection",
+        ),
+        (
+            "rather than a thirteenth production path or a second semantic evaluator",
+            "a second semantic cutover evaluator is authorized",
+            "thirteenth path or second evaluator",
+        ),
+        (
+            "This bounded RT-1D-R4-only exception supersedes the earlier roughly-700 "
+            "cutover-facade gate for RT-1D-R4 alone. It is not a repository-wide precedent "
+            "and it is not permission for physical-line compression.",
+            "the below-1000 facade exception is a repository-wide precedent",
+            "R4-only exception scope",
+        ),
+        (
+            "each remain below roughly 600 normally formatted physical lines, and every "
+            "new or materially changed orchestration remains at or below roughly 80 "
+            "normally formatted physical lines",
+            "the private activation owner may exceed roughly 600 normally formatted physical lines",
+            "private owner and orchestration gates",
+        ),
+        (
+            "That branch is frozen and must never be reused as a bootstrap or as "
+            "implementation history",
+            "the exact-twelve activation implementation branch may be reused as a bootstrap",
+            "frozen exact-twelve branch",
+        ),
+        (
+            "RT-1D-R4 implementation may restart only from a fresh branch created from the "
+            "independently verified exact resulting `main` of this cutover-facade "
+            "structural budget amendment",
+            "RT-1D-R4 implementation may bootstrap from "
+            "`agent/rt1d-r4-exact-twelve-activation-implementation`",
+            "R4 restart bootstrap source",
         ),
     )
 )
@@ -2197,6 +2358,7 @@ def self_test() -> None:
         + R4_BUDGET_MUTATIONS
         + R4_RESULT_MUTATIONS
         + R4_RUNTIME_PROJECTION_MUTATIONS
+        + R4_FACADE_MUTATIONS
     )
     for path, current, damaged, label in focused_mutations:
         body = read(path)
@@ -2319,6 +2481,20 @@ def self_test() -> None:
             raise AssertionError(
                 f"{path}: R4 runtime-projection stale anchor is not forbidden: {stale!r}"
             )
+    for path in R4_FACADE_ANCHORS:
+        for stale in R4_FACADE_STALE:
+            body = read(path)
+            assert stale not in body, (
+                f"{path}: R4 facade stale anchor is present: {stale!r}"
+            )
+            try:
+                forbid_body(path, R4_FACADE_STALE, body + "\n" + stale + "\n")
+            except AssertionError:
+                print(f"PASS: {path}: reintroducing {stale!r} fails closed")
+                continue
+            raise AssertionError(
+                f"{path}: R4 facade stale anchor is not forbidden: {stale!r}"
+            )
     print("SELF-TEST PASS")
 
 
@@ -2358,6 +2534,8 @@ def main(argv: list[str] | None = None) -> None:
         forbid(path, R4_BUDGET_STALE)
     for path in R4_RUNTIME_PROJECTION_ANCHORS:
         forbid(path, R4_RUNTIME_PROJECTION_STALE)
+    for path in R4_FACADE_ANCHORS:
+        forbid(path, R4_FACADE_STALE)
     forbid("docs/PROJECT_STATUS.md", HISTORY_ONLY_STATUS_ANCHORS)
     print("Documentation current boundary smoke passed")
 
