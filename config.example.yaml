@@ -249,8 +249,12 @@ subjective_mem_lifecycle_dry_run_only: true
 subjective_mem_lifecycle_apply_enabled: false
 subjective_mem_workspace_root:
 
-# RT-1D-R1 is caller-invoked rehearsal only. Configuration requests validation;
-# it never authorizes Subjective serving or a durable authority transition.
+# The requested RT-1D deployment mode is `primary_only`, `rehearsal`, or
+# `subjective_only`. Configuration requests validation and locates inputs; it
+# never authorizes Subjective serving or a durable authority transition. Only an
+# exact finalized durable transfer receipt does, so requesting `subjective_only`
+# without one still serves Primary MEM or, after the Primary reader fence,
+# neither authority. `primary_only` requires the whole tuple below to stay empty.
 subjective_mem_retrieval_cutover_mode: primary_only
 subjective_mem_retrieval_cutover_store_root:
 subjective_mem_retrieval_cutover_evidence_space_id:
@@ -264,6 +268,13 @@ subjective_mem_retrieval_cutover_projection_generation_id:
 subjective_mem_retrieval_cutover_projection_source_digest:
 # Rehearsal value format: smretrievalready_<64-lowercase-hex>
 subjective_mem_retrieval_cutover_readiness_id:
+
+# The ordinary live Subjective projection bundle root. It is required by, and
+# permitted only for, `subjective_only`; the RT-1D-R3 rehearsal root stays
+# caller-supplied and disposable. It must be an absolute, normalized,
+# non-symlinked directory, distinct from the cutover store root,
+# `evidence_data_root`, and `subjective_mem_workspace_root`.
+subjective_mem_retrieval_projection_root:
 
 # OVL-1 is independently default-off and dry-run-first. Apply requires EV-1
 # capture apply because CTX-OVL may consume only currently authorized evidence.

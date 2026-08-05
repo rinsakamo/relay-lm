@@ -10,7 +10,10 @@ from pydantic import BaseModel, Field, HttpUrl, StrictBool, model_validator
 
 Mode = Literal["pass_through", "memory_light", "memory_full"]
 TrustedHomeSceneAdmissionMode = Literal["disabled", "dry_run", "apply"]
-SubjectiveMemRetrievalCutoverMode = Literal["primary_only", "rehearsal"]
+SubjectiveMemRetrievalCutoverMode = Literal["primary_only", "rehearsal", "subjective_only"]
+_SUBJECTIVE_MEM_RETRIEVAL_CUTOVER_MODES = frozenset(
+    {"primary_only", "rehearsal", "subjective_only"}
+)
 _RETIRED_CHARACTER_CONFIG_FIELDS = frozenset({"room_anchor", "room_state"})
 
 
@@ -265,6 +268,7 @@ class RelayLMConfig(BaseModel):
     subjective_mem_retrieval_cutover_projection_generation_id: str | None = None
     subjective_mem_retrieval_cutover_projection_source_digest: str | None = None
     subjective_mem_retrieval_cutover_readiness_id: str | None = None
+    subjective_mem_retrieval_projection_root: str | None = None
     ctx_ovl_enabled: StrictBool = False
     ctx_ovl_dry_run_only: StrictBool = True
     ctx_ovl_apply_enabled: StrictBool = False
@@ -274,7 +278,7 @@ class RelayLMConfig(BaseModel):
     def _validate_cutover_requested_mode(cls, value: object) -> object:
         if isinstance(value, dict):
             mode = value.get("subjective_mem_retrieval_cutover_mode", "primary_only")
-            if mode not in {"primary_only", "rehearsal"}:
+            if mode not in _SUBJECTIVE_MEM_RETRIEVAL_CUTOVER_MODES:
                 raise ValueError("subjective_mem_retrieval_cutover_mode_unsupported")
         return value
 
@@ -467,8 +471,11 @@ class RelayLMConfig(BaseModel):
             self.subjective_mem_retrieval_cutover_projection_source_digest,
             self.subjective_mem_retrieval_cutover_readiness_id,
         )
-        if self.subjective_mem_retrieval_cutover_mode == "primary_only":
-            if any(value is not None for value in values):
+        mode = self.subjective_mem_retrieval_cutover_mode
+        if mode == "primary_only":
+            if any(value is not None for value in values) or (
+                self.subjective_mem_retrieval_projection_root is not None
+            ):
                 raise ValueError("subjective_mem_retrieval_cutover_primary_only_requires_empty_tuple")
             return
         if any(value is None for value in values):
@@ -488,6 +495,40 @@ class RelayLMConfig(BaseModel):
             raise ValueError(
                 "subjective_mem_retrieval_cutover_projection_generation_id_invalid"
             )
+        self._validate_subjective_mem_retrieval_projection_root(mode)
+
+    def _validate_subjective_mem_retrieval_projection_root(self, mode: str) -> None:
+        """Bind the one ordinary live-projection root to ``subjective_only`` alone.
+
+        The root locates the disposable ordinary projection bundle and nothing
+        else. It never grants serving authority: only the exact finalized durable
+        transfer receipt does. The RT-1D-R3 rehearsal root stays caller-supplied
+        and disposable, so ``rehearsal`` must not carry this field.
+        """
+
+        projection_root = self.subjective_mem_retrieval_projection_root
+        if mode != "subjective_only":
+            if projection_root is not None:
+                raise ValueError(
+                    "subjective_mem_retrieval_projection_root_requires_subjective_only"
+                )
+            return
+        if not projection_root:
+            raise ValueError(
+                "subjective_mem_retrieval_cutover_subjective_only_requires_projection_root"
+            )
+        path = Path(projection_root)
+        if not path.is_absolute() or any(part in {".", ".."} for part in path.parts[1:]):
+            raise ValueError("subjective_mem_retrieval_projection_root_invalid")
+        if path.is_symlink():
+            raise ValueError("subjective_mem_retrieval_projection_root_unsafe")
+        distinct = (
+            self.subjective_mem_retrieval_cutover_store_root,
+            self.evidence_data_root,
+            self.subjective_mem_workspace_root,
+        )
+        if any(other and Path(other) == path for other in distinct):
+            raise ValueError("subjective_mem_retrieval_projection_root_not_distinct")
 
     def _enable_route_owned_home_admission_trigger(self) -> None:
         route_admission_requested = any(

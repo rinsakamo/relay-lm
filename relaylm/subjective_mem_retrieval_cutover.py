@@ -1,12 +1,54 @@
-"""Content-free RT-1D cutover validation and read-only rehearsal."""
+"""Content-free RT-1D cutover validation, rehearsal, and one-authority activation.
+
+This module is the sole public semantic cutover owner and the sole public
+compatibility surface. It owns the public binding, the requested-mode, result,
+and decision schemas, semantic validation, the exact Primary reader and writer
+authority decisions, and validation of the private owners' returned content-free
+results.
+
+Two private owners hold the mechanics, and the dependency direction is one-way:
+
+```text
+ordinary route / cutover facade
+  -> relaylm._subjective_mem_retrieval_cutover_activation   durable mechanics
+  -> relaylm._subjective_mem_retrieval_runtime_projection    ordinary projection
+```
+
+Neither private owner imports this facade, the configuration owner, request-path
+owners, selection, the usage ledger, Primary owners, or RelayCTX, and neither is
+a second semantic authority.
+
+Configuration is a requested deployment mode and explicit safe locators only; it
+never selects served authority. The allowed ordinary transition is exactly
+Primary-only, then neither, then Subjective-only. There is no dual serving, no
+precedence, no empty-result fallback, and no Primary fallback after the exact
+finalized transfer receipt.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal, Mapping
 
+from ._subjective_mem_retrieval_cutover_activation import (
+    ACTIVATION_STEPS,
+    CUTOVER_LOG_KEY,
+    CUTOVER_LOG_KIND,
+    CUTOVER_SCHEMA_VERSION,
+    FORWARD_STATES,
+    CutoverState,
+    READER_FENCE_INDEX,
+    RECEIPT_INDEX,
+    RECOVERY_REQUIRED,
+    WRITER_FENCE_INDEX,
+    advance_cutover_chain,
+    projection_generation_identity,
+    reconstruct_cutover_chain,
+    safe_token,
+    sha256_digest,
+)
 from .config import RelayLMConfig
-from .evidence_common import canonical_digest, canonical_json_bytes
+from .evidence_common import canonical_digest
 from .evidence_store import EvidenceRecordStore
 from .subjective_mem_retrieval_rehearsal import (
     READINESS_PREFIX,
@@ -18,42 +60,24 @@ from .subjective_mem_retrieval_rehearsal import (
     validate_subjective_mem_retrieval_rehearsal_readiness,
 )
 
-CUTOVER_SCHEMA_VERSION = 1
 CUTOVER_AUTHORITY_DOMAIN = "relaylm.subjective_mem_retrieval"
 CUTOVER_TRANSFERRED_SCOPE = "ordinary_memory_retrieval"
-CUTOVER_LOG_KIND = "subjective_mem_retrieval_cutover"
-CUTOVER_LOG_KEY = "authority_chain"
 
-CutoverState = Literal[
-    "primary_stable",
-    "rehearsal_ready",
-    "transfer_intent",
-    "primary_reader_fenced",
-    "primary_writer_fenced",
-    "subjective_generation_bound",
-    "subjective_reader_enabled",
-    "transfer_receipt_finalized",
-    "post_transfer_validated",
-    "retirement_complete",
-    "recovery_required",
-]
-RequestedMode = Literal["primary_only", "rehearsal"]
+RequestedMode = Literal["primary_only", "rehearsal", "subjective_only"]
+AuthorityClass = Literal["primary_only", "neither", "subjective_only"]
 PrimaryWriterClass = Literal["permitted", "rejected"]
+PrimaryReaderClass = Literal["primary_only", "neither", "subjective_only"]
+
+REQUESTED_MODES = frozenset({"primary_only", "rehearsal", "subjective_only"})
+AUTHORITY_CLASSES = frozenset({"primary_only", "neither", "subjective_only"})
+PROBE_CLASSES = frozenset({"not_applicable", "subjective_only", "fail_closed"})
+
 PRIMARY_WRITER_DECISION_SCHEMA_VERSION = 1
+PRIMARY_READER_DECISION_SCHEMA_VERSION = 1
 PRIMARY_WRITER_PERMITTED = "permitted"
 PRIMARY_WRITER_REJECTED = "rejected"
-_FORWARD_STATES = (
-    "primary_stable",
-    "rehearsal_ready",
-    "transfer_intent",
-    "primary_reader_fenced",
-    "primary_writer_fenced",
-    "subjective_generation_bound",
-    "subjective_reader_enabled",
-    "transfer_receipt_finalized",
-    "post_transfer_validated",
-    "retirement_complete",
-)
+
+_FORWARD_STATES = FORWARD_STATES
 _TOKEN_FIELDS = (
     "evidence_space_id",
     "deployment_id",
@@ -75,20 +99,12 @@ _BINDING_FIELDS = (
     *_DIGEST_FIELDS,
     _PROJECTION_GENERATION_FIELD,
 )
-_RECORD_FIELDS = (
-    "schema_version",
-    "state",
-    "predecessor_state",
-    "predecessor_digest",
-    "binding",
-    "binding_digest",
-    "record_digest",
-)
 # Writes stay permitted only strictly before `primary_writer_fenced`.
-_WRITER_FENCE_INDEX = _FORWARD_STATES.index("primary_writer_fenced")
-_PRIMARY_WRITER_PERMITTED_STATES = _FORWARD_STATES[:_WRITER_FENCE_INDEX]
+_PRIMARY_WRITER_PERMITTED_STATES = _FORWARD_STATES[:WRITER_FENCE_INDEX]
 _PRIMARY_WRITER_FENCED_REASON = "cutover_primary_writer_fenced"
+_PRIMARY_READER_FENCED_REASON = "cutover_primary_reader_fenced"
 _MAX_PRIMARY_WRITER_REASONS = 8
+_MAX_DIAGNOSTIC_COUNT = 4096
 _CUTOVER_CONFIG_PREFIX = "subjective_mem_retrieval_cutover_"
 _CUTOVER_CONFIG_FIELDS = tuple(
     f"{_CUTOVER_CONFIG_PREFIX}{field}"
@@ -96,6 +112,7 @@ _CUTOVER_CONFIG_FIELDS = tuple(
         "store_root", *_TOKEN_FIELDS, *_DIGEST_FIELDS, _PROJECTION_GENERATION_FIELD
     )
 )
+_PROJECTION_ROOT_FIELD = "subjective_mem_retrieval_projection_root"
 
 
 class SubjectiveMemRetrievalCutoverError(ValueError):
@@ -130,13 +147,13 @@ class SubjectiveMemRetrievalCutoverBinding:
             raise SubjectiveMemRetrievalCutoverError(
                 "cutover_binding_transferred_scope_mismatch"
             )
-        if not all(_safe_token(getattr(self, field)) for field in _TOKEN_FIELDS):
+        if not all(safe_token(getattr(self, field)) for field in _TOKEN_FIELDS):
             raise SubjectiveMemRetrievalCutoverError(
                 "cutover_binding_identifier_invalid"
             )
-        if not all(_sha256(getattr(self, field)) for field in _DIGEST_FIELDS):
+        if not all(sha256_digest(getattr(self, field)) for field in _DIGEST_FIELDS):
             raise SubjectiveMemRetrievalCutoverError("cutover_binding_digest_invalid")
-        if not _projection_generation_id(self.projection_generation_id):
+        if not projection_generation_identity(self.projection_generation_id):
             raise SubjectiveMemRetrievalCutoverError(
                 "cutover_binding_projection_generation_invalid"
             )
@@ -159,9 +176,6 @@ class SubjectiveMemRetrievalCutoverBinding:
     def to_dict(self) -> dict[str, object]:
         return {field: getattr(self, field) for field in _BINDING_FIELDS}
 
-    def canonical_bytes(self) -> bytes:
-        return canonical_json_bytes(self.to_dict())
-
     def __repr__(self) -> str:
         return (
             "SubjectiveMemRetrievalCutoverBinding(content_free_identity_omitted=True)"
@@ -173,7 +187,7 @@ class SubjectiveMemRetrievalCutoverRequest:
     requested_mode: RequestedMode = "primary_only"
 
     def __post_init__(self) -> None:
-        if self.requested_mode not in {"primary_only", "rehearsal"}:
+        if self.requested_mode not in REQUESTED_MODES:
             raise SubjectiveMemRetrievalCutoverError(
                 "cutover_requested_mode_unsupported"
             )
@@ -181,6 +195,14 @@ class SubjectiveMemRetrievalCutoverRequest:
 
 @dataclass(frozen=True)
 class SubjectiveMemRetrievalCutoverDiagnostics:
+    """One bounded content-free public projection of an exact durable state.
+
+    Every fence and serving boolean is derived from, and re-proved against, the
+    reconstructed state, so a diagnostic can never claim an authority the durable
+    chain does not hold. No prose, query, prompt, path, private identifier,
+    digest, or correlation material may appear here.
+    """
+
     state_class: CutoverState
     generation_ready: bool
     candidate_count: int
@@ -195,7 +217,7 @@ class SubjectiveMemRetrievalCutoverDiagnostics:
     runtime_private_evidence_omitted: bool = True
 
     def __post_init__(self) -> None:
-        if self.state_class not in {*_FORWARD_STATES, "recovery_required"}:
+        if self.state_class not in {*_FORWARD_STATES, RECOVERY_REQUIRED}:
             raise SubjectiveMemRetrievalCutoverError(
                 "cutover_diagnostics_state_invalid"
             )
@@ -214,31 +236,50 @@ class SubjectiveMemRetrievalCutoverDiagnostics:
             raise SubjectiveMemRetrievalCutoverError(
                 "cutover_diagnostics_boolean_invalid"
             )
-        if (self.candidate_count, self.selected_count, self.exclusion_count) != (
-            0,
-            0,
-            0,
-        ):
-            raise SubjectiveMemRetrievalCutoverError(
-                "cutover_diagnostics_counts_invalid"
-            )
-        if self.probe_class != "not_applicable":
+        self._validate_counts()
+        if self.probe_class not in PROBE_CLASSES:
             raise SubjectiveMemRetrievalCutoverError(
                 "cutover_diagnostics_probe_invalid"
             )
-        if (
-            any(
-                (
-                    self.usage_finalized,
-                    self.reader_fence,
-                    self.writer_fence,
-                    self.subjective_serving,
-                )
-            )
-            or not self.runtime_private_evidence_omitted
-        ):
+        if not self.runtime_private_evidence_omitted:
             raise SubjectiveMemRetrievalCutoverError(
-                "cutover_diagnostics_r1_authority_invalid"
+                "cutover_diagnostics_private_evidence_invalid"
+            )
+        self._validate_authority()
+
+    def _validate_counts(self) -> None:
+        counts = (self.candidate_count, self.selected_count, self.exclusion_count)
+        if any(
+            type(value) is not int or not 0 <= value <= _MAX_DIAGNOSTIC_COUNT
+            for value in counts
+        ) or self.selected_count > self.candidate_count:
+            raise SubjectiveMemRetrievalCutoverError(
+                "cutover_diagnostics_counts_invalid"
+            )
+
+    def _validate_authority(self) -> None:
+        recovery = self.state_class == RECOVERY_REQUIRED
+        index = None if recovery else _FORWARD_STATES.index(self.state_class)
+        if recovery != self.recovery_required:
+            raise SubjectiveMemRetrievalCutoverError(
+                "cutover_diagnostics_recovery_invalid"
+            )
+        expected = (
+            (False, False, False)
+            if index is None
+            else (
+                index >= READER_FENCE_INDEX,
+                index >= WRITER_FENCE_INDEX,
+                index >= RECEIPT_INDEX,
+            )
+        )
+        if (self.reader_fence, self.writer_fence, self.subjective_serving) != expected:
+            raise SubjectiveMemRetrievalCutoverError(
+                "cutover_diagnostics_authority_invalid"
+            )
+        if self.usage_finalized and not self.subjective_serving:
+            raise SubjectiveMemRetrievalCutoverError(
+                "cutover_diagnostics_usage_invalid"
             )
 
     def to_dict(self) -> dict[str, object]:
@@ -248,18 +289,18 @@ class SubjectiveMemRetrievalCutoverDiagnostics:
 @dataclass(frozen=True)
 class SubjectiveMemRetrievalCutoverResult:
     requested_mode: RequestedMode
-    authority_class: Literal["primary_only", "neither"]
+    authority_class: AuthorityClass
     state: CutoverState
     reasons: tuple[str, ...]
     diagnostics: SubjectiveMemRetrievalCutoverDiagnostics
 
     def __post_init__(self) -> None:
-        if self.requested_mode not in {"primary_only", "rehearsal"}:
+        if self.requested_mode not in REQUESTED_MODES:
             raise SubjectiveMemRetrievalCutoverError("cutover_result_mode_invalid")
-        if self.authority_class not in {"primary_only", "neither"}:
+        if self.authority_class not in AUTHORITY_CLASSES:
             raise SubjectiveMemRetrievalCutoverError("cutover_result_authority_invalid")
         if type(self.reasons) is not tuple or not all(
-            _safe_token(reason) for reason in self.reasons
+            safe_token(reason) for reason in self.reasons
         ):
             raise SubjectiveMemRetrievalCutoverError("cutover_result_reasons_invalid")
         if (
@@ -268,6 +309,12 @@ class SubjectiveMemRetrievalCutoverResult:
         ):
             raise SubjectiveMemRetrievalCutoverError(
                 "cutover_result_diagnostics_invalid"
+            )
+        if (self.authority_class == "subjective_only") != (
+            self.diagnostics.subjective_serving
+        ):
+            raise SubjectiveMemRetrievalCutoverError(
+                "cutover_result_serving_disagreement"
             )
 
     def to_dict(self) -> dict[str, object]:
@@ -303,17 +350,7 @@ def evaluate_subjective_mem_retrieval_rehearsal_readiness(
         return None, ("cutover_readiness_config_invalid",)
     if configured != binding:
         return None, ("cutover_readiness_config_binding_disagreement",)
-    specification = SubjectiveMemRetrievalRehearsalSpecification(
-        binding_identity=tuple(sorted(
-            (field, getattr(binding, field))
-            for field in _BINDING_FIELDS
-            if field != "readiness_id"
-        )),
-        evidence_space_id=binding.evidence_space_id,
-        projection_generation_id=binding.projection_generation_id,
-        projection_source_digest=binding.projection_source_digest,
-        readiness_id=binding.readiness_id,
-    )
+    specification = _rehearsal_specification(binding)
     readiness, reasons = evaluate_subjective_mem_retrieval_rehearsal(
         specification=specification,
         source=source,
@@ -324,11 +361,23 @@ def evaluate_subjective_mem_retrieval_rehearsal_readiness(
     )
     if readiness is None:
         return None, reasons
+    reasons = _readiness_proof_reasons(binding, specification, readiness)
+    return (None, reasons) if reasons else (readiness, ())
+
+
+def _readiness_proof_reasons(
+    binding: SubjectiveMemRetrievalCutoverBinding,
+    specification: SubjectiveMemRetrievalRehearsalSpecification,
+    readiness: object,
+) -> tuple[str, ...]:
+    """Independently re-derive and re-validate one complete readiness proof."""
+
     reasons = validate_subjective_mem_retrieval_rehearsal_readiness(
         specification=specification, readiness=readiness
     )
     if reasons:
-        return None, reasons
+        return reasons
+    assert isinstance(readiness, SubjectiveMemRetrievalRehearsalReadiness)
     expected_id = _cutover_readiness_identity(
         binding_identity=specification.binding_identity,
         projection_generation_id=readiness.projection_generation_id,
@@ -344,18 +393,16 @@ def evaluate_subjective_mem_retrieval_rehearsal_readiness(
         or readiness.projection_generation_id != binding.projection_generation_id
         or readiness.projection_source_digest != binding.projection_source_digest
     ):
-        return None, ("cutover_readiness_proof_disagreement",)
-    return readiness, ()
+        return ("cutover_readiness_proof_disagreement",)
+    return ()
 
 
-def subjective_mem_retrieval_rehearsal_readiness_id(
+def _rehearsal_specification(
     binding: SubjectiveMemRetrievalCutoverBinding,
-    projection: object,
-    characterization: object,
-) -> str:
-    """Derive the binding-owned expected identity for an independently proven run."""
+) -> SubjectiveMemRetrievalRehearsalSpecification:
+    """The one binding-owned coordinator specification every proof is judged by."""
 
-    specification = SubjectiveMemRetrievalRehearsalSpecification(
+    return SubjectiveMemRetrievalRehearsalSpecification(
         binding_identity=tuple(sorted(
             (field, getattr(binding, field))
             for field in _BINDING_FIELDS
@@ -366,6 +413,16 @@ def subjective_mem_retrieval_rehearsal_readiness_id(
         projection_source_digest=binding.projection_source_digest,
         readiness_id=binding.readiness_id,
     )
+
+
+def subjective_mem_retrieval_rehearsal_readiness_id(
+    binding: SubjectiveMemRetrievalCutoverBinding,
+    projection: object,
+    characterization: object,
+) -> str:
+    """Derive the binding-owned expected identity for an independently proven run."""
+
+    specification = _rehearsal_specification(binding)
     return derive_subjective_mem_retrieval_rehearsal_readiness_id(
         binding_identity=specification.binding_identity,
         projection_generation_id=projection.manifest.projection_generation_id,
@@ -404,7 +461,7 @@ class SubjectiveMemRetrievalPrimaryWriterDecision:
         schema_version, state, writer_class, recovery_required, reasons, omitted = fields
         if type(schema_version) is not int or schema_version != PRIMARY_WRITER_DECISION_SCHEMA_VERSION:
             raise _decision_invalid("schema_unsupported")
-        if type(state) is not str or state not in (*_FORWARD_STATES, "recovery_required"):
+        if type(state) is not str or state not in (*_FORWARD_STATES, RECOVERY_REQUIRED):
             raise _decision_invalid("state_invalid")
         if type(writer_class) is not str or writer_class not in (PRIMARY_WRITER_PERMITTED, PRIMARY_WRITER_REJECTED):
             raise _decision_invalid("class_invalid")
@@ -413,10 +470,10 @@ class SubjectiveMemRetrievalPrimaryWriterDecision:
         if (
             type(reasons) is not tuple
             or len(reasons) > _MAX_PRIMARY_WRITER_REASONS
-            or not all(_safe_token(reason) for reason in reasons)
+            or not all(safe_token(reason) for reason in reasons)
         ):
             raise _decision_invalid("reasons_invalid")
-        if recovery_required != (state == "recovery_required"):
+        if recovery_required != (state == RECOVERY_REQUIRED):
             raise _decision_invalid("recovery_mismatch")
         permitted = state in _PRIMARY_WRITER_PERMITTED_STATES
         if permitted != (writer_class == PRIMARY_WRITER_PERMITTED):
@@ -432,6 +489,72 @@ class SubjectiveMemRetrievalPrimaryWriterDecision:
         return f"SubjectiveMemRetrievalPrimaryWriterDecision({self.to_dict()})"
 
 
+@dataclass(frozen=True, repr=False)
+class SubjectiveMemRetrievalPrimaryReaderDecision:
+    """The sole closed, immutable, content-free ordinary reader authority.
+
+    The reader class is a pure function of the exact reconstructed durable
+    state: Primary alone before the durable reader fence, neither authority from
+    that fence until the exact finalized transfer receipt, and Subjective alone
+    afterwards. There is no dual-read interval, no precedence, and no fallback
+    in either direction.
+    """
+
+    schema_version: int
+    state: CutoverState
+    reader_class: PrimaryReaderClass
+    recovery_required: bool
+    reasons: tuple[str, ...]
+    runtime_private_evidence_omitted: bool
+
+    def __post_init__(self) -> None:
+        if (
+            type(self.schema_version) is not int
+            or self.schema_version != PRIMARY_READER_DECISION_SCHEMA_VERSION
+        ):
+            raise _reader_invalid("schema_unsupported")
+        if type(self.state) is not str or self.state not in (
+            *_FORWARD_STATES, RECOVERY_REQUIRED
+        ):
+            raise _reader_invalid("state_invalid")
+        if type(self.reader_class) is not str or self.reader_class not in AUTHORITY_CLASSES:
+            raise _reader_invalid("class_invalid")
+        if type(self.recovery_required) is not bool or (
+            self.runtime_private_evidence_omitted is not True
+        ):
+            raise _reader_invalid("boolean_invalid")
+        if (
+            type(self.reasons) is not tuple
+            or len(self.reasons) > _MAX_PRIMARY_WRITER_REASONS
+            or not all(safe_token(reason) for reason in self.reasons)
+        ):
+            raise _reader_invalid("reasons_invalid")
+        if self.recovery_required != (self.state == RECOVERY_REQUIRED):
+            raise _reader_invalid("recovery_mismatch")
+        if self.reader_class != _reader_class(self.state):
+            raise _reader_invalid("class_state_mismatch")
+        if (self.reader_class == "primary_only") != (not self.reasons):
+            raise _reader_invalid("reasons_invalid")
+
+    def to_dict(self) -> dict[str, object]:
+        value = {field: getattr(self, field) for field in self.__dataclass_fields__}
+        return {**value, "reasons": list(self.reasons)}
+
+    def __repr__(self) -> str:
+        return f"SubjectiveMemRetrievalPrimaryReaderDecision({self.to_dict()})"
+
+
+def _reader_class(state: str) -> PrimaryReaderClass:
+    """Map one exact reconstructed state to the one ordinary served authority."""
+
+    if state == RECOVERY_REQUIRED or state not in _FORWARD_STATES:
+        return "neither"
+    index = _FORWARD_STATES.index(state)
+    if index < READER_FENCE_INDEX:
+        return "primary_only"
+    return "subjective_only" if index >= RECEIPT_INDEX else "neither"
+
+
 def resolve_subjective_mem_retrieval_primary_writer_decision(
     config: RelayLMConfig,
 ) -> SubjectiveMemRetrievalPrimaryWriterDecision:
@@ -439,32 +562,57 @@ def resolve_subjective_mem_retrieval_primary_writer_decision(
 
     ``primary_only`` is explicit mode-derived authority: the complete empty
     cutover tuple binds ``primary_stable`` with no store, store root,
-    binding, or durable read. ``rehearsal`` reconstructs the exact chain
-    through the existing validation. Anything else fails closed.
+    binding, or durable read. ``rehearsal`` and ``subjective_only`` reconstruct
+    the exact chain through the existing validation. Anything else fails closed.
     """
+    state, reasons = _state_from_config(config, prefix="cutover_writer")
+    return _writer_decision(state, reasons)
+
+
+def resolve_subjective_mem_retrieval_primary_reader_decision(
+    config: RelayLMConfig,
+) -> SubjectiveMemRetrievalPrimaryReaderDecision:
+    """Resolve the one ordinary reader decision this module alone owns.
+
+    Configuration is a deployment request, never authority: requesting
+    ``subjective_only`` without an exact finalized transfer receipt in the
+    durable chain still yields ``neither``, and a missing, partial, stale,
+    divergent, or unsupported tuple or chain fails closed.
+    """
+    state, reasons = _state_from_config(config, prefix="cutover_reader")
+    return _reader_decision(state, reasons)
+
+
+def _state_from_config(config: object, *, prefix: str) -> tuple[str, tuple[str, ...]]:
+    """Reconstruct the exact durable state the configured tuple names."""
+
     if type(config) is not RelayLMConfig:
-        return _writer_decision("recovery_required", ("cutover_writer_config_invalid",))
+        return RECOVERY_REQUIRED, (f"{prefix}_config_invalid",)
     values = tuple(getattr(config, field) for field in _CUTOVER_CONFIG_FIELDS)
-    disagreement = ("cutover_writer_config_disagreement",)
+    projection_root = getattr(config, _PROJECTION_ROOT_FIELD, None)
+    disagreement = (f"{prefix}_config_disagreement",)
     mode = config.subjective_mem_retrieval_cutover_mode
     if mode == "primary_only":
-        if any(value is not None for value in values):
-            return _writer_decision("recovery_required", disagreement)
-        return _writer_decision("primary_stable", ())
-    if mode != "rehearsal" or any(value is None for value in values):
-        return _writer_decision("recovery_required", disagreement)
+        if any(value is not None for value in values) or projection_root is not None:
+            return RECOVERY_REQUIRED, disagreement
+        return "primary_stable", ()
+    if mode not in {"rehearsal", "subjective_only"} or any(
+        value is None for value in values
+    ):
+        return RECOVERY_REQUIRED, disagreement
+    if (projection_root is None) != (mode == "rehearsal"):
+        return RECOVERY_REQUIRED, disagreement
     try:
         binding = _binding_from_config(config)
         store = EvidenceRecordStore(
             config.subjective_mem_retrieval_cutover_store_root or ""
         )
     except (SubjectiveMemRetrievalCutoverError, OSError, TypeError, ValueError):
-        return _writer_decision("recovery_required", ("cutover_writer_binding_invalid",))
-    state, reasons = _reconstruct(store, binding)
-    if reasons or state == "recovery_required":
-        unsupported = ("cutover_writer_state_unsupported",)
-        return _writer_decision("recovery_required", reasons or unsupported)
-    return _writer_decision(state, ())
+        return RECOVERY_REQUIRED, (f"{prefix}_binding_invalid",)
+    state, reasons = reconstruct_cutover_chain(store, binding.to_dict())
+    if reasons or state == RECOVERY_REQUIRED:
+        return RECOVERY_REQUIRED, reasons or (f"{prefix}_state_unsupported",)
+    return state, ()
 
 
 def _binding_from_config(config: RelayLMConfig) -> SubjectiveMemRetrievalCutoverBinding:
@@ -477,6 +625,21 @@ def _binding_from_config(config: RelayLMConfig) -> SubjectiveMemRetrievalCutover
             for field in (*_TOKEN_FIELDS, *_DIGEST_FIELDS, _PROJECTION_GENERATION_FIELD)
         },
     )
+
+
+def subjective_mem_retrieval_cutover_binding_from_config(
+    config: object,
+) -> SubjectiveMemRetrievalCutoverBinding | None:
+    """Return the exact configured binding, or ``None`` for any partial tuple."""
+
+    if type(config) is not RelayLMConfig or any(
+        getattr(config, field) is None for field in _CUTOVER_CONFIG_FIELDS
+    ):
+        return None
+    try:
+        return _binding_from_config(config)
+    except (SubjectiveMemRetrievalCutoverError, TypeError):
+        return None
 
 
 def primary_writer_decision_permits_write(decision: object) -> bool:
@@ -497,14 +660,30 @@ def primary_writer_decision_permits_write(decision: object) -> bool:
     )
 
 
+def subjective_mem_retrieval_primary_reader_class(decision: object) -> PrimaryReaderClass:
+    """Return the one served authority class of an exact immutable reader decision.
+
+    Missing, foreign-typed, and tampered values fail closed to ``neither`` here --
+    the only place the ordinary route may ask -- so no caller can obtain Primary
+    or Subjective serving from anything but a valid decision.
+    """
+    if type(decision) is not SubjectiveMemRetrievalPrimaryReaderDecision:
+        return "neither"
+    try:
+        decision.__post_init__()
+    except SubjectiveMemRetrievalCutoverError:
+        return "neither"
+    return decision.reader_class
+
+
 def _writer_decision(
-    state: CutoverState, reasons: tuple[str, ...]
+    state: str, reasons: tuple[str, ...]
 ) -> SubjectiveMemRetrievalPrimaryWriterDecision:
-    recovery = state == "recovery_required"
+    recovery = state == RECOVERY_REQUIRED
     permitted = state in _PRIMARY_WRITER_PERMITTED_STATES and not recovery
     return SubjectiveMemRetrievalPrimaryWriterDecision(
         PRIMARY_WRITER_DECISION_SCHEMA_VERSION,
-        state,
+        state,  # type: ignore[arg-type]
         PRIMARY_WRITER_PERMITTED if permitted else PRIMARY_WRITER_REJECTED,
         recovery,
         () if permitted else (reasons or (_PRIMARY_WRITER_FENCED_REASON,)),
@@ -512,8 +691,26 @@ def _writer_decision(
     )
 
 
+def _reader_decision(
+    state: str, reasons: tuple[str, ...]
+) -> SubjectiveMemRetrievalPrimaryReaderDecision:
+    reader_class = _reader_class(state)
+    return SubjectiveMemRetrievalPrimaryReaderDecision(
+        PRIMARY_READER_DECISION_SCHEMA_VERSION,
+        state,  # type: ignore[arg-type]
+        reader_class,
+        state == RECOVERY_REQUIRED,
+        () if reader_class == "primary_only" else (reasons or (_PRIMARY_READER_FENCED_REASON,)),
+        True,
+    )
+
+
 def _decision_invalid(reason: str) -> SubjectiveMemRetrievalCutoverError:
     return SubjectiveMemRetrievalCutoverError(f"primary_writer_decision_{reason}")
+
+
+def _reader_invalid(reason: str) -> SubjectiveMemRetrievalCutoverError:
+    return SubjectiveMemRetrievalCutoverError(f"primary_reader_decision_{reason}")
 
 
 def rehearse_subjective_mem_retrieval_cutover(
@@ -523,17 +720,14 @@ def rehearse_subjective_mem_retrieval_cutover(
     request: SubjectiveMemRetrievalCutoverRequest,
 ) -> SubjectiveMemRetrievalCutoverResult:
     """Reconstruct and validate only; never commit or authorize Subjective serving."""
-    if type(store) is not EvidenceRecordStore:
-        raise SubjectiveMemRetrievalCutoverError("cutover_store_invalid")
-    if type(binding) is not SubjectiveMemRetrievalCutoverBinding:
-        raise SubjectiveMemRetrievalCutoverError("cutover_binding_invalid")
-    if type(request) is not SubjectiveMemRetrievalCutoverRequest:
-        raise SubjectiveMemRetrievalCutoverError("cutover_request_invalid")
-    state, reasons = _reconstruct(store, binding)
+    _validate_inputs(store, binding, request)
+    if request.requested_mode == "subjective_only":
+        raise SubjectiveMemRetrievalCutoverError("cutover_rehearsal_mode_unsupported")
+    state, reasons = reconstruct_cutover_chain(store, binding.to_dict())
     if state not in {"primary_stable", "rehearsal_ready"} or reasons:
         return _result(
             request.requested_mode,
-            "recovery_required",
+            RECOVERY_REQUIRED,
             reasons or ("cutover_state_not_r1_supported",),
         )
     if request.requested_mode == "rehearsal":
@@ -541,148 +735,115 @@ def rehearse_subjective_mem_retrieval_cutover(
     return _result("primary_only", state, ())
 
 
-def _reconstruct(
-    store: EvidenceRecordStore, binding: SubjectiveMemRetrievalCutoverBinding
-) -> tuple[CutoverState, tuple[str, ...]]:
-    try:
-        with store.transaction(binding.evidence_space_id) as transaction:
-            inventory = transaction.list_logs(log_kind=CUTOVER_LOG_KIND, limit=2)
-    except (OSError, RuntimeError, ValueError):
-        return "recovery_required", ("cutover_store_read_failed",)
-    if not inventory:
-        return "primary_stable", ()
-    if len(inventory) != 1 or inventory[0][0] != CUTOVER_LOG_KEY:
-        return "recovery_required", ("cutover_multiple_chains",)
-    return _validate_chain(inventory[0][1], binding)
+def activate_subjective_mem_retrieval_cutover(
+    *,
+    store: EvidenceRecordStore,
+    binding: SubjectiveMemRetrievalCutoverBinding,
+    request: SubjectiveMemRetrievalCutoverRequest,
+    readiness: object,
+) -> SubjectiveMemRetrievalCutoverResult:
+    """Perform the one governed authority transfer, forward-only and idempotent.
 
-
-def _validate_chain(
-    records: list[dict], binding: SubjectiveMemRetrievalCutoverBinding
-) -> tuple[CutoverState, tuple[str, ...]]:
-    if not records or len(records) > len(_FORWARD_STATES):
-        return "recovery_required", ("cutover_chain_length_invalid",)
-    expected_binding = binding.to_dict()
-    expected_binding_digest = canonical_digest(expected_binding)
-    previous_digest: str | None = None
-    seen: set[str] = set()
-    for index, record in enumerate(records):
-        reason = _validate_record(
-            record,
-            index,
-            expected_binding,
-            expected_binding_digest,
-            previous_digest,
-            seen,
+    The exact readiness proof is revalidated against this binding before any
+    durable write. Each step is one create-or-verify durable transaction, and
+    Subjective-reader enablement publishes atomically with the finalized transfer
+    receipt, so no reconstructible state ever holds only the first. A replay
+    after a lost response returns the same exact state and writes nothing new;
+    a divergent chain fails closed and is never repaired or rolled back.
+    """
+    _validate_inputs(store, binding, request)
+    if request.requested_mode != "subjective_only":
+        raise SubjectiveMemRetrievalCutoverError("cutover_activation_mode_unsupported")
+    reasons = _readiness_proof_reasons(
+        binding, _rehearsal_specification(binding), readiness
+    )
+    if reasons:
+        return _result("subjective_only", RECOVERY_REQUIRED, reasons)
+    state, reasons = reconstruct_cutover_chain(store, binding.to_dict())
+    if reasons or state == RECOVERY_REQUIRED:
+        return _result(
+            "subjective_only",
+            RECOVERY_REQUIRED,
+            reasons or ("cutover_activation_state_unsupported",),
         )
-        if reason:
-            return "recovery_required", (reason,)
-        previous_digest = record["record_digest"]
-        seen.add(record["state"])
-    return records[-1]["state"], ()
+    for step in ACTIVATION_STEPS:
+        if _FORWARD_STATES.index(state) >= _FORWARD_STATES.index(step[-1]):
+            continue
+        state, reasons = advance_cutover_chain(store, binding.to_dict(), step)
+        if reasons or state == RECOVERY_REQUIRED:
+            return _result(
+                "subjective_only",
+                RECOVERY_REQUIRED,
+                reasons or ("cutover_activation_failed",),
+            )
+    return _result("subjective_only", state, ())
 
 
-def _validate_record(
-    record: object,
-    index: int,
-    binding: dict[str, object],
-    binding_digest: str,
-    previous_digest: str | None,
-    seen: set[str],
-) -> str | None:
-    if type(record) is not dict or tuple(sorted(record)) != tuple(
-        sorted(_RECORD_FIELDS)
-    ):
-        return "cutover_record_schema_invalid"
-    state = record.get("state")
-    if record.get("schema_version") != CUTOVER_SCHEMA_VERSION:
-        return "cutover_record_schema_unsupported"
-    if state != _FORWARD_STATES[index] or state in seen:
-        return "cutover_record_predecessor_invalid"
-    expected_predecessor = None if index == 0 else _FORWARD_STATES[index - 1]
-    if (
-        record.get("predecessor_state") != expected_predecessor
-        or record.get("predecessor_digest") != previous_digest
-    ):
-        return "cutover_record_predecessor_invalid"
-    if (
-        record.get("binding") != binding
-        or record.get("binding_digest") != binding_digest
-    ):
-        return "cutover_record_binding_mismatch"
-    unsigned = {
-        field: record[field] for field in _RECORD_FIELDS if field != "record_digest"
-    }
-    if record.get("record_digest") != canonical_digest(unsigned):
-        return "cutover_record_digest_invalid"
-    return None
+def _validate_inputs(
+    store: object, binding: object, request: object
+) -> None:
+    """Refuse anything that is not one exact store, binding, and request triple."""
+
+    if type(store) is not EvidenceRecordStore:
+        raise SubjectiveMemRetrievalCutoverError("cutover_store_invalid")
+    if type(binding) is not SubjectiveMemRetrievalCutoverBinding:
+        raise SubjectiveMemRetrievalCutoverError("cutover_binding_invalid")
+    if type(request) is not SubjectiveMemRetrievalCutoverRequest:
+        raise SubjectiveMemRetrievalCutoverError("cutover_request_invalid")
 
 
 def _result(
-    mode: RequestedMode, state: CutoverState, reasons: tuple[str, ...]
+    mode: RequestedMode, state: str, reasons: tuple[str, ...]
 ) -> SubjectiveMemRetrievalCutoverResult:
-    recovery = state == "recovery_required"
+    recovery = state == RECOVERY_REQUIRED
+    index = None if recovery else _FORWARD_STATES.index(state)
+    serving = index is not None and index >= RECEIPT_INDEX
     diagnostics = SubjectiveMemRetrievalCutoverDiagnostics(
-        state,
-        state == "rehearsal_ready",
+        state,  # type: ignore[arg-type]
+        state == "rehearsal_ready" or serving,
         0,
         0,
         0,
         False,
-        False,
-        False,
-        "not_applicable",
+        index is not None and index >= READER_FENCE_INDEX,
+        index is not None and index >= WRITER_FENCE_INDEX,
+        "subjective_only" if serving else ("fail_closed" if recovery else "not_applicable"),
         recovery,
-        False,
+        serving,
     )
     return SubjectiveMemRetrievalCutoverResult(
-        mode, "neither" if recovery else "primary_only", state, reasons, diagnostics
-    )
-
-
-def _safe_token(value: object) -> bool:
-    return (
-        type(value) is str
-        and 1 <= len(value) <= 128
-        and all(character.isalnum() or character in "._-" for character in value)
-    )
-
-
-def _sha256(value: object) -> bool:
-    return (
-        type(value) is str
-        and len(value) == 64
-        and all(character in "0123456789abcdef" for character in value)
-    )
-
-
-def _projection_generation_id(value: object) -> bool:
-    prefix = "smretrievalgen_"
-    return (
-        type(value) is str
-        and value.startswith(prefix)
-        and _sha256(value[len(prefix) :])
+        mode, _reader_class(state), state, reasons, diagnostics  # type: ignore[arg-type]
     )
 
 
 __all__ = [
+    "AUTHORITY_CLASSES",
     "CUTOVER_AUTHORITY_DOMAIN",
     "CUTOVER_LOG_KEY",
     "CUTOVER_LOG_KIND",
     "CUTOVER_SCHEMA_VERSION",
     "CUTOVER_TRANSFERRED_SCOPE",
+    "PRIMARY_READER_DECISION_SCHEMA_VERSION",
     "PRIMARY_WRITER_DECISION_SCHEMA_VERSION",
     "PRIMARY_WRITER_PERMITTED",
     "PRIMARY_WRITER_REJECTED",
+    "PROBE_CLASSES",
+    "REQUESTED_MODES",
     "SubjectiveMemRetrievalCutoverBinding",
     "SubjectiveMemRetrievalCutoverDiagnostics",
     "SubjectiveMemRetrievalCutoverError",
     "SubjectiveMemRetrievalCutoverRequest",
     "SubjectiveMemRetrievalCutoverResult",
+    "SubjectiveMemRetrievalPrimaryReaderDecision",
     "SubjectiveMemRetrievalPrimaryWriterDecision",
     "SubjectiveMemRetrievalRehearsalReadiness",
+    "activate_subjective_mem_retrieval_cutover",
     "evaluate_subjective_mem_retrieval_rehearsal_readiness",
     "primary_writer_decision_permits_write",
     "rehearse_subjective_mem_retrieval_cutover",
+    "resolve_subjective_mem_retrieval_primary_reader_decision",
     "resolve_subjective_mem_retrieval_primary_writer_decision",
+    "subjective_mem_retrieval_cutover_binding_from_config",
+    "subjective_mem_retrieval_primary_reader_class",
     "subjective_mem_retrieval_rehearsal_readiness_id",
 ]

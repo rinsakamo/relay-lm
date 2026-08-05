@@ -36,8 +36,19 @@ from relaylm.relaymem_retrieval import (
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
 from relaylm.relayrun import new_run_id
 from relaylm.routing import resolve_route
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_reader_decision,
+)
 
 import asyncio
+
+
+def _primary_only_reader_decision(config):
+    """The exact decision a default (pre-cutover) deployment carries."""
+
+    decision = resolve_subjective_mem_retrieval_primary_reader_decision(config)
+    assert decision.reader_class == "primary_only"
+    return decision
 
 BACKEND_BASE_URL = "http://127.0.0.1:8000/v1"
 
@@ -143,6 +154,9 @@ def test_run_relaymem_retrieval_stage_matches_manual_build(tmp_path) -> None:
         snippet_budget=config.memory.snippet_budget,
         chars_per_token=config.memory.chars_per_token,
     )
+    # The ordinary stage additionally records which single memory authority the
+    # carried RT-1D reader decision named for this request.
+    expected_retrieval_artifact["ordinary_memory_authority"] = "primary_only"
 
     actual_store_diagnostics, actual_retrieval_artifact = run_relaymem_retrieval_stage(
         config=config,
@@ -151,6 +165,8 @@ def test_run_relaymem_retrieval_stage_matches_manual_build(tmp_path) -> None:
         relayscn_scene_policy_artifact=relayscn_artifact,
         relayint_intent_artifact=relayint_artifact,
         messages=messages,
+        primary_reader_decision=_primary_only_reader_decision(config),
+        request_correlation="run-1",
     )
 
     assert actual_store_diagnostics == expected_store_diagnostics
@@ -172,6 +188,8 @@ def test_run_relaymem_retrieval_stage_matches_manual_build(tmp_path) -> None:
             relayscn_scene_policy_artifact=relayscn_artifact,
             relayint_intent_artifact=relayint_artifact,
             messages=messages,
+            primary_reader_decision=_primary_only_reader_decision(config),
+            request_correlation="run-1",
             offload=True,
         )
 

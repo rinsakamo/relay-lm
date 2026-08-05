@@ -28,6 +28,8 @@ from relaylm.subjective_mem_retrieval_cutover import (
     primary_writer_decision_permits_write,
     rehearse_subjective_mem_retrieval_cutover,
     resolve_subjective_mem_retrieval_primary_writer_decision,
+    evaluate_subjective_mem_retrieval_rehearsal_readiness,
+    subjective_mem_retrieval_rehearsal_readiness_id,
 )
 
 _DIGEST = "a" * 64
@@ -205,7 +207,9 @@ def test_binding_is_immutable_closed_and_canonical() -> None:
     binding = _binding()
     with pytest.raises(dataclasses.FrozenInstanceError):
         binding.deployment_id = "changed"  # type: ignore[misc]
-    assert binding.canonical_bytes() == _binding().canonical_bytes()
+    assert canonical_digest(binding.to_dict()) == canonical_digest(
+        _binding().to_dict()
+    )
     assert SubjectiveMemRetrievalCutoverBinding.from_dict(binding.to_dict()) == binding
     assert "aaaa" not in repr(binding)
     with pytest.raises(SubjectiveMemRetrievalCutoverError, match="schema_invalid"):
@@ -391,7 +395,7 @@ def test_primary_only_binds_primary_stable_permit_with_no_store_access(
         raise AssertionError("primary_only_must_not_touch_the_evidence_store")
 
     monkeypatch.setattr(owner, "EvidenceRecordStore", _forbidden)
-    monkeypatch.setattr(owner, "_reconstruct", _forbidden)
+    monkeypatch.setattr(owner, "reconstruct_cutover_chain", _forbidden)
     decision = resolve_subjective_mem_retrieval_primary_writer_decision(_config())
     assert decision == _decision()
     assert primary_writer_decision_permits_write(decision)
@@ -416,7 +420,14 @@ def test_every_complete_pre_writer_fence_state_permits(tmp_path: Path, count: in
     assert primary_writer_decision_permits_write(decision)
 
 
-@pytest.mark.parametrize("count", range(len(_PRE_FENCE_STATES) + 1, len(_STATES) + 1))
+@pytest.mark.parametrize(
+    "count",
+    [
+        count
+        for count in range(len(_PRE_FENCE_STATES) + 1, len(_STATES) + 1)
+        if _STATES[count - 1] != "subjective_reader_enabled"
+    ],
+)
 def test_writer_fence_and_every_later_state_rejects(tmp_path: Path, count: int) -> None:
     decision = _seeded_rehearsal_decision(tmp_path, count)
     assert decision.state == _STATES[count - 1]
@@ -424,6 +435,20 @@ def test_writer_fence_and_every_later_state_rejects(tmp_path: Path, count: int) 
     assert decision.writer_class == PRIMARY_WRITER_REJECTED
     assert decision.recovery_required is False
     assert decision.reasons == ("cutover_primary_writer_fenced",)
+    assert not primary_writer_decision_permits_write(decision)
+
+
+def test_a_chain_ending_at_reader_enablement_is_never_reconstructible(
+    tmp_path: Path,
+) -> None:
+    """Enablement and the finalized receipt publish atomically, so a chain that
+    holds only the first is partial durable state, not an accepted state."""
+
+    count = _STATES.index("subjective_reader_enabled") + 1
+    decision = _seeded_rehearsal_decision(tmp_path, count)
+    assert decision.state == "recovery_required"
+    assert decision.recovery_required is True
+    assert decision.reasons == ("cutover_activation_pair_incomplete",)
     assert not primary_writer_decision_permits_write(decision)
 
 
@@ -612,16 +637,36 @@ def test_resolver_dependency_direction_creates_no_cycle() -> None:
         "__future__",
         "dataclasses",
         "typing",
+        "._subjective_mem_retrieval_cutover_activation",
         ".config",
         ".evidence_common",
         ".evidence_store",
         ".subjective_mem_retrieval_rehearsal",
     }
+    # The private mechanics owners never import back, so the direction is one-way.
+    for private in (
+        "relaylm/_subjective_mem_retrieval_cutover_activation.py",
+        "relaylm/_subjective_mem_retrieval_runtime_projection.py",
+    ):
+        imported = _imported_modules(private)
+        assert ".subjective_mem_retrieval_cutover" not in imported
+        assert ".config" not in imported
+    assert ".subjective_mem_retrieval_selection" not in _imported_modules(
+        "relaylm/_subjective_mem_retrieval_runtime_projection.py"
+    )
 
 
 def test_structure_and_immutable_store() -> None:
+    # The RT-1D-R4 cutover-facade structural budget amendment replaced the
+    # roughly-700 gate with one measured, RT-1D-R4-only strict-below-1000 gate;
+    # each private mechanics owner stays below roughly 600 lines.
     module = Path("relaylm/subjective_mem_retrieval_cutover.py")
-    assert len(module.read_text().splitlines()) < 700
+    assert len(module.read_text().splitlines()) < 1000
+    for private in (
+        "relaylm/_subjective_mem_retrieval_cutover_activation.py",
+        "relaylm/_subjective_mem_retrieval_runtime_projection.py",
+    ):
+        assert len(Path(private).read_text().splitlines()) < 600
     import relaylm.subjective_mem_retrieval_cutover as owner
 
     assert (
@@ -644,3 +689,329 @@ def _tree_digest(root: Path) -> str:
         digest.update(str(path.relative_to(root)).encode())
         digest.update(path.read_bytes())
     return digest.hexdigest()
+
+
+# ---------------------------------------------------------------------------
+# RT-1D-R4 requested mode, ordinary reader decision, and one-authority
+# activation. Configuration is a deployment request throughout: only the exact
+# finalized durable transfer receipt ever authorizes Subjective serving.
+# ---------------------------------------------------------------------------
+
+from relaylm._subjective_mem_retrieval_cutover_activation import (  # noqa: E402
+    ACTIVATION_STEPS,
+    advance_cutover_chain,
+)
+from relaylm.subjective_mem_retrieval import (  # noqa: E402
+    SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
+    SubjectiveMemRetrievalBoundary,
+    SubjectiveMemRetrievalRequest,
+)
+from relaylm.subjective_mem_retrieval_characterization import (  # noqa: E402
+    SubjectiveMemRetrievalPrimaryServedMetrics,
+)
+from relaylm.subjective_mem_retrieval_cutover import (  # noqa: E402
+    SubjectiveMemRetrievalPrimaryReaderDecision,
+    activate_subjective_mem_retrieval_cutover,
+    resolve_subjective_mem_retrieval_primary_reader_decision,
+    subjective_mem_retrieval_primary_reader_class,
+)
+from relaylm.subjective_mem_retrieval_projection import (  # noqa: E402
+    build_subjective_mem_retrieval_projection,
+)
+import relaylm.subjective_mem_retrieval_rehearsal as _rehearsal  # noqa: E402
+from test_subjective_mem_retrieval_projection import _one_active  # noqa: E402
+
+_NEITHER_STATES = (
+    "primary_reader_fenced",
+    "primary_writer_fenced",
+    "subjective_generation_bound",
+)
+_SERVING_STATES = (
+    "transfer_receipt_finalized",
+    "post_transfer_validated",
+    "retirement_complete",
+)
+
+
+def _subjective_config(tmp_path: Path, **changes: object) -> RelayLMConfig:
+    values = _config_tuple(tmp_path / "store")
+    values["subjective_mem_retrieval_cutover_mode"] = "subjective_only"
+    values["subjective_mem_retrieval_projection_root"] = str(tmp_path / "projection")
+    values.update(changes)
+    return _config(values)
+
+
+def test_subjective_only_requires_the_one_distinct_projection_root(
+    tmp_path: Path,
+) -> None:
+    assert _subjective_config(tmp_path).subjective_mem_retrieval_projection_root
+    values = _config_tuple(tmp_path / "store")
+    values["subjective_mem_retrieval_cutover_mode"] = "subjective_only"
+    with pytest.raises(ValueError, match="requires_projection_root"):
+        _config(values)
+    with pytest.raises(ValueError, match="projection_root_invalid"):
+        _subjective_config(tmp_path, subjective_mem_retrieval_projection_root="relative")
+    with pytest.raises(ValueError, match="projection_root_not_distinct"):
+        _subjective_config(
+            tmp_path,
+            subjective_mem_retrieval_projection_root=str(tmp_path / "store"),
+        )
+
+
+@pytest.mark.parametrize("mode", ["primary_only", "rehearsal"])
+def test_no_other_mode_may_carry_the_ordinary_projection_root(
+    tmp_path: Path, mode: str
+) -> None:
+    values = _config_tuple(tmp_path / "store") if mode == "rehearsal" else {}
+    values = {
+        **values,
+        "subjective_mem_retrieval_cutover_mode": mode,
+        "subjective_mem_retrieval_projection_root": str(tmp_path / "projection"),
+    }
+    expected = (
+        "requires_empty_tuple"
+        if mode == "primary_only"
+        else "projection_root_requires_subjective_only"
+    )
+    with pytest.raises(ValueError, match=expected):
+        _config(values)
+
+
+def _reader_decision(tmp_path: Path, count: int) -> SubjectiveMemRetrievalPrimaryReaderDecision:
+    """Seed an exact chain of ``count`` states, then resolve the reader decision."""
+
+    config = _subjective_config(tmp_path / f"chain-{count}")
+    root = config.subjective_mem_retrieval_cutover_store_root
+    assert root is not None
+    binding = _binding()
+    _seed(EvidenceRecordStore(root), binding, _records(binding, count))
+    return resolve_subjective_mem_retrieval_primary_reader_decision(config)
+
+
+@pytest.mark.parametrize("count", range(1, _STATES.index("primary_reader_fenced") + 1))
+def test_primary_alone_serves_before_the_durable_reader_fence(
+    tmp_path: Path, count: int
+) -> None:
+    decision = _reader_decision(tmp_path, count)
+    assert decision.state == _STATES[count - 1]
+    assert decision.reader_class == "primary_only"
+    assert decision.reasons == ()
+    assert subjective_mem_retrieval_primary_reader_class(decision) == "primary_only"
+
+
+@pytest.mark.parametrize("state", _NEITHER_STATES)
+def test_neither_authority_serves_between_the_reader_fence_and_the_receipt(
+    tmp_path: Path, state: str
+) -> None:
+    decision = _reader_decision(tmp_path, _STATES.index(state) + 1)
+    assert decision.state == state
+    assert decision.reader_class == "neither"
+    assert decision.reasons == ("cutover_primary_reader_fenced",)
+
+
+@pytest.mark.parametrize("state", _SERVING_STATES)
+def test_only_the_exact_finalized_receipt_authorizes_subjective_serving(
+    tmp_path: Path, state: str
+) -> None:
+    decision = _reader_decision(tmp_path, _STATES.index(state) + 1)
+    assert decision.state == state
+    assert decision.reader_class == "subjective_only"
+    assert subjective_mem_retrieval_primary_reader_class(decision) == "subjective_only"
+
+
+def test_configuration_alone_never_serves_subjective(tmp_path: Path) -> None:
+    """A requested `subjective_only` deployment with no durable chain at all is
+    still exactly Primary; configuration is a request, never authority."""
+
+    decision = resolve_subjective_mem_retrieval_primary_reader_decision(
+        _subjective_config(tmp_path)
+    )
+    assert (decision.state, decision.reader_class) == ("primary_stable", "primary_only")
+
+
+@pytest.mark.parametrize("mutation", ["tamper", "skip", "binding"])
+def test_a_divergent_chain_fails_closed_for_the_reader(
+    tmp_path: Path, mutation: str
+) -> None:
+    config = _subjective_config(tmp_path / mutation)
+    root = config.subjective_mem_retrieval_cutover_store_root
+    assert root is not None
+    binding = _binding()
+    records = _records(binding, len(_STATES))
+    if mutation == "tamper":
+        records[-1]["record_digest"] = "0" * 64
+    elif mutation == "skip":
+        del records[3]
+    else:
+        records[-1]["binding_digest"] = "0" * 64
+    _seed(EvidenceRecordStore(root), binding, records)
+    decision = resolve_subjective_mem_retrieval_primary_reader_decision(config)
+    assert decision.reader_class == "neither"
+    assert decision.recovery_required is True
+    assert subjective_mem_retrieval_primary_reader_class(decision) == "neither"
+
+
+def test_only_a_valid_decision_value_can_release_an_authority() -> None:
+    for forged in (None, "subjective_only", object(), _decision()):
+        assert subjective_mem_retrieval_primary_reader_class(forged) == "neither"
+
+
+def _activation_inputs(tmp_path: Path):
+    """Build one exact binding whose readiness proof the R3 coordinator produces."""
+
+    _revision, _page, _committed, source = _one_active()
+    projection, reasons = build_subjective_mem_retrieval_projection(source)
+    assert reasons == () and projection is not None
+    request = SubjectiveMemRetrievalRequest(
+        character_id=source.character_id,
+        workspace_authority_digest=source.workspace_authority_digest,
+        admitted_scope_binding_digest=source.admitted_scope_binding_digest,
+        query_plan_digest="c" * 64,
+        request_correlation_digest="d" * 64,
+        projection_generation_id=projection.manifest.projection_generation_id,
+        projection_manifest_digest=projection.manifest.manifest_digest,
+        memory_kinds=("episodic", "semantic"),
+        candidate_limit=8,
+        token_budget=256,
+        policy_revision=SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
+        boundary=SubjectiveMemRetrievalBoundary(),
+    )
+    primary = SubjectiveMemRetrievalPrimaryServedMetrics(
+        attempted=True, candidate_count=len(projection.rows), selected_count=0,
+        latency_class="within_bound",
+    )
+    characterization, reasons = _rehearsal._characterize(
+        source, request, projection, projection, primary, "within_bound"
+    )
+    assert reasons == () and characterization is not None
+    identity = {
+        "evidence_space_id": source.evidence_space_id,
+        "projection_generation_id": source.projection_generation_id,
+        "projection_source_digest": source.source_snapshot_digest,
+    }
+    partial = _binding(readiness_id="pending", **identity)
+    readiness_id = subjective_mem_retrieval_rehearsal_readiness_id(
+        partial, projection, characterization
+    )
+    binding = _binding(readiness_id=readiness_id, **identity)
+    rehearsal_root = tmp_path / "rehearsal"
+    rehearsal_root.mkdir()
+    values = _config_tuple(tmp_path / "cutover")
+    values.update(
+        {
+            f"subjective_mem_retrieval_cutover_{name}": value
+            for name, value in {**identity, "readiness_id": readiness_id}.items()
+        }
+    )
+    readiness, reasons = evaluate_subjective_mem_retrieval_rehearsal_readiness(
+        config=_config(values), binding=binding, source=source,
+        projection_root=str(rehearsal_root), request=request, primary=primary,
+        subjective_latency_class="within_bound",
+    )
+    assert reasons == () and readiness is not None
+    return binding, readiness, EvidenceRecordStore(str(tmp_path / "cutover"))
+
+
+def test_activation_publishes_the_whole_chain_and_replays_idempotently(
+    tmp_path: Path,
+) -> None:
+    binding, readiness, store = _activation_inputs(tmp_path)
+    request = SubjectiveMemRetrievalCutoverRequest("subjective_only")
+    result = activate_subjective_mem_retrieval_cutover(
+        store=store, binding=binding, request=request, readiness=readiness
+    )
+    assert result.state == "transfer_receipt_finalized"
+    assert result.authority_class == "subjective_only"
+    assert result.reasons == ()
+    assert result.diagnostics.subjective_serving is True
+    assert result.diagnostics.reader_fence and result.diagnostics.writer_fence
+
+    with store.transaction(binding.evidence_space_id) as transaction:
+        chain = transaction.read_log(log_kind=CUTOVER_LOG_KIND, key=CUTOVER_LOG_KEY)
+    assert [record["state"] for record in chain] == list(
+        _STATES[: _STATES.index("transfer_receipt_finalized") + 1]
+    )
+
+    replay = activate_subjective_mem_retrieval_cutover(
+        store=store, binding=binding, request=request, readiness=readiness
+    )
+    assert replay == result
+    with store.transaction(binding.evidence_space_id) as transaction:
+        assert transaction.read_log(log_kind=CUTOVER_LOG_KIND, key=CUTOVER_LOG_KEY) == chain
+
+
+def test_reader_enablement_and_the_receipt_publish_in_one_transaction(
+    tmp_path: Path,
+) -> None:
+    binding, readiness, store = _activation_inputs(tmp_path)
+    for step in ACTIVATION_STEPS[:-1]:
+        state, reasons = advance_cutover_chain(store, binding.to_dict(), step)
+        assert reasons == () and state == step[-1]
+    assert ACTIVATION_STEPS[-1] == (
+        "subjective_reader_enabled",
+        "transfer_receipt_finalized",
+    )
+    # Nothing has served yet: the last complete state is still pre-receipt.
+    assert _reader_class_of(store, binding) == "neither"
+    state, reasons = advance_cutover_chain(store, binding.to_dict(), ACTIVATION_STEPS[-1])
+    assert reasons == () and state == "transfer_receipt_finalized"
+    assert _reader_class_of(store, binding) == "subjective_only"
+
+
+def _reader_class_of(store: EvidenceRecordStore, binding) -> str:
+    from relaylm._subjective_mem_retrieval_cutover_activation import (
+        reconstruct_cutover_chain,
+    )
+
+    state, reasons = reconstruct_cutover_chain(store, binding.to_dict())
+    assert reasons == ()
+    return "subjective_only" if state == "transfer_receipt_finalized" else "neither"
+
+
+def test_activation_refuses_a_foreign_readiness_proof_before_any_durable_write(
+    tmp_path: Path,
+) -> None:
+    binding, readiness, store = _activation_inputs(tmp_path)
+    for forged in (None, "ready-1", object()):
+        result = activate_subjective_mem_retrieval_cutover(
+            store=store,
+            binding=binding,
+            request=SubjectiveMemRetrievalCutoverRequest("subjective_only"),
+            readiness=forged,
+        )
+        assert result.state == "recovery_required"
+        assert result.authority_class == "neither"
+        assert result.diagnostics.subjective_serving is False
+    foreign = _binding(deployment_id="deployment-2")
+    result = activate_subjective_mem_retrieval_cutover(
+        store=store,
+        binding=foreign,
+        request=SubjectiveMemRetrievalCutoverRequest("subjective_only"),
+        readiness=readiness,
+    )
+    assert result.state == "recovery_required"
+    with store.transaction(binding.evidence_space_id) as transaction:
+        assert not transaction.read_log(log_kind=CUTOVER_LOG_KIND, key=CUTOVER_LOG_KEY)
+
+
+def test_rehearsal_and_activation_never_accept_each_other_s_mode(
+    tmp_path: Path,
+) -> None:
+    binding, readiness, store = _activation_inputs(tmp_path)
+    with pytest.raises(
+        SubjectiveMemRetrievalCutoverError, match="cutover_rehearsal_mode_unsupported"
+    ):
+        rehearse_subjective_mem_retrieval_cutover(
+            store=store,
+            binding=binding,
+            request=SubjectiveMemRetrievalCutoverRequest("subjective_only"),
+        )
+    with pytest.raises(
+        SubjectiveMemRetrievalCutoverError, match="cutover_activation_mode_unsupported"
+    ):
+        activate_subjective_mem_retrieval_cutover(
+            store=store,
+            binding=binding,
+            request=SubjectiveMemRetrievalCutoverRequest("rehearsal"),
+            readiness=readiness,
+        )

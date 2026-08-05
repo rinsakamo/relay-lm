@@ -93,6 +93,7 @@ from relaylm.request_scope import (
 )
 from relaylm.routing import ResolvedRoute
 from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_reader_decision,
     resolve_subjective_mem_retrieval_primary_writer_decision,
 )
 from relaylm.token_budget import estimate_text_tokens
@@ -128,6 +129,9 @@ async def handle_managed_chat_completion(
     if validation.error_response is not None:
         return validation.error_response
     node_timings = {"request_received": _finalize_timing(started_at, started_monotonic)}
+    # The one derivation of each immutable RT-1D authority decision.
+    reader_decision = resolve_subjective_mem_retrieval_primary_reader_decision(config)
+    writer_decision = resolve_subjective_mem_retrieval_primary_writer_decision(config)
     result = await run_managed_chat_pipeline(
         request=request,
         config=config,
@@ -136,6 +140,7 @@ async def handle_managed_chat_completion(
         payload=validation.payload,
         stream_enabled=validation.stream_enabled,
         node_timings=node_timings,
+        primary_reader_decision=reader_decision,
         capture_evidence=capture_evidence_for_user_input,
     )
     if result.get("evidence_rejected"):
@@ -157,8 +162,6 @@ async def handle_managed_chat_completion(
         relayctx_short_term_runtime_injection_preflight=result["preflight"],
     )
     forwarded = result["forwarded"]
-    # The one derivation of the immutable Primary writer decision.
-    writer_decision = resolve_subjective_mem_retrieval_primary_writer_decision(config)
     return await build_managed_chat_response(
         request=request,
         config=config,

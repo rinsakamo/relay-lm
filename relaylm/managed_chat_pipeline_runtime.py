@@ -68,7 +68,7 @@ def _compile_chat_payload_and_capture_context_blocks(
 
 
 async def _initialize_pipeline(request_bundle, capture_evidence):
-    request, config, request_id, route, payload, stream_enabled = request_bundle
+    request, config, request_id, route, payload, stream_enabled, reader = request_bundle
     run_id = new_run_id()
     compiled, blocks = await asyncio.to_thread(
         _compile_chat_payload_and_capture_context_blocks,
@@ -108,6 +108,7 @@ async def _initialize_pipeline(request_bundle, capture_evidence):
     )
     return {
         "run_id": run_id,
+        "primary_reader_decision": reader,
         "compiled": compiled,
         "context": context,
         "identity": identity,
@@ -130,6 +131,8 @@ async def _run_memory_stages(
         relayscn_scene_policy_artifact=scene,
         relayint_intent_artifact=intent,
         messages=_extract_trace_messages(payload),
+        primary_reader_decision=state["primary_reader_decision"],
+        request_correlation=state["run_id"],
         offload=True,
     )
     forwarded, ctx_result, snippet_result = await run_stage(
@@ -234,12 +237,13 @@ async def run_managed_chat_pipeline(
     payload: Mapping[str, Any],
     stream_enabled: bool,
     node_timings: dict[str, Any],
+    primary_reader_decision: object,
     capture_evidence=capture_evidence_for_user_input,
 ) -> dict[str, Any]:
     """Execute the ordered post-validation pipeline exactly once."""
-    state = await _initialize_pipeline(
-        (request, config, request_id, route, payload, stream_enabled), capture_evidence
-    )
+    bundle = (request, config, request_id, route, payload, stream_enabled,
+              primary_reader_decision)
+    state = await _initialize_pipeline(bundle, capture_evidence)
     if state.get("evidence_rejected"):
         return state
     relationship = await run_stage(
