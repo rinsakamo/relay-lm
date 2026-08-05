@@ -51,7 +51,6 @@ from .subjective_mem_retrieval_projection_store import (
 
 RUNTIME_PROJECTION_SPEC_SCHEMA = "relaylm.subjective_mem_retrieval_runtime_projection.v1"
 CURRENT_STATE_LOG_KIND = "subjective_mem_current_state"
-CURRENT_STATE_V2_SCHEMA = "relaylm.subjective_mem_current_state.v2"
 MAX_RUNTIME_SOURCE_ENTRIES = 512
 _MEMORY_KINDS = ("episodic", "semantic")
 _RECEIPT_KINDS = {
@@ -196,9 +195,11 @@ def _acquire_source(
                 return None, reasons
     except (OSError, RuntimeError, ValueError):
         return None, ("subjective_mem_retrieval_runtime_store_read_failed",)
-    workspace = {selector["authority_binding"]["workspace_authority_digest"] for selector in selectors}
-    scopes = {selector["authority_binding"]["scope_binding_digest"] for selector in selectors}
+    workspace = _declared(selectors, "workspace_authority_digest")
+    scopes = _declared(selectors, "scope_binding_digest")
     if len(workspace) != 1 or len(scopes) != 1:
+        # Zero means nothing in the snapshot names an authority to bind to; more
+        # than one means the snapshot spans authorities. Neither is reconciled.
         return None, ("subjective_mem_retrieval_runtime_authority_ambiguous",)
     return (
         SubjectiveMemRetrievalProjectionSource(
@@ -216,57 +217,36 @@ def _acquire_source(
 def _selectors(
     transaction: object, spec: SubjectiveMemRetrievalRuntimeProjectionSpec
 ) -> tuple[list[dict] | None, tuple[str, ...]]:
-    """Enumerate this character's exact retrieval-eligible current selectors."""
+    """Select this character's complete current-selector population by identity.
+
+    This is identity and location resolution only. Lifecycle state, mutation
+    state, retrieval eligibility, revision semantics, and authority exactness
+    are never judged here: a held, hidden, mutation-pending, or
+    retrieval-ineligible current selector still belongs to the fixed snapshot,
+    and the existing RT-1B builder remains the sole semantic evaluator. A
+    foreign selector is skipped only once its character identity has been read
+    safely; anything else stays in scope so the builder can reject it.
+    """
 
     inventory = transaction.list_logs(
         log_kind=CURRENT_STATE_LOG_KIND, limit=MAX_RUNTIME_SOURCE_ENTRIES + 1
     )
     if len(inventory) > MAX_RUNTIME_SOURCE_ENTRIES:
         return None, ("subjective_mem_retrieval_runtime_source_too_large",)
-    selected: list[dict] = []
-    logical: set[str] = set()
-    for _key, records in inventory:
-        if type(records) is not list or len(records) != 1:
-            return None, ("subjective_mem_retrieval_runtime_selector_ambiguous",)
+    selected: list[tuple[str, dict]] = []
+    for key, records in inventory:
+        if type(records) is not list or len(records) != 1 or type(records[0]) is not dict:
+            return None, ("subjective_mem_retrieval_runtime_selector_event_invalid",)
         selector = records[0]
-        if not _eligible(selector, spec.character_id):
+        character = selector.get("character_id")
+        if type(character) is str and character != spec.character_id:
             continue
-        memory_id = selector["memory_id"]
-        if memory_id in logical:
-            return None, ("subjective_mem_retrieval_runtime_selector_duplicated",)
-        logical.add(memory_id)
-        selected.append(selector)
+        if selector.get("memory_state_id") != key:
+            return None, ("subjective_mem_retrieval_runtime_selector_key_mismatch",)
+        selected.append((key, selector))
     if not selected:
         return None, ("subjective_mem_retrieval_runtime_source_empty",)
-    return sorted(selected, key=lambda item: item["memory_state_id"]), ()
-
-
-def _eligible(selector: object, character_id: str) -> bool:
-    """Admit only an exact, authority-bound, retrieval-eligible V2 selector."""
-
-    if type(selector) is not dict or selector.get("schema") != CURRENT_STATE_V2_SCHEMA:
-        return False
-    binding = selector.get("authority_binding")
-    if type(binding) is not dict:
-        return False
-    reference = binding.get("authorization_ref")
-    if type(reference) is not dict:
-        return False
-    return (
-        selector.get("character_id") == character_id
-        and selector.get("retrieval_eligible") is True
-        and selector.get("mutation_state") == "none"
-        and _identifier(selector.get("memory_id"))
-        and _identifier(selector.get("memory_state_id"))
-        and type(selector.get("current_revision")) is int
-        and selector["current_revision"] >= 1
-        and _identifier(binding.get("page_id"))
-        and _digest(binding.get("workspace_authority_digest"))
-        and _digest(binding.get("scope_binding_digest"))
-        and _identifier(binding.get("current_receipt_id"))
-        and reference.get("authority_kind") in _AUTHORIZATION_KINDS
-        and _identifier(reference.get("authority_id"))
-    )
+    return [selector for _key, selector in sorted(selected, key=lambda item: item[0])], ()
 
 
 def _entries(
@@ -279,20 +259,11 @@ def _entries(
     pages: dict[str, bytes] = {}
     entries: list[SubjectiveMemRetrievalProjectionSourceEntry] = []
     for selector in selectors:
-        binding = selector["authority_binding"]
-        reference = binding["authorization_ref"]
-        receipt_kind = _RECEIPT_KINDS[1 if selector["current_revision"] == 1 else 2]
-        receipt = transaction.read_record(
-            record_kind=receipt_kind, record_id=binding["current_receipt_id"]
-        )
-        authorization = transaction.read_record(
-            record_kind=_AUTHORIZATION_KINDS[reference["authority_kind"]],
-            record_id=reference["authority_id"],
-        )
-        if type(receipt) is not dict or type(authorization) is not dict:
-            return None, ("subjective_mem_retrieval_runtime_authority_missing",)
-        image, reasons = _page_bytes(spec, pages, binding["page_id"])
-        if image is None:
+        receipt, authorization, reasons = _authority_records(transaction, selector)
+        if reasons:
+            return None, reasons
+        image, reasons = _entry_page(spec, pages, selector)
+        if reasons:
             return None, reasons
         entries.append(
             SubjectiveMemRetrievalProjectionSourceEntry(
@@ -305,25 +276,107 @@ def _entries(
     return tuple(entries), ()
 
 
+def _authority_records(
+    transaction: object, selector: dict
+) -> tuple[dict, dict, tuple[str, ...]]:
+    """Resolve the exact records this selector names, by location only.
+
+    A selector that names no resolvable receipt or authorization carries empty
+    material, so the builder rejects it as unbound rather than this owner
+    judging it. A named record that is absent or not a record is a dangling
+    durable reference, which is a location failure and fails closed here.
+    """
+
+    reference = _located(selector)
+    if reference is None:
+        return {}, {}, ()
+    receipt_kind, receipt_id, authorization_kind, authorization_id = reference
+    receipt = transaction.read_record(record_kind=receipt_kind, record_id=receipt_id)
+    authorization = transaction.read_record(
+        record_kind=authorization_kind, record_id=authorization_id
+    )
+    if type(receipt) is not dict or type(authorization) is not dict:
+        return {}, {}, ("subjective_mem_retrieval_runtime_authority_missing",)
+    return receipt, authorization, ()
+
+
+def _located(selector: dict) -> tuple[str, str, str, str] | None:
+    """Return the four exact record coordinates this selector names, if any."""
+
+    binding = selector.get("authority_binding")
+    if type(binding) is not dict:
+        return None
+    reference = binding.get("authorization_ref")
+    revision = selector.get("current_revision")
+    if type(reference) is not dict or type(revision) is not int:
+        return None
+    authorization_kind = _AUTHORIZATION_KINDS.get(reference.get("authority_kind"))
+    receipt_id = binding.get("current_receipt_id")
+    authorization_id = reference.get("authority_id")
+    if (
+        authorization_kind is None
+        or not _identifier(receipt_id)
+        or not _identifier(authorization_id)
+    ):
+        return None
+    return (
+        _RECEIPT_KINDS[1 if revision == 1 else 2],
+        receipt_id,
+        authorization_kind,
+        authorization_id,
+    )
+
+
+def _entry_page(
+    spec: SubjectiveMemRetrievalRuntimeProjectionSpec,
+    pages: dict[str, bytes],
+    selector: dict,
+) -> tuple[bytes, tuple[str, ...]]:
+    """Read the canonical page this selector names, by location only."""
+
+    binding = selector.get("authority_binding")
+    page_id = binding.get("page_id") if type(binding) is dict else None
+    if not _identifier(page_id):
+        return b"", ()
+    return _page_bytes(spec, pages, str(page_id))
+
+
+def _declared(selectors: list[dict], field: str) -> set[str]:
+    """Collect the distinct authority values the bound selectors declare."""
+
+    values: set[str] = set()
+    for selector in selectors:
+        binding = selector.get("authority_binding")
+        value = binding.get(field) if type(binding) is dict else None
+        if _digest(value):
+            values.add(str(value))
+    return values
+
+
 def _page_bytes(
     spec: SubjectiveMemRetrievalRuntimeProjectionSpec,
     pages: dict[str, bytes],
     page_id: str,
-) -> tuple[bytes | None, tuple[str, ...]]:
-    """Read one supported canonical page exactly once per acquisition."""
+) -> tuple[bytes, tuple[str, ...]]:
+    """Read one canonical page exactly once per acquisition, by location only.
+
+    A page identity this workspace layout cannot name carries empty material so
+    the builder refuses the selector. A named page that is missing, symlinked,
+    or unreadable is a dangling location and fails closed here.
+    """
 
     if page_id in pages:
         return pages[page_id], ()
     relative = _page_path(spec.character_id, page_id)
     if relative is None:
-        return None, ("subjective_mem_retrieval_runtime_page_unsupported",)
+        return b"", ()
     target = Path(spec.workspace_root) / spec.character_id / relative
     try:
         if target.is_symlink() or not target.is_file():
-            return None, ("subjective_mem_retrieval_runtime_page_unsupported",)
+            return b"", ("subjective_mem_retrieval_runtime_page_unsupported",)
         image = target.read_bytes()
     except OSError:
-        return None, ("subjective_mem_retrieval_runtime_page_unreadable",)
+        return b"", ("subjective_mem_retrieval_runtime_page_unreadable",)
     pages[page_id] = image
     return image, ()
 
