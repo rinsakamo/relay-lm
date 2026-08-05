@@ -10,7 +10,64 @@ from pydantic import BaseModel, Field, HttpUrl, StrictBool, model_validator
 
 Mode = Literal["pass_through", "memory_light", "memory_full"]
 TrustedHomeSceneAdmissionMode = Literal["disabled", "dry_run", "apply"]
-SubjectiveMemRetrievalCutoverMode = Literal["primary_only", "rehearsal"]
+SubjectiveMemRetrievalCutoverMode = Literal[
+    "primary_only", "rehearsal", "subjective_only"
+]
+_CUTOVER_MODES = frozenset({"primary_only", "rehearsal", "subjective_only"})
+_ORDINARY_PROJECTION_ROOT = "subjective_mem_retrieval_projection_root"
+_REHEARSAL_PROJECTION_ROOT = "subjective_mem_retrieval_rehearsal_projection_root"
+# Exactly which disposable projection locator each requested deployment mode
+# requires, and which it prohibits. Configuration is a request and a locator
+# shape only: it never proves readiness and never selects served authority.
+_CUTOVER_MODE_ROOTS: dict[str, tuple[str | None, tuple[str, ...]]] = {
+    "primary_only": (None, (_ORDINARY_PROJECTION_ROOT, _REHEARSAL_PROJECTION_ROOT)),
+    "rehearsal": (_REHEARSAL_PROJECTION_ROOT, (_ORDINARY_PROJECTION_ROOT,)),
+    "subjective_only": (_ORDINARY_PROJECTION_ROOT, (_REHEARSAL_PROJECTION_ROOT,)),
+}
+# Every configured operational root a disposable projection root must not be.
+_OPERATIONAL_ROOT_FIELDS = (
+    _ORDINARY_PROJECTION_ROOT,
+    _REHEARSAL_PROJECTION_ROOT,
+    "subjective_mem_retrieval_cutover_store_root",
+    "evidence_data_root",
+    "subjective_mem_workspace_root",
+    "memory.root_path",
+    "relaymem_slp_queue_root",
+    "relaymem_slp_protected_source_root",
+    "relaymem_slp_durable_finalization_root",
+    "client_instruction_cache_root",
+    "relayrun_checkpoint_root",
+)
+
+
+def _normalized_disposable_root(value: object) -> str:
+    """Return the one normalized identity of a safe disposable projection root.
+
+    The root must be a non-empty absolute path spelled exactly as its own
+    normalization, so ``.``/``..`` ambiguity, doubled separators, and trailing
+    separators are all refused rather than silently accepted as aliases. A
+    symlink at the configured target is refused without resolving through it.
+    """
+
+    if not isinstance(value, str) or not value:
+        raise ValueError("subjective_mem_retrieval_cutover_projection_root_invalid")
+    if not Path(value).is_absolute():
+        raise ValueError(
+            "subjective_mem_retrieval_cutover_projection_root_must_be_absolute"
+        )
+    if os.path.normpath(value) != value:
+        raise ValueError("subjective_mem_retrieval_cutover_projection_root_invalid")
+    try:
+        symlinked = Path(value).is_symlink()
+    except OSError as exc:
+        raise ValueError(
+            "subjective_mem_retrieval_cutover_projection_root_invalid"
+        ) from exc
+    if symlinked:
+        raise ValueError(
+            "subjective_mem_retrieval_cutover_projection_root_must_not_be_symlink"
+        )
+    return value
 _RETIRED_CHARACTER_CONFIG_FIELDS = frozenset({"room_anchor", "room_state"})
 
 
@@ -265,6 +322,8 @@ class RelayLMConfig(BaseModel):
     subjective_mem_retrieval_cutover_projection_generation_id: str | None = None
     subjective_mem_retrieval_cutover_projection_source_digest: str | None = None
     subjective_mem_retrieval_cutover_readiness_id: str | None = None
+    subjective_mem_retrieval_projection_root: str | None = None
+    subjective_mem_retrieval_rehearsal_projection_root: str | None = None
     ctx_ovl_enabled: StrictBool = False
     ctx_ovl_dry_run_only: StrictBool = True
     ctx_ovl_apply_enabled: StrictBool = False
@@ -274,7 +333,7 @@ class RelayLMConfig(BaseModel):
     def _validate_cutover_requested_mode(cls, value: object) -> object:
         if isinstance(value, dict):
             mode = value.get("subjective_mem_retrieval_cutover_mode", "primary_only")
-            if mode not in {"primary_only", "rehearsal"}:
+            if mode not in _CUTOVER_MODES:
                 raise ValueError("subjective_mem_retrieval_cutover_mode_unsupported")
         return value
 
@@ -467,12 +526,18 @@ class RelayLMConfig(BaseModel):
             self.subjective_mem_retrieval_cutover_projection_source_digest,
             self.subjective_mem_retrieval_cutover_readiness_id,
         )
-        if self.subjective_mem_retrieval_cutover_mode == "primary_only":
+        mode = self.subjective_mem_retrieval_cutover_mode
+        required, prohibited = _CUTOVER_MODE_ROOTS[mode]
+        if mode == "primary_only":
             if any(value is not None for value in values):
                 raise ValueError("subjective_mem_retrieval_cutover_primary_only_requires_empty_tuple")
+            if any(getattr(self, field) is not None for field in prohibited):
+                raise ValueError(
+                    "subjective_mem_retrieval_cutover_primary_only_requires_no_projection_root"
+                )
             return
         if any(value is None for value in values):
-            raise ValueError("subjective_mem_retrieval_cutover_rehearsal_requires_complete_tuple")
+            raise ValueError("subjective_mem_retrieval_cutover_requires_complete_tuple")
         root = Path(self.subjective_mem_retrieval_cutover_store_root or "")
         if not root.is_absolute():
             raise ValueError("subjective_mem_retrieval_cutover_store_root_must_be_absolute")
@@ -488,6 +553,40 @@ class RelayLMConfig(BaseModel):
             raise ValueError(
                 "subjective_mem_retrieval_cutover_projection_generation_id_invalid"
             )
+        self._validate_cutover_projection_roots(mode, required, prohibited)
+
+    def _validate_cutover_projection_roots(
+        self, mode: str, required: str | None, prohibited: tuple[str, ...]
+    ) -> None:
+        """Prove this mode names exactly one safe, distinct disposable locator.
+
+        This is shape validation only. No directory is resolved through,
+        created, read, or mutated, and nothing here evaluates readiness,
+        durable state, or served authority.
+        """
+
+        for field in prohibited:
+            if getattr(self, field) is not None:
+                raise ValueError(
+                    f"subjective_mem_retrieval_cutover_{mode}_projection_root_prohibited"
+                )
+        assert required is not None
+        value = getattr(self, required)
+        if value is None:
+            raise ValueError(
+                f"subjective_mem_retrieval_cutover_{mode}_requires_projection_root"
+            )
+        normalized = _normalized_disposable_root(value)
+        for field in _OPERATIONAL_ROOT_FIELDS:
+            if field == required:
+                continue
+            other = self.memory.root_path if field == "memory.root_path" else getattr(
+                self, field, None
+            )
+            if isinstance(other, str) and other and os.path.normpath(other) == normalized:
+                raise ValueError(
+                    "subjective_mem_retrieval_cutover_projection_root_not_distinct"
+                )
 
     def _enable_route_owned_home_admission_trigger(self) -> None:
         route_admission_requested = any(
