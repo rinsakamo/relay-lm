@@ -46,6 +46,10 @@ _STATES = (
 _FENCE = _STATES.index("primary_writer_fenced")
 _PRE_FENCE_STATES = _STATES[:_FENCE]
 _FENCED_STATES = _STATES[_FENCE:]
+# `subjective_reader_enabled` and `transfer_receipt_finalized` publish in one
+# atomic log write, so a reconstructible chain can never end at the first of
+# that pair. A seeded chain that does is a half-published activation.
+_HALF_PUBLISHED_COUNT = _STATES.index("subjective_reader_enabled") + 1
 
 
 def _binding(**changes: object) -> SubjectiveMemRetrievalCutoverBinding:
@@ -416,7 +420,14 @@ def test_every_complete_pre_writer_fence_state_permits(tmp_path: Path, count: in
     assert primary_writer_decision_permits_write(decision)
 
 
-@pytest.mark.parametrize("count", range(len(_PRE_FENCE_STATES) + 1, len(_STATES) + 1))
+@pytest.mark.parametrize(
+    "count",
+    [
+        count
+        for count in range(len(_PRE_FENCE_STATES) + 1, len(_STATES) + 1)
+        if count != _HALF_PUBLISHED_COUNT
+    ],
+)
 def test_writer_fence_and_every_later_state_rejects(tmp_path: Path, count: int) -> None:
     decision = _seeded_rehearsal_decision(tmp_path, count)
     assert decision.state == _STATES[count - 1]
@@ -425,6 +436,22 @@ def test_writer_fence_and_every_later_state_rejects(tmp_path: Path, count: int) 
     assert decision.recovery_required is False
     assert decision.reasons == ("cutover_primary_writer_fenced",)
     assert not primary_writer_decision_permits_write(decision)
+
+
+def test_half_published_activation_pair_is_recovery_required(tmp_path: Path) -> None:
+    """The atomic pair is never observable half-published, so this fails closed.
+
+    Writes stay rejected here exactly as they are for every complete
+    writer-fenced state, but the chain is not a supported state at all: it is
+    recovery-required, and recovery stays forward-only.
+    """
+
+    decision = _seeded_rehearsal_decision(tmp_path, _HALF_PUBLISHED_COUNT)
+    assert decision.state == "recovery_required"
+    assert decision.writer_class == PRIMARY_WRITER_REJECTED
+    assert decision.recovery_required is True
+    assert decision.reasons == ("cutover_activation_pair_incomplete",)
+    assert primary_writer_decision_permits_write(decision) is False
 
 
 @pytest.mark.parametrize("mutation", ["tamper", "skip", "binding", "schema", "extra"])
@@ -608,10 +635,15 @@ def test_resolver_dependency_direction_creates_no_cycle() -> None:
         "yaml",
         "pydantic",
     }
+    # Exact set equality, not a subset: the facade depends one-way on the two
+    # authorized private RT-1D-R4 owners, and on nothing else new. Neither
+    # private owner imports the facade, so the direction cannot close a cycle.
     assert _imported_modules(owner.__file__ or "") == {
         "__future__",
         "dataclasses",
         "typing",
+        "._subjective_mem_retrieval_cutover_activation",
+        "._subjective_mem_retrieval_runtime_projection",
         ".config",
         ".evidence_common",
         ".evidence_store",
@@ -621,7 +653,10 @@ def test_resolver_dependency_direction_creates_no_cycle() -> None:
 
 def test_structure_and_immutable_store() -> None:
     module = Path("relaylm/subjective_mem_retrieval_cutover.py")
-    assert len(module.read_text().splitlines()) < 700
+    # The merged RT-1D-R4 cutover-facade structural amendment (PR #831) replaced
+    # the earlier roughly-700 gate with one measured RT-1D-R4-only exception:
+    # the facade must remain strictly below 1000 normally formatted lines.
+    assert len(module.read_text().splitlines()) < 1000
     import relaylm.subjective_mem_retrieval_cutover as owner
 
     assert (
