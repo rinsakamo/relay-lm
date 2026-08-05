@@ -2020,6 +2020,222 @@ R4_FACADE_MUTATIONS = tuple(
     )
 )
 
+R4_READINESS_REPLAY_ANCHORS = {
+    path: (
+        "## RT-1D-R4 readiness/replay authority amendment",
+        "Draft PR #832 reached final head "
+        "`737406d2f32b5d270177367f3b760af2eb4863a6` with exactly the authorized "
+        "twelve production/config and existing focused-evidence paths, +2965/-257, "
+        "three normal commits, exactly one execution receipt, and clean exact-head CI",
+        "PR #832 is closed unmerged and frozen",
+        "no commit, cherry-pick, merge, rebase, or branch history from it may seed "
+        "later implementation",
+        "no readiness-carriage seam exists inside the exact-twelve RT-1D-R4 budget",
+        "the RT-1D-R3 readiness proof is factory-only, its identity binds a "
+        "characterization digest derived from live per-request Primary served metrics "
+        "and from the rehearsal's own request identity",
+        "`rehearsal` and `subjective_only` are mutually exclusive configurations",
+        "response-lost usage replay is bounded by the wall clock",
+        "### RT-1D-R4 architecture decision A",
+        "The accepted design is a durable handoff through the existing cutover "
+        "authority chain, not transport or reconstruction of the factory-only "
+        "readiness object",
+        "An exact `rehearsal` deployment may run the existing RT-1D-R3 rehearsal "
+        "coordinator in the ordinary managed pipeline after the Primary served metrics "
+        "for that request exist and while Primary remains the sole served authority",
+        "the facade may create-or-verify exactly the durable cutover prefix ending at "
+        "`rehearsal_ready`",
+        "That write must be idempotent, must bind the complete existing cutover "
+        "binding including `readiness_id`",
+        "must never advance to `transfer_intent`, either Primary fence, exact "
+        "Subjective generation binding, Subjective-reader enablement, or the finalized "
+        "transfer receipt while the requested mode is `rehearsal`",
+        "The readiness proof object itself remains factory-only and non-serializable; "
+        "it is not added to configuration, request payload, API, control plane, or a "
+        "new durable record kind.",
+        "A later `subjective_only` deployment may activate only from an exact durable "
+        "`rehearsal_ready` or later supported state",
+        "It must not mint readiness, accept configuration alone as readiness, or "
+        "receive a live readiness proof through the ordinary request path.",
+        "Exactly one configuration field is added: "
+        "`subjective_mem_retrieval_rehearsal_projection_root`.",
+        "It is required only for `rehearsal`; it is prohibited for `primary_only` and "
+        "`subjective_only`",
+        "distinct from `subjective_mem_retrieval_projection_root`, the cutover store "
+        "root, the Evidence root, the Subjective workspace root, and every other "
+        "operational root",
+        "The existing RT-1D-R3 rehearsal owner "
+        "`relaylm/subjective_mem_retrieval_rehearsal.py` and the characterization owner "
+        "`relaylm/subjective_mem_retrieval_characterization.py` remain byte-identical.",
+        "No new proof schema, registry, helper, control plane, store, journal, or "
+        "authority owner is authorized.",
+        "### RT-1D-R4 architecture decision B",
+        "The stable usage slot remains authoritative and the first finalized event owns "
+        "the occurrence time.",
+        "First finalization derives one event with the real canonical occurrence time "
+        "and commits the exact event and result pair atomically.",
+        "Replay resolves the stable result record first, obtains the original "
+        "`usage_event_id` from that result, reads the original event, validates both "
+        "stored bodies exactly, and requires the stored pair to be internally exact.",
+        "projection generation, request input digest, request correlation digest, "
+        "selection digest, row digest, memory identity, memory revision, event kind, "
+        "idempotency-key digest, and policy revision",
+        "The newly supplied wall-clock occurrence is the sole field not compared "
+        "against the original event",
+        "returns `duplicate_finalized` without a second durable pair",
+        "fails closed, and is never repaired or overwritten",
+        "Coverage must include an explicit different-second replay proving exactly one "
+        "durable pair, plus negative true-disagreement cases. A timing-dependent "
+        "same-second replay test is insufficient.",
+        "The exact-twelve RT-1D-R4 production/config path budget is unchanged",
+        "No thirteenth RT-1D-R4 production or configuration path is authorized by this "
+        "amendment.",
+        "The RT-1D-R4 structural gates are unchanged",
+        "The RT-1D-R4 focused evidence budget is unchanged",
+        "This RT-1D-R4 readiness/replay authority amendment is documentation and "
+        "current-boundary only",
+        "RT-1D-R4 implementation may restart only from a fresh branch created from the "
+        "independently verified exact resulting `main` of this readiness/replay "
+        "authority amendment",
+        "Mandatory RT-1D-R4 P8 remains required after the replacement implementation "
+        "merges and before RT-1D-R5 may start.",
+    )
+    for path in (STATUS, PLAN, RT1C)
+}
+for _path, _anchors in R4_READINESS_REPLAY_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple(
+    (path, anchor)
+    for path, anchors in R4_READINESS_REPLAY_ANCHORS.items()
+    for anchor in anchors
+)
+
+R4_READINESS_REPLAY_STALE = (
+    "the RT-1D-R3 readiness proof may be carried through configuration",
+    "configuration alone is accepted as RT-1D-R4 readiness",
+    "the readiness proof may be serialized into a durable record kind",
+    "a new durable readiness record kind is authorized",
+    "the readiness proof may be supplied through the ordinary request path",
+    "a `subjective_only` deployment may mint readiness",
+    "a `subjective_only` deployment may run the RT-1D-R3 rehearsal coordinator",
+    "the RT-1D-R4 rehearsal projection root may equal the ordinary projection root",
+    "`subjective_mem_retrieval_rehearsal_projection_root` is required for `subjective_only`",
+    "`subjective_mem_retrieval_rehearsal_projection_root` is permitted for `primary_only`",
+    "the `rehearsal` mode may advance to `transfer_intent`",
+    "the `rehearsal` mode may finalize the transfer receipt",
+    "no durable RT-1D-R3-to-R4 readiness handoff is authorized",
+    "the RT-1D-R3 rehearsal owner may change",
+    "response-lost replay may create a second durable pair",
+    "the replay compares the wall-clock occurrence against the original event",
+    "a same-second replay test is sufficient",
+    "a divergent usage slot may be repaired",
+    "a divergent usage slot may be overwritten",
+    "the RT-1D-R4 readiness/replay authority amendment requires P8",
+    "RT-1D-R4 implementation may bootstrap from "
+    "`agent/rt1d-r4-strict-below-1000-activation-implementation`",
+    "PR #832 may be reused as implementation history",
+    "PR #832 merged",
+    "PR #832 remains open",
+    "a thirteenth RT-1D-R4 production or configuration path is authorized by this amendment",
+    "RT-1D-R4 readiness/replay implementation has started",
+)
+
+R4_READINESS_REPLAY_MUTATIONS = tuple(
+    (path, current, damaged, label)
+    for path in (STATUS, PLAN, RT1C)
+    for current, damaged, label in (
+        (
+            "PR #832 is closed unmerged and frozen",
+            "PR #832 merged",
+            "PR #832 frozen unmerged",
+        ),
+        (
+            "Draft PR #832 reached final head "
+            "`737406d2f32b5d270177367f3b760af2eb4863a6`",
+            "Draft PR #832 reached final head "
+            "`f48a28763b344be581f6e04a86703b0b5b2251c1`",
+            "PR #832 exact frozen head",
+        ),
+        (
+            "the facade may create-or-verify exactly the durable cutover prefix ending at "
+            "`rehearsal_ready`",
+            "the `rehearsal` mode may advance to `transfer_intent`",
+            "rehearsal durable prefix bound",
+        ),
+        (
+            "It must not mint readiness, accept configuration alone as readiness, or "
+            "receive a live readiness proof through the ordinary request path.",
+            "configuration alone is accepted as RT-1D-R4 readiness",
+            "subjective_only readiness source",
+        ),
+        (
+            "The readiness proof object itself remains factory-only and non-serializable; "
+            "it is not added to configuration, request payload, API, control plane, or a "
+            "new durable record kind.",
+            "the readiness proof may be serialized into a durable record kind",
+            "readiness proof transport",
+        ),
+        (
+            "It is required only for `rehearsal`; it is prohibited for `primary_only` and "
+            "`subjective_only`",
+            "`subjective_mem_retrieval_rehearsal_projection_root` is required for "
+            "`subjective_only`",
+            "rehearsal projection root mode",
+        ),
+        (
+            "distinct from `subjective_mem_retrieval_projection_root`, the cutover store "
+            "root, the Evidence root, the Subjective workspace root, and every other "
+            "operational root",
+            "the RT-1D-R4 rehearsal projection root may equal the ordinary projection root",
+            "rehearsal projection root distinctness",
+        ),
+        (
+            "The newly supplied wall-clock occurrence is the sole field not compared "
+            "against the original event",
+            "the replay compares the wall-clock occurrence against the original event",
+            "cross-time replay comparison",
+        ),
+        (
+            "returns `duplicate_finalized` without a second durable pair",
+            "response-lost replay may create a second durable pair",
+            "replay durable pair count",
+        ),
+        (
+            "fails closed, and is never repaired or overwritten",
+            "a divergent usage slot may be repaired",
+            "divergent slot handling",
+        ),
+        (
+            "Coverage must include an explicit different-second replay proving exactly one "
+            "durable pair, plus negative true-disagreement cases. A timing-dependent "
+            "same-second replay test is insufficient.",
+            "a same-second replay test is sufficient",
+            "cross-time replay coverage",
+        ),
+        (
+            "No thirteenth RT-1D-R4 production or configuration path is authorized by this "
+            "amendment.",
+            "a thirteenth RT-1D-R4 production or configuration path is authorized by this "
+            "amendment",
+            "readiness/replay thirteenth path",
+        ),
+        (
+            "This RT-1D-R4 readiness/replay authority amendment is documentation and "
+            "current-boundary only",
+            "the RT-1D-R4 readiness/replay authority amendment requires P8",
+            "readiness/replay amendment P8 status",
+        ),
+        (
+            "RT-1D-R4 implementation may restart only from a fresh branch created from the "
+            "independently verified exact resulting `main` of this readiness/replay "
+            "authority amendment",
+            "RT-1D-R4 implementation may bootstrap from "
+            "`agent/rt1d-r4-strict-below-1000-activation-implementation`",
+            "readiness/replay restart bootstrap source",
+        ),
+    )
+)
+
 R2D_P8_STALE = (
     "RT-1D-R2D is next and has not started",
     "RT-1D-R2D is next and not started",
@@ -2359,6 +2575,7 @@ def self_test() -> None:
         + R4_RESULT_MUTATIONS
         + R4_RUNTIME_PROJECTION_MUTATIONS
         + R4_FACADE_MUTATIONS
+        + R4_READINESS_REPLAY_MUTATIONS
     )
     for path, current, damaged, label in focused_mutations:
         body = read(path)
@@ -2495,6 +2712,22 @@ def self_test() -> None:
             raise AssertionError(
                 f"{path}: R4 facade stale anchor is not forbidden: {stale!r}"
             )
+    for path in R4_READINESS_REPLAY_ANCHORS:
+        for stale in R4_READINESS_REPLAY_STALE:
+            body = read(path)
+            assert stale not in body, (
+                f"{path}: R4 readiness/replay stale anchor is present: {stale!r}"
+            )
+            try:
+                forbid_body(
+                    path, R4_READINESS_REPLAY_STALE, body + "\n" + stale + "\n"
+                )
+            except AssertionError:
+                print(f"PASS: {path}: reintroducing {stale!r} fails closed")
+                continue
+            raise AssertionError(
+                f"{path}: R4 readiness/replay stale anchor is not forbidden: {stale!r}"
+            )
     print("SELF-TEST PASS")
 
 
@@ -2536,6 +2769,8 @@ def main(argv: list[str] | None = None) -> None:
         forbid(path, R4_RUNTIME_PROJECTION_STALE)
     for path in R4_FACADE_ANCHORS:
         forbid(path, R4_FACADE_STALE)
+    for path in R4_READINESS_REPLAY_ANCHORS:
+        forbid(path, R4_READINESS_REPLAY_STALE)
     forbid("docs/PROJECT_STATUS.md", HISTORY_ONLY_STATUS_ANCHORS)
     print("Documentation current boundary smoke passed")
 
