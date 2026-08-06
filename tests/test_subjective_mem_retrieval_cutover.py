@@ -119,6 +119,12 @@ def _config_tuple(root: Path) -> dict[str, object]:
         "subjective_mem_retrieval_cutover_projection_generation_id": "smretrievalgen_" + "c" * 64,
         "subjective_mem_retrieval_cutover_projection_source_digest": "d" * 64,
         "subjective_mem_retrieval_cutover_readiness_id": "ready-1",
+        # `rehearsal` requires its own disposable projection root, distinct by
+        # normalized identity from the cutover store root and every other
+        # operational root.
+        "subjective_mem_retrieval_rehearsal_projection_root": str(
+            root.with_name(f"{root.name}-rehearsal-projection")
+        ),
     }
 
 
