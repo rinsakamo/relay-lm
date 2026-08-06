@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 from relaylm.config import RelayLMConfig
-from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_reader_decision,
+    resolve_subjective_mem_retrieval_primary_writer_decision,
+)
 
 import json
 from datetime import datetime, timezone
@@ -23,6 +26,12 @@ from relaylm.relaymem_primary_forget import (
 from relaylm.relaymem_primary_recall import apply_relaymem_primary_recall_scope
 from relaylm.relaymem_primary_retrieval_eligibility import (
     load_primary_retrieval_eligibility_index,
+)
+
+# Recall here is expected to serve Primary evidence, so it carries the exact
+# immutable reader decision resolved by the canonical owner.
+PRIMARY_READER_DECISION = resolve_subjective_mem_retrieval_primary_reader_decision(
+    RelayLMConfig(backends={}, model_routes={})
 )
 
 NOW = datetime(2026, 6, 27, 0, 0, tzinfo=timezone.utc)
@@ -51,6 +60,7 @@ def recall(root, paths: list[str]) -> dict:
         max_snippet_chars=512,
         max_snippet_candidates=8,
         snippet_budget=512,
+        primary_reader_decision=PRIMARY_READER_DECISION,
     )
 
 

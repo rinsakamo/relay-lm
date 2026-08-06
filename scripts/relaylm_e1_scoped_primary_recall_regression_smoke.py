@@ -7,6 +7,7 @@ from typing import Any, Mapping, Sequence
 
 from _relaylm_phase_i3_test_support import form_primary_memory, require
 from relaylm import _relaymem_store_impl as primary_recall_runtime
+from relaylm.config import RelayLMConfig
 from relaylm.relaymem_primary_recall import (
     apply_relaymem_primary_recall_scope,
     resolve_relaymem_character_store_root,
@@ -19,6 +20,15 @@ from relaylm.relaymem_store import (
     build_relaymem_snippet_evidence_dry_run,
     build_relaymem_store_diagnostics,
     discover_relaymem_page_candidates,
+)
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_reader_decision,
+)
+
+# Both probes below exercise the Primary reader path, so each carries the exact
+# immutable decision the canonical owner resolves for a Primary-only deployment.
+PRIMARY_READER_DECISION = resolve_subjective_mem_retrieval_primary_reader_decision(
+    RelayLMConfig(backends={}, model_routes={})
 )
 
 NAMESPACE = "character/default"
@@ -257,6 +267,7 @@ def main() -> None:
             max_snippet_candidates=3,
             snippet_budget=512,
             chars_per_token=4,
+            primary_reader_decision=PRIMARY_READER_DECISION,
         )
         assert_no_reason(slash_namespace_probe, "memory_namespace_invalid")
         projection = slash_namespace_probe["primary_recall_projection"]
@@ -336,6 +347,7 @@ def main() -> None:
             max_snippet_candidates=3,
             snippet_budget=512,
             chars_per_token=4,
+            primary_reader_decision=PRIMARY_READER_DECISION,
         )
         runtime = scoped.get("primary_recall_runtime")
         projection = scoped.get("primary_recall_projection")

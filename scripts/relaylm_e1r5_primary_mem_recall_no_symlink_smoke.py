@@ -5,9 +5,19 @@ import tempfile
 from pathlib import Path
 
 from _relaylm_phase_i3_test_support import form_primary_memory, require
+from relaylm.config import RelayLMConfig
 from relaylm.relaymem_primary_recall import (
     apply_relaymem_primary_recall_scope,
     resolve_relaymem_character_store_root,
+)
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_reader_decision,
+)
+
+# This bridge call is expected to serve Primary evidence, so it carries the
+# exact immutable decision the canonical owner resolves.
+PRIMARY_READER_DECISION = resolve_subjective_mem_retrieval_primary_reader_decision(
+    RelayLMConfig(backends={}, model_routes={})
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -47,6 +57,7 @@ def main() -> None:
             max_snippet_chars=512,
             max_snippet_candidates=3,
             snippet_budget=512,
+            primary_reader_decision=PRIMARY_READER_DECISION,
         )
         runtime = bridged["primary_recall_runtime"]
         require(runtime["selected_count"] == 1, runtime)

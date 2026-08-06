@@ -6,10 +6,20 @@ import tempfile
 from pathlib import Path
 
 from _relaylm_phase_i3_test_support import form_primary_memory, require
+from relaylm.config import RelayLMConfig
 from relaylm.relaymem_grounded_recall_response import build_grounded_recall_context
 from relaylm.relaymem_primary_recall import (
     apply_relaymem_primary_recall_scope,
     resolve_relaymem_character_store_root,
+)
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_reader_decision,
+)
+
+# Every bridge call below is a Primary reader effect, so each carries the exact
+# immutable decision the canonical owner resolves.
+PRIMARY_READER_DECISION = resolve_subjective_mem_retrieval_primary_reader_decision(
+    RelayLMConfig(backends={}, model_routes={})
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -113,6 +123,7 @@ def main() -> None:
             max_snippet_chars=512,
             max_snippet_candidates=3,
             snippet_budget=512,
+            primary_reader_decision=PRIMARY_READER_DECISION,
         )
         runtime = bridged["primary_recall_runtime"]
         projection = bridged["primary_recall_projection"]
@@ -145,6 +156,7 @@ def main() -> None:
             max_snippet_chars=512,
             max_snippet_candidates=3,
             snippet_budget=512,
+            primary_reader_decision=PRIMARY_READER_DECISION,
         )
         no_candidate_runtime = no_candidate_bridged["primary_recall_runtime"]
         no_candidate_projection = no_candidate_bridged["primary_recall_projection"]
@@ -171,6 +183,7 @@ def main() -> None:
             max_snippet_chars=512,
             max_snippet_candidates=3,
             snippet_budget=512,
+            primary_reader_decision=PRIMARY_READER_DECISION,
         )
         disabled_runtime = disabled_store_bridged["primary_recall_runtime"]
         disabled_projection = disabled_store_bridged["primary_recall_projection"]
