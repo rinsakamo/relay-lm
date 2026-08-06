@@ -63,6 +63,7 @@ def test_public_facades_and_signatures_remain_stable() -> None:
         "max_snippet_candidates",
         "snippet_budget",
         "chars_per_token",
+        "primary_reader_decision",
     ]
     assert callable(resolve_relaymem_character_store_root)
     assert callable(build_relaymem_retrieval_dry_run_artifact)
@@ -222,6 +223,25 @@ def test_bounded_modules_and_orchestration() -> None:
     )
 
 
+def test_primary_recall_fails_closed_without_exact_primary_reader_authority() -> None:
+    """This owner enforces the fence itself, not by upstream convention."""
+
+    for decision in (None, "primary_only", object()):
+        fenced = apply_relaymem_primary_recall_scope(
+            {"selected_mem_candidates": [{"memory_id": "m1"}]},
+            scoped_store_root=None,
+            expected_namespace=None,
+            max_snippet_chars=512,
+            max_snippet_candidates=3,
+            snippet_budget=512,
+            primary_reader_decision=decision,
+        )
+        runtime = fenced["primary_recall_runtime"]
+        assert runtime["content_included"] is False
+        assert runtime["selected_memories"] == []
+        assert runtime["primary_store_read"] is False
+
+
 def test_primary_empty_input_shape_remains_fail_closed() -> None:
     result = apply_relaymem_primary_recall_scope(
         None,
@@ -230,6 +250,7 @@ def test_primary_empty_input_shape_remains_fail_closed() -> None:
         max_snippet_chars=512,
         max_snippet_candidates=3,
         snippet_budget=512,
+        primary_reader_decision=None,
     )
     assert result["primary_recall_runtime"]["content_included"] is False
     assert result["primary_recall_runtime"]["selected_memories"] == []

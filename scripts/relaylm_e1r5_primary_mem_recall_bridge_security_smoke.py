@@ -6,10 +6,21 @@ import tempfile
 from pathlib import Path
 
 from _relaylm_phase_i3_test_support import form_primary_memory, require
+from relaylm.config import RelayLMConfig
 from relaylm.relaymem_grounded_recall_response import build_grounded_recall_context
 from relaylm.relaymem_primary_recall import (
     apply_relaymem_primary_recall_scope,
     resolve_relaymem_character_store_root,
+)
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_reader_decision,
+)
+
+# The leakage and unsupported-detail cases below must reach the real Primary
+# reader path to prove their scoped refusals, so each carries the exact
+# immutable decision the canonical owner resolves.
+PRIMARY_READER_DECISION = resolve_subjective_mem_retrieval_primary_reader_decision(
+    RelayLMConfig(backends={}, model_routes={})
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -61,6 +72,7 @@ def main() -> None:
             max_snippet_chars=512,
             max_snippet_candidates=3,
             snippet_budget=512,
+            primary_reader_decision=PRIMARY_READER_DECISION,
         )
         runtime = bridged["primary_recall_runtime"]
         require(runtime["selected_count"] == 1, runtime)
@@ -85,6 +97,7 @@ def main() -> None:
             max_snippet_chars=512,
             max_snippet_candidates=3,
             snippet_budget=512,
+            primary_reader_decision=PRIMARY_READER_DECISION,
         )
         require(wrong_namespace["primary_recall_runtime"]["selected_count"] == 0, wrong_namespace)
         require(
@@ -99,6 +112,7 @@ def main() -> None:
             max_snippet_chars=512,
             max_snippet_candidates=3,
             snippet_budget=512,
+            primary_reader_decision=PRIMARY_READER_DECISION,
         )
         no_query_runtime = no_query_terms["primary_recall_runtime"]
         require(no_query_runtime["selected_count"] == 0, no_query_terms)

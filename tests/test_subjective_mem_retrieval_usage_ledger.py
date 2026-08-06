@@ -257,22 +257,71 @@ def test_the_same_exact_usage_slot_is_idempotent_without_an_extra_event(store) -
     assert _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND) == before
 
 
-def test_a_divergent_event_in_the_same_slot_is_an_integrity_conflict(store) -> None:
+def test_a_different_second_replay_admits_the_same_evidence_without_a_second_pair(
+    store,
+) -> None:
+    """A response-lost replay is idempotent across wall-clock seconds.
+
+    `LATER` is exactly one second after `NOW`, so this is deterministic and
+    needs no sleep. The stable result slot is authoritative and the first
+    finalization owns the occurrence time: the newly supplied occurrence is the
+    only value not compared, so the replay resolves to the original event and
+    admits the same evidence without writing a second durable pair.
+    """
+
     handoff, bound, _data = _prepared("memory1")
-    _admitted, outcome = finalize_subjective_mem_retrieval_usage(**_arguments(store, handoff, bound))
+    admitted, outcome = finalize_subjective_mem_retrieval_usage(
+        **_arguments(store, handoff, bound)
+    )
     assert outcome.status == "finalized"
     before = _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND)
 
-    admitted, conflict = finalize_subjective_mem_retrieval_usage(
+    replayed, second = finalize_subjective_mem_retrieval_usage(
         **_arguments(store, handoff, bound, occurred_at=LATER)
     )
-    assert admitted is None and conflict.status == "conflict"
-    assert "subjective_mem_retrieval_usage_slot_integrity_conflict" in conflict.blocked_reason_classes
+    assert second.status == "duplicate_finalized"
+    assert replayed is not None
+    assert replayed.release_grounding_evidence() == admitted.release_grounding_evidence()
     assert _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND) == before
 
 
 def _records(store: EvidenceRecordStore, record_kind: str) -> list[Path]:
     return sorted((Path(store.root) / SPACE / "records" / record_kind).glob("*.json"))
+
+
+def test_a_different_second_replay_never_repairs_a_partial_pair(store) -> None:
+    """A missing pair member stays fail-closed even across wall-clock seconds.
+
+    The orphaned event was written under the original second, so a later replay
+    cannot find it by the occurrence-dependent event identity. The transaction
+    identity binds the stable result slots instead, so the attempted later write
+    presents the same transaction as the original finalization and collides
+    rather than creating a parallel pair beside the orphan.
+    """
+
+    handoff, bound, _data = _prepared("memory1")
+    _admitted, outcome = finalize_subjective_mem_retrieval_usage(
+        **_arguments(store, handoff, bound)
+    )
+    assert outcome.status == "finalized"
+
+    # Remove only the result, leaving the original event and the committed
+    # transaction journal exactly as the first finalization wrote them.
+    _records(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND)[0].unlink()
+    before = (
+        _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND),
+        _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND),
+    )
+    assert len(before[0]) == 1 and before[1] == []
+
+    admitted, conflict = finalize_subjective_mem_retrieval_usage(
+        **_arguments(store, handoff, bound, occurred_at=LATER)
+    )
+    assert admitted is None and conflict.status == "conflict"
+    assert (
+        _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND),
+        _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND),
+    ) == before
 
 
 @pytest.mark.parametrize(
@@ -504,10 +553,14 @@ def test_only_the_finalizer_seals_an_admitted_handoff_including_duplicates(store
     assert duplicate is not None and duplicate.finalization_status == "duplicate_finalized"
     assert duplicate.release_grounding_evidence() == admitted.release_grounding_evidence()
 
-    blocked, conflict = finalize_subjective_mem_retrieval_usage(
+    # A later-second replay is the same slot, so it seals the same evidence
+    # rather than conflicting; only the finalizer may seal it.
+    later, third = finalize_subjective_mem_retrieval_usage(
         **_arguments(store, handoff, bound, occurred_at=LATER)
     )
-    assert blocked is None and conflict.status == "conflict"
+    assert third.status == "duplicate_finalized"
+    assert later is not None and later.finalization_status == "duplicate_finalized"
+    assert later.release_grounding_evidence() == admitted.release_grounding_evidence()
 
     source = inspect.getsource(ledger_owner)
     assert source.count("_seal_admitted_handoff(") == 3

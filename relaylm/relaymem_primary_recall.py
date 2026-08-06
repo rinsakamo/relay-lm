@@ -11,6 +11,9 @@ from .relaymem_primary_recall_store import (
     _token,
     resolve_relaymem_character_store_root,
 )
+from .subjective_mem_retrieval_cutover import (
+    subjective_mem_retrieval_primary_reader_class,
+)
 from .relaymem_primary_recall_selection import (
     PROJECTION_SCHEMA,
     RUNTIME_SCHEMA,
@@ -112,6 +115,9 @@ def compose_primary_recall_results(artifact, attempted, root, namespace, state, 
     return artifact
 
 
+PRIMARY_RECALL_FENCED_SCHEMA = "relaylm.primary_recall_fenced_runtime.v1"
+
+
 def apply_relaymem_primary_recall_scope(
     retrieval_artifact: Mapping[str, Any] | None,
     *,
@@ -121,8 +127,19 @@ def apply_relaymem_primary_recall_scope(
     max_snippet_candidates: int,
     snippet_budget: int,
     chars_per_token: int = 4,
+    primary_reader_decision: object = None,
 ) -> dict[str, Any]:
-    """Narrow an existing M2 artifact to exact scoped Primary MEM evidence."""
+    """Narrow an existing M2 artifact to exact scoped Primary MEM evidence.
+
+    This owner enforces the Primary reader fence itself, before it resolves a
+    root, opens the store, prepares selection, or discovers any candidate. An
+    upstream branch is not a substitute: a missing, foreign, malformed,
+    `neither`, or `subjective_only` decision releases nothing here, so no
+    Primary runtime-private value can escape through this boundary even if a
+    future caller forgets the fence.
+    """
+    if subjective_mem_retrieval_primary_reader_class(primary_reader_decision) != "primary_only":
+        return _primary_reader_fenced_artifact(retrieval_artifact)
     artifact = deepcopy(dict(retrieval_artifact or {}))
     attempted = isinstance(retrieval_artifact, Mapping)
     root = _safe_root(scoped_store_root)
@@ -140,6 +157,41 @@ def apply_relaymem_primary_recall_scope(
     return compose_primary_recall_results(
         artifact, attempted, root, namespace, state, result
     )
+
+
+def _primary_reader_fenced_artifact(
+    retrieval_artifact: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Return the artifact untouched by Primary recall, with nothing released."""
+
+    artifact = deepcopy(dict(retrieval_artifact or {}))
+    artifact["primary_recall_runtime"] = {
+        "schema": PRIMARY_RECALL_FENCED_SCHEMA,
+        "content_free": True,
+        "attempted": False,
+        "content_included": False,
+        "request_local": True,
+        "primary_candidate_discovery_attempted": False,
+        "primary_candidate_count": 0,
+        "discovery_status": "primary_reader_fenced",
+        "selected_count": 0,
+        "selected_memories": [],
+        "blocked_reason_ids": ["cutover_primary_reader_fenced"],
+        "primary_reader_fenced": True,
+        "primary_store_read": False,
+    }
+    artifact["primary_recall_projection"] = {
+        "schema": PRIMARY_RECALL_FENCED_SCHEMA,
+        "content_free": True,
+        "retrieval_attempted": False,
+        "selected_count": 0,
+        "primary_reader_fenced": True,
+        "blocked_reason_ids": [
+            "cutover_primary_reader_fenced",
+            "character_store_scope_unavailable",
+        ],
+    }
+    return artifact
 
 
 __all__ = [

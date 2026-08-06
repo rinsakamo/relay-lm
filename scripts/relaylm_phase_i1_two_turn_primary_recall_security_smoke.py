@@ -8,11 +8,23 @@ from hashlib import sha256
 from pathlib import Path
 
 from relaylm._relaymem_primary_page_writer_common import stable_hash
+from relaylm.config import RelayLMConfig
 from relaylm.relaymem_primary_recall import (
     apply_relaymem_primary_recall_scope,
     resolve_relaymem_character_store_root,
 )
+from relaylm.subjective_mem_retrieval_cutover import (
+    resolve_subjective_mem_retrieval_primary_reader_decision,
+)
 from relaylm_phase6c1_primary_worker_test_support import prepare_store
+
+# This smoke exercises successful scoped Primary recall, so it must carry the
+# exact immutable reader decision the canonical owner resolves. The Primary
+# recall owner enforces the reader fence at its own boundary, so a call with no
+# decision correctly releases nothing.
+PRIMARY_READER_DECISION = resolve_subjective_mem_retrieval_primary_reader_decision(
+    RelayLMConfig(backends={}, model_routes={})
+)
 
 CHARACTER = "security-a"
 OTHER_CHARACTER = "security-b"
@@ -163,6 +175,7 @@ def apply_scope(
         max_snippet_candidates=3,
         snippet_budget=token_budget,
         chars_per_token=4,
+        primary_reader_decision=PRIMARY_READER_DECISION,
     )
 
 

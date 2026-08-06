@@ -264,6 +264,12 @@ subjective_mem_retrieval_cutover_projection_generation_id:
 subjective_mem_retrieval_cutover_projection_source_digest:
 # Rehearsal value format: smretrievalready_<64-lowercase-hex>
 subjective_mem_retrieval_cutover_readiness_id:
+# Disposable projection locators, never authority. Each must be absolute,
+# normalized, non-symlinked, and distinct from every other operational root.
+# `subjective_only` uses only the ordinary projection root.
+subjective_mem_retrieval_projection_root:
+# `rehearsal` uses only the rehearsal projection root.
+subjective_mem_retrieval_rehearsal_projection_root:
 
 # OVL-1 is independently default-off and dry-run-first. Apply requires EV-1
 # capture apply because CTX-OVL may consume only currently authorized evidence.
