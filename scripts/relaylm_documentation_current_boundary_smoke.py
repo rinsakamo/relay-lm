@@ -2281,8 +2281,8 @@ R4_COMPLETION_ANCHORS = {
         "authority once an exact finalized activation exists",
         "This transaction is the mandatory RT-1D-R4 P8 current-authority synchronization.",
         "it requires no recursive P8",
-        "It is the current incomplete RT-1D-R4 gate and is completed only after it merges and "
-        "its exact resulting `main` is independently verified.",
+        "It is still-open PR #835, the current incomplete RT-1D-R4 gate, and is completed only "
+        "after PR #835 merges and its exact resulting `main` is independently verified.",
         "Because that resulting SHA is not knowable while this transaction is open, a later "
         "documentation-only current-authority correction may record it, and that correction "
         "also requires no P8.",
@@ -2341,6 +2341,11 @@ R4_COMPLETION_STALE = (
     "RT-1D-R5 may bootstrap from PR #834 head",
     "RT-1D-R5 may bootstrap from `d15daeec270ba453940bc10dad924a5df93dfeef`",
     "RT-1D-R5 may bootstrap from this P8 PR head",
+    "PR #835 merged",
+    "PR #835 is merged",
+    "PR #835 is complete",
+    "the mandatory RT-1D-R4 P8 completed in PR #835",
+    "RT-1D-R5 may bootstrap from PR #835 head",
 )
 
 R4_COMPLETION_MUTATIONS = tuple(
@@ -2439,8 +2444,8 @@ R4_COMPLETION_MUTATIONS = tuple(
             "R4 P8 recursion",
         ),
         (
-            "It is the current incomplete RT-1D-R4 gate and is completed only after it merges "
-            "and its exact resulting `main` is independently verified.",
+            "It is still-open PR #835, the current incomplete RT-1D-R4 gate, and is completed "
+            "only after PR #835 merges and its exact resulting `main` is independently verified.",
             "the mandatory RT-1D-R4 P8 is complete",
             "R4 P8 gate state",
         ),
@@ -2449,6 +2454,11 @@ R4_COMPLETION_MUTATIONS = tuple(
             "behavior.",
             "RT-1D-R5 immediate retirement has started",
             "R5 start state",
+        ),
+        (
+            "still-open PR #835, the current incomplete RT-1D-R4 gate",
+            "the mandatory RT-1D-R4 P8 completed in PR #835",
+            "R4 P8 transaction identity",
         ),
         (
             "never from PR #834 head `d15daeec270ba453940bc10dad924a5df93dfeef`, never from any "
