@@ -424,12 +424,20 @@ def _result_body(event: SubjectiveMemRetrievalUsageEvent) -> dict[str, object]:
 
 
 def _transaction_id(events: tuple[SubjectiveMemRetrievalUsageEvent, ...]) -> str:
-    """One stable content-free transaction identity for this exact event set."""
+    """One stable content-free transaction identity for this exact slot set.
+
+    The identity binds the stable ``result_id`` slots, never ``usage_event_id``,
+    because the latter folds ``occurred_at``. A response-lost replay in a later
+    wall-clock second therefore presents the same transaction identity as the
+    original finalization, so an attempted second write for the same slots
+    collides and fails closed instead of creating a parallel pair beside an
+    orphaned event.
+    """
 
     return SUBJECTIVE_MEM_RETRIEVAL_USAGE_TRANSACTION_PREFIX + canonical_digest(
         {
             "schema": SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_SCHEMA,
-            "usage_event_ids": sorted(event.usage_event_id for event in events),
+            "usage_result_slot_ids": sorted(event.result_id for event in events),
         }
     )
 

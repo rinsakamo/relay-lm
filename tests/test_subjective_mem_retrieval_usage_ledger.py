@@ -289,6 +289,41 @@ def _records(store: EvidenceRecordStore, record_kind: str) -> list[Path]:
     return sorted((Path(store.root) / SPACE / "records" / record_kind).glob("*.json"))
 
 
+def test_a_different_second_replay_never_repairs_a_partial_pair(store) -> None:
+    """A missing pair member stays fail-closed even across wall-clock seconds.
+
+    The orphaned event was written under the original second, so a later replay
+    cannot find it by the occurrence-dependent event identity. The transaction
+    identity binds the stable result slots instead, so the attempted later write
+    presents the same transaction as the original finalization and collides
+    rather than creating a parallel pair beside the orphan.
+    """
+
+    handoff, bound, _data = _prepared("memory1")
+    _admitted, outcome = finalize_subjective_mem_retrieval_usage(
+        **_arguments(store, handoff, bound)
+    )
+    assert outcome.status == "finalized"
+
+    # Remove only the result, leaving the original event and the committed
+    # transaction journal exactly as the first finalization wrote them.
+    _records(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND)[0].unlink()
+    before = (
+        _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND),
+        _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND),
+    )
+    assert len(before[0]) == 1 and before[1] == []
+
+    admitted, conflict = finalize_subjective_mem_retrieval_usage(
+        **_arguments(store, handoff, bound, occurred_at=LATER)
+    )
+    assert admitted is None and conflict.status == "conflict"
+    assert (
+        _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND),
+        _record_ids(store, SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND),
+    ) == before
+
+
 @pytest.mark.parametrize(
     ("damage", "reason"),
     [
