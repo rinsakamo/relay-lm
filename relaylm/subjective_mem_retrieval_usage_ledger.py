@@ -40,7 +40,7 @@ bundle and survive its deterministic rebuild.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Literal
 
 from relaylm.evidence_common import canonical_digest, dedupe
@@ -244,28 +244,60 @@ def _slot_state(
 ) -> SlotState:
     """Classify one usage slot from its exact durable event and result pair.
 
-    A slot is occupied only when both records exist with their exact expected
-    bodies. One record alone is partial durable state, and any divergent body is
-    an integrity conflict; neither is ever repaired or overwritten.
+    The stable result slot is authoritative and is resolved first, because
+    ``result_id`` binds only the request correlation, selected row, and
+    idempotency identity. The result names the original ``usage_event_id``, and
+    that original event is what the replay is judged against.
+
+    The first finalization owns the occurrence time. A response-lost replay
+    arriving in a later wall-clock second is therefore still the same slot: the
+    newly supplied occurrence is the only value not compared, and every
+    immutable slot-bearing field must still agree exactly. Substituting the
+    stored occurrence and re-deriving the whole event compares all of them at
+    once -- generation, request input and correlation digests, selection digest,
+    row digest, memory identity and revision, event kind, idempotency-key
+    digest, and policy revision -- and simultaneously proves the stored pair is
+    internally exact.
+
+    A slot is occupied only when both records exist and agree. One record alone
+    is partial durable state, and any divergent body is an integrity conflict;
+    neither is ever repaired or overwritten.
     """
 
-    stored_event = transaction.read_record(
-        record_kind=SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND,
-        record_id=event.usage_event_id,
-    )
     stored_result = transaction.read_record(
         record_kind=SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND,
         record_id=event.result_id,
     )
-    if stored_event is None and stored_result is None:
-        return "absent"
-    if stored_result is not None and stored_result != _result_body(event):
+    if stored_result is None:
+        stored_event = transaction.read_record(
+            record_kind=SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND,
+            record_id=event.usage_event_id,
+        )
+        return "absent" if stored_event is None else "incomplete"
+    if type(stored_result) is not dict:
         return "divergent"
-    if stored_event is not None and stored_event != event.to_dict():
+    original_id = stored_result.get("usage_event_id")
+    if type(original_id) is not str or not original_id:
         return "divergent"
-    if stored_event is not None and stored_result is not None:
-        return "exact"
-    return "incomplete"
+    stored_event = transaction.read_record(
+        record_kind=SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND,
+        record_id=original_id,
+    )
+    if stored_event is None:
+        return "incomplete"
+    if type(stored_event) is not dict:
+        return "divergent"
+    occurred_at = stored_event.get("occurred_at")
+    if type(occurred_at) is not str:
+        return "divergent"
+    original = replace(event, occurred_at=occurred_at)
+    if validate_subjective_mem_retrieval_usage_event(original):
+        return "divergent"
+    if original.usage_event_id != original_id:
+        return "divergent"
+    if original.to_dict() != stored_event or _result_body(original) != stored_result:
+        return "divergent"
+    return "exact"
 
 
 def _derive_events(
