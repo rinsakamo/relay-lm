@@ -93,6 +93,8 @@ from relaylm.request_scope import (
 )
 from relaylm.routing import ResolvedRoute
 from relaylm.subjective_mem_retrieval_cutover import (
+    activate_subjective_mem_retrieval_cutover,
+    resolve_subjective_mem_retrieval_primary_reader_decision,
     resolve_subjective_mem_retrieval_primary_writer_decision,
 )
 from relaylm.token_budget import estimate_text_tokens
@@ -114,6 +116,34 @@ from relaylm.relayctx_repack import (
 )
 
 
+def resolve_subjective_mem_retrieval_authority(
+    config: RelayLMConfig,
+) -> tuple[object, object]:
+    """Activate once when requested, then derive each immutable decision.
+
+    This is one blocking synchronous boundary by design. A `subjective_only`
+    transition may open Evidence stores and locks, inventory current selectors,
+    read canonical pages, install or trusted-read the live projection, and
+    commit several durable transactions before returning, and both decisions
+    reconstruct the durable chain. `handle_managed_chat_completion` therefore
+    runs the whole boundary on a worker thread through `asyncio.to_thread`, so
+    no durable cutover work ever executes on the request event-loop thread.
+
+    Only `subjective_only` calls production activation. `primary_only` and
+    `rehearsal` derive the two decisions from the exact current state and never
+    advance the durable chain; the governed non-request boundary alone records
+    rehearsal readiness. A failure is never caught to restore Primary
+    authority: the decisions still come from the exact reconstructed state.
+    """
+
+    if getattr(config, "subjective_mem_retrieval_cutover_mode", None) == "subjective_only":
+        activate_subjective_mem_retrieval_cutover(config=config)
+    return (
+        resolve_subjective_mem_retrieval_primary_reader_decision(config),
+        resolve_subjective_mem_retrieval_primary_writer_decision(config),
+    )
+
+
 async def handle_managed_chat_completion(
     *,
     request: Request,
@@ -128,6 +158,11 @@ async def handle_managed_chat_completion(
     if validation.error_response is not None:
         return validation.error_response
     node_timings = {"request_received": _finalize_timing(started_at, started_monotonic)}
+    # The one governed authority boundary: activation when requested, then each
+    # immutable decision, offloaded so durable work never blocks the event loop.
+    reader_decision, writer_decision = await asyncio.to_thread(
+        resolve_subjective_mem_retrieval_authority, config
+    )
     result = await run_managed_chat_pipeline(
         request=request,
         config=config,
@@ -136,6 +171,7 @@ async def handle_managed_chat_completion(
         payload=validation.payload,
         stream_enabled=validation.stream_enabled,
         node_timings=node_timings,
+        primary_reader_decision=reader_decision,
         capture_evidence=capture_evidence_for_user_input,
     )
     if result.get("evidence_rejected"):
@@ -157,8 +193,6 @@ async def handle_managed_chat_completion(
         relayctx_short_term_runtime_injection_preflight=result["preflight"],
     )
     forwarded = result["forwarded"]
-    # The one derivation of the immutable Primary writer decision.
-    writer_decision = resolve_subjective_mem_retrieval_primary_writer_decision(config)
     return await build_managed_chat_response(
         request=request,
         config=config,
