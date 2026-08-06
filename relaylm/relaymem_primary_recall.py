@@ -170,7 +170,13 @@ def _primary_reader_fenced_artifact(
         "content_free": True,
         "attempted": False,
         "content_included": False,
+        "request_local": True,
+        "primary_candidate_discovery_attempted": False,
+        "primary_candidate_count": 0,
+        "discovery_status": "primary_reader_fenced",
+        "selected_count": 0,
         "selected_memories": [],
+        "blocked_reason_ids": ["cutover_primary_reader_fenced"],
         "primary_reader_fenced": True,
         "primary_store_read": False,
     }
