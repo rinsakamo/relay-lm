@@ -8,6 +8,10 @@ from typing import Any
 
 from relaylm.config import RelayLMConfig
 from relaylm.diagnostics import build_relayctx_short_term_runtime_injection_apply_result
+from relaylm.relaymem_retrieval import (
+    ORDINARY_MEMORY_AUTHORITY_KEY,
+    SUBJECTIVE_RUNTIME_KEY,
+)
 from relaylm.pipeline_context import PipelineContext, replace_pipeline_forwarded_payload
 from relaylm.relaymem_grounded_recall_response import build_grounded_recall_context
 from relaylm.relaymem_runtime_ctx import (
@@ -192,6 +196,34 @@ def run_relayctx_short_term_injection_stage(
     )
 
 
+def _ordinary_selected_memories(
+    relaymem_retrieval_artifact: Mapping[str, Any]
+) -> list[Any]:
+    """Read runtime-private memory from exactly the named ordinary authority.
+
+    Exactly one authority may be consumed per request, and the artifact names
+    it. ``primary_only`` reads the Primary recall runtime; ``subjective_only``
+    reads the admitted Subjective runtime; anything else -- including a
+    missing, unknown, or malformed authority -- releases nothing and never
+    probes the other family, so the two are never combined and a fenced
+    artifact can never be mined for the authority it does not name.
+    """
+
+    authority = relaymem_retrieval_artifact.get(ORDINARY_MEMORY_AUTHORITY_KEY)
+    if authority == "primary_only":
+        runtime = relaymem_retrieval_artifact.get("primary_recall_runtime")
+    elif authority == "subjective_only":
+        runtime = relaymem_retrieval_artifact.get(SUBJECTIVE_RUNTIME_KEY)
+    else:
+        return []
+    selected = runtime.get("selected_memories") if isinstance(runtime, Mapping) else None
+    if isinstance(selected, Sequence) and not isinstance(
+        selected, (str, bytes, bytearray)
+    ):
+        return list(selected)
+    return []
+
+
 def _maybe_apply_grounded_recall_response(
     *,
     payload: Mapping[str, Any],
@@ -199,13 +231,7 @@ def _maybe_apply_grounded_recall_response(
     pipeline_context: PipelineContext,
 ) -> tuple[dict[str, Any], bool]:
     forwarded_payload = dict(payload)
-    runtime = relaymem_retrieval_artifact.get("primary_recall_runtime")
-    selected = runtime.get("selected_memories") if isinstance(runtime, Mapping) else None
-    selected_memories = (
-        list(selected)
-        if isinstance(selected, Sequence) and not isinstance(selected, (str, bytes, bytearray))
-        else []
-    )
+    selected_memories = _ordinary_selected_memories(relaymem_retrieval_artifact)
     if not selected_memories:
         result = build_grounded_recall_context(
             retrieved_memories=[],
