@@ -2549,7 +2549,7 @@ R5_BUDGET_AMENDMENT_ANCHORS = {
         "and is frozen as P1-return evidence only",
         "architecture/budget defect, not an implementation finding",
         "adding exactly `relaylm/subjective_mem_retrieval_rehearsal.py`",
-        "adds exactly `tests/test_subjective_mem_retrieval_rehearsal.py` to the bounded "
+        "added exactly `tests/test_subjective_mem_retrieval_rehearsal.py` to the bounded "
         "RT-1D-R5 focused-evidence budget",
         "It is not a wildcard `tests/` or `scripts/` budget",
         "pre-authorizes no eighth production path",
@@ -2613,9 +2613,9 @@ R5_BUDGET_AMENDMENT_MUTATIONS = tuple(
             "R5 seventh production path identity",
         ),
         (
-            "adds exactly `tests/test_subjective_mem_retrieval_rehearsal.py` to the bounded "
+            "added exactly `tests/test_subjective_mem_retrieval_rehearsal.py` to the bounded "
             "RT-1D-R5 focused-evidence budget",
-            "adds every file under `tests/` to the bounded RT-1D-R5 focused-evidence budget",
+            "added every file under `tests/` to the bounded RT-1D-R5 focused-evidence budget",
             "R5 focused-evidence budget scope",
         ),
         (
@@ -2634,6 +2634,96 @@ R5_BUDGET_AMENDMENT_MUTATIONS = tuple(
             "artifact, and is frozen as P1-return evidence only",
             "the frozen `agent/rt1d-r5-immediate-retirement-proof` branch may be reused",
             "R5 frozen P1-return branch",
+        ),
+    )
+)
+
+R5_AMENDMENT_RESULT_ANCHORS = {
+    path: (
+        "The RT-1D-R5 rehearsal-retirement budget amendment completed in merged PR #837 from "
+        "bootstrap `71a334f8eab873775f378ee246daa0ca75b2ba71`, reviewed head "
+        "`efd936329f214464f3e872d2fe0e314a2e90210a`, and exact resulting main "
+        "`9468c870036226d4900fbc4c5ae94bf8c3758af8`.",
+        "Its cumulative scope was exactly the four authority paths, +195/-24, in one normal "
+        "forward branch commit carrying exactly one execution receipt, its cumulative P5/P6 "
+        "was accepted clean, and the Ready-event Agent execution safety run 861 was green "
+        "before the expected-head-protected merge.",
+        "PR #837 is merged and completed, not open, current, Draft, unmerged, or incomplete.",
+        "This transaction is the bounded RT-1D-R5 budget-amendment result/current-authority "
+        "correction that records that merged PR #837 result.",
+        "RT-1D-R5 immediate retirement remains unstarted during this correction and introduces "
+        "no retirement behavior.",
+        "may restart only from a fresh branch created from that verified correction result, "
+        "never from PR #837 head `efd936329f214464f3e872d2fe0e314a2e90210a`, never from the "
+        "frozen `agent/rt1d-r5-immediate-retirement-proof` branch, and never from this "
+        "correction's PR head.",
+    )
+    for path in (STATUS, PLAN, RT1C)
+}
+for _path, _anchors in R5_AMENDMENT_RESULT_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple(
+    (path, anchor)
+    for path, anchors in R5_AMENDMENT_RESULT_ANCHORS.items()
+    for anchor in anchors
+)
+
+REQUIRED[RT1C] += (
+    "## RT-1D-R5 rehearsal-retirement budget amendment (completed)",
+)
+
+R5_AMENDMENT_RESULT_STALE = (
+    "## RT-1D-R5 rehearsal-retirement budget amendment (current)",
+    "PR #837 remains open",
+    "PR #837 is unmerged",
+    "PR #837 remains Draft",
+    "PR #837 is the current incomplete RT-1D-R5 gate",
+    "PR #837 is closed unmerged",
+    "the RT-1D-R5 budget amendment awaits merge",
+    "the RT-1D-R5 budget amendment result is unknown",
+    "the exact RT-1D-R5 budget amendment reviewed head is unknown",
+    "RT-1D-R5 implementation remains unstarted during this amendment",
+    "the RT-1D-R5 budget-amendment result/current-authority correction requires P8",
+    "RT-1D-R5 may bootstrap from PR #837 head",
+    "RT-1D-R5 restarted before this correction result was verified",
+)
+
+R5_AMENDMENT_RESULT_MUTATIONS = tuple(
+    (path, current, damaged, label)
+    for path in (STATUS, PLAN, RT1C)
+    for current, damaged, label in (
+        (
+            "exact resulting main `9468c870036226d4900fbc4c5ae94bf8c3758af8`",
+            "exact resulting main `8468c870036226d4900fbc4c5ae94bf8c3758af8`",
+            "R5 amendment exact resulting main",
+        ),
+        (
+            "reviewed head `efd936329f214464f3e872d2fe0e314a2e90210a`",
+            "reviewed head `ffd936329f214464f3e872d2fe0e314a2e90210a`",
+            "R5 amendment reviewed head",
+        ),
+        (
+            "exactly the four authority paths, +195/-24, in one normal forward branch commit",
+            "exactly the five authority paths, +195/-24, in two normal forward branch commits",
+            "R5 amendment cumulative scope",
+        ),
+        (
+            "the Ready-event Agent execution safety run 861 was green before the "
+            "expected-head-protected merge",
+            "the RT-1D-R5 budget amendment awaits merge",
+            "R5 amendment Ready-event evidence",
+        ),
+        (
+            "PR #837 is merged and completed, not open, current, Draft, unmerged, or "
+            "incomplete.",
+            "PR #837 is the current incomplete RT-1D-R5 gate",
+            "R5 amendment gate state",
+        ),
+        (
+            "RT-1D-R5 immediate retirement remains unstarted during this correction and "
+            "introduces no retirement behavior.",
+            "RT-1D-R5 restarted before this correction result was verified",
+            "R5 start state during correction",
         ),
     )
 )
@@ -2980,6 +3070,7 @@ def self_test() -> None:
         + R4_READINESS_REPLAY_MUTATIONS
         + R4_COMPLETION_MUTATIONS
         + R5_BUDGET_AMENDMENT_MUTATIONS
+        + R5_AMENDMENT_RESULT_MUTATIONS
     )
     for path, current, damaged, label in focused_mutations:
         body = read(path)
@@ -3160,6 +3251,20 @@ def self_test() -> None:
             raise AssertionError(
                 f"{path}: R5 budget amendment stale anchor is not forbidden: {stale!r}"
             )
+    for path in R5_AMENDMENT_RESULT_ANCHORS:
+        for stale in R5_AMENDMENT_RESULT_STALE:
+            body = read(path)
+            assert stale not in body, (
+                f"{path}: R5 amendment result stale anchor is present: {stale!r}"
+            )
+            try:
+                forbid_body(path, R5_AMENDMENT_RESULT_STALE, body + "\n" + stale + "\n")
+            except AssertionError:
+                print(f"PASS: {path}: reintroducing {stale!r} fails closed")
+                continue
+            raise AssertionError(
+                f"{path}: R5 amendment result stale anchor is not forbidden: {stale!r}"
+            )
     print("SELF-TEST PASS")
 
 
@@ -3207,6 +3312,8 @@ def main(argv: list[str] | None = None) -> None:
         forbid(path, R4_COMPLETION_STALE)
     for path in R5_BUDGET_AMENDMENT_ANCHORS:
         forbid(path, R5_BUDGET_AMENDMENT_STALE)
+    for path in R5_AMENDMENT_RESULT_ANCHORS:
+        forbid(path, R5_AMENDMENT_RESULT_STALE)
     forbid("docs/PROJECT_STATUS.md", HISTORY_ONLY_STATUS_ANCHORS)
     print("Documentation current boundary smoke passed")
 
