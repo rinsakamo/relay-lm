@@ -1,55 +1,149 @@
-# Phase I-4D Primary retrieval exclusion
+---
+relaylm_doc_type: subsystem_architecture
+relaylm_authority: primary_mem_retrieval_exclusion_compatibility_boundary
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: memory
+relaylm_update_trigger:
+  - Primary ordinary reader or fallback retirement changes
+  - Primary lifecycle eligibility or read-only historical consumer changes
+  - RT-1 one-authority reader decisions or removal gates change
+relaylm_not_authoritative_for:
+  - current runtime implementation completion status
+  - Subjective MEM ordinary Retrieval, ranking, projection, or usage semantics
+  - RT-1D-R5 completion, deletion approval, or Primary asset retirement status
+  - Primary writer, mutation, recovery, API, or UI behavior
+relaylm_related_authority:
+  - subjective-mem-retrieval-projection-hard-cutover.md
+  - e1r5_primary_mem_recall_candidate_bridge.md
+  - integration_i1_primary_mem_two_turn_recall.md
+  - phase_i4b_primary_current_state_shared_fence.md
+  - project_execution_plan.md
+relaylm_lifecycle: stable
+relaylm_primary_consumers:
+  - Retrieval migration reviewers
+  - Primary historical and operational-read reviewers
+  - RT-1 retirement reviewers
+relaylm_authority_level: subsystem
+---
+# Primary MEM Retrieval Exclusion Compatibility Boundary
 
-Status: implementation slice complete when its workflow is green.
+Last reviewed: 2026-08-08 JST
 
-I-4D owns ordinary Primary MEM lifecycle filtering after existing M2 relevance selection and before RelayCTX/backend-bound injection. M2 continues to own relevance, ordering, candidate caps, and budgets.
+## Scope
 
-Frozen implementation evidence for source PR #414 is the [I-4D completion report](../evidence/implementation/i4d_completion_report.md); this handoff remains current behavior authority.
+This page defines the remaining read-only Primary MEM retrieval eligibility and
+exclusion boundary. It no longer defines a universal ordinary Retrieval
+authority.
 
-## Authority
+`relaylm/relaymem_primary_recall.py` owns the compatibility facade
+`apply_relaymem_primary_recall_scope(...)`. That facade is usable only when the
+exact RT-1 reader decision class is `primary_only`. The facade checks the reader
+decision before resolving a Primary store root, opening the store, preparing
+selection, or discovering a candidate.
 
-The implementation reuses the I-4B/I-4C2 read-only current-state scanner. It does not duplicate correction, prepared, hidden-page, finalization, or control schemas.
+A missing, foreign, malformed, `neither`, or `subjective_only` decision releases
+no Primary runtime-private evidence. It returns the bounded fenced artifact with
+no Primary store read and cannot become an empty-result or failure fallback for
+Subjective Retrieval.
 
-`relaymem_primary_i4c2_projection.py` retains its correction-only compatibility contract for mutation and historical observation callers. The ordinary recall integration instead builds one request-scoped `PrimaryRetrievalEligibilityIndex` directly from the complete shared Correct/Forget scanner. This isolates I-4D lifecycle semantics to `apply_relaymem_primary_recall_scope(...)` and excludes the complete prepared-to-finalized interval without changing writer, preflight, recovery, or prior observation behavior.
+Current implementation completion and RT-1D-R5 retirement status remain owned by
+`docs/PROJECT_STATUS.md` and the RT-1 hard-cutover authority. This page does not
+authorize deletion of any Primary asset.
 
-A candidate survives only when M2 already selected it, scope matches, page and controls are canonical, physical identity maps to one logical memory, it is the canonical current physical revision, lifecycle is active, mutation state is none, and retrieval eligibility is true.
+## Primary-only compatibility flow
 
-Prior revisions, hidden state, prepared state, recovery-required state, corrupt or ambiguous chains, unresolved mappings, stale controls, scope mismatches, and unsafe files fail closed. A hidden successor remains lifecycle authority; retrieval never falls back to a prior active revision.
-
-## M2 and RelayCTX
-
-`apply_relaymem_primary_recall_scope(...)` remains the integration point. It rebuilds selected candidates, snippets, evidence, context candidates, injection plans, runtime evidence, and content-free projection only from eligible candidates.
-
-I-4D does not discover or substitute a current revision when M2 selected only a prior revision. Unrelated active candidates retain their existing relative order and budgets. A forgotten memory is absent from every RelayCTX handoff and from fresh backend-bound messages.
-
-## Internal decision reasons
+When the exact reader decision is `primary_only`, the retained compatibility path
+is:
 
 ```text
-eligible_current_active
-excluded_prior_revision
-excluded_hidden
-excluded_prepared
-excluded_recovery_required
-excluded_corrupt
-excluded_unresolved_identity
-excluded_scope_mismatch
-excluded_unsafe
+existing M2 retrieval artifact
+  -> exact Primary reader-decision gate
+  -> scoped Primary store and namespace validation
+  -> lifecycle/current-revision eligibility filtering
+  -> bounded Primary candidate selection or authorized legacy fallback discovery
+  -> runtime-private RelayCTX grounding handoff
 ```
 
-The decision representation excludes content, paths, namespace values, identities, digests, operation data, and raw exceptions.
+M2 and the retained Primary selection owner continue to own relevance, ordering,
+candidate caps, and budgets inside this compatibility path. This page owns only
+the lifecycle/currentness exclusion rules applied before Primary evidence may be
+released.
 
-## Historical projection
+## Eligibility and exclusion
 
-The durable `relaylm.lab.memory_used.v0` receipt and existing v0 endpoint remain unchanged. I-4D adds the separate read-only schema `relaylm.lab.memory_used_lifecycle.v1`.
+A Primary candidate survives only when it was admitted by the retained Primary
+selection path and all of the following remain exact:
 
-Each item retains historical `injected_summary` and overlays `current_summary`, `current_lifecycle_state`, `representation_changed`, and `lifecycle_changed`. Current summary is null for hidden or unresolved state. Mutation reasons, tokens, internal identifiers, paths, digests, and artifact bodies are not projected.
+- the request is in `primary_only` reader state;
+- character store root and namespace are valid and scoped;
+- page and control state are canonical and safe;
+- physical identity maps to one logical memory;
+- the candidate is the canonical current physical revision;
+- lifecycle state is active;
+- mutation state is none;
+- retrieval eligibility is true.
 
-A dedicated strict TypeScript parser follows the new version. I-4D adds no mutation route or mutation UI.
+The following fail closed:
+
+```text
+prior revision
+hidden
+prepared
+recovery required
+corrupt or ambiguous authority
+unresolved physical-to-logical identity
+scope mismatch
+unsafe or changed file state
+reader decision other than primary_only
+```
+
+A hidden successor remains lifecycle authority. The Primary compatibility reader
+never falls back to an earlier active physical revision.
+
+## One-authority boundary
+
+The RT-1 cutover owner is the sole authority that decides whether ordinary memory
+Retrieval is `primary_only`, `neither`, or `subjective_only`.
+
+This compatibility boundary must not infer serving authority from configuration,
+projection presence, Primary store availability, or an empty Subjective result.
+After a finalized Subjective transfer, Primary recall remains fenced even when
+Subjective retrieval is empty, stale, corrupt, unavailable, or unsupported.
+There is no dual-read, precedence, or cross-authority fallback rule.
+
+## Read-only historical and operational use
+
+Primary lifecycle/current-state scanners and historical projections may continue
+only for explicitly accepted read-only operational, migration, characterization,
+rollback-evidence, or history consumers. Such use does not restore ordinary
+Primary serving authority and does not authorize a Primary writer.
+
+The durable `relaylm.lab.memory_used.v0` historical receipt and the read-only
+`relaylm.lab.memory_used_lifecycle.v1` projection remain separate from ordinary
+reader authority. Their continuing disposition is reviewed independently from
+ordinary Retrieval retirement.
+
+## R5 removal gate
+
+RT-1D-R5 owns retirement of replaced Primary ordinary reader/fallback surfaces
+and temporary shadow/rehearsal execution surfaces. Removal occurs only after its
+exact post-transfer validation, restart/request-path proof, and negative caller
+search pass.
+
+This page deliberately does not predict which read-only Primary components will
+remain after that gate. A component may survive only when a continuing accepted
+historical, operational, migration, rollback, or recovery responsibility is
+proved. Otherwise retirement is handled by the owning R5/R6 atomic wave and Git
+history remains the recovery mechanism.
 
 ## Validation boundary
 
-Retrieval does not recover, write, lock, poll, or retry. Prepared and partial hidden states are ineligible. Stable bounded rereads reject non-regular, multiply-linked, oversized, unsafe, or changed files.
+The Primary compatibility reader remains read-only. It does not recover, write,
+lock for mutation, poll, repair, or retry. Prepared and partial hidden states are
+ineligible, and bounded rereads reject unsafe or changed files.
 
-The dedicated workflow covers lifecycle/current/prior-revision filtering, recovery states, RelayCTX handoff exclusion, fresh-conversation backend absence, immutable historical evidence with current lifecycle overlay, content-free diagnostics, prior phase regressions, frontend typecheck/build, documentation links, and compileall.
-
-I-4E remains the loopback API and SOUL Lab mutation UI. I-4F remains the full production validation slice.
+Existing I-4D and Primary-recall tests/smokes remain characterization and
+compatibility evidence while their owning callers still exist. RT-1 request-path
+coverage additionally proves that non-`primary_only` decisions release no
+Primary evidence and perform no Primary store read.
