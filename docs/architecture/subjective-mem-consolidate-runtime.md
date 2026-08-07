@@ -1,15 +1,15 @@
 ---
 relaylm_doc_type: subsystem_architecture
 relaylm_authority: subjective_mem_consolidate_runtime_architecture
-relaylm_status: target
-relaylm_volatility: high
+relaylm_status: current
+relaylm_volatility: medium
 relaylm_owner: memory
 relaylm_update_trigger:
-  - LC-1E Consolidate input, policy authorization, transition, persistence, or recovery changes
-  - a later lifecycle operation changes consolidated-predecessor authority
-  - RT-1 begins consuming Secondary Subjective MEM eligibility
+  - Subjective MEM Consolidate input, policy authorization, transition, persistence, or recovery changes
+  - lifecycle predecessor authority changes for consolidated revisions
+  - ordinary Retrieval changes Secondary Subjective MEM eligibility consumption
 relaylm_not_authoritative_for:
-  - current runtime implementation or completion status
+  - current runtime implementation completion status
   - candidate discovery, usage thresholds, scheduling, or policy-model selection
   - ordinary Subjective MEM Retrieval, ranking, cache, or request-path selection
   - API, UI, background recovery, or Primary MEM consolidation
@@ -24,21 +24,22 @@ relaylm_related_authority:
   - subjective-mem-restore-runtime.md
   - subjective-mem-lifecycle-publication-engine.md
   - project_execution_plan.md
-relaylm_lifecycle: accepted_target
+relaylm_lifecycle: stable
 relaylm_primary_consumers:
   - Subjective MEM runtime implementers
   - RelayMEM policy and lifecycle reviewers
-  - retrieval migration implementers
+  - retrieval and integrity reviewers
 relaylm_authority_level: subsystem
 ---
-# LC-1E Subjective MEM Consolidate Runtime
+# Subjective MEM Consolidate Runtime
+
+Last reviewed: 2026-08-07 JST
 
 ## Scope
 
-LC-1E is the next bounded lifecycle slice after LC-1D. It defines one
-caller-invoked, default-off Consolidate runtime on the canonical Markdown and
-content-free operations boundaries established by ST-1 and the preceding
-lifecycle slices.
+Consolidate owns one caller-invoked, default-off exact transformation of the
+current active Primary revision into an immutable active Secondary successor on
+the canonical Subjective MEM Markdown and content-free lifecycle boundaries.
 
 ```text
 active Primary revision N / mutation none / retrieval eligible
@@ -50,9 +51,13 @@ Consolidate appends one immutable successor for the same logical memory. It does
 not merge multiple memories, synthesize a summary, rewrite meaning, change
 memory kind, or select a candidate by similarity, usage count, age, or recency.
 
+Current implementation completion and feature posture remain owned by
+`docs/PROJECT_STATUS.md`. Exact schema and transition requirements remain owned
+by the Subjective MEM contracts.
+
 ## Normative state model
 
-The accepted logical contract owns:
+The Subjective MEM logical contract owns:
 
 ```text
 consolidate: active Primary -> active Secondary
@@ -74,18 +79,20 @@ A Secondary predecessor cannot be consolidated again. Pinned, held, hidden,
 superseded, purged, prepared, recovery-required, corrupt, missing-current,
 duplicate-current, dangling-current, or non-current revisions fail closed.
 
-## Boundaries
+## Responsibility and dependency boundary
 
-Primary MEM and legacy consolidation behavior are characterization evidence only.
-LC-1E does not call or modify Primary MEM code, queue, worker, scheduler, API, UI,
-ranking, cache, or storage. It does not establish dual-write or old/new
-precedence. RT-1 remains the future owner of ordinary readers, projection
-consumption, ranking, cache, durable usage events, and hard cutover.
+Primary MEM and legacy consolidation behavior are characterization or historical
+boundary evidence only. Subjective MEM Consolidate does not call or modify
+Primary MEM code, queue, worker, scheduler, API, UI, ranking, cache, or storage
+and does not establish dual-write or old/new precedence. Ordinary Subjective MEM
+Retrieval remains the owner of candidate consumption, ranking, cache, durable
+usage events, and request-path authority.
 
-`relaylm/subjective_mem_consolidate_runtime.py` is the only Consolidate operation
+`relaylm/subjective_mem_consolidate_runtime.py` is the Consolidate operation
 owner. It owns proposal application, exact predecessor validation, successor
-construction, publication, finalization, replay, and bounded caller-invoked
-recovery.
+construction, operation-specific finalization, replay mapping, and bounded
+caller-invoked forward recovery while using the shared lifecycle publication
+engine for operation-neutral mechanics.
 
 ```text
 subjective_mem_consolidate_runtime
@@ -96,14 +103,14 @@ subjective_mem_consolidate_runtime
   -> subjective_mem / evidence store / canonical commit I/O
 ```
 
-The Consolidate owner must not import private Correct, Forget, Pin/Unpin, or
-Restore runtime helpers and must not copy the shared lifecycle publication state
-machine.
+The Consolidate owner does not import private Correct, Forget, Pin/Unpin, or
+Restore runtime helpers and does not duplicate the shared lifecycle publication
+state machine.
 
 ## Policy proposal authority
 
 `relaylm/subjective_mem_consolidate.py` owns one bounded storage-neutral proposal
-and deterministic identity shape. The first LC-1E slice accepts exactly one
+and deterministic identity shape. The current bounded runtime accepts exactly one
 authorization class:
 
 ```text
@@ -129,9 +136,9 @@ The proposal binds:
 Changing any expected authority binding changes the proposal input digest.
 
 An active Primary revision may still be revision 1, whose exact authority is the
-ST-1 formation decision rather than a lifecycle transition. Consolidate therefore
-binds the generic current authorization the shared predecessor authority already
-selects, and never requires an unrelated prior lifecycle operation:
+formation decision rather than a lifecycle transition. Consolidate therefore
+binds the generic current authorization selected by the shared predecessor
+authority and never requires an unrelated prior lifecycle operation:
 
 ```text
 expected_current_authorization_kind
@@ -139,35 +146,35 @@ expected_current_authorization_id
 expected_current_authorization_digest
 ```
 
-The accepted kinds are exactly the two the shared authority returns:
+The accepted kinds are exactly the two returned by the shared authority:
 
 ```text
-revision 1                        subjective_mem_decision
+revision 1                          subjective_mem_decision
 later committed lifecycle revision subjective_mem_lifecycle_transition
 ```
 
-The runtime compares all three to the exact loaded predecessor authority and to
-the canonical digest of its exact authorization record. No transition-only alias,
-compatibility fallback, dual field name, or precedence rule exists.
+The runtime compares all three values to the exact loaded predecessor authority
+and the canonical digest of its exact authorization record. No transition-only
+alias, compatibility fallback, dual field name, or precedence rule exists.
 
-`authorization_id` on the proposal is a different value: it is the new Consolidate
-operation's RelayMEM policy authorization ID. It is bound and persisted through
-the existing lifecycle intent, transition, and receipt family together with the
-authorization class, reason category, and exact policy revision. No new durable
-policy-authorization record schema is introduced. The proposal must carry exactly
-`CONSOLIDATE_POLICY_REVISION`; a well-formed but different policy revision fails
-closed.
+`authorization_id` on the proposal is a different value: it is the new
+Consolidate operation's RelayMEM policy authorization ID. It is bound and
+persisted through the shared lifecycle intent, transition, and receipt family
+together with the authorization class, reason category, and exact policy
+revision. No separate durable policy-authorization record schema is introduced.
+The proposal must carry exactly `CONSOLIDATE_POLICY_REVISION`; a well-formed but
+different policy revision fails closed.
 
-This architecture does not define how a policy discovers or prioritizes
+This architecture does not define how policy discovers or prioritizes
 candidates. No usage threshold, age threshold, retrieval count, embedding,
-lexical similarity, LLM decision, queue, worker, or scheduler is authorized.
-The caller must provide one exact proposal produced under a separately identified
-RelayMEM policy revision. The runtime validates that authority but does not
+lexical similarity, LLM decision, queue, worker, or scheduler is authorized. The
+caller supplies one exact proposal produced under a separately identified
+RelayMEM policy revision; the runtime validates that authority but does not
 re-create or infer the policy decision.
 
-User-management and operator-management authorization are not included in the
-first bounded runtime. Adding them later requires an explicit authority update;
-they cannot be accepted through a permissive fallback.
+User-management and operator-management authorization are not accepted by this
+bounded Consolidate authority. Adding another authorization class requires an
+explicit authority change and cannot occur through a permissive fallback.
 
 ## Exact predecessor and successor
 
@@ -180,7 +187,7 @@ selector and current receipt. It must have:
 - `formation_stage: primary`;
 - `mutation_state: none` and `retrieval_eligible: true`;
 - one exact current authorization lineage accepted by the shared predecessor
-  authority;
+  authority; and
 - no later canonical revision for the logical memory.
 
 The successor preserves every semantic, scope, strength, and lifecycle value and
@@ -189,28 +196,24 @@ changes only:
 - memory revision to `N+1`;
 - predecessor reference to `N`;
 - formation stage to `secondary`;
-- immutable creation time;
+- immutable creation time; and
 - authorization to the exact Consolidate lifecycle transition.
 
 The successor remains on the same canonical page. Current page partitioning is
-owned by character and memory kind, not formation stage. LC-1E therefore appends
-a block to the exact existing page and does not move, rename, split, or duplicate
+owned by character and memory kind, not formation stage. Consolidate appends a
+block to the exact existing page and does not move, rename, split, or duplicate
 the logical memory.
 
 ## Shared predecessor authority
 
 A consolidated Secondary revision must remain a valid predecessor for later
-Correct, Forget, Pin/Unpin, and any later governed operation that accepts an
-active Secondary current revision.
+Correct, Forget, Pin/Unpin, and any governed operation that accepts an active
+Secondary current revision.
 
-The existing storage-neutral predecessor authority remains the only owner of
-committed lifecycle receipt and transition validation. LC-1E extends that owner
-to accept a valid committed `consolidate` predecessor exactly once and removes
-any operation-local allowlist that would otherwise duplicate the semantic. No
-fallback, compatibility wrapper, or second receipt validator is added.
-
-That owner replaces its lifecycle-direction table with one bounded operation
-specification per accepted operation:
+The storage-neutral predecessor authority remains the owner of committed
+lifecycle receipt and transition validation. Its bounded operation
+specification includes Consolidate's exact lifecycle and formation-stage change
+without creating an operation-local fallback or second receipt validator:
 
 ```text
 correct      active -> active     stage preserved   lifecycle policy revision
@@ -235,14 +238,19 @@ Operation owners retain their transition direction, proposal, reason,
 authorization, payload, and successor rules. Consolidate never broadens another
 operation's accepted lifecycle or formation-stage boundary.
 
-## Mutation, identity, and finalization
+## Mutation, identity, publication, and finalization
 
-LC-1E reuses one Evidence-space transaction lock, one logical current selector,
-exact selector/receipt/page authority, one canonical Markdown page, one secure
-POSIX page lock and atomic replacement path, one immutable post-image artifact,
-the shared lifecycle claim/intent/transition/receipt/result/finalization family,
-`rebuild_required` projection state, deterministic idempotency, and
+Consolidate uses one Evidence-space transaction lock, one logical current
+selector, exact selector/receipt/page authority, one canonical Markdown page,
+one secure POSIX page lock and atomic replacement path, one immutable post-image
+artifact, the shared lifecycle claim/intent/transition/receipt/result/finalization
+family, `rebuild_required` projection state, deterministic idempotency, and
 caller-invoked forward recovery.
+
+The operation-neutral lifecycle engine owns reservation, canonical publication,
+shared finalized replay, and recovery classification. Consolidate supplies the
+exact operation-owned finalizer and predecessor bindings needed to atomically
+commit the Primary-to-Secondary successor.
 
 The idempotency slot derives from evidence space, character authority digest,
 logical memory ID, operation family `consolidate`, and caller key digest.
@@ -254,7 +262,7 @@ inserts or exactly verifies:
 
 - Consolidate lifecycle transition and receipt;
 - lifecycle idempotency result and intent finalization;
-- final active Secondary singleton selector;
+- final active Secondary singleton selector; and
 - `rebuild_required` projection state.
 
 The transition records:
@@ -294,7 +302,7 @@ No background worker, scanner, scheduler, polling, automatic repair, or semantic
 regeneration is added. A durable Secondary successor is never rolled back to its
 Primary predecessor because receipt delivery or finalization failed.
 
-## Failure model and posture
+## Failure model and feature posture
 
 Stale revision, non-active lifecycle, non-Primary formation stage, missing or
 duplicate selector, changed receipt, invalid predecessor lineage, foreign page or
@@ -307,10 +315,11 @@ No failure path may expose a prepared selector, modify semantic content, create 
 second logical memory, consult Primary MEM, accept a merely similar memory, or
 leave two current states.
 
-LC-1E uses the existing lifecycle gate and remains default-off, dry-run-capable,
-apply-enabled only with ST-1 secure apply, single-host, POSIX-apply-only,
-caller-invoked, and unwired from ordinary Retrieval, API, UI, queue, worker, and
-scheduler paths.
+Consolidate uses the existing Subjective MEM lifecycle gate and remains
+default-off, dry-run-capable, apply-enabled only with secure canonical apply,
+single-host, POSIX-apply-only, caller-invoked, and unwired from ordinary
+Retrieval, API, UI, queue, worker, and scheduler paths unless a separate current
+authority explicitly wires those surfaces.
 
 The gate is the exact existing configuration triple, not a single boolean. Both
 the lifecycle gate and the lower Subjective MEM commit gate are read as
@@ -322,58 +331,46 @@ dry-run   (True,  True,  False)
 apply     (True,  False, True)
 ```
 
-Enforcement is bounded and operation-local. LC-1E introduces no configuration
-field and no general-purpose gate resolver:
+Enforcement is bounded and operation-local; Consolidate introduces no
+configuration field and no general-purpose gate resolver:
 
 - lifecycle `disabled` returns a bounded `disabled` outcome for any caller mode,
-  and is distinct from dry-run;
+  distinct from dry-run;
 - lifecycle `dry-run` with a caller that does not request apply returns
   content-free dry-run readiness;
-- lifecycle `dry-run` with a caller that requests apply fails closed: a caller
-  can never escalate a configured dry-run mode;
+- lifecycle `dry-run` with a caller that requests apply fails closed, so a caller
+  cannot escalate a configured dry-run mode;
 - canonical publication requires the lifecycle triple to be exactly `apply`, the
   lower commit triple to be exactly `apply`, and the caller to request apply;
 - lifecycle `apply` with the lower commit gate `disabled` or `dry-run` fails
-  closed, because lower commit apply authority is mandatory for lifecycle apply;
+  closed because lower commit apply authority is mandatory;
 - lifecycle `apply` with a caller that does not request apply stays content-free
-  dry-run;
-- non-boolean values, unsupported triples, and any lifecycle/commit dependency
-  mismatch fail closed before the first durable read.
+  dry-run; and
+- non-boolean values, unsupported triples, and lifecycle/commit dependency
+  mismatches fail closed before the first durable read.
 
 Every rejected and every non-apply path writes no post-image artifact, lifecycle
 claim, intent, transition, receipt, idempotency result, selector event, or
 canonical page byte.
 
-## Implementation budget
+## Validation anchors
 
-The later implementation is bounded to:
+The stable responsibility boundary is represented by current runtime and focused
+validation surfaces including:
 
 ```text
-relaylm/subjective_mem_consolidate.py                    new
-relaylm/subjective_mem_consolidate_runtime.py            new
-relaylm/subjective_mem_lifecycle_authority.py            accepted-operation extension
-focused tests and one process smoke
-existing consolidated smoke and registration surfaces only
+relaylm/subjective_mem_consolidate.py
+relaylm/subjective_mem_consolidate_runtime.py
+relaylm/subjective_mem_lifecycle_authority.py
+relaylm/subjective_mem_lifecycle_engine.py
+tests/test_subjective_mem_consolidate_runtime.py
 ```
 
-The shared lifecycle engine, canonical renderer, generic lifecycle gate, config,
-API, UI, Primary MEM, ordinary Retrieval, workflows, changed-matrix, generated
-registries, and unrelated documentation are excluded unless P1 proves a concrete
-missing generic invariant. Return to P1 if path count or diff grows materially,
-an existing file gains roughly 200 lines, a file exceeds roughly 700 lines, a
-function exceeds roughly 80 lines, tests copy production logic, or a new shared
-abstraction duplicates the lifecycle engine.
+Generic lifecycle and consolidated smoke surfaces also exercise this boundary.
+Historical slice identifiers in test, smoke, or compatibility names are
+validation anchors only; they are not semantic or architectural authority.
 
-Because the runtime and negative-test surface are expected to be materially
-larger than this one-file architecture change, implementation must use the
-ChatGPT-first backend only while connected writes remain atomic and reviewable.
-If it would require long-file Base64 splitting, partial assembly, temporary files,
-or unsafe full-file replacement, stop connected writes and hand the bounded
-implementation plan to Claude Code as the single branch writer.
-
-## Validation matrix
-
-The implementation must prove:
+Validation must preserve:
 
 - default-off and dry-run no-write behavior;
 - exact `active Primary N -> active Secondary N+1`;
@@ -381,27 +378,24 @@ The implementation must prove:
   preservation;
 - prepared exclusion and final eligibility;
 - exact RelayMEM policy authorization and policy-revision binding;
-- rejection of user/operator fallback in the first slice;
+- rejection of user/operator fallback under the current authority;
 - same-page append with no move or duplicate current memory;
 - exact replay and idempotency conflict;
 - stale, Secondary, pinned, hidden, held, superseded, purged, and wrong-state
   rejection;
 - first-writer behavior and selector fencing;
 - pre/post-page forward recovery and foreign-image preservation;
-- later Correct, Forget, and Pin acceptance of a Consolidate predecessor through
-  one shared authority;
+- later lifecycle acceptance of a Consolidate predecessor through one shared
+  predecessor authority; and
 - absence of relation, merge, supersession, tombstone, usage-event, ordinary
-  Retrieval, Primary MEM, API/UI, background recovery, temporary artifacts, and
-  branch-writing validation.
-
-The existing `runtime/subjective_mem_lifecycle` consolidated group remains the CI
-owner. LC-1E extends it rather than creating a workflow or changing Lane R
-changed-matrix authority.
+  Retrieval, Primary MEM, API/UI, background recovery, or a second semantic
+  authority.
 
 ## Non-goals
 
-LC-1E excludes policy candidate discovery, automatic scheduling, usage-based
-selection, summarization, semantic merge, duplicate collapse, relation creation,
-supersession, strength change, lifecycle visibility change, Primary MEM
-consolidation or migration, ordinary Retrieval cutover, API/UI, background
-recovery, Purge, multi-host coordination, and non-POSIX publication.
+Consolidate does not own or authorize policy candidate discovery, automatic
+scheduling, usage-based selection, summarization, semantic merge, duplicate
+collapse, relation creation, supersession, strength change, lifecycle visibility
+change, Primary MEM consolidation or migration, ordinary Retrieval cutover,
+API/UI, background recovery, Purge, multi-host coordination, or non-POSIX
+publication.
