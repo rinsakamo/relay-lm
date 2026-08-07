@@ -1,5 +1,5 @@
 ---
-relaylm_doc_type: subsystem_architecture
+relaylm_doc_type: architecture_report
 relaylm_authority: primary_mem_retrieval_exclusion_compatibility_boundary
 relaylm_status: current
 relaylm_volatility: medium
@@ -13,22 +13,37 @@ relaylm_not_authoritative_for:
   - Subjective MEM ordinary Retrieval, ranking, projection, or usage semantics
   - RT-1D-R5 completion, deletion approval, or Primary asset retirement status
   - Primary writer, mutation, recovery, API, or UI behavior
+relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - subjective-mem-retrieval-projection-hard-cutover.md
   - e1r5_primary_mem_recall_candidate_bridge.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i4b_primary_current_state_shared_fence.md
   - project_execution_plan.md
-relaylm_lifecycle: stable
-relaylm_primary_consumers:
-  - Retrieval migration reviewers
-  - Primary historical and operational-read reviewers
-  - RT-1 retirement reviewers
-relaylm_authority_level: subsystem
 ---
 # Primary MEM Retrieval Exclusion Compatibility Boundary
 
 Last reviewed: 2026-08-08 JST
+
+## Transitional status
+
+This legacy underscore-named page remains an explicitly transitional D5 source
+while current Primary compatibility and read-only historical consumers still
+exist. It is not activated as a permanent canonical path.
+
+- owner: memory / Lane D documentation canonicalization;
+- current consumers: Primary-only retrieval compatibility reviewers, Soul Lab
+  historical lifecycle projection consumers, and RT-1 retirement reviewers;
+- removal gate: RT-1D-R5/R6 proves the final disposition of every remaining
+  Primary ordinary-reader and read-only operational consumer;
+- replacement validation: the final canonical Retrieval/Primary documentation
+  graph preserves every still-current eligibility, disclosure, operational, and
+  historical contract before this path is retired through the retirement
+  manifest and Git history.
+
+Current implementation completion and the exact retirement decision remain owned
+by `docs/PROJECT_STATUS.md`, the RT-1 hard-cutover authority, and the owning R5/R6
+atomic waves.
 
 ## Scope
 
@@ -47,9 +62,7 @@ no Primary runtime-private evidence. It returns the bounded fenced artifact with
 no Primary store read and cannot become an empty-result or failure fallback for
 Subjective Retrieval.
 
-Current implementation completion and RT-1D-R5 retirement status remain owned by
-`docs/PROJECT_STATUS.md` and the RT-1 hard-cutover authority. This page does not
-authorize deletion of any Primary asset.
+This page does not authorize deletion of any Primary asset.
 
 ## Primary-only compatibility flow
 
