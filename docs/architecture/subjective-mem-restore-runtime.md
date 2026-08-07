@@ -1,15 +1,15 @@
 ---
 relaylm_doc_type: subsystem_architecture
 relaylm_authority: subjective_mem_restore_runtime_architecture
-relaylm_status: target
-relaylm_volatility: high
+relaylm_status: current
+relaylm_volatility: medium
 relaylm_owner: memory
 relaylm_update_trigger:
-  - LC-1D Restore input, transition, tombstone release, persistence, or recovery changes
-  - a later lifecycle operation changes restored-predecessor authority
-  - RT-1 begins consuming restored lifecycle eligibility
+  - Subjective MEM Restore input, transition, tombstone release, persistence, or recovery changes
+  - lifecycle predecessor authority changes for restored revisions
+  - ordinary Retrieval changes restored lifecycle-eligibility consumption
 relaylm_not_authoritative_for:
-  - current runtime implementation or completion status
+  - current runtime implementation completion status
   - ordinary Subjective MEM Retrieval, ranking, cache, or request-path selection
   - API, UI, model-generated Restore decisions, or background recovery
   - Primary MEM restore, migration, retirement, or precedence
@@ -23,21 +23,22 @@ relaylm_related_authority:
   - subjective-mem-pin-unpin-runtime.md
   - subjective-mem-lifecycle-publication-engine.md
   - project_execution_plan.md
-relaylm_lifecycle: accepted_target
+relaylm_lifecycle: stable
 relaylm_primary_consumers:
   - Subjective MEM runtime implementers
   - lifecycle reviewers
-  - retrieval migration implementers
+  - retrieval and anti-reformation reviewers
 relaylm_authority_level: subsystem
 ---
-# LC-1D Subjective MEM Restore Runtime
+# Subjective MEM Restore Runtime
+
+Last reviewed: 2026-08-07 JST
 
 ## Scope
 
-LC-1D is the next bounded lifecycle slice after LC-1C. It defines one
-caller-invoked, default-off Restore runtime on the canonical Markdown and
-content-free operations boundaries established by ST-1 and the preceding
-lifecycle slices.
+Restore owns one caller-invoked, default-off exact `hidden -> active` Subjective
+MEM lifecycle transition on the canonical Markdown and content-free operations
+boundaries shared by the lifecycle system.
 
 ```text
 hidden revision N / mutation none / retrieval ineligible
@@ -52,9 +53,13 @@ hidden predecessor, original Forget transition, receipt, or tombstone. It does
 not infer that a memory should be restored and does not authorize formation of a
 second logical memory.
 
+Current implementation completion and feature posture remain owned by
+`docs/PROJECT_STATUS.md`. Exact schema and transition requirements remain owned
+by the Subjective MEM contracts.
+
 ## Normative state model
 
-The accepted logical contract owns:
+The Subjective MEM logical contract owns:
 
 ```text
 restore: hidden -> active
@@ -71,56 +76,54 @@ preserves grounded assessment reference and content, subjective meaning,
 character, logical memory identity, memory kind, formation stage, scope,
 formation snapshot, and every strength dimension.
 
-## Boundaries
+## Responsibility and dependency boundary
 
-Primary MEM Restore and Forget behavior is characterization evidence only.
-LC-1D does not call or modify Primary MEM code, API, UI, ranking, cache, or
-storage. It does not establish dual-write or old/new precedence. RT-1 remains the
-future owner of ordinary readers, projection consumption, ranking, cache, usage
-events, and hard cutover.
+Primary MEM Restore and Forget behavior is characterization or historical
+boundary evidence only. Subjective MEM Restore does not call or modify Primary
+MEM code, API, UI, ranking, cache, or storage and does not establish dual-write
+or old/new precedence. Ordinary Subjective MEM Retrieval remains the owner of
+candidate consumption, ranking, cache, usage events, and request-path authority.
 
-`relaylm/subjective_mem_restore_runtime.py` is the only Restore operation owner.
-It owns proposal application, exact predecessor and Forget-lineage validation,
-successor construction, tombstone release finalization, replay, and bounded
-caller-invoked recovery.
+`relaylm/subjective_mem_restore_runtime.py` is the Restore operation owner. It
+owns proposal application, exact predecessor and Forget-lineage validation,
+successor construction, tombstone-release finalization, exact replay, and
+bounded caller-invoked recovery.
 
 ```text
 subjective_mem_restore_runtime
   -> subjective_mem_restore
+  -> subjective_mem_restore_plan
+  -> subjective_mem_restore_replay
   -> subjective_mem_lifecycle_authority
   -> subjective_mem_lifecycle_engine
   -> subjective_mem_reformation
+  -> subjective_mem_tombstone_release
   -> subjective_mem_markdown
   -> subjective_mem / evidence store / canonical commit I/O
 ```
 
-The Restore owner must not import private Correct, Forget, or Pin/Unpin runtime
-helpers and must not copy the shared lifecycle publication state machine.
+The Restore owner does not import private Correct, Forget, or Pin/Unpin runtime
+helpers and does not duplicate the shared lifecycle publication state machine.
 
 ## Shared predecessor authority
 
-A restored active revision must be a valid predecessor for later Correct,
-Forget, and Pin. Current code has more than one operation-local lifecycle
-receipt validator and allowed-operation set. Adding `restore` independently to
-each would create repeated semantic authority.
-
-LC-1D therefore transfers exact current lifecycle receipt and transition
-validation to one storage-neutral owner:
+A restored active revision must remain a valid predecessor for later lifecycle
+operations. Exact committed lifecycle receipt and transition validation therefore
+belongs to the storage-neutral owner:
 
 ```text
 relaylm/subjective_mem_lifecycle_authority.py
 ```
 
-Its concrete current consumers are Correct, Forget, Pin/Unpin, and Restore. It
-owns accepted committed lifecycle operations; exact receipt self-digest and
-transition binding; memory, revision, selector, page, block, schema, and platform
-bindings; predecessor authorization linkage; lifecycle-state compatibility; and
-content-free record bindings for publication.
+Current lifecycle consumers use that owner to resolve accepted committed
+lifecycle operations, exact receipt self-digest and transition binding, memory,
+revision, selector, page, block, schema, and platform bindings, predecessor
+authorization linkage, lifecycle-state compatibility, and content-free record
+bindings required for publication.
 
-Operation owners retain their transition direction, proposal, reason,
-authorization, payload, and successor rules. The implementation removes old
-duplicated allowlists and private cross-runtime validation imports after all
-current consumers use the shared owner. No fallback or wrapper-only alias remains.
+Operation owners retain their own transition direction, proposal, reason,
+authorization, payload, and successor rules. There is no fallback private
+allowlist or wrapper-only alternate predecessor authority.
 
 ## Proposal authority
 
@@ -154,7 +157,7 @@ selector and current Forget receipt. It must have:
 - `mutation_state: none` and `retrieval_eligible: false`;
 - authorization by the exact current Forget transition;
 - one exact effective Forget tombstone for the same semantic identity and hidden
-  revision;
+  revision; and
 - no later canonical revision for the logical memory.
 
 The successor preserves every semantic and scope value and changes only revision
@@ -170,7 +173,7 @@ missing-current, duplicate-current, and dangling state fail closed.
 The Forget tombstone remains immutable historical authority. Restore never edits
 it or treats its original `effective` field as mutable state.
 
-LC-1D adds one immutable content-free release record:
+Restore uses one immutable content-free release record:
 
 ```text
 schema: relaylm.subjective_mem_forget_tombstone_release.v1
@@ -187,8 +190,8 @@ A singleton release-state log keyed by tombstone ID contains exactly one event
 binding the same release and Restore lineage. It is a rebuildable projection; the
 immutable release and exact lifecycle records are authority.
 
-`relaylm/subjective_mem_reformation.py` remains the only anti-reformation
-semantic evaluator:
+`relaylm/subjective_mem_reformation.py` remains the anti-reformation semantic
+evaluator:
 
 ```text
 valid Forget tombstone without an exact release -> blocked
@@ -200,14 +203,19 @@ non-monotonic release fails closed. Re-formation is allowed only when every exac
 Forget tombstone for the semantic identity is valid and every one has an exact
 release. A later Forget creates a new tombstone and blocks again independently.
 
-## Mutation, identity, and finalization
+## Mutation, identity, publication, and finalization
 
-LC-1D reuses one Evidence-space transaction lock, one logical current selector,
+Restore uses one Evidence-space transaction lock, one logical current selector,
 exact selector/receipt/page authority, one canonical Markdown page, one secure
 POSIX page lock and atomic replacement path, one immutable post-image artifact,
 the shared lifecycle claim/intent/transition/receipt/result/finalization family,
 `rebuild_required` projection state, deterministic idempotency, and
 caller-invoked forward recovery.
+
+The operation-neutral lifecycle engine owns reservation, canonical publication,
+shared finalized replay, and recovery classification. Restore-specific plan and
+replay owners bind the extra Forget lineage and tombstone-release authority that
+must finalize atomically with the lifecycle successor.
 
 The idempotency slot derives from evidence space, character authority digest,
 logical memory ID, operation family `restore`, and caller key digest. Operation,
@@ -220,7 +228,7 @@ inserts or exactly verifies:
 - Restore lifecycle transition and receipt;
 - Forget-tombstone release record and release-state event;
 - lifecycle idempotency result and intent finalization;
-- final active singleton selector;
+- final active singleton selector; and
 - `rebuild_required` projection state.
 
 The transaction revalidates the prepared selector, original Forget receipt,
@@ -249,7 +257,7 @@ No background worker, scanner, scheduler, polling, or automatic repair is added.
 A durable active successor is never rolled back to its hidden predecessor because
 receipt delivery or finalization failed.
 
-## Failure model and posture
+## Failure model and feature posture
 
 Stale revision, non-hidden state, missing or duplicate selector, changed receipt,
 invalid Forget lineage, released tombstone, semantic mismatch, foreign page or
@@ -260,54 +268,48 @@ lock contention, non-monotonic time, and foreign image fail closed.
 No failure path may expose the hidden predecessor, ignore an effective tombstone,
 create another logical memory, consult Primary MEM, or leave two current states.
 
-LC-1D uses the existing lifecycle gate and remains default-off, dry-run-capable,
-apply-enabled only with ST-1 secure apply, single-host, POSIX-apply-only,
-caller-invoked, and unwired from ordinary Retrieval, API, UI, queue, worker, and
-scheduler paths. After a committed Restore, reversal is a new governed Forget
-successor with a new tombstone, never mutation or deletion.
+Restore uses the Subjective MEM lifecycle apply boundary and remains default-off,
+dry-run-capable, apply-enabled only with secure canonical apply, single-host,
+POSIX-apply-only, caller-invoked, and unwired from ordinary Retrieval, API, UI,
+queue, worker, and scheduler paths unless a separate current authority explicitly
+wires those surfaces. After a committed Restore, reversal is a new governed
+Forget successor with a new tombstone, never mutation or deletion.
 
-## Implementation budget
+## Validation anchors
 
-The later implementation PR is bounded to:
+The stable responsibility boundary is represented by current runtime and focused
+validation surfaces including:
 
 ```text
-relaylm/subjective_mem_restore.py                         new
-relaylm/subjective_mem_restore_runtime.py                 new
-relaylm/subjective_mem_lifecycle_authority.py             new
-relaylm/subjective_mem_lifecycle_runtime.py               shared-owner migration
-relaylm/subjective_mem_forget_runtime.py                  shared-owner migration
-relaylm/subjective_mem_pin_runtime.py                     shared-owner migration
-relaylm/subjective_mem_reformation.py                     release evaluation
-focused tests and one process smoke
-existing consolidated smoke and registration surfaces only
+relaylm/subjective_mem_restore.py
+relaylm/subjective_mem_restore_plan.py
+relaylm/subjective_mem_restore_runtime.py
+relaylm/subjective_mem_restore_replay.py
+relaylm/subjective_mem_lifecycle_authority.py
+relaylm/subjective_mem_lifecycle_engine.py
+relaylm/subjective_mem_reformation.py
+relaylm/subjective_mem_tombstone_release.py
+tests/test_subjective_mem_restore_runtime.py
+tests/test_subjective_mem_restore_finalization.py
 ```
 
-Config, API, UI, Primary MEM, ordinary Retrieval, workflows, changed-matrix,
-generated registries, and unrelated documentation are excluded. Return to P1 if
-path count or diff grows materially, an existing file gains roughly 200 lines, a
-file exceeds roughly 700 lines, a function exceeds roughly 80 lines, tests copy
-production logic, or shared authority does not remove its current duplicates.
+Generic lifecycle and consolidated smoke surfaces may also exercise this
+boundary. Historical slice identifiers in test, smoke, or compatibility names
+are validation anchors only; they are not semantic or architectural authority.
 
-## Validation matrix
-
-The implementation must prove default-off and dry-run no-write behavior; exact
+Validation must preserve default-off and dry-run no-write behavior; exact
 `hidden N -> active N+1`; semantic preservation; prepared exclusion and final
 eligibility; exact Forget/tombstone binding; content-free release authority;
 blocked-before and released-after classification; later Forget re-blocking;
-malformed and dangling release fail-closed; replay and idempotency conflict;
+malformed and dangling release fail-closed; exact replay and idempotency conflict;
 stale/wrong-state rejection; first-writer behavior; pre/post-page recovery;
-foreign-image preservation; later Correct, Forget, and Pin acceptance of a
-Restore predecessor through one shared owner; and absence of ordinary Retrieval,
-Primary MEM, API/UI, background recovery, temporary artifacts, and branch-writing
-validation.
-
-The existing `runtime/subjective_mem_lifecycle` consolidated group remains the CI
-owner. LC-1D extends it rather than creating a workflow or changing Lane R
-changed-matrix authority.
+foreign-image preservation; later lifecycle acceptance of a restored predecessor
+through one shared predecessor owner; and absence of ordinary Retrieval, Primary
+MEM, API/UI, background recovery, or a second lifecycle authority.
 
 ## Non-goals
 
-LC-1D excludes heuristic resurrection, merely-similar memory restoration, held or
-purged restoration, physical deletion, Consolidate, RT-1, API/UI, ordinary
-Retrieval cutover, Primary MEM migration, background recovery, and multi-host or
-non-POSIX publication.
+Restore does not own or authorize heuristic resurrection, merely-similar memory
+restoration, held or purged restoration, physical deletion, Consolidate, API/UI,
+ordinary Retrieval cutover, Primary MEM migration, background recovery, or
+multi-host or non-POSIX publication.
