@@ -1,13 +1,13 @@
 ---
 relaylm_doc_type: subsystem_architecture
 relaylm_authority: subjective_mem_forget_runtime_architecture
-relaylm_status: target
-relaylm_volatility: high
+relaylm_status: current
+relaylm_volatility: medium
 relaylm_owner: memory
 relaylm_update_trigger:
-  - LC-1B Forget input, transition, persistence, tombstone, or recovery changes
-  - LC-1D Restore changes tombstone supersession
-  - RT-1 begins consuming lifecycle eligibility
+  - Subjective MEM Forget input, transition, persistence, tombstone, or recovery changes
+  - Restore changes Forget tombstone supersession or release semantics
+  - ordinary Retrieval changes lifecycle-eligibility consumption
 relaylm_not_authoritative_for:
   - ordinary Subjective MEM Retrieval, ranking, cache, or request-path selection
   - API, UI, model-generated Forget decisions, or background recovery
@@ -17,21 +17,25 @@ relaylm_related_authority:
   - ../contracts/shared-assessment-subjective-mem.md
   - ../contracts/subjective-mem-storage-authority-and-commit-protocol.md
   - lc1a_subjective_mem_correct.md
+  - subjective-mem-lifecycle-publication-engine.md
+  - subjective-mem-restore-runtime.md
   - project_execution_plan.md
-relaylm_lifecycle: accepted_target
+relaylm_lifecycle: stable
 relaylm_primary_consumers:
   - Subjective MEM runtime implementers
   - lifecycle reviewers
-  - retrieval migration implementers
+  - retrieval and anti-reformation reviewers
 relaylm_authority_level: subsystem
 ---
-# LC-1B Subjective MEM Forget Runtime
+# Subjective MEM Forget Runtime
+
+Last reviewed: 2026-08-07 JST
 
 ## Scope
 
-LC-1B implements one caller-invoked, default-off, exact `active -> hidden`
+Forget owns one caller-invoked, default-off, exact `active -> hidden`
 Subjective MEM lifecycle transition on the canonical Markdown and operations
-boundaries established by ST-1 and LC-1A.
+boundaries shared by the lifecycle system.
 
 ```text
 active revision N / mutation none / retrieval eligible
@@ -45,9 +49,13 @@ formation stage, formation snapshot, and multidimensional strength. It changes
 only immutable revision metadata, lifecycle visibility, and lifecycle authority.
 The predecessor remains byte-reconstructable and auditable.
 
+Current implementation completion and feature posture remain owned by
+`docs/PROJECT_STATUS.md`. Exact schemas and transition requirements remain owned
+by the Subjective MEM contracts.
+
 ## Shared mutation fence
 
-LC-1B reuses the existing LC-1A boundaries:
+Forget uses the shared Subjective MEM lifecycle boundaries:
 
 - one Evidence-space transaction lock;
 - one logical `SubjectiveMemCurrentState` selector per character and memory;
@@ -58,8 +66,10 @@ LC-1B reuses the existing LC-1A boundaries:
 - one immutable post-image artifact;
 - deterministic idempotency and caller-invoked forward recovery.
 
-The Forget module is a separate operation implementation, not a second semantic
-or current-state authority.
+Forget remains a separate operation implementation because anti-reformation
+finalization is additional operation-specific authority. It is not a second
+semantic or current-state authority and is not implicitly absorbed by the
+operation-neutral lifecycle publication engine.
 
 ## Canonical successor
 
@@ -90,9 +100,9 @@ authorization to the exact Forget lifecycle transition.
 - duplicate detection and fail-closed classification.
 
 The public entry point differs from the locked entry point only by acquiring the
-Evidence-space transaction. SM-1 calls the locked entry point inside its existing
-transaction after exact replay and current-Assessment validation, but before a
-new create identity is reserved.
+Evidence-space transaction. Subjective MEM formation calls the locked entry
+point inside its existing transaction after exact replay and current-Assessment
+validation, but before a new create identity is reserved.
 
 The exact anti-reformation identity is derived from:
 
@@ -135,7 +145,7 @@ locked entry points.
 
 ## Commit and recovery
 
-Before page replacement, LC-1B records a content-free claim and prepared intent
+Before page replacement, Forget records a content-free claim and prepared intent
 and replaces the singleton selector with `mutation_state: prepared` and
 `retrieval_eligible: false`.
 
@@ -175,17 +185,17 @@ receipt delivery or finalization failed.
 ## Retrieval and Primary MEM boundary
 
 The final selector and canonical revision are retrieval-ineligible, and the
-projection is marked `rebuild_required`. LC-1B does not wire ordinary Retrieval.
-RT-1 remains the sole owner of projection consumption, candidate selection,
-request-path cutover, usage events, and old-reader retirement.
+projection is marked `rebuild_required`. Forget does not own ordinary Retrieval.
+The Retrieval cutover remains the owner of projection consumption, candidate
+selection, request-path authority, usage events, and old-reader retirement.
 
-Primary MEM Forget remains characterization evidence only. LC-1B does not call,
-modify, migrate, or retire Primary MEM code, API routes, UI surfaces, fixtures,
-or storage.
+Primary MEM Forget remains characterization or historical boundary evidence
+only. This Subjective MEM Forget architecture does not grant Primary MEM code,
+API routes, UI surfaces, fixtures, or storage any current Forget authority.
 
 ## Non-goals
 
-LC-1B does not implement:
+Forget does not own or authorize:
 
 - Restore, Pin/Unpin, Consolidate, or Purge;
 - API or SOUL Lab UI;
@@ -197,14 +207,16 @@ LC-1B does not implement:
 
 ## Validation
 
-The focused suite covers dry-run no-write behavior, exact hidden-successor
+Focused evidence covers dry-run no-write behavior, exact hidden-successor
 publication, semantic payload preservation, content-free tombstone shape,
 selector and receipt binding, deterministic replay, changed-input conflict,
 stale and non-active rejection, pre-page and post-page crash recovery, exact
 public/locked equivalence, duplicate-state rejection, dangling lineage
 fail-closed, malformed pre-existing state rejection before publication, exact
-public SM-1 re-formation rejection, and similar-but-not-exact allowance.
+public re-formation rejection, and similar-but-not-exact allowance.
 
-The consolidated runtime smoke group executes the SM-1, ST-1, LC-1A, and LC-1B
-focused suites, the existing LC-1A process smoke, and the canonical LC-1B
-publication/tombstone process smoke.
+The maintained runtime validation surface also exercises the surrounding
+Subjective MEM formation, commit, Correct, and Forget boundaries together with
+the canonical Forget publication/tombstone process smoke. Test and smoke names
+may retain historical slice identifiers; those names are validation anchors, not
+semantic or architectural authority.
