@@ -101,6 +101,24 @@ reader decision other than primary_only
 A hidden successor remains lifecycle authority. The Primary compatibility reader
 never falls back to an earlier active physical revision.
 
+The retained eligibility owner uses the following closed reason vocabulary:
+
+```text
+eligible_current_active
+excluded_prior_revision
+excluded_hidden
+excluded_prepared
+excluded_recovery_required
+excluded_corrupt
+excluded_unresolved_identity
+excluded_scope_mismatch
+excluded_unsafe
+```
+
+Its public/log projection is content-free: it does not expose Primary paths,
+namespaces, logical or physical identities, digests, operation data, or raw
+exceptions.
+
 ## One-authority boundary
 
 The RT-1 cutover owner is the sole authority that decides whether ordinary memory
@@ -123,6 +141,22 @@ The durable `relaylm.lab.memory_used.v0` historical receipt and the read-only
 `relaylm.lab.memory_used_lifecycle.v1` projection remain separate from ordinary
 reader authority. Their continuing disposition is reviewed independently from
 ordinary Retrieval retirement.
+
+Each lifecycle projection item retains the historical `injected_summary` and may
+overlay only the current read-only fields:
+
+```text
+current_summary
+current_lifecycle_state
+representation_changed
+lifecycle_changed
+```
+
+`current_summary` is null for hidden or unresolved state. Mutation reasons,
+tokens, internal identifiers, paths, digests, and artifact bodies are not
+projected. The dedicated strict TypeScript parser remains a consumer of this
+read-only versioned projection; the projection adds no mutation route or mutation
+UI.
 
 ## R5 removal gate
 
