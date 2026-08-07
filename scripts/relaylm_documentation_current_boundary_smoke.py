@@ -2296,13 +2296,15 @@ R4_COMPLETION_ANCHORS = {
         "correction replaces it with the exact completed result.",
         "It is documentation and current-boundary only, changes only the same four authority "
         "paths, introduces no runtime, serving, or retirement behavior, and requires no P8.",
-        "RT-1D-R5 immediate retirement remains unstarted during this correction and introduces "
+        "RT-1D-R5 immediate retirement was unstarted during that correction and introduced "
         "no retirement behavior.",
-        "RT-1D-R5 becomes uniquely next only after this RT-1D-R4 P8 result/current-authority "
-        "correction merges and its exact resulting `main` is independently verified",
+        "That correction merged as exact resulting `main` "
+        "`71a334f8eab873775f378ee246daa0ca75b2ba71`, its result was independently verified, "
+        "and RT-1D-R5 then became uniquely next.",
         "never from PR #834 head `d15daeec270ba453940bc10dad924a5df93dfeef`, never from "
-        "PR #835 head `1299084bb5256c6638925b518291c22ecd3a4178`, never from any frozen "
-        "RT-1D-R4 implementation or amendment branch, and never from this correction's PR head",
+        "PR #835 head `1299084bb5256c6638925b518291c22ecd3a4178`, never from PR #836 head "
+        "`cf964cf9b530c85656f25958f261e47038247413`, and never from any frozen RT-1D-R4 "
+        "implementation or amendment branch",
     )
     for path in (STATUS, PLAN, RT1C)
 }
@@ -2502,8 +2504,8 @@ R4_COMPLETION_MUTATIONS = tuple(
             "R4 P8 gate state",
         ),
         (
-            "RT-1D-R5 immediate retirement remains unstarted during this correction and "
-            "introduces no retirement behavior.",
+            "RT-1D-R5 immediate retirement was unstarted during that correction and "
+            "introduced no retirement behavior.",
             "RT-1D-R5 immediate retirement has started",
             "R5 start state",
         ),
@@ -2522,17 +2524,116 @@ R4_COMPLETION_MUTATIONS = tuple(
         ),
         (
             "never from PR #834 head `d15daeec270ba453940bc10dad924a5df93dfeef`, never from "
-            "PR #835 head `1299084bb5256c6638925b518291c22ecd3a4178`, never from any frozen "
-            "RT-1D-R4 implementation or amendment branch, and never from this correction's PR head",
+            "PR #835 head `1299084bb5256c6638925b518291c22ecd3a4178`, never from PR #836 head "
+            "`cf964cf9b530c85656f25958f261e47038247413`, and never from any frozen RT-1D-R4 "
+            "implementation or amendment branch",
             "RT-1D-R5 may bootstrap from PR #835 head",
             "R5 bootstrap source",
         ),
         (
-            "RT-1D-R5 becomes uniquely next only after this RT-1D-R4 P8 "
-            "result/current-authority correction merges and its exact resulting `main` is "
-            "independently verified",
+            "That correction merged as exact resulting `main` "
+            "`71a334f8eab873775f378ee246daa0ca75b2ba71`, its result was independently "
+            "verified, and RT-1D-R5 then became uniquely next.",
             "RT-1D-R5 has already started",
             "R5 next-slice gate",
+        ),
+    )
+)
+
+R5_BUDGET_AMENDMENT_ANCHORS = {
+    path: (
+        "The first RT-1D-R5 immediate retirement attempt returned at P1 with zero repository "
+        "mutation from exact bootstrap main `71a334f8eab873775f378ee246daa0ca75b2ba71`",
+        "The authorized implementation branch `agent/rt1d-r5-immediate-retirement-proof` was "
+        "never pushed, carries no commit, receipt, PR, workflow run, or temporary artifact, "
+        "and is frozen as P1-return evidence only",
+        "architecture/budget defect, not an implementation finding",
+        "adding exactly `relaylm/subjective_mem_retrieval_rehearsal.py`",
+        "adds exactly `tests/test_subjective_mem_retrieval_rehearsal.py` to the bounded "
+        "RT-1D-R5 focused-evidence budget",
+        "It is not a wildcard `tests/` or `scripts/` budget",
+        "pre-authorizes no eighth production path",
+        "any continuing ordinary consumer outside the exact-seven budget still returns "
+        "RT-1D-R5 to P1",
+    )
+    for path in (STATUS, PLAN, RT1C)
+}
+for _path, _anchors in R5_BUDGET_AMENDMENT_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple(
+    (path, anchor)
+    for path, anchors in R5_BUDGET_AMENDMENT_ANCHORS.items()
+    for anchor in anchors
+)
+
+REQUIRED[RT1C] += (
+    "Production deletion/modification budget (exact seven paths):",
+    "relaylm/subjective_mem_retrieval_rehearsal.py",
+    "`relaylm/subjective_mem_retrieval_rehearsal.py` is the seventh RT-1D-R5\nproduction path.",
+    "cannot produce a closed production import graph",
+    "R5 retires the temporary rehearsal and shadow characterization execution surface\ntogether",
+    "R5 must not invalidate or rewrite accepted durable R3/R4 records",
+    "No live\nrehearsal or shadow characterization may remain as an ordinary or operator path\n"
+    "after `retirement_complete`.",
+    "never ordinary\nreader, writer, ranking, fallback, or mutation authority",
+    "no eighth production path\nis pre-authorized",
+)
+
+R5_BUDGET_AMENDMENT_STALE = (
+    "the RT-1D-R5 production deletion/modification budget is exactly six paths",
+    "exact six-path RT-1D-R5 production budget",
+    "RT-1D-R5 production deletion/modification budget (exact six paths)",
+    "`relaylm/subjective_mem_retrieval_rehearsal.py` is outside the RT-1D-R5 budget",
+    "RT-1D-R5 retires characterization while leaving rehearsal untouched",
+    "a live characterization dependency may remain after `retirement_complete`",
+    "rehearsal survives as an ordinary path after `retirement_complete`",
+    "shadow characterization survives as an operator path after `retirement_complete`",
+    "characterization semantics may move into another owner",
+    "the RT-1D-R5 focused-evidence budget is a wildcard `tests/` budget",
+    "the RT-1D-R5 focused-evidence budget is a wildcard `scripts/` budget",
+    "an eighth RT-1D-R5 production path is authorized",
+    "a dynamic import may satisfy the RT-1D-R5 import graph",
+    "RT-1D-R5 may delete tests to satisfy the retirement gates",
+    "RT-1D-R5 may weaken package-import coverage",
+    "the frozen `agent/rt1d-r5-immediate-retirement-proof` branch may be reused",
+    "the frozen `agent/rt1d-r5-immediate-retirement-proof` branch may be pushed",
+    "the RT-1D-R5 rehearsal-retirement budget amendment requires P8",
+    "RT-1D-R5 implementation has started",
+    "RT-1D-R5 may invalidate accepted durable R3/R4 records",
+    "the P1 return was an implementation finding",
+)
+
+R5_BUDGET_AMENDMENT_MUTATIONS = tuple(
+    (path, current, damaged, label)
+    for path in (STATUS, PLAN, RT1C)
+    for current, damaged, label in (
+        (
+            "adding exactly `relaylm/subjective_mem_retrieval_rehearsal.py`",
+            "adding exactly `relaylm/subjective_mem_retrieval_projection.py`",
+            "R5 seventh production path identity",
+        ),
+        (
+            "adds exactly `tests/test_subjective_mem_retrieval_rehearsal.py` to the bounded "
+            "RT-1D-R5 focused-evidence budget",
+            "adds every file under `tests/` to the bounded RT-1D-R5 focused-evidence budget",
+            "R5 focused-evidence budget scope",
+        ),
+        (
+            "pre-authorizes no eighth production path",
+            "an eighth RT-1D-R5 production path is authorized",
+            "R5 eighth-path pre-authorization",
+        ),
+        (
+            "architecture/budget defect, not an implementation finding",
+            "the P1 return was an implementation finding",
+            "R5 blocker classification",
+        ),
+        (
+            "The authorized implementation branch `agent/rt1d-r5-immediate-retirement-proof` "
+            "was never pushed, carries no commit, receipt, PR, workflow run, or temporary "
+            "artifact, and is frozen as P1-return evidence only",
+            "the frozen `agent/rt1d-r5-immediate-retirement-proof` branch may be reused",
+            "R5 frozen P1-return branch",
         ),
     )
 )
@@ -2878,6 +2979,7 @@ def self_test() -> None:
         + R4_FACADE_MUTATIONS
         + R4_READINESS_REPLAY_MUTATIONS
         + R4_COMPLETION_MUTATIONS
+        + R5_BUDGET_AMENDMENT_MUTATIONS
     )
     for path, current, damaged, label in focused_mutations:
         body = read(path)
@@ -3044,6 +3146,20 @@ def self_test() -> None:
             raise AssertionError(
                 f"{path}: R4 completion stale anchor is not forbidden: {stale!r}"
             )
+    for path in R5_BUDGET_AMENDMENT_ANCHORS:
+        for stale in R5_BUDGET_AMENDMENT_STALE:
+            body = read(path)
+            assert stale not in body, (
+                f"{path}: R5 budget amendment stale anchor is present: {stale!r}"
+            )
+            try:
+                forbid_body(path, R5_BUDGET_AMENDMENT_STALE, body + "\n" + stale + "\n")
+            except AssertionError:
+                print(f"PASS: {path}: reintroducing {stale!r} fails closed")
+                continue
+            raise AssertionError(
+                f"{path}: R5 budget amendment stale anchor is not forbidden: {stale!r}"
+            )
     print("SELF-TEST PASS")
 
 
@@ -3089,6 +3205,8 @@ def main(argv: list[str] | None = None) -> None:
         forbid(path, R4_READINESS_REPLAY_STALE)
     for path in R4_COMPLETION_ANCHORS:
         forbid(path, R4_COMPLETION_STALE)
+    for path in R5_BUDGET_AMENDMENT_ANCHORS:
+        forbid(path, R5_BUDGET_AMENDMENT_STALE)
     forbid("docs/PROJECT_STATUS.md", HISTORY_ONLY_STATUS_ANCHORS)
     print("Documentation current boundary smoke passed")
 

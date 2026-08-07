@@ -1923,29 +1923,58 @@ result merge, empty-result fallback, stale-cache fallback, or Primary fallback.
 #### RT-1D-R5 — immediate retirement and proof
 
 Purpose: after exact R4 post-transfer probes, remove replaced ordinary Primary
-reader/fallback and temporary characterization surfaces and permanently disable
-the transferred Primary writer/mutation entry points while preserving explicitly
-classified read-only history/admin projections.
+reader/fallback and the temporary rehearsal/characterization execution surface,
+and permanently disable the transferred Primary writer/mutation entry points
+while preserving explicitly classified read-only history/admin projections.
 
-Production deletion/modification budget:
+Production deletion/modification budget (exact seven paths):
 
 ```text
 relaylm/relaymem_primary_recall.py
 relaylm/relaymem_primary_recall_selection.py
 relaylm/relaymem_primary_recall_store.py
 relaylm/subjective_mem_retrieval_characterization.py
+relaylm/subjective_mem_retrieval_rehearsal.py
 relaylm/relaymem_retrieval.py
 relaylm/subjective_mem_retrieval_cutover.py
 ```
 
-Focused budget is limited to their current tests/smokes, request-path and package
+`relaylm/subjective_mem_retrieval_rehearsal.py` is the seventh RT-1D-R5
+production path. The original exact-six budget was an architecture/budget defect
+rather than an implementation finding: the rehearsal coordinator directly imports
+the temporary characterization owner's Primary-served metrics type,
+characterization result type, admitted-leakage constant, and characterization
+evaluator, and calls that evaluator, while `relaylm/subjective_mem_retrieval_cutover.py`
+directly imports the R3 rehearsal readiness schema, types, derivation, evaluator,
+and validator. Deleting or permanently disabling characterization while leaving
+rehearsal untouched therefore cannot produce a closed production import graph.
+
+Focused budget is limited to their current tests/smokes,
+`tests/test_subjective_mem_retrieval_rehearsal.py`, request-path and package
 import tests, the cutover test/smoke, and `scripts/relaylm_p0_pipeline_ordering_smoke.py`.
+This is not a wildcard `tests/` or `scripts/` budget.
+R5 retires the temporary rehearsal and shadow characterization execution surface
+together, after exact post-transfer validation. Durable readiness identity already
+written into the accepted cutover chain remains verifiable as historical/durable
+evidence, and R5 must not invalidate or rewrite accepted durable R3/R4 records.
+The cutover semantic owner remains the sole authority for durable chain
+reconstruction, authority decisions, retirement progression, and validation of any
+retained content-free proof identity the already-finalized chain needs. No live
+rehearsal or shadow characterization may remain as an ordinary or operator path
+after `retirement_complete`.
 Writer modules remain byte-identical: R2's durable decision makes their live
 transferred-domain writes unreachable/rejected. Primary lifecycle overlays used
-by observation/history survive only as read-only admin surfaces. Removal requires
-negative import/call searches, Primary-reader rejection, Primary-writer rejection
-and drained queues, Subjective-only probes, leakage checks, and preserved frozen
-assets. Any continuing ordinary consumer blocks retirement and returns to P1.
+by observation/history survive only as read-only admin surfaces, never ordinary
+reader, writer, ranking, fallback, or mutation authority. No new schema, proof
+registry, helper module, compatibility framework, alternate characterization
+owner, alternate evaluator, store, marker, journal, background process, or
+API/UI/config/scheduler/worker/queue/deployment surface is authorized. Removal
+requires negative import/call searches, Primary-reader rejection, Primary-writer
+rejection and drained queues, Subjective-only probes, leakage checks, preserved
+frozen assets, package-import validation, structural gates, full Python 3.12
+validation, and exact-head CI. Any continuing ordinary consumer outside the
+exact-seven budget blocks retirement and returns to P1; no eighth production path
+is pre-authorized.
 
 ### Exact durable state machine and crash matrix
 
@@ -2464,4 +2493,14 @@ The mandatory RT-1D-R4 P8 current-authority synchronization completed in merged 
 
 This transaction is the bounded RT-1D-R4 P8 result/current-authority correction that records that merged PR #835 result. The merged P8 text necessarily still carried open-transaction present tense, so this correction replaces it with the exact completed result. It is documentation and current-boundary only, changes only the same four authority paths, introduces no runtime, serving, or retirement behavior, and requires no P8.
 
-RT-1D-R5 immediate retirement remains unstarted during this correction and introduces no retirement behavior. RT-1D-R5 becomes uniquely next only after this RT-1D-R4 P8 result/current-authority correction merges and its exact resulting `main` is independently verified, and it may bootstrap only from that verified exact current `main`, never from PR #834 head `d15daeec270ba453940bc10dad924a5df93dfeef`, never from PR #835 head `1299084bb5256c6638925b518291c22ecd3a4178`, never from any frozen RT-1D-R4 implementation or amendment branch, and never from this correction's PR head. The final RT-1D Primary retirement remains incomplete.
+RT-1D-R5 immediate retirement was unstarted during that correction and introduced no retirement behavior. That correction merged as exact resulting `main` `71a334f8eab873775f378ee246daa0ca75b2ba71`, its result was independently verified, and RT-1D-R5 then became uniquely next. RT-1D-R5 may bootstrap only from an independently verified exact current `main`, never from PR #834 head `d15daeec270ba453940bc10dad924a5df93dfeef`, never from PR #835 head `1299084bb5256c6638925b518291c22ecd3a4178`, never from PR #836 head `cf964cf9b530c85656f25958f261e47038247413`, and never from any frozen RT-1D-R4 implementation or amendment branch. The final RT-1D Primary retirement remains incomplete.
+
+## RT-1D-R5 rehearsal-retirement budget amendment (current)
+
+The first RT-1D-R5 immediate retirement attempt returned at P1 with zero repository mutation from exact bootstrap main `71a334f8eab873775f378ee246daa0ca75b2ba71`, reporting an exact blocker rather than broadening authority. The authorized implementation branch `agent/rt1d-r5-immediate-retirement-proof` was never pushed, carries no commit, receipt, PR, workflow run, or temporary artifact, and is frozen as P1-return evidence only; it must not be pushed or reused as a bootstrap or as implementation history.
+
+The blocker is an architecture/budget defect, not an implementation finding. The RT-1D-R5 production deletion/modification budget named exactly six paths and included `relaylm/subjective_mem_retrieval_characterization.py` but not `relaylm/subjective_mem_retrieval_rehearsal.py`, while `relaylm/subjective_mem_retrieval_rehearsal.py` directly imports that temporary characterization owner's Primary-served metrics type, characterization result type, admitted-leakage constant, and characterization evaluator and calls that evaluator from the rehearsal coordinator, and `relaylm/subjective_mem_retrieval_cutover.py` directly imports the R3 rehearsal readiness schema, types, derivation, evaluator, and validator. Deleting or permanently disabling characterization while leaving rehearsal untouched therefore cannot produce a closed production import graph. `tests/test_subjective_mem_retrieval_rehearsal.py` directly exercises that owner and imports `SubjectiveMemRetrievalPrimaryServedMetrics`, so the prior focused-evidence wording did not authorize the exact test correction required when rehearsal is retired or reduced to post-transfer proof compatibility. It must not be worked around by keeping a live characterization dependency, moving characterization semantics into another unauthorized owner, deleting tests, weakening package-import coverage, using dynamic imports, or reading the path list as wildcard authority.
+
+This amendment corrects the RT-1D-R5 production deletion/modification budget from exact six to exact seven paths by adding exactly `relaylm/subjective_mem_retrieval_rehearsal.py`, and adds exactly `tests/test_subjective_mem_retrieval_rehearsal.py` to the bounded RT-1D-R5 focused-evidence budget while preserving the existing authorization for current tests/smokes of the RT-1D-R5 owners, request-path and package-import tests, the cutover test/smoke, and `scripts/relaylm_p0_pipeline_ordering_smoke.py`. It is not a wildcard `tests/` or `scripts/` budget, and it pre-authorizes no eighth production path: any continuing ordinary consumer outside the exact-seven budget still returns RT-1D-R5 to P1.
+
+This RT-1D-R5 rehearsal-retirement budget amendment is documentation and current-boundary only. It changes no production, runtime, configuration, ordinary test, workflow, contract, ADR, evidence, completion-report, durable schema, or durable bytes, introduces no retirement behavior itself, and requires no P8. RT-1D-R5 implementation remains unstarted during this amendment. After this amendment merges and its exact resulting `main` is independently verified, RT-1D-R5 restarts from a fresh branch created only from that verified exact resulting main, never from the frozen `agent/rt1d-r5-immediate-retirement-proof` branch and never from this amendment's PR head.
