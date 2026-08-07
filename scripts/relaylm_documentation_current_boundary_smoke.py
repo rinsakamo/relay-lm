@@ -1207,11 +1207,11 @@ R3_COMPLETION_ANCHORS = {
         "It was documentation-only and required no recursive P8",
         "the RT-1D-R4 implementation attempt then returned at P1 without repository mutation",
         "PR #823 remains closed, unmerged, and frozen at audit head `d411d443e71d771be4ac1f93e994d876e3f73b3a` as design evidence only, and its commits remain prohibited implementation history",
-        "RT-1D implementation is complete through R3 rehearsal/readiness",
+        "At that historical point RT-1D implementation was complete through R3 rehearsal/readiness",
         "RT-1D-R1 durable preparation and RT-1D-R2A through RT-1D-R2D Primary writer-fence carriage, together with their mandatory P8 gates, are completed historical work, not future steps",
         "RT-1D-R3 rehearsal/readiness implementation merged separately as PR #825, and its mandatory R3 P8 completed in PR #826 with exact resulting main `c291e26f1c20e6479df427054142916dd7df57db`",
-        "The final RT-1D hard cutover, authority transfer, ordinary Subjective serving, Primary retirement, and RT-1D-R4 and RT-1D-R5 remain incomplete",
-        "RT-1D-R4 implementation and RT-1D-R5 are unstarted, and RT-1D-R4 implementation may bootstrap only from the independently verified exact resulting main of the completed RT-1D-R4 activation budget amendment PR #828, `9aea56d6d61d69c390bd0c2dc740739ab155d76e`",
+        "At that historical point the final RT-1D hard cutover, authority transfer, ordinary Subjective serving, Primary retirement, and RT-1D-R4 and RT-1D-R5 were incomplete",
+        "RT-1D-R4 implementation and RT-1D-R5 had not started, and RT-1D-R4 implementation could then bootstrap only from the independently verified exact resulting main of the completed RT-1D-R4 activation budget amendment PR #828, `9aea56d6d61d69c390bd0c2dc740739ab155d76e`",
     )
     for path in (STATUS, PLAN, RT1C)
 }
@@ -1238,10 +1238,7 @@ R3_COMPLETION_STALE = (
     "## RT-1D-R3 rehearsal coordinator P1 amendment (current)",
     "## RT-1D-R2D completion and mandatory P8 (completed current boundary)",
     "## RT-1D-R3 completion and mandatory P8 (historical)",
-    "RT-1D-R4 has started",
-    "RT-1D-R4 is complete",
     "R4 activation is authorized before the verified R3 P8 result",
-    "R4 one-authority activation has started",
     "Subjective ordinary Retrieval is enabled",
     "RT-1D-R5 has started",
     "the RT-1D-R3 P8 requires another P8",
@@ -1323,7 +1320,7 @@ R3_COMPLETION_MUTATIONS = tuple(
             "R3 P8 reviewed head",
         ),
         (
-            "RT-1D implementation is complete through R3 rehearsal/readiness",
+            "At that historical point RT-1D implementation was complete through R3 rehearsal/readiness",
             "RT-1D implementation is not complete through R3",
             "RT-1D runtime completion",
         ),
@@ -1338,7 +1335,7 @@ R3_COMPLETION_MUTATIONS = tuple(
             "R3 P8 still incomplete",
         ),
         (
-            "The final RT-1D hard cutover, authority transfer, ordinary Subjective serving, Primary retirement, and RT-1D-R4 and RT-1D-R5 remain incomplete",
+            "At that historical point the final RT-1D hard cutover, authority transfer, ordinary Subjective serving, Primary retirement, and RT-1D-R4 and RT-1D-R5 were incomplete",
             "The final RT-1D hard cutover and Primary retirement are complete",
             "cutover completeness",
         ),
@@ -1350,7 +1347,7 @@ R4_BUDGET_ANCHORS = {
         "RT-1D-R4 one-authority activation returned at P1 without repository mutation from exact bootstrap main `c291e26f1c20e6479df427054142916dd7df57db`",
         "The authorized implementation branch `agent/rt1d-r4-one-authority-activation` remains identical to that exact main, 0 ahead / 0 behind",
         "That zero-diff implementation branch is frozen",
-        "RT-1D-R4 implementation and RT-1D-R5 are unstarted",
+        "At that historical point RT-1D-R4 implementation and RT-1D-R5 had not started",
         "The requested mode is owned exactly by `SubjectiveMemRetrievalCutoverMode` and "
         "`RelayLMConfig` validation in `relaylm/config.py`, and by `RequestedMode` and "
         "`SubjectiveMemRetrievalCutoverRequest.__post_init__` in "
@@ -1402,10 +1399,6 @@ PROBES += tuple(
 )
 
 R4_BUDGET_STALE = (
-    "RT-1D-R4 implementation has started",
-    "RT-1D-R4 implementation is complete",
-    "RT-1D-R4 one-authority activation has started",
-    "RT-1D-R4 activation is implemented",
     "## RT-1D-R4 P1 Return and activation budget amendment (historical)",
     "the original exact-eight RT-1D-R4 production budget remains executable",
     "the original exact-eight RT-1D-R4 production budget is still executable",
@@ -1476,8 +1469,8 @@ R4_RESULT_ANCHORS = {
         "The revised RT-1D-R4 authority recorded in the rest of this section was the "
         "accepted RT-1D-R4 architecture authority until the RT-1D-R4 runtime-projection "
         "budget amendment recorded below superseded its exact production/config budget",
-        "RT-1D-R4 implementation is uniquely next and remains unstarted, and RT-1D-R5 remains unstarted",
-        "RT-1D-R4 implementation may bootstrap only from the independently verified exact PR #828 "
+        "At that historical point RT-1D-R4 implementation was uniquely next and unstarted, and RT-1D-R5 was unstarted",
+        "RT-1D-R4 implementation could then bootstrap only from the independently verified exact PR #828 "
         "resulting main `9aea56d6d61d69c390bd0c2dc740739ab155d76e`, or from a later independently "
         "verified exact current `main` that advances it only by documentation-only "
         "current-authority correction, never from PR #828 head "
@@ -1521,12 +1514,12 @@ R4_RESULT_MUTATIONS = tuple(
             "R4 amendment result P8 status",
         ),
         (
-            "RT-1D-R4 implementation is uniquely next and remains unstarted, and RT-1D-R5 remains unstarted",
+            "At that historical point RT-1D-R4 implementation was uniquely next and unstarted, and RT-1D-R5 was unstarted",
             "RT-1D-R4 implementation is uniquely next and has started",
             "R4 next-slice state",
         ),
         (
-            "may bootstrap only from the independently verified exact PR #828 resulting main "
+            "could then bootstrap only from the independently verified exact PR #828 resulting main "
             "`9aea56d6d61d69c390bd0c2dc740739ab155d76e`",
             "may bootstrap only from PR #828 head "
             "`be2218ac7c5ddd3a9f2a9672846101be482dd97b`",
@@ -1707,9 +1700,9 @@ R4_RUNTIME_PROJECTION_ANCHORS = {
         "source, and responsibility laundering are prohibited",
         "This RT-1D-R4 runtime-projection budget amendment is documentation and "
         "current-boundary only",
-        "and it requires no P8. RT-1D-R4 implementation is uniquely next and remains "
-        "unstarted, RT-1D-R5 remains unstarted",
-        "RT-1D-R4 implementation may bootstrap only from the independently verified "
+        "and it requires no P8. At that historical point RT-1D-R4 implementation was "
+        "uniquely next and unstarted, RT-1D-R5 was unstarted",
+        "RT-1D-R4 implementation could then bootstrap only from the independently verified "
         "exact resulting `main` of this runtime-projection budget amendment, never from "
         "either frozen RT-1D-R4 implementation branch, never from "
         "`agent/rt1d-r4-runtime-projection-budget-amendment`, and never from this "
@@ -1762,7 +1755,6 @@ R4_RUNTIME_PROJECTION_STALE = (
     "source drift after activation restores Primary",
     "Primary fallback is allowed after transfer intent",
     "Primary falls back after transfer intent",
-    "RT-1D-R4 runtime-projection implementation has started",
     "the RT-1D-R4 runtime-projection budget amendment requires P8",
     "RT-1D-R5 has started",
     "RT-1D-R5 implementation has started",
@@ -1852,7 +1844,7 @@ R4_RUNTIME_PROJECTION_MUTATIONS = tuple(
             "configuration-only serving",
         ),
         (
-            "RT-1D-R4 implementation may bootstrap only from the independently verified "
+            "RT-1D-R4 implementation could then bootstrap only from the independently verified "
             "exact resulting `main` of this runtime-projection budget amendment",
             "RT-1D-R4 implementation may bootstrap from "
             "`agent/rt1d-r4-runtime-projection-budget-amendment`",
@@ -1916,7 +1908,7 @@ R4_FACADE_ANCHORS = {
         "Every accepted RT-1D-R4 semantic rule is unchanged",
         "This RT-1D-R4 cutover-facade structural budget amendment is documentation and "
         "current-boundary only",
-        "RT-1D-R4 implementation may restart only from a fresh branch created from the "
+        "RT-1D-R4 implementation could then restart only from a fresh branch created from the "
         "independently verified exact resulting `main` of this cutover-facade "
         "structural budget amendment",
     )
@@ -1951,8 +1943,6 @@ R4_FACADE_STALE = (
     "RT-1D-R4 implementation may bootstrap from `agent/rt1d-r4-exact-twelve-activation-implementation`",
     "the exact-twelve activation implementation branch may be reused as a bootstrap",
     "the RT-1D-R4 cutover-facade structural budget amendment requires P8",
-    "RT-1D-R4 implementation has restarted",
-    "RT-1D-R4 exact-twelve implementation has started",
     "RT-1D-R5 retirement has started",
 )
 
@@ -2010,7 +2000,7 @@ R4_FACADE_MUTATIONS = tuple(
             "frozen exact-twelve branch",
         ),
         (
-            "RT-1D-R4 implementation may restart only from a fresh branch created from the "
+            "RT-1D-R4 implementation could then restart only from a fresh branch created from the "
             "independently verified exact resulting `main` of this cutover-facade "
             "structural budget amendment",
             "RT-1D-R4 implementation may bootstrap from "
@@ -2094,8 +2084,9 @@ R4_READINESS_REPLAY_ANCHORS = {
         "The RT-1D-R4 focused evidence budget is unchanged",
         "This RT-1D-R4 readiness/replay authority amendment is documentation and "
         "current-boundary only",
-        "RT-1D-R4 implementation may restart only from a fresh branch created from the "
-        "independently verified exact resulting `main` of this readiness/replay "
+        "RT-1D-R4 implementation then restarted exactly as this amendment required, from a "
+        "fresh branch created from the independently verified exact resulting `main` of "
+        "this readiness/replay "
         "authority amendment",
         "Mandatory RT-1D-R4 P8 remains required after the replacement implementation "
         "merges and before RT-1D-R5 may start.",
@@ -2137,7 +2128,6 @@ R4_READINESS_REPLAY_STALE = (
     "PR #832 merged",
     "PR #832 remains open",
     "a thirteenth RT-1D-R4 production or configuration path is authorized by this amendment",
-    "RT-1D-R4 readiness/replay implementation has started",
 )
 
 R4_READINESS_REPLAY_MUTATIONS = tuple(
@@ -2226,12 +2216,255 @@ R4_READINESS_REPLAY_MUTATIONS = tuple(
             "readiness/replay amendment P8 status",
         ),
         (
-            "RT-1D-R4 implementation may restart only from a fresh branch created from the "
-            "independently verified exact resulting `main` of this readiness/replay "
+            "RT-1D-R4 implementation then restarted exactly as this amendment required, from a "
+            "fresh branch created from the independently verified exact resulting `main` of "
+            "this readiness/replay "
             "authority amendment",
             "RT-1D-R4 implementation may bootstrap from "
             "`agent/rt1d-r4-strict-below-1000-activation-implementation`",
             "readiness/replay restart bootstrap source",
+        ),
+    )
+)
+
+# RT-1D-R4 one-authority activation is implemented and merged in PR #834 with exact
+# resulting main `53839b6…`. The current incomplete gate is this mandatory R4 P8
+# current-authority synchronization, which itself requires no recursive P8, and
+# RT-1D-R5 stays unstarted until this P8 result is independently verified.
+R4_COMPLETION_ANCHORS = {
+    path: (
+        "## RT-1D-R4 completion and mandatory P8 (current)",
+        "RT-1D-R4 one-authority activation implementation completed in PR #834 from exact "
+        "bootstrap main `5273b3ba214e9ba7730fcc4b7683dfc96eeafdb7`, final reviewed head "
+        "`d15daeec270ba453940bc10dad924a5df93dfeef`, and exact resulting main "
+        "`53839b6c349e47a436a885419d699b52142adc86`",
+        "Its thirteen normal forward commits on one lineage changed exactly 22 paths, "
+        "+2147/-258",
+        "no commit, patch, tree, or branch history from frozen PR #832 or PR #833 was reused",
+        "It carried exactly one execution receipt, was accepted at cumulative P5/P6, and its "
+        "normalized failure state is none with `p6_stop` false.",
+        "RT-1D-R4 one-authority activation is therefore implemented and merged, and it is no "
+        "longer an unstarted or uniquely next slice.",
+        "eleven paths changed and `relaylm/subjective_mem_retrieval_selection.py` remained "
+        "byte-identical by design",
+        "admission is proven at the usage-ledger owner boundary rather than asserted at "
+        "selection",
+        "The budget therefore stands at exactly 12 of 12 and no thirteenth RT-1D-R4 production "
+        "or configuration path was taken.",
+        "The bounded P5 smoke-carriage correction changed exactly seven existing Primary "
+        "direct-recall smoke scripts.",
+        "12 existing call sites across 7 files were corrected to construct the exact immutable "
+        "decision through the canonical owner instead of weakening the production fence to make "
+        "a missing decision imply `primary_only`",
+        "That correction changed no production or configuration path.",
+        "No new test, smoke, helper, support, framework, registry, or control-plane file was "
+        "created",
+        "`relaylm/subjective_mem_retrieval_cutover.py` is 998 physical lines against the "
+        "strictly-below-1000 RT-1D-R4-only exception",
+        "`relaylm/_subjective_mem_retrieval_runtime_projection.py` is 481 and "
+        "`relaylm/_subjective_mem_retrieval_cutover_activation.py` is 314 against the "
+        "roughly-600 private-owner gate",
+        "`run_managed_chat_pipeline` at 79, `run_relaymem_retrieval_stage` at 74, and "
+        "`handle_managed_chat_completion` at 64 are each at or below roughly 80",
+        "The full Python 3.12 suite passed 1089 tests with 0 failures and 1 warning at the "
+        "final exact head, and no RT-1D-R5 retirement behavior was introduced.",
+        "Ordinary serving is now exactly one-authority.",
+        "A deployment whose durable chain has not reached an exact finalized transfer receipt "
+        "continues to serve Primary MEM alone.",
+        "Only an exact finalized activation, bound to matching durable state, may serve "
+        "Subjective alone.",
+        "`neither` is the bounded fenced transition state between the Primary reader fence and "
+        "that finalized receipt",
+        "There is no dual serving, no precedence, no empty-result fallback, no stale-projection "
+        "fallback, and no Primary fallback in either direction",
+        "so Primary MEM is not universally the sole ordinary served memory and Retrieval "
+        "authority once an exact finalized activation exists",
+        "This transaction is the mandatory RT-1D-R4 P8 current-authority synchronization.",
+        "it requires no recursive P8",
+        "It is still-open PR #835, the current incomplete RT-1D-R4 gate, and is completed only "
+        "after PR #835 merges and its exact resulting `main` is independently verified.",
+        "Because that resulting SHA is not knowable while this transaction is open, a later "
+        "documentation-only current-authority correction may record it, and that correction "
+        "also requires no P8.",
+        "RT-1D-R5 immediate retirement remains unstarted and introduces no retirement behavior.",
+        "RT-1D-R5 becomes uniquely next only after this mandatory RT-1D-R4 P8 merges and its "
+        "exact resulting `main` is independently verified",
+        "never from PR #834 head `d15daeec270ba453940bc10dad924a5df93dfeef`, never from any "
+        "frozen RT-1D-R4 implementation or amendment branch, and never from this P8 PR head",
+    )
+    for path in (STATUS, PLAN, RT1C)
+}
+for _path, _anchors in R4_COMPLETION_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple(
+    (path, anchor)
+    for path, anchors in R4_COMPLETION_ANCHORS.items()
+    for anchor in anchors
+)
+
+R4_COMPLETION_STALE = (
+    "RT-1D-R4 implementation is unstarted",
+    "RT-1D-R4 implementation remains unstarted",
+    "RT-1D-R4 one-authority activation is unstarted",
+    "RT-1D-R4 one-authority activation remains unstarted",
+    "RT-1D-R4 remains unstarted",
+    "RT-1D-R4 implementation is uniquely next",
+    "RT-1D-R4 is uniquely next",
+    "RT-1D-R4 implementation has not started",
+    "Draft PR #834",
+    "PR #834 remains open",
+    "PR #834 is unmerged",
+    "PR #834 remains Draft",
+    "PR #834 is closed unmerged",
+    "PR #834 returned at P1 without merging",
+    "the exact RT-1D-R4 reviewed implementation head is unknown",
+    "the exact RT-1D-R4 implementation result is unknown",
+    "a thirteenth RT-1D-R4 production or configuration path was taken",
+    "the exact-twelve RT-1D-R4 production/config budget was exceeded",
+    "the P5 smoke-carriage correction changed a production path",
+    "a missing Primary reader decision implies `primary_only`",
+    "Primary MEM is universally the sole ordinary served memory and Retrieval authority",
+    "Primary MEM remains the sole ordinary served memory and Retrieval authority after a "
+    "finalized activation",
+    "dual serving is permitted",
+    "Primary and Subjective may both serve ordinary requests",
+    "Primary fallback is permitted after a finalized activation",
+    "an empty Subjective result falls back to Primary",
+    "`neither` permits Primary fallback",
+    "the mandatory RT-1D-R4 P8 requires another P8",
+    "this RT-1D-R4 P8 requires a recursive P8",
+    "the mandatory RT-1D-R4 P8 is complete",
+    "the mandatory RT-1D-R4 P8 is not required",
+    "RT-1D-R5 immediate retirement has started",
+    "RT-1D-R5 retirement is complete",
+    "RT-1D-R5 is uniquely next before the mandatory RT-1D-R4 P8 result is verified",
+    "RT-1D-R5 may bootstrap from PR #834 head",
+    "RT-1D-R5 may bootstrap from `d15daeec270ba453940bc10dad924a5df93dfeef`",
+    "RT-1D-R5 may bootstrap from this P8 PR head",
+    "PR #835 merged",
+    "PR #835 is merged",
+    "PR #835 is complete",
+    "the mandatory RT-1D-R4 P8 completed in PR #835",
+    "RT-1D-R5 may bootstrap from PR #835 head",
+)
+
+R4_COMPLETION_MUTATIONS = tuple(
+    (path, current, damaged, label)
+    for path in (STATUS, PLAN, RT1C)
+    for current, damaged, label in (
+        (
+            "exact resulting main `53839b6c349e47a436a885419d699b52142adc86`",
+            "exact resulting main `63839b6c349e47a436a885419d699b52142adc86`",
+            "R4 exact resulting main",
+        ),
+        (
+            "final reviewed head `d15daeec270ba453940bc10dad924a5df93dfeef`",
+            "final reviewed head `e15daeec270ba453940bc10dad924a5df93dfeef`",
+            "R4 reviewed implementation head",
+        ),
+        (
+            "Its thirteen normal forward commits on one lineage changed exactly 22 paths, "
+            "+2147/-258",
+            "Its twelve normal forward commits on one lineage changed exactly 21 paths, "
+            "+2147/-258",
+            "R4 implementation cumulative scope",
+        ),
+        (
+            "RT-1D-R4 one-authority activation is therefore implemented and merged, and it is "
+            "no longer an unstarted or uniquely next slice.",
+            "RT-1D-R4 implementation is unstarted",
+            "R4 merged implementation state",
+        ),
+        (
+            "eleven paths changed and `relaylm/subjective_mem_retrieval_selection.py` remained "
+            "byte-identical by design",
+            "twelve paths changed and `relaylm/subjective_mem_retrieval_selection.py` was "
+            "modified",
+            "R4 selection byte identity",
+        ),
+        (
+            "The budget therefore stands at exactly 12 of 12 and no thirteenth RT-1D-R4 "
+            "production or configuration path was taken.",
+            "a thirteenth RT-1D-R4 production or configuration path was taken",
+            "R4 final path budget",
+        ),
+        (
+            "That correction changed no production or configuration path.",
+            "the P5 smoke-carriage correction changed a production path",
+            "P5 correction boundary",
+        ),
+        (
+            "instead of weakening the production fence to make a missing decision imply "
+            "`primary_only`",
+            "because a missing Primary reader decision implies `primary_only`",
+            "P5 correction fence direction",
+        ),
+        (
+            "`relaylm/subjective_mem_retrieval_cutover.py` is 998 physical lines against the "
+            "strictly-below-1000 RT-1D-R4-only exception",
+            "`relaylm/subjective_mem_retrieval_cutover.py` is 1002 physical lines against the "
+            "strictly-below-1000 RT-1D-R4-only exception",
+            "R4 facade final measurement",
+        ),
+        (
+            "The full Python 3.12 suite passed 1089 tests with 0 failures and 1 warning at the "
+            "final exact head",
+            "The full Python 3.12 suite passed 1088 tests with 1 failure and 1 warning at the "
+            "final exact head",
+            "R4 suite result",
+        ),
+        (
+            "A deployment whose durable chain has not reached an exact finalized transfer "
+            "receipt continues to serve Primary MEM alone.",
+            "Primary MEM is universally the sole ordinary served memory and Retrieval authority",
+            "pre-receipt ordinary authority",
+        ),
+        (
+            "so Primary MEM is not universally the sole ordinary served memory and Retrieval "
+            "authority once an exact finalized activation exists",
+            "so Primary MEM remains the sole ordinary served memory and Retrieval authority "
+            "after a finalized activation",
+            "post-activation ordinary authority",
+        ),
+        (
+            "There is no dual serving, no precedence, no empty-result fallback, no "
+            "stale-projection fallback, and no Primary fallback in either direction",
+            "dual serving is permitted",
+            "dual serving and fallback",
+        ),
+        (
+            "`neither` is the bounded fenced transition state between the Primary reader fence "
+            "and that finalized receipt",
+            "`neither` permits Primary fallback",
+            "fenced transition state",
+        ),
+        (
+            "it requires no recursive P8",
+            "this RT-1D-R4 P8 requires a recursive P8",
+            "R4 P8 recursion",
+        ),
+        (
+            "It is still-open PR #835, the current incomplete RT-1D-R4 gate, and is completed "
+            "only after PR #835 merges and its exact resulting `main` is independently verified.",
+            "the mandatory RT-1D-R4 P8 is complete",
+            "R4 P8 gate state",
+        ),
+        (
+            "RT-1D-R5 immediate retirement remains unstarted and introduces no retirement "
+            "behavior.",
+            "RT-1D-R5 immediate retirement has started",
+            "R5 start state",
+        ),
+        (
+            "still-open PR #835, the current incomplete RT-1D-R4 gate",
+            "the mandatory RT-1D-R4 P8 completed in PR #835",
+            "R4 P8 transaction identity",
+        ),
+        (
+            "never from PR #834 head `d15daeec270ba453940bc10dad924a5df93dfeef`, never from any "
+            "frozen RT-1D-R4 implementation or amendment branch, and never from this P8 PR head",
+            "RT-1D-R5 may bootstrap from PR #834 head",
+            "R5 bootstrap source",
         ),
     )
 )
@@ -2576,6 +2809,7 @@ def self_test() -> None:
         + R4_RUNTIME_PROJECTION_MUTATIONS
         + R4_FACADE_MUTATIONS
         + R4_READINESS_REPLAY_MUTATIONS
+        + R4_COMPLETION_MUTATIONS
     )
     for path, current, damaged, label in focused_mutations:
         body = read(path)
@@ -2728,6 +2962,20 @@ def self_test() -> None:
             raise AssertionError(
                 f"{path}: R4 readiness/replay stale anchor is not forbidden: {stale!r}"
             )
+    for path in R4_COMPLETION_ANCHORS:
+        for stale in R4_COMPLETION_STALE:
+            body = read(path)
+            assert stale not in body, (
+                f"{path}: R4 completion stale anchor is present: {stale!r}"
+            )
+            try:
+                forbid_body(path, R4_COMPLETION_STALE, body + "\n" + stale + "\n")
+            except AssertionError:
+                print(f"PASS: {path}: reintroducing {stale!r} fails closed")
+                continue
+            raise AssertionError(
+                f"{path}: R4 completion stale anchor is not forbidden: {stale!r}"
+            )
     print("SELF-TEST PASS")
 
 
@@ -2771,6 +3019,8 @@ def main(argv: list[str] | None = None) -> None:
         forbid(path, R4_FACADE_STALE)
     for path in R4_READINESS_REPLAY_ANCHORS:
         forbid(path, R4_READINESS_REPLAY_STALE)
+    for path in R4_COMPLETION_ANCHORS:
+        forbid(path, R4_COMPLETION_STALE)
     forbid("docs/PROJECT_STATUS.md", HISTORY_ONLY_STATUS_ANCHORS)
     print("Documentation current boundary smoke passed")
 
