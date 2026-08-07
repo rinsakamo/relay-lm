@@ -2233,7 +2233,7 @@ R4_READINESS_REPLAY_MUTATIONS = tuple(
 # RT-1D-R5 stays unstarted until this P8 result is independently verified.
 R4_COMPLETION_ANCHORS = {
     path: (
-        "## RT-1D-R4 completion and mandatory P8 (current)",
+        "## RT-1D-R4 completion and mandatory P8 (completed)",
         "RT-1D-R4 one-authority activation implementation completed in PR #834 from exact "
         "bootstrap main `5273b3ba214e9ba7730fcc4b7683dfc96eeafdb7`, final reviewed head "
         "`d15daeec270ba453940bc10dad924a5df93dfeef`, and exact resulting main "
@@ -2279,18 +2279,30 @@ R4_COMPLETION_ANCHORS = {
         "fallback, and no Primary fallback in either direction",
         "so Primary MEM is not universally the sole ordinary served memory and Retrieval "
         "authority once an exact finalized activation exists",
-        "This transaction is the mandatory RT-1D-R4 P8 current-authority synchronization.",
-        "it requires no recursive P8",
-        "It is still-open PR #835, the current incomplete RT-1D-R4 gate, and is completed only "
-        "after PR #835 merges and its exact resulting `main` is independently verified.",
-        "Because that resulting SHA is not knowable while this transaction is open, a later "
-        "documentation-only current-authority correction may record it, and that correction "
-        "also requires no P8.",
-        "RT-1D-R5 immediate retirement remains unstarted and introduces no retirement behavior.",
-        "RT-1D-R5 becomes uniquely next only after this mandatory RT-1D-R4 P8 merges and its "
-        "exact resulting `main` is independently verified",
-        "never from PR #834 head `d15daeec270ba453940bc10dad924a5df93dfeef`, never from any "
-        "frozen RT-1D-R4 implementation or amendment branch, and never from this P8 PR head",
+        "The mandatory RT-1D-R4 P8 current-authority synchronization completed in merged "
+        "PR #835 from bootstrap `53839b6c349e47a436a885419d699b52142adc86`, reviewed head "
+        "`1299084bb5256c6638925b518291c22ecd3a4178`, and exact resulting main "
+        "`c623898fa8c2ba0a7c7151a912a940295829dda5`.",
+        "Its cumulative scope was exactly the four authority paths, +360/-61, in two normal "
+        "branch commits carrying exactly one execution receipt, its cumulative P5/P6 was "
+        "accepted clean, and the Ready-event Agent execution safety run was green before the "
+        "expected-head-protected merge.",
+        "and it required no recursive P8",
+        "PR #835 is merged and completed, not open, current, or incomplete, and RT-1D-R4 "
+        "implementation and its mandatory P8 are both complete.",
+        "This transaction is the bounded RT-1D-R4 P8 result/current-authority correction that "
+        "records that merged PR #835 result.",
+        "The merged P8 text necessarily still carried open-transaction present tense, so this "
+        "correction replaces it with the exact completed result.",
+        "It is documentation and current-boundary only, changes only the same four authority "
+        "paths, introduces no runtime, serving, or retirement behavior, and requires no P8.",
+        "RT-1D-R5 immediate retirement remains unstarted during this correction and introduces "
+        "no retirement behavior.",
+        "RT-1D-R5 becomes uniquely next only after this RT-1D-R4 P8 result/current-authority "
+        "correction merges and its exact resulting `main` is independently verified",
+        "never from PR #834 head `d15daeec270ba453940bc10dad924a5df93dfeef`, never from "
+        "PR #835 head `1299084bb5256c6638925b518291c22ecd3a4178`, never from any frozen "
+        "RT-1D-R4 implementation or amendment branch, and never from this correction's PR head",
     )
     for path in (STATUS, PLAN, RT1C)
 }
@@ -2341,11 +2353,24 @@ R4_COMPLETION_STALE = (
     "RT-1D-R5 may bootstrap from PR #834 head",
     "RT-1D-R5 may bootstrap from `d15daeec270ba453940bc10dad924a5df93dfeef`",
     "RT-1D-R5 may bootstrap from this P8 PR head",
-    "PR #835 merged",
-    "PR #835 is merged",
-    "PR #835 is complete",
-    "the mandatory RT-1D-R4 P8 completed in PR #835",
+    "still-open PR #835",
+    "PR #835 remains open",
+    "PR #835 is unmerged",
+    "PR #835 is the current incomplete RT-1D-R4 gate",
+    "the current incomplete RT-1D-R4 gate",
+    "Draft PR #835",
+    "the mandatory RT-1D-R4 P8 awaits merge",
+    "the mandatory RT-1D-R4 P8 awaits resulting-main verification",
+    "the exact RT-1D-R4 P8 resulting main is unknown",
+    "the exact RT-1D-R4 P8 reviewed head is unknown",
+    "the mandatory RT-1D-R4 P8 is incomplete",
+    "RT-1D-R4 implementation and its mandatory P8 are incomplete",
+    "the RT-1D-R4 P8 result/current-authority correction requires P8",
     "RT-1D-R5 may bootstrap from PR #835 head",
+    "RT-1D-R5 may bootstrap from `1299084bb5256c6638925b518291c22ecd3a4178`",
+    "RT-1D-R5 may bootstrap from a frozen RT-1D-R4 branch",
+    "RT-1D-R5 has already started",
+    "RT-1D-R5 retirement has completed",
 )
 
 R4_COMPLETION_MUTATIONS = tuple(
@@ -2439,32 +2464,75 @@ R4_COMPLETION_MUTATIONS = tuple(
             "fenced transition state",
         ),
         (
-            "it requires no recursive P8",
+            "and it required no recursive P8",
             "this RT-1D-R4 P8 requires a recursive P8",
             "R4 P8 recursion",
         ),
         (
-            "It is still-open PR #835, the current incomplete RT-1D-R4 gate, and is completed "
-            "only after PR #835 merges and its exact resulting `main` is independently verified.",
-            "the mandatory RT-1D-R4 P8 is complete",
+            "exact resulting main "
+            "`c623898fa8c2ba0a7c7151a912a940295829dda5`",
+            "exact resulting main "
+            "`d623898fa8c2ba0a7c7151a912a940295829dda5`",
+            "R4 P8 exact resulting main",
+        ),
+        (
+            "reviewed head "
+            "`1299084bb5256c6638925b518291c22ecd3a4178`",
+            "reviewed head "
+            "`2299084bb5256c6638925b518291c22ecd3a4178`",
+            "R4 P8 reviewed head",
+        ),
+        (
+            "Its cumulative scope was exactly the four authority paths, +360/-61, in two "
+            "normal branch commits carrying exactly one execution receipt",
+            "Its cumulative scope was exactly the five authority paths, +360/-61, in three "
+            "normal branch commits carrying exactly one execution receipt",
+            "R4 P8 cumulative scope",
+        ),
+        (
+            "the Ready-event Agent execution safety run was green before the "
+            "expected-head-protected merge",
+            "the mandatory RT-1D-R4 P8 awaits merge",
+            "R4 P8 Ready-event evidence",
+        ),
+        (
+            "PR #835 is merged and completed, not open, current, or incomplete, and RT-1D-R4 "
+            "implementation and its mandatory P8 are both complete.",
+            "still-open PR #835",
             "R4 P8 gate state",
         ),
         (
-            "RT-1D-R5 immediate retirement remains unstarted and introduces no retirement "
-            "behavior.",
+            "RT-1D-R5 immediate retirement remains unstarted during this correction and "
+            "introduces no retirement behavior.",
             "RT-1D-R5 immediate retirement has started",
             "R5 start state",
         ),
         (
-            "still-open PR #835, the current incomplete RT-1D-R4 gate",
-            "the mandatory RT-1D-R4 P8 completed in PR #835",
+            "This transaction is the bounded RT-1D-R4 P8 result/current-authority correction "
+            "that records that merged PR #835 result.",
+            "PR #835 is the current incomplete RT-1D-R4 gate",
             "R4 P8 transaction identity",
         ),
         (
-            "never from PR #834 head `d15daeec270ba453940bc10dad924a5df93dfeef`, never from any "
-            "frozen RT-1D-R4 implementation or amendment branch, and never from this P8 PR head",
-            "RT-1D-R5 may bootstrap from PR #834 head",
+            "It is documentation and current-boundary only, changes only the same four "
+            "authority paths, introduces no runtime, serving, or retirement behavior, and "
+            "requires no P8.",
+            "the RT-1D-R4 P8 result/current-authority correction requires P8",
+            "R4 P8 correction recursion",
+        ),
+        (
+            "never from PR #834 head `d15daeec270ba453940bc10dad924a5df93dfeef`, never from "
+            "PR #835 head `1299084bb5256c6638925b518291c22ecd3a4178`, never from any frozen "
+            "RT-1D-R4 implementation or amendment branch, and never from this correction's PR head",
+            "RT-1D-R5 may bootstrap from PR #835 head",
             "R5 bootstrap source",
+        ),
+        (
+            "RT-1D-R5 becomes uniquely next only after this RT-1D-R4 P8 "
+            "result/current-authority correction merges and its exact resulting `main` is "
+            "independently verified",
+            "RT-1D-R5 has already started",
+            "R5 next-slice gate",
         ),
     )
 )
