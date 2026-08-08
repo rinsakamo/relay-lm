@@ -52,11 +52,13 @@ bundled template or advanced source sections
   -> stage source tree under characters-root temporary directory
   -> revalidate staged tree
   -> compile and write derived .relaylm/build/** inside staging
-  -> os.replace staging workspace into a previously absent target
+  -> os.replace staging workspace into the final target
   -> committed workspace remains inactive
 ```
 
-Local external folder/zip import is currently **validation-only**. No current external-import API extracts or commits a third-party pack into `characters/<character>/`.
+The normal creation flow checks that the final target does not exist before staging. This is the current `Path.exists()` gate, not a general filesystem compare-and-swap or replacement protocol.
+
+Local external folder/ZIP import is currently **validation-only**. No current external-import API extracts or commits a third-party pack into `characters/<character>/`.
 
 ## Current schema identifiers
 
@@ -82,26 +84,20 @@ A commit-eligible candidate character ID must match:
 ^[A-Za-z0-9_-]{1,128}$
 ```
 
-The current helper used by Quick/Advanced staging is:
-
-```text
-safe_character_slug(name)
-```
-
-Its exact transformation is:
+The current Quick/Advanced staging helper `safe_character_slug(name)` performs:
 
 1. `strip()` and lowercase the supplied name;
-2. replace every run of characters outside `[a-z0-9_-]` with `-`;
-3. collapse repeated hyphens to one hyphen;
+2. replace every run outside `[a-z0-9_-]` with `-`;
+3. collapse repeated hyphens to one;
 4. strip leading/trailing hyphen and underscore;
-5. if the result is empty, use `character-` plus the first 12 hex characters of SHA-256 over the original UTF-8 name;
-6. truncate the result to 80 characters.
+5. if empty, use `character-` plus the first 12 SHA-256 hex characters of the original UTF-8 name;
+6. truncate to 80 characters.
 
-The staging helper's 80-character output is therefore within the 128-character commit regex limit.
+The staging helper's result is therefore within the 128-character commit regex limit.
 
-A generated slug is a local workspace identifier. It is not active-character state, persona identity authority, or a RelayMEM identifier.
+A slug is a workspace identifier, not active-character state, persona authority, or a RelayMEM identifier.
 
-## Allowed Quick Create choice values
+## Quick Create choices
 
 The exact current accepted tone values are:
 
@@ -126,25 +122,13 @@ learning support
 creative brainstorming
 ```
 
-The current normalizer strips surrounding whitespace and preserves a value only when it is exactly in the owning set.
+The current normalizer strips surrounding whitespace. Unknown tone falls back to `friendly`; unknown intended use falls back to `casual chat`.
 
-Unknown tone falls back to:
-
-```text
-friendly
-```
-
-Unknown intended use falls back to:
-
-```text
-casual chat
-```
-
-These values affect bundled source staging only. They do not bypass source validation or activate runtime state.
+These choices affect bundled source staging only.
 
 ## Current bundled template registry
 
-The current local-only registry contains these template IDs:
+The current local-only template IDs are:
 
 ```text
 friendly-companion
@@ -160,9 +144,9 @@ showcase-fantasy-roleplay-character
 developer-design-partner
 ```
 
-The first six are current starter records, the next four are showcase records, and `developer-design-partner` is an advanced record with `primary_default = false`.
+The first six are starter records, the next four are showcase records, and `developer-design-partner` is an advanced record with `primary_default = false`.
 
-Registry membership is product/template metadata. It does not mean a workspace exists or is active.
+Registry membership does not imply that a workspace exists or is active.
 
 ## Template record shape
 
@@ -189,13 +173,9 @@ content_only_source_pack = true
 runtime_authority = false
 ```
 
-`get_character_template(template_id)` returns the matching current record or raises:
+`get_character_template(template_id)` returns the matching record or raises `ValueError("template_not_found")`.
 
-```text
-template_not_found
-```
-
-## Template registry public projection
+## Registry public projection
 
 `list_character_templates()` emits:
 
@@ -220,7 +200,7 @@ remote_registry_supported = false
 network_download_performed = false
 ```
 
-The exact current `safety` values are:
+Its current safety projection is:
 
 ```text
 templates_are_active_characters = false
@@ -230,15 +210,15 @@ explicit_approval_required = true
 imports_runtime_state = false
 ```
 
-The registry performs no network access.
+Registry access performs no network download.
 
 ## No-character startup projection
 
 `validate_no_character_startup(characters_root)` is read-only.
 
-When the root exists and is a directory, it examines direct children in filename-sorted order. It skips a child unless that child is a directory and not a symlink. Remaining children are validated as Character Workspaces using the child name as `character_id`.
+If the root exists and is a directory, it scans direct children in name-sorted order. A child is considered only when `child.is_dir()` is true and `child.is_symlink()` is false. Each remaining child is validated with its child name as `character_id`.
 
-Its public result contains:
+The result contains:
 
 ```text
 schema_version = relaylm.character_creation.no_character_startup.v0
@@ -251,13 +231,13 @@ content_free = true
 source_content_included = false
 ```
 
-`creation_flow_required` is true exactly when no valid child workspace was found.
+`creation_flow_required` is exactly `not valid_character_ids`.
 
-This helper never creates, restores, chooses, or activates a default character.
+This helper does not create, restore, select, or activate a default character.
 
 ## Quick Create staging
 
-`stage_quick_character(...)` takes:
+`stage_quick_character(...)` accepts:
 
 ```text
 template_id
@@ -270,53 +250,39 @@ showcase_mode = starter
 Current behavior is:
 
 1. resolve the bundled template record;
-2. normalize tone and intended use through the current choice sets;
-3. set `use_as_starter = (showcase_mode == "starter")`;
-4. deterministically build the bundled source-file mapping;
-5. derive `character_id` through `safe_character_slug(name)`;
-6. stage and validate the complete candidate through `_candidate_from_files`.
+2. normalize tone and intended use;
+3. compute `use_as_starter = (showcase_mode == "starter")`;
+4. build the bundled source mapping;
+5. derive `character_id` with `safe_character_slug(name)`;
+6. call the shared candidate-staging helper.
 
-Candidate mode is:
+Candidate `mode` is `quick_create` for non-showcase records and `showcase_<showcase_mode>` for showcase records.
 
-```text
-quick_create
-```
+The core function itself accepts any string for `showcase_mode`. Current SOUL Lab and CLI surfaces restrict that input to `starter` or `as_is`.
 
-for a non-showcase record, and:
+## Showcase staging
 
-```text
-showcase_<showcase_mode>
-```
-
-for a showcase record.
-
-The core staging function does not itself restrict `showcase_mode` to a fixed enum. The SOUL Lab and CLI surfaces currently restrict it to `starter` or `as_is`.
-
-## Showcase staging distinction
-
-For a showcase record, current bundled generation may include:
+For current showcase records, bundled staging may add:
 
 ```text
 memory/people/demo_user.md
 scenes/showcase.md
 ```
 
-When `showcase_mode == "starter"`, the demo-user memory is removed from the staged file set.
+When `showcase_mode == "starter"`, `memory/people/demo_user.md` is removed. In `as_is` mode it remains marked as template-example material.
 
-For current `as_is` staging, that demo-user example remains and is marked as template example content by the bundled source text.
-
-This example content is still staged source material and does not become live evidence or active runtime memory merely because the candidate validates.
+Staged example material is not live evidence or active memory merely because candidate validation succeeds.
 
 ## Advanced Create staging
 
 `stage_advanced_character(name, source_sections=None)`:
 
-1. uppercases supplied section-map keys;
-2. begins from the current complete base workspace template using `polite`, `creative brainstorming`, and the `advanced custom character` archetype;
-3. considers only required plus optional root source filenames for direct section override;
-4. replaces a root source only when the corresponding supplied section is non-empty after stripping;
-5. stores an override as stripped text plus one newline;
-6. stages through the same `_candidate_from_files` validation/preview path.
+1. uppercases supplied section keys;
+2. starts from the current complete base workspace source mapping using `polite`, `creative brainstorming`, and `advanced custom character`;
+3. considers only required and optional root source families for override;
+4. replaces a root source only when the supplied value is non-empty after stripping;
+5. writes a replacement as stripped text plus one newline;
+6. stages through the same shared candidate path.
 
 Its candidate has:
 
@@ -326,11 +292,11 @@ mode = advanced_create
 relaylm_onboarding_memory_included = false
 ```
 
-Advanced staging is not permission to write arbitrary `.relaylm/**` content.
+Advanced Create is not permission to write arbitrary `.relaylm/**` state.
 
 ## Candidate completion
 
-Before candidate validation, `_complete_workspace_files` ensures the following files exist in the in-memory source mapping if they were absent:
+Before validation, `_complete_workspace_files` supplies these files when absent:
 
 ```text
 relationships/_template.md
@@ -339,29 +305,26 @@ scenes/default.md
 memory/core.md
 ```
 
-It also ensures every required uppercase source filename owned by the source-tree contract exists by supplying the current default source text where necessary.
+It also supplies a current default source for every missing required uppercase source filename.
 
-This completion step applies to creation staging. It does not repair arbitrary already-committed workspaces.
+This completion is creation staging behavior; it is not a repair API for an existing committed workspace.
 
 ## Candidate staging is temporary
 
-`_candidate_from_files` uses a temporary directory whose current prefix is:
+`_candidate_from_files` uses `tempfile.TemporaryDirectory(prefix="relaylm-cw-a5-")`.
+
+Inside that temporary root it:
 
 ```text
-relaylm-cw-a5-
+writes the completed source mapping
+  -> validate_character_workspace(..., public=False)
+  -> compile_character_workspace(..., write=False)
+  -> retain compiler public projection
 ```
 
-Inside it, the candidate is written under the derived character ID, validated with `public=False`, and compiled with:
+The temporary directory is discarded when candidate construction ends.
 
-```text
-write = false
-```
-
-The compiler result is converted to its content-free public projection and retained as the candidate preview.
-
-The temporary staging directory is discarded after candidate construction.
-
-Candidate preview therefore performs no durable Character Workspace commit and no build-file write to the user's characters root.
+Candidate preview therefore does not write to the user's characters root and does not write compiler build artifacts there.
 
 ## Candidate object
 
@@ -379,9 +342,7 @@ relaylm_onboarding_memory_included
 content_free
 ```
 
-The runtime object intentionally carries content-bearing `source_files` because the commit boundary needs the staged source material.
-
-That runtime-private content is not emitted in the public candidate projection.
+The runtime object carries content-bearing `source_files` for later commit. That mapping is not emitted by the public projection.
 
 ## Candidate public projection
 
@@ -419,14 +380,9 @@ active_character_set = false
 requires_explicit_approval = true
 ```
 
-No raw source body is included in this public projection.
-
 ## Candidate directory projection
 
-The candidate's `source_directories` is the sorted de-duplicated union of:
-
-- the current Character Workspace lowercase directory vocabulary; and
-- the creation module's additional workspace file directories:
+`source_directories` is the sorted, de-duplicated union of the source-tree contract's current lowercase directories and the creation module's additional workspace-file directories:
 
 ```text
 relationships
@@ -436,20 +392,20 @@ memory/topics
 proposals
 ```
 
-Directory projection does not mean all directories contain active semantic content.
+This projection does not mean all directories contain active semantic content.
 
 ## Safe creation-source write
 
-`_write_workspace_files` creates the candidate root, creates the expected directory union, and writes each candidate source as UTF-8 only after `_assert_safe_workspace_relative_path` accepts the path.
+`_write_workspace_files` creates the candidate root and expected directory union, then writes every source as UTF-8 after `_assert_safe_workspace_relative_path` accepts the supplied relative path.
 
-The current path assertion rejects:
+The current helper constructs `PurePosixPath(relative_path)` and rejects when:
 
-- an absolute path;
-- a path with an empty, `.` or `..` component;
-- a path whose POSIX string starts with `.relaylm/`;
-- a path whose suffix is not one of the current safe text suffixes.
+- `pure.is_absolute()` is true;
+- one of the components that remains in `pure.parts` is `""`, `"."`, or `".."`;
+- the normalized POSIX string begins with `.relaylm/`;
+- the suffix is not one of the current safe text suffixes.
 
-The exact current safe text suffix set is:
+The exact safe text suffix set is:
 
 ```text
 .md
@@ -457,7 +413,7 @@ The exact current safe text suffix set is:
 .json
 ```
 
-Rejected creation-source paths raise one of the current `ValueError` identifiers:
+The current `ValueError` identifiers are:
 
 ```text
 unsafe_workspace_relative_path
@@ -465,11 +421,13 @@ template_must_not_write_relaylm_internal_artifacts
 workspace_source_must_be_text
 ```
 
-This check prevents template-generated source staging from directly supplying `.relaylm/**` runtime/build material.
+`PurePosixPath` normalizes some redundant separators and `.` components before exposing `.parts`. This contract therefore does not claim that the helper preserves/rejects every raw spelling distinction before that normalization. It does preserve `..` components for the current traversal check.
+
+Bundled/current candidate paths are generated by trusted local creation code and are still revalidated through the Character Workspace validator before publish.
 
 ## Bundled template manifest and preview files
 
-Current bundled template generation adds:
+Current bundled generation adds:
 
 ```text
 manifest.json
@@ -477,7 +435,7 @@ preview/sample_prompt.txt
 preview/sample_responses.md
 ```
 
-The generated manifest uses:
+The manifest uses:
 
 ```text
 schema = relaylm.character_template.manifest.v0
@@ -485,20 +443,20 @@ content_only_source_pack = true
 imports_runtime_state = false
 ```
 
-plus the template's current ID/title/shelf and onboarding-memory flag.
+plus the template ID, title, shelf, and onboarding-memory flag.
 
-These files are creation/template source-pack material. They are not active-character state and are not foreign `.relaylm/build/**` artifacts.
+These are template/source-pack files, not active runtime state or imported `.relaylm/build/**` authority.
 
 ## Product-help onboarding source
 
-Current bundled records may opt into generated:
+Current bundled templates may opt into:
 
 ```text
 memory/topics/relaylm.md
 scenes/relaylm_onboarding.md
 ```
 
-The onboarding memory is template/product-help source with current markers including:
+The onboarding memory contains current source markers including:
 
 ```text
 status:: template_knowledge
@@ -509,9 +467,7 @@ slp_update:: disabled
 update_policy:: bundled_template_update_only
 ```
 
-Its presence is reported through the candidate/template projections.
-
-Third-party template validation only reports whether the exact path `memory/topics/relaylm.md` is present. Validation does not add this file to an external pack.
+Third-party validation only observes whether the exact normalized path `memory/topics/relaylm.md` is present. It does not add that file to an external pack.
 
 ## Commit result object
 
@@ -553,9 +509,7 @@ absolute_paths_included = false
 
 ## Explicit approval gate
 
-`commit_character_workspace_candidate(..., approval=False)` fails before any characters-root creation or target write.
-
-The exact current result is:
+`commit_character_workspace_candidate(..., approval=False)` returns before characters-root creation or target write:
 
 ```text
 status = approval_required
@@ -564,11 +518,11 @@ active_character_set = false
 reason_ids = ("approval_required",)
 ```
 
-Candidate validation or preview success is not implicit approval.
+Validation or preview success is not approval.
 
-## Candidate ID gate
+## Candidate-ID gate
 
-After approval, the commit path rechecks `candidate.character_id` against the exact character-ID regex.
+After approval, the commit path rechecks the candidate ID against the exact character-ID regex.
 
 Failure returns:
 
@@ -579,11 +533,9 @@ active_character_set = false
 reason_ids = ("invalid_character_id",)
 ```
 
-No target workspace is written.
+## Retained candidate-validation gate
 
-## Candidate validation gate
-
-If the staged candidate's retained validation result is not valid, commit returns:
+If `candidate.validation.is_valid` is false, commit returns:
 
 ```text
 status = invalid_candidate
@@ -591,25 +543,25 @@ committed = false
 active_character_set = false
 ```
 
-and uses the candidate validation reason IDs, falling back to:
+with the retained validation reason IDs, falling back to `invalid_candidate`.
 
-```text
-invalid_candidate
-```
-
-when none are available.
-
-This gate does not replace the later revalidation of the materialized staging tree.
+The retained-result gate is followed by fresh materialized-tree revalidation before publish.
 
 ## Existing-target gate
 
-The exact commit target is:
+The final target is:
 
 ```text
 <characters_root>/<candidate.character_id>
 ```
 
-If that target already exists in any form, creation returns:
+Current code tests:
+
+```text
+target.exists()
+```
+
+If true, commit returns:
 
 ```text
 status = target_exists
@@ -618,28 +570,30 @@ active_character_set = false
 reason_ids = ("target_character_exists",)
 ```
 
-Creation does not merge with, delete, rename, or overwrite an existing target.
+The current gate is exactly `Path.exists()`: it is not documented here as `lexists()`, an inode reservation, a lock, or a race-free compare-and-swap.
+
+Creation does not intentionally merge with or overwrite a target that passes this existing-target check.
 
 ## Commit staging directory
 
-After the non-write gates pass, the characters root is created with `parents=True, exist_ok=True` if needed.
+After the non-write gates pass, the characters root is created with `parents=True, exist_ok=True` if necessary.
 
-Current temporary commit paths are:
+Current temporary paths are:
 
 ```text
 <characters_root>/_relaylm_create_<character_id>_tmp/
 <characters_root>/_relaylm_create_<character_id>_tmp/<character_id>/
 ```
 
-If the temporary parent already exists, current code removes it recursively before writing the new staged candidate.
+If the temporary parent already exists, current code removes that temporary parent recursively before creating the new staging tree.
 
-The temporary path is implementation-local staging, not a durable character identity.
+This reserved temporary directory is implementation staging, not durable character identity.
 
-## Revalidation before publish
+## Fresh revalidation before publish
 
-The candidate's source mapping is materialized into the staging workspace through the safe source-write helper.
+The candidate's current `source_files` mapping is materialized into the staging workspace through the creation source-write helper.
 
-The materialized staging workspace is then validated again using:
+The materialized tree is then validated with:
 
 ```text
 validate_character_workspace(
@@ -649,7 +603,7 @@ validate_character_workspace(
 )
 ```
 
-If revalidation fails, commit returns:
+Failure returns:
 
 ```text
 status = validation_failed
@@ -659,7 +613,7 @@ active_character_set = false
 
 with validation reason IDs, falling back to `validation_failed`.
 
-The staging directory is cleaned by the surrounding `finally` block.
+No final target is published on this result.
 
 ## Compiler/build gate before publish
 
@@ -669,21 +623,19 @@ After successful revalidation, current commit code calls:
 compile_character_workspace(staging_root, write=True)
 ```
 
-Thus the exact current order is:
+The exact current order is therefore:
 
 ```text
 materialize source in staging
-  -> revalidate staging
+  -> fresh validate staging
   -> compile staging
   -> write derived .relaylm/build/** inside staging
-  -> publish whole staging workspace to final target
+  -> publish staging workspace
 ```
 
-Build artifacts are generated **before** the final directory publish, but only inside the not-yet-published staging workspace.
+Build artifacts are generated before final directory publish, but only inside the not-yet-published staging workspace.
 
-This exact current order differs from a loose prose description that says build generation occurs after final commit. The durable result is still one newly published workspace containing both accepted source and locally generated derived build artifacts.
-
-If the compiler result is invalid, commit returns:
+If compiler validation fails, commit returns:
 
 ```text
 status = compile_failed
@@ -691,21 +643,19 @@ committed = false
 active_character_set = false
 ```
 
-with compiler blocking reason IDs, falling back to `compile_failed`.
+with compiler blocking reasons, falling back to `compile_failed`.
 
-No final target is published.
+This exact order supersedes any loose transitional prose that describes build generation as occurring after the final directory move.
 
-## Final publish operation
+## Final publish
 
-After successful revalidation and compiler write, current code publishes with:
+After successful revalidation and compiler write, current code calls:
 
 ```text
 os.replace(staging_root, target)
 ```
 
-The target was already required not to exist before staging began.
-
-On success, the result is:
+On normal success:
 
 ```text
 status = committed
@@ -715,61 +665,49 @@ reason_ids = ()
 written_build_artifacts = tuple(.relaylm/build/<EXPECTED_ARTIFACT>)
 ```
 
-Artifact names and order come from the compiled-projections contract's current `EXPECTED_ARTIFACTS` sequence.
+Artifact order is the current `EXPECTED_ARTIFACTS` order owned by `compiled-projections.md`.
 
-The creation commit result does not claim that the active character changed.
+`os.replace` is the exact current publish operation. This contract does not inflate it into a stronger cross-platform transaction/locking guarantee than the implementation provides.
 
 ## Temporary cleanup
 
-The commit body is enclosed by a `finally` cleanup.
+The staging body is covered by a `finally` cleanup. If the temporary parent still exists, current code removes it recursively.
 
-If the temporary parent still exists after success or failure, current code removes it recursively.
+On normal successful publish, the staging workspace has moved into the target and the remaining temporary parent is removed.
 
-On a normal successful `os.replace`, the staging workspace has moved to the final target, leaving only the temporary parent for cleanup.
-
-This cleanup does not delete an existing final target because existing targets are rejected before staging.
+On a pre-publish failure reached inside the staging body, the temporary staging parent is removed. The characters root itself may remain after it was created; the guarantee is no successful final workspace publication, not literal zero filesystem metadata change after every late failure.
 
 ## Convenience bundled-template commit
 
-`commit_character_from_template(...)` performs exactly:
+`commit_character_from_template(...)` performs:
 
 ```text
 stage_quick_character(...)
   -> commit_character_workspace_candidate(...)
 ```
 
-It does not create an alternative write path.
-
-The same explicit `approval` gate applies.
+It is not a second write implementation and uses the same explicit approval gate.
 
 ## CLI persistence gate
 
-The current character-creation CLI requires exactly one of:
+The current creation CLI requires exactly one of:
 
 ```text
 --dry-run
 --write
 ```
 
-Selecting both or neither is an argument error.
+Both or neither is an argument error.
 
-`--dry-run` returns the staged candidate public projection and performs no user characters-root write.
-
-`--write` calls bundled-template commit with:
-
-```text
-approval = true
-```
+`--dry-run` returns the candidate public projection. `--write` calls the bundled-template commit path with `approval=True`.
 
 The CLI does not auto-activate the committed character.
 
-The separate template-validation CLI validates a local folder/zip and prints only the template validation public projection.
+The separate template-validation CLI validates a local folder/ZIP and prints the template validation public projection only.
 
 ## SOUL Lab management boundary
 
-Current Character Creation HTTP routes are installed under the loopback-only SOUL Lab management surface and call the owning loopback-management guard before processing.
-
-Current routes are:
+Current Character Creation HTTP routes are under the loopback-only SOUL Lab management surface and call the owning loopback management guard:
 
 ```text
 GET  /lab/api/character-templates
@@ -778,9 +716,9 @@ POST /lab/api/characters/create-from-template
 POST /lab/api/characters/import-template
 ```
 
-The create-from-template route calls the same core bundled-template commit path. A missing template ID is projected as `template_not_found` with HTTP 404.
+The create-from-template route calls the same bundled-template commit core. A missing template is projected as `template_not_found` with HTTP 404.
 
-The import-template route does **not** call a commit function.
+The import-template route does not call a commit function.
 
 ## Local import root gate
 
@@ -790,31 +728,27 @@ SOUL Lab local import validation first rejects an absolute request `import_path`
 absolute_import_path_rejected
 ```
 
-Local import validation is disabled unless this environment variable is present:
+Local import validation is disabled unless:
 
 ```text
 RELAYLM_CHARACTER_TEMPLATE_IMPORT_ROOT
 ```
 
-When absent, the result is:
+is configured. Absence returns `local_import_disabled`.
 
-```text
-local_import_disabled
-```
-
-When configured, the import root is resolved, the requested path is resolved underneath it, and a candidate that does not remain relative to the resolved import root is rejected with:
+When configured, the import root and requested candidate are resolved. A resolved candidate that is not relative to the resolved import root is rejected with:
 
 ```text
 path_traversal_rejected
 ```
 
-Only then is the resulting local path passed to template folder/zip validation.
+Only then is the local candidate passed to `validate_template_path`.
 
-This environment setting grants a validation root, not external-template commit authority.
+This environment setting grants a local validation root, not external-template commit authority.
 
 ## External import is validation-only
 
-The current SOUL Lab import route returns the local template validation public projection, then adds:
+The current SOUL Lab import endpoint returns the local template validation public projection, then adds:
 
 ```text
 workspace_commit_supported = false
@@ -828,38 +762,38 @@ external_import_commit_pending
 
 to the returned `reason_ids`.
 
-Therefore current external import lifecycle is:
+The endpoint does not change the underlying `status` or `is_valid` returned by template validation. A structurally valid pack can therefore remain `status=valid` / `is_valid=true` while also reporting that external workspace commit is pending/unsupported.
+
+The lifecycle is exactly:
 
 ```text
-local folder/zip reference
+local folder/ZIP reference
   -> bounded validation
   -> content-free result
   -> no extraction
-  -> no candidate construction from external files
+  -> no external-file candidate construction
   -> no workspace commit
   -> no activation
 ```
 
-A valid external pack is not commit-eligible merely because validation succeeded.
-
-Any future external-import commit path requires a separately reviewed implementation and contract update.
+Any future external-import commit requires a separate implementation and contract update.
 
 ## Template path dispatch
 
-`validate_template_path(path)` currently dispatches as follows:
+`validate_template_path(path)` currently dispatches:
 
 ```text
-existing directory
+path.is_dir() == true
   -> validate_template_directory
 
-existing file with suffix .zip (case-insensitive)
+else path.is_file() == true and suffix.lower() == ".zip"
   -> validate_template_zip
 
-otherwise
+else
   -> invalid / template_path_not_supported
 ```
 
-This API is validation-only.
+This API does not commit the validated path.
 
 ## Template validation result
 
@@ -899,63 +833,62 @@ source_content_included = false
 raw_paths_included = false
 ```
 
-Validation does not include rejected file bodies or raw path inventories in its public result.
-
 ## Template-directory validation
 
-`validate_template_directory(root)` rejects a missing/non-directory root with:
+`validate_template_directory(root)` returns `template_root_missing_or_not_directory` when the path does not exist or is not a directory.
+
+For an accepted directory path, current code recursively enumerates `root_path.rglob("*")`, increments a checked count, derives each entry relative to the root, and records:
 
 ```text
-template_root_missing_or_not_directory
+relative path
+lstat().st_mode
+path.is_dir()
+path.is_symlink()
 ```
 
-For an existing directory, it recursively enumerates entries, counts every enumerated item, computes each path relative to the validation root, records `lstat().st_mode`, directory state, and symlink state, then passes the entry metadata to the shared safety validator.
+An unexpected `relative_to` failure returns `path_escape_rejected` with the current checked count and one rejected entry.
 
-If relative-path derivation unexpectedly fails, it returns:
+Directory validation does not copy the directory into `characters/**`.
 
-```text
-path_escape_rejected
-```
+## Template-ZIP validation
 
-with the current checked count and one rejected entry.
-
-Directory validation reads entry metadata for trust checks; it does not import or execute file content.
-
-## Template-zip validation
-
-`validate_template_zip(path)` rejects a missing/non-file path with:
+`validate_template_zip(path)` returns:
 
 ```text
 template_zip_missing
 ```
 
-A malformed ZIP container is rejected with:
+when the path does not exist or is not a file, and:
 
 ```text
 template_zip_invalid
 ```
 
-For a readable archive, current validation inspects each `ZipInfo` filename, external mode, directory state, and Unix symlink bit and passes those metadata to the shared validator.
+for `zipfile.BadZipFile`.
 
-It does not extract the ZIP.
+For a readable ZIP, current code records each `ZipInfo` filename, Unix external mode, `is_dir()` result, and symlink bit derived from the mode.
+
+It does not extract the archive.
 
 ## Shared template entry normalization
 
-For common template validation, each raw entry path is currently normalized by:
+Before common safety checks, each raw entry name is normalized by:
 
 ```text
 raw_path.replace("\\", "/").strip("/")
 ```
 
-Empty normalized entries are skipped.
+Empty normalized strings are skipped.
 
-The normalized value is then interpreted as `PurePosixPath` and checked for unsafe classes.
+The normalized string is then parsed as `PurePosixPath`.
 
-Because leading/trailing slashes are stripped before the shared unsafe-entry helper runs, callers must not infer a stronger raw-archive absolute-path guarantee than this exact current normalization provides. Current external archives remain validation-only and are never extracted/committed by this path.
+Because outer slashes are stripped before the shared helper and `PurePosixPath` normalizes some path spellings, this contract does **not** claim that every raw archive absolute-path spelling is independently preserved and rejected by the inner helper. The current external archive path is validation-only and performs no extraction/commit.
+
+The source-writing commit path does not consume these external archive entries at all.
 
 ## Current safe template suffixes
 
-The current safe inert asset suffixes are:
+Safe inert asset suffixes are:
 
 ```text
 .png
@@ -966,7 +899,7 @@ The current safe inert asset suffixes are:
 .svg
 ```
 
-The current safe text suffixes are:
+Safe text suffixes are:
 
 ```text
 .md
@@ -974,17 +907,17 @@ The current safe text suffixes are:
 .json
 ```
 
-A non-directory entry with another non-empty suffix is rejected with:
+A non-directory entry with a non-empty suffix outside both sets receives:
 
 ```text
 non_content_file_rejected
 ```
 
-The suffix allowlist is a validation rule, not authorization to execute or automatically publish assets.
+This allowlist is validation metadata, not execution permission.
 
-## Rejected script/executable classes
+## Script/executable rejection
 
-The exact current script suffix set is:
+The exact current script suffixes are:
 
 ```text
 .bat
@@ -1000,19 +933,13 @@ The exact current script suffix set is:
 .ts
 ```
 
-A non-directory entry using one of those suffixes is rejected with:
-
-```text
-script_or_executable_rejected
-```
-
-A non-directory entry whose inspected mode has an executable bit also receives the same reason ID.
+A non-directory entry using one receives `script_or_executable_rejected`. A non-directory entry whose inspected mode contains an executable bit receives the same reason.
 
 Reason IDs are de-duplicated preserving first occurrence.
 
-## Reserved runtime/config classes
+## Reserved runtime/config rejection
 
-The current reserved template prefixes are:
+Current reserved template prefixes are:
 
 ```text
 .relaylm/build/
@@ -1024,13 +951,13 @@ The current reserved template prefixes are:
 .relaylm/projections/
 ```
 
-A normalized entry equal to a prefix root or beginning with one of these prefixes is rejected with:
+An entry equal to a prefix root or beginning with one receives:
 
 ```text
 relaylm_runtime_artifact_rejected
 ```
 
-The current reserved filenames are:
+Current reserved basenames are:
 
 ```text
 .env
@@ -1043,21 +970,23 @@ runtime.yml
 secrets.json
 ```
 
-A matching basename is rejected with:
+A current basename match receives:
 
 ```text
 runtime_config_or_env_rejected
 ```
 
-The current check is case-insensitive through the lowercase basename comparison where applicable.
+The helper includes a lowercase basename comparison against this lowercase set.
 
-## Traversal and symlink template checks
+## Traversal and symlink checks
 
-A normalized path whose parsed components include an empty component, `.`, or `..` receives:
+The common helper checks the `PurePosixPath.parts` it receives for `""`, `"."`, and `".."`; a surviving matching part produces:
 
 ```text
 path_traversal_rejected
 ```
+
+In current `PurePosixPath` behavior, redundant separators and `.` segments may already have normalized away before `.parts` is inspected, while `..` is preserved. The contract therefore states the implementation check rather than a stronger raw-spelling guarantee.
 
 An entry identified as a symlink receives:
 
@@ -1065,77 +994,60 @@ An entry identified as a symlink receives:
 symlink_rejected
 ```
 
-Folder validation derives symlink state from the filesystem entry. ZIP validation derives it from the archive external mode.
-
-Template validation does not follow a symlink as trusted source merely because its target is local.
+Folder validation gets this state from the filesystem path; ZIP validation derives it from the archive mode.
 
 ## Template required entries
 
-After entry-level checks, the shared validator requires exact path presence for:
+After entry-level checks, the shared validator requires exact normalized presence of:
 
 ```text
 manifest.json
 ```
 
-and every required uppercase source filename owned by the source-tree contract.
+and every required uppercase source filename owned by `source-tree.md`.
 
-Missing manifest adds:
+Missing manifest adds `missing_manifest`. Missing one or more required uppercase sources adds `missing_required_template_source`.
 
-```text
-missing_manifest
-```
+The final reason tuple is de-duplicated preserving first occurrence. Template validation is `valid` exactly when that tuple is empty.
 
-Missing one or more required source filenames adds:
+## Onboarding-memory presence
 
-```text
-missing_required_template_source
-```
-
-Validation reason IDs are de-duplicated preserving first occurrence.
-
-The template is valid only when the final reason tuple is empty.
-
-## Onboarding-memory detection in imports
-
-Template validation sets `relaylm_onboarding_memory_included = true` only when the exact normalized path:
+Template validation reports `relaylm_onboarding_memory_included = true` exactly when the normalized entry set contains:
 
 ```text
 memory/topics/relaylm.md
 ```
 
-is present.
+This is presence only. It does not grant official/bundled provenance and does not commit the file.
 
-This is a presence observation. It does not grant bundled/official status to a third-party file and does not commit it.
+## Current external trust boundary
 
-## Current validation-only trust boundary
+Current external template validation does not:
 
-The external validator intentionally checks pack structure and unsafe metadata classes without creating a Character Workspace from the pack.
-
-It does not:
-
-- extract a ZIP;
-- copy a folder into `characters/**`;
-- write `.relaylm/build/**`;
-- trust imported generated/runtime state;
-- set the active character;
+- extract ZIP content;
+- copy a validated folder into `characters/**`;
+- construct a commit candidate from external file bodies;
+- write `.relaylm/build/**` from the external pack;
+- import `.relaylm/state/**`, queue, audit, indexes, projections, or source-evidence records;
+- execute scripts/assets;
 - contact a remote registry;
 - download template content;
-- execute scripts/assets;
+- set active character;
 - apply memory, relationship, scene, emotion, or context state.
 
-This distinction is normative current behavior.
+A successful validation is therefore a safety/structure observation, not durable import.
 
-## Commit is new-workspace creation only
+## New-workspace creation only
 
-The current commit function is not a generic import, merge, update, rename, replace, restore, or migration API.
+`commit_character_workspace_candidate` is not a generic import, merge, update, rename, replace, restore, or migration API.
 
-It publishes exactly one previously absent target workspace after the candidate's creation-stage checks succeed.
+It attempts to publish one staged candidate at a target that passed the current `target.exists()` precheck.
 
-If replacement or external-import commit is later implemented, that work must define conflict, provenance, staging revision, rollback, and activation behavior separately rather than inheriting them implicitly from this contract.
+A future replacement or external-import commit path needs separately governed conflict, provenance, staging-revision, rollback, and activation semantics.
 
 ## Active-character separation
 
-All current candidate and commit projections keep:
+Current candidate and commit projections keep:
 
 ```text
 active_character_set = false
@@ -1143,7 +1055,7 @@ active_character_set = false
 
 The current creation core does not persist active-character selection as part of commit.
 
-The stable lifecycle remains:
+The lifecycle remains:
 
 ```text
 candidate staged
@@ -1165,69 +1077,62 @@ Creation and template validation do not directly mutate:
 - RelayEMO current affect state;
 - RelayMEM stores or retrieval results;
 - RelayCTX current request state;
-- RelaySLP maintenance queues or apply decisions;
+- RelaySLP maintenance queues/apply decisions;
 - current conversation output.
 
-Committing human-editable source files makes a workspace available for later explicit selection. It does not execute their semantics immediately.
+A committed source tree becomes available for later explicit selection. Creation commit does not execute the workspace's semantic content immediately.
 
-## Public diagnostics remain content-free
+## Content-free public boundary
 
-Current public projections expose bounded template IDs/product metadata, validation statuses/reasons/counts, character IDs, source-family presence, directory names, compiler public summaries, commit status, and relative generated artifact names.
+Current public projections may expose bounded template product metadata, validation status/reasons/counts, character IDs, source-family presence, directory names, compiler public summaries, commit status, and relative generated artifact names.
 
 They do not expose:
 
-- raw source bodies from a candidate;
+- candidate raw source bodies;
 - rejected template file bodies;
-- raw template path inventories;
+- arbitrary raw template path inventories;
 - absolute characters-root paths;
-- credentials or runtime config contents;
-- `.relaylm/state/**`, queue, audit, or source-evidence payloads;
-- active-character mutation state beyond the explicit false flag.
+- credentials or runtime configuration content;
+- `.relaylm/state/**`, queue, audit, or source-evidence payloads.
 
 ## Failure behavior
 
-Current creation/import behavior closes toward no final workspace publication and no activation:
+Current behavior closes toward no successful final workspace publication and no activation:
 
 ```text
 approval absent
   -> approval_required
-  -> no commit
 
 candidate ID invalid
   -> invalid_character_id
-  -> no commit
 
-candidate validation invalid
+retained candidate invalid
   -> invalid_candidate
-  -> no commit
 
-final target exists
+current target.exists() true
   -> target_exists
-  -> no overwrite/merge
 
-materialized staging validation fails
+fresh staging validation fails
   -> validation_failed
-  -> no publish
 
 staging compiler fails
   -> compile_failed
-  -> no publish
 
-external import validation succeeds
+external template validates
   -> validation result only
   -> workspace_commit_supported = false
   -> external_import_commit_pending
 
-commit succeeds
-  -> new workspace published
+creation publish succeeds
+  -> committed = true
   -> active_character_set = false
 ```
 
-The contract does not turn a validation-only external pack into a write candidate.
+Late failures after characters-root creation may leave the characters root itself present, while the staging `finally` removes the reserved temporary parent. This contract does not overstate failure as literal zero filesystem metadata change.
 
 ## Current implementation anchors
 
-This current contract is implemented by:
+This contract is implemented by:
 
 ```text
 relaylm/character_creation.py
@@ -1235,11 +1140,7 @@ relaylm/soul_lab_character_creation.py
 relaylm/cli/character_creation.py
 ```
 
-and consumes the Character Workspace implementation behind:
-
-```text
-relaylm/character_workspace/**
-```
+and consumes `relaylm/character_workspace/**` under the adjacent exact contracts.
 
 The focused current smoke is:
 
@@ -1247,58 +1148,47 @@ The focused current smoke is:
 scripts/relaylm_cw_a5_character_creation_templates_smoke.py
 ```
 
-That smoke verifies, among other things:
+The smoke verifies current registry/no-default behavior, Quick/Advanced staging, showcase starter/as-is distinction, approval gate, successful build-containing commit with no activation, duplicate-target rejection, safe third-party validation, unsafe runtime/script/config/symlink/traversal rejection, and content-free public validation output.
 
-- registry is local/content-free and no default auto-create occurs;
-- Quick and Advanced candidates validate;
-- showcase starter removes demo-user example memory while as-is retains it;
-- approval is required before commit;
-- successful bundled-template commit creates all expected build artifacts and does not set active character;
-- duplicate target commit fails;
-- external folder validation can succeed without adding bundled onboarding memory;
-- reserved runtime artifacts, scripts, config/env files, symlinks, and traversal ZIP entries are rejected;
-- rejected source content is not copied into the public validation result.
-
-The older CW-A5 handoff remains a transitional source until a later reviewed retirement transaction accounts for incoming references and normative disposition. This contract does not retire it.
+The older CW-A5 handoff remains transitional until a later reviewed retirement transaction accounts for incoming references and normative disposition. This contract does not retire it.
 
 ## Stable invariants
 
-- No-character startup never auto-creates, auto-restores, or auto-activates a default/sample character.
+- No-character startup does not auto-create, restore, or activate a default/sample character.
 - Bundled template registry access is local and performs no network download.
-- Quick/Advanced/Showcase staging produces a full source-tree candidate and reuses current validation/compiler boundaries.
-- Candidate preview uses compiler dry-run and is not a durable commit.
-- Candidate public projections do not expose raw source bodies.
-- Durable bundled-template/workspace creation requires explicit approval.
-- Commit rechecks candidate ID and retained validity, rejects an existing target, then revalidates the materialized staging tree.
-- Current commit writes derived build artifacts inside staging before final workspace publish.
-- Successful publish uses `os.replace` from staging to a previously absent final target.
-- Commit cleanup removes the temporary parent on normal success/failure paths.
-- Creation does not merge or overwrite an existing workspace.
+- Quick/Advanced/Showcase staging produces a full candidate and reuses current validation/compiler boundaries.
+- Candidate preview uses compiler dry-run and is not durable commit.
+- Candidate public projection omits raw source bodies.
+- Durable current bundled/new-workspace creation requires explicit approval.
+- Commit rechecks candidate ID and retained validation, applies the current target-exists precheck, then freshly revalidates the materialized staging tree.
+- Current commit writes derived build artifacts inside staging before final publish.
+- Current publish operation is `os.replace(staging_root, target)`; no stronger locking/transaction guarantee is implied.
+- Staging cleanup removes the reserved temporary parent on normal success and handled pre-publish returns.
 - Successful creation still reports `active_character_set = false`.
-- Template folders/ZIPs are validation-only under current external import support.
-- The current SOUL Lab external-import route explicitly reports `workspace_commit_supported = false` and `external_import_commit_pending`.
-- External import validation is confined to a configured local import root at the SOUL Lab boundary.
-- Template validation does not extract ZIPs, execute files, import runtime state, or trust foreign `.relaylm/**` artifacts.
-- Safe creation-source staging rejects `.relaylm/**` paths and non-text source suffixes.
+- Current external folder/ZIP import is validation-only.
+- SOUL Lab external import explicitly reports `workspace_commit_supported = false` and `external_import_commit_pending`.
+- SOUL Lab external path validation is confined to the configured resolved local import root.
+- External validation does not extract archives, import runtime state, or trust foreign `.relaylm/**` as source authority.
+- Creation-source staging rejects the current `.relaylm/` prefix and non-text source suffixes after its current `PurePosixPath` normalization.
 - Public validation/creation diagnostics remain content-free.
 - Creation/import does not mutate current REL/SCN/EMO/MEM/CTX/SLP runtime state.
-- Source validation, compile success, commit, and runtime activation remain separate lifecycle states.
+- Validation, preview compilation, approval, commit, derived build presence, and activation remain separate lifecycle states.
 - Project Status remains repository-wide implementation authority.
 
 ## Non-goals
 
 This contract does not define:
 
-- source-tree classification already owned by `source-tree.md`;
-- Markdown parsing/workspace validation internals already owned by `parser-and-validation.md`;
-- compiled artifact schemas/write mechanics already owned by `compiled-projections.md`;
+- source-tree classification owned by `source-tree.md`;
+- Markdown/workspace validation internals owned by `parser-and-validation.md`;
+- compiler artifact schemas/write mechanics owned by `compiled-projections.md`;
 - external template extraction or commit, which is not currently implemented;
 - remote registry, marketplace, download, signature, or update-channel behavior;
 - existing-workspace merge/replacement/migration;
 - active-character selection or persistence;
 - semantic source schemas;
-- RelaySLP maintenance candidate apply;
-- runtime conversation or request-context behavior;
+- RelaySLP maintenance apply;
+- runtime conversation/request-context behavior;
 - UI component layout;
 - source retirement or router migration;
 - repository-level project sequencing.
