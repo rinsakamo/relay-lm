@@ -6,25 +6,36 @@ relaylm_volatility: medium
 relaylm_owner: relaymem
 relaylm_update_trigger:
   - Primary MEM index or log entry schema changes
-  - M3g reconciliation apply lands
+  - M3g or M3h reconciliation semantics change
   - M3e receipt semantics change
+  - RT-1 Primary writer-decision carriage changes which production calls may reach M3f
+  - RT-1D-R5 or R6 retires the Primary writer path
 relaylm_not_authoritative_for:
   - Phase 6 queue, dispatch, worker, or retry orchestration
   - request-runtime wiring
+  - RT-1 cutover state, Primary writer authorization, or retirement approval
   - Secondary MEM consolidation
   - repository-wide implementation status
+relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - relaymem_m3e_atomic_primary_page_writer.md
+  - relaymem_m3g_primary_index_log_reconciliation_apply.md
+  - relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
+  - phase6c1_relaymem_primary_pipeline_compose.md
+  - subjective-mem-retrieval-projection-hard-cutover.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_mvp_design.md
   - memory_lifecycle_design.md
   - relaymem_slp_current_target.md
+  - ../PROJECT_STATUS.md
 ---
 # RelayMEM-M3f Primary MEM Index/Log Reconciliation Preflight
 
+Last reviewed: 2026-08-08 JST
+
 ## Status
 
-RelayMEM-M3f is implemented as a default-off, read-only, dry-run-only helper that consumes one exact M3e page-write receipt, revalidates the published Primary MEM page, inspects the current index and log, and emits a deterministic reconciliation plan.
+RelayMEM-M3f remains implemented as a default-off, read-only, dry-run-only helper that consumes one exact M3e page-write receipt, revalidates the published Primary MEM page, inspects the current index and log, and emits a deterministic reconciliation plan.
 
 ```text
 exact eligible M3e receipt
@@ -36,6 +47,30 @@ exact eligible M3e receipt
 ```
 
 M3f never writes the index, log, page, journal, queue, trace, or visible response.
+
+Under RT-1D-R4, M3f is a retained Primary compatibility preflight below the exact C1-1 Primary writer-decision gate. Production compose rejects a non-permitted writer decision before any M3a-M3h stage. M3f therefore plans reconciliation only for an already-admitted production pipeline invocation.
+
+M3f itself does not accept, resolve, cache, refresh, or reconstruct the RT-1 writer decision. A valid M3e receipt, verified page, `plan_ready`, repairable reconciliation state, or `already_reconciled` result is storage/reconciliation evidence only and cannot grant or preserve Primary writer authority.
+
+M3g apply and M3h recovery audit are now implemented downstream. R5/R6 own final retirement or explicitly retained historical/read-only/test disposition of this Primary reconciliation preflight.
+
+## Production authorization boundary
+
+The current retained compatibility hierarchy is:
+
+```text
+exact RT-1 Primary writer decision
+  -> rejected: C1-1 stops before M3a-M3h
+  -> permitted:
+       M3a -> M3b -> M3c -> M3d -> M3e
+       -> M3f reconciliation preflight       read-only
+       -> M3g reconciliation apply           mutation
+       -> M3h recovery audit                 read-only
+```
+
+The writer decision is owned above M3f. M3f owns deterministic current-store inspection and planning only. Its output is a compare-and-swap plan for M3g, not a durable authorization token.
+
+Direct helper tests may exercise M3f independently with exact historical/current artifacts. Such calls prove plan, conflict, and security semantics; they do not create a second production writer-admission path or bypass `primary_writer_fenced`.
 
 ## Public helper
 
@@ -59,6 +94,8 @@ relaymem.primary_log_entry.v0
 ```
 
 The helper produces a plan only when `enabled=true` and `dry_run_only=true`. Passing a non-boolean gate or requesting a non-dry-run mode fails closed.
+
+These local gates govern read-only M3f execution only. They do not establish RT-1 writer permission.
 
 ## Eligible M3e receipts
 
@@ -88,6 +125,8 @@ durability_confirmed=true
 
 Post-publication uncertainty states, dry-run-ready receipts, unknown fields, boolean-as-integer values, and malformed identifiers fail closed.
 
+An eligible receipt proves exact page-publication evidence for reconciliation. It does not prove that a later production invocation still has Primary writer permission.
+
 ## Read-only store validation
 
 M3f securely reopens:
@@ -112,6 +151,8 @@ marker line: 4 KiB
 ```
 
 All three files must be regular UTF-8 files. The control files must retain their exact first-line base headings, `# Index` and `# Log`; a missing or substituted heading is a conflict. OS exception strings and absolute root paths are not copied into diagnostics.
+
+Valid store state is a planning prerequisite, not writer authorization. Store presence or an existing exact Primary page cannot revive a fenced writer.
 
 ## Page revalidation
 
@@ -191,7 +232,9 @@ blocked
 
 A log-only exact state is repairable because M3f independently verifies the durable page and the exact log identity. A conflicting log is never used as proof of page validity.
 
-Missing `index.md` or `log.md` files are blocked in M3f. File creation policy belongs to the later apply slice.
+Missing `index.md` or `log.md` files are blocked in M3f. File creation policy belongs to the M3g apply owner and its accepted contract; M3f itself does not create control files.
+
+`preflight_status=ready`, repairability, and `already_reconciled` describe reconciliation state only. They do not authorize M3g or any later Primary mutation when the production writer decision is rejected.
 
 ## Runtime-private plan
 
@@ -214,6 +257,8 @@ updates_log=false
 
 The memory-write idempotency key remains distinct from Phase 6 dispatch idempotency.
 
+The plan intentionally contains no RT-1 writer-decision identity. It records exact reconciliation intent for an already-admitted pipeline invocation and cannot be replayed as permission in another invocation.
+
 ## Content-free projection
 
 The public projection contains only:
@@ -234,7 +279,10 @@ It does not contain:
 - page/control-file digests,
 - page, index, or log content,
 - proposed mutation content,
-- OS exception text.
+- OS exception text,
+- private RT-1 writer-decision identity.
+
+The public projection is observability only and cannot be used to infer or reconstruct writer permission.
 
 ## Preserved non-goals
 
@@ -248,6 +296,8 @@ M3f does not:
 - wire request runtime,
 - enqueue or execute RelaySLP jobs,
 - reuse Phase 6 dispatch idempotency,
+- resolve or refresh RT-1 cutover state,
+- grant or persist Primary writer authorization,
 - mutate RelaySOUL,
 - process Secondary MEM,
 - expose a Lab API,
@@ -271,17 +321,18 @@ PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_reconciliation_ma
 
 Coverage includes default-off behavior, dry-run gating, exact receipt validation, strict integers, page byte/digest/front-matter revalidation, both-missing/index-only/log-only/already-reconciled states, deterministic ordering, target and unrelated-entry conflict detection, non-canonical/malformed marker rejection, content-free projection, missing page, bounds, and symlink rejection.
 
-## Next bounded slice
+The current C1-1/C1-2 regression umbrella separately proves that a non-permitted writer decision stops before M3f is reached. M3f's dedicated smokes remain read-only reconciliation/marker/security tests rather than cutover-authority tests.
 
-The next independent persistence slice should be:
+## Current downstream boundary
+
+M3f is no longer waiting for a later apply slice. Its exact runtime-private plan feeds the implemented M3g apply owner, whose receipt in turn feeds M3h:
 
 ```text
-RelayMEM-M3g Primary MEM index/log reconciliation apply
-  -> consume one exact M3f plan
-  -> revalidate expected current digests
-  -> apply index before log
-  -> define atomicity, interrupted-apply, and retry semantics
-  -> emit a runtime-private receipt and content-free projection
+M3f exact reconciliation plan
+  -> M3g Primary MEM index/log reconciliation apply
+  -> M3h Primary MEM reconciliation recovery audit
 ```
 
-Crash recovery and page/index/log transaction journaling should remain explicit rather than being implied by M3g.
+M3f owns deterministic read-only planning and conflict detection. M3g owns index-before-log mutation, revalidation, durability, and interrupted-apply semantics. M3h owns read-only recovery classification and does not itself repair the store.
+
+All of these retained Primary reconciliation capabilities remain subordinate to the exact upstream RT-1 writer decision in production. R5/R6 own final retirement or explicitly retained historical/read-only/test disposition. This handoff does not pre-authorize deletion, weaken conflict detection, or move mutation/recovery semantics to another owner.
