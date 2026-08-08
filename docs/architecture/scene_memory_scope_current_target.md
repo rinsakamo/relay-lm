@@ -65,13 +65,21 @@ The current Subjective branch is storage-neutral at the RT-1 contract level and 
 
 ### RelaySCN / RelayINT boundary
 
-RelaySCN scene policy and RelayINT intent are current inputs to the Retrieval stage. They may narrow or block retrieval behavior **inside the authority already selected by RT-1**, but neither is reader authority.
+RelaySCN scene policy and RelayINT intent are current inputs to the Retrieval stage, but their consumption is **not symmetric across the two live reader branches**.
+
+Inside exact `primary_only`, the retained Primary retrieval dry-run/compatibility path consumes the RelaySCN scene-policy artifact and RelayINT intent artifact as request gates and query/scope inputs. They may narrow or block that already-authorized Primary compatibility retrieval, but neither is reader authority.
+
+The current `subjective_only` branch does not directly consume the RelaySCN or RelayINT artifacts. It derives its bounded query-plan digest from request term hints and binds release to route character plus the verified Subjective workspace/scope/generation/source authority. Therefore this page does not claim that scene or intent metadata currently performs Subjective candidate ranking or scoping.
 
 ```text
 exact RT-1 reader decision
-  -> selected authority only
-  -> RelaySCN / RelayINT scope and request gates
-  -> bounded retrieval inside that authority
+  -> primary_only
+       -> RelaySCN / RelayINT request gates inside retained Primary compatibility
+  -> neither
+       -> no ordinary retrieval
+  -> subjective_only
+       -> route character + verified Subjective scope/source/generation binding
+       -> no direct RelaySCN / RelayINT scope consumption today
 ```
 
 A scene policy, intent artifact, missing candidate, or empty result cannot switch `subjective_only` to Primary, combine families, or make `neither` read memory.
@@ -88,6 +96,7 @@ The current runtime does not establish the full target scene-aware memory model 
 
 - general relationship-target-aware memory ranking;
 - general `scene_id`-aware memory ranking;
+- RelaySCN- or RelayINT-driven Subjective candidate ranking/scoping;
 - session-memory or room-memory candidate stores;
 - scene/session/room promotion or carryover rules;
 - a complete `relaymem.memory_scope_projection.v1` producer;
@@ -140,6 +149,7 @@ Current validation should continue to prove:
 - exact route character binding for ordinary retrieval;
 - exact Primary namespace validation while the `primary_only` branch exists;
 - exact Subjective workspace/scope/generation/source binding before release;
+- no false claim that RelaySCN/RelayINT currently scope Subjective selection;
 - no cross-authority fallback on empty/refused/failed retrieval;
 - content-free persisted diagnostics and protected runtime-private evidence;
 - no memory mutation from Retrieval/scene-scope metadata.
@@ -152,8 +162,9 @@ Remaining migration is intentionally split rather than presented as one broad Re
 
 1. RT-1D-R5/R6 retires replaced Primary serving/fallback surfaces under its own authority.
 2. Any future scene/relationship/session/room-aware ranking implements the target design through separately reviewed runtime/schema slices.
-3. A future typed scope projection, if accepted, must remain content-free and must not become serving or write authority.
-4. RelayCTX consumers may evolve with those accepted scope contracts without merging memory families or moving lifecycle authority into context packing.
+3. Any future RelaySCN/RelayINT-to-Subjective scope/ranking integration must be explicit, typed, fail-closed, and separately validated rather than inferred from the stage signature.
+4. A future typed scope projection, if accepted, must remain content-free and must not become serving or write authority.
+5. RelayCTX consumers may evolve with those accepted scope contracts without merging memory families or moving lifecycle authority into context packing.
 
 ## Summary
 
@@ -161,13 +172,14 @@ Remaining migration is intentionally split rather than presented as one broad Re
 current
   exact RT-1 reader decision first
   -> character-bound ordinary retrieval
-  -> Primary compatibility additionally requires exact namespace
+  -> Primary compatibility additionally requires exact namespace and may consume RelaySCN/RelayINT gates
   -> Subjective requires verified workspace/scope/generation/source binding
-  -> RelaySCN / RelayINT may narrow the selected authority
+     and does not directly consume RelaySCN/RelayINT scope metadata today
   -> no dual serving or cross-authority fallback
 
 target
   add explicitly governed relationship/scene/session/room candidate scoping/ranking
+  and any explicit RelaySCN/RelayINT-to-Subjective scope handoff
   without turning metadata into read/write authority
 ```
 
