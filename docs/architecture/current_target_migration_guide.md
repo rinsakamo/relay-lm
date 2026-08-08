@@ -97,7 +97,7 @@ CW-A1 through CW-A5 are current as bounded Character Workspace reset slices. The
 
 The durable-memory E2 value smoke after O2/O3 scheduler draining is complete as local, human-reviewed v0.1 readiness evidence. Its content-bearing comparison artifacts remain local-only under `local/value_smoke/`; the committed documentation records only the content-free completion boundary.
 
-## RelaySLP and ordinary-memory migration
+## RelaySLP and Primary MEM migration
 
 The Primary pipeline below is implemented historical/current compatibility evidence, not the unconditional ordinary path after RT-1D-R4:
 
