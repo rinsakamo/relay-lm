@@ -10,13 +10,17 @@ relaylm_update_trigger:
   - RelayMEM M3a-M3h result vocabulary changes
   - protected worker-source persistence changes
   - worker crash-recovery smoke changes
+  - RT-1 Primary writer decision carriage changes
+  - RT-1D-R5 or R6 retires the Primary worker path
 relaylm_not_authoritative_for:
   - RelayMEM memory meaning or page/index/log schemas
   - B3 queue record or transition schemas
   - request-runtime visible-response behavior
+  - RT-1 cutover state, Primary writer authorization, or retirement approval
   - Secondary MEM consolidation
   - RelaySOUL mutation
   - SOUL Lab TTS audio or avatar execution
+relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - phase6_async_relayslp_bounded_slice.md
   - phase6b0_relayslp_durable_queue_contract.md
@@ -28,11 +32,15 @@ relaylm_related_authority:
   - phase6c1_integrated_worker_fault_smoke_handoff.md
   - phase6c1_durable_protected_source_persistence.md
   - phase6c2_one_queued_primary_worker_integration.md
+  - relaymem_slp_current_target.md
+  - subjective-mem-retrieval-projection-hard-cutover.md
   - relaymem_mvp_implementation_plan.md
   - pipeline_implementation_plan.md
   - ../PROJECT_STATUS.md
 ---
 # Phase 6-C1 Primary MEM Worker Contract
+
+Last reviewed: 2026-08-08 JST
 
 ## Status
 
@@ -49,15 +57,47 @@ C1-5 durable protected-source persistence
 
 The bounded worker closes the integration boundary between one exact active B3 claim and the existing RelayMEM M3a-M3h primitives. It does not introduce another queue state machine and does not redefine memory semantics.
 
+Under RT-1D-R4, however, this completed worker stack is a retained Primary compatibility writer surface rather than independent current writer authority. The exact Primary writer decision is carried through C2 into C1-2 and C1-1, and both execution boundaries independently fail closed before Primary mutation work when that decision does not permit writes.
+
 ```text
-exact active B3 claim
+exact RT-1 Primary writer decision
+  + exact active B3 claim
   + exact protected worker-source bundle
   + configured RelayMEM store root
-  -> bounded RelayMEM pipeline composition
-  -> lease-fenced retry release or terminal commit
+  -> rejected decision: no worker/pipeline execution authority
+  -> permitted decision:
+       bounded RelayMEM pipeline composition
+       -> lease-fenced retry release or terminal commit
 ```
 
-The worker executes one already-claimed job only. Queue scanning, generalized scheduling, daemon supervision, worker pools, Secondary MEM, RelaySOUL apply, and SOUL Lab mutation are outside C1.
+The worker executes one already-claimed job only. Queue scanning, generalized scheduling, daemon supervision, worker pools, Secondary MEM, RelaySOUL apply, and SOUL Lab mutation are outside C1. RT-1 cutover state and R5/R6 retirement authority are outside C1 as well.
+
+## Primary writer authorization boundary
+
+The worker contract now includes one immutable `SubjectiveMemRetrievalPrimaryWriterDecision` supplied by the owning RT-1 cutover path. The writer class is `permitted` only strictly before durable `primary_writer_fenced`; otherwise it is `rejected`.
+
+C1 does not mint, reconstruct, cache, or infer that decision from queue state, source persistence, lease state, store state, existing memory, prior success, or idempotency records.
+
+Defense in depth is explicit:
+
+```text
+C2 enabled request
+  -> writer decision must permit before B3 claim/source/worker execution
+
+C1-2 worker request
+  -> exact request validation
+  -> writer decision must permit before active-claim validation/source/pipeline execution
+
+C1-1 Primary pipeline request
+  -> exact request validation
+  -> writer decision must permit before mode gates/source consumption/M3a-M3h
+```
+
+The repeated checks consume the same caller-carried immutable authorization. They are not separate cutover-state owners.
+
+`primary_writer_decision_rejected` is an authorization/input failure. It is not a memory-policy hold, retry class, reconciliation outcome, recovery classification, or alternate dry-run path.
+
+A queue record may remain valid and a protected source may remain durable after writer rejection. Those facts preserve work/evidence only; they do not preserve permission to execute a Primary writer.
 
 ## Critical source boundary
 
@@ -82,6 +122,8 @@ relaymem.slp_primary_worker_source.v0
 ```
 
 C1-0 implements the source bundle. C1-5 implements separate durable claim-independent persistence and restart rehydration.
+
+Protected content availability is not writer authorization. A valid source can exist while the RT-1 writer decision is rejected, in which case the worker/pipeline execution gates remain closed.
 
 ## Protected worker-source bundle
 
@@ -108,11 +150,11 @@ governed_experience_artifact
 
 It must not be placed in the queue record, `PipelineNodeResult`, generic trace, public error, or default operational projection.
 
-The source producer owns evidence capture and correlation only. RelayMEM owns candidate meaning, summary/page validation, memory-write idempotency, and persistence.
+The source producer owns evidence capture and correlation only. RelayMEM owns candidate meaning, summary/page validation, memory-write idempotency, and persistence. Neither source ownership nor candidate meaning owns RT-1 writer authorization.
 
 ### Live-process compatibility mode
 
-C1-2 may accept an exact in-process source prepared from the optional hot cache. The hot cache is not restart authority.
+C1-2 may accept an exact in-process source prepared from the optional hot cache. The hot cache is not restart authority and is not writer authority.
 
 If neither the hot cache nor the exact durable artifact can supply the protected capture, the job must not execute from queue metadata alone. It fails or blocks under a bounded source-unavailable/corrupt classification.
 
@@ -130,7 +172,9 @@ C1-5:
 
 This makes protected-source recovery restart-complete for durably enqueued jobs. It does not close a process exit before the post-response background finalizer publishes the source and queue record.
 
-## Exact claimed-record input
+A later rehydrated invocation must still carry an exact writer decision accepted by the C2/C1-2/C1-1 gates. Restart recovery never synthesizes Primary writer permission.
+
+## Exact claimed-record and writer-decision input
 
 C1 consumes one complete canonical `relaymem.slp_durable_job.v0` record with:
 
@@ -147,9 +191,11 @@ retry_not_before null
 
 The worker receives the exact current record revision, owner, generation, token, expiry, job identity, and dispatch identity. A public B3 projection is never accepted as a substitute.
 
+The C1-2 request also carries the exact immutable Primary writer decision. A canonical claimed record is necessary for lease-fenced execution but is insufficient for writer authorization. If the carried decision is non-permitted or foreign, C1-2 fails closed before active-claim validation and before source/pipeline execution.
+
 ## Lease-fencing rules
 
-The worker starts only while the exact claim is active and unexpired.
+The worker starts its lease/source execution only while the exact claim is active and unexpired and after the worker writer-decision gate has passed.
 
 It revalidates or renews the exact B3 fence:
 
@@ -173,14 +219,16 @@ job_id
 
 A successful renewal increments record revision. The worker replaces its expected record with the renewed canonical record before continuing.
 
+These checkpoints validate B3 claim/lease ownership only. They do not re-resolve, refresh, or replace the RT-1 writer decision. The caller-carried decision is checked at C1-2 entry and again at the C1-1 pipeline boundary.
+
 On lease loss, expiry, stale recovery conflict, revision conflict, owner mismatch, generation mismatch, or token mismatch:
 
 - no new side effect begins,
 - success is not claimed,
 - no stale retry/terminal transition is attempted,
-- a later exact claim may converge through both idempotency domains.
+- a later exact claim may converge through both idempotency domains, subject to a fresh caller-carried writer decision for that invocation.
 
-An already completed durable side effect is not rolled back.
+An already completed durable side effect is not rolled back. Completed side effects and idempotent convergence do not authorize later Primary mutation after the writer has been fenced.
 
 ## RelayMEM composition boundary
 
@@ -193,7 +241,8 @@ execute_relaymem_primary_pipeline(...)
 Canonical order:
 
 ```text
-M3a formation candidate
+exact C1-1 request and Primary writer-decision gate
+  -> M3a formation candidate
   -> M3b source lineage and write preflight
   -> M3c deterministic page candidate
   -> M3d writer handoff
@@ -206,6 +255,8 @@ M3a formation candidate
 Every direct-helper validator still executes. Compose reduces orchestration mistakes; it does not weaken defense in depth.
 
 The compose ledger is runtime-private. Public projection exposes only bounded stage/status/boolean/count/reason fields.
+
+C1-1 rejects a non-permitted writer decision before protected-source consumption or any M3 stage. The same decision is already checked at C1-2 entry, so bypassing one wrapper does not silently restore the old Primary writer.
 
 ## Idempotency domains
 
@@ -230,17 +281,21 @@ memory-write idempotency key
 
 The worker never derives one key from the other, copies dispatch identity into memory-write fields, accepts a memory-write key as queue identity, or exposes either key publicly.
 
-A new claim reruns the deterministic RelayMEM chain from a fresh exact protected source. M3e/M3g converge through memory-write idempotency while B3 fences execution through dispatch identity.
+A new claim reruns the deterministic RelayMEM chain from a fresh exact protected source. M3e/M3g converge through memory-write idempotency while B3 fences execution through dispatch identity, but that invocation still requires exact permitted RT-1 writer authorization.
+
+Neither dispatch idempotency nor memory-write idempotency is an authorization domain.
 
 ## M3f plan lifetime
 
 Within one active claim, an exact runtime-private M3f plan may be retained for immediate M3g use.
 
-Across process restart or a new claim, the worker regenerates a fresh M3f plan from current durable state. The plan is never serialized into the content-free queue record.
+Across process restart or a new claim, the worker regenerates a fresh M3f plan from current durable state. The plan is never serialized into the content-free queue record and cannot encode or preserve writer authorization.
 
 ## Outcome classification
 
 Phase 6 owns queue control. RelayMEM owns the meaning of stage results. C1-3 maps exact RelayMEM evidence to existing B3 transitions.
+
+Writer-decision rejection occurs before these outcome classifications and is not mapped into a B3 retry/terminal policy transition by the C1-3 memory-outcome classifier.
 
 ### Terminal success
 
@@ -256,6 +311,8 @@ terminal_state = succeeded
 failure_class = none
 terminal_reason_id = primary_mem_durable_state_verified
 ```
+
+These are durability/consistency conditions after writer authorization has admitted the execution path; they cannot bypass a rejected writer decision.
 
 ### Transient resource contention
 
@@ -277,11 +334,13 @@ retry_class = primary_reconciliation_retry
 failure_class = partial_progress_verified
 ```
 
-A new claim regenerates M3f from current state.
+A new claim regenerates M3f from current state and must independently pass the writer-decision gates for that later invocation.
 
 ### Policy held or blocked
 
 Current B3 has no `held` queue state. Exact RelayMEM policy evidence commits terminal failed with bounded `memory_policy_held` or `memory_policy_blocked`. Memory meaning remains in the protected RelayMEM domain.
+
+Writer authorization rejection is not one of those memory-policy meanings.
 
 ### Manual confirmation and recovery isolation
 
@@ -297,6 +356,8 @@ If the lease is already lost, the stale worker stops without terminal commit.
 
 M3e/M3g durability uncertainty must pass through M3h. Uncertainty is never collapsed into success.
 
+None of these recovery or consistency outcomes can turn an RT-1 `rejected` writer decision into `permitted`.
+
 ## Retry policy bounds
 
 The implemented C1-2 worker supports only:
@@ -309,11 +370,13 @@ It includes finite attempt limits, bounded deterministic jitter/backoff, no infi
 
 B3 stores retry metadata but does not calculate policy.
 
+A queued retry preserves work availability, not writer authorization. Each later C2/C1 invocation must carry the exact current decision supplied by the owning cutover path.
+
 ## M3g/M3h concurrency
 
 M3g serializes `memory/mem/index.md` and `memory/mem/log.md` updates with one nonblocking exclusive directory lock. M3h shared audit may contend with an active writer.
 
-Lock contention is a normal retryable operational outcome when no invalid store evidence exists. Workers release and back off; they do not spin.
+Lock contention is a normal retryable operational outcome when no invalid store evidence exists. Workers release and back off; they do not spin. Lock availability is not writer authorization.
 
 ## Crash and restart behavior
 
@@ -338,10 +401,13 @@ Rules:
 
 If the exact durable source is missing or corrupt after restart, execution fails closed; queue metadata is never used to reconstruct content.
 
+If work is retried after crash/restart, that later invocation must still pass its caller-carried writer-decision gates. Crash recovery cannot restore Primary writer authority after `primary_writer_fenced`.
+
 ## Required smoke matrix
 
 C1 coverage includes:
 
+- exact Primary writer-decision rejection before C1 active-claim/source/pipeline execution,
 - exact claim/source correlation,
 - normal M3a-M3h success and B3 terminal success,
 - duplicate dispatch behavior,
@@ -356,9 +422,11 @@ C1 coverage includes:
 - manual-confirmation/recovery-isolation behavior,
 - restart rehydration and missing/corrupt source isolation,
 - wrong character/namespace/run/turn/lineage/job/dispatch rejection,
-- no protected content, paths, keys, tokens, timestamps, or memory body in public diagnostics.
+- no protected content, paths, keys, tokens, timestamps, writer-decision identity, or memory body in public diagnostics.
 
 Next-turn retrieval/RelayCTX injection is implemented by Phase I-1 and remains separate from the C1 worker prerequisite contract.
+
+That Phase I-1 completion is historical Primary compatibility evidence under current RT-1 semantics; it does not keep Primary reader or writer authority alive after the owning cutover decisions fence them.
 
 ## Public projection
 
@@ -375,7 +443,7 @@ page/index/log/recovery booleans
 bounded retry/failure/terminal reason IDs
 ```
 
-Must not expose raw messages, visible response text, governed title/summary, page/index/log content, source body, paths, namespace, runtime identities, lineage, idempotency keys, lease material, timestamps, or OS exception text.
+Must not expose raw messages, visible response text, governed title/summary, page/index/log content, source body, paths, namespace, runtime identities, lineage, idempotency keys, lease material, timestamps, private writer-decision identity, or OS exception text.
 
 ## Preserved non-goals
 
@@ -384,6 +452,7 @@ C1 does not:
 - perform request-runtime enqueue itself,
 - scan the queue or implement a scheduler loop,
 - create a generalized worker pool,
+- mint, infer, or refresh RT-1 writer authorization,
 - weaken M3 validators,
 - redefine memory meaning or safety policy,
 - place protected source content in the queue,
@@ -393,7 +462,7 @@ C1 does not:
 - execute TTS/audio/Live2D/avatar behavior,
 - make visible-response success depend on deferred work.
 
-## Implementation sequence
+## Implementation sequence and current interpretation
 
 ```text
 C1-0 protected worker source                    complete
@@ -405,3 +474,13 @@ C1-5 restart-complete protected source recovery complete for durably enqueued jo
 ```
 
 Phase 6-C2 one-job queued-record claim/rehydrate/execute adapter: complete. Phase I-1 next-turn recall and scope isolation: complete. I1 separately retains the pre-enqueue background-finalizer crash window.
+
+These completion statements record implemented capability and regression evidence. They do not grant current Primary mutation or ordinary-reader authority independently of RT-1.
+
+## RT-1D-R5 / R6 boundary
+
+Current Project Status records RT-1D-R4 activation/P8 complete and R5 immediate retirement unstarted. The C1 worker stack therefore remains a live retained Primary compatibility surface, but C2, C1-2, and C1-1 all require the exact writer decision as described above.
+
+R5/R6 own final retirement or explicitly retained read-only disposition of Primary worker/pipeline/source surfaces after exact dependency characterization. This contract does not authorize deleting runtime code, durable queue/source evidence, idempotency records, or worker tests ahead of the owning retirement transaction.
+
+Retirement must not be simulated by weakening source/lease validation, bypassing writer-decision gates, treating rejected authorization as retry/policy/recovery permission, or moving Primary mutation semantics into another owner.
