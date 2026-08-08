@@ -27,7 +27,7 @@ relaylm_related_authority:
   - ../context/context-assembly.md
   - ../pipeline-responsibilities.md
   - ../relaymem_slp_current_target.md
-relaylm_lifecycle: evolving
+relaylm_lifecycle: accepted_target
 relaylm_primary_consumers:
   - RelaySOUL, RelaySLP, RelayREL, RelaySCN, RelayEMO, RelayMEM, and RelayCTX maintainers
   - Character Workspace, SOUL Lab, and future RelayLM Experience maintainers
