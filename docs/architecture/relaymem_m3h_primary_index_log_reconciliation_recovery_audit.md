@@ -8,24 +8,35 @@ relaylm_update_trigger:
   - M3g reconciliation receipt schema changes
   - M3h recovery classification changes
   - journaled recovery or repair apply lands
+  - RT-1 Primary writer-decision carriage changes the meaning of a later retry/repair
+  - RT-1D-R5 or R6 retires the Primary writer path
 relaylm_not_authoritative_for:
   - Phase 6 queue, dispatch, worker, or retry orchestration
   - request-runtime wiring
+  - RT-1 cutover state, Primary writer authorization, or retirement approval
+  - journaled recovery or repair authorization
   - Secondary MEM consolidation
   - SOUL Lab memory operation APIs
   - repository-wide implementation status
+relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - relaymem_m3g_primary_index_log_reconciliation_apply.md
   - relaymem_m3f_primary_index_log_reconciliation_preflight.md
   - relaymem_m3e_atomic_primary_page_writer.md
+  - phase6c1_relaymem_primary_pipeline_compose.md
+  - subjective-mem-retrieval-projection-hard-cutover.md
   - relaymem_mvp_implementation_plan.md
   - memory_lifecycle_design.md
+  - relaymem_slp_current_target.md
+  - ../PROJECT_STATUS.md
 ---
 # RelayMEM-M3h Primary MEM Index/Log Reconciliation Recovery Audit
 
+Last reviewed: 2026-08-08 JST
+
 ## Status
 
-RelayMEM-M3h is implemented as a default-off, dry-run-only, read-only, helper-only recovery audit boundary.
+RelayMEM-M3h remains implemented as a default-off, dry-run-only, read-only, helper-only recovery audit boundary.
 
 It directly consumes one exact runtime-private M3g receipt and compares that receipt with the current durable Primary MEM page, `memory/mem/index.md`, and `memory/mem/log.md`.
 
@@ -39,6 +50,31 @@ exact M3g runtime-private receipt
 ```
 
 M3h never repairs the store. It does not create a journal, replace a file, remove a temporary artifact, or invoke another runtime component.
+
+Under RT-1D-R4, M3h is a retained Primary compatibility audit below the exact writer-decision-controlled production pipeline. It is read-only and does not itself require or resolve writer permission merely to inspect exact historical/current M3g evidence. However, any later production retry, M3g apply, or future repair mutation remains independently subject to the owning RT-1 writer-decision gate.
+
+M3h does not accept, resolve, cache, refresh, serialize, or reconstruct the RT-1 writer decision. Its current-store state, recovery classification, shared-lock acquisition, exact M3g receipt, or cleanup-artifact observation cannot grant or preserve Primary writer authority.
+
+R5/R6 own final retirement or explicitly retained historical/read-only/test disposition of this Primary recovery-audit surface. A future journaled repair apply, if ever required, must remain a separate explicit authority.
+
+## Authorization and recovery boundary
+
+The current retained compatibility hierarchy is:
+
+```text
+production Primary mutation
+  -> exact RT-1 writer decision must permit
+  -> C1-1 M3a ... M3g mutation
+  -> M3h read-only audit may classify resulting durable state
+
+later retry or repair mutation
+  -> must enter through its owning current writer-authority gate
+  -> M3h classification alone never authorizes mutation
+```
+
+M3h is therefore evidence/classification authority, not mutation authority. A classification can say that retry or stronger recovery evidence is appropriate, but it cannot mint a writer token, refresh cutover state, or bypass `primary_writer_fenced`.
+
+Direct M3h helper tests may audit exact receipts and store states independently. Those calls prove read-only recovery classification/security semantics, not current Primary writer availability.
 
 ## Public helper
 
@@ -68,6 +104,8 @@ dry_run_only=true
 
 Any non-boolean gate or `dry_run_only=false` is blocked. The default call is inert.
 
+These local gates enable a read-only audit only. They do not establish writer permission or repair authority.
+
 ## Exact M3g receipt consumption
 
 M3h accepts only the exact field set of:
@@ -93,6 +131,8 @@ Unknown fields, boolean-as-integer values, parent-relative paths, malformed iden
 
 M3h does not accept the M3g public projection as a substitute for the runtime-private receipt.
 
+An exact receipt is mutation evidence from an earlier M3g invocation. It intentionally contains no RT-1 writer-decision identity and cannot be replayed as authorization for another mutation.
+
 ## Secure read-only store audit
 
 M3h reuses the M3f secure directory-FD traversal and bounded regular-file read helpers. It opens the configured store root without following symlinks, securely traverses the fixed memory directories, and takes a non-blocking shared advisory lock on `memory/mem` for the complete audit.
@@ -112,6 +152,8 @@ The audit fails closed on:
 
 M3h performs no open-for-write operation.
 
+The shared advisory lock establishes a read-consistency/concurrency boundary for the audit. It is not semantic writer authority, and acquiring it cannot authorize a future M3g or repair mutation.
+
 ## Primary page revalidation
 
 The current Primary MEM page is rechecked against the receipt and current page contract:
@@ -127,6 +169,8 @@ The current Primary MEM page is rechecked against the receipt and current page c
 - deterministic page body.
 
 The page result is exposed publicly only as a boolean verification outcome. The path, digest, title, summary, namespace, and page body remain runtime-private or absent.
+
+A valid durable page is evidence for classification only. Store validity does not restore a Primary writer after the owning cutover state has fenced it.
 
 ## Index/log revalidation
 
@@ -163,6 +207,8 @@ not_evaluated
 
 `log_applied_index_pending` is observable but is not a valid M3g apply order. For an ordinary dry-run receipt it means no recovery action was initiated. For an apply/uncertain receipt it requires manual or future journaled handling.
 
+These store states classify durable evidence only. None is an RT-1 writer-decision state.
+
 ## Recovery classifications
 
 M3h returns one content-free classification:
@@ -179,6 +225,8 @@ not_evaluated
 
 Used when the current state is already fully reconciled under an ordinary successful receipt, or when a dry-run/blocked receipt still corresponds to an unchanged non-applied store.
 
+This means no M3h-identified recovery work is required. It does not assert anything about current Primary writer permission.
+
 ### `retry_reconciliation`
 
 Used only for a verified `index_applied_log_pending` store. Retrying still requires either:
@@ -188,21 +236,27 @@ Used only for a verified `index_applied_log_pending` store. Retrying still requi
 
 The M3g receipt does not contain proposed control-file content and cannot itself drive repair.
 
+This classification says that reconciliation evidence is safely retryable. It does not authorize that retry. A later production M3g invocation still requires the exact upstream writer decision to permit mutation.
+
 ### `manual_confirmation_required`
 
 Used when current files are fully reconciled but an M3g durability claim remains unconfirmed, or when a non-journaled state does not safely imply a retry.
+
+Manual confirmation is an operational/evidence requirement, not a path around the writer fence.
 
 ### `journaled_recovery_candidate`
 
 Used for cleanup-incomplete or state-uncertain outcomes, uncertain partial/divergent states, or bounded evidence that a future journal-aware recovery design may be needed.
 
-This classification does not create a journal and does not authorize repair.
+This classification does not create a journal and does not authorize repair. Any future repair apply would need its own explicit mutation contract and current writer-authorization boundary.
 
 ## Cleanup-artifact observation
 
 M3h performs one bounded directory listing and counts names that exactly match the private M3g temporary-name pattern for the receipt's deterministic entry identities.
 
 This is name-only diagnostics. M3h does not open, follow, remove, rename, or rely on the contents of those names. Directory-entry count is bounded, and only the aggregate presence/count enters the runtime-private audit. The public projection contains only a boolean presence flag.
+
+Cleanup-artifact presence is diagnostic evidence only and cannot trigger or authorize mutation from M3h.
 
 ## Runtime-private audit
 
@@ -218,6 +272,8 @@ The runtime-private audit may contain:
 - whether retry requires an exact retained plan or fresh preflight.
 
 It never includes page, index, or log text content.
+
+The audit intentionally contains no RT-1 writer-decision identity. It is durable-state interpretation for the current inspection, not a transferable authorization artifact.
 
 ## Content-free public projection
 
@@ -239,7 +295,10 @@ It does not contain:
 - page/control-file digests,
 - marker entry identities,
 - page/index/log content,
-- OS exception strings.
+- OS exception strings,
+- private RT-1 writer-decision identity.
+
+The projection is observability only and cannot be used to infer or reconstruct writer permission.
 
 ## Preserved non-goals
 
@@ -253,6 +312,8 @@ M3h does not:
 - claim page/index/log transactionality,
 - wire request runtime,
 - enqueue or execute RelaySLP jobs,
+- resolve or refresh RT-1 cutover state,
+- grant or persist Primary writer authorization,
 - mutate RelaySOUL,
 - process Secondary MEM,
 - expose a SOUL Lab API,
@@ -278,8 +339,12 @@ PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_se
 
 Coverage includes default-off behavior, successful full reconciliation, durability uncertainty, content-free projection, exact receipt rejection, invalid dry-run gates, traversal rejection, advisory-lock contention, and control-file symlink rejection.
 
+The current C1-1/C1-2 regression umbrella separately proves that a non-permitted writer decision stops before M3g mutation is reached. M3h's dedicated smokes remain read-only audit/classification/security tests rather than cutover-authority tests.
+
 ## Downstream boundary
 
-A later slice may introduce journaled recovery only if operational evidence requires it. That work must define a new durable journal and explicit apply contract rather than treating this read-only classifier as repair authority.
+M3h is the implemented read-only end of the current M3a-M3h Primary persistence/reconciliation chain. It can classify whether no recovery is needed, bounded reconciliation retry is evidence-supported, manual confirmation is required, or a future journal-aware design may be appropriate.
 
-Request-runtime, Phase 6 worker, RelaySLP, RelaySOUL, Secondary MEM, and SOUL Lab integration remain separate tracks.
+A later slice may introduce journaled recovery only if operational evidence requires it. That work must define a new durable journal, explicit apply contract, and current writer-authorization gate rather than treating this read-only classifier as repair authority.
+
+Request-runtime, Phase 6 worker, RelaySLP, RelaySOUL, Secondary MEM, and SOUL Lab integration remain separate tracks. All retained Primary persistence/reconciliation capabilities remain subordinate to the exact RT-1 decisions in production, and R5/R6 own final retirement or explicitly retained historical/read-only/test disposition.
