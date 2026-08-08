@@ -6,14 +6,23 @@ relaylm_volatility: medium
 relaylm_owner: relaymem
 relaylm_update_trigger:
   - Primary MEM writer handoff schema changes
-  - durable Primary MEM filesystem apply lands
-  - page/index/log persistence ownership changes
+  - M3e-M3h page/index/log persistence ownership changes
+  - RT-1 Primary writer-decision carriage changes which production calls may reach M3d
+  - RT-1D-R5 or R6 retires the Primary writer path
 relaylm_not_authoritative_for:
   - Phase 6 queue worker retry orchestration
   - request-runtime RelaySLP admission or enqueue wiring
+  - RT-1 cutover state, Primary writer authorization, or retirement approval
   - Secondary MEM consolidation semantics
   - repository-wide implementation status
+relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
+  - phase6c1_relaymem_primary_pipeline_compose.md
+  - subjective-mem-retrieval-projection-hard-cutover.md
+  - relaymem_m3e_atomic_primary_page_writer.md
+  - relaymem_m3f_primary_index_log_reconciliation_preflight.md
+  - relaymem_m3g_primary_index_log_reconciliation_apply.md
+  - relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_mvp_design.md
   - memory_lifecycle_design.md
@@ -23,26 +32,43 @@ relaylm_related_authority:
 ---
 # RelayMEM-M3d Primary Writer Handoff Preflight
 
+Last reviewed: 2026-08-08 JST
+
 ## Status
 
-RelayMEM-M3d is implemented as a helper-only, read-only Primary MEM writer-handoff preflight.
+RelayMEM-M3d remains implemented as a helper-only, read-only Primary MEM writer-handoff preflight.
 
 It consumes the exact RelayMEM-M3c Primary MEM page-candidate artifact, revalidates the candidate and configured store target, and emits one bounded runtime-private writer handoff plus a content-free projection.
 
-M3d does not perform a filesystem write. Durable page creation, index/log mutation, and request-runtime or worker wiring remain later bounded slices.
+M3d does not perform a filesystem write. In the current production compose path, M3e owns atomic page publication, M3f owns reconciliation preflight, M3g owns index-before-log reconciliation apply, and M3h owns read-only recovery audit.
 
-## Why this slice stops before write apply
+Under RT-1D-R4, M3d is a retained Primary compatibility component below the exact Primary writer-decision gate. The production C1-1 pipeline rejects a non-permitted writer decision before protected-source consumption and before any M3a-M3h stage, so a normal production invocation can reach M3d only after writer admission has already succeeded.
 
-The current `relaymem_store.py` boundary is read-only store discovery, bounded page reading, snippet extraction, and layout diagnostics. It does not define an atomic Primary MEM writer.
+M3d itself does not accept, resolve, cache, refresh, or reconstruct the RT-1 writer decision. Its `ready`, `already_applied`, writer-handoff, path, digest, idempotency, or store-state results describe preflight consistency only; none grants Primary mutation authority.
 
-The global Phase 6 plan separately reserves later page/index/log persistence orchestration and reconciliation. Therefore M3d establishes the RelayMEM-owned write semantics and target preflight without prematurely combining them with queue/worker orchestration or durable mutation.
+R5/R6 own final retirement or explicitly retained read-only/test disposition of this Primary compatibility surface after exact dependency characterization.
+
+## Read-only responsibility inside the current pipeline
+
+M3d was originally introduced before the durable page/index/log apply slices existed. That historical sequencing is complete. The current retained compatibility chain is:
 
 ```text
-M3c validated Primary MEM page candidate
-  -> M3d writer-handoff preflight
-  -> later atomic Primary MEM writer
-  -> later index/log reconciliation
+exact RT-1 Primary writer decision
+  -> rejected: C1-1 stops before any M3 stage
+  -> permitted:
+       M3a formation
+       -> M3b write preflight
+       -> M3c page candidate
+       -> M3d writer-handoff preflight      read-only
+       -> M3e atomic page publication       mutation
+       -> M3f reconciliation preflight      read-only
+       -> M3g index-before-log apply        mutation
+       -> M3h recovery audit                read-only
 ```
+
+M3d remains intentionally read-only even though its downstream owners now exist. It establishes the exact RelayMEM-owned page handoff and repeats target-state checks without duplicating M3e publication or M3f-M3h reconciliation semantics.
+
+Direct helper tests may exercise M3d independently to prove its contract. Such direct invocation is contract/regression evidence, not a second production writer-admission path and not evidence that a Primary writer remains permitted after `primary_writer_fenced`.
 
 ## Implemented contract
 
@@ -68,6 +94,8 @@ relaymem.primary_writer_handoff_projection.v0
 
 The helper is default-off and dry-run-first. Even when all apply-preflight gates pass, it sets `write_apply_supported=false`, `apply_allowed=false`, and `writes_memory=false`.
 
+These helper gates govern M3d preflight behavior only. They are not RT-1 writer authorization and cannot convert a rejected writer decision into permission.
+
 ## Exact M3c revalidation
 
 M3d revalidates:
@@ -87,6 +115,8 @@ M3d revalidates:
 - upstream M3c writer-handoff eligibility when M3d apply preflight is requested.
 
 Arbitrary upstream blocked reasons are not copied into the M3d public projection. They collapse to bounded M3d reason identifiers.
+
+Exact M3c/M3d validity is a prerequisite for downstream persistence after admission. It does not independently authorize persistence.
 
 ## Store-target preflight
 
@@ -108,7 +138,9 @@ When the target page already exists, M3d reads at most 8193 bytes and validates 
 - exact match becomes `already_applied` with `idempotent_noop=true`,
 - any mismatch becomes `memory_store_target_conflict`.
 
-The read-only check is not an atomic writer guarantee. A later writer must repeat the root, component, target, digest, and idempotency checks immediately before atomic replace/create.
+The read-only check is not an atomic writer guarantee. M3e repeats the root, component, target, digest, and idempotency checks immediately before atomic page publication.
+
+`ready` and `already_applied` remain storage/preflight states. Neither says that the current RT-1 writer decision permits a Primary mutation. In particular, an exact existing Primary page, matching digest, usable store root, or prior successful write cannot revive writer authority after the upstream cutover owner has fenced that writer class.
 
 ## Runtime-private handoff
 
@@ -123,6 +155,8 @@ The runtime-private handoff may contain:
 - target existence and idempotent no-op state.
 
 It never contains raw message history, raw source text, or raw affect estimates. Explicit forbidden content-bearing source fields are rejected.
+
+The handoff intentionally contains no RT-1 writer-decision identity. It is a page-preflight artifact forwarded by an already-admitted compose invocation, not a durable authorization token that can be replayed later.
 
 ## Content-free projection
 
@@ -143,7 +177,10 @@ It omits:
 - target path,
 - lineage fingerprint and idempotency key,
 - page Markdown and digest,
-- raw source/message/affect content.
+- raw source/message/affect content,
+- private RT-1 writer-decision identity.
+
+A content-free projection is observability only and cannot be used to reconstruct or infer writer permission.
 
 ## Preserved non-goals
 
@@ -155,6 +192,8 @@ M3d does not:
 - append to `memory/mem/log.md`,
 - wire into request runtime,
 - enqueue or execute a RelaySLP job,
+- resolve or refresh RT-1 cutover state,
+- grant or persist Primary writer authorization,
 - mutate RelaySOUL,
 - expose a Lab API,
 - change or delay visible response delivery,
@@ -179,19 +218,20 @@ PYTHONPATH=. python scripts/relaylm_relaymem_primary_writer_handoff_idempotency_
 
 Coverage includes default-off behavior, dry-run readiness, apply-preflight eligibility, deterministic M3b idempotency-key recomputation, idempotent existing-page detection, conflicting existing pages, malformed or tampered page metadata, non-canonical tokens, path traversal, Secondary-path substitution, symlink components, missing target directories, malformed UTF-8, strict booleans, forbidden raw-content fields, and content-free projection behavior.
 
-## Next bounded slice
+The current Phase 6-C1 pipeline/worker regression umbrella separately proves that a non-permitted Primary writer decision stops before M3d is reached. M3d's dedicated smokes remain contract/security/idempotency tests rather than writer-authorization tests.
 
-The next RelayMEM persistence slice should be separated from M3d:
+## Current downstream boundary
+
+M3d is no longer waiting for later persistence slices. Its exact handoff feeds the implemented M3e-M3h owners inside C1-1:
 
 ```text
-M3e atomic Primary MEM page writer
-  -> consume only an exact M3d writer-eligible handoff
-  -> repeat all path/root/digest/idempotency checks
-  -> existing-root and existing-target-directory requirement
-  -> bounded temp-file or exclusive-create strategy
-  -> file fsync and atomic publication
-  -> content-free result projection
-  -> no index/log mutation in the same first writer slice
+M3d exact writer-eligible handoff
+  -> M3e atomic Primary MEM page writer
+  -> M3f Primary MEM index/log reconciliation preflight
+  -> M3g Primary MEM index/log reconciliation apply
+  -> M3h Primary MEM reconciliation recovery audit
 ```
 
-Index/log reconciliation should remain another explicit slice unless the atomicity and rollback contract is designed and tested together. Phase 6 queue/worker/dispatch idempotency remains separate from the RelayMEM memory-write idempotency key carried by M3d.
+M3d retains memory-write identity/path/content preflight ownership; M3e owns page publication; M3f owns the deterministic reconciliation plan; M3g owns index-before-log mutation; M3h owns read-only recovery classification. Phase 6 queue/dispatch/worker idempotency remains separate from the RelayMEM memory-write idempotency key carried by M3d.
+
+All of these Primary persistence capabilities remain subordinate to the exact upstream RT-1 writer decision in production. R5/R6 own their final retirement or explicitly retained historical/read-only/test disposition. This handoff does not pre-authorize deletion, weaken the preflight contract, or move Primary mutation semantics to another owner.
