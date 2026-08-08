@@ -185,15 +185,17 @@ def test_slow_offloaded_stage_does_not_block_other_requests(
     config_path = _write_config(tmp_path)
     app = create_app(str(config_path))
 
-    real_builder = relaymem_retrieval.build_relaymem_retrieval_dry_run_artifact
+    # RT-1D-R5 retired the ordinary Primary reader, so the stage no longer
+    # builds a dry-run artifact or resolves a store root. Its one remaining
+    # exit is the fenced result, so that is what is slowed here; the offload
+    # itself (``run_stage(..., offload=True, ...)``) is unchanged.
+    real_stage = relaymem_retrieval._fenced_stage_result
 
-    def _slow_builder(*args: object, **kwargs: object) -> dict:
+    def _slow_builder(*args: object, **kwargs: object):
         time.sleep(0.5)
-        return real_builder(*args, **kwargs)
+        return real_stage(*args, **kwargs)
 
-    monkeypatch.setattr(
-        relaymem_retrieval, "build_relaymem_retrieval_dry_run_artifact", _slow_builder
-    )
+    monkeypatch.setattr(relaymem_retrieval, "_fenced_stage_result", _slow_builder)
 
     completion_times: dict[str, float] = {}
 
@@ -273,17 +275,20 @@ def test_store_root_resolution_runs_on_worker_thread_without_blocking(
     config_path = _write_config(tmp_path)
     app = create_app(str(config_path))
 
-    real_resolver = relaymem_retrieval.resolve_relaymem_character_store_root
+    # RT-1D-R5 retired the ordinary Primary reader: the request path resolves
+    # no Primary store root at all any more, so that symbol is gone from this
+    # module rather than merely unused.
+    assert not hasattr(relaymem_retrieval, "resolve_relaymem_character_store_root")
+
+    real_stage = relaymem_retrieval._fenced_stage_result
     resolution_thread_ids: list[int] = []
 
-    def _slow_resolver(*args: object, **kwargs: object) -> str | None:
+    def _slow_resolver(*args: object, **kwargs: object):
         resolution_thread_ids.append(threading.get_ident())
         time.sleep(0.5)
-        return real_resolver(*args, **kwargs)
+        return real_stage(*args, **kwargs)
 
-    monkeypatch.setattr(
-        relaymem_retrieval, "resolve_relaymem_character_store_root", _slow_resolver
-    )
+    monkeypatch.setattr(relaymem_retrieval, "_fenced_stage_result", _slow_resolver)
 
     event_loop_thread_id = threading.get_ident()
     completion_times: dict[str, float] = {}

@@ -1,4 +1,4 @@
-"""Content-free RT-1D cutover validation, rehearsal readiness, and activation.
+"""Content-free RT-1D cutover validation, activation, and Primary retirement.
 
 This module is the sole public semantic cutover owner and the sole public
 compatibility surface. It owns the public binding, the requested-mode, result,
@@ -23,11 +23,17 @@ Primary-only, then neither, then Subjective-only. There is no dual serving, no
 precedence, no empty-result fallback, and no Primary fallback after the exact
 finalized transfer receipt.
 
-A `rehearsal` deployment may carry one complete factory-authentic R3 readiness
-proof into the durable chain, but only as the prefix ending at
-`rehearsal_ready`. A `subjective_only` deployment may activate only from that
-exact durable readiness or a later supported state; it never mints readiness
-and never accepts configuration alone as readiness.
+RT-1D-R5 retired the temporary rehearsal and shadow-characterization execution
+surfaces together, so no rehearsal readiness is evaluated, minted, or recorded
+here any more. The durable `rehearsal_ready` records an already-activated chain
+carries stay valid and reconstructible as historical evidence: retirement never
+rewrites or invalidates an accepted R3/R4 record.
+
+Retirement itself is admitted only over an exact finalized transfer receipt and
+advances `post_transfer_validated` then `retirement_complete`, forward-only and
+idempotently. Subjective alone serves throughout and afterwards; the ordinary
+Primary reader, its selection, and its fallback are gone from this build rather
+than merely fenced, so nothing can restore Primary to the ordinary read path.
 """
 
 from __future__ import annotations
@@ -43,7 +49,6 @@ from ._subjective_mem_retrieval_cutover_activation import (
     FORWARD_STATES,
     READER_FENCE_INDEX,
     READINESS_INDEX,
-    READINESS_STEPS,
     RECEIPT_INDEX,
     RECOVERY_REQUIRED,
     WRITER_FENCE_INDEX,
@@ -58,17 +63,8 @@ from ._subjective_mem_retrieval_runtime_projection import (
     verify_subjective_mem_retrieval_runtime_projection,
 )
 from .config import RelayLMConfig
-from .evidence_common import canonical_digest, canonical_json_bytes
+from .evidence_common import canonical_json_bytes
 from .evidence_store import EvidenceRecordStore
-from .subjective_mem_retrieval_rehearsal import (
-    READINESS_PREFIX,
-    READINESS_SCHEMA,
-    SubjectiveMemRetrievalRehearsalReadiness,
-    SubjectiveMemRetrievalRehearsalSpecification,
-    derive_subjective_mem_retrieval_rehearsal_readiness_id,
-    evaluate_subjective_mem_retrieval_rehearsal,
-    validate_subjective_mem_retrieval_rehearsal_readiness,
-)
 
 CUTOVER_AUTHORITY_DOMAIN = "relaylm.subjective_mem_retrieval"
 CUTOVER_TRANSFERRED_SCOPE = "ordinary_memory_retrieval"
@@ -136,6 +132,9 @@ _CUTOVER_CONFIG_FIELDS = tuple(
 )
 _PROJECTION_ROOT_FIELD = "subjective_mem_retrieval_projection_root"
 _REHEARSAL_ROOT_FIELD = "subjective_mem_retrieval_rehearsal_projection_root"
+# The ordered retirement steps, recorded only over an exact finalized receipt.
+# They extend the activation chain and never re-enter or rewrite it.
+RETIREMENT_STEPS = (("post_transfer_validated",), ("retirement_complete",))
 _MISSING = object()
 # Exactly which root each requested mode requires, and which it prohibits.
 _MODE_ROOTS: dict[str, tuple[str | None, tuple[str, ...]]] = {
@@ -334,122 +333,6 @@ class SubjectiveMemRetrievalCutoverResult:
             "reasons": list(self.reasons),
             "diagnostics": self.diagnostics.to_dict(),
         }
-
-
-def evaluate_subjective_mem_retrieval_rehearsal_readiness(
-    *,
-    config: object,
-    binding: object,
-    source: object,
-    projection_root: object,
-    request: object,
-    primary: object,
-    subjective_latency_class: object,
-) -> tuple[SubjectiveMemRetrievalRehearsalReadiness | None, tuple[str, ...]]:
-    """Validate cutover authority, then delegate the disposable R3 proof."""
-
-    if type(config) is not RelayLMConfig or type(binding) is not SubjectiveMemRetrievalCutoverBinding:
-        return None, ("cutover_readiness_binding_invalid",)
-    if config.subjective_mem_retrieval_cutover_mode != "rehearsal":
-        return None, ("cutover_readiness_config_invalid",)
-    try:
-        binding.__post_init__()
-        configured = _binding_from_config(config)
-    except (AttributeError, SubjectiveMemRetrievalCutoverError, TypeError):
-        return None, ("cutover_readiness_config_invalid",)
-    if configured != binding:
-        return None, ("cutover_readiness_config_binding_disagreement",)
-    specification = _rehearsal_specification(binding)
-    readiness, reasons = evaluate_subjective_mem_retrieval_rehearsal(
-        specification=specification,
-        source=source,
-        projection_root=projection_root,
-        request=request,
-        primary=primary,
-        subjective_latency_class=subjective_latency_class,
-    )
-    if readiness is None:
-        return None, reasons
-    reasons = _readiness_proof_reasons(binding, specification, readiness)
-    return (None, reasons) if reasons else (readiness, ())
-
-
-def _readiness_proof_reasons(
-    binding: SubjectiveMemRetrievalCutoverBinding,
-    specification: SubjectiveMemRetrievalRehearsalSpecification,
-    readiness: object,
-) -> tuple[str, ...]:
-    """Independently re-derive and re-validate one complete readiness proof."""
-
-    reasons = validate_subjective_mem_retrieval_rehearsal_readiness(
-        specification=specification, readiness=readiness
-    )
-    if reasons:
-        return reasons
-    assert isinstance(readiness, SubjectiveMemRetrievalRehearsalReadiness)
-    expected_id = _cutover_readiness_identity(
-        binding_identity=specification.binding_identity,
-        projection_generation_id=readiness.projection_generation_id,
-        projection_source_digest=readiness.projection_source_digest,
-        projection_manifest_digest=readiness.projection_manifest_digest,
-        row_population_digest=readiness.row_population_digest,
-        characterization_digest=readiness.characterization_digest,
-    )
-    if (
-        readiness.readiness_id != binding.readiness_id
-        or readiness.readiness_id != expected_id
-        or readiness.binding_identity != specification.binding_identity
-        or readiness.projection_generation_id != binding.projection_generation_id
-        or readiness.projection_source_digest != binding.projection_source_digest
-    ):
-        return ("cutover_readiness_proof_disagreement",)
-    return ()
-
-
-def _rehearsal_specification(
-    binding: SubjectiveMemRetrievalCutoverBinding,
-) -> SubjectiveMemRetrievalRehearsalSpecification:
-    """The one binding-owned coordinator specification every proof is judged by."""
-
-    return SubjectiveMemRetrievalRehearsalSpecification(
-        binding_identity=tuple(sorted(
-            (field, getattr(binding, field))
-            for field in _BINDING_FIELDS
-            if field != "readiness_id"
-        )),
-        evidence_space_id=binding.evidence_space_id,
-        projection_generation_id=binding.projection_generation_id,
-        projection_source_digest=binding.projection_source_digest,
-        readiness_id=binding.readiness_id,
-    )
-
-
-def subjective_mem_retrieval_rehearsal_readiness_id(
-    binding: SubjectiveMemRetrievalCutoverBinding,
-    projection: object,
-    characterization: object,
-) -> str:
-    """Derive the binding-owned expected identity for an independently proven run."""
-
-    specification = _rehearsal_specification(binding)
-    return derive_subjective_mem_retrieval_rehearsal_readiness_id(
-        binding_identity=specification.binding_identity,
-        projection_generation_id=projection.manifest.projection_generation_id,
-        projection_source_digest=projection.manifest.source_snapshot_digest,
-        projection_manifest_digest=projection.manifest.manifest_digest,
-        row_population_digest=canonical_digest(
-            [row.row_digest for row in projection.rows]
-        ),
-        characterization_digest=canonical_digest(characterization.to_dict()),
-    )
-
-
-def _cutover_readiness_identity(**identities: object) -> str:
-    """Independently re-derive the coordinator proof's complete identity."""
-
-    body = {"schema": READINESS_SCHEMA, **identities}
-    body["binding"] = dict(body.pop("binding_identity"))
-    return f"{READINESS_PREFIX}{canonical_digest(body)}"
 
 
 @dataclass(frozen=True, repr=False)
@@ -750,66 +633,6 @@ def _reader_invalid(reason: str) -> SubjectiveMemRetrievalCutoverError:
     return SubjectiveMemRetrievalCutoverError(f"primary_reader_decision_{reason}")
 
 
-def rehearse_subjective_mem_retrieval_cutover(
-    *,
-    store: EvidenceRecordStore,
-    binding: SubjectiveMemRetrievalCutoverBinding,
-    request: SubjectiveMemRetrievalCutoverRequest,
-) -> SubjectiveMemRetrievalCutoverResult:
-    """Reconstruct and validate only; never commit or authorize Subjective serving."""
-    _validate_inputs(store, binding, request)
-    if request.requested_mode == "subjective_only":
-        raise SubjectiveMemRetrievalCutoverError("cutover_rehearsal_mode_unsupported")
-    state, reasons = _reconstruct(store, binding.to_dict())
-    if state not in {"primary_stable", "rehearsal_ready"} or reasons:
-        return _result(
-            request.requested_mode,
-            RECOVERY_REQUIRED,
-            reasons or ("cutover_state_not_r1_supported",),
-        )
-    if request.requested_mode == "rehearsal":
-        return _result("rehearsal", "rehearsal_ready", ())
-    return _result("primary_only", state, ())
-
-
-def record_subjective_mem_retrieval_rehearsal_readiness(
-    *, config: object, readiness: object
-) -> SubjectiveMemRetrievalCutoverResult:
-    """Carry one complete R3 proof into the durable chain, and no further.
-
-    This is the whole RT-1D-R3-to-R4 handoff. The proof itself stays
-    process-local and is never serialized, placed in configuration, carried on a
-    request, or written as a new durable record kind: only the exact
-    predecessor-bound chain prefix ending at ``rehearsal_ready`` is durable.
-
-    The write is idempotent, so a replay over an already-recorded readiness
-    returns the same exact state without a second durable record, and no later
-    state is ever reachable while the requested mode is ``rehearsal``.
-    """
-
-    binding, state, reasons = _durable_binding(config, "rehearsal", "cutover_readiness")
-    if binding is None:
-        return _result("rehearsal", state, reasons)
-    assert isinstance(config, RelayLMConfig)
-    reasons = _readiness_proof_reasons(
-        binding, _rehearsal_specification(binding), readiness
-    )
-    if reasons:
-        return _result("rehearsal", state, reasons)
-    if _FORWARD_STATES.index(state) >= READINESS_INDEX:
-        return _result("rehearsal", state, ())
-    store = EvidenceRecordStore(
-        config.subjective_mem_retrieval_cutover_store_root or ""
-    )
-    for step in READINESS_STEPS:
-        state, reasons = advance_cutover_chain(store, binding.to_dict(), step)
-        if reasons or state == RECOVERY_REQUIRED:
-            return _result(
-                "rehearsal", RECOVERY_REQUIRED, reasons or ("cutover_readiness_failed",)
-            )
-    return _result("rehearsal", state, ())
-
-
 def activate_subjective_mem_retrieval_cutover(
     *, config: object
 ) -> SubjectiveMemRetrievalCutoverResult:
@@ -858,6 +681,55 @@ def activate_subjective_mem_retrieval_cutover(
                 "subjective_only",
                 RECOVERY_REQUIRED,
                 reasons or ("cutover_activation_failed",),
+            )
+    return _result("subjective_only", state, ())
+
+
+def retire_subjective_mem_retrieval_cutover(
+    *, config: object
+) -> SubjectiveMemRetrievalCutoverResult:
+    """Advance the exact durable chain through immediate Primary retirement.
+
+    Retirement is not a second authority transfer: RT-1D-R4 already owns the
+    only one. It is admitted only over an exact finalized transfer receipt, so
+    a chain that has not reached ``transfer_receipt_finalized`` is refused
+    rather than advanced, and configuration alone never stands in for the
+    receipt.
+
+    Subjective alone serves throughout. The ordinary Primary reader, its
+    selection, and the shadow characterization/rehearsal execution surfaces are
+    already gone from this build, so retirement records that fact durably
+    rather than performing it: ``post_transfer_validated`` then
+    ``retirement_complete``, one create-or-verify transaction per step.
+
+    The write is idempotent and forward-only. A replay over an already-retired
+    chain returns the same exact state without a second durable record, a
+    partial or divergent chain fails closed as ``recovery_required``, and
+    nothing restores Primary.
+    """
+
+    binding, state, reasons = _durable_binding(
+        config, "subjective_only", "cutover_retirement"
+    )
+    if binding is None:
+        return _result("subjective_only", state, reasons)
+    assert isinstance(config, RelayLMConfig)
+    if _FORWARD_STATES.index(state) < RECEIPT_INDEX:
+        return _result(
+            "subjective_only", state, ("cutover_retirement_receipt_required",)
+        )
+    store = EvidenceRecordStore(
+        config.subjective_mem_retrieval_cutover_store_root or ""
+    )
+    for step in RETIREMENT_STEPS:
+        if _FORWARD_STATES.index(state) >= _FORWARD_STATES.index(step[-1]):
+            continue
+        state, reasons = advance_cutover_chain(store, binding.to_dict(), step)
+        if reasons or state == RECOVERY_REQUIRED:
+            return _result(
+                "subjective_only",
+                RECOVERY_REQUIRED,
+                reasons or ("cutover_retirement_failed",),
             )
     return _result("subjective_only", state, ())
 
@@ -983,16 +855,12 @@ __all__ = [
     "SubjectiveMemRetrievalCutoverResult",
     "SubjectiveMemRetrievalPrimaryReaderDecision",
     "SubjectiveMemRetrievalPrimaryWriterDecision",
-    "SubjectiveMemRetrievalRehearsalReadiness",
     "activate_subjective_mem_retrieval_cutover",
-    "evaluate_subjective_mem_retrieval_rehearsal_readiness",
     "primary_writer_decision_permits_write",
-    "record_subjective_mem_retrieval_rehearsal_readiness",
-    "rehearse_subjective_mem_retrieval_cutover",
     "resolve_subjective_mem_retrieval_primary_reader_decision",
     "resolve_subjective_mem_retrieval_primary_writer_decision",
+    "retire_subjective_mem_retrieval_cutover",
     "subjective_mem_retrieval_cutover_binding_from_config",
     "subjective_mem_retrieval_ordinary_token_budget",
     "subjective_mem_retrieval_primary_reader_class",
-    "subjective_mem_retrieval_rehearsal_readiness_id",
 ]

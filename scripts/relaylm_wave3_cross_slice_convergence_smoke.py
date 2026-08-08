@@ -152,10 +152,14 @@ def check_i4d_static_boundary() -> None:
         "excluded_prepared",
         "excluded_recovery_required",
     )
+    # RT-1D-R5 retired the ordinary Primary reader, so the recall facade is now
+    # the read-only history/observation/admin re-export surface. The eligibility
+    # index moved with the ordinary path it served; what must still converge here
+    # is the preserved read-only store access those projections depend on.
     require(
         "relaylm/relaymem_primary_recall.py",
-        "load_primary_retrieval_eligibility_index",
-        "apply_relaymem_primary_recall_scope",
+        "resolve_relaymem_character_store_root",
+        "_load_control_state",
     )
 
 

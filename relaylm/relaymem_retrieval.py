@@ -44,24 +44,8 @@ from relaylm.subjective_mem_retrieval_selection import (
 from relaylm.subjective_mem_retrieval_usage_ledger import (
     finalize_subjective_mem_retrieval_usage,
 )
-from relaylm.relaymem_primary_recall import (
-    apply_relaymem_primary_recall_scope,
-    resolve_relaymem_character_store_root,
-)
-from relaylm.relaymem_store import build_relaymem_store_diagnostics
 from relaylm.routing import ResolvedRoute
-from relaylm._relaymem_retrieval_candidates import (
-    _attach_evidence_metadata_to_ctx_block_candidate,
-)
-from relaylm._relaymem_retrieval_snippet import (
-    _build_ctx_block_snippet_candidate,
-    _build_snippet_apply_readiness,
-    _build_snippet_runtime_injection_plan,
-)
-from relaylm.relaymem_retrieval_dry_run import (
-    _term_hints,
-    build_relaymem_retrieval_dry_run_artifact,
-)
+from relaylm.relaymem_retrieval_dry_run import _term_hints
 
 ORDINARY_MEMORY_AUTHORITY_KEY = "ordinary_memory_authority"
 SUBJECTIVE_RUNTIME_KEY = "subjective_mem_retrieval_runtime"
@@ -100,51 +84,20 @@ def run_relaymem_retrieval_stage(
     """
 
     authority = subjective_mem_retrieval_primary_reader_class(primary_reader_decision)
-    if authority != "primary_only":
-        return _fenced_stage_result(
-            authority,
-            config=config,
-            route=route,
-            messages=messages,
-            request_correlation=request_correlation,
-        )
-    relaymem_scoped_store_root = resolve_relaymem_character_store_root(
-        relaymem_configured_store_root,
-        route.character_id,
-    )
-    relaymem_store_diagnostics = build_relaymem_store_diagnostics(
-        root_path=relaymem_scoped_store_root,
-        store_enabled=config.memory.store_enabled,
-        retrieval_dry_run_only=config.memory.retrieval_dry_run_only,
-    )
-    relaymem_retrieval_artifact = build_relaymem_retrieval_dry_run_artifact(
-        relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-        relayint_intent_artifact=relayint_intent_artifact,
+    if authority == "primary_only":
+        # RT-1D-R5 retired the ordinary Primary reader. The recall entry point,
+        # its discovery, selection, and fallback no longer exist in this build,
+        # so a decision that still names Primary cannot be served and must not
+        # silently degrade into a Primary read. It fails closed to `neither`:
+        # no root is resolved, no store is opened, and nothing is released.
+        authority = "neither"
+    return _fenced_stage_result(
+        authority,
+        config=config,
+        route=route,
         messages=messages,
-        token_budget=_resolve_relaymem_retrieval_token_budget(config),
-        store_diagnostics=relaymem_store_diagnostics,
-        max_candidates=config.memory.candidate_limit,
-        ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
-        snippet_extraction_enabled=config.memory.snippet_extraction_enabled,
-        snippet_dry_run_only=config.memory.snippet_dry_run_only,
-        snippet_apply_enabled=config.memory.snippet_apply_enabled,
-        snippet_budget=config.memory.snippet_budget,
-        max_snippet_chars=config.memory.max_snippet_chars,
-        max_snippet_candidates=config.memory.max_snippet_candidates,
+        request_correlation=request_correlation,
     )
-    if _relaymem_primary_recall_scope_allowed(relaymem_store_diagnostics):
-        relaymem_retrieval_artifact = apply_relaymem_primary_recall_scope(
-            relaymem_retrieval_artifact,
-            scoped_store_root=relaymem_scoped_store_root,
-            expected_namespace=route.memory_namespace,
-            max_snippet_chars=config.memory.max_snippet_chars,
-            max_snippet_candidates=config.memory.max_snippet_candidates,
-            snippet_budget=config.memory.snippet_budget,
-            chars_per_token=config.memory.chars_per_token,
-            primary_reader_decision=primary_reader_decision,
-        )
-    relaymem_retrieval_artifact[ORDINARY_MEMORY_AUTHORITY_KEY] = authority
-    return relaymem_store_diagnostics, relaymem_retrieval_artifact
 
 
 def _fenced_stage_result(
@@ -383,29 +336,3 @@ def _idempotency_key(request_correlation: object) -> str:
         "idempotency",
         request_correlation if isinstance(request_correlation, str) else "",
     )
-
-
-def _relaymem_primary_recall_scope_allowed(
-    store_diagnostics: Mapping[str, Any] | None,
-) -> bool:
-    if not isinstance(store_diagnostics, Mapping):
-        return True
-    compatibility = store_diagnostics.get("layout_compatibility")
-    if (
-        store_diagnostics.get("root_present") is True
-        and isinstance(compatibility, Mapping)
-        and compatibility.get("target_primary_secondary_present") is False
-    ):
-        return False
-    return True
-
-
-def _resolve_relaymem_retrieval_token_budget(config: RelayLMConfig) -> int | None:
-    if config.memory.token_budget is not None:
-        return config.memory.token_budget
-    if (
-        isinstance(config.memory.token_budget_hint, int)
-        and config.memory.token_budget_hint > 0
-    ):
-        return config.memory.token_budget_hint
-    return None

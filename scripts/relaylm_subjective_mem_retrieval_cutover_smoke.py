@@ -8,6 +8,7 @@ from pathlib import Path
 
 from relaylm.evidence_common import canonical_digest
 from relaylm.evidence_store import EvidenceRecordStore
+from relaylm._subjective_mem_retrieval_cutover_activation import reconstruct_cutover_chain
 from relaylm.subjective_mem_retrieval_cutover import (
     CUTOVER_AUTHORITY_DOMAIN,
     CUTOVER_LOG_KEY,
@@ -15,7 +16,6 @@ from relaylm.subjective_mem_retrieval_cutover import (
     CUTOVER_TRANSFERRED_SCOPE,
     SubjectiveMemRetrievalCutoverBinding,
     SubjectiveMemRetrievalCutoverRequest,
-    rehearse_subjective_mem_retrieval_cutover,
 )
 
 
@@ -36,17 +36,11 @@ def main() -> None:
             projection_generation_id="smretrievalgen_" + "c" * 64,
             projection_source_digest="d" * 64,
         )
-        default = rehearse_subjective_mem_retrieval_cutover(
-            store=store, binding=binding, request=SubjectiveMemRetrievalCutoverRequest()
-        )
-        rehearsal = rehearse_subjective_mem_retrieval_cutover(
-            store=store,
-            binding=binding,
-            request=SubjectiveMemRetrievalCutoverRequest("rehearsal"),
-        )
-        assert (
-            default.state == "primary_stable" and rehearsal.state == "rehearsal_ready"
-        )
+        # RT-1D-R5 retired the rehearsal entry point. Durable chain
+        # reconstruction — the thing this smoke actually guards — is unchanged
+        # and stays owned by the cutover semantic owner.
+        default = reconstruct_cutover_chain(store, binding.to_dict())
+        assert default == ("primary_stable", ())
         binding_dict = binding.to_dict()
         record = {
             "schema_version": 1,
@@ -64,10 +58,8 @@ def main() -> None:
                 logs=((CUTOVER_LOG_KIND, CUTOVER_LOG_KEY, (record,)),),
             )
         assert written.status == "created"
-        exact = rehearse_subjective_mem_retrieval_cutover(
-            store=store, binding=binding, request=SubjectiveMemRetrievalCutoverRequest()
-        )
-        assert exact.state == "primary_stable"
+        exact = reconstruct_cutover_chain(store, binding.to_dict())
+        assert exact == ("primary_stable", ())
         record["record_digest"] = "0" * 64
         tampered_store = EvidenceRecordStore(str(Path(temporary) / "tampered"))
         with tampered_store.transaction(binding.evidence_space_id) as transaction:
@@ -76,22 +68,14 @@ def main() -> None:
                 records=(),
                 logs=((CUTOVER_LOG_KIND, CUTOVER_LOG_KEY, (record,)),),
             )
-        failed = rehearse_subjective_mem_retrieval_cutover(
-            store=tampered_store,
-            binding=binding,
-            request=SubjectiveMemRetrievalCutoverRequest("rehearsal"),
-        )
-        assert (
-            failed.state == "recovery_required" and failed.authority_class == "neither"
-        )
-        public = repr(
-            (default.to_dict(), rehearsal.to_dict(), exact.to_dict(), failed.to_dict())
-        )
+        failed = reconstruct_cutover_chain(tampered_store, binding.to_dict())
+        assert failed[0] == "recovery_required" and failed[1]
+        public = repr((default, exact, failed))
         assert (
             str(temporary) not in public and "subjective_serving': True" not in public
         )
     print(
-        "PASS rt1d-r1 primary-only rehearsal exact-chain fail-closed content-free no-write"
+        "PASS rt1d-r5 retired-rehearsal exact-chain fail-closed content-free no-write"
     )
 
 

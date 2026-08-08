@@ -12,7 +12,12 @@ import yaml
 from relaylm.config import RelayLMConfig
 from relaylm.evidence_common import canonical_digest
 from relaylm.evidence_store import EvidenceRecordStore
+from relaylm._subjective_mem_retrieval_cutover_activation import (
+    FORWARD_STATES,
+    reconstruct_cutover_chain,
+)
 from relaylm.subjective_mem_retrieval_cutover import (
+    RETIREMENT_STEPS,
     CUTOVER_AUTHORITY_DOMAIN,
     CUTOVER_LOG_KEY,
     CUTOVER_LOG_KIND,
@@ -26,7 +31,7 @@ from relaylm.subjective_mem_retrieval_cutover import (
     SubjectiveMemRetrievalCutoverRequest,
     SubjectiveMemRetrievalPrimaryWriterDecision,
     primary_writer_decision_permits_write,
-    rehearse_subjective_mem_retrieval_cutover,
+    retire_subjective_mem_retrieval_cutover,
     resolve_subjective_mem_retrieval_primary_writer_decision,
 )
 
@@ -224,63 +229,53 @@ def test_binding_is_immutable_closed_and_canonical() -> None:
         )
 
 
-def test_absent_chain_is_primary_only_and_rehearsal_is_in_memory(
-    tmp_path: Path,
-) -> None:
+def test_absent_chain_reconstructs_as_primary_stable(tmp_path: Path) -> None:
+    """RT-1D-R5 retired the rehearsal entry point; reconstruction is unchanged.
+
+    The chain the cutover semantic owner reconstructs is the same durable
+    artefact it always was. Only the retired rehearsal/characterization
+    execution surface is gone, so an absent chain is still exactly the genesis
+    state rather than a recovery condition.
+    """
+
     store = EvidenceRecordStore(str(tmp_path / "store"))
-    binding = _binding()
-    default = rehearse_subjective_mem_retrieval_cutover(
-        store=store, binding=binding, request=SubjectiveMemRetrievalCutoverRequest()
-    )
-    rehearsal = rehearse_subjective_mem_retrieval_cutover(
-        store=store,
-        binding=binding,
-        request=SubjectiveMemRetrievalCutoverRequest("rehearsal"),
-    )
-    assert (default.state, default.authority_class) == (
-        "primary_stable",
-        "primary_only",
-    )
-    assert (rehearsal.state, rehearsal.authority_class) == (
-        "rehearsal_ready",
-        "primary_only",
-    )
-    assert not rehearsal.diagnostics.subjective_serving
-    assert rehearsal.diagnostics.runtime_private_evidence_omitted
+    state, reasons = reconstruct_cutover_chain(store, _binding().to_dict())
+    assert (state, reasons) == ("primary_stable", ())
 
 
-def test_exact_seeded_rehearsal_chain_is_read_only(tmp_path: Path) -> None:
+def test_exact_seeded_rehearsal_chain_reconstructs_read_only(tmp_path: Path) -> None:
+    """An accepted R3 `rehearsal_ready` record stays valid and is never rewritten."""
+
     store = EvidenceRecordStore(str(tmp_path / "store"))
     binding = _binding()
     _seed(store, binding, _records(binding, 2))
     before = _tree_digest(store.root)
-    first = rehearse_subjective_mem_retrieval_cutover(
-        store=store,
-        binding=binding,
-        request=SubjectiveMemRetrievalCutoverRequest("rehearsal"),
-    )
-    second = rehearse_subjective_mem_retrieval_cutover(
-        store=store,
-        binding=binding,
-        request=SubjectiveMemRetrievalCutoverRequest("rehearsal"),
-    )
-    assert first == second
-    assert first.state == "rehearsal_ready"
+    first = reconstruct_cutover_chain(store, binding.to_dict())
+    second = reconstruct_cutover_chain(store, binding.to_dict())
+    assert first == second == ("rehearsal_ready", ())
     assert _tree_digest(store.root) == before
 
 
 @pytest.mark.parametrize("count", range(3, 11))
-def test_future_complete_chain_parses_but_r1_fails_closed(
+def test_longer_chains_reconstruct_exactly_or_fail_closed(
     tmp_path: Path, count: int
 ) -> None:
+    """Every prefix length reconstructs to its exact state, or fails closed.
+
+    The one admitted exception is the atomic activation pair: a chain ending at
+    `subjective_reader_enabled` can never be observed half-published.
+    """
+
     store = EvidenceRecordStore(str(tmp_path / f"store-{count}"))
     binding = _binding(evidence_space_id=f"space-{count}")
     _seed(store, binding, _records(binding, count))
-    result = rehearse_subjective_mem_retrieval_cutover(
-        store=store, binding=binding, request=SubjectiveMemRetrievalCutoverRequest()
-    )
-    assert result.state == "recovery_required"
-    assert result.authority_class == "neither"
+    state, reasons = reconstruct_cutover_chain(store, binding.to_dict())
+    expected = FORWARD_STATES[count - 1]
+    if expected == "subjective_reader_enabled":
+        assert state == "recovery_required"
+        assert reasons == ("cutover_activation_pair_incomplete",)
+    else:
+        assert (state, reasons) == (expected, ())
 
 
 @pytest.mark.parametrize("mutation", ["tamper", "skip", "binding", "schema", "extra"])
@@ -299,30 +294,34 @@ def test_malformed_chains_fail_closed(tmp_path: Path, mutation: str) -> None:
     if mutation == "extra":
         records[1]["private_context"] = "forbidden"
     _seed(store, binding, records)
-    result = rehearse_subjective_mem_retrieval_cutover(
-        store=store, binding=binding, request=SubjectiveMemRetrievalCutoverRequest()
-    )
-    assert result.state == "recovery_required"
-    assert result.authority_class == "neither"
-    assert not result.diagnostics.reader_fence and not result.diagnostics.writer_fence
+    state, reasons = reconstruct_cutover_chain(store, binding.to_dict())
+    assert state == "recovery_required"
+    assert reasons and reasons != ()
 
 
 def test_multiple_chain_heads_fail_closed(tmp_path: Path) -> None:
     store = EvidenceRecordStore(str(tmp_path / "store"))
     binding = _binding()
     _seed(store, binding, _records(binding, 1), key="other")
-    result = rehearse_subjective_mem_retrieval_cutover(
-        store=store, binding=binding, request=SubjectiveMemRetrievalCutoverRequest()
-    )
-    assert result.reasons == ("cutover_multiple_chains",)
+    state, reasons = reconstruct_cutover_chain(store, binding.to_dict())
+    assert state == "recovery_required"
+    assert reasons == ("cutover_multiple_chains",)
 
 
-def test_public_result_is_content_free(tmp_path: Path) -> None:
-    result = rehearse_subjective_mem_retrieval_cutover(
-        store=EvidenceRecordStore(str(tmp_path / "secret-path")),
-        binding=_binding(),
-        request=SubjectiveMemRetrievalCutoverRequest("rehearsal"),
+def test_retirement_result_is_content_free(tmp_path: Path) -> None:
+    """The retirement entry point releases no path, prose, or private material."""
+
+    config = _config(
+        {
+            **_config_tuple(tmp_path / "secret-path"),
+            "subjective_mem_retrieval_cutover_mode": "subjective_only",
+            "subjective_mem_retrieval_rehearsal_projection_root": None,
+            "subjective_mem_retrieval_projection_root": str(
+                tmp_path / "secret-path-projection"
+            ),
+        }
     )
+    result = retire_subjective_mem_retrieval_cutover(config=config)
     projection = repr(result) + repr(result.to_dict())
     for forbidden in (
         str(tmp_path),
@@ -334,10 +333,26 @@ def test_public_result_is_content_free(tmp_path: Path) -> None:
         assert forbidden not in projection
 
 
-# ---------------------------------------------------------------------------
-# RT-1D-R2A: the sole immutable Primary writer decision, its resolver, and the
-# exact state-to-writer mapping.
-# ---------------------------------------------------------------------------
+def test_retirement_requires_an_exact_finalized_receipt(tmp_path: Path) -> None:
+    """Retirement is not a second transfer: it is admitted only over the receipt."""
+
+    config = _config(
+        {
+            **_config_tuple(tmp_path / "store"),
+            "subjective_mem_retrieval_cutover_mode": "subjective_only",
+            "subjective_mem_retrieval_rehearsal_projection_root": None,
+            "subjective_mem_retrieval_projection_root": str(tmp_path / "projection"),
+        }
+    )
+    root = config.subjective_mem_retrieval_cutover_store_root
+    assert root is not None
+    store = EvidenceRecordStore(root)
+    binding = _binding()
+    # A chain that has not reached `transfer_receipt_finalized` is refused.
+    _seed(store, binding, _records(binding, 2))
+    result = retire_subjective_mem_retrieval_cutover(config=config)
+    assert result.state != "retirement_complete"
+    assert "cutover_retirement_receipt_required" in result.reasons
 
 
 def _decision(**changes: object) -> SubjectiveMemRetrievalPrimaryWriterDecision:
@@ -350,7 +365,15 @@ def _decision(**changes: object) -> SubjectiveMemRetrievalPrimaryWriterDecision:
         "runtime_private_evidence_omitted": True,
     }
     values.update(changes)
-    return SubjectiveMemRetrievalPrimaryWriterDecision(**values)  # type: ignore[arg-type]
+    return SubjectiveMemRetrievalPrimaryWriterDecision(**values)
+
+
+def test_retirement_steps_extend_the_chain_without_re_entering_it() -> None:
+    """R5 records exactly the two retirement states, in order, and nothing else."""
+
+    assert RETIREMENT_STEPS == (("post_transfer_validated",), ("retirement_complete",))
+    tail = FORWARD_STATES[-2:]
+    assert tail == ("post_transfer_validated", "retirement_complete")
 
 
 def _rehearsal_config(tmp_path: Path, root_name: str = "store") -> RelayLMConfig:
@@ -653,7 +676,6 @@ def test_resolver_dependency_direction_creates_no_cycle() -> None:
         ".config",
         ".evidence_common",
         ".evidence_store",
-        ".subjective_mem_retrieval_rehearsal",
     }
 
 
