@@ -9,9 +9,12 @@ relaylm_update_trigger:
   - namespace token compatibility changes
   - E1 recall proof boundary changes
   - lifecycle eligibility integration changes
+  - RT-1 Primary ordinary-reader or fallback retirement changes
 relaylm_not_authoritative_for:
   - repository-wide current implementation status
   - MVP roadmap sequencing
+  - Subjective MEM ordinary Retrieval authority
+  - RT-1D-R5 retirement completion or deletion approval
   - worker, queue, scheduler, or store mutation authority
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
@@ -19,92 +22,113 @@ relaylm_related_authority:
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i4d_primary_retrieval_exclusion.md
   - e1r4_retrieval_response_grounding.md
+  - subjective-mem-retrieval-projection-hard-cutover.md
   - ../evidence/waves/e1r5_post_wave7_correction_convergence_audit.md
   - project_execution_plan.md
   - ../evidence/implementation/e1r5_completion_report.md
 ---
-# E1-R5 Primary MEM Recall Candidate Discovery Bridge
+# Primary MEM Recall Candidate Discovery Compatibility Handoff
 
-Last reviewed: 2026-07-06 JST
+Last reviewed: 2026-08-08 JST
 
-## Status
+## Transitional status
 
-E1-R5 is current implemented. It adds a bounded request-side fallback for character-scoped Primary MEM recall after E1-R4 grounding. PM-D8 is closed by PR #491: the former bridge behavior is now canonicalized in Primary recall, and the former `relaymem_primary_recall_candidate_bridge_runtime` module remains compatibility no-op only.
+E1-R5 is completed historical implementation evidence whose former bridge
+behavior was folded into the canonical Primary recall implementation by PR #491.
+This legacy underscore-named handoff remains transitional while that fallback and
+its regression/evaluation consumers still have an accepted compatibility role.
+It is not an independent runtime bridge and it is not ordinary Retrieval
+authority.
 
-E1-R4 already builds backend-bound grounded recall instructions from selected Primary MEM evidence, but local E2E evaluation found a pre-grounding gap: formed Primary MEM pages could exist under the character-scoped store while `selected_count` stayed `0` because no Primary MEM page became an M2 selected candidate.
+- owner: evaluation / Primary recall compatibility evidence;
+- current consumers: Primary-only recall regressions, E1 evaluation evidence, and
+  RT-1 retirement review;
+- removal gate: RT-1D-R5/R6 proves that no accepted ordinary Primary fallback or
+  continuing compatibility consumer needs this handoff as an active source;
+- replacement validation: final Subjective-only request-path proof and preserved
+  E1 completion/convergence evidence cover every continuing behavior and
+  historical claim before this path is retired through the manifest and Git.
 
-E1-R5 corrects that proof boundary. The current E1 recall path is therefore not "M2 alone always selects current Primary MEM". The current boundary is:
+Repository-wide implementation and retirement status remain owned by
+`docs/PROJECT_STATUS.md` and the RT-1 hard-cutover authority.
 
-```text
-M2 remains the preferred relevance owner.
-If no eligible scoped Primary candidate survives existing M2 narrowing,
-E1-R5 may derive bounded candidates from scoped Primary index/log/page controls,
-then hand the selected evidence to the existing RelayCTX / E1-R4 grounded recall path.
-```
+## Current compatibility responsibility
 
-## Problem
+The former E1-R5 runtime bridge no longer exists as a second active retrieval
+owner. Its bounded fallback discovery was folded into
+`relaylm/relaymem_primary_recall.py` and its selection owner.
 
-The failing local path was:
+That behavior is reachable only inside an exact `primary_only` reader decision.
+The Primary recall facade checks the RT-1 reader decision before resolving the
+character store, opening Primary controls, or running candidate selection. A
+missing, malformed, foreign, `neither`, or `subjective_only` decision therefore
+cannot reach E1-R5 fallback discovery and releases no Primary evidence.
 
-```text
-trusted Home / explicit trusted request
-  -> durable source and queue evidence
-  -> local worker drain
-  -> Primary MEM durable formation
-  -> character-scoped Primary MEM index/log/page creation
-  -> later SOUL Lab Home recall
-  -> Primary recall projection attempted
-  -> selected_count: 0
-  -> primary_recall_no_scoped_match
-```
-
-The symlink workaround `runtime/memory/memory -> runtime/memory/characters/<hash>/memory` could make the index/log visible to older flat-store diagnostics, but it did not guarantee that the page became an eligible Primary recall candidate. The issue was candidate bridging, not only path visibility.
-
-## Implemented boundary
-
-The preferred M2 path remains the first relevance owner. The canonical Primary recall implementation now owns the former E1-R5 bridge behavior, and the E1-R5 fallback only runs after the scoped Primary recall adapter cannot select an eligible Primary candidate from existing M2 results.
-
-When the fallback runs, it:
-
-1. resolves the character-scoped store root from configured root + route character id;
-2. reads only bounded Primary MEM control files from that scoped root;
-3. derives bounded Primary page candidates from index entries for the exact namespace;
-4. validates page path, schema, digest, index entry, and log entry consistency;
-5. applies Primary retrieval lifecycle eligibility through the shared I-4D current-state eligibility index;
-6. checks bounded query relevance against validated Primary `summary` and `title` fields when query hints are available;
-7. rebuilds the existing bounded snippet handoff consumed by RelayCTX and E1-R4 grounded recall.
-
-The canonical fallback does not depend on the compatibility symlink and does not materialize an unbounded tree.
-
-## Namespace decision
-
-Primary recall now accepts the same namespace token shape used by the queue/worker side, including slash-style namespaces such as `character/default`. The goal is to avoid a formation-success / recall-reject split. Character and namespace values remain runtime-private and are not exposed in public projections.
-
-## Lifecycle eligibility ownership
-
-E1-R5 does not own an independent lifecycle policy. The implementation calls the shared Primary retrieval eligibility index used by I-4D before a fallback candidate can become selected evidence.
-
-The current implementation is no longer an active runtime monkey-patch over the original I-1 adapter. PR #491 folded bounded fallback discovery, slash-permitting scope and namespace token handling, lifecycle eligibility integration, relevance bounds, and content-free public projection handling into the canonical Primary recall path.
-
-## PM-D8 closure
-
-PM-D8 is absorbed and closed by PR #491. The former runtime bridge module remains compatibility no-op only; canonical behavior now lives in `relaymem_primary_recall` / `apply_relaymem_primary_recall_scope(...)`.
-
-The PR #491 fold-in preserves the current ownership rule: M2 remains preferred, E1-R5 is fallback only when M2 yields no eligible scoped Primary candidate, and lifecycle eligibility remains shared with I-4D.
-
-## Grounded recall behavior
-
-When the fallback selects a Primary MEM page, E1-R4 grounded recall receives the same selected-memory shape as the M2 path. Backend-bound context may include the bounded supported summary as private evidence, and the instruction continues to require unsupported-detail suppression:
+Within `primary_only`, the compatibility ordering is:
 
 ```text
-Use only grounded_recall_context evidence_items for remembered facts.
-Do not invent dates, names, preferences, quantities, relationships, or causes.
-Say the retrieved memory does not support unsupported details.
+M2 selected Primary candidates
+  -> exact scoped/lifecycle narrowing
+  -> if no eligible scoped Primary candidate survives,
+     bounded E1-R5 fallback discovery
+  -> existing RelayCTX / E1-R4 grounded-recall handoff
 ```
+
+M2 remains the preferred relevance source inside that compatibility path. The
+fallback is not a second authority, cannot run after Subjective cutover, and
+cannot serve as an empty-result or failure fallback from Subjective Retrieval.
+
+## What the fallback may read
+
+When the exact Primary-only fallback condition is reached, the retained selection
+owner may:
+
+1. use only the already-scoped character store root and namespace;
+2. read bounded Primary control/index/log/page material;
+3. derive bounded page candidates for the exact namespace;
+4. validate safe page location, schema, digest, index, and log consistency;
+5. reuse the shared Primary retrieval lifecycle/current-state eligibility owner;
+6. apply bounded query relevance to validated Primary `summary` and `title`
+   fields when query hints are available;
+7. construct the same bounded runtime-private evidence shape consumed by RelayCTX
+   and E1-R4.
+
+It does not materialize an unbounded tree, create a compatibility symlink, repair
+Primary data, mutate a page or control, or bypass the RT-1 reader fence.
+
+## Namespace compatibility
+
+The retained Primary-only path accepts the namespace token shape used by the
+queue/worker formation side, including slash-style values such as
+`character/default`. This prevents formation-success / Primary-only-recall-reject
+drift while the compatibility path remains present.
+
+Character ids, namespaces, roots, page paths, and exact identities remain
+runtime-private and are not public diagnostic fields.
+
+## Lifecycle eligibility
+
+E1-R5 owns no independent lifecycle policy. Fallback candidates pass through the
+shared Primary retrieval eligibility owner documented by the transitional
+Primary retrieval-exclusion boundary.
+
+Currentness, active lifecycle, mutation-none state, exact scope, safe page and
+control state, and retrieval eligibility are mandatory. Prior, hidden, prepared,
+recovery-required, corrupt, unresolved, unsafe, or cross-scope candidates fail
+closed. A hidden successor never causes fallback to an earlier active revision.
+
+## Grounded recall boundary
+
+When a Primary-only fallback selects evidence, it produces the same private
+selected-memory shape as the preferred Primary path and delegates grounding to
+E1-R4. E1-R5 does not own response rewriting or unsupported-detail policy.
+
+The private grounding contract remains: remembered facts must come only from the
+admitted grounded-recall evidence, and unsupported details must not be invented.
 
 ## Public projection
 
-Public diagnostics remain content-free. Allowed public fields include counts and booleans such as:
+Public diagnostics remain content-free. Bounded fields may include:
 
 ```text
 primary_candidate_discovery_attempted
@@ -116,33 +140,35 @@ evidence_content_included=false
 runtime_private_evidence_omitted=true
 ```
 
-The projection must not include raw memory text, raw transcript text, protected source body, queue payload, store root, source path, claim token, lease owner, token digest, source digest, page digest, lineage, or exact private ids.
+They must not expose raw memory or transcript text, protected source bodies,
+queue payloads, store roots, paths, claim/lease material, digests, lineage, or
+exact private identifiers.
+
+## Historical evidence and R5 removal gate
+
+The E1-R5 completion report and post-Wave-7 convergence audit remain historical
+evidence for why the fallback was introduced and what PR #491 folded into the
+Primary recall owner. Those records do not keep the live fallback authoritative.
+
+RT-1D-R5 owns removal of replaced Primary ordinary reader/fallback surfaces after
+its exact post-transfer, restart, request-path, and negative-call-graph gates.
+This handoff does not pre-authorize deletion and does not predict whether a
+read-only historical or evaluation consumer survives that retirement.
+
+The former compatibility no-op runtime module has no semantic authority. Its
+final disposition belongs to the owning retirement wave, not this document.
 
 ## Validation boundary
 
-E1-R5 validation is recorded in the completion report and must remain part of the current E1 recall regression set:
+While the compatibility surface remains live, the existing E1-R5, I-4D, I-1,
+and E1-R4 tests/smokes remain regression evidence for the responsibility they
+already own. In addition, RT-1 request-path tests must prove that a non-
+`primary_only` reader decision reaches none of the Primary fallback read path.
 
-```bash
-python -m compileall -q relaylm scripts
-PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
-PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py
-PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py
-PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_bridge_relevance_bounds_smoke.py
-PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py
-PYTHONPATH=. python scripts/relaylm_phase_i1_two_turn_primary_recall_smoke.py
-PYTHONPATH=. python scripts/relaylm_phase_i1_two_turn_primary_recall_security_smoke.py
-PYTHONPATH=. python scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
-PYTHONPATH=. python scripts/relaylm_e1r4_grounded_recall_response_smoke.py
-PYTHONPATH=. python scripts/relaylm_e1r4_unsupported_detail_suppression_smoke.py
-PYTHONPATH=. python scripts/relaylm_e1r4_grounded_recall_security_smoke.py
-PYTHONPATH=. python scripts/relaylm_e1_evaluation_consolidation_smoke.py
-PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
-PYTHONPATH=. python scripts/relaylm_docs_link_check.py
-```
-
-## Non-goals
-
-E1-R5 does not add O2/O3 supervision, polling, daemons, new queue authority, worker authority, browser-owned trust, automatic bootstrap, broad memory layout migration, Pin / Unpin semantics, Held Apply / Discard behavior, Forget / Correct behavior, Secondary MEM consolidation, RelaySOUL mutation, media runtime work, or post-hoc visible response rewriting.
+Relevant existing validation includes the E1-R5 candidate, security, no-symlink,
+relevance-bound, audit-projection, two-turn recall, Primary lifecycle exclusion,
+and E1-R4 grounding/security smokes. The exact current workflow/registry remains
+the command authority; this handoff is not a second smoke registry.
 
 ## Source evidence
 
@@ -150,3 +176,11 @@ E1-R5 does not add O2/O3 supervision, polling, daemons, new queue authority, wor
 - [E1-R5 Post-Wave-7 Correction Convergence Audit](../evidence/waves/e1r5_post_wave7_correction_convergence_audit.md)
 - Source PR: #439
 - Canonical fold-in PR: #491
+
+## Non-goals
+
+No Subjective MEM selection/ranking/projection semantics, RT-1D-R5 completion,
+Primary deletion, writer or lifecycle mutation, O2/O3 supervision, queue/worker
+ownership, browser trust, automatic migration/repair, Pin/Unpin, Held, Forget,
+Correct, Consolidate, RelaySOUL mutation, media runtime work, or post-hoc visible
+response rewriting is authorized here.
