@@ -40,6 +40,11 @@ its regression/evaluation consumers still have an accepted compatibility role.
 It is not an independent runtime bridge and it is not ordinary Retrieval
 authority.
 
+Historical handoff identity: **E1-R5 Primary MEM Recall Candidate Discovery Bridge**.
+The historical name is retained here only so evaluation evidence and regression
+validation can identify the source slice; it does not restore a separate bridge
+authority.
+
 - owner: evaluation / Primary recall compatibility evidence;
 - current consumers: Primary-only recall regressions, E1 evaluation evidence, and
   RT-1 retirement review;
@@ -109,8 +114,9 @@ runtime-private and are not public diagnostic fields.
 ## Lifecycle eligibility
 
 E1-R5 owns no independent lifecycle policy. Fallback candidates pass through the
-shared Primary retrieval eligibility owner documented by the transitional
-Primary retrieval-exclusion boundary.
+shared I-4D current-state eligibility index documented by the transitional
+Primary retrieval-exclusion boundary. That phrase names the continuing shared
+eligibility dependency; it does not make I-4D a universal reader authority.
 
 Currentness, active lifecycle, mutation-none state, exact scope, safe page and
 control state, and retrieval eligibility are mandatory. Prior, hidden, prepared,
@@ -165,7 +171,13 @@ and E1-R4 tests/smokes remain regression evidence for the responsibility they
 already own. In addition, RT-1 request-path tests must prove that a non-
 `primary_only` reader decision reaches none of the Primary fallback read path.
 
-Relevant existing validation includes the E1-R5 candidate, security, no-symlink,
+The E1 consolidation validator retains this exact current regression anchor:
+
+```bash
+PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
+```
+
+Other relevant existing validation includes E1-R5 security, no-symlink,
 relevance-bound, audit-projection, two-turn recall, Primary lifecycle exclusion,
 and E1-R4 grounding/security smokes. The exact current workflow/registry remains
 the command authority; this handoff is not a second smoke registry.
