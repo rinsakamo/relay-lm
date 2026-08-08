@@ -7,14 +7,18 @@ relaylm_owner: e1_quality_gates
 relaylm_update_trigger:
   - grounded recall context schema changes
   - backend-bound recall instruction changes
-  - public used-memory projection changes
+  - ordinary memory authority selection or selected-memory handoff changes
+  - public grounded-recall projection changes
   - retrieval eligibility or provenance support rules change
 relaylm_not_authoritative_for:
-  - Primary MEM formation summary internals
-  - queue lifecycle authority
-  - worker execution authority
-  - browser-owned trust admission
+  - repository-wide current implementation status
+  - Primary or Subjective candidate discovery/ranking authority
+  - RT-1D cutover state, R5 retirement completion, or Primary deletion approval
+  - memory formation or lifecycle mutation internals
+  - queue lifecycle, worker execution, or browser trust admission
+relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
+  - subjective-mem-retrieval-projection-hard-cutover.md
   - e1_evaluation_consolidation.md
   - e1r3_provenance_preserving_primary_mem_formation_summary.md
   - e1r5_primary_mem_recall_candidate_bridge.md
@@ -23,23 +27,82 @@ relaylm_related_authority:
   - phase_i5b_pin_unpin_apply.md
   - phase_i7c_held_apply_discard_runtime.md
 ---
-# E1-R4 Retrieval-Response Grounding
+# Ordinary Memory Retrieval-Response Grounding Compatibility Handoff
 
-Last reviewed: 2026-06-30 JST.
+Last reviewed: 2026-08-08 JST
 
-## Purpose
+## Transitional status
 
-E1-R4 adds request-side, backend-bound recall grounding for later Home / ordinary managed request responses that use retrieved Primary MEM. It keeps retrieved facts separate from inference and makes unsupported dates, names, preferences, quantities, relationships, and causes harder to emit as remembered facts.
+Historical handoff identity: **E1-R4 Retrieval-Response Grounding**.
 
-The implementation boundary is `relaylm/relaymem_grounded_recall_response.py` with deterministic smokes under `scripts/relaylm_e1r4_*_smoke.py`.
+E1-R4 introduced the current request-side grounded-recall policy. The policy
+continues to be live after RT-1D authority transfer, but this legacy
+underscore-named E1 handoff is transitional documentation rather than the final
+permanent responsibility-level path.
 
-## Request-side decision
+- owner: E1 quality gates / ordinary memory grounding;
+- current consumers: RelayCTX repack, ordinary Primary-only and Subjective-only
+  retrieval paths, E1 regression/evaluation, and response-safety reviewers;
+- removal gate: a permanent responsibility-oriented grounding document preserves
+  the exact private context, support classification, suppression, projection,
+  privacy, and validation contracts, and all E1/index/validator consumers migrate
+  atomically;
+- replacement validation: both Primary-only compatibility and finalized
+  Subjective-only ordinary requests continue to consume the same grounding policy
+  without dual-read, content leakage, or unsupported-detail regression.
 
-E1-R4 is request-side only. It builds a `relaymem.grounded_recall_context.v0` private backend-bound contract and instruction. It does not rewrite visible responses after generation, does not alter SSE semantics, and does not expose private evidence in public diagnostics.
+RT-1D-R5 may retire Primary reader/fallback inputs to this policy; it does not
+retire the grounding policy itself.
 
-## Grounded recall context
+## Current responsibility
 
-The private backend-bound context contains:
+E1-R4 owns request-side transformation from **already selected ordinary memory
+evidence** into bounded private backend grounding plus content-free diagnostics.
+It does not choose which durable memory authority serves the request.
+
+The ordinary Retrieval stage first names exactly one authority in
+`ordinary_memory_authority`. RelayCTX repack then consumes selected memories from
+that named family only:
+
+```text
+primary_only
+  -> Primary recall runtime selected memories
+
+subjective_only
+  -> admitted/finalized Subjective runtime selected memories
+
+neither / missing / malformed authority
+  -> no selected ordinary memory
+```
+
+Primary and Subjective selected memories are never combined. Grounding cannot
+probe the other family, infer fallback authority, or turn an empty selection into
+a cross-authority retry.
+
+The implementation owner remains
+`relaylm/relaymem_grounded_recall_response.py`, invoked from RelayCTX repack after
+the retrieval authority decision and before the backend-bound request is
+finalized.
+
+## Request-side only boundary
+
+Grounding builds the private backend-bound
+`relaymem.grounded_recall_context.v0` contract and its instruction. It does not:
+
+- rewrite the visible response after generation;
+- alter SSE semantics;
+- select or rank durable memories;
+- authorize a Primary or Subjective reader;
+- recover from an empty/failed Subjective result by reading Primary;
+- expose private evidence in public diagnostics.
+
+If no selected ordinary memory exists, the helper produces a bounded
+`no_retrieved_evidence` result and no memory evidence is injected as remembered
+support.
+
+## Private grounded-recall context
+
+The private context contains bounded fields of this shape:
 
 ```text
 grounded_recall_context:
@@ -66,13 +129,18 @@ grounded_recall_context:
   backend_messages
 ```
 
-E1-R5 may provide the bounded scoped Primary MEM candidate that becomes input evidence for E1-R4 grounded recall when M2 yields no eligible scoped Primary candidate. E1-R4 consumes the same selected-memory handoff shape regardless of whether the candidate came from the M2-preferred path or the E1-R5 bounded bridge.
+`fact_text` and backend grounding messages are runtime-private evidence. They are
+not public diagnostics, durable usage prose, trace payloads, or a second memory
+store.
 
-`fact_text` is runtime-private backend evidence. Public diagnostics never include raw memory text, raw user text, raw assistant text, protected source body, queue payload, store root, source path, claim token, lease owner, token digest, or source digest.
+The context schema is storage-neutral at this boundary: the caller has already
+selected exactly one ordinary authority. Grounding judges the admitted evidence
+shape and support, not whether it originated from the retained Primary
+compatibility path or the finalized Subjective path.
 
 ## Support classification
 
-Minimum support statuses are implemented:
+The bounded support statuses remain:
 
 ```text
 directly_supported
@@ -86,25 +154,42 @@ provenance_missing
 content_leakage_guard_failed
 ```
 
-Rules:
+Stable rules:
 
-- `user_assertion` / `user_assertion_only` provenance is directly supported.
-- `scene_qualification` / `other_allowed_source` may be inference support, but not direct user fact.
-- assistant acknowledgement, assistant speculation, assistant non-factual context, assistant decoration, and unknown provenance are not injected as supported recalled facts.
-- missing provenance fails closed as `provenance_missing`.
-- hidden, prior, prepared, recovery_required, corrupt, deleted, tombstoned, held, and cross-scope memories are excluded before grounding.
-- Pin may rank eligible evidence earlier; Pin does not override lifecycle/scope and does not create support.
-- Held Governance evidence is excluded unless a later authority has made it eligible Primary MEM.
+- user-assertion provenance may be directly supported;
+- accepted scene/other provenance may support inference but is not automatically
+  a direct user fact;
+- assistant acknowledgement, speculation, decoration, non-factual context, and
+  unknown provenance are not admitted as directly supported recalled facts;
+- missing provenance fails closed as `provenance_missing`;
+- hidden, prior, prepared, recovery-required, corrupt, deleted, tombstoned, held,
+  or cross-scope evidence is excluded before grounding;
+- Pin may affect order only for evidence that is already eligible; Pin does not
+  create support or override scope/lifecycle exclusion;
+- governance/held evidence remains excluded until its owning lifecycle authority
+  has made it eligible ordinary memory evidence.
 
-## Unsupported detail behavior
+Grounding does not reinterpret a cutover fence, lifecycle decision, projection
+receipt, or store record as semantic support.
 
-The backend instruction says to answer remembered facts only from `directly_supported` evidence, mark inference as inference, and avoid inventing dates, names, preferences, quantities, relationships, or causes. If a query asks for a detail that the retrieved fact text does not support, the context records `unsupported_detail_count > 0` and status `unsupported_detail_suppressed`.
+## Unsupported-detail policy
 
-No retrieved evidence produces a context with no evidence items and an instruction to avoid claiming remembered support.
+The backend instruction requires remembered facts to be grounded in admitted
+support, requires inference to remain identifiable as inference, and suppresses
+unsupported dates, names, preferences, quantities, relationships, causes, and
+other requested detail classes that the admitted evidence does not support.
 
-## Public projection
+A request for unsupported detail increments bounded unsupported-detail
+diagnostics and may produce the exact runtime status
+`unsupported_detail_suppressed`.
 
-`RelayMEMGroundedRecallResult.to_log_dict()` returns content-free diagnostics such as:
+No retrieved evidence produces no evidence items and an instruction that prevents
+a false claim of remembered support.
+
+## Content-free public projection
+
+`RelayMEMGroundedRecallResult.to_log_dict()` exposes only bounded diagnostics,
+including fields such as:
 
 ```text
 grounding_enabled=true
@@ -115,11 +200,18 @@ evidence_content_included=false
 runtime_private_evidence_omitted=true
 ```
 
-This projection is safe for SOUL Lab observation / used-memory lifecycle surfaces. It is intentionally not a memory text display.
+The projection must not expose raw memory text, raw user/assistant text, protected
+source bodies, queue payloads, store roots, paths, namespaces, claim tokens,
+lease owners, digests, lineage, exact private identifiers, or backend grounding
+messages.
+
+This content-free projection may be consumed by SOUL Lab observation and
+used-memory lifecycle surfaces without becoming a memory-text display or serving
+authority.
 
 ## Runtime statuses
 
-E1-R4 defines the bounded statuses:
+The bounded status vocabulary remains:
 
 ```text
 disabled
@@ -135,21 +227,63 @@ backend_request_unchanged
 content_leakage_guard_failed
 ```
 
-## Non-goals
+Status values are diagnostics about grounding execution. They do not authorize a
+reader, mutate memory, or prove that an unavailable authority may be retried.
 
-E1-R4 does not implement O2/O3, polling, supervision, daemonization, browser-owned trust, new queue lifecycle authority, new worker execution authority, Pin / Unpin mutation changes, Held Apply / Discard changes, Forget / Correct changes, Merge / Supersession, Secondary MEM consolidation, RelaySOUL mutation, TTS/audio/avatar/Live2D/ASR, or post-hoc visible response rewriting.
+## RT-1 / R5 boundary
+
+RT-1 chooses the one ordinary memory authority before E1-R4 grounding runs. The
+current grounding policy therefore survives Primary reader retirement:
+
+- while `primary_only` remains valid, it may ground selected Primary compatibility
+  evidence;
+- after finalized `subjective_only` transfer, it grounds only the admitted
+  Subjective selected-memory handoff;
+- `neither` grounds no durable-memory evidence;
+- failed or empty Subjective selection/finalization never causes Primary fallback.
+
+R5 owns retirement of replaced Primary discovery/reader/fallback surfaces and
+temporary rehearsal/shadow surfaces. It does not need a second grounding policy
+for Subjective memory and must not clone E1-R4 semantics into the cutover owner.
+
+## Privacy and failure boundary
+
+Grounding is fail-closed over malformed request shape, unsupported policy values,
+scope disagreement, lifecycle exclusion, provenance failure, ambiguous evidence,
+or content-leakage guard failure.
+
+Runtime-private evidence remains bounded and request-local. Public/log projections
+remain content-free even when private grounding was successfully applied.
+
+No grounding result may expose credentials, raw paths, memory bodies outside the
+bounded backend context, source bodies, queue internals, claim/lease state, or
+cutover identifiers.
 
 ## Validation
 
-Slice validation:
+The historical E1-R4 validation slice remains regression evidence for this live
+policy. Current validation must continue to cover both the stable schema/policy
+and the one-authority caller behavior.
+
+Core existing anchors include:
 
 ```bash
-python -m compileall -q relaylm scripts
 PYTHONPATH=. python scripts/relaylm_e1r4_grounded_recall_response_smoke.py
 PYTHONPATH=. python scripts/relaylm_e1r4_unsupported_detail_suppression_smoke.py
 PYTHONPATH=. python scripts/relaylm_e1r4_grounded_recall_security_smoke.py
 PYTHONPATH=. python scripts/relaylm_e1_evaluation_consolidation_smoke.py
-PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
-PYTHONPATH=. python scripts/relaylm_docs_link_check.py
-PYTHONPATH=. python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
 ```
+
+RT-1 request-path/runtime coverage additionally proves that grounding receives
+selected memories only from the authority named by the exact reader decision and
+that Primary/Subjective evidence is never combined.
+
+The current workflow/registry remains the command authority; this handoff is not
+a second CI registry.
+
+## Non-goals
+
+No memory authority selection, candidate discovery/ranking, Primary or Subjective
+lifecycle mutation, RT-1D-R5 completion, Primary deletion, queue/worker/scheduler
+ownership, browser trust, Secondary consolidation, RelaySOUL mutation, media
+runtime execution, or post-hoc visible-response rewriting is authorized here.
