@@ -11,14 +11,20 @@ relaylm_update_trigger:
   - ordinary-runtime worker integration changes
   - I1-G or O1/O2/O3 boundary changes
   - E1 evaluation evidence boundary changes
+  - RT-1 writer or reader cutover decisions change
+  - RT-1D-R5 or R6 retirement disposition changes
   - accepted Subjective MEM target timing changes
 relaylm_not_authoritative_for:
-  - repository-wide phase sequencing
+  - repository-wide phase sequencing or exact current transaction state
   - exact RelayMEM or RelaySLP schemas
+  - exact RT-1 durable cutover state or R5/R6 retirement approval
   - RelaySOUL approval contracts
+relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../adr/0003-subjective-mem-direction.md
   - ../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md
+  - subjective-mem-retrieval-projection-hard-cutover.md
+  - current_target_migration_guide.md
   - runtime/request-response-pipeline.md
   - runtime/scheduler.md
   - memory/formation.md
@@ -28,8 +34,10 @@ relaylm_related_authority:
   - pm_d5_relaymem_flat_store_compatibility_removal.md
   - pm_d6_relayint_native_artifact_relayref_wrapper_removal.md
   - pm_d7_runtime_install_hook_fold_in.md
+  - phase_i4d_primary_retrieval_exclusion.md
   - phase_i5b_pin_unpin_apply.md
   - phase_i7c_held_apply_discard_runtime.md
+  - integration_i1_primary_mem_two_turn_recall.md
   - e1r1_trusted_home_scene_admission.md
   - e1r2_character_store_bootstrap.md
   - e1r3_provenance_preserving_primary_mem_formation_summary.md
@@ -43,13 +51,29 @@ relaylm_related_authority:
 ---
 # RelayMEM / RelaySLP Current / Target Boundary
 
-Last reviewed: 2026-07-19 JST
+Last reviewed: 2026-08-08 JST
 
 ## Current implemented boundary
 
-RelayMEM currently provides bounded store discovery, target-only Primary/Secondary layout discovery after PM-D5 flat-store compatibility removal, retrieval priority, runtime-private snippet selection, content-free retrieval projection, gated RelayCTX injection, auditable Correct, canonical read-only Primary current-state resolution, I-4C1 hidden-successor lifecycle commit ownership, bounded I-4C2 recovery/finalization, I-4D ordinary retrieval lifecycle exclusion plus historical lifecycle overlay, I-4E loopback Forget API/UI, I-4F full Forget validation, I-5A Pin / Unpin read-only preflight, I-5B Pin / Unpin apply/API/UI/ranking behavior, I-7A/B Held Apply / Discard read-only preflight, I-7C Held Apply / Discard runtime/API/UI/durable governance evidence, E1-R5 bounded scoped Primary recall candidate fallback, and PM-D8 canonical Primary recall adapter fold-in.
+RelayMEM and RelaySLP retain the durable queue, worker, lifecycle, evaluation, and compatibility capabilities recorded below, but RT-1D-R4 now dominates the interpretation of ordinary memory serving. The ordinary Retrieval facade resolves exactly one reader authority before touching a memory family:
 
-The Primary MEM persistence chain is implemented through M3a-M3h. The Phase 6 execution boundary is implemented through B0-B3, C1-5, and C2, with O0 as the explicit local caller:
+```text
+primary_only
+  -> retained Primary compatibility reader only
+
+neither
+  -> no ordinary durable-memory reader
+
+subjective_only
+  -> finalized Subjective reader only
+  -> no Primary root resolution, discovery, recall, ranking, or fallback
+```
+
+Primary and Subjective are never ordinary co-authorities for one request. Configuration, store presence, historical Primary success, an empty or failed Subjective result, or a grounding status cannot select or restore reader authority. Primary-layer mutation is independently governed by the exact RT-1 writer decision and is permitted only strictly before the durable `primary_writer_fenced` state. A stale token, old worker, old lifecycle receipt, or caller-supplied decision cannot authorize a Primary write after that fence.
+
+RT-1D-R4 and its mandatory P8 are complete. RT-1D-R5 immediate retirement remains unstarted in the current status authority. R5/R6 therefore own the final removal or retained read-only disposition of replaced Primary ordinary-reader/fallback surfaces and temporary cutover execution surfaces; this document does not pre-authorize those deletions.
+
+The Phase 6 execution boundary remains implemented through B0-B3, C1-5, and C2, with O0 as the explicit local caller:
 
 ```text
 B0 durable queue contract
@@ -66,13 +90,13 @@ C2 one-job claim/rehydrate/execute adapter
 O0 one invocation -> at most one eligible queued job
 ```
 
-Phase 6-B2 performs atomic durable enqueue of durably enqueued jobs through the existing content-free queue record authority. Phase 6-B3 performs default-off, dry-run-first fenced queue lifecycle transitions. C1-2 executes one already-claimed canonical B3 job. C1-5 persists protected content separately from the content-free queue. C2 one-job claim/rehydrate/execute adapter accepts one caller-selected queued record and connects B3 claim, C1-5 preparation, and C1-2 execution. O0 adds bounded discovery and one C2 delegation without polling or retry scheduling.
+Phase 6-B2 performs atomic durable enqueue through the existing content-free queue record authority. Phase 6-B3 performs default-off, dry-run-first fenced queue lifecycle transitions. C1-2 executes one already-claimed canonical B3 job. C1-5 persists protected content separately from the content-free queue. C2 accepts one caller-selected queued record and connects B3 claim, C1-5 preparation, and C1-2 execution. O0 adds bounded discovery and one C2 delegation without polling or retry scheduling. These capabilities remain implementation and operational evidence; they do not override the RT-1 writer fence or reader decision.
 
-I2 real SOUL Lab observation is complete. It is read-only evidence only and cannot authorize repair or retrieval.
+I2 real SOUL Lab observation is complete. It remains read-only evidence only and cannot authorize repair, mutation, retrieval, or a reader transition.
 
-E1 evaluation consolidation is current as an evidence/documentation boundary. E1-R1 route-owned trusted Home scene admission is current implemented. E1-R2 dry-run-first character-store bootstrap is current implemented. E1-R3 provenance-preserving summary formation is current implemented. E1-R4 request-side evidence-grounded recall behavior is current implemented. E1-R5 scoped Primary recall candidate fallback is current implemented.
+E1 evaluation consolidation remains current as an evidence/documentation boundary. E1-R1 route-owned trusted Home scene admission and E1-R2 dry-run-first character-store bootstrap remain current implemented bounded capabilities. E1-R3 remains implemented provenance-preserving formation-summary evidence in the Primary compatibility lineage. E1-R4 remains the live common one-authority request-side grounding policy. E1-R5 remains implemented only as bounded Primary-only compatibility fallback behavior while the exact reader decision is `primary_only`; it is not a Subjective failure fallback and cannot run under `subjective_only`.
 
-PM-D5, PM-D6, PM-D7, and PM-D8 are complete as post-MVP compatibility/debt fold-in slices. PM-D5 removes legacy flat-store runtime discovery. PM-D6 makes the input-side RelayINT artifact native instead of RelayREF-wrapper-shaped. PM-D7 adds the explicit dry-run-first runtime install/preflight command. PM-D8 folds the bounded E1-R5 fallback into canonical Primary recall.
+PM-D5, PM-D6, PM-D7, and PM-D8 remain completed post-MVP compatibility/debt slices. PM-D5 removed legacy flat-store runtime discovery. PM-D6 made the input-side RelayINT artifact native instead of RelayREF-wrapper-shaped. PM-D7 added the explicit dry-run-first runtime install/preflight command. PM-D8 folded the bounded E1-R5 behavior into canonical Primary recall; RT-1 subsequently confines that folded behavior behind the exact `primary_only` reader branch, and R5/R6 own its final retirement disposition.
 
 ## Accepted target boundary after ADR 0004
 
@@ -92,7 +116,7 @@ out-of-band reference formation path
   -> gated RelayMEM / workspace commit or hold
 ```
 
-The current Primary worker and queue implementation is implementation evidence and a migration base; it does not, by itself, define the final Subjective MEM, Shared Assessment, episode grouping, or storage-authority schema.
+The retained Primary worker and queue implementation is implementation evidence and a migration/compatibility base. It does not, by itself, define the final Subjective MEM, Shared Assessment, episode grouping, storage-authority schema, current reader authority, or post-fence Primary mutation authority.
 
 Target invariants:
 
@@ -100,21 +124,22 @@ Target invariants:
 - Finalized assistant-origin Evidence remains distinct from RelayREF response observation and never becomes user-origin fact through retention.
 - RelayCTX owns current/session continuity and temporary correction or recall-suppression overlays, not durable pending MEM.
 - RelayMEM Retrieval remains read-only in the interactive path.
+- Exactly one ordinary durable-memory reader may be selected for one request; no dual serving or cross-authority fallback is permitted.
 - RelaySLP preferably groups several related turns before formation when later qualification or correction is likely to improve coherence.
 - The reference path validates a SOUL-independent Shared Assessment before SOUL-conditioned Subjective Formation.
 - A fused SLP call is evaluation-gated optimization only and must fail closed to the split path when equivalence or SOUL-contamination boundaries are not met.
 - Additional LLM adjudication is an optional deferred SLP exception and never blocks conversation.
 - Current-conversation correction is best-effort CTX input control; it is not a guarantee about probabilistic Main LLM output.
 - Natural-language conversational “forget” defaults to session-local suppression when durable management authority was not invoked.
-- Durable Forget remains the implemented loopback UI/API lifecycle operation or an equivalent governed canonical-edit path.
-- RelayRUN separates control-plane mutation fences from compute/resource priority; semantic fallback remains owned by RelaySLP and RelayMEM.
+- Durable lifecycle-management capabilities remain governed by their canonical owners and exact cutover writer decision; no historical token or UI path may bypass `primary_writer_fenced` for a Primary-layer mutation.
+- RelayRUN separates control-plane mutation fences from compute/resource priority; semantic fallback remains owned by the applicable RelaySLP/RelayMEM policy under the selected authority.
 - Explicit pass-through disables managed memory behavior by default unless a separate route contract opts in.
 
-Current implementation status remains exactly as recorded below and in Project Status. This accepted target is not a claim that the target schema or runtime migration is already implemented.
+Current implementation status remains owned by Project Status. This accepted target is not a claim that every target schema, runtime migration, or retirement step is already implemented.
 
 ## I1-G durable-finalization boundary
 
-I1-GA through I1-GE are complete. I1-G completion means sealed evidence, exact C1-5 source, exact B2 queue correlation, durable completion, retention/isolation lifecycle, and crash-at-every-boundary validation. It does not imply B3 terminal success, C2 execution, worker execution, Primary MEM formation, semantic quality, retrieval use, automatic scheduling, polling, supervision, or always-on operation.
+I1-GA through I1-GE are complete. I1-G completion means sealed evidence, exact C1-5 source, exact B2 queue correlation, durable completion, retention/isolation lifecycle, and crash-at-every-boundary validation. It does not imply B3 terminal success, C2 execution, worker execution, current Primary writer permission, current Primary reader permission, semantic quality, retrieval use, automatic scheduling, polling, supervision, or always-on operation.
 
 ## O1/O2/O3 scheduler boundary
 
@@ -126,37 +151,57 @@ O1E is current implemented as a bounded caller-invoked operational-control layer
 
 O1F is current implemented as validation-only hardening over the caller-invoked O1E/O1D2/O1D1 stack. It validates corruption, concurrency, saturation/boundedness, restart reread, cancellation/shutdown projection, and leakage boundaries. O1F does not poll, sleep, loop, supervise, create workers, or itself implement local always-on operation.
 
-O2 is current implemented as an opt-in supervised local scheduler service above O1E. O3 is current implemented as an opt-in local CLI/process wrapper around O2. O2/O3 are not app-embedded, not browser authority, not default-on, and do not add memory mutation, queue, worker, stale-recovery, or durable-finalization authority.
+O2 is current implemented as an opt-in supervised local scheduler service above O1E. O3 is current implemented as an opt-in local CLI/process wrapper around O2. O2/O3 are not app-embedded, not browser authority, not default-on, and do not add memory mutation, queue, worker, stale-recovery, durable-finalization, or RT-1 reader/writer authority.
 
 ## Current Primary mutation and lifecycle-read boundary
 
-I-4E is current implemented as loopback Forget API/UI.
+The historical Primary lifecycle and management slices remain implemented capabilities and regression evidence, but their current ordinary-serving effect is subordinate to the exact RT-1 decisions.
 
-I-4F is current implemented as validation-only Forget product completion. It proves crash/fault recovery, one-winner races, Correct/Forget stale races, strict token binding, loopback/security leakage boundaries, stale-browser response fencing, no implicit UI apply triggers, fresh process reread, fresh ordinary conversation exclusion, and multi-scope isolation over the existing I-4B/I-4C1/I-4C2/I-4D/I-4E authorities. I-4F does not create new mutation authority.
+For ordinary reads:
 
-UI-B1A is current implemented read-only visibility. I-5A is current implemented contract/read-only preflight only. I-5B is current implemented as Pin / Unpin apply/API/UI/ranking behavior. I-7A/B is current implemented contract/read-only preflight only. I-7C is current implemented as Held Apply / Discard runtime/API/UI/durable governance evidence.
+- `primary_only` may use the retained Primary compatibility reader and its exact lifecycle/currentness filtering;
+- `neither` reads no ordinary durable-memory authority;
+- `subjective_only` resolves no Primary root and performs no Primary lifecycle discovery, recall, ranking, or fallback.
 
-I-5B Pin state remains governance metadata and a ranking hint. It never admits hidden, prepared, recovery-required, corrupt, cross-scope, or prior physical revisions. I-7C persists content-free decision evidence for already-held candidates and does not start workers, schedulers, retry loops, C2, O1, or B3 transitions from the UI.
+For Primary-layer writes, the exact writer decision must still permit mutation. Once durable state reaches `primary_writer_fenced`, an old Correct/Forget, Pin/Unpin, Held Apply/Discard, worker, recovery, UI, API, or token path cannot restore Primary mutation authority. This fence does not erase historical records and does not by itself decide which explicitly read-only management/history consumers survive R5/R6.
+
+I-4E remains implemented loopback Forget API/UI product work and I-4F remains implemented validation-only Forget product-completion evidence. I-4F proves crash/fault recovery, one-winner races, Correct/Forget stale races, strict token binding, loopback/security leakage boundaries, stale-browser response fencing, no implicit UI apply triggers, fresh process reread, fresh ordinary-conversation exclusion, and multi-scope isolation over its owning lifecycle authorities. Those completion facts do not bypass a later RT-1 writer fence.
+
+UI-B1A remains implemented read-only visibility. I-5A remains implemented contract/read-only preflight. I-5B remains implemented Pin/Unpin apply/API/UI/ranking behavior. I-7A/B remains implemented contract/read-only preflight. I-7C remains implemented Held Apply/Discard runtime/API/UI/durable governance evidence. These implementation facts are capability/history statements rather than independent current reader/writer authorization.
+
+I-5B Pin state remains governance metadata and a ranking hint. It never admits hidden, prepared, recovery-required, corrupt, cross-scope, or prior physical revisions and cannot select an ordinary reader. I-7C persists content-free decision evidence for already-held candidates and does not start workers, schedulers, retry loops, C2, O1, or B3 transitions from the UI.
 
 ## E1 evidence-quality boundary
 
-E1-R3 is current implemented as speaker-provenance-safe Primary MEM formation summary construction. It keeps user assertion evidence separate from assistant acknowledgement/speculation and route-owned scene/trust qualification.
+E1-R3 remains implemented as speaker-provenance-safe Primary formation-summary construction in the retained Primary compatibility lineage. It keeps user assertion evidence separate from assistant acknowledgement/speculation and route-owned scene/trust qualification. Its implementation does not itself grant current Primary writer permission.
 
-E1-R4 is current implemented as request-side retrieval-response grounding and unsupported-detail suppression for eligible retrieved Primary MEM evidence. It consumes existing M2/RelayCTX-selected Primary MEM evidence, preserves I-4D lifecycle/scope exclusions, creates backend-bound grounding instructions, keeps public projections content-free, and does not mutate memory, rewrite visible responses, or expose runtime-private evidence publicly.
+E1-R4 remains current as the common request-side retrieval-response grounding and unsupported-detail-suppression policy for **already selected ordinary memory evidence**. RelayCTX repack first observes the exact `ordinary_memory_authority`; only then does E1-R4 consume selected memories from that named family. `primary_only` may supply Primary compatibility evidence, `subjective_only` supplies only admitted/finalized Subjective evidence, and any other/malformed authority supplies none. E1-R4 never combines the two families, selects reader authority, or falls back from failed/empty Subjective retrieval to Primary. Its private backend context remains bounded and its public projection remains content-free.
 
-E1-R5 is current implemented as a bounded scoped Primary MEM recall candidate fallback in canonical Primary recall. M2 remains the preferred relevance owner. When no eligible scoped Primary candidate survives existing M2 narrowing, the canonical recall path may derive bounded candidates from exact character-scoped Primary index/log/page controls, apply shared I-4D lifecycle eligibility, require query relevance, and rebuild the existing RelayCTX/E1-R4 handoff shape. E1-R5 does not add broad retrieval ranking, unbounded filesystem scans, compatibility symlink dependence, memory mutation, worker/scheduler/queue authority, browser trust, or media runtime work.
+E1-R5 remains implemented as a bounded scoped Primary recall fallback only inside an exact `primary_only` decision. M2 remains the preferred relevance owner in that compatibility branch. When no eligible scoped Primary candidate survives M2 narrowing, the folded E1-R5 behavior may derive bounded candidates from exact character-scoped Primary index/log/page controls, apply lifecycle eligibility, require query relevance, and rebuild the existing E1-R4 handoff shape. It cannot execute under `subjective_only`, cannot become a second ordinary reader, and cannot act as Subjective failure or empty-result fallback. R5/R6 own its final retirement disposition.
 
 ## Completed Primary MEM integration
 
+This section is a completed implementation and regression inventory. It must not be read as an unconditional ordinary runtime path after RT-1D-R4.
+
 ```text
-finalized ordinary turn
+historical / compatibility formation path
   -> I1-B request-runtime A1/A2/B1                     complete
   -> C1-5 protected source then B2 queue               complete
   -> B3 queue claim/lease/retry lifecycle              complete
   -> O0 explicit local selection and one C2 call       complete
   -> C2/C1 worker path and verified Primary MEM        complete
-  -> later M2 / RelayCTX recall                        complete as I-1
-  -> E1-R5 scoped Primary recall fallback              complete as E1-R5
+  -> Primary-layer formation only while writer decision permits
+
+later ordinary request
+  -> exact RT-1 reader decision first
+  -> primary_only: M2-preferred Primary compatibility retrieval
+       -> bounded E1-R5 fallback only after eligible scoped M2 miss
+       -> exact Primary lifecycle/currentness filtering
+  -> neither: no ordinary durable-memory retrieval
+  -> subjective_only: finalized Subjective retrieval only; no Primary read/fallback
+  -> E1-R4 common one-authority grounded recall
+
+completed supporting slices / historical evidence
   -> real Lab observation                              complete as I-2
   -> audited correction and corrected retrieval        complete as I-3
   -> canonical read-only lifecycle resolution          complete as I-4B
@@ -174,7 +219,7 @@ finalized ordinary turn
   -> route-owned trusted Home admission                complete as E1-R1
   -> dry-run-first character-store bootstrap           complete as E1-R2
   -> provenance-preserving formation summary           complete as E1-R3
-  -> request-side grounded recall response             complete as E1-R4
+  -> one-authority grounded recall response             complete as E1-R4
   -> bounded scheduler operational controls            complete as O1E
   -> operational validation hardening                  complete as O1F
   -> opt-in supervised local scheduler service         complete as O2
@@ -182,9 +227,17 @@ finalized ordinary turn
   -> target-only RelayMEM store discovery              complete as PM-D5
   -> native input-side RelayINT artifact               complete as PM-D6
   -> explicit runtime install/preflight command        complete as PM-D7
-  -> canonical Primary recall fallback fold-in         complete as PM-D8
+  -> canonical Primary fallback fold-in history        complete as PM-D8
 ```
+
+The historical Phase I-1/I-4D/E1-R5/PM-D8 completion chain therefore proves what the Primary implementation did and what must remain regression-safe during retirement. It does not keep Primary ordinary serving authoritative after the exact reader decision selects `subjective_only`, and it does not keep Primary mutation authoritative after `primary_writer_fenced`.
 
 ## Completion interpretation
 
-M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1F, O2, O3, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, I-4F, UI-B1A, I-5A, I-5B, I-7A/B, I-7C, E1, E1-R1, E1-R2, E1-R3, E1-R4, E1-R5, PM-D5, PM-D6, PM-D7, and PM-D8 are implemented. O1F is validation-only caller-invoked operational hardening. O2 and O3 are opt-in local operation layers that remain explicit operator-invoked and default-off. E1-R1 is route-owned and defaults disabled; it does not permit browser-owned trust. E1-R2 is dry-run-first and does not create semantic memory content. E1-R3 is speaker-provenance-safe formation summary work. E1-R4 is request-side retrieval-response grounding and does not perform post-hoc visible response rewriting or create a new memory mutation authority. E1-R5 is a bounded fallback and does not replace M2 as preferred relevance owner or add broad retrieval/mutation/scheduler authority. PM-D5 removes legacy flat-store runtime discovery. PM-D6 removes the input-side RelayREF-shaped RelayINT wrapper. PM-D7 adds explicit dry-run-first runtime install/preflight support only. PM-D8 folds the bounded E1-R5 fallback into canonical Primary recall.
+M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1F, O2, O3, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, I-4F, UI-B1A, I-5A, I-5B, I-7A/B, I-7C, E1, E1-R1, E1-R2, E1-R3, E1-R4, E1-R5, PM-D5, PM-D6, PM-D7, and PM-D8 are implemented as recorded by their owning authorities. Later RT-1 cutover work changes the serving/mutation interpretation of some of those completed Primary slices; it does not erase their implementation history.
+
+RT-1D-R4 one-authority activation and its mandatory P8 are complete. Current ordinary serving is therefore decided only by the exact RT-1 reader state: `primary_only`, `neither`, or `subjective_only`. There is no dual serving and no Primary fallback from `subjective_only`. Current Primary-layer mutation permission is separately bounded by the exact writer decision and ends at `primary_writer_fenced`.
+
+RT-1D-R5 immediate retirement remains unstarted in Project Status. R5/R6 own retirement of replaced Primary ordinary-reader/fallback surfaces, temporary rehearsal/shadow execution surfaces, and final disposition of explicitly read-only historical/operational Primary consumers. This document records that dependency but does not authorize deletion ahead of the owning retirement transaction.
+
+O1F remains validation-only caller-invoked operational hardening. O2 and O3 remain opt-in local operation layers that are explicit operator-invoked and default-off. E1-R1 remains route-owned and defaults disabled; it does not permit browser-owned trust. E1-R2 remains dry-run-first and does not create semantic memory content. E1-R3 remains speaker-provenance-safe formation-summary work. E1-R4 remains the common storage-neutral grounding policy after one-authority selection and does not perform post-hoc visible-response rewriting or create mutation authority. E1-R5 remains bounded Primary-only fallback compatibility and does not replace M2 as preferred relevance owner or add broad retrieval/mutation/scheduler authority. PM-D5 removes legacy flat-store runtime discovery. PM-D6 removes the input-side RelayREF-shaped RelayINT wrapper. PM-D7 adds explicit dry-run-first runtime install/preflight support only. PM-D8 records the historical E1-R5 fold-in but cannot bypass the RT-1 reader fence.
