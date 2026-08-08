@@ -108,18 +108,24 @@ def _last_backend_response_metadata(trace_path: Path) -> dict[str, Any]:
     raise AssertionError("backend_response trace record is missing")
 
 
-def _content_free_projection(metadata: dict[str, Any]) -> dict[str, Any]:
+def _no_primary_recall_projection(metadata: dict[str, Any]) -> None:
+    """RT-1D-R5: the retired ordinary reader emits no recall projection at all.
+
+    This previously proved the emitted projection was content-free. Retirement
+    makes that guarantee unconditional and stronger: there is no projection to
+    inspect, because no Primary owner runs on the ordinary path. The full
+    retrieval artifact must still never leak, and no Primary-derived key may
+    reappear under any name.
+    """
+
     require("relaymem_retrieval_artifact" not in metadata, "full retrieval artifact leaked")
-    projection = metadata.get("relaymem_primary_recall_projection")
-    require(isinstance(projection, dict), "primary recall projection missing")
-    require(projection.get("content_free") is True, projection)
-    require(projection.get("content_included") is False, projection)
-    require(projection.get("memory_text_included") is False, projection)
-    require(projection.get("path_values_included") is False, projection)
-    require(projection.get("digest_values_included") is False, projection)
-    require(projection.get("lineage_values_included") is False, projection)
-    require(projection.get("idempotency_values_included") is False, projection)
-    return projection
+    require(
+        "relaymem_primary_recall_projection" not in metadata,
+        "retired Primary recall projection reappeared",
+    )
+    require("relaymem_primary_recall_runtime" not in metadata, metadata)
+    for key in metadata:
+        require("primary_recall" not in key, key)
 
 
 def _assert_no_backend_artifact(payload: dict[str, Any]) -> None:
@@ -244,11 +250,8 @@ def main() -> int:
             with TestClient(app) as client:
                 _post_design(client)
                 metadata = _last_backend_response_metadata(trace_path)
-                projection = _content_free_projection(metadata)
-                require(projection["selected_count"] == 0, projection)
-                require(projection["fallback_reason"] == "memory_store_disabled", projection)
-                require(projection["injection_performed"] is False, projection)
-                print("ok runtime emits content-free disabled-store projection")
+                _no_primary_recall_projection(metadata)
+                print("ok runtime emits no Primary recall projection (disabled store)")
 
         with tempfile.TemporaryDirectory() as app_td:
             configured_root = Path(app_td) / "memory-root"
@@ -271,12 +274,7 @@ def main() -> int:
             with TestClient(app) as client:
                 payload = _post_design(client)
                 metadata = _last_backend_response_metadata(trace_path)
-                projection = _content_free_projection(metadata)
-                require(projection["selected_count"] == 0, projection)
-                require(projection["character_scope_resolved"] is True, projection)
-                require("legacy_flat_store_compatibility" not in projection["blocked_reason_ids"], projection)
-                require(projection["memory_used"] is False, projection)
-                require(projection["injection_performed"] is False, projection)
+                _no_primary_recall_projection(metadata)
                 backend_payload = capture.last_chat_payload()
                 _assert_no_backend_artifact(backend_payload)
                 require(backend_payload.get("metadata") == payload["metadata"], "backend metadata changed")
