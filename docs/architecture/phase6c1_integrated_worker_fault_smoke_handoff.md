@@ -192,7 +192,7 @@ C1-4 does not add:
 - RelaySOUL mutation, Secondary MEM, TTS, audio, Live2D, or avatar execution,
 - RT-1 writer-decision resolution or retirement control.
 
-The first two integration items above are historical C1-4 non-goals, not statements that repository-wide implementation is still pending. C2 and Phase I-1 were completed later; current repository status is owned by Project Status and the relevant current authorities.
+These are C1-4 scope exclusions, not repository-wide status claims. In particular, the one-job adapter and next-turn retrieval/scope-isolation items were later completed by C2 and Phase I-1; the status of the other excluded capabilities is owned by Project Status and their relevant current authorities.
 
 ## Current downstream boundary
 
