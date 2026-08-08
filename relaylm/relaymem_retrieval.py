@@ -47,6 +47,31 @@ from relaylm.subjective_mem_retrieval_usage_ledger import (
 from relaylm.routing import ResolvedRoute
 from relaylm.relaymem_retrieval_dry_run import _term_hints
 
+# Historical public re-export surface, compatibility only.
+#
+# These five names are generic M2 dry-run / snippet-construction helpers that
+# have always lived in their own owners and were re-exported through this
+# facade. RT-1D-R5 retired the ordinary Primary reader, not this machinery, so
+# the aliases are preserved for the existing callers that import them here.
+#
+# They are import surface and nothing else: no ordinary serving path in this
+# module calls them, `run_relaymem_retrieval_stage` keeps its single fenced
+# exit, and no Primary root resolution, store read, candidate discovery,
+# ranking, or fallback is restored by their presence. A `primary_only` decision
+# still fails closed to `neither`, and Subjective remains the sole ordinary
+# serving authority after retirement.
+from relaylm._relaymem_retrieval_candidates import (  # noqa: F401
+    _attach_evidence_metadata_to_ctx_block_candidate,
+)
+from relaylm._relaymem_retrieval_snippet import (  # noqa: F401
+    _build_ctx_block_snippet_candidate,
+    _build_snippet_apply_readiness,
+    _build_snippet_runtime_injection_plan,
+)
+from relaylm.relaymem_retrieval_dry_run import (  # noqa: F401
+    build_relaymem_retrieval_dry_run_artifact,
+)
+
 ORDINARY_MEMORY_AUTHORITY_KEY = "ordinary_memory_authority"
 SUBJECTIVE_RUNTIME_KEY = "subjective_mem_retrieval_runtime"
 SUBJECTIVE_ROUTE_SCHEMA = "relaylm.subjective_mem_retrieval_ordinary_route.v1"
