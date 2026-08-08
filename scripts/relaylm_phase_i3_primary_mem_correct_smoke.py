@@ -192,6 +192,9 @@ def main() -> None:
             require(memory.revision == 1, memory.model_dump())
             memory_id = memory.memory_id
 
+            # RT-1D-R5 retired the ordinary Primary reader, so a turn can no
+            # longer surface the pre-correction representation. The ordinary
+            # request still succeeds and simply carries no Primary evidence.
             with Backend.lock:
                 Backend.payloads.clear()
             with TestClient(recall_app, client=("127.0.0.1", 50000)) as client:
@@ -200,10 +203,16 @@ def main() -> None:
                     json=payload("relaylm-default", QUESTION),
                 )
             require(before.status_code == 200, before.text)
-            require(OLD in visible_text(before), before.json())
+            require(OLD not in visible_text(before), before.json())
+            with Backend.lock:
+                before_payload = Backend.payloads[-1]
+            before_serialized = json.dumps(
+                before_payload.get("messages"), ensure_ascii=False
+            )
+            require("[RelayMEM Snippet Context]" not in before_serialized, before_serialized)
+            require(OLD not in before_serialized, "retired reader leaked Primary evidence")
             used_before = build_lab_memory_used_projection(scope)
-            require(len(used_before.items) == 1, used_before.model_dump())
-            require(used_before.items[0].injected_summary.find(OLD) >= 0, used_before.model_dump())
+            require(used_before.items == [], used_before.model_dump())
 
             preflight = preflight_primary_memory_correction(
                 store_root=str(scoped),
@@ -258,11 +267,11 @@ def main() -> None:
             require(NEW in current.items[0].bounded_summary, current.model_dump())
             require(OLD not in current.items[0].bounded_summary, current.model_dump())
 
-            # Historical evidence remains the exact old injected representation.
+            # No ordinary injection can be recorded after retirement, so the
+            # read-only lab projection stays empty. The correction history
+            # itself is unaffected: it is admin state, not serving state.
             historical = build_lab_memory_used_projection(scope)
-            require(OLD in historical.items[0].injected_summary, historical.model_dump())
-            require(NEW in str(historical.items[0].current_summary), historical.model_dump())
-            require(historical.items[0].representation_changed is True, historical.model_dump())
+            require(historical.items == [], historical.model_dump())
 
             with Backend.lock:
                 Backend.payloads.clear()
@@ -273,13 +282,15 @@ def main() -> None:
                     json=payload("relaylm-default", QUESTION),
                 )
             require(after.status_code == 200, after.text)
-            require(NEW in visible_text(after), after.json())
+            # Neither representation is served after retirement: the corrected
+            # memory is not injected either, and the superseded one certainly
+            # never leaks. Correction remains provable through admin state.
             require(OLD not in visible_text(after), after.json())
             with Backend.lock:
                 backend_payload = Backend.payloads[-1]
             serialized = json.dumps(backend_payload.get("messages"), ensure_ascii=False)
-            require(serialized.count("[RelayMEM Snippet Context]") == 1, serialized)
-            require(NEW in serialized, "corrected memory missing")
+            require("[RelayMEM Snippet Context]" not in serialized, serialized)
+            require(NEW not in serialized, "retired reader injected corrected memory")
             require(OLD not in serialized, "superseded memory leaked")
             for forbidden in (
                 "correction_id", "prior_revision", "result_revision", "candidate_digest",

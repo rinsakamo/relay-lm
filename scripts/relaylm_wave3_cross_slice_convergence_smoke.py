@@ -136,13 +136,21 @@ def check_o1d1_static_boundary() -> None:
 
 
 def check_i4d_static_boundary() -> None:
+    # The I-4D architecture document was canonicalized on `main` independently
+    # of RT-1D-R5, so the pre-canonicalization phrases no longer exist. These
+    # anchors are re-pointed at the exact current wording and preserve the same
+    # static boundary intent: the exclusion compatibility boundary itself, the
+    # runtime-private RelayCTX grounding handoff, the bounded lab event, the
+    # one-authority rule, the read-only historical/operational survival, and
+    # the R5 removal gate. The document itself is not modified.
     require(
         "docs/architecture/phase_i4d_primary_retrieval_exclusion.md",
-        "RelayCTX/backend-bound injection",
-        "M2 already selected it",
+        "Primary MEM Retrieval Exclusion Compatibility Boundary",
+        "runtime-private RelayCTX grounding handoff",
         "relaylm.lab.memory_used.v0",
-        "I-4E",
-        "I-4F",
+        "One-authority boundary",
+        "Read-only historical and operational use",
+        "R5 removal gate",
     )
     require(
         "relaylm/relaymem_primary_retrieval_eligibility.py",

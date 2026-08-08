@@ -1,4 +1,19 @@
-"""Ordinary two-turn Primary MEM recall and restart smoke for Phase I-1."""
+"""RT-1D-R5 retirement proof for the Phase I-1 two-turn Primary recall canary.
+
+This smoke used to drive two ordinary chat turns end to end: turn one wrote a
+Primary memory and turn two required the assistant to recall it. RT-1D-R5
+retired the ordinary Primary reader, so that canary cannot pass by
+construction -- the post-retirement answer carries no memory context, which is
+correct behaviour rather than a regression.
+
+Its intent is preserved by inversion: where it once proved Primary recall
+reaches the ordinary response path, it now proves that path is gone and that no
+ordinary turn can resolve, read, rank, or release Primary evidence.
+
+The module-level constants, backend stub, and config/payload helpers below are
+shared support for fifteen sibling smokes and are deliberately preserved
+byte-for-byte; only the assertions changed.
+"""
 from __future__ import annotations
 
 from relaylm.config import RelayLMConfig
@@ -6,6 +21,8 @@ from relaylm.subjective_mem_retrieval_cutover import (
     resolve_subjective_mem_retrieval_primary_writer_decision,
 )
 
+import ast
+import importlib
 import json
 import tempfile
 import threading
@@ -198,197 +215,54 @@ def primary_pages(scoped: Path) -> list[Path]:
     return sorted(scoped.glob("memory/mem/primary/*/*.md"))
 
 
+RETIRED_RECALL_NAMES = (
+    "apply_relaymem_primary_recall_scope",
+    "prepare_primary_recall_selection",
+    "compose_primary_recall_results",
+    "run_primary_recall_selection",
+)
+
+
 def main() -> None:
-    server = ThreadingHTTPServer(("127.0.0.1", 0), Backend)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        with tempfile.TemporaryDirectory(dir=REPO_ROOT) as directory:
-            root = Path(directory)
-            queue = root / "queue"
-            protected = root / "protected"
-            store = root / "store"
-            queue.mkdir()
-            protected.mkdir()
-            store.mkdir()
+    """Prove the ordinary Primary reader is gone rather than merely fenced."""
 
-            scoped_value = resolve_relaymem_character_store_root(
-                str(store), CHARACTER
-            )
-            other_scoped_value = resolve_relaymem_character_store_root(
-                str(store), OTHER_CHARACTER
-            )
-            require(
-                scoped_value is not None and other_scoped_value is not None,
-                "character scope",
-            )
-            scoped = Path(scoped_value)
-            other_scoped = Path(other_scoped_value)
-            prepare_store(scoped)
-            prepare_store(other_scoped)
+    retrieval = (REPO_ROOT / "relaylm/relaymem_retrieval.py").read_text(encoding="utf-8")
+    for retired in RETIRED_RECALL_NAMES:
+        require(retired not in retrieval, retired)
+    require("resolve_relaymem_character_store_root" not in retrieval, "store resolver")
 
-            producer_config = root / "producer.yaml"
-            write_config(
-                producer_config,
-                port=int(server.server_address[1]),
-                queue=queue,
-                protected=protected,
-                store=store,
-                enqueue_enabled=True,
-            )
-            producer_app = create_app(str(producer_config))
-            with TestClient(producer_app) as client:
-                first = client.post(
-                    "/v1/chat/completions",
-                    json=payload(
-                        "relaylm-default",
-                        f"私の 好きな飲み物 は {MEMORY_CANARY} です。覚えてください。",
-                    ),
-                )
-            require(first.status_code == 200, first.text)
-            require(MEMORY_CANARY in visible_text(first), first.json())
-            queued = read_queued(queue)
+    stage = next(
+        node
+        for node in ast.parse(retrieval).body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "run_relaymem_retrieval_stage"
+    )
+    returns = [n for n in ast.walk(stage) if isinstance(n, ast.Return)]
+    require(len(returns) == 1, "the ordinary stage must have one fenced exit")
 
-            # Producer/process restart: C2 has no hot registry state.
-            request = RelayMEMSLPOneQueuedJobRunnerRequest(
-                schema_version=REQUEST_SCHEMA,
-                runtime_private=True,
-                content_included=False,
-                primary_writer_decision=(
-                    resolve_subjective_mem_retrieval_primary_writer_decision(
-                RelayLMConfig(backends={}, model_routes={})
-            )
-                ),
-                queued_record=dict(queued),
-                source_registry=RelayMEMSLPPrimaryWorkerSourceRegistry(),
-                character_id=CHARACTER,
-                queue_root=str(queue),
-                protected_source_root=str(protected),
-                store_root=str(scoped),
-                claim_owner="phase-i1-worker",
-                enabled=True,
-                dry_run_only=False,
-                apply_enabled=True,
-                lease_duration_seconds=300,
-            )
-            result = execute_one_queued_relaymem_slp_primary_job(request)
-            require(result.status == "worker_completed", result.to_log_dict())
-            require(
-                result.worker_status == "terminal_succeeded",
-                result.to_log_dict(),
-            )
-            require(result.restart_rehydrated, result.to_log_dict())
-            pages_after_success = primary_pages(scoped)
-            require(len(pages_after_success) == 1, pages_after_success)
+    # The RelayCTX contract shape survives with every Primary slot inert.
+    require('"selected_mem_candidates": []' in retrieval, "inert candidate slot")
+    require('"primary_store_read": False' in retrieval, "store not read")
+    require('"primary_reader_fenced": True' in retrieval, "reader fenced")
+    for banned in ("primary_recall_runtime", "primary_recall_projection"):
+        require(banned not in retrieval, banned)
 
-            # Duplicate dispatch presentation cannot invoke the worker or add a page.
-            duplicate = execute_one_queued_relaymem_slp_primary_job(
-                RelayMEMSLPOneQueuedJobRunnerRequest(
-                    schema_version=REQUEST_SCHEMA,
-                    runtime_private=True,
-                    content_included=False,
-                    primary_writer_decision=(
-                        resolve_subjective_mem_retrieval_primary_writer_decision(
-                RelayLMConfig(backends={}, model_routes={})
-            )
-                    ),
-                    queued_record=dict(queued),
-                    source_registry=RelayMEMSLPPrimaryWorkerSourceRegistry(),
-                    character_id=CHARACTER,
-                    queue_root=str(queue),
-                    protected_source_root=str(protected),
-                    store_root=str(scoped),
-                    claim_owner="phase-i1-duplicate-worker",
-                    enabled=True,
-                    dry_run_only=False,
-                    apply_enabled=True,
-                    lease_duration_seconds=300,
-                )
-            )
-            require(duplicate.worker_invoked is False, duplicate.to_log_dict())
-            require(
-                primary_pages(scoped) == pages_after_success,
-                primary_pages(scoped),
-            )
+    # The recall module survives only as the read-only history/admin surface.
+    recall = importlib.import_module("relaylm.relaymem_primary_recall")
+    for retired in RETIRED_RECALL_NAMES:
+        require(not hasattr(recall, retired), retired)
+    require(recall.__all__ == ["resolve_relaymem_character_store_root"], recall.__all__)
+    require(
+        not (REPO_ROOT / "relaylm/relaymem_primary_recall_selection.py").exists(),
+        "selection owner deleted",
+    )
 
-            recall_config = root / "recall.yaml"
-            write_config(
-                recall_config,
-                port=int(server.server_address[1]),
-                queue=queue,
-                protected=protected,
-                store=store,
-                enqueue_enabled=False,
-            )
-            with Backend.lock:
-                Backend.payloads.clear()
-
-            # Fresh request runtime reads only the durable store.
-            recall_app = create_app(str(recall_config))
-            with TestClient(recall_app) as client:
-                second = client.post(
-                    "/v1/chat/completions",
-                    json=payload("relaylm-default", QUESTION),
-                )
-                wrong_character = client.post(
-                    "/v1/chat/completions",
-                    json=payload("relaylm-other-character", QUESTION),
-                )
-                wrong_namespace = client.post(
-                    "/v1/chat/completions",
-                    json=payload("relaylm-other-namespace", QUESTION),
-                )
-                policy_block = client.post(
-                    "/v1/chat/completions",
-                    json=payload(
-                        "relaylm-default",
-                        QUESTION,
-                        scene_type="formal_document",
-                    ),
-                )
-
-            require(second.status_code == 200, second.text)
-            require(MEMORY_CANARY in visible_text(second), second.json())
-            for blocked in (wrong_character, wrong_namespace, policy_block):
-                require(blocked.status_code == 200, blocked.text)
-                require(
-                    visible_text(blocked) == "記憶からは確認できません。",
-                    blocked.json(),
-                )
-
-            with Backend.lock:
-                payloads = list(Backend.payloads)
-            require(len(payloads) == 4, len(payloads))
-            serialized = [
-                json.dumps(item.get("messages"), ensure_ascii=False)
-                for item in payloads
-            ]
-            require(
-                "[RelayMEM Snippet Context]" in serialized[0],
-                "missing injected context",
-            )
-            require(MEMORY_CANARY in serialized[0], "missing memory evidence")
-            for blocked_payload in serialized[1:]:
-                require(
-                    "[RelayMEM Snippet Context]" not in blocked_payload,
-                    "scope/policy leak",
-                )
-                require(
-                    MEMORY_CANARY not in blocked_payload,
-                    "memory content leak",
-                )
-            for forbidden in (
-                "slp-dispatch-v0:",
-                "lineage_fingerprint",
-                "idempotency_key",
-                "page_digest",
-                "retry_not_before",
-            ):
-                require(forbidden not in serialized[0], forbidden)
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=5)
+    # Repository-wide negative import/call search.
+    offenders = []
+    for source in sorted((REPO_ROOT / "relaylm").glob("*.py")):
+        text = source.read_text(encoding="utf-8")
+        offenders += [(source.name, n) for n in RETIRED_RECALL_NAMES if n in text]
+    require(offenders == [], offenders)
 
     print("Phase I-1 two-turn Primary MEM recall smoke passed")
 
