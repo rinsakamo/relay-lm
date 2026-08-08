@@ -7,24 +7,36 @@ relaylm_owner: relaymem
 relaylm_update_trigger:
   - M3f reconciliation plan schema changes
   - M3g receipt or apply semantics change
-  - later journal or crash-recovery work lands
+  - M3h recovery-audit semantics change
+  - journaled recovery or repair apply lands
+  - RT-1 Primary writer-decision carriage changes which production calls may reach M3g
+  - RT-1D-R5 or R6 retires the Primary writer path
 relaylm_not_authoritative_for:
   - Phase 6 queue, dispatch, worker, or retry orchestration
   - request-runtime wiring
+  - RT-1 cutover state, Primary writer authorization, or retirement approval
   - Secondary MEM consolidation
   - repository-wide implementation status
+relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - relaymem_m3f_primary_index_log_reconciliation_preflight.md
   - relaymem_m3e_atomic_primary_page_writer.md
+  - relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
+  - phase6c1_relaymem_primary_pipeline_compose.md
+  - subjective-mem-retrieval-projection-hard-cutover.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_mvp_design.md
   - memory_lifecycle_design.md
+  - relaymem_slp_current_target.md
+  - ../PROJECT_STATUS.md
 ---
 # RelayMEM-M3g Primary MEM Index/Log Reconciliation Apply
 
+Last reviewed: 2026-08-08 JST
+
 ## Status
 
-RelayMEM-M3g is implemented as a default-off, dry-run-first, helper-only apply boundary that consumes one exact M3f reconciliation plan and converges `memory/mem/index.md` and `memory/mem/log.md` to the planned state.
+RelayMEM-M3g remains implemented as a default-off, dry-run-first, helper-only apply boundary that consumes one exact M3f reconciliation plan and converges `memory/mem/index.md` and `memory/mem/log.md` to the planned state.
 
 ```text
 exact M3f runtime-private plan
@@ -36,7 +48,7 @@ exact M3f runtime-private plan
   -> content-free public projection
 ```
 
-M3g performs actual index/log writes only when all three gates are exact booleans and the effective request is:
+M3g performs actual index/log writes only when all three local helper gates are exact booleans and the effective request is:
 
 ```text
 enabled=true
@@ -45,6 +57,29 @@ apply_enabled=true
 ```
 
 The default path performs validation and inspection only.
+
+Under RT-1D-R4, M3g is a retained Primary compatibility mutation component below the exact C1-1 Primary writer-decision gate. Production compose rejects a non-permitted writer decision before any M3a-M3h stage, so a normal production invocation can reach M3g only after that upstream admission has succeeded.
+
+M3g itself does not accept, resolve, cache, refresh, or reconstruct the RT-1 writer decision. Its local apply gates, an exact M3f `plan_ready` artifact, control-file state, idempotent no-op, writer-lock acquisition, or retry/resume state cannot grant or preserve Primary writer authority.
+
+M3h recovery audit is now implemented downstream as a read-only classifier. No general journaled recovery/repair apply is implied by M3g or M3h. R5/R6 own final retirement or explicitly retained historical/test disposition of this Primary reconciliation apply surface.
+
+## Production authorization boundary
+
+The current retained compatibility hierarchy is:
+
+```text
+exact RT-1 Primary writer decision
+  -> rejected: C1-1 stops before M3a-M3h
+  -> permitted:
+       M3a -> M3b -> M3c -> M3d -> M3e -> M3f
+       -> M3g reconciliation apply          mutation
+       -> M3h recovery audit                read-only
+```
+
+The writer decision is semantic production authorization owned above M3g. M3g owns only the bounded filesystem mutation mechanics for an already-admitted pipeline invocation.
+
+Direct M3g helper tests may exercise apply, contention, failure, and resume semantics through the helper's explicit local gates. Such tests prove the M3g contract; they are not a second production cutover path and do not show that local gates or lock ownership can bypass `primary_writer_fenced`.
 
 ## Public helper
 
@@ -65,6 +100,8 @@ relaymem.primary_index_log_reconciliation_apply.v0
 relaymem.primary_index_log_reconciliation_receipt.v0
 relaymem.primary_index_log_reconciliation_apply_projection.v0
 ```
+
+The local `enabled`, `dry_run_only`, and `apply_enabled` values select M3g helper behavior only. They are necessary mutation-mechanics gates for a direct apply call, not RT-1 writer authorization.
 
 ## Exact M3f plan validation
 
@@ -99,6 +136,8 @@ already_reconciled
 
 The state, index/log no-op flags, operation count, operation order, and operation payloads must agree exactly.
 
+An exact, ready M3f plan proves deterministic reconciliation intent only. It is not a durable writer token and contains no RT-1 writer-decision identity.
+
 ## Page revalidation
 
 M3g does not treat the M3f plan as proof that the source page still exists. Before reading or replacing a control file, it securely reopens the planned Primary MEM page and verifies:
@@ -119,6 +158,8 @@ M3g does not treat the M3f plan as proof that the source page still exists. Befo
 - summary/title bounds and deterministic page body.
 
 A missing or mismatching page blocks the whole apply before any control-file mutation.
+
+Page validity and an existing Primary page are storage prerequisites, not evidence that a later production invocation remains authorized to mutate Primary state.
 
 ## Control-plan validation
 
@@ -162,13 +203,15 @@ M3g reuses the M3f secure directory-FD traversal contract. It rejects:
 
 OS exception text and absolute root paths are not exposed through public diagnostics.
 
-## RelayMEM writer lock
+## RelayMEM control-file writer lock
 
 M3g takes a non-blocking exclusive advisory lock on the open `memory/mem` directory for the full inspect/apply/verify sequence.
 
-This lock coordinates RelayMEM M3g writers without creating a persistent lock file. If the lock is already held, the apply fails closed with a bounded reason identifier and performs no mutation.
+This lock coordinates concurrent RelayMEM M3g control-file writers without creating a persistent lock file. If the lock is already held, the apply fails closed with a bounded reason identifier and performs no mutation.
 
-The lock establishes the supported single-writer boundary for RelayMEM control-file updates. External writers that ignore this boundary are unsupported; M3g still rechecks expected content immediately before each replace and verifies the final state afterward.
+The lock establishes the supported **filesystem concurrency boundary** for RelayMEM control-file updates. It is not the RT-1 semantic Primary writer-authority boundary. Acquiring the lock cannot turn a rejected writer decision into permission, and losing or retrying the lock cannot refresh cutover state.
+
+External writers that ignore this filesystem boundary are unsupported; M3g still rechecks expected content immediately before each replace and verifies the final state afterward.
 
 ## Per-file atomic replacement
 
@@ -192,6 +235,8 @@ Before replacement, the current file must equal either:
 - the exact proposed content, byte count, and digest.
 
 The latter is treated as an idempotent no-op. Every marker in a no-op file is still revalidated; an unrelated malformed or forged entry cannot be hidden beside the target entry. Any other state is a conflict and is not overwritten.
+
+Idempotent no-op recognition is a reconciliation consistency property, not authorization. Existing proposed state cannot authorize a fresh Primary mutation after the upstream writer fence.
 
 ## Two-file ordering and atomicity boundary
 
@@ -222,6 +267,8 @@ index_applied_log_pending
 
 The same exact M3f plan can be retried. On retry, the index is recognized as already applied and M3g proceeds to the pending log operation. A newly generated M3f `log_update_required` plan is also valid.
 
+A retry or resumable intermediate state does not carry writer permission across invocations. Any later production invocation still enters through the owning C1-2/C1-1 writer-decision gates.
+
 ## Result states
 
 Principal result/receipt states are:
@@ -247,6 +294,8 @@ applied_state_uncertain
 
 Post-replace fsync or verification failures are never collapsed into a generic success state.
 
+None of these M3g result states is an RT-1 writer-authorization state. In particular, retryable or uncertain durability cannot be used to regain a fenced Primary writer.
+
 ## Runtime-private receipt
 
 The private receipt may include:
@@ -263,6 +312,8 @@ The private receipt may include:
 The receipt never includes page, index, or log text content.
 
 The memory-write idempotency key remains distinct from Phase 6 dispatch idempotency.
+
+The receipt intentionally contains no RT-1 writer-decision identity. M3h may consume it as recovery/audit evidence, but the receipt cannot be replayed as Primary mutation permission.
 
 ## Content-free projection
 
@@ -285,7 +336,10 @@ It does not contain:
 - marker entry identities,
 - page/index/log content,
 - proposed content,
-- OS exception strings.
+- OS exception strings,
+- private RT-1 writer-decision identity.
+
+The projection is observability only and cannot be used to infer or reconstruct writer permission.
 
 ## Preserved non-goals
 
@@ -293,18 +347,20 @@ M3g does not:
 
 - make page/index/log one atomic transaction,
 - create a journal,
-- provide general crash recovery,
+- provide general crash-recovery repair,
 - delete or rewrite the Primary MEM page,
 - create missing index/log files,
 - wire request runtime,
 - enqueue or execute RelaySLP jobs,
 - reuse Phase 6 dispatch idempotency,
+- resolve or refresh RT-1 cutover state,
+- grant or persist Primary writer authorization,
 - mutate RelaySOUL,
 - process Secondary MEM,
 - expose a Lab API,
 - change visible response delivery.
 
-A later slice may add journaled crash recovery if operational evidence shows it is required. That work must remain explicit rather than retroactively treating M3g as transactional.
+M3h now provides the bounded read-only recovery/audit classification for M3g receipts and current durable state. A future journaled repair apply, if ever required by operational evidence, remains an explicit separate authority rather than being retroactively implied by M3g or M3h.
 
 ## Validation
 
@@ -341,15 +397,17 @@ Coverage includes:
 - forged unrelated entries in no-op plans,
 - durable temp-cleanup confirmation.
 
-## Next bounded slice
+The current C1-1/C1-2 regression umbrella separately proves that a non-permitted writer decision stops before M3g is reached. M3g's dedicated smokes remain reconciliation apply/atomicity/security tests rather than cutover-authority tests.
 
-After M3g, the next independent RelayMEM slice should be chosen from operational evidence:
+## Current downstream boundary
+
+M3g is no longer waiting for a later M3h slice. Its exact runtime-private receipt feeds the implemented read-only recovery audit:
 
 ```text
-M3h bounded reconciliation recovery/audit
-  -> consume M3g receipts and current store state
-  -> classify durability-unconfirmed or state-uncertain outcomes
-  -> remain read-only before any journaled recovery apply
+M3g exact reconciliation receipt
+  -> M3h Primary MEM reconciliation recovery audit
 ```
 
-Request-runtime or Phase 6 worker wiring should remain a separate integration track rather than being folded into the persistence helper.
+M3g owns index-before-log mutation, filesystem concurrency control, state revalidation, per-file atomic replacement, durability evidence, and resumable interrupted-apply semantics. M3h owns bounded read-only recovery classification and does not itself repair the store.
+
+All retained Primary reconciliation capabilities remain subordinate to the exact upstream RT-1 writer decision in production. R5/R6 own their final retirement or explicitly retained historical/read-only/test disposition. This handoff does not pre-authorize deletion, weaken mutation safety, or move recovery/cutover authority into M3g.
