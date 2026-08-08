@@ -6,145 +6,262 @@ relaylm_volatility: medium
 relaylm_owner: relaymem
 relaylm_update_trigger:
   - Primary recall producer or consumer changes
+  - Primary writer or reader cutover decisions change
   - character or namespace scope changes
   - downstream observation or mutation boundary changes
-  - Primary recall candidate discovery changes
+  - Primary recall candidate discovery or retirement changes
 relaylm_not_authoritative_for:
-  - queue scanning or daemon lifecycle
+  - repository-wide current implementation status
+  - Subjective MEM ordinary Retrieval, ranking, or projection semantics
+  - RT-1D-R5 completion, Primary retirement, or deletion approval
+  - queue scanning, scheduler, or daemon lifecycle
   - SOUL Lab observation schema details
   - memory mutation contracts
+relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
+  - subjective-mem-retrieval-projection-hard-cutover.md
+  - phase_i4d_primary_retrieval_exclusion.md
+  - e1r5_primary_mem_recall_candidate_bridge.md
   - phase6c2_one_queued_primary_worker_integration.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
   - ../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
-  - e1r5_primary_mem_recall_candidate_bridge.md
-  - ../PROJECT_STATUS.md
 ---
-# Integration I1: Primary MEM Two-Turn Recall
+# Primary MEM Two-Turn Compatibility Handoff
 
-## Status
+Last reviewed: 2026-08-08 JST
 
-Implemented in Phase I-1 and preserved as the authoritative ordinary recall boundary, with the post-Wave-7 E1-R5 bridge now included in the current request-side proof boundary.
+## Transitional status
+
+Historical handoff identity: **Integration I1: Primary MEM Two-Turn Recall**.
+
+Phase I-1 proved the original durable Primary formation -> later Primary recall
+integration. That proof remains useful regression and historical evidence, but it
+no longer defines the universal ordinary memory authority after RT-1D-R4.
+
+This legacy underscore-named document therefore remains a transitional D5 source:
+
+- owner: RelayMEM compatibility / Lane D documentation canonicalization;
+- current consumers: Primary-only integration regressions, Phase I-2 observation
+  evidence, E1 evaluation, and RT-1 retirement review;
+- removal gate: RT-1D-R5/R6 proves the final disposition of the Primary ordinary
+  writer, reader, fallback, and every continuing historical/operational consumer;
+- replacement validation: the final Retrieval/Primary documentation graph retains
+  every still-current scope, fail-closed, projection, and observation contract
+  before this handoff is retired through the retirement manifest and Git history.
+
+Repository-wide implementation and retirement status remain owned by
+`docs/PROJECT_STATUS.md` and the RT-1 hard-cutover authority.
+
+## Current responsibility
+
+The old two-turn path now exists only as a bounded Primary compatibility proof.
+The complete Primary formation -> later Primary recall chain is possible only
+while both of these exact cutover decisions allow it:
+
+1. the Primary writer decision is `permitted`; and
+2. the later ordinary reader decision is `primary_only`.
+
+The cutover owner derives both decisions from durable cutover state. Configuration,
+store presence, a successful historical I1 run, or an empty Subjective result does
+not authorize either Primary writing or Primary reading.
+
+Primary writes remain permitted only strictly before `primary_writer_fenced`.
+After that state, the writer decision is rejected and no old Phase I-1 formation,
+worker, Correct/Forget apply/recovery, Pin/Unpin, or related caller may use a
+pre-fence token or missing decision to restore Primary mutation authority.
+
+The ordinary Retrieval facade resolves the reader decision before touching any
+memory store:
 
 ```text
-Turn 1 ordinary managed response
-  -> I1-B durable source and B2 enqueue
-  -> explicit one-record C2 claim / rehydrate / execute seam
-  -> C1-2 and M3a-M3h
-  -> terminal B3 success
+primary_only
+  -> Primary compatibility Retrieval may run
 
-Turn 2 ordinary managed request
-  -> character-partitioned configured RelayMEM root
-  -> existing M2 candidate discovery as the preferred relevance owner
+neither
+  -> no ordinary durable-memory authority is read
+
+subjective_only
+  -> no Primary root resolution, store diagnostics, candidate discovery,
+     recall, or fallback
+  -> only finalized Subjective evidence may be released
+```
+
+A missing, foreign, malformed, or tampered reader decision fails closed to
+`neither`; it does not silently restore Primary.
+
+## Primary-only two-turn compatibility flow
+
+When the writer is still permitted and the later reader decision is
+`primary_only`, the historical integration shape remains:
+
+```text
+Turn 1 managed response
+  -> durable source / queue evidence
+  -> explicit one-record worker execution
+  -> bounded Primary durable formation
+  -> terminal success
+
+Turn 2 managed request
+  -> exact RT-1 Primary-only reader decision
+  -> character-partitioned RelayMEM root
+  -> M2 preferred candidate discovery
   -> exact Primary page / index / log / namespace validation
-  -> E1-R5 bounded scoped Primary candidate bridge if M2 yields no eligible scoped Primary candidate
-  -> bounded request-local selected-memory artifact
-  -> existing RelayCTX snippet injection
+  -> shared Primary lifecycle/current-state eligibility
+  -> bounded E1-R5 fallback only if no eligible scoped M2 candidate survives
+  -> request-local selected-memory artifact
+  -> existing RelayCTX grounding / injection handoff
   -> backend-bound request
-  -> completed response generation
 ```
 
-Phase I-2 observes this path but does not replace any I-1 producer, validator, selection, injection, or authority.
+This is a compatibility path, not a second ordinary reader beside Subjective MEM.
+Once the reader decision is `subjective_only`, none of the Turn 2 Primary branch
+runs. Once the writer decision is rejected, the old Turn 1 Primary formation
+branch cannot create or mutate new Primary authority.
 
-## Production ownership
+There is no dual read, precedence contest, stale-projection fallback, empty-result
+fallback, or Subjective-failure fallback to Primary.
 
-Phase I-1 does not add a queue scanner, scheduler, daemon, or parallel retriever. Existing M2 discovery remains the preferred candidate owner. `relaymem_primary_recall` narrows candidates discovered by M2 and rebuilds the existing RelayCTX snippet handoff from validated bounded Primary summaries.
+## Primary-only selection and scope
 
-E1-R5 adds a bounded request-side candidate discovery bridge for the specific case where no eligible scoped Primary candidate survives the existing M2 narrowing even though character-scoped Primary index/log/page controls contain an eligible relevant Primary page. The bridge preserves M2 as preferred owner, uses the same selected-memory handoff shape, and does not create new mutation, worker, scheduler, queue, or browser trust authority.
+Inside `primary_only`, existing M2 discovery remains the preferred relevance
+source. The retained Primary recall owner narrows or rebuilds only bounded,
+validated candidates for the exact character and namespace scope.
 
-Character isolation is represented by an opaque partition below the configured RelayMEM root. Both the explicit C2 caller and ordinary request path use `resolve_relaymem_character_store_root()`. Namespace isolation remains an exact property of the canonical Primary page and matching index/log entries. E1-R5 also accepts slash-style namespace tokens such as `character/default` so formation-side namespace shape and recall-side namespace validation do not split.
+If no eligible scoped Primary candidate survives the preferred M2 path, the
+absorbed E1-R5 compatibility fallback may inspect bounded Primary index/log/page
+controls for an eligible relevant page. That fallback remains inside the same
+Primary-only authority and is not independently reachable.
 
-Session and run identifiers are not new long-term retrieval restrictions. Phase I-2 run correlation is observation evidence only and cannot filter or authorize M2 retrieval or the E1-R5 bridge.
+The compatibility path may admit a Primary candidate only when all of the
+following remain exact:
 
-## Validation and fail-closed rules
+- character store and namespace scope are valid;
+- path is a safe non-symlink Primary Markdown page inside the scoped root;
+- page schema and bounded body are valid;
+- index/log linkage and digest/currentness checks agree;
+- physical identity resolves to one logical memory;
+- the physical revision is the canonical current revision;
+- lifecycle is active;
+- mutation state is none;
+- retrieval eligibility is true;
+- query relevance, item count, character count, and token budget stay bounded.
 
-A candidate is eligible only when:
+Prior, hidden, prepared, recovery-required, corrupt, unresolved, unsafe,
+cross-scope, wrong-namespace, duplicate, or relevance-insufficient candidates fail
+closed. A hidden successor never causes fallback to an older active revision.
 
-- existing RelaySCN/reference/retrieval gates allow snippet recall,
-- M2 selected it by query match or E1-R5 bounded fallback derives it from exact scoped Primary controls with query relevance,
-- path is a non-symlink Primary MEM Markdown file inside the scoped root,
-- page has exact `relaymem.primary_page.v0` front matter and body,
-- memory layer, promotion, safety, namespace, path identity, lineage, and idempotency metadata are valid,
-- exactly one canonical matching Primary index entry and one log entry exist,
-- page digest, index/log linkage, namespace, and lineage agree,
-- I-4D shared lifecycle eligibility says the physical revision is the current active logical memory,
-- duplicate memory identity is removed,
-- item count, character count, and token budget remain bounded.
+Slash-style namespaces such as `character/default` remain accepted by the
+retained Primary compatibility path so historical formation and Primary-only
+recall do not disagree solely on namespace-token shape. Character ids,
+namespaces, roots, paths, digests, lineage, and exact identities remain
+runtime-private.
 
-Malformed, missing, conflicting, unsupported, unsafe, over-budget, wrong-namespace, unreconciled, hidden, prepared, recovery-required, corrupt, prior-revision, or relevance-insufficient candidates are omitted. The adapter never recovers content from public projection, trace, queue record, frontend history, or Phase I-2 observation receipt.
+## RelayCTX and grounding boundary
 
-## Authority and injection
+Only admitted bounded Primary evidence reaches the existing RelayCTX grounding
+and injection handoff inside `primary_only`. This document does not define a
+global precedence between Primary and Subjective MEM; the RT-1 reader decision
+first decides which ordinary memory authority exists for the request.
 
-Only the bounded Primary summary is handed to the existing RelayCTX injection phase. Path, namespace, character, lineage, digest, idempotency, and retry metadata are not placed in the backend prompt.
+Primary paths, namespace values, character ids, lineage, digests, idempotency
+metadata, retry state, queue state, and lifecycle internals are not placed in the
+backend prompt merely because a Primary candidate was selected.
 
-The established authority order is unchanged:
+The runtime artifact containing Primary snippets remains request-local and must
+not be copied into generic pipeline results, trace, stdout/stderr, or workflow
+logs.
 
-```text
-SOUL / OUTPUT_POLICY / RELATIONSHIP_ANCHOR
-  > Secondary MEM
-  > RelaySCN
-  > Primary MEM
-  > Short-term CTX
-  > latest input
-```
+## Public projection
 
-Phase I-2 used-memory evidence is captured only after the existing injection result is known. It cannot mark an unselected candidate as injected or replay memory into a later request.
+The retained Primary recall projection is content-free. It may expose only bounded
+status such as attempted/selected counts, Primary-layer counts, scope booleans,
+estimated size, injection-candidate presence, fallback discovery counts, and
+reason ids.
 
-## Public and runtime-private projection boundary
+It must not expose raw memory text, raw transcript text, protected source bodies,
+queue payloads, roots, paths, namespace values, claim or lease material, digests,
+lineage, operation data, or exact private identities.
 
-`relaymem.primary_recall_projection.v0` remains content-free. It exposes only bounded status such as attempted/selected counts, Primary-layer counts, scope booleans, estimated size, injection-candidate presence, bridge discovery counts, and reason IDs.
+## Idempotency and mutation separation
 
-The runtime artifact containing snippets is request-local and must not be copied into generic `PipelineNodeResult`, trace, stdout/stderr, or workflow logs.
+Dispatch identity, durable Primary write identity, retrieval deduplication,
+cutover writer/reader decisions, and observation receipt identity are separate.
 
-Phase I-2 introduces separate explicit-inspection schemas for Lab Observation. They may return only bounded validated titles/summaries and user-facing outcome state. Those schemas are not substitutes for the I-1 content-free projection and are available only behind the loopback Lab boundary.
+Historical C2/M3 formation owns its durable write idempotency only while the
+Primary writer decision permits it. Primary-only recall deduplicates admitted
+physical/logical identity before RelayCTX assembly. Neither duplicate discovery,
+worker retry, nor Phase I-2 replay may multiply memory in the prompt or restore a
+fenced writer/reader.
 
-## Idempotency
+## Phase I-2 observation boundary
 
-Dispatch identity, M3 write identity, retrieval deduplication, and observation receipt identity remain separate.
+Phase I-2 remains read-only evidence about the historical/current compatibility
+path. It may distinguish candidate, selected, injected, backend-bound, and
+response-completed stages after restart, but its **observation receipt** is
+secondary evidence only.
 
-C2/M3 own durable write idempotency. I-1 deduplicates validated `idempotency_key` before RelayCTX assembly, so duplicate discovery or worker retry cannot multiply one memory in the prompt. E1-R5 maps eligible physical identities through the shared lifecycle eligibility index before selected evidence is built. Phase I-2 receipt replay cannot change that result.
+An observation receipt cannot:
 
-## Downstream Phase I-2 — complete
-
-Phase I-2 proves that the completed I-1 path can be inspected after restart without inventing evidence:
-
-- latest completed run is selected deterministically,
-- formed memory is resolved from validated Primary page/index/log state,
-- held and blocked outcomes remain distinct from retrievable memory,
-- used-memory evidence distinguishes candidate, selected, injected, backend-bound, and response-completed stages,
-- wrong character and wrong namespace cannot observe another scope,
-- observation errors do not change I-1 retrieval or response behavior.
+- authorize Primary writing or reading;
+- turn `neither` into a serving authority;
+- make an unselected candidate selected;
+- replay Primary evidence into a later request;
+- override character or namespace isolation;
+- replace the RT-1 reader/writer decisions.
 
 See [Phase I-2 Real SOUL Lab Observation](../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md).
 
-## Next boundary
+## Historical Phase I-3 boundary
 
-Phase I-3 auditable Correct is complete. Later governance boundaries are owned by their dedicated contracts and do not rewrite the I-1 recall adapter, use observation receipts as memory authority, or widen into RelaySOUL mutation, queue scheduling, daemon lifecycle, or media runtime execution.
+Phase I-3 auditable Primary Correct remains historical implementation evidence for
+how one Primary revision could be corrected while Primary mutation authority was
+permitted. Current Correct lifecycle semantics are owned by the current Subjective
+MEM lifecycle architecture and runtime boundaries, not by this I1 handoff.
 
-## Explicitly unresolved
+The old I1/Phase I-3 evidence therefore does not authorize a Primary writer after
+`primary_writer_fenced` and does not make Primary an ordinary reader after
+`subjective_only`.
 
-Phase I-1, I-2, and E1-R5 do not complete:
+Historical implementation evidence remains available at
+`docs/evidence/implementation/phase-i3-auditable-primary-mem-correct-handoff.md`.
 
-- queue scanning, scheduling, or service lifecycle,
-- visible-response-to-background-publication pre-enqueue crash recovery,
-- Secondary MEM consolidation,
-- Merge / Supersession runtime apply,
-- RelaySOUL mutation,
-- TTS, audio, or Live2D execution,
-- static UI bundle serving.
+## R5 removal gate
 
-## I1-G boundary
+RT-1D-R5 owns retirement of the replaced Primary ordinary reader/fallback and
+associated temporary execution surfaces. R6/final retirement owns the remaining
+repository/documentation cleanup after exact consumers are proved.
 
-I1-GB now publishes sealed restart evidence before protected response release, but Phase I-1 recall and Phase I-2 observation do not perform I1-GC restart replay or C1-5/B2 completion convergence.
+This document does not pre-authorize deletion and does not predict which
+read-only historical, observation, migration, rollback, or operational consumers
+will remain. A live component survives only when an accepted continuing
+responsibility is proved; otherwise Git history is the recovery surface after its
+owning atomic retirement.
 
-<!-- phase-i3-auditable-primary-mem-correct -->
-## Phase I-3 auditable Primary MEM Correct — complete (2026-06-24)
+## Validation boundary
 
-Phase I-3 completes the first real observe/correct/retrieve loop. A formed Primary MEM observed through Phase I-2 can be corrected through read-only preflight, bounded semantic diff, explicit short-lived-token apply, immutable successor-page publication through the existing M3e boundary, canonical M3f/M3g index/log convergence, and immutable audit receipt finalization. Existing M2 retrieval resolves only the corrected current revision and existing RelayCTX injection remains the sole prompt path.
+While this compatibility handoff remains active, validation must continue to
+prove at least:
 
-Character/namespace isolation, stable logical memory identity, no-clobber publication, exact operation idempotency, one-winner revision fencing, crash recovery, and historical used-memory integrity are preserved. Correction reason, audit receipt, paths, digests, lineage, queue/lease state, and prior full pages are not retrieval inputs or public prompt content.
+- Primary writer rejection after the writer fence;
+- no Primary store access for `neither` or `subjective_only`;
+- no Primary fallback after Subjective transfer;
+- Primary-only character/namespace isolation and lifecycle exclusion;
+- bounded M2-preferred / E1-R5 fallback behavior;
+- request-local/private evidence handling;
+- content-free public projections;
+- Phase I-2 observation receipt non-authority;
+- historical I1/E1 regression evidence remains linkable.
 
-Historical implementation evidence: `docs/evidence/implementation/phase-i3-auditable-primary-mem-correct-handoff.md`. Current Correct behavior is owned by `relaylm/relaymem_primary_correction.py`, `relaylm/soul_lab_memory_correction.py`, `relaylm/soul_lab_app.py`, the current SOUL Lab frontend, and focused Phase I-3 smokes.
+Existing Phase I-1 two-turn, E1-R5, I-4D, RT-1 request-path, and Phase I-2
+smokes remain regression evidence while their exact owning surfaces still exist.
+The current workflow/registry is the command authority; this handoff is not a
+second smoke registry.
 
-Still separate and unresolved: the I1-G process-exit window after visible-response delivery but before background-finalizer protected-source and B2 queue publication. Phase I-3 does not implement forget, pin/unpin, merge, held apply/discard, Secondary MEM consolidation, RelaySOUL mutation, queue scanner/scheduler/daemon, static UI serving, or TTS/audio/avatar execution.
+## Non-goals
+
+No Subjective MEM selection/ranking/projection implementation, RT-1D-R5
+completion, Primary retirement/deletion, queue scanner/scheduler/daemon authority,
+automatic migration/repair, browser-owned trust, new lifecycle mutation semantics,
+Secondary consolidation, RelaySOUL mutation, static UI serving, media runtime
+execution, or post-hoc visible-response rewriting is authorized here.
