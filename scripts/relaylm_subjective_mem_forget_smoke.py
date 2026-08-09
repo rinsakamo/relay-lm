@@ -12,7 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from relaylm._subjective_mem_commit_io import PLATFORM_REVISION
+from relaylm.subjective_mem.commit_io import PLATFORM_REVISION
 from relaylm.character_workspace import (
     INTERNAL_DIRECTORIES,
     LOWERCASE_WORKSPACE_DIRECTORIES,
@@ -38,7 +38,7 @@ from relaylm.subjective_mem.models import (
     SubjectiveMemStrength,
     resolve_subjective_mem_character_authority,
 )
-from relaylm.subjective_mem_commit_runtime import finalize_subjective_mem_create
+from relaylm.subjective_mem.commit_runtime import finalize_subjective_mem_create
 from relaylm.subjective_mem_forget import (
     SubjectiveMemForgetBoundary,
     SubjectiveMemForgetProposal,

@@ -38,7 +38,7 @@ from relaylm.subjective_mem.models import (
     SubjectiveMemStrength,
     resolve_subjective_mem_character_authority,
 )
-from relaylm.subjective_mem_commit_runtime import finalize_subjective_mem_create
+from relaylm.subjective_mem.commit_runtime import finalize_subjective_mem_create
 from relaylm.subjective_mem_markdown import parse_subjective_mem_page_bytes
 from relaylm.subjective_mem_runtime import create_subjective_mem
 

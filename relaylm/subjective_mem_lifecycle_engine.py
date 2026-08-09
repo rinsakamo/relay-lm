@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Callable, Literal, Mapping
 
-from relaylm._subjective_mem_commit_io import (
+from relaylm.subjective_mem.commit_io import (
     CanonicalPublishResult,
     inspect_canonical_page,
     publish_canonical_page,

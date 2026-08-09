@@ -15,7 +15,7 @@ from pathlib import Path
 import re
 from typing import Callable, Literal
 
-from relaylm._subjective_mem_commit_io import (
+from relaylm.subjective_mem.commit_io import (
     PLATFORM_REVISION,
     inspect_canonical_page,
     publish_canonical_page,

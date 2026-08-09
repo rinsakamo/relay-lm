@@ -20,7 +20,7 @@ from relaylm.character_workspace import (
     REQUIRED_SOURCE_FILENAMES,
     validate_character_workspace,
 )
-from relaylm._subjective_mem_commit_io import PLATFORM_REVISION
+from relaylm.subjective_mem.commit_io import PLATFORM_REVISION
 from relaylm.config import RelayLMConfig
 from relaylm.evidence.common import build_runtime_authority, canonical_digest
 from relaylm.evidence.space import derive_evidence_space_id
@@ -40,7 +40,7 @@ from relaylm.subjective_mem.models import (
     SubjectiveMemStrength,
     resolve_subjective_mem_character_authority,
 )
-from relaylm.subjective_mem_commit_runtime import finalize_subjective_mem_create
+from relaylm.subjective_mem.commit_runtime import finalize_subjective_mem_create
 from relaylm.subjective_mem_lifecycle import (
     LIFECYCLE_POLICY_REVISION,
     SubjectiveMemCorrectProposal,

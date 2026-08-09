@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Literal
 
-from relaylm._subjective_mem_commit_io import (
+from relaylm.subjective_mem.commit_io import (
     PLATFORM_REVISION,
     inspect_canonical_page,
     publish_canonical_page,
@@ -29,7 +29,7 @@ from relaylm.subjective_mem.models import (
     resolve_subjective_mem_character_authority,
     validate_subjective_mem_crosslinks,
 )
-from relaylm.subjective_mem_commit import (
+from relaylm.subjective_mem.commit import (
     ST1_INTENT_SCHEMA,
     SubjectiveMemCommitReceipt,
     SubjectiveMemFinalizationRecords,
