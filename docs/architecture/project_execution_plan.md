@@ -227,7 +227,7 @@ This section owns the repository-wide order from that completion to the characte
 RT-1 / Lane C legacy program                       COMPLETE
        ↓
 Lane R  R5 governed core package migration
-         Evidence complete (#947); context overlay complete (#951); shared assessment next
+         Evidence complete (#947); context overlay complete (#951); Shared Assessment complete (#956); Subjective Memory next
        +
 Lane D  D6 final retirement and legacy cutover-tool retirement
        ↓
@@ -308,7 +308,7 @@ RT-1 is complete. RT-1D-R5 immediate retirement implementation merged as PR #907
 The currently eligible repository work is:
 
 ```text
-Lane R  R5 governed core package migration              Evidence and context overlay complete; shared assessment next
+Lane R  R5 governed core package migration              Evidence, context overlay, and Shared Assessment complete; Subjective Memory next
 Lane D  D6 final retirement / cutover-tool retirement   continue to completion
 Lane R  R6 Primary MEM disposition                      required cleanup after R5
 Lane C                                                  idle until PD-2 completes

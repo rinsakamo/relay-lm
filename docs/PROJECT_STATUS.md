@@ -54,7 +54,7 @@ RelayMEM Primary path: ordinary reader, selection/ranking, and fallback retired 
 Character Workspace, Analyzer Candidate Governance, and current SOUL Lab management surfaces: complete for their bounded shipped slices
 
 EV-1 Governed Evidence runtime foundation: complete in PR #629; default-off
-Lane R R5 governed package migration: Evidence wave complete in PR #947; context-overlay wave complete in PR #951 result `1529bf38220e489300fdff322865a11a4d66406f`; shared assessment is the next dependency-ordered wave
+Lane R R5 governed package migration: Evidence complete in PR #947; context overlay complete in PR #951; Shared Assessment complete in PR #956 result `5f85995678d01c8a0e4853fd38ae23eaa15bd303`; Subjective Memory is the next dependency-ordered wave
 OVL-1 CTX-OVL participant-private vertical slice: complete in PR #639; default-off and participant-private only
 ASM-1 Shared Assessment runtime foundation: complete in PR #636; default-off
 SM-1 Subjective MEM create decision/result vertical slice: complete in PR #646; default-off and prepared-only
