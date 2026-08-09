@@ -2731,8 +2731,13 @@ R5_AMENDMENT_RESULT_MUTATIONS = tuple(
 # RT-1D-R5 immediate retirement implementation merged as exact resulting main
 # `684b49f9bef5b34ccf9518891de85bdef3139c43`. The ordinary Primary reader and its
 # selection/ranking/fallback path are retired, so the R4-era "serves Primary MEM
-# alone" and "R5 unstarted" current claims are now stale. This mandatory R5 P8 is
-# itself the current incomplete convergence gate while its PR is open.
+# alone" and "R5 unstarted" current claims are now stale. The mandatory R5 P8
+# merged as PR #929 with exact resulting main
+# `ec3a0789a19c05b21c9b123e012c6aac1941e54a`, so the earlier self-referential
+# "this P8 is the current incomplete convergence gate while its PR is open" claim
+# is itself now stale and the completed #929 identity/result is required instead.
+# These anchors describe only durable merged results; they never depend on the
+# branch, PR, head, or future result of the correction that records them.
 R5_COMPLETION_ANCHORS = {
     path: (
         "RT-1D-R5 immediate retirement implementation completed in merged PR #907 from exact "
@@ -2756,11 +2761,19 @@ R5_COMPLETION_ANCHORS = {
         "authority",
         "The durable chain advances through `post_transfer_validated` and then "
         "`retirement_complete` only over the accepted exact finalized-receipt path",
-        "this mandatory RT-1D-R5 P8 current-authority synchronization is the current incomplete "
-        "convergence gate while its PR is open",
-        "This P8 must not be claimed complete before its own expected-head-protected merge and "
-        "independent exact-result verification.",
-        "it requires no recursive P8",
+        "The mandatory RT-1D-R5 P8 current-authority synchronization completed in merged PR "
+        "#929 from bootstrap `684b49f9bef5b34ccf9518891de85bdef3139c43`, final reviewed head "
+        "`f56302fc668491287d469d13a644b7a27d6d33a0`, and exact resulting main "
+        "`ec3a0789a19c05b21c9b123e012c6aac1941e54a`.",
+        "Its cumulative scope was exactly the four current-authority paths, its cumulative "
+        "P5/P6 was accepted clean, and the Ready-event Agent execution safety run 1134 was "
+        "green before the expected-head-protected squash merge.",
+        "PR #929 is merged and completed, not open, current, Draft, unmerged, or incomplete.",
+        "The R5 implementation and its mandatory P8 are therefore both complete.",
+        "This result/current-authority correction only replaces the P8's self-referential "
+        "open-transaction wording with the exact completed result",
+        "it is documentation and current-boundary only, introduces no runtime, serving, or "
+        "retirement behavior, and requires no P8.",
     )
     for path in (STATUS, PLAN, RT1C)
 }
@@ -2772,7 +2785,7 @@ PROBES += tuple(
     for anchor in anchors
 )
 
-REQUIRED[RT1C] += ("## RT-1D-R5 completion and mandatory P8 (current)",)
+REQUIRED[RT1C] += ("## RT-1D-R5 completion and mandatory P8 (completed)",)
 
 R5_COMPLETION_STALE = (
     "RT-1D-R5 remains unstarted",
@@ -2792,9 +2805,34 @@ R5_COMPLETION_STALE = (
     "PR #907 remains Draft",
     "PR #907 is closed unmerged",
     "the RT-1D-R5 implementation result is unknown",
-    "the mandatory RT-1D-R5 P8 is complete",
     "the mandatory RT-1D-R5 P8 requires a recursive P8",
     "RT-1D-R4 is the current serving authority boundary",
+    # The mandatory R5 P8 is merged as PR #929, so every open/self-referential
+    # form of that P8, every wrong or unknown identity for it, and every
+    # recursive-P8 claim about it or about this bounded result correction are
+    # now stale. None of these forms name this correction's own branch, PR,
+    # head, or future result.
+    "## RT-1D-R5 completion and mandatory P8 (current)",
+    "PR #929 remains open",
+    "PR #929 is unmerged",
+    "PR #929 remains Draft",
+    "PR #929 is incomplete",
+    "PR #929 is closed unmerged",
+    "PR #929 is the current incomplete RT-1D-R5 gate",
+    "this mandatory RT-1D-R5 P8 current-authority synchronization is the current incomplete "
+    "convergence gate while its PR is open",
+    "the mandatory RT-1D-R5 P8 is the current incomplete convergence gate",
+    "This P8 must not be claimed complete before its own expected-head-protected merge and "
+    "independent exact-result verification.",
+    "the mandatory RT-1D-R5 P8 result is unknown",
+    "the exact RT-1D-R5 P8 reviewed head is unknown",
+    "the mandatory RT-1D-R5 P8 exact resulting main is "
+    "`684b49f9bef5b34ccf9518891de85bdef3139c43`",
+    "the mandatory RT-1D-R5 P8 bootstrap is `f56302fc668491287d469d13a644b7a27d6d33a0`",
+    "the RT-1D-R5 P8 result/current-authority correction is the current incomplete convergence "
+    "gate",
+    "the RT-1D-R5 P8 result/current-authority correction requires P8",
+    "the RT-1D-R5 P8 result/current-authority correction requires a recursive P8",
 )
 
 R5_COMPLETION_MUTATIONS = tuple(
@@ -2834,15 +2872,42 @@ R5_COMPLETION_MUTATIONS = tuple(
             "retired reader claim",
         ),
         (
-            "this mandatory RT-1D-R5 P8 current-authority synchronization is the current "
-            "incomplete convergence gate while its PR is open",
-            "the mandatory RT-1D-R5 P8 is complete",
-            "P8 gate state",
+            "merged PR #929 from bootstrap `684b49f9bef5b34ccf9518891de85bdef3139c43`",
+            "merged PR #929 from bootstrap `784b49f9bef5b34ccf9518891de85bdef3139c43`",
+            "R5 P8 bootstrap",
         ),
         (
-            "it requires no recursive P8",
-            "the mandatory RT-1D-R5 P8 requires a recursive P8",
-            "recursive P8 claim",
+            "final reviewed head `f56302fc668491287d469d13a644b7a27d6d33a0`",
+            "final reviewed head `e56302fc668491287d469d13a644b7a27d6d33a0`",
+            "R5 P8 reviewed head",
+        ),
+        (
+            "and exact resulting main `ec3a0789a19c05b21c9b123e012c6aac1941e54a`",
+            "and exact resulting main `fc3a0789a19c05b21c9b123e012c6aac1941e54a`",
+            "R5 P8 exact resulting main",
+        ),
+        (
+            "the Ready-event Agent execution safety run 1134 was green before the "
+            "expected-head-protected squash merge",
+            "the mandatory RT-1D-R5 P8 result is unknown",
+            "R5 P8 Ready-event evidence",
+        ),
+        (
+            "PR #929 is merged and completed, not open, current, Draft, unmerged, or "
+            "incomplete.",
+            "PR #929 remains open",
+            "R5 P8 gate state",
+        ),
+        (
+            "The R5 implementation and its mandatory P8 are therefore both complete.",
+            "the mandatory RT-1D-R5 P8 is the current incomplete convergence gate",
+            "R5 P8 completion claim",
+        ),
+        (
+            "This result/current-authority correction only replaces the P8's self-referential "
+            "open-transaction wording with the exact completed result",
+            "the RT-1D-R5 P8 result/current-authority correction requires a recursive P8",
+            "R5 P8 correction recursion claim",
         ),
     )
 )
