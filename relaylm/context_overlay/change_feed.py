@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from relaylm.ctx_ovl_types import _CATCH_UP_MAX_EVENTS, _REBUILD_MAX_RECORDS
+from relaylm.context_overlay.types import _CATCH_UP_MAX_EVENTS, _REBUILD_MAX_RECORDS
 from relaylm.evidence.common import PrincipalRef, dedupe
 
 

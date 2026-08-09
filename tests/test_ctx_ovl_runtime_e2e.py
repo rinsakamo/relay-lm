@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from respx.router import MockRouter
 
 from relaylm.app import create_app
-from relaylm.ctx_ovl_runtime import reset_ctx_ovl_runtime_cache
+from relaylm.context_overlay.runtime import reset_ctx_ovl_runtime_cache
 
 BACKEND_BASE_URL = "http://127.0.0.1:8000/v1"
 BACKEND_CHAT_COMPLETIONS_URL = f"{BACKEND_BASE_URL}/chat/completions"

@@ -9,7 +9,7 @@ import yaml
 from fastapi.testclient import TestClient
 
 from relaylm.app import create_app
-from relaylm.ctx_ovl_runtime import _registries, reset_ctx_ovl_runtime_cache
+from relaylm.context_overlay.runtime import _registries, reset_ctx_ovl_runtime_cache
 
 _BACKEND_URL = "http://127.0.0.1:8000/v1/chat/completions"
 

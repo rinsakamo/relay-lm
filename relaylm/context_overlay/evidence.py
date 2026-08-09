@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime
 
-from relaylm.ctx_ovl_types import _AuthorizedCandidate
+from relaylm.context_overlay.types import _AuthorizedCandidate
 from relaylm.evidence.access import resolve_evidence_access_authorization
 from relaylm.evidence.common import (
     PolicySnapshotRef,
