@@ -214,6 +214,28 @@
       "retention_reason": "D2-B2b4c28 migrated every active consumer to canonical system, pipeline, request/response, compile/checkpoint, status, or exact RelayCTX authority and removed the closed transitional note; its historical wording remains recoverable from Git."
     },
     {
+      "old_path": "docs/architecture/product_runtime_hardening.md",
+      "last_live_commit": "972834eeab829dd011e044814d6cb2ccbe499f66",
+      "old_blob_sha": "b21bfbe3ff5e904842ade12302f14cf5083f3995",
+      "removed_by_pr": 957,
+      "replacement_paths": [
+        "docs/architecture/ai_character_product_principles.md",
+        "docs/architecture/context_packing_design.md",
+        "docs/architecture/open_llm_vtuber_integration.md",
+        "docs/architecture/pipeline-responsibilities.md",
+        "docs/architecture/pipeline_implementation_plan.md",
+        "docs/architecture/privacy/local-first-runtime.md",
+        "docs/architecture/relaymem_retrieval_execution_design.md",
+        "docs/architecture/relaymem_slp_execution_design.md",
+        "docs/architecture/runtime/operational-observability.md",
+        "docs/architecture/runtime/reliability-and-compatibility.md",
+        "docs/architecture/runtime/request-response-pipeline.md",
+        "docs/architecture/system-overview.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R10 retired the dead compatibility redirect after PR #955 removed its historical archive source, its body contained no independent authority, `docs/architecture/README.md` did not consume it, and exact-head link validation found no active Markdown consumers; current readers use the canonical replacement authorities directly and the redirect remains recoverable from Git."
+    },
+    {
       "old_path": "docs/architecture/relaymem_m3a_primary_formation_handoff.md",
       "last_live_commit": "1777ca0c0c4d1f64c650f9b3f559a178ad0aed20",
       "old_blob_sha": "fbb08beb9975e3a1b46d4a9f510753669297bc26",
