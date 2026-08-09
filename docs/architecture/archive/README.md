@@ -63,7 +63,7 @@ Useful principles migrated or already represented in current documents:
 
 ## Archived product-origin designs
 
-### [Persona-Specialized Proxy Design](persona_specialized_proxy_design.md)
+### Persona-Specialized Proxy Design
 
 Reason archived:
 
