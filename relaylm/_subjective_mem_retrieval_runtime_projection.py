@@ -36,7 +36,7 @@ from pathlib import Path
 
 from .evidence.common import canonical_digest
 from .evidence.store import EvidenceRecordStore
-from .subjective_mem_markdown import subjective_mem_page_identity
+from .subjective_mem.markdown import subjective_mem_page_identity
 from .subjective_mem_retrieval_projection import (
     SubjectiveMemRetrievalProjection,
     SubjectiveMemRetrievalProjectionSource,
