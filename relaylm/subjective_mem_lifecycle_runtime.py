@@ -64,7 +64,7 @@ from relaylm.subjective_mem_lifecycle import (
     SubjectiveMemCorrectionBoundary,
     SubjectiveMemLifecycleTransition,
 )
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     LIFECYCLE_BLOCK_SCHEMA,
     PAGE_PARTITION_REVISION,
     PAGE_SCHEMA,

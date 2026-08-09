@@ -24,7 +24,7 @@ from relaylm.subjective_mem_consolidate import CONSOLIDATE_OPERATION_FAMILY, Sub
 from relaylm.subjective_mem_lifecycle import LIFECYCLE_INTENT_FINALIZATION_SCHEMA, LIFECYCLE_INTENT_SCHEMA, LIFECYCLE_RECEIPT_SCHEMA, LIFECYCLE_RESULT_SCHEMA, LIFECYCLE_TRANSITION_SCHEMA
 from relaylm.subjective_mem_lifecycle_authority import SubjectiveMemPredecessorAuthority, SubjectiveMemPredecessorExpectation, load_subjective_mem_predecessor_authority_locked
 from relaylm.subjective_mem_lifecycle_engine import LifecycleExecutionOutcome, LifecycleFinalRecords, LifecycleFinalizer, LifecyclePublicationPlan, RecordBinding, lifecycle_claim_record, publish_lifecycle_post_image, read_lifecycle_reservation, read_prepared_post_image, reserve_lifecycle_publication, resolve_finalized_replay
-from relaylm.subjective_mem_markdown import LIFECYCLE_BLOCK_SCHEMA, PAGE_PARTITION_REVISION, PAGE_SCHEMA, RENDERER_REVISION, SubjectiveMemPagePlan, canonical_page_digest, parse_subjective_mem_page_bytes, plan_subjective_mem_revision_successor, subjective_mem_page_identity
+from relaylm.subjective_mem.markdown import LIFECYCLE_BLOCK_SCHEMA, PAGE_PARTITION_REVISION, PAGE_SCHEMA, RENDERER_REVISION, SubjectiveMemPagePlan, canonical_page_digest, parse_subjective_mem_page_bytes, plan_subjective_mem_revision_successor, subjective_mem_page_identity
 
 ConsolidateStatus = Literal["disabled", "dry_run_ready", "committed", "duplicate_finalized", "recovery_pending", "recovery_required", "lock_busy", "fail_closed", "integrity_conflict"]
 FaultInjector = Callable[[str], None]

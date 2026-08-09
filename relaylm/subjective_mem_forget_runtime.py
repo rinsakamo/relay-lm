@@ -62,7 +62,7 @@ from relaylm.subjective_mem_lifecycle_runtime import (
     _workspace_authority_digest,
     resolve_subjective_mem_lifecycle_gate,
 )
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     LIFECYCLE_BLOCK_SCHEMA,
     PAGE_PARTITION_REVISION,
     PAGE_SCHEMA,

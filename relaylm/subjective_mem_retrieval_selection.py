@@ -36,7 +36,7 @@ from relaylm.evidence.common import canonical_digest, dedupe
 from relaylm.relaymem_grounded_recall_response import (
     GROUNDED_RECALL_CONTEXT_SCHEMA, MAX_EVIDENCE_ITEMS, MAX_FACT_TEXT_CHARS,
 )
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     MAX_CANONICAL_PAGE_BYTES, SubjectiveMemMarkdownBlock, SubjectiveMemMarkdownPage,
     parse_subjective_mem_page_bytes,
 )

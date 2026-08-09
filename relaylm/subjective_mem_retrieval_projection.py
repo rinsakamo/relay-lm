@@ -34,7 +34,7 @@ from relaylm.subjective_mem_lifecycle_authority import (
     SubjectiveMemPredecessorExpectation, subjective_mem_committed_authorization_ref,
     validate_subjective_mem_committed_authorization, validate_subjective_mem_committed_receipt,
 )
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     BLOCK_SCHEMA, LIFECYCLE_BLOCK_SCHEMA, MAX_CANONICAL_PAGE_BYTES, PAGE_PARTITION_REVISION,
     PAGE_SCHEMA, RENDERER_REVISION, SubjectiveMemMarkdownBlock, SubjectiveMemMarkdownPage,
     canonical_page_digest, parse_subjective_mem_page_bytes, subjective_mem_block_identity,

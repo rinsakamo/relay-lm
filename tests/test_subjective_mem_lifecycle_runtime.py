@@ -25,12 +25,12 @@ from relaylm.subjective_mem_lifecycle import (
 )
 import relaylm.subjective_mem_lifecycle_engine as lifecycle_engine
 import relaylm.subjective_mem_lifecycle_runtime as lifecycle_runtime
-import relaylm.subjective_mem_markdown as subjective_mem_markdown
+import relaylm.subjective_mem.markdown as subjective_mem_markdown
 from relaylm.subjective_mem_lifecycle_runtime import (
     correct_subjective_mem,
     resolve_subjective_mem_lifecycle_gate,
 )
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     LIFECYCLE_BLOCK_SCHEMA,
     PAGE_PARTITION_REVISION,
     PAGE_SCHEMA,

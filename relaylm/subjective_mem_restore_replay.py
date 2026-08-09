@@ -26,7 +26,7 @@ from relaylm.subjective_mem_lifecycle_engine import (
     LifecyclePublicationPlan,
     RecordBinding,
 )
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     parse_subjective_mem_page_bytes,
     subjective_mem_page_identity,
 )
