@@ -61,39 +61,6 @@ Useful principles migrated or already represented in current documents:
 - forced sleep/reset should remain rare and fail-closed -> [RelayMEM SLP execution design](../relaymem_slp_execution_design.md),
 - no extra Wake-time LLM output should be generated solely to run SLP -> [RelayMEM SLP execution design](../relaymem_slp_execution_design.md).
 
-## Archived cross-cutting planning documents
-
-### [Product Runtime Hardening](product_runtime_hardening.md)
-
-Reason archived:
-
-- combines an obsolete MVP-0 through MVP-5 roadmap with durable runtime requirements,
-- duplicates current runtime, context, memory, integration, and product documents,
-- mixes current acceptance/operations ideas with early implementation assumptions.
-
-Useful principles migrated into current documents:
-
-- fallback is normal product behavior but must remain policy- and compatibility-gated -> [Runtime reliability and compatibility](../runtime/reliability-and-compatibility.md),
-- audit/trace diagnostics should use typed content-free projections -> [Runtime operational observability](../runtime/operational-observability.md),
-- local-first storage, namespace isolation, visible backend configuration, and no hidden telemetry are explicit privacy requirements -> [Local-first runtime privacy](../privacy/local-first-runtime.md),
-- compatibility, persona/context, memory, latency, recovery, and idempotency need product-level acceptance criteria -> [Runtime reliability and compatibility](../runtime/reliability-and-compatibility.md),
-- product experience hierarchy remains separate from operational requirements -> [AI character product principles](../ai_character_product_principles.md).
-
-Current replacements:
-
-- [Pipeline implementation plan](../pipeline_implementation_plan.md)
-- [RelayLM System Overview](../system-overview.md)
-- [Pipeline Responsibilities](../pipeline-responsibilities.md)
-- [Request / Response Pipeline](../runtime/request-response-pipeline.md)
-- [Runtime reliability and compatibility](../runtime/reliability-and-compatibility.md)
-- [Runtime operational observability](../runtime/operational-observability.md)
-- [Local-first runtime privacy](../privacy/local-first-runtime.md)
-- [AI character product principles](../ai_character_product_principles.md)
-- [Context packing design](../context_packing_design.md)
-- [RelayMEM retrieval execution design](../relaymem_retrieval_execution_design.md)
-- [RelayMEM SLP execution design](../relaymem_slp_execution_design.md)
-- [Open-LLM-VTuber integration design](../open_llm_vtuber_integration.md)
-
 ## Archived implementation-history markers
 
 These markers record where append-only design histories were superseded by concise active contracts. The original long-form bodies remain available in Git history.
