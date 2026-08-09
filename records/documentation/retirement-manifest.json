@@ -2,6 +2,15 @@
   "schema_version": "relaylm.documentation.retirement-manifest.v1",
   "entries": [
     {
+      "old_path": "docs/architecture/archive/README.md",
+      "last_live_commit": "4e10fbc358f0b23116ad7ec15d6972a95283a96d",
+      "old_blob_sha": "2353be2cfa3d747fabe7ddf3955b8871a58bfb9f",
+      "removed_by_pr": 965,
+      "replacement_paths": [],
+      "disposition": "retired_git_history_only",
+      "retention_reason": "D6-R15 retired the empty non-canonical architecture archive router after every historical source family it exposed had already been removed from the live tree, exact-head link validation found no active Markdown consumer, and continuing historical recovery is owned by Git history plus the central retirement manifest rather than a general live archive tree."
+    },
+    {
       "old_path": "docs/architecture/archive/persona_specialized_proxy_design.md",
       "last_live_commit": "37d2c1f16d9969cf853cf640ad52c31485c8221f",
       "old_blob_sha": "3269bcfdbabc2585a81011d3dc02ba259348ff4a",
