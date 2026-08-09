@@ -28,7 +28,7 @@ from relaylm.subjective_mem.commit_runtime import (
     resolve_subjective_mem_commit_gate,
     validate_finalized_subjective_mem_operation,
 )
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     BLOCK_SCHEMA,
     MAX_CANONICAL_PAGE_BLOCKS,
     PAGE_SCHEMA,

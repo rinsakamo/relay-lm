@@ -11,7 +11,7 @@ from relaylm.subjective_mem.commit_io import ARTIFACT_DIRECTORY_PARTS, PLATFORM_
 from relaylm.evidence.common import canonical_digest
 from relaylm.subjective_mem.models import SUBJECTIVE_MEM_REVISION_SCHEMA
 from relaylm.subjective_mem_lifecycle import LIFECYCLE_POLICY_REVISION
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     LIFECYCLE_BLOCK_SCHEMA,
     PAGE_PARTITION_REVISION,
     PAGE_SCHEMA,

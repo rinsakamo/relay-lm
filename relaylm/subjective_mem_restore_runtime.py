@@ -36,7 +36,7 @@ from relaylm.subjective_mem_lifecycle_engine import (
     read_lifecycle_reservation, read_prepared_post_image,
     reserve_lifecycle_publication, resolve_finalized_replay, validate_lifecycle_plan,
 )
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     LIFECYCLE_BLOCK_SCHEMA,
     PAGE_PARTITION_REVISION,
     PAGE_SCHEMA,

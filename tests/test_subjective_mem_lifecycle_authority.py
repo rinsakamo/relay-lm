@@ -38,7 +38,7 @@ from relaylm.subjective_mem_lifecycle_authority import (
     validate_subjective_mem_committed_authorization,
     validate_subjective_mem_committed_receipt,
 )
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     LIFECYCLE_BLOCK_SCHEMA,
     PAGE_PARTITION_REVISION,
     PAGE_SCHEMA,

@@ -24,7 +24,7 @@ from relaylm.portable_lock import (
     acquire_portable_lock,
     release_portable_lock,
 )
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     MAX_CANONICAL_PAGE_BYTES,
     MISSING_PAGE_DIGEST,
     canonical_page_digest,

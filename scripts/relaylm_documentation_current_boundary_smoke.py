@@ -188,7 +188,7 @@ REQUIRED = {
         "the co-located selection and\ncharacterization owner crossed the roughly-700-line structural review trigger",
         "#### Canonical-page-bound private evidence",
         "consistency between prose and its own supplied digest is not canonical authority\nand must not authorize a private handoff. That design is rejected.",
-        "`relaylm.subjective_mem_markdown.parse_subjective_mem_page_bytes` owner, and\n   introduces no second canonical parser",
+        "`relaylm.subjective_mem.markdown.parse_subjective_mem_page_bytes` owner, and\n   introduces no second canonical parser",
         "the parsed page digest equals `row.canonical_page_digest`;",
         "that block's `block_digest` equals `row.block_digest`;",
         "that block's `revision_digest` equals `row.revision_digest`;",

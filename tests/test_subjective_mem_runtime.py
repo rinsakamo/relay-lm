@@ -1003,7 +1003,7 @@ def test_sm1_has_no_normal_path_soul_slp_retrieval_or_primary_mem_wiring() -> No
             "subjective_mem_runtime.py",
             "subjective_mem_commit.py",
             "subjective_mem_commit_runtime.py",
-            "subjective_mem_markdown.py",
+            "subjective_mem/markdown.py",
             "_subjective_mem_commit_io.py",
         }:
             continue

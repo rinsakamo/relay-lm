@@ -684,7 +684,7 @@ owner already supplies:
 1. the canonical owner supplies bounded canonical page bytes as an in-memory
    value; RT-1C resolves no path and reads no file;
 2. selection parses them with the existing
-   `relaylm.subjective_mem_markdown.parse_subjective_mem_page_bytes` owner, and
+   `relaylm.subjective_mem.markdown.parse_subjective_mem_page_bytes` owner, and
    introduces no second canonical parser;
 3. selection verifies, for each selected row, that:
    - the supplied value is `bytes` and within the existing canonical page bounds;

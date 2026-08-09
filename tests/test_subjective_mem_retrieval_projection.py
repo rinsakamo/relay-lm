@@ -26,7 +26,7 @@ from relaylm.subjective_mem_lifecycle import (
     LIFECYCLE_RECEIPT_SCHEMA,
     LIFECYCLE_TRANSITION_SCHEMA,
 )
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     LIFECYCLE_BLOCK_SCHEMA,
     PAGE_PARTITION_REVISION,
     PAGE_SCHEMA,
@@ -1014,7 +1014,7 @@ def test_projection_modules_have_no_primary_shadow_or_request_path_dependency() 
             "relaylm.evidence.common",
             "relaylm.subjective_mem.models",
             "relaylm.subjective_mem_lifecycle_authority",
-            "relaylm.subjective_mem_markdown",
+            "relaylm.subjective_mem.markdown",
             "relaylm.subjective_mem_retrieval",
         },
         store_module: {

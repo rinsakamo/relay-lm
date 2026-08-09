@@ -36,7 +36,7 @@ from relaylm.subjective_mem.commit import (
     SubjectiveMemPublicationIntent,
     build_finalization_records,
 )
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     PAGE_PARTITION_REVISION,
     PAGE_SCHEMA,
     RENDERER_REVISION,

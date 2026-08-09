@@ -17,7 +17,7 @@ from relaylm.subjective_mem.models import (
     SubjectiveMemScopeBinding,
     SubjectiveMemStrength,
 )
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     MAX_CANONICAL_PAGE_BYTES,
     SubjectiveMemMarkdownBlock,
     SubjectiveMemMarkdownPage,
@@ -751,7 +751,7 @@ def test_selection_owner_imports_no_characterization_ledger_or_io() -> None:
     )
     assert imports == {
         "__future__", "dataclasses", "typing", "relaylm.evidence.common",
-        "relaylm.relaymem_grounded_recall_response", "relaylm.subjective_mem_markdown",
+        "relaylm.relaymem_grounded_recall_response", "relaylm.subjective_mem.markdown",
         "relaylm.subjective_mem_retrieval", "relaylm.token_budget",
     }
     executable = _executable_source(selection_owner)

@@ -40,7 +40,7 @@ from relaylm.subjective_mem_lifecycle_engine import (
     final_lifecycle_state,
     validate_lifecycle_plan,
 )
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     LIFECYCLE_BLOCK_SCHEMA,
     PAGE_PARTITION_REVISION,
     PAGE_SCHEMA,

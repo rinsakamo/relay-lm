@@ -7,7 +7,7 @@ handoff the existing E1-R4 grounding owner already consumes.
 
 Private evidence is bound to canonical authority, not to a caller's word. The
 caller supplies bounded canonical page bytes; this owner parses them with the
-existing ``relaylm.subjective_mem_markdown`` parser, proves the complete page,
+existing ``relaylm.subjective_mem.markdown`` parser, proves the complete page,
 block, and revision identity against the exact projection row and admitted
 request scope, and takes ``grounded_content`` and its digest only from that exact
 parsed revision. Arbitrary prose plus a matching caller-supplied digest is only
@@ -36,7 +36,7 @@ from relaylm.evidence.common import canonical_digest, dedupe
 from relaylm.relaymem_grounded_recall_response import (
     GROUNDED_RECALL_CONTEXT_SCHEMA, MAX_EVIDENCE_ITEMS, MAX_FACT_TEXT_CHARS,
 )
-from relaylm.subjective_mem_markdown import (
+from relaylm.subjective_mem.markdown import (
     MAX_CANONICAL_PAGE_BYTES, SubjectiveMemMarkdownBlock, SubjectiveMemMarkdownPage,
     parse_subjective_mem_page_bytes,
 )
