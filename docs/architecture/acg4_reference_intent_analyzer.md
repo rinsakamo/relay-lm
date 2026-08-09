@@ -18,7 +18,7 @@ relaylm_related_authority:
   - analyzer_candidate_governance.md
   - project_execution_plan.md
   - relayint_mvp_design.md
-  - relayref_relayslp_mvp_design.md
+  - runtime/request-response-pipeline.md
 ---
 # ACG-4 Reference/Intent Analyzer Consolidation
 

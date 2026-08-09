@@ -20,28 +20,6 @@ Short redirect files may remain at former active paths to preserve historical or
 
 The active architecture index lists the retained redirect paths separately from current specifications.
 
-## Archived responsibility-split designs
-
-### [RelayREF / RelaySLP MVP Design](relayref_relayslp_mvp_design.md)
-
-Date basis: 2026-05-31 JST.
-
-Reason archived:
-
-- defines RelayREF as a Wake-time reflection and recovery layer,
-- predates the current rule `RelayINT = before action / RelayREF = after response`,
-- places recovery orchestration and handoff repair under RelayREF rather than the current RelaySCN / RelayINT / RelayRUN split,
-- contains an early combined REF/SLP artifact model that no longer matches current typed runtime artifacts.
-
-Useful principles migrated or already represented in current documents:
-
-- repaired context is a confirmation candidate, not trusted context -> [RelayRUN recovery response generator contract](../../contracts/relayrun_recovery_response_generator_contract.md),
-- recovery must not auto-resume before user confirmation -> [RelayRUN recovery response generator contract](../../contracts/relayrun_recovery_response_generator_contract.md),
-- recovery blocks MEM/SOUL persistence and limits retrieval scope -> [RelaySCN MVP scene policy](../relayscn_mvp_scene_policy.md),
-- ordinary ambiguity should use RelayINT clarification rather than SLP -> [RelayINT MVP design](../relayint_mvp_design.md),
-- forced sleep/reset should remain rare and fail-closed -> [RelayMEM SLP execution design](../relaymem_slp_execution_design.md),
-- no extra Wake-time LLM output should be generated solely to run SLP -> [RelayMEM SLP execution design](../relaymem_slp_execution_design.md).
-
 ## Archived implementation-history markers
 
 These markers record where append-only design histories were superseded by concise active contracts. The original long-form bodies remain available in Git history.
