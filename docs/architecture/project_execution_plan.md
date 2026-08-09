@@ -11,6 +11,7 @@ relaylm_update_trigger:
   - evaluation decision changes
   - post-MVP roadmap ordering changes
   - accepted target contract implementation sequencing changes
+  - post-RT-1 personality program sequencing changes
 relaylm_not_authoritative_for:
   - current implemented runtime status
   - component responsibility and canonical target order
@@ -67,11 +68,13 @@ relaylm_related_authority:
 ---
 # RelayLM Project Execution Plan
 
-Last reviewed: 2026-07-31 JST
+Last reviewed: 2026-08-09 JST
 
 ## Purpose
 
 This document is the single plan and roadmap authority for RelayLM execution. It owns dependency-first sequencing, MVP boundaries, MVP completion criteria, and post-MVP roadmap ordering. It does not own current implementation status; read [Project Status](../PROJECT_STATUS.md) first.
+
+It also owns the repository-wide order of the post-RT-1 program recorded in [Post-RT-1 repository-wide sequencing](#post-rt-1-repository-wide-sequencing). It does not own personality semantics: SOUL, SELF, REL / OTHER MODEL, GOAL, Working Self, SLP write authority, and Reflective / Self-Model Distillation are owned by the accepted [Character Personality and Experience Architecture](character/personality-and-experience.md), and this plan neither restates nor redefines them.
 
 ## MVP execution lanes
 
@@ -193,6 +196,8 @@ The series own the following bounded outcomes:
 - **LC-1 lifecycle migration** depends on ST-1 and ports existing characterization-backed operations in bounded order: Correct, Forget, Pin/Unpin, Restore, then Consolidate. [LC-1A Subjective MEM Correct Runtime](lc1a_subjective_mem_correct.md) implements the exact `active -> active` Correct slice with an immutable canonical successor, shared mutation fence, content-free intent/receipt/idempotency state, and caller-invoked forward recovery. [LC-1B Subjective MEM Forget Runtime](subjective-mem-forget-runtime.md) implements the exact `active -> hidden` Forget slice with an immutable hidden successor, content-free anti-reformation tombstone, one canonical anti-reformation evaluator, deterministic idempotency, and caller-invoked forward recovery. LC-1C Pin/Unpin implements exact current `active -> pinned` and `pinned -> active` immutable successors while preserving semantic payload and using the shared lifecycle publication engine with content-free durable records. [LC-1D Subjective MEM Restore Runtime](subjective-mem-restore-runtime.md) implements the exact current `hidden -> active` immutable successor with authenticated Forget lineage, immutable tombstone-release records, shared lifecycle publication, deterministic idempotency, and caller-invoked forward recovery. [LC-1E Subjective MEM Consolidate Runtime](subjective-mem-consolidate-runtime.md) implements the exact current active Primary-to-Secondary immutable successor while preserving semantic payload and enforcing the exact lifecycle and lower-commit gate triples before durable reads. LC-1 is complete through Consolidate. Existing Primary MEM lifecycle code and tests remain migration evidence. Purge stays outside this series until a separate irreversible authority is accepted.
 - **RT-1 Retrieval projection and hard cutover** depends on ST-1 and the completed LC-1 eligibility boundaries. [RT-1 Subjective MEM Retrieval Projection and Hard Cutover](subjective-mem-retrieval-projection-hard-cutover.md) defines the accepted ordered RT-1A through RT-1D boundary. RT-1A contract and projection foundation is complete in PR #774; RT-1B projection builder and deterministic rebuild is complete in PR #779; RT-1C shadow adapter, grounding handoff, and usage ledger is implemented in PR #784 as three bounded owners — exact canonical-page-bound selection and private handoff preparation, temporary content-free characterization, and a durable content-free usage ledger that seals admission only after exact durable success. RT-1D-S1 reader seams completed in PR #789 with resulting main `b272edb78602032009d4882a6244883cce610b86`, extracting existing managed-chat, Retrieval, and Primary recall reader responsibilities into bounded owners while preserving exact public behavior, stage order/offload/timing, diagnostics, Retrieval artifacts, Primary security/lifecycle/fallback behavior, and the RelayINT `metadata.ctx` / `ctx_handoff_guess` Mapping contract. S1 is a behavior-preserving structural prerequisite only: it enables no ordinary Subjective MEM Retrieval, changes no Primary MEM serving authority, and adds no RT-1D configuration, binding, durable cutover state, reader or writer decisions, fences, finalized receipt, retirement, persistence, recovery, worker, queue, scheduler, API, or UI behavior. Its mandatory P8 completed in PR #790 with exact resulting main `3e20274f18306f7db2410fd5239051411b9c052b`. RT-1D-S2 worker seams completed in PR #791 with resulting main `31b700a2db0af7819f761d51bd946ff6798eb4c9`. S2 extracted checkpointed Primary pipeline request construction and execution into `relaylm/_relaymem_slp_primary_worker_pipeline.py`, and extracted one-queued-job claim, source preparation, worker invocation, prepared-scope release, and terminal cleanup into `relaylm/_relaymem_slp_one_queued_job_runner_execute.py`. It preserved public request, result, and projection schemas and import locations; patchable module-level callables; claim revalidation, lease renewal counts, checkpoint order, protected-source release order, status/reason bytes, retry and terminal transitions; and durable queue/store/page/index/log bytes plus fault, crash, and recovery behavior. S2 remains a behavior-preserving structural prerequisite only and added no cutover binding, configuration, authority decision, Primary fence, Subjective serving, fallback change, retirement, scheduler/queue/store semantics, or new persistence/recovery authority. PR #792 completed the S2 mandatory P8 current-authority sync with exact resulting main `7e4fb4383dc6c1229d488ac200132b66f6b65bba`. The monolithic S3 behavior-preserving candidate returned to P1 with no persistent changes because it crossed the structural gates. PR #793 merged the monolithic S3 P1 Return architecture amendment with exact result `5011eaaddd895b434f3d870dcf2206527725629c`. RT-1D-S3A Correct core seams completed in PR #794 with exact resulting main `2d05a41235e396ac82d536437ed8e5568f617253` as a behavior-preserving Primary-only structural prerequisite. Its mandatory same-lane P8 completed in PR #795 with exact resulting main `bc27c25d0b745fc2d9927e9e21179b14cd337141`. RT-1D-S3B Forget core seams completed in PR #796 with exact resulting main `b75df848bf3982e00f67969c016ba1f28dd93427`; PR #797 is the mandatory S3B P8 current-authority synchronization. S3C completed in PR #798 with exact resulting main `56fa66fdba475a3d6e1a4bc4cbc3480ba238720e`. The mandatory S3C P8 current-authority synchronization PR #799 merged with exact resulting main `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`. RT-1D-R1 durable preparation is complete in PR #801; PR #803 completed with exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` and no P8; the renewed R2 attempt returned at P1 without mutation; and live-root budget amendment PR #804 completed with exact result `00ba475c689631520538b7531022603447f11bd0` and no P8. The following R2 attempt returned at P1 again without mutation and is recorded in closed tree-neutral Draft PR #805 head `733b38fd3e74dcc542dd1c8f2ec1353a2cab6a95`; queued-runner root budget amendment PR #806 completed with exact result `cd8ce6e05b6476b08ecf25a5100fb0c3f0e77644`, the next R2 attempt returned at P1 in closed tree-neutral Draft PR #807 head `00991760b3070597d6b763a0b3ffc2eb820435f2`, and the staged writer-fence and smoke-carriage budget amendment PR #808 completed with exact result `758c160e1ee71bb9ad67fe10234e5a38c03c6a3d` and no P8. RT-1D-R2A decision owner and managed finalization carriage completed in PR #809 with exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430`, and mandatory R2A P8 PR #810 completed with exact result `5822b01fd4642c89c39a2518672191bf1a8da115`. Primary MEM remains the sole ordinary served memory and Retrieval authority. Subjective ordinary retrieval remains disabled and unwired. No cutover, authority switch, serving, fallback, or retirement change occurred. RT-1D-R1 durable preparation is complete in PR #801; RT-1D-R2B implementation PR #811 and mandatory P8 PR #812 are complete; RT-1D-R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; at that historical point, RT-1D-R2D was next and had not started. RT-1B remains default-off and unwired from ordinary Retrieval; RT-1C remains default-off, explicit shadow-only, and unwired from ordinary Retrieval without changing Primary authority. Primary MEM remains the sole ordinary served memory and Retrieval authority. S1, S2, S3A, S3B, and S3C plus each mandatory P8/resulting-main verification were completed before the fresh RT-1D runtime transaction began with R1. No two transactions overlap. The series implements exact-current-revision selection, lifecycle/mutation fail-closed behavior, durable content-free usage events, projection rebuild equivalence, old/new characterization comparison, writer fencing, one-authority cutover, temporary-adapter removal, and retirement of replaced readers/writers.
 
+  Every present-tense authority, default-off, unwired, and shadow-only statement in the RT-1 bullet above is the retained record of the RT-1 series as it was executed, scoped to the earlier points at which each sentence was written. None of them describes current state. RT-1 is complete: RT-1D-R4 one-authority activation merged as PR #834 with mandatory P8 PR #835, and RT-1D-R5 immediate retirement merged as PR #907 with mandatory P8 PR #929. The ordinary Primary reader is retired, the temporary RT-1C characterization and RT-1D-R3 rehearsal execution owners are deleted, and Primary MEM is not universally the sole ordinary served memory and Retrieval authority.
+
 Decision gates apply narrowly:
 
 - PM-D4 must be resolved before any new client-history capture becomes default-on; EV-1 may proceed with explicit route-owned capture while the existing default-off boundary remains.
@@ -212,7 +217,103 @@ Implementation and cleanup rules:
 
 This registration authorizes preparation of bounded implementation PRs in the dependency order above. It does not itself authorize runtime default-on behavior, migration of user data, deletion of existing assets, or the final authority cutover.
 
+## Post-RT-1 repository-wide sequencing
+
+The RT-1 series and the legacy Lane C critical implementation program are complete. RT-1D-R5 immediate retirement merged as PR #907 and its mandatory P8 merged as PR #929, so the ordinary Primary reader and its ranking and fallback path are retired and only explicitly classified read-only Primary history, observation, lifecycle, and admin projections survive. No RT-1 slice is in progress, unstarted, or uniquely next.
+
+This section owns the repository-wide order from that completion to the character experience. It is planning-only registration: it authorizes no runtime, configuration, contract, schema, test, or workflow change, and no slice below may begin merely because it is registered here.
+
+```text
+RT-1 / Lane C legacy program                       COMPLETE
+       ↓
+Lane R  R5 governed core package migration
+       +
+Lane D  D6 final retirement and legacy cutover-tool retirement
+       ↓
+Lane D  PD-1 Personality responsibility convergence
+       ↓
+Lane D  PD-2 exact Personality contracts
+       ↓
+Lane C  Personality Core
+          PC-1 Personality State
+            -> PC-2 Working Self
+            -> PC-3 SLP automatic personality updates
+            -> PC-4 Reflective Distillation
+       ↓
+9B end-to-end personality evaluation
+       ↓
+Character Presence / PWA / voice / avatar experience
+```
+
+### Preserved lane responsibilities
+
+The three lanes keep their accepted separation, and the personality program never collapses them:
+
+- **Lane R** owns repository maintenance and package migration. It moves paths and packages and never implements SELF, GOAL, REL / OTHER MODEL, Working Self, SLP personality writes, or Reflective Distillation.
+- **Lane D** owns canonical responsibility convergence and exact contracts. It decides which component owns which responsibility and freezes the contracts, and never changes runtime authority.
+- **Lane C** owns authority-changing semantic and runtime implementation. It may begin only after the responsibility and contract convergence it depends on is complete.
+
+Detailed stage definitions remain owned by [Repository Structure and Documentation Canonicalization Plan](../planning/repository-structure-migration.md); lane-local continuation and PR convergence remain owned by [Workstream Orchestration, Lane-Local Continuation, and Stable PR Convergence](../planning/workstream-orchestration.md). Current implementation status remains owned by [Project Status](../PROJECT_STATUS.md).
+
+### Lane R R6 boundary
+
+Lane R R6 Primary MEM disposition remains required repository cleanup after R5. It is **not** a blanket prerequisite for Personality Design or Personality Core, because the ordinary Primary reader is already retired.
+
+A specific later slice is blocked by R6 only when it has a concrete dependency on unresolved R6 work: an exact path, import, caller, recovery surface, or retained authority that R6 has not yet disposed of. Absent such a dependency, PD and PC slices may proceed in parallel with R6 under the ordinary path- and authority-disjointness rules. A free lane slot never authorizes skipping a concrete dependency, and R6 is never cited as a general gate.
+
+### Lane D Personality Design registration
+
+PD-1 and PD-2 are registered future Lane D work. They open only after Lane R R5 and Lane D D6 are complete.
+
+**PD-1 Personality responsibility convergence.** Converge the existing canonical responsibilities that the accepted personality architecture actually changes, especially:
+
+```text
+SOUL / SELF boundary
+REL / OTHER MODEL ownership
+Character Workspace ownership
+SLP maintenance ownership
+context / Working Self responsibility
+```
+
+PD-1 revises only the responsibility nodes the accepted target changes. It does not reopen stable Evidence, storage, retrieval, or lifecycle authorities unless an exact dependency requires it.
+
+**PD-2 exact Personality contracts.** Define the exact Personality State and Working Self contracts before any implementation begins. PD-2 completes before PC-1 starts.
+
+### Lane C Personality Core registration
+
+PC-1 through PC-4 are registered future Lane C work. PC-1 may not begin until PD-2 is complete, and the four slices stay in order:
+
+- **PC-1 Personality State** implements the SELF, GOAL, and minimal REL / OTHER MODEL state foundations.
+- **PC-2 Working Self** implements Working Self and its bounded per-turn semantic projection.
+- **PC-3 SLP automatic personality updates** implements automatic validated updates of SELF, REL / OTHER MODEL, and GOAL, while SOUL remains outside automatic write authority.
+- **PC-4 Reflective Distillation** implements governed Reflective / Self-Model Distillation, using a stronger model to produce grounded candidate SELF deltas that are adopted only through the accepted update authority.
+
+Each slice is a separate authority-changing Lane C transaction under the ordinary single-writer, atomic-PR, and mandatory-P8 rules. The semantics of every term above are owned by [Character Personality and Experience Architecture](character/personality-and-experience.md); this plan registers only their order.
+
+### Evaluation before Character Presence
+
+The resulting architecture is validated first with a local 9B-class model end to end — conversation, context projection, persistence, SLP personality-state updates, and identity continuity — before Character Presence work begins.
+
+Character Presence, the mobile-first PWA, voice, and avatar experience follow that evaluation. They are not scheduled before it, and a completed PC slice alone never authorizes them.
+
+### Ordering authority note
+
+This plan owns repository-wide sequencing; the accepted personality architecture owns semantics. Where the phase grouping in that document and the order recorded here differ — it groups Reflective Distillation after the character-experience phase, while this plan sequences PC-4 before the 9B evaluation and before Character Presence — the order recorded here governs repository execution, and the semantic definitions there remain unchanged and authoritative.
+
 ## Current next work
+
+RT-1 is complete. RT-1D-R5 immediate retirement implementation merged as PR #907 and its mandatory P8 merged as PR #929, so no RT-1 slice is in progress, unstarted, or uniquely next, and the ordinary Primary reader is retired rather than fenced. The repository-wide order from here is owned by [Post-RT-1 repository-wide sequencing](#post-rt-1-repository-wide-sequencing).
+
+The currently eligible repository work is:
+
+```text
+Lane R  R5 governed core package migration              eligible now
+Lane D  D6 final retirement / cutover-tool retirement   continue to completion
+Lane R  R6 Primary MEM disposition                      required cleanup after R5
+Lane C                                                  idle until PD-2 completes
+```
+
+Completed foundation retained for reference:
 
 ```text
 Character Workspace reset
@@ -231,7 +332,15 @@ Completed post-MVP debt:
   PM-D6 RelayINT native artifact / RelayREF wrapper removal complete
   PM-D7 runtime install hook fold-in complete
   PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in complete
+```
 
+### Retained RT-1 program registry (historical)
+
+The registry below is the retained record of the completed contract-aligned implementation debt program, preserved as historical evidence of how the RT-1 series was executed.
+
+Every progress marker inside its RT-1 subtree — including `in progress`, per-stage progress, `next`, and `not started` — describes the repository only at the earlier point at which that line was written. None of them describes current state. RT-1A through RT-1D are complete, RT-1D-R4 one-authority activation merged as PR #834 with mandatory P8 PR #835, and RT-1D-R5 immediate retirement merged as PR #907 with mandatory P8 PR #929.
+
+```text
 Registered contract-aligned implementation debt:
   EV-1 Governed Evidence runtime foundation                            complete / default-off
     -> OVL-1 CTX-OVL participant-private vertical slice               complete / default-off / participant-private only
@@ -252,8 +361,12 @@ Registered contract-aligned implementation debt:
                                                   -> RT-1D-S3B Forget core seams PR #796 result b75df848bf3982e00f67969c016ba1f28dd93427 -> mandatory S3B P8 PR #797 -> independently verify exact resulting main
                                                      -> RT-1D-S3C Soul Lab mutation route seams -> mandatory P8 -> verify resulting main
                                                         -> fresh RT-1D runtime transaction complete through R3 implementation / R1 and R2A-R2D merged with completed mandatory P8 gates
-                                                           -> RT-1D-R3 implementation merged in PR #825 result 1eeb4c03151a20b8504819f6c72564b981c84157 -> mandatory R3 P8 PR #826 complete with exact result c291e26f1c20e6479df427054142916dd7df57db -> RT-1D-R4 P1 Return without mutation -> activation budget amendment complete in PR #828 result 9aea56d6d61d69c390bd0c2dc740739ab155d76e -> RT-1D-R4 second P1 Return without mutation -> runtime-projection budget amendment; exact-twelve R4 budget -> RT-1D-R4 third P1 Return without mutation -> cutover-facade structural budget amendment; strict below-1000 facade -> RT-1D-R4 first implementation PR #832 closed unmerged and frozen at head 737406d2f32b5d270177367f3b760af2eb4863a6 -> readiness/replay authority amendment; durable rehearsal_ready handoff and cross-time replay -> RT-1D-R4 one-authority activation complete in PR #834 result 53839b6c349e47a436a885419d699b52142adc86 -> mandatory R4 P8 current-authority synchronization complete in PR #835 result c623898fa8c2ba0a7c7151a912a940295829dda5 -> RT-1D-R4 P8 result/current-authority correction current / R5 unstarted
+                                                           -> RT-1D-R3 implementation merged in PR #825 result 1eeb4c03151a20b8504819f6c72564b981c84157 -> mandatory R3 P8 PR #826 complete with exact result c291e26f1c20e6479df427054142916dd7df57db -> RT-1D-R4 P1 Return without mutation -> activation budget amendment complete in PR #828 result 9aea56d6d61d69c390bd0c2dc740739ab155d76e -> RT-1D-R4 second P1 Return without mutation -> runtime-projection budget amendment; exact-twelve R4 budget -> RT-1D-R4 third P1 Return without mutation -> cutover-facade structural budget amendment; strict below-1000 facade -> RT-1D-R4 first implementation PR #832 closed unmerged and frozen at head 737406d2f32b5d270177367f3b760af2eb4863a6 -> readiness/replay authority amendment; durable rehearsal_ready handoff and cross-time replay -> RT-1D-R4 one-authority activation complete in PR #834 result 53839b6c349e47a436a885419d699b52142adc86 -> mandatory R4 P8 current-authority synchronization complete in PR #835 result c623898fa8c2ba0a7c7151a912a940295829dda5 -> RT-1D-R4 P8 result/current-authority correction merged -> RT-1D-R5 immediate retirement complete in PR #907 -> mandatory R5 P8 complete in PR #929 -> RT-1 complete
+```
 
+The remaining decision debt below is current, not historical:
+
+```text
 Remaining post-v0.1 decision or gated candidates:
   PM-D1 RelaySOUL gate design-freeze relation
   PM-D4 client history exclusion default-off deployment decision
@@ -385,9 +498,13 @@ PM-D3 is closed by the shipped P0-PIPE request-path ordering fix, which removes 
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
+The paragraph below is the retained historical record of the post-E1-R5 candidate state. Each of its present-tense progress and authority statements is scoped to the earlier point at which it was written and does not describe current state; the current position is RT-1 complete, with Lane R R5 eligible and Lane D advanced into D6 final retirement as recorded in [Post-RT-1 repository-wide sequencing](#post-rt-1-repository-wide-sequencing). The PM-D1, PM-D2, PM-D4, and PM-D9 decision debt it names does remain open.
+
 Within the pre-existing post-E1-R5 decision-debt registry: The remaining candidates are PM-D1/PM-D4/PM-D9 follow-through and PM-D2 closure or absorption after PM-D6. The separately registered dependency-first implementation program is complete through RT-1D-S2: EV-1, OVL-1, ASM-1, SM-1, the default-off bounded ST-1 create commit slice, LC-1A through LC-1E, the RT-1A contract and projection foundation, the RT-1B projection builder and deterministic rebuild, the default-off shadow-only RT-1C selection, characterization, and usage ledger, the behavior-preserving RT-1D-S1 reader seams completed in PR #789, and the behavior-preserving RT-1D-S2 worker seams completed in PR #791 with exact resulting main `31b700a2db0af7819f761d51bd946ff6798eb4c9`. LC-1 lifecycle migration is complete; RT-1D-R1 and mandatory R1 P8 PR #802 are complete, the initial R2 attempt returned at P1 without repository mutation, and PR #803 was the historical architecture-only amendment and subsequently completed. PR #790 completed the S1 mandatory P8 current-authority sync with exact resulting main `3e20274f18306f7db2410fd5239051411b9c052b`. PR #792 completed the S2 mandatory P8 current-authority sync, and the S3A-S3C structural sequence plus mandatory P8 transactions subsequently completed through PR #799 result `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`. Architecture PR #800, R1 PR #801, and mandatory R1 P8 PR #802 then completed with their recorded results; renewed R2 was historically gated by PR #803 merge and independent verification of its exact resulting main. Primary MEM remains the sole ordinary served memory and Retrieval authority. PM-D4, PM-D9, and PM-D1 apply as the narrow default-on, multilingual-generation, and SOUL-conditioned-formation gates recorded above; PM-D2 remains separately governed. Durable-memory E2 value smoke is complete as local human-reviewed v0.1 readiness evidence. RelayATN remains ATN-0 planning-only debt after voice-out / SOUL Lab Runtime MVP and does not authorize implementation.
 
-## RT-1D fresh runtime implementation authorization
+## RT-1D fresh runtime implementation authorization (historical)
+
+This section is the retained record of the RT-1D runtime authorization as it stood at PR #800. Its present-tense statements — including the ordered R1 through R5 sequence and the Primary serving authority it names — are scoped to that earlier point and do not describe current state. R1 through R5 and every mandatory P8 have since completed, and RT-1 is complete.
 
 Fresh RT-1D runtime P0/P1 architecture authorization PR #800 completed with result `68cc16b9d5ed7b999c22d27457390e53de851335`. Exact-current P0/P1 inspection at
 `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f` authorized, but at that inspection did not start, the
@@ -407,7 +524,9 @@ The mandatory S3C P8 current-authority synchronization PR #799 merged as exact c
 
 ## Historical RT-1D-R2B P8 current-authority synchronization gate
 
-The current sequence is: PR #803 exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` -> renewed R2 P1 Return without mutation -> live-root budget amendment PR #804 exact result `00ba475c689631520538b7531022603447f11bd0` -> R2 P1 Return recorded in closed tree-neutral Draft PR #805 head `733b38fd3e74dcc542dd1c8f2ec1353a2cab6a95` -> queued-runner root budget amendment PR #806 exact result `cd8ce6e05b6476b08ecf25a5100fb0c3f0e77644` -> R2 P1 Return recorded in closed tree-neutral Draft PR #807 head `00991760b3070597d6b763a0b3ffc2eb820435f2` -> staged writer-fence and smoke-carriage budget amendment PR #808 exact result `758c160e1ee71bb9ad67fe10234e5a38c03c6a3d` -> RT-1D-R2A implementation PR #809 exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430` -> completed mandatory R2A P8 PR #810 exact result `5822b01fd4642c89c39a2518672191bf1a8da115` -> independently verify the R2A P8 exact resulting main -> RT-1D-R2B complete in PR #811 exact result `a1fac7e4d3dee844990b680aa27130cee9051c3d` -> verify R2B exact result -> mandatory R2B P8 -> verify -> RT-1D-R2C -> verify -> mandatory R2C P8 -> verify -> RT-1D-R2D -> verify -> mandatory R2D P8 -> verify -> R3 may become next, not started by this amendment. Every implementation and P8 is a separate fresh-branch single-writer transaction; only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next, never a PR head and never an audit branch. This P8 requires no further P8 and changes no production/runtime behavior.
+The sequence and authority statements in this section are scoped to the RT-1D-R2B gate at which they were written and do not describe current state. R2B through R5 and every mandatory P8 have since completed.
+
+The sequence at that historical point was: PR #803 exact result `eee986422b45c50e0d9ad0528e863457be4db9a1` -> renewed R2 P1 Return without mutation -> live-root budget amendment PR #804 exact result `00ba475c689631520538b7531022603447f11bd0` -> R2 P1 Return recorded in closed tree-neutral Draft PR #805 head `733b38fd3e74dcc542dd1c8f2ec1353a2cab6a95` -> queued-runner root budget amendment PR #806 exact result `cd8ce6e05b6476b08ecf25a5100fb0c3f0e77644` -> R2 P1 Return recorded in closed tree-neutral Draft PR #807 head `00991760b3070597d6b763a0b3ffc2eb820435f2` -> staged writer-fence and smoke-carriage budget amendment PR #808 exact result `758c160e1ee71bb9ad67fe10234e5a38c03c6a3d` -> RT-1D-R2A implementation PR #809 exact result `0f0b88a0bd601d1cd14b830ca209a26107f62430` -> completed mandatory R2A P8 PR #810 exact result `5822b01fd4642c89c39a2518672191bf1a8da115` -> independently verify the R2A P8 exact resulting main -> RT-1D-R2B complete in PR #811 exact result `a1fac7e4d3dee844990b680aa27130cee9051c3d` -> verify R2B exact result -> mandatory R2B P8 -> verify -> RT-1D-R2C -> verify -> mandatory R2C P8 -> verify -> RT-1D-R2D -> verify -> mandatory R2D P8 -> verify -> R3 may become next, not started by this amendment. Every implementation and P8 is a separate fresh-branch single-writer transaction; only the independently verified exact resulting main from the immediately preceding gate may bootstrap the next, never a PR head and never an audit branch. This P8 requires no further P8 and changes no production/runtime behavior.
 
 RT-1D-R2B and mandatory P8 PR #812 are complete; RT-1D-R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; at that historical point, RT-1D-R2D was next and had not started. RT-1D-R2A completed in PR #809 with exactly three commits, final head `eafdc0629fd307ed7c136488280ddb449c5787f1`, exactly 9 changed paths and +829/-7, a full suite of 1041/1041, and exact-head CI with no candidate-caused failure. RT-1D-R2B bootstrapped from the independently verified R2A P8 result and completed in PR #811. RT-1D-R2C is complete in PR #814 with exact result `814157df4b82937244c51a34e8f1ebc71b2e03c4`; at that historical point, RT-1D-R2D was next and had not started; at that historical point, R2D, R3, R4, and R5 had not started. R2B queue, runner, worker, and pipeline carriage is complete.
 
@@ -468,6 +587,8 @@ The coordinator requires an R3-exclusive disposable projection root whose bundle
 The amended R3 production/config budget is exactly `relaylm/subjective_mem_retrieval_cutover.py`, `relaylm/subjective_mem_retrieval_rehearsal.py`, `relaylm/subjective_mem_retrieval_characterization.py`, `relaylm/config.py`, and `config.example.yaml`. The focused budget is exactly `tests/test_subjective_mem_retrieval_cutover.py`, `tests/test_subjective_mem_retrieval_rehearsal.py`, `tests/test_subjective_mem_retrieval_characterization.py`, and `scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py`. Projection builder/store, selection, usage ledger, Primary reader, managed route, and all R2 writer-carriage paths remain byte-identical. The coordinator writes no ordinary usage event, authority state, intent, fence, receipt, activation, fallback, transfer, serving, or retirement state.
 
 ## RT-1D-R3 completion and mandatory P8 (completed)
+
+This section records the RT-1D-R3 transaction as it completed. Its present-tense serving-authority statements are scoped to that point and do not describe current state; RT-1D-R4 activation and RT-1D-R5 retirement have since merged, and the RT-1D-R3 rehearsal execution owner is deleted.
 
 RT-1D-R3 rehearsal coordinator implementation completed in PR #825 from bootstrap `5f91be0efbaf2ba07777c973e260c40af343b7d6`, final reviewed head `a21cfb0af9b0fbef3d466b145d81070b658e2540`, and exact squash result `1eeb4c03151a20b8504819f6c72564b981c84157`. Its three pre-squash commits changed exactly seven implementation paths, +914/-15: `config.example.yaml`, `relaylm/config.py`, `relaylm/subjective_mem_retrieval_cutover.py`, `relaylm/subjective_mem_retrieval_rehearsal.py`, `scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py`, `tests/test_subjective_mem_retrieval_cutover.py`, and `tests/test_subjective_mem_retrieval_rehearsal.py`. The coordinator `relaylm/subjective_mem_retrieval_rehearsal.py` is 398 physical lines with a maximum function span of 40 lines. The Python 3.12 full suite passed 1086 tests with 0 failures and 1 warning in 671.84 seconds, every applicable final exact-head workflow succeeded, the normalized failure state is none, and `p6_stop` is false. The final governed Claude Code correction changed only the bounded `TypeError`/`ValueError` test expectation and preserved the existing implementation receipt's logical writer.
 

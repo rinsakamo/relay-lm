@@ -28,7 +28,7 @@ relaylm_related_authority:
 ---
 # Repository Structure and Documentation Canonicalization Plan
 
-Last reviewed: 2026-07-24 JST
+Last reviewed: 2026-08-09 JST
 
 ## Purpose
 
@@ -36,33 +36,52 @@ This document owns the execution order for repository simplification, documentat
 
 Current implementation completion remains owned by [Project Status](../PROJECT_STATUS.md). The universal PR lifecycle and shorthand continuation behavior are owned by [Workstream Orchestration, Continuation Command, and PR Convergence](workstream-orchestration.md).
 
-## Current convergence state
+## Current post-RT-1 convergence state
 
-The legacy prerequisites are complete:
+The original planning-adoption prerequisites and the legacy Lane C critical implementation program are complete. Current implementation authority records RT-1D-R5 immediate retirement, its mandatory P8, and the P8 result/current-authority correction as completed. The ordinary Primary reader and its ranking/fallback path are retired; only explicitly classified read-only Primary history/observation/lifecycle/admin projections survive.
+
+This completion releases the prerequisite that kept core memory and Retrieval modules protected from repository package migration. The next repository-maintenance stage is therefore Lane R R5, governed core package migration. Lane D has since advanced into D6; D6 final retirement and legacy cutover-tool retirement is the remaining Lane D work before PD-1, and it continues independently where path and authority safety permit.
+
+The post-RT-1 handoff is:
+
+```text
+Lane R  R5 governed core package migration                 now eligible
+Lane D  D6 final retirement / cutover-tool retirement      continue to completion
+
+R5 complete + D6 complete
+  -> Lane D PD-1 personality responsibility convergence
+  -> Lane D PD-2 exact personality contracts
+  -> Lane C PC-1..PC-4 Personality Core implementation
+  -> 9B end-to-end evaluation
+  -> Character Presence implementation
+```
+
+Lane R R6 Primary MEM disposition remains required repository cleanup after R5, but it is not a blanket prerequisite for PD/PC. It may proceed in parallel with later personality design or implementation only when exact path, caller, import, retained-authority, and semantic ownership are disjoint. A concrete R6 dependency still blocks the affected PD/PC slice.
+
+For historical context, the plan was originally adopted after:
 
 ```text
 PR #665  LC-1A Subjective MEM Correct                 merged
 PR #667  Documentation Hard Cutover 1C-57             merged
-PR #668  ADR / planning adoption                      current convergence PR
-```
-
-After this planning PR merges, the earliest work is:
-
-```text
-Lane C  LC-1B Forget
-Lane D  D1 canonical active graph / retained-record / retirement-manifest lock
-Lane R  R1 code, script, smoke, workflow, and validator classification
+PR #668  ADR / planning adoption                      merged
 ```
 
 No new one-source-document Documentation Hard Cutover slice is opened after 1C-57.
 
 ## Program model
 
-RelayLM uses three coordinated lanes:
+RelayLM uses three coordinated lanes. The first Lane C authority-changing program is complete; the lane is intentionally idle until the post-migration Personality Core gates are satisfied.
 
 ```text
 Lane C: critical implementation
-  LC-1B -> LC-1C -> LC-1D -> LC-1E -> RT-1
+  legacy program complete:
+    LC-1B -> LC-1C -> LC-1D -> LC-1E -> RT-1
+
+  future gated program:
+    PC-1 Personality State
+      -> PC-2 Working Self
+      -> PC-3 SLP automatic personality updates
+      -> PC-4 Reflective Distillation
 
 Lane D: documentation canonicalization and historical retirement
   D1 active graph lock
@@ -71,6 +90,8 @@ Lane D: documentation canonicalization and historical retirement
     -> D4 lifecycle canonicalization after LC-1
     -> D5 Retrieval / Primary MEM canonicalization after RT-1
     -> D6 final retirement and legacy cutover-tool retirement
+    -> PD-1 personality responsibility convergence after D6 + Lane R R5
+    -> PD-2 exact personality contracts
 
 Lane R: repository maintenance
   R1 classification
@@ -81,7 +102,7 @@ Lane R: repository maintenance
     -> R6 Primary MEM retirement-or-move cleanup
 ```
 
-Lane C controls authority-changing implementation order. Lanes D and R may proceed in parallel only when path, caller, generated-registry, and semantic-authority ownership are disjoint.
+Lane C controls authority-changing implementation order. Lanes D and R may proceed in parallel only when path, caller, generated-registry, and semantic-authority ownership are disjoint. PD-1 may not begin until both D6 and Lane R R5 are complete; PC-1 may not begin until PD-2 is complete.
 
 ## Universal PR lifecycle
 
@@ -109,7 +130,7 @@ The following rules begin when ADR 0006 merges:
 
 - no new permanent milestone- or slice-ID names in runtime modules, active architecture, contracts, maintained tests, process smoke, permanent CLI entry points, or workflow-owned commands;
 - active assets use function- and responsibility-oriented names through their owning atomic migration;
-- no broad `relaylm/` namespace move occurs while LC-1 or RT-1 authority is changing;
+- broad `relaylm/` namespace movement is allowed only through an explicitly governed migration stage such as the now-unblocked Lane R R5; ad-hoc namespace cleanup remains prohibited;
 - no permanent import alias, redirect, fallback, dual-read, or dual-write is created merely to ease cleanup;
 - every code, document, test, smoke, workflow, and tool is classified before deletion or consolidation;
 - planning-only work does not change `docs/PROJECT_STATUS.md`;
@@ -156,7 +177,22 @@ RT-1 must establish:
 - one ordinary Retrieval authority;
 - removal of temporary adapters and replaced readers or writers.
 
-Until RT-1 closes, core memory and Retrieval modules remain protected migration dependencies rather than namespace-cleanup candidates.
+RT-1 is complete. The core memory and Retrieval namespace is no longer protected merely because LC-1/RT-1 authority is still changing; later moves are nevertheless authorized only through Lane R R5/R6 with exact caller, compatibility, retained-authority, and rollback evidence.
+
+### Future Lane C: Personality Core
+
+The next Lane C authority-changing program is not a continuation of RT-1. It opens only after Lane R R5 establishes the governed core package boundary and Lane D completes D6 plus PD-1/PD-2 responsibility and contract convergence.
+
+The ordered implementation program is:
+
+```text
+PC-1 Personality State
+  -> PC-2 Working Self
+  -> PC-3 SLP automatic personality updates
+  -> PC-4 Reflective Distillation
+```
+
+Personality semantics for this later program remain owned by the accepted [Character Personality and Experience Architecture](../architecture/character/personality-and-experience.md); only repository execution ordering is governed by `docs/architecture/project_execution_plan.md`. This repository-maintenance plan does not define personality semantics or authorize those runtime changes by itself.
 
 ## Lane D: documentation canonicalization and historical retirement
 
@@ -267,11 +303,32 @@ A source containing still-live architecture or normative content is not retired 
 
 No redirect stub, duplicate archived Markdown copy, or second live path is created solely to preserve an old link.
 
-### D4 and D5 authority gates
+### D4, D5, D6, and Personality Design gates
 
-D4 lifecycle and mutation canonicalization begins only after LC-1B through LC-1E stabilize lifecycle semantics.
+D4 lifecycle and mutation canonicalization begins only after LC-1B through LC-1E stabilize lifecycle semantics. That prerequisite is complete.
 
-D5 Retrieval and Primary MEM canonicalization begins only after RT-1 establishes one ordinary Retrieval authority.
+D5 Retrieval and Primary MEM canonicalization begins only after RT-1 establishes one ordinary Retrieval authority. That prerequisite is complete, and Lane D has since advanced into D6; D6 final retirement and legacy cutover-tool retirement continues according to its own current Lane D authority and status.
+
+After D6 and Lane R R5 are both complete, Lane D opens a new bounded Personality Design convergence program:
+
+```text
+PD-1 responsibility convergence
+  SOUL / SELF boundary
+  REL / OTHER MODEL
+  GOAL / commitments / prospection
+  Character Workspace ownership
+  SLP update ownership
+  Working Self vs RelayCTX responsibility
+
+PD-2 exact contracts
+  personality-state write authority
+  provenance / confidence / evidence binding
+  Working Self input/output and projection boundary
+  SOUL automatic-write prohibition
+  Reflective Distillation candidate/adoption boundary
+```
+
+PD-1/PD-2 revise only the responsibility nodes actually changed by the accepted personality target. They do not reopen stable Evidence, storage, retrieval, or lifecycle authorities unless an exact dependency requires it.
 
 ### D6: final retirement and tooling cleanup
 
@@ -374,7 +431,7 @@ Each move must preserve console scripts, `python -m` entry points, dynamic calle
 
 ### R5: governed core package migration
 
-After RT-1, migrate core domains in dependency order:
+RT-1 is complete, so the R5 prerequisite is satisfied. R5 is the next governed core repository migration and proceeds in dependency order:
 
 ```text
 evidence
@@ -384,6 +441,8 @@ evidence
   -> retrieval
   -> request and product interfaces
 ```
+
+Each R5 wave must preserve one semantic authority, migrate callers atomically, reject old-path forwarding aliases unless a concrete governed compatibility consumer exists, and prove negative old-path/import references before its merge. R5 establishes the stable package/dependency substrate required before PD-1/PD-2 can freeze the new personality responsibility graph.
 
 ### R6: Primary MEM disposition
 
@@ -399,6 +458,36 @@ retained_current_component
 
 Delete only through reviewed atomic waves. Move only the subset that remains a supported current component.
 
+R6 follows R5 as repository cleanup. It is not a blanket gate on Personality Design or Personality Core, because the ordinary Primary reader has already retired; however any PD/PC slice that touches a still-undisposed Primary path, caller, recovery surface, or retained authority must wait for that exact R6 disposition.
+
+## Post-R5 handoff to Personality Design and Personality Core
+
+Repository maintenance does not own the new character semantics. Its handoff is structural:
+
+```text
+Lane R R5 complete
+       +
+Lane D D6 complete
+       ↓
+Lane D PD-1 responsibility convergence
+       ↓
+Lane D PD-2 exact contracts
+       ↓
+Lane C PC-1 Personality State
+       ↓
+Lane C PC-2 Working Self
+       ↓
+Lane C PC-3 SLP automatic personality updates
+       ↓
+Lane C PC-4 Reflective Distillation
+       ↓
+9B end-to-end evaluation
+       ↓
+Character Presence
+```
+
+This handoff preserves the accepted distinction between repository structure, documentation/contract authority, and authority-changing runtime implementation. Package movement must not silently implement SELF, GOAL, OTHER MODEL, Working Self, SLP personality writes, or Reflective Distillation.
+
 ## Parallel portfolio
 
 Default capacity:
@@ -410,6 +499,8 @@ Default capacity:
 ```
 
 Three PRs are a ceiling, not a target. A new PR requires a bounded scope, owner, exact path and authority non-overlap, and a validation plan.
+
+Until PD-2 completes, the Lane C slot has no Personality Core work merely because capacity is free. R6, remaining Lane D canonicalization, and later PD work may overlap only under the ordinary path/authority disjointness rules.
 
 Two items are not parallel-safe when either changes:
 
