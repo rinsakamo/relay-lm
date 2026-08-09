@@ -141,6 +141,40 @@ Operational intent, receipts, idempotency, recovery, jobs, attempts, tombstones,
 
 Lookup/ranking/search projection is derived state. Persistence does not make it canonical.
 
+## Stable design principles
+
+These principles are subsystem-level invariants over the authority layers above. They refine the permanent responsibility model without transferring child ownership or defining an exact schema, model, storage engine, or retrieval algorithm.
+
+### Evidence Preservation Principle
+
+Governed Evidence remains the protected source authority for what occurred and how it was sourced.
+
+Assessment, formation, consolidation, summarization, curation, taxonomy maintenance, and workspace reorganization may derive from or reference Evidence, but they must not silently replace, condense, or rewrite the Evidence authority they summarize. A lossy derived memory or reorganized workspace must not become the sole surviving source for later assessment merely because it is easier to search.
+
+### Derived Memory Principle
+
+Shared Assessment and Subjective memory are derived semantic state rooted in governed Evidence and identified policy/character authority.
+
+Durability does not promote either layer into source Evidence. Their accepted content must remain traceable to the Evidence and authority revisions that justified it, so later correction, contradiction, temporal change, or re-adjudication can operate without rewriting provenance. Exact regeneration of probabilistic model output is not required; preserved authority and lineage are.
+
+### Storage–Retrieval Separation Principle
+
+Canonical memory authority is independent of the representation used to discover it.
+
+Markdown files, filesystem hierarchy, SQLite tables, indexes, embeddings, lexical search, vector search, rerankers, and compiled retrieval projections are storage or discovery mechanisms under their owning contracts. A persisted index or successful search result does not become canonical memory, select a reader family, authorize lifecycle mutation, or establish truth. Rebuildable retrieval state remains rebuildable even when it is persisted for efficiency.
+
+### Semantic Management Principle
+
+RelaySLP memory maintenance is semantic management, not unconstrained filesystem self-organization.
+
+Its bounded responsibilities include assessment, contradiction and temporal interpretation, subjective formation, relation to existing memory, and governed proposal/apply decisions. Physical taxonomy and canonical representation remain owned by workspace/storage contracts. Similarity, embeddings, lexical search, or filesystem placement may discover candidates, but they do not authorize merge, supersession, deletion, or provenance loss.
+
+### External research rationale
+
+These principles are consistent with Zhou et al., *Filesystem-Based Memory for LLM Agents: Organization, Evolution, and Sustainability*, arXiv:2607.26637v1 (2026). That study reports that organization reliably improves search economy at scale, while organization alone does not reliably improve answer quality and unconstrained reorganization can silently condense information without an explicit preservation rule.
+
+The paper is supporting research rationale, not RelayLM authority. Repository ADRs, contracts, and canonical architecture remain normative if an external result or future study differs.
+
 ## Permanent child responsibilities
 
 ### Formation
@@ -351,6 +385,10 @@ Final D6 retirement is atomic and may occur only after references, validators, a
 ## Stable invariants
 
 - Governed Evidence, Shared Assessment, Subjective memory, durable operations, and rebuildable projection remain distinct authority classes.
+- Governed Evidence is preserved as source authority; derived assessment, memory, curation, or workspace organization cannot silently replace or rewrite it.
+- Shared Assessment and Subjective memory remain lineage-bound derived semantic state rather than promoted Evidence authority.
+- Retrieval/index representation is independent of canonical memory authority; embeddings, lexical/vector search, rerankers, and persisted projections remain discovery/derived mechanisms under their owning contracts.
+- RelaySLP semantic management may assess and form memory but filesystem placement or similarity alone never authorizes merge, supersession, deletion, or provenance loss.
 - Formation is deferred from the ordinary response path and does not block visible output.
 - Ordinary Retrieval is read-only and resolves exactly one durable-memory reader authority or none before memory-family access.
 - Retrieval does not mutate or repair storage; storage does not select request reader authority.
