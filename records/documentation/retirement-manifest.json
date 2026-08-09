@@ -31,6 +31,19 @@
       "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #634 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
     },
     {
+      "old_path": "docs/architecture/persona_specialized_proxy_design.md",
+      "last_live_commit": "3ef22dee41249bbe96eb282da9b883e86395f73b",
+      "old_blob_sha": "ffd332658233d8e938d6659ce432e5476e72b477",
+      "removed_by_pr": 936,
+      "replacement_paths": [
+        "docs/architecture/character/personality-and-experience.md",
+        "docs/architecture/pipeline-responsibilities.md",
+        "docs/architecture/system-overview.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R4 retired the obsolete root compatibility redirect after current consumers had already converged on canonical system, pipeline, and character architecture; its historical archive copy remains a separate retirement responsibility, and the exact redirect remains recoverable from Git."
+    },
+    {
       "old_path": "docs/architecture/phase55a_stream_sentinel_buffer_dry_run_handoff.md",
       "last_live_commit": "1ff1b1b9e501b59340c3b909a985edfc6c2a4d32",
       "old_blob_sha": "95481903cd5cb43bc2444a8647fd44b919f7d9e7",
