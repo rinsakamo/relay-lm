@@ -1,3 +1,26 @@
+"""RelayRUN runtime-checkpoint dry-run evidence, RT-1D-R5 retirement compatible.
+
+The checkpoint projection contract is unchanged by R5: it stays diagnostics-only
+and content-free, it never carries backend payload or response text, and it never
+pollutes what is forwarded to the backend. Those guarantees are still asserted
+here in full.
+
+What R5 changed is which requests reach the *minimal* projection shape. The
+ordinary Primary reader used to satisfy the runtime CTX stage on an ordinary
+design_talk request, so that request produced no recovery detail. With the reader
+retired, the runtime CTX stage is permanently blocked and the lazy helper builds
+full recovery detail on every request instead. That is the retirement behaviour,
+not a leak: the detail it builds is itself content-free and unapplied, which this
+file now proves for every case.
+
+For the same reason the snippet-bearing case can no longer observe an applied
+injection. It asserts the fail-closed outcome instead, and additionally proves no
+retired Primary recall projection reappears anywhere in the request path.
+
+`_Capture`, `_BackendHandler` and `_build_store` are shared support for seventeen
+sibling smokes and are preserved byte-for-byte; only assertions changed.
+"""
+
 from __future__ import annotations
 
 import json
@@ -214,13 +237,38 @@ def _assert_relayrun_projection_common(
     require(headers.get("x-relaylm-resume-mode") == "none", headers)
 
 
+def _walk_projection(value: Any, key: str = "") -> list[tuple[str, Any]]:
+    """Flatten the projection into (key, value) pairs for exact containment checks."""
+
+    if isinstance(value, dict):
+        pairs: list[tuple[str, Any]] = []
+        for child_key, child_value in value.items():
+            pairs.append((str(child_key), child_value))
+            pairs.extend(_walk_projection(child_value, str(child_key)))
+        return pairs
+    if isinstance(value, list):
+        pairs = []
+        for item in value:
+            pairs.append((key, item))
+            pairs.extend(_walk_projection(item, key))
+        return pairs
+    return []
+
+
 def _assert_projection_stays_minimal(artifact: dict[str, Any]) -> None:
-    projection_text = json.dumps(artifact, ensure_ascii=False)
+    """Every heavier RelayRUN surface stays out of the projection.
+
+    `recovery_transition_artifact` left this list with RT-1D-R5: the retired
+    Primary reader used to keep the runtime CTX stage unblocked on ordinary
+    requests, so recovery detail was genuinely absent. It is now built on every
+    request, and `_assert_projection_shows_recovery_detail` proves that detail is
+    content-free rather than simply allowing it through unchecked.
+    """
+
     forbidden_projection_tokens = (
         "checkpoint_persistence_plan",
         "checkpoint_writer_preflight",
         "resume_preflight",
-        "recovery_transition_artifact",
         "waiting_user_contract",
         "recovery_apply_preflight",
         "recovery_response_draft",
@@ -232,8 +280,18 @@ def _assert_projection_stays_minimal(artifact: dict[str, Any]) -> None:
         "backend_payload",
         "response_text",
     )
-    for token in forbidden_projection_tokens:
-        require(token not in projection_text, (token, artifact))
+    # The recovery detail now present carries `contains_backend_payload` and
+    # `contains_response_text` safety flags, whose names contain two of the
+    # forbidden tokens. They are the negative assertion, not a leak, so this
+    # walks the structure instead of scanning serialized text.
+    safety_flags = {"contains_backend_payload", "contains_response_text"}
+    for key, value in _walk_projection(artifact):
+        if key in safety_flags:
+            require(value is False, (key, artifact))
+            continue
+        for token in forbidden_projection_tokens:
+            require(token not in key, (token, key, artifact))
+            require(not isinstance(value, str) or token not in value, (token, value, artifact))
 
 
 def _assert_projection_shows_recovery_detail(artifact: dict[str, Any]) -> None:
@@ -247,6 +305,48 @@ def _assert_projection_shows_recovery_detail(artifact: dict[str, Any]) -> None:
     require(safety.get("contains_user_content") is False, artifact)
     require(safety.get("contains_backend_payload") is False, artifact)
     require(safety.get("contains_response_text") is False, artifact)
+
+
+def _assert_blocked_reasons_are_retirement_fail_closed(artifact: dict[str, Any]) -> None:
+    """Blocked reasons come only from the surviving runtime CTX fail-closed stage.
+
+    Before RT-1D-R5 an ordinary request was blocked, if at all, by the Primary
+    candidate/snippet surface. Retirement removed that surface, so every reason
+    must now be attributed to `relaymem_runtime_ctx` and none may name a retired
+    Primary reader, selection, ranking or projection concept.
+    """
+
+    blocked_reasons = artifact.get("blocked_reasons")
+    require(isinstance(blocked_reasons, list) and blocked_reasons, artifact)
+    for reason in blocked_reasons:
+        require(str(reason).startswith("relaymem_runtime_ctx:"), (reason, artifact))
+    require(
+        {
+            "relaymem_runtime_ctx:apply_decision:not_eligible",
+            "relaymem_runtime_ctx:ctx_injection_plan_missing",
+        }.issubset(set(blocked_reasons)),
+        artifact,
+    )
+    for retired in (
+        "primary_recall",
+        "primary_recall_projection",
+        "relaymem_primary_recall_selection",
+        "blocked_no_candidates",
+    ):
+        require(
+            all(retired not in str(reason) for reason in blocked_reasons),
+            (retired, artifact),
+        )
+
+
+def _assert_no_retired_primary_projection(metadata: dict[str, Any]) -> None:
+    """No retired Primary recall projection reappears in the request path."""
+
+    require("relaymem_retrieval_artifact" not in metadata, metadata)
+    require("relaymem_primary_recall_projection" not in metadata, metadata)
+    require("relaymem_primary_recall_runtime" not in metadata, metadata)
+    for key in metadata:
+        require("primary_recall" not in key, key)
 
 
 def _assert_backend_payload_not_polluted(backend_payload: dict[str, Any]) -> None:
@@ -281,13 +381,12 @@ def _assert_normal_case(root: Path, capture: _Capture, port: int) -> None:
     artifact = _relayrun_projection(metadata)
     _assert_relayrun_projection_common(artifact, headers)
     _assert_projection_stays_minimal(artifact)
-    allowed_blocked_reasons = {
-        "relaymem_retrieval:snippet_apply_decision:blocked_no_candidates",
-    }
-    require(
-        set(artifact.get("blocked_reasons") or []).issubset(allowed_blocked_reasons),
-        artifact,
-    )
+    # An ordinary request is now permanently blocked at the runtime CTX stage,
+    # so it surfaces the same recovery detail the recovery scene does. That
+    # detail must still be content-free and unapplied.
+    _assert_projection_shows_recovery_detail(artifact)
+    _assert_blocked_reasons_are_retirement_fail_closed(artifact)
+    _assert_no_retired_primary_projection(metadata)
     _assert_backend_payload_not_polluted(backend_payload)
     print("ok normal request emits content-free relayrun projection")
     print("ok backend payload not polluted by relayrun diagnostics")
@@ -351,20 +450,28 @@ def _assert_snippet_enabled_case(root: Path, capture: _Capture, port: int) -> No
     artifact = _relayrun_projection(metadata)
     _assert_relayrun_projection_common(artifact, headers)
     _assert_projection_stays_minimal(artifact)
+    _assert_projection_shows_recovery_detail(artifact)
+    _assert_blocked_reasons_are_retirement_fail_closed(artifact)
+    _assert_no_retired_primary_projection(metadata)
     _assert_backend_payload_not_polluted(backend_payload)
+    # Fully enabling the snippet runtime gates used to make one of these apply.
+    # RT-1D-R5 removed the reader that fed them, so both must now fail closed
+    # while the projection stays exactly as content-free as before.
     runtime_ctx = metadata.get("runtime_ctx_injection_result", {})
     runtime_snippet = metadata.get("runtime_snippet_injection_result", {})
+    require(isinstance(runtime_ctx, dict), metadata)
+    require(isinstance(runtime_snippet, dict), metadata)
+    require(runtime_ctx.get("applied") is False, metadata)
+    require(runtime_snippet.get("applied") is False, metadata)
+    require("ctx_injection_plan_missing" in (runtime_ctx.get("blocked_reasons") or []), metadata)
     require(
-        (
-            isinstance(runtime_ctx, dict)
-            and runtime_ctx.get("applied") is True
-        )
-        or (
-            isinstance(runtime_snippet, dict)
-            and runtime_snippet.get("applied") is True
-        ),
+        "snippet_runtime_injection_plan_missing"
+        in (runtime_snippet.get("blocked_reasons") or []),
         metadata,
     )
+    backend_text = json.dumps(backend_payload, ensure_ascii=False)
+    for token in ("[RelayMEM Context]", "[RelayMEM Snippet Context]", "RELAYRUN_SNIPPET_SENTINEL"):
+        require(token not in backend_text, (token, backend_payload))
     print("ok snippet-bearing path keeps content-free relayrun projection")
 
 

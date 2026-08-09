@@ -1,7 +1,15 @@
-"""Structural and public-equivalence coverage for the RT-1D-S1 reader seams."""
+"""Structural and public-equivalence coverage for the RT-1D reader seams.
+
+RT-1D-R5 retired the ordinary Primary reader, so the seam this file guards is
+now the *absence* of that reader: the recall entry point, its selection owner,
+and its fallback are deleted rather than fenced, and no ordinary path can reach
+Primary storage. The surviving read-only history/admin re-exports keep their
+stable import boundary for the explicitly classified Primary projections.
+"""
 
 from __future__ import annotations
 import ast
+import importlib
 import inspect
 from collections.abc import Mapping
 from pathlib import Path
@@ -11,14 +19,9 @@ from relaylm.managed_chat_pipeline_runtime import (
     _extract_ctx_hints,
     run_managed_chat_pipeline,
 )
-from relaylm.relaymem_primary_recall import (
-    apply_relaymem_primary_recall_scope,
-    resolve_relaymem_character_store_root,
-)
-from relaylm.relaymem_retrieval import (
-    build_relaymem_retrieval_dry_run_artifact,
-    run_relaymem_retrieval_stage,
-)
+from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
+from relaylm.relaymem_retrieval import run_relaymem_retrieval_stage
+from relaylm.relaymem_retrieval_dry_run import build_relaymem_retrieval_dry_run_artifact
 
 ROOT = Path(__file__).resolve().parents[1]
 NEW_MODULES = (
@@ -26,7 +29,6 @@ NEW_MODULES = (
     "relaylm/relaymem_retrieval_dry_run.py",
     "relaylm/_relaymem_retrieval_candidates.py",
     "relaylm/_relaymem_retrieval_snippet.py",
-    "relaylm/relaymem_primary_recall_selection.py",
     "relaylm/relaymem_primary_recall_store.py",
 )
 
@@ -55,16 +57,10 @@ def _imports(path: str) -> set[str]:
 def test_public_facades_and_signatures_remain_stable() -> None:
     assert inspect.iscoroutinefunction(handle_managed_chat_completion)
     assert inspect.iscoroutinefunction(run_managed_chat_pipeline)
-    assert list(inspect.signature(apply_relaymem_primary_recall_scope).parameters) == [
-        "retrieval_artifact",
-        "scoped_store_root",
-        "expected_namespace",
-        "max_snippet_chars",
-        "max_snippet_candidates",
-        "snippet_budget",
-        "chars_per_token",
-        "primary_reader_decision",
-    ]
+    # RT-1D-R5: the ordinary Primary recall entry point no longer exists.
+    recall = importlib.import_module("relaylm.relaymem_primary_recall")
+    assert not hasattr(recall, "apply_relaymem_primary_recall_scope")
+    assert recall.__all__ == ["resolve_relaymem_character_store_root"]
     assert callable(resolve_relaymem_character_store_root)
     assert callable(build_relaymem_retrieval_dry_run_artifact)
     assert callable(run_relaymem_retrieval_stage)
@@ -170,9 +166,7 @@ def test_dependency_direction_and_moved_ownership() -> None:
         "relaylm/_relaymem_retrieval_snippet.py",
     ):
         assert "relaylm.relaymem_retrieval" not in _imports(path)
-    assert "relaylm.relaymem_primary_recall" not in _imports(
-        "relaylm/relaymem_primary_recall_selection.py"
-    )
+    assert not (ROOT / "relaylm/relaymem_primary_recall_selection.py").exists()
     assert "relaylm.relaymem_primary_recall" not in _imports(
         "relaylm/relaymem_primary_recall_store.py"
     )
@@ -211,51 +205,75 @@ def test_bounded_modules_and_orchestration() -> None:
         + 1
         <= 80
     )
+    # The retired recall facade is now a bounded read-only re-export surface.
     assert (
-        _function(
-            "relaylm/relaymem_primary_recall.py", "apply_relaymem_primary_recall_scope"
-        ).end_lineno
-        - _function(
-            "relaylm/relaymem_primary_recall.py", "apply_relaymem_primary_recall_scope"
-        ).lineno
-        + 1
+        len(
+            (ROOT / "relaylm/relaymem_primary_recall.py")
+            .read_text(encoding="utf-8")
+            .splitlines()
+        )
         <= 80
     )
 
 
-def test_primary_recall_fails_closed_without_exact_primary_reader_authority() -> None:
-    """This owner enforces the fence itself, not by upstream convention."""
+def test_ordinary_retrieval_reaches_no_primary_authority_after_retirement() -> None:
+    """Retirement is proven by absence, not by an upstream fence convention.
 
-    for decision in (None, "primary_only", object()):
-        fenced = apply_relaymem_primary_recall_scope(
-            {"selected_mem_candidates": [{"memory_id": "m1"}]},
-            scoped_store_root=None,
-            expected_namespace=None,
-            max_snippet_chars=512,
-            max_snippet_candidates=3,
-            snippet_budget=512,
-            primary_reader_decision=decision,
-        )
-        runtime = fenced["primary_recall_runtime"]
-        assert runtime["content_included"] is False
-        assert runtime["selected_memories"] == []
-        assert runtime["primary_store_read"] is False
+    Every reader class now resolves to a content-free fenced result: there is no
+    branch left that resolves a Primary root, opens the store, discovers a
+    candidate, or releases recall content.
+    """
+
+    body = (ROOT / "relaylm/relaymem_retrieval.py").read_text(encoding="utf-8")
+    assert "apply_relaymem_primary_recall_scope" not in body
+    assert "resolve_relaymem_character_store_root" not in body
+    assert "primary_only" in body  # only to fail it closed, asserted below
+    stage = _function("relaylm/relaymem_retrieval.py", "run_relaymem_retrieval_stage")
+    returns = [n for n in ast.walk(stage) if isinstance(n, ast.Return)]
+    assert len(returns) == 1, "the stage has exactly one exit: the fenced result"
 
 
-def test_primary_empty_input_shape_remains_fail_closed() -> None:
-    result = apply_relaymem_primary_recall_scope(
-        None,
-        scoped_store_root=None,
-        expected_namespace=None,
-        max_snippet_chars=512,
-        max_snippet_candidates=3,
-        snippet_budget=512,
-        primary_reader_decision=None,
+def test_no_module_can_reach_the_retired_recall_owners() -> None:
+    """Negative import/call search across the whole production package."""
+
+    retired = (
+        "apply_relaymem_primary_recall_scope",
+        "run_primary_recall_selection",
+        "prepare_primary_recall_selection",
+        "compose_primary_recall_results",
+        "relaymem_primary_recall_selection",
     )
-    assert result["primary_recall_runtime"]["content_included"] is False
-    assert result["primary_recall_runtime"]["selected_memories"] == []
-    assert result["primary_recall_projection"]["retrieval_attempted"] is False
-    assert (
-        "character_store_scope_unavailable"
-        in result["primary_recall_projection"]["blocked_reason_ids"]
+    offenders = []
+    for source in sorted((ROOT / "relaylm").glob("*.py")):
+        body = source.read_text(encoding="utf-8")
+        offenders += [(source.name, name) for name in retired if name in body]
+    assert offenders == []
+
+
+def test_read_only_history_admin_surface_is_preserved() -> None:
+    """Frozen Primary history/observation/admin assets survive, read-only.
+
+    The explicitly classified projections still resolve store roots and load
+    validated pages/control state. None of that is ordinary reader, writer,
+    ranking, fallback, or mutation authority.
+    """
+
+    recall = importlib.import_module("relaylm.relaymem_primary_recall")
+    for name in ("_load_control_state", "_load_validated_page", "_safe_root", "_token"):
+        assert hasattr(recall, name)
+    assert callable(recall.resolve_relaymem_character_store_root)
+    # The store owner keeps the implementation; the facade only re-exports.
+    assert (ROOT / "relaylm/relaymem_primary_recall_store.py").exists()
+    assert "relaymem_primary_recall_store" in _imports(
+        "relaylm/relaymem_primary_recall.py"
     )
+
+
+def test_primary_writer_modules_remain_byte_identical() -> None:
+    """R5 modified no writer module; R2/R4 durable authority still fences them."""
+
+    writer_sources = sorted((ROOT / "relaylm").glob("*primary*writer*.py"))
+    for source in writer_sources:
+        body = source.read_text(encoding="utf-8")
+        assert "retirement_complete" not in body
+        assert "RETIREMENT_STEPS" not in body

@@ -1,319 +1,141 @@
-from dataclasses import replace
+"""RT-1D-R5 retirement proof for the former rehearsal coordinator.
+
+This path used to exercise `relaylm.subjective_mem_retrieval_rehearsal`. RT-1D-R5
+retired that owner together with the shadow-characterization surface, so the
+file now proves the post-retirement contract instead of the retired behaviour.
+
+It deliberately keeps its place in the bounded R5 focused-evidence set rather
+than being deleted: deleting it would have made package/import closure and the
+negative searches pass by removing the check, which the RT-1D-R5 budget
+amendment explicitly rejected.
+"""
+
+from __future__ import annotations
+
+import ast
+import importlib
 from pathlib import Path
 
 import pytest
 
-import relaylm.subjective_mem_retrieval_rehearsal as owner
-from relaylm.subjective_mem_retrieval import (
-    SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
-    SubjectiveMemRetrievalBoundary,
-    SubjectiveMemRetrievalRequest,
+ROOT = Path(__file__).resolve().parents[1]
+RETIRED_MODULES = (
+    "relaylm.subjective_mem_retrieval_rehearsal",
+    "relaylm.subjective_mem_retrieval_characterization",
 )
-from relaylm.subjective_mem_retrieval_characterization import (
-    SubjectiveMemRetrievalPrimaryServedMetrics,
+RETIRED_SOURCES = (
+    "relaylm/subjective_mem_retrieval_rehearsal.py",
+    "relaylm/subjective_mem_retrieval_characterization.py",
 )
-from relaylm.subjective_mem_retrieval_projection import (
-    SubjectiveMemRetrievalProjectionSource,
-    build_subjective_mem_retrieval_projection,
+RETIRED_CUTOVER_NAMES = (
+    "evaluate_subjective_mem_retrieval_rehearsal_readiness",
+    "record_subjective_mem_retrieval_rehearsal_readiness",
+    "rehearse_subjective_mem_retrieval_cutover",
+    "subjective_mem_retrieval_rehearsal_readiness_id",
+    "SubjectiveMemRetrievalRehearsalReadiness",
 )
-from relaylm.subjective_mem_retrieval_projection_store import (
-    PROJECTION_BUNDLE_FILENAME,
-    write_subjective_mem_retrieval_projection,
-)
-from test_subjective_mem_retrieval_projection import _one_active
 
 
-def _inputs(root: Path, *, populated: bool = False):
-    source = _one_active()[3] if populated else SubjectiveMemRetrievalProjectionSource(
-        evidence_space_id="space-1",
-        character_id="character-1",
-        workspace_authority_digest="a" * 64,
-        admitted_scope_binding_digest="b" * 64,
-        snapshot_taken_at="2026-08-03T00:00:00Z",
-        entries=(),
+@pytest.mark.parametrize("module_name", RETIRED_MODULES)
+def test_retired_owner_module_is_gone(module_name: str) -> None:
+    """The retired owners are deleted, not merely unreferenced or disabled."""
+
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module(module_name)
+
+
+@pytest.mark.parametrize("source", RETIRED_SOURCES)
+def test_retired_owner_source_is_deleted(source: str) -> None:
+    """No dormant source file survives for a later caller to re-enable."""
+
+    assert not (ROOT / source).exists()
+
+
+@pytest.mark.parametrize("name", RETIRED_CUTOVER_NAMES)
+def test_cutover_exposes_no_retired_rehearsal_entry_point(name: str) -> None:
+    """No ordinary or operator path can still invoke the retired semantics."""
+
+    cutover = importlib.import_module("relaylm.subjective_mem_retrieval_cutover")
+    assert not hasattr(cutover, name)
+    assert name not in getattr(cutover, "__all__", ())
+
+
+def test_no_production_module_imports_a_retired_owner() -> None:
+    """Negative import search: the production graph names neither retired owner."""
+
+    offenders = []
+    for source in sorted((ROOT / "relaylm").glob("*.py")):
+        body = source.read_text(encoding="utf-8")
+        for retired in ("subjective_mem_retrieval_rehearsal", "subjective_mem_retrieval_characterization"):
+            # The rehearsal *projection root* config locator keeps its name and
+            # is not the retired execution owner, so it is not an offender.
+            for line in body.splitlines():
+                if retired in line and "rehearsal_projection_root" not in line:
+                    offenders.append((source.name, line.strip()))
+    assert offenders == []
+
+
+def test_package_import_closure_holds_without_the_retired_owners() -> None:
+    """Every intra-package import still resolves to a module that exists.
+
+    This is checked statically rather than by importing all 313 modules: a
+    runtime sweep is slow, order-dependent, and writes bytecode caches that
+    perturb other repository-scanning evidence. Reading the import graph proves
+    closure directly and cannot be satisfied by a dynamic-import workaround,
+    because a deferred `importlib.import_module` of a deleted owner would still
+    leave no module file to resolve.
+    """
+
+    package = ROOT / "relaylm"
+    available = {source.stem for source in package.glob("*.py")}
+    available |= {d.name for d in package.iterdir() if (d / "__init__.py").exists()}
+
+    dangling = []
+    for source in sorted(package.glob("*.py")):
+        tree = ast.parse(source.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.level == 1 and node.module:
+                target = node.module.split(".")[0]
+                if target not in available:
+                    dangling.append((source.name, node.module))
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                if node.module.startswith("relaylm."):
+                    target = node.module.split(".")[1]
+                    if target not in available:
+                        dangling.append((source.name, node.module))
+    assert dangling == []
+
+
+def test_retired_semantics_are_not_reintroduced_under_another_owner() -> None:
+    """Retirement removed the surface; it did not relocate it."""
+
+    banned = (
+        "characterize_subjective_mem_retrieval_shadow",
+        "SubjectiveMemRetrievalShadowCharacterization",
+        "SubjectiveMemRetrievalPrimaryServedMetrics",
+        "evaluate_subjective_mem_retrieval_rehearsal",
     )
-    projection, reasons = build_subjective_mem_retrieval_projection(source)
-    assert reasons == () and projection is not None
-    request = SubjectiveMemRetrievalRequest(
-        character_id=source.character_id,
-        workspace_authority_digest=source.workspace_authority_digest,
-        admitted_scope_binding_digest=source.admitted_scope_binding_digest,
-        query_plan_digest="c" * 64,
-        request_correlation_digest="d" * 64,
-        projection_generation_id=projection.manifest.projection_generation_id,
-        projection_manifest_digest=projection.manifest.manifest_digest,
-        memory_kinds=("episodic", "semantic"),
-        candidate_limit=8,
-        token_budget=256,
-        policy_revision=SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
-        boundary=SubjectiveMemRetrievalBoundary(),
+    offenders = []
+    for source in sorted((ROOT / "relaylm").glob("*.py")):
+        body = source.read_text(encoding="utf-8")
+        offenders += [(source.name, name) for name in banned if name in body]
+    assert offenders == []
+
+
+def test_durable_rehearsal_ready_record_remains_reconstructible() -> None:
+    """Retirement never rewrites or invalidates an accepted R3/R4 record.
+
+    `rehearsal_ready` stays a valid, predecessor-bound state in the durable
+    chain the cutover semantic owner reconstructs, so an already-activated
+    deployment's history is still verifiable after the execution surface is
+    gone.
+    """
+
+    activation = importlib.import_module(
+        "relaylm._subjective_mem_retrieval_cutover_activation"
     )
-    primary = SubjectiveMemRetrievalPrimaryServedMetrics(
-        attempted=True, candidate_count=len(projection.rows), selected_count=0,
-        latency_class="within_bound",
-    )
-    characterization, reasons = owner._characterize(
-        source, request, projection, projection, primary, "within_bound"
-    )
-    assert reasons == () and characterization is not None
-    specification = owner.SubjectiveMemRetrievalRehearsalSpecification(
-        binding_identity=(("deployment_id", "deployment-1"),),
-        evidence_space_id=source.evidence_space_id,
-        projection_generation_id=source.projection_generation_id,
-        projection_source_digest=source.source_snapshot_digest,
-        readiness_id="pending",
-    )
-    readiness_id = owner.derive_subjective_mem_retrieval_rehearsal_readiness_id(
-        binding_identity=specification.binding_identity,
-        projection_generation_id=projection.manifest.projection_generation_id,
-        projection_source_digest=projection.manifest.source_snapshot_digest,
-        projection_manifest_digest=projection.manifest.manifest_digest,
-        row_population_digest=owner.canonical_digest(
-            [row.row_digest for row in projection.rows]
-        ),
-        characterization_digest=owner.canonical_digest(characterization.to_dict()),
-    )
-    root.mkdir()
-    return replace(specification, readiness_id=readiness_id), source, request, primary
-
-
-def test_rehearsal_proves_exact_disposable_generation(tmp_path: Path) -> None:
-    root = tmp_path / "exclusive"
-    specification, source, request, primary = _inputs(root)
-    readiness, reasons = owner.evaluate_subjective_mem_retrieval_rehearsal(
-        specification=specification, source=source, projection_root=str(root),
-        request=request, primary=primary, subjective_latency_class="within_bound",
-    )
-    assert reasons == () and readiness is not None
-    assert list(root.iterdir()) == []
-    assert readiness.readiness_id == specification.readiness_id
-    assert not readiness.subjective_serving
-    assert not readiness.ordinary_usage_event_recorded
-    assert not readiness.authority_state_written
-    with pytest.raises(TypeError):
-        owner.SubjectiveMemRetrievalRehearsalReadiness()  # type: ignore[call-arg]
-
-
-def test_rehearsal_proves_nonempty_ordered_population(tmp_path: Path) -> None:
-    root = tmp_path / "exclusive"
-    specification, source, request, primary = _inputs(root, populated=True)
-    readiness, reasons = owner.evaluate_subjective_mem_retrieval_rehearsal(
-        specification=specification, source=source, projection_root=str(root),
-        request=request, primary=primary, subjective_latency_class="within_bound",
-    )
-    assert reasons == () and readiness is not None
-    assert readiness.row_population_digest != owner.canonical_digest([])
-    assert list(root.iterdir()) == []
-
-
-def test_factory_proof_owns_flags_and_rejects_forged_identities(
-    monkeypatch, tmp_path: Path
-) -> None:
-    root = tmp_path / "exclusive"
-    specification, source, request, primary = _inputs(root)
-    readiness, reasons = owner.evaluate_subjective_mem_retrieval_rehearsal(
-        specification=specification, source=source, projection_root=str(root),
-        request=request, primary=primary, subjective_latency_class="within_bound",
-    )
-    assert reasons == () and readiness is not None
-    monkeypatch.setattr(owner.SubjectiveMemRetrievalRehearsalReadiness,
-                        "subjective_serving", True, raising=False)
-    assert readiness.subjective_serving is False
-    with pytest.raises((TypeError, ValueError)):
-        replace(readiness, authority_state_written=True)
-
-    for field in (
-        "readiness_id", "projection_generation_id", "projection_source_digest",
-        "projection_manifest_digest", "row_population_digest",
-        "characterization_digest",
-    ):
-        forged = object.__new__(owner.SubjectiveMemRetrievalRehearsalReadiness)
-        for name in readiness.__dataclass_fields__:
-            if hasattr(readiness, name):
-                object.__setattr__(forged, name, getattr(readiness, name))
-        object.__setattr__(forged, field, (
-            "smretrievalready_" + "f" * 64 if field == "readiness_id"
-            else "smretrievalgen_" + "f" * 64 if field == "projection_generation_id"
-            else "f" * 64
-        ))
-        assert owner.validate_subjective_mem_retrieval_rehearsal_readiness(
-            specification=specification, readiness=forged
-        )
-
-    forged = object.__new__(owner.SubjectiveMemRetrievalRehearsalReadiness)
-    for name in readiness.__dataclass_fields__:
-        if hasattr(readiness, name):
-            object.__setattr__(forged, name, getattr(readiness, name))
-    object.__delattr__(forged, "_factory_marker")
-    assert owner.validate_subjective_mem_retrieval_rehearsal_readiness(
-        specification=specification, readiness=forged
-    ) == ("cutover_readiness_proof_factory_invalid",)
-
-
-@pytest.mark.parametrize(
-    ("field", "value"),
-    [
-        ("binding_identity", (("z", "one"), ("a", "two"))),
-        ("evidence_space_id", "../unsafe"),
-        ("projection_generation_id", "f" * 64),
-        ("projection_source_digest", "wrong"),
-        ("readiness_id", "ready"),
-    ],
-)
-def test_malformed_specification_precedes_projection_store_effects(
-    monkeypatch, tmp_path: Path, field: str, value: object
-) -> None:
-    root = tmp_path / "exclusive"
-    specification, source, request, primary = _inputs(root)
-    malformed = replace(specification, **{field: value})
-    monkeypatch.setattr(
-        owner, "read_subjective_mem_retrieval_projection",
-        lambda **_kwargs: pytest.fail("store effect before specification validation"),
-    )
-    readiness, reasons = owner.evaluate_subjective_mem_retrieval_rehearsal(
-        specification=malformed, source=source, projection_root=str(root),
-        request=request, primary=primary, subjective_latency_class="within_bound",
-    )
-    assert readiness is None
-    assert reasons == ("cutover_readiness_specification_invalid",)
-
-
-def test_rehearsal_preserves_every_preexisting_bundle(tmp_path: Path) -> None:
-    root = tmp_path / "exclusive"
-    specification, source, request, primary = _inputs(root)
-    bundle = root / "subjective-mem-retrieval-projection.json"
-    original = b"foreign-or-corrupt"
-    bundle.write_bytes(original)
-    readiness, reasons = owner.evaluate_subjective_mem_retrieval_rehearsal(
-        specification=specification, source=source, projection_root=str(root),
-        request=request, primary=primary, subjective_latency_class="within_bound",
-    )
-    assert readiness is None
-    assert reasons == ("cutover_readiness_projection_root_not_fresh",)
-    assert bundle.read_bytes() == original
-
-
-@pytest.mark.parametrize("kind", ["exact", "stale", "unsafe", "unreadable"])
-def test_rehearsal_rejects_each_preexisting_bundle_class(
-    monkeypatch, tmp_path: Path, kind: str
-) -> None:
-    root = tmp_path / "exclusive"
-    specification, source, request, primary = _inputs(root)
-    target = root / PROJECTION_BUNDLE_FILENAME
-    if kind in {"exact", "stale"}:
-        stored_source = source if kind == "exact" else replace(
-            source, snapshot_taken_at="2026-08-04T00:00:00Z"
-        )
-        projection, reasons = build_subjective_mem_retrieval_projection(stored_source)
-        assert reasons == () and projection is not None
-        assert write_subjective_mem_retrieval_projection(
-            projection_root=str(root), source=stored_source, projection=projection
-        ) == ()
-        before = target.read_bytes()
-    elif kind == "unsafe":
-        target.symlink_to(root / "missing")
-        before = target.readlink()
-    else:
-        target.write_bytes(b"unreadable")
-        before = target.read_bytes()
-        monkeypatch.setattr(Path, "read_bytes", lambda self: (_ for _ in ()).throw(OSError()))
-    readiness, reasons = owner.evaluate_subjective_mem_retrieval_rehearsal(
-        specification=specification, source=source, projection_root=str(root),
-        request=request, primary=primary, subjective_latency_class="within_bound",
-    )
-    assert readiness is None
-    assert reasons == ("cutover_readiness_projection_root_not_fresh",)
-    if kind == "unsafe":
-        assert target.is_symlink() and target.readlink() == before
-    elif kind == "unreadable":
-        assert target.exists()
-    else:
-        assert target.read_bytes() == before
-
-
-def test_failed_write_never_reads_or_deletes(monkeypatch, tmp_path: Path) -> None:
-    root = tmp_path / "exclusive"
-    specification, source, request, primary = _inputs(root)
-    real_read = owner.read_subjective_mem_retrieval_projection
-    calls = 0
-
-    def preflight_only(**kwargs):
-        nonlocal calls
-        calls += 1
-        assert calls == 1
-        return real_read(**kwargs)
-
-    monkeypatch.setattr(owner, "read_subjective_mem_retrieval_projection", preflight_only)
-    monkeypatch.setattr(
-        owner, "write_subjective_mem_retrieval_projection",
-        lambda **_kwargs: ("subjective_mem_retrieval_projection_write_failed",),
-    )
-    monkeypatch.setattr(
-        owner, "delete_subjective_mem_retrieval_projection",
-        lambda **_kwargs: pytest.fail("delete after failed write"),
-    )
-    readiness, reasons = owner.evaluate_subjective_mem_retrieval_rehearsal(
-        specification=specification, source=source, projection_root=str(root),
-        request=request, primary=primary, subjective_latency_class="within_bound",
-    )
-    assert readiness is None
-    assert reasons == ("subjective_mem_retrieval_projection_write_failed",)
-
-
-def test_failed_trusted_read_never_deletes(monkeypatch, tmp_path: Path) -> None:
-    root = tmp_path / "exclusive"
-    specification, source, request, primary = _inputs(root)
-    real_read = owner.read_subjective_mem_retrieval_projection
-    calls = 0
-
-    def fail_second_read(**kwargs):
-        nonlocal calls
-        calls += 1
-        if calls == 2:
-            return None, ("subjective_mem_retrieval_projection_bundle_unreadable",)
-        return real_read(**kwargs)
-
-    monkeypatch.setattr(owner, "read_subjective_mem_retrieval_projection", fail_second_read)
-    monkeypatch.setattr(
-        owner, "delete_subjective_mem_retrieval_projection",
-        lambda **_kwargs: pytest.fail("delete without trusted installation ownership"),
-    )
-    readiness, reasons = owner.evaluate_subjective_mem_retrieval_rehearsal(
-        specification=specification, source=source, projection_root=str(root),
-        request=request, primary=primary, subjective_latency_class="within_bound",
-    )
-    assert readiness is None
-    assert reasons == ("subjective_mem_retrieval_projection_bundle_unreadable",)
-
-
-@pytest.mark.parametrize("post_delete_failure", [False, True])
-def test_delete_and_post_delete_failures_return_no_proof(
-    monkeypatch, tmp_path: Path, post_delete_failure: bool
-) -> None:
-    root = tmp_path / "exclusive"
-    specification, source, request, primary = _inputs(root)
-    if post_delete_failure:
-        real_read = owner.read_subjective_mem_retrieval_projection
-        calls = 0
-
-        def fail_final_read(**kwargs):
-            nonlocal calls
-            calls += 1
-            if calls == 3:
-                return None, ("subjective_mem_retrieval_projection_bundle_unreadable",)
-            return real_read(**kwargs)
-
-        monkeypatch.setattr(owner, "read_subjective_mem_retrieval_projection", fail_final_read)
-    else:
-        monkeypatch.setattr(
-            owner, "delete_subjective_mem_retrieval_projection",
-            lambda **_kwargs: ("subjective_mem_retrieval_projection_delete_failed",),
-        )
-    readiness, reasons = owner.evaluate_subjective_mem_retrieval_rehearsal(
-        specification=specification, source=source, projection_root=str(root),
-        request=request, primary=primary, subjective_latency_class="within_bound",
-    )
-    assert readiness is None
-    assert reasons == (("cutover_readiness_projection_delete_unverified",)
-                       if post_delete_failure else
-                       ("subjective_mem_retrieval_projection_delete_failed",))
+    cutover = importlib.import_module("relaylm.subjective_mem_retrieval_cutover")
+    assert "rehearsal_ready" in activation.FORWARD_STATES
+    assert activation.FORWARD_STATES.index("rehearsal_ready") == 1
+    # The cutover owner remains the sole validator of that retained identity.
+    assert "readiness_id" in cutover._TOKEN_FIELDS

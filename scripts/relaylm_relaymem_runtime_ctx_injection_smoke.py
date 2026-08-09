@@ -1,3 +1,32 @@
+"""RT-1D-R5 retirement proof for RelayMEM runtime CTX injection.
+
+This smoke used to drive the gated CTX-injection contract through ordinary chat
+requests: the ordinary Primary reader produced a retrieval artifact with an
+eligible `ctx_injection_plan`, and the smoke asserted where that context landed
+in the backend payload and which scene/budget/candidate conditions blocked it.
+
+RT-1D-R5 retired the ordinary Primary reader, so no ordinary request can produce
+a retrieval artifact at all. Every ordinary path now fails closed with
+`apply_decision:not_eligible` and `ctx_injection_plan_missing`, uniformly across
+every scene, budget and candidate configuration the smoke used to distinguish.
+
+The safety intent is preserved in two halves rather than deleted:
+
+* the ordinary-request half is inverted into an absence proof — each original
+  scenario is still exercised, and each must now prove that nothing is injected,
+  that the backend payload carries no RelayMEM context, and that no retired
+  Primary retrieval/projection artifact reaches the request path;
+* the behavioural half — insertion position, single-context-message, preserved
+  token budget refusal, and prompt-metadata sanitization — moves onto the
+  surviving generic helper via direct fabricated artifacts. R5 retired the
+  producer of that artifact, not the helper, so the helper's guarantees are
+  still fully observable and are still worth proving.
+
+Token-budget truncation itself survives on the ordinary path and is still
+asserted here; only its ordering relative to an injection that can no longer
+happen is gone.
+"""
+
 from __future__ import annotations
 
 import json
@@ -280,6 +309,136 @@ def _assert_malicious_reason_sanitized() -> None:
     _assert_sanitized_context_content(content)
 
 
+RETIRED_FAIL_CLOSED_REASONS = ("apply_decision:not_eligible", "ctx_injection_plan_missing")
+
+
+def _fabricated_artifact(
+    *,
+    path: str = "memory/mem/primary/projects/relaymem.md",
+    reason: str = "keyword_match",
+    preview_text: str = "preview",
+) -> dict[str, Any]:
+    """Build the retrieval-artifact shape the surviving generic helper consumes.
+
+    R5 retired the ordinary *producer* of this artifact, not the helper itself.
+    Supplying it directly is the only remaining way to observe the injection,
+    positioning, budget and sanitization guarantees, and it cannot re-enter
+    ordinary Primary serving because nothing reads the Primary store here.
+    """
+
+    return {
+        "apply_decision": "eligible_but_not_applied",
+        "ctx_block": None,
+        "ctx_injection_plan": {
+            "preview_text": preview_text,
+            "applied": False,
+            "blocked_reasons": ["runtime_ctx_injection_not_implemented"],
+            "source_entries": [{"path": path, "reason": reason}],
+        },
+    }
+
+
+def _assert_ordinary_path_is_retired(
+    result: dict[str, Any], metadata: dict[str, Any]
+) -> None:
+    """The ordinary request path reaches no Primary evidence of any kind."""
+
+    require(result["applied"] is False, result)
+    require(result.get("payload_mutation_applied") is not True, result)
+    require(list(result["blocked_reasons"]) == list(RETIRED_FAIL_CLOSED_REASONS), result)
+    # The retired reader produced this artifact; nothing produces it now.
+    require("relaymem_retrieval_artifact" not in metadata, metadata)
+    require("relaymem_primary_recall_projection" not in metadata, metadata)
+    require("relaymem_primary_recall_runtime" not in metadata, metadata)
+    for key in metadata:
+        require("primary_recall" not in key, key)
+
+
+def _assert_direct_helper_injects_before_latest_user() -> None:
+    """The surviving helper still places exactly one context message correctly."""
+
+    payload = {
+        "model": "relaylm-default",
+        "messages": [
+            {"role": "user", "content": "RelayMEM runtime ctx injection"},
+            {"role": "assistant", "content": "earlier answer"},
+            {"role": "user", "content": "RelayMEM runtime ctx injection latest"},
+        ],
+    }
+    original_messages = [dict(message) for message in payload["messages"]]
+    forwarded, result = maybe_apply_relaymem_runtime_ctx_injection(
+        payload=payload,
+        relaymem_retrieval_artifact=_fabricated_artifact(),
+        ctx_block_apply_enabled=True,
+        retrieval_dry_run_only=False,
+    )
+    require(result["applied"] is True, result)
+    require(result["blocked_reasons"] == [], result)
+    require(payload["messages"] == original_messages, payload)
+    _assert_injected_context(forwarded)
+    _assert_sanitized_context_content(forwarded["messages"][2]["content"])
+
+
+def _assert_direct_helper_refuses_preserved_budget_overflow() -> None:
+    """A context that would break the preserved token budget is never inserted."""
+
+    payload = {
+        "model": "relaylm-default",
+        "messages": [{"role": "user", "content": "RelayMEM runtime ctx injection"}],
+    }
+    original_messages = [dict(message) for message in payload["messages"]]
+    forwarded, result = maybe_apply_relaymem_runtime_ctx_injection(
+        payload=payload,
+        relaymem_retrieval_artifact=_fabricated_artifact(),
+        ctx_block_apply_enabled=True,
+        retrieval_dry_run_only=False,
+        token_budget_truncation_enabled=True,
+        token_budget=30,
+    )
+    require(result["applied"] is False, result)
+    require("relaymem_context_would_break_token_budget" in result["blocked_reasons"], result)
+    require(payload["messages"] == original_messages, payload)
+    _assert_no_injected_context(forwarded)
+
+
+def _assert_direct_helper_gates_remain_default_closed() -> None:
+    """Each independent gate still blocks on its own, with no artifact at all."""
+
+    payload = {
+        "model": "relaylm-default",
+        "messages": [{"role": "user", "content": "RelayMEM runtime ctx injection"}],
+    }
+    for kwargs, expected in (
+        (
+            {"ctx_block_apply_enabled": False, "retrieval_dry_run_only": False},
+            "ctx_block_apply_disabled",
+        ),
+        (
+            {"ctx_block_apply_enabled": True, "retrieval_dry_run_only": True},
+            "retrieval_dry_run_only",
+        ),
+    ):
+        forwarded, result = maybe_apply_relaymem_runtime_ctx_injection(
+            payload=payload,
+            relaymem_retrieval_artifact=_fabricated_artifact(),
+            **kwargs,
+        )
+        require(result["applied"] is False, result)
+        require(expected in result["blocked_reasons"], result)
+        _assert_no_injected_context(forwarded)
+
+    # A missing artifact is the post-retirement ordinary shape and must block.
+    forwarded, result = maybe_apply_relaymem_runtime_ctx_injection(
+        payload=payload,
+        relaymem_retrieval_artifact=None,
+        ctx_block_apply_enabled=True,
+        retrieval_dry_run_only=False,
+    )
+    require(result["applied"] is False, result)
+    require("relaymem_retrieval_artifact_missing" in result["blocked_reasons"], result)
+    _assert_no_injected_context(forwarded)
+
+
 def main() -> int:
     capture = _Capture()
     _BackendHandler.capture = capture
@@ -307,6 +466,9 @@ def main() -> int:
             _assert_no_injected_context(capture.last())
             print("ok default config keeps backend payload unmodified")
 
+            # Fully enabled gates used to inject. After retirement the ordinary
+            # path has no artifact to act on, so the strongest available gate
+            # configuration must still fail closed.
             enabled_payload = _scene_payload("design_talk", "RelayMEM runtime ctx injection")
             enabled_original_messages = [dict(message) for message in enabled_payload["messages"]]
             enabled_result, enabled_metadata = _post(
@@ -316,11 +478,11 @@ def main() -> int:
                 retrieval_dry_run_only=False,
                 ctx_block_apply_enabled=True,
             )
-            require(enabled_result["applied"] is True, enabled_result)
+            _assert_ordinary_path_is_retired(enabled_result, enabled_metadata)
             require(enabled_payload["messages"] == enabled_original_messages, enabled_payload)
-            _assert_injected_context(capture.last())
+            _assert_no_injected_context(capture.last())
             require(isinstance(enabled_metadata.get("runtime_ctx_injection_result"), dict), enabled_metadata)
-            print("ok enabled gates insert RelayMEM Context system message before latest user")
+            print("ok fully enabled gates still inject nothing after Primary reader retirement")
 
             truncation_payload = {
                 "model": "relaylm-default",
@@ -339,7 +501,7 @@ def main() -> int:
                 "stream": False,
             }
             truncation_original_messages = [dict(message) for message in truncation_payload["messages"]]
-            truncation_result, _ = _post(
+            truncation_result, truncation_metadata = _post(
                 port=port,
                 store_root=configured_root,
                 payload=truncation_payload,
@@ -348,103 +510,98 @@ def main() -> int:
                 token_budget=180,
                 token_budget_truncation_enabled=True,
             )
-            require(truncation_result["applied"] is True, truncation_result)
+            # Truncation is a surviving pipeline stage and still runs; what is
+            # gone is the injection it used to run after. The older assistant
+            # turn must still be dropped, and no context may take its place.
+            _assert_ordinary_path_is_retired(truncation_result, truncation_metadata)
             require(truncation_payload["messages"] == truncation_original_messages, truncation_payload)
             truncated_backend_payload = capture.last()
-            _assert_injected_context(truncated_backend_payload)
+            _assert_no_injected_context(truncated_backend_payload)
             require(
                 all(message.get("role") != "assistant" for message in truncated_backend_payload["messages"]),
                 truncated_backend_payload,
             )
-            print("ok token budget truncation runs after RelayMEM context injection")
+            print("ok token budget truncation still runs with nothing left to inject")
 
-            overflow_payload = _scene_payload("design_talk", "RelayMEM runtime ctx injection")
-            overflow_original_messages = [dict(message) for message in overflow_payload["messages"]]
-            overflow_result, _ = _post(
-                port=port,
-                store_root=configured_root,
-                payload=overflow_payload,
-                retrieval_dry_run_only=False,
-                ctx_block_apply_enabled=True,
-                token_budget=30,
-                token_budget_truncation_enabled=True,
-            )
-            require(overflow_result["applied"] is False, overflow_result)
-            require(
-                any(
-                    str(reason).startswith(
-                        (
-                            "relaymem_context_would_break_token_budget",
-                            "apply_decision:blocked_token_budget",
-                        )
-                    )
-                    for reason in overflow_result["blocked_reasons"]
+            # Every remaining ordinary scenario used to be distinguished by the
+            # reason the Primary plan was refused. After retirement there is no
+            # plan to refuse, so all of them must collapse onto the same
+            # fail-closed outcome and leave the backend payload untouched.
+            ordinary_cases: list[tuple[str, dict[str, Any], dict[str, Any]]] = [
+                (
+                    "preserved budget overflow",
+                    _scene_payload("design_talk", "RelayMEM runtime ctx injection"),
+                    {"token_budget": 30, "token_budget_truncation_enabled": True},
                 ),
-                overflow_result,
-            )
-            require(overflow_payload["messages"] == overflow_original_messages, overflow_payload)
-            _assert_no_injected_context(capture.last())
-            print("ok preserved budget overflow skips RelayMEM context injection before truncation")
+                (
+                    "recovery scene",
+                    _scene_payload("recovery", "RelayMEM runtime ctx injection"),
+                    {},
+                ),
+                (
+                    "formal document scene",
+                    _scene_payload("formal_document", "RelayMEM runtime ctx injection"),
+                    {},
+                ),
+                (
+                    "medical or safety scene",
+                    _scene_payload("medical_or_safety", "RelayMEM runtime ctx injection"),
+                    {},
+                ),
+                (
+                    "unresolved reference",
+                    _scene_payload("design_talk", "それはどの話？"),
+                    {},
+                ),
+                (
+                    "token budget hint exhausted",
+                    _scene_payload("design_talk", "RelayMEM runtime ctx injection"),
+                    {"token_budget_hint": 1},
+                ),
+            ]
+            for label, case_payload, case_kwargs in ordinary_cases:
+                case_original_messages = [dict(message) for message in case_payload["messages"]]
+                case_result, case_metadata = _post(
+                    port=port,
+                    store_root=configured_root,
+                    payload=case_payload,
+                    retrieval_dry_run_only=False,
+                    ctx_block_apply_enabled=True,
+                    **case_kwargs,
+                )
+                _assert_ordinary_path_is_retired(case_result, case_metadata)
+                require(case_payload["messages"] == case_original_messages, (label, case_payload))
+                _assert_no_injected_context(capture.last())
+            print("ok every ordinary scene budget and reference case fails closed identically")
 
             _assert_malicious_reason_sanitized()
             print("ok malicious RelayMEM reason metadata is sanitized before injection")
 
-            for scene_type in ("recovery", "formal_document", "medical_or_safety"):
-                payload = _scene_payload(scene_type, "RelayMEM runtime ctx injection")
-                result, _ = _post(
-                    port=port,
-                    store_root=configured_root,
-                    payload=payload,
-                    retrieval_dry_run_only=False,
-                    ctx_block_apply_enabled=True,
-                )
-                require(result["applied"] is False, result)
-                require(any(str(reason).startswith("apply_decision:blocked_scene_policy") for reason in result["blocked_reasons"]), result)
-                _assert_no_injected_context(capture.last())
-            print("ok recovery formal and medical scenes do not inject context")
+            _assert_direct_helper_injects_before_latest_user()
+            print("ok surviving helper still inserts one context message before latest user")
 
-            unresolved_payload = _scene_payload("design_talk", "それはどの話？")
-            unresolved_result, _ = _post(
-                port=port,
-                store_root=configured_root,
-                payload=unresolved_payload,
-                retrieval_dry_run_only=False,
-                ctx_block_apply_enabled=True,
-            )
-            require(unresolved_result["applied"] is False, unresolved_result)
-            require(any(str(reason).startswith("apply_decision:blocked_unresolved_reference") for reason in unresolved_result["blocked_reasons"]), unresolved_result)
-            _assert_no_injected_context(capture.last())
-            print("ok unresolved reference does not inject context")
+            _assert_direct_helper_refuses_preserved_budget_overflow()
+            print("ok surviving helper still refuses preserved token budget overflow")
 
-            token_block_payload = _scene_payload("design_talk", "RelayMEM runtime ctx injection")
-            token_block_result, _ = _post(
-                port=port,
-                store_root=configured_root,
-                payload=token_block_payload,
-                retrieval_dry_run_only=False,
-                ctx_block_apply_enabled=True,
-                token_budget_hint=1,
-            )
-            require(token_block_result["applied"] is False, token_block_result)
-            require(any(str(reason).startswith("apply_decision:blocked_token_budget") for reason in token_block_result["blocked_reasons"]), token_block_result)
-            _assert_no_injected_context(capture.last())
-            print("ok token budget blocked plan does not inject context")
+            _assert_direct_helper_gates_remain_default_closed()
+            print("ok surviving helper gates remain independently default closed")
 
         with tempfile.TemporaryDirectory() as empty_td:
             empty_configured, empty_scoped = _configured_and_scoped_root(empty_td)
             _build_store(empty_scoped, with_page=False)
             no_candidate_payload = _scene_payload("design_talk", "RelayMEM runtime ctx injection")
-            no_candidate_result, _ = _post(
+            no_candidate_result, no_candidate_metadata = _post(
                 port=port,
                 store_root=empty_configured,
                 payload=no_candidate_payload,
                 retrieval_dry_run_only=False,
                 ctx_block_apply_enabled=True,
             )
-            require(no_candidate_result["applied"] is False, no_candidate_result)
-            require(any(str(reason).startswith("apply_decision:blocked_no_candidates") for reason in no_candidate_result["blocked_reasons"]), no_candidate_result)
+            # An empty store is now indistinguishable from a populated one on the
+            # ordinary path, which is the retirement guarantee itself.
+            _assert_ordinary_path_is_retired(no_candidate_result, no_candidate_metadata)
             _assert_no_injected_context(capture.last())
-            print("ok no candidates does not inject context")
+            print("ok empty store is indistinguishable from a populated store")
     finally:
         server.shutdown()
         server.server_close()

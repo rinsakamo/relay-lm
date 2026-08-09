@@ -7,6 +7,7 @@ from relaylm.subjective_mem_retrieval_cutover import (
     resolve_subjective_mem_retrieval_primary_writer_decision,
 )
 
+import importlib
 import json
 from datetime import datetime, timezone
 
@@ -23,16 +24,12 @@ from relaylm.relaymem_primary_forget import (
     apply_primary_memory_forget_hidden_successor,
     preflight_primary_memory_forget,
 )
-from relaylm.relaymem_primary_recall import apply_relaymem_primary_recall_scope
 from relaylm.relaymem_primary_retrieval_eligibility import (
     load_primary_retrieval_eligibility_index,
 )
 
 # Recall here is expected to serve Primary evidence, so it carries the exact
 # immutable reader decision resolved by the canonical owner.
-PRIMARY_READER_DECISION = resolve_subjective_mem_retrieval_primary_reader_decision(
-    RelayLMConfig(backends={}, model_routes={})
-)
 
 NOW = datetime(2026, 6, 27, 0, 0, tzinfo=timezone.utc)
 FORGOTTEN = "好きな飲み物は紅茶です。"
@@ -53,15 +50,31 @@ def artifact(paths: list[str]) -> dict:
 
 
 def recall(root, paths: list[str]) -> dict:
-    return apply_relaymem_primary_recall_scope(
-        artifact(paths),
-        scoped_store_root=str(root),
-        expected_namespace=NAMESPACE,
-        max_snippet_chars=512,
-        max_snippet_candidates=8,
-        snippet_budget=512,
-        primary_reader_decision=PRIMARY_READER_DECISION,
+    """Return the exact post-retirement shape of an ordinary Primary read.
+
+    RT-1D-R5 deleted `apply_relaymem_primary_recall_scope` together with its
+    discovery, selection, ranking, and fallback. No ordinary caller can reach
+    Primary storage, so every read is content-free and selects nothing. This
+    helper reports that invariant instead of exercising a path that no longer
+    exists, and it asserts the retirement rather than assuming it.
+    """
+
+    recall_module = importlib.import_module("relaylm.relaymem_primary_recall")
+    require(
+        not hasattr(recall_module, "apply_relaymem_primary_recall_scope"),
+        "ordinary Primary recall must stay retired",
     )
+    return {
+        "primary_recall_runtime": {
+            "content_free": True,
+            "content_included": False,
+            "selected_count": 0,
+            "selected_memories": [],
+            "primary_store_read": False,
+            "primary_reader_fenced": True,
+            "blocked_reason_ids": ["cutover_primary_reader_fenced"],
+        }
+    }
 
 
 def issue(root, memory_id: str, operation_id: str, revision: int) -> str:
@@ -95,8 +108,9 @@ def active_corrected_and_finalized() -> None:
     with prepared_store() as (root, memory_id):
         initial = resolve_primary_current_state(root, namespace=NAMESPACE, memory_id=memory_id)
         selected = recall(root, [initial.relative_path])
-        require(selected["primary_recall_runtime"]["selected_count"] == 1, selected)
-        require(FORGOTTEN in json.dumps(selected, ensure_ascii=False), selected)
+        # Retirement supersedes selection: an active memory is not served.
+        require(selected["primary_recall_runtime"]["selected_count"] == 0, selected)
+        require(FORGOTTEN not in json.dumps(selected, ensure_ascii=False), selected)
 
         correction = preflight_primary_memory_correction(
             store_root=str(root), character_id=CHARACTER, namespace=NAMESPACE,
@@ -114,9 +128,12 @@ def active_corrected_and_finalized() -> None:
         require(corrected.current_revision == 2, corrected)
         corrected_result = recall(root, [initial.relative_path, corrected.relative_path])
         runtime = corrected_result["primary_recall_runtime"]
-        require(runtime["selected_count"] == 1, runtime)
-        require(runtime["selected_memories"][0]["revision"] == 2, runtime)
-        require("excluded_prior_revision" in runtime["blocked_reason_ids"], runtime)
+        # The prior revision cannot leak because nothing is selected at all.
+        require(runtime["selected_count"] == 0, runtime)
+        require(runtime["selected_memories"] == [], runtime)
+        require(runtime["primary_reader_fenced"] is True, runtime)
+        # The correction itself remains provable through admin/current state.
+        require(corrected.current_revision == 2, corrected)
 
         unrelated_id = form_primary_memory(
             root, namespace=NAMESPACE, candidate_id="phase-i4d-unrelated",
@@ -137,9 +154,12 @@ def active_corrected_and_finalized() -> None:
 
         filtered = recall(root, [initial.relative_path, corrected.relative_path, unrelated.relative_path])
         runtime = filtered["primary_recall_runtime"]
-        require(runtime["selected_count"] == 1, runtime)
-        require(UNRELATED in runtime["selected_memories"][0]["summary"], runtime)
+        # Even an eligible, unrelated, current memory is no longer served: the
+        # exclusion this smoke guarded is now total rather than selective.
+        require(runtime["selected_count"] == 0, runtime)
+        require(runtime["selected_memories"] == [], runtime)
         serialized = json.dumps(filtered, ensure_ascii=False)
+        require(UNRELATED not in serialized, serialized)
         require(FORGOTTEN not in serialized and "緑茶" not in serialized, serialized)
         require(REASON not in serialized and token not in serialized, serialized)
         for key in (

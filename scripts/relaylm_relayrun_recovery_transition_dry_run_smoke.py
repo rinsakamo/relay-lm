@@ -1,3 +1,17 @@
+"""RelayRUN recovery-transition dry-run evidence, RT-1D-R5 retirement compatible.
+
+The diagnostics-only recovery-transition contract is unchanged by R5: a proposed
+transition is still never applied, never user-visible, and never carries user
+content, backend payload or response text.
+
+What R5 changed is only *which node* a normal request's context-repair proposal
+is attributed to. The ordinary Primary reader used to be the blocking node, so a
+normal request named `relaymem_retrieval` as the source. That reader is retired,
+so the first genuinely blocked surviving node is the runtime CTX stage instead.
+The assertion below tracks that attribution and additionally proves the retired
+reader can never be named again.
+"""
+
 from __future__ import annotations
 
 import json
@@ -150,6 +164,16 @@ def _assert_transition_common(transition: dict[str, Any]) -> None:
     require(safety.get("contains_response_text") is False, transition)
 
 
+def _assert_retired_primary_reader_is_never_the_source(transition: dict[str, Any]) -> None:
+    """No transition may be attributed to the retired ordinary Primary reader."""
+
+    for field in ("source_node", "source_node_alias", "compatibility_source_node"):
+        require(transition.get(field) != "relaymem_retrieval", (field, transition))
+    transition_text = json.dumps(transition, ensure_ascii=False)
+    for retired in ("primary_recall", "relaymem_primary_recall_selection"):
+        require(retired not in transition_text, (retired, transition))
+
+
 def _assert_backend_payload_not_mutated(backend_payload: dict[str, Any] | None) -> None:
     require(isinstance(backend_payload, dict), backend_payload)
     backend_text = json.dumps(backend_payload, ensure_ascii=False)
@@ -170,8 +194,12 @@ def _assert_normal(root: Path, capture: _Capture, port: int) -> None:
         require(transition.get("source_node") is None, transition)
     else:
         require(transition.get("proposed_transition_type") == "context_repair", transition)
-        require(transition.get("source_node") == "relaymem_retrieval", transition)
+        # RT-1D-R5 retired the ordinary Primary reader that used to be the
+        # blocking node here, so the proposal is now attributed to the surviving
+        # runtime CTX stage. The retired reader must never be named again.
+        require(transition.get("source_node") == "relaymem_runtime_ctx", transition)
         require(transition.get("required_user_action") == "confirm_context_repair", transition)
+    _assert_retired_primary_reader_is_never_the_source(transition)
     _assert_backend_payload_not_mutated(backend_payload)
     print("ok normal request emits unapplied recovery_transition_artifact")
 
@@ -188,8 +216,11 @@ def _assert_recovery_scene(root: Path, capture: _Capture, port: int) -> None:
     transition = _transition(metadata)
     _assert_transition_common(transition)
     require(transition.get("proposed_transition_type") == "context_repair", transition)
-    require(transition.get("source_node") in {"relayscn", "relaymem_retrieval", "relaymem_runtime_ctx"}, transition)
+    # `relaymem_retrieval` was dropped from this set by RT-1D-R5: the ordinary
+    # Primary reader no longer exists to be the blocking node.
+    require(transition.get("source_node") in {"relayscn", "relaymem_runtime_ctx"}, transition)
     require(transition.get("user_visible") is False, transition)
+    _assert_retired_primary_reader_is_never_the_source(transition)
     _assert_backend_payload_not_mutated(backend_payload)
     print("ok recovery scene proposes context_repair without apply")
 
@@ -210,6 +241,7 @@ def _assert_unresolved_reference(root: Path, capture: _Capture, port: int) -> No
     require(transition.get("source_node_alias") == "relayint_reference_intent", transition)
     require(transition.get("compatibility_source_node") == "relayint", transition)
     require(transition.get("required_user_action") == "clarify_reference", transition)
+    _assert_retired_primary_reader_is_never_the_source(transition)
     _assert_backend_payload_not_mutated(backend_payload)
     print("ok unresolved reference proposes user confirmation without apply")
 
@@ -229,6 +261,7 @@ def _assert_backend_error(root: Path, capture: _Capture) -> None:
     require(transition.get("proposed_transition_type") == "retry_safe_node", transition)
     require(transition.get("source_node") == "backend_forward", transition)
     require(transition.get("next_node") == "backend_forward", transition)
+    _assert_retired_primary_reader_is_never_the_source(transition)
     print("ok backend error emits unapplied recovery transition and preserves error response")
 
 

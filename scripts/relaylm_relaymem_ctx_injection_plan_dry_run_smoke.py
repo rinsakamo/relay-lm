@@ -162,16 +162,22 @@ def _last_backend_response_metadata(trace_path: Path) -> dict[str, Any]:
     raise AssertionError("backend_response trace record is missing")
 
 
-def _content_free_projection(metadata: dict[str, Any]) -> dict[str, Any]:
+def _assert_no_primary_projection(metadata: dict[str, Any]) -> dict[str, Any]:
+    """RT-1D-R5: ordinary runtime emits no Primary recall projection at all.
+
+    This previously required the projection to be present and content-free.
+    Retirement removes the ordinary Primary reader and selection entirely, so
+    the guarantee is now unconditional: nothing is emitted, nothing resolves a
+    Primary scope for serving, and no Primary-derived key may reappear under
+    any name. The generic ctx-injection plan coverage above is unaffected.
+    """
+
     require("relaymem_retrieval_artifact" not in metadata, "full retrieval artifact leaked")
-    projection = metadata.get("relaymem_primary_recall_projection")
-    require(isinstance(projection, dict), metadata)
-    require(projection.get("content_free") is True, projection)
-    require(projection.get("content_included") is False, projection)
-    require(projection.get("memory_text_included") is False, projection)
-    require(projection.get("path_values_included") is False, projection)
-    require(projection.get("backend_prompt_included") is False, projection)
-    return projection
+    require("relaymem_primary_recall_projection" not in metadata, metadata)
+    require("relaymem_primary_recall_runtime" not in metadata, metadata)
+    for key in metadata:
+        require("primary_recall" not in key, key)
+    return metadata
 
 
 def _assert_no_backend_artifact(payload: dict[str, Any]) -> None:
@@ -304,13 +310,20 @@ def main() -> int:
                     )
                     require(resp.status_code == 200, resp.text)
                     metadata = _last_backend_response_metadata(trace_path)
-                    projection = _content_free_projection(metadata)
-                    require(projection["selected_count"] == 0, projection)
-                    require(projection["character_scope_resolved"] is True, projection)
-                    require(projection["injection_performed"] is False, projection)
-                    require("legacy_flat_store_compatibility" not in projection["blocked_reason_ids"], projection)
-                    _assert_no_backend_artifact(capture.last_chat_payload())
-                    print("ok trace exposes target-only content-free plan status without backend mutation")
+                    _assert_no_primary_projection(metadata)
+                    # Backend forwarding stays free of retired Primary
+                    # retrieval, selection, and ctx material.
+                    backend_payload = capture.last_chat_payload()
+                    _assert_no_backend_artifact(backend_payload)
+                    forwarded = json.dumps(backend_payload, ensure_ascii=False)
+                    for retired in (
+                        "primary_recall",
+                        "selected_mem_candidates",
+                        "[RelayMEM Snippet Context]",
+                        "[RelayMEM Ctx Block]",
+                    ):
+                        require(retired not in forwarded, forwarded)
+                    print("ok ordinary request exposes and injects no retired Primary material")
         finally:
             server.shutdown()
             server.server_close()

@@ -42,7 +42,7 @@ def _install_synthetic_package() -> types.ModuleType:
 def _load_canonical_modules_without_package_init() -> tuple[object, object, object]:
     _install_synthetic_package()
     audit_projection = importlib.import_module("relaylm.audit_projection")
-    relaymem_retrieval = importlib.import_module("relaylm.relaymem_retrieval")
+    relaymem_retrieval = importlib.import_module("relaylm.relaymem_retrieval_dry_run")
     relaymem_store = importlib.import_module("relaylm.relaymem_store")
     return audit_projection, relaymem_retrieval, relaymem_store
 

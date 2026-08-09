@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import ast
+import importlib
 import json
 import shutil
 import sys
@@ -17,7 +19,6 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from relaylm.app import create_app
-from relaylm.relaymem_retrieval import _relaymem_primary_recall_scope_allowed
 from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
 from relaylm.relaymem_runtime_ctx import maybe_apply_relaymem_snippet_runtime_injection
 
@@ -252,28 +253,20 @@ def _assert_all_gates_apply(root: Path, capture: _Capture, port: int) -> None:
         snippet_runtime_injection_enabled=True,
         snippet_runtime_dry_run_only=False,
     )
-    snippet_messages = _snippet_context_messages(backend_payload)
-    require(len(snippet_messages) == 1, backend_payload)
-    index, message = snippet_messages[0]
-    require("SNIPPET_RUNTIME_APPLY_SENTINEL" in message["content"], message)
-    require("[RelayMEM Snippet Context Candidate]" not in message["content"], message)
-    messages = backend_payload["messages"]
-    latest_user_index = max(
-        idx for idx, item in enumerate(messages) if isinstance(item, dict) and item.get("role") == "user"
-    )
-    require(index < latest_user_index, backend_payload)
+    # RT-1D-R5 retired the ordinary Primary reader that produced the snippet
+    # candidate, so even with every runtime-injection gate enabled there is
+    # nothing to inject. The safety property this scenario guarded -- that
+    # snippet context never reaches the backend unless every gate admits it --
+    # now holds unconditionally and in the strongest direction: no Primary
+    # evidence reaches the backend under any gate configuration.
+    require(_snippet_context_messages(backend_payload) == [], backend_payload)
     require(_metadata_context_messages(backend_payload) == [], backend_payload)
+    backend_text = json.dumps(backend_payload, ensure_ascii=False)
+    require("SNIPPET_RUNTIME_APPLY_SENTINEL" not in backend_text, backend_payload)
     result = metadata.get("runtime_snippet_injection_result")
     require(isinstance(result, dict), metadata)
-    require(result["applied"] is True, result)
-    ctx_result = metadata.get("runtime_ctx_injection_result")
-    require(isinstance(ctx_result, dict), metadata)
-    require(ctx_result["applied"] is False, ctx_result)
-    require(
-        "skipped_because_snippet_runtime_injection_applied" in ctx_result["blocked_reasons"],
-        ctx_result,
-    )
-    print("ok all snippet runtime gates insert snippet context before latest user")
+    require(result["applied"] is False, result)
+    print("ok all snippet runtime gates still inject nothing after Primary retirement")
 
 
 def _assert_truncation_after_snippet(root: Path, capture: _Capture, port: int) -> None:
@@ -293,7 +286,11 @@ def _assert_truncation_after_snippet(root: Path, capture: _Capture, port: int) -
         token_budget_truncation_enabled=True,
         token_budget=700,
     )
-    require(_snippet_context_messages(backend_payload), backend_payload)
+    # There is no Primary snippet to order against truncation after RT-1D-R5.
+    # What remains checkable, and still matters, is that token-budget
+    # truncation continues to run correctly on its own and that retirement
+    # introduced no Primary evidence into the truncated payload.
+    require(_snippet_context_messages(backend_payload) == [], backend_payload)
     messages = backend_payload.get("messages")
     require(isinstance(messages, list), backend_payload)
     require(
@@ -303,9 +300,13 @@ def _assert_truncation_after_snippet(root: Path, capture: _Capture, port: int) -
         ),
         backend_payload,
     )
+    require(
+        "SNIPPET_RUNTIME_APPLY_SENTINEL" not in json.dumps(backend_payload, ensure_ascii=False),
+        backend_payload,
+    )
     result = metadata.get("runtime_snippet_injection_result")
-    require(isinstance(result, dict) and result["applied"] is True, result)
-    print("ok snippet runtime injection runs before token budget truncation")
+    require(isinstance(result, dict) and result["applied"] is False, result)
+    print("ok token budget truncation still runs with no Primary snippet to order")
 
 
 def _assert_direct_runtime_budget_guard() -> None:
@@ -408,25 +409,50 @@ def _assert_incomplete_target_layout_fail_closed(
     result = metadata.get("runtime_snippet_injection_result")
     require(isinstance(result, dict), metadata)
     require(result["applied"] is False, result)
+    # With the ordinary Primary reader retired the upstream decision never
+    # reaches a candidate stage at all, so the block is reported as
+    # `not_eligible` with a missing injection plan rather than
+    # `blocked_no_candidates`. What must remain true is that the incomplete
+    # target layout still fails closed and names a snippet-apply block reason.
     require(
-        "snippet_apply_decision:blocked_no_candidates" in result["blocked_reasons"],
+        any(
+            reason.startswith("snippet_apply_decision:")
+            for reason in result["blocked_reasons"]
+        ),
         result,
     )
-    require(
-        _relaymem_primary_recall_scope_allowed(
-            {
-                "fallback_reason": "memory_store_files_blocked",
-                "root_present": True,
-                "layout_compatibility": {
-                    "target_primary_secondary_present": False,
-                    "flat_store_compatibility_removed": True,
-                },
-            }
+    require("snippet_runtime_injection_plan_missing" in result["blocked_reasons"], result)
+    # RT-1D-R5 retired the Primary recall bridge together with the ordinary
+    # reader, so `_relaymem_primary_recall_scope_allowed` no longer exists to
+    # consult. The guarantee it enforced -- that a masked layout
+    # incompatibility can never admit Primary recall -- now holds
+    # unconditionally, because there is no scope gate, discovery, or recall
+    # path left for any store layout to unmask. Proven by absence.
+    retrieval_module = importlib.import_module("relaylm.relaymem_retrieval")
+    for retired in (
+        "_relaymem_primary_recall_scope_allowed",
+        "apply_relaymem_primary_recall_scope",
+        "resolve_relaymem_character_store_root",
+        "build_relaymem_store_diagnostics",
+    ):
+        require(
+            not hasattr(retrieval_module, retired),
+            f"retired Primary scope helper reappeared: {retired}",
         )
-        is False,
-        "masked layout incompatibility allowed Primary recall",
+    retrieval_source = (
+        REPO_ROOT / "relaylm/relaymem_retrieval.py"
+    ).read_text(encoding="utf-8")
+    stage = next(
+        node
+        for node in ast.parse(retrieval_source).body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "run_relaymem_retrieval_stage"
     )
-    print("ok incomplete target layout blocks primary recall bridge before runtime snippets")
+    require(
+        len([n for n in ast.walk(stage) if isinstance(n, ast.Return)]) == 1,
+        "ordinary retrieval stage must keep exactly one fenced exit",
+    )
+    print("ok retired primary recall bridge cannot be unmasked by any store layout")
 
 
 def _assert_preview_null_blocks(root: Path, capture: _Capture, port: int) -> None:

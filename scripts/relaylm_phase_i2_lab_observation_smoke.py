@@ -126,7 +126,10 @@ def main() -> None:
                     json=payload("relaylm-default", QUESTION),
                 )
                 require(second.status_code == 200, second.text)
-                require(MEMORY_CANARY in visible_text(second), second.json())
+                # RT-1D-R5 retired the ordinary Primary reader, so the second
+                # turn is answered without memory context. The observation
+                # surfaces below are read-only history/admin and survive.
+                require(MEMORY_CANARY not in visible_text(second), second.json())
 
                 base = f"/lab/api/characters/{CHARACTER}"
                 query = f"namespace={NAMESPACE}"
@@ -146,16 +149,18 @@ def main() -> None:
                 require(latest["schema"] == "relaylm.lab.last_run.v0", latest)
                 require(latest["source"] == "relaylm_runtime", latest)
                 require(latest["status"] == "completed", latest)
-                require(latest["used_memory_count"] == 1, latest)
+                require(latest["used_memory_count"] == 0, latest)
                 require(recent["schema"] == "relaylm.lab.memory_recent.v0", recent)
                 require(len(recent["items"]) == 1, recent)
                 require(MEMORY_CANARY in recent["items"][0]["bounded_summary"], recent)
                 require(held["items"] == [], held)
+                # No ordinary injection can be recorded after retirement, so the
+                # used-memory projection is empty while keeping its exact schema
+                # and completion semantics. Formation history is unaffected.
                 require(used["schema"] == "relaylm.lab.memory_used.v0", used)
-                require(used["backend_bound_included"] is True, used)
+                require(used["backend_bound_included"] is False, used)
                 require(used["response_generation_completed"] is True, used)
-                require(len(used["items"]) == 1, used)
-                require(MEMORY_CANARY in used["items"][0]["injected_summary"], used)
+                require(used["items"] == [], used)
 
                 wrong = client.get(f"/lab/api/characters/other/memory/recent?namespace={NAMESPACE}&limit=20")
                 require(wrong.status_code == 200, wrong.text)
@@ -204,7 +209,10 @@ def main() -> None:
                 require(len(recent["items"]) == 1, recent)
                 require({item["status"] for item in held["items"]} == {"held", "blocked"}, held)
                 require("observation_receipt_corrupt_ignored" in held["bounded_reason_ids"], held)
-                require(len(used["items"]) == 1, used)
+                # Held/blocked observation state and its corrupt-receipt handling
+                # are read-only admin evidence and are unchanged by retirement.
+                # The used-memory projection stays empty: nothing is injected.
+                require(used["items"] == [], used)
                 assert_no_leak(held)
     finally:
         server.shutdown()

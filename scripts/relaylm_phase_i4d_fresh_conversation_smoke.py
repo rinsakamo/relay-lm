@@ -115,7 +115,12 @@ def main() -> None:
                 first = request(client)
             require(first.status_code == 200, first.text)
             before = json.dumps(Backend.payloads[-1]["messages"], ensure_ascii=False)
-            require(CANARY in before and "[RelayMEM Snippet Context]" in before, before)
+            # RT-1D-R5 retired the ordinary Primary reader, so an active memory
+            # is not served even before the forget. The exclusion this smoke
+            # guards is therefore unconditional rather than forget-triggered,
+            # and the leak assertions after the forget stay exactly as strict.
+            require(CANARY not in before, before)
+            require("[RelayMEM Snippet Context]" not in before, before)
 
             preflight = preflight_primary_memory_forget(
                 store_root=str(scoped), character_id=CHARACTER, namespace=NAMESPACE,

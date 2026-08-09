@@ -126,7 +126,7 @@ def _last_backend_response_metadata(trace_path: Path) -> dict[str, Any]:
     raise AssertionError("backend_response trace record is missing")
 
 
-def _post_and_get_projection(
+def _post_and_assert_no_primary_projection(
     client: TestClient,
     trace_path: Path,
     payload: dict[str, Any],
@@ -134,17 +134,16 @@ def _post_and_get_projection(
     resp = client.post("/v1/chat/completions", json=payload)
     require(resp.status_code == 200, resp.text)
     metadata = _last_backend_response_metadata(trace_path)
+    # RT-1D-R5 retired ordinary Primary selection, so an ordinary request emits
+    # no recall projection at all -- stronger than the content-free flags this
+    # previously asserted. The read-only store discovery and diagnostics
+    # coverage elsewhere in this smoke is unaffected and stays meaningful.
     require("relaymem_retrieval_artifact" not in metadata, "full retrieval artifact leaked")
-    projection = metadata.get("relaymem_primary_recall_projection")
-    require(isinstance(projection, dict), metadata)
-    require(projection.get("content_free") is True, projection)
-    require(projection.get("content_included") is False, projection)
-    require(projection.get("memory_text_included") is False, projection)
-    require(projection.get("path_values_included") is False, projection)
-    require(projection.get("digest_values_included") is False, projection)
-    require(projection.get("lineage_values_included") is False, projection)
-    require(projection.get("idempotency_values_included") is False, projection)
-    return projection
+    require("relaymem_primary_recall_projection" not in metadata, metadata)
+    require("relaymem_primary_recall_runtime" not in metadata, metadata)
+    for key in metadata:
+        require("primary_recall" not in key, key)
+    return metadata
 
 
 def _assert_no_backend_artifact(payload: dict[str, Any]) -> None:
@@ -269,13 +268,10 @@ def main() -> int:
                 )
                 app = create_app(str(cfg_path))
                 with TestClient(app) as client:
-                    projection = _post_and_get_projection(
+                    projection = _post_and_assert_no_primary_projection(
                         client, trace_path, _scene_payload("design_talk", "RelayMEM retrieval")
                     )
-                    require(projection["selected_count"] == 0, projection)
-                    require(projection["fallback_reason"] == "memory_store_disabled", projection)
-                    require(projection["injection_performed"] is False, projection)
-                    print("ok disabled store emits a content-free zero-selection projection")
+                    print("ok disabled store emits no Primary recall projection")
 
             with tempfile.TemporaryDirectory() as td:
                 configured_root = Path(td) / "memory-root"
@@ -295,37 +291,31 @@ def main() -> int:
                 app = create_app(str(cfg_path))
                 with TestClient(app) as client:
                     design_payload = _scene_payload("design_talk", "RelayMEM retrieval")
-                    design = _post_and_get_projection(client, trace_path, design_payload)
-                    require(design["selected_count"] == 0, design)
-                    require(design["character_scope_resolved"] is True, design)
-                    require(design["scope_matched"] is False, design)
-                    require("legacy_flat_store_compatibility" not in design["blocked_reason_ids"], design)
+                    design = _post_and_assert_no_primary_projection(client, trace_path, design_payload)
+                    # Primary character-scope resolution is retired from the
+                    # ordinary request path; nothing resolves, selects, or ranks.
                     backend_payload = capture.last_chat_payload()
                     _assert_no_backend_artifact(backend_payload)
                     require(backend_payload.get("metadata") == design_payload["metadata"], "backend metadata changed")
                     print("ok target runtime selection remains content-free and non-mutating")
 
-                    recovery = _post_and_get_projection(
+                    recovery = _post_and_assert_no_primary_projection(
                         client, trace_path, _scene_payload("recovery", "何の話だったっけ")
                     )
-                    require(recovery["retrieval_scope"] == "current_context_only", recovery)
-                    require(recovery["selected_count"] == 0, recovery)
-                    print("ok recovery scene suppresses runtime selection")
+                    print("ok recovery scene reaches no Primary selection")
 
                     for scene_type in ("formal_document", "medical_or_safety"):
-                        projection = _post_and_get_projection(
+                        projection = _post_and_assert_no_primary_projection(
                             client, trace_path, _scene_payload(scene_type, "RelayMEM evidence")
                         )
-                        require(projection["selected_count"] == 0, projection)
-                        require(projection["persistence_block"] is True, projection)
-                    print("ok formal and medical scenes suppress runtime selection")
+                        _assert_no_backend_artifact(capture.last_chat_payload())
+                    print("ok formal and medical scenes reach no Primary selection")
 
-                    latest = _post_and_get_projection(
+                    latest = _post_and_assert_no_primary_projection(
                         client, trace_path, _scene_payload("design_talk", "RelayMEM trace check")
                     )
-                    require(latest["content_free"] is True, latest)
-                    require(latest["selected_layer_counts"] == {"primary": 0}, latest)
-                    print("ok trace metadata exposes only the content-free selection projection")
+                    require("selected_layer_counts" not in latest, latest)
+                    print("ok trace metadata exposes no Primary selection projection")
         finally:
             server.shutdown()
             server.server_close()

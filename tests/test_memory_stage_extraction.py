@@ -28,11 +28,7 @@ from relaylm.relayctx_repack import (
     run_relaymem_runtime_ctx_stage,
 )
 from relaylm.relayint import build_relayint_reference_intent_artifact, run_relayint_stage
-from relaylm.relaymem_primary_recall import apply_relaymem_primary_recall_scope
-from relaylm.relaymem_retrieval import (
-    build_relaymem_retrieval_dry_run_artifact,
-    run_relaymem_retrieval_stage,
-)
+from relaylm.relaymem_retrieval import run_relaymem_retrieval_stage
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
 from relaylm.subjective_mem_retrieval_cutover import (
     resolve_subjective_mem_retrieval_primary_reader_decision,
@@ -109,7 +105,19 @@ def test_run_relayint_stage_matches_build_relayint_reference_intent_artifact() -
 # ---------------------------------------------------------------------------
 
 
-def test_run_relaymem_retrieval_stage_matches_manual_build(tmp_path) -> None:
+def test_run_relaymem_retrieval_stage_serves_no_primary_after_retirement(
+    tmp_path,
+) -> None:
+    """RT-1D-R5 retired the ordinary Primary reader, so the stage serves none.
+
+    Before retirement this stage rebuilt the dry-run artifact and revalidated it
+    against Primary MEM recall scope whenever the carried reader decision named
+    `primary_only`. That path no longer exists: the recall entry point, its
+    discovery, selection, and fallback are deleted rather than fenced. A
+    decision that still names Primary therefore fails closed to `neither` and
+    releases nothing, instead of silently degrading into a Primary read.
+    """
+
     config, route = _load_config_and_route(tmp_path)
     messages = [{"role": "user", "content": "diagnostic smoke text"}]
     relayscn_artifact = {
@@ -121,61 +129,36 @@ def test_run_relaymem_retrieval_stage_matches_manual_build(tmp_path) -> None:
     }
     relayint_artifact = {"unresolved_reference_detected": False, "mode_reasons": []}
 
-    expected_store_diagnostics = build_relaymem_store_diagnostics(
-        root_path=None,
-        store_enabled=config.memory.store_enabled,
-        retrieval_dry_run_only=config.memory.retrieval_dry_run_only,
-    )
-    expected_retrieval_artifact = build_relaymem_retrieval_dry_run_artifact(
-        relayscn_scene_policy_artifact=relayscn_artifact,
-        relayint_intent_artifact=relayint_artifact,
-        messages=messages,
-        token_budget=config.memory.token_budget or config.memory.token_budget_hint,
-        store_diagnostics=expected_store_diagnostics,
-        max_candidates=config.memory.candidate_limit,
-        ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
-        snippet_extraction_enabled=config.memory.snippet_extraction_enabled,
-        snippet_dry_run_only=config.memory.snippet_dry_run_only,
-        snippet_apply_enabled=config.memory.snippet_apply_enabled,
-        snippet_budget=config.memory.snippet_budget,
-        max_snippet_chars=config.memory.max_snippet_chars,
-        max_snippet_candidates=config.memory.max_snippet_candidates,
-    )
-    # run_relaymem_retrieval_stage also revalidates the retrieval artifact
-    # against Primary MEM recall scope (unless the store layout is
-    # incompatible); with no configured store root that revalidation always
-    # runs, exactly as it did inline as part of _run_relaymem_retrieval_stage.
-    expected_retrieval_artifact = apply_relaymem_primary_recall_scope(
-        expected_retrieval_artifact,
-        scoped_store_root=None,
-        expected_namespace=route.memory_namespace,
-        max_snippet_chars=config.memory.max_snippet_chars,
-        max_snippet_candidates=config.memory.max_snippet_candidates,
-        snippet_budget=config.memory.snippet_budget,
-        chars_per_token=config.memory.chars_per_token,
-        primary_reader_decision=_primary_only_reader_decision(config),
-    )
-    # The stage additionally records which single memory authority the carried
-    # RT-1D reader decision named for this request.
-    expected_retrieval_artifact["ordinary_memory_authority"] = "primary_only"
+    def _run():
+        return run_relaymem_retrieval_stage(
+            config=config,
+            route=route,
+            relaymem_configured_store_root=None,
+            relayscn_scene_policy_artifact=relayscn_artifact,
+            relayint_intent_artifact=relayint_artifact,
+            messages=messages,
+            primary_reader_decision=_primary_only_reader_decision(config),
+            request_correlation="run-1",
+        )
 
-    actual_store_diagnostics, actual_retrieval_artifact = run_relaymem_retrieval_stage(
-        config=config,
-        route=route,
-        relaymem_configured_store_root=None,
-        relayscn_scene_policy_artifact=relayscn_artifact,
-        relayint_intent_artifact=relayint_artifact,
-        messages=messages,
-        primary_reader_decision=_primary_only_reader_decision(config),
-        request_correlation="run-1",
-    )
+    store_diagnostics, retrieval_artifact = _run()
 
-    assert actual_store_diagnostics == expected_store_diagnostics
-    assert actual_retrieval_artifact == expected_retrieval_artifact
+    # No Primary authority is served and no Primary store is opened.
+    assert store_diagnostics["ordinary_memory_authority"] == "neither"
+    assert store_diagnostics["primary_store_read"] is False
+    assert store_diagnostics["content_free"] is True
+    assert retrieval_artifact["ordinary_memory_authority"] == "neither"
 
-    # The stage stays a plain blocking callable: handle_managed_chat_completion
-    # offloads it via run_stage(..., offload=True, ...), the same shape
-    # _run_relaymem_retrieval_stage used with a bare asyncio.to_thread call.
+    # Nothing Primary-derived is released through the artifact.
+    assert retrieval_artifact.get("selected_mem_candidates") in (None, [])
+    assert "primary_recall_runtime" not in retrieval_artifact
+    assert "primary_recall_projection" not in retrieval_artifact
+
+    # The result is deterministic across repeated calls: retirement is not a
+    # one-shot transition that later restores Primary.
+    assert _run() == (store_diagnostics, retrieval_artifact)
+
+    # The stage stays a plain blocking callable offloadable via run_stage.
     node_timings: dict = {}
 
     async def _invoke():
@@ -196,8 +179,8 @@ def test_run_relaymem_retrieval_stage_matches_manual_build(tmp_path) -> None:
 
     offloaded_store_diagnostics, offloaded_retrieval_artifact = asyncio.run(_invoke())
 
-    assert offloaded_store_diagnostics == expected_store_diagnostics
-    assert offloaded_retrieval_artifact == expected_retrieval_artifact
+    assert offloaded_store_diagnostics == store_diagnostics
+    assert offloaded_retrieval_artifact == retrieval_artifact
     assert set(node_timings["relaymem_retrieval"].keys()) == {
         "started_at",
         "completed_at",
