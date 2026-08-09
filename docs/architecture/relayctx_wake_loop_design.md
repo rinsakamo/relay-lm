@@ -1,15 +1,15 @@
 # Archived: RelayCTX Wake Loop Design
 
-This pre-RelayINT design document has moved to the [historical architecture archive](archive/relayctx_wake_loop_design.md).
+The pre-RelayINT Wake-loop source has been retired from the live documentation tree after its durable context-selection principles were absorbed into current RelayCTX architecture and contracts. Its exact historical text remains recoverable from Git history.
 
-It remains useful as design history, but it is not a current responsibility specification.
+The retired source assigned reference resolution and response-mode selection to RelayCTX and Wake-time recovery to RelayREF. Those responsibilities no longer define the current architecture.
 
-The old document assigns reference resolution and response-mode selection to RelayCTX and Wake-time recovery to RelayREF. Current architecture assigns those responsibilities primarily to RelayINT, RelaySCN, and RelayRUN.
+Use these current authorities instead:
 
-Use these current documents instead:
+- [Pipeline Responsibilities](pipeline-responsibilities.md) for component ownership and stage ordering
+- [RelayCTX Context Assembly](context/context-assembly.md) for working-state selection, smallest-sufficient packing, and backend context assembly
+- [RelayCTX Short-Term Runtime Contract](../contracts/relayctx_short_term_runtime_contract.md) for exact current short-term runtime behavior
+- [RelayINT MVP design](relayint_mvp_design.md) for current reference/clarification responsibility
+- [Request / Response Pipeline](runtime/request-response-pipeline.md) for current managed-route and recovery-side runtime boundaries
 
-- [Pipeline Responsibilities](pipeline-responsibilities.md)
-- [Pipeline implementation plan](pipeline_implementation_plan.md)
-- [RelayINT MVP design](relayint_mvp_design.md)
-- [Context packing design](context_packing_design.md)
-- [Context compiler contract](../contracts/context_compiler_contract.md)
+This redirect is compatibility-only and does not define current implementation status or semantic authority.
