@@ -175,6 +175,8 @@ The workspace does not select ordinary-memory reader authority. RT-1 and RelayME
 
 A memory file existing in the workspace does not bypass lifecycle, scope, reader, privacy, or disclosure gates.
 
+Workspace memory representation follows the [Memory Subsystem stable design principles](../memory/system.md#stable-design-principles). Governed Evidence is not collapsed into SLP-curated wiki pages, and Markdown layout, filesystem taxonomy, indexes, embeddings, or compiled retrieval projections remain representation/discovery mechanisms rather than semantic memory authority.
+
 ## Boundary source
 
 `BOUNDARY.md` contains character-specific expression/privacy/intimacy/pressure/disclosure limits.
@@ -465,6 +467,8 @@ Project Status remains authoritative for exact implementation completion.
 - Compile success is not runtime activation.
 - RelaySLP maintenance is deferred and candidate/proposal driven; it does not answer the current turn.
 - Inbox/candidate/proposal content is not direct prompt authority.
+- Memory workspace curation does not replace governed Evidence; derived summaries or subjective wiki pages cannot rewrite the Evidence authority they reference.
+- Filesystem organization, indexes, embeddings, and retrieval projections are representation/discovery mechanisms, not canonical memory truth or semantic mutation authority.
 - High-impact character policy changes require their owning review/apply boundary.
 - Creation/import commits a validated workspace only after explicit approval.
 - No valid workspace does not cause automatic sample/default character activation.
