@@ -82,7 +82,7 @@ def _last_backend_response_metadata(trace_path: Path) -> dict[str, Any]:
     raise AssertionError("backend_response trace record is missing")
 
 
-def _post_and_get_projection(
+def _post_and_assert_no_primary_projection(
     client: TestClient,
     trace_path: Path,
     payload: dict[str, Any],
@@ -90,18 +90,18 @@ def _post_and_get_projection(
     response = client.post("/v1/chat/completions", json=payload)
     require(response.status_code == 200, response.text)
     metadata = _last_backend_response_metadata(trace_path)
+    # RT-1D-R5 retired the ordinary Primary reader. `relaymem_primary_recall_projection`
+    # was its content-free ordinary-serving report, so an ordinary request must
+    # now emit no such projection at all -- a stronger guarantee than the
+    # content-free flags this previously checked. The full retrieval artifact
+    # must still never leak, and no Primary-derived key may reappear under any
+    # name.
     require("relaymem_retrieval_artifact" not in metadata, metadata)
-    projection = metadata.get("relaymem_primary_recall_projection")
-    require(isinstance(projection, dict), metadata)
-    require(projection.get("content_free") is True, projection)
-    require(projection.get("content_included") is False, projection)
-    require(projection.get("memory_text_included") is False, projection)
-    require(projection.get("path_values_included") is False, projection)
-    require(projection.get("digest_values_included") is False, projection)
-    require(projection.get("lineage_values_included") is False, projection)
-    require(projection.get("idempotency_values_included") is False, projection)
-    require(projection.get("backend_prompt_included") is False, projection)
-    return projection
+    require("relaymem_primary_recall_projection" not in metadata, metadata)
+    require("relaymem_primary_recall_runtime" not in metadata, metadata)
+    for key in metadata:
+        require("primary_recall" not in key, key)
+    return metadata
 
 
 def _scene_payload(scene_type: str, content: str | None = None) -> dict[str, Any]:
@@ -159,78 +159,41 @@ def main() -> int:
                 design_payload = _scene_payload(
                     "design_talk", "RelayMEM retrieval design"
                 )
-                design = _post_and_get_projection(
+                _post_and_assert_no_primary_projection(
                     client, trace_path, design_payload
                 )
-                require(
-                    design["schema_version"]
-                    == "relaymem.primary_recall_projection.v0",
-                    design,
-                )
-                require(design["retrieval_scope"] == "project_context", design)
-                require(
-                    design["fallback_reason"] == "memory_store_disabled",
-                    design,
-                )
-                require(design["selected_count"] == 0, design)
-                require(design["ctx_block_present"] is False, design)
-                require(design["estimated_tokens"] == 0, design)
-                require(design["injection_performed"] is False, design)
                 backend_payload = capture.last_chat_payload()
                 _assert_no_backend_artifact(backend_payload)
                 require(
                     backend_payload.get("metadata") == design_payload["metadata"],
                     backend_payload,
                 )
-                print("ok design_talk emits content-free retrieval projection")
+                print("ok design_talk request emits no Primary recall projection")
 
-                recovery = _post_and_get_projection(
+                _post_and_assert_no_primary_projection(
                     client,
                     trace_path,
                     _scene_payload("recovery", "何の話だったっけ"),
                 )
-                require(
-                    recovery["retrieval_scope"] == "current_context_only",
-                    recovery,
-                )
-                require(
-                    recovery["fallback_reason"]
-                    == "unresolved_reference_requires_confirmation",
-                    recovery,
-                )
-                require(recovery["persistence_block"] is True, recovery)
-                require(recovery["selected_count"] == 0, recovery)
                 _assert_no_backend_artifact(capture.last_chat_payload())
-                print("ok recovery projection stays current-context-only")
+                print("ok recovery request stays current-context-only with no Primary")
 
                 for scene_type in ("medical_or_safety", "formal_document"):
-                    projection = _post_and_get_projection(
+                    _post_and_assert_no_primary_projection(
                         client,
                         trace_path,
                         _scene_payload(scene_type),
                     )
-                    require(projection["selected_count"] == 0, projection)
-                    require(
-                        projection["fallback_reason"]
-                        == "external_memory_blocked_by_scene_policy",
-                        projection,
-                    )
-                    require(projection["persistence_block"] is True, projection)
-                print("ok formal and medical projections block external memory")
+                    _assert_no_backend_artifact(capture.last_chat_payload())
+                print("ok formal and medical requests release no Primary memory")
 
-                unknown = _post_and_get_projection(
+                _post_and_assert_no_primary_projection(
                     client,
                     trace_path,
                     _scene_payload("future_scene"),
                 )
-                require(unknown["scene_type"] == "unknown", unknown)
-                require(
-                    unknown["fallback_reason"] == "scene_policy_blocks_memory",
-                    unknown,
-                )
-                require(unknown["selected_count"] == 0, unknown)
-                require(unknown["persistence_block"] is True, unknown)
-                print("ok unknown scene projection fails closed")
+                _assert_no_backend_artifact(capture.last_chat_payload())
+                print("ok unknown scene request fails closed with no Primary")
 
                 metadata = _last_backend_response_metadata(trace_path)
                 projection_text = repr(
