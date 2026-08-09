@@ -6,13 +6,13 @@ from datetime import datetime, timezone
 import pytest
 
 from evidence_test_support import route_snapshot
-from relaylm.evidence_response_capture import (
+from relaylm.evidence.response_capture import (
     capture_managed_assistant_response_nonstream,
 )
-from relaylm.evidence_source_event import build_valid_validation_bundle
-from relaylm.evidence_store import EvidenceRecordStore
-from relaylm.evidence_user_input import capture_managed_user_input
-from relaylm.evidence_validation_artifacts import (
+from relaylm.evidence.source_event import build_valid_validation_bundle
+from relaylm.evidence.store import EvidenceRecordStore
+from relaylm.evidence.user_input import capture_managed_user_input
+from relaylm.evidence.validation_artifacts import (
     build_validation_artifact_identities,
 )
 

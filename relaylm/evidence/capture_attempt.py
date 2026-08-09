@@ -16,7 +16,7 @@ import hashlib
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from relaylm.evidence_common import (
+from relaylm.evidence.common import (
     AuthorityScope,
     PrincipalRef,
     build_runtime_authority,
@@ -144,7 +144,7 @@ def build_managed_conversation_route_snapshot(
     if snapshot_payload is None:
         return None, ("route_capture_grant_snapshot_missing",)
     try:
-        from relaylm.evidence_space import _authority_scope_from_dict
+        from relaylm.evidence.space import _authority_scope_from_dict
 
         expires_at_or_null = snapshot_payload["expires_at_or_null"]
         if expires_at_or_null is not None and type(expires_at_or_null) is not str:

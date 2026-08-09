@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from relaylm.evidence_common import canonical_digest, utf8_text_digest
+from relaylm.evidence.common import canonical_digest, utf8_text_digest
 
 SHARED_ASSESSMENT_REVISION_SCHEMA = "relaylm.shared_assessment_revision.v1"
 SHARED_ASSESSMENT_CURRENT_STATE_SCHEMA = (

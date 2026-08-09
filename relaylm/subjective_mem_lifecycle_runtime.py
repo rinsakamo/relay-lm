@@ -19,8 +19,8 @@ from relaylm._subjective_mem_commit_io import (
     inspect_canonical_page,
     secure_platform_supported,
 )
-from relaylm.evidence_common import canonical_digest, sha256_hex, utf8_text_digest
-from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreTransaction
+from relaylm.evidence.common import canonical_digest, sha256_hex, utf8_text_digest
+from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
 from relaylm.shared_assessment import SharedAssessmentCurrentState, SharedAssessmentRevision
 from relaylm.shared_assessment_runtime import (
     shared_assessment_current_state_key,

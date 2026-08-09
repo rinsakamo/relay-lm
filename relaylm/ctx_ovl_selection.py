@@ -16,7 +16,7 @@ from relaylm.ctx_ovl_types import (
     _SELECTION_MAX_TOTAL_BYTES,
     _parse_datetime,
 )
-from relaylm.evidence_common import new_opaque_id, utf8_text_digest
+from relaylm.evidence.common import new_opaque_id, utf8_text_digest
 
 
 def _prune_partition(

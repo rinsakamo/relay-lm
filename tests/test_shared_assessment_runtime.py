@@ -12,9 +12,9 @@ from pydantic import ValidationError
 from evidence_test_support import route_snapshot
 from relaylm.config import RelayLMConfig
 import relaylm.shared_assessment_runtime as shared_assessment_runtime
-from relaylm.evidence_space import derive_evidence_space_id
-from relaylm.evidence_store import EvidenceRecordStore
-from relaylm.evidence_user_input import capture_managed_user_input
+from relaylm.evidence.space import derive_evidence_space_id
+from relaylm.evidence.store import EvidenceRecordStore
+from relaylm.evidence.user_input import capture_managed_user_input
 from relaylm.shared_assessment import (
     SharedAssessmentProposal,
     derive_shared_assessment_id,
@@ -480,7 +480,7 @@ def test_default_off_and_apply_gate_reuses_absolute_evidence_root(tmp_path: Path
 
 
 def test_user_and_assistant_evidence_share_one_character_independent_pass(store) -> None:
-    from relaylm.evidence_response_capture import (
+    from relaylm.evidence.response_capture import (
         capture_managed_assistant_response_nonstream,
     )
 
@@ -727,7 +727,7 @@ def test_source_manifest_must_match_admission_digest(store) -> None:
     )
     source = json.loads(source_path.read_text(encoding="utf-8"))
     source["canonical_source_manifest"]["manifest_extensions"] = {"tampered": True}
-    from relaylm.evidence_common import canonical_digest
+    from relaylm.evidence.common import canonical_digest
 
     source["canonical_source_manifest_digest"] = canonical_digest(
         source["canonical_source_manifest"]
@@ -966,7 +966,7 @@ def test_temporal_monotonicity_and_naive_clocks_fail_closed(store) -> None:
 
 
 def _capture_assistant_for_hardening(store, *, suffix: str):
-    from relaylm.evidence_response_capture import (
+    from relaylm.evidence.response_capture import (
         capture_managed_assistant_response_nonstream,
     )
 

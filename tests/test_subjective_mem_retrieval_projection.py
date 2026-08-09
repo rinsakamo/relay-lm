@@ -10,7 +10,7 @@ import pytest
 
 import relaylm.subjective_mem_retrieval_projection as projection_module
 import relaylm.subjective_mem_retrieval_projection_store as store_module
-from relaylm.evidence_common import canonical_digest, utf8_text_digest
+from relaylm.evidence.common import canonical_digest, utf8_text_digest
 from relaylm.subjective_mem import (
     SUBJECTIVE_MEM_DECISION_SCHEMA,
     SUBJECTIVE_MEM_REVISION_SCHEMA,
@@ -1011,7 +1011,7 @@ def test_projection_modules_have_no_primary_shadow_or_request_path_dependency() 
         projection_module: {
             "__future__",
             "dataclasses",
-            "relaylm.evidence_common",
+            "relaylm.evidence.common",
             "relaylm.subjective_mem",
             "relaylm.subjective_mem_lifecycle_authority",
             "relaylm.subjective_mem_markdown",
@@ -1024,7 +1024,7 @@ def test_projection_modules_have_no_primary_shadow_or_request_path_dependency() 
             "stat",
             "dataclasses",
             "pathlib",
-            "relaylm.evidence_common",
+            "relaylm.evidence.common",
             "relaylm.subjective_mem_retrieval",
             "relaylm.subjective_mem_retrieval_projection",
         },

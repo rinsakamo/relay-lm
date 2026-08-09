@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 import relaylm.subjective_mem_retrieval_selection as selection_owner
-from relaylm.evidence_common import canonical_digest, utf8_text_digest
+from relaylm.evidence.common import canonical_digest, utf8_text_digest
 from relaylm.relaymem_grounded_recall_response import MAX_EVIDENCE_ITEMS
 from relaylm.subjective_mem import (
     SubjectiveMemFormationSnapshot,
@@ -750,7 +750,7 @@ def test_selection_owner_imports_no_characterization_ledger_or_io() -> None:
         node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)
     )
     assert imports == {
-        "__future__", "dataclasses", "typing", "relaylm.evidence_common",
+        "__future__", "dataclasses", "typing", "relaylm.evidence.common",
         "relaylm.relaymem_grounded_recall_response", "relaylm.subjective_mem_markdown",
         "relaylm.subjective_mem_retrieval", "relaylm.token_budget",
     }

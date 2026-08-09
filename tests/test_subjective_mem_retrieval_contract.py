@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 import relaylm.subjective_mem_retrieval as retrieval
-from relaylm.evidence_common import canonical_digest
+from relaylm.evidence.common import canonical_digest
 from relaylm.subjective_mem_retrieval import (
     RETRIEVAL_EXCLUSION_REASONS,
     SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
@@ -542,7 +542,7 @@ def test_contract_owner_has_no_runtime_primary_cache_or_io_dependency() -> None:
     )
     assert imports == {
         "__future__", "re", "dataclasses", "datetime", "typing",
-        "relaylm.evidence_common",
+        "relaylm.evidence.common",
     }
     for forbidden in (
         "relaymem_primary", "relaymem_retrieval", "subjective_mem_lifecycle_runtime",

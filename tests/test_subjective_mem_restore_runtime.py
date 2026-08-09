@@ -8,7 +8,7 @@ import inspect
 import json
 
 from relaylm._subjective_mem_commit_io import ARTIFACT_DIRECTORY_PARTS, PLATFORM_REVISION
-from relaylm.evidence_common import canonical_digest
+from relaylm.evidence.common import canonical_digest
 from relaylm.subjective_mem import SUBJECTIVE_MEM_REVISION_SCHEMA
 from relaylm.subjective_mem_lifecycle import LIFECYCLE_POLICY_REVISION
 from relaylm.subjective_mem_markdown import (

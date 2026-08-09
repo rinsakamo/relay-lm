@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from relaylm.evidence_common import (
+from relaylm.evidence.common import (
     AuthorityChangeSetRef,
     AuthorityScope,
     PolicySnapshotRef,
@@ -22,7 +22,7 @@ from relaylm.evidence_common import (
     build_runtime_authority,
     ev1_policy_snapshot_ref,
 )
-from relaylm.evidence_manifest import (
+from relaylm.evidence.manifest import (
     CanonicalSourceManifest,
     OccurrenceAudienceSnapshot,
     ProvenanceSnapshot,

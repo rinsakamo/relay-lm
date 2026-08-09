@@ -12,9 +12,9 @@ from pydantic import ValidationError
 
 from evidence_test_support import route_snapshot
 from relaylm.config import RelayLMConfig
-from relaylm.evidence_common import canonical_digest
-from relaylm.evidence_store import EvidenceRecordStore
-from relaylm.evidence_user_input import capture_managed_user_input
+from relaylm.evidence.common import canonical_digest
+from relaylm.evidence.store import EvidenceRecordStore
+from relaylm.evidence.user_input import capture_managed_user_input
 from relaylm.shared_assessment import SharedAssessmentProposal, derive_shared_assessment_id
 from relaylm.shared_assessment_runtime import (
     commit_shared_assessment_revision,
@@ -858,7 +858,7 @@ def test_atomic_transaction_contains_complete_prepared_set_and_is_content_free(s
 
 
 def test_commit_failure_exposes_no_prepared_result(store, monkeypatch) -> None:
-    from relaylm.evidence_store import EvidenceStoreResult, EvidenceStoreTransaction
+    from relaylm.evidence.store import EvidenceStoreResult, EvidenceStoreTransaction
 
     captured, assessment_revision, assessment_state = _asm_ready(store)
 
@@ -884,7 +884,7 @@ def test_commit_failure_exposes_no_prepared_result(store, monkeypatch) -> None:
 def test_mid_commit_failure_recovers_one_exact_prepared_result(
     store, monkeypatch
 ) -> None:
-    from relaylm.evidence_store import EvidenceStoreResult
+    from relaylm.evidence.store import EvidenceStoreResult
 
     captured, assessment_revision, assessment_state = _asm_ready(store)
     original_apply = EvidenceRecordStore._apply_transaction_writes_unlocked

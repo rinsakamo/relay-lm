@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from relaylm.evidence_common import canonical_digest
+from relaylm.evidence.common import canonical_digest
 from relaylm.shared_assessment import SharedAssessmentCurrentState, SharedAssessmentRevision
 from relaylm.subjective_mem import SubjectiveMemStrength
 

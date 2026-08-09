@@ -18,7 +18,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Iterable
 
-from relaylm.evidence_common import canonical_digest, sha256_hex
+from relaylm.evidence.common import canonical_digest, sha256_hex
 
 SUBJECTIVE_MEM_RETRIEVAL_REQUEST_SCHEMA = "relaylm.subjective_mem_retrieval_request.v1"
 SUBJECTIVE_MEM_RETRIEVAL_PROJECTION_ROW_SCHEMA = "relaylm.subjective_mem_retrieval_projection_row.v1"

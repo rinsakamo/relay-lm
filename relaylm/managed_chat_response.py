@@ -56,7 +56,7 @@ from relaylm.app_response_finalization import (
 )
 from relaylm.config import RelayLMConfig
 from relaylm.diagnostics import RequestDiagnostics
-from relaylm.evidence_runtime import (
+from relaylm.evidence.runtime import (
     build_evidence_response_capture_node_result,
     capture_evidence_for_assistant_response_nonstream,
     prepare_stream_evidence_response_capture,

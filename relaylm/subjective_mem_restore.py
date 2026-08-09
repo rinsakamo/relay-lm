@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
 
-from relaylm.evidence_common import canonical_digest, sha256_hex
+from relaylm.evidence.common import canonical_digest, sha256_hex
 
 RESTORE_OPERATION_FAMILY = "restore"
 RESTORE_AUTHORIZATION_CLASSES = frozenset({"user_management", "operator_management"})

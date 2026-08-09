@@ -26,7 +26,7 @@ import stat
 from dataclasses import fields
 from pathlib import Path
 
-from relaylm.evidence_common import canonical_digest, canonical_json_bytes, dedupe
+from relaylm.evidence.common import canonical_digest, canonical_json_bytes, dedupe
 from relaylm.subjective_mem_retrieval import (
     SubjectiveMemRetrievalProjectionManifest, SubjectiveMemRetrievalProjectionRow,
     validate_subjective_mem_retrieval_projection_manifest,

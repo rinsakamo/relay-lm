@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from relaylm.evidence_common import PrincipalRef, new_opaque_id
+from relaylm.evidence.common import PrincipalRef, new_opaque_id
 
 _MAX_CANDIDATE_BYTES = 8192
 _SELECTION_MAX_RECORDS = 4

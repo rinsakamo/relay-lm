@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
 
-from relaylm.evidence_common import canonical_digest, sha256_hex
+from relaylm.evidence.common import canonical_digest, sha256_hex
 
 CONSOLIDATE_OPERATION_FAMILY = "consolidate"
 CONSOLIDATE_AUTHORIZATION_CLASS = "relaymem_policy"

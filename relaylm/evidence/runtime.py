@@ -10,14 +10,14 @@ from relaylm.ctx_ovl_runtime import (
     prepare_ctx_ovl_before_user_capture,
     refresh_ctx_ovl_after_user_capture,
 )
-from relaylm.evidence_response_capture import (
+from relaylm.evidence.response_capture import (
     EvidenceResponseCaptureResult,
     capture_managed_assistant_response_nonstream,
     prepare_stream_with_evidence_response_capture,
 )
-from relaylm.evidence_space import derive_evidence_space_id
-from relaylm.evidence_store import EvidenceRecordStore
-from relaylm.evidence_user_input import (
+from relaylm.evidence.space import derive_evidence_space_id
+from relaylm.evidence.store import EvidenceRecordStore
+from relaylm.evidence.user_input import (
     EvidenceUserInputCaptureResult,
     capture_managed_user_input,
 )

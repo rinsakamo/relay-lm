@@ -12,7 +12,7 @@ from relaylm.pipeline_node_result import PipelineNodeResult
 from relaylm.routing import ResolvedRoute
 
 if TYPE_CHECKING:
-    from relaylm.evidence_user_input import EvidenceUserInputCaptureResult
+    from relaylm.evidence.user_input import EvidenceUserInputCaptureResult
     from relaylm.client_history_exclusion_apply import (
         ClientHistoryExclusionApplyResult,
     )

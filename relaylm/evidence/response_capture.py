@@ -13,20 +13,20 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from relaylm.evidence_response_admission import (
+from relaylm.evidence.response_admission import (
     finalize_response_capture,
     terminalize_no_output,
 )
-from relaylm.evidence_response_result import EvidenceResponseCaptureResult
-from relaylm.evidence_response_session import (
+from relaylm.evidence.response_result import EvidenceResponseCaptureResult
+from relaylm.evidence.response_session import (
     MAX_ASSISTANT_TEXT_CHARS,
     WORKSPACE_REF,
     PreparedResponseCapture,
     derive_id,
     prepare_response_capture,
 )
-from relaylm.evidence_space import derive_evidence_space_id
-from relaylm.evidence_store import EvidenceRecordStore
+from relaylm.evidence.space import derive_evidence_space_id
+from relaylm.evidence.store import EvidenceRecordStore
 
 _SSE_SEPARATORS = (b"\r\n\r\n", b"\n\n")
 _MAX_PENDING_SSE_FRAME_BYTES = MAX_ASSISTANT_TEXT_CHARS * 4 + 65_536

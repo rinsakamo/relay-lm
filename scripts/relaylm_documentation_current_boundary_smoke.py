@@ -160,13 +160,13 @@ REQUIRED = {
         "### RT-1D explicit non-goals",
         "`relaylm/subjective_mem_retrieval_cutover.py` is the one dedicated RT-1D cutover domain owner",
         "One dedicated domain owner, `relaylm/subjective_mem_retrieval_cutover.py`, owns the whole semantic RT-1D authority transfer.",
-        "`relaylm/evidence_store.py` is generic persistence infrastructure, not the RT-1D semantic authority.",
+        "`relaylm/evidence/store.py` is generic persistence infrastructure, not the RT-1D semantic authority.",
         "ordinary route / cutover orchestration\n  -> subjective_mem_retrieval_cutover domain owner\n       -> EvidenceRecordStore generic persistence",
         "The generic store must never import the cutover owner.",
         "The cutover owner reuses `EvidenceRecordStore` only for:",
-        "Therefore RT-1D introduces no second lock, no second durable root, no second transaction journal, and no second generic recovery mechanism, and adds no RT-1D policy or state-machine logic to `relaylm/evidence_store.py`.",
-        "Modifying `relaylm/evidence_store.py` is allowed only through a documented P1 return that proves, from exact evidence, a missing generic persistence capability that is not RT-1D-specific. This authorization does not pre-authorize such a change.",
-        "`relaylm/evidence_store.py` is an imported and reused generic infrastructure\ndependency, not an expected modified production path and not the RT-1D semantic\nowner.",
+        "Therefore RT-1D introduces no second lock, no second durable root, no second transaction journal, and no second generic recovery mechanism, and adds no RT-1D policy or state-machine logic to `relaylm/evidence/store.py`.",
+        "Modifying `relaylm/evidence/store.py` is allowed only through a documented P1 return that proves, from exact evidence, a missing generic persistence capability that is not RT-1D-specific. This authorization does not pre-authorize such a change.",
+        "`relaylm/evidence/store.py` is an imported and reused generic infrastructure\ndependency, not an expected modified production path and not the RT-1D semantic\nowner.",
         "primary_live\n  -> intent_recorded\n  -> reader_fenced\n  -> writer_fenced\n  -> subjective_prepared\n  -> receipt_finalized\n  -> validated\n  -> retired",
         "`subjective_prepared` constructs or validates the exact Subjective route inputs but releases no ordinary evidence and serves no ordinary request.",
         "Ordinary Subjective serving is authorized only by the exact finalized receipt.",
@@ -459,9 +459,9 @@ STALE = (
     "fresh RT-1D runtime has started",
     "Primary MEM is no longer the sole ordinary served memory and Retrieval authority",
     "RT-1D hard cutover, Primary retirement, and authority transfer remain\nunauthorized and not started.",
-    "the durable cutover intent/fences/receipt belong to `relaylm/evidence_store.py`",
+    "the durable cutover intent/fences/receipt belong to `relaylm/evidence/store.py`",
     "the Evidence store owns durable receipt/fence state",
-    "relaylm/relayctx_repack.py\nrelaylm/evidence_store.py",
+    "relaylm/relayctx_repack.py\nrelaylm/evidence/store.py",
     "subjective_enabled -> receipt_finalized",
     "(4) Subjective ordinary-reader enablement;",
     "A crash after enablement but before receipt finalization keeps Primary fenced and Subjective non-serving until forward finalization proves the exact state.",
@@ -729,7 +729,7 @@ PROBES = (
     ),
     (
         RT1C,
-        "`relaylm/evidence_store.py` is generic persistence infrastructure, not the RT-1D "
+        "`relaylm/evidence/store.py` is generic persistence infrastructure, not the RT-1D "
         "semantic authority.",
     ),
     (
@@ -744,11 +744,11 @@ PROBES = (
         RT1C,
         "Therefore RT-1D introduces no second lock, no second durable root, no second "
         "transaction journal, and no second generic recovery mechanism, and adds no RT-1D "
-        "policy or state-machine logic to `relaylm/evidence_store.py`.",
+        "policy or state-machine logic to `relaylm/evidence/store.py`.",
     ),
     (
         RT1C,
-        "Modifying `relaylm/evidence_store.py` is allowed only through a documented P1 "
+        "Modifying `relaylm/evidence/store.py` is allowed only through a documented P1 "
         "return that proves, from exact evidence, a missing generic persistence capability "
         "that is not RT-1D-specific. This authorization does not pre-authorize such a change.",
     ),
@@ -3126,10 +3126,10 @@ STALE_PROBES = (
     (PLAN, "RT-1B and RT-1C remain default-off, explicit shadow-only, and unwired from ordinary Retrieval"),
     (
         RT1C,
-        "the durable cutover intent/fences/receipt belong to `relaylm/evidence_store.py`",
+        "the durable cutover intent/fences/receipt belong to `relaylm/evidence/store.py`",
     ),
     (RT1C, "the Evidence store owns durable receipt/fence state"),
-    (RT1C, "relaylm/relayctx_repack.py\nrelaylm/evidence_store.py"),
+    (RT1C, "relaylm/relayctx_repack.py\nrelaylm/evidence/store.py"),
     (RT1C, "subjective_enabled -> receipt_finalized"),
     (RT1C, "(4) Subjective ordinary-reader enablement;"),
     (

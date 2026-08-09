@@ -5,43 +5,43 @@ import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from relaylm.evidence_capture_attempt import (
+from relaylm.evidence.capture_attempt import (
     CaptureAttemptLog,
     build_managed_conversation_route_snapshot,
     validate_route_snapshot_for_capture,
 )
-from relaylm.evidence_common import AuthorityChangeSetRef, dedupe
-from relaylm.evidence_governance import (
+from relaylm.evidence.common import AuthorityChangeSetRef, dedupe
+from relaylm.evidence.governance import (
     build_least_privilege_grant,
     initialize_admitted_governance,
 )
-from relaylm.evidence_manifest import (
+from relaylm.evidence.manifest import (
     build_canonical_source_manifest,
     build_managed_runtime_provenance,
     build_private_direct_audience,
     build_protected_text_part,
     build_source_occurrence_time,
 )
-from relaylm.evidence_response_binding import build_payload_binding_attestation
-from relaylm.evidence_source_event import (
+from relaylm.evidence.response_binding import build_payload_binding_attestation
+from relaylm.evidence.source_event import (
     SOURCE_EVENT_SCHEMA,
     SourceEvent,
     SourceReplayIdentityNone,
     build_admitted_admission_decision,
     build_valid_validation_bundle,
 )
-from relaylm.evidence_space import (
+from relaylm.evidence.space import (
     EvidenceSpaceDescriptor,
     build_bootstrap_evidence_space_descriptor,
     derive_evidence_space_id,
     derive_participant_principal,
 )
-from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreTransaction
-from relaylm.evidence_validation_artifacts import (
+from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
+from relaylm.evidence.validation_artifacts import (
     build_validation_artifact_events,
     build_validation_artifact_identities,
 )
-from relaylm.evidence_streams import (
+from relaylm.evidence.streams import (
     CaptureSequenceLog,
     SourceCaptureStreamDescriptor,
     build_capture_stream_descriptor,

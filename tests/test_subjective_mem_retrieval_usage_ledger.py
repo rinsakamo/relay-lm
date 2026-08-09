@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 
 import relaylm.subjective_mem_retrieval_usage_ledger as ledger_owner
-from relaylm.evidence_common import utf8_text_digest
-from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreResult
+from relaylm.evidence.common import utf8_text_digest
+from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreResult
 from relaylm.relaymem_grounded_recall_response import build_grounded_recall_context
 from relaylm.subjective_mem_retrieval import (
     RETRIEVAL_USAGE_EVENT_KIND,
@@ -579,8 +579,8 @@ def test_ledger_depends_one_way_on_selection_and_reuses_the_evidence_store() -> 
         node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)
     )
     assert imports == {
-        "__future__", "dataclasses", "typing", "relaylm.evidence_common",
-        "relaylm.evidence_store", "relaylm.subjective_mem_retrieval",
+        "__future__", "dataclasses", "typing", "relaylm.evidence.common",
+        "relaylm.evidence.store", "relaylm.subjective_mem_retrieval",
         "relaylm.subjective_mem_retrieval_selection",
     }
     assert "SubjectiveMemRetrievalAdmittedHandoff" not in inspect.getsource(

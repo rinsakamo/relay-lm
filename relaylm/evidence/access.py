@@ -4,13 +4,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from relaylm.evidence_common import (
+from relaylm.evidence.common import (
     PolicySnapshotRef,
     canonical_digest,
     dedupe,
     new_opaque_id,
 )
-from relaylm.evidence_governance import AccessGrant, EvidenceGovernanceState
+from relaylm.evidence.governance import AccessGrant, EvidenceGovernanceState
 
 AUTHORIZATION_SCHEMA = "relaylm.evidence_access_authorization_projection.v1"
 _GATE_KIND_BY_PURPOSE = {

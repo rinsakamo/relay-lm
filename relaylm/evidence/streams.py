@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from relaylm.evidence_common import (
+from relaylm.evidence.common import (
     AuthorityScope,
     PolicySnapshotRef,
     PrincipalRef,
@@ -84,7 +84,7 @@ class SourceCaptureStreamDescriptor:
 
     @classmethod
     def from_dict(cls, payload: dict[str, object]) -> "SourceCaptureStreamDescriptor":
-        from relaylm.evidence_space import _authority_scope_from_dict
+        from relaylm.evidence.space import _authority_scope_from_dict
 
         return cls(
             schema=str(payload["schema"]),

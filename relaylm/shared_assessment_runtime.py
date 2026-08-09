@@ -17,12 +17,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Literal
 
-from relaylm.evidence_common import (
+from relaylm.evidence.common import (
     canonical_digest,
     sha256_hex,
     utf8_text_digest,
 )
-from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreTransaction
+from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
 from relaylm.shared_assessment_evidence import (
     authorized_shared_assessment_sources_match_bundle,
     load_authorized_shared_assessment_sources,

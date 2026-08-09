@@ -10,16 +10,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from relaylm.evidence_access import resolve_evidence_access_authorization
-from relaylm.evidence_common import (
+from relaylm.evidence.access import resolve_evidence_access_authorization
+from relaylm.evidence.common import (
     PolicySnapshotRef,
     build_runtime_authority,
     canonical_digest,
     ev1_policy_snapshot_ref,
     utf8_text_digest,
 )
-from relaylm.evidence_governance import AccessGrant, EvidenceGovernanceState
-from relaylm.evidence_store import EvidenceStoreTransaction
+from relaylm.evidence.governance import AccessGrant, EvidenceGovernanceState
+from relaylm.evidence.store import EvidenceStoreTransaction
 from relaylm.shared_assessment import (
     SharedAssessmentAuthorizationSnapshot,
     SharedAssessmentEvidenceRef,

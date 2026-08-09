@@ -12,7 +12,7 @@ from relaylm.diagnostics import (
     build_relayctx_short_term_extraction_dry_run,
     build_relayctx_short_term_runtime_injection_preflight,
 )
-from relaylm.evidence_runtime import capture_evidence_for_user_input
+from relaylm.evidence.runtime import capture_evidence_for_user_input
 from relaylm.pipeline_context import PipelineContext
 from relaylm.pipeline_stage import run_stage
 from relaylm.relayctx_repack import (

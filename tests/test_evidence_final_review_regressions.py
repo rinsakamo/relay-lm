@@ -9,14 +9,14 @@ import httpx
 import pytest
 import respx
 
-import relaylm.evidence_response_capture as response_capture_module
-from relaylm.evidence_capture_attempt import build_managed_conversation_route_snapshot
-from relaylm.evidence_space import derive_evidence_space_id
-from relaylm.evidence_response_capture import (
+import relaylm.evidence.response_capture as response_capture_module
+from relaylm.evidence.capture_attempt import build_managed_conversation_route_snapshot
+from relaylm.evidence.space import derive_evidence_space_id
+from relaylm.evidence.response_capture import (
     capture_managed_assistant_response_nonstream,
     wrap_stream_with_evidence_response_capture,
 )
-from relaylm.evidence_store import EvidenceRecordStore
+from relaylm.evidence.store import EvidenceRecordStore
 from evidence_test_support import route_snapshot
 from test_evidence_runtime_e2e import (
     BACKEND_CHAT_COMPLETIONS_URL,

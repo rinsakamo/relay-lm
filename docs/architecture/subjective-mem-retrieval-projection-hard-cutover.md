@@ -1132,7 +1132,7 @@ That owner does not own:
 
 #### EvidenceRecordStore is a reused generic dependency
 
-`relaylm/evidence_store.py` is generic persistence infrastructure, not the RT-1D semantic authority. `EvidenceRecordStore` already owns per-evidence-space locking, atomic record/log commit, create-or-verify identity, prepared-transaction replay, and bounded persistence mechanics, and it imports no domain module. RT-1C already follows this direction in `relaylm/subjective_mem_retrieval_usage_ledger.py`, and LC-1 follows it in its lifecycle runtime/engine owners. RT-1D preserves that same dependency direction:
+`relaylm/evidence/store.py` is generic persistence infrastructure, not the RT-1D semantic authority. `EvidenceRecordStore` already owns per-evidence-space locking, atomic record/log commit, create-or-verify identity, prepared-transaction replay, and bounded persistence mechanics, and it imports no domain module. RT-1C already follows this direction in `relaylm/subjective_mem_retrieval_usage_ledger.py`, and LC-1 follows it in its lifecycle runtime/engine owners. RT-1D preserves that same dependency direction:
 
 ```text
 ordinary route / cutover orchestration
@@ -1150,9 +1150,9 @@ The cutover owner reuses `EvidenceRecordStore` only for:
 - prepared-transaction recovery;
 - generic bounded persistence.
 
-Therefore RT-1D introduces no second lock, no second durable root, no second transaction journal, and no second generic recovery mechanism, and adds no RT-1D policy or state-machine logic to `relaylm/evidence_store.py`.
+Therefore RT-1D introduces no second lock, no second durable root, no second transaction journal, and no second generic recovery mechanism, and adds no RT-1D policy or state-machine logic to `relaylm/evidence/store.py`.
 
-Modifying `relaylm/evidence_store.py` is allowed only through a documented P1 return that proves, from exact evidence, a missing generic persistence capability that is not RT-1D-specific. This authorization does not pre-authorize such a change.
+Modifying `relaylm/evidence/store.py` is allowed only through a documented P1 return that proves, from exact evidence, a missing generic persistence capability that is not RT-1D-specific. This authorization does not pre-authorize such a change.
 
 ### Prerequisites and exact execution order
 
@@ -1359,14 +1359,14 @@ construction roots, exact correction/forget route-install roots, and
 `relaymem_primary_mutation_coordinator.py` for a narrow local checkpoint only.
 Facade-only changes are insufficient where a direct/private apply remains.
 
-`relaylm/evidence_store.py`, `relaylm/evidence_space.py`, the canonical Markdown,
+`relaylm/evidence/store.py`, `relaylm/evidence/space.py`, the canonical Markdown,
 lifecycle, selector, receipt, and E1-R4 policy owners are reused and excluded
 from modification absent a new evidence-backed P1 return.  They do not become
 cutover authorities.  No generic registry, adapter, factory, plugin, second
 store, marker, journal, lock, recovery owner, environment lookup, or inferred
 root is authorized.
 
-`relaylm/evidence_store.py` is an imported and reused generic infrastructure
+`relaylm/evidence/store.py` is an imported and reused generic infrastructure
 dependency, not an expected modified production path and not the RT-1D semantic
 owner.
 
@@ -2088,7 +2088,7 @@ primary_stable
 
 Public diagnostics/results expose no paths, memory prose, raw query/prompt, private context/handoff, page/source body, workspace identity, selector/receipt/authorization digests, unrestricted lineage, or arbitrary correlation material. Subjective serving is false, both fences are false, usage-finalized is false, counts are zero, probe is not applicable, and `runtime_private_evidence_omitted=true`. R1 is caller-invoked, default-off, and Primary-only. It adds no ordinary-path wiring; intent, fence, activation, final receipt, usage, or probe record; reader, writer, fallback, queue, worker, scheduler, mutation, API/UI/app, deployment, or retirement change.
 
-Immutable SHA-256 evidence: `relaylm/evidence_store.py` `41cfa9af6c32c1359be04f497924883ffbc4abb4e39313a44755494f92e2b41f`; `relaylm/evidence_common.py` `db03f3cb892bd43159d1b7e11d9d80cc923fd5c2a5c29891eea082c9a5bb7ec0`; `relaylm/subjective_mem_retrieval_selection.py` `13ef7dd7cd652e60db62bcc744c4361db49062c7beedd515b004139d0abe89e9`; `relaylm/subjective_mem_retrieval_usage_ledger.py` `eb2f9196f54a4aecf6ff63cc377df13df9f918881befdb8c59d505b8780a27d9`; `relaylm/managed_chat_pipeline_runtime.py` `382830637cae6c271aa9299510cdd8543f06515a816ffb696696c7321fc84469`; `relaylm/relaymem_retrieval.py` `92f147f0bb834357908b89410324412d7a4e61e396b3c61ce86500deda9f25f3`; `relaylm/relaymem_primary_recall.py` `013da1ec84f472a6207a21176c778803843bb1fc8473fa528e4558d80813adcb`; `relaylm/relaymem_primary_pipeline.py` `5a353151da197e9c43a25d4255f785777b739c2f9040cb517b4f8e2e2aceb22f`.
+Immutable SHA-256 evidence: `relaylm/evidence/store.py` `41cfa9af6c32c1359be04f497924883ffbc4abb4e39313a44755494f92e2b41f`; `relaylm/evidence/common.py` `db03f3cb892bd43159d1b7e11d9d80cc923fd5c2a5c29891eea082c9a5bb7ec0`; `relaylm/subjective_mem_retrieval_selection.py` `13ef7dd7cd652e60db62bcc744c4361db49062c7beedd515b004139d0abe89e9`; `relaylm/subjective_mem_retrieval_usage_ledger.py` `eb2f9196f54a4aecf6ff63cc377df13df9f918881befdb8c59d505b8780a27d9`; `relaylm/managed_chat_pipeline_runtime.py` `382830637cae6c271aa9299510cdd8543f06515a816ffb696696c7321fc84469`; `relaylm/relaymem_retrieval.py` `92f147f0bb834357908b89410324412d7a4e61e396b3c61ce86500deda9f25f3`; `relaylm/relaymem_primary_recall.py` `013da1ec84f472a6207a21176c778803843bb1fc8473fa528e4558d80813adcb`; `relaylm/relaymem_primary_pipeline.py` `5a353151da197e9c43a25d4255f785777b739c2f9040cb517b4f8e2e2aceb22f`.
 
 Focused R1 validation was 38 passed and focused config/store/import validation was 60 passed. R1 smoke, consolidated Subjective lifecycle group, ruff, `py_compile`, `compileall`, diff/path/hash/structure checks, execution guard, and all applicable exact-head workflows passed. There were no reviews, comments, requested reviewers, or unresolved threads.
 
@@ -2483,7 +2483,7 @@ RT-1D-R4 one-authority activation implementation completed in PR #834 from exact
 
 The exact-twelve RT-1D-R4 production/config budget was preserved exactly: eleven paths changed and `relaylm/subjective_mem_retrieval_selection.py` remained byte-identical by design, because its single projection construction site already passes neither `ordinary_route_admitted` nor `usage_event_recorded`, so admission is proven at the usage-ledger owner boundary rather than asserted at selection. The budget therefore stands at exactly 12 of 12 and no thirteenth RT-1D-R4 production or configuration path was taken. The focused evidence was exactly `tests/test_subjective_mem_retrieval_cutover.py`, `tests/test_subjective_mem_retrieval_usage_ledger.py`, `tests/test_rt1d_reader_seams.py`, and `tests/test_memory_stage_extraction.py`.
 
-The bounded P5 smoke-carriage correction changed exactly seven existing Primary direct-recall smoke scripts. `apply_relaymem_primary_recall_scope()` now enforces the Primary reader fence at its own boundary, so 12 existing call sites across 7 files were corrected to construct the exact immutable decision through the canonical owner instead of weakening the production fence to make a missing decision imply `primary_only`. That correction changed no production or configuration path. No new test, smoke, helper, support, framework, registry, or control-plane file was created, and the RT-1D-R3 rehearsal and characterization owners, the projection builder and store, `relaylm/evidence_store.py`, the LAT-1 owners, the writer-carriage modules, API/UI, scheduler, deployment, workflow, and contract paths remain byte-identical.
+The bounded P5 smoke-carriage correction changed exactly seven existing Primary direct-recall smoke scripts. `apply_relaymem_primary_recall_scope()` now enforces the Primary reader fence at its own boundary, so 12 existing call sites across 7 files were corrected to construct the exact immutable decision through the canonical owner instead of weakening the production fence to make a missing decision imply `primary_only`. That correction changed no production or configuration path. No new test, smoke, helper, support, framework, registry, or control-plane file was created, and the RT-1D-R3 rehearsal and characterization owners, the projection builder and store, `relaylm/evidence/store.py`, the LAT-1 owners, the writer-carriage modules, API/UI, scheduler, deployment, workflow, and contract paths remain byte-identical.
 
 The RT-1D-R4 structural gates held by measurement at the exact resulting main: `relaylm/subjective_mem_retrieval_cutover.py` is 998 physical lines against the strictly-below-1000 RT-1D-R4-only exception, `relaylm/_subjective_mem_retrieval_runtime_projection.py` is 481 and `relaylm/_subjective_mem_retrieval_cutover_activation.py` is 314 against the roughly-600 private-owner gate, and the materially changed orchestrations `run_managed_chat_pipeline` at 79, `run_relaymem_retrieval_stage` at 74, and `handle_managed_chat_completion` at 64 are each at or below roughly 80. No physical-line compression, wrapper splitting, dynamic import, duplicate semantic validation, second authority evaluator, or responsibility laundering was used. The full Python 3.12 suite passed 1089 tests with 0 failures and 1 warning at the final exact head, and no RT-1D-R5 retirement behavior was introduced.
 

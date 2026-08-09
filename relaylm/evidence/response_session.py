@@ -5,23 +5,23 @@ import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from relaylm.evidence_capture_attempt import (
+from relaylm.evidence.capture_attempt import (
     CaptureAttemptLog,
     RouteCaptureGrantSnapshot,
     build_managed_conversation_route_snapshot,
     validate_route_snapshot_for_capture,
 )
-from relaylm.evidence_common import canonical_digest, dedupe
-from relaylm.evidence_manifest import build_private_direct_audience
-from relaylm.evidence_response_binding import ResponseCaptureLog, build_response_capture_reservation
-from relaylm.evidence_space import (
+from relaylm.evidence.common import canonical_digest, dedupe
+from relaylm.evidence.manifest import build_private_direct_audience
+from relaylm.evidence.response_binding import ResponseCaptureLog, build_response_capture_reservation
+from relaylm.evidence.space import (
     EvidenceSpaceDescriptor,
     build_bootstrap_evidence_space_descriptor,
     derive_evidence_space_id,
     derive_participant_principal,
 )
-from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreTransaction
-from relaylm.evidence_streams import (
+from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
+from relaylm.evidence.streams import (
     CaptureSequenceLog,
     SourceCaptureStreamDescriptor,
     build_capture_stream_descriptor,

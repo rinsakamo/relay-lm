@@ -26,7 +26,7 @@ from relaylm._subjective_mem_retrieval_runtime_projection import (
     subjective_mem_retrieval_runtime_projection_spec,
     verify_subjective_mem_retrieval_runtime_projection,
 )
-from relaylm.evidence_common import canonical_digest
+from relaylm.evidence.common import canonical_digest
 from relaylm.subjective_mem_retrieval import (
     SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
     SubjectiveMemRetrievalBoundary,

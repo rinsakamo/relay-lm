@@ -12,7 +12,7 @@ import relaylm.managed_chat_response as managed_chat_response
 import relaylm.managed_chat_runtime as managed_chat_runtime
 from relaylm.app import create_app
 from evidence_test_support import route_snapshot
-from relaylm.evidence_response_capture import (
+from relaylm.evidence.response_capture import (
     EvidenceResponseCaptureResult,
     wrap_stream_with_evidence_response_capture,
 )
