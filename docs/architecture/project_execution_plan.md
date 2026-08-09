@@ -228,7 +228,7 @@ RT-1 / Lane C legacy program                       COMPLETE
        ↓
 Lane R  R5 governed core package migration
        +
-Lane D  D5 / D6 canonicalization and final retirement
+Lane D  D6 final retirement and legacy cutover-tool retirement
        ↓
 Lane D  PD-1 Personality responsibility convergence
        ↓
@@ -308,7 +308,7 @@ The currently eligible repository work is:
 
 ```text
 Lane R  R5 governed core package migration              eligible now
-Lane D  D5 -> D6 canonicalization and final retirement  continue to completion
+Lane D  D6 final retirement / cutover-tool retirement   continue to completion
 Lane R  R6 Primary MEM disposition                      required cleanup after R5
 Lane C                                                  idle until PD-2 completes
 ```
@@ -498,7 +498,7 @@ PM-D3 is closed by the shipped P0-PIPE request-path ordering fix, which removes 
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
-The paragraph below is the retained historical record of the post-E1-R5 candidate state. Each of its present-tense progress and authority statements is scoped to the earlier point at which it was written and does not describe current state; the current position is RT-1 complete, with Lane R R5 and Lane D D5/D6 eligible as recorded in [Post-RT-1 repository-wide sequencing](#post-rt-1-repository-wide-sequencing). The PM-D1, PM-D2, PM-D4, and PM-D9 decision debt it names does remain open.
+The paragraph below is the retained historical record of the post-E1-R5 candidate state. Each of its present-tense progress and authority statements is scoped to the earlier point at which it was written and does not describe current state; the current position is RT-1 complete, with Lane R R5 eligible and Lane D advanced into D6 final retirement as recorded in [Post-RT-1 repository-wide sequencing](#post-rt-1-repository-wide-sequencing). The PM-D1, PM-D2, PM-D4, and PM-D9 decision debt it names does remain open.
 
 Within the pre-existing post-E1-R5 decision-debt registry: The remaining candidates are PM-D1/PM-D4/PM-D9 follow-through and PM-D2 closure or absorption after PM-D6. The separately registered dependency-first implementation program is complete through RT-1D-S2: EV-1, OVL-1, ASM-1, SM-1, the default-off bounded ST-1 create commit slice, LC-1A through LC-1E, the RT-1A contract and projection foundation, the RT-1B projection builder and deterministic rebuild, the default-off shadow-only RT-1C selection, characterization, and usage ledger, the behavior-preserving RT-1D-S1 reader seams completed in PR #789, and the behavior-preserving RT-1D-S2 worker seams completed in PR #791 with exact resulting main `31b700a2db0af7819f761d51bd946ff6798eb4c9`. LC-1 lifecycle migration is complete; RT-1D-R1 and mandatory R1 P8 PR #802 are complete, the initial R2 attempt returned at P1 without repository mutation, and PR #803 was the historical architecture-only amendment and subsequently completed. PR #790 completed the S1 mandatory P8 current-authority sync with exact resulting main `3e20274f18306f7db2410fd5239051411b9c052b`. PR #792 completed the S2 mandatory P8 current-authority sync, and the S3A-S3C structural sequence plus mandatory P8 transactions subsequently completed through PR #799 result `d9caff1750e93f9d4ce2f0852e070bc96cb1bf2f`. Architecture PR #800, R1 PR #801, and mandatory R1 P8 PR #802 then completed with their recorded results; renewed R2 was historically gated by PR #803 merge and independent verification of its exact resulting main. Primary MEM remains the sole ordinary served memory and Retrieval authority. PM-D4, PM-D9, and PM-D1 apply as the narrow default-on, multilingual-generation, and SOUL-conditioned-formation gates recorded above; PM-D2 remains separately governed. Durable-memory E2 value smoke is complete as local human-reviewed v0.1 readiness evidence. RelayATN remains ATN-0 planning-only debt after voice-out / SOUL Lab Runtime MVP and does not authorize implementation.
 

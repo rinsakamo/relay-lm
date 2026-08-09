@@ -40,13 +40,13 @@ Current implementation completion remains owned by [Project Status](../PROJECT_S
 
 The original planning-adoption prerequisites and the legacy Lane C critical implementation program are complete. Current implementation authority records RT-1D-R5 immediate retirement, its mandatory P8, and the P8 result/current-authority correction as completed. The ordinary Primary reader and its ranking/fallback path are retired; only explicitly classified read-only Primary history/observation/lifecycle/admin projections survive.
 
-This completion releases the prerequisite that kept core memory and Retrieval modules protected from repository package migration. The next repository-maintenance stage is therefore Lane R R5, governed core package migration. Lane D continues its already-open canonicalization/retirement program through D6 independently where path and authority safety permit.
+This completion releases the prerequisite that kept core memory and Retrieval modules protected from repository package migration. The next repository-maintenance stage is therefore Lane R R5, governed core package migration. Lane D has since advanced into D6; D6 final retirement and legacy cutover-tool retirement is the remaining Lane D work before PD-1, and it continues independently where path and authority safety permit.
 
 The post-RT-1 handoff is:
 
 ```text
 Lane R  R5 governed core package migration                 now eligible
-Lane D  D5 -> D6 canonicalization / final retirement       continue to completion
+Lane D  D6 final retirement / cutover-tool retirement      continue to completion
 
 R5 complete + D6 complete
   -> Lane D PD-1 personality responsibility convergence
@@ -192,7 +192,7 @@ PC-1 Personality State
   -> PC-4 Reflective Distillation
 ```
 
-The accepted target architecture for this later program is subordinate to the repository-wide sequencing authority in `docs/architecture/project_execution_plan.md`; this repository-maintenance plan does not define personality semantics or authorize those runtime changes by itself.
+Personality semantics for this later program remain owned by the accepted [Character Personality and Experience Architecture](../architecture/character/personality-and-experience.md); only repository execution ordering is governed by `docs/architecture/project_execution_plan.md`. This repository-maintenance plan does not define personality semantics or authorize those runtime changes by itself.
 
 ## Lane D: documentation canonicalization and historical retirement
 
@@ -307,7 +307,7 @@ No redirect stub, duplicate archived Markdown copy, or second live path is creat
 
 D4 lifecycle and mutation canonicalization begins only after LC-1B through LC-1E stabilize lifecycle semantics. That prerequisite is complete.
 
-D5 Retrieval and Primary MEM canonicalization begins only after RT-1 establishes one ordinary Retrieval authority. That prerequisite is complete; D5/D6 continue according to their own current Lane D authority and status.
+D5 Retrieval and Primary MEM canonicalization begins only after RT-1 establishes one ordinary Retrieval authority. That prerequisite is complete, and Lane D has since advanced into D6; D6 final retirement and legacy cutover-tool retirement continues according to its own current Lane D authority and status.
 
 After D6 and Lane R R5 are both complete, Lane D opens a new bounded Personality Design convergence program:
 
