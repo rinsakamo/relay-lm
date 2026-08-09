@@ -1,8 +1,6 @@
 # Archived: Product Runtime Hardening
 
-This early cross-cutting product/runtime planning document has moved to the [historical architecture archive](archive/product_runtime_hardening.md).
-
-It mixed durable requirements with a superseded MVP-0 through MVP-5 roadmap and duplicated material that is now owned by current architecture, memory, integration, and product documents.
+The early cross-cutting product/runtime planning source has been retired from the live documentation tree after its durable responsibilities were absorbed into current architecture, memory, integration, and product authorities. Its exact historical text remains recoverable from Git history.
 
 Use these current documents instead:
 
@@ -16,4 +14,4 @@ Use these current documents instead:
 - [RelayMEM retrieval execution design](relaymem_retrieval_execution_design.md) and [RelayMEM SLP execution design](relaymem_slp_execution_design.md) for memory read/write lifecycle boundaries
 - [Open-LLM-VTuber integration design](open_llm_vtuber_integration.md) for frontend/API integration
 
-The archived document remains useful as early product-roadmap history, but it no longer defines current implementation status or canonical runtime requirements.
+The superseded MVP roadmap, broad mode fallback ladder, and early implementation examples are historical context only and no longer define current implementation status or canonical runtime requirements.
