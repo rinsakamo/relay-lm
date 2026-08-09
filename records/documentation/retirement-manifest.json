@@ -2,6 +2,23 @@
   "schema_version": "relaylm.documentation.retirement-manifest.v1",
   "entries": [
     {
+      "old_path": "docs/architecture/runtime_operational_requirements.md",
+      "last_live_commit": "db05e86f4fee5f09e58aa2b6e571a4f365763659",
+      "old_blob_sha": "8e96c283262537ce0a2b94f7760d3a1351dde75b",
+      "removed_by_pr": 949,
+      "replacement_paths": [
+        "docs/architecture/context/context-assembly.md",
+        "docs/architecture/performance/perceived-latency.md",
+        "docs/architecture/privacy/local-first-runtime.md",
+        "docs/architecture/runtime/operational-observability.md",
+        "docs/architecture/runtime/reliability-and-compatibility.md",
+        "docs/architecture/runtime/request-response-pipeline.md",
+        "docs/contracts/runtime/managed-route-fallback.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R8 retired the mixed runtime-operational source after its durable privacy/isolation, observability, and reliability/compatibility responsibilities were extracted by PRs #945, #946, and #948 and its remaining fallback, context, performance, request/response, memory, scheduler, and adapter responsibilities were already owned by canonical authorities; volatile implementation enumerations and historical mode ladders remain recoverable from Git rather than continuing as active architecture."
+    },
+    {
       "old_path": "docs/architecture/archive/persona_specialized_proxy_design.md",
       "last_live_commit": "37d2c1f16d9969cf853cf640ad52c31485c8221f",
       "old_blob_sha": "3269bcfdbabc2585a81011d3dc02ba259348ff4a",
@@ -221,15 +238,17 @@
       "replacement_paths": [
         "docs/architecture/open_llm_vtuber_integration.md",
         "docs/architecture/pipeline-responsibilities.md",
+        "docs/architecture/privacy/local-first-runtime.md",
         "docs/architecture/runtime/compile-and-checkpoint.md",
+        "docs/architecture/runtime/operational-observability.md",
+        "docs/architecture/runtime/reliability-and-compatibility.md",
         "docs/architecture/runtime/request-response-pipeline.md",
-        "docs/architecture/runtime_operational_requirements.md",
         "docs/architecture/system-overview.md",
         "docs/config_schema.md",
         "docs/openwebui_lmstudio_mvp.md"
       ],
       "disposition": "absorbed",
-      "retention_reason": "D2-B2b migrated every remaining consumer to the smallest canonical system, pipeline, request/response, compile/checkpoint, configuration, integration, or operational authority and removed the mixed transitional note; its historical wording remains recoverable from Git."
+      "retention_reason": "D2-B2b migrated every remaining consumer to the smallest canonical system, pipeline, request/response, compile/checkpoint, configuration, integration, or operational authority and removed the mixed transitional note; D6-R8 later replaced its now-retired runtime-operational replacement edge with canonical privacy, observability, and reliability authorities; its historical wording remains recoverable from Git."
     },
     {
       "old_path": "docs/architecture/runtime_compile_gate_design.md",
