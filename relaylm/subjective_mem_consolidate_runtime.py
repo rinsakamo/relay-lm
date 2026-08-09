@@ -16,7 +16,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Callable, Literal
 
-from relaylm._subjective_mem_commit_io import PLATFORM_REVISION, inspect_canonical_page, secure_platform_supported
+from relaylm.subjective_mem.commit_io import PLATFORM_REVISION, inspect_canonical_page, secure_platform_supported
 from relaylm.evidence.common import canonical_digest, sha256_hex
 from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
 from relaylm.subjective_mem.models import SUBJECTIVE_MEM_REVISION_SCHEMA, SubjectiveMemCharacterAuthority, SubjectiveMemCurrentState, SubjectiveMemRevision, resolve_subjective_mem_character_authority

@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import replace
 import inspect
 
-from relaylm._subjective_mem_commit_io import PLATFORM_REVISION
+from relaylm.subjective_mem.commit_io import PLATFORM_REVISION
 from relaylm.evidence.common import canonical_digest
 from relaylm.evidence.space import (
     build_bootstrap_evidence_space_descriptor,
@@ -18,7 +18,7 @@ from relaylm.subjective_mem.models import (
     SubjectiveMemScopeBinding,
     SubjectiveMemStrength,
 )
-from relaylm.subjective_mem_commit import ST1_RECEIPT_SCHEMA
+from relaylm.subjective_mem.commit import ST1_RECEIPT_SCHEMA
 from relaylm.subjective_mem_consolidate import (
     CONSOLIDATE_AUTHORIZATION_CLASS,
     CONSOLIDATE_OPERATION_FAMILY,

@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-import relaylm._subjective_mem_commit_io as commit_io
-import relaylm.subjective_mem_commit_runtime as commit_runtime
+import relaylm.subjective_mem.commit_io as commit_io
+import relaylm.subjective_mem.commit_runtime as commit_runtime
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
@@ -23,7 +23,7 @@ from relaylm.config import RelayLMConfig
 from relaylm.evidence.store import EvidenceRecordStore
 from relaylm.portable_lock import acquire_portable_lock, release_portable_lock
 from relaylm.subjective_mem.models import SubjectiveMemCurrentState
-from relaylm.subjective_mem_commit_runtime import (
+from relaylm.subjective_mem.commit_runtime import (
     finalize_subjective_mem_create,
     resolve_subjective_mem_commit_gate,
     validate_finalized_subjective_mem_operation,

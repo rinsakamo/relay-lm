@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 
-from relaylm._subjective_mem_commit_io import PLATFORM_REVISION
+from relaylm.subjective_mem.commit_io import PLATFORM_REVISION
 from relaylm.evidence.common import canonical_digest, sha256_hex
 from relaylm.subjective_mem.models import (
     SUBJECTIVE_MEM_REVISION_SCHEMA,

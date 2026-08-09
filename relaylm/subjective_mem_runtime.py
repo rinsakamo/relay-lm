@@ -585,7 +585,7 @@ def create_subjective_mem(
                     "subjective_mem_finalization_workspace_unavailable",
                 ),
             )
-        from relaylm.subjective_mem_commit_runtime import (
+        from relaylm.subjective_mem.commit_runtime import (
             validate_finalized_subjective_mem_operation,
         )
 

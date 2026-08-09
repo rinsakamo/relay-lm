@@ -20,7 +20,7 @@ from relaylm.subjective_mem.models import (
     SubjectiveMemScopeBinding,
     SubjectiveMemStrength,
 )
-from relaylm.subjective_mem_commit import ST1_RECEIPT_SCHEMA
+from relaylm.subjective_mem.commit import ST1_RECEIPT_SCHEMA
 from relaylm.subjective_mem_lifecycle import (
     LIFECYCLE_POLICY_REVISION,
     LIFECYCLE_RECEIPT_SCHEMA,

@@ -12,7 +12,7 @@ from pydantic import ValidationError
 from relaylm.config import RelayLMConfig
 from relaylm.evidence.common import canonical_digest
 from relaylm.evidence.store import EvidenceRecordStore
-from relaylm._subjective_mem_commit_io import PLATFORM_REVISION
+from relaylm.subjective_mem.commit_io import PLATFORM_REVISION
 from relaylm.subjective_mem.models import (
     SUBJECTIVE_MEM_CURRENT_STATE_V2_SCHEMA,
     SUBJECTIVE_MEM_REVISION_SCHEMA,
