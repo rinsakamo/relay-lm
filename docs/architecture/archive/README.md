@@ -61,32 +61,6 @@ Useful principles migrated or already represented in current documents:
 - forced sleep/reset should remain rare and fail-closed -> [RelayMEM SLP execution design](../relaymem_slp_execution_design.md),
 - no extra Wake-time LLM output should be generated solely to run SLP -> [RelayMEM SLP execution design](../relaymem_slp_execution_design.md).
 
-## Archived product-origin designs
-
-### RelayLM VTuber Memory Proxy Design
-
-Reason archived:
-
-- topology, modes, backend stance, routing, and compatibility behavior are covered by current runtime and integration documents,
-- its first-product implementation notes are historical,
-- its distinct remaining value is product positioning and realtime latency posture.
-
-Useful principles migrated into current documents:
-
-- AI character memory should improve continuity without replacing frontend ownership -> [AI character product principles](../ai_character_product_principles.md),
-- fast first speech takes priority over maximum retrieval depth -> [AI character product principles](../ai_character_product_principles.md),
-- heavy memory extraction and indexing belong outside the synchronous speech path -> [AI character product principles](../ai_character_product_principles.md),
-- ASR-prefetch and speculative repacking remain optional, discardable, non-mutating optimizations -> [AI character product principles](../ai_character_product_principles.md).
-
-Current replacements:
-
-- [RelayLM System Overview](../system-overview.md)
-- [Request / Response Pipeline](../runtime/request-response-pipeline.md)
-- [Open-LLM-VTuber integration design](../open_llm_vtuber_integration.md)
-- [AI VTuber pipeline profile](../ai_vtuber_pipeline_profile.md)
-- [AI character product principles](../ai_character_product_principles.md)
-- [Runtime operational requirements](../runtime_operational_requirements.md)
-
 ## Archived cross-cutting planning documents
 
 ### [Product Runtime Hardening](product_runtime_hardening.md)
