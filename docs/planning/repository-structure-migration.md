@@ -444,6 +444,8 @@ evidence
 
 Each R5 wave must preserve one semantic authority, migrate callers atomically, reject old-path forwarding aliases unless a concrete governed compatibility consumer exists, and prove negative old-path/import references before its merge. R5 establishes the stable package/dependency substrate required before PD-1/PD-2 can freeze the new personality responsibility graph.
 
+The Evidence wave completed in PR #947 with exact resulting main `ab7b07cfdd7a4886d71c335a55011da87c6572f7`. `relaylm.evidence` is now its sole canonical package; no old-path alias or compatibility surface remains. Context overlay is the next R5 wave, and later waves remain blocked on the dependency order above.
+
 ### R6: Primary MEM disposition
 
 Do not automatically move every Primary MEM module. Classify each remaining asset as:
