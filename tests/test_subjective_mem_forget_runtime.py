@@ -18,7 +18,7 @@ from relaylm.subjective_mem_forget import (
     SubjectiveMemForgetProposal,
 )
 from relaylm.subjective_mem_forget_runtime import forget_subjective_mem
-from relaylm.subjective_mem_lifecycle import LIFECYCLE_POLICY_REVISION
+from relaylm.subjective_mem.lifecycle import LIFECYCLE_POLICY_REVISION
 from relaylm.subjective_mem.markdown import (
     LIFECYCLE_BLOCK_SCHEMA,
     PAGE_PARTITION_REVISION,

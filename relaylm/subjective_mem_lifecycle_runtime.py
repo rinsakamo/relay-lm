@@ -52,7 +52,7 @@ from relaylm.subjective_mem.models import (
     SubjectiveMemStrength,
     resolve_subjective_mem_character_authority,
 )
-from relaylm.subjective_mem_lifecycle import (
+from relaylm.subjective_mem.lifecycle import (
     CORRECT_REASON_CATEGORIES,
     LIFECYCLE_INTENT_FINALIZATION_SCHEMA,
     LIFECYCLE_INTENT_SCHEMA,

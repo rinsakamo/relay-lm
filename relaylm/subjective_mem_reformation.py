@@ -19,7 +19,7 @@ from relaylm.subjective_mem_forget import (
     FORGET_TOMBSTONE_SCHEMA,
     FORGET_TOMBSTONE_STATE_SCHEMA,
 )
-from relaylm.subjective_mem_lifecycle import (
+from relaylm.subjective_mem.lifecycle import (
     LIFECYCLE_POLICY_REVISION,
     LIFECYCLE_RECEIPT_SCHEMA,
     LIFECYCLE_TRANSITION_SCHEMA,

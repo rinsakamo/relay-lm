@@ -41,7 +41,7 @@ from relaylm.subjective_mem.models import (
     resolve_subjective_mem_character_authority,
 )
 from relaylm.subjective_mem.commit_runtime import finalize_subjective_mem_create
-from relaylm.subjective_mem_lifecycle import (
+from relaylm.subjective_mem.lifecycle import (
     LIFECYCLE_POLICY_REVISION,
     SubjectiveMemCorrectProposal,
     SubjectiveMemCorrectionBoundary,

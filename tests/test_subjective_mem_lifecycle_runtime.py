@@ -18,7 +18,7 @@ from relaylm.subjective_mem.models import (
     SUBJECTIVE_MEM_REVISION_SCHEMA,
     SubjectiveMemStrength,
 )
-from relaylm.subjective_mem_lifecycle import (
+from relaylm.subjective_mem.lifecycle import (
     LIFECYCLE_POLICY_REVISION,
     SubjectiveMemCorrectProposal,
     SubjectiveMemCorrectionBoundary,
