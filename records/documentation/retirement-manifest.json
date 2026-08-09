@@ -36,6 +36,22 @@
       "retention_reason": "D2-B2b4c29 migrated two bounded current consumers to canonical compile authority and removed the redundant archive marker; the marker and original long-form design remain recoverable from Git."
     },
     {
+      "old_path": "docs/architecture/archive/vtuber_memory_proxy_design.md",
+      "last_live_commit": "53f6f61dcfb3e5bb42699e00964e58180d27d49e",
+      "old_blob_sha": "84693159b7c35805efb11fdd28d0e93035e76858",
+      "removed_by_pr": 942,
+      "replacement_paths": [
+        "docs/architecture/character/interaction-quality.md",
+        "docs/architecture/context/context-assembly.md",
+        "docs/architecture/performance/perceived-latency.md",
+        "docs/architecture/runtime/request-response-pipeline.md",
+        "docs/architecture/system-overview.md",
+        "docs/architecture/voice/streaming-and-tts.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R7 retired the historical VTuber memory-proxy design after its adopted product, context, realtime, and frontend-boundary responsibilities were covered by canonical character-interaction, context, performance, request/response, system, and voice authorities; historical single-proxy/per-character routing examples remain recoverable from Git rather than becoming a new permanent architecture authority."
+    },
+    {
       "old_path": "docs/architecture/i1ge_durable_finalization_crash_validation.md",
       "last_live_commit": "86d3af1b3c24569f1daf01b2b52ef8c5119046d8",
       "old_blob_sha": "c711874bc813f29e5ac23d85ebc315eeeb24eeba",
