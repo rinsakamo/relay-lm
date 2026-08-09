@@ -207,7 +207,7 @@ Unknown exceptions collapse to a fixed safe store-unavailable reason.
 ## Implementation files
 
 ```text
-relaylm/subjective_mem.py
+relaylm/subjective_mem/models.py
 relaylm/subjective_mem_runtime.py
 relaylm/shared_assessment/runtime.py
 scripts/relaylm_sm1_subjective_mem_create_smoke.py

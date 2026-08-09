@@ -30,7 +30,7 @@ from relaylm.shared_assessment.runtime import (
 from relaylm.subjective_mem_reformation import (
     check_subjective_mem_reformation_locked,
 )
-from relaylm.subjective_mem import (
+from relaylm.subjective_mem.models import (
     SUBJECTIVE_MEM_PREPARED_MANIFEST_SCHEMA,
     SubjectiveMemAssessmentAuthorizationProjection,
     SubjectiveMemCharacterAuthority,

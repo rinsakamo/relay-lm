@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from relaylm.evidence.common import canonical_digest
-from relaylm.subjective_mem import SubjectiveMemCurrentState
+from relaylm.subjective_mem.models import SubjectiveMemCurrentState
 
 ST1_INTENT_SCHEMA = "relaylm.subjective_mem_st1_intent.v1"
 ST1_RECEIPT_SCHEMA = "relaylm.subjective_mem_st1_commit_receipt.v1"

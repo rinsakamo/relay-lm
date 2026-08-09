@@ -44,7 +44,7 @@ from relaylm.subjective_mem_lifecycle_engine import (
     reserve_lifecycle_publication,
     resolve_finalized_replay,
 )
-from relaylm.subjective_mem import (
+from relaylm.subjective_mem.models import (
     SUBJECTIVE_MEM_REVISION_SCHEMA,
     SubjectiveMemCharacterAuthority,
     SubjectiveMemCurrentState,

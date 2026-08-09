@@ -22,7 +22,7 @@ from relaylm.character_workspace import (
 from relaylm.config import RelayLMConfig
 from relaylm.evidence.store import EvidenceRecordStore
 from relaylm.portable_lock import acquire_portable_lock, release_portable_lock
-from relaylm.subjective_mem import SubjectiveMemCurrentState
+from relaylm.subjective_mem.models import SubjectiveMemCurrentState
 from relaylm.subjective_mem_commit_runtime import (
     finalize_subjective_mem_create,
     resolve_subjective_mem_commit_gate,

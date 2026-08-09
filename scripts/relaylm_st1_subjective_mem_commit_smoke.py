@@ -30,7 +30,7 @@ from relaylm.shared_assessment.runtime import (
     commit_shared_assessment_revision,
     prepare_shared_assessment_pass,
 )
-from relaylm.subjective_mem import (
+from relaylm.subjective_mem.models import (
     SubjectiveMemCreateProposal,
     SubjectiveMemFormationSnapshot,
     SubjectiveMemProposalBoundary,

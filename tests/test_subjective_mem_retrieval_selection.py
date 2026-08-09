@@ -11,7 +11,7 @@ import pytest
 import relaylm.subjective_mem_retrieval_selection as selection_owner
 from relaylm.evidence.common import canonical_digest, utf8_text_digest
 from relaylm.relaymem_grounded_recall_response import MAX_EVIDENCE_ITEMS
-from relaylm.subjective_mem import (
+from relaylm.subjective_mem.models import (
     SubjectiveMemFormationSnapshot,
     SubjectiveMemRevision,
     SubjectiveMemScopeBinding,
