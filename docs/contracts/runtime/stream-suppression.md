@@ -29,7 +29,6 @@ relaylm_related_contracts:
   - ../runtime_compile_artifact_contract.md
 relaylm_verified_by:
   - ../../../scripts/relaylm_relayctx_stream_unpack_sentinel_smoke.py
-  - ../../../scripts/relaylm_relayctx_stream_suppression_gate_smoke.py
   - ../../../scripts/relaylm_relayctx_stream_suppression_runtime_smoke.py
   - ../../../tests/test_stream_wrapper_close_propagation.py
 relaylm_lifecycle: stable
@@ -1012,7 +1011,6 @@ The exact current boundary is guarded by:
 
 ```text
 scripts/relaylm_relayctx_stream_unpack_sentinel_smoke.py
-scripts/relaylm_relayctx_stream_suppression_gate_smoke.py
 scripts/relaylm_relayctx_stream_suppression_runtime_smoke.py
 tests/test_stream_wrapper_close_propagation.py
 ```
