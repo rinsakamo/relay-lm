@@ -674,8 +674,8 @@ def test_resolver_dependency_direction_creates_no_cycle() -> None:
         "._subjective_mem_retrieval_cutover_activation",
         "._subjective_mem_retrieval_runtime_projection",
         ".config",
-        ".evidence_common",
-        ".evidence_store",
+        ".evidence.common",
+        ".evidence.store",
     }
 
 
@@ -697,7 +697,7 @@ def test_structure_and_immutable_store() -> None:
     )
     assert (
         hashlib.sha256(Path("relaylm/evidence/store.py").read_bytes()).hexdigest()
-        == "41cfa9af6c32c1359be04f497924883ffbc4abb4e39313a44755494f92e2b41f"
+        == "4d90f539c3efc661cd7994a9b059aa5db1744f2cc761da409afad67c809d50be"
     )
 
 

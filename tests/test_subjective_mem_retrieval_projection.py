@@ -1011,7 +1011,7 @@ def test_projection_modules_have_no_primary_shadow_or_request_path_dependency() 
         projection_module: {
             "__future__",
             "dataclasses",
-            "relaylm.evidence_common",
+            "relaylm.evidence.common",
             "relaylm.subjective_mem",
             "relaylm.subjective_mem_lifecycle_authority",
             "relaylm.subjective_mem_markdown",
@@ -1024,7 +1024,7 @@ def test_projection_modules_have_no_primary_shadow_or_request_path_dependency() 
             "stat",
             "dataclasses",
             "pathlib",
-            "relaylm.evidence_common",
+            "relaylm.evidence.common",
             "relaylm.subjective_mem_retrieval",
             "relaylm.subjective_mem_retrieval_projection",
         },

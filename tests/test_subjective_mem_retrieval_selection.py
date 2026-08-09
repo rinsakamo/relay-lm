@@ -750,7 +750,7 @@ def test_selection_owner_imports_no_characterization_ledger_or_io() -> None:
         node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)
     )
     assert imports == {
-        "__future__", "dataclasses", "typing", "relaylm.evidence_common",
+        "__future__", "dataclasses", "typing", "relaylm.evidence.common",
         "relaylm.relaymem_grounded_recall_response", "relaylm.subjective_mem_markdown",
         "relaylm.subjective_mem_retrieval", "relaylm.token_budget",
     }

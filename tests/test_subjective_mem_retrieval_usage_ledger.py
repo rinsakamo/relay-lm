@@ -579,8 +579,8 @@ def test_ledger_depends_one_way_on_selection_and_reuses_the_evidence_store() -> 
         node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)
     )
     assert imports == {
-        "__future__", "dataclasses", "typing", "relaylm.evidence_common",
-        "relaylm.evidence_store", "relaylm.subjective_mem_retrieval",
+        "__future__", "dataclasses", "typing", "relaylm.evidence.common",
+        "relaylm.evidence.store", "relaylm.subjective_mem_retrieval",
         "relaylm.subjective_mem_retrieval_selection",
     }
     assert "SubjectiveMemRetrievalAdmittedHandoff" not in inspect.getsource(
