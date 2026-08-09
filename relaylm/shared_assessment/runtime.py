@@ -23,11 +23,11 @@ from relaylm.evidence.common import (
     utf8_text_digest,
 )
 from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
-from relaylm.shared_assessment_evidence import (
+from relaylm.shared_assessment.evidence import (
     authorized_shared_assessment_sources_match_bundle,
     load_authorized_shared_assessment_sources,
 )
-from relaylm.shared_assessment import (
+from relaylm.shared_assessment.models import (
     SHARED_ASSESSMENT_CURRENT_STATE_SCHEMA,
     SHARED_ASSESSMENT_FORMATION_RECEIPT_SCHEMA,
     SHARED_ASSESSMENT_PASS_BUNDLE_SCHEMA,

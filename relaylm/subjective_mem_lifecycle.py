@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from relaylm.evidence.common import canonical_digest
-from relaylm.shared_assessment import SharedAssessmentCurrentState, SharedAssessmentRevision
+from relaylm.shared_assessment.models import SharedAssessmentCurrentState, SharedAssessmentRevision
 from relaylm.subjective_mem import SubjectiveMemStrength
 
 LIFECYCLE_TRANSITION_SCHEMA = "relaylm.subjective_mem_lifecycle_transition.v1"

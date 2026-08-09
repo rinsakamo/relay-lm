@@ -15,13 +15,13 @@ from typing import Literal
 from relaylm.evidence.common import canonical_digest, sha256_hex
 from relaylm.evidence.space import EvidenceSpaceDescriptor
 from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
-from relaylm.shared_assessment import (
+from relaylm.shared_assessment.models import (
     SHARED_ASSESSMENT_FORMATION_RECEIPT_SCHEMA,
     SharedAssessmentCurrentState,
     SharedAssessmentFormationAuthorizationReceipt,
     SharedAssessmentRevision,
 )
-from relaylm.shared_assessment_runtime import (
+from relaylm.shared_assessment.runtime import (
     build_shared_assessment_formation_receipt,
     shared_assessment_current_state_key,
     shared_assessment_formation_receipt_id,
