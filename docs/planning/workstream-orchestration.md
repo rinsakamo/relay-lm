@@ -32,7 +32,7 @@ relaylm_related_authority:
 ---
 # Workstream Orchestration, Lane-Local Continuation, and Stable PR Convergence
 
-Last reviewed: 2026-07-26 JST
+Last reviewed: 2026-08-09 JST
 
 ## Purpose
 
@@ -164,6 +164,8 @@ In lane-local mode, repository-wide state is inspected only as far as required f
 
 ### Lane C: critical implementation
 
+The first authority-changing Lane C program is complete:
+
 ```text
 LC-1B Forget
   -> LC-1C Pin / Unpin
@@ -172,7 +174,16 @@ LC-1B Forget
   -> RT-1 Retrieval projection and one-authority hard cutover
 ```
 
-Only one authority-changing LC-1 or RT-1 PR may be active at a time unless an accepted plan explicitly authorizes a coordinated atomic set.
+Lane C is intentionally idle for new personality implementation until the post-RT-1 structural and documentation gates below are complete. Its next separately gated program is:
+
+```text
+PC-1 Personality State
+  -> PC-2 Working Self
+  -> PC-3 SLP automatic personality updates
+  -> PC-4 Reflective Distillation
+```
+
+Only one authority-changing Lane C PR may be active at a time unless an accepted plan explicitly authorizes a coordinated atomic set. PC-1 may not start before Lane R R5 and Lane D D6, PD-1, and PD-2 are complete.
 
 ### Lane D: documentation canonicalization and historical retirement
 
@@ -183,6 +194,8 @@ D1 active graph / retained-record / retirement-manifest lock
   -> D4 lifecycle canonicalization after LC-1
   -> D5 Retrieval / Primary MEM canonicalization after RT-1
   -> D6 final retirement and legacy cutover-tool retirement
+  -> PD-1 personality responsibility convergence after D6 + Lane R R5
+  -> PD-2 exact personality contracts
 ```
 
 Retired documentation is deleted from the current tree and recovered through Git history. `records/` retains only narrowly typed records with a continuing current function.
@@ -198,9 +211,31 @@ R1 responsibility classification
   -> R6 Primary MEM retirement-or-move cleanup
 ```
 
+The RT-1 prerequisite for Lane R R5 is now satisfied. R5 is the next governed core migration stage. R6 remains required repository cleanup but is not a blanket prerequisite for Personality Design or Personality Core; a concrete R6 path, caller, import, recovery, or retained-authority dependency blocks only the affected later slice.
+
 Classification may overlap other lanes semantically. Destructive cleanup, path moves, namespace changes, and historical retirement still require their own reviewed atomic PRs.
 
 Detailed stage definitions remain owned by [Repository Structure and Documentation Canonicalization Plan](repository-structure-migration.md).
+
+### Post-RT-1 successor gate
+
+```text
+Lane R R5 complete
+       +
+Lane D D6 complete
+       ↓
+Lane D PD-1 responsibility convergence
+       ↓
+Lane D PD-2 exact contracts
+       ↓
+Lane C PC-1 -> PC-2 -> PC-3 -> PC-4
+       ↓
+9B end-to-end evaluation
+       ↓
+Character Presence
+```
+
+This ordering keeps package migration, responsibility/contract authority, and authority-changing runtime implementation separate. A free lane slot never authorizes skipping these prerequisites.
 
 ## Portfolio capacity
 
