@@ -4,19 +4,19 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from relaylm.ctx_ovl_change_feed import (
+from relaylm.context_overlay.change_feed import (
     _bounded_event_slice,
     _validate_change_partition_descriptor,
 )
-from relaylm.ctx_ovl_evidence import _read_authorized_candidate
-from relaylm.ctx_ovl_records import (
+from relaylm.context_overlay.evidence import _read_authorized_candidate
+from relaylm.context_overlay.records import (
     _admit_candidate,
     _build_sync_event,
     _invalidate_event_sources,
     _invalidate_source,
 )
-from relaylm.ctx_ovl_selection import _prune_partition, _reflex_snapshot
-from relaylm.ctx_ovl_types import (
+from relaylm.context_overlay.selection import _prune_partition, _reflex_snapshot
+from relaylm.context_overlay.types import (
     CtxOvlRuntimeResult,
     _CATCH_UP_MAX_TOTAL_BYTES,
     _MAX_CANDIDATE_BYTES,

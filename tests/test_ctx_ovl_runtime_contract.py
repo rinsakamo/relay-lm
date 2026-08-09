@@ -9,8 +9,8 @@ from types import SimpleNamespace
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-from relaylm.ctx_ovl_change_feed import _bounded_event_slice
-from relaylm.ctx_ovl_runtime import (
+from relaylm.context_overlay.change_feed import _bounded_event_slice
+from relaylm.context_overlay.runtime import (
     _AuthorizedCandidate,
     _admit_candidate,
     _build_context_selection,

@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
 
-from relaylm.ctx_ovl_types import (
+from relaylm.context_overlay.types import (
     _ParticipantPartitionState,
     _StoredOverlay,
     _MAX_CANDIDATE_BYTES,

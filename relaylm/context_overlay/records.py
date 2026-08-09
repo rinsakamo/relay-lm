@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 
-from relaylm.ctx_ovl_types import (
+from relaylm.context_overlay.types import (
     _AuthorizedCandidate,
     _ParticipantPartitionState,
     _StoredOverlay,

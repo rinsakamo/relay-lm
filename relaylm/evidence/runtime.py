@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from relaylm.ctx_ovl_runtime import (
+from relaylm.context_overlay.runtime import (
     derive_private_conversation_ref,
     prepare_ctx_ovl_before_user_capture,
     refresh_ctx_ovl_after_user_capture,

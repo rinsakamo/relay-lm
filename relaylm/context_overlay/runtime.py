@@ -12,20 +12,20 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from relaylm.ctx_ovl_records import (
+from relaylm.context_overlay.records import (
     _admit_candidate,
     _build_sync_event,
     _invalidate_source,
 )
-from relaylm.ctx_ovl_selection import (
+from relaylm.context_overlay.selection import (
     _build_context_selection,
     _inject_hint,
     _reflex_snapshot,
     _render_transient_hint,
     _select_overlays,
 )
-from relaylm.ctx_ovl_sync import CtxOvlSyncMode, _synchronize_partition
-from relaylm.ctx_ovl_types import (
+from relaylm.context_overlay.sync import CtxOvlSyncMode, _synchronize_partition
+from relaylm.context_overlay.types import (
     CtxOvlRuntimeResult,
     _AuthorizedCandidate,
     _ParticipantPartitionState,

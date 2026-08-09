@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from relaylm.ctx_ovl_selection import _render_transient_hint
-from relaylm.ctx_ovl_types import _StoredOverlay
+from relaylm.context_overlay.selection import _render_transient_hint
+from relaylm.context_overlay.types import _StoredOverlay
 
 
 def test_prior_text_cannot_close_or_imitate_continuity_wrapper() -> None:
