@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from relaylm.evidence.common import canonical_digest
-from relaylm.subjective_mem_lifecycle import (
+from relaylm.subjective_mem.lifecycle import (
     LIFECYCLE_POLICY_REVISION,
     LIFECYCLE_RECEIPT_SCHEMA,
     LIFECYCLE_TRANSITION_SCHEMA,

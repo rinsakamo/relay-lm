@@ -39,7 +39,7 @@ from relaylm.subjective_mem_forget import (
     SubjectiveMemForgetProposal,
     SubjectiveMemForgetTombstone,
 )
-from relaylm.subjective_mem_lifecycle import (
+from relaylm.subjective_mem.lifecycle import (
     LIFECYCLE_CLAIM_SCHEMA,
     LIFECYCLE_INTENT_FINALIZATION_SCHEMA,
     LIFECYCLE_INTENT_SCHEMA,

@@ -25,7 +25,7 @@ from relaylm.subjective_mem.models import (
 from relaylm.subjective_mem_lifecycle_authority import (
     SubjectiveMemPredecessorExpectation,
 )
-from relaylm.subjective_mem_lifecycle import (
+from relaylm.subjective_mem.lifecycle import (
     LIFECYCLE_INTENT_FINALIZATION_SCHEMA,
     LIFECYCLE_INTENT_SCHEMA,
     LIFECYCLE_RECEIPT_SCHEMA,

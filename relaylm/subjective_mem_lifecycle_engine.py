@@ -27,7 +27,7 @@ from relaylm.subjective_mem.commit_io import (
 from relaylm.evidence.common import canonical_digest, sha256_hex
 from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
 from relaylm.subjective_mem.models import SubjectiveMemCurrentState
-from relaylm.subjective_mem_lifecycle import LIFECYCLE_CLAIM_SCHEMA
+from relaylm.subjective_mem.lifecycle import LIFECYCLE_CLAIM_SCHEMA
 from relaylm.subjective_mem.markdown import (
     canonical_page_digest,
     parse_subjective_mem_page_bytes,

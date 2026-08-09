@@ -32,7 +32,7 @@ from relaylm.subjective_mem_consolidate import (
     CONSOLIDATE_POLICY_REVISION,
     CONSOLIDATE_REASON_CATEGORY,
 )
-from relaylm.subjective_mem_lifecycle import (
+from relaylm.subjective_mem.lifecycle import (
     LIFECYCLE_POLICY_REVISION,
     LIFECYCLE_RECEIPT_SCHEMA,
     LIFECYCLE_TRANSITION_SCHEMA,

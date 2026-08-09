@@ -12,7 +12,7 @@ from dataclasses import replace
 import inspect
 
 from relaylm.evidence.common import canonical_digest
-from relaylm.subjective_mem_lifecycle import (
+from relaylm.subjective_mem.lifecycle import (
     LIFECYCLE_INTENT_FINALIZATION_SCHEMA,
     LIFECYCLE_POLICY_REVISION,
     LIFECYCLE_RECEIPT_SCHEMA,

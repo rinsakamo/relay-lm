@@ -26,7 +26,7 @@ from relaylm.subjective_mem_forget import (
     SubjectiveMemForgetBoundary,
     SubjectiveMemForgetProposal,
 )
-from relaylm.subjective_mem_lifecycle import (
+from relaylm.subjective_mem.lifecycle import (
     LIFECYCLE_POLICY_REVISION,
     SubjectiveMemCorrectProposal,
     SubjectiveMemCorrectionBoundary,
