@@ -2651,11 +2651,11 @@ R5_AMENDMENT_RESULT_ANCHORS = {
         "PR #837 is merged and completed, not open, current, Draft, unmerged, or incomplete.",
         "This transaction is the bounded RT-1D-R5 budget-amendment result/current-authority "
         "correction that records that merged PR #837 result.",
-        "RT-1D-R5 immediate retirement remains unstarted during this correction and introduces "
-        "no retirement behavior.",
-        "may restart only from a fresh branch created from that verified correction result, "
+        "RT-1D-R5 immediate retirement was unstarted during that correction and introduced no "
+        "retirement behavior.",
+        "restarted only from a fresh branch created from that verified correction result, "
         "never from PR #837 head `efd936329f214464f3e872d2fe0e314a2e90210a`, never from the "
-        "frozen `agent/rt1d-r5-immediate-retirement-proof` branch, and never from this "
+        "frozen `agent/rt1d-r5-immediate-retirement-proof` branch, and never from that "
         "correction's PR head.",
     )
     for path in (STATUS, PLAN, RT1C)
@@ -2720,13 +2720,133 @@ R5_AMENDMENT_RESULT_MUTATIONS = tuple(
             "R5 amendment gate state",
         ),
         (
-            "RT-1D-R5 immediate retirement remains unstarted during this correction and "
-            "introduces no retirement behavior.",
+            "RT-1D-R5 immediate retirement was unstarted during that correction and "
+            "introduced no retirement behavior.",
             "RT-1D-R5 restarted before this correction result was verified",
             "R5 start state during correction",
         ),
     )
 )
+
+# RT-1D-R5 immediate retirement implementation merged as exact resulting main
+# `684b49f9bef5b34ccf9518891de85bdef3139c43`. The ordinary Primary reader and its
+# selection/ranking/fallback path are retired, so the R4-era "serves Primary MEM
+# alone" and "R5 unstarted" current claims are now stale. This mandatory R5 P8 is
+# itself the current incomplete convergence gate while its PR is open.
+R5_COMPLETION_ANCHORS = {
+    path: (
+        "RT-1D-R5 immediate retirement implementation completed in merged PR #907 from exact "
+        "bootstrap main `731711f0a207bf547a07e56d84d60156542cff98`, final reviewed head "
+        "`5911711f0f57c53a7388442b136577b4de76c938`, and exact resulting main "
+        "`684b49f9bef5b34ccf9518891de85bdef3139c43`.",
+        "six changed production paths inside the exact-seven RT-1D-R5 production budget, plus "
+        "30 bounded focused-evidence paths",
+        "`relaylm/relaymem_primary_recall_store.py` and every writer-carriage module remain "
+        "byte-identical.",
+        "PR #907 is merged and completed, not open, current, Draft, unmerged, or incomplete.",
+        "The ordinary Primary reader is retired from current `main` rather than fenced.",
+        "`run_relaymem_retrieval_stage` has exactly one fenced exit, and an ordinary decision "
+        "still naming `primary_only` fails closed to `neither`.",
+        "They are read-only survivors and are not ordinary reader, writer, ranking, fallback, "
+        "or mutation authority, and they do not restore ordinary Primary serving.",
+        "Before an exact finalized activation the accepted fail-closed cutover rules apply, so "
+        "no ordinary request resolves a Primary store root, discovers or ranks a Primary "
+        "candidate, or executes a Primary fallback.",
+        "so Primary MEM is no longer universally the sole ordinary served memory and Retrieval "
+        "authority",
+        "The durable chain advances through `post_transfer_validated` and then "
+        "`retirement_complete` only over the accepted exact finalized-receipt path",
+        "this mandatory RT-1D-R5 P8 current-authority synchronization is the current incomplete "
+        "convergence gate while its PR is open",
+        "This P8 must not be claimed complete before its own expected-head-protected merge and "
+        "independent exact-result verification.",
+        "it requires no recursive P8",
+    )
+    for path in (STATUS, PLAN, RT1C)
+}
+for _path, _anchors in R5_COMPLETION_ANCHORS.items():
+    REQUIRED[_path] += _anchors
+PROBES += tuple(
+    (path, anchor)
+    for path, anchors in R5_COMPLETION_ANCHORS.items()
+    for anchor in anchors
+)
+
+REQUIRED[RT1C] += ("## RT-1D-R5 completion and mandatory P8 (current)",)
+
+R5_COMPLETION_STALE = (
+    "RT-1D-R5 remains unstarted",
+    "RT-1D-R5 immediate retirement remains unstarted and no retirement change has occurred",
+    "RT-1D-R5 immediate retirement is unstarted",
+    "RT-1D-R5 has not started",
+    "the final RT-1D hard cutover remains unimplemented",
+    "the final RT-1D Primary retirement remains incomplete",
+    "Primary retirement remains unimplemented",
+    "the Subjective MEM Retrieval hard cutover remains incomplete",
+    "every deployment whose durable chain has not reached an exact finalized transfer receipt "
+    "serves Primary MEM alone",
+    "Primary MEM is universally the sole ordinary served memory and Retrieval authority",
+    "RelayMEM Primary path: current production memory/retrieval authority",
+    "PR #907 remains open",
+    "PR #907 is unmerged",
+    "PR #907 remains Draft",
+    "PR #907 is closed unmerged",
+    "the RT-1D-R5 implementation result is unknown",
+    "the mandatory RT-1D-R5 P8 is complete",
+    "the mandatory RT-1D-R5 P8 requires a recursive P8",
+    "RT-1D-R4 is the current serving authority boundary",
+)
+
+R5_COMPLETION_MUTATIONS = tuple(
+    (path, current, damaged, label)
+    for path in (STATUS, PLAN, RT1C)
+    for current, damaged, label in (
+        (
+            "exact resulting main `684b49f9bef5b34ccf9518891de85bdef3139c43`",
+            "exact resulting main `784b49f9bef5b34ccf9518891de85bdef3139c43`",
+            "R5 implementation exact resulting main",
+        ),
+        (
+            "final reviewed head `5911711f0f57c53a7388442b136577b4de76c938`",
+            "final reviewed head `6911711f0f57c53a7388442b136577b4de76c938`",
+            "R5 implementation reviewed head",
+        ),
+        (
+            "bootstrap main `731711f0a207bf547a07e56d84d60156542cff98`",
+            "bootstrap main `831711f0a207bf547a07e56d84d60156542cff98`",
+            "R5 implementation bootstrap",
+        ),
+        (
+            "six changed production paths inside the exact-seven RT-1D-R5 production budget",
+            "eight changed production paths inside the exact-nine RT-1D-R5 production budget",
+            "R5 production budget",
+        ),
+        (
+            "PR #907 is merged and completed, not open, current, Draft, unmerged, or "
+            "incomplete.",
+            "PR #907 remains open",
+            "R5 implementation gate state",
+        ),
+        (
+            "The ordinary Primary reader is retired from current `main` rather than fenced.",
+            "Primary MEM is universally the sole ordinary served memory and Retrieval "
+            "authority",
+            "retired reader claim",
+        ),
+        (
+            "this mandatory RT-1D-R5 P8 current-authority synchronization is the current "
+            "incomplete convergence gate while its PR is open",
+            "the mandatory RT-1D-R5 P8 is complete",
+            "P8 gate state",
+        ),
+        (
+            "it requires no recursive P8",
+            "the mandatory RT-1D-R5 P8 requires a recursive P8",
+            "recursive P8 claim",
+        ),
+    )
+)
+
 
 R2D_P8_STALE = (
     "RT-1D-R2D is next and has not started",
@@ -3071,6 +3191,7 @@ def self_test() -> None:
         + R4_COMPLETION_MUTATIONS
         + R5_BUDGET_AMENDMENT_MUTATIONS
         + R5_AMENDMENT_RESULT_MUTATIONS
+        + R5_COMPLETION_MUTATIONS
     )
     for path, current, damaged, label in focused_mutations:
         body = read(path)
@@ -3265,6 +3386,20 @@ def self_test() -> None:
             raise AssertionError(
                 f"{path}: R5 amendment result stale anchor is not forbidden: {stale!r}"
             )
+    for path in R5_COMPLETION_ANCHORS:
+        for stale in R5_COMPLETION_STALE:
+            body = read(path)
+            assert stale not in body, (
+                f"{path}: R5 completion stale anchor is present: {stale!r}"
+            )
+            try:
+                forbid_body(path, R5_COMPLETION_STALE, body + "\n" + stale + "\n")
+            except AssertionError:
+                print(f"PASS: {path}: reintroducing {stale!r} fails closed")
+                continue
+            raise AssertionError(
+                f"{path}: R5 completion stale anchor is not forbidden: {stale!r}"
+            )
     print("SELF-TEST PASS")
 
 
@@ -3314,6 +3449,8 @@ def main(argv: list[str] | None = None) -> None:
         forbid(path, R5_BUDGET_AMENDMENT_STALE)
     for path in R5_AMENDMENT_RESULT_ANCHORS:
         forbid(path, R5_AMENDMENT_RESULT_STALE)
+    for path in R5_COMPLETION_ANCHORS:
+        forbid(path, R5_COMPLETION_STALE)
     forbid("docs/PROJECT_STATUS.md", HISTORY_ONLY_STATUS_ANCHORS)
     print("Documentation current boundary smoke passed")
 
