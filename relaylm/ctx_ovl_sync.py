@@ -25,8 +25,8 @@ from relaylm.ctx_ovl_types import (
     _REBUILD_MAX_TOTAL_BYTES,
     _new_partition_state,
 )
-from relaylm.evidence_space import EvidenceSpaceDescriptor
-from relaylm.evidence_store import EvidenceRecordStore
+from relaylm.evidence.space import EvidenceSpaceDescriptor
+from relaylm.evidence.store import EvidenceRecordStore
 
 CtxOvlSyncMode = Literal["rebuild", "catch_up", "current_source"]
 

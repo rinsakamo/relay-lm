@@ -6,8 +6,8 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from relaylm.evidence_common import canonical_digest
-from relaylm.evidence_store import EvidenceRecordStore
+from relaylm.evidence.common import canonical_digest
+from relaylm.evidence.store import EvidenceRecordStore
 from relaylm._subjective_mem_retrieval_cutover_activation import reconstruct_cutover_chain
 from relaylm.subjective_mem_retrieval_cutover import (
     CUTOVER_AUTHORITY_DOMAIN,

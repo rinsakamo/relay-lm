@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-from relaylm.evidence_store import EvidenceRecordStore
-from relaylm.evidence_user_input import capture_managed_user_input
+from relaylm.evidence.store import EvidenceRecordStore
+from relaylm.evidence.user_input import capture_managed_user_input
 from evidence_test_support import route_snapshot
 
 NOW = datetime(2026, 7, 21, 12, 0, 0, tzinfo=timezone.utc)

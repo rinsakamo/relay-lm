@@ -8,24 +8,24 @@ import pytest
 from pydantic import ValidationError
 
 from relaylm.config import RelayLMConfig
-from relaylm.evidence_response_capture import (
+from relaylm.evidence.response_capture import (
     capture_managed_assistant_response_nonstream,
     wrap_stream_with_evidence_response_capture,
 )
-from relaylm.evidence_response_session import derive_id, prepare_response_capture
-from relaylm.evidence_runtime import EvidenceRuntimeGate, _evidence_store_for_gate
-from relaylm.evidence_space import (
+from relaylm.evidence.response_session import derive_id, prepare_response_capture
+from relaylm.evidence.runtime import EvidenceRuntimeGate, _evidence_store_for_gate
+from relaylm.evidence.space import (
     derive_evidence_space_id,
     derive_participant_principal,
 )
-from relaylm.evidence_store import EvidenceRecordStore
-from relaylm.evidence_streams import (
+from relaylm.evidence.store import EvidenceRecordStore
+from relaylm.evidence.streams import (
     CaptureSequenceLog,
     build_capture_stream_descriptor,
     compute_coverage_checkpoint,
     derive_participant_change_partition_id,
 )
-from relaylm.evidence_user_input import capture_managed_user_input
+from relaylm.evidence.user_input import capture_managed_user_input
 from evidence_test_support import route_snapshot
 
 NOW = datetime(2026, 7, 22, 0, 0, tzinfo=timezone.utc)

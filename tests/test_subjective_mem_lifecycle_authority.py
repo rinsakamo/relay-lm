@@ -5,8 +5,8 @@ from dataclasses import replace
 import inspect
 
 from relaylm._subjective_mem_commit_io import PLATFORM_REVISION
-from relaylm.evidence_common import canonical_digest
-from relaylm.evidence_space import (
+from relaylm.evidence.common import canonical_digest
+from relaylm.evidence.space import (
     build_bootstrap_evidence_space_descriptor,
     derive_evidence_space_id,
 )

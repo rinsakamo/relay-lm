@@ -19,13 +19,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from relaylm.evidence_common import build_runtime_authority, canonical_digest
-from relaylm.evidence_response_capture import (
+from relaylm.evidence.common import build_runtime_authority, canonical_digest
+from relaylm.evidence.response_capture import (
     capture_managed_assistant_response_nonstream,
 )
-from relaylm.evidence_space import derive_evidence_space_id
-from relaylm.evidence_store import EvidenceRecordStore
-from relaylm.evidence_user_input import capture_managed_user_input
+from relaylm.evidence.space import derive_evidence_space_id
+from relaylm.evidence.store import EvidenceRecordStore
+from relaylm.evidence.user_input import capture_managed_user_input
 from relaylm.shared_assessment import SharedAssessmentProposal, derive_shared_assessment_id
 from relaylm.shared_assessment_runtime import (
     build_shared_assessment_formation_receipt,

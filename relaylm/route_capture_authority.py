@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import datetime, timezone
 
-from relaylm.evidence_common import build_runtime_authority, canonical_digest
+from relaylm.evidence.common import build_runtime_authority, canonical_digest
 from relaylm.routing import ResolvedRoute
 
 

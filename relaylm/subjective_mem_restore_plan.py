@@ -15,7 +15,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 
 from relaylm._subjective_mem_commit_io import PLATFORM_REVISION
-from relaylm.evidence_common import canonical_digest, sha256_hex
+from relaylm.evidence.common import canonical_digest, sha256_hex
 from relaylm.subjective_mem import (
     SUBJECTIVE_MEM_REVISION_SCHEMA,
     SubjectiveMemCharacterAuthority,

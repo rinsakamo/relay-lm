@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from relaylm.evidence_common import canonical_digest
+from relaylm.evidence.common import canonical_digest
 
 FORGET_TOMBSTONE_SCHEMA = "relaylm.subjective_mem_forget_tombstone.v1"
 FORGET_TOMBSTONE_STATE_SCHEMA = "relaylm.subjective_mem_forget_tombstone_state.v1"

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 import relaylm.subjective_mem_retrieval as retrieval
-from relaylm.evidence_common import canonical_digest
+from relaylm.evidence.common import canonical_digest
 from relaylm.subjective_mem_retrieval import (
     RETRIEVAL_EXCLUSION_REASONS,
     SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,

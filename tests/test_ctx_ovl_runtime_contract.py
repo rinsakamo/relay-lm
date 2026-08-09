@@ -22,7 +22,7 @@ from relaylm.ctx_ovl_runtime import (
     _select_overlays,
     evaluate_ctx_ovl_write_attempt,
 )
-from relaylm.evidence_common import PrincipalRef, utf8_text_digest
+from relaylm.evidence.common import PrincipalRef, utf8_text_digest
 
 _ROOT = Path(__file__).resolve().parents[1]
 _SCHEMA_PATH = (

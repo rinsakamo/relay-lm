@@ -12,7 +12,7 @@ for path in (REPO_ROOT, TESTS):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-from relaylm.evidence_store import EvidenceRecordStore
+from relaylm.evidence.store import EvidenceRecordStore
 from test_subjective_mem_commit_runtime import _commit, _make_workspace
 from test_subjective_mem_consolidate_runtime import (
     _call,

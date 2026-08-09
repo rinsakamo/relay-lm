@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from relaylm.evidence_common import canonical_digest
+from relaylm.evidence.common import canonical_digest
 from relaylm.subjective_mem import SubjectiveMemCurrentState
 
 ST1_INTENT_SCHEMA = "relaylm.subjective_mem_st1_intent.v1"

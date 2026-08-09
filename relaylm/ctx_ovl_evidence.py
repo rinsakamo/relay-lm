@@ -5,17 +5,17 @@ from collections.abc import Sequence
 from datetime import datetime
 
 from relaylm.ctx_ovl_types import _AuthorizedCandidate
-from relaylm.evidence_access import resolve_evidence_access_authorization
-from relaylm.evidence_common import (
+from relaylm.evidence.access import resolve_evidence_access_authorization
+from relaylm.evidence.common import (
     PolicySnapshotRef,
     PrincipalRef,
     canonical_digest,
     dedupe,
     utf8_text_digest,
 )
-from relaylm.evidence_governance import AccessGrant, EvidenceGovernanceState
-from relaylm.evidence_space import EvidenceSpaceDescriptor, _authority_scope_from_dict
-from relaylm.evidence_store import EvidenceStoreTransaction
+from relaylm.evidence.governance import AccessGrant, EvidenceGovernanceState
+from relaylm.evidence.space import EvidenceSpaceDescriptor, _authority_scope_from_dict
+from relaylm.evidence.store import EvidenceStoreTransaction
 
 
 def _read_authorized_candidate(

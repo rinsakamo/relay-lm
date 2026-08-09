@@ -3,9 +3,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from relaylm.evidence_access import resolve_evidence_access_authorization
-from relaylm.evidence_common import ev1_policy_snapshot_ref
-from relaylm.evidence_governance import (
+from relaylm.evidence.access import resolve_evidence_access_authorization
+from relaylm.evidence.common import ev1_policy_snapshot_ref
+from relaylm.evidence.governance import (
     build_least_privilege_grant,
     initialize_admitted_governance,
 )
@@ -41,7 +41,7 @@ def _governance_and_grant(*, purpose: str = "relayctx_evidence_read"):
 
 
 def _change_set_ref():
-    from relaylm.evidence_common import AuthorityChangeSetRef
+    from relaylm.evidence.common import AuthorityChangeSetRef
 
     return AuthorityChangeSetRef(
         change_set_id="changeset_1",

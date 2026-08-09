@@ -17,7 +17,7 @@ from relaylm.ctx_ovl_types import (
     _parse_datetime,
     _record_write_attempt,
 )
-from relaylm.evidence_common import canonical_digest, new_opaque_id
+from relaylm.evidence.common import canonical_digest, new_opaque_id
 
 
 def _admit_candidate(

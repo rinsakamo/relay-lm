@@ -1,8 +1,8 @@
 """Shared deterministic fixtures for governed-evidence final-review tests."""
 from __future__ import annotations
 
-from relaylm.evidence_common import build_runtime_authority, canonical_digest
-from relaylm.evidence_space import derive_evidence_space_id
+from relaylm.evidence.common import build_runtime_authority, canonical_digest
+from relaylm.evidence.space import derive_evidence_space_id
 
 
 def route_snapshot(

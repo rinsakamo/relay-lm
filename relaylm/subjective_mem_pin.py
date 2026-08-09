@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
 
-from relaylm.evidence_common import canonical_digest, sha256_hex
+from relaylm.evidence.common import canonical_digest, sha256_hex
 
 PIN_OPERATION_FAMILY = "pin_unpin"
 PIN_OPERATIONS = frozenset({"pin", "unpin"})

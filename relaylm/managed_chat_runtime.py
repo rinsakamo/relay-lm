@@ -107,7 +107,7 @@ from relaylm.token_policy_signal import (
     build_token_policy_readiness_check,
     build_token_policy_signal,
 )
-from relaylm.evidence_runtime import capture_evidence_for_user_input
+from relaylm.evidence.runtime import capture_evidence_for_user_input
 from relaylm.pipeline_context import PipelineContext, replace_pipeline_forwarded_payload
 from relaylm.pipeline_stage import _finalize_timing, _start_timing, run_stage
 from relaylm.relayctx_repack import (

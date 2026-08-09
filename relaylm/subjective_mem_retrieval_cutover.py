@@ -63,8 +63,8 @@ from ._subjective_mem_retrieval_runtime_projection import (
     verify_subjective_mem_retrieval_runtime_projection,
 )
 from .config import RelayLMConfig
-from .evidence_common import canonical_json_bytes
-from .evidence_store import EvidenceRecordStore
+from .evidence.common import canonical_json_bytes
+from .evidence.store import EvidenceRecordStore
 
 CUTOVER_AUTHORITY_DOMAIN = "relaylm.subjective_mem_retrieval"
 CUTOVER_TRANSFERRED_SCOPE = "ordinary_memory_retrieval"

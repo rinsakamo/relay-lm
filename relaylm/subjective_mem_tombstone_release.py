@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
-from relaylm.evidence_common import canonical_digest
-from relaylm.evidence_store import EvidenceStoreTransaction
+from relaylm.evidence.common import canonical_digest
+from relaylm.evidence.store import EvidenceStoreTransaction
 from relaylm.subjective_mem_lifecycle import (
     LIFECYCLE_POLICY_REVISION,
     LIFECYCLE_RECEIPT_SCHEMA,

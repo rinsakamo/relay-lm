@@ -6,10 +6,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from relaylm.evidence_store import EvidenceRecordStore
-from relaylm.evidence_response_session import prepare_response_capture
+from relaylm.evidence.store import EvidenceRecordStore
+from relaylm.evidence.response_session import prepare_response_capture
 from evidence_test_support import route_snapshot
-from relaylm.evidence_response_capture import (
+from relaylm.evidence.response_capture import (
     capture_managed_assistant_response_nonstream,
     wrap_stream_with_evidence_response_capture,
 )

@@ -18,9 +18,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from relaylm.evidence_common import canonical_digest
-from relaylm.evidence_space import EvidenceSpaceDescriptor
-from relaylm.evidence_store import EvidenceStoreTransaction
+from relaylm.evidence.common import canonical_digest
+from relaylm.evidence.space import EvidenceSpaceDescriptor
+from relaylm.evidence.store import EvidenceStoreTransaction
 from relaylm.subjective_mem import (
     SubjectiveMemCharacterAuthority,
     SubjectiveMemRevision,

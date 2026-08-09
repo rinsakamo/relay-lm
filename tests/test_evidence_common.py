@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from relaylm.evidence_common import (
+from relaylm.evidence.common import (
     canonical_digest,
     canonical_json_bytes,
     new_opaque_id,

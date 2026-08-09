@@ -24,8 +24,8 @@ from relaylm._subjective_mem_commit_io import (
     read_immutable_rendered_artifact,
     write_immutable_rendered_artifact,
 )
-from relaylm.evidence_common import canonical_digest, sha256_hex
-from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreTransaction
+from relaylm.evidence.common import canonical_digest, sha256_hex
+from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
 from relaylm.subjective_mem import SubjectiveMemCurrentState
 from relaylm.subjective_mem_lifecycle import LIFECYCLE_CLAIM_SCHEMA
 from relaylm.subjective_mem_markdown import (

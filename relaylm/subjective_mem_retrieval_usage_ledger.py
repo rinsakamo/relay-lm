@@ -43,8 +43,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import Literal
 
-from relaylm.evidence_common import canonical_digest, dedupe
-from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreTransaction
+from relaylm.evidence.common import canonical_digest, dedupe
+from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
 from relaylm.subjective_mem_retrieval import (
     RETRIEVAL_USAGE_EVENT_KIND, SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
     SubjectiveMemRetrievalProjectionManifest, SubjectiveMemRetrievalProjectionRow,

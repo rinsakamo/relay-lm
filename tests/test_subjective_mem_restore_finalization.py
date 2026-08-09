@@ -11,7 +11,7 @@ import ast
 from dataclasses import replace
 import inspect
 
-from relaylm.evidence_common import canonical_digest
+from relaylm.evidence.common import canonical_digest
 from relaylm.subjective_mem_lifecycle import (
     LIFECYCLE_INTENT_FINALIZATION_SCHEMA,
     LIFECYCLE_POLICY_REVISION,

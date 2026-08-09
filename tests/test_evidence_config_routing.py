@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from relaylm.config import RelayLMConfig
-from relaylm.evidence_runtime import resolve_evidence_gate
+from relaylm.evidence.runtime import resolve_evidence_gate
 from relaylm.routing import resolve_route
 
 BASE_CONFIG_KWARGS = dict(

@@ -10,8 +10,8 @@ from pathlib import Path
 import pytest
 
 from relaylm._subjective_mem_commit_io import PLATFORM_REVISION
-from relaylm.evidence_common import canonical_digest
-from relaylm.evidence_store import EvidenceRecordStore
+from relaylm.evidence.common import canonical_digest
+from relaylm.evidence.store import EvidenceRecordStore
 from relaylm.subjective_mem import SUBJECTIVE_MEM_REVISION_SCHEMA, SubjectiveMemStrength
 from relaylm.subjective_mem_consolidate import (
     CONSOLIDATE_AUTHORIZATION_CLASS,

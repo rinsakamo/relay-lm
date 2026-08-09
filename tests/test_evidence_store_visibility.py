@@ -5,7 +5,7 @@ import threading
 
 import pytest
 
-from relaylm.evidence_store import EvidenceRecordStore
+from relaylm.evidence.store import EvidenceRecordStore
 
 
 def test_public_reader_waits_for_transaction_commit(tmp_path) -> None:

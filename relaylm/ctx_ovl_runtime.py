@@ -32,13 +32,13 @@ from relaylm.ctx_ovl_types import (
     _new_partition_state,
     evaluate_ctx_ovl_write_attempt,
 )
-from relaylm.evidence_common import canonical_digest, dedupe
-from relaylm.evidence_space import (
+from relaylm.evidence.common import canonical_digest, dedupe
+from relaylm.evidence.space import (
     EvidenceSpaceDescriptor,
     build_bootstrap_evidence_space_descriptor,
 )
-from relaylm.evidence_store import EvidenceRecordStore
-from relaylm.evidence_streams import derive_participant_change_partition_id
+from relaylm.evidence.store import EvidenceRecordStore
+from relaylm.evidence.streams import derive_participant_change_partition_id
 from relaylm.pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
 
 if TYPE_CHECKING:

@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from relaylm.evidence_common import (
+from relaylm.evidence.common import (
     AuthorityChangeSetRef,
     AuthorityScope,
     PolicySnapshotRef,
@@ -23,7 +23,7 @@ from relaylm.evidence_common import (
 )
 
 if TYPE_CHECKING:
-    from relaylm.evidence_store import EvidenceRecordStore
+    from relaylm.evidence.store import EvidenceRecordStore
 
 SCHEMA = "relaylm.evidence_space_descriptor.v1"
 _SUPPORTED_ISOLATION_MODES = frozenset({"private_conversation"})

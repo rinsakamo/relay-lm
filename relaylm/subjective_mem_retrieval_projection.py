@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from relaylm.evidence_common import canonical_digest, canonical_json_bytes, dedupe, sha256_hex
+from relaylm.evidence.common import canonical_digest, canonical_json_bytes, dedupe, sha256_hex
 from relaylm.subjective_mem import (
     SUBJECTIVE_MEM_CURRENT_STATE_V2_SCHEMA, SUBJECTIVE_MEM_REVISION_SCHEMA,
     SubjectiveMemCurrentState,

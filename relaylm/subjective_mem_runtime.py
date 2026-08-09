@@ -12,9 +12,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Literal
 
-from relaylm.evidence_common import canonical_digest, sha256_hex
-from relaylm.evidence_space import EvidenceSpaceDescriptor
-from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreTransaction
+from relaylm.evidence.common import canonical_digest, sha256_hex
+from relaylm.evidence.space import EvidenceSpaceDescriptor
+from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
 from relaylm.shared_assessment import (
     SHARED_ASSESSMENT_FORMATION_RECEIPT_SCHEMA,
     SharedAssessmentCurrentState,

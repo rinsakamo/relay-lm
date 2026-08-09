@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from relaylm.evidence_common import canonical_digest, canonical_json_bytes
+from relaylm.evidence.common import canonical_digest, canonical_json_bytes
 from relaylm.portable_lock import portable_lock
 
 StoreStatus = Literal["created", "duplicate_existing", "collision", "blocked", "failed"]

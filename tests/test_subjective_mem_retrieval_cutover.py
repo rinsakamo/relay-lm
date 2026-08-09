@@ -10,8 +10,8 @@ import pytest
 import yaml
 
 from relaylm.config import RelayLMConfig
-from relaylm.evidence_common import canonical_digest
-from relaylm.evidence_store import EvidenceRecordStore
+from relaylm.evidence.common import canonical_digest
+from relaylm.evidence.store import EvidenceRecordStore
 from relaylm._subjective_mem_retrieval_cutover_activation import (
     FORWARD_STATES,
     reconstruct_cutover_chain,
@@ -696,7 +696,7 @@ def test_structure_and_immutable_store() -> None:
         <= 80
     )
     assert (
-        hashlib.sha256(Path("relaylm/evidence_store.py").read_bytes()).hexdigest()
+        hashlib.sha256(Path("relaylm/evidence/store.py").read_bytes()).hexdigest()
         == "41cfa9af6c32c1359be04f497924883ffbc4abb4e39313a44755494f92e2b41f"
     )
 

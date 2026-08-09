@@ -25,7 +25,7 @@ import yaml
 from fastapi.testclient import TestClient
 
 from relaylm.app import create_app
-from relaylm.evidence_store import EvidenceRecordStore
+from relaylm.evidence.store import EvidenceRecordStore
 
 BACKEND_BASE_URL = "http://127.0.0.1:8000/v1"
 BACKEND_CHAT_COMPLETIONS_URL = f"{BACKEND_BASE_URL}/chat/completions"

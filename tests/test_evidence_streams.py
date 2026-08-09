@@ -1,8 +1,8 @@
 """Unit tests for Contract 1D minimal stream/sequence/coverage builders."""
 from __future__ import annotations
 
-from relaylm.evidence_common import PrincipalRef
-from relaylm.evidence_streams import (
+from relaylm.evidence.common import PrincipalRef
+from relaylm.evidence.streams import (
     CaptureSequenceLog,
     build_capture_stream_descriptor,
     compute_coverage_checkpoint,

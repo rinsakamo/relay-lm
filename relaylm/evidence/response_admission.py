@@ -3,40 +3,40 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from relaylm.evidence_capture_attempt import CaptureAttemptLog
-from relaylm.evidence_common import AuthorityChangeSetRef, PrincipalRef, canonical_digest, dedupe
-from relaylm.evidence_governance import build_least_privilege_grant, initialize_admitted_governance
-from relaylm.evidence_manifest import (
+from relaylm.evidence.capture_attempt import CaptureAttemptLog
+from relaylm.evidence.common import AuthorityChangeSetRef, PrincipalRef, canonical_digest, dedupe
+from relaylm.evidence.governance import build_least_privilege_grant, initialize_admitted_governance
+from relaylm.evidence.manifest import (
     build_canonical_source_manifest,
     build_managed_runtime_provenance,
     build_private_direct_audience,
     build_protected_text_part,
     build_source_occurrence_time,
 )
-from relaylm.evidence_response_binding import (
+from relaylm.evidence.response_binding import (
     ResponseCaptureLog,
     build_assistant_response_binding,
     build_payload_binding_attestation,
 )
-from relaylm.evidence_response_result import EvidenceResponseCaptureResult
-from relaylm.evidence_response_session import (
+from relaylm.evidence.response_result import EvidenceResponseCaptureResult
+from relaylm.evidence.response_session import (
     PreparedResponseCapture,
     STREAM_KEY,
     derive_id,
 )
-from relaylm.evidence_source_event import (
+from relaylm.evidence.source_event import (
     SOURCE_EVENT_SCHEMA,
     ManagedResponseIdentity,
     SourceEvent,
     build_admitted_admission_decision,
     build_valid_validation_bundle,
 )
-from relaylm.evidence_store import EvidenceStoreTransaction
-from relaylm.evidence_validation_artifacts import (
+from relaylm.evidence.store import EvidenceStoreTransaction
+from relaylm.evidence.validation_artifacts import (
     build_validation_artifact_events,
     build_validation_artifact_identities,
 )
-from relaylm.evidence_streams import (
+from relaylm.evidence.streams import (
     CaptureSequenceLog,
     compute_coverage_checkpoint,
     derive_participant_change_partition_id,
@@ -708,8 +708,8 @@ def _rebuild_attempt(
 
 
 def _dry_run_reservation(prepared: PreparedResponseCapture) -> dict[str, object]:
-    from relaylm.evidence_manifest import build_private_direct_audience
-    from relaylm.evidence_response_binding import build_response_capture_reservation
+    from relaylm.evidence.manifest import build_private_direct_audience
+    from relaylm.evidence.response_binding import build_response_capture_reservation
 
     audience, _ = build_private_direct_audience(
         participant_refs=(prepared.descriptor.controller_principal_ref,)

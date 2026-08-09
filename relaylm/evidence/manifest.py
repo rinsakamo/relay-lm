@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from relaylm.evidence_common import PrincipalRef, canonical_digest, dedupe, utf8_text_digest
+from relaylm.evidence.common import PrincipalRef, canonical_digest, dedupe, utf8_text_digest
 
 SCHEMA = "relaylm.canonical_source_manifest.v1"
 

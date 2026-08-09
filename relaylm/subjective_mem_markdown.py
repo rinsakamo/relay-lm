@@ -14,7 +14,7 @@ from pathlib import PurePosixPath
 from typing import Literal
 
 from relaylm.character_workspace import parse_markdown_blocks
-from relaylm.evidence_common import canonical_digest, utf8_text_digest
+from relaylm.evidence.common import canonical_digest, utf8_text_digest
 from relaylm.subjective_mem import (
     SubjectiveMemFormationSnapshot,
     SubjectiveMemRevision,

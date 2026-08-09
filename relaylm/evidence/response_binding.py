@@ -3,13 +3,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from relaylm.evidence_common import (
+from relaylm.evidence.common import (
     build_runtime_authority,
     canonical_digest,
     ev1_policy_snapshot_ref,
     utf8_text_digest,
 )
-from relaylm.evidence_manifest import OccurrenceAudienceSnapshot
+from relaylm.evidence.manifest import OccurrenceAudienceSnapshot
 
 RESERVATION_SCHEMA = "relaylm.assistant_response_capture_reservation.v1"
 CAPTURE_EVENT_SCHEMA = "relaylm.assistant_response_capture_event.v1"

@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 
 import relaylm.subjective_mem_retrieval_usage_ledger as ledger_owner
-from relaylm.evidence_common import utf8_text_digest
-from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreResult
+from relaylm.evidence.common import utf8_text_digest
+from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreResult
 from relaylm.relaymem_grounded_recall_response import build_grounded_recall_context
 from relaylm.subjective_mem_retrieval import (
     RETRIEVAL_USAGE_EVENT_KIND,

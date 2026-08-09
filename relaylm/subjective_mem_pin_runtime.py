@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Callable, Literal
 
 from relaylm._subjective_mem_commit_io import PLATFORM_REVISION, inspect_canonical_page, secure_platform_supported
-from relaylm.evidence_common import canonical_digest, sha256_hex
-from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreTransaction
+from relaylm.evidence.common import canonical_digest, sha256_hex
+from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
 from relaylm.subjective_mem import SUBJECTIVE_MEM_REVISION_SCHEMA, SubjectiveMemCharacterAuthority, SubjectiveMemCurrentState, SubjectiveMemRevision, resolve_subjective_mem_character_authority
 from relaylm.subjective_mem_lifecycle import LIFECYCLE_INTENT_FINALIZATION_SCHEMA, LIFECYCLE_INTENT_SCHEMA, LIFECYCLE_POLICY_REVISION, LIFECYCLE_RECEIPT_SCHEMA, LIFECYCLE_RESULT_SCHEMA, LIFECYCLE_TRANSITION_SCHEMA
 from relaylm.subjective_mem_lifecycle_authority import SubjectiveMemPredecessorExpectation, load_subjective_mem_predecessor_authority_locked

@@ -32,7 +32,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Literal
 
-from relaylm.evidence_common import canonical_digest, dedupe
+from relaylm.evidence.common import canonical_digest, dedupe
 from relaylm.relaymem_grounded_recall_response import (
     GROUNDED_RECALL_CONTEXT_SCHEMA, MAX_EVIDENCE_ITEMS, MAX_FACT_TEXT_CHARS,
 )

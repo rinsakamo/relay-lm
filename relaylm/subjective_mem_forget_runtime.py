@@ -23,8 +23,8 @@ from relaylm._subjective_mem_commit_io import (
     secure_platform_supported,
     write_immutable_rendered_artifact,
 )
-from relaylm.evidence_common import canonical_digest, sha256_hex
-from relaylm.evidence_store import EvidenceRecordStore, EvidenceStoreTransaction
+from relaylm.evidence.common import canonical_digest, sha256_hex
+from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
 from relaylm.subjective_mem import (
     SUBJECTIVE_MEM_REVISION_SCHEMA,
     SubjectiveMemCharacterAuthority,
