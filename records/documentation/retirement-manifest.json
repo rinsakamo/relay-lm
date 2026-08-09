@@ -229,6 +229,21 @@
       "retention_reason": "D2-B2b4c30 migrated every current consumer to canonical compile/checkpoint architecture or the owning exact compile contracts and removed the closed transitional current-implementation note; its wording remains recoverable from Git."
     },
     {
+      "old_path": "docs/architecture/vtuber_memory_proxy_design.md",
+      "last_live_commit": "fba5bb5f1d57cf066b6616174402d3ac0fa034da",
+      "old_blob_sha": "cb2c3093dc623a0df717d4c7bd5420d248c1c029",
+      "removed_by_pr": 941,
+      "replacement_paths": [
+        "docs/architecture/character/interaction-quality.md",
+        "docs/architecture/performance/perceived-latency.md",
+        "docs/architecture/runtime/request-response-pipeline.md",
+        "docs/architecture/system-overview.md",
+        "docs/architecture/voice/streaming-and-tts.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R6 retired the obsolete VTuber memory-proxy compatibility redirect after current consumers had converged on canonical system, request/response, voice, performance, and character-interaction authorities; its historical archive source remains a separate retirement responsibility, and the exact redirect remains recoverable from Git."
+    },
+    {
       "old_path": "docs/evidence/migrations/README.md",
       "last_live_commit": "e8148093f7e6f3c7768ba17e19c9425af22cfc70",
       "old_blob_sha": "f1008ba0300c8aecdc2246cbc45e977b1c5e6234",
