@@ -302,7 +302,7 @@ def _write_json(path: Path, payload: dict) -> None:
 
 def test_pin_owns_predecessor_authority_through_shared_owner() -> None:
     source = inspect.getsource(pin_runtime)
-    assert "from relaylm.subjective_mem_lifecycle_authority import" in source
+    assert "from relaylm.subjective_mem.lifecycle_authority import" in source
     assert source.count("load_subjective_mem_predecessor_authority_locked(") == 2
     for removed in (
         "_authority_bindings",

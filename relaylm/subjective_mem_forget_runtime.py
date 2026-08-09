@@ -49,7 +49,7 @@ from relaylm.subjective_mem.lifecycle import (
     LIFECYCLE_TRANSITION_SCHEMA,
     SubjectiveMemLifecycleTransition,
 )
-from relaylm.subjective_mem_lifecycle_authority import (
+from relaylm.subjective_mem.lifecycle_authority import (
     SubjectiveMemPredecessorExpectation,
     load_subjective_mem_predecessor_authority_locked,
 )

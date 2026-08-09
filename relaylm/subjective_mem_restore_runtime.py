@@ -26,7 +26,7 @@ from relaylm.subjective_mem.models import (
     resolve_subjective_mem_character_authority,
 )
 from relaylm.subjective_mem.lifecycle import LIFECYCLE_POLICY_REVISION
-from relaylm.subjective_mem_lifecycle_authority import (
+from relaylm.subjective_mem.lifecycle_authority import (
     load_subjective_mem_predecessor_authority_locked,
 )
 from relaylm.subjective_mem_lifecycle_engine import (
