@@ -24,7 +24,6 @@ relaylm_related_authority:
   - ../runtime/conversation-capability-boundary.md
   - ../context/context-assembly.md
   - ../memory/storage-and-recovery.md
-  - ../runtime_operational_requirements.md
   - ../archive/product_runtime_hardening.md
 relaylm_lifecycle: stable
 relaylm_primary_consumers:
