@@ -22,7 +22,7 @@ from relaylm.subjective_mem.models import (
     SubjectiveMemCurrentState,
     SubjectiveMemRevision,
 )
-from relaylm.subjective_mem_lifecycle_authority import (
+from relaylm.subjective_mem.lifecycle_authority import (
     SubjectiveMemPredecessorExpectation,
 )
 from relaylm.subjective_mem.lifecycle import (

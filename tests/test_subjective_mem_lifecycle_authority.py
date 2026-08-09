@@ -30,8 +30,8 @@ from relaylm.subjective_mem.lifecycle import (
     LIFECYCLE_RECEIPT_SCHEMA,
     LIFECYCLE_TRANSITION_SCHEMA,
 )
-import relaylm.subjective_mem_lifecycle_authority as authority_module
-from relaylm.subjective_mem_lifecycle_authority import (
+import relaylm.subjective_mem.lifecycle_authority as authority_module
+from relaylm.subjective_mem.lifecycle_authority import (
     SubjectiveMemPredecessorExpectation,
     load_subjective_mem_predecessor_authority_locked,
     subjective_mem_committed_authorization_ref,

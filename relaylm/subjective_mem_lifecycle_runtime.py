@@ -26,7 +26,7 @@ from relaylm.shared_assessment.runtime import (
     shared_assessment_current_state_key,
     shared_assessment_revision_record_id,
 )
-from relaylm.subjective_mem_lifecycle_authority import (
+from relaylm.subjective_mem.lifecycle_authority import (
     SubjectiveMemPredecessorExpectation,
     load_subjective_mem_predecessor_authority_locked,
 )

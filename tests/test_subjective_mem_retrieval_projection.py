@@ -1013,7 +1013,7 @@ def test_projection_modules_have_no_primary_shadow_or_request_path_dependency() 
             "dataclasses",
             "relaylm.evidence.common",
             "relaylm.subjective_mem.models",
-            "relaylm.subjective_mem_lifecycle_authority",
+            "relaylm.subjective_mem.lifecycle_authority",
             "relaylm.subjective_mem.markdown",
             "relaylm.subjective_mem_retrieval",
         },

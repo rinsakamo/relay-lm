@@ -11,7 +11,7 @@ characterization, request-path wiring, or background rebuild.
 
 Every fact is read through its current owner, and committed receipt and
 authorization exactness is delegated to
-``relaylm.subjective_mem_lifecycle_authority`` so exactly one committed-authority
+``relaylm.subjective_mem.lifecycle_authority`` so exactly one committed-authority
 evaluator exists. No lifecycle, receipt, or authorization semantics are
 evaluated here: this module resolves which exact records a selector names, asks
 the owner whether they are exact, and reports each answer as one RT-1A row flag.
@@ -30,7 +30,7 @@ from relaylm.subjective_mem.models import (
     SUBJECTIVE_MEM_CURRENT_STATE_V2_SCHEMA, SUBJECTIVE_MEM_REVISION_SCHEMA,
     SubjectiveMemCurrentState,
 )
-from relaylm.subjective_mem_lifecycle_authority import (
+from relaylm.subjective_mem.lifecycle_authority import (
     SubjectiveMemPredecessorExpectation, subjective_mem_committed_authorization_ref,
     validate_subjective_mem_committed_authorization, validate_subjective_mem_committed_receipt,
 )
