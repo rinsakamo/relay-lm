@@ -22,25 +22,6 @@ The active architecture index lists the retained redirect paths separately from 
 
 ## Archived responsibility-split designs
 
-### [RelayCTX Wake Loop Design](relayctx_wake_loop_design.md)
-
-Date basis: 2026-05-31 JST.
-
-Reason archived:
-
-- predates the RelayINT / RelayREF responsibility split,
-- assigns reference resolution and response-mode selection to RelayCTX,
-- assigns Wake-time reflection and recovery to RelayREF,
-- combines CTX working-memory concepts with semantic decisions now owned by RelayINT, RelaySCN, and RelayRUN.
-
-Useful principles migrated into current documents:
-
-- RAM-side working state remains separate from prompt-selected hints -> [Context packing design](../context_packing_design.md),
-- prompt packing selects only what the current turn needs rather than filling the available budget -> [Context packing design](../context_packing_design.md),
-- reference resolution prefers current CTX working state before long-term memory -> [RelayINT MVP design](../relayint_mvp_design.md),
-- ambiguous references require clarification before memory retrieval -> [RelayINT MVP design](../relayint_mvp_design.md),
-- explicit or confirmed long-term recall may use a clarification-gated two-step interaction -> [RelayINT MVP design](../relayint_mvp_design.md).
-
 ### [RelayREF / RelaySLP MVP Design](relayref_relayslp_mvp_design.md)
 
 Date basis: 2026-05-31 JST.

@@ -41,6 +41,20 @@
       "retention_reason": "D6-R9 retired the historical product-runtime hardening source after its durable URL-swap character experience, context and memory authority, latency, privacy, observability, reliability, compatibility, and integration responsibilities were absorbed by canonical architecture and exact fallback authorities; its obsolete MVP-0 through MVP-5 ladder, broad mode-fallback examples, and early implementation-field proposals remain recoverable from Git rather than continuing as live documentation."
     },
     {
+      "old_path": "docs/architecture/archive/relayctx_wake_loop_design.md",
+      "last_live_commit": "d004913cdf8f58b3b2bd24750c60a5d254f8a6b7",
+      "old_blob_sha": "9ae481b2adc020fc38ebc17a783e4bd154d70c5b",
+      "removed_by_pr": 958,
+      "replacement_paths": [
+        "docs/architecture/context/context-assembly.md",
+        "docs/architecture/pipeline-responsibilities.md",
+        "docs/architecture/runtime/request-response-pipeline.md",
+        "docs/contracts/relayctx_short_term_runtime_contract.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R11 retired the pre-RelayINT RelayCTX Wake-loop source after its durable working-state versus selected-context, smallest-sufficient packing, and context-ordering principles were absorbed by current RelayCTX architecture and exact runtime contracts; its obsolete assignment of reference/response-mode and Wake-recovery responsibility remains recoverable from Git as history rather than continuing authority."
+    },
+    {
       "old_path": "docs/architecture/archive/relayrun_runtime_checkpoint_design_history.md",
       "last_live_commit": "3568171def75c30386054523c34abd4fcabc117a",
       "old_blob_sha": "57da5825535254f133396c02fcf88039ca18b9ee",
