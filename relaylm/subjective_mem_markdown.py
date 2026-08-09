@@ -15,7 +15,7 @@ from typing import Literal
 
 from relaylm.character_workspace import parse_markdown_blocks
 from relaylm.evidence.common import canonical_digest, utf8_text_digest
-from relaylm.subjective_mem import (
+from relaylm.subjective_mem.models import (
     SubjectiveMemFormationSnapshot,
     SubjectiveMemRevision,
     SubjectiveMemScopeBinding,

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from relaylm.evidence.common import canonical_digest
 from relaylm.evidence.space import EvidenceSpaceDescriptor
-from relaylm.subjective_mem import (
+from relaylm.subjective_mem.models import (
     SubjectiveMemCharacterAuthority,
     SubjectiveMemCurrentState,
     SubjectiveMemRevision,

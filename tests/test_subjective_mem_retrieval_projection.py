@@ -11,7 +11,7 @@ import pytest
 import relaylm.subjective_mem_retrieval_projection as projection_module
 import relaylm.subjective_mem_retrieval_projection_store as store_module
 from relaylm.evidence.common import canonical_digest, utf8_text_digest
-from relaylm.subjective_mem import (
+from relaylm.subjective_mem.models import (
     SUBJECTIVE_MEM_DECISION_SCHEMA,
     SUBJECTIVE_MEM_REVISION_SCHEMA,
     SubjectiveMemCurrentState,

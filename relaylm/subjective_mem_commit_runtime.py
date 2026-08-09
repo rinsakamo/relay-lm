@@ -23,7 +23,7 @@ from relaylm._subjective_mem_commit_io import (
 from relaylm.evidence.common import canonical_digest, sha256_hex
 from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
 from relaylm.shared_assessment.runtime import shared_assessment_revision_record_id
-from relaylm.subjective_mem import (
+from relaylm.subjective_mem.models import (
     SubjectiveMemCharacterAuthority,
     SubjectiveMemCurrentState,
     resolve_subjective_mem_character_authority,

@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 from relaylm.evidence.common import canonical_digest
 from relaylm.shared_assessment.models import SharedAssessmentCurrentState, SharedAssessmentRevision
-from relaylm.subjective_mem import SubjectiveMemStrength
+from relaylm.subjective_mem.models import SubjectiveMemStrength
 
 LIFECYCLE_TRANSITION_SCHEMA = "relaylm.subjective_mem_lifecycle_transition.v1"
 LIFECYCLE_INTENT_SCHEMA = "relaylm.subjective_mem_lifecycle_intent.v1"

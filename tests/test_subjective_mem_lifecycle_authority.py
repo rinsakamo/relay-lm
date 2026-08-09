@@ -10,7 +10,7 @@ from relaylm.evidence.space import (
     build_bootstrap_evidence_space_descriptor,
     derive_evidence_space_id,
 )
-from relaylm.subjective_mem import (
+from relaylm.subjective_mem.models import (
     SUBJECTIVE_MEM_REVISION_SCHEMA,
     SubjectiveMemCharacterAuthority,
     SubjectiveMemFormationSnapshot,

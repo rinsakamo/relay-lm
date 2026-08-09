@@ -12,7 +12,7 @@ import pytest
 from relaylm._subjective_mem_commit_io import PLATFORM_REVISION
 from relaylm.evidence.common import canonical_digest
 from relaylm.evidence.store import EvidenceRecordStore
-from relaylm.subjective_mem import SUBJECTIVE_MEM_REVISION_SCHEMA
+from relaylm.subjective_mem.models import SUBJECTIVE_MEM_REVISION_SCHEMA
 from relaylm.subjective_mem_lifecycle import LIFECYCLE_POLICY_REVISION
 from relaylm.subjective_mem_markdown import (
     LIFECYCLE_BLOCK_SCHEMA,
