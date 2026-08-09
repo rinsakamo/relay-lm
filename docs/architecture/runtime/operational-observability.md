@@ -22,7 +22,6 @@ relaylm_related_authority:
   - ../privacy/protected-source-and-disclosure.md
   - ../privacy/local-first-runtime.md
   - ../context/context-assembly.md
-  - ../runtime_operational_requirements.md
   - ../../contracts/runtime_compile_artifact_contract.md
   - ../../contracts/runtime/compile-gate.md
 relaylm_lifecycle: stable
