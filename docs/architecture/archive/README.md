@@ -63,7 +63,7 @@ Useful principles migrated or already represented in current documents:
 
 ## Archived product-origin designs
 
-### [RelayLM VTuber Memory Proxy Design](vtuber_memory_proxy_design.md)
+### RelayLM VTuber Memory Proxy Design
 
 Reason archived:
 
