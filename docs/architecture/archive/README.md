@@ -63,32 +63,6 @@ Useful principles migrated or already represented in current documents:
 
 ## Archived product-origin designs
 
-### [Persona-Specialized Proxy Design](persona_specialized_proxy_design.md)
-
-Reason archived:
-
-- its proxy role, context hierarchy, adapter model, agent boundary, and scope identity are covered by current architecture and contracts,
-- its implementation-boundary notes describe an early post-MVP-12 state,
-- it mixes durable product principles with superseded implementation status.
-
-Useful principles migrated into current documents:
-
-- RelayLM is evaluated on whether persona and relationship continuity make conversation comfortable, not task success alone -> [AI character product principles](../ai_character_product_principles.md),
-- conversation stickiness must come from coherence and comfort rather than manipulative engagement -> [AI character product principles](../ai_character_product_principles.md),
-- memory warmth, non-creepiness, and growth feeling are explicit product-quality axes -> [AI character product principles](../ai_character_product_principles.md),
-- persona layers update at different speeds -> [RelaySOUL persona update cadence design](../../relaysoul/persona_update_cadence_design.md),
-- `persona_plasticity` changes proposal thresholds, not mutation authority -> [RelaySOUL persona update cadence design](../../relaysoul/persona_update_cadence_design.md).
-
-Current replacements:
-
-- [RelayLM System Overview](../system-overview.md)
-- [Pipeline Responsibilities](../pipeline-responsibilities.md)
-- [Request / Response Pipeline](../runtime/request-response-pipeline.md)
-- [Context packing design](../context_packing_design.md)
-- [AI character product principles](../ai_character_product_principles.md)
-- [RelaySOUL design](../../relaysoul/relaysoul_design.md)
-- [RelaySOUL persona update cadence design](../../relaysoul/persona_update_cadence_design.md)
-
 ### [RelayLM VTuber Memory Proxy Design](vtuber_memory_proxy_design.md)
 
 Reason archived:
