@@ -73,10 +73,10 @@ Reason archived:
 
 Useful principles migrated into current documents:
 
-- fallback is normal product behavior but must remain policy- and compatibility-gated -> [Runtime operational requirements](../runtime_operational_requirements.md),
-- audit/trace diagnostics should use typed content-free projections -> [Runtime operational requirements](../runtime_operational_requirements.md),
-- local-first storage, namespace isolation, visible backend configuration, and no hidden telemetry are explicit privacy requirements -> [Runtime operational requirements](../runtime_operational_requirements.md),
-- compatibility, persona/context, memory, latency, recovery, and idempotency need product-level acceptance criteria -> [Runtime operational requirements](../runtime_operational_requirements.md),
+- fallback is normal product behavior but must remain policy- and compatibility-gated -> [Runtime reliability and compatibility](../runtime/reliability-and-compatibility.md),
+- audit/trace diagnostics should use typed content-free projections -> [Runtime operational observability](../runtime/operational-observability.md),
+- local-first storage, namespace isolation, visible backend configuration, and no hidden telemetry are explicit privacy requirements -> [Local-first runtime privacy](../privacy/local-first-runtime.md),
+- compatibility, persona/context, memory, latency, recovery, and idempotency need product-level acceptance criteria -> [Runtime reliability and compatibility](../runtime/reliability-and-compatibility.md),
 - product experience hierarchy remains separate from operational requirements -> [AI character product principles](../ai_character_product_principles.md).
 
 Current replacements:
@@ -85,7 +85,9 @@ Current replacements:
 - [RelayLM System Overview](../system-overview.md)
 - [Pipeline Responsibilities](../pipeline-responsibilities.md)
 - [Request / Response Pipeline](../runtime/request-response-pipeline.md)
-- [Runtime operational requirements](../runtime_operational_requirements.md)
+- [Runtime reliability and compatibility](../runtime/reliability-and-compatibility.md)
+- [Runtime operational observability](../runtime/operational-observability.md)
+- [Local-first runtime privacy](../privacy/local-first-runtime.md)
 - [AI character product principles](../ai_character_product_principles.md)
 - [Context packing design](../context_packing_design.md)
 - [RelayMEM retrieval execution design](../relaymem_retrieval_execution_design.md)
@@ -101,7 +103,6 @@ These markers record where append-only design histories were superseded by conci
 The following documents contain distinct current contracts and remain in the active architecture index:
 
 - `context_packing_design.md`
-- `runtime_operational_requirements.md`
 - `relaymem_mvp_design.md`
 - `relaymem_slp_execution_design.md`
 - `relaymem_retrieval_execution_design.md`

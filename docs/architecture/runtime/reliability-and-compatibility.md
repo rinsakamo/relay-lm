@@ -25,7 +25,6 @@ relaylm_related_authority:
   - ../performance/perceived-latency.md
   - ../privacy/local-first-runtime.md
   - ../system-overview.md
-  - ../runtime_operational_requirements.md
   - ../../contracts/runtime/managed-route-fallback.md
 relaylm_lifecycle: stable
 relaylm_primary_consumers:
