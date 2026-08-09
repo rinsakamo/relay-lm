@@ -55,6 +55,26 @@
       "retention_reason": "D6-R11 retired the pre-RelayINT RelayCTX Wake-loop source after its durable working-state versus selected-context, smallest-sufficient packing, and context-ordering principles were absorbed by current RelayCTX architecture and exact runtime contracts; its obsolete assignment of reference/response-mode and Wake-recovery responsibility remains recoverable from Git as history rather than continuing authority."
     },
     {
+      "old_path": "docs/architecture/archive/relayref_relayslp_mvp_design.md",
+      "last_live_commit": "839654cc250d29099d1ae2f872c6884978a82531",
+      "old_blob_sha": "db60249af909be5aa07722fb4033ee0c859d133e",
+      "removed_by_pr": 960,
+      "replacement_paths": [
+        "docs/adr/0004-single-response-call-ordinary-conversation-deferred-formation.md",
+        "docs/architecture/memory/formation.md",
+        "docs/architecture/pipeline-responsibilities.md",
+        "docs/architecture/relayint_mvp_design.md",
+        "docs/architecture/relaymem_slp_execution_design.md",
+        "docs/architecture/relayscn_mvp_scene_policy.md",
+        "docs/architecture/runtime/request-response-pipeline.md",
+        "docs/architecture/runtime/scheduler.md",
+        "docs/contracts/relayrun-checkpoint-and-recovery.md",
+        "docs/contracts/relayrun_recovery_response_generator_contract.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R13 retired the pre-RelayINT combined RelayREF/RelaySLP design after current architecture fixed RelayINT before action, RelayREF as response-complete observation, and RelaySLP out of band after the visible response, while recovery, scene/persistence, scheduling, checkpoint/recovery, and Subjective MEM formation responsibilities moved to their dedicated authorities; the obsolete Wake-repair and sleep/reset model remains recoverable from Git as history."
+    },
+    {
       "old_path": "docs/architecture/archive/relayrun_runtime_checkpoint_design_history.md",
       "last_live_commit": "3568171def75c30386054523c34abd4fcabc117a",
       "old_blob_sha": "57da5825535254f133396c02fcf88039ca18b9ee",
