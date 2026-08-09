@@ -285,6 +285,17 @@
       "retention_reason": "D6-R12 retired the dead RelayCTX Wake-loop compatibility redirect after PR #958 retired its historical source, repository search and delete-only exact-head link validation found no active consumers, and current readers can resolve the responsibility directly through context, pipeline, RelayINT, request/response, and exact RelayCTX authorities; the redirect remains recoverable from Git."
     },
     {
+      "old_path": "docs/architecture/relaymem_m3a_primary_formation_handoff.md",
+      "last_live_commit": "1777ca0c0c4d1f64c650f9b3f559a178ad0aed20",
+      "old_blob_sha": "fbb08beb9975e3a1b46d4a9f510753669297bc26",
+      "removed_by_pr": 764,
+      "replacement_paths": [
+        "docs/evidence/implementation/relaymem-m3a-primary-formation-handoff.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #667 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
+    },
+    {
       "old_path": "docs/architecture/relayref_relayslp_mvp_design.md",
       "last_live_commit": "5fc4266ed9e102299c92b172e0cb5287d8924372",
       "old_blob_sha": "4756c22765e6b9d439d00d266ca390b14befa490",
@@ -305,20 +316,9 @@
       "retention_reason": "D6-R14 retired the dead RelayREF/RelaySLP compatibility pointer after PR #960 removed its historical source, repaired active authority edges, and left the pointer with no independent authority; delete-only exact-head link validation found no active Markdown consumers, so current readers resolve directly through the canonical timing, recovery, scene, scheduler, checkpoint, and deferred-formation authorities while the exact pointer remains recoverable from Git."
     },
     {
-      "old_path": "docs/architecture/relaymem_m3a_primary_formation_handoff.md",
-      "last_live_commit": "1777ca0c0c4d1f64c650f9b3f559a178ad0aed20",
-      "old_blob_sha": "fbb08beb9975e3a1b46d4a9f510753669297bc26",
-      "removed_by_pr": 764,
-      "replacement_paths": [
-        "docs/evidence/implementation/relaymem-m3a-primary-formation-handoff.md"
-      ],
-      "disposition": "replaced",
-      "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #667 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
-    },
-    {
       "old_path": "docs/architecture/relayrun_runtime_checkpoint_design.md",
       "last_live_commit": "3cee07899121e8e75eaaa8ba37cbefb6eb9f832c",
-      "old_blob_sha": "c9cf93e4841c184d6b110a884516fa2f6cdb5e2",
+      "old_blob_sha": "c9cf93e4841c1847d6b110a884516fa2f6cdb5e2",
       "removed_by_pr": 763,
       "replacement_paths": [
         "docs/architecture/runtime/compile-and-checkpoint.md",
