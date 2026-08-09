@@ -11,15 +11,15 @@ from pydantic import ValidationError
 
 from evidence_test_support import route_snapshot
 from relaylm.config import RelayLMConfig
-import relaylm.shared_assessment_runtime as shared_assessment_runtime
+import relaylm.shared_assessment.runtime as shared_assessment_runtime
 from relaylm.evidence.space import derive_evidence_space_id
 from relaylm.evidence.store import EvidenceRecordStore
 from relaylm.evidence.user_input import capture_managed_user_input
-from relaylm.shared_assessment import (
+from relaylm.shared_assessment.models import (
     SharedAssessmentProposal,
     derive_shared_assessment_id,
 )
-from relaylm.shared_assessment_runtime import (
+from relaylm.shared_assessment.runtime import (
     build_shared_assessment_formation_receipt,
     commit_shared_assessment_revision,
     prepare_shared_assessment_pass,

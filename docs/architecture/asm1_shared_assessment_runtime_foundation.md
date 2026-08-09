@@ -146,9 +146,9 @@ False merge and subjective relation decisions remain outside ASM-1 rather than b
 ## Implementation files
 
 ```text
-relaylm/shared_assessment.py
-relaylm/shared_assessment_evidence.py
-relaylm/shared_assessment_runtime.py
+relaylm/shared_assessment/models.py
+relaylm/shared_assessment/evidence.py
+relaylm/shared_assessment/runtime.py
 scripts/relaylm_asm1_shared_assessment_smoke.py
 tests/test_shared_assessment_runtime.py
 ```

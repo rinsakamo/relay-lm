@@ -20,7 +20,7 @@ from relaylm.evidence.common import (
 )
 from relaylm.evidence.governance import AccessGrant, EvidenceGovernanceState
 from relaylm.evidence.store import EvidenceStoreTransaction
-from relaylm.shared_assessment import (
+from relaylm.shared_assessment.models import (
     SharedAssessmentAuthorizationSnapshot,
     SharedAssessmentEvidenceRef,
     SharedAssessmentPassBundle,

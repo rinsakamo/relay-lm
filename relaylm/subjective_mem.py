@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from relaylm.evidence.common import canonical_digest, utf8_text_digest
-from relaylm.shared_assessment import (
+from relaylm.shared_assessment.models import (
     SharedAssessmentCurrentState,
     SharedAssessmentFormationAuthorizationReceipt,
     SharedAssessmentRevision,

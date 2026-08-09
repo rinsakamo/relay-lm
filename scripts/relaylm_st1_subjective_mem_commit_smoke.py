@@ -25,8 +25,8 @@ from relaylm.evidence.common import build_runtime_authority, canonical_digest
 from relaylm.evidence.space import derive_evidence_space_id
 from relaylm.evidence.store import EvidenceRecordStore
 from relaylm.evidence.user_input import capture_managed_user_input
-from relaylm.shared_assessment import SharedAssessmentProposal, derive_shared_assessment_id
-from relaylm.shared_assessment_runtime import (
+from relaylm.shared_assessment.models import SharedAssessmentProposal, derive_shared_assessment_id
+from relaylm.shared_assessment.runtime import (
     commit_shared_assessment_revision,
     prepare_shared_assessment_pass,
 )
