@@ -18,6 +18,29 @@
       "retention_reason": "D6-R5 retired the historical persona-specialized proxy design after its unique conversation/capability and character-interaction semantics were extracted into canonical authorities by PRs #938 and #939 and its remaining context, personality, pipeline, and system responsibilities were already canonical; the exact historical source remains recoverable from Git."
     },
     {
+      "old_path": "docs/architecture/archive/product_runtime_hardening.md",
+      "last_live_commit": "b025681d2541ab2e2445954b227c11eb2318bd5a",
+      "old_blob_sha": "759c925e770fd3c58264fc3b17d665312ec469ab",
+      "removed_by_pr": 955,
+      "replacement_paths": [
+        "docs/architecture/character/interaction-quality.md",
+        "docs/architecture/character/personality-and-experience.md",
+        "docs/architecture/context/context-assembly.md",
+        "docs/architecture/memory/storage-and-recovery.md",
+        "docs/architecture/open_llm_vtuber_integration.md",
+        "docs/architecture/performance/perceived-latency.md",
+        "docs/architecture/privacy/local-first-runtime.md",
+        "docs/architecture/runtime/operational-observability.md",
+        "docs/architecture/runtime/reliability-and-compatibility.md",
+        "docs/architecture/runtime/request-response-pipeline.md",
+        "docs/architecture/system-overview.md",
+        "docs/architecture/voice/streaming-and-tts.md",
+        "docs/contracts/runtime/managed-route-fallback.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R9 retired the historical product-runtime hardening source after its durable URL-swap character experience, context and memory authority, latency, privacy, observability, reliability, compatibility, and integration responsibilities were absorbed by canonical architecture and exact fallback authorities; its obsolete MVP-0 through MVP-5 ladder, broad mode-fallback examples, and early implementation-field proposals remain recoverable from Git rather than continuing as live documentation."
+    },
+    {
       "old_path": "docs/architecture/archive/relayrun_runtime_checkpoint_design_history.md",
       "last_live_commit": "3568171def75c30386054523c34abd4fcabc117a",
       "old_blob_sha": "57da5825535254f133396c02fcf88039ca18b9ee",
