@@ -12,7 +12,6 @@ relaylm_update_trigger:
 relaylm_related_authority:
   - docs/PROJECT_STATUS.md
   - docs/architecture/project_execution_plan.md
-  - docs/architecture/post_i3_evaluation_work_roadmap.md
   - docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md
   - docs/architecture/soul_lab_ui_mvp.md
   - docs/architecture/soul_lab_ui_a7_management_projection_handoff.md
