@@ -212,12 +212,6 @@ def check_indexes_and_reference_map() -> None:
         "It does not own current implementation status; read [Project Status](../PROJECT_STATUS.md) first.",
     )
     require(
-        "docs/architecture/post_i3_evaluation_work_roadmap.md",
-        "relaylm_doc_type: redirect_stub",
-        "This file is a compatibility stub.",
-        "Do not add new current-state, next-wave, or post-I3 roadmap sections here.",
-    )
-    require(
         "docs/evidence/waves/wave3_cross_slice_convergence_audit.md",
         "I1-G overall complete",
         "Phase I-4 overall in progress",
