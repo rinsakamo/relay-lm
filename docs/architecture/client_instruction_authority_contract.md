@@ -8,7 +8,7 @@ It complements:
 
 - [Client History Authority Contract](client_history_authority_contract.md)
 - [RelayLM Pipeline Responsibilities](pipeline-responsibilities.md)
-- [Pipeline Implementation Plan](pipeline_implementation_plan.md)
+- [Project Execution Plan](project_execution_plan.md)
 - [Phase 5-C4a Implementation Handoff](phase5c4a_instruction_bearing_managed_apply_handoff.md)
 - [Phase 5-C4b Cache-Hit RelaySCN Projection Handoff](phase5c4b_cache_hit_relayscn_projection_handoff.md)
 - [Phase 5-C5c Runtime Cache-Writer Boundary Handoff](phase5c5c_runtime_cache_writer_boundary_handoff.md)

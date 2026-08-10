@@ -6,7 +6,7 @@ RelayLM treats prompt construction as context compilation rather than simple con
 
 This document separates the **current implemented profile compiler** from the **target RelayCTX-owned managed compiler**.
 
-Current implementation status and sequencing live in [Pipeline Implementation Plan](../architecture/pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
+Current implementation status and sequencing live in [Project Execution Plan](../architecture/project_execution_plan.md) and [Project Status](../PROJECT_STATUS.md).
 
 ## Current implemented compiler
 
