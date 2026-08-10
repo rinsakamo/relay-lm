@@ -11,7 +11,7 @@ relaylm_update_trigger:
   - UI-B0 validation or known limitations change
 relaylm_related_authority:
   - docs/PROJECT_STATUS.md
-  - docs/architecture/pipeline_implementation_plan.md
+  - docs/architecture/project_execution_plan.md
   - docs/architecture/post_i3_evaluation_work_roadmap.md
   - docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md
   - docs/architecture/soul_lab_ui_mvp.md
