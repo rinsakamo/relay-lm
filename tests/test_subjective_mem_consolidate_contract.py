@@ -327,7 +327,7 @@ def test_invalid_identity_inputs_return_bounded_reasons() -> None:
 def test_module_has_no_runtime_policy_or_primary_mem_backdoor_import() -> None:
     source = inspect.getsource(consolidate_contract)
     assert "relaymem_primary" not in source
-    assert "subjective_mem_lifecycle_runtime" not in source
+    assert "subjective_mem.lifecycle_runtime" not in source
     assert "subjective_mem_consolidate_runtime" not in source
     assert "relaymem_slp" not in source
     assert "ContextVar" not in source
