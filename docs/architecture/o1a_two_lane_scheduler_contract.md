@@ -31,7 +31,7 @@ relaylm_related_authority:
   - i1g_pre_enqueue_durable_finalization_contract.md
   - ../evidence/waves/wave3_cross_slice_convergence_audit.md
   - post_i3_evaluation_work_roadmap.md
-  - pipeline_implementation_plan.md
+  - project_execution_plan.md
   - relaymem_slp_current_target.md
 ---
 # O1A: Bounded Two-Lane Work-Source Scheduling and Idle-State Contract
