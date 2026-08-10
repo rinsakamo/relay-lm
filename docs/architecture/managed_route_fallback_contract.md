@@ -2,7 +2,7 @@
 
 ## Status
 
-This document clarifies the stable fallback boundary. Current implementation status remains in `PROJECT_STATUS.md` and `pipeline_implementation_plan.md`.
+This document clarifies the stable fallback boundary. Current implementation status remains in `PROJECT_STATUS.md` and `project_execution_plan.md`.
 
 ## Explicit pass-through route
 
