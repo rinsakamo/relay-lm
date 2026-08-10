@@ -8,7 +8,7 @@ It reads governed evidence, extracts memory candidates, classifies safety, auton
 
 RelaySLP improves future memory. It does not produce the current answer.
 
-Current implementation phase and sequencing live in [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md). Memory lifecycle semantics live in [Memory Lifecycle Design](memory_lifecycle_design.md). The accepted target timing and Subjective MEM formation path live in [ADR 0004](../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md) and [Subjective Memory Formation](memory/formation.md).
+Current implementation phase and sequencing live in [Project Execution Plan](project_execution_plan.md) and [Project Status](../PROJECT_STATUS.md). Memory lifecycle semantics live in [Memory Lifecycle Design](memory_lifecycle_design.md). The accepted target timing and Subjective MEM formation path live in [ADR 0004](../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md) and [Subjective Memory Formation](memory/formation.md).
 
 ## Target interpretation after ADR 0004
 

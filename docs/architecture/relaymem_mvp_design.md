@@ -17,7 +17,7 @@ RelaySLP
   deferred autonomous ordinary memory formation, update, hold, reject, and proposal workflow
 ```
 
-Current implementation phase and sequencing live in [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md). Memory lifecycle semantics live in [Memory Lifecycle Design](memory_lifecycle_design.md).
+Current implementation phase and sequencing live in [Project Execution Plan](project_execution_plan.md) and [Project Status](../PROJECT_STATUS.md). Memory lifecycle semantics live in [Memory Lifecycle Design](memory_lifecycle_design.md).
 
 ## Core principle
 
