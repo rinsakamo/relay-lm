@@ -13,7 +13,7 @@ from relaylm.subjective_mem.commit_io import PLATFORM_REVISION
 from relaylm.evidence.common import canonical_digest
 from relaylm.evidence.store import EvidenceRecordStore
 from relaylm.subjective_mem.models import SUBJECTIVE_MEM_REVISION_SCHEMA, SubjectiveMemStrength
-from relaylm.subjective_mem_consolidate import (
+from relaylm.subjective_mem.consolidate import (
     CONSOLIDATE_AUTHORIZATION_CLASS,
     CONSOLIDATE_POLICY_REVISION,
     CONSOLIDATE_REASON_CATEGORY,

@@ -4,8 +4,8 @@ from __future__ import annotations
 from dataclasses import replace
 import inspect
 
-import relaylm.subjective_mem_consolidate as consolidate_contract
-from relaylm.subjective_mem_consolidate import (
+import relaylm.subjective_mem.consolidate as consolidate_contract
+from relaylm.subjective_mem.consolidate import (
     CONSOLIDATE_AUTHORIZATION_CLASS,
     CONSOLIDATE_OPERATION_FAMILY,
     CONSOLIDATE_POLICY_REVISION,

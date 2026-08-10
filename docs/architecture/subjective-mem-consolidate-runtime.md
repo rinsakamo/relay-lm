@@ -109,7 +109,7 @@ state machine.
 
 ## Policy proposal authority
 
-`relaylm/subjective_mem_consolidate.py` owns one bounded storage-neutral proposal
+`relaylm/subjective_mem/consolidate.py` owns one bounded storage-neutral proposal
 and deterministic identity shape. The current bounded runtime accepts exactly one
 authorization class:
 
@@ -359,7 +359,7 @@ The stable responsibility boundary is represented by current runtime and focused
 validation surfaces including:
 
 ```text
-relaylm/subjective_mem_consolidate.py
+relaylm/subjective_mem/consolidate.py
 relaylm/subjective_mem_consolidate_runtime.py
 relaylm/subjective_mem/lifecycle_authority.py
 relaylm/subjective_mem/lifecycle_engine.py

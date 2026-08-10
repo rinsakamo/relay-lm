@@ -19,7 +19,7 @@ from relaylm.subjective_mem.models import (
     SubjectiveMemStrength,
 )
 from relaylm.subjective_mem.commit import ST1_RECEIPT_SCHEMA
-from relaylm.subjective_mem_consolidate import (
+from relaylm.subjective_mem.consolidate import (
     CONSOLIDATE_AUTHORIZATION_CLASS,
     CONSOLIDATE_OPERATION_FAMILY,
     CONSOLIDATE_POLICY_REVISION,
