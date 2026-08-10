@@ -1,3 +1,29 @@
+---
+relaylm_doc_type: reference
+relaylm_authority: token_policy_shadow_profile_settings_reference
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: runtime
+relaylm_lifecycle: stable
+relaylm_authority_level: lookup
+relaylm_primary_consumers:
+  - operators enabling token policy shadow diagnostics
+  - contributors changing token policy shadow settings
+relaylm_update_trigger:
+  - a token policy shadow setting is added, removed, or renamed
+  - character override precedence changes
+  - token policy leaves shadow mode
+relaylm_not_authoritative_for:
+  - runtime forwarding or budget behavior
+  - exact token policy schemas or trace artifact contracts
+  - current repository implementation status
+  - repository execution sequencing
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../DOCUMENTATION_MODEL.md
+  - configuration.md
+  - ../PROJECT_STATUS.md
+---
 # Token Policy Shadow Profile Settings
 
 RelayLM exposes token policy as diagnostics/trace artifacts in shadow mode.

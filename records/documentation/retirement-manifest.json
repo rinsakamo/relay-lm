@@ -387,8 +387,8 @@
         "docs/architecture/runtime/reliability-and-compatibility.md",
         "docs/architecture/runtime/request-response-pipeline.md",
         "docs/architecture/system-overview.md",
-        "docs/config_schema.md",
-        "docs/openwebui_lmstudio_mvp.md"
+        "docs/openwebui_lmstudio_mvp.md",
+        "docs/reference/configuration.md"
       ],
       "disposition": "absorbed",
       "retention_reason": "D2-B2b migrated every remaining consumer to the smallest canonical system, pipeline, request/response, compile/checkpoint, configuration, integration, or operational authority and removed the mixed transitional note; D6-R8 later replaced its now-retired runtime-operational replacement edge with canonical privacy, observability, and reliability authorities; its historical wording remains recoverable from Git."
