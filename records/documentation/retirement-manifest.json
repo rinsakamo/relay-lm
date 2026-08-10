@@ -29,7 +29,7 @@
     {
       "old_path": "docs/architecture/archive/product_runtime_hardening.md",
       "last_live_commit": "b025681d2541ab2e2445954b227c11eb2318bd5a",
-      "old_blob_sha": "759c925e770fd3f58264fc3b17d665312ec469ab",
+      "old_blob_sha": "759c925e770fd3c58264fc3b17d665312ec469ab",
       "removed_by_pr": 955,
       "replacement_paths": [
         "docs/architecture/character/interaction-quality.md",
