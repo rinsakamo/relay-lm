@@ -79,7 +79,7 @@ def test_subjective_mem_lifecycle_group_runs_regression_and_process_smokes() -> 
 
 
 def test_subjective_mem_create_has_one_direct_owner_without_core_bypass() -> None:
-    runtime = REPO_ROOT / "relaylm/subjective_mem_runtime.py"
+    runtime = REPO_ROOT / "relaylm/subjective_mem/create_runtime.py"
     private_core_name = "_" + "subjective_mem_runtime_core"
     private_core = REPO_ROOT / "relaylm" / f"{private_core_name}.py"
     source = runtime.read_text(encoding="utf-8")

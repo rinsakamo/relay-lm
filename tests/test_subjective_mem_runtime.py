@@ -28,7 +28,7 @@ from relaylm.subjective_mem.models import (
     SubjectiveMemStrength,
     resolve_subjective_mem_character_authority,
 )
-from relaylm.subjective_mem_runtime import (
+from relaylm.subjective_mem.create_runtime import (
     create_subjective_mem,
     resolve_subjective_mem_create_gate,
 )
@@ -988,7 +988,7 @@ def test_symlinked_root_is_not_resolved_for_apply(tmp_path: Path) -> None:
 
 
 def test_sm1_has_no_normal_path_soul_slp_retrieval_or_primary_mem_wiring() -> None:
-    runtime_source = Path("relaylm/subjective_mem_runtime.py").read_text()
+    runtime_source = Path("relaylm/subjective_mem/create_runtime.py").read_text()
     forbidden_imports = (
         "relaylm.soul",
         "relaylm.relaysoul",
@@ -1007,8 +1007,8 @@ def test_sm1_has_no_normal_path_soul_slp_retrieval_or_primary_mem_wiring() -> No
             "_subjective_mem_commit_io.py",
         }:
             continue
-        assert "from relaylm.subjective_mem_runtime" not in path.read_text()
-        assert "import relaylm.subjective_mem_runtime" not in path.read_text()
+        assert "from relaylm.subjective_mem.create_runtime" not in path.read_text()
+        assert "import relaylm.subjective_mem.create_runtime" not in path.read_text()
 
 
 
