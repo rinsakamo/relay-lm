@@ -43,7 +43,7 @@ relaylm_authority_level: exact_contract
 This contract owns the exact current Subjective MEM Pin / Unpin operation boundary implemented by:
 
 ```text
-relaylm/subjective_mem_pin.py
+relaylm/subjective_mem/pin.py
 relaylm/subjective_mem_pin_runtime.py
 ```
 

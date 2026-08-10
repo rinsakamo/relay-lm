@@ -21,7 +21,7 @@ from relaylm.subjective_mem.markdown import (
     RENDERER_REVISION,
     parse_subjective_mem_page_bytes,
 )
-from relaylm.subjective_mem_pin import SubjectiveMemPinBoundary, SubjectiveMemPinProposal
+from relaylm.subjective_mem.pin import SubjectiveMemPinBoundary, SubjectiveMemPinProposal
 import relaylm.subjective_mem_pin_runtime as pin_runtime
 from relaylm.subjective_mem_pin_runtime import pin_subjective_mem, unpin_subjective_mem
 from test_subjective_mem_commit_runtime import _commit, _make_workspace
