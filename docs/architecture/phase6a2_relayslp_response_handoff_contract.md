@@ -19,7 +19,7 @@ relaylm_related_authority:
   - phase6a1_relayslp_job_admission_contract.md
   - phase6b0_relayslp_durable_queue_contract.md
   - phase6b1_relayslp_dispatch_preflight.md
-  - pipeline_implementation_plan.md
+  - project_execution_plan.md
   - relaymem_slp_current_target.md
 ---
 # Phase 6-A2 RelaySLP Response-Finalization Handoff Contract
