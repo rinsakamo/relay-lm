@@ -29,7 +29,7 @@
     {
       "old_path": "docs/architecture/archive/product_runtime_hardening.md",
       "last_live_commit": "b025681d2541ab2e2445954b227c11eb2318bd5a",
-      "old_blob_sha": "759c925e770fd3c58264fc3b17d665312ec469ab",
+      "old_blob_sha": "759c925e770fd3f58264fc3b17d665312ec469ab",
       "removed_by_pr": 955,
       "replacement_paths": [
         "docs/architecture/character/interaction-quality.md",
@@ -81,7 +81,7 @@
         "docs/contracts/relayrun_recovery_response_generator_contract.md"
       ],
       "disposition": "absorbed",
-      "retention_reason": "D6-R13 retired the pre-RelayINT combined RelayREF/RelaySLP design after current architecture fixed RelayINT before action, RelayREF as response-complete observation, and RelaySLP out of band after the visible response, while recovery, scene/persistence, scheduling, checkpoint/recovery, and Subjective MEM formation responsibilities moved to their dedicated authorities; the obsolete Wake-repair and sleep/reset model remains recoverable from Git as history rather than continuing authority."
+      "retention_reason": "D6-R13 retired the pre-RelayINT combined RelayREF/RelaySLP design after current architecture fixed RelayINT before action, RelayREF as response-complete observation, and RelaySLP out of band after the visible response, while recovery, scene/persistence, scheduling, checkpoint/recovery, and Subjective MEM formation responsibilities moved to their dedicated authorities; the obsolete Wake-repair and sleep/reset model remains recoverable from Git as history."
     },
     {
       "old_path": "docs/architecture/archive/relayrun_runtime_checkpoint_design_history.md",
