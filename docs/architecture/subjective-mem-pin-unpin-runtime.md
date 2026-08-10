@@ -136,7 +136,7 @@ high-level Correct/Forget private helper.
 
 ## Storage-neutral proposal authority
 
-`relaylm/subjective_mem_pin.py` owns one proposal and boundary shape for both
+`relaylm/subjective_mem/pin.py` owns one proposal and boundary shape for both
 operations. The proposal binds:
 
 - `operation_kind: pin | unpin`;
@@ -317,7 +317,7 @@ The stable responsibility boundary is represented by current runtime and
 focused validation surfaces including:
 
 ```text
-relaylm/subjective_mem_pin.py
+relaylm/subjective_mem/pin.py
 relaylm/subjective_mem_pin_runtime.py
 relaylm/subjective_mem/lifecycle_engine.py
 tests/test_subjective_mem_pin_runtime.py
