@@ -138,7 +138,6 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [Memory Lifecycle Design](memory_lifecycle_design.md)
 - [Subjective Memory Formation](memory/formation.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
-- [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — compatibility stub
 - [PM-D5 RelayMEM Flat-store Compatibility Removal](pm_d5_relaymem_flat_store_compatibility_removal.md)
 - [PM-D7 Runtime Install Hook Fold-in](pm_d7_runtime_install_hook_fold_in.md)
 - [PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in](e1r5_primary_mem_recall_candidate_bridge.md) — canonical fallback fold-in; M2 remains preferred and E1-R5 remains fallback-only.
