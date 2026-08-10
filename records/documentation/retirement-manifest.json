@@ -241,6 +241,18 @@
       "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #642 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
     },
     {
+      "old_path": "docs/architecture/pipeline_implementation_plan.md",
+      "last_live_commit": "3c9c2d9df92c78e7d71d46b5c6e7000d4ffc353d",
+      "old_blob_sha": "d33f1b5215bc35f19007f026f55b03c2aefea724",
+      "removed_by_pr": 976,
+      "replacement_paths": [
+        "docs/PROJECT_STATUS.md",
+        "docs/architecture/project_execution_plan.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R16 retired the legacy Pipeline Implementation Plan compatibility stub after its body was already limited to routing sequencing and roadmap readers to Project Execution Plan and current-state readers to Project Status; delete-only exact-head diagnostics localized six current Markdown consumers, all repaired directly to canonical authority, and the exact stub remains recoverable from Git."
+    },
+    {
       "old_path": "docs/architecture/pipeline_responsibility_design.md",
       "last_live_commit": "8cf605ab1e2d50c0a419fa3c3e356d40ecc0b7f3",
       "old_blob_sha": "b594305a32c442a0f068690a62bb6890d87d54b5",
@@ -266,8 +278,8 @@
         "docs/architecture/context_packing_design.md",
         "docs/architecture/open_llm_vtuber_integration.md",
         "docs/architecture/pipeline-responsibilities.md",
-        "docs/architecture/pipeline_implementation_plan.md",
         "docs/architecture/privacy/local-first-runtime.md",
+        "docs/architecture/project_execution_plan.md",
         "docs/architecture/relaymem_retrieval_execution_design.md",
         "docs/architecture/relaymem_slp_execution_design.md",
         "docs/architecture/runtime/operational-observability.md",
