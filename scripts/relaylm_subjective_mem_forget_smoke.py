@@ -43,7 +43,7 @@ from relaylm.subjective_mem.forget import (
     SubjectiveMemForgetBoundary,
     SubjectiveMemForgetProposal,
 )
-from relaylm.subjective_mem_forget_runtime import forget_subjective_mem
+from relaylm.subjective_mem.forget_runtime import forget_subjective_mem
 from relaylm.subjective_mem.lifecycle import LIFECYCLE_POLICY_REVISION
 from relaylm.subjective_mem.markdown import (
     LIFECYCLE_BLOCK_SCHEMA,

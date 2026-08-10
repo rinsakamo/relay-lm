@@ -588,7 +588,7 @@ def test_storage_neutral_receipt_validation_needs_no_transaction() -> None:
 def test_shared_authority_has_no_operation_runtime_dependency() -> None:
     source = inspect.getsource(authority_module)
     assert "subjective_mem.lifecycle_runtime import" not in source
-    assert "subjective_mem_forget_runtime import" not in source
+    assert "subjective_mem.forget_runtime import" not in source
     assert "subjective_mem_pin_runtime import" not in source
     assert "subjective_mem_restore_runtime import" not in source
     assert "subjective_mem_consolidate_runtime" not in source

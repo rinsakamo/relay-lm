@@ -227,5 +227,5 @@ def test_module_has_no_primary_mem_or_runtime_backdoor_import() -> None:
     source = inspect.getsource(pin_contract)
     assert "relaymem_primary" not in source
     assert "subjective_mem.lifecycle_runtime" not in source
-    assert "subjective_mem_forget_runtime" not in source
+    assert "subjective_mem.forget_runtime" not in source
     assert "ContextVar" not in source
