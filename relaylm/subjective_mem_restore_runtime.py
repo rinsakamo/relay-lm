@@ -62,7 +62,7 @@ from relaylm.subjective_mem.restore_plan import (
     subjective_mem_restore_tombstone_exact,
     subjective_mem_restore_workspace_authority_digest,
 )
-from relaylm.subjective_mem_restore_replay import (
+from relaylm.subjective_mem.restore_replay import (
     build_subjective_mem_restore_replay_plan,
     subjective_mem_restore_page_binding,
     subjective_mem_restore_page_predecessor,

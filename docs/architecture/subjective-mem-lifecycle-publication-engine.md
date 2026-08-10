@@ -255,7 +255,7 @@ relaylm/subjective_mem/lifecycle_runtime.py
 relaylm/subjective_mem/pin_runtime.py
 relaylm/subjective_mem/restore_plan.py
 relaylm/subjective_mem_restore_runtime.py
-relaylm/subjective_mem_restore_replay.py
+relaylm/subjective_mem/restore_replay.py
 relaylm/subjective_mem_consolidate_runtime.py
 tests/test_subjective_mem_lifecycle_engine_finalization.py
 tests/test_subjective_mem_lifecycle_runtime.py
