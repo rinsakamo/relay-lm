@@ -18,7 +18,7 @@ relaylm_not_authoritative_for:
 relaylm_related_authority:
   - soul_lab_ui_mvp.md
   - memory_lifecycle_design.md
-  - relaymem_mvp_implementation_plan.md
+  - project_execution_plan.md
   - soul_lab_ui_a4_pod_handoff.md
 ---
 # SOUL Lab UI-A5 Memory Inspector
