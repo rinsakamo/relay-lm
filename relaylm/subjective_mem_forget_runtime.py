@@ -53,7 +53,7 @@ from relaylm.subjective_mem.lifecycle_authority import (
     SubjectiveMemPredecessorExpectation,
     load_subjective_mem_predecessor_authority_locked,
 )
-from relaylm.subjective_mem_lifecycle_runtime import (
+from relaylm.subjective_mem.lifecycle_runtime import (
     SubjectiveMemLifecycleGate,
     _current_state_from_dict,
     _load_exact_selector_locked,

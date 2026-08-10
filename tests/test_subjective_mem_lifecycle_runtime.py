@@ -24,9 +24,9 @@ from relaylm.subjective_mem.lifecycle import (
     SubjectiveMemCorrectionBoundary,
 )
 import relaylm.subjective_mem.lifecycle_engine as lifecycle_engine
-import relaylm.subjective_mem_lifecycle_runtime as lifecycle_runtime
+import relaylm.subjective_mem.lifecycle_runtime as lifecycle_runtime
 import relaylm.subjective_mem.markdown as subjective_mem_markdown
-from relaylm.subjective_mem_lifecycle_runtime import (
+from relaylm.subjective_mem.lifecycle_runtime import (
     correct_subjective_mem,
     resolve_subjective_mem_lifecycle_gate,
 )
@@ -324,7 +324,7 @@ def test_lifecycle_gate_is_default_off_and_requires_st1_apply(tmp_path: Path) ->
 
 def test_no_primary_or_retrieval_runtime_is_modified() -> None:
     # Static scope guard for the LC-1A atomic slice.
-    source = Path("relaylm/subjective_mem_lifecycle_runtime.py").read_text(encoding="utf-8")
+    source = Path("relaylm/subjective_mem/lifecycle_runtime.py").read_text(encoding="utf-8")
     assert "relaymem_primary" not in source
     assert "ordinary_retrieval_wired\": True" not in source
     assert "threading" not in source and "asyncio" not in source
@@ -874,7 +874,7 @@ def test_shared_engine_never_imports_a_lifecycle_operation_owner() -> None:
 
 
 def test_moved_publication_bodies_are_absent_from_correct_runtime() -> None:
-    source = Path("relaylm/subjective_mem_lifecycle_runtime.py").read_text(encoding="utf-8")
+    source = Path("relaylm/subjective_mem/lifecycle_runtime.py").read_text(encoding="utf-8")
     for moved in (
         "def _persist_prepared(",
         "def _publish_and_finalize(",
@@ -898,14 +898,14 @@ def test_moved_publication_bodies_are_absent_from_correct_runtime() -> None:
 
 
 def test_correct_keeps_one_engine_execution_path_without_fallback() -> None:
-    source = Path("relaylm/subjective_mem_lifecycle_runtime.py").read_text(encoding="utf-8")
+    source = Path("relaylm/subjective_mem/lifecycle_runtime.py").read_text(encoding="utf-8")
     assert source.count("from relaylm.subjective_mem.lifecycle_engine import") == 1
     for bypass in ("ImportError", "importlib", "sys.modules", "fallback", "ContextVar"):
         assert bypass not in source
 
 
 def test_correct_retired_legacy_predecessor_validators() -> None:
-    source = Path("relaylm/subjective_mem_lifecycle_runtime.py").read_text(encoding="utf-8")
+    source = Path("relaylm/subjective_mem/lifecycle_runtime.py").read_text(encoding="utf-8")
     assert "from relaylm.subjective_mem.lifecycle_authority import" in source
     assert "load_subjective_mem_predecessor_authority_locked(" in source
     for retired in (
