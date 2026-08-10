@@ -152,7 +152,7 @@ The same rule applies to workspace creation commands, SOUL Lab management flows,
 
 A receipt identifies the exact commit, date, checks, results, and source of truth. It does not remain in architecture and does not become current release status.
 
-Active criteria and pending readiness belong in release; completed validation belongs in evidence.
+Active criteria and pending readiness belong in release; completed validation belongs in evidence/releases.
 
 ## D11: Convergence audit versus architecture
 
