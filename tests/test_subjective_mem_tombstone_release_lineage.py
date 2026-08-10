@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from relaylm.evidence.common import canonical_digest
-from relaylm.subjective_mem_reformation import (
+from relaylm.subjective_mem.reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_RECORD_KIND,
 )

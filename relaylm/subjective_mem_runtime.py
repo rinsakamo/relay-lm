@@ -27,7 +27,7 @@ from relaylm.shared_assessment.runtime import (
     shared_assessment_formation_receipt_id,
     shared_assessment_revision_record_id,
 )
-from relaylm.subjective_mem_reformation import (
+from relaylm.subjective_mem.reformation import (
     check_subjective_mem_reformation_locked,
 )
 from relaylm.subjective_mem.models import (

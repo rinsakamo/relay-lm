@@ -42,7 +42,7 @@ from relaylm.subjective_mem.markdown import (
     PAGE_SCHEMA,
     RENDERER_REVISION,
 )
-from relaylm.subjective_mem_reformation import (
+from relaylm.subjective_mem.reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
     inspect_subjective_mem_reformation_digest_locked,
 )

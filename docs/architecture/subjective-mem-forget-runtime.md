@@ -78,7 +78,7 @@ authorization to the exact Forget lifecycle transition.
 
 ## One anti-reformation authority
 
-`relaylm/subjective_mem_reformation.py` owns:
+`relaylm/subjective_mem/reformation.py` owns:
 
 - exact semantic-identity derivation;
 - public and already-locked candidate entry points;

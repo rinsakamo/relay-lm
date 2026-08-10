@@ -48,7 +48,7 @@ from relaylm.subjective_mem.markdown import (
     SubjectiveMemPagePlan,
     plan_subjective_mem_revision_successor,
 )
-from relaylm.subjective_mem_reformation import (
+from relaylm.subjective_mem.reformation import (
     subjective_mem_semantic_identity_digest,
 )
 from relaylm.subjective_mem_restore import (

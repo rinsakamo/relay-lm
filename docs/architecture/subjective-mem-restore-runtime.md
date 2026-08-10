@@ -190,7 +190,7 @@ A singleton release-state log keyed by tombstone ID contains exactly one event
 binding the same release and Restore lineage. It is a rebuildable projection; the
 immutable release and exact lifecycle records are authority.
 
-`relaylm/subjective_mem_reformation.py` remains the anti-reformation semantic
+`relaylm/subjective_mem/reformation.py` remains the anti-reformation semantic
 evaluator:
 
 ```text
@@ -287,7 +287,7 @@ relaylm/subjective_mem_restore_runtime.py
 relaylm/subjective_mem_restore_replay.py
 relaylm/subjective_mem/lifecycle_authority.py
 relaylm/subjective_mem/lifecycle_engine.py
-relaylm/subjective_mem_reformation.py
+relaylm/subjective_mem/reformation.py
 relaylm/subjective_mem_tombstone_release.py
 tests/test_subjective_mem_restore_runtime.py
 tests/test_subjective_mem_restore_finalization.py
