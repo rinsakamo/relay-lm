@@ -24,7 +24,6 @@ relaylm_related_authority:
   - phase_i4e_forget_api_ui.md
   - phase_i4f_forget_validation.md
   - memory_lifecycle_design.md
-  - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
   - project_execution_plan.md
   - ../evidence/waves/wave3_cross_slice_convergence_audit.md
