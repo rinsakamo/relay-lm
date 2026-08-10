@@ -25,7 +25,7 @@ relaylm_related_authority:
   - relaymem_m3e_atomic_primary_page_writer.md
   - phase6c1_relaymem_primary_pipeline_compose.md
   - subjective-mem-retrieval-projection-hard-cutover.md
-  - relaymem_mvp_implementation_plan.md
+  - project_execution_plan.md
   - memory_lifecycle_design.md
   - relaymem_slp_current_target.md
   - ../PROJECT_STATUS.md
