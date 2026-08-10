@@ -4,8 +4,8 @@ from __future__ import annotations
 from dataclasses import replace
 from types import SimpleNamespace
 
-import relaylm.subjective_mem_lifecycle_engine as lifecycle_engine
-from relaylm.subjective_mem_lifecycle_engine import (
+import relaylm.subjective_mem.lifecycle_engine as lifecycle_engine
+from relaylm.subjective_mem.lifecycle_engine import (
     LifecycleFinalRecords,
     LifecycleFinalRecordsWithBindings,
 )

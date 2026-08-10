@@ -23,7 +23,7 @@ from relaylm.subjective_mem.lifecycle import (
     SubjectiveMemCorrectProposal,
     SubjectiveMemCorrectionBoundary,
 )
-import relaylm.subjective_mem_lifecycle_engine as lifecycle_engine
+import relaylm.subjective_mem.lifecycle_engine as lifecycle_engine
 import relaylm.subjective_mem_lifecycle_runtime as lifecycle_runtime
 import relaylm.subjective_mem.markdown as subjective_mem_markdown
 from relaylm.subjective_mem_lifecycle_runtime import (
@@ -856,7 +856,7 @@ def test_correct_production_path_executes_through_the_shared_engine(
 
 
 def test_shared_engine_never_imports_a_lifecycle_operation_owner() -> None:
-    source = Path("relaylm/subjective_mem_lifecycle_engine.py").read_text(encoding="utf-8")
+    source = Path("relaylm/subjective_mem/lifecycle_engine.py").read_text(encoding="utf-8")
     assert "subjective_mem_lifecycle_runtime" not in source
     assert "subjective_mem_forget_runtime" not in source
     assert "relaymem_primary" not in source
@@ -899,7 +899,7 @@ def test_moved_publication_bodies_are_absent_from_correct_runtime() -> None:
 
 def test_correct_keeps_one_engine_execution_path_without_fallback() -> None:
     source = Path("relaylm/subjective_mem_lifecycle_runtime.py").read_text(encoding="utf-8")
-    assert source.count("from relaylm.subjective_mem_lifecycle_engine import") == 1
+    assert source.count("from relaylm.subjective_mem.lifecycle_engine import") == 1
     for bypass in ("ImportError", "importlib", "sys.modules", "fallback", "ContextVar"):
         assert bypass not in source
 

@@ -319,7 +319,7 @@ focused validation surfaces including:
 ```text
 relaylm/subjective_mem_pin.py
 relaylm/subjective_mem_pin_runtime.py
-relaylm/subjective_mem_lifecycle_engine.py
+relaylm/subjective_mem/lifecycle_engine.py
 tests/test_subjective_mem_pin_runtime.py
 scripts/relaylm_subjective_mem_pin_unpin_smoke.py
 ```

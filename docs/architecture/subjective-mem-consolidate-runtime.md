@@ -362,7 +362,7 @@ validation surfaces including:
 relaylm/subjective_mem_consolidate.py
 relaylm/subjective_mem_consolidate_runtime.py
 relaylm/subjective_mem/lifecycle_authority.py
-relaylm/subjective_mem_lifecycle_engine.py
+relaylm/subjective_mem/lifecycle_engine.py
 tests/test_subjective_mem_consolidate_runtime.py
 ```
 

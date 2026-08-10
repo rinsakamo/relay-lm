@@ -546,7 +546,7 @@ def test_contract_owner_has_no_runtime_primary_cache_or_io_dependency() -> None:
     }
     for forbidden in (
         "relaymem_primary", "relaymem_retrieval", "subjective_mem_lifecycle_runtime",
-        "subjective_mem_lifecycle_engine", "EvidenceRecordStore", "Path(", "sqlite",
+        "subjective_mem.lifecycle_engine", "EvidenceRecordStore", "Path(", "sqlite",
         "open(", "write_text", "read_text",
     ):
         assert forbidden not in source, forbidden
