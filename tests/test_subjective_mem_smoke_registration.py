@@ -32,7 +32,7 @@ def test_subjective_mem_pin_runtime_change_selects_lifecycle_group() -> None:
 
 def test_subjective_mem_consolidate_runtime_change_selects_lifecycle_group() -> None:
     for path in (
-        "relaylm/subjective_mem_consolidate_runtime.py",
+        "relaylm/subjective_mem/consolidate_runtime.py",
         "relaylm/subjective_mem/consolidate.py",
         "tests/test_subjective_mem_consolidate_runtime.py",
         "scripts/relaylm_subjective_mem_consolidate_smoke.py",

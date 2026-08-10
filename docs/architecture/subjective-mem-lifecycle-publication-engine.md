@@ -225,7 +225,7 @@ semantic implementation:
 | Pin / Unpin | `subjective_mem/pin_runtime.py` | direct consumer |
 | Forget | Forget runtime / recovery owners | specialized publication/finalization boundary |
 | Restore | Restore plan/runtime/replay owners | direct consumer with operation-specific recovery |
-| Consolidate | `subjective_mem_consolidate_runtime.py` | direct consumer |
+| Consolidate | `subjective_mem/consolidate_runtime.py` | direct consumer |
 | Purge | none; not authorized by this architecture | no engine authority |
 
 This table describes responsibility placement, not milestone completion or
@@ -256,7 +256,7 @@ relaylm/subjective_mem/pin_runtime.py
 relaylm/subjective_mem/restore_plan.py
 relaylm/subjective_mem/restore_runtime.py
 relaylm/subjective_mem/restore_replay.py
-relaylm/subjective_mem_consolidate_runtime.py
+relaylm/subjective_mem/consolidate_runtime.py
 tests/test_subjective_mem_lifecycle_engine_finalization.py
 tests/test_subjective_mem_lifecycle_runtime.py
 tests/test_subjective_mem_restore_runtime.py

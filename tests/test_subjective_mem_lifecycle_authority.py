@@ -591,4 +591,4 @@ def test_shared_authority_has_no_operation_runtime_dependency() -> None:
     assert "subjective_mem.forget_runtime import" not in source
     assert "subjective_mem_pin_runtime import" not in source
     assert "subjective_mem.restore_runtime import" not in source
-    assert "subjective_mem_consolidate_runtime" not in source
+    assert "subjective_mem.consolidate_runtime" not in source

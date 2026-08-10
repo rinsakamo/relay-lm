@@ -88,7 +88,7 @@ and does not establish dual-write or old/new precedence. Ordinary Subjective MEM
 Retrieval remains the owner of candidate consumption, ranking, cache, durable
 usage events, and request-path authority.
 
-`relaylm/subjective_mem_consolidate_runtime.py` is the Consolidate operation
+`relaylm/subjective_mem/consolidate_runtime.py` is the Consolidate operation
 owner. It owns proposal application, exact predecessor validation, successor
 construction, operation-specific finalization, replay mapping, and bounded
 caller-invoked forward recovery while using the shared lifecycle publication
@@ -360,7 +360,7 @@ validation surfaces including:
 
 ```text
 relaylm/subjective_mem/consolidate.py
-relaylm/subjective_mem_consolidate_runtime.py
+relaylm/subjective_mem/consolidate_runtime.py
 relaylm/subjective_mem/lifecycle_authority.py
 relaylm/subjective_mem/lifecycle_engine.py
 tests/test_subjective_mem_consolidate_runtime.py

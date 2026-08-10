@@ -20,8 +20,8 @@ from relaylm.subjective_mem.consolidate import (
     SubjectiveMemConsolidateBoundary,
     SubjectiveMemConsolidateProposal,
 )
-import relaylm.subjective_mem_consolidate_runtime as consolidate_runtime
-from relaylm.subjective_mem_consolidate_runtime import consolidate_subjective_mem
+import relaylm.subjective_mem.consolidate_runtime as consolidate_runtime
+from relaylm.subjective_mem.consolidate_runtime import consolidate_subjective_mem
 from relaylm.subjective_mem.forget import (
     SubjectiveMemForgetBoundary,
     SubjectiveMemForgetProposal,
