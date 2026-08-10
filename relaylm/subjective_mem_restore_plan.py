@@ -32,7 +32,7 @@ from relaylm.subjective_mem.lifecycle import (
     LIFECYCLE_RESULT_SCHEMA,
     LIFECYCLE_TRANSITION_SCHEMA,
 )
-from relaylm.subjective_mem_lifecycle_engine import (
+from relaylm.subjective_mem.lifecycle_engine import (
     LifecycleFinalRecordsWithBindings,
     LifecyclePublicationPlan,
     LogBinding,

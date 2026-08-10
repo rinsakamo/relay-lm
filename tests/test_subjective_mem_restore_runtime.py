@@ -18,7 +18,7 @@ from relaylm.subjective_mem.markdown import (
     RENDERER_REVISION,
     parse_subjective_mem_page_bytes,
 )
-from relaylm.subjective_mem_lifecycle_engine import (
+from relaylm.subjective_mem.lifecycle_engine import (
     reserve_lifecycle_publication,
     validate_lifecycle_plan,
 )
@@ -429,7 +429,7 @@ def test_restore_fails_closed_on_existing_release_or_changed_forget_authority(
 def test_restore_publishes_only_through_the_shared_engine() -> None:
     runtime_source = inspect.getsource(restore_runtime)
     plan_source = inspect.getsource(restore_plan)
-    assert "subjective_mem_lifecycle_engine import" in runtime_source
+    assert "subjective_mem.lifecycle_engine import" in runtime_source
     assert "validate_lifecycle_plan(" in runtime_source
     replay_source = inspect.getsource(restore_replay)
     assert "reserve_lifecycle_publication(" in runtime_source

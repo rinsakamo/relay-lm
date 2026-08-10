@@ -43,7 +43,7 @@ publishing an immutable lifecycle successor and finalizing its content-free
 state. The stable implementation owner is:
 
 ```text
-relaylm/subjective_mem_lifecycle_engine.py
+relaylm/subjective_mem/lifecycle_engine.py
 ```
 
 The engine centralizes publication, selector fencing, exact replay, and
@@ -250,7 +250,7 @@ compatibility strategy.
 The stable responsibility boundary is represented in the current tree by:
 
 ```text
-relaylm/subjective_mem_lifecycle_engine.py
+relaylm/subjective_mem/lifecycle_engine.py
 relaylm/subjective_mem_lifecycle_runtime.py
 relaylm/subjective_mem_pin_runtime.py
 relaylm/subjective_mem_restore_plan.py

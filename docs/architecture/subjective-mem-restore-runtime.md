@@ -286,7 +286,7 @@ relaylm/subjective_mem_restore_plan.py
 relaylm/subjective_mem_restore_runtime.py
 relaylm/subjective_mem_restore_replay.py
 relaylm/subjective_mem/lifecycle_authority.py
-relaylm/subjective_mem_lifecycle_engine.py
+relaylm/subjective_mem/lifecycle_engine.py
 relaylm/subjective_mem_reformation.py
 relaylm/subjective_mem_tombstone_release.py
 tests/test_subjective_mem_restore_runtime.py

@@ -37,7 +37,7 @@ from relaylm.subjective_mem.lifecycle import (
     LIFECYCLE_RECEIPT_SCHEMA,
     LIFECYCLE_TRANSITION_SCHEMA,
 )
-from relaylm.subjective_mem_lifecycle_engine import RecordBinding
+from relaylm.subjective_mem.lifecycle_engine import RecordBinding
 
 
 @dataclass(frozen=True)

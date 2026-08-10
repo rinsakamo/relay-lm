@@ -30,7 +30,7 @@ from relaylm.subjective_mem.lifecycle_authority import (
     SubjectiveMemPredecessorExpectation,
     load_subjective_mem_predecessor_authority_locked,
 )
-from relaylm.subjective_mem_lifecycle_engine import (
+from relaylm.subjective_mem.lifecycle_engine import (
     LifecycleExecutionOutcome,
     LifecycleFinalRecords,
     LifecycleFinalizer,

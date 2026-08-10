@@ -29,7 +29,7 @@ from relaylm.subjective_mem.lifecycle import LIFECYCLE_POLICY_REVISION
 from relaylm.subjective_mem.lifecycle_authority import (
     load_subjective_mem_predecessor_authority_locked,
 )
-from relaylm.subjective_mem_lifecycle_engine import (
+from relaylm.subjective_mem.lifecycle_engine import (
     LifecycleExecutionOutcome, LifecycleFinalRecords, LifecycleFinalizer,
     LifecyclePublicationPlan, LogBinding, RecordBinding,
     lifecycle_claim_record, publish_lifecycle_post_image,
