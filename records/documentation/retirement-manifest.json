@@ -81,7 +81,7 @@
         "docs/contracts/relayrun_recovery_response_generator_contract.md"
       ],
       "disposition": "absorbed",
-      "retention_reason": "D6-R13 retired the pre-RelayINT combined RelayREF/RelaySLP design after current architecture fixed RelayINT before action, RelayREF as response-complete observation, and RelaySLP out of band after the visible response, while recovery, scene/persistence, scheduling, checkpoint/recovery, and Subjective MEM formation responsibilities moved to their dedicated authorities; the obsolete Wake-repair and sleep/reset model remains recoverable from Git as history."
+      "retention_reason": "D6-R13 retired the pre-RelayINT combined RelayREF/RelaySLP design after current architecture fixed RelayINT before action, RelayREF as response-complete observation, and RelaySLP out of band after the visible response, while recovery, scene/persistence, scheduling, checkpoint/recovery, and Subjective MEM formation responsibilities moved to their dedicated authorities; the obsolete Wake-repair and sleep/reset model remains recoverable from Git as history rather than continuing authority."
     },
     {
       "old_path": "docs/architecture/archive/relayrun_runtime_checkpoint_design_history.md",
@@ -255,6 +255,18 @@
       ],
       "disposition": "superseded",
       "retention_reason": "D2-B2b4c28 migrated every active consumer to canonical system, pipeline, request/response, compile/checkpoint, status, or exact RelayCTX authority and removed the closed transitional note; its historical wording remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/post_i3_evaluation_work_roadmap.md",
+      "last_live_commit": "814bcca844d993bdc5db8768b35f5daee6af1787",
+      "old_blob_sha": "c34ead807494e484299b8e49145adcb41211a64d",
+      "removed_by_pr": 1017,
+      "replacement_paths": [
+        "docs/PROJECT_STATUS.md",
+        "docs/architecture/project_execution_plan.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R17 retired the legacy Post-I3 Evaluation and Work Roadmap compatibility stub after D6-R17a removed its architecture-router exposure, D6-R17b removed its Preparation-B path reference, current-boundary validation no longer depended on the path, and the remaining body only redirected status and sequencing readers to canonical authorities; the exact stub remains recoverable from Git."
     },
     {
       "old_path": "docs/architecture/product_runtime_hardening.md",
