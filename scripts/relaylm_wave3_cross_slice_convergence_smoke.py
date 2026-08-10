@@ -205,10 +205,11 @@ def check_indexes_and_reference_map() -> None:
         "Wave 3 cross-slice convergence audit",
     )
     require(
-        "docs/architecture/pipeline_implementation_plan.md",
-        "relaylm_doc_type: redirect_stub",
-        "This file is a compatibility stub.",
-        "Do not add new phase status, Wave status, or roadmap sections here.",
+        "docs/architecture/project_execution_plan.md",
+        "relaylm_doc_type: implementation_plan",
+        "relaylm_authority: mvp_execution_plan_and_post_mvp_roadmap",
+        "This document is the single plan and roadmap authority for RelayLM execution.",
+        "It does not own current implementation status; read [Project Status](../PROJECT_STATUS.md) first.",
     )
     require(
         "docs/architecture/post_i3_evaluation_work_roadmap.md",
