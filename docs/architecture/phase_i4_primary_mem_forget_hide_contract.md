@@ -26,7 +26,7 @@ relaylm_related_authority:
   - memory_lifecycle_design.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
-  - pipeline_implementation_plan.md
+  - project_execution_plan.md
   - post_i3_evaluation_work_roadmap.md
   - ../evidence/waves/wave3_cross_slice_convergence_audit.md
   - ../evidence/waves/wave4_cross_slice_convergence_audit.md
