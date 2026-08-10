@@ -32,7 +32,7 @@ from relaylm.subjective_mem.models import (
     SubjectiveMemStrength,
     resolve_subjective_mem_character_authority,
 )
-from relaylm.subjective_mem_runtime import create_subjective_mem
+from relaylm.subjective_mem.create_runtime import create_subjective_mem
 
 NOW = datetime(2026, 7, 23, 1, 0, 0, tzinfo=timezone.utc)
 

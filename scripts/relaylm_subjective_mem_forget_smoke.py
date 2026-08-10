@@ -53,7 +53,7 @@ from relaylm.subjective_mem.markdown import (
     parse_subjective_mem_page_bytes,
 )
 from relaylm.subjective_mem.reformation import check_subjective_mem_reformation
-from relaylm.subjective_mem_runtime import create_subjective_mem
+from relaylm.subjective_mem.create_runtime import create_subjective_mem
 
 NOW = datetime(2026, 7, 24, 1, 0, 0, tzinfo=timezone.utc)
 

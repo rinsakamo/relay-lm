@@ -32,7 +32,7 @@ from relaylm.subjective_mem.reformation import (
     check_subjective_mem_reformation_locked,
     subjective_mem_semantic_identity_digest,
 )
-from relaylm.subjective_mem_runtime import create_subjective_mem
+from relaylm.subjective_mem.create_runtime import create_subjective_mem
 from test_subjective_mem_lifecycle_runtime import _correct, lifecycle_env
 from test_subjective_mem_runtime import NOW
 

@@ -208,7 +208,7 @@ Unknown exceptions collapse to a fixed safe store-unavailable reason.
 
 ```text
 relaylm/subjective_mem/models.py
-relaylm/subjective_mem_runtime.py
+relaylm/subjective_mem/create_runtime.py
 relaylm/shared_assessment/runtime.py
 scripts/relaylm_sm1_subjective_mem_create_smoke.py
 tests/test_subjective_mem_runtime.py
