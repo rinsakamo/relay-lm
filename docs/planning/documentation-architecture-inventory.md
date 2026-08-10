@@ -60,7 +60,7 @@ Preparation C applies these rules in order and fails closed when no rule or expl
 4. Files whose durable value is a completed slice, handoff, audit, validation, evaluation, or dated result are evidence sources.
 5. Files whose authority is sequence, dependency, roadmap, or migration timing are planning sources.
 6. Files whose authority is current/target interpretation, glossary, fields, or lookup information are reference sources.
-7. Files whose authority is non-binding future direction are strategy sources.
+7. Files whose authority is non-binding future direction are strategy sources. `docs/strategy/` is a transitional placement, so their adopted durable content is split to a permanent planning, reference, or concept-policy owner and their historical direction is retired to Git.
 8. Remaining durable design content is mapped to the target system, subsystem, or concept/policy graph.
 9. Milestone, phase, wave, PR, and date names do not survive as permanent architecture names.
 10. A source with multiple owners, update triggers, lifecycles, or independent consumers is split before placement.
@@ -101,7 +101,7 @@ Target synthesis families:
 | maintenance candidates | `cw_a4_slp_workspace_maintenance_candidates.md` | `architecture/character-workspace/maintenance-candidates.md` | split into concept policy, contract, and evidence |
 | UI presentation | `cw_a3_character_workspace_ui_rebuild.md`, SOUL Lab UI sources | `architecture/ui/character-workspace.md` | synthesized |
 | durable character identity | `docs/relaysoul/relaysoul_design.md`, approved file-first source-set rationale | `architecture/character/identity-and-source-authority.md` | synthesized |
-| experimental character replacement/bootstrap | `docs/relaysoul/experimental_soul_replacement_memory_bootstrap_design.md` | strategy or evidence according to current implementation relevance | split; no independent current architecture assumed |
+| experimental character replacement/bootstrap | `docs/relaysoul/experimental_soul_replacement_memory_bootstrap_design.md` | evidence or Git history according to current implementation relevance | split; no independent current architecture assumed |
 
 Draft/showcase fixtures and templates do not become architecture merely because they explain intended usage.
 
@@ -184,8 +184,8 @@ Browser non-authority, loopback mutation ownership, and content-free diagnostic 
 |---|---|---|
 | `phase55a_*`, `phase55b1_*`, `phase55c0_*` through `phase55c4_*` | `architecture/voice/streaming-and-tts.md` plus exact transport contracts | synthesized/rebuilt/evidence_retained |
 | `lat2_mobile_perceived_latency.md` | `architecture/performance/perceived-latency.md` if it contains durable design; dated measurements to evidence | split |
-| `docs/evaluation/lat1_retrieval_scaling_report.md` | `docs/evaluation/lat1-retrieval-scaling.md` (method) + `docs/templates/evaluation/lat1-retrieval-scaling-report.md` (template) | split (Cutover 1C-39: this source mixed a repeatable method with a blank, unfilled template; it was never itself measured evaluation evidence, so `evidence_retained` was a stale assumption. No evidence exists until a real run is filled in and added to `docs/evidence/evaluations/`.) |
-| `ai_vtuber_pipeline_profile.md`, `vtuber_memory_proxy_design.md` | strategy/reference unless a current independently owned subsystem exists | moved or absorbed; not automatically core architecture |
+| `docs/evaluation/lat1_retrieval_scaling_report.md` | repeatable method to `docs/operations/` + `docs/templates/evaluation/lat1-retrieval-scaling-report.md` (template) | split (Cutover 1C-39: this source mixed a repeatable method with a blank, unfilled template; it was never itself measured evaluation evidence, so `evidence_retained` was a stale assumption. No evidence exists until a real run is filled in and added to `docs/evidence/evaluations/`.) |
+| `ai_vtuber_pipeline_profile.md`, `vtuber_memory_proxy_design.md` | reference or concept policy unless a current independently owned subsystem exists | moved or absorbed; not automatically core architecture |
 
 ## J. Planning, reference, and strategy sources
 
@@ -195,9 +195,9 @@ Browser non-authority, loopback mutation ownership, and content-free diagnostic 
 | `current_target_migration_guide.md` | `docs/reference/current-target-interpretation.md` | moved/synthesized |
 | `relaymem_slp_current_target.md` | reference interpretation plus memory architecture sources | split |
 | `scene_memory_scope_current_target.md` | reference interpretation | moved/absorbed |
-| `post_v01_strategic_direction_vision.md` | `docs/strategy/post-v0.1-direction.md` | moved |
-| `persona_specialized_proxy_design.md` | strategy or concept policy according to adoption state | manual section split |
-| `vtuber_memory_proxy_design.md`, `ai_vtuber_pipeline_profile.md` | strategy/reference | moved or absorbed |
+| `post_v01_strategic_direction_vision.md` | adopted durable content to permanent planning, reference, concept-policy, or existing architecture owners by section map; historical and unadopted vision to Git history | split/cutover; no permanent strategy destination |
+| `persona_specialized_proxy_design.md` | concept policy or planning according to adoption state | manual section split |
+| `vtuber_memory_proxy_design.md`, `ai_vtuber_pipeline_profile.md` | reference or concept policy | moved or absorbed |
 | legacy pipeline implementation plan compatibility stub | none | deleted_git_history_only |
 | legacy post-I3 evaluation and work roadmap compatibility stub | none | deleted_git_history_only |
 | legacy RelayMEM MVP implementation plan compatibility stub | none | deleted_git_history_only |
@@ -249,7 +249,7 @@ Target collections:
 - evaluation result -> `docs/evidence/evaluations/`
 - validation/release receipt -> `docs/evidence/releases/`
 
-`e1_evaluation_consolidation.md` is split: repeatable evaluation interpretation goes to `docs/evaluation/`, while dated or completed result inventory goes to evidence.
+`e1_evaluation_consolidation.md` is split: repeatable evaluation interpretation goes to a permanent `docs/operations/`, `docs/reference/`, or `docs/release/` owner as its operator scope requires, while dated or completed result inventory goes to evidence.
 
 `docs/architecture/e1_local_runtime_evaluation_2026_06_25.md` (Cutover 1C-40: `moved` to `docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md`, `evidence`/`frozen`, verbatim content) was the first concrete instance of the `e1*_evaluation*.md` family above to actually move; `e1_evaluation_consolidation.md`'s own split, and the remaining `e1r1`-`e1r5` architecture-handoff records this document consolidates, remain open for a later batch.
 
@@ -297,7 +297,7 @@ These families were live in the baseline tree but carried no disposition until t
 
 `docs/evaluation/` and `docs/strategy/` are not permanent collections. [Documentation Model](../DOCUMENTATION_MODEL.md) places `evaluation_method` and `strategy` under transitional source document types, explicitly outside the permanent active-document type allowlist, and requires evaluation method content to reach reference, release, or operations and strategy content to reach planning, reference, or concept policy with historical direction retired to Git.
 
-The governance validator therefore correctly omits both from the permanent active locations. No D6 slice admits either collection as a permanent active location or adds an allowed `relaylm_doc_type` for them, because that would entrench a transitional path and place the validator in conflict with the Documentation Model. Both collections disappear once the rows above are executed. Where Section L names `docs/evaluation/` as a target, the Documentation Model governs placement permanence.
+The governance validator therefore correctly omits both from the permanent active locations. No D6 slice admits either collection as a permanent active location or adds an allowed `relaylm_doc_type` for them, because that would entrench a transitional path and place the validator in conflict with the Documentation Model. Both collections disappear once the rows above are executed. [Documentation Model](../DOCUMENTATION_MODEL.md) is the controlling placement vocabulary for this inventory: wherever an older section named `docs/strategy/` or `docs/evaluation/` as a destination, the Documentation Model governs placement permanence and those targets have been reconciled to permanent owners.
 
 ## Inventory completeness contract for Preparation C
 
@@ -334,7 +334,7 @@ The current design corpus does not support a safe one-to-one move. The dominant 
 1. synthesize a small stable architecture graph from durable design sources;
 2. extract exact normative blocks to contracts without paraphrase;
 3. move completed slice narratives, audits, validation, and evaluations to evidence;
-4. move sequence, interpretation, and future direction to planning, reference, and strategy;
+4. move sequence and interpretation to planning and reference, split adopted future direction into permanent planning, reference, or concept-policy owners, and retire historical direction to Git;
 5. delete compatibility stubs and low-value superseded copies from the active tree.
 
 No file move is authorized by this inventory alone.

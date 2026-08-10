@@ -360,8 +360,9 @@ D6-R19 root reference relocation
   -> D6-R29 RelaySOUL experimental and cadence disposition
   -> D6-R30 RelaySOUL router retirement and collection removal
   -> D6-R31 asset collection disposition
-  -> D6-R32 architecture router rebuild
-  -> D6-R33 D6 completion audit
+  -> D6-R32 strategic direction vision split
+  -> D6-R33 architecture router rebuild
+  -> D6-R34 D6 completion audit
 ```
 
 Each slice is one bounded exact-main PR under the ordinary P0-P8 lifecycle:
@@ -379,10 +380,11 @@ Each slice is one bounded exact-main PR under the ordinary P0-P8 lifecycle:
 - **D6-R29** dispositions `experimental_soul_replacement_memory_bootstrap_design.md` and `persona_update_cadence_design.md`, which Section C splits without assuming independent current architecture.
 - **D6-R30** retires `docs/relaysoul/README.md` and removes the emptied collection.
 - **D6-R31** proves current consumers for `docs/assets/`, retains referenced binary assets as resources, and retires its Markdown notes to Git history.
-- **D6-R32** replaces the hand-maintained `docs/architecture/README.md` list with a generated index, with an accepted generator owner and removal gate.
-- **D6-R33** re-runs the five D6 criteria against exact current `main`. D6 is declared complete only when every criterion passes, and PD-1 opens only after that declaration and Lane R R5.
+- **D6-R32** splits `post_v01_strategic_direction_vision.md` by adoption state. A section map assigns its adopted durable content to permanent planning, reference, concept-policy, or existing architecture owners, and its historical and unadopted vision is retired to Git history. It creates no permanent strategy destination.
+- **D6-R33** replaces the hand-maintained `docs/architecture/README.md` list with a generated index, with an accepted generator owner and removal gate.
+- **D6-R34** re-runs the five D6 criteria against exact current `main`. D6 is declared complete only when every criterion passes, and PD-1 opens only after that declaration and Lane R R5.
 
-No slice admits `docs/evaluation/` or `docs/strategy/` as a permanent active location, and no slice adds an allowed `relaylm_doc_type` for either. [Documentation Model](../DOCUMENTATION_MODEL.md) places both under transitional source document types, so entrenching them would put the governance validator in conflict with the placement authority. Both collections disappear through R22 and R24.
+No slice admits `docs/evaluation/` or `docs/strategy/` as a permanent active location, and no slice adds an allowed `relaylm_doc_type` for either. [Documentation Model](../DOCUMENTATION_MODEL.md) is the controlling placement vocabulary and places both under transitional source document types, so entrenching them would put the governance validator in conflict with the placement authority. Both collections disappear through R22 and R24, and R32 closes the last strategy-destination claim without recreating one.
 
 Source-family disposition for every document named above is owned by [Documentation Architecture Inventory](documentation-architecture-inventory.md) Section N. This order authorizes sequencing only; each slice still proves its own current consumers, replacement authority, and retirement record before writing.
 
