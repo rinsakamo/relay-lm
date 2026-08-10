@@ -23,7 +23,7 @@ relaylm_related_authority:
   - phase_i4d_primary_retrieval_exclusion.md
   - e1r5_primary_mem_recall_candidate_bridge.md
   - phase6c2_one_queued_primary_worker_integration.md
-  - relaymem_mvp_implementation_plan.md
+  - project_execution_plan.md
   - relaymem_slp_current_target.md
   - ../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
 ---
