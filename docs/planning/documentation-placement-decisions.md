@@ -103,7 +103,7 @@ Examples:
 - Roadmap sections inside analyzer, memory, workspace, or UI designs move to planning or are removed when completed.
 - Architecture pages may state dependencies required by the design but do not own implementation wave order.
 
-Compatibility stubs `pipeline_implementation_plan.md` and `post_i3_evaluation_work_roadmap.md` are deleted rather than preserved as planning.
+The legacy pipeline implementation plan compatibility stub and `post_i3_evaluation_work_roadmap.md` are deleted rather than preserved as planning.
 
 ## D6: Architecture versus strategy
 
@@ -152,7 +152,7 @@ The same rule applies to workspace creation commands, SOUL Lab management flows,
 
 A receipt identifies the exact commit, date, checks, results, and source of truth. It does not remain in architecture and does not become current release status.
 
-Active criteria and pending readiness belong in release; completed validation belongs in evidence/releases.
+Active criteria and pending readiness belong in release; completed validation belongs in evidence.
 
 ## D11: Convergence audit versus architecture
 
