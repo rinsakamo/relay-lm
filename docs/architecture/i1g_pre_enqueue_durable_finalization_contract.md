@@ -31,7 +31,6 @@ relaylm_related_authority:
   - o1d1_production_scheduler_round.md
   - ../evidence/waves/wave3_cross_slice_convergence_audit.md
   - project_execution_plan.md
-  - post_i3_evaluation_work_roadmap.md
 ---
 # I1-G Pre-enqueue Durable-finalization Contract and Replay Boundary
 

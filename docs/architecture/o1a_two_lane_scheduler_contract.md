@@ -30,7 +30,6 @@ relaylm_related_authority:
   - o1f_operational_validation.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - ../evidence/waves/wave3_cross_slice_convergence_audit.md
-  - post_i3_evaluation_work_roadmap.md
   - project_execution_plan.md
   - relaymem_slp_current_target.md
 ---
