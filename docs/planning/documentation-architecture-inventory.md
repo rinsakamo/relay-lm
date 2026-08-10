@@ -200,7 +200,7 @@ Browser non-authority, loopback mutation ownership, and content-free diagnostic 
 | `vtuber_memory_proxy_design.md`, `ai_vtuber_pipeline_profile.md` | strategy/reference | moved or absorbed |
 | legacy pipeline implementation plan compatibility stub | none | deleted_git_history_only |
 | legacy post-I3 evaluation and work roadmap compatibility stub | none | deleted_git_history_only |
-| `relaymem_mvp_implementation_plan.md` | none or project execution evidence if unique content remains | compatibility stub deletion after content check |
+| legacy RelayMEM MVP implementation plan compatibility stub | none or project execution evidence if unique content remains | compatibility stub deletion after content check |
 
 ## K. Exact contract sources
 
