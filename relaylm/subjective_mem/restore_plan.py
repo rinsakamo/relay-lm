@@ -55,7 +55,7 @@ from relaylm.subjective_mem.restore import (
     SubjectiveMemRestoreOperationIdentity,
     SubjectiveMemRestoreProposal,
 )
-from relaylm.subjective_mem_tombstone_release import (
+from relaylm.subjective_mem.tombstone_release import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_RECORD_KIND,
     build_subjective_mem_forget_tombstone_release_authority,

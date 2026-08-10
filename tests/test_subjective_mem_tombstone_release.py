@@ -15,7 +15,7 @@ from relaylm.subjective_mem.reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_SCHEMA,
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_STATE_SCHEMA,
 )
-from relaylm.subjective_mem_tombstone_release import (
+from relaylm.subjective_mem.tombstone_release import (
     build_subjective_mem_forget_tombstone_release_authority,
 )
 from test_subjective_mem_forget_runtime import (
