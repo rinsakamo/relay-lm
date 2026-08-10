@@ -97,7 +97,7 @@ subjective_mem/restore_runtime
   -> subjective_mem_lifecycle_authority
   -> subjective_mem_lifecycle_engine
   -> subjective_mem_reformation
-  -> subjective_mem_tombstone_release
+  -> subjective_mem/tombstone_release
   -> subjective_mem_markdown
   -> subjective_mem / evidence store / canonical commit I/O
 ```
@@ -288,7 +288,7 @@ relaylm/subjective_mem/restore_replay.py
 relaylm/subjective_mem/lifecycle_authority.py
 relaylm/subjective_mem/lifecycle_engine.py
 relaylm/subjective_mem/reformation.py
-relaylm/subjective_mem_tombstone_release.py
+relaylm/subjective_mem/tombstone_release.py
 tests/test_subjective_mem_restore_runtime.py
 tests/test_subjective_mem_restore_finalization.py
 ```

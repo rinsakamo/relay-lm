@@ -27,7 +27,7 @@ import relaylm.subjective_mem.restore_plan as restore_plan
 from relaylm.subjective_mem.restore_plan import (
     build_subjective_mem_restore_final_records,
 )
-from relaylm.subjective_mem_tombstone_release import (
+from relaylm.subjective_mem.tombstone_release import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_RECORD_KIND,
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_SCHEMA,
