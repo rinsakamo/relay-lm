@@ -26,7 +26,7 @@ relaylm_related_authority:
   - relaymem_mvp_implementation_plan.md
   - relaymem_mvp_design.md
   - memory_lifecycle_design.md
-  - pipeline_implementation_plan.md
+  - project_execution_plan.md
   - relaymem_slp_current_target.md
   - ../PROJECT_STATUS.md
 ---

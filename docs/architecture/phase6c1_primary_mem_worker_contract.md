@@ -35,7 +35,7 @@ relaylm_related_authority:
   - relaymem_slp_current_target.md
   - subjective-mem-retrieval-projection-hard-cutover.md
   - relaymem_mvp_implementation_plan.md
-  - pipeline_implementation_plan.md
+  - project_execution_plan.md
   - ../PROJECT_STATUS.md
 ---
 # Phase 6-C1 Primary MEM Worker Contract
