@@ -23,7 +23,7 @@ relaylm_not_authoritative_for:
   - SOUL Lab runtime TTS audio or avatar execution
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - pipeline_implementation_plan.md
+  - project_execution_plan.md
   - phase6a1_relayslp_job_admission_contract.md
   - phase6a2_relayslp_response_handoff_contract.md
   - phase6b0_relayslp_durable_queue_contract.md
