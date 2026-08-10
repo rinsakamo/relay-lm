@@ -15,7 +15,7 @@ relaylm_not_authoritative_for:
   - CTX/MEM/SOUL/SLP persistence
 relaylm_related_authority:
   - phase5_5_stream_unpack_bounded_slice.md
-  - pipeline_implementation_plan.md
+  - project_execution_plan.md
   - pipeline-responsibilities.md
 ---
 # Phase 5.5-C2 Runtime TTS Adapter Handoff Wiring

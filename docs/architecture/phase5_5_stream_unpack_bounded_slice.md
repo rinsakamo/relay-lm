@@ -17,7 +17,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - pipeline-responsibilities.md
-  - pipeline_implementation_plan.md
+  - project_execution_plan.md
   - current_target_migration_guide.md
   - soul_lab_runtime_mvp.md
 ---
