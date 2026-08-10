@@ -23,7 +23,7 @@ relaylm_related_authority:
   - phase6b0_relayslp_durable_queue_contract.md
   - phase6b2_relayslp_atomic_durable_enqueue.md
   - relaymem_slp_current_target.md
-  - pipeline_implementation_plan.md
+  - project_execution_plan.md
   - ../PROJECT_STATUS.md
 ---
 # Phase 6-B1 RelaySLP Dispatch Preflight
