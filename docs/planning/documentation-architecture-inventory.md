@@ -198,7 +198,7 @@ Browser non-authority, loopback mutation ownership, and content-free diagnostic 
 | `post_v01_strategic_direction_vision.md` | `docs/strategy/post-v0.1-direction.md` | moved |
 | `persona_specialized_proxy_design.md` | strategy or concept policy according to adoption state | manual section split |
 | `vtuber_memory_proxy_design.md`, `ai_vtuber_pipeline_profile.md` | strategy/reference | moved or absorbed |
-| `pipeline_implementation_plan.md` | none | deleted_git_history_only compatibility stub |
+| legacy pipeline implementation plan compatibility stub | none | deleted_git_history_only |
 | `post_i3_evaluation_work_roadmap.md` | none | deleted_git_history_only compatibility stub |
 | `relaymem_mvp_implementation_plan.md` | none or project execution evidence if unique content remains | compatibility stub deletion after content check |
 
@@ -206,7 +206,7 @@ Browser non-authority, loopback mutation ownership, and content-free diagnostic 
 
 ### Retain and normalize
 
-Existing canonical `docs/contracts/**/*.md` files remain contract sources. They are reviewed for duplicate authority keys and hand-written code-derived tables, but are not moved merely because of the cutover.
+Existing canonical `docs/contracts/**/*.md` files remain contract sources. They are reviewed for duplicate authority keys and hand-written code-derived tables, but are not moved merely for consistency.
 
 ### Rebuild from architecture
 
