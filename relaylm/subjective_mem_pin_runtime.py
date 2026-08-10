@@ -14,7 +14,7 @@ from relaylm.subjective_mem.lifecycle import LIFECYCLE_INTENT_FINALIZATION_SCHEM
 from relaylm.subjective_mem.lifecycle_authority import SubjectiveMemPredecessorExpectation, load_subjective_mem_predecessor_authority_locked
 from relaylm.subjective_mem.lifecycle_engine import LifecycleExecutionOutcome, LifecycleFinalRecords, LifecycleFinalizer, LifecyclePublicationPlan, RecordBinding, lifecycle_claim_record, publish_lifecycle_post_image, read_lifecycle_reservation, read_prepared_post_image, reserve_lifecycle_publication, resolve_finalized_replay
 from relaylm.subjective_mem.markdown import LIFECYCLE_BLOCK_SCHEMA, PAGE_PARTITION_REVISION, PAGE_SCHEMA, RENDERER_REVISION, SubjectiveMemPagePlan, canonical_page_digest, parse_subjective_mem_page_bytes, plan_subjective_mem_revision_successor, subjective_mem_page_identity
-from relaylm.subjective_mem_pin import SubjectiveMemPinOperationIdentity, SubjectiveMemPinProposal, derive_subjective_mem_pin_operation_identity, subjective_mem_pin_transition, validate_subjective_mem_pin_proposal
+from relaylm.subjective_mem.pin import SubjectiveMemPinOperationIdentity, SubjectiveMemPinProposal, derive_subjective_mem_pin_operation_identity, subjective_mem_pin_transition, validate_subjective_mem_pin_proposal
 
 PinStatus = Literal["disabled", "dry_run_ready", "committed", "duplicate_finalized", "recovery_pending", "recovery_required", "lock_busy", "fail_closed", "integrity_conflict"]
 FaultInjector = Callable[[str], None]

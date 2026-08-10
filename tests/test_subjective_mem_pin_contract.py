@@ -6,8 +6,8 @@ import inspect
 
 import pytest
 
-import relaylm.subjective_mem_pin as pin_contract
-from relaylm.subjective_mem_pin import (
+import relaylm.subjective_mem.pin as pin_contract
+from relaylm.subjective_mem.pin import (
     PIN_OPERATION_FAMILY,
     SubjectiveMemPinBoundary,
     SubjectiveMemPinProposal,
