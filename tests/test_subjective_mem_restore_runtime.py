@@ -35,8 +35,8 @@ from relaylm.subjective_mem.restore import (
 )
 import relaylm.subjective_mem.restore_plan as restore_plan
 import relaylm.subjective_mem.restore_replay as restore_replay
-import relaylm.subjective_mem_restore_runtime as restore_runtime
-from relaylm.subjective_mem_restore_runtime import restore_subjective_mem
+import relaylm.subjective_mem.restore_runtime as restore_runtime
+from relaylm.subjective_mem.restore_runtime import restore_subjective_mem
 from test_subjective_mem_forget_runtime import _forget, _semantic_identity
 from test_subjective_mem_lifecycle_runtime import lifecycle_env
 from test_subjective_mem_runtime import NOW

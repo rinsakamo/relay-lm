@@ -84,13 +84,13 @@ MEM code, API, UI, ranking, cache, or storage and does not establish dual-write
 or old/new precedence. Ordinary Subjective MEM Retrieval remains the owner of
 candidate consumption, ranking, cache, usage events, and request-path authority.
 
-`relaylm/subjective_mem_restore_runtime.py` is the Restore operation owner. It
+`relaylm/subjective_mem/restore_runtime.py` is the Restore operation owner. It
 owns proposal application, exact predecessor and Forget-lineage validation,
 successor construction, tombstone-release finalization, exact replay, and
 bounded caller-invoked recovery.
 
 ```text
-subjective_mem_restore_runtime
+subjective_mem/restore_runtime
   -> subjective_mem_restore
   -> subjective_mem/restore_plan
   -> subjective_mem/restore_replay
@@ -283,7 +283,7 @@ validation surfaces including:
 ```text
 relaylm/subjective_mem/restore.py
 relaylm/subjective_mem/restore_plan.py
-relaylm/subjective_mem_restore_runtime.py
+relaylm/subjective_mem/restore_runtime.py
 relaylm/subjective_mem/restore_replay.py
 relaylm/subjective_mem/lifecycle_authority.py
 relaylm/subjective_mem/lifecycle_engine.py

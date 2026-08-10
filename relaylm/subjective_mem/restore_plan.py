@@ -6,7 +6,7 @@ one ``hidden N -> active N+1`` Restore operation, together with the
 operation-pure exactness predicates those payloads depend on. It performs no
 filesystem, transaction, or Evidence-store access, holds no runtime state, and
 is not a second Restore owner: request handling, durable authority loading, and
-orchestration remain in ``relaylm.subjective_mem_restore_runtime``, while
+orchestration remain in ``relaylm.subjective_mem.restore_runtime``, while
 reservation, publication, and finalization remain owned by the shared engine.
 """
 from __future__ import annotations
