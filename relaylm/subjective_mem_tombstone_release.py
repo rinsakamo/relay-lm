@@ -17,7 +17,7 @@ from relaylm.subjective_mem.lifecycle import (
     LIFECYCLE_RECEIPT_SCHEMA,
     LIFECYCLE_TRANSITION_SCHEMA,
 )
-from relaylm.subjective_mem_restore import (
+from relaylm.subjective_mem.restore import (
     RESTORE_AUTHORIZATION_CLASSES,
     RESTORE_REASON_CATEGORIES,
 )

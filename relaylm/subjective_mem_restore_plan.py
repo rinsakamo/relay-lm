@@ -51,7 +51,7 @@ from relaylm.subjective_mem.markdown import (
 from relaylm.subjective_mem.reformation import (
     subjective_mem_semantic_identity_digest,
 )
-from relaylm.subjective_mem_restore import (
+from relaylm.subjective_mem.restore import (
     SubjectiveMemRestoreOperationIdentity,
     SubjectiveMemRestoreProposal,
 )

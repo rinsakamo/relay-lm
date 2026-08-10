@@ -127,7 +127,7 @@ allowlist or wrapper-only alternate predecessor authority.
 
 ## Proposal authority
 
-`relaylm/subjective_mem_restore.py` owns one bounded proposal and deterministic
+`relaylm/subjective_mem/restore.py` owns one bounded proposal and deterministic
 identity shape. The proposal binds:
 
 - exact memory ID and current hidden revision;
@@ -281,7 +281,7 @@ The stable responsibility boundary is represented by current runtime and focused
 validation surfaces including:
 
 ```text
-relaylm/subjective_mem_restore.py
+relaylm/subjective_mem/restore.py
 relaylm/subjective_mem_restore_plan.py
 relaylm/subjective_mem_restore_runtime.py
 relaylm/subjective_mem_restore_replay.py

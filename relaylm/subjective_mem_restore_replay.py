@@ -33,7 +33,7 @@ from relaylm.subjective_mem.markdown import (
 from relaylm.subjective_mem.reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND as SUBJECTIVE_MEM_FORGET_TOMBSTONE_STATE_LOG_KIND,
 )
-from relaylm.subjective_mem_restore import (
+from relaylm.subjective_mem.restore import (
     SubjectiveMemRestoreOperationIdentity,
     SubjectiveMemRestoreProposal,
 )

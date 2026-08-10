@@ -4,8 +4,8 @@ from __future__ import annotations
 from dataclasses import replace
 import inspect
 
-import relaylm.subjective_mem_restore as restore_contract
-from relaylm.subjective_mem_restore import (
+import relaylm.subjective_mem.restore as restore_contract
+from relaylm.subjective_mem.restore import (
     RESTORE_OPERATION_FAMILY,
     SubjectiveMemRestoreBoundary,
     SubjectiveMemRestoreProposal,
