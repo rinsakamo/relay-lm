@@ -23,7 +23,6 @@ relaylm_related_authority:
   - relaymem_m3f_primary_index_log_reconciliation_preflight.md
   - relaymem_m3g_primary_index_log_reconciliation_apply.md
   - relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
-  - relaymem_mvp_implementation_plan.md
   - relaymem_mvp_design.md
   - memory_lifecycle_design.md
   - project_execution_plan.md
