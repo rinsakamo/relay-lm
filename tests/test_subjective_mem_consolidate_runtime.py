@@ -31,7 +31,7 @@ from relaylm.subjective_mem.lifecycle import (
     SubjectiveMemCorrectProposal,
     SubjectiveMemCorrectionBoundary,
 )
-from relaylm.subjective_mem_lifecycle_runtime import correct_subjective_mem
+from relaylm.subjective_mem.lifecycle_runtime import correct_subjective_mem
 from relaylm.subjective_mem.markdown import (
     LIFECYCLE_BLOCK_SCHEMA,
     PAGE_PARTITION_REVISION,
@@ -1018,7 +1018,7 @@ def test_runtime_is_the_only_consolidate_owner_using_shared_boundaries() -> None
     source = inspect.getsource(consolidate_runtime)
     assert source.count("def consolidate_subjective_mem(") == 1
     for forbidden in (
-        "subjective_mem_lifecycle_runtime import",
+        "subjective_mem.lifecycle_runtime import",
         "subjective_mem_forget_runtime import",
         "subjective_mem_pin_runtime import",
         "subjective_mem_restore_runtime import",

@@ -278,7 +278,7 @@ def test_runtime_has_one_owner_and_only_uses_shared_publication_engine() -> None
     source = inspect.getsource(pin_runtime)
     assert source.count("def pin_subjective_mem(") == 1
     assert source.count("def unpin_subjective_mem(") == 1
-    assert "subjective_mem_lifecycle_runtime import" not in source
+    assert "subjective_mem.lifecycle_runtime import" not in source
     assert "subjective_mem_forget_runtime import" not in source
     assert "relaymem_primary" not in source
     assert "ContextVar" not in source

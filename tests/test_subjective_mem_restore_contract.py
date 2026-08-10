@@ -268,7 +268,7 @@ def test_non_proposal_input_fails_without_attribute_access() -> None:
 def test_module_has_no_runtime_primary_mem_or_backdoor_import() -> None:
     source = inspect.getsource(restore_contract)
     assert "relaymem_primary" not in source
-    assert "subjective_mem_lifecycle_runtime" not in source
+    assert "subjective_mem.lifecycle_runtime" not in source
     assert "subjective_mem_forget_runtime" not in source
     assert "subjective_mem_reformation" not in source
     assert "ContextVar" not in source

@@ -210,7 +210,7 @@ def test_restore_projection_is_content_free(lifecycle_env) -> None:
 def test_restore_runtime_uses_shared_authority_without_private_runtime_imports() -> None:
     source = inspect.getsource(restore_runtime)
     assert "subjective_mem.lifecycle_authority import" in source
-    assert "subjective_mem_lifecycle_runtime import" not in source
+    assert "subjective_mem.lifecycle_runtime import" not in source
     assert "subjective_mem_forget_runtime import" not in source
     assert "subjective_mem_pin_runtime import" not in source
     assert "relaymem_primary" not in source
