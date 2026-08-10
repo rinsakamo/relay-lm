@@ -222,7 +222,7 @@ semantic implementation:
 | Operation | Semantic owner | Shared engine posture |
 |---|---|---|
 | Correct | `subjective_mem/lifecycle_runtime.py` | direct consumer |
-| Pin / Unpin | `subjective_mem_pin_runtime.py` | direct consumer |
+| Pin / Unpin | `subjective_mem/pin_runtime.py` | direct consumer |
 | Forget | Forget runtime / recovery owners | specialized publication/finalization boundary |
 | Restore | Restore plan/runtime/replay owners | direct consumer with operation-specific recovery |
 | Consolidate | `subjective_mem_consolidate_runtime.py` | direct consumer |
@@ -252,7 +252,7 @@ The stable responsibility boundary is represented in the current tree by:
 ```text
 relaylm/subjective_mem/lifecycle_engine.py
 relaylm/subjective_mem/lifecycle_runtime.py
-relaylm/subjective_mem_pin_runtime.py
+relaylm/subjective_mem/pin_runtime.py
 relaylm/subjective_mem_restore_plan.py
 relaylm/subjective_mem_restore_runtime.py
 relaylm/subjective_mem_restore_replay.py

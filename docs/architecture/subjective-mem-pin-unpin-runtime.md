@@ -98,7 +98,7 @@ not grant Primary MEM any current Pin / Unpin authority.
 
 ## One semantic owner
 
-`relaylm/subjective_mem_pin_runtime.py` is the Pin / Unpin operation owner. It
+`relaylm/subjective_mem/pin_runtime.py` is the Pin / Unpin operation owner. It
 owns one shared operation body and exposes two bounded public entry points:
 
 ```text
@@ -318,7 +318,7 @@ focused validation surfaces including:
 
 ```text
 relaylm/subjective_mem/pin.py
-relaylm/subjective_mem_pin_runtime.py
+relaylm/subjective_mem/pin_runtime.py
 relaylm/subjective_mem/lifecycle_engine.py
 tests/test_subjective_mem_pin_runtime.py
 scripts/relaylm_subjective_mem_pin_unpin_smoke.py

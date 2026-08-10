@@ -44,7 +44,7 @@ This contract owns the exact current Subjective MEM Pin / Unpin operation bounda
 
 ```text
 relaylm/subjective_mem/pin.py
-relaylm/subjective_mem_pin_runtime.py
+relaylm/subjective_mem/pin_runtime.py
 ```
 
 The exact lifecycle transitions are:
