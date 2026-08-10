@@ -1,3 +1,29 @@
+---
+relaylm_doc_type: reference
+relaylm_authority: current_configuration_field_reference
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: runtime
+relaylm_lifecycle: stable
+relaylm_authority_level: lookup
+relaylm_primary_consumers:
+  - operators configuring a RelayLM deployment
+  - contributors adding, renaming, or removing a RelayLMConfig field
+relaylm_update_trigger:
+  - a RelayLMConfig field is added, removed, or renamed
+  - a configuration default or operator-owned safety gate changes
+  - config.example.yaml gains or loses a documented field
+relaylm_not_authoritative_for:
+  - runtime behavior of any configured subsystem
+  - exact runtime schemas, gates, artifacts, or mutation contracts
+  - current repository implementation status
+  - repository execution sequencing
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../DOCUMENTATION_MODEL.md
+  - token-policy-profiles.md
+  - ../PROJECT_STATUS.md
+---
 # RelayLM Configuration Reference
 
 ## Status and authority
@@ -24,7 +50,7 @@ client system/developer message
 
 Current managed profiles require configured `soul` and `output_policy` files. Missing profile configuration raises `ProfileConfigurationError`; RelayLM does not silently promote a client system prompt into SOUL.
 
-See [Client Instruction Authority Contract](architecture/client_instruction_authority_contract.md).
+See [Client Instruction Authority Contract](../architecture/client_instruction_authority_contract.md).
 
 ## Minimal pass-through example
 

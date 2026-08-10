@@ -366,7 +366,7 @@ D6-R19 root reference relocation
 
 Each slice is one bounded exact-main PR under the ordinary P0-P8 lifecycle:
 
-- **D6-R19** moves `docs/config_schema.md` and `docs/token_policy_profiles.md` to `docs/reference/`.
+- **D6-R19** is complete. The root configuration and token-policy references now live at `docs/reference/configuration.md` and `docs/reference/token-policy-profiles.md` as canonical graph documents. Their old root paths are recorded in the retirement manifest, so this bullet names only the current paths.
 - **D6-R20** moves `docs/openwebui_lmstudio_mvp.md` to `docs/guides/` under a name without the milestone token.
 - **D6-R21** moves the seven `docs/smoke/` operator documents to `docs/operations/`: the runbook, troubleshooting, preset checklist, and route-differentiation checks, together with the three RelayMEM evaluation guides, which are repeatable operator procedures rather than a separate collection.
 - **D6-R22** moves `docs/evaluation/lat1-retrieval-scaling.md` and `docs/evaluation/mobile-dogfood-observation.md` to `docs/operations/` and removes the emptied transitional collection.
