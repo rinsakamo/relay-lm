@@ -8,7 +8,7 @@ canonical or prepared page image encodes. Both rest on the same page-identity
 authority, so they live together here. It opens no transaction, touches no
 file, and never reserves, publishes, finalizes, or recovers:
 ``resolve_finalized_replay`` in the shared lifecycle engine remains the sole
-replay authority, and ``relaylm.subjective_mem_restore_runtime`` remains the
+replay authority, and ``relaylm.subjective_mem.restore_runtime`` remains the
 single Restore owner.
 """
 from __future__ import annotations

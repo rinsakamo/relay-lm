@@ -1021,7 +1021,7 @@ def test_runtime_is_the_only_consolidate_owner_using_shared_boundaries() -> None
         "subjective_mem.lifecycle_runtime import",
         "subjective_mem.forget_runtime import",
         "subjective_mem_pin_runtime import",
-        "subjective_mem_restore_runtime import",
+        "subjective_mem.restore_runtime import",
         "relaymem_primary",
         "ContextVar",
         "threading",
