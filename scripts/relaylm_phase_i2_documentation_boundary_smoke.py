@@ -62,7 +62,7 @@ def main() -> None:
     for path in (
         "docs/README.md",
         "docs/architecture/README.md",
-        "docs/architecture/pipeline_implementation_plan.md",
+        "docs/architecture/project_execution_plan.md",
         "docs/architecture/relaymem_mvp_implementation_plan.md",
     ):
         forbid_text(
