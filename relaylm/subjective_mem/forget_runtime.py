@@ -5,7 +5,7 @@ MEM Markdown page and finalizes one content-free anti-reformation tombstone in
 the existing Evidence-space operations store. It reuses the LC-1A selector,
 receipt, authority, page-lock, publication, and recovery fences. Anti-reformation
 identity and lineage semantics are owned exclusively by
-``relaylm.subjective_mem_reformation``.
+``relaylm.subjective_mem.reformation``.
 """
 from __future__ import annotations
 
@@ -73,7 +73,7 @@ from relaylm.subjective_mem.markdown import (
     plan_subjective_mem_revision_successor,
     subjective_mem_page_identity,
 )
-from relaylm.subjective_mem_reformation import (
+from relaylm.subjective_mem.reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND as _TOMBSTONE_LOG_KIND,
     inspect_subjective_mem_reformation_digest_locked,
     subjective_mem_semantic_identity_digest,

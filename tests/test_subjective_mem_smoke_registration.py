@@ -11,7 +11,7 @@ if str(SCRIPTS) not in sys.path:
 
 from relaylm_ci_changed_matrix import RUNTIME_TIMEOUTS, _matrix
 from relaylm_ci_consolidated_smoke import COMMANDS, changed_outputs
-from relaylm.subjective_mem_reformation import _timestamp
+from relaylm.subjective_mem.reformation import _timestamp
 
 
 def test_subjective_mem_forget_runtime_change_selects_lifecycle_group() -> None:
@@ -100,7 +100,7 @@ def test_subjective_mem_create_has_one_direct_owner_without_core_bypass() -> Non
 
 def test_reformation_module_is_the_only_semantic_evaluator_owner() -> None:
     canonical = (
-        REPO_ROOT / "relaylm/subjective_mem_reformation.py"
+        REPO_ROOT / "relaylm/subjective_mem/reformation.py"
     ).read_text(encoding="utf-8")
     forget_runtime = (
         REPO_ROOT / "relaylm/subjective_mem/forget_runtime.py"

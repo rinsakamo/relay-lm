@@ -26,7 +26,7 @@ from relaylm.subjective_mem.markdown import (
     RENDERER_REVISION,
     parse_subjective_mem_page_bytes,
 )
-from relaylm.subjective_mem_reformation import (
+from relaylm.subjective_mem.reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
     check_subjective_mem_reformation,
     check_subjective_mem_reformation_locked,

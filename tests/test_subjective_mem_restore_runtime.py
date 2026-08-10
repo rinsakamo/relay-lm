@@ -22,7 +22,7 @@ from relaylm.subjective_mem.lifecycle_engine import (
     reserve_lifecycle_publication,
     validate_lifecycle_plan,
 )
-from relaylm.subjective_mem_reformation import (
+from relaylm.subjective_mem.reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
 )
 from relaylm.subjective_mem_tombstone_release import (
