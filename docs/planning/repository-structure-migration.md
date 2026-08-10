@@ -340,6 +340,38 @@ D6 completes the documentation program by:
 - retiring bespoke one-document guards, receipts, and active ledger bookkeeping;
 - retaining only generic metadata, link, authority, normative-extraction, Git-recoverability, retained-record, and generated-index checks.
 
+#### Remaining D6 forward order
+
+The legacy plan compatibility stubs are retired: the Post-I3 evaluation and work roadmap stub in PR #1017, the RelayMEM MVP implementation plan stub in PR #1035, and the pipeline implementation plan stub in PR #1036. Their exact retired paths, replacement authorities, and recovery identities are recorded in `records/documentation/retirement-manifest.json`. No redirect stub and no bespoke one-document handoff cutover guard remains, and the transitional-asset registry is empty.
+
+The remaining D6 criteria are not met. Documents still live outside both the permanent active locations and frozen evidence, and `docs/architecture/README.md` remains a hand-maintained router list. The ordered remainder is:
+
+```text
+D6-R19 active-collection boundary closure
+  -> D6-R20 root reference relocation
+  -> D6-R21 root guide relocation
+  -> D6-R22 operator smoke relocation
+  -> D6-R23 evaluation method relocation
+  -> D6-R24 smoke snapshot retirement and collection removal
+  -> D6-R25 RelayEMO initial design absorption
+  -> D6-R26 architecture router rebuild
+  -> D6-R27 D6 completion audit
+```
+
+Each slice is one bounded exact-main PR under the ordinary P0-P8 lifecycle:
+
+- **D6-R19** admits `docs/evaluation/` and `docs/strategy/` as permanent active locations with allowed `relaylm_doc_type` values in `scripts/relaylm_documentation_governance_validate.py`. It runs first because later slices place documents in those collections.
+- **D6-R20** moves `docs/config_schema.md` and `docs/token_policy_profiles.md` to `docs/reference/`.
+- **D6-R21** moves `docs/openwebui_lmstudio_mvp.md` to `docs/guides/` under a name without the milestone token.
+- **D6-R22** moves the four `docs/smoke/` operator runbook, troubleshooting, checklist, and route-check documents to `docs/operations/`.
+- **D6-R23** moves the three `docs/smoke/` RelayMEM evaluation-method guides to `docs/evaluation/`.
+- **D6-R24** moves `docs/smoke/scripts_inventory.md` to `docs/evidence/evaluations/`, retires `docs/smoke/README.md`, and removes the emptied collection.
+- **D6-R25** absorbs `docs/relayemo_mvp_initial_design.md` into the RelayEMO relationship architecture nodes. It requires a content review and a section map, so it does not precede the mechanical relocations.
+- **D6-R26** replaces the hand-maintained `docs/architecture/README.md` list with a generated index, with an accepted generator owner and removal gate.
+- **D6-R27** re-runs the five D6 criteria against exact current `main`. D6 is declared complete only when every criterion passes, and PD-1 opens only after that declaration and Lane R R5.
+
+Source-family disposition for every document named above is owned by [Documentation Architecture Inventory](documentation-architecture-inventory.md) Section N. This order authorizes sequencing only; each slice still proves its own current consumers, replacement authority, and retirement record before writing.
+
 ## Lane R: repository maintenance
 
 ### R1: responsibility classification
