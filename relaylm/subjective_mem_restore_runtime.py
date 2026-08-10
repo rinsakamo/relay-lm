@@ -52,7 +52,7 @@ from relaylm.subjective_mem.restore import (
     derive_subjective_mem_restore_operation_identity,
     validate_subjective_mem_restore_proposal,
 )
-from relaylm.subjective_mem_restore_plan import (
+from relaylm.subjective_mem.restore_plan import (
     SubjectiveMemRestorePreparedOperation,
     build_subjective_mem_restore_final_records,
     build_subjective_mem_restore_prepared_operation,

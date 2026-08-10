@@ -253,7 +253,7 @@ The stable responsibility boundary is represented in the current tree by:
 relaylm/subjective_mem/lifecycle_engine.py
 relaylm/subjective_mem/lifecycle_runtime.py
 relaylm/subjective_mem/pin_runtime.py
-relaylm/subjective_mem_restore_plan.py
+relaylm/subjective_mem/restore_plan.py
 relaylm/subjective_mem_restore_runtime.py
 relaylm/subjective_mem_restore_replay.py
 relaylm/subjective_mem_consolidate_runtime.py

@@ -33,7 +33,7 @@ from relaylm.subjective_mem.restore import (
     SubjectiveMemRestoreProposal,
     derive_subjective_mem_restore_operation_identity,
 )
-import relaylm.subjective_mem_restore_plan as restore_plan
+import relaylm.subjective_mem.restore_plan as restore_plan
 import relaylm.subjective_mem_restore_replay as restore_replay
 import relaylm.subjective_mem_restore_runtime as restore_runtime
 from relaylm.subjective_mem_restore_runtime import restore_subjective_mem
@@ -466,7 +466,7 @@ def test_restore_publishes_only_through_the_shared_engine() -> None:
 
 def test_restore_runtime_delegates_plan_construction_to_plan_module() -> None:
     runtime_source = inspect.getsource(restore_runtime)
-    assert "from relaylm.subjective_mem_restore_plan import" in runtime_source
+    assert "from relaylm.subjective_mem.restore_plan import" in runtime_source
     assert "build_subjective_mem_restore_prepared_operation(" in runtime_source
     # the runtime keeps no second intent, plan, successor, or page constructor
     assert "LifecyclePublicationPlan(" not in runtime_source
