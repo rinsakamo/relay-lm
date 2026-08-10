@@ -22,7 +22,7 @@ from relaylm.subjective_mem_consolidate import (
 )
 import relaylm.subjective_mem_consolidate_runtime as consolidate_runtime
 from relaylm.subjective_mem_consolidate_runtime import consolidate_subjective_mem
-from relaylm.subjective_mem_forget import (
+from relaylm.subjective_mem.forget import (
     SubjectiveMemForgetBoundary,
     SubjectiveMemForgetProposal,
 )
