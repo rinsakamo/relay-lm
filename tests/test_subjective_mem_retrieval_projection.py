@@ -36,7 +36,7 @@ from relaylm.subjective_mem.markdown import (
     subjective_mem_block_identity,
     subjective_mem_page_identity,
 )
-from relaylm.subjective_mem_retrieval import (
+from relaylm.subjective_mem.retrieval import (
     SubjectiveMemRetrievalProjectionRow,
     subjective_mem_retrieval_exclusion_reasons,
     validate_subjective_mem_retrieval_projection_manifest,
@@ -1015,7 +1015,7 @@ def test_projection_modules_have_no_primary_shadow_or_request_path_dependency() 
             "relaylm.subjective_mem.models",
             "relaylm.subjective_mem.lifecycle_authority",
             "relaylm.subjective_mem.markdown",
-            "relaylm.subjective_mem_retrieval",
+            "relaylm.subjective_mem.retrieval",
         },
         store_module: {
             "__future__",
@@ -1025,7 +1025,7 @@ def test_projection_modules_have_no_primary_shadow_or_request_path_dependency() 
             "dataclasses",
             "pathlib",
             "relaylm.evidence.common",
-            "relaylm.subjective_mem_retrieval",
+            "relaylm.subjective_mem.retrieval",
             "relaylm.subjective_mem_retrieval_projection",
         },
     }

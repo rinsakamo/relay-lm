@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-import relaylm.subjective_mem_retrieval as retrieval
+import relaylm.subjective_mem.retrieval as retrieval
 from relaylm.evidence.common import canonical_digest
-from relaylm.subjective_mem_retrieval import (
+from relaylm.subjective_mem.retrieval import (
     RETRIEVAL_EXCLUSION_REASONS,
     SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
     SUBJECTIVE_MEM_RETRIEVAL_PROJECTION_POLICY_REVISION,
@@ -562,4 +562,4 @@ def test_review_triggers_remain_bounded() -> None:
             end = max(getattr(item, "end_lineno", node.lineno) for item in ast.walk(node))
             lengths.append((node.name, end - node.lineno + 1))
     assert max(length for _, length in lengths) <= 80, lengths
-    assert Path(retrieval.__file__).name == "subjective_mem_retrieval.py"
+    assert Path(retrieval.__file__).name == "retrieval.py"

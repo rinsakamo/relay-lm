@@ -25,7 +25,7 @@ from relaylm.subjective_mem.markdown import (
     plan_subjective_mem_page,
     plan_subjective_mem_revision_successor,
 )
-from relaylm.subjective_mem_retrieval import (
+from relaylm.subjective_mem.retrieval import (
     SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
     SUBJECTIVE_MEM_RETRIEVAL_PROJECTION_POLICY_REVISION,
     SubjectiveMemRetrievalBoundary,
@@ -752,7 +752,7 @@ def test_selection_owner_imports_no_characterization_ledger_or_io() -> None:
     assert imports == {
         "__future__", "dataclasses", "typing", "relaylm.evidence.common",
         "relaylm.relaymem_grounded_recall_response", "relaylm.subjective_mem.markdown",
-        "relaylm.subjective_mem_retrieval", "relaylm.token_budget",
+        "relaylm.subjective_mem.retrieval", "relaylm.token_budget",
     }
     executable = _executable_source(selection_owner)
     for forbidden in (

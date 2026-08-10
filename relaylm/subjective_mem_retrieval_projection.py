@@ -39,7 +39,7 @@ from relaylm.subjective_mem.markdown import (
     PAGE_SCHEMA, RENDERER_REVISION, SubjectiveMemMarkdownBlock, SubjectiveMemMarkdownPage,
     canonical_page_digest, parse_subjective_mem_page_bytes, subjective_mem_block_identity,
 )
-from relaylm.subjective_mem_retrieval import (
+from relaylm.subjective_mem.retrieval import (
     SUBJECTIVE_MEM_RETRIEVAL_PROJECTION_POLICY_REVISION,
     SubjectiveMemRetrievalProjectionManifest, SubjectiveMemRetrievalProjectionRow,
     validate_subjective_mem_retrieval_projection_manifest,
