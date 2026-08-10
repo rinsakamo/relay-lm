@@ -16,7 +16,7 @@ from relaylm.subjective_mem_reformation import _timestamp
 
 def test_subjective_mem_forget_runtime_change_selects_lifecycle_group() -> None:
     selected = changed_outputs(
-        "runtime", ["relaylm/subjective_mem_forget_runtime.py"], False
+        "runtime", ["relaylm/subjective_mem/forget_runtime.py"], False
     )
     assert selected["subjective_mem_lifecycle"] is True
     assert sum(selected.values()) == 1
@@ -103,7 +103,7 @@ def test_reformation_module_is_the_only_semantic_evaluator_owner() -> None:
         REPO_ROOT / "relaylm/subjective_mem_reformation.py"
     ).read_text(encoding="utf-8")
     forget_runtime = (
-        REPO_ROOT / "relaylm/subjective_mem_forget_runtime.py"
+        REPO_ROOT / "relaylm/subjective_mem/forget_runtime.py"
     ).read_text(encoding="utf-8")
 
     assert canonical.count("def _evaluate_subjective_mem_reformation_locked(") == 1
@@ -113,7 +113,7 @@ def test_reformation_module_is_the_only_semantic_evaluator_owner() -> None:
     assert "class SubjectiveMemReformationCheck" not in forget_runtime
     assert "_valid_tombstone_state" not in forget_runtime
     assert "_valid_tombstone_lineage" not in forget_runtime
-    assert "subjective_mem_forget_runtime import" not in canonical
+    assert "subjective_mem.forget_runtime import" not in canonical
 
 
 def test_reformation_lineage_timestamp_requires_aware_iso_datetime() -> None:

@@ -17,7 +17,7 @@ from relaylm.subjective_mem.forget import (
     SubjectiveMemForgetBoundary,
     SubjectiveMemForgetProposal,
 )
-from relaylm.subjective_mem_forget_runtime import forget_subjective_mem
+from relaylm.subjective_mem.forget_runtime import forget_subjective_mem
 from relaylm.subjective_mem.lifecycle import LIFECYCLE_POLICY_REVISION
 from relaylm.subjective_mem.markdown import (
     LIFECYCLE_BLOCK_SCHEMA,
@@ -434,7 +434,7 @@ def _decision_path(env, predecessor) -> Path:
 
 
 def test_forget_owns_predecessor_authority_through_shared_owner() -> None:
-    source = Path("relaylm/subjective_mem_forget_runtime.py").read_text(encoding="utf-8")
+    source = Path("relaylm/subjective_mem/forget_runtime.py").read_text(encoding="utf-8")
     assert "from relaylm.subjective_mem.lifecycle_authority import" in source
     assert "load_subjective_mem_predecessor_authority_locked(" in source
     for removed in (

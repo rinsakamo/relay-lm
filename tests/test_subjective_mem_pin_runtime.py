@@ -279,7 +279,7 @@ def test_runtime_has_one_owner_and_only_uses_shared_publication_engine() -> None
     assert source.count("def pin_subjective_mem(") == 1
     assert source.count("def unpin_subjective_mem(") == 1
     assert "subjective_mem.lifecycle_runtime import" not in source
-    assert "subjective_mem_forget_runtime import" not in source
+    assert "subjective_mem.forget_runtime import" not in source
     assert "relaymem_primary" not in source
     assert "ContextVar" not in source
     assert "reserve_lifecycle_publication(" in source

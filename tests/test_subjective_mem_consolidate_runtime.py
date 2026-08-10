@@ -40,7 +40,7 @@ from relaylm.subjective_mem.markdown import (
     parse_subjective_mem_page_bytes,
 )
 from relaylm.subjective_mem_pin_runtime import pin_subjective_mem
-from relaylm.subjective_mem_forget_runtime import forget_subjective_mem
+from relaylm.subjective_mem.forget_runtime import forget_subjective_mem
 from test_subjective_mem_commit_runtime import _commit, _make_workspace
 from test_subjective_mem_lifecycle_runtime import _correct, lifecycle_env  # noqa: F401
 from test_subjective_mem_pin_runtime import _proposal as _pin_proposal
@@ -1019,7 +1019,7 @@ def test_runtime_is_the_only_consolidate_owner_using_shared_boundaries() -> None
     assert source.count("def consolidate_subjective_mem(") == 1
     for forbidden in (
         "subjective_mem.lifecycle_runtime import",
-        "subjective_mem_forget_runtime import",
+        "subjective_mem.forget_runtime import",
         "subjective_mem_pin_runtime import",
         "subjective_mem_restore_runtime import",
         "relaymem_primary",

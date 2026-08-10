@@ -211,7 +211,7 @@ def test_restore_runtime_uses_shared_authority_without_private_runtime_imports()
     source = inspect.getsource(restore_runtime)
     assert "subjective_mem.lifecycle_authority import" in source
     assert "subjective_mem.lifecycle_runtime import" not in source
-    assert "subjective_mem_forget_runtime import" not in source
+    assert "subjective_mem.forget_runtime import" not in source
     assert "subjective_mem_pin_runtime import" not in source
     assert "relaymem_primary" not in source
     assert "ContextVar" not in source

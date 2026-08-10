@@ -858,7 +858,7 @@ def test_correct_production_path_executes_through_the_shared_engine(
 def test_shared_engine_never_imports_a_lifecycle_operation_owner() -> None:
     source = Path("relaylm/subjective_mem/lifecycle_engine.py").read_text(encoding="utf-8")
     assert "subjective_mem.lifecycle_runtime" not in source
-    assert "subjective_mem_forget_runtime" not in source
+    assert "subjective_mem.forget_runtime" not in source
     assert "relaymem_primary" not in source
     for dynamic in (
         "Protocol",
