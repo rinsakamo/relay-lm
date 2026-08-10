@@ -206,7 +206,7 @@ Browser non-authority, loopback mutation ownership, and content-free diagnostic 
 
 ### Retain and normalize
 
-Existing canonical `docs/contracts/**/*.md` files remain contract sources. They are reviewed for duplicate authority keys and hand-written code-derived tables, but are not moved merely for consistency.
+Existing canonical `docs/contracts/**/*.md` files remain contract sources. They are reviewed for duplicate authority keys and hand-written code-derived tables, but are not moved merely because of the cutover.
 
 ### Rebuild from architecture
 
