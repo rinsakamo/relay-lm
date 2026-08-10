@@ -317,6 +317,19 @@
       "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #667 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
     },
     {
+      "old_path": "docs/architecture/relaymem_mvp_implementation_plan.md",
+      "last_live_commit": "2e2651a4840395ad167464ec50ea87c0f5c958a6",
+      "old_blob_sha": "578b7c1be74504e875cbacfc611a225e77185184",
+      "removed_by_pr": 1035,
+      "replacement_paths": [
+        "docs/PROJECT_STATUS.md",
+        "docs/architecture/project_execution_plan.md",
+        "docs/architecture/relaymem_slp_current_target.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R18 retired the legacy RelayMEM MVP implementation plan compatibility stub after D6-R18a removed its architecture-router exposure, D6-R18b removed its Preparation-B path reference, D6-R18c proved it owned no independent semantics, and PR #1027 and PR #1032 migrated every current live consumer; the remaining body only redirected status, sequencing, and current/target RelayMEM readers to canonical authorities, and the exact stub remains recoverable from Git."
+    },
+    {
       "old_path": "docs/architecture/relayref_relayslp_mvp_design.md",
       "last_live_commit": "82a6c394542b601af1d8ddd35613c1261bf8fb84",
       "old_blob_sha": "4756c22765e6b9d439d00d266ca390b14befa490",
