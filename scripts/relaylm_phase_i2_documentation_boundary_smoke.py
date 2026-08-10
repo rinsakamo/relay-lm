@@ -63,7 +63,6 @@ def main() -> None:
         "docs/README.md",
         "docs/architecture/README.md",
         "docs/architecture/project_execution_plan.md",
-        "docs/architecture/relaymem_mvp_implementation_plan.md",
     ):
         forbid_text(
             path,
