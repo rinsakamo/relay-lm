@@ -23,8 +23,8 @@ from relaylm.subjective_mem.lifecycle_engine import (
     LifecycleFinalRecordsWithBindings,
     final_lifecycle_state,
 )
-import relaylm.subjective_mem_restore_plan as restore_plan
-from relaylm.subjective_mem_restore_plan import (
+import relaylm.subjective_mem.restore_plan as restore_plan
+from relaylm.subjective_mem.restore_plan import (
     build_subjective_mem_restore_final_records,
 )
 from relaylm.subjective_mem_tombstone_release import (
