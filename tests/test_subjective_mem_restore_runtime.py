@@ -25,7 +25,7 @@ from relaylm.subjective_mem.lifecycle_engine import (
 from relaylm.subjective_mem.reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
 )
-from relaylm.subjective_mem_tombstone_release import (
+from relaylm.subjective_mem.tombstone_release import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
 )
 from relaylm.subjective_mem.restore import (
@@ -479,7 +479,7 @@ def test_restore_runtime_delegates_plan_construction_to_plan_module() -> None:
     # the operation owner still validates the composed plan through the engine
     assert "validate_lifecycle_plan(" in runtime_source
     assert (
-        "from relaylm.subjective_mem_tombstone_release import" in runtime_source
+        "from relaylm.subjective_mem.tombstone_release import" in runtime_source
     )
 
 
