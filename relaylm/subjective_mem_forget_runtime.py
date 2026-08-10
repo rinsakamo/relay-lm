@@ -32,7 +32,7 @@ from relaylm.subjective_mem.models import (
     SubjectiveMemRevision,
     resolve_subjective_mem_character_authority,
 )
-from relaylm.subjective_mem_forget import (
+from relaylm.subjective_mem.forget import (
     FORGET_REASON_CATEGORIES,
     FORGET_TOMBSTONE_STATE_SCHEMA,
     SubjectiveMemForgetBoundary,

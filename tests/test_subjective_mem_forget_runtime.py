@@ -13,7 +13,7 @@ from relaylm.subjective_mem.models import (
     SubjectiveMemCreateProposal,
     SubjectiveMemProposalBoundary,
 )
-from relaylm.subjective_mem_forget import (
+from relaylm.subjective_mem.forget import (
     SubjectiveMemForgetBoundary,
     SubjectiveMemForgetProposal,
 )

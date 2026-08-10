@@ -14,7 +14,7 @@ from typing import Literal
 from relaylm.evidence.common import canonical_digest, utf8_text_digest
 from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
 from relaylm.subjective_mem.models import SubjectiveMemScopeBinding
-from relaylm.subjective_mem_forget import (
+from relaylm.subjective_mem.forget import (
     FORGET_REASON_CATEGORIES,
     FORGET_TOMBSTONE_SCHEMA,
     FORGET_TOMBSTONE_STATE_SCHEMA,
