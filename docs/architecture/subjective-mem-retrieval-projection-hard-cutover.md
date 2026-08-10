@@ -860,7 +860,7 @@ not a new authority.
 Two conditional paths are permitted only on demonstrated need:
 
 ```text
-relaylm/subjective_mem_retrieval.py                 only when an exact missing RT-1C
+relaylm/subjective_mem/retrieval.py                 only when an exact missing RT-1C
 tests/test_subjective_mem_retrieval_contract.py     contract identity is demonstrated
 scripts/relaylm_ci_consolidated_smoke.py            at most one registration entry, only when
                                                     focused pytest discovery cannot validate

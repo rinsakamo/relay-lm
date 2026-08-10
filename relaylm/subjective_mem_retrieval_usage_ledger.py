@@ -45,7 +45,7 @@ from typing import Literal
 
 from relaylm.evidence.common import canonical_digest, dedupe
 from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreTransaction
-from relaylm.subjective_mem_retrieval import (
+from relaylm.subjective_mem.retrieval import (
     RETRIEVAL_USAGE_EVENT_KIND, SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION,
     SubjectiveMemRetrievalProjectionManifest, SubjectiveMemRetrievalProjectionRow,
     SubjectiveMemRetrievalRequest, SubjectiveMemRetrievalSelection,

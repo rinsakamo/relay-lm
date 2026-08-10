@@ -12,7 +12,7 @@ import relaylm.subjective_mem_retrieval_usage_ledger as ledger_owner
 from relaylm.evidence.common import utf8_text_digest
 from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreResult
 from relaylm.relaymem_grounded_recall_response import build_grounded_recall_context
-from relaylm.subjective_mem_retrieval import (
+from relaylm.subjective_mem.retrieval import (
     RETRIEVAL_USAGE_EVENT_KIND,
     derive_subjective_mem_retrieval_usage_event,
 )
@@ -580,7 +580,7 @@ def test_ledger_depends_one_way_on_selection_and_reuses_the_evidence_store() -> 
     )
     assert imports == {
         "__future__", "dataclasses", "typing", "relaylm.evidence.common",
-        "relaylm.evidence.store", "relaylm.subjective_mem_retrieval",
+        "relaylm.evidence.store", "relaylm.subjective_mem.retrieval",
         "relaylm.subjective_mem_retrieval_selection",
     }
     assert "SubjectiveMemRetrievalAdmittedHandoff" not in inspect.getsource(

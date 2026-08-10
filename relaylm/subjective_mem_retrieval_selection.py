@@ -40,7 +40,7 @@ from relaylm.subjective_mem.markdown import (
     MAX_CANONICAL_PAGE_BYTES, SubjectiveMemMarkdownBlock, SubjectiveMemMarkdownPage,
     parse_subjective_mem_page_bytes,
 )
-from relaylm.subjective_mem_retrieval import (
+from relaylm.subjective_mem.retrieval import (
     SUBJECTIVE_MEM_RETRIEVAL_POLICY_REVISION, SubjectiveMemRetrievalProjectionManifest,
     SubjectiveMemRetrievalProjectionRow, SubjectiveMemRetrievalRequest,
     SubjectiveMemRetrievalSelection, subjective_mem_retrieval_exclusion_reasons,
