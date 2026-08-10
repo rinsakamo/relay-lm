@@ -24,7 +24,7 @@ def test_subjective_mem_forget_runtime_change_selects_lifecycle_group() -> None:
 
 def test_subjective_mem_pin_runtime_change_selects_lifecycle_group() -> None:
     selected = changed_outputs(
-        "runtime", ["relaylm/subjective_mem_pin_runtime.py"], False
+        "runtime", ["relaylm/subjective_mem/pin_runtime.py"], False
     )
     assert selected["subjective_mem_lifecycle"] is True
     assert sum(selected.values()) == 1
@@ -45,7 +45,7 @@ def test_subjective_mem_consolidate_runtime_change_selects_lifecycle_group() -> 
 
 def test_subjective_mem_lifecycle_group_is_emitted_in_runtime_matrix() -> None:
     selected = changed_outputs(
-        "runtime", ["relaylm/subjective_mem_pin_runtime.py"], False
+        "runtime", ["relaylm/subjective_mem/pin_runtime.py"], False
     )
     matrix = _matrix(selected, RUNTIME_TIMEOUTS)
     assert matrix == {

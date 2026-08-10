@@ -39,7 +39,7 @@ from relaylm.subjective_mem.markdown import (
     RENDERER_REVISION,
     parse_subjective_mem_page_bytes,
 )
-from relaylm.subjective_mem_pin_runtime import pin_subjective_mem
+from relaylm.subjective_mem.pin_runtime import pin_subjective_mem
 from relaylm.subjective_mem.forget_runtime import forget_subjective_mem
 from test_subjective_mem_commit_runtime import _commit, _make_workspace
 from test_subjective_mem_lifecycle_runtime import _correct, lifecycle_env  # noqa: F401
