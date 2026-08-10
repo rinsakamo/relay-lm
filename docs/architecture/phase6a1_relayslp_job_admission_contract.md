@@ -16,7 +16,7 @@ relaylm_related_authority:
   - phase6_async_relayslp_bounded_slice.md
   - phase6a2_relayslp_response_handoff_contract.md
   - relaymem_slp_current_target.md
-  - relaymem_mvp_implementation_plan.md
+  - project_execution_plan.md
 ---
 # Phase 6-A1 RelaySLP Job Admission Contract
 
