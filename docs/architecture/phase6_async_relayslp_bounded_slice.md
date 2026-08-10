@@ -44,7 +44,6 @@ relaylm_related_authority:
   - o2_supervised_scheduler_service.md
   - o3_always_on_local_scheduler.md
   - subjective-mem-retrieval-projection-hard-cutover.md
-  - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
   - memory_lifecycle_design.md
   - runtime/compile-and-checkpoint.md

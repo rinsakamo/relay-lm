@@ -34,7 +34,6 @@ relaylm_related_authority:
   - phase6c2_one_queued_primary_worker_integration.md
   - relaymem_slp_current_target.md
   - subjective-mem-retrieval-projection-hard-cutover.md
-  - relaymem_mvp_implementation_plan.md
   - project_execution_plan.md
   - ../PROJECT_STATUS.md
 ---
