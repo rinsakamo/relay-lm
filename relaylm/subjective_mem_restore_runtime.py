@@ -46,7 +46,7 @@ from relaylm.subjective_mem.reformation import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_LOG_KIND,
     inspect_subjective_mem_reformation_digest_locked,
 )
-from relaylm.subjective_mem_restore import (
+from relaylm.subjective_mem.restore import (
     SubjectiveMemRestoreOperationIdentity,
     SubjectiveMemRestoreProposal,
     derive_subjective_mem_restore_operation_identity,

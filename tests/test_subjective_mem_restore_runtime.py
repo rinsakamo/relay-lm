@@ -28,7 +28,7 @@ from relaylm.subjective_mem.reformation import (
 from relaylm.subjective_mem_tombstone_release import (
     SUBJECTIVE_MEM_FORGET_TOMBSTONE_RELEASE_LOG_KIND,
 )
-from relaylm.subjective_mem_restore import (
+from relaylm.subjective_mem.restore import (
     SubjectiveMemRestoreBoundary,
     SubjectiveMemRestoreProposal,
     derive_subjective_mem_restore_operation_identity,
