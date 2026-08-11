@@ -17,7 +17,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from relaylm.app import create_app
 from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
-from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
+from relaylm.retrieval.dry_run import build_relaymem_retrieval_dry_run_artifact
 from relaylm.relaymem_store import build_relaymem_store_diagnostics, discover_relaymem_page_candidates
 
 

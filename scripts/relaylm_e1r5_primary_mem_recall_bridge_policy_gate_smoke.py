@@ -53,7 +53,7 @@ def check_no_module_reaches_the_retired_recall() -> None:
 
 
 def check_ordinary_retrieval_opens_no_primary_store() -> None:
-    body = (ROOT / "relaylm/relaymem_retrieval.py").read_text(encoding="utf-8")
+    body = (ROOT / "relaylm/retrieval/runtime.py").read_text(encoding="utf-8")
     assert "resolve_relaymem_character_store_root" not in body
     stage = next(
         node

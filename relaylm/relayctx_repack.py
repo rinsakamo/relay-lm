@@ -8,7 +8,7 @@ from typing import Any
 
 from relaylm.config import RelayLMConfig
 from relaylm.diagnostics import build_relayctx_short_term_runtime_injection_apply_result
-from relaylm.relaymem_retrieval import (
+from relaylm.retrieval.runtime import (
     ORDINARY_MEMORY_AUTHORITY_KEY,
     SUBJECTIVE_RUNTIME_KEY,
 )

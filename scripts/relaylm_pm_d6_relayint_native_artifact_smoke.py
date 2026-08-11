@@ -13,7 +13,7 @@ from relaylm.relayint import (  # noqa: E402
     build_relayint_reference_intent_artifact,
     build_relayint_reference_repair_dry_run,
 )
-from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact  # noqa: E402
+from relaylm.retrieval.dry_run import build_relaymem_retrieval_dry_run_artifact  # noqa: E402
 
 
 def require(condition: bool, detail: object) -> None:

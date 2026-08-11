@@ -166,7 +166,7 @@ reconciliation, and it refuses (fail-closed) to write into an existing
 non-empty directory or outside `runtime/bench/`.
 
 `scripts/relaylm_lat1_retrieval_bench.py` calls the real M2 retrieval path
-(`relaylm.relaymem_retrieval.build_relaymem_retrieval_dry_run_artifact`,
+(`relaylm.retrieval.dry_run.build_relaymem_retrieval_dry_run_artifact`,
 the same function `app.py` calls for the `relaymem_retrieval` node) against
 each generated store with a fixed, seeded 20-query set, `--repeat` times
 each, and writes p50/p95/avg-selected-count JSON under `runtime/bench/results/`.
@@ -189,7 +189,7 @@ PYTHONPATH=. python scripts/relaylm_lat1_retrieval_bench.py \
 **Interpretation note:** `discover_relaymem_page_candidates`'s internal
 scan is capped at a fixed constant
 (`_MAX_PRIORITY_DISCOVERY_CANDIDATES = 128` in
-`relaylm/relaymem_retrieval.py`) regardless of store size or the
+`relaylm/retrieval/candidates.py`) regardless of store size or the
 `max_candidates` argument. Bench results may plateau above that cap rather
 than scale linearly with N -- record what is actually observed in a dated
 completed-run record filled in from

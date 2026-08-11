@@ -11,7 +11,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from relaylm.analyzer_governance import can_open_runtime_policy
-from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
+from relaylm.retrieval.dry_run import build_relaymem_retrieval_dry_run_artifact
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
 from relaylm.retrieval.query_analyzer import (
     analyze_retrieval_query,
