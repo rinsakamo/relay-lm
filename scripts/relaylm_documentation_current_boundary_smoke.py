@@ -1650,7 +1650,7 @@ R4_RUNTIME_PROJECTION_ANCHORS = {
         "acquisition into selection, the cutover facade, the activation mechanics owner, "
         "Primary owners, or RelayCTX",
         "Exactly one additional private production owner is authorized: "
-        "`relaylm/_subjective_mem_retrieval_runtime_projection.py`",
+        "`relaylm/subjective_mem/retrieval_runtime_projection.py`",
         "acquire one exact current `SubjectiveMemRetrievalProjectionSource` by "
         "orchestrating the existing canonical workspace, Evidence-store, selector, "
         "receipt, and authorization owners without reimplementing their semantics",
@@ -1663,7 +1663,7 @@ R4_RUNTIME_PROJECTION_ANCHORS = {
         "evaluator, projection builder, projection store, selection owner, usage ledger, "
         "or cutover authority",
         "the ordinary route and cutover facade depend on "
-        "`relaylm/_subjective_mem_retrieval_runtime_projection.py`, which depends on the "
+        "`relaylm/subjective_mem/retrieval_runtime_projection.py`, which depends on the "
         "existing canonical source authorities, "
         "`relaylm/subjective_mem/retrieval_projection.py`, and "
         "`relaylm/subjective_mem/retrieval_projection_store.py`",
@@ -1679,7 +1679,7 @@ R4_RUNTIME_PROJECTION_ANCHORS = {
         "`subjective_only` requires the complete existing cutover tuple and this "
         "projection root, and configuration still grants no serving authority",
         "twelve paths total",
-        "`relaylm/_subjective_mem_retrieval_runtime_projection.py`, `relaylm/config.py`,",
+        "`relaylm/subjective_mem/retrieval_runtime_projection.py`, `relaylm/config.py`,",
         "The prior exact-eleven RT-1D-R4 production/config budget is superseded and is "
         "no longer executable",
         "No thirteenth RT-1D-R4 production or configuration path, schema owner, "
@@ -1766,7 +1766,7 @@ R4_RUNTIME_PROJECTION_MUTATIONS = tuple(
     for current, damaged, label in (
         (
             "Exactly one additional private production owner is authorized: "
-            "`relaylm/_subjective_mem_retrieval_runtime_projection.py`",
+            "`relaylm/subjective_mem/retrieval_runtime_projection.py`",
             "No additional private production owner is authorized",
             "runtime-projection owner authorization",
         ),
@@ -1895,7 +1895,7 @@ R4_FACADE_ANCHORS = {
         "cutover-facade gate for RT-1D-R4 alone. It is not a repository-wide precedent "
         "and it is not permission for physical-line compression.",
         "`relaylm/_subjective_mem_retrieval_cutover_activation.py` and "
-        "`relaylm/_subjective_mem_retrieval_runtime_projection.py` each remain below "
+        "`relaylm/subjective_mem/retrieval_runtime_projection.py` each remain below "
         "roughly 600 normally formatted physical lines, and every new or materially "
         "changed orchestration remains at or below roughly 80 normally formatted "
         "physical lines",
@@ -2261,7 +2261,7 @@ R4_COMPLETION_ANCHORS = {
         "created",
         "`relaylm/subjective_mem_retrieval_cutover.py` is 998 physical lines against the "
         "strictly-below-1000 RT-1D-R4-only exception",
-        "`relaylm/_subjective_mem_retrieval_runtime_projection.py` is 481 and "
+        "`relaylm/subjective_mem/retrieval_runtime_projection.py` is 481 and "
         "`relaylm/_subjective_mem_retrieval_cutover_activation.py` is 314 against the "
         "roughly-600 private-owner gate",
         "`run_managed_chat_pipeline` at 79, `run_relaymem_retrieval_stage` at 74, and "

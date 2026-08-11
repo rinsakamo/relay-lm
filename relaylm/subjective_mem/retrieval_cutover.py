@@ -10,7 +10,7 @@ Two private owners hold the mechanics, and the dependency direction is one-way:
 ```text
 ordinary route / cutover facade
   -> relaylm._subjective_mem_retrieval_cutover_activation   durable mechanics
-  -> relaylm._subjective_mem_retrieval_runtime_projection    ordinary projection
+  -> relaylm.subjective_mem.retrieval_runtime_projection    ordinary projection
 ```
 
 Neither private owner imports this facade, and neither is a second semantic
@@ -58,7 +58,7 @@ from .._subjective_mem_retrieval_cutover_activation import (
     safe_token,
     sha256_digest,
 )
-from .._subjective_mem_retrieval_runtime_projection import (
+from .retrieval_runtime_projection import (
     subjective_mem_retrieval_runtime_projection_spec,
     verify_subjective_mem_retrieval_runtime_projection,
 )

@@ -34,16 +34,16 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from .evidence.common import canonical_digest
-from .evidence.store import EvidenceRecordStore
-from .subjective_mem.markdown import subjective_mem_page_identity
-from .subjective_mem.retrieval_projection import (
+from ..evidence.common import canonical_digest
+from ..evidence.store import EvidenceRecordStore
+from .markdown import subjective_mem_page_identity
+from .retrieval_projection import (
     SubjectiveMemRetrievalProjection,
     SubjectiveMemRetrievalProjectionSource,
     SubjectiveMemRetrievalProjectionSourceEntry,
     build_subjective_mem_retrieval_projection,
 )
-from .subjective_mem.retrieval_projection_store import (
+from .retrieval_projection_store import (
     delete_subjective_mem_retrieval_projection,
     read_subjective_mem_retrieval_projection,
     write_subjective_mem_retrieval_projection,
