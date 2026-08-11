@@ -833,9 +833,13 @@ MOBILE_DOGFOOD_REFERENCE_ALLOWLISTED_FILES: frozenset[str] = frozenset()
 # frozen/historical/status bypass and no generic allowance beyond exact
 # reviewed lines added here.
 MOBILE_DOGFOOD_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
-    "docs/planning/documentation-architecture-inventory.md": (
-        "| `docs/evaluation/lat1-retrieval-scaling.md` |",
-        "| `docs/evaluation/mobile-dogfood-observation.md` |",
+    "docs/planning/documentation-architecture-inventory.md": tuple(
+        f"| `{retired_path}` |"
+        for retired_path, canonical_path in MOBILE_DOGFOOD_RETIRED_TO_CANONICAL.items()
+        if canonical_path in {
+            "docs/operations/lat1-retrieval-scaling.md",
+            "docs/operations/mobile-dogfood-observation.md",
+        }
     ),
 }
 
