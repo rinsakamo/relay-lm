@@ -14,7 +14,7 @@ import stat
 from typing import Any, Literal
 
 from relaylm.client_instruction_cache_lookup import resolve_client_instruction_cache_lookup
-from relaylm.client_instruction_identity import ClientInstructionIdentityResult
+from relaylm.interfaces.openai.client_instruction_identity import ClientInstructionIdentityResult
 from relaylm.client_instruction_typed_parse import ClientInstructionTypedParseResult
 from relaylm.pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
 

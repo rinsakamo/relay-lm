@@ -10,7 +10,7 @@ import yaml
 from relaylm.interfaces.openai.client_instruction_extraction import (
     build_client_instruction_extraction_dry_run,
 )
-from relaylm.client_instruction_identity import build_client_instruction_identity
+from relaylm.interfaces.openai.client_instruction_identity import build_client_instruction_identity
 from relaylm.config import load_config
 from relaylm.pipeline_context import PipelineContext
 from relaylm.request_compiler import compile_chat_payload_if_enabled

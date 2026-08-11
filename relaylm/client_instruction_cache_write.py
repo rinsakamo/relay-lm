@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from . import _client_instruction_cache_write_impl as _impl
-from .client_instruction_identity import ClientInstructionIdentityResult
+from relaylm.interfaces.openai.client_instruction_identity import ClientInstructionIdentityResult
 from .client_instruction_typed_parse import ClientInstructionTypedParseResult
 
 

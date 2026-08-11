@@ -8,7 +8,7 @@ import math
 import re
 from typing import Any, Literal
 
-from relaylm.client_instruction_identity import ClientInstructionIdentityResult
+from relaylm.interfaces.openai.client_instruction_identity import ClientInstructionIdentityResult
 from relaylm.relayscn import KNOWN_SCENE_TYPES
 
 

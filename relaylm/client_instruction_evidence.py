@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 import json
 
-from relaylm.client_instruction_identity import NormalizedInstructionCandidate
+from relaylm.interfaces.openai.client_instruction_identity import NormalizedInstructionCandidate
 from relaylm.compiler import BlockType, ContextBlock, StabilityClass
 
 

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from relaylm.client_history_exclusion_preflight import (
     ClientHistoryExclusionPreflightResult,
 )
-from relaylm.client_instruction_identity import ClientInstructionIdentityResult
+from relaylm.interfaces.openai.client_instruction_identity import ClientInstructionIdentityResult
 
 if TYPE_CHECKING:
     from relaylm.pipeline_context import PipelineContext

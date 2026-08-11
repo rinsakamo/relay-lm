@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from relaylm.client_instruction_identity import (
+from relaylm.interfaces.openai.client_instruction_identity import (
     ClientInstructionIdentityResult,
     NormalizedInstructionCandidate,
 )
