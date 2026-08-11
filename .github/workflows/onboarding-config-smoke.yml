@@ -6,7 +6,7 @@ on:
     paths:
       - config.example.yaml
       - docs/reference/configuration.md
-      - docs/openwebui_lmstudio_mvp.md
+      - docs/guides/openwebui-lmstudio-integration.md
       - docs/architecture/open_llm_vtuber_integration.md
       - docs/architecture/runtime/request-response-pipeline.md
       - examples/config/**
@@ -45,7 +45,7 @@ on:
     paths:
       - config.example.yaml
       - docs/reference/configuration.md
-      - docs/openwebui_lmstudio_mvp.md
+      - docs/guides/openwebui-lmstudio-integration.md
       - docs/architecture/open_llm_vtuber_integration.md
       - docs/architecture/runtime/request-response-pipeline.md
       - examples/config/**
