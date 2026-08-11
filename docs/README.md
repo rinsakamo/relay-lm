@@ -180,9 +180,9 @@ Current runtime and implementation status is intentionally not summarized here. 
 - [Character template creation flow](architecture/character_template_creation_flow.md)
 - [Character belief, relationship, and social expression dynamics](architecture/character_belief_relationship_dynamics_design.md)
 - [ADR: character-conditioned belief without rewriting observation](adr/character_conditioned_belief_model.md)
-- [Experimental SOUL replacement and memory bootstrap](relaysoul/experimental_soul_replacement_memory_bootstrap_design.md)
+- [Character Personality and Experience Architecture](architecture/character/personality-and-experience.md)
 
-These documents are target architecture unless explicitly listed as a current completed boundary above. Experimental SOUL replacement is explicitly post-MVP and does not alter the ordinary Phase I-9 revision/rollback path.
+These documents are target architecture unless explicitly listed as a current completed boundary above.
 
 ## Canonical precedence
 

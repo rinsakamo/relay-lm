@@ -713,6 +713,27 @@
       "retention_reason": "D2-B1 replaced the root compatibility redirect with canonical compile/checkpoint architecture and exact RelayRUN checkpoint/recovery contract authority; the redirect remains recoverable from Git."
     },
     {
+      "old_path": "docs/relaysoul/experimental_soul_replacement_memory_bootstrap_design.md",
+      "last_live_commit": "2f9fa1fed384f0ff7eafeb34d030de70874e5a88",
+      "old_blob_sha": "c1aa56f99c176a593bab386936973ee258ad1be1",
+      "removed_by_pr": 1101,
+      "replacement_paths": [],
+      "disposition": "retired_git_history_only",
+      "retention_reason": "D6-R29 reviewed the post-MVP experimental SOUL replacement and memory bootstrap source and found no independent current architecture, implementation, or evidence role. Its general source, lifecycle, memory-exclusion, disclosure, and relationship principles remain with their already-canonical owners, and its unimplemented replacement-branch, virtual-memory bootstrap, fresh-relationship bootstrap, and staged SR-A..SR-F future design is retired to Git history rather than promoted."
+    },
+    {
+      "old_path": "docs/relaysoul/persona_update_cadence_design.md",
+      "last_live_commit": "2f9fa1fed384f0ff7eafeb34d030de70874e5a88",
+      "old_blob_sha": "0a2edf587fc0ff542383d820c1950a5d99e7a29b",
+      "removed_by_pr": 1101,
+      "replacement_paths": [
+        "docs/architecture/character/identity-and-source-authority.md",
+        "docs/architecture/character/personality-and-experience.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R29 found the durable update-speed and no-silent-SOUL-mutation semantics of the legacy persona cadence proposal already canonical under the replacement owners, which own the SOUL/SELF/REL/GOAL update-speed boundary and the validated RelaySLP personality-state write authority. The obsolete persona_plasticity model and legacy compatibility-source ownership were not promoted and remain recoverable from Git."
+    },
+    {
       "old_path": "docs/relaysoul/relaysoul_apply_execution_gate_design.md",
       "last_live_commit": "93a83faf0b02976c2b5c9d69a326612868381b3b",
       "old_blob_sha": "e20bc235da47dae79f002c3c68069fb5526b4cb5",
