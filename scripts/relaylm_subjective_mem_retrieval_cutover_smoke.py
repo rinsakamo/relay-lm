@@ -8,7 +8,7 @@ from pathlib import Path
 
 from relaylm.evidence.common import canonical_digest
 from relaylm.evidence.store import EvidenceRecordStore
-from relaylm._subjective_mem_retrieval_cutover_activation import reconstruct_cutover_chain
+from relaylm.subjective_mem.retrieval_cutover_activation import reconstruct_cutover_chain
 from relaylm.subjective_mem.retrieval_cutover import (
     CUTOVER_AUTHORITY_DOMAIN,
     CUTOVER_LOG_KEY,
