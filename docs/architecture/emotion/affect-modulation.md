@@ -17,7 +17,6 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../acg5_relayemo_scene_cleanup.md
-  - ../../relayemo_mvp_initial_design.md
   - ../relationship/relationship-state.md
   - ../scene/scene-model.md
   - ../memory/observation-and-character-belief.md
@@ -216,6 +215,8 @@ A structured model or heuristic may generate an affect candidate under bounded g
 
 Such a candidate is evidence for RelayEMO, not direct state authority.
 
+A structured or model-based affect probe is optional. Ordinary conversation must remain fully valid when no probe runs, so the probe is an addition to the heuristic path rather than a dependency of it.
+
 Stable requirements include:
 
 - bounded input/output;
@@ -226,7 +227,31 @@ Stable requirements include:
 - dry-run/candidate output does not automatically become active state;
 - semantic candidate content does not enter generic diagnostics.
 
-Exact model, backend route, schema, and thresholds remain separately governed.
+### Probe isolation from the ordinary response path
+
+A structured affect probe is a separately governed bounded probe, not a second ordinary response.
+
+It must run through a dedicated route or backend, or behind an explicit recursion guard, so that estimating affect for a turn cannot re-enter the ordinary Main LLM response-generation path for that same turn. Without that isolation an affect probe could recursively trigger response generation, which is a reentrancy and cost failure rather than a modulation decision.
+
+The isolation boundary is:
+
+```text
+ordinary request
+  -> Main LLM response generation   (single ordinary path)
+
+affect probe (optional)
+  -> dedicated probe route / backend, or explicit recursion guard
+  -> bounded affect candidate
+  -> RelayEMO evidence only
+```
+
+Consequently:
+
+- the probe remains skippable on timeout, busy state, or unavailability;
+- an invalid, missing, or skipped candidate leaves the ordinary response unblocked and unchanged;
+- probe failure degrades to the safe heuristic/neutral path and never becomes a response-generation failure.
+
+Exact model, backend route, recursion-guard mechanism, schema, and thresholds remain separately governed.
 
 ## Scene hint is non-authoritative
 
@@ -368,6 +393,7 @@ Project Status remains authoritative for exact implementation completion.
 - RelaySCN may clamp/suppress expression and remains the sole scene-state/policy owner.
 - RelayEMO scene hints are non-authoritative, restrictive-only, and cannot open runtime policy.
 - RelayEMO does not write MEM, SOUL, relationship state, or normalized scene state.
+- An optional structured affect probe stays isolated from the ordinary Main LLM response-generation path and never blocks or replaces the ordinary response.
 - Ordinary durable character voice remains owned by approved character/output policy plus the Main LLM.
 - Return-side expression hints do not become a meaning-changing output rewrite path.
 - TTS/avatar adapters execute engine mapping; RelayEMO only supplies bounded hints.
@@ -390,7 +416,6 @@ This architecture does not define:
 ## Related architecture
 
 - [ACG-5 RelayEMO Scene Ownership Cleanup](../acg5_relayemo_scene_cleanup.md)
-- [RelayEMO MVP Initial Design](../../relayemo_mvp_initial_design.md)
 - [RelayREL Relationship State](../relationship/relationship-state.md)
 - [RelaySCN Scene Model](../scene/scene-model.md)
 - [Observation and Character-Conditioned Belief](../memory/observation-and-character-belief.md)

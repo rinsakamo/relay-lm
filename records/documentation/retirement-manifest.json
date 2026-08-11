@@ -690,6 +690,17 @@
       "retention_reason": "D2-A absorbed the accepted repository-simplification principles into the durable decision, documentation-governance architecture, repository-maintenance architecture, operations runbook, and execution plan; the historical proposal remains recoverable from Git."
     },
     {
+      "old_path": "docs/relayemo_mvp_initial_design.md",
+      "last_live_commit": "40088ad115ba94b6d61545ee8145ffef82794f70",
+      "old_blob_sha": "7b92df64ef862ca783fe411b212ec5a3ee67c205",
+      "removed_by_pr": 1078,
+      "replacement_paths": [
+        "docs/architecture/emotion/affect-modulation.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R25 absorbed the still-durable RelayEMO semantics of the root MVP design into the canonical affect estimation, expression, and modulation architecture, which already owned affect-as-estimate, uncertainty, RelaySCN-only scene authority, restrictive-only scene hints, expression and diagnostics boundaries, and non-persistence; only the optional-probe isolation boundary was added. The old compatibility artifact, scene-candidate probe schema, marker field, and dated checklist remain recoverable from Git."
+    },
+    {
       "old_path": "docs/relayrun_runtime_checkpoint_design.md",
       "last_live_commit": "37d99ad5b274c026b935c6f89e7e5e5640e95953",
       "old_blob_sha": "e046dfc4ca4edb194d4f4c5d5f4e91e0773e2e95",
