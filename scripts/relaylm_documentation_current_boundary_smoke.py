@@ -212,7 +212,7 @@ REQUIRED = {
         "- the characterization owner reaches 320 lines;",
         "- the characterization owner gains another responsibility, consumes private\n  content, or becomes a general validation framework;",
         "### Expected implementation paths",
-        "relaylm/subjective_mem_retrieval_selection.py",
+        "relaylm/subjective_mem/retrieval_selection.py",
         "relaylm/subjective_mem_retrieval_characterization.py",
         "relaylm/subjective_mem_retrieval_usage_ledger.py",
         "tests/test_subjective_mem_retrieval_selection.py",
@@ -1370,7 +1370,7 @@ R4_BUDGET_ANCHORS = {
         "`config.example.yaml`, `relaylm/managed_chat_pipeline_runtime.py`, "
         "`relaylm/managed_chat_runtime.py`, `relaylm/relaymem_retrieval.py`, "
         "`relaylm/relaymem_primary_recall.py`, `relaylm/relayctx_repack.py`, "
-        "`relaylm/subjective_mem_retrieval_selection.py`, and "
+        "`relaylm/subjective_mem/retrieval_selection.py`, and "
         "`relaylm/subjective_mem_retrieval_usage_ledger.py`",
         "The original exact-eight RT-1D-R4 production budget is superseded and is no longer executable",
         "The RT-1D-R4 focused evidence budget is exactly the accepted existing evidence for "
@@ -2245,7 +2245,7 @@ R4_COMPLETION_ANCHORS = {
         "normalized failure state is none with `p6_stop` false.",
         "RT-1D-R4 one-authority activation is therefore implemented and merged, and it is no "
         "longer an unstarted or uniquely next slice.",
-        "eleven paths changed and `relaylm/subjective_mem_retrieval_selection.py` remained "
+        "eleven paths changed and `relaylm/subjective_mem/retrieval_selection.py` remained "
         "byte-identical by design",
         "admission is proven at the usage-ledger owner boundary rather than asserted at "
         "selection",
@@ -2403,9 +2403,9 @@ R4_COMPLETION_MUTATIONS = tuple(
             "R4 merged implementation state",
         ),
         (
-            "eleven paths changed and `relaylm/subjective_mem_retrieval_selection.py` remained "
+            "eleven paths changed and `relaylm/subjective_mem/retrieval_selection.py` remained "
             "byte-identical by design",
-            "twelve paths changed and `relaylm/subjective_mem_retrieval_selection.py` was "
+            "twelve paths changed and `relaylm/subjective_mem/retrieval_selection.py` was "
             "modified",
             "R4 selection byte identity",
         ),

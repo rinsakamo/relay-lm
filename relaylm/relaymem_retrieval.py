@@ -37,7 +37,7 @@ from relaylm.subjective_mem_retrieval_cutover import (
     subjective_mem_retrieval_ordinary_token_budget,
     subjective_mem_retrieval_primary_reader_class,
 )
-from relaylm.subjective_mem_retrieval_selection import (
+from relaylm.subjective_mem.retrieval_selection import (
     SubjectiveMemRetrievalCanonicalPageBinding,
     select_subjective_mem_retrieval_handoff,
 )
