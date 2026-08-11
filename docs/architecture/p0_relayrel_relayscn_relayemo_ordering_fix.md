@@ -17,7 +17,7 @@ relaylm_related_authority:
   - project_execution_plan.md
   - pipeline-responsibilities.md
   - relayscn_mvp_scene_policy.md
-  - ../relayemo_mvp_initial_design.md
+  - emotion/affect-modulation.md
 ---
 # P0 RelayREL / RelaySCN / RelayEMO Ordering Fix
 
