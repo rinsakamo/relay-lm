@@ -713,6 +713,30 @@
       "retention_reason": "D2-B1 replaced the root compatibility redirect with canonical compile/checkpoint architecture and exact RelayRUN checkpoint/recovery contract authority; the redirect remains recoverable from Git."
     },
     {
+      "old_path": "docs/relaysoul/relaysoul_design.md",
+      "last_live_commit": "537dc6dadd055406d1278fda0e8ece0031093eed",
+      "old_blob_sha": "d585d2ac920f8a710a3e66cd134f8d581080e5e0",
+      "removed_by_pr": 1088,
+      "replacement_paths": [
+        "docs/architecture/character/identity-and-source-authority.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R26 absorbed the durable RelaySOUL portable identity and source-authority semantics into the canonical character identity architecture, which already owned the source split, subsystem boundaries, lifecycle states, approval and rollback separation, protected calibration, and portability and cache rules; only the renderer-evidence boundary and the explicit durable-source workflow wording were added. Token budgets, revision fields, patch schema, mode enums, and legacy parser mechanics remain in Git."
+    },
+    {
+      "old_path": "docs/relaysoul/relm_file_first_source_set_draft.md",
+      "last_live_commit": "537dc6dadd055406d1278fda0e8ece0031093eed",
+      "old_blob_sha": "0f135161ec799ecde6da7ed4e863f2c1505a1d31",
+      "removed_by_pr": 1088,
+      "replacement_paths": [
+        "docs/architecture/character-workspace/showcase-starter-product-knowledge.md",
+        "docs/architecture/character/identity-and-source-authority.md",
+        "docs/architecture/character/showcase-character-direction.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R26 absorbed only the general file-first source-authority rationale of the ReLM draft: creator-side design meta is not portable character source without explicit reviewed adoption, and a documented source-set candidate is not a registered workspace or active character. ReLM creative direction and showcase/product-knowledge ownership stay with their D6-R24 owners, the superseded onboarding-as-ordinary-memory target is not restored, and the exact fixture bodies remain recoverable from Git."
+    },
+    {
       "old_path": "docs/runtime_compile_gate_design.md",
       "last_live_commit": "37d99ad5b274c026b935c6f89e7e5e5640e95953",
       "old_blob_sha": "ec14cc0d6d8c91fa93619f4dc968e2362525ddae",
