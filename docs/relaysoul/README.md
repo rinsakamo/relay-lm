@@ -16,11 +16,11 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 ---
 # RelaySOUL Design and Gate Docs
 
-This directory indexes RelaySOUL persona-source calibration, update cadence, dry-run/preflight chains, persistence design, execution-gate documentation, and explicitly post-MVP experimental SOUL replacement work.
+This directory is a transitional collection. It indexes the RelaySOUL update cadence, dry-run/preflight chains, persistence design, execution-gate documentation, and explicitly post-MVP experimental SOUL replacement work that has not yet reached a permanent owner.
+
+Durable RelaySOUL portable identity and source-authority architecture is not housed here. It lives at [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md).
 
 RelaySOUL artifact schemas and content-free contracts remain under `docs/contracts/`. Implementation evidence remains under `docs/evidence/implementation/`.
-
-The RelaySOUL design, cadence, chain, persistence architecture, execution-gate, and experimental replacement documents tracked by this index are housed in this directory.
 
 ## Current and target boundary
 
@@ -32,17 +32,18 @@ The file-first workspace target supersedes the older three-file persona target. 
 
 The target migration must update patch, revision, approval, apply, rollback, storage, examples, and smoke tests atomically. A file-first target statement does not change the current `mvp-soul-0` wire contract by itself.
 
-## Showcase character sources and related policy
-
-- [ReLM File-first Source Set Draft](relm_file_first_source_set_draft.md) — portable ReLM-authored source candidate; not private maker-side intent and not the default public starter.
-- [Showcase, Public Starter, and Product Knowledge Ownership](../architecture/character-workspace/showcase-starter-product-knowledge.md) — target ownership split between developer showcase characters, the unnamed public starter, user-authored characters, and versioned RelayLM product-help knowledge.
-- [Rin / ReLM Showcase Character Direction](../architecture/character/showcase-character-direction.md) — non-runtime maker-side creative direction for the developer-owned showcase pair; asset and public-lineage ownership remains with the showcase ownership policy.
-
 ## Core design
 
-- [RelaySOUL persona source calibration design](relaysoul_design.md)
+- [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md) — canonical durable portable identity, source-authority, and calibration boundary
 - [RelaySOUL persona update cadence design](persona_update_cadence_design.md)
 - [RelaySOUL persistence storage design](relaysoul_persistence_storage_design.md)
+
+## Showcase character sources and related policy
+
+No showcase source set is published from this collection. A documented source-set candidate is not a registered workspace, an active character, or portable source authority; that rule belongs to the canonical identity authority above.
+
+- [Showcase, Public Starter, and Product Knowledge Ownership](../architecture/character-workspace/showcase-starter-product-knowledge.md) — target ownership split between developer showcase characters, the unnamed public starter, user-authored characters, and versioned RelayLM product-help knowledge.
+- [Rin / ReLM Showcase Character Direction](../architecture/character/showcase-character-direction.md) — non-runtime maker-side creative direction for the developer-owned showcase pair; asset and public-lineage ownership remains with the showcase ownership policy.
 
 ## Post-MVP experimental design
 
@@ -69,4 +70,6 @@ The target migration must update patch, revision, approval, apply, rollback, sto
 
 ## Placement rule
 
-Create RelaySOUL design, cadence, chain, persistence architecture, execution-gate, and experimental replacement docs directly under `docs/relaysoul/`. Keep schemas and artifact contracts under `docs/contracts/`.
+`docs/relaysoul/` is not a permanent destination. Do not create new durable RelaySOUL architecture here: durable portable identity and source-authority content belongs to [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md), schemas and artifact contracts belong under `docs/contracts/`, and implementation evidence belongs under `docs/evidence/implementation/`.
+
+The remaining cadence, chain, persistence, execution-gate, and experimental documents stay indexed here only until their own cutover slices move them to permanent owners and this collection is retired.

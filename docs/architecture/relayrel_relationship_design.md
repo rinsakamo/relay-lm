@@ -24,7 +24,7 @@ relaylm_related_authority:
   - relayscn_mvp_scene_policy.md
   - context_packing_design.md
   - memory_lifecycle_design.md
-  - ../relaysoul/relaysoul_design.md
+  - character/identity-and-source-authority.md
 ---
 # RelayREL Relationship Design
 

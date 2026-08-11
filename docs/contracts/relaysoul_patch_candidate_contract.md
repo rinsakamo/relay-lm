@@ -18,7 +18,7 @@ relaylm.relaysoul_patch.RelaySOULPatchDryRun
 
 This contract does not generate patch text, apply a patch, write files, or call a model.
 
-The target three-file RelaySOUL ownership boundary is documented in [RelaySOUL Patch Schema](relaysoul_patch_schema.md), [RelaySOUL Design](../relaysoul/relaysoul_design.md), and the [Current / Target / Migration Guide](../architecture/current_target_migration_guide.md).
+The target three-file RelaySOUL ownership boundary is documented in [RelaySOUL Patch Schema](relaysoul_patch_schema.md), [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md), and the [Current / Target / Migration Guide](../architecture/current_target_migration_guide.md).
 
 ## Goal
 

@@ -22,7 +22,6 @@ relaylm_related_authority:
   - ../character/personality-and-experience.md
   - ../character/interaction-quality.md
   - creation-and-import.md
-  - ../../relaysoul/relm_file_first_source_set_draft.md
 relaylm_lifecycle: accepted_target
 relaylm_primary_consumers:
   - Character Workspace showcase, starter, template, and import maintainers
@@ -190,11 +189,12 @@ That representation is an implementation adapter, not the target ownership model
 
 For the onboarding/product-help knowledge boundary, this policy supersedes the target statements that describe official RelayLM onboarding knowledge as ordinary character memory in:
 
-- `docs/architecture/pinned_normal_memory_pages.md`,
-- `docs/architecture/character_template_creation_flow.md`, and
-- `docs/relaysoul/relm_file_first_source_set_draft.md`.
+- `docs/architecture/pinned_normal_memory_pages.md`, and
+- `docs/architecture/character_template_creation_flow.md`.
 
 Those documents remain usable for their other scopes and for the current pinned-page adapter until their canonical cutover or migration update. They are not authoritative for the final product-knowledge ownership or lifecycle model.
+
+The retired RelaySOUL ReLM source-set draft carried the same superseded assumption. It is no longer a live document, so its onboarding-as-ordinary-memory target is not restored by this policy or by any successor.
 
 The current implementation handoff remains:
 
@@ -224,7 +224,6 @@ These are durable ownership and publication constraints, not an exact machine sc
 - [Character Template and Creation Flow](../character_template_creation_flow.md)
 - [Pinned Normal Memory Pages](../pinned_normal_memory_pages.md)
 - [CW-A5 Character Creation, Templates, and Showcase Import](../cw_a5_character_creation_templates_showcase_import.md)
-- [ReLM File-first Source Set Draft](../../relaysoul/relm_file_first_source_set_draft.md)
 - [Rin / ReLM Showcase Character Direction](../character/showcase-character-direction.md)
 
 ## Non-goals
