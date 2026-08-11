@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from relaylm.client_instruction_cache_reader import (
+from relaylm.interfaces.openai.client_instruction_cache_reader import (
     build_client_instruction_cache_read_diagnostics,
     read_client_instruction_cache_candidate,
 )
