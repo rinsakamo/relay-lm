@@ -16,9 +16,9 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 ---
 # RelaySOUL Design and Gate Docs
 
-This directory is a transitional collection. It indexes the RelaySOUL update cadence and explicitly post-MVP experimental SOUL replacement work that has not yet reached a permanent owner.
+This directory is an empty transitional collection. D6-R29 disposed the remaining RelaySOUL update-cadence and post-MVP experimental SOUL replacement child sources, so no design source remains here and this README only routes readers to their canonical owners.
 
-Durable RelaySOUL portable identity and source-authority architecture is not housed here. It lives at [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md). Exact execution-gate and artifact-persistence authority lives under `docs/contracts/`.
+Durable RelaySOUL portable identity and source-authority architecture is not housed here. It lives at [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md). Durable personality state and update-speed architecture lives at [Character Personality and Experience](../architecture/character/personality-and-experience.md). Exact execution-gate and artifact-persistence authority lives under `docs/contracts/`.
 
 RelaySOUL artifact schemas and content-free contracts remain under `docs/contracts/`. Implementation evidence remains under `docs/evidence/implementation/`.
 
@@ -35,7 +35,7 @@ The target migration must update patch, revision, approval, apply, rollback, sto
 ## Core design
 
 - [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md) — canonical durable portable identity, source-authority, and calibration boundary
-- [RelaySOUL persona update cadence design](persona_update_cadence_design.md)
+- [Character Personality and Experience](../architecture/character/personality-and-experience.md) — canonical durable personality-state and update-speed boundary, including which state RelaySLP may update automatically
 
 ## Execution, gate, and persistence authority
 
@@ -57,7 +57,7 @@ No showcase source set is published from this collection. A documented source-se
 
 ## Post-MVP experimental design
 
-- [Experimental SOUL Replacement and Memory Bootstrap Design](experimental_soul_replacement_memory_bootstrap_design.md) — future high-risk non-destructive SOUL fork, SLP-governed memory inheritance, optional provisional virtual memory from conversation history, fresh relationship state, and explicit rollback. This is not part of the MVP or ordinary same-character SOUL revision.
+No post-MVP experimental design source is published from this collection. D6-R29 retired the former experimental SOUL replacement and memory bootstrap source to Git history rather than promoting it to an independent current architecture: its general source, lifecycle, memory-exclusion, and disclosure principles are already owned by the canonical identity, memory-mutation, and privacy authorities, and its unimplemented replacement-branch, virtual-memory bootstrap, and staged planning content is future design with no current owner. Its exact recovery identity is in the central retirement manifest.
 
 ## Completed chain and gate review evidence
 
@@ -69,6 +69,6 @@ The RelaySOUL dry-run chain, preflight chain, persistence preflight, and gate de
 
 ## Placement rule
 
-`docs/relaysoul/` is not a permanent destination. Do not create new durable RelaySOUL architecture here: durable portable identity and source-authority content belongs to [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md), schemas and artifact contracts belong under `docs/contracts/`, and implementation evidence belongs under `docs/evidence/implementation/`.
+`docs/relaysoul/` is not a permanent destination. Do not create new durable RelaySOUL architecture here: durable portable identity and source-authority content belongs to [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md), durable personality-state and update-speed content belongs to [Character Personality and Experience](../architecture/character/personality-and-experience.md), schemas and artifact contracts belong under `docs/contracts/`, and implementation evidence belongs under `docs/evidence/implementation/`.
 
-The remaining cadence and experimental documents stay indexed here only until their own cutover slices move them to permanent owners and this collection is retired.
+No child design source remains in `docs/relaysoul/`. This README survives only as a transitional router, and D6-R30 owns retiring it and removing the emptied collection.
