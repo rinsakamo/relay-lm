@@ -24,7 +24,7 @@ from relaylm.client_instruction_cache_write import (
     build_client_instruction_cache_write_node_result,
     build_client_instruction_cache_write_preflight,
 )
-from relaylm.client_instruction_extraction import build_client_instruction_extraction_dry_run
+from relaylm.interfaces.openai.client_instruction_extraction import build_client_instruction_extraction_dry_run
 from relaylm.client_instruction_fingerprint import build_client_instruction_fingerprint_dry_run
 from relaylm.client_instruction_identity import build_client_instruction_identity
 from relaylm.client_instruction_identity_runtime import (

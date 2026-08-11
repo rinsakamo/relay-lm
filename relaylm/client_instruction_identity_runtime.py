@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from relaylm.client_instruction_extraction import (
+from relaylm.interfaces.openai.client_instruction_extraction import (
     build_client_instruction_extraction_dry_run,
 )
 from relaylm.client_instruction_identity import (
