@@ -736,6 +736,28 @@
       "retention_reason": "D6-R26 absorbed the durable RelaySOUL portable identity and source-authority semantics into the canonical character identity architecture, which already owned the source split, subsystem boundaries, lifecycle states, approval and rollback separation, protected calibration, and portability and cache rules; only the renderer-evidence boundary and the explicit durable-source workflow wording were added. Token budgets, revision fields, patch schema, mode enums, and legacy parser mechanics remain in Git."
     },
     {
+      "old_path": "docs/relaysoul/relaysoul_dry_run_chain_summary.md",
+      "last_live_commit": "3ff79215abdbe44cef3983b97ba36cd1944804b6",
+      "old_blob_sha": "c59ebc985e15ebb033536655762837ce0c9941d8",
+      "removed_by_pr": 1098,
+      "replacement_paths": [
+        "docs/evidence/implementation/relaysoul_dry_run_chain_summary.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "Retain the completed RelaySOUL dry-run/tooling slice as frozen bounded implementation evidence; current target ownership, gate, persistence, identity, and sequencing semantics remain with canonical current authorities."
+    },
+    {
+      "old_path": "docs/relaysoul/relaysoul_gate_design_consistency_review.md",
+      "last_live_commit": "3ff79215abdbe44cef3983b97ba36cd1944804b6",
+      "old_blob_sha": "742275ba10957b1655ec6a8cf65292c87d6b4fc8",
+      "removed_by_pr": 1098,
+      "replacement_paths": [
+        "docs/evidence/implementation/relaysoul_gate_design_consistency_review.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "Retain the completed cross-review of transitional gate designs as frozen audit evidence; the review does not own the current exact RelaySOUL gate contract or architecture."
+    },
+    {
       "old_path": "docs/relaysoul/relaysoul_gate_dry_run_cli_design.md",
       "last_live_commit": "93a83faf0b02976c2b5c9d69a326612868381b3b",
       "old_blob_sha": "241a7f12a412657c6b4b5c16c00ec2a89802b96f",
@@ -760,6 +782,17 @@
       "retention_reason": "D6-R27 absorbed the persistence execution gate design: its decision artifact, allowed flag, execution_preflight_type selection, and the requirement for a ready writer gate plus a matching apply-or-rollback gate now live in the execution-gate contract; storage envelope and index identity live in the persistence contract; and the rule that persistence readiness never authorizes source mutation lives in the identity architecture. Phase narrative remains in Git."
     },
     {
+      "old_path": "docs/relaysoul/relaysoul_persistence_preflight_summary.md",
+      "last_live_commit": "3ff79215abdbe44cef3983b97ba36cd1944804b6",
+      "old_blob_sha": "d1a9e7aa9955a5a4e1b03c75a81f8e446e6b644d",
+      "removed_by_pr": 1098,
+      "replacement_paths": [
+        "docs/evidence/implementation/relaysoul_persistence_preflight_summary.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "Retain the completed storage-writer and persistence-execution preflight result as frozen bounded evidence; current persistence and execution-gate contracts remain canonical elsewhere."
+    },
+    {
       "old_path": "docs/relaysoul/relaysoul_persistence_storage_design.md",
       "last_live_commit": "93a83faf0b02976c2b5c9d69a326612868381b3b",
       "old_blob_sha": "a08d9323607c77b5dcf53b1170012d1f4960a584",
@@ -771,6 +804,17 @@
       ],
       "disposition": "absorbed",
       "retention_reason": "D6-R27 absorbed the persistence storage design: the content-free governance artifact envelope, artifact and parent lineage, per-character namespacing, target-only storage path and index identity, and audit posture now live in the persistence contract, whose current artifact-kind and ID extraction were repaired against code; the storage-versus-source boundary lives in the identity architecture and gate readiness in the execution-gate contract. Speculative fsync, retention, and ordering items stay in Git."
+    },
+    {
+      "old_path": "docs/relaysoul/relaysoul_preflight_chain_summary.md",
+      "last_live_commit": "3ff79215abdbe44cef3983b97ba36cd1944804b6",
+      "old_blob_sha": "177377d35db099117a997b7fffde3a8e9a71a558",
+      "removed_by_pr": 1098,
+      "replacement_paths": [
+        "docs/evidence/implementation/relaysoul_preflight_chain_summary.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "Retain the completed content-free preflight validation slice as frozen bounded evidence; historical next-phase, gate-field, and component-vocabulary statements do not retain current authority."
     },
     {
       "old_path": "docs/relaysoul/relaysoul_rollback_execution_gate_design.md",
