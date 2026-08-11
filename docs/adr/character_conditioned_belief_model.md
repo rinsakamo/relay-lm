@@ -114,5 +114,5 @@ Rejected as the sole policy because it is safe but socially flat. The selected d
 - [AI Character Product Principles](../architecture/ai_character_product_principles.md)
 - [RelayMEM SLP Execution Design](../architecture/relaymem_slp_execution_design.md)
 - [RelaySCN MVP Scene Policy](../architecture/relayscn_mvp_scene_policy.md)
-- [RelayEMO MVP Initial Design](../relayemo_mvp_initial_design.md)
+- [RelayEMO Affect Modulation](../architecture/emotion/affect-modulation.md)
 - [RelaySOUL Design](../relaysoul/relaysoul_design.md)
