@@ -22,7 +22,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from typing import Any
 from relaylm.config import RelayLMConfig
-from relaylm._subjective_mem_retrieval_runtime_projection import (
+from relaylm.subjective_mem.retrieval_runtime_projection import (
     subjective_mem_retrieval_runtime_projection_spec,
     verify_subjective_mem_retrieval_runtime_projection,
 )
