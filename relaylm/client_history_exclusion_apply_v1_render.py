@@ -8,7 +8,7 @@ from typing import Any
 from relaylm.client_history_exclusion_apply_v1_prepare import (
     PreparedClientHistoryExclusionApplyV1,
 )
-from relaylm.client_instruction_source import strip_relaylm_control
+from relaylm.interfaces.openai.client_instruction_source import strip_relaylm_control
 from relaylm.request_compiler import (
     render_compiled_context_blocks_runtime_private,
 )

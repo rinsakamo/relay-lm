@@ -18,7 +18,7 @@ from relaylm.client_instruction_evidence import (
     replace_legacy_instruction_block,
 )
 from relaylm.interfaces.openai.client_instruction_identity import ClientInstructionIdentityResult
-from relaylm.client_instruction_source import (
+from relaylm.interfaces.openai.client_instruction_source import (
     ClientInstructionEvidenceSelection,
     select_client_instruction_evidence,
     selected_candidates,
