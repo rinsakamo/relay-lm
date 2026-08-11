@@ -495,8 +495,8 @@ def check_lat1_evaluation_split(errors: list[str]) -> None:
         errors.append(str(exc))
         return
 
-    if method_metadata.get("relaylm_doc_type") != "evaluation_method":
-        errors.append(f"{LAT1_METHOD_PATH}: relaylm_doc_type must be 'evaluation_method'")
+    if method_metadata.get("relaylm_doc_type") != "operations":
+        errors.append(f"{LAT1_METHOD_PATH}: relaylm_doc_type must be 'operations'")
     if template_metadata.get("relaylm_doc_type") != "template":
         errors.append(f"{LAT1_TEMPLATE_PATH}: relaylm_doc_type must be 'template'")
 
@@ -832,7 +832,12 @@ MOBILE_DOGFOOD_REFERENCE_ALLOWLISTED_FILES: frozenset[str] = frozenset()
 # current file legitimately names one of these retired literals. No generic
 # frozen/historical/status bypass and no generic allowance beyond exact
 # reviewed lines added here.
-MOBILE_DOGFOOD_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {}
+MOBILE_DOGFOOD_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
+    "docs/planning/documentation-architecture-inventory.md": (
+        "| `docs/evaluation/lat1-retrieval-scaling.md` |",
+        "| `docs/evaluation/mobile-dogfood-observation.md` |",
+    ),
+}
 
 # This guard's own implementation file. Narrow, exact-line self-allowance
 # only -- not a whole-file exemption. The only lines in this file that may
@@ -3102,8 +3107,8 @@ def self_test() -> None:
         ROOT = base
         _mvp_write(
             base,
-            "docs/evaluation/lat1-retrieval-scaling.md",
-            "---\nrelaylm_doc_type: evaluation_method\nrelaylm_authority: lat1_method\n---\n\nBody.\n",
+            "docs/operations/lat1-retrieval-scaling.md",
+            "---\nrelaylm_doc_type: operations\nrelaylm_authority: lat1_method\n---\n\nBody.\n",
         )
         _mvp_write(
             base,
@@ -3124,8 +3129,8 @@ def self_test() -> None:
         ROOT = base
         _mvp_write(
             base,
-            "docs/evaluation/lat1-retrieval-scaling.md",
-            "---\nrelaylm_doc_type: evaluation_method\nrelaylm_authority: shared_key\n---\n\nBody.\n",
+            "docs/operations/lat1-retrieval-scaling.md",
+            "---\nrelaylm_doc_type: operations\nrelaylm_authority: shared_key\n---\n\nBody.\n",
         )
         _mvp_write(
             base,
@@ -4162,12 +4167,12 @@ def self_test() -> None:
         ROOT = base
         _mvp_write(
             base,
-            "docs/evaluation/mobile-dogfood-observation.md",
-            "---\nrelaylm_doc_type: evaluation_method\nrelaylm_status: current\n---\n\nBody.\n",
+            "docs/operations/mobile-dogfood-observation.md",
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
         )
         _mvp_write(
             base,
-            "docs/evaluation/example_index.md",
+            "docs/operations/example_index.md",
             "---\nrelaylm_doc_type: documentation_index\nrelaylm_status: current\n---\n\n"
             "- [method](mobile-dogfood-observation.md)\n",
         )
@@ -4237,13 +4242,18 @@ def self_test() -> None:
         )
         _mvp_write(
             base,
-            "docs/evaluation/mobile-dogfood-observation.md",
-            "---\nrelaylm_doc_type: evaluation_method\nrelaylm_status: current\n---\n\nBody.\n",
+            "docs/operations/mobile-dogfood-observation.md",
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
         )
         _mvp_write(
             base,
             "docs/operations/mobile-dogfood-entry.md",
             "---\nrelaylm_doc_type: operations\nrelaylm_status: target\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            "docs/operations/lat1-retrieval-scaling.md",
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
         )
         check_rejects(
             "a mobile-dogfood template synthetically typed evaluation_record is rejected",
@@ -4537,8 +4547,8 @@ def self_test() -> None:
         ROOT = base
         _mvp_write(
             base,
-            "docs/evaluation/mobile-dogfood-observation.md",
-            "---\nrelaylm_doc_type: evaluation_method\nrelaylm_status: current\n---\n\nBody.\n",
+            "docs/operations/mobile-dogfood-observation.md",
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
         )
         front_matter = (
             "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n"
