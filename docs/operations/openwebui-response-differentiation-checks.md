@@ -1,3 +1,26 @@
+---
+relaylm_doc_type: operations
+relaylm_authority: openwebui_response_differentiation_checks_operations
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: runtime
+relaylm_lifecycle: stable
+relaylm_authority_level: operation
+relaylm_primary_consumers:
+  - operators verifying managed-route response differentiation
+relaylm_update_trigger:
+  - the controlled prompt set changes
+  - expected route differentiation behavior changes
+relaylm_not_authoritative_for:
+  - current repository implementation status
+  - exact runtime schemas, gates, or mutation contracts
+  - release readiness decisions
+  - repository execution sequencing
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../DOCUMENTATION_MODEL.md
+  - ../PROJECT_STATUS.md
+---
 # OpenWebUI Route Response Differentiation Checks
 
 ## Scope
@@ -99,7 +122,7 @@ P5 must be sent in the same frontend conversation only when intentionally testin
 ## References
 
 - [OpenWebUI + LM Studio integration guide](../guides/openwebui-lmstudio-integration.md)
-- [Manual smoke runbook](../operations/openwebui-lmstudio-manual-smoke.md)
-- [Preset/avatar checklist](openwebui_model_preset_checklist.md)
+- [Manual smoke runbook](openwebui-lmstudio-manual-smoke.md)
+- [Preset/avatar checklist](openwebui-model-preset-checklist.md)
 - [Manual smoke results template](../templates/evaluation/openwebui-lmstudio-manual-smoke-results.md)
 - [Historical filled result: 2026-05-26](../evidence/evaluations/openwebui-lmstudio-manual-smoke-2026-05-26.md)

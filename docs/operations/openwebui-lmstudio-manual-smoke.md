@@ -20,10 +20,10 @@ Related docs:
 
 - [Client history exclusion manual smoke](client-history-exclusion-manual-smoke.md)
 - [RelayRUN recovery diagnostics manual smoke](relayrun-recovery-diagnostics-manual-smoke.md)
-- [OpenWebUI model preset/avatar checklist](../smoke/openwebui_model_preset_checklist.md)
-- [OpenWebUI route response differentiation checks](../smoke/openwebui_response_differentiation_checks.md)
+- [OpenWebUI model preset/avatar checklist](openwebui-model-preset-checklist.md)
+- [OpenWebUI route response differentiation checks](openwebui-response-differentiation-checks.md)
 - [Manual smoke results template](../templates/evaluation/openwebui-lmstudio-manual-smoke-results.md)
-- [Troubleshooting guide](../smoke/openwebui_lmstudio_troubleshooting.md)
+- [Troubleshooting guide](openwebui-lmstudio-troubleshooting.md)
 - [Latest filled result: 2026-05-26](../evidence/evaluations/openwebui-lmstudio-manual-smoke-2026-05-26.md)
 
 This is manual validation only. It does not change runtime behavior.
@@ -210,7 +210,7 @@ Expected:
 - no dependency on heavy OpenWebUI system prompts,
 - no invented memory required for a pass.
 
-Use the controlled prompts in [response differentiation checks](../smoke/openwebui_response_differentiation_checks.md).
+Use the controlled prompts in [response differentiation checks](openwebui-response-differentiation-checks.md).
 
 ## Step 7: managed history authority
 

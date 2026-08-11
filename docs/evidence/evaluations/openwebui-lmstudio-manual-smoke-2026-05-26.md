@@ -93,7 +93,7 @@ Verdict: pass
 
 ## Failure / troubleshooting notes
 
-Troubleshooting guide: [OpenWebUI + RelayLM + LM Studio troubleshooting](../../smoke/openwebui_lmstudio_troubleshooting.md).
+Troubleshooting guide: [OpenWebUI + RelayLM + LM Studio troubleshooting](../../operations/openwebui-lmstudio-troubleshooting.md).
 
 - Windows Firewall can block WSL -> Windows LM Studio connectivity.
 - `host.docker.internal` may not reach WSL RelayLM depending on environment; WSL IP may be required.

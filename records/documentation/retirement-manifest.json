@@ -693,6 +693,83 @@
       "retention_reason": "D2-B1 replaced the root compatibility redirect with canonical compile/checkpoint architecture and the existing exact compile contract authorities; the redirect remains recoverable from Git."
     },
     {
+      "old_path": "docs/smoke/e2_value_smoke_runbook.md",
+      "last_live_commit": "ad4017f09db944adeb28263031e22bc2fa04bde2",
+      "old_blob_sha": "7331a483a4de30a644ff2dc286d703bf010b7f2e",
+      "removed_by_pr": 1051,
+      "replacement_paths": [
+        "docs/operations/value-smoke-runbook.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D6-R21 moved the operator value smoke runbook into the permanent docs/operations/ collection as a canonical graph document and dropped its E2 milestone token, which the permanent active filename rule rejects; the v0.1 release readiness related-authority list and the smoke collection index were migrated in the same transaction, and the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/smoke/openwebui_lmstudio_troubleshooting.md",
+      "last_live_commit": "ad4017f09db944adeb28263031e22bc2fa04bde2",
+      "old_blob_sha": "b3ae3d0ecc03875e362e272edd43822e5eb90bbd",
+      "removed_by_pr": 1051,
+      "replacement_paths": [
+        "docs/operations/openwebui-lmstudio-troubleshooting.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D6-R21 moved the OpenWebUI and LM Studio troubleshooting procedure into the permanent docs/operations/ collection as a canonical graph document; both READMEs, the integration guide, the manual smoke runbook, the smoke collection index, and one frozen evaluation record's link target were migrated in the same transaction, and the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/smoke/openwebui_model_preset_checklist.md",
+      "last_live_commit": "ad4017f09db944adeb28263031e22bc2fa04bde2",
+      "old_blob_sha": "8d1e9ae354cd319eebe15d62b7f8ab3291d1d5c8",
+      "removed_by_pr": 1051,
+      "replacement_paths": [
+        "docs/operations/openwebui-model-preset-checklist.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D6-R21 moved the OpenWebUI model preset and avatar checklist into the permanent docs/operations/ collection as a canonical graph document; the integration guide, manual smoke runbook, route differentiation checks, and smoke collection index were migrated in the same transaction, and the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/smoke/openwebui_response_differentiation_checks.md",
+      "last_live_commit": "ad4017f09db944adeb28263031e22bc2fa04bde2",
+      "old_blob_sha": "4702bb94d7bbb4fa248bcb49c86e2b9bb17d456e",
+      "removed_by_pr": 1051,
+      "replacement_paths": [
+        "docs/operations/openwebui-response-differentiation-checks.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D6-R21 moved the OpenWebUI route response differentiation checks into the permanent docs/operations/ collection as a canonical graph document; the integration guide, manual smoke runbook, preset checklist, and smoke collection index were migrated in the same transaction, and the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/smoke/relaymem_local_llm_eval_guide.md",
+      "last_live_commit": "ad4017f09db944adeb28263031e22bc2fa04bde2",
+      "old_blob_sha": "d92c608a2dfecfad71dc5d015234950c176f26b7",
+      "removed_by_pr": 1051,
+      "replacement_paths": [
+        "docs/operations/relaymem-local-llm-evaluation.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D6-R21 moved the RelayMEM local LLM evaluation procedure into the permanent docs/operations/ collection as a canonical graph document, because the corrected placement authority routes repeatable operator evaluation method to operations rather than a transitional evaluation collection; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/smoke/relaymem_local_response_comparison.md",
+      "last_live_commit": "ad4017f09db944adeb28263031e22bc2fa04bde2",
+      "old_blob_sha": "2962a3f8c827383db47b977c5198cf9bf2a3487e",
+      "removed_by_pr": 1051,
+      "replacement_paths": [
+        "docs/operations/relaymem-local-response-comparison.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D6-R21 moved the RelayMEM local response comparison procedure into the permanent docs/operations/ collection as a canonical graph document, because the corrected placement authority routes repeatable operator evaluation method to operations rather than a transitional evaluation collection; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/smoke/relaymem_runtime_payload_eval.md",
+      "last_live_commit": "ad4017f09db944adeb28263031e22bc2fa04bde2",
+      "old_blob_sha": "3f65f7e20912dd10aa1f82befe62650f75e7f833",
+      "removed_by_pr": 1051,
+      "replacement_paths": [
+        "docs/operations/relaymem-runtime-payload-evaluation.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D6-R21 moved the RelayMEM runtime payload diff evaluation procedure into the permanent docs/operations/ collection as a canonical graph document, because the corrected placement authority routes repeatable operator evaluation method to operations rather than a transitional evaluation collection; the exact source remains recoverable from Git."
+    },
+    {
       "old_path": "docs/templates/implementation-completion-report.md",
       "last_live_commit": "28176f4a8336b6ce7191166e1c720cb71a617e99",
       "old_blob_sha": "f6b1df5d39d0c67b4183ec9b21be302fde81147b",
