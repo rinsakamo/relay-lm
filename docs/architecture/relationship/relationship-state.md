@@ -24,7 +24,7 @@ relaylm_related_authority:
   - ../memory/scene-memory-scope.md
   - ../privacy/protected-source-and-disclosure.md
   - ../safe_soul_scene_ctx_compile_chain.md
-  - ../../relaysoul/relaysoul_design.md
+  - ../character/identity-and-source-authority.md
 relaylm_lifecycle: stable
 relaylm_primary_consumers:
   - RelayREL and Character Workspace maintainers
@@ -351,4 +351,4 @@ This architecture does not define:
 - [Protected Source and Disclosure](../privacy/protected-source-and-disclosure.md)
 - [RelaySCN Scene Model](../scene/scene-model.md)
 - [Safe REL / SOUL / Scene / CTX Compile Chain](../safe_soul_scene_ctx_compile_chain.md)
-- [RelaySOUL Design](../../relaysoul/relaysoul_design.md)
+- [Character Identity and Source Authority](../character/identity-and-source-authority.md)

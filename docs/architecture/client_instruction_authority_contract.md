@@ -17,7 +17,7 @@ It complements:
 - [RelaySCN MVP Scene Policy](relayscn_mvp_scene_policy.md)
 - [Context Packing Design](context_packing_design.md)
 - [Context Compiler Contract](../contracts/context_compiler_contract.md)
-- [RelaySOUL Design](../relaysoul/relaysoul_design.md)
+- [Character Identity and Source Authority](character/identity-and-source-authority.md)
 
 The core rule is:
 

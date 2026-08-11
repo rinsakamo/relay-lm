@@ -10,6 +10,8 @@ relaylm_update_trigger:
   - RelaySOUL calibration, approval, or activation responsibility changes
   - character identity is split from or merged with another subsystem
 relaylm_not_authoritative_for:
+  - maker-side creative direction for a specific developer-owned character
+  - showcase, public starter, publication, or product-knowledge ownership
   - repository-wide implementation completion or sequencing
   - exact RelaySOUL patch, revision, approval, rollback, or filesystem schemas
   - exact Character Workspace parser, compiler, creation, import, or commit schemas
@@ -20,13 +22,14 @@ relaylm_related_authority:
   - ../character-workspace/system.md
   - ../character-workspace/source-compiler.md
   - ../character-workspace/creation-and-import.md
+  - ../character-workspace/showcase-starter-product-knowledge.md
+  - showcase-character-direction.md
   - ../relationship/relationship-state.md
   - ../scene/scene-model.md
   - ../emotion/affect-modulation.md
   - ../memory/system.md
   - ../context/context-assembly.md
   - ../privacy/protected-source-and-disclosure.md
-  - ../../relaysoul/relaysoul_design.md
   - ../../planning/documentation-target-architecture-graph.md
 relaylm_related_contracts:
   - ../../contracts/relaysoul_patch_schema.md
@@ -247,6 +250,8 @@ Character creation/import may stage or commit a workspace, but its authoring sur
 
 A template name, preview card, imported folder name, archive metadata, or UI-selected label is not durable character identity unless the accepted source tree states that identity under the source contract.
 
+A documented example, published template, or source-set draft is likewise a candidate rather than an authority. Showing intended source bodies does not make them a registered workspace, an active character, current runtime state, or portable source authority; only the owning creation, import, validation, approval, and commit lifecycle produces source.
+
 A committed workspace still requires separate active-character selection.
 
 ## Client persona and system instructions
@@ -267,6 +272,16 @@ runtime/system/safety policy
 
 Exact request precedence remains owned by the runtime/pipeline contracts.
 
+## Creator-side design material is not portable source
+
+Material that a character's author holds about the character is a separate class from the character's own portable source.
+
+Maker-side private intent, hidden interpretations, creator-only vision notes, private motives, and other design meta information do not become the character's portable self-knowledge merely because they informed its design.
+
+Such material may enter a portable source only through an explicit reviewed adoption into the correct owning source. Absent that adoption, it is neither identity nor character-held knowledge, and it must not be injected as runtime context or answered as something the character knows about itself.
+
+A character's source therefore carries only what the owning source authority accepted. Creative direction for a specific developer-owned character is owned by its own concept policy rather than by this page.
+
 ## Calibration is proposal-oriented
 
 RelaySOUL may use protected calibration evidence to propose durable source changes.
@@ -282,6 +297,18 @@ Examples include:
 The evidence may be content-bearing and protected.
 
 A candidate source change remains a proposal until the applicable approval/apply boundary succeeds.
+
+## Renderer evaluation is evidence, not authority
+
+A candidate portable-source revision may be evaluated through compile dry-run, target renderer or model samples, and comparison evidence before review.
+
+That evaluation is evidence about the candidate. It is not source authority:
+
+- renderer output does not approve, apply, or become a source;
+- a successful rendering does not bypass source ownership, approval, lineage, persistence, or any other owning apply gate;
+- a teacher-model, distillation, or compression output is still a candidate and remains subject to the same authority.
+
+The exact renderer schema, model, and backend layout are owned by the runtime and evaluation domains, not by this page.
 
 ## Smallest-correct-source rule
 
@@ -323,7 +350,7 @@ A durable identity change should be explicit and stable enough to justify portab
 
 One unusual turn, one inferred mood, one retrieval result, one temporary scene, or one relationship estimate is insufficient by itself.
 
-Normal conversation may generate a candidate or offer entry into a calibration flow, but ordinary chat must not silently rewrite portable identity.
+Character creation and calibration are the explicit durable-source workflows. Normal conversation may generate a candidate or offer entry into one of them, but ordinary chat must not silently rewrite portable identity. Exact workflow modes and reason identifiers remain contract authority.
 
 ## Explicit approval and fail-closed apply
 
@@ -434,7 +461,10 @@ This page does not claim that every current patch parser or legacy tool has alre
 - RelayMEM/RelaySLP own durable memory evidence, lifecycle, and memory-page semantics.
 - RelayCTX owns request-time context assembly rather than source mutation.
 - Client persona/system text is not durable character authority unless explicitly imported and approved.
+- Creator-side private intent, hidden interpretation, and design meta material are not portable character source without explicit reviewed adoption.
+- Renderer, teacher-model, and comparison output is calibration evidence and never bypasses an owning apply gate.
 - Existence, validation, compilation, approval, commit, activation, and request consumption remain distinct states.
+- A documented example, template, or source-set draft is a candidate, not a registered workspace or active character.
 - Generated projections are derived artifacts, not editable identity authority.
 - Normal chat does not silently rewrite portable identity.
 - Durable changes use the smallest correct owning source.
@@ -465,6 +495,8 @@ This page does not define:
 - [Character Workspace](../character-workspace/system.md)
 - [Source Compiler](../character-workspace/source-compiler.md)
 - [Creation and Import](../character-workspace/creation-and-import.md)
+- [Showcase, Public Starter, and Product Knowledge Ownership](../character-workspace/showcase-starter-product-knowledge.md)
+- [Rin / ReLM Showcase Character Direction](showcase-character-direction.md)
 - [Relationship State](../relationship/relationship-state.md)
 - [Scene Model](../scene/scene-model.md)
 - [Affect Modulation](../emotion/affect-modulation.md)

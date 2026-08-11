@@ -247,6 +247,6 @@ Rejected because permanent compatibility would preserve ambiguous authority and 
 - [Showcase, Public Starter, and Product Knowledge Ownership](../architecture/character-workspace/showcase-starter-product-knowledge.md)
 - [RelaySCN MVP Scene Policy](../architecture/relayscn_mvp_scene_policy.md)
 - [RelayREL Relationship Design](../architecture/relayrel_relationship_design.md)
-- [RelaySOUL Design](../relaysoul/relaysoul_design.md)
+- [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md)
 - [Project Execution Plan](../architecture/project_execution_plan.md)
 - [Project Status](../PROJECT_STATUS.md)

@@ -22,7 +22,6 @@ relaylm_related_authority:
   - identity-and-source-authority.md
   - personality-and-experience.md
   - interaction-quality.md
-  - ../../relaysoul/relm_file_first_source_set_draft.md
 relaylm_lifecycle: accepted_target
 relaylm_primary_consumers:
   - character designers and reviewed showcase-source authors

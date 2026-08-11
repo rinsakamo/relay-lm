@@ -22,7 +22,7 @@ relaylm_related_authority:
   - memory_lifecycle_design.md
   - relayscn_mvp_scene_policy.md
   - emotion/affect-modulation.md
-  - ../relaysoul/relaysoul_design.md
+  - character/identity-and-source-authority.md
 ---
 # File-first Character Workspace Design
 
