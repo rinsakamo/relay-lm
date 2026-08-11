@@ -387,7 +387,7 @@
         "docs/architecture/runtime/reliability-and-compatibility.md",
         "docs/architecture/runtime/request-response-pipeline.md",
         "docs/architecture/system-overview.md",
-        "docs/openwebui_lmstudio_mvp.md",
+        "docs/guides/openwebui-lmstudio-integration.md",
         "docs/reference/configuration.md"
       ],
       "disposition": "absorbed",

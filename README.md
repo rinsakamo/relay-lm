@@ -91,7 +91,7 @@ For the current phase, implemented boundaries, dry-run/read-only/default-off beh
 `docs/PROJECT_STATUS.md` is the maintained current-state view. This README intentionally does not duplicate phase numbers or short-lived implementation status.
 
 > [!IMPORTANT]
-> On the default `memory_light` compatibility path, prior frontend-supplied user/assistant history may still remain in the backend-bound message list. History-exclusion apply remains default-off and dry-run-only by default. The implemented v0 path supports bounded no-instruction managed requests; the v1 path supports bounded instruction-bearing managed requests only with exact `client_instruction_source.v1` provenance. Missing or invalid v1 provenance fails closed. Broader current-turn-only reconstruction, including active tool-chain preservation, is not complete. See [Project Status](docs/PROJECT_STATUS.md), the [Client History Authority Contract](docs/architecture/client_history_authority_contract.md), and the [OpenWebUI + LM Studio guide](docs/openwebui_lmstudio_mvp.md).
+> On the default `memory_light` compatibility path, prior frontend-supplied user/assistant history may still remain in the backend-bound message list. History-exclusion apply remains default-off and dry-run-only by default. The implemented v0 path supports bounded no-instruction managed requests; the v1 path supports bounded instruction-bearing managed requests only with exact `client_instruction_source.v1` provenance. Missing or invalid v1 provenance fails closed. Broader current-turn-only reconstruction, including active tool-chain preservation, is not complete. See [Project Status](docs/PROJECT_STATUS.md), the [Client History Authority Contract](docs/architecture/client_history_authority_contract.md), and the [OpenWebUI + LM Studio guide](docs/guides/openwebui-lmstudio-integration.md).
 
 ## ✅ Requirements
 
@@ -145,7 +145,7 @@ For a generic starting point instead:
 cp config.example.yaml config.yaml
 ```
 
-Edit `config.yaml` for your backend URL, backend model, and RelayLM route. The standard example expects LM Studio at `http://127.0.0.1:1234/v1` and RelayLM at `http://127.0.0.1:8090/v1`. See the [configuration reference](docs/reference/configuration.md) and the [OpenWebUI + LM Studio guide](docs/openwebui_lmstudio_mvp.md).
+Edit `config.yaml` for your backend URL, backend model, and RelayLM route. The standard example expects LM Studio at `http://127.0.0.1:1234/v1` and RelayLM at `http://127.0.0.1:8090/v1`. See the [configuration reference](docs/reference/configuration.md) and the [OpenWebUI + LM Studio guide](docs/guides/openwebui-lmstudio-integration.md).
 
 ### 3. Start RelayLM
 
@@ -266,7 +266,7 @@ For authoritative ownership and order, see the [Pipeline Responsibilities](docs/
 - 🧭 [Character template creation flow](docs/architecture/character_template_creation_flow.md)
 - 🏗️ [Architecture documents](docs/architecture/README.md)
 - 🧭 [Project execution plan](docs/architecture/project_execution_plan.md)
-- 🚀 [OpenWebUI + LM Studio MVP guide](docs/openwebui_lmstudio_mvp.md)
+- 🚀 [OpenWebUI + LM Studio guide](docs/guides/openwebui-lmstudio-integration.md)
 - ⚙️ [Configuration reference](docs/reference/configuration.md)
 - 📜 [Contracts](docs/contracts/README.md)
 - 🧪 [Smoke tests and validation](docs/smoke/README.md)

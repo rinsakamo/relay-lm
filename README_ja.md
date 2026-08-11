@@ -91,7 +91,7 @@ RelayLMが担当するのは会話プロキシ、コンテキスト境界、ラ�
 `docs/PROJECT_STATUS.md` を現在地の正本とし、このREADMEではPhase番号や短期間で変わる実装状況を重複管理しません。
 
 > [!IMPORTANT]
-> デフォルトの `memory_light` 互換経路では、フロントエンドが送った過去のuser/assistant履歴がバックエンド向けmessage listに残る場合があります。history-exclusion applyはデフォルト無効・dry-run-only既定です。実装済みv0はclient `system`/`developer` messageを含まない限定的なmanaged requestを、v1は正確な `client_instruction_source.v1` provenanceを持つinstruction-bearing managed requestを扱います。v1のprovenanceが欠落または不正な場合はfail-closedになります。active tool chainの保持を含む、より広いcurrent-turn-only reconstructionは未完成です。詳細は [Project Status](docs/PROJECT_STATUS.md)、[Client History Authority Contract](docs/architecture/client_history_authority_contract.md)、[OpenWebUI + LM Studioガイド](docs/openwebui_lmstudio_mvp.md) を参照してください。
+> デフォルトの `memory_light` 互換経路では、フロントエンドが送った過去のuser/assistant履歴がバックエンド向けmessage listに残る場合があります。history-exclusion applyはデフォルト無効・dry-run-only既定です。実装済みv0はclient `system`/`developer` messageを含まない限定的なmanaged requestを、v1は正確な `client_instruction_source.v1` provenanceを持つinstruction-bearing managed requestを扱います。v1のprovenanceが欠落または不正な場合はfail-closedになります。active tool chainの保持を含む、より広いcurrent-turn-only reconstructionは未完成です。詳細は [Project Status](docs/PROJECT_STATUS.md)、[Client History Authority Contract](docs/architecture/client_history_authority_contract.md)、[OpenWebUI + LM Studioガイド](docs/guides/openwebui-lmstudio-integration.md) を参照してください。
 
 ## ✅ 動作要件
 
@@ -145,7 +145,7 @@ cp examples/config/openwebui_lmstudio.yaml config.yaml
 cp config.example.yaml config.yaml
 ```
 
-`config.yaml` でバックエンドURL、バックエンドモデル、RelayLMのルートを設定します。標準例ではLM Studioを `http://127.0.0.1:1234/v1`、RelayLMを `http://127.0.0.1:8090/v1` としています。詳細は [設定リファレンス](docs/reference/configuration.md) と [OpenWebUI + LM Studioガイド](docs/openwebui_lmstudio_mvp.md) を参照してください。
+`config.yaml` でバックエンドURL、バックエンドモデル、RelayLMのルートを設定します。標準例ではLM Studioを `http://127.0.0.1:1234/v1`、RelayLMを `http://127.0.0.1:8090/v1` としています。詳細は [設定リファレンス](docs/reference/configuration.md) と [OpenWebUI + LM Studioガイド](docs/guides/openwebui-lmstudio-integration.md) を参照してください。
 
 ### 3. RelayLMを起動
 
@@ -265,7 +265,7 @@ Out-of-band after-turn path:
 - 🧬 [File-first Character Workspace設計](docs/architecture/file_first_character_workspace_design.md)
 - 🧭 [Character template creation flow](docs/architecture/character_template_creation_flow.md)
 - 🏗️ [アーキテクチャ文書](docs/architecture/README.md)
-- 🚀 [OpenWebUI + LM Studio MVPガイド](docs/openwebui_lmstudio_mvp.md)
+- 🚀 [OpenWebUI + LM Studioガイド](docs/guides/openwebui-lmstudio-integration.md)
 - ⚙️ [設定リファレンス](docs/reference/configuration.md)
 - 📜 [契約文書](docs/contracts/README.md)
 - 🧪 [Smoke testと検証](docs/smoke/README.md)
