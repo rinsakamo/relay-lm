@@ -83,7 +83,6 @@ def main() -> int:
     for legacy_alias in (
         "install_audit_projection_contracts",
         "install_relaymem_primary_recall_runtime",
-        "install_relaymem_retrieval_priority_runtime",
         "install_relaymem_primary_recall_candidate_bridge_runtime",
     ):
         require(
@@ -96,16 +95,12 @@ def main() -> int:
     from relaylm.relaymem_primary_recall_runtime import (
         install_relaymem_primary_recall_runtime,
     )
-    from relaylm.relaymem_retrieval_priority_runtime import (
-        install_relaymem_retrieval_priority_runtime,
-    )
     from relaylm.relaymem_primary_recall_candidate_bridge_runtime import (
         install_relaymem_primary_recall_candidate_bridge_runtime,
     )
 
     install_audit_projection_contracts(audit_projection)
     install_relaymem_primary_recall_runtime()
-    install_relaymem_retrieval_priority_runtime()
     install_relaymem_primary_recall_candidate_bridge_runtime()
 
     require(
