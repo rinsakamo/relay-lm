@@ -95,6 +95,8 @@ RelaySCN.scene_role:
 
 ## Shared client-message canonicalization boundary
 
+The canonical OpenAI-compatible request-interface owner is `relaylm/interfaces/openai/client_message_canonicalization.py`.
+
 Client system prompts and client conversation history cross the same external boundary.
 
 ```text
