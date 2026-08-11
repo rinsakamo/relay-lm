@@ -12,7 +12,7 @@ from relaylm.client_history_exclusion_apply_runtime import (
     client_history_exclusion_apply_blocks_backend,
     client_history_exclusion_apply_failure_reason,
 )
-from relaylm.client_instruction_source import strip_relaylm_control
+from relaylm.interfaces.openai.client_instruction_source import strip_relaylm_control
 from relaylm.pipeline_context import get_active_pipeline_context
 from relaylm.relayctx_stream_suppression_runtime import (
     wrap_stream_with_relayctx_suppression,
