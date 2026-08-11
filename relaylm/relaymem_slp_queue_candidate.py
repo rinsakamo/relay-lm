@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Callable, Literal
 
 from .config import RelayLMConfig
-from .subjective_mem_retrieval_cutover import (
+from .subjective_mem.retrieval_cutover import (
     resolve_subjective_mem_retrieval_primary_writer_decision,
 )
 from .relaymem_primary_recall import resolve_relaymem_character_store_root

@@ -34,7 +34,7 @@ from fastapi.testclient import TestClient
 import relaylm.managed_chat_response as managed_chat_response
 import relaylm.managed_chat_runtime as managed_chat_runtime
 from relaylm.app import create_app
-from relaylm.subjective_mem_retrieval_cutover import (
+from relaylm.subjective_mem.retrieval_cutover import (
     PRIMARY_WRITER_PERMITTED,
     SubjectiveMemRetrievalPrimaryWriterDecision,
 )

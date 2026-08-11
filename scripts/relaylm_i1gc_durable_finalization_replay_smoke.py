@@ -48,7 +48,7 @@ from relaylm.relaymem_slp_runtime_enqueue import prepare_relaymem_slp_runtime_en
 from relaylm.relaymem_slp_runtime_finalization import (
     run_relaymem_slp_runtime_enqueue_after_response,
 )
-from relaylm.subjective_mem_retrieval_cutover import (
+from relaylm.subjective_mem.retrieval_cutover import (
     PRIMARY_WRITER_PERMITTED,
     SubjectiveMemRetrievalPrimaryWriterDecision,
     resolve_subjective_mem_retrieval_primary_writer_decision,

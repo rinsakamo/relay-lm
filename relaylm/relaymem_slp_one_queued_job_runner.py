@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from .subjective_mem_retrieval_cutover import (
+from .subjective_mem.retrieval_cutover import (
     SubjectiveMemRetrievalPrimaryWriterDecision,
     primary_writer_decision_permits_write,
 )

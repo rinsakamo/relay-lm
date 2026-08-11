@@ -47,7 +47,7 @@ from relaylm.relaymem_slp_protected_source_store import (
 from relaylm.relaymem_slp_runtime_enqueue import (
     build_relaymem_slp_runtime_enqueue_failure_result,
 )
-from relaylm.subjective_mem_retrieval_cutover import (
+from relaylm.subjective_mem.retrieval_cutover import (
     SubjectiveMemRetrievalPrimaryWriterDecision,
     primary_writer_decision_permits_write,
 )

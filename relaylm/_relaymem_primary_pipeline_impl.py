@@ -38,7 +38,7 @@ from .relaymem_slp_primary_worker_source import (
     RelayMEMSLPPrimaryWorkerSourceScope,
     consume_relaymem_slp_primary_worker_source,
 )
-from .subjective_mem_retrieval_cutover import (
+from .subjective_mem.retrieval_cutover import (
     SubjectiveMemRetrievalPrimaryWriterDecision,
     primary_writer_decision_permits_write,
 )

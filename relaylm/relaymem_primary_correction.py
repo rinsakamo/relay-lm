@@ -57,7 +57,7 @@ from ._relaymem_primary_correction_apply import (
 from ._relaymem_primary_correction_apply import apply_primary_memory_correction as _apply
 from ._relaymem_primary_correction_recovery import recover_primary_memory_corrections as _recover
 from ._relaymem_primary_correction_preflight import preflight_primary_memory_correction as _preflight
-from .subjective_mem_retrieval_cutover import (
+from .subjective_mem.retrieval_cutover import (
     SubjectiveMemRetrievalPrimaryWriterDecision,
     primary_writer_decision_permits_write,
 )

@@ -7,7 +7,7 @@ forward advancement. It owns no cutover semantics, configuration, request
 schema, serving decision, selection, usage rule, or ordinary route behaviour.
 
 The dependency direction is one-way. The public cutover facade
-``relaylm.subjective_mem_retrieval_cutover`` depends on this module; this module
+``relaylm.subjective_mem.retrieval_cutover`` depends on this module; this module
 depends only on ``EvidenceRecordStore`` and the canonical content-free digest
 helper. It must never import the facade, the configuration owner, request-path
 owners, selection, the usage ledger, Primary owners, RelayCTX, the rehearsal

@@ -18,7 +18,7 @@ from .relaymem_primary_forget_control_convergence import (
 )
 from .relaymem_primary_forget_hidden_resume import PrimaryForgetHiddenResumeError
 from .relaymem_primary_mutation_coordinator import PrimaryMutationCoordinatorError
-from .subjective_mem_retrieval_cutover import primary_writer_decision_permits_write
+from .subjective_mem.retrieval_cutover import primary_writer_decision_permits_write
 
 Result = Any
 

@@ -7,7 +7,7 @@ future storage architecture.
 from __future__ import annotations
 
 from relaylm.config import RelayLMConfig
-from relaylm.subjective_mem_retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
+from relaylm.subjective_mem.retrieval_cutover import resolve_subjective_mem_retrieval_primary_writer_decision
 
 import pytest
 

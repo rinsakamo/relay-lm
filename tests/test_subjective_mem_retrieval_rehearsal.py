@@ -55,7 +55,7 @@ def test_retired_owner_source_is_deleted(source: str) -> None:
 def test_cutover_exposes_no_retired_rehearsal_entry_point(name: str) -> None:
     """No ordinary or operator path can still invoke the retired semantics."""
 
-    cutover = importlib.import_module("relaylm.subjective_mem_retrieval_cutover")
+    cutover = importlib.import_module("relaylm.subjective_mem.retrieval_cutover")
     assert not hasattr(cutover, name)
     assert name not in getattr(cutover, "__all__", ())
 
@@ -134,7 +134,7 @@ def test_durable_rehearsal_ready_record_remains_reconstructible() -> None:
     activation = importlib.import_module(
         "relaylm._subjective_mem_retrieval_cutover_activation"
     )
-    cutover = importlib.import_module("relaylm.subjective_mem_retrieval_cutover")
+    cutover = importlib.import_module("relaylm.subjective_mem.retrieval_cutover")
     assert "rehearsal_ready" in activation.FORWARD_STATES
     assert activation.FORWARD_STATES.index("rehearsal_ready") == 1
     # The cutover owner remains the sole validator of that retained identity.

@@ -26,7 +26,7 @@ from relaylm.soul_lab_memory_pin import (
     LabMemoryUnpinPreflightRequest,
 )
 from relaylm.soul_lab_observation_projection import resolve_lab_observation_scope
-from relaylm.subjective_mem_retrieval_cutover import (
+from relaylm.subjective_mem.retrieval_cutover import (
     resolve_subjective_mem_retrieval_primary_writer_decision,
 )
 

@@ -26,7 +26,7 @@ from relaylm.relaymem_slp_runtime_finalization import (
 )
 from relaylm.request_scope import extract_request_scope_identity
 from relaylm.routing import resolve_route
-from relaylm.subjective_mem_retrieval_cutover import (
+from relaylm.subjective_mem.retrieval_cutover import (
     PRIMARY_WRITER_PERMITTED,
     SubjectiveMemRetrievalPrimaryWriterDecision,
     resolve_subjective_mem_retrieval_primary_writer_decision,

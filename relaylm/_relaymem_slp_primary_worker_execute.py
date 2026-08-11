@@ -29,7 +29,7 @@ from ._relaymem_slp_primary_worker_validate import (
     _result,
     _validate_request,
 )
-from .subjective_mem_retrieval_cutover import primary_writer_decision_permits_write
+from .subjective_mem.retrieval_cutover import primary_writer_decision_permits_write
 
 _CORRELATION_REASONS = frozenset({
     "worker_source_job_id_mismatch",
