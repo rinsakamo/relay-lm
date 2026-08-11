@@ -13,7 +13,7 @@ from relaylm.interfaces.openai.client_instruction_cache_lookup import (
     build_client_instruction_cache_lookup_diagnostics,
     resolve_client_instruction_cache_lookup,
 )
-from relaylm.client_instruction_cache_reader import (
+from relaylm.interfaces.openai.client_instruction_cache_reader import (
     ClientInstructionCacheReadResult,
     build_client_instruction_cache_read_diagnostics,
     read_client_instruction_cache_candidate,

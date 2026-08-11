@@ -218,7 +218,7 @@ def test_json_writer_and_reader_discovered():
     assert any("json.dump" in value for value in writer.writers)
     assert writer.classification_state == "unclassified"
 
-    reader = _find_storage(records, "relaylm/client_instruction_cache_reader.py")
+    reader = _find_storage(records, "relaylm/interfaces/openai/client_instruction_cache_reader.py")
     assert reader is not None
     assert any("json.loads" in value for value in reader.readers)
     assert reader.classification_state == "unclassified"
