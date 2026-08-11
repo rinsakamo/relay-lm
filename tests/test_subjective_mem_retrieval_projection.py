@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 import relaylm.subjective_mem.retrieval_projection as projection_module
-import relaylm.subjective_mem_retrieval_projection_store as store_module
+import relaylm.subjective_mem.retrieval_projection_store as store_module
 from relaylm.evidence.common import canonical_digest, utf8_text_digest
 from relaylm.subjective_mem.models import (
     SUBJECTIVE_MEM_DECISION_SCHEMA,
@@ -47,7 +47,7 @@ from relaylm.subjective_mem.retrieval_projection import (
     SubjectiveMemRetrievalProjectionSourceEntry,
     build_subjective_mem_retrieval_projection,
 )
-from relaylm.subjective_mem_retrieval_projection_store import (
+from relaylm.subjective_mem.retrieval_projection_store import (
     PROJECTION_BUNDLE_FILENAME,
     delete_subjective_mem_retrieval_projection,
     load_subjective_mem_retrieval_projection,
@@ -1090,4 +1090,4 @@ def test_review_triggers_remain_bounded() -> None:
                 lengths.append((node.name, end - node.lineno + 1))
         assert max(length for _, length in lengths) <= 80, (module.__name__, lengths)
     assert Path(projection_module.__file__).name == "retrieval_projection.py"
-    assert Path(store_module.__file__).name == "subjective_mem_retrieval_projection_store.py"
+    assert Path(store_module.__file__).name == "retrieval_projection_store.py"
