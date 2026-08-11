@@ -11,7 +11,7 @@ from typing import NamedTuple
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-INVENTORY_PATH = ROOT / "docs" / "smoke" / "scripts_inventory.md"
+INVENTORY_PATH = ROOT / "docs" / "evidence" / "evaluations" / "scripts_inventory.md"
 CLASSIFICATION_REGISTRY_PATH = (
     ROOT / "records" / "repository" / "asset_classification_v1.yaml"
 )

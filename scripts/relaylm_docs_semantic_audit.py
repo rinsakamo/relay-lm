@@ -32,8 +32,7 @@ REQUIRED_METADATA_PATHS = (
     "docs/evidence/releases/README.md",
     "docs/evidence/releases/v0.1-final-main-validation-tag-receipt.md",
     "docs/relaysoul/README.md",
-    "docs/smoke/README.md",
-    "docs/smoke/scripts_inventory.md",
+    "docs/evidence/evaluations/scripts_inventory.md",
     "docs/operations/mobile-dogfood-entry.md",
     "docs/operations/consolidated-smoke-workflow-maintenance.md",
 )
@@ -1277,12 +1276,9 @@ def check_twin_extraction_family_types(errors: list[str]) -> None:
 # `_mobile_dogfood_locate`, `MOBILE_DOGFOOD_MD_LINK_RE`) rather than pasting
 # a third bespoke copy of the scanning machinery.
 #
-# `docs/smoke/scripts_inventory.md` is a distinct, unmoved authority (a
-# frozen `evaluation_record`/`historical` summary, not `operations`); it is
-# deliberately absent from this guard's retired-to-canonical map. The
-# `check_operations_docs` maintenance/inventory pairing check above
-# continues to read the maintenance document at its new canonical path
-# while `scripts_inventory.md` stays at its own unmoved path.
+# The frozen scripts-inventory evidence is distinct from the current
+# operations maintenance authority. The pairing check reads both permanent
+# paths while generation continues to target only generated output.
 # ---------------------------------------------------------------------------
 SMOKE_MAINTENANCE_RETIRED_TO_CANONICAL: dict[str, str] = {
     "docs/smoke/consolidated_workflow_maintenance.md": "docs/operations/consolidated-smoke-workflow-maintenance.md",
@@ -2776,14 +2772,14 @@ def check_operations_docs(errors: list[str]) -> None:
 
     maintenance_path = "docs/operations/consolidated-smoke-workflow-maintenance.md"
     maintenance = read_text(maintenance_path)
-    inventory = read_text("docs/smoke/scripts_inventory.md")
+    inventory = read_text("docs/evidence/evaluations/scripts_inventory.md")
     for relative_path, text in (
         (maintenance_path, maintenance),
-        ("docs/smoke/scripts_inventory.md", inventory),
+        ("docs/evidence/evaluations/scripts_inventory.md", inventory),
     ):
         if "generated/scripts_inventory.md" not in text:
             errors.append(f"{relative_path}: generated inventory output path missing")
-        if "--output docs/smoke/scripts_inventory.md" in text:
+        if "--output docs/evidence/evaluations/scripts_inventory.md" in text:
             errors.append(f"{relative_path}: must not overwrite the reviewed summary")
     if "PR-14 must be restacked" in maintenance:
         errors.append(f"{maintenance_path}: historical PR stacking instruction remains current")

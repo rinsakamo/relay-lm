@@ -268,7 +268,8 @@ Out-of-band after-turn path:
 - 🚀 [OpenWebUI + LM Studioガイド](docs/guides/openwebui-lmstudio-integration.md)
 - ⚙️ [設定リファレンス](docs/reference/configuration.md)
 - 📜 [契約文書](docs/contracts/README.md)
-- 🧪 [Smoke testと検証](docs/smoke/README.md)
+- 🧪 [Smoke手順と検証運用](docs/operations/)
+- 📊 [完了した評価エビデンス](docs/evidence/evaluations/)
 - 🧬 [RelaySOUL設計とゲート](docs/relaysoul/README.md)
 - 🗃️ [実装エビデンス](docs/evidence/implementation/README.md)
 

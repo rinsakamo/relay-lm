@@ -40,7 +40,7 @@ def test_generate_keeps_mechanical_signals_separate_from_reviewed_classification
     workflows = tmp_path / ".github" / "workflows"
     docs = tmp_path / "docs"
     records = tmp_path / "records" / "repository"
-    inventory_path = docs / "smoke" / "scripts_inventory.md"
+    inventory_path = docs / "evidence" / "evaluations" / "scripts_inventory.md"
     registry_path = records / "asset_classification_v1.yaml"
     scripts.mkdir(parents=True)
     workflows.mkdir(parents=True)
@@ -136,7 +136,7 @@ records:
     assert "copied together only from exact script paths" in rendered
     assert "2 with a reviewed classification" in rendered
     assert "--output generated/scripts_inventory.md" in rendered
-    assert "--output docs/smoke/scripts_inventory.md" not in rendered
+    assert "--output docs/evidence/evaluations/scripts_inventory.md" not in rendered
 
 
 def test_conflicting_reviewed_classifications_fail_closed(tmp_path: Path) -> None:
