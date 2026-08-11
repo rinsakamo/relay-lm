@@ -98,7 +98,7 @@ def check_o1d1_static_boundary() -> None:
     fields = relaylm_config_fields()
     for field in O1D1_FIELDS:
         assert field in fields, field
-        require("docs/config_schema.md", field)
+        require("docs/reference/configuration.md", field)
         require("config.example.yaml", field)
     for field in ABSENT_SCHEDULER_FIELDS:
         assert field not in fields, field

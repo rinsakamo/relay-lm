@@ -387,8 +387,8 @@
         "docs/architecture/runtime/reliability-and-compatibility.md",
         "docs/architecture/runtime/request-response-pipeline.md",
         "docs/architecture/system-overview.md",
-        "docs/config_schema.md",
-        "docs/openwebui_lmstudio_mvp.md"
+        "docs/openwebui_lmstudio_mvp.md",
+        "docs/reference/configuration.md"
       ],
       "disposition": "absorbed",
       "retention_reason": "D2-B2b migrated every remaining consumer to the smallest canonical system, pipeline, request/response, compile/checkpoint, configuration, integration, or operational authority and removed the mixed transitional note; D6-R8 later replaced its now-retired runtime-operational replacement edge with canonical privacy, observability, and reliability authorities; its historical wording remains recoverable from Git."
@@ -437,6 +437,17 @@
       ],
       "disposition": "superseded",
       "retention_reason": "D6-R6 retired the obsolete VTuber memory-proxy compatibility redirect after current consumers had converged on canonical system, request/response, voice, performance, and character-interaction authorities; its historical archive source remains a separate retirement responsibility, and the exact redirect remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/config_schema.md",
+      "last_live_commit": "7058ee2f1322c7f02ac5c5e160632719396c37f7",
+      "old_blob_sha": "b00b54ef6cc9a3e239885ea7a2f7e24082e9639a",
+      "removed_by_pr": 1049,
+      "replacement_paths": [
+        "docs/reference/configuration.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D6-R19 moved the root configuration reference into the permanent docs/reference/ collection as a canonical graph document, migrated every live consumer including both READMEs, the client instruction target artifact contract, the OpenWebUI integration architecture, the onboarding config smoke workflow, and the Wave 3 convergence smoke that asserted fields against the old path, and repointed the runtime_architecture replacement edge; the exact root document remains recoverable from Git."
     },
     {
       "old_path": "docs/evidence/migrations/README.md",
@@ -681,6 +692,17 @@
       ],
       "disposition": "superseded",
       "retention_reason": "D1 superseded the reusable completion-report creation model with pull-request, exact-head CI, Git-history, and allowlisted retained-record governance."
+    },
+    {
+      "old_path": "docs/token_policy_profiles.md",
+      "last_live_commit": "7058ee2f1322c7f02ac5c5e160632719396c37f7",
+      "old_blob_sha": "662ae8755ba0b963ce8c733bb742d59a9585e465",
+      "removed_by_pr": 1049,
+      "replacement_paths": [
+        "docs/reference/token-policy-profiles.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D6-R19 moved the root token policy shadow-profile reference into the permanent docs/reference/ collection as a canonical graph document; exact-head reference classification found no live consumer beyond the relocation itself, and the exact root document remains recoverable from Git."
     }
   ]
 }

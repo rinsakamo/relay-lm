@@ -107,13 +107,15 @@ The legacy pipeline implementation plan compatibility stub and `post_i3_evaluati
 
 ## D6: Architecture versus strategy
 
-**Decision:** binding ownership and invariants stay architecture; non-binding possibilities move to strategy.
+**Decision:** binding ownership and invariants stay architecture; non-binding direction is split by adoption state.
 
-- `post_v01_strategic_direction_vision.md` moves to strategy.
-- VTuber/persona-specialized proxy documents move to strategy unless current code and ownership justify an independently maintained subsystem.
-- AI character product principles are strategy when they describe product direction; specific safety or disclosure invariants are extracted to concept policy/contracts.
+[Documentation Model](../DOCUMENTATION_MODEL.md) is the controlling placement vocabulary. It lists `strategy` under transitional source document types, outside the permanent active-document type allowlist, so `docs/strategy/` is never a permanent destination. Non-binding direction is classified as a strategy source, then split: adopted durable content reaches a permanent planning, reference, or concept-policy owner, and unadopted or historical direction is retired to Git.
 
-Strategy never overrides current status, accepted contracts, or execution planning.
+- `post_v01_strategic_direction_vision.md` is a bounded split/cutover responsibility, not a move into a permanent strategy collection. A section map assigns its adopted durable content to permanent planning, reference, concept-policy, or existing architecture owners; its historical and unadopted vision is retired to Git history.
+- VTuber/persona-specialized proxy documents are classified as strategy sources and split the same way unless current code and ownership justify an independently maintained subsystem.
+- AI character product principles are strategy sources when they describe product direction; specific safety or disclosure invariants are extracted to concept policy/contracts.
+
+A strategy source never overrides current status, accepted contracts, or execution planning, and never establishes a permanent collection of its own.
 
 ## D7: Architecture versus reference
 
@@ -140,7 +142,7 @@ The same rule applies to workspace creation commands, SOUL Lab management flows,
 
 **Decision:** split.
 
-- Repeatable scenario, rubric, measurement method, acceptance interpretation, and fixture role move to `docs/evaluation/`.
+- Repeatable scenario, rubric, measurement method, acceptance interpretation, and fixture role are evaluation-method sources. [Documentation Model](../DOCUMENTATION_MODEL.md) lists `evaluation_method` under transitional source document types, so `docs/evaluation/` is never a permanent destination: durable method content reaches `docs/operations/`, `docs/reference/`, or `docs/release/` as its operator scope requires.
 - Dated outputs, local runs, completed result inventories, and human judgments move to `docs/evidence/evaluations/`.
 - A release-readiness synthesis moves to `docs/release/` only while it is an active gate; the frozen result becomes evidence.
 
@@ -185,7 +187,7 @@ No root-level design document is grandfathered solely because current CI or link
 
 - durable identity/source authority moves to character architecture;
 - exact patch/source contracts move to contracts;
-- experiments and drafts move to strategy/evidence or Git history;
+- experiments and drafts move to evidence or Git history, never to a permanent strategy collection;
 - guides and operations move by role.
 
 `docs/relaysoul/` is removed by final cutover, but RelaySOUL remains a system concept and component name.

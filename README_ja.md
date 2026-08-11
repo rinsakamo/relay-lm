@@ -145,7 +145,7 @@ cp examples/config/openwebui_lmstudio.yaml config.yaml
 cp config.example.yaml config.yaml
 ```
 
-`config.yaml` でバックエンドURL、バックエンドモデル、RelayLMのルートを設定します。標準例ではLM Studioを `http://127.0.0.1:1234/v1`、RelayLMを `http://127.0.0.1:8090/v1` としています。詳細は [設定スキーマ](docs/config_schema.md) と [OpenWebUI + LM Studioガイド](docs/openwebui_lmstudio_mvp.md) を参照してください。
+`config.yaml` でバックエンドURL、バックエンドモデル、RelayLMのルートを設定します。標準例ではLM Studioを `http://127.0.0.1:1234/v1`、RelayLMを `http://127.0.0.1:8090/v1` としています。詳細は [設定リファレンス](docs/reference/configuration.md) と [OpenWebUI + LM Studioガイド](docs/openwebui_lmstudio_mvp.md) を参照してください。
 
 ### 3. RelayLMを起動
 
@@ -266,7 +266,7 @@ Out-of-band after-turn path:
 - 🧭 [Character template creation flow](docs/architecture/character_template_creation_flow.md)
 - 🏗️ [アーキテクチャ文書](docs/architecture/README.md)
 - 🚀 [OpenWebUI + LM Studio MVPガイド](docs/openwebui_lmstudio_mvp.md)
-- ⚙️ [設定スキーマ](docs/config_schema.md)
+- ⚙️ [設定リファレンス](docs/reference/configuration.md)
 - 📜 [契約文書](docs/contracts/README.md)
 - 🧪 [Smoke testと検証](docs/smoke/README.md)
 - 🧬 [RelaySOUL設計とゲート](docs/relaysoul/README.md)
