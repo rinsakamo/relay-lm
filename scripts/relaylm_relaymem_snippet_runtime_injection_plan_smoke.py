@@ -16,10 +16,8 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from relaylm.app import create_app
-from relaylm.relaymem_retrieval import (
-    _build_snippet_runtime_injection_plan,
-    build_relaymem_retrieval_dry_run_artifact,
-)
+from relaylm.retrieval.snippet import _build_snippet_runtime_injection_plan
+from relaylm.retrieval.dry_run import build_relaymem_retrieval_dry_run_artifact
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
 
 

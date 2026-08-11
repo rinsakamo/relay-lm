@@ -21,7 +21,7 @@ from relaylm.relayctx_repack import (
 )
 from relaylm.relayemo import run_relayemo_stage
 from relaylm.relayint import run_relayint_stage
-from relaylm.relaymem_retrieval import run_relaymem_retrieval_stage
+from relaylm.retrieval.runtime import run_relaymem_retrieval_stage
 from relaylm.relayrel import run_relayrel_stage
 from relaylm.relayrun import new_run_id
 from relaylm.relayrun_runtime_artifact import _ManagedRuntimeArtifactContext

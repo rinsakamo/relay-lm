@@ -1368,7 +1368,7 @@ R4_BUDGET_ANCHORS = {
         "exactly these eleven paths: `relaylm/subjective_mem_retrieval_cutover.py`, "
         "`relaylm/_subjective_mem_retrieval_cutover_activation.py`, `relaylm/config.py`, "
         "`config.example.yaml`, `relaylm/managed_chat_pipeline_runtime.py`, "
-        "`relaylm/managed_chat_runtime.py`, `relaylm/relaymem_retrieval.py`, "
+        "`relaylm/managed_chat_runtime.py`, `relaylm/retrieval/runtime.py`, "
         "`relaylm/relaymem_primary_recall.py`, `relaylm/relayctx_repack.py`, "
         "`relaylm/subjective_mem/retrieval_selection.py`, and "
         "`relaylm/subjective_mem/retrieval_usage_ledger.py`",

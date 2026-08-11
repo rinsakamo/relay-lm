@@ -94,7 +94,7 @@ Per store size (N): `query_count`, `repeat`, `p50_ms`, `p95_ms`,
 
 M2 retrieval's file-scan primitive (`discover_relaymem_page_candidates`)
 caps its own directory scan at a fixed internal discovery limit
-(`_MAX_PRIORITY_DISCOVERY_CANDIDATES` in `relaylm/relaymem_retrieval.py`)
+(`_MAX_PRIORITY_DISCOVERY_CANDIDATES` in `relaylm/retrieval/candidates.py`)
 regardless of the `max_candidates` argument passed in. This means retrieval
 latency is not necessarily linear in N above that cap -- it may plateau.
 Interpretation of a completed run must record what was actually observed,

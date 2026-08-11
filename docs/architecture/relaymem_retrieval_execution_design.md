@@ -31,7 +31,7 @@ Last reviewed: 2026-08-08 JST
 
 ## Purpose
 
-RelayMEM Retrieval is the synchronous, read-only ordinary-memory stage for the current managed response. Its public facade, `relaylm/relaymem_retrieval.py`, is the sole ordinary routing boundary between retained Primary compatibility retrieval, the fenced no-reader state, and finalized Subjective retrieval.
+RelayMEM Retrieval is the synchronous, read-only ordinary-memory stage for the current managed response. Its public facade, `relaylm/retrieval/runtime.py`, is the sole ordinary routing boundary between retained Primary compatibility retrieval, the fenced no-reader state, and finalized Subjective retrieval.
 
 ```text
 Retrieval improves the current answer.

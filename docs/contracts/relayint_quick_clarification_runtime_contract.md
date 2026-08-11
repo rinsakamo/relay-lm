@@ -81,7 +81,7 @@ recall_then_answer_candidate
 - Confidence bucket: `high` / `medium` / `low`, using the two threshold config fields.
 - Content-free fields only: booleans, enums, counts, and character counts of the latest user message — never raw text, image URLs, or candidate bodies.
 - Safety literals, hardcoded `True`/`False`: `content_free: true`, `llm_called: false`, `mem_lookup_executed: false`, `backend_payload_mutation_allowed: false`, `response_mutation_allowed: false`.
-- Consumers: Stage 2 of this chain (its only current downstream diagnostics consumer); `relaylm/diagnostics_builder.py`, `relaylm/trace_runtime.py`, and `relaylm/audit_projection.py` project it into diagnostics/trace/audit output. It is not consumed by `relaylm/relaymem_retrieval.py`, which instead consumes the separate PM-D6-native `relayint_intent_artifact` for unresolved-reference blocking. It does not feed `relaylm/pipeline_node_adapter.py`'s synthesized node results directly.
+- Consumers: Stage 2 of this chain (its only current downstream diagnostics consumer); `relaylm/diagnostics_builder.py`, `relaylm/trace_runtime.py`, and `relaylm/audit_projection.py` project it into diagnostics/trace/audit output. It is not consumed by `relaylm/retrieval/runtime.py`, which instead consumes the separate PM-D6-native `relayint_intent_artifact` for unresolved-reference blocking. It does not feed `relaylm/pipeline_node_adapter.py`'s synthesized node results directly.
 
 ## Stage 2: Quick-clarification preflight
 
