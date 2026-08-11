@@ -41,7 +41,7 @@ from relaylm.subjective_mem.retrieval_selection import (
     SubjectiveMemRetrievalCanonicalPageBinding,
     select_subjective_mem_retrieval_handoff,
 )
-from relaylm.subjective_mem_retrieval_usage_ledger import (
+from relaylm.subjective_mem.retrieval_usage_ledger import (
     finalize_subjective_mem_retrieval_usage,
 )
 from relaylm.routing import ResolvedRoute

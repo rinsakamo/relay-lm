@@ -214,7 +214,7 @@ REQUIRED = {
         "### Expected implementation paths",
         "relaylm/subjective_mem/retrieval_selection.py",
         "relaylm/subjective_mem_retrieval_characterization.py",
-        "relaylm/subjective_mem_retrieval_usage_ledger.py",
+        "relaylm/subjective_mem/retrieval_usage_ledger.py",
         "tests/test_subjective_mem_retrieval_selection.py",
         "tests/test_subjective_mem_retrieval_characterization.py",
         "tests/test_subjective_mem_retrieval_usage_ledger.py",
@@ -1371,7 +1371,7 @@ R4_BUDGET_ANCHORS = {
         "`relaylm/managed_chat_runtime.py`, `relaylm/relaymem_retrieval.py`, "
         "`relaylm/relaymem_primary_recall.py`, `relaylm/relayctx_repack.py`, "
         "`relaylm/subjective_mem/retrieval_selection.py`, and "
-        "`relaylm/subjective_mem_retrieval_usage_ledger.py`",
+        "`relaylm/subjective_mem/retrieval_usage_ledger.py`",
         "The original exact-eight RT-1D-R4 production budget is superseded and is no longer executable",
         "The RT-1D-R4 focused evidence budget is exactly the accepted existing evidence for "
         "those production paths: existing request-path tests; reader-seam and offload tests; "
