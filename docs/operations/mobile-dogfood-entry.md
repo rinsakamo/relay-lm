@@ -184,7 +184,7 @@ After safe access exists, observe:
 - perceived response latency;
 - robustness to short and rough smartphone input.
 
-Use the [Mobile Dogfood Observation Method](../evaluation/mobile-dogfood-observation.md) for local-only daily and weekly records. Content-bearing transcripts remain outside the repository.
+Use the [Mobile Dogfood Observation Method](../operations/mobile-dogfood-observation.md) for local-only daily and weekly records. Content-bearing transcripts remain outside the repository.
 
 ## Non-goals
 

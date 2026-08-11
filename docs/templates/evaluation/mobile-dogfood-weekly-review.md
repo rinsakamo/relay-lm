@@ -10,14 +10,14 @@ relaylm_not_authoritative_for:
   - production benchmark claims
   - content-bearing local artifacts
 relaylm_related_authority:
-  - ../../evaluation/mobile-dogfood-observation.md
+  - ../../operations/mobile-dogfood-observation.md
 ---
 # Mobile Dogfood Weekly Review Template
 
 This is a **non-authoritative template**, not evidence. Copy this template
 into a local, gitignored path (e.g. `local/dogfood/`) before filling it in.
 Do not commit filled-in copies to this repository — see the
-[Mobile Dogfood Observation Method](../../evaluation/mobile-dogfood-observation.md)
+[Mobile Dogfood Observation Method](../../operations/mobile-dogfood-observation.md)
 local-only artifact policy. This template intentionally contains no actual
 conversation content.
 

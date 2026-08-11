@@ -13,7 +13,7 @@ relaylm_not_authoritative_for:
   - current runtime implementation status
 relaylm_decision_source: ../../adr/0002-documentation-information-architecture.md
 relaylm_related_authority:
-  - ../../evaluation/lat1-retrieval-scaling.md
+  - ../../operations/lat1-retrieval-scaling.md
 ---
 
 # LAT-1 Retrieval Scaling Report Template
@@ -57,7 +57,7 @@ relaylm_source_commit: <exact 40-character lowercase RelayLM commit SHA>
 relaylm_source_pr: <source PR number, or omit this key entirely if none>
 relaylm_recorded_on: <YYYY-MM-DD>
 relaylm_related_authority:
-  - ../../evaluation/lat1-retrieval-scaling.md
+  - ../../operations/lat1-retrieval-scaling.md
 ---
 ```
 
@@ -81,7 +81,7 @@ relaylm_related_authority:
 - `relaylm_source_pr` records the source pull request when this run was
   produced as part of one; omit the key entirely when there is none.
 - `relaylm_related_authority` must link back to the canonical
-  [LAT-1 Retrieval Scaling Method](../../evaluation/lat1-retrieval-scaling.md),
+  [LAT-1 Retrieval Scaling Method](../../operations/lat1-retrieval-scaling.md),
   which owns the reproduction procedure and interpretation method this
   record does not repeat.
 
@@ -91,7 +91,7 @@ relaylm_related_authority:
   A cell still reading `<placeholder>`, `TBD`, or `Not yet measured` is not
   a completed record.
 - Follow the reproduction steps and interpretation method in
-  [LAT-1 Retrieval Scaling Method](../../evaluation/lat1-retrieval-scaling.md);
+  [LAT-1 Retrieval Scaling Method](../../operations/lat1-retrieval-scaling.md);
   this template does not repeat that method's field definitions or
   reproduction commands.
 - A completed run is a **distinct, dated evidence record**. Save the

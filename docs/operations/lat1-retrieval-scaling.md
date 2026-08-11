@@ -1,9 +1,9 @@
 ---
-relaylm_doc_type: evaluation_method
+relaylm_doc_type: operations
 relaylm_authority: lat1_retrieval_scaling_bench_method
 relaylm_status: current
 relaylm_volatility: medium
-relaylm_owner: evaluation
+relaylm_owner: operations
 relaylm_update_trigger:
   - the bench CLI's query set, repeat count, or candidate limit changes
   - the M2 retrieval discovery cap or scaling behavior changes
