@@ -729,7 +729,7 @@ deterministically recovered.
 #### Revised three-owner structural budget
 
 ```text
-relaylm/subjective_mem_retrieval_selection.py          below roughly 700 lines
+relaylm/subjective_mem/retrieval_selection.py          below roughly 700 lines
 relaylm/subjective_mem_retrieval_characterization.py   below roughly 320 lines
 relaylm/subjective_mem_retrieval_usage_ledger.py       below roughly 700 lines
 each function                                          at or below roughly 80 lines
@@ -772,7 +772,7 @@ authority boundary.
 Exactly three production owners remain authorized:
 
 ```text
-relaylm/subjective_mem_retrieval_selection.py
+relaylm/subjective_mem/retrieval_selection.py
 relaylm/subjective_mem_retrieval_characterization.py
 relaylm/subjective_mem_retrieval_usage_ledger.py
 ```
@@ -831,7 +831,7 @@ Return to P1 rather than continuing if:
 The bounded path budget the RT-1C implementation landed within is:
 
 ```text
-relaylm/subjective_mem_retrieval_selection.py          exact selection, canonical-page
+relaylm/subjective_mem/retrieval_selection.py          exact selection, canonical-page
                                                        binding, and runtime-private handoff owner
 relaylm/subjective_mem_retrieval_characterization.py   temporary shadow characterization owner
 relaylm/subjective_mem_retrieval_usage_ledger.py       durable content-free usage-event owner
@@ -1336,7 +1336,7 @@ relaylm/relayctx_repack.py
 relaylm/subjective_mem_retrieval_cutover.py
 relaylm/subjective_mem/retrieval_projection.py
 relaylm/subjective_mem/retrieval_projection_store.py
-relaylm/subjective_mem_retrieval_selection.py
+relaylm/subjective_mem/retrieval_selection.py
 relaylm/subjective_mem_retrieval_usage_ledger.py
 relaylm/relaymem_primary_pipeline.py
 relaylm/relaymem_slp_primary_worker.py
@@ -1746,7 +1746,7 @@ Exact-current structural measurements include: `managed_chat_pipeline_runtime.py
 305 lines (largest orchestration 78), `relaymem_retrieval.py` 112 (60),
 `relaymem_primary_recall.py` 148 (43), `relaymem_primary_recall_selection.py`
 698 (92 and 160 review-trigger spans), `relaymem_primary_recall_store.py` 427
-(118), `subjective_mem_retrieval_selection.py` 552 (68),
+(118), `subjective_mem/retrieval_selection.py` 552 (68),
 `subjective_mem_retrieval_characterization.py` 309 (51),
 `subjective_mem_retrieval_usage_ledger.py` 428 (59),
 `_relaymem_slp_primary_worker_execute.py` 294 (46),
@@ -1908,7 +1908,7 @@ relaylm/managed_chat_runtime.py
 relaylm/relaymem_retrieval.py
 relaylm/relaymem_primary_recall.py
 relaylm/relayctx_repack.py
-relaylm/subjective_mem_retrieval_selection.py
+relaylm/subjective_mem/retrieval_selection.py
 relaylm/subjective_mem_retrieval_usage_ledger.py
 ```
 
@@ -2088,7 +2088,7 @@ primary_stable
 
 Public diagnostics/results expose no paths, memory prose, raw query/prompt, private context/handoff, page/source body, workspace identity, selector/receipt/authorization digests, unrestricted lineage, or arbitrary correlation material. Subjective serving is false, both fences are false, usage-finalized is false, counts are zero, probe is not applicable, and `runtime_private_evidence_omitted=true`. R1 is caller-invoked, default-off, and Primary-only. It adds no ordinary-path wiring; intent, fence, activation, final receipt, usage, or probe record; reader, writer, fallback, queue, worker, scheduler, mutation, API/UI/app, deployment, or retirement change.
 
-Immutable SHA-256 evidence: `relaylm/evidence/store.py` `41cfa9af6c32c1359be04f497924883ffbc4abb4e39313a44755494f92e2b41f`; `relaylm/evidence/common.py` `db03f3cb892bd43159d1b7e11d9d80cc923fd5c2a5c29891eea082c9a5bb7ec0`; `relaylm/subjective_mem_retrieval_selection.py` `13ef7dd7cd652e60db62bcc744c4361db49062c7beedd515b004139d0abe89e9`; `relaylm/subjective_mem_retrieval_usage_ledger.py` `eb2f9196f54a4aecf6ff63cc377df13df9f918881befdb8c59d505b8780a27d9`; `relaylm/managed_chat_pipeline_runtime.py` `382830637cae6c271aa9299510cdd8543f06515a816ffb696696c7321fc84469`; `relaylm/relaymem_retrieval.py` `92f147f0bb834357908b89410324412d7a4e61e396b3c61ce86500deda9f25f3`; `relaylm/relaymem_primary_recall.py` `013da1ec84f472a6207a21176c778803843bb1fc8473fa528e4558d80813adcb`; `relaylm/relaymem_primary_pipeline.py` `5a353151da197e9c43a25d4255f785777b739c2f9040cb517b4f8e2e2aceb22f`.
+Immutable SHA-256 evidence: `relaylm/evidence/store.py` `41cfa9af6c32c1359be04f497924883ffbc4abb4e39313a44755494f92e2b41f`; `relaylm/evidence/common.py` `db03f3cb892bd43159d1b7e11d9d80cc923fd5c2a5c29891eea082c9a5bb7ec0`; `relaylm/subjective_mem/retrieval_selection.py` `13ef7dd7cd652e60db62bcc744c4361db49062c7beedd515b004139d0abe89e9`; `relaylm/subjective_mem_retrieval_usage_ledger.py` `eb2f9196f54a4aecf6ff63cc377df13df9f918881befdb8c59d505b8780a27d9`; `relaylm/managed_chat_pipeline_runtime.py` `382830637cae6c271aa9299510cdd8543f06515a816ffb696696c7321fc84469`; `relaylm/relaymem_retrieval.py` `92f147f0bb834357908b89410324412d7a4e61e396b3c61ce86500deda9f25f3`; `relaylm/relaymem_primary_recall.py` `013da1ec84f472a6207a21176c778803843bb1fc8473fa528e4558d80813adcb`; `relaylm/relaymem_primary_pipeline.py` `5a353151da197e9c43a25d4255f785777b739c2f9040cb517b4f8e2e2aceb22f`.
 
 Focused R1 validation was 38 passed and focused config/store/import validation was 60 passed. R1 smoke, consolidated Subjective lifecycle group, ruff, `py_compile`, `compileall`, diff/path/hash/structure checks, execution guard, and all applicable exact-head workflows passed. There were no reviews, comments, requested reviewers, or unresolved threads.
 
@@ -2395,7 +2395,7 @@ The private activation owner may own only the durable R4 mechanics: exact create
 
 The cutover facade remains strictly below 1000 normally formatted physical lines under the RT-1D-R4 cutover-facade structural exception recorded below, which supersedes the earlier roughly-700 cutover-facade gate for RT-1D-R4 alone. The new private activation owner remains below roughly 600 normally formatted physical lines. Every new or materially changed orchestration remains at or below roughly 80 normally formatted physical lines. Physical-line compression, wrapper splitting, hidden generated source, and responsibility laundering are prohibited, and failure to hold these limits returns to P1 instead of broadening authority.
 
-The PR #828 revised RT-1D-R4 production/config budget was exactly these eleven paths: `relaylm/subjective_mem_retrieval_cutover.py`, `relaylm/_subjective_mem_retrieval_cutover_activation.py`, `relaylm/config.py`, `config.example.yaml`, `relaylm/managed_chat_pipeline_runtime.py`, `relaylm/managed_chat_runtime.py`, `relaylm/relaymem_retrieval.py`, `relaylm/relaymem_primary_recall.py`, `relaylm/relayctx_repack.py`, `relaylm/subjective_mem_retrieval_selection.py`, and `relaylm/subjective_mem_retrieval_usage_ledger.py`. The original exact-eight RT-1D-R4 production budget is superseded and is no longer executable. That exact-eleven budget is itself superseded by the RT-1D-R4 runtime-projection budget amendment recorded below and is no longer executable. `EvidenceRecordStore`, the projection builder and store, the R3 rehearsal owner, the characterization owner, E1-R4 policy, the writer-carriage modules, canonical and lifecycle owners, API/UI, scheduler, deployment, workflow, and contract paths remain byte-identical. The RT-1D-R4 focused evidence budget is exactly the accepted existing evidence for those production paths: existing request-path tests; reader-seam and offload tests; pipeline-ordering tests; RelayCTX tests; Subjective selection and usage-ledger tests; existing configuration and cutover tests; `scripts/relaylm_p0_pipeline_ordering_smoke.py`; and `scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py`. There is no wildcard `tests/` or `scripts/` authority, and no new generic test, smoke, support, helper, framework, or control-plane file is authorized.
+The PR #828 revised RT-1D-R4 production/config budget was exactly these eleven paths: `relaylm/subjective_mem_retrieval_cutover.py`, `relaylm/_subjective_mem_retrieval_cutover_activation.py`, `relaylm/config.py`, `config.example.yaml`, `relaylm/managed_chat_pipeline_runtime.py`, `relaylm/managed_chat_runtime.py`, `relaylm/relaymem_retrieval.py`, `relaylm/relaymem_primary_recall.py`, `relaylm/relayctx_repack.py`, `relaylm/subjective_mem/retrieval_selection.py`, and `relaylm/subjective_mem_retrieval_usage_ledger.py`. The original exact-eight RT-1D-R4 production budget is superseded and is no longer executable. That exact-eleven budget is itself superseded by the RT-1D-R4 runtime-projection budget amendment recorded below and is no longer executable. `EvidenceRecordStore`, the projection builder and store, the R3 rehearsal owner, the characterization owner, E1-R4 policy, the writer-carriage modules, canonical and lifecycle owners, API/UI, scheduler, deployment, workflow, and contract paths remain byte-identical. The RT-1D-R4 focused evidence budget is exactly the accepted existing evidence for those production paths: existing request-path tests; reader-seam and offload tests; pipeline-ordering tests; RelayCTX tests; Subjective selection and usage-ledger tests; existing configuration and cutover tests; `scripts/relaylm_p0_pipeline_ordering_smoke.py`; and `scripts/relaylm_subjective_mem_retrieval_cutover_smoke.py`. There is no wildcard `tests/` or `scripts/` authority, and no new generic test, smoke, support, helper, framework, or control-plane file is authorized.
 
 The requested cutover mode is extended exactly to `primary_only`, `rehearsal`, and `subjective_only`. `primary_only` continues to require an empty cutover tuple and performs no store read. `rehearsal` continues to require the complete tuple and can neither write durable cutover state nor serve Subjective evidence. `subjective_only` requires the complete exact tuple and is only a requested deployment mode: it cannot authorize serving, skip rehearsal or readiness, repair state, or create fallback by itself. Configuration alone never enables Subjective serving. Before the Primary reader fence only Primary may serve; from the reader fence until atomic finalized activation neither authority may serve or fall back; and only an exact finalized transfer receipt bound to matching durable state may permit ordinary Subjective serving. Primary and Subjective are never simultaneously ordinary authorities. The extension is applied to both exact requested-mode owners together, so the configuration mode and the cutover request schema never disagree. Only the minimum public result and decision schema support required to represent `subjective_only` is authorized, with no compatibility alias, permissive default, dual mode, precedence rule, or configuration-only authority.
 
@@ -2415,7 +2415,7 @@ The allowed dependency direction is exactly one-way: the ordinary route and cuto
 
 Exactly one configuration field is authorized: `subjective_mem_retrieval_projection_root`. It must be an absolute, normalized, non-symlinked directory and must be distinct from `subjective_mem_retrieval_cutover_store_root`, `evidence_data_root`, `subjective_mem_workspace_root`, and the RT-1D-R3 rehearsal root. `subjective_only` requires the complete existing cutover tuple and this projection root, and configuration still grants no serving authority.
 
-The RT-1D-R4 production/config budget becomes the prior exact eleven paths plus exactly this new private owner, twelve paths total: `relaylm/subjective_mem_retrieval_cutover.py`, `relaylm/_subjective_mem_retrieval_cutover_activation.py`, `relaylm/_subjective_mem_retrieval_runtime_projection.py`, `relaylm/config.py`, `config.example.yaml`, `relaylm/managed_chat_pipeline_runtime.py`, `relaylm/managed_chat_runtime.py`, `relaylm/relaymem_retrieval.py`, `relaylm/relaymem_primary_recall.py`, `relaylm/relayctx_repack.py`, `relaylm/subjective_mem_retrieval_selection.py`, and `relaylm/subjective_mem_retrieval_usage_ledger.py`. The prior exact-eleven RT-1D-R4 production/config budget is superseded and is no longer executable. No thirteenth RT-1D-R4 production or configuration path, schema owner, registry, workflow, helper, generic smoke, control plane, fallback, or compatibility layer is authorized. The RT-1D-R4 focused evidence budget is unchanged.
+The RT-1D-R4 production/config budget becomes the prior exact eleven paths plus exactly this new private owner, twelve paths total: `relaylm/subjective_mem_retrieval_cutover.py`, `relaylm/_subjective_mem_retrieval_cutover_activation.py`, `relaylm/_subjective_mem_retrieval_runtime_projection.py`, `relaylm/config.py`, `config.example.yaml`, `relaylm/managed_chat_pipeline_runtime.py`, `relaylm/managed_chat_runtime.py`, `relaylm/relaymem_retrieval.py`, `relaylm/relaymem_primary_recall.py`, `relaylm/relayctx_repack.py`, `relaylm/subjective_mem/retrieval_selection.py`, and `relaylm/subjective_mem_retrieval_usage_ledger.py`. The prior exact-eleven RT-1D-R4 production/config budget is superseded and is no longer executable. No thirteenth RT-1D-R4 production or configuration path, schema owner, registry, workflow, helper, generic smoke, control plane, fallback, or compatibility layer is authorized. The RT-1D-R4 focused evidence budget is unchanged.
 
 Before transfer intent, source and projection preparation may fail with Primary still serving. After transfer intent, every source, generation, manifest, row-population, readiness, and binding disagreement fails closed with neither authority serving, and recovery remains forward-only. The final transfer receipt authorizes only the exact generation and source state finalized atomically at activation. Source drift after activation never silently rebinds, never falls back, and never restores Primary; it fails closed pending separately governed exact state convergence.
 
@@ -2467,7 +2467,7 @@ Any missing pair member, malformed result reference, foreign event, or disagreem
 
 ### RT-1D-R4 budget, ownership, and structural gates after this amendment
 
-The exact-twelve RT-1D-R4 production/config path budget is unchanged: `relaylm/subjective_mem_retrieval_cutover.py`, `relaylm/_subjective_mem_retrieval_cutover_activation.py`, `relaylm/_subjective_mem_retrieval_runtime_projection.py`, `relaylm/config.py`, `config.example.yaml`, `relaylm/managed_chat_pipeline_runtime.py`, `relaylm/managed_chat_runtime.py`, `relaylm/relaymem_retrieval.py`, `relaylm/relaymem_primary_recall.py`, `relaylm/relayctx_repack.py`, `relaylm/subjective_mem_retrieval_selection.py`, and `relaylm/subjective_mem_retrieval_usage_ledger.py`. No thirteenth RT-1D-R4 production or configuration path is authorized by this amendment.
+The exact-twelve RT-1D-R4 production/config path budget is unchanged: `relaylm/subjective_mem_retrieval_cutover.py`, `relaylm/_subjective_mem_retrieval_cutover_activation.py`, `relaylm/_subjective_mem_retrieval_runtime_projection.py`, `relaylm/config.py`, `config.example.yaml`, `relaylm/managed_chat_pipeline_runtime.py`, `relaylm/managed_chat_runtime.py`, `relaylm/relaymem_retrieval.py`, `relaylm/relaymem_primary_recall.py`, `relaylm/relayctx_repack.py`, `relaylm/subjective_mem/retrieval_selection.py`, and `relaylm/subjective_mem_retrieval_usage_ledger.py`. No thirteenth RT-1D-R4 production or configuration path is authorized by this amendment.
 
 The RT-1D-R4 structural gates are unchanged: the cutover facade remains strictly below 1000 normally formatted physical lines; each private owner remains below roughly 600 normally formatted physical lines; every new or materially changed orchestration remains at or below roughly 80 normally formatted physical lines; and physical-line compression, wrapper splitting, dynamic import, duplicate semantic validation, second authority evaluator, and responsibility laundering remain prohibited.
 
@@ -2481,7 +2481,7 @@ This RT-1D-R4 readiness/replay authority amendment is documentation and current-
 
 RT-1D-R4 one-authority activation implementation completed in PR #834 from exact bootstrap main `5273b3ba214e9ba7730fcc4b7683dfc96eeafdb7`, final reviewed head `d15daeec270ba453940bc10dad924a5df93dfeef`, and exact resulting main `53839b6c349e47a436a885419d699b52142adc86`. Its thirteen normal forward commits on one lineage changed exactly 22 paths, +2147/-258, with no amend, rebase, force-push, cherry-pick, or merge-from-main, and no commit, patch, tree, or branch history from frozen PR #832 or PR #833 was reused. It carried exactly one execution receipt, was accepted at cumulative P5/P6, and its normalized failure state is none with `p6_stop` false. RT-1D-R4 one-authority activation is therefore implemented and merged, and it is no longer an unstarted or uniquely next slice.
 
-The exact-twelve RT-1D-R4 production/config budget was preserved exactly: eleven paths changed and `relaylm/subjective_mem_retrieval_selection.py` remained byte-identical by design, because its single projection construction site already passes neither `ordinary_route_admitted` nor `usage_event_recorded`, so admission is proven at the usage-ledger owner boundary rather than asserted at selection. The budget therefore stands at exactly 12 of 12 and no thirteenth RT-1D-R4 production or configuration path was taken. The focused evidence was exactly `tests/test_subjective_mem_retrieval_cutover.py`, `tests/test_subjective_mem_retrieval_usage_ledger.py`, `tests/test_rt1d_reader_seams.py`, and `tests/test_memory_stage_extraction.py`.
+The exact-twelve RT-1D-R4 production/config budget was preserved exactly: eleven paths changed and `relaylm/subjective_mem/retrieval_selection.py` remained byte-identical by design, because its single projection construction site already passes neither `ordinary_route_admitted` nor `usage_event_recorded`, so admission is proven at the usage-ledger owner boundary rather than asserted at selection. The budget therefore stands at exactly 12 of 12 and no thirteenth RT-1D-R4 production or configuration path was taken. The focused evidence was exactly `tests/test_subjective_mem_retrieval_cutover.py`, `tests/test_subjective_mem_retrieval_usage_ledger.py`, `tests/test_rt1d_reader_seams.py`, and `tests/test_memory_stage_extraction.py`.
 
 The bounded P5 smoke-carriage correction changed exactly seven existing Primary direct-recall smoke scripts. `apply_relaymem_primary_recall_scope()` now enforces the Primary reader fence at its own boundary, so 12 existing call sites across 7 files were corrected to construct the exact immutable decision through the canonical owner instead of weakening the production fence to make a missing decision imply `primary_only`. That correction changed no production or configuration path. No new test, smoke, helper, support, framework, registry, or control-plane file was created, and the RT-1D-R3 rehearsal and characterization owners, the projection builder and store, `relaylm/evidence/store.py`, the LAT-1 owners, the writer-carriage modules, API/UI, scheduler, deployment, workflow, and contract paths remain byte-identical.
 

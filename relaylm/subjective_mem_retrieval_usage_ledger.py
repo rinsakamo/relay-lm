@@ -52,7 +52,7 @@ from relaylm.subjective_mem.retrieval import (
     SubjectiveMemRetrievalUsageEvent, derive_subjective_mem_retrieval_usage_event,
     validate_subjective_mem_retrieval_usage_event,
 )
-from relaylm.subjective_mem_retrieval_selection import (
+from relaylm.subjective_mem.retrieval_selection import (
     SubjectiveMemRetrievalPreparedHandoff, _SubjectiveMemRetrievalPrivateItem,
     validate_subjective_mem_retrieval_prepared_handoff,
 )

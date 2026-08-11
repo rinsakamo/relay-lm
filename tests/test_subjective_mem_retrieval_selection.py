@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-import relaylm.subjective_mem_retrieval_selection as selection_owner
+import relaylm.subjective_mem.retrieval_selection as selection_owner
 from relaylm.evidence.common import canonical_digest, utf8_text_digest
 from relaylm.relaymem_grounded_recall_response import MAX_EVIDENCE_ITEMS
 from relaylm.subjective_mem.models import (
@@ -33,7 +33,7 @@ from relaylm.subjective_mem.retrieval import (
     SubjectiveMemRetrievalProjectionRow,
     SubjectiveMemRetrievalRequest,
 )
-from relaylm.subjective_mem_retrieval_selection import (
+from relaylm.subjective_mem.retrieval_selection import (
     SUBJECTIVE_MEM_RETRIEVAL_HANDOFF_SHAPE,
     SubjectiveMemRetrievalCanonicalPageBinding,
     SubjectiveMemRetrievalPreparedHandoff,
@@ -774,4 +774,4 @@ def test_review_triggers_remain_bounded() -> None:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
     ]
     assert max(length for _, length in lengths) <= 80, lengths
-    assert Path(selection_owner.__file__).name == "subjective_mem_retrieval_selection.py"
+    assert Path(selection_owner.__file__).name == "retrieval_selection.py"

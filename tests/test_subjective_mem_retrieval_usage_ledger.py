@@ -20,7 +20,7 @@ from relaylm.subjective_mem.retrieval_projection_store import (
     PROJECTION_BUNDLE_FILENAME,
     delete_subjective_mem_retrieval_projection,
 )
-from relaylm.subjective_mem_retrieval_selection import (
+from relaylm.subjective_mem.retrieval_selection import (
     SubjectiveMemRetrievalCanonicalPageBinding,
     SubjectiveMemRetrievalPreparedHandoff,
     select_subjective_mem_retrieval_handoff,
@@ -581,7 +581,7 @@ def test_ledger_depends_one_way_on_selection_and_reuses_the_evidence_store() -> 
     assert imports == {
         "__future__", "dataclasses", "typing", "relaylm.evidence.common",
         "relaylm.evidence.store", "relaylm.subjective_mem.retrieval",
-        "relaylm.subjective_mem_retrieval_selection",
+        "relaylm.subjective_mem.retrieval_selection",
     }
     assert "SubjectiveMemRetrievalAdmittedHandoff" not in inspect.getsource(
         inspect.getmodule(select_subjective_mem_retrieval_handoff)
