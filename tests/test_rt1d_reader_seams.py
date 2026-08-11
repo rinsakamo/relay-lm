@@ -28,7 +28,7 @@ NEW_MODULES = (
     "relaylm/managed_chat_pipeline_runtime.py",
     "relaylm/relaymem_retrieval_dry_run.py",
     "relaylm/_relaymem_retrieval_candidates.py",
-    "relaylm/_relaymem_retrieval_snippet.py",
+    "relaylm/retrieval/snippet.py",
     "relaylm/relaymem_primary_recall_store.py",
 )
 
@@ -163,7 +163,7 @@ def test_dependency_direction_and_moved_ownership() -> None:
     for path in (
         "relaylm/relaymem_retrieval_dry_run.py",
         "relaylm/_relaymem_retrieval_candidates.py",
-        "relaylm/_relaymem_retrieval_snippet.py",
+        "relaylm/retrieval/snippet.py",
     ):
         assert "relaylm.relaymem_retrieval" not in _imports(path)
     assert not (ROOT / "relaylm/relaymem_primary_recall_selection.py").exists()
