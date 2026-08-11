@@ -145,7 +145,7 @@ For a generic starting point instead:
 cp config.example.yaml config.yaml
 ```
 
-Edit `config.yaml` for your backend URL, backend model, and RelayLM route. The standard example expects LM Studio at `http://127.0.0.1:1234/v1` and RelayLM at `http://127.0.0.1:8090/v1`. See the [configuration schema](docs/config_schema.md) and the [OpenWebUI + LM Studio guide](docs/openwebui_lmstudio_mvp.md).
+Edit `config.yaml` for your backend URL, backend model, and RelayLM route. The standard example expects LM Studio at `http://127.0.0.1:1234/v1` and RelayLM at `http://127.0.0.1:8090/v1`. See the [configuration reference](docs/reference/configuration.md) and the [OpenWebUI + LM Studio guide](docs/openwebui_lmstudio_mvp.md).
 
 ### 3. Start RelayLM
 
@@ -267,7 +267,7 @@ For authoritative ownership and order, see the [Pipeline Responsibilities](docs/
 - 🏗️ [Architecture documents](docs/architecture/README.md)
 - 🧭 [Project execution plan](docs/architecture/project_execution_plan.md)
 - 🚀 [OpenWebUI + LM Studio MVP guide](docs/openwebui_lmstudio_mvp.md)
-- ⚙️ [Configuration schema](docs/config_schema.md)
+- ⚙️ [Configuration reference](docs/reference/configuration.md)
 - 📜 [Contracts](docs/contracts/README.md)
 - 🧪 [Smoke tests and validation](docs/smoke/README.md)
 - 🧬 [RelaySOUL design and gates](docs/relaysoul/README.md)

@@ -330,7 +330,7 @@ client_instruction_policy_version: v1
 client_instruction_durable_candidate_enabled: false
 ```
 
-Current operators must use only fields present in `relaylm/config.py`, `docs/config_schema.md`, and `config.example.yaml`.
+Current operators must use only fields present in `relaylm/config.py`, `docs/reference/configuration.md`, and `config.example.yaml`.
 
 ## Required implementation smoke
 

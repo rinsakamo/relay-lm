@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - config.example.yaml
-      - docs/config_schema.md
+      - docs/reference/configuration.md
       - docs/openwebui_lmstudio_mvp.md
       - docs/architecture/open_llm_vtuber_integration.md
       - docs/architecture/runtime/request-response-pipeline.md
@@ -44,7 +44,7 @@ on:
       - main
     paths:
       - config.example.yaml
-      - docs/config_schema.md
+      - docs/reference/configuration.md
       - docs/openwebui_lmstudio_mvp.md
       - docs/architecture/open_llm_vtuber_integration.md
       - docs/architecture/runtime/request-response-pipeline.md
