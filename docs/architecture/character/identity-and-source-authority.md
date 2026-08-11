@@ -34,6 +34,8 @@ relaylm_related_authority:
 relaylm_related_contracts:
   - ../../contracts/relaysoul_patch_schema.md
   - ../../contracts/relaysoul_revision_contract.md
+  - ../../contracts/relaysoul-execution-gates.md
+  - ../../contracts/relaysoul_persistence_contract.md
   - ../../contracts/character-workspace/source-tree.md
   - ../../contracts/character-workspace/parser-and-validation.md
   - ../../contracts/character-workspace/compiled-projections.md
@@ -362,6 +364,21 @@ A failed validation, compile, approval, lineage, persistence, or other owning ga
 
 Exact patch/revision fields and apply mechanics are contract authority, not this page.
 
+## Execution scopes are separate authorities
+
+Mutating a portable source, reversing an applied revision, writing a governance artifact to storage, and executing persistence of the artifact chain are four distinct responsibilities, not one permission.
+
+The durable consequences are:
+
+- an approval granted for one execution scope never implicitly approves another scope;
+- storage readiness or persistence readiness does not authorize character-source mutation;
+- readiness in an upstream scope is a precondition, never a substitute, for the scope that actually mutates a source;
+- actual source mutation stays fail-closed behind current scope-correct approval, fresh lineage and preflight state, and rollback readiness.
+
+A content-free preflight, gate, or persistence artifact is governance evidence and control metadata. It records what was checked; it never becomes portable source authority, and retaining one does not make the underlying candidate approved.
+
+Exact gate scopes, decision artifact types, allowed flags, and dependency ordering are owned by [RelaySOUL Execution Gate Contract](../../contracts/relaysoul-execution-gates.md).
+
 ## Revision and rollback principle
 
 Applied portable-source changes should remain attributable to a revision lineage and be recoverable through the owning revision/rollback contract.
@@ -463,6 +480,8 @@ This page does not claim that every current patch parser or legacy tool has alre
 - Client persona/system text is not durable character authority unless explicitly imported and approved.
 - Creator-side private intent, hidden interpretation, and design meta material are not portable character source without explicit reviewed adoption.
 - Renderer, teacher-model, and comparison output is calibration evidence and never bypasses an owning apply gate.
+- Apply, rollback, storage writing, and persistence execution are separate authorities; approval for one scope never transfers to another.
+- A content-free preflight, gate, or persistence artifact is governance evidence and never becomes portable source authority.
 - Existence, validation, compilation, approval, commit, activation, and request consumption remain distinct states.
 - A documented example, template, or source-set draft is a candidate, not a registered workspace or active character.
 - Generated projections are derived artifacts, not editable identity authority.
