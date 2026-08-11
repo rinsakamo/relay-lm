@@ -142,7 +142,7 @@ schema_version:
   relaylm.client_instruction_cache.v0
 
 validator/consumer:
-  relaylm.client_instruction_cache_lookup.resolve_client_instruction_cache_lookup
+  relaylm.interfaces.openai.client_instruction_cache_lookup.resolve_client_instruction_cache_lookup
 
 runtime reader/wiring:
   relaylm.client_instruction_cache_reader.read_client_instruction_cache_candidate

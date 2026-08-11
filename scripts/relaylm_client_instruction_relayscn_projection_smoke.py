@@ -20,7 +20,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from relaylm.app import create_app
-from relaylm.client_instruction_cache_lookup import (
+from relaylm.interfaces.openai.client_instruction_cache_lookup import (
     CachedInstructionSceneConstraint,
     CachedInstructionSceneContext,
     CachedInstructionSceneRole,

@@ -17,7 +17,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from relaylm.client_instruction_cache import build_client_instruction_cache_dry_run
-from relaylm.client_instruction_cache_lookup import resolve_client_instruction_cache_lookup
+from relaylm.interfaces.openai.client_instruction_cache_lookup import resolve_client_instruction_cache_lookup
 from relaylm.client_instruction_cache_write import (
     assert_client_instruction_cache_write_diagnostics_content_free,
     build_client_instruction_cache_write_diagnostics,

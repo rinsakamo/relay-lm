@@ -99,6 +99,7 @@ The canonical OpenAI-compatible request-interface owner is `relaylm/interfaces/o
 The canonical content-free client-instruction extraction owner is `relaylm/interfaces/openai/client_instruction_extraction.py`; its persisted `client_instruction_extraction_dry_run.v0` schema identity is unchanged.
 The canonical runtime-private client-instruction identity owner is `relaylm/interfaces/openai/client_instruction_identity.py`; its persisted `client_instruction_identity.v0` schema identity and content-bearing non-projection boundary are unchanged.
 The canonical explicit request-local provenance owner is `relaylm/interfaces/openai/client_instruction_source.py`; its persisted `client_instruction_source.v1` schema identity and fail-closed selection boundary are unchanged.
+The canonical pure client-instruction cache lookup validator is `relaylm/interfaces/openai/client_instruction_cache_lookup.py`; its persisted `client_instruction_cache_lookup.v0` and `relaylm.client_instruction_cache.v0` schema identities and runtime-private content-bearing result boundary are unchanged. The filesystem reader remains a separate lower I/O responsibility.
 
 Client system prompts and client conversation history cross the same external boundary.
 
