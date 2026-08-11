@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-import relaylm.subjective_mem_retrieval_usage_ledger as ledger_owner
+import relaylm.subjective_mem.retrieval_usage_ledger as ledger_owner
 from relaylm.evidence.common import utf8_text_digest
 from relaylm.evidence.store import EvidenceRecordStore, EvidenceStoreResult
 from relaylm.relaymem_grounded_recall_response import build_grounded_recall_context
@@ -25,7 +25,7 @@ from relaylm.subjective_mem.retrieval_selection import (
     SubjectiveMemRetrievalPreparedHandoff,
     select_subjective_mem_retrieval_handoff,
 )
-from relaylm.subjective_mem_retrieval_usage_ledger import (
+from relaylm.subjective_mem.retrieval_usage_ledger import (
     SUBJECTIVE_MEM_RETRIEVAL_USAGE_EVENT_RECORD_KIND,
     SUBJECTIVE_MEM_RETRIEVAL_USAGE_RESULT_RECORD_KIND,
     SubjectiveMemRetrievalAdmittedHandoff,
@@ -622,4 +622,4 @@ def test_review_triggers_remain_bounded() -> None:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
     ]
     assert max(length for _, length in lengths) <= 80, lengths
-    assert Path(ledger_owner.__file__).name == "subjective_mem_retrieval_usage_ledger.py"
+    assert Path(ledger_owner.__file__).name == "retrieval_usage_ledger.py"
