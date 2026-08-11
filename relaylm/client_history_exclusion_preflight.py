@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 import re
 from typing import TYPE_CHECKING, Any, Literal
 
-from relaylm.client_message_canonicalization import (
+from relaylm.interfaces.openai.client_message_canonicalization import (
     build_client_message_canonicalization_dry_run,
 )
 from relaylm.pipeline_node_result import PipelineNodeResult, build_pipeline_node_result

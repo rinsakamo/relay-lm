@@ -32,7 +32,7 @@ from relaylm.client_instruction_identity_runtime import (
 from relaylm.client_instruction_relayscn_projection import (
     build_client_instruction_relayscn_projection_node_result,
 )
-from relaylm.client_message_canonicalization import (
+from relaylm.interfaces.openai.client_message_canonicalization import (
     build_client_message_canonicalization_dry_run,
     build_client_message_canonicalization_node_result,
 )

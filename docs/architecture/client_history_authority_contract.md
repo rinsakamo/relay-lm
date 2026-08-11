@@ -16,7 +16,7 @@ RelayLM constructs the backend-bound context on managed routes.
 
 Current implementation includes:
 
-- content-free client-message canonicalization dry-run,
+- content-free client-message canonicalization dry-run owned by `relaylm/interfaces/openai/client_message_canonicalization.py`,
 - runtime-private client-instruction identity,
 - read-only instruction-cache lookup,
 - history-exclusion preflight,

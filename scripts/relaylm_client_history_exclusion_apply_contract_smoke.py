@@ -23,7 +23,7 @@ from relaylm.client_history_exclusion_preflight import (
     ClientHistoryExclusionPreflightResult,
     build_client_history_exclusion_preflight,
 )
-from relaylm.client_message_canonicalization import (
+from relaylm.interfaces.openai.client_message_canonicalization import (
     build_client_message_canonicalization_dry_run,
 )
 
