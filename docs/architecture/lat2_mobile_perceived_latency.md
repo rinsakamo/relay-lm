@@ -161,7 +161,7 @@ other route flags are set.
 - No token counting or real tokenizer -- `stream_chunk_count` counts SSE
   body chunks, not tokens.
 - No UI display of these numbers (see
-  `docs/evaluation/mobile-dogfood-observation.md` for how an
+  `docs/operations/mobile-dogfood-observation.md` for how an
   operator reads them from the trace by hand).
 - No Cloudflare/mobile-network-level measurement or browser Navigation
   Timing integration.

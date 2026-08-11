@@ -23,8 +23,8 @@ relaylm_related_authority:
   - ../lat1_latency_measurement.md
   - ../lat2_mobile_perceived_latency.md
   - ../voice/streaming-and-tts.md
-  - ../../evaluation/mobile-dogfood-observation.md
-  - ../../evaluation/lat1-retrieval-scaling.md
+  - ../../operations/mobile-dogfood-observation.md
+  - ../../operations/lat1-retrieval-scaling.md
   - ../../planning/documentation-target-architecture-graph.md
 relaylm_related_contracts:
   - ../../contracts/relayrun-checkpoint-and-recovery.md
@@ -510,5 +510,5 @@ This architecture does not define:
 - [LAT-1 Latency Measurement](../lat1_latency_measurement.md)
 - [LAT-2 Mobile Perceived Latency](../lat2_mobile_perceived_latency.md)
 - [Voice Streaming and TTS](../voice/streaming-and-tts.md)
-- [Mobile Dogfood Observation](../../evaluation/mobile-dogfood-observation.md)
-- [LAT-1 Retrieval Scaling](../../evaluation/lat1-retrieval-scaling.md)
+- [Mobile Dogfood Observation](../../operations/mobile-dogfood-observation.md)
+- [LAT-1 Retrieval Scaling](../../operations/lat1-retrieval-scaling.md)

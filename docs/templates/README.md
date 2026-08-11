@@ -24,9 +24,9 @@ These files are non-authoritative starting points. A generated document acquires
 - [Subsystem architecture](subsystem-architecture.md)
 - [Concept or policy design](concept-policy-design.md)
 - [Contract](contract.md)
-- [LAT-1 Retrieval Scaling Report](evaluation/lat1-retrieval-scaling-report.md) — subject-specific fillable template for a dated LAT-1 retrieval scaling run; see [LAT-1 Retrieval Scaling Method](../evaluation/lat1-retrieval-scaling.md) for the repeatable method it fills in.
+- [LAT-1 Retrieval Scaling Report](evaluation/lat1-retrieval-scaling-report.md) — subject-specific fillable template for a dated LAT-1 retrieval scaling run; see [LAT-1 Retrieval Scaling Method](../operations/lat1-retrieval-scaling.md) for the repeatable method it fills in.
 - [OpenWebUI + LM Studio Manual Smoke Results](evaluation/openwebui-lmstudio-manual-smoke-results.md) — content-free reusable template for recording a future local manual-validation run; filled dated results belong in `docs/evidence/evaluations/`.
-- [Mobile Dogfood Summary Report](evaluation/mobile-dogfood-summary-report.md), [Daily Note](evaluation/mobile-dogfood-daily-note.md), [Weekly Review](evaluation/mobile-dogfood-weekly-review.md) — content-free local-only stubs for the [Mobile Dogfood Observation Method](../evaluation/mobile-dogfood-observation.md); filled-in copies stay local and are never committed.
+- [Mobile Dogfood Summary Report](evaluation/mobile-dogfood-summary-report.md), [Daily Note](evaluation/mobile-dogfood-daily-note.md), [Weekly Review](evaluation/mobile-dogfood-weekly-review.md) — content-free local-only stubs for the [Mobile Dogfood Observation Method](../operations/mobile-dogfood-observation.md); filled-in copies stay local and are never committed.
 
 ## Use rules
 

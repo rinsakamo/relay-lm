@@ -38,6 +38,7 @@ HISTORICAL_EXACT_PATHS = {
     "docs/planning/documentation-target-architecture-graph.md",
     MANIFEST_PATH,
     "scripts/relaylm_retirement_manifest_reference_guard.py",
+    "scripts/relaylm_docs_semantic_audit.py",
 }
 EXTERNAL_SCHEMES = {"http", "https", "mailto", "tel", "data"}
 URL_RE = re.compile(r"https?://[^\s)>\]}'\"]+")
@@ -138,6 +139,24 @@ def _reference_pattern(old_path: str) -> re.Pattern[str]:
     )
 
 
+def _resolves_to_retired(source: Path, raw_target: str, root: Path, old_path: str) -> bool:
+    """Return whether a bounded relative token resolves to the exact retired path.
+
+    Same-basename canonical relocations must not be rejected merely because the
+    basename is shared; resolution mirrors the documentation link checker.
+    """
+    parsed = urlsplit(raw_target)
+    path_text = parsed.path
+    if not path_text or path_text.startswith("/"):
+        return False
+    try:
+        candidate = (root / path_text) if path_text.startswith("docs/") else (source.parent / path_text)
+        resolved = candidate.resolve().relative_to(root.resolve()).as_posix()
+    except (OSError, ValueError):
+        return False
+    return resolved == old_path
+
+
 def validate(root: Path = ROOT) -> list[str]:
     errors: list[str] = []
     try:
@@ -194,7 +213,9 @@ def validate(root: Path = ROOT) -> list[str]:
                     )
                     break
                 for match in pattern.finditer(line):
-                    if _outside_external_url(line, match.start(1), match.end(1)):
+                    if _outside_external_url(line, match.start(1), match.end(1)) and _resolves_to_retired(
+                        path, match.group(1), root, old_path
+                    ):
                         errors.append(
                             f"{relative}:{line_number}: active reference to retired {old_path}"
                         )
@@ -374,9 +395,9 @@ def self_test() -> int:
 
     for retired in (
         "docs/evidence/migrations/README.md",
-        "migrations/README.md",
-        "../migrations/README.md",
-        "../../evidence/migrations/README.md",
+        "../evidence/migrations/README.md",
+        "../../docs/evidence/migrations/README.md",
+        "../evidence/./migrations/README.md",
     ):
         run_generic(
             f"generic-basename retirement rejects {retired}",
