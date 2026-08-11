@@ -20,7 +20,7 @@ from .relaymem_primary_mutation_coordinator import (
     ensure_primary_memory_mutation_available,
     inspect_primary_memory_operations,
 )
-from .subjective_mem_retrieval_cutover import primary_writer_decision_permits_write
+from .subjective_mem.retrieval_cutover import primary_writer_decision_permits_write
 
 PIN_PREFLIGHT_REQUEST_SCHEMA = "relaylm.lab.memory_pin_preflight_request.v0"
 PIN_PREFLIGHT_RESPONSE_SCHEMA = "relaylm.lab.memory_pin_preflight.v0"

@@ -30,7 +30,7 @@ from relaylm.relayctx_repack import (
 from relaylm.relayint import build_relayint_reference_intent_artifact, run_relayint_stage
 from relaylm.relaymem_retrieval import run_relaymem_retrieval_stage
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
-from relaylm.subjective_mem_retrieval_cutover import (
+from relaylm.subjective_mem.retrieval_cutover import (
     resolve_subjective_mem_retrieval_primary_reader_decision,
 )
 from relaylm.relayrun import new_run_id

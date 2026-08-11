@@ -29,7 +29,7 @@ import relaylm_i1gc_durable_finalization_replay_smoke as gc  # noqa: E402
 import relaylm_i1gd_durable_finalization_retention_smoke as gd  # noqa: E402
 import relaylm_o1b_sealed_replay_lane_smoke as o1b  # noqa: E402
 from relaylm.app import create_app  # noqa: E402
-from relaylm.subjective_mem_retrieval_cutover import (  # noqa: E402
+from relaylm.subjective_mem.retrieval_cutover import (  # noqa: E402
     SubjectiveMemRetrievalPrimaryWriterDecision,
 )
 from relaylm.relaymem_slp_durable_finalization_publication import (  # noqa: E402

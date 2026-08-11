@@ -41,7 +41,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Mapping
 
-from ._subjective_mem_retrieval_cutover_activation import (
+from .._subjective_mem_retrieval_cutover_activation import (
     ACTIVATION_STEPS,
     CUTOVER_LOG_KEY,
     CUTOVER_LOG_KIND,
@@ -58,13 +58,13 @@ from ._subjective_mem_retrieval_cutover_activation import (
     safe_token,
     sha256_digest,
 )
-from ._subjective_mem_retrieval_runtime_projection import (
+from .._subjective_mem_retrieval_runtime_projection import (
     subjective_mem_retrieval_runtime_projection_spec,
     verify_subjective_mem_retrieval_runtime_projection,
 )
-from .config import RelayLMConfig
-from .evidence.common import canonical_json_bytes
-from .evidence.store import EvidenceRecordStore
+from ..config import RelayLMConfig
+from ..evidence.common import canonical_json_bytes
+from ..evidence.store import EvidenceRecordStore
 
 CUTOVER_AUTHORITY_DOMAIN = "relaylm.subjective_mem_retrieval"
 CUTOVER_TRANSFERRED_SCOPE = "ordinary_memory_retrieval"

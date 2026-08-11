@@ -17,7 +17,7 @@ byte-for-byte; only the assertions changed.
 from __future__ import annotations
 
 from relaylm.config import RelayLMConfig
-from relaylm.subjective_mem_retrieval_cutover import (
+from relaylm.subjective_mem.retrieval_cutover import (
     resolve_subjective_mem_retrieval_primary_writer_decision,
 )
 

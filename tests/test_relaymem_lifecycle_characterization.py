@@ -59,7 +59,7 @@ from relaylm.relaymem_primary_pin_apply import (
     apply_primary_memory_unpin,
     get_primary_memory_pin_state,
 )
-from relaylm.subjective_mem_retrieval_cutover import (
+from relaylm.subjective_mem.retrieval_cutover import (
     SubjectiveMemRetrievalPrimaryWriterDecision,
     resolve_subjective_mem_retrieval_primary_writer_decision,
 )

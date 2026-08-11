@@ -16,7 +16,7 @@ from relaylm._subjective_mem_retrieval_cutover_activation import (
     FORWARD_STATES,
     reconstruct_cutover_chain,
 )
-from relaylm.subjective_mem_retrieval_cutover import (
+from relaylm.subjective_mem.retrieval_cutover import (
     RETIREMENT_STEPS,
     CUTOVER_AUTHORITY_DOMAIN,
     CUTOVER_LOG_KEY,
@@ -418,7 +418,7 @@ def test_decision_type_is_frozen_closed_and_content_free() -> None:
 def test_primary_only_binds_primary_stable_permit_with_no_store_access(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import relaylm.subjective_mem_retrieval_cutover as owner
+    import relaylm.subjective_mem.retrieval_cutover as owner
 
     def _forbidden(*args: object, **kwargs: object) -> None:
         raise AssertionError("primary_only_must_not_touch_the_evidence_store")
@@ -533,7 +533,7 @@ def test_no_unbound_default_or_optional_permit_class_exists() -> None:
     assert list(resolver.parameters) == ["config"]
     assert resolver.parameters["config"].default is inspect.Parameter.empty
     # Exactly two writer classes; no third `unbound` or compatibility class.
-    module = Path("relaylm/subjective_mem_retrieval_cutover.py").read_text()
+    module = Path("relaylm/subjective_mem/retrieval_cutover.py").read_text()
     assert "unbound" not in module
     for absent in (None, "permitted", 0, False, {"writer_class": PRIMARY_WRITER_PERMITTED}):
         assert not primary_writer_decision_permits_write(absent)
@@ -651,7 +651,7 @@ def _imported_modules(path: str) -> set[str]:
 
 def test_resolver_dependency_direction_creates_no_cycle() -> None:
     import relaylm.config as config_module
-    import relaylm.subjective_mem_retrieval_cutover as owner
+    import relaylm.subjective_mem.retrieval_cutover as owner
 
     # The owner depends on the config model; the config model depends on
     # nothing inside ``relaylm``, so taking `RelayLMConfig` as the resolver
@@ -671,21 +671,21 @@ def test_resolver_dependency_direction_creates_no_cycle() -> None:
         "__future__",
         "dataclasses",
         "typing",
-        "._subjective_mem_retrieval_cutover_activation",
-        "._subjective_mem_retrieval_runtime_projection",
-        ".config",
-        ".evidence.common",
-        ".evidence.store",
+        ".._subjective_mem_retrieval_cutover_activation",
+        ".._subjective_mem_retrieval_runtime_projection",
+        "..config",
+        "..evidence.common",
+        "..evidence.store",
     }
 
 
 def test_structure_and_immutable_store() -> None:
-    module = Path("relaylm/subjective_mem_retrieval_cutover.py")
+    module = Path("relaylm/subjective_mem/retrieval_cutover.py")
     # The merged RT-1D-R4 cutover-facade structural amendment (PR #831) replaced
     # the earlier roughly-700 gate with one measured RT-1D-R4-only exception:
     # the facade must remain strictly below 1000 normally formatted lines.
     assert len(module.read_text().splitlines()) < 1000
-    import relaylm.subjective_mem_retrieval_cutover as owner
+    import relaylm.subjective_mem.retrieval_cutover as owner
 
     assert (
         max(

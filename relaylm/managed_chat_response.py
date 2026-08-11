@@ -89,7 +89,7 @@ from relaylm.relayrun_stream_timing import (
     wrap_stream_with_relayrun_stream_timing,
 )
 from relaylm.routing import ResolvedRoute
-from relaylm.subjective_mem_retrieval_cutover import (
+from relaylm.subjective_mem.retrieval_cutover import (
     SubjectiveMemRetrievalPrimaryWriterDecision,
 )
 from relaylm.trace_runtime import extract_response_text, trace_runtime_event

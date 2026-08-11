@@ -33,7 +33,7 @@ from relaylm.subjective_mem.retrieval import (
     SubjectiveMemRetrievalRequest,
     validate_subjective_mem_retrieval_request,
 )
-from relaylm.subjective_mem_retrieval_cutover import (
+from relaylm.subjective_mem.retrieval_cutover import (
     subjective_mem_retrieval_ordinary_token_budget,
     subjective_mem_retrieval_primary_reader_class,
 )

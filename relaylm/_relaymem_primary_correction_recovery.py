@@ -7,7 +7,7 @@ from ._relaymem_primary_correction_preflight import PrimaryCorrectionError, _iso
 from ._relaymem_primary_correction_history import load_primary_correction_state
 from ._relaymem_primary_correction_publication import PublicationDependencies, publish_prepared_successor
 from ._relaymem_primary_correction_apply import (_memory_lock, _operation_path, _read_json, _valid_prepared, _write_immutable_json, build_applied_receipt)
-from .subjective_mem_retrieval_cutover import primary_writer_decision_permits_write
+from .subjective_mem.retrieval_cutover import primary_writer_decision_permits_write
 _CORRECTION_ROOT = PurePosixPath("memory/mem/corrections/v0")
 
 

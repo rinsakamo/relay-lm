@@ -11,7 +11,7 @@ from .relaymem_primary_mutation_coordinator import PrimaryMutationCoordinatorErr
 from ._relaymem_primary_correction_preflight import (APPLY_RESPONSE_SCHEMA, PREPARED_SCHEMA, RECEIPT_SCHEMA, PrimaryCorrectionError, _canonical_json, _decode_token, _iso, _safe_store_root, _shared_error_code, _validate_scope_tokens, _validate_token_claims)
 from ._relaymem_primary_correction_history import load_primary_correction_state, _load_current_target
 from ._relaymem_primary_correction_publication import PublicationDependencies, publish_prepared_successor
-from .subjective_mem_retrieval_cutover import primary_writer_decision_permits_write
+from .subjective_mem.retrieval_cutover import primary_writer_decision_permits_write
 _CORRECTION_ROOT = PurePosixPath("memory/mem/corrections/v0")
 
 

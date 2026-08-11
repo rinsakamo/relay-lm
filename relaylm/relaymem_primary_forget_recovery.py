@@ -44,7 +44,7 @@ from .relaymem_primary_mutation_coordinator import (
     PrimaryMutationCoordinatorError,
     primary_memory_mutation_lock,
 )
-from .subjective_mem_retrieval_cutover import (
+from .subjective_mem.retrieval_cutover import (
     SubjectiveMemRetrievalPrimaryWriterDecision,
     primary_writer_decision_permits_write,
 )

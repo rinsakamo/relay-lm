@@ -92,7 +92,7 @@ from relaylm.request_scope import (
     extract_request_scope_identity,
 )
 from relaylm.routing import ResolvedRoute
-from relaylm.subjective_mem_retrieval_cutover import (
+from relaylm.subjective_mem.retrieval_cutover import (
     activate_subjective_mem_retrieval_cutover,
     resolve_subjective_mem_retrieval_primary_reader_decision,
     resolve_subjective_mem_retrieval_primary_writer_decision,
