@@ -16,6 +16,19 @@ relaylm_not_authoritative_for:
   - exact Forget, migration, backup, rollback, or workspace commit protocol
   - private twin data, unpublished character sources, or ReLM's own self-knowledge
 relaylm_current_status_source: ../../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../character/showcase-character-direction.md
+  - ../character/identity-and-source-authority.md
+  - ../character/personality-and-experience.md
+  - ../character/interaction-quality.md
+  - creation-and-import.md
+  - ../../relaysoul/relm_file_first_source_set_draft.md
+relaylm_lifecycle: accepted_target
+relaylm_primary_consumers:
+  - Character Workspace showcase, starter, template, and import maintainers
+  - public showcase asset and publication reviewers
+  - product-knowledge lifecycle and onboarding maintainers
+relaylm_authority_level: concept
 ---
 # Showcase, Public Starter, and Product Knowledge Ownership
 
@@ -187,9 +200,18 @@ The current implementation handoff remains:
 
 - `docs/architecture/cw_a5_character_creation_templates_showcase_import.md`.
 
-## Safety and publication invariants
+## Showcase publication boundary
 
-- Rin and ReLM showcase material must remain synthetic or explicitly reviewed authored material.
+- Rin is published only as a fictional self-parody, never as the developer's raw identity or private twin and never as a claim about a real person's life.
+- Showcase fixtures are synthetic or explicitly reviewed authored material.
+- Public showcase assets contain no real private life, real third-party facts, private twin material, or maker-side hidden/private meta settings presented as portable character data.
+- Public character lore is identified as authored fiction rather than a real-person claim.
+- Public showcase publication contains no material that identifies or reproduces third-party intellectual property.
+
+These are durable ownership and publication constraints, not an exact machine schema or publication gate.
+
+## Safety and lifecycle invariants
+
 - Private twin data is never bundled with showcase or starter assets.
 - The unnamed starter begins without fake familiarity or user-specific intimacy.
 - Product knowledge cannot become evidence for relationship updates or subjective personal memory.
@@ -203,7 +225,7 @@ The current implementation handoff remains:
 - [Pinned Normal Memory Pages](../pinned_normal_memory_pages.md)
 - [CW-A5 Character Creation, Templates, and Showcase Import](../cw_a5_character_creation_templates_showcase_import.md)
 - [ReLM File-first Source Set Draft](../../relaysoul/relm_file_first_source_set_draft.md)
-- [Rin / ReLM Character Vision](../../strategy/rin-relm-character-vision.md)
+- [Rin / ReLM Showcase Character Direction](../character/showcase-character-direction.md)
 
 ## Non-goals
 

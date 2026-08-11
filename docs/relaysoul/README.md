@@ -36,7 +36,7 @@ The target migration must update patch, revision, approval, apply, rollback, sto
 
 - [ReLM File-first Source Set Draft](relm_file_first_source_set_draft.md) — portable ReLM-authored source candidate; not private maker-side intent and not the default public starter.
 - [Showcase, Public Starter, and Product Knowledge Ownership](../architecture/character-workspace/showcase-starter-product-knowledge.md) — target ownership split between developer showcase characters, the unnamed public starter, user-authored characters, and versioned RelayLM product-help knowledge.
-- [Rin / ReLM Character Vision](../strategy/rin-relm-character-vision.md) — non-runtime maker-side creative direction for the developer-owned showcase pair and the public starter's visual lineage.
+- [Rin / ReLM Showcase Character Direction](../architecture/character/showcase-character-direction.md) — non-runtime maker-side creative direction for the developer-owned showcase pair; asset and public-lineage ownership remains with the showcase ownership policy.
 
 ## Core design
 
