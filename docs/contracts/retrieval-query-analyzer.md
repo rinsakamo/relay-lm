@@ -42,7 +42,7 @@ relaylm_authority_level: exact_contract
 This contract owns the exact current Retrieval Query Analyzer boundary implemented by:
 
 ```text
-relaylm/retrieval_query_analyzer.py
+relaylm/retrieval/query_analyzer.py
 ```
 
 and its bounded consumption in the legacy/current dry-run retrieval assembly path implemented by:
@@ -75,7 +75,7 @@ The private hint artifact may contain derived query strings. The public projecti
 The exact current analyzer owner is:
 
 ```text
-relaylm/retrieval_query_analyzer.py
+relaylm/retrieval/query_analyzer.py
 ```
 
 The current retrieval consumer and projection assembly are:
