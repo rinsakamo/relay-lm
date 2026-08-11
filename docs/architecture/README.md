@@ -50,6 +50,8 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [File-first Character Workspace Design](file_first_character_workspace_design.md) defines the target Markdown source tree, RelayREL boundary, SLP-maintained scene/memory wiki model, and KV-cache-friendly context tiers.
 - [RelayREL Relationship Design](relayrel_relationship_design.md) defines target-specific relationship state, `RELATIONSHIP.md`, `relationships/<target>.md`, and relationship-conditioned interaction policy.
 - [Character Template and Creation Flow](character_template_creation_flow.md) defines Quick Create, Advanced Create, no-character startup, template import, and primary-user-fit finished showcase character policy.
+- [Rin / ReLM Showcase Character Direction](character/showcase-character-direction.md) defines non-runtime maker-side creative direction for the developer-owned showcase pair.
+- [Showcase, Public Starter, and Product Knowledge Ownership](character-workspace/showcase-starter-product-knowledge.md) defines showcase asset, public starter, publication, and product-knowledge lifecycle ownership.
 - [CW-A5 Character Creation, Templates, and Showcase Import](cw_a5_character_creation_templates_showcase_import.md) records the current bounded deterministic local creation/template/import implementation slice.
 - [Pinned Normal Memory Pages](pinned_normal_memory_pages.md) defines pinned normal memory as ordinary retrieval memory protected from ordinary RelaySLP maintenance.
 - [P0 RelayREL / RelaySCN / RelayEMO Ordering Fix](p0_relayrel_relayscn_relayemo_ordering_fix.md) records the completed pre-Character-Workspace ordering boundary, which is complete only once app.py request-path rewiring is present and validation passes.
