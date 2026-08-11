@@ -12,7 +12,7 @@ from relaylm._relaymem_retrieval_candidates import (
     _retrieval_priority_projection,
     _select_mem_candidates_dry_run,
 )
-from relaylm._relaymem_retrieval_snippet import (
+from relaylm.retrieval.snippet import (
     _build_ctx_block_snippet_candidate,
     _build_snippet_apply_readiness,
     _build_snippet_evidence_dry_run,

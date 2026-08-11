@@ -63,7 +63,7 @@ from relaylm.relaymem_retrieval_dry_run import _term_hints
 from relaylm._relaymem_retrieval_candidates import (  # noqa: F401
     _attach_evidence_metadata_to_ctx_block_candidate,
 )
-from relaylm._relaymem_retrieval_snippet import (  # noqa: F401
+from relaylm.retrieval.snippet import (  # noqa: F401
     _build_ctx_block_snippet_candidate,
     _build_snippet_apply_readiness,
     _build_snippet_runtime_injection_plan,
