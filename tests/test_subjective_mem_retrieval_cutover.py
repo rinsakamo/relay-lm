@@ -672,7 +672,7 @@ def test_resolver_dependency_direction_creates_no_cycle() -> None:
         "dataclasses",
         "typing",
         ".._subjective_mem_retrieval_cutover_activation",
-        ".._subjective_mem_retrieval_runtime_projection",
+        ".retrieval_runtime_projection",
         "..config",
         "..evidence.common",
         "..evidence.store",
