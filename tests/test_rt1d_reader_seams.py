@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 NEW_MODULES = (
     "relaylm/managed_chat_pipeline_runtime.py",
     "relaylm/relaymem_retrieval_dry_run.py",
-    "relaylm/_relaymem_retrieval_candidates.py",
+    "relaylm/retrieval/candidates.py",
     "relaylm/retrieval/snippet.py",
     "relaylm/relaymem_primary_recall_store.py",
 )
@@ -162,7 +162,7 @@ def test_dependency_direction_and_moved_ownership() -> None:
     )
     for path in (
         "relaylm/relaymem_retrieval_dry_run.py",
-        "relaylm/_relaymem_retrieval_candidates.py",
+        "relaylm/retrieval/candidates.py",
         "relaylm/retrieval/snippet.py",
     ):
         assert "relaylm.relaymem_retrieval" not in _imports(path)

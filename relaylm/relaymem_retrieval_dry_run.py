@@ -3,7 +3,7 @@
 from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
-from relaylm._relaymem_retrieval_candidates import (
+from relaylm.retrieval.candidates import (
     _attach_evidence_metadata_to_ctx_block_candidate,
     _build_apply_readiness,
     _build_ctx_block_candidate,

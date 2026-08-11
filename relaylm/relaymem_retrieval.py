@@ -60,7 +60,7 @@ from relaylm.relaymem_retrieval_dry_run import _term_hints
 # ranking, or fallback is restored by their presence. A `primary_only` decision
 # still fails closed to `neither`, and Subjective remains the sole ordinary
 # serving authority after retirement.
-from relaylm._relaymem_retrieval_candidates import (  # noqa: F401
+from relaylm.retrieval.candidates import (  # noqa: F401
     _attach_evidence_metadata_to_ctx_block_candidate,
 )
 from relaylm.retrieval.snippet import (  # noqa: F401
