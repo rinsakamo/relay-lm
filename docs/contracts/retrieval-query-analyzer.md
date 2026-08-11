@@ -48,7 +48,7 @@ relaylm/retrieval/query_analyzer.py
 and its bounded consumption in the legacy/current dry-run retrieval assembly path implemented by:
 
 ```text
-relaylm/relaymem_retrieval_dry_run.py
+relaylm/retrieval/dry_run.py
 ```
 
 The analyzer turns request-local query text into bounded **backend-private hint strings** plus a separate **content-free public projection**.
@@ -81,7 +81,7 @@ relaylm/retrieval/query_analyzer.py
 The current retrieval consumer and projection assembly are:
 
 ```text
-relaylm/relaymem_retrieval_dry_run.py
+relaylm/retrieval/dry_run.py
 relaylm/retrieval/candidates.py
 ```
 

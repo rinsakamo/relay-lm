@@ -45,7 +45,7 @@ from relaylm.subjective_mem.retrieval_usage_ledger import (
     finalize_subjective_mem_retrieval_usage,
 )
 from relaylm.routing import ResolvedRoute
-from relaylm.relaymem_retrieval_dry_run import _term_hints
+from relaylm.retrieval.dry_run import _term_hints
 
 # Historical public re-export surface, compatibility only.
 #
@@ -68,7 +68,7 @@ from relaylm.retrieval.snippet import (  # noqa: F401
     _build_snippet_apply_readiness,
     _build_snippet_runtime_injection_plan,
 )
-from relaylm.relaymem_retrieval_dry_run import (  # noqa: F401
+from relaylm.retrieval.dry_run import (  # noqa: F401
     build_relaymem_retrieval_dry_run_artifact,
 )
 
