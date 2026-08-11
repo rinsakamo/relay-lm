@@ -24,6 +24,15 @@ This collection is closed to new completion reports and implementation handoffs.
 New implementation work records evidence in the pull request, exact-head CI, and Git history. A new committed record is created only when it qualifies for an allowlisted retained-record class with a continuing release, migration, audit, recovery, rollback, retirement, CI, or operational consumer. Existing legacy and canonical completion-report metadata profiles remain readable only for the files already present in this transitional collection.
 
 
+## RelaySOUL dry-run, preflight, and gate review records
+
+These four records are frozen completed bounded evidence. Their completion-era current/target statements, next-phase plans, gate-field lists, and component vocabulary are historical and are not current authority. Current RelaySOUL execution-gate, persistence, and portable identity semantics remain owned by [RelaySOUL Execution Gate Contract](../../contracts/relaysoul-execution-gates.md), [RelaySOUL Artifact Persistence Contract](../../contracts/relaysoul_persistence_contract.md), and [Character Identity and Source Authority](../../architecture/character/identity-and-source-authority.md).
+
+- [RelaySOUL dry-run chain completion evidence](relaysoul_dry_run_chain_summary.md) — frozen evidence for the completed RelaySOUL dry-run/tooling chain.
+- [RelaySOUL preflight chain completion evidence](relaysoul_preflight_chain_summary.md) — frozen evidence for the completed content-free preflight validation chain.
+- [RelaySOUL persistence preflight completion evidence](relaysoul_persistence_preflight_summary.md) — frozen evidence for the completed storage-writer and persistence-execution preflight results.
+- [RelaySOUL gate design consistency review completion evidence](relaysoul_gate_design_consistency_review.md) — frozen audit evidence for the completed cross-review of the transitional gate designs.
+
 ## Early MVP smoke records
 
 - [MVP-0 pass-through proxy](mvp0_pass_through_proxy.md) — frozen URL-swap pass-through skeleton evidence from PR #4/#5; current proxy/pipeline behavior remains architecture-owned.
