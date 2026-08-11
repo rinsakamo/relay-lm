@@ -210,7 +210,7 @@ http://127.0.0.1:5173/lab/
 
 ## 🧰 トラブルシューティング
 
-接続できない場合は [OpenWebUI + RelayLM + LM Studioトラブルシューティング](docs/smoke/openwebui_lmstudio_troubleshooting.md) を参照してください。
+接続できない場合は [OpenWebUI + RelayLM + LM Studioトラブルシューティング](docs/operations/openwebui-lmstudio-troubleshooting.md) を参照してください。
 
 ## 🏗️ アーキテクチャ
 

@@ -39,16 +39,16 @@ Implementation evidence remains under `docs/evidence/implementation/`. Executabl
 
 ## Setup checks and troubleshooting
 
-- [OpenWebUI model preset/avatar checklist](openwebui_model_preset_checklist.md)
-- [OpenWebUI route response differentiation checks](openwebui_response_differentiation_checks.md)
-- [OpenWebUI + RelayLM + LM Studio troubleshooting](openwebui_lmstudio_troubleshooting.md)
+- [OpenWebUI model preset/avatar checklist](../operations/openwebui-model-preset-checklist.md)
+- [OpenWebUI route response differentiation checks](../operations/openwebui-response-differentiation-checks.md)
+- [OpenWebUI + RelayLM + LM Studio troubleshooting](../operations/openwebui-lmstudio-troubleshooting.md)
 
 ## RelayMEM and local behavior evaluation
 
-- [E2 value smoke runbook](e2_value_smoke_runbook.md)
-- [RelayMEM runtime payload diff evaluation](relaymem_runtime_payload_eval.md)
-- [RelayMEM local LLM evaluation guide](relaymem_local_llm_eval_guide.md)
-- [RelayMEM local response comparison guide](relaymem_local_response_comparison.md)
+- [Value smoke runbook](../operations/value-smoke-runbook.md)
+- [RelayMEM runtime payload diff evaluation](../operations/relaymem-runtime-payload-evaluation.md)
+- [RelayMEM local LLM evaluation guide](../operations/relaymem-local-llm-evaluation.md)
+- [RelayMEM local response comparison guide](../operations/relaymem-local-response-comparison.md)
 
 ## Placement rule
 

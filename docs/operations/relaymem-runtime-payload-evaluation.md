@@ -1,3 +1,25 @@
+---
+relaylm_doc_type: operations
+relaylm_authority: relaymem_runtime_payload_evaluation_operations
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: runtime
+relaylm_lifecycle: stable
+relaylm_authority_level: operation
+relaylm_primary_consumers:
+  - operators inspecting RelayMEM runtime payload differences
+relaylm_update_trigger:
+  - the payload diff procedure or its expected artifacts change
+relaylm_not_authoritative_for:
+  - current repository implementation status
+  - exact runtime schemas, gates, or mutation contracts
+  - release readiness decisions
+  - repository execution sequencing
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../DOCUMENTATION_MODEL.md
+  - ../PROJECT_STATUS.md
+---
 # RelayMEM Runtime Payload Diff Evaluation Smoke
 
 ## Purpose

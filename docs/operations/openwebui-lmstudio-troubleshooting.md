@@ -1,3 +1,26 @@
+---
+relaylm_doc_type: operations
+relaylm_authority: openwebui_lmstudio_troubleshooting_operations
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: runtime
+relaylm_lifecycle: stable
+relaylm_authority_level: operation
+relaylm_primary_consumers:
+  - operators diagnosing an OpenWebUI or LM Studio connection problem
+relaylm_update_trigger:
+  - a supported OpenWebUI or LM Studio topology changes
+  - a known failure mode or its resolution changes
+relaylm_not_authoritative_for:
+  - current repository implementation status
+  - exact runtime schemas, gates, or mutation contracts
+  - release readiness decisions
+  - repository execution sequencing
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../DOCUMENTATION_MODEL.md
+  - ../PROJECT_STATUS.md
+---
 # OpenWebUI + RelayLM + LM Studio Troubleshooting
 
 ## Scope
@@ -8,7 +31,7 @@ Local setup troubleshooting for:
 OpenWebUI -> RelayLM -> LM Studio
 ```
 
-See [manual smoke runbook](../operations/openwebui-lmstudio-manual-smoke.md).
+See [manual smoke runbook](openwebui-lmstudio-manual-smoke.md).
 
 ## Connectivity
 
