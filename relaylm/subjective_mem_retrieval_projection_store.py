@@ -32,7 +32,7 @@ from relaylm.subjective_mem.retrieval import (
     validate_subjective_mem_retrieval_projection_manifest,
     validate_subjective_mem_retrieval_projection_row,
 )
-from relaylm.subjective_mem_retrieval_projection import (
+from relaylm.subjective_mem.retrieval_projection import (
     SOURCE_SCHEMA_REVISION_DIGEST, SubjectiveMemRetrievalProjection,
     build_subjective_mem_retrieval_projection,
 )

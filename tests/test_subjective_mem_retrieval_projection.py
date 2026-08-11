@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-import relaylm.subjective_mem_retrieval_projection as projection_module
+import relaylm.subjective_mem.retrieval_projection as projection_module
 import relaylm.subjective_mem_retrieval_projection_store as store_module
 from relaylm.evidence.common import canonical_digest, utf8_text_digest
 from relaylm.subjective_mem.models import (
@@ -42,7 +42,7 @@ from relaylm.subjective_mem.retrieval import (
     validate_subjective_mem_retrieval_projection_manifest,
     validate_subjective_mem_retrieval_projection_row,
 )
-from relaylm.subjective_mem_retrieval_projection import (
+from relaylm.subjective_mem.retrieval_projection import (
     SubjectiveMemRetrievalProjectionSource,
     SubjectiveMemRetrievalProjectionSourceEntry,
     build_subjective_mem_retrieval_projection,
@@ -1026,7 +1026,7 @@ def test_projection_modules_have_no_primary_shadow_or_request_path_dependency() 
             "pathlib",
             "relaylm.evidence.common",
             "relaylm.subjective_mem.retrieval",
-            "relaylm.subjective_mem_retrieval_projection",
+            "relaylm.subjective_mem.retrieval_projection",
         },
     }
     for module, imports in expected.items():
@@ -1089,5 +1089,5 @@ def test_review_triggers_remain_bounded() -> None:
                 end = max(getattr(item, "end_lineno", node.lineno) for item in ast.walk(node))
                 lengths.append((node.name, end - node.lineno + 1))
         assert max(length for _, length in lengths) <= 80, (module.__name__, lengths)
-    assert Path(projection_module.__file__).name == "subjective_mem_retrieval_projection.py"
+    assert Path(projection_module.__file__).name == "retrieval_projection.py"
     assert Path(store_module.__file__).name == "subjective_mem_retrieval_projection_store.py"

@@ -1665,7 +1665,7 @@ R4_RUNTIME_PROJECTION_ANCHORS = {
         "the ordinary route and cutover facade depend on "
         "`relaylm/_subjective_mem_retrieval_runtime_projection.py`, which depends on the "
         "existing canonical source authorities, "
-        "`relaylm/subjective_mem_retrieval_projection.py`, and "
+        "`relaylm/subjective_mem/retrieval_projection.py`, and "
         "`relaylm/subjective_mem_retrieval_projection_store.py`",
         "No reverse import is allowed.",
         "The existing projection builder and store and the canonical and lifecycle "
@@ -2609,7 +2609,7 @@ R5_BUDGET_AMENDMENT_MUTATIONS = tuple(
     for current, damaged, label in (
         (
             "adding exactly `relaylm/subjective_mem_retrieval_rehearsal.py`",
-            "adding exactly `relaylm/subjective_mem_retrieval_projection.py`",
+            "adding exactly `relaylm/subjective_mem/retrieval_projection.py`",
             "R5 seventh production path identity",
         ),
         (
