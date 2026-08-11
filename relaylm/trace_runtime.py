@@ -17,7 +17,7 @@ from relaylm.client_instruction_cache import (
 from relaylm.client_instruction_cache_lookup_runtime import (
     build_client_instruction_cache_lookup_runtime_node_result,
 )
-from relaylm.client_instruction_extraction import (
+from relaylm.interfaces.openai.client_instruction_extraction import (
     build_client_instruction_extraction_dry_run,
     build_client_instruction_extraction_node_result,
 )
