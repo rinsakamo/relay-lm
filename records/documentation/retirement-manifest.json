@@ -713,6 +713,18 @@
       "retention_reason": "D2-B1 replaced the root compatibility redirect with canonical compile/checkpoint architecture and exact RelayRUN checkpoint/recovery contract authority; the redirect remains recoverable from Git."
     },
     {
+      "old_path": "docs/relaysoul/relaysoul_apply_execution_gate_design.md",
+      "last_live_commit": "93a83faf0b02976c2b5c9d69a326612868381b3b",
+      "old_blob_sha": "e20bc235da47dae79f002c3c68069fb5526b4cb5",
+      "removed_by_pr": 1094,
+      "replacement_paths": [
+        "docs/architecture/character/identity-and-source-authority.md",
+        "docs/contracts/relaysoul-execution-gates.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R27 absorbed the apply execution gate design: its exact decision artifact, allowed flag, fail-closed conditions, and the rule that rollback readiness is an apply precondition rather than apply approval now live in the canonical execution-gate contract, while the conceptual separation of apply from the other execution scopes lives in the character identity and source authority architecture. Its phase framing and next-phase narrative remain recoverable from Git."
+    },
+    {
       "old_path": "docs/relaysoul/relaysoul_design.md",
       "last_live_commit": "537dc6dadd055406d1278fda0e8ece0031093eed",
       "old_blob_sha": "d585d2ac920f8a710a3e66cd134f8d581080e5e0",
@@ -722,6 +734,68 @@
       ],
       "disposition": "absorbed",
       "retention_reason": "D6-R26 absorbed the durable RelaySOUL portable identity and source-authority semantics into the canonical character identity architecture, which already owned the source split, subsystem boundaries, lifecycle states, approval and rollback separation, protected calibration, and portability and cache rules; only the renderer-evidence boundary and the explicit durable-source workflow wording were added. Token budgets, revision fields, patch schema, mode enums, and legacy parser mechanics remain in Git."
+    },
+    {
+      "old_path": "docs/relaysoul/relaysoul_gate_dry_run_cli_design.md",
+      "last_live_commit": "93a83faf0b02976c2b5c9d69a326612868381b3b",
+      "old_blob_sha": "241a7f12a412657c6b4b5c16c00ec2a89802b96f",
+      "removed_by_pr": 1094,
+      "replacement_paths": [
+        "docs/contracts/relaysoul-execution-gates.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R27 absorbed the durable gate-decision semantics of the gate dry-run CLI design into the canonical execution-gate contract: the four decision artifact types, shared allowed-flag policy, and shared fail-closed rules. The four proposed CLI script filenames and the suggested implementation order are future design narrative, were not implemented, and remain recoverable from Git rather than becoming contract authority."
+    },
+    {
+      "old_path": "docs/relaysoul/relaysoul_persistence_execution_gate_design.md",
+      "last_live_commit": "93a83faf0b02976c2b5c9d69a326612868381b3b",
+      "old_blob_sha": "0ea09cf85ea285ab56d5db46e5513003c176d3af",
+      "removed_by_pr": 1094,
+      "replacement_paths": [
+        "docs/architecture/character/identity-and-source-authority.md",
+        "docs/contracts/relaysoul-execution-gates.md",
+        "docs/contracts/relaysoul_persistence_contract.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R27 absorbed the persistence execution gate design: its decision artifact, allowed flag, execution_preflight_type selection, and the requirement for a ready writer gate plus a matching apply-or-rollback gate now live in the execution-gate contract; storage envelope and index identity live in the persistence contract; and the rule that persistence readiness never authorizes source mutation lives in the identity architecture. Phase narrative remains in Git."
+    },
+    {
+      "old_path": "docs/relaysoul/relaysoul_persistence_storage_design.md",
+      "last_live_commit": "93a83faf0b02976c2b5c9d69a326612868381b3b",
+      "old_blob_sha": "a08d9323607c77b5dcf53b1170012d1f4960a584",
+      "removed_by_pr": 1094,
+      "replacement_paths": [
+        "docs/architecture/character/identity-and-source-authority.md",
+        "docs/contracts/relaysoul-execution-gates.md",
+        "docs/contracts/relaysoul_persistence_contract.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R27 absorbed the persistence storage design: the content-free governance artifact envelope, artifact and parent lineage, per-character namespacing, target-only storage path and index identity, and audit posture now live in the persistence contract, whose current artifact-kind and ID extraction were repaired against code; the storage-versus-source boundary lives in the identity architecture and gate readiness in the execution-gate contract. Speculative fsync, retention, and ordering items stay in Git."
+    },
+    {
+      "old_path": "docs/relaysoul/relaysoul_rollback_execution_gate_design.md",
+      "last_live_commit": "93a83faf0b02976c2b5c9d69a326612868381b3b",
+      "old_blob_sha": "e7aa34f9ceed15ef6974acc7f68590f5f41f7146",
+      "removed_by_pr": 1094,
+      "replacement_paths": [
+        "docs/architecture/character/identity-and-source-authority.md",
+        "docs/contracts/relaysoul-execution-gates.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R27 absorbed the rollback execution gate design: its exact decision artifact, allowed flag, apply-plan lineage requirement, fail-closed conditions, and the rule that apply approval never implies rollback approval now live in the canonical execution-gate contract, while the separation of rollback from the other execution scopes lives in the character identity and source authority architecture. Phase narrative remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/relaysoul/relaysoul_storage_writer_gate_design.md",
+      "last_live_commit": "93a83faf0b02976c2b5c9d69a326612868381b3b",
+      "old_blob_sha": "c6477a1703ba55963b5418dcc933b482c971aedf",
+      "removed_by_pr": 1094,
+      "replacement_paths": [
+        "docs/architecture/character/identity-and-source-authority.md",
+        "docs/contracts/relaysoul-execution-gates.md",
+        "docs/contracts/relaysoul_persistence_contract.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R27 absorbed the storage writer gate design: its decision artifact, allowed flag, path and index record identity agreement, required ready persistence preflight, and the rule that writer readiness authorizes neither apply nor rollback now live in the execution-gate contract; the storage envelope and index model lives in the persistence contract; and the scope-separation principle lives in the identity architecture. Phase narrative remains in Git."
     },
     {
       "old_path": "docs/relaysoul/relm_file_first_source_set_draft.md",

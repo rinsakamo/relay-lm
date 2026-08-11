@@ -128,8 +128,9 @@ Machine-readable Subjective MEM v1 materials:
 - [RelaySOUL patch compile dry-run contract](relaysoul_compile_dry_run_contract.md)
 - [RelaySOUL explicit approval artifact contract](relaysoul_explicit_approval_artifact_contract.md)
 - [RelaySOUL preflight lineage freshness policy](relaysoul_preflight_lineage_freshness_policy.md)
+- [RelaySOUL execution gate contract](relaysoul-execution-gates.md) — target gate scopes, decision artifacts, allowed flags, and dependency ordering
 
-The `mvp-soul-0` five-file allowlist is current compatibility behavior, not the target file-first RelaySOUL ownership boundary. Actual apply, rollback, and persistence execution remain disabled.
+The `mvp-soul-0` five-file allowlist is current compatibility behavior, not the target file-first RelaySOUL ownership boundary. Actual apply, rollback, and persistence execution remain disabled, and no gate decision runtime or gate CLI exists.
 
 ## Placement rule
 

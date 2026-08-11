@@ -18,7 +18,7 @@ relaylm.relaysoul_patch.RelaySOULPatchDryRun
 
 This contract does not generate patch text, apply a patch, write files, or call a model.
 
-The target three-file RelaySOUL ownership boundary is documented in [RelaySOUL Patch Schema](relaysoul_patch_schema.md), [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md), and the [Current / Target / Migration Guide](../architecture/current_target_migration_guide.md).
+The target file-first RelaySOUL ownership boundary is documented in [RelaySOUL Patch Schema](relaysoul_patch_schema.md), [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md), and the [Current / Target / Migration Guide](../architecture/current_target_migration_guide.md).
 
 ## Goal
 
@@ -47,7 +47,9 @@ The implemented `mvp-soul-0` helper accepts:
 
 Unsupported target files produce `unsupported_target_file`.
 
-The five-file allowlist is historical compatibility behavior. It is not the target RelaySOUL ownership model. Target ownership excludes `STABLE_MEMORY_SUMMARY.md` and `SCENE_STATE.md`; migration must update every patch/revision/approval/apply/rollback/storage consumer and smoke test together.
+The five-file allowlist is historical compatibility behavior and remains the exact current runtime behavior. It is not the target RelaySOUL ownership model.
+
+Target RelaySOUL-owned portable sources are `SOUL.md`, `STYLE.md`, `EMOTION.md`, `BOUNDARY.md`, and optional `LORE.md`. `OUTPUT_POLICY.md` and `RELATIONSHIP_ANCHOR.md` are current compatibility names, not permanent target source names. Relationship, scene, and memory sources are owned by RelayREL, RelaySCN, and RelayMEM/RelaySLP respectively. Migration must update every patch/revision/approval/apply/rollback/storage consumer and smoke test together.
 
 ## Current mode rules
 

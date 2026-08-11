@@ -101,19 +101,24 @@ Current validation also:
 
 ## Target ownership boundary
 
-The target RelaySOUL revision boundary is narrower:
+The target RelaySOUL revision boundary is the file-first portable source set owned by [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md):
 
 ```text
 SOUL.md
-OUTPUT_POLICY.md
-RELATIONSHIP_ANCHOR.md
+STYLE.md
+EMOTION.md
+BOUNDARY.md
+LORE.md (optional)
 ```
+
+`OUTPUT_POLICY.md` and `RELATIONSHIP_ANCHOR.md` are current compatibility names rather than permanent target source names; their durable meanings map into the smallest owning target source or into RelayREL.
 
 Target ownership excludes:
 
 ```text
 SCENE_STATE.md / request-local scene state -> RelaySCN
 STABLE_MEMORY_SUMMARY.md / compiled memory -> RelaySLP and RelayMEM
+relationship role vocabulary and target-specific relationship state -> RelayREL
 current affect state -> RelayEMO
 short-term working state -> RelayCTX
 ```
