@@ -4568,7 +4568,7 @@ def self_test() -> None:
             "  - mobile-dogfood-observation.md\n"
             "---\n\nBody.\n"
         )
-        _mvp_write(base, "docs/evaluation/example_all_keys_relative.md", front_matter)
+        _mvp_write(base, "docs/operations/example_all_keys_relative.md", front_matter)
         check_silent(
             "relative canonical values for every supported path-bearing front-matter key are allowed",
             check_no_live_mobile_dogfood_retired_paths,
