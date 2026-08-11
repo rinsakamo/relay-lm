@@ -226,7 +226,7 @@ RETIRED_RECALL_NAMES = (
 def main() -> None:
     """Prove the ordinary Primary reader is gone rather than merely fenced."""
 
-    retrieval = (REPO_ROOT / "relaylm/relaymem_retrieval.py").read_text(encoding="utf-8")
+    retrieval = (REPO_ROOT / "relaylm/retrieval/runtime.py").read_text(encoding="utf-8")
     for retired in RETIRED_RECALL_NAMES:
         require(retired not in retrieval, retired)
     require("resolve_relaymem_character_store_root" not in retrieval, "store resolver")

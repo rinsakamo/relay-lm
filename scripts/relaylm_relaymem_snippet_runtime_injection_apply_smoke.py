@@ -428,7 +428,7 @@ def _assert_incomplete_target_layout_fail_closed(
     # incompatibility can never admit Primary recall -- now holds
     # unconditionally, because there is no scope gate, discovery, or recall
     # path left for any store layout to unmask. Proven by absence.
-    retrieval_module = importlib.import_module("relaylm.relaymem_retrieval")
+    retrieval_module = importlib.import_module("relaylm.retrieval.runtime")
     for retired in (
         "_relaymem_primary_recall_scope_allowed",
         "apply_relaymem_primary_recall_scope",
@@ -440,7 +440,7 @@ def _assert_incomplete_target_layout_fail_closed(
             f"retired Primary scope helper reappeared: {retired}",
         )
     retrieval_source = (
-        REPO_ROOT / "relaylm/relaymem_retrieval.py"
+        REPO_ROOT / "relaylm/retrieval/runtime.py"
     ).read_text(encoding="utf-8")
     stage = next(
         node

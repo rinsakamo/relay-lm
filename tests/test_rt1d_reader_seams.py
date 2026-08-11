@@ -20,7 +20,7 @@ from relaylm.managed_chat_pipeline_runtime import (
     run_managed_chat_pipeline,
 )
 from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
-from relaylm.relaymem_retrieval import run_relaymem_retrieval_stage
+from relaylm.retrieval.runtime import run_relaymem_retrieval_stage
 from relaylm.retrieval.dry_run import build_relaymem_retrieval_dry_run_artifact
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -158,21 +158,21 @@ def test_moved_ctx_hints_fail_closed_and_ignore_top_level_list() -> None:
 
 def test_dependency_direction_and_moved_ownership() -> None:
     assert "relaylm.retrieval.dry_run" in _imports(
-        "relaylm/relaymem_retrieval.py"
+        "relaylm/retrieval/runtime.py"
     )
     for path in (
         "relaylm/retrieval/dry_run.py",
         "relaylm/retrieval/candidates.py",
         "relaylm/retrieval/snippet.py",
     ):
-        assert "relaylm.relaymem_retrieval" not in _imports(path)
+        assert "relaylm.retrieval.runtime" not in _imports(path)
     assert not (ROOT / "relaylm/relaymem_primary_recall_selection.py").exists()
     assert "relaylm.relaymem_primary_recall" not in _imports(
         "relaylm/relaymem_primary_recall_store.py"
     )
     assert "build_relaymem_retrieval_dry_run_artifact" not in {
         node.name
-        for node in _tree("relaylm/relaymem_retrieval.py").body
+        for node in _tree("relaylm/retrieval/runtime.py").body
         if isinstance(node, ast.FunctionDef)
     }
     assert "_load_validated_page" not in {
@@ -224,11 +224,11 @@ def test_ordinary_retrieval_reaches_no_primary_authority_after_retirement() -> N
     candidate, or releases recall content.
     """
 
-    body = (ROOT / "relaylm/relaymem_retrieval.py").read_text(encoding="utf-8")
+    body = (ROOT / "relaylm/retrieval/runtime.py").read_text(encoding="utf-8")
     assert "apply_relaymem_primary_recall_scope" not in body
     assert "resolve_relaymem_character_store_root" not in body
     assert "primary_only" in body  # only to fail it closed, asserted below
-    stage = _function("relaylm/relaymem_retrieval.py", "run_relaymem_retrieval_stage")
+    stage = _function("relaylm/retrieval/runtime.py", "run_relaymem_retrieval_stage")
     returns = [n for n in ast.walk(stage) if isinstance(n, ast.Return)]
     assert len(returns) == 1, "the stage has exactly one exit: the fenced result"
 

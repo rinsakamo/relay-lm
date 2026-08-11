@@ -64,7 +64,7 @@ def test_no_shadow_comparison_survives_in_the_ordinary_read_path() -> None:
     selection and never names a characterization or Primary-served metric.
     """
 
-    body = (ROOT / "relaylm/relaymem_retrieval.py").read_text(encoding="utf-8")
+    body = (ROOT / "relaylm/retrieval/runtime.py").read_text(encoding="utf-8")
     for marker in ("characteriz", "primary_served", "primary_metrics"):
         assert marker not in body.lower()
     assert "shadow=True" not in body

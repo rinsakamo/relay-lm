@@ -3,7 +3,7 @@
 PR-9 moved three more stage bodies out of ``handle_managed_chat_completion``
 (relaylm/managed_chat_runtime.py) into named stage entry points:
 ``run_relayint_stage`` (relaylm/relayint.py), ``run_relaymem_retrieval_stage``
-(relaylm/relaymem_retrieval.py, still offloaded via
+(relaylm/retrieval/runtime.py, still offloaded via
 ``run_stage(..., offload=True, ...)`` exactly as ``_run_relaymem_retrieval_stage``
 was before), and ``run_relaymem_runtime_ctx_stage``
 (relaylm/relayctx_repack.py, a thin wrapper around the pre-existing
@@ -28,7 +28,7 @@ from relaylm.relayctx_repack import (
     run_relaymem_runtime_ctx_stage,
 )
 from relaylm.relayint import build_relayint_reference_intent_artifact, run_relayint_stage
-from relaylm.relaymem_retrieval import run_relaymem_retrieval_stage
+from relaylm.retrieval.runtime import run_relaymem_retrieval_stage
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
 from relaylm.subjective_mem.retrieval_cutover import (
     resolve_subjective_mem_retrieval_primary_reader_decision,

@@ -55,7 +55,7 @@ def check_no_ordinary_primary_read_can_leak_a_prior_revision() -> None:
     excluding.
     """
 
-    body = (ROOT / "relaylm/relaymem_retrieval.py").read_text(encoding="utf-8")
+    body = (ROOT / "relaylm/retrieval/runtime.py").read_text(encoding="utf-8")
     for retired in (
         "apply_relaymem_primary_recall_scope",
         "resolve_relaymem_character_store_root",

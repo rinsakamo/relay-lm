@@ -11,7 +11,7 @@ from pathlib import Path
 from relaylm.analyzer_governance import can_open_runtime_policy
 from relaylm.config import load_config
 from relaylm.relayemo import build_scene_hint_candidate, parse_llm_affect_probe_output, run_relayemo
-from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
+from relaylm.retrieval.dry_run import build_relaymem_retrieval_dry_run_artifact
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
 
 
@@ -40,7 +40,7 @@ def _assert_content_free(value: object) -> None:
 # thread via `asyncio.to_thread(_run_relaymem_retrieval_stage, ...)` (pre-PR-9
 # branch shapes) or via `run_stage(..., "relaymem_retrieval",
 # run_relaymem_retrieval_stage, ..., offload=True)` (PR-9 and later, where the
-# stage body lives in `relaylm.relaymem_retrieval`). Tracking every known
+# stage body lives in `relaylm.retrieval.runtime`). Tracking every known
 # spelling keeps this smoke valid across branch shapes instead of hardcoding
 # one call form.
 _STAGE_IDENTIFIERS: dict[str, set[str]] = {
@@ -176,11 +176,11 @@ def _relaymem_retrieval_stage_helper_has_relayemo_kwarg() -> bool:
     Checks both the pre-PR-9 location (a module-level helper named
     ``_run_relaymem_retrieval_stage`` inside ``managed_chat_runtime``) and the
     PR-9-and-later location (``run_relaymem_retrieval_stage`` in
-    ``relaylm.relaymem_retrieval``).
+    ``relaylm.retrieval.runtime``).
     """
 
     import relaylm.managed_chat_runtime as managed_chat_runtime
-    import relaylm.relaymem_retrieval as relaymem_retrieval
+    import relaylm.retrieval.runtime as relaymem_retrieval
 
     helper = getattr(managed_chat_runtime, "_run_relaymem_retrieval_stage", None)
     if helper is None:

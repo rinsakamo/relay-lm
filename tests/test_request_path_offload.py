@@ -48,7 +48,7 @@ from relaylm.managed_chat_runtime import (
     _compile_chat_payload_and_capture_context_blocks,
 )
 import relaylm.managed_chat_runtime as managed_chat_runtime
-import relaylm.relaymem_retrieval as relaymem_retrieval
+import relaylm.retrieval.runtime as relaymem_retrieval
 from relaylm.request_compiler import (
     consume_compiled_context_blocks_runtime_private,
     restore_compiled_context_blocks_runtime_private,
@@ -176,7 +176,7 @@ def test_slow_offloaded_stage_does_not_block_other_requests(
     concurrent requests must complete well before the slow one does.
 
     As of PR-9, the RelayMEM retrieval stage body (including this call) lives
-    in ``relaylm.relaymem_retrieval.run_relaymem_retrieval_stage`` rather than
+    in ``relaylm.retrieval.runtime.run_relaymem_retrieval_stage`` rather than
     inline in ``managed_chat_runtime.py``, so the slow builder is patched onto
     that module instead -- the offload itself (``run_stage(...,
     offload=True, ...)`` in the handler) is unchanged.
