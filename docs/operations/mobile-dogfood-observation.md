@@ -4,6 +4,12 @@ relaylm_authority: mobile_dogfood_observation
 relaylm_status: current
 relaylm_volatility: medium
 relaylm_owner: operations
+relaylm_lifecycle: stable
+relaylm_authority_level: operation
+relaylm_primary_consumers:
+  - operators performing Mobile Dogfood observation and local-only review
+relaylm_update_trigger:
+  - the observation procedure, review cadence, or local-artifact policy changes
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_not_authoritative_for:
   - runtime behavior
