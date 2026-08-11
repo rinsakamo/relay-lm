@@ -13,7 +13,7 @@ if str(REPO_ROOT) not in sys.path:
 from relaylm.analyzer_governance import can_open_runtime_policy
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
-from relaylm.retrieval_query_analyzer import (
+from relaylm.retrieval.query_analyzer import (
     analyze_retrieval_query,
     public_retrieval_query_projection,
     retrieval_query_backend_hints,

@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 from relaylm.retrieval.priority import prioritize_relaymem_candidates
 from relaylm.relaymem_store import discover_relaymem_page_candidates
-from relaylm.retrieval_query_analyzer import public_retrieval_query_projection
+from relaylm.retrieval.query_analyzer import public_retrieval_query_projection
 from relaylm.retrieval.snippet import _dedupe_reasons, _non_negative_int
 
 _MAX_PRIORITY_DISCOVERY_CANDIDATES = 128

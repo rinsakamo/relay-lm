@@ -18,7 +18,7 @@ from relaylm.retrieval.snippet import (
     _build_snippet_evidence_dry_run,
     _build_snippet_runtime_injection_plan,
 )
-from relaylm.retrieval_query_analyzer import (
+from relaylm.retrieval.query_analyzer import (
     analyze_retrieval_query,
     public_retrieval_query_projection,
     retrieval_query_backend_hints,
