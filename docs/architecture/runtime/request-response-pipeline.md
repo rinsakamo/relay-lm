@@ -22,7 +22,7 @@ relaylm_related_authority:
   - ../pipeline-responsibilities.md
   - ../context_packing_design.md
   - ../relayscn_mvp_scene_policy.md
-  - ../../relayemo_mvp_initial_design.md
+  - ../emotion/affect-modulation.md
   - ../relayint_mvp_design.md
   - ../relayatn_reflex_layer_design.md
   - scheduler.md

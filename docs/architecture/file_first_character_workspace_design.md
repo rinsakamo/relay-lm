@@ -21,7 +21,7 @@ relaylm_related_authority:
   - pipeline-responsibilities.md
   - memory_lifecycle_design.md
   - relayscn_mvp_scene_policy.md
-  - ../relayemo_mvp_initial_design.md
+  - emotion/affect-modulation.md
   - ../relaysoul/relaysoul_design.md
 ---
 # File-first Character Workspace Design
