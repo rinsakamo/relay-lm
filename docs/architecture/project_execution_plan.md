@@ -309,7 +309,7 @@ The currently eligible repository work is:
 
 ```text
 Lane R  R5 governed core package migration              Evidence, context overlay, and Shared Assessment complete; Subjective Memory models complete (#966); models, commit, Markdown, lifecycle-record, lifecycle-authority, lifecycle-engine, lifecycle-runtime, Forget-record, Forget-runtime, reformation-authority, Pin-record, Pin-runtime, Restore-record, Restore-plan, Restore-replay, Restore-runtime, tombstone-release, Consolidate-record, Consolidate-runtime, create-runtime, Retrieval-record, Retrieval-projection, Retrieval-projection-store, Retrieval-selection, and Retrieval-usage-ledger owners complete (#966/#968/#971/#973/#975/#978/#981/#988/#1004/#1007/#1009/#1019/#1021/#1023/#1026/#1029/#1031/#1034/#1038/#1040/#1043/#1052/#1054/#1056/#1059); remaining bounded Retrieval transactions next
-Lane D  D6 final retirement / cutover-tool retirement   D6-R26 complete (#1088); D6-R27 next; D6 incomplete
+Lane D  D6 final retirement / cutover-tool retirement   D6-R27 complete (#1094); D6-R28 next; D6 incomplete
 Lane R  R6 Primary MEM disposition                      required cleanup after R5
 Lane C                                                  idle until PD-2 completes
 ```
