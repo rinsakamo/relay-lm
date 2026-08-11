@@ -8,7 +8,7 @@ from typing import Any
 from relaylm.client_history_exclusion_preflight import (
     ClientHistoryExclusionPreflightResult,
 )
-from relaylm.client_instruction_identity import (
+from relaylm.interfaces.openai.client_instruction_identity import (
     ClientInstructionIdentityResult,
     NormalizedInstructionCandidate,
 )

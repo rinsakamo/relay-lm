@@ -14,7 +14,7 @@ from relaylm.client_instruction_evidence import (
     build_client_instruction_evidence_block,
     replace_legacy_instruction_block,
 )
-from relaylm.client_instruction_identity import NormalizedInstructionCandidate
+from relaylm.interfaces.openai.client_instruction_identity import NormalizedInstructionCandidate
 from relaylm.compiler import BlockType
 
 

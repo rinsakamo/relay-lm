@@ -97,6 +97,7 @@ RelaySCN.scene_role:
 
 The canonical OpenAI-compatible request-interface owner is `relaylm/interfaces/openai/client_message_canonicalization.py`.
 The canonical content-free client-instruction extraction owner is `relaylm/interfaces/openai/client_instruction_extraction.py`; its persisted `client_instruction_extraction_dry_run.v0` schema identity is unchanged.
+The canonical runtime-private client-instruction identity owner is `relaylm/interfaces/openai/client_instruction_identity.py`; its persisted `client_instruction_identity.v0` schema identity and content-bearing non-projection boundary are unchanged.
 
 Client system prompts and client conversation history cross the same external boundary.
 
