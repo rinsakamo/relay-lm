@@ -450,6 +450,28 @@
       "retention_reason": "D6-R19 moved the root configuration reference into the permanent docs/reference/ collection as a canonical graph document, migrated every live consumer including both READMEs, the client instruction target artifact contract, the OpenWebUI integration architecture, the onboarding config smoke workflow, and the Wave 3 convergence smoke that asserted fields against the old path, and repointed the runtime_architecture replacement edge; the exact root document remains recoverable from Git."
     },
     {
+      "old_path": "docs/evaluation/lat1-retrieval-scaling.md",
+      "last_live_commit": "88b3e9434e825e83862f1514f8ae0f904a3686b5",
+      "old_blob_sha": "1105cf5adfcbd43ab9933d2fdcb580e1c4760a93",
+      "removed_by_pr": 1058,
+      "replacement_paths": [
+        "docs/operations/lat1-retrieval-scaling.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D6-R22 moved the repeatable LAT-1 retrieval scaling method into the permanent docs/operations/ collection as a canonical operations document while preserving the separate report template and completed-run evidence destination; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/evaluation/mobile-dogfood-observation.md",
+      "last_live_commit": "88b3e9434e825e83862f1514f8ae0f904a3686b5",
+      "old_blob_sha": "31e67b9a668f18720ac95cf1a03950f99c7a1988",
+      "removed_by_pr": 1058,
+      "replacement_paths": [
+        "docs/operations/mobile-dogfood-observation.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D6-R22 moved the Mobile Dogfood observation procedure into the permanent docs/operations/ collection as a canonical operations document independent from the operator/public-entry authority; the exact source remains recoverable from Git."
+    },
+    {
       "old_path": "docs/evidence/migrations/README.md",
       "last_live_commit": "e8148093f7e6f3c7768ba17e19c9425af22cfc70",
       "old_blob_sha": "f1008ba0300c8aecdc2246cbc45e977b1c5e6234",
