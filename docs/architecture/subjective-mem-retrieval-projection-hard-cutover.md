@@ -1471,7 +1471,7 @@ Authorized new owners are:
 
 - `relaylm/managed_chat_pipeline_runtime.py` for post-validation
   compile/scope/evidence/stage orchestration and one explicit private result;
-- `relaylm/relaymem_retrieval_dry_run.py` for the legacy M2 dry-run artifact;
+- `relaylm/retrieval/dry_run.py` for the legacy M2 dry-run artifact;
 - `_relaymem_retrieval_candidates.py` and `_relaymem_retrieval_snippet.py` only
   when exact extraction evidence is required to keep that owner bounded;
 - `relaylm/relaymem_primary_recall_selection.py` for selection,

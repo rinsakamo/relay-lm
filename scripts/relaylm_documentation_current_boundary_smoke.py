@@ -593,7 +593,7 @@ RT1_STRUCTURAL_ANCHORS = (
     "        -> fresh RT-1D runtime implementation\n"
     "           -> mandatory same-lane P8 after merge",
     "relaylm/managed_chat_pipeline_runtime.py",
-    "relaylm/relaymem_retrieval_dry_run.py",
+    "relaylm/retrieval/dry_run.py",
     "_relaymem_retrieval_candidates.py",
     "_relaymem_retrieval_snippet.py",
     "relaylm/relaymem_primary_recall_selection.py",

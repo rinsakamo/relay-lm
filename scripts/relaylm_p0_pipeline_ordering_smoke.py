@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 from relaylm.pipeline_ordering import build_p0_pipeline_order_projection
-from relaylm.relaymem_retrieval_dry_run import build_relaymem_retrieval_dry_run_artifact
+from relaylm.retrieval.dry_run import build_relaymem_retrieval_dry_run_artifact
 from relaylm.relayrel import build_relayrel_relationship_projection
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
 

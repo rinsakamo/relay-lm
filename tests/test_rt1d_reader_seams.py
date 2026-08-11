@@ -21,12 +21,12 @@ from relaylm.managed_chat_pipeline_runtime import (
 )
 from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
 from relaylm.relaymem_retrieval import run_relaymem_retrieval_stage
-from relaylm.relaymem_retrieval_dry_run import build_relaymem_retrieval_dry_run_artifact
+from relaylm.retrieval.dry_run import build_relaymem_retrieval_dry_run_artifact
 
 ROOT = Path(__file__).resolve().parents[1]
 NEW_MODULES = (
     "relaylm/managed_chat_pipeline_runtime.py",
-    "relaylm/relaymem_retrieval_dry_run.py",
+    "relaylm/retrieval/dry_run.py",
     "relaylm/retrieval/candidates.py",
     "relaylm/retrieval/snippet.py",
     "relaylm/relaymem_primary_recall_store.py",
@@ -157,11 +157,11 @@ def test_moved_ctx_hints_fail_closed_and_ignore_top_level_list() -> None:
 
 
 def test_dependency_direction_and_moved_ownership() -> None:
-    assert "relaylm.relaymem_retrieval_dry_run" in _imports(
+    assert "relaylm.retrieval.dry_run" in _imports(
         "relaylm/relaymem_retrieval.py"
     )
     for path in (
-        "relaylm/relaymem_retrieval_dry_run.py",
+        "relaylm/retrieval/dry_run.py",
         "relaylm/retrieval/candidates.py",
         "relaylm/retrieval/snippet.py",
     ):
