@@ -13,13 +13,13 @@ relaylm_not_authoritative_for:
   - any specific dated mobile dogfood observation result
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../../evaluation/mobile-dogfood-observation.md
+  - ../../operations/mobile-dogfood-observation.md
 ---
 # Mobile Dogfood Summary Report Template
 
 This is a **non-authoritative template**, not evidence. It is a
 content-free summary stub for the
-[Mobile Dogfood Observation Method](../../evaluation/mobile-dogfood-observation.md).
+[Mobile Dogfood Observation Method](../../operations/mobile-dogfood-observation.md).
 It holds no actual conversation content, no real transcripts, and no
 performance claims until a maintainer fills it in from real, locally-run
 observation. This template does not update v0.1 readiness or any release

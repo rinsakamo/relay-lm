@@ -50,7 +50,7 @@ scripts/relaylm_lat1_retrieval_bench.py         M2 retrieval scaling bench runne
 scripts/relaylm_lat1_timing_smoke.py            node timing + timing_summary smoke
 scripts/relaylm_lat1_timing_security_smoke.py   content-free timing/bench-output smoke
 scripts/relaylm_lat1_bench_smoke.py             minimal generate->bench->schema smoke
-docs/evaluation/lat1-retrieval-scaling.md         retrieval scaling bench method
+docs/operations/lat1-retrieval-scaling.md         retrieval scaling bench method
 docs/templates/evaluation/lat1-retrieval-scaling-report.md  bench report template (results blank)
 ```
 
@@ -126,7 +126,7 @@ raised or logged as content. Note that per-node `node_statuses` (with their
 own `started_at`/`completed_at`/`duration_ms`) are **not** added to the
 `_RELAYRUN` projection whitelist by this slice -- they remain visible only
 in-process during request handling, matching this projector's pre-existing
-scope. Use `docs/evaluation/lat1-retrieval-scaling.md`'s reproduction
+scope. Use `docs/operations/lat1-retrieval-scaling.md`'s reproduction
 steps or a direct call to
 `relaylm.relayrun_runtime_artifact._build_relayrun_runtime_artifact` to inspect
 node-level timing.

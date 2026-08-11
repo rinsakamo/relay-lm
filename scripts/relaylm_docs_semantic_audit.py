@@ -396,7 +396,7 @@ LAT1_RETIRED_SCAFFOLD_PATH = "docs/evaluation/lat1_retrieval_scaling_report.md"
 # generically would make this guard reject the template's own legitimate
 # name. Only the underscored stem ever identifies the retired source.
 LAT1_REFERENCE_PATTERN = re.compile(r"\blat1_retrieval_scaling_report\b")
-LAT1_METHOD_PATH = "docs/evaluation/lat1-retrieval-scaling.md"
+LAT1_METHOD_PATH = "docs/operations/lat1-retrieval-scaling.md"
 LAT1_TEMPLATE_PATH = "docs/templates/evaluation/lat1-retrieval-scaling-report.md"
 
 # Files whose entire content is historical record-keeping by construction
@@ -495,8 +495,8 @@ def check_lat1_evaluation_split(errors: list[str]) -> None:
         errors.append(str(exc))
         return
 
-    if method_metadata.get("relaylm_doc_type") != "evaluation_method":
-        errors.append(f"{LAT1_METHOD_PATH}: relaylm_doc_type must be 'evaluation_method'")
+    if method_metadata.get("relaylm_doc_type") != "operations":
+        errors.append(f"{LAT1_METHOD_PATH}: relaylm_doc_type must be 'operations'")
     if template_metadata.get("relaylm_doc_type") != "template":
         errors.append(f"{LAT1_TEMPLATE_PATH}: relaylm_doc_type must be 'template'")
 
@@ -776,7 +776,9 @@ def check_no_live_e1_local_runtime_architecture_path(errors: list[str]) -> None:
 # REQUIRED_METADATA_PATHS) is still caught.
 # ---------------------------------------------------------------------------
 MOBILE_DOGFOOD_RETIRED_TO_CANONICAL: dict[str, str] = {
-    "docs/evaluation/mobile_dogfood_observation_runbook.md": "docs/evaluation/mobile-dogfood-observation.md",
+    "docs/evaluation/mobile_dogfood_observation_runbook.md": "docs/operations/mobile-dogfood-observation.md",
+    "docs/evaluation/mobile-dogfood-observation.md": "docs/operations/mobile-dogfood-observation.md",
+    "docs/evaluation/lat1-retrieval-scaling.md": "docs/operations/lat1-retrieval-scaling.md",
     "docs/tools/mobile_dogfood_entry.md": "docs/operations/mobile-dogfood-entry.md",
     "docs/evaluation/mobile_dogfood_summary_report_template.md": "docs/templates/evaluation/mobile-dogfood-summary-report.md",
     "docs/evaluation/templates/mobile_dogfood_daily_note_template.md": "docs/templates/evaluation/mobile-dogfood-daily-note.md",
@@ -830,7 +832,16 @@ MOBILE_DOGFOOD_REFERENCE_ALLOWLISTED_FILES: frozenset[str] = frozenset()
 # current file legitimately names one of these retired literals. No generic
 # frozen/historical/status bypass and no generic allowance beyond exact
 # reviewed lines added here.
-MOBILE_DOGFOOD_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {}
+MOBILE_DOGFOOD_REFERENCE_LINE_ALLOWLIST: dict[str, tuple[str, ...]] = {
+    "docs/planning/documentation-architecture-inventory.md": tuple(
+        f"| `{retired_path}` |"
+        for retired_path, canonical_path in MOBILE_DOGFOOD_RETIRED_TO_CANONICAL.items()
+        if canonical_path in {
+            "docs/operations/lat1-retrieval-scaling.md",
+            "docs/operations/mobile-dogfood-observation.md",
+        }
+    ),
+}
 
 # This guard's own implementation file. Narrow, exact-line self-allowance
 # only -- not a whole-file exemption. The only lines in this file that may
@@ -937,8 +948,6 @@ def check_no_live_mobile_dogfood_retired_paths(errors: list[str]) -> None:
         relative_path = path.relative_to(ROOT).as_posix()
         if relative_path in MOBILE_DOGFOOD_RETIRED_TO_CANONICAL:
             continue
-        if relative_path in MOBILE_DOGFOOD_CANONICAL_PATHS:
-            continue
         if relative_path in MOBILE_DOGFOOD_REFERENCE_ALLOWLISTED_FILES:
             continue
         is_self_file = relative_path == MOBILE_DOGFOOD_SELF_FILE
@@ -1004,12 +1013,20 @@ def check_no_live_mobile_dogfood_retired_paths(errors: list[str]) -> None:
 
 
 def check_mobile_dogfood_family_types(errors: list[str]) -> None:
-    method_path = "docs/evaluation/mobile-dogfood-observation.md"
+    method_path = "docs/operations/mobile-dogfood-observation.md"
     method_meta, _ = parse_front_matter(method_path)
-    if method_meta.get("relaylm_doc_type") != "evaluation_method":
+    if method_meta.get("relaylm_doc_type") != "operations":
         errors.append(
-            f"{method_path}: must declare relaylm_doc_type: evaluation_method, "
+            f"{method_path}: must declare relaylm_doc_type: operations, "
             f"not {method_meta.get('relaylm_doc_type')!r}"
+        )
+
+    lat1_path = "docs/operations/lat1-retrieval-scaling.md"
+    lat1_meta, _ = parse_front_matter(lat1_path)
+    if lat1_meta.get("relaylm_doc_type") != "operations":
+        errors.append(
+            f"{lat1_path}: must declare relaylm_doc_type: operations, "
+            f"not {lat1_meta.get('relaylm_doc_type')!r}"
         )
 
     operations_path = "docs/operations/mobile-dogfood-entry.md"
@@ -3094,8 +3111,8 @@ def self_test() -> None:
         ROOT = base
         _mvp_write(
             base,
-            "docs/evaluation/lat1-retrieval-scaling.md",
-            "---\nrelaylm_doc_type: evaluation_method\nrelaylm_authority: lat1_method\n---\n\nBody.\n",
+            "docs/operations/lat1-retrieval-scaling.md",
+            "---\nrelaylm_doc_type: operations\nrelaylm_authority: lat1_method\n---\n\nBody.\n",
         )
         _mvp_write(
             base,
@@ -3116,8 +3133,8 @@ def self_test() -> None:
         ROOT = base
         _mvp_write(
             base,
-            "docs/evaluation/lat1-retrieval-scaling.md",
-            "---\nrelaylm_doc_type: evaluation_method\nrelaylm_authority: shared_key\n---\n\nBody.\n",
+            "docs/operations/lat1-retrieval-scaling.md",
+            "---\nrelaylm_doc_type: operations\nrelaylm_authority: shared_key\n---\n\nBody.\n",
         )
         _mvp_write(
             base,
@@ -4154,12 +4171,12 @@ def self_test() -> None:
         ROOT = base
         _mvp_write(
             base,
-            "docs/evaluation/mobile-dogfood-observation.md",
-            "---\nrelaylm_doc_type: evaluation_method\nrelaylm_status: current\n---\n\nBody.\n",
+            "docs/operations/mobile-dogfood-observation.md",
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
         )
         _mvp_write(
             base,
-            "docs/evaluation/example_index.md",
+            "docs/operations/example_index.md",
             "---\nrelaylm_doc_type: documentation_index\nrelaylm_status: current\n---\n\n"
             "- [method](mobile-dogfood-observation.md)\n",
         )
@@ -4229,13 +4246,18 @@ def self_test() -> None:
         )
         _mvp_write(
             base,
-            "docs/evaluation/mobile-dogfood-observation.md",
-            "---\nrelaylm_doc_type: evaluation_method\nrelaylm_status: current\n---\n\nBody.\n",
+            "docs/operations/mobile-dogfood-observation.md",
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
         )
         _mvp_write(
             base,
             "docs/operations/mobile-dogfood-entry.md",
             "---\nrelaylm_doc_type: operations\nrelaylm_status: target\n---\n\nBody.\n",
+        )
+        _mvp_write(
+            base,
+            "docs/operations/lat1-retrieval-scaling.md",
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
         )
         check_rejects(
             "a mobile-dogfood template synthetically typed evaluation_record is rejected",
@@ -4529,8 +4551,8 @@ def self_test() -> None:
         ROOT = base
         _mvp_write(
             base,
-            "docs/evaluation/mobile-dogfood-observation.md",
-            "---\nrelaylm_doc_type: evaluation_method\nrelaylm_status: current\n---\n\nBody.\n",
+            "docs/operations/mobile-dogfood-observation.md",
+            "---\nrelaylm_doc_type: operations\nrelaylm_status: current\n---\n\nBody.\n",
         )
         front_matter = (
             "---\nrelaylm_doc_type: guide\nrelaylm_status: current\n"
@@ -4550,7 +4572,7 @@ def self_test() -> None:
             "  - mobile-dogfood-observation.md\n"
             "---\n\nBody.\n"
         )
-        _mvp_write(base, "docs/evaluation/example_all_keys_relative.md", front_matter)
+        _mvp_write(base, "docs/operations/example_all_keys_relative.md", front_matter)
         check_silent(
             "relative canonical values for every supported path-bearing front-matter key are allowed",
             check_no_live_mobile_dogfood_retired_paths,

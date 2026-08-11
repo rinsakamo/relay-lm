@@ -77,4 +77,4 @@ Offline Twin Extraction and approved-review import tooling remain caller-invoked
 
 LAT-1 and LAT-2 remain measurement-only infrastructure. They do not change request behavior, search algorithms, timeouts, degradation policy, SSE payloads, or latency guarantees. See [LAT-1](../architecture/lat1_latency_measurement.md) and [LAT-2](../architecture/lat2_mobile_perceived_latency.md).
 
-Mobile dogfood documents remain local evaluation/target guidance, not external-publication acceptance or runtime authority. See [Mobile Dogfood Entry](../operations/mobile-dogfood-entry.md) and [Mobile Dogfood Observation](../evaluation/mobile-dogfood-observation.md).
+Mobile dogfood documents remain local evaluation/target guidance, not external-publication acceptance or runtime authority. See [Mobile Dogfood Entry](../operations/mobile-dogfood-entry.md) and [Mobile Dogfood Observation](../operations/mobile-dogfood-observation.md).
