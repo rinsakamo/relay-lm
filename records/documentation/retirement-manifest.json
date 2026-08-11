@@ -715,6 +715,15 @@
       "retention_reason": "D2-B1 replaced the root compatibility redirect with canonical compile/checkpoint architecture and the existing exact compile contract authorities; the redirect remains recoverable from Git."
     },
     {
+      "old_path": "docs/smoke/README.md",
+      "last_live_commit": "63518bf616d554dc1a9d50b2f1ce5b2e5c38a4bf",
+      "old_blob_sha": "9a78205de99a4de7a5be570f3772c152c1159678",
+      "removed_by_pr": 1066,
+      "replacement_paths": [],
+      "disposition": "retired_git_history_only",
+      "retention_reason": "D6-R23 retired the transitional smoke collection router after permanent operator, smoke, troubleshooting, and repeatable evaluation procedures had converged under docs/operations/ and completed bounded evaluation records had converged under docs/evidence/evaluations/; it had no unique surviving authority, and the exact router remains recoverable from Git history."
+    },
+    {
       "old_path": "docs/smoke/e2_value_smoke_runbook.md",
       "last_live_commit": "ad4017f09db944adeb28263031e22bc2fa04bde2",
       "old_blob_sha": "7331a483a4de30a644ff2dc286d703bf010b7f2e",
@@ -790,6 +799,17 @@
       ],
       "disposition": "replaced",
       "retention_reason": "D6-R21 moved the RelayMEM runtime payload diff evaluation procedure into the permanent docs/operations/ collection as a canonical graph document, because the corrected placement authority routes repeatable operator evaluation method to operations rather than a transitional evaluation collection; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/smoke/scripts_inventory.md",
+      "last_live_commit": "63518bf616d554dc1a9d50b2f1ce5b2e5c38a4bf",
+      "old_blob_sha": "c96255fb16b5cd9f6c3d009a9e6fd736c209133c",
+      "removed_by_pr": 1066,
+      "replacement_paths": [
+        "docs/evidence/evaluations/scripts_inventory.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D6-R23 retyped and moved the reviewed PR #544 scripts-inventory snapshot into docs/evidence/evaluations/ as frozen evidence, while preserving generated/scripts_inventory.md and the scripts-inventory CI artifact as the current row-level review output; live consumers and the generator exclusion moved atomically, and the exact source remains recoverable from Git."
     },
     {
       "old_path": "docs/templates/implementation-completion-report.md",
