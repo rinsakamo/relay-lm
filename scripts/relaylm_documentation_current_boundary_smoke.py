@@ -1666,7 +1666,7 @@ R4_RUNTIME_PROJECTION_ANCHORS = {
         "`relaylm/_subjective_mem_retrieval_runtime_projection.py`, which depends on the "
         "existing canonical source authorities, "
         "`relaylm/subjective_mem/retrieval_projection.py`, and "
-        "`relaylm/subjective_mem_retrieval_projection_store.py`",
+        "`relaylm/subjective_mem/retrieval_projection_store.py`",
         "No reverse import is allowed.",
         "The existing projection builder and store and the canonical and lifecycle "
         "owners remain byte-identical.",

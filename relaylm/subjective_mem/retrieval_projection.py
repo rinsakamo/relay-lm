@@ -18,7 +18,7 @@ the owner whether they are exact, and reports each answer as one RT-1A row flag.
 
 This module derives the projection value only. Disposable persistence, bundle
 decoding, and source-bound trusted loading live in
-``relaylm.subjective_mem_retrieval_projection_store``, which depends on this
+``relaylm.subjective_mem.retrieval_projection_store``, which depends on this
 owner and never the other way round. Nothing here raises for rejected input.
 """
 from __future__ import annotations

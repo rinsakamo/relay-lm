@@ -16,7 +16,7 @@ from relaylm.subjective_mem.retrieval import (
     RETRIEVAL_USAGE_EVENT_KIND,
     derive_subjective_mem_retrieval_usage_event,
 )
-from relaylm.subjective_mem_retrieval_projection_store import (
+from relaylm.subjective_mem.retrieval_projection_store import (
     PROJECTION_BUNDLE_FILENAME,
     delete_subjective_mem_retrieval_projection,
 )

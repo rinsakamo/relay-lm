@@ -1,7 +1,7 @@
 """RT-1B disposable Subjective MEM retrieval projection bundle store.
 
 One replace-only local file holds exactly one projection generation. The store
-depends on ``relaylm.subjective_mem_retrieval_projection`` and never the other
+depends on ``relaylm.subjective_mem.retrieval_projection`` and never the other
 way round: that module owns deriving the projection value from canonical
 authority, and this one owns only serializing, replacing, reading, and deleting
 it.

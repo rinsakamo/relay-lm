@@ -43,7 +43,7 @@ from .subjective_mem.retrieval_projection import (
     SubjectiveMemRetrievalProjectionSourceEntry,
     build_subjective_mem_retrieval_projection,
 )
-from .subjective_mem_retrieval_projection_store import (
+from .subjective_mem.retrieval_projection_store import (
     delete_subjective_mem_retrieval_projection,
     read_subjective_mem_retrieval_projection,
     write_subjective_mem_retrieval_projection,
