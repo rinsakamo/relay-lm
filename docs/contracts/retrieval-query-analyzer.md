@@ -82,7 +82,7 @@ The current retrieval consumer and projection assembly are:
 
 ```text
 relaylm/relaymem_retrieval_dry_run.py
-relaylm/_relaymem_retrieval_candidates.py
+relaylm/retrieval/candidates.py
 ```
 
 The shared analyzer-governance authority remains:
