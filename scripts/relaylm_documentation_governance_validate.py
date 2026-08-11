@@ -689,7 +689,11 @@ def validate_repository(
     pull_request_number: int | None = None,
 ) -> list[str]:
     new_paths = new_paths_since_base(root, base_ref) if base_ref else set()
-    required = {path for path in new_paths if path.startswith("docs/") and path.endswith(".md")}
+    required = {
+        path
+        for path in new_paths
+        if path.endswith(".md") and allowed_doc_types(PurePosixPath(path))
+    }
     errors = validate_active_documents(root, required)
     record_errors, _registry, manifest, transitional = validate_records(root)
     errors.extend(record_errors)
