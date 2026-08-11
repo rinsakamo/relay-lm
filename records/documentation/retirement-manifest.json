@@ -618,6 +618,17 @@
       "retention_reason": "D6-R3 retired the completed source-by-source hard-cutover ledger after 1C-57 and the later D6 retirement slices removed its current workflow and audit consumers; its complete append-only history remains recoverable from the recorded Git blob."
     },
     {
+      "old_path": "docs/openwebui_lmstudio_mvp.md",
+      "last_live_commit": "e6782221abd0c94278f9d4d295ac5454e9428ddc",
+      "old_blob_sha": "86b225475579857c598b3c692d8009014dc7b340",
+      "removed_by_pr": 1050,
+      "replacement_paths": [
+        "docs/guides/openwebui-lmstudio-integration.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D6-R20 moved the root OpenWebUI and LM Studio operator setup into the permanent docs/guides/ collection under a name without the MVP milestone token, added canonical graph metadata, re-anchored nine internal relative links for the new directory depth, migrated both READMEs, the onboarding config smoke workflow, and the route differentiation checks, and repointed the runtime_architecture replacement edge; the exact root document remains recoverable from Git."
+    },
+    {
       "old_path": "docs/planning/documentation-cutover-rules.yaml",
       "last_live_commit": "91850d2230600ea70f8a8f946cec80eb13ed9627",
       "old_blob_sha": "ac85d244216278edbbfc6541806c881b95c1b496",
