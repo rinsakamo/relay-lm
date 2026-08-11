@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 import re
 from typing import TYPE_CHECKING, Any, Literal
 
-from relaylm.client_instruction_cache_lookup import (
+from relaylm.interfaces.openai.client_instruction_cache_lookup import (
     ClientInstructionCacheLookupResult,
     assert_client_instruction_cache_lookup_diagnostics_content_free,
     build_client_instruction_cache_lookup_diagnostics,
