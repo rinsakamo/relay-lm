@@ -16,7 +16,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 ---
 # RelaySOUL Design and Gate Docs
 
-This directory is a transitional collection. It indexes the RelaySOUL update cadence, dry-run/preflight chain and gate review records, and explicitly post-MVP experimental SOUL replacement work that has not yet reached a permanent owner.
+This directory is a transitional collection. It indexes the RelaySOUL update cadence and explicitly post-MVP experimental SOUL replacement work that has not yet reached a permanent owner.
 
 Durable RelaySOUL portable identity and source-authority architecture is not housed here. It lives at [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md). Exact execution-gate and artifact-persistence authority lives under `docs/contracts/`.
 
@@ -59,15 +59,9 @@ No showcase source set is published from this collection. A documented source-se
 
 - [Experimental SOUL Replacement and Memory Bootstrap Design](experimental_soul_replacement_memory_bootstrap_design.md) — future high-risk non-destructive SOUL fork, SLP-governed memory inheritance, optional provisional virtual memory from conversation history, fresh relationship state, and explicit rollback. This is not part of the MVP or ordinary same-character SOUL revision.
 
-## Chain summaries
+## Completed chain and gate review evidence
 
-- [RelaySOUL dry-run chain summary](relaysoul_dry_run_chain_summary.md)
-- [RelaySOUL preflight chain summary](relaysoul_preflight_chain_summary.md)
-- [RelaySOUL persistence preflight summary](relaysoul_persistence_preflight_summary.md)
-
-## Gate design review
-
-- [RelaySOUL gate design consistency review](relaysoul_gate_design_consistency_review.md)
+The RelaySOUL dry-run chain, preflight chain, persistence preflight, and gate design consistency review are completed records. They are retained as frozen bounded evidence under [Implementation Evidence](../evidence/implementation/README.md) and are not current authority. Current gate, persistence, and identity semantics are the canonical owners linked above.
 
 ## Related contracts
 
@@ -77,4 +71,4 @@ No showcase source set is published from this collection. A documented source-se
 
 `docs/relaysoul/` is not a permanent destination. Do not create new durable RelaySOUL architecture here: durable portable identity and source-authority content belongs to [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md), schemas and artifact contracts belong under `docs/contracts/`, and implementation evidence belongs under `docs/evidence/implementation/`.
 
-The remaining cadence, chain-summary, gate-review, and experimental documents stay indexed here only until their own cutover slices move them to permanent owners and this collection is retired.
+The remaining cadence and experimental documents stay indexed here only until their own cutover slices move them to permanent owners and this collection is retired.
