@@ -238,8 +238,8 @@ Use:
 - [OpenWebUI + LM Studio manual smoke](../operations/openwebui-lmstudio-manual-smoke.md)
 - [Client history exclusion manual smoke](../operations/client-history-exclusion-manual-smoke.md)
 - [Manual smoke results template](../templates/evaluation/openwebui-lmstudio-manual-smoke-results.md)
-- [OpenWebUI model preset/avatar checklist](../smoke/openwebui_model_preset_checklist.md)
-- [OpenWebUI route response differentiation checks](../smoke/openwebui_response_differentiation_checks.md)
-- [Troubleshooting](../smoke/openwebui_lmstudio_troubleshooting.md)
+- [OpenWebUI model preset/avatar checklist](../operations/openwebui-model-preset-checklist.md)
+- [OpenWebUI route response differentiation checks](../operations/openwebui-response-differentiation-checks.md)
+- [Troubleshooting](../operations/openwebui-lmstudio-troubleshooting.md)
 
 The manual smoke separates default compatibility, v0 no-instruction apply, valid-v1 explicit-provenance apply, invalid-v1 fail-closed behavior, and explicit pass-through exemption.

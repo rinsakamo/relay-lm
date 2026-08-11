@@ -210,7 +210,7 @@ The zero-character state opens Create / Import. Character creation and workspace
 
 ## 🧰 Troubleshooting
 
-Connection problem? See the [OpenWebUI + RelayLM + LM Studio troubleshooting guide](docs/smoke/openwebui_lmstudio_troubleshooting.md).
+Connection problem? See the [OpenWebUI + RelayLM + LM Studio troubleshooting guide](docs/operations/openwebui-lmstudio-troubleshooting.md).
 
 ## 🏗️ Architecture
 

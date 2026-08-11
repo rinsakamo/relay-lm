@@ -1,3 +1,26 @@
+---
+relaylm_doc_type: operations
+relaylm_authority: value_smoke_runbook_operations
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: runtime
+relaylm_lifecycle: stable
+relaylm_authority_level: operation
+relaylm_primary_consumers:
+  - operators running the value smoke before a release gate
+relaylm_update_trigger:
+  - the value smoke procedure or its expected results change
+  - a release gate changes which smoke it requires
+relaylm_not_authoritative_for:
+  - current repository implementation status
+  - exact runtime schemas, gates, or mutation contracts
+  - release readiness decisions
+  - repository execution sequencing
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../DOCUMENTATION_MODEL.md
+  - ../PROJECT_STATUS.md
+---
 # E2 value smoke runbook
 
 This runbook explains how to run the local E2 value smoke harness for a human RelayLM-vs-direct-backend comparison.

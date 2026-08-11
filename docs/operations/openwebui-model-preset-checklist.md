@@ -1,3 +1,26 @@
+---
+relaylm_doc_type: operations
+relaylm_authority: openwebui_model_preset_checklist_operations
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: runtime
+relaylm_lifecycle: stable
+relaylm_authority_level: operation
+relaylm_primary_consumers:
+  - operators configuring OpenWebUI model presets and avatars
+relaylm_update_trigger:
+  - the preset or avatar configuration steps change
+  - an expected preset result changes
+relaylm_not_authoritative_for:
+  - current repository implementation status
+  - exact runtime schemas, gates, or mutation contracts
+  - release readiness decisions
+  - repository execution sequencing
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../DOCUMENTATION_MODEL.md
+  - ../PROJECT_STATUS.md
+---
 # OpenWebUI Model Preset / Avatar Checklist
 
 ## Scope
@@ -75,7 +98,7 @@ Verify:
 
 - use the same backend model,
 - switch only RelayLM route/model ID,
-- use controlled prompts from [response differentiation checks](openwebui_response_differentiation_checks.md),
+- use controlled prompts from [response differentiation checks](openwebui-response-differentiation-checks.md),
 - verify route/profile differences,
 - fail rather than reward fabricated prior memory.
 
