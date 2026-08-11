@@ -1,3 +1,29 @@
+---
+relaylm_doc_type: guide
+relaylm_authority: openwebui_lmstudio_integration_guide
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: runtime
+relaylm_lifecycle: stable
+relaylm_authority_level: operation
+relaylm_primary_consumers:
+  - operators connecting OpenWebUI and LM Studio to RelayLM
+  - contributors reproducing the standard local setup
+relaylm_update_trigger:
+  - the standard OpenWebUI or LM Studio topology changes
+  - the copy-ready example configuration changes
+  - a managed-route setup step or expected result changes
+relaylm_not_authoritative_for:
+  - current repository implementation status
+  - exact configuration field definitions
+  - exact runtime schemas, gates, or mutation contracts
+  - repository execution sequencing
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../DOCUMENTATION_MODEL.md
+  - ../reference/configuration.md
+  - ../PROJECT_STATUS.md
+---
 # OpenWebUI + LM Studio MVP
 
 ## MVP topology
@@ -38,7 +64,7 @@ Broader target:
   including minimum active transaction preservation
 ```
 
-When a remote backend is configured, assume all backend-bound messages may leave the local machine. Review [Project Status](PROJECT_STATUS.md) and the [Client History Authority Contract](architecture/client_history_authority_contract.md) before enabling actual apply.
+When a remote backend is configured, assume all backend-bound messages may leave the local machine. Review [Project Status](../PROJECT_STATUS.md) and the [Client History Authority Contract](../architecture/client_history_authority_contract.md) before enabling actual apply.
 
 ## OpenWebUI usage policy
 
@@ -166,7 +192,7 @@ Default streaming remains compatible backend SSE forwarding. Phase 5.5 stream su
 
 ## Copy-ready config structure
 
-The actual file is [examples/config/openwebui_lmstudio.yaml](../examples/config/openwebui_lmstudio.yaml).
+The actual file is [examples/config/openwebui_lmstudio.yaml](../../examples/config/openwebui_lmstudio.yaml).
 
 Persona paths belong under `characters`, not `model_routes`:
 
@@ -209,11 +235,11 @@ Copy-ready profiles use `scene_state` as the only current scene file field.
 
 Use:
 
-- [OpenWebUI + LM Studio manual smoke](smoke/../operations/openwebui-lmstudio-manual-smoke.md)
-- [Client history exclusion manual smoke](smoke/../operations/client-history-exclusion-manual-smoke.md)
-- [Manual smoke results template](smoke/../templates/evaluation/openwebui-lmstudio-manual-smoke-results.md)
-- [OpenWebUI model preset/avatar checklist](smoke/openwebui_model_preset_checklist.md)
-- [OpenWebUI route response differentiation checks](smoke/openwebui_response_differentiation_checks.md)
-- [Troubleshooting](smoke/openwebui_lmstudio_troubleshooting.md)
+- [OpenWebUI + LM Studio manual smoke](../operations/openwebui-lmstudio-manual-smoke.md)
+- [Client history exclusion manual smoke](../operations/client-history-exclusion-manual-smoke.md)
+- [Manual smoke results template](../templates/evaluation/openwebui-lmstudio-manual-smoke-results.md)
+- [OpenWebUI model preset/avatar checklist](../smoke/openwebui_model_preset_checklist.md)
+- [OpenWebUI route response differentiation checks](../smoke/openwebui_response_differentiation_checks.md)
+- [Troubleshooting](../smoke/openwebui_lmstudio_troubleshooting.md)
 
 The manual smoke separates default compatibility, v0 no-instruction apply, valid-v1 explicit-provenance apply, invalid-v1 fail-closed behavior, and explicit pass-through exemption.
