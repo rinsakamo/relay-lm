@@ -38,7 +38,7 @@ The contract verifies that registered command paths exist, every executable grou
 
 ## Script inventory
 
-Generate the row-level maintainer inventory outside the hand-maintained summary file:
+Generate the row-level maintainer inventory outside the frozen evidence record:
 
 ```bash
 python scripts/relaylm_generate_scripts_inventory.py \
@@ -47,7 +47,7 @@ python scripts/relaylm_generate_scripts_inventory.py \
 
 The generator records the exact checked-out commit SHA and treats commands registered in the consolidated runner as CI references. The `Scripts inventory artifact` workflow uploads a freshly generated copy for pull-request review.
 
-Do not generate directly into `docs/smoke/scripts_inventory.md`; that file is a concise reviewed snapshot and pointer, not the generated row-level table.
+Do not generate directly into `docs/evidence/evaluations/scripts_inventory.md`; that file is frozen reviewed evidence, not the generated row-level table.
 
 Regenerate after:
 

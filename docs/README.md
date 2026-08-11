@@ -200,4 +200,5 @@ These documents are target architecture unless explicitly listed as a current co
 - active and completed bounded handoffs -> `docs/architecture/`
 - schemas and contracts -> `docs/contracts/`
 - RelaySOUL governance -> `docs/relaysoul/`
-- smoke and troubleshooting -> `docs/smoke/`
+- permanent operator, smoke, and troubleshooting procedures -> `docs/operations/`
+- completed bounded evaluation evidence -> `docs/evidence/evaluations/`

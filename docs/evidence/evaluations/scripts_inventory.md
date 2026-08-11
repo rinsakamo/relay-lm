@@ -1,21 +1,29 @@
 ---
-relaylm_doc_type: evaluation_record
+relaylm_doc_type: evidence
 relaylm_authority: reviewed_scripts_inventory_snapshot
-relaylm_status: historical
-relaylm_volatility: high
+relaylm_status: frozen
+relaylm_volatility: low
 relaylm_owner: validation
 relaylm_update_trigger:
-  - a new generated inventory artifact is reviewed
-  - script, workflow, registry, or documentation reference counts change
+  - metadata or link repair only
 relaylm_not_authoritative_for:
   - live repository counts after the recorded source commit
   - runtime implementation status
   - whether an unreferenced script is safe to delete
-relaylm_current_status_source: ../PROJECT_STATUS.md
+  - repeatable inventory generation methodology
+relaylm_current_status_source: ../../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../../operations/consolidated-smoke-workflow-maintenance.md
+relaylm_source_commit: 167bc884223b5c6c4b1bb0e9c0086efcac80e814
+relaylm_source_pr: 544
+relaylm_source_path: docs/smoke/scripts_inventory.md
+relaylm_recorded_on: 2026-07-11
+relaylm_source_blob: da042c2dfe2699af679b5cb15572b0a6a11e5704
+relaylm_source_content_sha256: a653ea0f2506ce4c756a366174c0bdcf5710964a5921fe655d2c35b084bc1334
 ---
 # Scripts Inventory
 
-This is the maintainer-facing summary for a reviewed mechanically generated script inventory. The row-level inventory is generated in CI and uploaded as the `scripts-inventory` artifact by `.github/workflows/scripts-inventory.yml`; it is intentionally not kept as a large hand-maintained table in Git.
+This frozen evidence record preserves the maintainer-facing summary of a reviewed mechanically generated script inventory from PR #544. The row-level inventory is generated in CI and uploaded as the `scripts-inventory` artifact by `.github/workflows/scripts-inventory.yml`; it is intentionally not kept as a large hand-maintained table in Git.
 
 ## Recorded snapshot
 
@@ -56,4 +64,4 @@ For pull requests, use the uploaded `scripts-inventory` artifact as review evide
 
 Reference status and filename shape are mechanical review inputs only. The reviewed-classification columns mirror one complete current Lane R registry claim; they do not create authority or authorize lifecycle, retention, deletion, consolidation, or rename decisions. Conflicting responsibility, lifecycle, or owner claims fail generation rather than selecting one.
 
-After reviewing a new artifact, update this summary only with its source commit/run and aggregate counts. Do not copy the generated row table into this file and do not overwrite this file with the generator.
+Do not rewrite this frozen evidence record with later counts and do not overwrite it with the generator. Future current reviews use the generated CI artifact. If a later reviewed snapshot is intentionally retained, preserve it as a separate evidence record with its own provenance instead of updating this record.

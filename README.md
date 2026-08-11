@@ -269,7 +269,8 @@ For authoritative ownership and order, see the [Pipeline Responsibilities](docs/
 - 🚀 [OpenWebUI + LM Studio guide](docs/guides/openwebui-lmstudio-integration.md)
 - ⚙️ [Configuration reference](docs/reference/configuration.md)
 - 📜 [Contracts](docs/contracts/README.md)
-- 🧪 [Smoke tests and validation](docs/smoke/README.md)
+- 🧪 [Smoke procedures and validation operations](docs/operations/)
+- 📊 [Completed evaluation evidence](docs/evidence/evaluations/)
 - 🧬 [RelaySOUL design and gates](docs/relaysoul/README.md)
 - 🗃️ [Implementation evidence](docs/evidence/implementation/README.md)
 
