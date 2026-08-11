@@ -61,7 +61,7 @@ A result with no blocking reasons means only that this comparison passed. A sepa
 
 ## Target migration
 
-The target RelaySOUL migration must carry mode, target-file classes, evidence references, schema version, and approval state across candidate, revision, approval, apply, rollback, and storage stages. The current five-file compatibility allowlist must move to the three-file target ownership boundary as one coordinated migration.
+The target RelaySOUL migration must carry mode, target-file classes, evidence references, schema version, and approval state across candidate, revision, approval, apply, rollback, and storage stages. The current five-file compatibility allowlist must move to the file-first target source ownership boundary as one coordinated migration.
 
 See the [Current / Target / Migration Guide](../architecture/current_target_migration_guide.md).
 

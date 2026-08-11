@@ -60,7 +60,7 @@ A successful result means only that this metadata comparison passed. It is not a
 
 ## Target migration
 
-The three-file RelaySOUL migration must update the target mapping, current compiler relationship, revision/approval/apply consumers, schema versions, and smoke fixtures together. Future target-renderer validation remains separate from this current metadata-only comparison.
+The file-first RelaySOUL source migration must update the target mapping, current compiler relationship, revision/approval/apply consumers, schema versions, and smoke fixtures together. Target portable source ownership is defined by [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md); the current `OUTPUT_POLICY.md` and `RELATIONSHIP_ANCHOR.md` block names are compatibility identities, not permanent target source names. Future target-renderer validation remains separate from this current metadata-only comparison.
 
 ## Safety constraints
 

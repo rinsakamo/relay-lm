@@ -125,19 +125,24 @@ This projection is a target form, not the current patch-candidate artifact.
 
 ## Target ownership boundary
 
-The target RelaySOUL patch allowlist is:
+The target RelaySOUL patch allowlist is the file-first portable source set owned by [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md):
 
 ```text
 SOUL.md
-OUTPUT_POLICY.md
-RELATIONSHIP_ANCHOR.md
+STYLE.md
+EMOTION.md
+BOUNDARY.md
+LORE.md (optional)
 ```
+
+`OUTPUT_POLICY.md` and `RELATIONSHIP_ANCHOR.md` are current compatibility names, not permanent target source names. Their durable meanings map into the smallest owning target source: ordinary voice and output surface to `STYLE.md`, disclosure and privacy limits to `BOUNDARY.md`, and relationship role or instance material to RelayREL.
 
 Target routing for excluded state:
 
 ```text
 SCENE_STATE.md / temporary role, setting, task, constraint -> RelaySCN
 STABLE_MEMORY_SUMMARY.md / durable factual memory -> RelaySLP and RelayMEM
+relationship role vocabulary and target-specific relationship state -> RelayREL
 current affect/expression state -> RelayEMO
 short-term topic/question/referents -> RelayCTX
 ```
@@ -151,7 +156,7 @@ patch_candidate:
   schema_version: relaysoul.patch_candidate.v1
   patch_candidate_id: soulpatch_0017
   mode: calibration
-  target_file: OUTPUT_POLICY.md
+  target_file: STYLE.md
   operation: replace_or_consolidate
   rationale: "..."
   patch_text: "..."
@@ -173,7 +178,7 @@ patch_candidate_projection:
   schema_version: relaysoul.patch_candidate_projection.v1
   patch_candidate_id: soulpatch_0017
   mode: calibration
-  target_file_class: output_policy
+  target_file_class: style
   operation_class: replace_or_consolidate
   source_evidence_count: 1
   requires_user_approval: true
@@ -193,7 +198,7 @@ Broad persona exploration is allowed, but every apply still requires explicit ap
 
 ### `calibration`
 
-Prefer `OUTPUT_POLICY.md` and `RELATIONSHIP_ANCHOR.md`. `SOUL.md` requires explicit durable identity/value justification.
+Prefer the smallest owning source: `STYLE.md` for ordinary voice and output surface, `EMOTION.md` for affect-conditioned expression profiles, and `BOUNDARY.md` for privacy, intimacy, and disclosure limits. `SOUL.md` requires explicit durable identity/value justification. Under current compatibility naming these correspond to `OUTPUT_POLICY.md` and `RELATIONSHIP_ANCHOR.md`.
 
 ### `normal_chat`
 

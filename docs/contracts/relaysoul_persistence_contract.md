@@ -34,12 +34,33 @@ Storage readiness is not approval, apply permission, rollback permission, or pro
 
 ## Current supported artifact kinds
 
+The implemented `ALLOWED_ARTIFACT_KINDS` allowlist is:
+
 - `patch_dry_run`
 - `patch_compile_dry_run`
 - `rollback_summary`
 - `approval_summary`
+- `approval_package`
+- `apply_plan`
+- `rollback_plan`
+
+Any other value blocks with `unsupported_artifact_kind`.
 
 Consumers follow the exact implemented schema and kind allowlist. A target design does not extend current support by itself.
+
+## Current status field per kind
+
+Each kind reads its own status field, and a `blocked` or `warning` value adds `artifact_status_blocked` or `artifact_status_warning` as a warning reason:
+
+```text
+patch_dry_run           dry_run_status
+patch_compile_dry_run   compile_dry_run_status
+rollback_summary        rollback_status
+approval_summary        approval_status
+approval_package        approval_status
+apply_plan              apply_plan_status
+rollback_plan           rollback_plan_status
+```
 
 ## Current artifact ID and parent ID extraction
 
@@ -88,6 +109,45 @@ parent_artifact_id:
 ```
 
 Missing or empty `patch_candidate_id` emits warning `missing_parent_artifact_id`.
+
+### `approval_package`
+
+```text
+artifact_id:
+  artifact.approval_package_id
+parent_artifact_id:
+  artifact.revision_id
+```
+
+Missing or empty `revision_id` emits warning `missing_parent_artifact_id`.
+
+### `apply_plan`
+
+```text
+artifact_id:
+  artifact.apply_plan_id
+parent_artifact_id:
+  artifact.approval_decision_id
+```
+
+Missing or empty `approval_decision_id` emits warning `missing_parent_artifact_id`.
+
+### `rollback_plan`
+
+```text
+artifact_id:
+  artifact.rollback_plan_id
+parent_artifact_id:
+  artifact.apply_plan_id
+```
+
+Missing or empty `apply_plan_id` emits warning `missing_parent_artifact_id`.
+
+### Shared identity rules
+
+`patch_dry_run` is the only kind with no parent; it emits no `missing_parent_artifact_id` warning.
+
+A missing or empty `artifact_id` blocks with `missing_artifact_id` for every kind. A non-dict artifact blocks with `missing_artifact`, and an artifact whose `content_free` is not `true` blocks with `artifact_not_content_free`.
 
 Missing required IDs otherwise fail closed or produce the exact implemented warning/blocking reason IDs. Consumers must not replace these field paths with inferred identifiers from target schemas.
 
@@ -140,13 +200,25 @@ The helper performs no:
 
 The envelope is a candidate only. A returned ready state must not be interpreted as persisted storage.
 
+## Target storage model
+
+The target storage unit is one content-free governance artifact envelope per stored artifact, carrying schema version, artifact kind, artifact and parent identity, character identity, creation and source-commit metadata, persistence status, bounded reason lists, the content-free assertion, and a payload restricted to content-free artifact dictionaries.
+
+Artifact identity and parent lineage are the reconstruction primitive: lineage must remain derivable from `artifact_id -> parent_artifact_id` links plus index records, and lineage may branch across retries and revisions.
+
+Storage is namespaced per character. Artifact paths, artifact-index paths, and lineage-index paths are target-only identities: none is created, written, or appended by any current code, and their exact layout is deferred to the target persistence runtime contract rather than fixed here.
+
+Index and lineage records must stay consistent with the artifact identity they describe. Warning-state and blocked artifacts remain indexable for audit; whether a blocked record is persisted at all is a target policy decision, not a current behavior.
+
+Storage readiness is not source approval, apply permission, or rollback permission, and persisting a content-free governance artifact never converts it into portable character-source authority. Portable source ownership remains with [Character Identity and Source Authority](../architecture/character/identity-and-source-authority.md), and gate scope separation with [RelaySOUL Execution Gate Contract](relaysoul-execution-gates.md).
+
 ## Target architecture
 
 Actual persistence requires a separately versioned runtime contract covering:
 
 - storage configuration and namespace ownership,
 - explicit approval and freshness verification,
-- target three-file RelaySOUL ownership,
+- target file-first RelaySOUL source ownership,
 - atomic write and recovery policy,
 - idempotency and duplicate prevention,
 - append/index behavior,
@@ -155,13 +227,15 @@ Actual persistence requires a separately versioned runtime contract covering:
 - retention and deletion behavior,
 - persistence and incident smoke coverage.
 
+Retention, pruning, fsync strategy, and write-commit mechanics are open target decisions owned by that runtime contract. This contract fixes none of them.
+
 ## Required migration
 
 A target persistence migration must update together:
 
 1. supported artifact kinds and schema versions,
 2. exact artifact/parent ID extraction,
-3. five-file compatibility to three-file target ownership,
+3. five-file compatibility to file-first target source ownership,
 4. approval and freshness consumers,
 5. apply/rollback/storage gate consumers,
 6. content-bearing protected storage types,
