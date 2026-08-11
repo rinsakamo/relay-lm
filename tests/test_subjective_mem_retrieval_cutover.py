@@ -12,7 +12,7 @@ import yaml
 from relaylm.config import RelayLMConfig
 from relaylm.evidence.common import canonical_digest
 from relaylm.evidence.store import EvidenceRecordStore
-from relaylm._subjective_mem_retrieval_cutover_activation import (
+from relaylm.subjective_mem.retrieval_cutover_activation import (
     FORWARD_STATES,
     reconstruct_cutover_chain,
 )
@@ -671,7 +671,7 @@ def test_resolver_dependency_direction_creates_no_cycle() -> None:
         "__future__",
         "dataclasses",
         "typing",
-        ".._subjective_mem_retrieval_cutover_activation",
+        ".retrieval_cutover_activation",
         ".retrieval_runtime_projection",
         "..config",
         "..evidence.common",

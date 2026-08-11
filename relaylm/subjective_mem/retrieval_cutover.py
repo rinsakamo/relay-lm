@@ -9,7 +9,7 @@ Two private owners hold the mechanics, and the dependency direction is one-way:
 
 ```text
 ordinary route / cutover facade
-  -> relaylm._subjective_mem_retrieval_cutover_activation   durable mechanics
+  -> relaylm.subjective_mem.retrieval_cutover_activation   durable mechanics
   -> relaylm.subjective_mem.retrieval_runtime_projection    ordinary projection
 ```
 
@@ -41,7 +41,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Mapping
 
-from .._subjective_mem_retrieval_cutover_activation import (
+from .retrieval_cutover_activation import (
     ACTIVATION_STEPS,
     CUTOVER_LOG_KEY,
     CUTOVER_LOG_KIND,

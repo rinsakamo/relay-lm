@@ -1356,7 +1356,7 @@ R4_BUDGET_ANCHORS = {
         "Both owners admit only `primary_only` and `rehearsal`",
         "The extension is applied to both exact requested-mode owners together, so the configuration mode and the cutover request schema never disagree",
         "`relaylm/subjective_mem_retrieval_cutover.py` is 688 normally formatted physical lines before R4",
-        "One new private R4 mechanics owner is authorized: `relaylm/_subjective_mem_retrieval_cutover_activation.py`",
+        "One new private R4 mechanics owner is authorized: `relaylm/subjective_mem/retrieval_cutover_activation.py`",
         "The allowed dependency direction is exactly one-way",
         "The private activation owner must not import the cutover facade, the configuration owner, request-path owners, selection, the usage ledger, Primary owners, or RelayCTX",
         "the private activation owner is not a second semantic authority",
@@ -1366,7 +1366,7 @@ R4_BUDGET_ANCHORS = {
         "The new private activation owner remains below roughly 600 normally formatted physical lines",
         "Every new or materially changed orchestration remains at or below roughly 80 normally formatted physical lines",
         "exactly these eleven paths: `relaylm/subjective_mem_retrieval_cutover.py`, "
-        "`relaylm/_subjective_mem_retrieval_cutover_activation.py`, `relaylm/config.py`, "
+        "`relaylm/subjective_mem/retrieval_cutover_activation.py`, `relaylm/config.py`, "
         "`config.example.yaml`, `relaylm/managed_chat_pipeline_runtime.py`, "
         "`relaylm/managed_chat_runtime.py`, `relaylm/retrieval/runtime.py`, "
         "`relaylm/relaymem_primary_recall.py`, `relaylm/relayctx_repack.py`, "
@@ -1550,7 +1550,7 @@ R4_BUDGET_MUTATIONS = tuple(
         ),
         (
             "exactly these eleven paths: `relaylm/subjective_mem_retrieval_cutover.py`, "
-            "`relaylm/_subjective_mem_retrieval_cutover_activation.py`, `relaylm/config.py`,",
+            "`relaylm/subjective_mem/retrieval_cutover_activation.py`, `relaylm/config.py`,",
             "exactly these eleven paths: `relaylm/subjective_mem_retrieval_cutover.py`, "
             "`relaylm/config.py`,",
             "private activation owner omitted from budget",
@@ -1894,7 +1894,7 @@ R4_FACADE_ANCHORS = {
         "This bounded RT-1D-R4-only exception supersedes the earlier roughly-700 "
         "cutover-facade gate for RT-1D-R4 alone. It is not a repository-wide precedent "
         "and it is not permission for physical-line compression.",
-        "`relaylm/_subjective_mem_retrieval_cutover_activation.py` and "
+        "`relaylm/subjective_mem/retrieval_cutover_activation.py` and "
         "`relaylm/subjective_mem/retrieval_runtime_projection.py` each remain below "
         "roughly 600 normally formatted physical lines, and every new or materially "
         "changed orchestration remains at or below roughly 80 normally formatted "
@@ -2262,7 +2262,7 @@ R4_COMPLETION_ANCHORS = {
         "`relaylm/subjective_mem_retrieval_cutover.py` is 998 physical lines against the "
         "strictly-below-1000 RT-1D-R4-only exception",
         "`relaylm/subjective_mem/retrieval_runtime_projection.py` is 481 and "
-        "`relaylm/_subjective_mem_retrieval_cutover_activation.py` is 314 against the "
+        "`relaylm/subjective_mem/retrieval_cutover_activation.py` is 314 against the "
         "roughly-600 private-owner gate",
         "`run_managed_chat_pipeline` at 79, `run_relaymem_retrieval_stage` at 74, and "
         "`handle_managed_chat_completion` at 64 are each at or below roughly 80",

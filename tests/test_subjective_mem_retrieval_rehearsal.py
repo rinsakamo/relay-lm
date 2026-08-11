@@ -132,7 +132,7 @@ def test_durable_rehearsal_ready_record_remains_reconstructible() -> None:
     """
 
     activation = importlib.import_module(
-        "relaylm._subjective_mem_retrieval_cutover_activation"
+        "relaylm.subjective_mem.retrieval_cutover_activation"
     )
     cutover = importlib.import_module("relaylm.subjective_mem.retrieval_cutover")
     assert "rehearsal_ready" in activation.FORWARD_STATES

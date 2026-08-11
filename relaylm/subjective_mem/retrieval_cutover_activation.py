@@ -24,8 +24,8 @@ back: a divergent chain fails closed and recovery stays forward-only.
 
 from __future__ import annotations
 
-from .evidence.common import canonical_digest
-from .evidence.store import EvidenceRecordStore
+from ..evidence.common import canonical_digest
+from ..evidence.store import EvidenceRecordStore
 
 CUTOVER_SCHEMA_VERSION = 1
 CUTOVER_LOG_KIND = "subjective_mem_retrieval_cutover"
