@@ -7,7 +7,7 @@ from contextvars import ContextVar
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
-from relaylm.client_instruction_cache_write import (
+from relaylm.interfaces.openai.client_instruction_cache_write import (
     ClientInstructionCacheWriteResult,
     build_client_instruction_cache_write_node_result,
     build_client_instruction_cache_write_preflight,
