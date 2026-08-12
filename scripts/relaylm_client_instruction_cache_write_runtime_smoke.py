@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from relaylm.client_instruction_cache_write_runtime import (  # noqa: E402
+from relaylm.interfaces.openai.client_instruction_cache_write_runtime import (  # noqa: E402
     set_client_instruction_typed_parse_runtime_private_source,
 )
 from relaylm.config import BackendConfig  # noqa: E402
