@@ -7,7 +7,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from relaylm.client_history_exclusion_preflight import (
+from relaylm.interfaces.openai.client_history_exclusion_preflight import (
     ClientHistoryExclusionPreflightResult,
 )
 from relaylm.pipeline_node_result import PipelineNodeResult, build_pipeline_node_result

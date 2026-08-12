@@ -20,8 +20,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import relaylm.client_history_exclusion_preflight as preflight
-from relaylm.client_history_exclusion_preflight import (
+import relaylm.interfaces.openai.client_history_exclusion_preflight as preflight
+from relaylm.interfaces.openai.client_history_exclusion_preflight import (
     build_client_history_exclusion_preflight_node_result,
 )
 from relaylm.interfaces.openai.client_message_canonicalization import (

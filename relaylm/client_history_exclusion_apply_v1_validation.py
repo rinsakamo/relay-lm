@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from relaylm.client_history_exclusion_preflight import (
+from relaylm.interfaces.openai.client_history_exclusion_preflight import (
     ClientHistoryExclusionPreflightResult,
 )
 from relaylm.interfaces.openai.client_instruction_identity import (
