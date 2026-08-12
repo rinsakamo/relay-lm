@@ -15,7 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import relaylm.client_history_exclusion_apply_runtime as apply_runtime
+import relaylm.interfaces.openai.client_history_exclusion_apply_runtime as apply_runtime
 from relaylm.config import load_config
 from relaylm.pipeline_context import PipelineContext, consume_active_pipeline_context
 from relaylm.routing import resolve_route

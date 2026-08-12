@@ -13,7 +13,7 @@ if str(ROOT) not in sys.path:
 
 from phase5c4a_explicit_smoke_support import build_context, payload, write_config
 import relaylm.interfaces.openai.client_history_exclusion_apply_v1_prepare as prepare_module
-from relaylm.client_history_exclusion_apply_runtime import (
+from relaylm.interfaces.openai.client_history_exclusion_apply_runtime import (
     client_history_exclusion_apply_failure_reason,
 )
 from relaylm.pipeline_context import consume_active_pipeline_context

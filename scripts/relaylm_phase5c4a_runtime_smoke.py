@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from phase5c4a_explicit_smoke_support import build_context, payload, write_config
-from relaylm.client_history_exclusion_apply_runtime import run_client_history_exclusion_apply_runtime
+from relaylm.interfaces.openai.client_history_exclusion_apply_runtime import run_client_history_exclusion_apply_runtime
 from relaylm.pipeline_context import consume_active_pipeline_context
 
 
