@@ -439,6 +439,51 @@
       "retention_reason": "D6-R6 retired the obsolete VTuber memory-proxy compatibility redirect after current consumers had converged on canonical system, request/response, voice, performance, and character-interaction authorities; its historical archive source remains a separate retirement responsibility, and the exact redirect remains recoverable from Git."
     },
     {
+      "old_path": "docs/assets/README.md",
+      "last_live_commit": "ae029c35aadbbe83e5a9fd18331e42de4393d668",
+      "old_blob_sha": "e8c87380aa8ab882daa13eb7fc6821ec9a044fd8",
+      "removed_by_pr": 1114,
+      "replacement_paths": [],
+      "disposition": "retired_git_history_only",
+      "retention_reason": "D6-R31 retired the non-authoritative documentation asset collection note after current-consumer proof removed the final live asset consumers. It carried no independent architecture or contract authority; the former asset family is not retained, and the exact note remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/assets/readme/images.md",
+      "last_live_commit": "ae029c35aadbbe83e5a9fd18331e42de4393d668",
+      "old_blob_sha": "6f6567036f404e8f8670538705dbc3af45ac0bb5",
+      "removed_by_pr": 1114,
+      "replacement_paths": [],
+      "disposition": "retired_git_history_only",
+      "retention_reason": "D6-R31 retired the README asset note after removing the English and Japanese README hero consumers together. The note carried no independent authority, no README asset remains live, and its exact historical content remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/assets/readme/relaylm-hero-wide.webp",
+      "last_live_commit": "ae029c35aadbbe83e5a9fd18331e42de4393d668",
+      "old_blob_sha": "5075862d048569e004baac2340f45db792a83068",
+      "removed_by_pr": 1114,
+      "replacement_paths": [],
+      "disposition": "retired_git_history_only",
+      "retention_reason": "D6-R31 removed the repository hero from both English and Japanese root READMEs. With no current consumer remaining, the binary resource is retired to Git history rather than retained as an orphaned documentation asset; its exact blob identity remains recoverable."
+    },
+    {
+      "old_path": "docs/assets/soul_lab_ui_dark_reference.webp",
+      "last_live_commit": "ae029c35aadbbe83e5a9fd18331e42de4393d668",
+      "old_blob_sha": "ce05bab2176e070d1459371c478cd3df3c7bd975",
+      "removed_by_pr": 1114,
+      "replacement_paths": [],
+      "disposition": "retired_git_history_only",
+      "retention_reason": "D6-R31 current-consumer proof found no active reader for this Soul Lab UI reference binary. Because the documentation asset family is not retained, the orphaned resource is retired to Git history with its exact blob identity."
+    },
+    {
+      "old_path": "docs/assets/soul_lab_ui_light_reference.webp",
+      "last_live_commit": "ae029c35aadbbe83e5a9fd18331e42de4393d668",
+      "old_blob_sha": "6588fbf4b9bc73301a11dc640bbc5730109f0f7e",
+      "removed_by_pr": 1114,
+      "replacement_paths": [],
+      "disposition": "retired_git_history_only",
+      "retention_reason": "D6-R31 current-consumer proof found no active reader for this Soul Lab UI reference binary. Because the documentation asset family is not retained, the orphaned resource is retired to Git history with its exact blob identity."
+    },
+    {
       "old_path": "docs/config_schema.md",
       "last_live_commit": "7058ee2f1322c7f02ac5c5e160632719396c37f7",
       "old_blob_sha": "b00b54ef6cc9a3e239885ea7a2f7e24082e9639a",
