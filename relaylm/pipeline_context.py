@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from relaylm.interfaces.openai.client_instruction_cache_lookup_runtime import (
         ClientInstructionCacheLookupRuntimeResult,
     )
-    from relaylm.client_instruction_cache_write import ClientInstructionCacheWriteResult
+    from relaylm.interfaces.openai.client_instruction_cache_write import ClientInstructionCacheWriteResult
     from relaylm.interfaces.openai.client_instruction_identity import ClientInstructionIdentityResult
     from relaylm.interfaces.openai.client_instruction_typed_parse import ClientInstructionTypedParseResult
     from relaylm.client_history_exclusion_preflight import (
@@ -129,7 +129,7 @@ class PipelineContext:
         from relaylm.interfaces.openai.client_instruction_cache_lookup_runtime import (
             prepare_client_instruction_cache_lookup_runtime_private,
         )
-        from relaylm.client_instruction_cache_write_runtime import (
+        from relaylm.interfaces.openai.client_instruction_cache_write_runtime import (
             prepare_client_instruction_cache_write_runtime_private,
         )
         from relaylm.client_history_exclusion_preflight import (

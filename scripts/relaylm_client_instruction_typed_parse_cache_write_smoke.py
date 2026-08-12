@@ -18,7 +18,7 @@ if str(ROOT) not in sys.path:
 
 from relaylm.client_instruction_cache import build_client_instruction_cache_dry_run
 from relaylm.interfaces.openai.client_instruction_cache_lookup import resolve_client_instruction_cache_lookup
-from relaylm.client_instruction_cache_write import (
+from relaylm.interfaces.openai.client_instruction_cache_write import (
     assert_client_instruction_cache_write_diagnostics_content_free,
     build_client_instruction_cache_write_diagnostics,
     build_client_instruction_cache_write_node_result,
