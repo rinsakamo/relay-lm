@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, TypeAlias
 
-from relaylm.client_history_exclusion_apply import (
+from relaylm.interfaces.openai.client_history_exclusion_apply import (
     ClientHistoryExclusionApplyResult,
     build_client_history_exclusion_apply,
     build_client_history_exclusion_apply_node_result,
