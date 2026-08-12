@@ -103,8 +103,8 @@ For an explicit `pass_through` route:
 - the client remains authoritative for compatible backend-bound context;
 - the profile compiler is diagnostics-only at its current compile gate when its plan is enabled;
 - managed client-history exclusion backend blocking is exempt;
-- backend payload construction preserves the supplied payload fields apart from the backend-model replacement performed by the adapter;
-- the reserved RelayLM control-envelope stripping used on managed routes is not applied by `build_backend_payload(...)`.
+- backend payload construction preserves the supplied payload fields apart from the canonical backend request payload projection's backend-model replacement;
+- the reserved RelayLM control-envelope stripping used on managed routes is not applied by `build_backend_request_payload(...)`.
 
 A pass-through request is therefore not a managed fallback tier. It is a separately selected route authority.
 
@@ -207,7 +207,7 @@ Current source tracking is limited to the mutating-step record and the subsystem
 
 Immediately before backend transport, current adapter code enforces the active client-history exclusion gate.
 
-For managed routes, `build_backend_payload(...)` strips the reserved RelayLM control envelope before assigning the backend model.
+For managed routes, canonical `build_backend_request_payload(...)` strips the reserved RelayLM control envelope before assigning the backend model.
 
 For pass-through routes, the adapter retains the client-owned payload shape and assigns the backend model.
 

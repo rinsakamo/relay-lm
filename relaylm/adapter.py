@@ -8,10 +8,12 @@ from typing import Any
 
 import httpx
 
+from relaylm.interfaces.openai.backend_request_payload import (
+    build_backend_request_payload,
+)
 from relaylm.interfaces.openai.client_history_exclusion_backend_forward_gate import (
     decide_client_history_exclusion_backend_forward,
 )
-from relaylm.interfaces.openai.client_instruction_source import strip_relaylm_control
 from relaylm.pipeline_context import get_active_pipeline_context
 from relaylm.relayctx_stream_suppression_runtime import (
     wrap_stream_with_relayctx_suppression,
@@ -158,16 +160,6 @@ def _clear_backend_cookies(client: httpx.AsyncClient) -> None:
     client.cookies.clear()
 
 
-def build_backend_payload(payload: Mapping[str, Any], route: ResolvedRoute) -> dict[str, Any]:
-    backend_payload = (
-        dict(payload)
-        if route.mode_applied == "pass_through"
-        else strip_relaylm_control(payload)
-    )
-    backend_payload["model"] = route.backend_model
-    return backend_payload
-
-
 def _decode_response_body(response: httpx.Response) -> Any:
     content_type = response.headers.get("content-type", "application/json")
     if "application/json" not in content_type:
@@ -220,7 +212,7 @@ async def forward_chat_completion_json(
         response = await client.post(
             _backend_url(route, OPENAI_CHAT_COMPLETIONS_PATH),
             headers=_headers(route),
-            json=build_backend_payload(payload, route),
+            json=build_backend_request_payload(payload, route),
             timeout=timeout,
         )
     except httpx.HTTPError as exc:
@@ -273,7 +265,7 @@ async def open_chat_completion_stream(
         "POST",
         _backend_url(route, OPENAI_CHAT_COMPLETIONS_PATH),
         headers=_headers(route),
-        json=build_backend_payload(payload, route),
+        json=build_backend_request_payload(payload, route),
         timeout=timeout,
     )
     try:
