@@ -19,7 +19,7 @@ from relaylm.client_history_exclusion_apply import (
     build_client_history_exclusion_apply_diagnostics,
     build_client_history_exclusion_apply_node_result,
 )
-from relaylm.client_history_exclusion_preflight import (
+from relaylm.interfaces.openai.client_history_exclusion_preflight import (
     ClientHistoryExclusionPreflightResult,
     build_client_history_exclusion_preflight,
 )

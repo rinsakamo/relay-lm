@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from relaylm.client_history_exclusion_preflight import (
+from relaylm.interfaces.openai.client_history_exclusion_preflight import (
     build_client_history_exclusion_preflight_node_result,
     client_message_canonicalization_dependency_enabled,
 )

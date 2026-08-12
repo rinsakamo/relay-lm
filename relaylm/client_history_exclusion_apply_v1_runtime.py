@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from relaylm.client_history_exclusion_preflight import (
+from relaylm.interfaces.openai.client_history_exclusion_preflight import (
     ClientHistoryExclusionPreflightResult,
 )
 from relaylm.interfaces.openai.client_instruction_identity import ClientInstructionIdentityResult
