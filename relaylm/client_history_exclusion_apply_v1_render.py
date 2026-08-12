@@ -5,7 +5,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
-from relaylm.client_history_exclusion_apply_v1_prepare import (
+from relaylm.interfaces.openai.client_history_exclusion_apply_v1_prepare import (
     PreparedClientHistoryExclusionApplyV1,
 )
 from relaylm.interfaces.openai.client_instruction_source import strip_relaylm_control

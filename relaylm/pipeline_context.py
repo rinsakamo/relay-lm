@@ -157,7 +157,7 @@ class PipelineContext:
         *,
         compiler_used: bool,
     ) -> None:
-        from relaylm.client_history_exclusion_apply_v1_prepare import (
+        from relaylm.interfaces.openai.client_history_exclusion_apply_v1_prepare import (
             prepare_client_history_exclusion_apply_v1,
         )
         from relaylm.client_history_exclusion_apply_v1_runtime import (
