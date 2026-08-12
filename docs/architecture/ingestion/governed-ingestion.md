@@ -22,7 +22,6 @@ relaylm_related_authority:
   - ../memory/scene-memory-scope.md
   - ../character/identity-and-source-authority.md
   - ../attention/reflex-layer.md
-  - ../post_v01_strategic_direction_vision.md
 relaylm_related_contracts:
   - ../../contracts/governed-source-capture-admission.md
   - ../../contracts/governed-evidence-contract-family.md
@@ -574,19 +573,3 @@ Character Workspace owns canonical character source files and approved source-au
 An ingestion adapter may propose material that could eventually affect workspace-maintained content, but it must not directly overwrite canonical uppercase source or other protected character-authority files without the owning explicit approval workflow.
 
 Imported archive contents are not canonical Character Workspace source merely because they are stored beside it.
-
-## Source synthesis boundary
-
-This concept extracts the durable generalized-ingestion direction from:
-
-```text
-docs/architecture/post_v01_strategic_direction_vision.md
-```
-
-It does not absorb that source's independent full-duplex/attention, multi-user/broadcast, persona, longitudinal-evaluation, or broad product-strategy responsibilities.
-
-## Source-retirement boundary
-
-This transaction does not retire the strategic source.
-
-The source remains until its remaining independent responsibilities are either absorbed into canonical authorities or explicitly classified for Git-history retirement in a separate bounded transaction.

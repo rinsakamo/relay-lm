@@ -281,6 +281,26 @@
       "retention_reason": "D6-R17 retired the legacy Post-I3 Evaluation and Work Roadmap compatibility stub after D6-R17a removed its architecture-router exposure, D6-R17b removed its Preparation-B path reference, current-boundary validation no longer depended on the path, and the remaining body only redirected status and sequencing readers to canonical authorities; the exact stub remains recoverable from Git."
     },
     {
+      "old_path": "docs/architecture/post_v01_strategic_direction_vision.md",
+      "last_live_commit": "4b99b7e40a187af0396771a65dcc6bc968c897cb",
+      "old_blob_sha": "576511716789ba329f6795a6be4ef83863c79075",
+      "removed_by_pr": 1116,
+      "replacement_paths": [
+        "docs/architecture/attention/reflex-layer.md",
+        "docs/architecture/character/identity-and-source-authority.md",
+        "docs/architecture/character/public-private-persona.md",
+        "docs/architecture/ingestion/governed-ingestion.md",
+        "docs/architecture/memory/scene-memory-scope.md",
+        "docs/architecture/privacy/local-first-runtime.md",
+        "docs/architecture/privacy/protected-source-and-disclosure.md",
+        "docs/architecture/project_execution_plan.md",
+        "docs/architecture/relationship/social-expression.md",
+        "docs/architecture/scene/scene-model.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R32 retired the non-binding post-v0.1 strategic vision after section-level review confirmed that its adopted durable responsibilities were already owned by current planning, character, privacy, ingestion, attention, scene, memory-scope, and social-expression authorities. Unadopted full-duplex, proactivity, longitudinal-research, broadcast, collective-relationship, and multi-agent proposals remain recoverable from Git rather than continuing as live strategy."
+    },
+    {
       "old_path": "docs/architecture/product_runtime_hardening.md",
       "last_live_commit": "972834eeab829dd011e044814d6cb2ccbe499f66",
       "old_blob_sha": "b21bfbe3ff5e904842ade12302f14cf5083f3995",
