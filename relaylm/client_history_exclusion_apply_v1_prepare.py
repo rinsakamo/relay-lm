@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from relaylm.interfaces.openai.client_history_exclusion_apply_v1_types import ALLOWED_BLOCKED_REASONS
-from relaylm.client_history_exclusion_apply_v1_validation import (
+from relaylm.interfaces.openai.client_history_exclusion_apply_v1_validation import (
     ValidatedClientHistoryExclusionApplyV1Inputs,
     validate_client_history_exclusion_apply_v1_inputs,
 )
