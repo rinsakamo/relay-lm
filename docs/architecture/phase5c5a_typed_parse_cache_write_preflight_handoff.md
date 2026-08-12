@@ -30,7 +30,7 @@ validated typed parse + instruction identity
 
 ## Implemented modules
 
-- `relaylm/client_instruction_typed_parse.py`
+- `relaylm/interfaces/openai/client_instruction_typed_parse.py`
   - validates `client_instruction_parse.v1` candidates,
   - rejects unknown keys, forbidden content-bearing key names, invalid scene types, invalid scopes/confidence, path/URL-like content, malformed durable candidates, malformed constraints, and duplicate blocked instruction kinds,
   - returns request-local runtime-private typed artifacts only,

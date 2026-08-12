@@ -6,7 +6,7 @@ from pathlib import Path
 
 from . import _client_instruction_cache_write_impl as _impl
 from relaylm.interfaces.openai.client_instruction_identity import ClientInstructionIdentityResult
-from .client_instruction_typed_parse import ClientInstructionTypedParseResult
+from relaylm.interfaces.openai.client_instruction_typed_parse import ClientInstructionTypedParseResult
 
 
 SCHEMA_VERSION = _impl.SCHEMA_VERSION

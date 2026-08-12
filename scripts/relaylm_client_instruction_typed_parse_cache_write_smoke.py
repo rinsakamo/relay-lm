@@ -30,7 +30,7 @@ from relaylm.interfaces.openai.client_instruction_identity import build_client_i
 from relaylm.client_instruction_identity_runtime import (
     client_instruction_identity_dependency_enabled,
 )
-from relaylm.client_instruction_typed_parse import (
+from relaylm.interfaces.openai.client_instruction_typed_parse import (
     assert_client_instruction_typed_parse_diagnostics_content_free,
     build_client_instruction_typed_parse_diagnostics,
     validate_client_instruction_typed_parse_candidate,
