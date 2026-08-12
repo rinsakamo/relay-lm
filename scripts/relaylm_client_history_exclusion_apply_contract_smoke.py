@@ -14,7 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from relaylm.client_history_exclusion_apply import (
+from relaylm.interfaces.openai.client_history_exclusion_apply import (
     build_client_history_exclusion_apply,
     build_client_history_exclusion_apply_diagnostics,
     build_client_history_exclusion_apply_node_result,

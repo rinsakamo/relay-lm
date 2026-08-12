@@ -13,7 +13,7 @@ from relaylm.routing import ResolvedRoute
 
 if TYPE_CHECKING:
     from relaylm.evidence.user_input import EvidenceUserInputCaptureResult
-    from relaylm.client_history_exclusion_apply import (
+    from relaylm.interfaces.openai.client_history_exclusion_apply import (
         ClientHistoryExclusionApplyResult,
     )
     from relaylm.client_history_exclusion_apply_v1_types import (
