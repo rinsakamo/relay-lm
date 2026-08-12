@@ -27,7 +27,7 @@ from relaylm.interfaces.openai.client_instruction_cache_lookup import (
     ClientInstructionCacheEntry,
     ClientInstructionCacheLookupResult,
 )
-from relaylm.client_instruction_cache_lookup_runtime import (
+from relaylm.interfaces.openai.client_instruction_cache_lookup_runtime import (
     ClientInstructionCacheLookupRuntimeResult,
 )
 from relaylm.client_instruction_relayscn_projection import (

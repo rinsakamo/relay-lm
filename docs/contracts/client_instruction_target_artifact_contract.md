@@ -146,7 +146,7 @@ validator/consumer:
 
 runtime reader/wiring:
   relaylm.interfaces.openai.client_instruction_cache_reader.read_client_instruction_cache_candidate
-  relaylm.client_instruction_cache_lookup_runtime
+  relaylm.interfaces.openai.client_instruction_cache_lookup_runtime
 
 current typed-parse/writer wiring:
   trusted in-process runtime-private candidate only
