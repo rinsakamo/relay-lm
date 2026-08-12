@@ -36,7 +36,7 @@ validated typed parse + instruction identity
   - returns request-local runtime-private typed artifacts only,
   - emits content-free diagnostics.
 
-- `relaylm/client_instruction_cache_write.py`
+- `relaylm/interfaces/openai/client_instruction_cache_write.py`
   - consumes typed parse and instruction identity results,
   - builds a runtime-private `relaylm.client_instruction_cache.v0` candidate in dry-run mode,
   - keeps `cache_write_attempted=false` and `cache_entry_written=false`,
