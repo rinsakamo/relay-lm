@@ -251,13 +251,12 @@ REQUIRED = {
     "docs/README.md": (
         "[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.",
     ),
-    "docs/architecture/README.md": (
-        "ASM-1 Shared Assessment Runtime Foundation",
-        "SM-1 Subjective MEM Create Runtime",
-        "ST-1 Subjective MEM Commit Runtime",
-        "LC-1A Subjective MEM Correct Runtime",
-        "LC-1B Subjective MEM Forget Runtime",
-    ),
+    # D6-R33 replaced this file's hand-maintained milestone list with a generated
+    # navigation projection, so no milestone prose anchor remains to require. The
+    # key stays so the file remains a stale-anchor-scanned current-boundary
+    # document; generated index validity and drift are owned only by
+    # scripts/relaylm_documentation_governance_validate.py via generated_index_drift.
+    "docs/architecture/README.md": (),
     "docs/DOCUMENTATION_MODEL.md": (
         "`architecture_handoff`",
         "`runbook`",

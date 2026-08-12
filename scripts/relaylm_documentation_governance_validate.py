@@ -93,6 +93,30 @@ MILESTONE_STEM_RE = re.compile(
     re.IGNORECASE,
 )
 
+ARCHITECTURE_INDEX_PATH = "docs/architecture/README.md"
+ARCHITECTURE_INDEX_DOC_TYPES = {"system_architecture", "subsystem_architecture", "concept_policy"}
+ARCHITECTURE_INDEX_COMMAND = (
+    "python scripts/relaylm_documentation_governance_validate.py --write-architecture-index"
+)
+ARCHITECTURE_INDEX_DRIFT = "generated_index_drift"
+ARCHITECTURE_INDEX_COLUMNS = (
+    "Path",
+    "Type",
+    "Status",
+    "Authority",
+    "Owner",
+    "Lifecycle",
+    "Authority level",
+)
+ARCHITECTURE_INDEX_FIELDS = (
+    "relaylm_doc_type",
+    "relaylm_status",
+    "relaylm_authority",
+    "relaylm_owner",
+    "relaylm_lifecycle",
+    "relaylm_authority_level",
+)
+
 
 class GovernanceError(RuntimeError):
     """Raised for bounded validator setup failures."""
@@ -323,6 +347,163 @@ def validate_active_documents(root: Path, required_canonical_paths: set[str] | N
 
 def is_sorted_unique(values: list[str]) -> bool:
     return values == sorted(set(values))
+
+
+def escape_table_cell(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ").strip()
+
+
+def architecture_index_nodes(root: Path) -> tuple[list[dict[str, str]], list[str]]:
+    """Select canonical active architecture graph nodes in bytewise path order.
+
+    Selection reuses the same canonical vocabulary `validate_active_documents`
+    already enforces. Legacy Markdown that opts into none of the granularity
+    fields stays outside the canonical graph and is not indexed, but any
+    document that opts in must be complete and valid or it fails closed instead
+    of being silently indexed or silently dropped.
+    """
+    nodes: list[dict[str, str]] = []
+    errors: list[str] = []
+    architecture_root = root / "docs/architecture"
+    if not architecture_root.is_dir():
+        return nodes, errors
+
+    candidates = [
+        path
+        for path in architecture_root.rglob("*.md")
+        if relative(path, root) != ARCHITECTURE_INDEX_PATH
+    ]
+    for path in sorted(candidates, key=lambda item: relative(item, root).encode("utf-8")):
+        rel = relative(path, root)
+        metadata, parse_errors = parse_front_matter(path)
+        errors.extend(parse_errors)
+        if not metadata or not any(field in metadata for field in GRANULARITY_FIELDS):
+            continue
+
+        missing = [field for field in [*CORE_FIELDS, *GRANULARITY_FIELDS] if field not in metadata]
+        if missing:
+            errors.append(f"{rel}: architecture index node is missing {', '.join(missing)}")
+            continue
+        if metadata.get("relaylm_doc_type") not in ARCHITECTURE_INDEX_DOC_TYPES:
+            errors.append(
+                f"{rel}: architecture index node relaylm_doc_type must be one of "
+                f"{sorted(ARCHITECTURE_INDEX_DOC_TYPES)}"
+            )
+            continue
+        if metadata.get("relaylm_status") not in {"current", "target"}:
+            errors.append(f"{rel}: architecture index node status must be current or target")
+            continue
+        if metadata.get("relaylm_lifecycle") not in LIFECYCLES:
+            errors.append(f"{rel}: architecture index node has an invalid relaylm_lifecycle")
+            continue
+        if metadata.get("relaylm_authority_level") not in AUTHORITY_LEVELS:
+            errors.append(f"{rel}: architecture index node has an invalid relaylm_authority_level")
+            continue
+
+        values = {field: metadata.get(field) for field in ARCHITECTURE_INDEX_FIELDS}
+        if any(not isinstance(value, str) or not value for value in values.values()):
+            errors.append(f"{rel}: architecture index node metadata must be non-empty strings")
+            continue
+        values["path"] = rel
+        nodes.append(values)
+    return nodes, errors
+
+
+def render_architecture_index(root: Path) -> tuple[str, list[str]]:
+    """Render the complete generated architecture collection index.
+
+    Output depends only on repository-relative paths and canonical front
+    matter, so it carries no wall-clock, environment, or enumeration-order
+    input and is byte-identical across repeated runs.
+    """
+    nodes, errors = architecture_index_nodes(root)
+    lines = [
+        "---",
+        "relaylm_doc_type: documentation_index",
+        "relaylm_authority: architecture_documentation_entrypoint",
+        "relaylm_status: current",
+        "relaylm_volatility: high",
+        "relaylm_owner: documentation_governance",
+        "relaylm_update_trigger:",
+        "  - canonical active architecture graph membership or metadata changes",
+        "  - architecture index generator or drift-validation changes",
+        "  - architecture index removal-gate changes",
+        "relaylm_not_authoritative_for:",
+        "  - current runtime behavior",
+        "  - architecture semantics",
+        "  - exact contract details",
+        "  - current implementation status",
+        "  - phase sequencing details",
+        "relaylm_current_status_source: ../PROJECT_STATUS.md",
+        "---",
+        "# RelayLM Architecture Docs",
+        "",
+        "Generated navigation projection. Do not edit this file directly.",
+        "",
+        "- Source: the canonical current-tree active architecture graph.",
+        "- Generator and drift-check implementation: `scripts/relaylm_documentation_governance_validate.py`.",
+        "- Generator and check owner: `documentation_governance`.",
+        f"- Regeneration command: `{ARCHITECTURE_INDEX_COMMAND}`.",
+        "- Direct edits are rejected: ordinary documentation-governance validation reports "
+        f"`{ARCHITECTURE_INDEX_DRIFT}` whenever the committed bytes differ from the regenerated bytes.",
+        "- Removal gate: this committed architecture collection index remains until every current "
+        "architecture-navigation consumer is migrated to an accepted replacement and the same reviewed "
+        "atomic change removes the generated-index validation requirement for this path. Git history or "
+        "another hand-written list does not close the gate.",
+        "",
+        "This projection is navigation only. It owns no runtime, architecture, contract, status, or "
+        "sequencing authority.",
+        "",
+        "- [Documentation index](../README.md)",
+        "- [Current project status](../PROJECT_STATUS.md)",
+        "- [Project execution plan](project_execution_plan.md)",
+        "",
+        "## Canonical active architecture nodes",
+        "",
+        "| " + " | ".join(ARCHITECTURE_INDEX_COLUMNS) + " |",
+        "| " + " | ".join("---" for _ in ARCHITECTURE_INDEX_COLUMNS) + " |",
+    ]
+
+    index_parent = PurePosixPath(ARCHITECTURE_INDEX_PATH).parent
+    for node in nodes:
+        target = PurePosixPath(node["path"]).relative_to(index_parent).as_posix()
+        cells = [f"[{escape_table_cell(target)}]({target})"]
+        cells.extend(escape_table_cell(node[field]) for field in ARCHITECTURE_INDEX_FIELDS)
+        lines.append("| " + " | ".join(cells) + " |")
+    return "\n".join(lines) + "\n", errors
+
+
+def architecture_index_errors(root: Path) -> list[str]:
+    if not (root / "docs/architecture").is_dir():
+        return []
+    rendered, errors = render_architecture_index(root)
+    index_path = root / ARCHITECTURE_INDEX_PATH
+    try:
+        committed = index_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        errors.append(
+            f"{ARCHITECTURE_INDEX_PATH}: {ARCHITECTURE_INDEX_DRIFT}: generated architecture index is "
+            f"missing; regenerate with `{ARCHITECTURE_INDEX_COMMAND}`"
+        )
+        return errors
+    except (OSError, UnicodeError) as exc:
+        errors.append(f"{ARCHITECTURE_INDEX_PATH}: cannot read generated architecture index: {exc}")
+        return errors
+    if committed != rendered:
+        errors.append(
+            f"{ARCHITECTURE_INDEX_PATH}: {ARCHITECTURE_INDEX_DRIFT}: committed generated navigation does "
+            f"not match the canonical active architecture graph; regenerate with "
+            f"`{ARCHITECTURE_INDEX_COMMAND}`"
+        )
+    return errors
+
+
+def write_architecture_index(root: Path = ROOT) -> list[str]:
+    rendered, errors = render_architecture_index(root)
+    if errors:
+        return errors
+    (root / ARCHITECTURE_INDEX_PATH).write_text(rendered, encoding="utf-8")
+    return []
 
 
 def validate_records(root: Path) -> tuple[list[str], dict[str, Any], dict[str, Any], dict[str, Any]]:
@@ -695,6 +876,7 @@ def validate_repository(
         if path.endswith(".md") and allowed_doc_types(PurePosixPath(path))
     }
     errors = validate_active_documents(root, required)
+    errors.extend(architecture_index_errors(root))
     record_errors, _registry, manifest, transitional = validate_records(root)
     errors.extend(record_errors)
     errors.extend(validate_transitional_assets(root, transitional, new_paths))
@@ -743,6 +925,43 @@ relaylm_authority_level: exact_contract
 """
 
 
+def architecture_doc(authority: str) -> str:
+    return f"""---
+relaylm_doc_type: subsystem_architecture
+relaylm_authority: {authority}
+relaylm_status: current
+relaylm_volatility: low
+relaylm_owner: architecture
+relaylm_update_trigger:
+  - architecture changes
+relaylm_not_authoritative_for:
+  - runtime behavior
+relaylm_lifecycle: stable
+relaylm_primary_consumers:
+  - architecture maintainers
+relaylm_authority_level: subsystem
+---
+# Architecture
+"""
+
+
+def legacy_architecture_doc(authority: str) -> str:
+    """Architecture Markdown that opts into none of the granularity fields."""
+    return f"""---
+relaylm_doc_type: subsystem_architecture
+relaylm_authority: {authority}
+relaylm_status: current
+relaylm_volatility: low
+relaylm_owner: architecture
+relaylm_update_trigger:
+  - architecture changes
+relaylm_not_authoritative_for:
+  - runtime behavior
+---
+# Legacy Architecture
+"""
+
+
 def self_test_transitional_family(paths: list[str]) -> dict[str, Any]:
     """A synthetic, schema-valid transitional family for self-test use only.
 
@@ -782,6 +1001,16 @@ def build_self_test_root() -> Path:
     )
     (temp / "docs/contracts").mkdir(parents=True, exist_ok=True)
     (temp / "docs/contracts/example.md").write_text(canonical_doc("self_test_authority"), encoding="utf-8")
+
+    # Created in reverse bytewise path order so the generated index proves it
+    # derives its own ordering instead of inheriting creation or enumeration order.
+    architecture = temp / "docs/architecture"
+    (architecture / "nested").mkdir(parents=True, exist_ok=True)
+    (architecture / "zeta-subsystem.md").write_text(architecture_doc("self_test_zeta_subsystem"), encoding="utf-8")
+    (architecture / "nested/mid-subsystem.md").write_text(architecture_doc("self_test_mid_subsystem"), encoding="utf-8")
+    (architecture / "legacy-unopted.md").write_text(legacy_architecture_doc("self_test_legacy_architecture"), encoding="utf-8")
+    (architecture / "alpha-subsystem.md").write_text(architecture_doc("self_test_alpha_subsystem"), encoding="utf-8")
+    write_architecture_index(temp)
     catalog = read_json(temp / "records/documentation/current-records.json")
     for item in catalog["records"]:
         record = temp / item["path"]
@@ -815,6 +1044,68 @@ def self_test() -> int:
     try:
         errors = validate_repository(root)
         expect("valid canonical document and governance records are accepted", not errors, failures)
+
+        index_path = root / ARCHITECTURE_INDEX_PATH
+        rendered_once, render_errors = render_architecture_index(root)
+        rendered_twice, _ = render_architecture_index(root)
+        expect(
+            "architecture index renderer is deterministic across repeated runs",
+            not render_errors and rendered_once == rendered_twice,
+            failures,
+        )
+        committed_index = index_path.read_text(encoding="utf-8")
+        expect(
+            "self-test root generated architecture index matches its synthetic active graph",
+            committed_index == rendered_once,
+            failures,
+        )
+
+        indexed_paths = [
+            line.split("]", 1)[0][3:]
+            for line in committed_index.splitlines()
+            if line.startswith("| [")
+        ]
+        expect(
+            "architecture index rows follow bytewise full-path order",
+            indexed_paths == ["alpha-subsystem.md", "nested/mid-subsystem.md", "zeta-subsystem.md"],
+            failures,
+        )
+        expect(
+            "legacy architecture Markdown without granularity fields is not indexed",
+            "legacy-unopted.md" not in committed_index,
+            failures,
+        )
+        expect(
+            "generated architecture index is not indexed as an architecture node",
+            not any(item.endswith("README.md") for item in indexed_paths),
+            failures,
+        )
+        expect(
+            "each canonical architecture node appears exactly once",
+            all(indexed_paths.count(item) == 1 for item in indexed_paths),
+            failures,
+        )
+        expect(
+            "generated architecture index carries no wall-clock data",
+            not re.search(r"\b(?:19|20)\d{2}-\d{2}-\d{2}\b", committed_index)
+            and not re.search(r"\b\d{2}:\d{2}:\d{2}\b", committed_index),
+            failures,
+        )
+
+        index_path.write_text(
+            committed_index.replace(
+                "## Canonical active architecture nodes",
+                "## Canonical active architecture nodes\n\nHand-written note.",
+            ),
+            encoding="utf-8",
+        )
+        errors = validate_repository(root)
+        expect(
+            f"direct manual architecture index edit is rejected as {ARCHITECTURE_INDEX_DRIFT}",
+            any(ARCHITECTURE_INDEX_DRIFT in item for item in errors),
+            failures,
+        )
+        expect("regenerating the architecture index restores validity", not write_architecture_index(root) and not validate_repository(root), failures)
 
         duplicate = root / "docs/contracts/duplicate.md"
         duplicate.write_text(canonical_doc("self_test_authority"), encoding="utf-8")
@@ -1144,6 +1435,11 @@ def self_test() -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument(
+        "--write-architecture-index",
+        action="store_true",
+        help="Deterministically regenerate docs/architecture/README.md, then validate normally",
+    )
     parser.add_argument("--base-ref", help="Require newly added Markdown since this Git ref to use canonical graph metadata")
     parser.add_argument(
         "--pull-request-number",
@@ -1153,6 +1449,14 @@ def main() -> int:
     args = parser.parse_args()
     if args.self_test:
         return self_test()
+    if args.write_architecture_index:
+        write_errors = write_architecture_index(ROOT)
+        if write_errors:
+            for error in write_errors:
+                print(f"FAIL: {error}")
+            print(f"FAIL: architecture index generation found {len(write_errors)} issue(s)")
+            return 1
+        print(f"PASS: wrote {ARCHITECTURE_INDEX_PATH}")
     try:
         errors = validate_repository(
             ROOT,
