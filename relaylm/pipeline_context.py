@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     )
     from relaylm.client_instruction_cache_write import ClientInstructionCacheWriteResult
     from relaylm.interfaces.openai.client_instruction_identity import ClientInstructionIdentityResult
-    from relaylm.client_instruction_typed_parse import ClientInstructionTypedParseResult
+    from relaylm.interfaces.openai.client_instruction_typed_parse import ClientInstructionTypedParseResult
     from relaylm.client_history_exclusion_preflight import (
         ClientHistoryExclusionPreflightResult,
     )

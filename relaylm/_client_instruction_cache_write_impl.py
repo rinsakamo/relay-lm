@@ -15,7 +15,7 @@ from typing import Any, Literal
 
 from relaylm.interfaces.openai.client_instruction_cache_lookup import resolve_client_instruction_cache_lookup
 from relaylm.interfaces.openai.client_instruction_identity import ClientInstructionIdentityResult
-from relaylm.client_instruction_typed_parse import ClientInstructionTypedParseResult
+from relaylm.interfaces.openai.client_instruction_typed_parse import ClientInstructionTypedParseResult
 from relaylm.pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
 
 SCHEMA_VERSION = "client_instruction_cache_write_preflight.v0"

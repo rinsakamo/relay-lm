@@ -19,7 +19,7 @@ from relaylm.interfaces.openai.client_instruction_extraction import (
     build_client_instruction_extraction_dry_run,
 )
 from relaylm.interfaces.openai.client_instruction_identity import build_client_instruction_identity
-from relaylm.client_instruction_typed_parse import (
+from relaylm.interfaces.openai.client_instruction_typed_parse import (
     validate_client_instruction_typed_parse_candidate,
 )
 from relaylm.relaymem_primary_formation import (

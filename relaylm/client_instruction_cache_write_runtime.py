@@ -12,7 +12,7 @@ from relaylm.client_instruction_cache_write import (
     build_client_instruction_cache_write_node_result,
     build_client_instruction_cache_write_preflight,
 )
-from relaylm.client_instruction_typed_parse import (
+from relaylm.interfaces.openai.client_instruction_typed_parse import (
     ClientInstructionTypedParseResult,
     build_client_instruction_typed_parse_node_result,
     validate_client_instruction_typed_parse_candidate,
