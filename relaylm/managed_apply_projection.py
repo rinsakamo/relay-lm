@@ -1,7 +1,7 @@
 """Managed apply content-free projection helpers."""
 from __future__ import annotations
 
-from relaylm.client_history_exclusion_apply_v1_types import (
+from relaylm.interfaces.openai.client_history_exclusion_apply_v1_types import (
     ClientHistoryExclusionApplyV1Result,
     SCHEMA_VERSION,
     non_negative_int,

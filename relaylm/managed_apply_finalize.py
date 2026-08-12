@@ -7,7 +7,7 @@ from relaylm.client_history_exclusion_apply_v1_prepare import (
 from relaylm.client_history_exclusion_apply_v1_render import (
     render_client_history_exclusion_apply_v1,
 )
-from relaylm.client_history_exclusion_apply_v1_types import (
+from relaylm.interfaces.openai.client_history_exclusion_apply_v1_types import (
     ClientHistoryExclusionApplyV1Result,
     build_client_history_exclusion_apply_v1_result,
 )

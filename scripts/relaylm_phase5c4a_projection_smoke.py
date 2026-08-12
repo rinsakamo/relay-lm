@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from relaylm.client_history_exclusion_apply_v1_types import (
+from relaylm.interfaces.openai.client_history_exclusion_apply_v1_types import (
     build_client_history_exclusion_apply_v1_result,
 )
 from relaylm.managed_apply_projection import (
