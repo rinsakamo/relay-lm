@@ -135,7 +135,7 @@ class PipelineContext:
         from relaylm.interfaces.openai.client_history_exclusion_preflight import (
             prepare_client_history_exclusion_preflight_runtime_private,
         )
-        from relaylm.client_history_exclusion_apply_runtime import (
+        from relaylm.interfaces.openai.client_history_exclusion_apply_runtime import (
             run_client_history_exclusion_apply_runtime,
         )
 

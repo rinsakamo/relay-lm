@@ -8,7 +8,7 @@ from typing import Any
 
 import httpx
 
-from relaylm.client_history_exclusion_apply_runtime import (
+from relaylm.interfaces.openai.client_history_exclusion_apply_runtime import (
     client_history_exclusion_apply_blocks_backend,
     client_history_exclusion_apply_failure_reason,
 )
