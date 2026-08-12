@@ -14,7 +14,7 @@ from relaylm.interfaces.openai.client_message_canonicalization import (
 from relaylm.pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
 
 if TYPE_CHECKING:
-    from relaylm.client_instruction_cache_lookup_runtime import (
+    from relaylm.interfaces.openai.client_instruction_cache_lookup_runtime import (
         ClientInstructionCacheLookupRuntimeResult,
     )
     from relaylm.pipeline_context import PipelineContext

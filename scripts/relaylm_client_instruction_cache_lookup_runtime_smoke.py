@@ -21,7 +21,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from relaylm.app import create_app
-import relaylm.client_instruction_cache_lookup_runtime as cache_runtime
+import relaylm.interfaces.openai.client_instruction_cache_lookup_runtime as cache_runtime
 import relaylm.client_instruction_identity_runtime as identity_runtime
 from relaylm.config import load_config
 from relaylm.pipeline_context import PipelineContext, consume_active_pipeline_context
