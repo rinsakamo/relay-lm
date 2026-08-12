@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from relaylm.interfaces.openai.client_history_exclusion_apply import (
         ClientHistoryExclusionApplyResult,
     )
-    from relaylm.client_history_exclusion_apply_v1_types import (
+    from relaylm.interfaces.openai.client_history_exclusion_apply_v1_types import (
         ClientHistoryExclusionApplyV1Result,
     )
     from relaylm.interfaces.openai.client_instruction_cache_lookup_runtime import (
@@ -163,7 +163,7 @@ class PipelineContext:
         from relaylm.client_history_exclusion_apply_v1_runtime import (
             request_uses_instruction_bearing_v1,
         )
-        from relaylm.client_history_exclusion_apply_v1_types import (
+        from relaylm.interfaces.openai.client_history_exclusion_apply_v1_types import (
             ClientHistoryExclusionApplyV1Result,
             SCHEMA_VERSION,
             build_client_history_exclusion_apply_v1_result,

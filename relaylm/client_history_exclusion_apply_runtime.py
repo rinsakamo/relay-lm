@@ -9,7 +9,7 @@ from relaylm.interfaces.openai.client_history_exclusion_apply import (
     build_client_history_exclusion_apply,
     build_client_history_exclusion_apply_node_result,
 )
-from relaylm.client_history_exclusion_apply_v1_types import (
+from relaylm.interfaces.openai.client_history_exclusion_apply_v1_types import (
     ClientHistoryExclusionApplyV1Result,
 )
 from relaylm.pipeline_context import replace_pipeline_forwarded_payload
