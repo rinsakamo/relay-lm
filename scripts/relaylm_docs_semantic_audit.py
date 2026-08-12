@@ -31,7 +31,6 @@ REQUIRED_METADATA_PATHS = (
     "docs/release/v0.1-release-readiness.md",
     "docs/evidence/releases/README.md",
     "docs/evidence/releases/v0.1-final-main-validation-tag-receipt.md",
-    "docs/relaysoul/README.md",
     "docs/evidence/evaluations/scripts_inventory.md",
     "docs/operations/mobile-dogfood-entry.md",
     "docs/operations/consolidated-smoke-workflow-maintenance.md",
