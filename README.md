@@ -271,7 +271,7 @@ For authoritative ownership and order, see the [Pipeline Responsibilities](docs/
 - 📜 [Contracts](docs/contracts/README.md)
 - 🧪 [Smoke procedures and validation operations](docs/operations/)
 - 📊 [Completed evaluation evidence](docs/evidence/evaluations/)
-- 🧬 [RelaySOUL design and gates](docs/relaysoul/README.md)
+- 🧬 [Character identity and source authority](docs/architecture/character/identity-and-source-authority.md)
 - 🗃️ [Implementation evidence](docs/evidence/implementation/README.md)
 
 ## 🔗 Backend cache boundary

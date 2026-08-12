@@ -713,6 +713,15 @@
       "retention_reason": "D2-B1 replaced the root compatibility redirect with canonical compile/checkpoint architecture and exact RelayRUN checkpoint/recovery contract authority; the redirect remains recoverable from Git."
     },
     {
+      "old_path": "docs/relaysoul/README.md",
+      "last_live_commit": "af2ca3a4bbeed862ce1cdbf643950ff8106d38de",
+      "old_blob_sha": "98c192fb10c65c4c0e77595ce7177a972f96da71",
+      "removed_by_pr": 1109,
+      "replacement_paths": [],
+      "disposition": "retired_git_history_only",
+      "retention_reason": "D6-R30 retired the empty transitional RelaySOUL documentation router after R26-R29 moved or retired every child authority and evidence source and current navigation converged on permanent character architecture, contracts, and implementation evidence. The router carried no independent semantic authority; its exact historical content remains recoverable from Git, and the emptied docs/relaysoul/ collection is removed."
+    },
+    {
       "old_path": "docs/relaysoul/experimental_soul_replacement_memory_bootstrap_design.md",
       "last_live_commit": "2f9fa1fed384f0ff7eafeb34d030de70874e5a88",
       "old_blob_sha": "c1aa56f99c176a593bab386936973ee258ad1be1",
