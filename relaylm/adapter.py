@@ -8,9 +8,8 @@ from typing import Any
 
 import httpx
 
-from relaylm.interfaces.openai.client_history_exclusion_apply_runtime import (
-    client_history_exclusion_apply_blocks_backend,
-    client_history_exclusion_apply_failure_reason,
+from relaylm.interfaces.openai.client_history_exclusion_backend_forward_gate import (
+    decide_client_history_exclusion_backend_forward,
 )
 from relaylm.interfaces.openai.client_instruction_source import strip_relaylm_control
 from relaylm.pipeline_context import get_active_pipeline_context
@@ -190,14 +189,14 @@ def _ensure_backend_forward_allowed(
         if pipeline_context is not None
         else None
     )
-    if client_history_exclusion_apply_blocks_backend(
-        route,
-        result,
+    decision = decide_client_history_exclusion_backend_forward(
+        route=route,
+        result=result,
         forwarded_payload=payload,
-    ):
-        raise BackendRequestError(
-            client_history_exclusion_apply_failure_reason(result)
-        )
+    )
+    if not decision.allowed:
+        assert decision.failure_reason is not None
+        raise BackendRequestError(decision.failure_reason)
 
 
 async def forward_chat_completion_json(
