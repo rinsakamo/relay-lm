@@ -199,6 +199,6 @@ These documents are target architecture unless explicitly listed as a current co
 - MVP execution plan and post-MVP roadmap -> `docs/architecture/project_execution_plan.md`
 - active and completed bounded handoffs -> `docs/architecture/`
 - schemas and contracts -> `docs/contracts/`
-- RelaySOUL governance -> `docs/relaysoul/`
+- RelaySOUL durable identity/personality -> `docs/architecture/character/`; exact RelaySOUL contracts -> `docs/contracts/`; completed RelaySOUL implementation evidence -> `docs/evidence/implementation/`
 - permanent operator, smoke, and troubleshooting procedures -> `docs/operations/`
 - completed bounded evaluation evidence -> `docs/evidence/evaluations/`
