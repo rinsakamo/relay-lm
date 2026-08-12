@@ -4,7 +4,7 @@ from __future__ import annotations
 from relaylm.interfaces.openai.client_history_exclusion_apply_v1_prepare import (
     PreparedClientHistoryExclusionApplyV1,
 )
-from relaylm.client_history_exclusion_apply_v1_render import (
+from relaylm.interfaces.openai.client_history_exclusion_apply_v1_render import (
     render_client_history_exclusion_apply_v1,
 )
 from relaylm.interfaces.openai.client_history_exclusion_apply_v1_types import (
