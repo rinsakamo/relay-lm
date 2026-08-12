@@ -23,7 +23,6 @@ relaylm_related_authority:
   - ../scene/scene-model.md
   - ../memory/scene-memory-scope.md
   - ../ingestion/governed-ingestion.md
-  - ../post_v01_strategic_direction_vision.md
 relaylm_lifecycle: accepted_target
 relaylm_primary_consumers:
   - character, relationship, scene, and expression maintainers
@@ -441,21 +440,3 @@ A style win that depends on private-data leakage is a failure.
 `scene-memory-scope.md` owns scene-based narrowing of already-authorized memory evidence.
 
 This concept depends on all of them and does not duplicate their exact responsibilities.
-
-## Source synthesis boundary
-
-This page extracts only the **two-layer persona / engineered fictional shadow** responsibility from:
-
-```text
-docs/architecture/post_v01_strategic_direction_vision.md
-```
-
-The source's generalized-ingestion responsibility is separately canonicalized in `docs/architecture/ingestion/governed-ingestion.md`.
-
-Attention/full-duplex, broader product strategy, and longitudinal evaluation remain outside this transaction.
-
-## Source-retirement boundary
-
-This canonicalization does not retire the strategic source.
-
-Retirement remains a separate bounded transaction after all independent durable responsibilities have a disposition and active consumers are migrated.
