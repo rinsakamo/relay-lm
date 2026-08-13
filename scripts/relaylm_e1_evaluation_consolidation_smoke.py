@@ -84,7 +84,7 @@ REQUIRED = {
         "relaylm_doc_type: implementation_handoff",
         "Primary MEM Recall Candidate Discovery Bridge",
         "shared I-4D current-state eligibility index",
-        "PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
+        "PYTHONPATH=. python scripts/relaylm_primary_recall_post_retirement_structure_smoke.py",
     ),
     "docs/evidence/waves/wave7_cross_slice_convergence_audit.md": (
         "# Wave 7 Cross-Slice Convergence Audit",
@@ -130,9 +130,7 @@ EVIDENCE_PATHS = (
     "scripts/relaylm_e1r4_grounded_recall_response_smoke.py",
     "scripts/relaylm_e1r4_unsupported_detail_suppression_smoke.py",
     "scripts/relaylm_e1r4_grounded_recall_security_smoke.py",
-    "scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
-    "scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py",
-    "scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py",
+    "scripts/relaylm_primary_recall_post_retirement_structure_smoke.py",
     "scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py",
 )
 

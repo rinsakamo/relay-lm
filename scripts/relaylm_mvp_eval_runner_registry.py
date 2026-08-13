@@ -45,7 +45,7 @@ REQUIRED_DOC_ANCHORS = {
         "relaylm_authority: e1_mvp_evaluation_evidence_consolidation",
         "# E1 MVP Evaluation Evidence Consolidation",
         "## Current E1 proof boundary",
-        "scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
+        "scripts/relaylm_primary_recall_post_retirement_structure_smoke.py",
         "does not require a live LLM",
     ),
 }
@@ -56,9 +56,7 @@ relaylm_e1r3_provenance_formation_security_smoke.py
 relaylm_e1r4_grounded_recall_response_smoke.py
 relaylm_e1r4_unsupported_detail_suppression_smoke.py
 relaylm_e1r4_grounded_recall_security_smoke.py
-relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
-relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py
-relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py
+relaylm_primary_recall_post_retirement_structure_smoke.py
 relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py
 """.split()
 

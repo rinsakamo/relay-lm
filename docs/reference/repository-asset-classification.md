@@ -433,33 +433,26 @@ records:
     notes: must not be converted to an in-process test solely to reduce file count
 
   - asset_id: r6.primary.recall_post_retirement_structure
-    paths:
-      - scripts/relaylm_e1r5_primary_mem_recall_bridge_policy_gate_smoke.py
-      - scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py
-      - scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
-      - scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py
+    paths: [scripts/relaylm_primary_recall_post_retirement_structure_smoke.py]
     responsibility: process_smoke
-    lifecycle: transitional
+    lifecycle: active
     owner: retrieval_migration
-    r6_disposition: migration_or_characterization_dependency
+    r6_disposition: retained_current_component
     protected_boundary: post-RT-1D-R5 structural proof that ordinary Primary recall entry points and selection are absent while read-only store and history/admin helpers remain
     current_callers:
-      - scripts/relaylm_mvp_eval_runner_registry.py E1_SCRIPTS for candidate, security, and no-symlink proofs
-      - scripts/relaylm_e1_evaluation_consolidation_smoke.py EVIDENCE_PATHS for candidate, security, and no-symlink proofs
-      - direct focused validation for the policy-gate proof
+      - scripts/relaylm_mvp_eval_runner_registry.py E1_SCRIPTS
+      - scripts/relaylm_e1_evaluation_consolidation_smoke.py EVIDENCE_PATHS
+      - docs/architecture/e1_evaluation_consolidation.md current evidence inventory and validation command
+      - docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md current regression anchor
     invocation_roots: [registry, smoke_only_root]
     evidence:
-      - scripts/relaylm_e1r5_primary_mem_recall_bridge_policy_gate_smoke.py
-      - scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py
-      - scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
-      - scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py
+      - scripts/relaylm_primary_recall_post_retirement_structure_smoke.py
       - scripts/relaylm_mvp_eval_runner_registry.py
       - scripts/relaylm_e1_evaluation_consolidation_smoke.py
-    removal_gate: one function-oriented post-retirement structural proof replaces the four duplicate E1-named files and every current registry, consolidation, and documentation caller is updated atomically
-    replacement_validation: the retained proof covers absent ordinary entry points and selection, no production reachability or Primary store access from ordinary Retrieval, and retained read-only helper/store availability
+    removal_gate: null
+    replacement_validation: null
     confidence: confirmed
-    notes: these files assert the same current structural retirement boundary; they do not characterize scoped recall, grounding, disabled-store, relevance, or disclosure behavior
-
+    notes: one function-oriented ongoing regression owner covers the complete current structural retirement boundary without retaining milestone-named aliases
   - asset_id: r6.primary.recall_audit_projection
     paths: [scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py]
     responsibility: process_smoke
