@@ -444,6 +444,31 @@
       "retention_reason": "D6-R8 retired the mixed runtime-operational source after its durable privacy/isolation, observability, and reliability/compatibility responsibilities were extracted by PRs #945, #946, and #948 and its remaining fallback, context, performance, request/response, memory, scheduler, and adapter responsibilities were already owned by canonical authorities; volatile implementation enumerations and historical mode ladders remain recoverable from Git rather than continuing as active architecture."
     },
     {
+      "old_path": "docs/architecture/soul_lab_ui_a0_a1_handoff.md",
+      "last_live_commit": "5e6c7179d7979af88fad2b2d4192d141e03c7dee",
+      "old_blob_sha": "8324d8240be865c305118a85169a7f995a571040",
+      "removed_by_pr": 1157,
+      "replacement_paths": [
+        "docs/architecture/soul_lab_ui_mvp.md",
+        "docs/architecture/ui/soul-lab.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R35-B retired the SOUL Lab UI-A0/A1 foundation and mock-Home handoff in PR #1157 after its durable browser non-authority and content-free projection rules were already permanent in the SOUL Lab UI architecture and its completion status was already recorded by the current SOUL Lab UI plan; review found no unique continuing audit, migration, recovery, or external-validation function, so no evidence copy is kept and the rollout and next-slice history stays Git-recoverable."
+    },
+    {
+      "old_path": "docs/architecture/soul_lab_ui_a2_adoption_handoff.md",
+      "last_live_commit": "767dfc15e27e9a0fe451035edc81c5c2d2bc7a34",
+      "old_blob_sha": "3ee4e2fa8ddfea07ebc33f699bb27c3853eb349b",
+      "removed_by_pr": 1157,
+      "replacement_paths": [
+        "docs/architecture/character-workspace/creation-and-import.md",
+        "docs/architecture/soul_lab_ui_mvp.md",
+        "docs/architecture/ui/soul-lab.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R35-B retired the SOUL Lab UI-A2 first-launch and adoption handoff in PR #1157 because current Character Workspace creation and import authority supersedes its historical source-composition proposal, whose OUTPUT_POLICY and RELATIONSHIP_ANCHOR requirements are not promoted as current architecture; browser non-authority is already permanent in the SOUL Lab UI architecture and completion is already in the current UI plan. No unique evidence function remains, so rollout history stays Git-recoverable."
+    },
+    {
       "old_path": "docs/architecture/soul_lab_ui_a6_shared_shell_settings_handoff.md",
       "last_live_commit": "949fc31c6ab8c4c329ba74843d71331eaab1db53",
       "old_blob_sha": "57927d8c59898152921d5c358df8b0c19a41c780",
