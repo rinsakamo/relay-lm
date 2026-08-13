@@ -69,6 +69,15 @@ ASSET_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]*$")
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 GLOB_CHARS = set("*?[]{}")
 OPERATOR_ROOTS = {"console_script", "operator_cli"}
+R6_PRIMARY_ASSET_IDS = {"retrieval.primary_recall_characterization"}
+R6_PRIMARY_ASSET_PREFIX = "r6.primary."
+R6_DISPOSITIONS = {
+    "retired_after_cutover",
+    "migration_or_characterization_dependency",
+    "rollback_dependency",
+    "operator_or_recovery_dependency",
+    "retained_current_component",
+}
 
 
 class UniqueKeyLoader(yaml.SafeLoader):
@@ -180,6 +189,7 @@ def validate_registry(payload: dict[str, Any], *, root: Path) -> list[str]:
 
     asset_ids: set[str] = set()
     record_by_id: dict[str, dict[str, Any]] = {}
+    r6_path_owners: dict[str, str] = {}
 
     for index, record in enumerate(records):
         prefix = f"records[{index}]"
@@ -202,6 +212,17 @@ def validate_registry(payload: dict[str, Any], *, root: Path) -> list[str]:
             asset_ids.add(asset_id)
             record_by_id[asset_id] = record
 
+        is_r6_primary = asset_id in R6_PRIMARY_ASSET_IDS or (
+            isinstance(asset_id, str) and asset_id.startswith(R6_PRIMARY_ASSET_PREFIX)
+        )
+        r6_disposition = record.get("r6_disposition")
+        if is_r6_primary and r6_disposition not in R6_DISPOSITIONS:
+            errors.append(
+                f"{record_id}.r6_disposition must be exactly one recognized R6 Primary disposition"
+            )
+        elif not is_r6_primary and r6_disposition is not None:
+            errors.append(f"{record_id}.r6_disposition is only valid for R6 Primary assets")
+
         paths = record.get("paths")
         if not _string_list(paths):
             errors.append(f"{record_id}.paths must be a non-empty string list")
@@ -215,6 +236,15 @@ def validate_registry(payload: dict[str, Any], *, root: Path) -> list[str]:
                     errors.append(f"{record_id}.paths must stay repository-relative: {path_text}")
                 elif not (root / candidate).exists():
                     errors.append(f"{record_id}.paths does not exist: {path_text}")
+                elif is_r6_primary:
+                    prior_owner = r6_path_owners.get(path_text)
+                    if prior_owner is not None:
+                        errors.append(
+                            f"R6 Primary path has multiple classification owners: "
+                            f"{path_text} ({prior_owner}, {record_id})"
+                        )
+                    else:
+                        r6_path_owners[path_text] = record_id
 
         responsibility = record.get("responsibility")
         if responsibility not in RESPONSIBILITIES:

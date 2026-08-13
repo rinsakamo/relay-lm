@@ -125,6 +125,66 @@ def test_validator_rejects_unexpanded_paths_and_unknown_enums(tmp_path: Path) ->
     assert "example.asset.invocation_roots contains unknown values: unknown_root" in errors
 
 
+def test_validator_accepts_valid_r6_primary_disposition(tmp_path: Path) -> None:
+    (tmp_path / "existing.py").write_text("pass\n", encoding="utf-8")
+    record = _base_record()
+    record["asset_id"] = "r6.primary.example"
+    record["r6_disposition"] = "retained_current_component"
+
+    assert registry.validate_registry(_payload(record), root=tmp_path) == []
+
+
+def test_validator_requires_r6_primary_disposition(tmp_path: Path) -> None:
+    (tmp_path / "existing.py").write_text("pass\n", encoding="utf-8")
+    record = _base_record()
+    record["asset_id"] = "r6.primary.example"
+
+    errors = registry.validate_registry(_payload(record), root=tmp_path)
+
+    assert (
+        "r6.primary.example.r6_disposition must be exactly one recognized R6 Primary disposition"
+        in errors
+    )
+
+
+def test_validator_rejects_unknown_r6_primary_disposition(tmp_path: Path) -> None:
+    (tmp_path / "existing.py").write_text("pass\n", encoding="utf-8")
+    record = _base_record()
+    record["asset_id"] = "r6.primary.example"
+    record["r6_disposition"] = "ordinary_reader"
+
+    errors = registry.validate_registry(_payload(record), root=tmp_path)
+
+    assert (
+        "r6.primary.example.r6_disposition must be exactly one recognized R6 Primary disposition"
+        in errors
+    )
+
+
+def test_validator_keeps_pre_r6_records_valid_without_disposition(tmp_path: Path) -> None:
+    (tmp_path / "existing.py").write_text("pass\n", encoding="utf-8")
+
+    assert registry.validate_registry(_payload(_base_record()), root=tmp_path) == []
+
+
+def test_validator_rejects_duplicate_r6_primary_path_ownership(tmp_path: Path) -> None:
+    (tmp_path / "existing.py").write_text("pass\n", encoding="utf-8")
+    first = _base_record()
+    first["asset_id"] = "r6.primary.first"
+    first["r6_disposition"] = "rollback_dependency"
+    second = deepcopy(first)
+    second["asset_id"] = "r6.primary.second"
+    payload = _payload(first)
+    payload["records"].append(second)
+
+    errors = registry.validate_registry(payload, root=tmp_path)
+
+    assert (
+        "R6 Primary path has multiple classification owners: "
+        "existing.py (r6.primary.first, r6.primary.second)" in errors
+    )
+
+
 def test_validator_requires_transitional_gate_and_replacement_validation(tmp_path: Path) -> None:
     (tmp_path / "existing.py").write_text("pass\n", encoding="utf-8")
     record = _base_record()
