@@ -173,7 +173,8 @@ O2/O3 remain architecture only for their durable process-ownership boundaries. C
 |---|---|---|
 | `soul_lab_runtime_mvp.md` | `architecture/ui/soul-lab-runtime.md` | synthesized with durable server/browser ownership rules |
 | `soul_lab_ui_mvp.md` | `architecture/ui/soul-lab.md` | synthesized |
-| `soul_lab_ui_a0_a1_handoff.md` through `soul_lab_ui_a7_management_projection_handoff.md` | implementation evidence; stable UI boundaries absorbed into UI architecture | split/absorbed/evidence_retained |
+| `soul_lab_ui_a0_a1_handoff.md` through `soul_lab_ui_a5_memory_inspector_handoff.md` | implementation evidence; stable UI boundaries absorbed into UI architecture | split/absorbed/evidence_retained; not yet executed |
+| UI-A6 shared shell / Settings and UI-A7 management projection handoffs | stable UI semantics in `architecture/ui/soul-lab.md`; exact management-read semantics in `contracts/ui/soul-lab-management.md` | retired; recoverable from Git history plus the central retirement manifest |
 | `soul_lab_ui_b0_real_home_conversation.md`, `soul_lab_ui_b1a_lifecycle_visibility.md` | UI/runtime architecture plus evidence | split |
 | UI-facing I-4E/I-4F/I-5B/I-7C documents | memory mutation contracts/architecture plus UI evidence | split |
 
