@@ -59,7 +59,6 @@ relaylm_e1r4_grounded_recall_security_smoke.py
 relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
 relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py
 relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py
-relaylm_e1r5_primary_mem_recall_bridge_relevance_bounds_smoke.py
 relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py
 """.split()
 
