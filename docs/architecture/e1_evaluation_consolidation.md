@@ -26,8 +26,8 @@ relaylm_related_authority:
   - ../evidence/waves/wave7_cross_slice_convergence_audit.md
   - project_execution_plan.md
   - relaymem_slp_current_target.md
-  - soul_lab_ui_b0_real_home_conversation.md
-  - soul_lab_ui_b1a_lifecycle_visibility.md
+  - ../contracts/ui/home-conversation.md
+  - ../contracts/ui/lifecycle-visibility.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i4d_primary_retrieval_exclusion.md
   - phase_i4e_forget_api_ui.md
@@ -72,7 +72,7 @@ Recall evidence is present. E1-R4 provides evidence-grounded response behavior f
 
 | Evidence step | Implemented evidence | Primary proof artifacts | Current interpretation |
 |---|---|---|---|
-| Real Home conversation | Implemented | `docs/architecture/soul_lab_ui_b0_real_home_conversation.md`, `docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md` | SOUL Lab Home can use the existing same-origin Chat Completions path for real text conversation. |
+| Real Home conversation | Implemented | `docs/contracts/ui/home-conversation.md`, `docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md` | SOUL Lab Home can use the existing same-origin Chat Completions path for real text conversation. |
 | Trusted Home admission | Implemented by E1-R1 | `docs/architecture/e1r1_trusted_home_scene_admission.md`, `docs/evidence/implementation/e1r1_completion_report.md` | Home-origin persistence may be admitted only by route-owned server configuration. Browser-owned trust is rejected. |
 | Character-store bootstrap | Implemented by E1-R2 | `docs/architecture/e1r2_character_store_bootstrap.md`, `docs/evidence/implementation/e1r2_completion_report.md` | Local evaluation can prepare the minimum safe Primary store layout through an explicit dry-run-first operator command. |
 | Provenance-preserving formation | Implemented by E1-R3 | `docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md`, `docs/evidence/implementation/e1r3_completion_report.md`, `docs/evidence/waves/wave7_cross_slice_convergence_audit.md`, `scripts/relaylm_e1r3_provenance_formation_summary_smoke.py`, `scripts/relaylm_e1r3_provenance_formation_security_smoke.py` | Primary MEM formation uses a user-only memory candidate payload and keeps assistant and scene/trust evidence separate. |
