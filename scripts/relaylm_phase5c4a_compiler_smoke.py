@@ -10,7 +10,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from phase5c4a_block_order import build_blocks
-from relaylm.client_instruction_evidence import (
+from relaylm.interfaces.openai.client_instruction_evidence import (
     build_client_instruction_evidence_block,
     replace_legacy_instruction_block,
 )

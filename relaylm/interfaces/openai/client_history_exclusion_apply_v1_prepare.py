@@ -13,7 +13,7 @@ from relaylm.interfaces.openai.client_history_exclusion_apply_v1_validation impo
 from relaylm.interfaces.openai.client_history_exclusion_preflight import (
     ClientHistoryExclusionPreflightResult,
 )
-from relaylm.client_instruction_evidence import (
+from relaylm.interfaces.openai.client_instruction_evidence import (
     build_client_instruction_evidence_block,
     replace_legacy_instruction_block,
 )
