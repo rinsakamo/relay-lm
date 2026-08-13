@@ -47,7 +47,7 @@
         "docs/contracts/runtime/managed-route-fallback.md"
       ],
       "disposition": "absorbed",
-      "retention_reason": "D6-R9 retired the historical product-runtime hardening source after its durable URL-swap character experience, context and memory authority, latency, privacy, observability, reliability, compatibility, and integration responsibilities were absorbed by canonical architecture and exact fallback authorities; its obsolete MVP-0 through MVP-5 ladder, broad mode-fallback examples, and early implementation-field proposals remain recoverable from Git rather than continuing as active architecture."
+      "retention_reason": "D6-R9 retired the historical product-runtime hardening source after its durable URL-swap character experience, context and memory authority, latency, privacy, observability, reliability, compatibility, and integration responsibilities were absorbed by canonical architecture and exact fallback authorities; its obsolete MVP-0 through MVP-5 ladder, broad mode-fallback examples, and early implementation-field proposals remain recoverable from Git rather than continuing as live documentation."
     },
     {
       "old_path": "docs/architecture/archive/relayctx_wake_loop_design.md",
@@ -1138,7 +1138,7 @@
         "docs/operations/relaymem-local-llm-evaluation.md"
       ],
       "disposition": "replaced",
-      "retention_reason": "D6-R21 moved the RelayMEM local LLM evaluation procedure into the permanent docs/operations/ collection as a canonical operations document, because the corrected placement authority routes repeatable operator evaluation method to operations rather than a transitional evaluation collection; the exact source remains recoverable from Git."
+      "retention_reason": "D6-R21 moved the RelayMEM local LLM evaluation procedure into the permanent docs/operations/ collection as a canonical graph document, because the corrected placement authority routes repeatable operator evaluation method to operations rather than a transitional evaluation collection; the exact source remains recoverable from Git."
     },
     {
       "old_path": "docs/smoke/relaymem_local_response_comparison.md",
@@ -1160,7 +1160,7 @@
         "docs/operations/relaymem-runtime-payload-evaluation.md"
       ],
       "disposition": "replaced",
-      "retention_reason": "D6-R21 moved the RelayMEM runtime payload diff evaluation procedure into the permanent docs/operations/ collection as a canonical operations document, because the corrected placement authority routes repeatable operator evaluation method to operations rather than a transitional evaluation collection; the exact source remains recoverable from Git."
+      "retention_reason": "D6-R21 moved the RelayMEM runtime payload diff evaluation procedure into the permanent docs/operations/ collection as a canonical graph document, because the corrected placement authority routes repeatable operator evaluation method to operations rather than a transitional evaluation collection; the exact source remains recoverable from Git."
     },
     {
       "old_path": "docs/smoke/scripts_inventory.md",
