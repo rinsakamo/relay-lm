@@ -1,6 +1,6 @@
 registry_version: 1
 generated_from: docs/reference/repository-asset-classification.md
-source_commit: 17ce820b91299e72dc532e7ed67046a377c0fd7e
+source_commit: 51852b37fb7a6c602b2242a86151ff1fd52712a3
 classification_version: 1
 canonical_entrypoints:
   - group: soul_lab_runtime
@@ -323,7 +323,8 @@ records:
     responsibility: migration_or_maintenance
     lifecycle: transitional
     owner: retrieval_migration
-    protected_boundary: current Primary MEM scoped recall, grounding, disabled-store behavior, and content-free public projection characterization while LC-1 and RT-1 remain open
+    r6_disposition: migration_or_characterization_dependency
+    protected_boundary: retained Primary MEM scoped recall, grounding, disabled-store behavior, and content-free public projection characterization after the RT-1 cutover
     current_callers:
       - scripts/relaylm_mvp_eval_runner_registry.py E1_SCRIPTS
       - docs/architecture/e1_evaluation_consolidation.md
@@ -333,6 +334,228 @@ records:
       - scripts/relaylm_mvp_eval_runner_registry.py
       - docs/architecture/e1_evaluation_consolidation.md
       - docs/architecture/project_execution_plan.md
-    removal_gate: RT-1 establishes one ordinary Subjective MEM Retrieval authority and the MVP evaluation registry no longer requires Primary MEM characterization
+    removal_gate: the MVP evaluation registry no longer requires Primary MEM characterization and equivalent post-cutover evidence covers scoped recall, grounding, disabled-store, and disclosure behavior
     replacement_validation: exact old/new characterization comparison, exact-current Subjective MEM selection, lifecycle and mutation fail-closed checks, rebuild-equivalent projection validation, disclosure regression, and negative-reference validation on the accepted RT-1 head
+    confidence: confirmed
+  - asset_id: r6.primary.characterization_suite
+    paths:
+      - tests/_relaymem_characterization_support.py
+      - tests/test_relaymem_formation_characterization.py
+      - tests/test_relaymem_lifecycle_characterization.py
+      - tests/test_relaymem_store_io_characterization.py
+      - tests/test_relaymem_characterization_review_regressions.py
+    responsibility: ordinary_test
+    lifecycle: transitional
+    owner: repository_maintenance
+    r6_disposition: migration_or_characterization_dependency
+    protected_boundary: reviewed characterization of Primary formation, lifecycle, store I/O, recovery, and failure semantics during R6 cleanup
+    current_callers: [maintained pytest suite]
+    invocation_roots: [pytest_root]
+    evidence:
+      - tests/_relaymem_characterization_support.py
+      - tests/test_relaymem_formation_characterization.py
+      - tests/test_relaymem_lifecycle_characterization.py
+      - tests/test_relaymem_store_io_characterization.py
+      - tests/test_relaymem_characterization_review_regressions.py
+    removal_gate: every characterized invariant has replacement coverage on the accepted post-Primary boundary and no R6 move or retirement still consumes the fixtures
+    replacement_validation: run the replacement invariant suite plus negative Primary-path and complete-diff checks on the exact cleanup head
+    confidence: confirmed
+
+  - asset_id: r6.primary.reader_seam_rollback
+    paths:
+      - relaylm/relaymem_primary_recall.py
+      - relaylm/relaymem_primary_recall_candidate_bridge_runtime.py
+      - relaylm/relaymem_primary_recall_runtime.py
+      - relaylm/relaymem_primary_recall_store.py
+      - tests/test_rt1d_reader_seams.py
+    responsibility: migration_or_maintenance
+    lifecycle: transitional
+    owner: retrieval_migration
+    r6_disposition: rollback_dependency
+    protected_boundary: RT-1D hard-cutover import seams, explicit Primary rollback reader behavior, store-root validation, and historical reconstruction evidence
+    current_callers:
+      - tests/test_rt1d_reader_seams.py
+      - Primary recovery and historical smoke surfaces that import store-root or control-state helpers
+    invocation_roots: [dynamic_import, pytest_root, smoke_only_root]
+    evidence:
+      - tests/test_rt1d_reader_seams.py
+      - docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md
+      - scripts/relaylm_phase_i4d_fresh_conversation_smoke.py
+      - scripts/relaylm_relayrun_runtime_checkpoint_dry_run_smoke.py
+    removal_gate: accepted rollback authority no longer requires the Primary reader seam, store reader, control-state helper, or historical reconstruction behavior
+    replacement_validation: exact RT-1D reader-seam, rollback, historical reconstruction, store-root security, and negative-import validation on the cleanup head
+    confidence: confirmed
+
+  - asset_id: r6.primary.current_read_projections
+    paths:
+      - relaylm/_relaymem_primary_current_state_impl.py
+      - relaylm/relaymem_primary_current_state.py
+      - relaylm/relaymem_primary_i4c2_projection.py
+      - relaylm/relaymem_primary_lifecycle_page.py
+      - relaylm/relaymem_primary_retrieval_eligibility.py
+    responsibility: migration_or_maintenance
+    lifecycle: active
+    owner: subjective_memory_lifecycle
+    r6_disposition: retained_current_component
+    protected_boundary: read-only exact-current state, lifecycle, historical projection, and retrieval-eligibility visibility retained for SOUL Lab and lifecycle enforcement
+    current_callers:
+      - relaylm/soul_lab_read_context.py and SOUL Lab observation, lifecycle, correction, Forget, and Pin routes
+      - Subjective MEM lifecycle runtimes and maintained characterization/security smokes
+    invocation_roots: [fastapi_route, pytest_root, smoke_only_root]
+    evidence:
+      - relaylm/soul_lab_read_context.py
+      - relaylm/soul_lab_lifecycle_visibility_projection.py
+      - relaylm/soul_lab_observation_projection.py
+      - tests/test_relaymem_lifecycle_characterization.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: r6.primary.correction_recovery
+    paths:
+      - relaylm/_relaymem_primary_correction_apply.py
+      - relaylm/_relaymem_primary_correction_history.py
+      - relaylm/_relaymem_primary_correction_preflight.py
+      - relaylm/_relaymem_primary_correction_publication.py
+      - relaylm/_relaymem_primary_correction_recovery.py
+      - relaylm/relaymem_primary_correction.py
+    responsibility: migration_or_maintenance
+    lifecycle: active
+    owner: subjective_memory_lifecycle
+    r6_disposition: operator_or_recovery_dependency
+    protected_boundary: operator correction preflight, apply, publication, history, forward recovery, and mutation fencing
+    current_callers:
+      - relaylm/soul_lab_memory_correction_routes.py
+      - correction, Forget, lifecycle characterization, concurrency, fault, and security validations
+    invocation_roots: [fastapi_route, pytest_root, smoke_only_root]
+    evidence:
+      - relaylm/soul_lab_memory_correction_routes.py
+      - docs/evidence/implementation/phase-i3-auditable-primary-mem-correct-handoff.md
+      - tests/test_relaymem_characterization_review_regressions.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: r6.primary.forget_recovery
+    paths:
+      - relaylm/_relaymem_primary_forget_apply.py
+      - relaylm/_relaymem_primary_forget_impl.py
+      - relaylm/relaymem_primary_forget.py
+      - relaylm/relaymem_primary_forget_artifact.py
+      - relaylm/relaymem_primary_forget_commit.py
+      - relaylm/relaymem_primary_forget_control_convergence.py
+      - relaylm/relaymem_primary_forget_finalization_artifact.py
+      - relaylm/relaymem_primary_forget_finalized_state.py
+      - relaylm/relaymem_primary_forget_hidden_resume.py
+      - relaylm/relaymem_primary_forget_public_apply.py
+      - relaylm/relaymem_primary_forget_recovery.py
+    responsibility: migration_or_maintenance
+    lifecycle: active
+    owner: subjective_memory_lifecycle
+    r6_disposition: operator_or_recovery_dependency
+    protected_boundary: Forget preflight, durable intent, hidden-successor apply, finalization, convergence, public projection, and crash recovery
+    current_callers:
+      - relaylm/soul_lab_memory_forget_routes.py
+      - Subjective MEM Forget runtime and maintained recovery, concurrency, fault, and security validations
+    invocation_roots: [fastapi_route, pytest_root, smoke_only_root]
+    evidence:
+      - relaylm/soul_lab_memory_forget_routes.py
+      - docs/evidence/implementation/i4c1-primary-forget-hidden-successor-handoff.md
+      - docs/evidence/implementation/i4c2-primary-forget-recovery-finalization-handoff.md
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: r6.primary.pin_operations
+    paths:
+      - relaylm/relaymem_primary_pin.py
+      - relaylm/relaymem_primary_pin_apply.py
+      - relaylm/relaymem_primary_pin_ranking.py
+    responsibility: migration_or_maintenance
+    lifecycle: active
+    owner: subjective_memory_lifecycle
+    r6_disposition: operator_or_recovery_dependency
+    protected_boundary: operator Pin and Unpin preflight, durable apply, history, ranking, and mutation coordination
+    current_callers:
+      - relaylm/soul_lab_memory_pin_routes.py
+      - Subjective MEM Pin runtime and maintained lifecycle, concurrency, and security validations
+    invocation_roots: [fastapi_route, pytest_root, smoke_only_root]
+    evidence:
+      - relaylm/soul_lab_memory_pin_routes.py
+      - docs/architecture/phase_i5b_pin_unpin_apply.md
+      - tests/test_relaymem_lifecycle_characterization.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: r6.primary.index_log_recovery
+    paths:
+      - relaylm/_relaymem_primary_index_log_apply.py
+      - relaylm/_relaymem_primary_index_log_apply_contract.py
+      - relaylm/_relaymem_primary_index_log_apply_io.py
+      - relaylm/_relaymem_primary_index_log_reconciliation.py
+      - relaylm/_relaymem_primary_index_log_reconciliation_contract.py
+      - relaylm/_relaymem_primary_index_log_reconciliation_io.py
+      - relaylm/_relaymem_primary_index_log_reconciliation_plan.py
+      - relaylm/_relaymem_primary_index_log_recovery_audit.py
+      - relaylm/_relaymem_primary_index_log_recovery_audit_contract.py
+      - relaylm/_relaymem_primary_index_log_recovery_audit_io.py
+      - relaylm/_relaymem_primary_index_log_recovery_audit_io_cleanup.py
+      - relaylm/_relaymem_primary_index_log_recovery_audit_io_control.py
+      - relaylm/_relaymem_primary_index_log_recovery_audit_io_page.py
+      - relaylm/relaymem_primary_index_log_apply.py
+      - relaylm/relaymem_primary_index_log_reconciliation.py
+      - relaylm/relaymem_primary_index_log_recovery_audit.py
+    responsibility: migration_or_maintenance
+    lifecycle: active
+    owner: primary_store_recovery
+    r6_disposition: operator_or_recovery_dependency
+    protected_boundary: index/log reconciliation planning and apply, atomic I/O, recovery audit, cleanup, control/page inspection, and audit receipts
+    current_callers:
+      - Primary page writer, correction, Forget, and SLP worker recovery paths
+      - maintained store characterization, worker fault, reconciliation, recovery-audit, and security validations
+    invocation_roots: [pytest_root, smoke_only_root]
+    evidence:
+      - docs/architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
+      - tests/test_relaymem_store_io_characterization.py
+      - scripts/relaylm_relaymem_primary_index_log_recovery_audit_smoke.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+
+  - asset_id: r6.primary.page_mutation_pipeline
+    paths:
+      - relaylm/_relaymem_primary_lifecycle_page_writer.py
+      - relaylm/_relaymem_primary_page_candidate_impl.py
+      - relaylm/_relaymem_primary_page_writer_common.py
+      - relaylm/_relaymem_primary_page_writer_contract.py
+      - relaylm/_relaymem_primary_page_writer_handoff.py
+      - relaylm/_relaymem_primary_page_writer_impl.py
+      - relaylm/_relaymem_primary_page_writer_io.py
+      - relaylm/_relaymem_primary_pipeline_impl.py
+      - relaylm/_relaymem_primary_writer_handoff_impl.py
+      - relaylm/relaymem_primary_formation.py
+      - relaylm/relaymem_primary_mutation_coordinator.py
+      - relaylm/relaymem_primary_page_candidate.py
+      - relaylm/relaymem_primary_page_writer.py
+      - relaylm/relaymem_primary_pipeline.py
+      - relaylm/relaymem_primary_write_preflight.py
+      - relaylm/relaymem_primary_writer_handoff.py
+    responsibility: migration_or_maintenance
+    lifecycle: active
+    owner: primary_store_recovery
+    r6_disposition: operator_or_recovery_dependency
+    protected_boundary: current SLP formation-to-page mutation pipeline, preflight, candidate construction, atomic page write, lifecycle write, handoff, checkpoint, and mutation coordination
+    current_callers:
+      - relaylm/relaymem_slp_finalized_turn_source.py and relaylm/relaymem_slp_primary_worker.py
+      - correction, Forget, Pin, worker, characterization, atomicity, concurrency, fault, and security validations
+    invocation_roots: [pytest_root, smoke_only_root]
+    evidence:
+      - relaylm/relaymem_slp_finalized_turn_source.py
+      - relaylm/relaymem_slp_primary_worker.py
+      - docs/contracts/slp/primary-worker.md
+      - tests/test_relaymem_formation_characterization.py
+      - tests/test_relaymem_store_io_characterization.py
+    removal_gate: null
+    replacement_validation: null
     confidence: confirmed
