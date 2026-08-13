@@ -469,6 +469,43 @@
       "retention_reason": "D6-R35-B retired the SOUL Lab UI-A2 first-launch and adoption handoff in PR #1157 because current Character Workspace creation and import authority supersedes its historical source-composition proposal, whose OUTPUT_POLICY and RELATIONSHIP_ANCHOR requirements are not promoted as current architecture; browser non-authority is already permanent in the SOUL Lab UI architecture and completion is already in the current UI plan. No unique evidence function remains, so rollout history stays Git-recoverable."
     },
     {
+      "old_path": "docs/architecture/soul_lab_ui_a3_communication_handoff.md",
+      "last_live_commit": "fcdbe80a093891aff9e1fdf0b70cc32466dc17c1",
+      "old_blob_sha": "a58248bc1ed43fd6dc0e3d22110fe971c1c75156",
+      "removed_by_pr": 1162,
+      "replacement_paths": [
+        "docs/architecture/soul_lab_ui_mvp.md",
+        "docs/architecture/ui/soul-lab.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R35-C retired the SOUL Lab UI-A3 mock Communication handoff in PR #1162 after its durable browser non-authority and Real Runtime versus Local Preview separation became permanent in the SOUL Lab UI architecture and its completion plus pending Communication transport status became current in the SOUL Lab UI plan; the exact mock session state machine, peer labels, turn controls, and timeline vocabulary are historical implementation detail, and no continuing retained-record function remains."
+    },
+    {
+      "old_path": "docs/architecture/soul_lab_ui_a4_pod_handoff.md",
+      "last_live_commit": "f955a51cdc263a0e2303ce87e558ae6148bcffca",
+      "old_blob_sha": "6a8c2e669f0d50b93c967b1f93c8aabe794a8142",
+      "removed_by_pr": 1162,
+      "replacement_paths": [
+        "docs/architecture/soul_lab_ui_mvp.md",
+        "docs/architecture/ui/soul-lab.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R35-C retired the SOUL Lab UI-A4 Pod intervention handoff in PR #1162 after its durable browser non-authority and server-owned apply boundary became permanent in the SOUL Lab UI architecture and its completion plus pending RelaySOUL apply and rollback status became current in the SOUL Lab UI plan; its mock intervention categories, protected-trait list, comparison fields, and state machine are historical UI examples that are not promoted as RelaySOUL schema, and Git recovery remains sufficient."
+    },
+    {
+      "old_path": "docs/architecture/soul_lab_ui_a5_memory_inspector_handoff.md",
+      "last_live_commit": "730581abdfdcbb9e81ee49d9c62ad57d32f13acd",
+      "old_blob_sha": "c1efed3a74711eeaf5887cf5e71575dfa3a6e77e",
+      "removed_by_pr": 1162,
+      "replacement_paths": [
+        "docs/architecture/memory/mutation-governance.md",
+        "docs/architecture/soul_lab_ui_mvp.md",
+        "docs/architecture/ui/soul-lab.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R35-C retired the SOUL Lab UI-A5 Memory Inspector handoff in PR #1162 because the durable observation and memory-governance browser boundary is already permanent in the SOUL Lab UI architecture and memory mutation governance, and current real observation, Correct, Forget, Pin/Unpin, and Held governance status supersedes this early mock-only preview; its mock fixtures, preview thresholds, and operation state machine are Git-recoverable and no continuing retained-record function remains."
+    },
+    {
       "old_path": "docs/architecture/soul_lab_ui_a6_shared_shell_settings_handoff.md",
       "last_live_commit": "949fc31c6ab8c4c329ba74843d71331eaab1db53",
       "old_blob_sha": "57927d8c59898152921d5c358df8b0c19a41c780",
