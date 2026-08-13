@@ -10,7 +10,7 @@ from relaylm.interfaces.openai.client_history_exclusion_preflight import (
     build_client_history_exclusion_preflight_node_result,
     client_message_canonicalization_dependency_enabled,
 )
-from relaylm.client_instruction_cache import (
+from relaylm.interfaces.openai.client_instruction_cache import (
     build_client_instruction_cache_dry_run,
     build_client_instruction_cache_node_result,
 )

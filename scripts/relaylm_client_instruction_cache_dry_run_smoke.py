@@ -9,7 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from relaylm.client_instruction_cache import (
+from relaylm.interfaces.openai.client_instruction_cache import (
     assert_client_instruction_cache_content_free,
     build_client_instruction_cache_dry_run,
     build_client_instruction_cache_node_result,
