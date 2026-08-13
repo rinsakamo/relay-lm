@@ -15,7 +15,7 @@ from relaylm.client_instruction_cache import (
     build_client_instruction_cache_node_result,
 )
 from relaylm.interfaces.openai.client_instruction_extraction import build_client_instruction_extraction_dry_run
-from relaylm.client_instruction_fingerprint import build_client_instruction_fingerprint_dry_run
+from relaylm.interfaces.openai.client_instruction_fingerprint import build_client_instruction_fingerprint_dry_run
 
 
 RAW_VALUES = (
