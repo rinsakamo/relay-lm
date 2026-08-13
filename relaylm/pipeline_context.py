@@ -123,7 +123,7 @@ class PipelineContext:
             consume_compiled_context_blocks_runtime_private()
         )
         _ACTIVE_PIPELINE_CONTEXT.set(self)
-        from relaylm.client_instruction_identity_runtime import (
+        from relaylm.interfaces.openai.client_instruction_identity_runtime import (
             prepare_client_instruction_identity_runtime_private,
         )
         from relaylm.interfaces.openai.client_instruction_cache_lookup_runtime import (
