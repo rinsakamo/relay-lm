@@ -308,7 +308,7 @@ The currently eligible repository work is:
 
 ```text
 Lane R  R5 governed core package migration              COMPLETE
-Lane D  D6 final retirement / cutover-tool retirement   D6-R34 failed completion audit complete (#1143); D6-R35 in progress — first SOUL Lab A6/A7 source family retired (#1151); D6 incomplete
+Lane D  D6 final retirement / cutover-tool retirement   D6-R34 failed completion audit complete (#1143); D6-R35 in progress — SOUL Lab A6/A7 source family retired (#1151) and UI-A0/A1 + UI-A2 foundation/adoption source family retired (#1157); D6 incomplete
 Lane R  R6 Primary MEM disposition                      required cleanup after R5
 Lane C                                                  idle until PD-2 completes
 ```
