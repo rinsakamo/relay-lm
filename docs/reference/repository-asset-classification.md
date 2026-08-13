@@ -101,7 +101,7 @@ retired
 
 An unreferenced asset, low fan-in, absence from the FastAPI import graph, or milestone-oriented name is only a triage signal. None is sufficient retirement evidence.
 
-R6 Primary rows are the existing `retrieval.primary_recall_characterization` row and rows whose IDs begin with `r6.primary.`. Their `r6_disposition` is exactly one of:
+R6 Primary rows have IDs beginning with `r6.primary.`. Their `r6_disposition` is exactly one of:
 
 ```text
 retired_after_cutover
@@ -143,7 +143,7 @@ The following YAML records are the canonical human-reviewed representation for t
 
 ```yaml
 classification_version: 1
-source_commit: 51852b37fb7a6c602b2242a86151ff1fd52712a3
+source_commit: f6d709765b0cd864053f71c98a020c4aa73ce277
 records:
   - asset_id: console.relaylm
     paths: [pyproject.toml]
@@ -432,24 +432,75 @@ records:
     confidence: confirmed
     notes: must not be converted to an in-process test solely to reduce file count
 
-  - asset_id: retrieval.primary_recall_characterization
-    paths: [scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py]
-    responsibility: migration_or_maintenance
+  - asset_id: r6.primary.recall_post_retirement_structure
+    paths:
+      - scripts/relaylm_e1r5_primary_mem_recall_bridge_policy_gate_smoke.py
+      - scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py
+      - scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
+      - scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py
+    responsibility: process_smoke
     lifecycle: transitional
     owner: retrieval_migration
     r6_disposition: migration_or_characterization_dependency
-    protected_boundary: retained Primary MEM scoped recall, grounding, disabled-store behavior, and content-free public projection characterization after the RT-1 cutover
+    protected_boundary: post-RT-1D-R5 structural proof that ordinary Primary recall entry points and selection are absent while read-only store and history/admin helpers remain
     current_callers:
-      - scripts/relaylm_mvp_eval_runner_registry.py E1_SCRIPTS
-      - docs/architecture/e1_evaluation_consolidation.md
+      - scripts/relaylm_mvp_eval_runner_registry.py E1_SCRIPTS for candidate, security, and no-symlink proofs
+      - scripts/relaylm_e1_evaluation_consolidation_smoke.py EVIDENCE_PATHS for candidate, security, and no-symlink proofs
+      - direct focused validation for the policy-gate proof
     invocation_roots: [registry, smoke_only_root]
     evidence:
+      - scripts/relaylm_e1r5_primary_mem_recall_bridge_policy_gate_smoke.py
+      - scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py
       - scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
+      - scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py
       - scripts/relaylm_mvp_eval_runner_registry.py
-      - docs/architecture/e1_evaluation_consolidation.md
-      - docs/architecture/project_execution_plan.md
-    removal_gate: the MVP evaluation registry no longer requires Primary MEM characterization and equivalent post-cutover evidence covers scoped recall, grounding, disabled-store, and disclosure behavior
-    replacement_validation: exact old/new characterization comparison, exact-current Subjective MEM selection, lifecycle and mutation fail-closed checks, rebuild-equivalent projection validation, disclosure regression, and negative-reference validation on the accepted RT-1 head
+      - scripts/relaylm_e1_evaluation_consolidation_smoke.py
+    removal_gate: one function-oriented post-retirement structural proof replaces the four duplicate E1-named files and every current registry, consolidation, and documentation caller is updated atomically
+    replacement_validation: the retained proof covers absent ordinary entry points and selection, no production reachability or Primary store access from ordinary Retrieval, and retained read-only helper/store availability
+    confidence: confirmed
+    notes: these files assert the same current structural retirement boundary; they do not characterize scoped recall, grounding, disabled-store, relevance, or disclosure behavior
+
+  - asset_id: r6.primary.recall_retired_relevance_smoke
+    paths: [scripts/relaylm_e1r5_primary_mem_recall_bridge_relevance_bounds_smoke.py]
+    responsibility: migration_or_maintenance
+    lifecycle: transitional
+    owner: retrieval_migration
+    r6_disposition: retired_after_cutover
+    protected_boundary: bounded removal of a pre-retirement relevance smoke that calls deleted Primary candidate-discovery and scoring helpers
+    current_callers:
+      - scripts/relaylm_mvp_eval_runner_registry.py E1_SCRIPTS stale entry
+      - scripts/relaylm_e1_evaluation_consolidation_smoke.py EVIDENCE_PATHS stale entry
+      - docs/architecture/e1_evaluation_consolidation.md historical evidence inventory
+    invocation_roots: [registry, smoke_only_root]
+    evidence:
+      - scripts/relaylm_e1r5_primary_mem_recall_bridge_relevance_bounds_smoke.py
+      - relaylm/relaymem_primary_recall.py
+      - scripts/relaylm_mvp_eval_runner_registry.py
+      - scripts/relaylm_e1_evaluation_consolidation_smoke.py
+    removal_gate: remove the stale registry, consolidation, and current-document claims atomically with this failing smoke without changing the retired ordinary-serving boundary or retained read-only helpers
+    replacement_validation: exact E1 registry and consolidation validation, current-boundary smoke, negative path/reference checks, and retained post-retirement structural and audit-projection proofs
+    confidence: confirmed
+    notes: direct execution fails because _discover_scoped_primary_candidates_from_control and _candidate_summary_score retired with ordinary Primary recall
+
+  - asset_id: r6.primary.recall_audit_projection
+    paths: [scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py]
+    responsibility: process_smoke
+    lifecycle: active
+    owner: audit_projection
+    r6_disposition: retained_current_component
+    protected_boundary: content-free allowlisted projection of the retained relaymem.primary_recall_projection.v0 diagnostic schema
+    current_callers:
+      - scripts/relaylm_mvp_eval_runner_registry.py E1_SCRIPTS
+      - scripts/relaylm_e1_evaluation_consolidation_smoke.py EVIDENCE_PATHS
+      - docs/architecture/e1_evaluation_consolidation.md evidence inventory
+    invocation_roots: [registry, smoke_only_root]
+    evidence:
+      - scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py
+      - relaylm/audit_projection.py
+      - scripts/relaylm_mvp_eval_runner_registry.py
+      - scripts/relaylm_e1_evaluation_consolidation_smoke.py
+    removal_gate: null
+    replacement_validation: null
     confidence: confirmed
   - asset_id: r6.primary.characterization_suite
     paths:
@@ -678,12 +729,12 @@ records:
 ## Decision summary
 
 ```text
-active: 21
-transitional: 3
+active: 22
+transitional: 4
 retired: 0
 ```
 
-The R6 baseline classifies every surviving `relaylm/relaymem_primary*` and `relaylm/_relaymem_primary*` module, the named characterization suite, the RT-1D reader-seam regression, and the registered Primary recall characterization smoke. No R6 asset is `retired_after_cutover`: current evidence protects each asset as characterization, rollback, operator/recovery, or retained read-only state. Classification therefore authorizes no deletion or move; the next cleanup transaction must first detach a uniquely proven mixed dependency or wait for its recorded removal gate.
+The R6 baseline classifies every surviving `relaylm/relaymem_primary*` and `relaylm/_relaymem_primary*` module, the named characterization suite, the RT-1D reader-seam regression, and every existing `relaylm_e1r5_primary_mem_recall_*_smoke.py` asset. The corrected E1 surface separates current post-retirement structural proof and content-free audit projection from a pre-retirement relevance smoke that calls deleted helpers. That relevance smoke is the sole `retired_after_cutover` row and is deletion-ready only through its recorded atomic reference-removal gate; no runtime deletion or move is authorized by this classification correction.
 
 No classified responsibility in this bounded surface is retired. R2-B retires two redundant pytest file partitions through Git history while preserving every assertion in the active repository-inventory test owner.
 
@@ -697,7 +748,7 @@ The following remain unresolved and must not be guessed:
 - whether each discovered `python -m` root is supported or only an implementation convenience;
 - whether milestone-named smoke outside this surface is active regression, process validation, transitional characterization, or retired;
 - callers outside the enumerated R6 Primary paths remain evidence consumers rather than separately owned R6 assets; any later cleanup must refresh them before writing;
-- the first detachable mixed responsibility after this baseline; no asset currently satisfies the `retired_after_cutover` deletion gate.
+- after this correction, the uniquely classified stale E1 relevance smoke may be removed only with every recorded registry, consolidation, and current-document reference through its atomic gate.
 
 ## Wave register and accepted decisions
 
