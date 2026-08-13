@@ -25,7 +25,7 @@ from relaylm.client_instruction_fingerprint import (
     build_client_instruction_fingerprint_dry_run,
     build_client_instruction_fingerprint_node_result,
 )
-from relaylm.client_instruction_identity_runtime import (
+from relaylm.interfaces.openai.client_instruction_identity_runtime import (
     build_client_instruction_identity_runtime_node_result,
     client_instruction_identity_dependency_enabled,
 )
