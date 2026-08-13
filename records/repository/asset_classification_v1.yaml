@@ -425,28 +425,6 @@ records:
     confidence: confirmed
     notes: this is current retirement evidence rather than an executable Primary-reader rollback mechanism
 
-  - asset_id: r6.primary.recall_legacy_noop_installers
-    paths:
-      - relaylm/relaymem_primary_recall_candidate_bridge_runtime.py
-      - relaylm/relaymem_primary_recall_runtime.py
-    responsibility: migration_or_maintenance
-    lifecycle: transitional
-    owner: retrieval_migration
-    r6_disposition: retired_after_cutover
-    protected_boundary: legacy import seams whose installer functions are explicit no-ops and are currently exercised only to prove that calling the former installers cannot mutate canonical module state
-    current_callers:
-      - scripts/relaylm_package_import_purity_smoke.py explicit legacy installer imports and calls
-    invocation_roots: [smoke_only_root]
-    evidence:
-      - relaylm/relaymem_primary_recall_candidate_bridge_runtime.py
-      - relaylm/relaymem_primary_recall_runtime.py
-      - scripts/relaylm_package_import_purity_smoke.py
-      - docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md
-    removal_gate: delete both no-op installer modules and remove their explicit imports, calls, and legacy-alias assertions from the package-import purity smoke while retaining its metadata-only import and canonical-module non-mutation checks and preserving historical evidence
-    replacement_validation: the package-import purity smoke passes without importing either legacy installer, negative search finds no current production, test, smoke, workflow, or current-document caller of the two module paths or installer symbols, and the post-retirement structural proof plus RT-1D reader-retirement regression remain green on the exact cleanup head
-    confidence: confirmed
-    notes: post-transfer rollback is a new governed authority transfer, not an automatic fallback through these no-op compatibility installers
-
   - asset_id: r6.primary.current_read_projections
     paths:
       - relaylm/_relaymem_primary_current_state_impl.py
