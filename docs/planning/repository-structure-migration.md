@@ -38,7 +38,7 @@ Current implementation completion remains owned by [Project Status](../PROJECT_S
 
 ## Current post-RT-1 convergence state
 
-The original planning-adoption prerequisites and the legacy Lane C critical implementation program are complete. Current implementation authority records RT-1D-R5 immediate retirement, its mandatory P8, and the P8 result/current-authority correction as completed. The ordinary Primary reader and its ranking/fallback path are retired; only explicitly classified read-only Primary history/observation/lifecycle/admin projections survive.
+The original planning-adoption prerequisites and the legacy Lane C critical implementation program are complete. Current implementation authority records RT-1D-R5 immediate retirement, its mandatory P8, and the P8 result/current-authority correction as completed. The ordinary Primary serving reader and its ranking/fallback path remain retired. The completed R6 classification baseline additionally protects surviving characterization, rollback, operator/recovery, and retained-current implementation assets without restoring ordinary Primary serving.
 
 This completion releases the prerequisite that kept core memory and Retrieval modules protected from repository package migration. Lane R R5 governed core package migration is complete. The current next repository-maintenance stage is Lane R R6 Primary MEM disposition. Lane D has since advanced into D6; D6 final retirement and legacy cutover-tool retirement is the remaining Lane D work before PD-1, and it continues independently where path and authority safety permit.
 
@@ -46,7 +46,7 @@ The post-RT-1 handoff is:
 
 ```text
 Lane R  R5 governed core package migration                 COMPLETE
-Lane R  R6 Primary MEM disposition                         current next repository-maintenance stage
+Lane R  R6 Primary MEM classification baseline             COMPLETE; dependency detachment/convergence next
 Lane D  D6 final retirement / cutover-tool retirement      continue to completion
 
 R5 complete + D6 complete
@@ -57,7 +57,7 @@ R5 complete + D6 complete
   -> Character Presence implementation
 ```
 
-Lane R R6 Primary MEM disposition remains required repository cleanup after R5, but it is not a blanket prerequisite for PD/PC. It may proceed in parallel with later personality design or implementation only when exact path, caller, import, retained-authority, and semantic ownership are disjoint. A concrete R6 dependency still blocks the affected PD/PC slice.
+Lane R R6 Primary MEM disposition remains required repository cleanup after R5, but it is not a blanket prerequisite for PD/PC. Its classification baseline is complete; subsequent dependency detachment or disposition convergence may proceed in parallel with later personality design or implementation only when exact path, caller, import, retained-authority, and semantic ownership are disjoint. A concrete R6 dependency still blocks the affected PD/PC slice.
 
 For historical context, the plan was originally adopted after:
 
@@ -518,6 +518,10 @@ retained_current_component
 ```
 
 Delete only through reviewed atomic waves. Move only the subset that remains a supported current component.
+
+The R6 classification baseline completed in PR #1159 with exact resulting main `a58bd6178c8aaa8239c99680a71f5dac982fa716`. It covers 61 surviving Primary modules and their exact characterization and RT-1D reader-seam evidence in 9 reviewed R6 rows. The ordinary Primary serving reader remains retired, but the surviving assets protect characterization, rollback, Correction, Forget, Pin, index/log recovery, page/mutation coordination, and retained-current responsibilities. The reviewed baseline contains zero `retired_after_cutover` rows; therefore it authorizes no deletion, move, or first destructive cleanup wave.
+
+The next bounded R6 transaction must use fresh caller and authority evidence from the reviewed classification to detach or converge one uniquely proven dependency boundary. Retained-current and operator/recovery assets are not deletion candidates merely because their namespace still contains `primary`; an asset may be deleted or moved only after its classification and removal or migration gate legitimately converge through a separate atomic review.
 
 R6 follows R5 as repository cleanup. It is not a blanket gate on Personality Design or Personality Core, because the ordinary Primary reader has already retired; however any PD/PC slice that touches a still-undisposed Primary path, caller, recovery surface, or retained authority must wait for that exact R6 disposition.
 
