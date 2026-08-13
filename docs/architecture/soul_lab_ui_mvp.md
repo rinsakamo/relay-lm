@@ -18,8 +18,8 @@ relaylm_related_authority:
   - soul_lab_runtime_mvp.md
   - ../contracts/ui/soul-lab-management.md
   - ../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
-  - soul_lab_ui_b0_real_home_conversation.md
-  - soul_lab_ui_b1a_lifecycle_visibility.md
+  - ../contracts/ui/home-conversation.md
+  - ../contracts/ui/lifecycle-visibility.md
   - phase_i4e_forget_api_ui.md
   - phase_i4f_forget_validation.md
   - phase_i5b_pin_unpin_apply.md

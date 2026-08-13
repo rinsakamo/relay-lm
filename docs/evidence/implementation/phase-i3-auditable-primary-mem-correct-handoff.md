@@ -32,8 +32,8 @@ relaylm_related_authority:
   - ../../architecture/phase_i7ab_held_apply_discard_contract.md
   - ../../architecture/soul_lab_ui_mvp.md
   - ../../architecture/soul_lab_runtime_mvp.md
-  - ../../architecture/soul_lab_ui_b0_real_home_conversation.md
-  - ../../architecture/soul_lab_ui_b1a_lifecycle_visibility.md
+  - ../../contracts/ui/home-conversation.md
+  - ../../contracts/ui/lifecycle-visibility.md
 ---
 # Phase I-3: Auditable Primary MEM Correct
 
