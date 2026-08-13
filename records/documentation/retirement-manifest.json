@@ -47,7 +47,7 @@
         "docs/contracts/runtime/managed-route-fallback.md"
       ],
       "disposition": "absorbed",
-      "retention_reason": "D6-R9 retired the historical product-runtime hardening source after its durable URL-swap character experience, context and memory authority, latency, privacy, observability, reliability, compatibility, and integration responsibilities were absorbed by canonical architecture and exact fallback authorities; its obsolete MVP-0 through MVP-5 ladder, broad mode-fallback examples, and early implementation-field proposals remain recoverable from Git rather than continuing as live documentation."
+      "retention_reason": "D6-R9 retired the historical product-runtime hardening source after its durable URL-swap character experience, context and memory authority, latency, privacy, observability, reliability, compatibility, and integration responsibilities were absorbed by canonical architecture and exact fallback authorities; its obsolete MVP-0 through MVP-5 ladder, broad mode-fallback examples, and early implementation-field proposals remain recoverable from Git rather than continuing as active architecture."
     },
     {
       "old_path": "docs/architecture/archive/relayctx_wake_loop_design.md",
@@ -533,7 +533,7 @@
       "old_path": "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
       "last_live_commit": "ae48605302a16710d0e0cc1ab9e8d07182bce125",
       "old_blob_sha": "3d1a5d6a2b254664a0c02df4e6a492ee1e81c9d4",
-      "removed_by_pr": 1164,
+      "removed_by_pr": 1171,
       "replacement_paths": [
         "docs/architecture/e1r1_trusted_home_scene_admission.md",
         "docs/architecture/soul_lab_ui_mvp.md",
@@ -542,20 +542,20 @@
         "docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md"
       ],
       "disposition": "replaced",
-      "retention_reason": "D6-R35-D retired the SOUL Lab UI-B0 real Home conversation handoff in PR #1164 after the exact Home browser transport and session-fencing responsibility became contract-owned, stable browser/server semantics and current implementation completion became permanently owned by the SOUL Lab UI architecture and plan, and trusted Home scene admission became separately current; the dated workstation findings remain frozen in the E1 local runtime evaluation and the rollout chronology stays Git-recoverable."
+      "retention_reason": "D6-R35-D retired the SOUL Lab UI-B0 real Home conversation handoff in PR #1171 after the exact Home browser transport and session-fencing responsibility became contract-owned, stable browser/server semantics and current implementation completion became permanently owned by the SOUL Lab UI architecture and plan, and trusted Home scene admission became separately current; the dated workstation findings remain frozen in the E1 local runtime evaluation and the rollout chronology stays Git-recoverable."
     },
     {
       "old_path": "docs/architecture/soul_lab_ui_b1a_lifecycle_visibility.md",
       "last_live_commit": "ce5931aadeef591067b074f0bfc659aa10a8d94c",
       "old_blob_sha": "efb5b0e42eeaea6b2a33c8f3c14c794d21a2bbd4",
-      "removed_by_pr": 1164,
+      "removed_by_pr": 1171,
       "replacement_paths": [
         "docs/architecture/soul_lab_ui_mvp.md",
         "docs/architecture/ui/soul-lab.md",
         "docs/contracts/ui/lifecycle-visibility.md"
       ],
       "disposition": "replaced",
-      "retention_reason": "D6-R35-D retired the SOUL Lab UI-B1A lifecycle visibility handoff in PR #1164 after the exact read-only lifecycle projection and browser-consumption contract became permanent and stable browser/server semantics plus current implementation completion stayed owned by the SOUL Lab UI architecture and plan; the frozen PR #421 completion report remains the retained implementation evidence and the source chronology stays Git-recoverable."
+      "retention_reason": "D6-R35-D retired the SOUL Lab UI-B1A lifecycle visibility handoff in PR #1171 after the exact read-only lifecycle projection and browser-consumption contract became permanent and stable browser/server semantics plus current implementation completion stayed owned by the SOUL Lab UI architecture and plan; the frozen PR #421 completion report remains the retained implementation evidence and the source chronology stays Git-recoverable."
     },
     {
       "old_path": "docs/architecture/vtuber_memory_proxy_design.md",
@@ -1138,7 +1138,7 @@
         "docs/operations/relaymem-local-llm-evaluation.md"
       ],
       "disposition": "replaced",
-      "retention_reason": "D6-R21 moved the RelayMEM local LLM evaluation procedure into the permanent docs/operations/ collection as a canonical graph document, because the corrected placement authority routes repeatable operator evaluation method to operations rather than a transitional evaluation collection; the exact source remains recoverable from Git."
+      "retention_reason": "D6-R21 moved the RelayMEM local LLM evaluation procedure into the permanent docs/operations/ collection as a canonical operations document, because the corrected placement authority routes repeatable operator evaluation method to operations rather than a transitional evaluation collection; the exact source remains recoverable from Git."
     },
     {
       "old_path": "docs/smoke/relaymem_local_response_comparison.md",
@@ -1160,7 +1160,7 @@
         "docs/operations/relaymem-runtime-payload-evaluation.md"
       ],
       "disposition": "replaced",
-      "retention_reason": "D6-R21 moved the RelayMEM runtime payload diff evaluation procedure into the permanent docs/operations/ collection as a canonical graph document, because the corrected placement authority routes repeatable operator evaluation method to operations rather than a transitional evaluation collection; the exact source remains recoverable from Git."
+      "retention_reason": "D6-R21 moved the RelayMEM runtime payload diff evaluation procedure into the permanent docs/operations/ collection as a canonical operations document, because the corrected placement authority routes repeatable operator evaluation method to operations rather than a transitional evaluation collection; the exact source remains recoverable from Git."
     },
     {
       "old_path": "docs/smoke/scripts_inventory.md",
