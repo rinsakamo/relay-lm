@@ -15,7 +15,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../PROJECT_STATUS.md
-  - ../../architecture/soul_lab_ui_b0_real_home_conversation.md
+  - ../../contracts/ui/home-conversation.md
   - ../../architecture/post_i3_evaluation_work_roadmap.md
   - ../../architecture/integration_i1_primary_mem_two_turn_recall.md
   - ../../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md

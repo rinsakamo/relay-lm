@@ -8,7 +8,7 @@ relaylm_update_trigger:
   - metadata or link repair only
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../../architecture/soul_lab_ui_b1a_lifecycle_visibility.md
+  - ../../contracts/ui/lifecycle-visibility.md
   - ../../architecture/soul_lab_ui_mvp.md
   - ../../architecture/phase_i4e_forget_api_ui.md
   - ../../architecture/phase_i4f_forget_validation.md
@@ -30,7 +30,7 @@ relaylm_exact_source_snapshot: ui_b1a_completion_report-source.txt
 
 ## Status and authority
 
-This is frozen implementation evidence for PR #421. Current behavior belongs to [UI-B1A Lifecycle Visibility](../../architecture/soul_lab_ui_b1a_lifecycle_visibility.md), the lifecycle projection and SOUL Lab implementation, its focused API/security/frontend smokes, and the broader SOUL Lab UI authority.
+This is frozen implementation evidence for PR #421. Current behavior belongs to the [SOUL Lab Lifecycle Visibility Contract](../../contracts/ui/lifecycle-visibility.md), the lifecycle projection and SOUL Lab implementation, its focused API/security/frontend smokes, and the broader SOUL Lab UI authority.
 
 The [exact snapshot](ui_b1a_completion_report-source.txt) is byte-identical to the source final-head, source merge, and pre-cutover forms: blob `1ec7c923e627415847c075f144bc4d7ecb4120ca`, SHA-256 `fd6a164dfdffc74298b3ffdcb4b734eabb51dada08dc64556b130eeeb0445cb0`. No post-source report modification exists.
 
