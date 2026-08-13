@@ -23,8 +23,8 @@ relaylm_related_authority:
   - ../../architecture/phase_i4d_primary_retrieval_exclusion.md
   - ../../architecture/soul_lab_ui_mvp.md
   - ../../architecture/soul_lab_runtime_mvp.md
-  - ../../architecture/soul_lab_ui_b0_real_home_conversation.md
-  - ../../architecture/soul_lab_ui_b1a_lifecycle_visibility.md
+  - ../../contracts/ui/home-conversation.md
+  - ../../contracts/ui/lifecycle-visibility.md
 ---
 # Phase I-2 Real SOUL Lab Observation
 
@@ -34,7 +34,7 @@ relaylm_related_authority:
 
 Current behavior is independently owned by:
 
-- `docs/architecture/soul_lab_ui_mvp.md`, `soul_lab_runtime_mvp.md`, `soul_lab_ui_b0_real_home_conversation.md`, and `soul_lab_ui_b1a_lifecycle_visibility.md` for current SOUL Lab observation, Home, and lifecycle-visibility boundaries;
+- `docs/architecture/soul_lab_ui_mvp.md`, `soul_lab_runtime_mvp.md`, `docs/contracts/ui/home-conversation.md`, and `docs/contracts/ui/lifecycle-visibility.md` for current SOUL Lab observation, Home, and lifecycle-visibility boundaries;
 - `relaylm/soul_lab_observation.py` and `relaylm/soul_lab_app.py` for executable observation capture, projection, route, loopback, isolation, and response-finalization behavior;
 - `apps/soul-lab/src/features/lab/observationApi.ts` and the current SOUL Lab frontend for exact browser validation and stale-response rejection;
 - `scripts/relaylm_phase_i2_lab_observation_ci_runner.py` and `scripts/relaylm_phase_i2_documentation_boundary_smoke.py` for focused executable and documentation validation;

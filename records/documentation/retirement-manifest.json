@@ -530,6 +530,34 @@
       "retention_reason": "D6-R35-A retired the SOUL Lab UI-A7 read-only management projection implementation handoff in PR #1151 after the exact management-read contract had already assumed the continuing exact route, schema, redaction, local-access, and browser-validation behavior and the permanent SOUL Lab UI architecture had already assumed the stable browser/server semantics; no live handoff role remained, and the UI-A7 implementation chronology stays recoverable from Git history plus this manifest only."
     },
     {
+      "old_path": "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
+      "last_live_commit": "ae48605302a16710d0e0cc1ab9e8d07182bce125",
+      "old_blob_sha": "3d1a5d6a2b254664a0c02df4e6a492ee1e81c9d4",
+      "removed_by_pr": 1164,
+      "replacement_paths": [
+        "docs/architecture/e1r1_trusted_home_scene_admission.md",
+        "docs/architecture/soul_lab_ui_mvp.md",
+        "docs/architecture/ui/soul-lab.md",
+        "docs/contracts/ui/home-conversation.md",
+        "docs/evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D6-R35-D retired the SOUL Lab UI-B0 real Home conversation handoff in PR #1164 after the exact Home browser transport and session-fencing responsibility became contract-owned, stable browser/server semantics and current implementation completion became permanently owned by the SOUL Lab UI architecture and plan, and trusted Home scene admission became separately current; the dated workstation findings remain frozen in the E1 local runtime evaluation and the rollout chronology stays Git-recoverable."
+    },
+    {
+      "old_path": "docs/architecture/soul_lab_ui_b1a_lifecycle_visibility.md",
+      "last_live_commit": "ce5931aadeef591067b074f0bfc659aa10a8d94c",
+      "old_blob_sha": "efb5b0e42eeaea6b2a33c8f3c14c794d21a2bbd4",
+      "removed_by_pr": 1164,
+      "replacement_paths": [
+        "docs/architecture/soul_lab_ui_mvp.md",
+        "docs/architecture/ui/soul-lab.md",
+        "docs/contracts/ui/lifecycle-visibility.md"
+      ],
+      "disposition": "replaced",
+      "retention_reason": "D6-R35-D retired the SOUL Lab UI-B1A lifecycle visibility handoff in PR #1164 after the exact read-only lifecycle projection and browser-consumption contract became permanent and stable browser/server semantics plus current implementation completion stayed owned by the SOUL Lab UI architecture and plan; the frozen PR #421 completion report remains the retained implementation evidence and the source chronology stays Git-recoverable."
+    },
+    {
       "old_path": "docs/architecture/vtuber_memory_proxy_design.md",
       "last_live_commit": "fba5bb5f1d57cf066b6616174402d3ac0fa034da",
       "old_blob_sha": "cb2c3093dc623a0df717d4c7bd5420d248c1c029",
