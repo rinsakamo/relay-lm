@@ -69,8 +69,8 @@ ASSET_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]*$")
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 GLOB_CHARS = set("*?[]{}")
 OPERATOR_ROOTS = {"console_script", "operator_cli"}
-R6_PRIMARY_ASSET_IDS = {"retrieval.primary_recall_characterization"}
 R6_PRIMARY_ASSET_PREFIX = "r6.primary."
+R6_PRIMARY_RECALL_E1_PATTERN = "relaylm_e1r5_primary_mem_recall_*_smoke.py"
 R6_DISPOSITIONS = {
     "retired_after_cutover",
     "migration_or_characterization_dependency",
@@ -212,8 +212,8 @@ def validate_registry(payload: dict[str, Any], *, root: Path) -> list[str]:
             asset_ids.add(asset_id)
             record_by_id[asset_id] = record
 
-        is_r6_primary = asset_id in R6_PRIMARY_ASSET_IDS or (
-            isinstance(asset_id, str) and asset_id.startswith(R6_PRIMARY_ASSET_PREFIX)
+        is_r6_primary = isinstance(asset_id, str) and asset_id.startswith(
+            R6_PRIMARY_ASSET_PREFIX
         )
         r6_disposition = record.get("r6_disposition")
         if is_r6_primary and r6_disposition not in R6_DISPOSITIONS:
@@ -356,6 +356,16 @@ def validate_registry(payload: dict[str, Any], *, root: Path) -> list[str]:
             matches = [entry for entry in claims if entry.get("command") == command]
             if len(matches) != 1:
                 errors.append(f"{asset_id}.entrypoint is not represented exactly once in canonical_entrypoints")
+
+    recall_e1_root = root / "scripts"
+    if recall_e1_root.exists():
+        expected_recall_e1_paths = {
+            path.relative_to(root).as_posix()
+            for path in recall_e1_root.glob(R6_PRIMARY_RECALL_E1_PATTERN)
+        }
+        missing_recall_e1_paths = sorted(expected_recall_e1_paths - set(r6_path_owners))
+        for path in missing_recall_e1_paths:
+            errors.append(f"R6 Primary recall E1 asset is unclassified: {path}")
 
     return errors
 

@@ -185,6 +185,23 @@ def test_validator_rejects_duplicate_r6_primary_path_ownership(tmp_path: Path) -
     )
 
 
+def test_validator_requires_every_existing_r6_primary_recall_e1_asset(
+    tmp_path: Path,
+) -> None:
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    recall_smoke = scripts / "relaylm_e1r5_primary_mem_recall_example_smoke.py"
+    recall_smoke.write_text("pass\n", encoding="utf-8")
+    (tmp_path / "existing.py").write_text("pass\n", encoding="utf-8")
+
+    errors = registry.validate_registry(_payload(_base_record()), root=tmp_path)
+
+    assert (
+        "R6 Primary recall E1 asset is unclassified: "
+        "scripts/relaylm_e1r5_primary_mem_recall_example_smoke.py" in errors
+    )
+
+
 def test_validator_requires_transitional_gate_and_replacement_validation(tmp_path: Path) -> None:
     (tmp_path / "existing.py").write_text("pass\n", encoding="utf-8")
     record = _base_record()
