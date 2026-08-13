@@ -143,7 +143,7 @@ The following YAML records are the canonical human-reviewed representation for t
 
 ```yaml
 classification_version: 1
-source_commit: f6d709765b0cd864053f71c98a020c4aa73ce277
+source_commit: e51beeeeac34641afd8f2e44588d3e32d4493948
 records:
   - asset_id: console.relaylm
     paths: [pyproject.toml]
@@ -460,28 +460,6 @@ records:
     confidence: confirmed
     notes: these files assert the same current structural retirement boundary; they do not characterize scoped recall, grounding, disabled-store, relevance, or disclosure behavior
 
-  - asset_id: r6.primary.recall_retired_relevance_smoke
-    paths: [scripts/relaylm_e1r5_primary_mem_recall_bridge_relevance_bounds_smoke.py]
-    responsibility: migration_or_maintenance
-    lifecycle: transitional
-    owner: retrieval_migration
-    r6_disposition: retired_after_cutover
-    protected_boundary: bounded removal of a pre-retirement relevance smoke that calls deleted Primary candidate-discovery and scoring helpers
-    current_callers:
-      - scripts/relaylm_mvp_eval_runner_registry.py E1_SCRIPTS stale entry
-      - scripts/relaylm_e1_evaluation_consolidation_smoke.py EVIDENCE_PATHS stale entry
-      - docs/architecture/e1_evaluation_consolidation.md historical evidence inventory
-    invocation_roots: [registry, smoke_only_root]
-    evidence:
-      - scripts/relaylm_e1r5_primary_mem_recall_bridge_relevance_bounds_smoke.py
-      - relaylm/relaymem_primary_recall.py
-      - scripts/relaylm_mvp_eval_runner_registry.py
-      - scripts/relaylm_e1_evaluation_consolidation_smoke.py
-    removal_gate: remove the stale registry, consolidation, and current-document claims atomically with this failing smoke without changing the retired ordinary-serving boundary or retained read-only helpers
-    replacement_validation: exact E1 registry and consolidation validation, current-boundary smoke, negative path/reference checks, and retained post-retirement structural and audit-projection proofs
-    confidence: confirmed
-    notes: direct execution fails because _discover_scoped_primary_candidates_from_control and _candidate_summary_score retired with ordinary Primary recall
-
   - asset_id: r6.primary.recall_audit_projection
     paths: [scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py]
     responsibility: process_smoke
@@ -730,11 +708,11 @@ records:
 
 ```text
 active: 22
-transitional: 4
+transitional: 3
 retired: 0
 ```
 
-The R6 baseline classifies every surviving `relaylm/relaymem_primary*` and `relaylm/_relaymem_primary*` module, the named characterization suite, the RT-1D reader-seam regression, and every existing `relaylm_e1r5_primary_mem_recall_*_smoke.py` asset. The corrected E1 surface separates current post-retirement structural proof and content-free audit projection from a pre-retirement relevance smoke that calls deleted helpers. That relevance smoke is the sole `retired_after_cutover` row and is deletion-ready only through its recorded atomic reference-removal gate; no runtime deletion or move is authorized by this classification correction.
+The R6 baseline classifies every surviving `relaylm/relaymem_primary*` and `relaylm/_relaymem_primary*` module, the named characterization suite, the RT-1D reader-seam regression, and every existing `relaylm_e1r5_primary_mem_recall_*_smoke.py` asset. The corrected E1 surface separates current post-retirement structural proof and content-free audit projection from the pre-retirement relevance smoke that called deleted helpers. That relevance smoke has now been removed through its recorded atomic gate together with stale registry, consolidation, and current-document references; no current R6 row is `retired_after_cutover`.
 
 No classified responsibility in this bounded surface is retired. R2-B retires two redundant pytest file partitions through Git history while preserving every assertion in the active repository-inventory test owner.
 
@@ -748,7 +726,7 @@ The following remain unresolved and must not be guessed:
 - whether each discovered `python -m` root is supported or only an implementation convenience;
 - whether milestone-named smoke outside this surface is active regression, process validation, transitional characterization, or retired;
 - callers outside the enumerated R6 Primary paths remain evidence consumers rather than separately owned R6 assets; any later cleanup must refresh them before writing;
-- after this correction, the uniquely classified stale E1 relevance smoke may be removed only with every recorded registry, consolidation, and current-document reference through its atomic gate.
+- after the relevance-smoke removal, no current `retired_after_cutover` row remains; the next R6 cleanup must be selected from fresh dependency and removal-gate convergence evidence rather than inferred from naming.
 
 ## Wave register and accepted decisions
 
