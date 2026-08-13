@@ -9,7 +9,7 @@ from typing import Any, Mapping, Sequence
 
 import yaml
 
-from relaylm.client_instruction_evidence import (
+from relaylm.interfaces.openai.client_instruction_evidence import (
     CLIENT_INSTRUCTION_EVIDENCE_MAX_RENDERED_CHARS,
 )
 from relaylm.compile_gate import CompileApplyDecision, decide_compile_apply

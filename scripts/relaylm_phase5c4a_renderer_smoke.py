@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from relaylm.client_instruction_evidence import build_client_instruction_evidence_block
+from relaylm.interfaces.openai.client_instruction_evidence import build_client_instruction_evidence_block
 from relaylm.interfaces.openai.client_instruction_identity import NormalizedInstructionCandidate
 from relaylm.request_compiler import render_compiled_context_block_content_runtime_private
 
