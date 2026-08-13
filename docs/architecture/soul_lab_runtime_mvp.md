@@ -16,7 +16,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - soul_lab_ui_mvp.md
-  - soul_lab_ui_a7_management_projection_handoff.md
+  - ../contracts/ui/soul-lab-management.md
   - soul_lab_ui_b0_real_home_conversation.md
   - ../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
   - ai_vtuber_pipeline_profile.md
@@ -176,7 +176,7 @@ Text-first Lab slices additionally do not complete TTS/audio/avatar adapter deli
 ## Relationship to existing documents
 
 - [SOUL Lab UI MVP](soul_lab_ui_mvp.md) owns the text-first Lab product loop.
-- [SOUL Lab UI-A7 Management Projection](soul_lab_ui_a7_management_projection_handoff.md) owns the original content-free loopback management read boundary.
+- [SOUL Lab Management Read Contract](../contracts/ui/soul-lab-management.md) owns the exact current content-free loopback management read boundary.
 - [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md) owns real Home chat wiring.
 - [Phase I-2 Real SOUL Lab Observation](../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md) owns real bounded observation integration and explicitly does not own runtime adapter execution.
 - [Phase I-3 Auditable Primary MEM Correct](../evidence/implementation/phase-i3-auditable-primary-mem-correct-handoff.md) is frozen implementation evidence; current Correct behavior remains implementation-, SOUL-Lab-, and focused-smoke-owned.

@@ -25,7 +25,6 @@ relaylm_related_authority:
   - ../../architecture/ui/soul-lab.md
   - ../../architecture/runtime/request-response-pipeline.md
   - ../../architecture/soul_lab_ui_b0_real_home_conversation.md
-  - ../../architecture/soul_lab_ui_a7_management_projection_handoff.md
 relaylm_related_contracts:
   - soul-lab-management.md
   - ../runtime/managed-route-fallback.md
