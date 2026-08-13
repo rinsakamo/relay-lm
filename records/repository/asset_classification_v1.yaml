@@ -359,6 +359,7 @@ records:
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
+
   - asset_id: r6.primary.characterization_suite
     paths:
       - tests/_relaymem_characterization_support.py
@@ -383,30 +384,68 @@ records:
     replacement_validation: run the replacement invariant suite plus negative Primary-path and complete-diff checks on the exact cleanup head
     confidence: confirmed
 
-  - asset_id: r6.primary.reader_seam_rollback
+  - asset_id: r6.primary.recall_read_only_admin
     paths:
       - relaylm/relaymem_primary_recall.py
-      - relaylm/relaymem_primary_recall_candidate_bridge_runtime.py
-      - relaylm/relaymem_primary_recall_runtime.py
+      - relaylm/relaymem_primary_recall_store.py
+    responsibility: migration_or_maintenance
+    lifecycle: active
+    owner: retrieval_migration
+    r6_disposition: retained_current_component
+    protected_boundary: read-only Primary store-root, validated page, and control-state access retained for explicitly classified history, observation, lifecycle, correction, and admin surfaces; it owns no ordinary Retrieval, ranking, fallback, or write authority
+    current_callers:
+      - Primary history, observation, lifecycle, correction, Forget, bootstrap, and admin smoke surfaces that import store-root or validated control/page helpers
+      - tests/test_rt1d_reader_seams.py
+    invocation_roots: [dynamic_import, pytest_root, smoke_only_root]
+    evidence:
+      - relaylm/relaymem_primary_recall.py
       - relaylm/relaymem_primary_recall_store.py
       - tests/test_rt1d_reader_seams.py
+      - scripts/relaylm_relaymem_store_dry_run_smoke.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+    notes: RT-1D-R5 retired ordinary Primary recall, but the read-only admin/history access remains a current supported component for separately classified Primary observation and lifecycle surfaces
+
+  - asset_id: r6.primary.reader_retirement_regression
+    paths: [tests/test_rt1d_reader_seams.py]
+    responsibility: ordinary_test
+    lifecycle: active
+    owner: retrieval_migration
+    r6_disposition: retained_current_component
+    protected_boundary: structural and public-equivalence regression proving the ordinary Primary reader, selection owner, and fallback remain absent while the read-only history/admin import boundary remains available
+    current_callers: [maintained pytest suite]
+    invocation_roots: [pytest_root]
+    evidence:
+      - tests/test_rt1d_reader_seams.py
+      - scripts/relaylm_primary_recall_post_retirement_structure_smoke.py
+      - docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+    notes: this is current retirement evidence rather than an executable Primary-reader rollback mechanism
+
+  - asset_id: r6.primary.recall_legacy_noop_installers
+    paths:
+      - relaylm/relaymem_primary_recall_candidate_bridge_runtime.py
+      - relaylm/relaymem_primary_recall_runtime.py
     responsibility: migration_or_maintenance
     lifecycle: transitional
     owner: retrieval_migration
-    r6_disposition: rollback_dependency
-    protected_boundary: RT-1D hard-cutover import seams, explicit Primary rollback reader behavior, store-root validation, and historical reconstruction evidence
+    r6_disposition: retired_after_cutover
+    protected_boundary: legacy import seams whose installer functions are explicit no-ops and are currently exercised only to prove that calling the former installers cannot mutate canonical module state
     current_callers:
-      - tests/test_rt1d_reader_seams.py
-      - Primary recovery and historical smoke surfaces that import store-root or control-state helpers
-    invocation_roots: [dynamic_import, pytest_root, smoke_only_root]
+      - scripts/relaylm_package_import_purity_smoke.py explicit legacy installer imports and calls
+    invocation_roots: [smoke_only_root]
     evidence:
-      - tests/test_rt1d_reader_seams.py
+      - relaylm/relaymem_primary_recall_candidate_bridge_runtime.py
+      - relaylm/relaymem_primary_recall_runtime.py
+      - scripts/relaylm_package_import_purity_smoke.py
       - docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md
-      - scripts/relaylm_phase_i4d_fresh_conversation_smoke.py
-      - scripts/relaylm_relayrun_runtime_checkpoint_dry_run_smoke.py
-    removal_gate: accepted rollback authority no longer requires the Primary reader seam, store reader, control-state helper, or historical reconstruction behavior
-    replacement_validation: exact RT-1D reader-seam, rollback, historical reconstruction, store-root security, and negative-import validation on the cleanup head
+    removal_gate: delete both no-op installer modules and remove their explicit imports, calls, and legacy-alias assertions from the package-import purity smoke while retaining its metadata-only import and canonical-module non-mutation checks and preserving historical evidence
+    replacement_validation: the package-import purity smoke passes without importing either legacy installer, negative search finds no current production, test, smoke, workflow, or current-document caller of the two module paths or installer symbols, and the post-retirement structural proof plus RT-1D reader-retirement regression remain green on the exact cleanup head
     confidence: confirmed
+    notes: post-transfer rollback is a new governed authority transfer, not an automatic fallback through these no-op compatibility installers
 
   - asset_id: r6.primary.current_read_projections
     paths:
