@@ -453,6 +453,7 @@ records:
     replacement_validation: null
     confidence: confirmed
     notes: one function-oriented ongoing regression owner covers the complete current structural retirement boundary without retaining milestone-named aliases
+
   - asset_id: r6.primary.recall_audit_projection
     paths: [scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py]
     responsibility: process_smoke
@@ -473,6 +474,7 @@ records:
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
+
   - asset_id: r6.primary.characterization_suite
     paths:
       - tests/_relaymem_characterization_support.py
@@ -497,30 +499,68 @@ records:
     replacement_validation: run the replacement invariant suite plus negative Primary-path and complete-diff checks on the exact cleanup head
     confidence: confirmed
 
-  - asset_id: r6.primary.reader_seam_rollback
+  - asset_id: r6.primary.recall_read_only_admin
     paths:
       - relaylm/relaymem_primary_recall.py
-      - relaylm/relaymem_primary_recall_candidate_bridge_runtime.py
-      - relaylm/relaymem_primary_recall_runtime.py
+      - relaylm/relaymem_primary_recall_store.py
+    responsibility: migration_or_maintenance
+    lifecycle: active
+    owner: retrieval_migration
+    r6_disposition: retained_current_component
+    protected_boundary: read-only Primary store-root, validated page, and control-state access retained for explicitly classified history, observation, lifecycle, correction, and admin surfaces; it owns no ordinary Retrieval, ranking, fallback, or write authority
+    current_callers:
+      - Primary history, observation, lifecycle, correction, Forget, bootstrap, and admin smoke surfaces that import store-root or validated control/page helpers
+      - tests/test_rt1d_reader_seams.py
+    invocation_roots: [dynamic_import, pytest_root, smoke_only_root]
+    evidence:
+      - relaylm/relaymem_primary_recall.py
       - relaylm/relaymem_primary_recall_store.py
       - tests/test_rt1d_reader_seams.py
+      - scripts/relaylm_relaymem_store_dry_run_smoke.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+    notes: RT-1D-R5 retired ordinary Primary recall, but the read-only admin/history access remains a current supported component for separately classified Primary observation and lifecycle surfaces
+
+  - asset_id: r6.primary.reader_retirement_regression
+    paths: [tests/test_rt1d_reader_seams.py]
+    responsibility: ordinary_test
+    lifecycle: active
+    owner: retrieval_migration
+    r6_disposition: retained_current_component
+    protected_boundary: structural and public-equivalence regression proving the ordinary Primary reader, selection owner, and fallback remain absent while the read-only history/admin import boundary remains available
+    current_callers: [maintained pytest suite]
+    invocation_roots: [pytest_root]
+    evidence:
+      - tests/test_rt1d_reader_seams.py
+      - scripts/relaylm_primary_recall_post_retirement_structure_smoke.py
+      - docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+    notes: this is current retirement evidence rather than an executable Primary-reader rollback mechanism
+
+  - asset_id: r6.primary.recall_legacy_noop_installers
+    paths:
+      - relaylm/relaymem_primary_recall_candidate_bridge_runtime.py
+      - relaylm/relaymem_primary_recall_runtime.py
     responsibility: migration_or_maintenance
     lifecycle: transitional
     owner: retrieval_migration
-    r6_disposition: rollback_dependency
-    protected_boundary: RT-1D hard-cutover import seams, explicit Primary rollback reader behavior, store-root validation, and historical reconstruction evidence
+    r6_disposition: retired_after_cutover
+    protected_boundary: legacy import seams whose installer functions are explicit no-ops and are currently exercised only to prove that calling the former installers cannot mutate canonical module state
     current_callers:
-      - tests/test_rt1d_reader_seams.py
-      - Primary recovery and historical smoke surfaces that import store-root or control-state helpers
-    invocation_roots: [dynamic_import, pytest_root, smoke_only_root]
+      - scripts/relaylm_package_import_purity_smoke.py explicit legacy installer imports and calls
+    invocation_roots: [smoke_only_root]
     evidence:
-      - tests/test_rt1d_reader_seams.py
+      - relaylm/relaymem_primary_recall_candidate_bridge_runtime.py
+      - relaylm/relaymem_primary_recall_runtime.py
+      - scripts/relaylm_package_import_purity_smoke.py
       - docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md
-      - scripts/relaylm_phase_i4d_fresh_conversation_smoke.py
-      - scripts/relaylm_relayrun_runtime_checkpoint_dry_run_smoke.py
-    removal_gate: accepted rollback authority no longer requires the Primary reader seam, store reader, control-state helper, or historical reconstruction behavior
-    replacement_validation: exact RT-1D reader-seam, rollback, historical reconstruction, store-root security, and negative-import validation on the cleanup head
+    removal_gate: delete both no-op installer modules and remove their explicit imports, calls, and legacy-alias assertions from the package-import purity smoke while retaining its metadata-only import and canonical-module non-mutation checks and preserving historical evidence
+    replacement_validation: the package-import purity smoke passes without importing either legacy installer, negative search finds no current production, test, smoke, workflow, or current-document caller of the two module paths or installer symbols, and the post-retirement structural proof plus RT-1D reader-retirement regression remain green on the exact cleanup head
     confidence: confirmed
+    notes: post-transfer rollback is a new governed authority transfer, not an automatic fallback through these no-op compatibility installers
 
   - asset_id: r6.primary.current_read_projections
     paths:
@@ -700,14 +740,16 @@ records:
 ## Decision summary
 
 ```text
-active: 22
+active: 24
 transitional: 3
 retired: 0
 ```
 
-The R6 baseline classifies every surviving `relaylm/relaymem_primary*` and `relaylm/_relaymem_primary*` module, the named characterization suite, the RT-1D reader-seam regression, and every existing `relaylm_e1r5_primary_mem_recall_*_smoke.py` asset. The corrected E1 surface separates current post-retirement structural proof and content-free audit projection from the pre-retirement relevance smoke that called deleted helpers. That relevance smoke has now been removed through its recorded atomic gate together with stale registry, consolidation, and current-document references; no current R6 row is `retired_after_cutover`.
+The R6 baseline classifies every surviving `relaylm/relaymem_primary*` and `relaylm/_relaymem_primary*` module, the named characterization suite, the RT-1D reader-retirement regression, and every existing `relaylm_e1r5_primary_mem_recall_*_smoke.py` asset. The corrected E1 surface separates current post-retirement structural proof and content-free audit projection from the removed pre-retirement relevance smoke. Fresh post-#1170 R6 P1 review further separates the former mixed reader-seam rollback row into the active read-only Primary admin/store surface, an active retirement regression, and two legacy runtime installers that are explicit no-ops. Post-transfer rollback remains a new governed authority transfer rather than an automatic Primary-reader fallback.
 
-No classified responsibility in this bounded surface is retired. R2-B retires two redundant pytest file partitions through Git history while preserving every assertion in the active repository-inventory test owner.
+The two no-op installer modules are now the sole current `retired_after_cutover` row. They may be removed only through their recorded atomic gate together with the package-import purity smoke's explicit imports, calls, and legacy-alias assertions while preserving metadata-only import, canonical-state non-mutation, current retirement proof, and historical evidence. The characterization suite remains transitional because its replacement-coverage gate is not closed; all retained-current and operator/recovery rows remain protected.
+
+No classified responsibility in this bounded surface is lifecycle `retired`. R2-B retires two redundant pytest file partitions through Git history while preserving every assertion in the active repository-inventory test owner.
 
 ## Explicit unknowns and unclassified surfaces
 
@@ -719,7 +761,7 @@ The following remain unresolved and must not be guessed:
 - whether each discovered `python -m` root is supported or only an implementation convenience;
 - whether milestone-named smoke outside this surface is active regression, process validation, transitional characterization, or retired;
 - callers outside the enumerated R6 Primary paths remain evidence consumers rather than separately owned R6 assets; any later cleanup must refresh them before writing;
-- after the relevance-smoke removal, no current `retired_after_cutover` row remains; the next R6 cleanup must be selected from fresh dependency and removal-gate convergence evidence rather than inferred from naming.
+- the no-op installer pair is the sole current `retired_after_cutover` row; no other Primary deletion or move follows from this classification without a fresh gate-specific review.
 
 ## Wave register and accepted decisions
 
