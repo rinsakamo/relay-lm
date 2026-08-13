@@ -17,7 +17,7 @@ relaylm_not_authoritative_for:
   - repository-wide implementation status
 relaylm_related_authority:
   - soul_lab_ui_mvp.md
-  - soul_lab_ui_a2_adoption_handoff.md
+  - ui/soul-lab.md
   - soul_lab_runtime_mvp.md
 ---
 # SOUL Lab UI-A3 Mock Communication Session
