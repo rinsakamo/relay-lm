@@ -10,7 +10,7 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/e1r1_trusted_home_scene_admission.md
   - ../../architecture/e1_evaluation_consolidation.md
-  - ../../architecture/soul_lab_ui_b0_real_home_conversation.md
+  - ../../contracts/ui/home-conversation.md
   - ../../architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md
 relaylm_not_authoritative_for:
   - current repository-wide implementation status

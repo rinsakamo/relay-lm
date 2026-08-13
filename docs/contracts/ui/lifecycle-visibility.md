@@ -24,7 +24,6 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/ui/soul-lab.md
-  - ../../architecture/soul_lab_ui_b1a_lifecycle_visibility.md
   - ../../architecture/memory/mutation-governance.md
   - ../../architecture/memory/formation.md
   - ../../architecture/runtime/scheduler.md
@@ -89,9 +88,9 @@ It does not add a command route, apply token, scheduler control, worker control,
 
 `docs/architecture/ui/soul-lab.md` owns the stable browser/server authority boundary for SOUL Lab.
 
-`docs/architecture/soul_lab_ui_b1a_lifecycle_visibility.md` is the implementation handoff that introduced this visibility slice.
+The UI-B1A implementation handoff that introduced this visibility slice is retired and no longer exists as a live document.
 
-This document owns the continuing exact API/projection/browser-consumption contract and does not retire either architecture source.
+This document owns the continuing exact API/projection/browser-consumption contract. Its historical implementation chronology is recoverable from Git history plus the central retirement manifest, and the frozen PR #421 completion report remains the retained implementation evidence.
 
 ## Server route locality
 
@@ -1476,10 +1475,6 @@ B1A observes bounded aggregate status only. Its counts and labels are not a repl
 
 ## Source-retirement boundary
 
-This transaction does not retire:
+The UI-B1A lifecycle visibility implementation handoff was retired by a separate bounded documentation transaction that recorded its exact provenance in the central retirement manifest and repaired every live consumer.
 
-```text
-docs/architecture/soul_lab_ui_b1a_lifecycle_visibility.md
-```
-
-Nor does it retire the projection implementation, app route, frontend API/panel/wrappers, smokes, completion evidence, Phase I-2 observation sources, or memory/scheduler source documents. Source retirement requires a separate bounded transaction with exact provenance, consumer repair, and migration disposition.
+This contract does not retire the projection implementation, app route, frontend API/panel/wrappers, smokes, completion evidence, Phase I-2 observation sources, or memory/scheduler source documents. Any further source retirement remains a separate bounded transaction with exact provenance, consumer repair, and migration disposition.

@@ -24,7 +24,6 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/ui/soul-lab.md
   - ../../architecture/runtime/request-response-pipeline.md
-  - ../../architecture/soul_lab_ui_b0_real_home_conversation.md
 relaylm_related_contracts:
   - soul-lab-management.md
   - ../runtime/managed-route-fallback.md
@@ -1486,10 +1485,6 @@ It does not duplicate server runtime internals.
 
 ## Source-retirement boundary
 
-This transaction does not retire:
+The UI-B0 real Home conversation implementation handoff was retired by a separate bounded documentation transaction that recorded its exact provenance in the central retirement manifest and repaired every live consumer. This contract owns the continuing exact Home browser transport and session-fencing responsibility; its rollout chronology is recoverable from Git history plus that manifest.
 
-```text
-docs/architecture/soul_lab_ui_b0_real_home_conversation.md
-```
-
-Nor does it retire the TypeScript implementation, smoke, A7 handoff, or evaluation evidence. Source retirement requires a separate bounded transaction with exact provenance, consumer repair, and migration disposition.
+This contract does not retire the TypeScript implementation, smoke, or evaluation evidence. Any further source retirement remains a separate bounded transaction with exact provenance, consumer repair, and migration disposition.
