@@ -174,12 +174,12 @@ already own. In addition, RT-1 request-path tests must prove that a non-
 The E1 consolidation validator retains this exact current regression anchor:
 
 ```bash
-PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
+PYTHONPATH=. python scripts/relaylm_primary_recall_post_retirement_structure_smoke.py
 ```
 
-Other relevant existing validation includes E1-R5 security, no-symlink,
-relevance-bound, audit-projection, two-turn recall, Primary lifecycle exclusion,
-and E1-R4 grounding/security smokes. The exact current workflow/registry remains
+Other relevant existing validation includes the retained audit projection,
+two-turn recall, Primary lifecycle exclusion, and E1-R4 grounding/security
+smokes. The exact current workflow/registry remains
 the command authority; this handoff is not a second smoke registry.
 
 ## Source evidence

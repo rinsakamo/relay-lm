@@ -1,15 +1,8 @@
-"""RT-1D-R5 retirement proof: E1-R5 recall bridge policy gate.
+"""Prove the post-retirement Primary recall structure.
 
-This smoke used to exercise the ordinary scoped Primary MEM recall path.
-RT-1D-R5 retired that reader: the recall entry point, its candidate discovery,
-deterministic selection, snippet handoff, and the no-candidate/policy fallback
-are deleted rather than fenced.
-
-The file keeps its place in the bounded RT-1D-R5 focused-evidence set rather
-than being deleted, so the retirement stays checked instead of merely
-uncontradicted. It now proves the post-retirement contract: no ordinary Primary
-read path survives, and the explicitly classified read-only history/admin
-surface is preserved.
+Ordinary Primary recall entry points, selection, production reachability, and
+store access from ordinary Retrieval remain absent. The explicitly retained
+read-only history/admin helpers and store remain available.
 """
 
 from __future__ import annotations
@@ -79,7 +72,7 @@ def main() -> None:
     check_no_module_reaches_the_retired_recall()
     check_ordinary_retrieval_opens_no_primary_store()
     check_read_only_history_admin_surface_survives()
-    print('E1-R5 Primary MEM recall bridge policy-gate smoke passed')
+    print('Primary recall post-retirement structure smoke passed')
 
 
 if __name__ == "__main__":
