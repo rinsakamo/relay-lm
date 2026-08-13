@@ -22,8 +22,6 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/ui/soul-lab.md
-  - ../../architecture/soul_lab_ui_a7_management_projection_handoff.md
-  - ../../architecture/soul_lab_ui_a6_shared_shell_settings_handoff.md
   - ../../architecture/privacy/protected-source-and-disclosure.md
 relaylm_verified_by:
   - ../../../scripts/relaylm_soul_lab_management_projection_smoke.py
@@ -80,17 +78,24 @@ That architecture explicitly does not own exact API fields or route schemas.
 
 This document owns only the exact current management-read API and projection contract below that stable architecture.
 
-## Relationship to the A7 handoff
+## Historical implementation provenance
 
-The implementation handoff:
+The SOUL Lab UI-A6 shared shell / Settings and UI-A7 management projection implementation handoffs are retired and no longer exist as live documents.
+
+Current ownership is:
 
 ```text
-docs/architecture/soul_lab_ui_a7_management_projection_handoff.md
+exact current management-read responsibility
+  -> this contract
+
+stable browser/server SOUL Lab semantics
+  -> docs/architecture/ui/soul-lab.md
+
+UI-A6 / UI-A7 implementation chronology
+  -> Git history plus the central retirement manifest only
 ```
 
-records the UI-A7 implementation slice and browser integration history.
-
-This contract extracts the continuing exact management-read responsibility without retiring or moving the handoff.
+No implementation handoff remains current authority for this boundary.
 
 ## ASGI ownership
 
@@ -878,11 +883,6 @@ The exact current management-read invariants include:
 
 ## Source-retirement boundary
 
-This transaction does not retire:
+The UI-A6 and UI-A7 implementation handoffs were retired by a separate bounded documentation transaction that recorded their exact provenance in the central retirement manifest and repaired every live consumer.
 
-```text
-docs/architecture/soul_lab_ui_a7_management_projection_handoff.md
-docs/architecture/soul_lab_ui_a6_shared_shell_settings_handoff.md
-```
-
-Nor does it retire the server implementation, frontend integration, smoke evidence, or broader SOUL Lab architecture sources. Source retirement requires a separate bounded transaction with exact provenance, consumer repair, and migration disposition.
+This contract does not retire the server implementation, frontend integration, smoke evidence, or broader SOUL Lab architecture sources. Any further source retirement remains a separate bounded transaction with exact provenance, consumer repair, and migration disposition.

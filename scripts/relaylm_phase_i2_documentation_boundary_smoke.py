@@ -35,9 +35,9 @@ def main() -> None:
         "Observation receipt failure",
     )
     require_text(
-        "docs/architecture/soul_lab_ui_a7_management_projection_handoff.md",
-        "UI-A7",
-        "content-free schemas",
+        "docs/contracts/ui/soul-lab-management.md",
+        "relaylm.lab.settings.v0",
+        "Management settings/characters responses remain content-free",
     )
     require_text(
         "docs/architecture/integration_i1_primary_mem_two_turn_recall.md",
