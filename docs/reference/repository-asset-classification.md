@@ -477,7 +477,6 @@ records:
 
   - asset_id: r6.primary.characterization_suite
     paths:
-      - tests/_relaymem_characterization_support.py
       - tests/test_relaymem_formation_characterization.py
       - tests/test_relaymem_lifecycle_characterization.py
       - tests/test_relaymem_store_io_characterization.py
@@ -490,14 +489,38 @@ records:
     current_callers: [maintained pytest suite]
     invocation_roots: [pytest_root]
     evidence:
-      - tests/_relaymem_characterization_support.py
       - tests/test_relaymem_formation_characterization.py
       - tests/test_relaymem_lifecycle_characterization.py
       - tests/test_relaymem_store_io_characterization.py
       - tests/test_relaymem_characterization_review_regressions.py
-    removal_gate: every characterized invariant has replacement coverage on the accepted post-Primary boundary and no R6 move or retirement still consumes the fixtures
+    removal_gate: every characterized invariant has replacement coverage on the accepted post-Primary boundary and no R6 move or retirement still consumes these Primary characterization tests
     replacement_validation: run the replacement invariant suite plus negative Primary-path and complete-diff checks on the exact cleanup head
     confidence: confirmed
+
+  - asset_id: r6.primary.characterization_support
+    paths: [tests/_relaymem_characterization_support.py]
+    responsibility: ordinary_test
+    lifecycle: active
+    owner: repository_maintenance
+    r6_disposition: retained_current_component
+    protected_boundary: shared test-only support for maintained Primary characterization and RelaySLP durable-queue characterization without runtime authority
+    current_callers:
+      - tests/test_relaymem_formation_characterization.py
+      - tests/test_relaymem_lifecycle_characterization.py
+      - tests/test_relaymem_store_io_characterization.py
+      - tests/test_relaymem_characterization_review_regressions.py
+      - tests/test_relaymem_slp_queue_characterization.py
+    invocation_roots: []
+    invocation_root_reason: internal test-support module imported by maintained pytest roots; it is not independently executed
+    evidence:
+      - tests/_relaymem_characterization_support.py
+      - tests/test_relaymem_slp_queue_characterization.py
+      - tests/test_relaymem_formation_characterization.py
+      - tests/test_relaymem_lifecycle_characterization.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+    notes: split from r6.primary.characterization_suite because maintained RelaySLP queue characterization is an active caller outside the Primary-only transitional removal gate
 
   - asset_id: r6.primary.recall_read_only_admin
     paths:
@@ -721,14 +744,14 @@ records:
 ## Decision summary
 
 ```text
-active: 24
+active: 25
 transitional: 2
 retired: 0
 ```
 
-The R6 baseline classifies every surviving `relaylm/relaymem_primary*` and `relaylm/_relaymem_primary*` module, the named characterization suite, the RT-1D reader-retirement regression, and every existing `relaylm_e1r5_primary_mem_recall_*_smoke.py` asset. The corrected E1 surface separates current post-retirement structural proof and content-free audit projection from the removed pre-retirement relevance smoke. Fresh post-#1170 R6 P1 review separated the former mixed reader-seam rollback row into the active read-only Primary admin/store surface, an active retirement regression, and two legacy runtime installers that were explicit no-ops. Those two no-op installer modules have now been removed through their reviewed atomic gate together with the package-import purity smoke's explicit imports, calls, and legacy-alias assertions while preserving metadata-only import, canonical-state non-mutation, current retirement proof, and historical evidence. Post-transfer rollback remains a new governed authority transfer rather than an automatic Primary-reader fallback.
+The R6 baseline classifies every surviving `relaylm/relaymem_primary*` and `relaylm/_relaymem_primary*` module, the four-test Primary characterization suite plus its separately protected shared characterization support, the RT-1D reader-retirement regression, and every existing `relaylm_e1r5_primary_mem_recall_*_smoke.py` asset. The corrected E1 surface separates current post-retirement structural proof and content-free audit projection from the removed pre-retirement relevance smoke. Fresh post-#1170 R6 P1 review separated the former mixed reader-seam rollback row into the active read-only Primary admin/store surface, an active retirement regression, and two legacy runtime installers that were explicit no-ops. Those two no-op installer modules have now been removed through their reviewed atomic gate together with the package-import purity smoke's explicit imports, calls, and legacy-alias assertions while preserving metadata-only import, canonical-state non-mutation, current retirement proof, and historical evidence. Post-transfer rollback remains a new governed authority transfer rather than an automatic Primary-reader fallback.
 
-Current R6 authority has no `retired_after_cutover` row. The characterization suite remains transitional because its replacement-coverage gate is not closed; all retained-current and operator/recovery rows remain protected. Any later R6 cleanup must be selected from fresh dependency and removal-gate convergence evidence rather than inferred from naming.
+Current R6 authority has no `retired_after_cutover` row. The four-test Primary characterization suite remains transitional because its replacement-coverage gate is not closed. The shared characterization support is active and `retained_current_component` because maintained RelaySLP queue characterization imports it outside that Primary-only removal gate; all retained-current and operator/recovery rows remain protected. Any later R6 cleanup must be selected from fresh dependency and removal-gate convergence evidence rather than inferred from naming.
 
 No classified responsibility in this bounded surface is lifecycle `retired`. R2-B retires two redundant pytest file partitions through Git history while preserving every assertion in the active repository-inventory test owner.
 
