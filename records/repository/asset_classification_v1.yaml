@@ -329,7 +329,6 @@ records:
       - scripts/relaylm_mvp_eval_runner_registry.py E1_SCRIPTS
       - scripts/relaylm_e1_evaluation_consolidation_smoke.py EVIDENCE_PATHS
       - docs/architecture/e1_evaluation_consolidation.md current evidence inventory and validation command
-      - docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md current regression anchor
     invocation_roots: [registry, smoke_only_root]
     evidence:
       - scripts/relaylm_primary_recall_post_retirement_structure_smoke.py
