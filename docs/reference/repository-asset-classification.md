@@ -635,8 +635,11 @@ records:
       - Subjective MEM Pin runtime and maintained lifecycle, concurrency, and security validations
     invocation_roots: [fastapi_route, pytest_root, smoke_only_root]
     evidence:
+      - relaylm/relaymem_primary_pin.py
+      - relaylm/relaymem_primary_pin_apply.py
+      - relaylm/relaymem_primary_pin_ranking.py
       - relaylm/soul_lab_memory_pin_routes.py
-      - docs/architecture/phase_i5b_pin_unpin_apply.md
+      - docs/contracts/ui/memory-pin-unpin-management.md
       - tests/test_relaymem_lifecycle_characterization.py
     removal_gate: null
     replacement_validation: null
