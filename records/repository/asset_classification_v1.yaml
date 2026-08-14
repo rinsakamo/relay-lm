@@ -362,7 +362,6 @@ records:
 
   - asset_id: r6.primary.characterization_suite
     paths:
-      - tests/_relaymem_characterization_support.py
       - tests/test_relaymem_formation_characterization.py
       - tests/test_relaymem_lifecycle_characterization.py
       - tests/test_relaymem_store_io_characterization.py
@@ -375,14 +374,38 @@ records:
     current_callers: [maintained pytest suite]
     invocation_roots: [pytest_root]
     evidence:
-      - tests/_relaymem_characterization_support.py
       - tests/test_relaymem_formation_characterization.py
       - tests/test_relaymem_lifecycle_characterization.py
       - tests/test_relaymem_store_io_characterization.py
       - tests/test_relaymem_characterization_review_regressions.py
-    removal_gate: every characterized invariant has replacement coverage on the accepted post-Primary boundary and no R6 move or retirement still consumes the fixtures
+    removal_gate: every characterized invariant has replacement coverage on the accepted post-Primary boundary and no R6 move or retirement still consumes these Primary characterization tests
     replacement_validation: run the replacement invariant suite plus negative Primary-path and complete-diff checks on the exact cleanup head
     confidence: confirmed
+
+  - asset_id: r6.primary.characterization_support
+    paths: [tests/_relaymem_characterization_support.py]
+    responsibility: ordinary_test
+    lifecycle: active
+    owner: repository_maintenance
+    r6_disposition: retained_current_component
+    protected_boundary: shared test-only support for maintained Primary characterization and RelaySLP durable-queue characterization without runtime authority
+    current_callers:
+      - tests/test_relaymem_formation_characterization.py
+      - tests/test_relaymem_lifecycle_characterization.py
+      - tests/test_relaymem_store_io_characterization.py
+      - tests/test_relaymem_characterization_review_regressions.py
+      - tests/test_relaymem_slp_queue_characterization.py
+    invocation_roots: []
+    invocation_root_reason: internal test-support module imported by maintained pytest roots; it is not independently executed
+    evidence:
+      - tests/_relaymem_characterization_support.py
+      - tests/test_relaymem_slp_queue_characterization.py
+      - tests/test_relaymem_formation_characterization.py
+      - tests/test_relaymem_lifecycle_characterization.py
+    removal_gate: null
+    replacement_validation: null
+    confidence: confirmed
+    notes: split from r6.primary.characterization_suite because maintained RelaySLP queue characterization is an active caller outside the Primary-only transitional removal gate
 
   - asset_id: r6.primary.recall_read_only_admin
     paths:
