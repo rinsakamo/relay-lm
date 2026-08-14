@@ -9,7 +9,7 @@ relaylm_related_authority:
   - memory_lifecycle_design.md
   - character_template_creation_flow.md
   - file_first_character_workspace_design.md
-  - phase_i5b_pin_unpin_apply.md
+  - memory/pinned-memory.md
 ---
 # Pinned Normal Memory Pages
 

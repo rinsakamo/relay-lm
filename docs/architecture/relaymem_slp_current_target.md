@@ -35,7 +35,7 @@ relaylm_related_authority:
   - pm_d6_relayint_native_artifact_relayref_wrapper_removal.md
   - pm_d7_runtime_install_hook_fold_in.md
   - phase_i4d_primary_retrieval_exclusion.md
-  - phase_i5b_pin_unpin_apply.md
+  - memory/pinned-memory.md
   - ../contracts/memory/held-governance.md
   - integration_i1_primary_mem_two_turn_recall.md
   - e1r1_trusted_home_scene_admission.md

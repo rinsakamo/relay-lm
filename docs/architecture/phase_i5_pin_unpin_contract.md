@@ -12,14 +12,15 @@ relaylm_related_authority:
   - phase_i4_primary_mem_forget_hide_contract.md
   - phase_i4b_primary_current_state_shared_fence.md
   - phase_i4d_primary_retrieval_exclusion.md
-  - phase_i5b_pin_unpin_apply.md
+  - ../contracts/ui/memory-pin-unpin-management.md
+  - memory/pinned-memory.md
   - ../evidence/waves/wave6_cross_slice_convergence_audit.md
 ---
 # Phase I-5 Pin / Unpin Contract and Read-Only Preflight
 
 ## Status and boundary
 
-I-5A defines the Pin / Unpin governance contract and read-only preflight boundary. I-5B is implemented as the apply/API/UI/ranking continuation. The current runtime apply details live in [Phase I-5B Pin / Unpin apply and ranking behavior](phase_i5b_pin_unpin_apply.md).
+I-5A defines the Pin / Unpin governance contract and read-only preflight boundary. The I-5B apply/API/UI/ranking continuation is implemented, and its current exact SOUL Lab management route, request, response projection, confirmation, and stale-generation boundary lives in the [SOUL Lab Memory Pin / Unpin Management Contract](../contracts/ui/memory-pin-unpin-management.md), while the stable pin meaning, eligibility-before-ranking rule, and bounded ranking/protection signal live in [Pinned Memory](memory/pinned-memory.md).
 
 I-5A itself remains the token and preflight contract authority. It proves the bounded read-only shape:
 

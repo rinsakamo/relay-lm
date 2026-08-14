@@ -9,7 +9,7 @@ relaylm_update_trigger:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/phase_i5_pin_unpin_contract.md
-  - ../../architecture/phase_i5b_pin_unpin_apply.md
+  - ../../contracts/ui/memory-pin-unpin-management.md
   - ../../architecture/phase_i4b_primary_current_state_shared_fence.md
 relaylm_not_authoritative_for:
   - current repository-wide implementation status
@@ -29,7 +29,7 @@ relaylm_exact_source_snapshot: i5a_completion_report-source.txt
 
 ## Status and authority
 
-This is frozen implementation evidence for PR #417. Current behavior belongs to [Phase I-5 Pin / Unpin Contract](../../architecture/phase_i5_pin_unpin_contract.md), [Phase I-5B Apply](../../architecture/phase_i5b_pin_unpin_apply.md), the production Pin implementation and shared mutation fence, and the focused I-5A/I-5B smokes.
+This is frozen implementation evidence for PR #417. Current behavior belongs to [Phase I-5 Pin / Unpin Contract](../../architecture/phase_i5_pin_unpin_contract.md), the [SOUL Lab Memory Pin / Unpin Management Contract](../../contracts/ui/memory-pin-unpin-management.md), the production Pin implementation and shared mutation fence, and the focused I-5A/I-5B smokes.
 
 The [exact snapshot](i5a_completion_report-source.txt) is byte-identical to the source final-head, source merge, and pre-cutover forms: blob `899fb3c7f22f5b2e7deace4246834726c4674510`, SHA-256 `660600384845d88b78b783df887695c2fc3f27d4d23845f8c79b996e20b059bd`. No post-source report modification exists.
 

@@ -263,6 +263,20 @@
       "retention_reason": "D6-R35-E1 retired the validation-only I-4F handoff, which was never an independent current semantic owner. Current Forget semantics remain with the master Forget/Hide contract, the stable mutation architecture, and the production implementation; the focused Forget validation smokes remain the executable evidence and are unchanged. The I-4F completion report and its exact source snapshot remain historical evidence."
     },
     {
+      "old_path": "docs/architecture/phase_i5b_pin_unpin_apply.md",
+      "last_live_commit": "ca1a921eba7131072c3608a5f2032e2d6008f770",
+      "old_blob_sha": "4b8240b11af0cf4b4ed0f4a811641c06e62828f6",
+      "removed_by_pr": 1181,
+      "replacement_paths": [
+        "docs/architecture/memory/mutation-governance.md",
+        "docs/architecture/memory/pinned-memory.md",
+        "docs/architecture/memory/retrieval-and-grounding.md",
+        "docs/contracts/ui/memory-pin-unpin-management.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-F retired the I-5B Pin/Unpin apply handoff after Lane R PR #1179/#1180 removed the r6.primary.pin_operations evidence dependency. Its exact management semantics were owned by the SOUL Lab management contract, so nothing was absorbed and no new owner was created; stable pin, ranking-after-eligibility, mutation, and candidate-consumption semantics stay with memory architecture. The I-5B completion report and exact snapshot stay historical evidence, not current authority; the source is Git-recoverable."
+    },
+    {
       "old_path": "docs/architecture/phase_i7c_held_apply_discard_runtime.md",
       "last_live_commit": "ff7f5ba3fab8dd9224ff8d77aa87e47ac221726e",
       "old_blob_sha": "cba33ad0c1743b29310d7d76e9a22443372677f7",

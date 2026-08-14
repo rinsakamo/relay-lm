@@ -21,7 +21,6 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/ui/soul-lab.md
-  - ../../architecture/phase_i5b_pin_unpin_apply.md
   - ../../architecture/phase_i5_pin_unpin_contract.md
   - ../../architecture/memory/pinned-memory.md
   - ../../architecture/memory/mutation-governance.md
@@ -1062,11 +1061,12 @@ The lower apply/concurrency/ranking smokes remain evidence for the separately ow
 
 ## Source-retirement boundary
 
-This transaction does not retire:
+The transitional I-5B Pin / Unpin apply implementation handoff was retired in PR #1181 through its own bounded transaction, with exact provenance and recovery recorded in `records/documentation/retirement-manifest.json`. Its exact management semantics were already owned by this contract, so no management behavior changed.
+
+This contract does not retire:
 
 ```text
-docs/architecture/phase_i5b_pin_unpin_apply.md
 docs/architecture/phase_i5_pin_unpin_contract.md
 ```
 
-Nor does it retire the runtime/API/frontend implementation or smoke evidence. Source retirement requires a separate bounded transaction with exact provenance, consumer repair, and migration disposition.
+Nor does it retire the runtime/API/frontend implementation or smoke evidence. Further source retirement requires a separate bounded transaction with exact provenance, consumer repair, and migration disposition.
