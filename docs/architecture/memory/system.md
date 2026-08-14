@@ -259,14 +259,16 @@ RT-1 established the current ordinary-memory serving topology.
 
 ```text
 primary_only
-  -> retained Primary compatibility reader only
+  -> ordinary Primary serving is retired
+  -> fail closed to no-reader / `neither` behavior
+  -> no Primary root resolution, store open, discovery, selection, recall, fallback, or evidence release
 
 neither
   -> no ordinary durable-memory reader
 
 subjective_only
   -> finalized Subjective reader only
-  -> no Primary root resolution, discovery, recall, ranking, or fallback
+  -> no Primary probing or fallback
 ```
 
 Exactly one reader authority, or none, is resolved before ordinary memory-family access.
@@ -275,20 +277,20 @@ No configuration setting, store presence, old successful request, ranking result
 
 The detailed cutover state machine remains owned by the RT-1 architecture and current status authority, not by this parent page.
 
-## Primary compatibility is transitional
+## Primary post-retirement boundary
 
-The repository retains bounded Primary reader, writer, storage/reconciliation, lifecycle, and worker surfaces as compatibility, migration, rollback, regression, operational, or retirement evidence while their final RT-1 disposition remains incomplete.
+The ordinary Primary reader, ranking, and fallback authority are retired. A `primary_only` decision value may still be observed at the cutover boundary, but it fails closed to no-reader behavior and does not authorize Primary memory-family access.
 
-Those surfaces are not the permanent parent architecture.
+Explicitly classified Primary surfaces remain for read-only administration/history, observation, mutation governance, Correct/Forget/Pin operations, recovery, characterization, migration, and regression evidence. Those retained responsibilities are not ordinary reader or fallback authority.
 
 Stable transition rules are:
 
-- Primary ordinary serving runs only when the exact reader decision is `primary_only`;
+- `primary_only` performs no ordinary Primary root resolution, store open, discovery, selection, recall, fallback, or evidence release;
 - Primary mutation runs only while the exact writer decision permits it;
 - `primary_writer_fenced` cannot be bypassed by an old token, lock, queue item, recovery state, idempotency result, API, UI, or existing store state;
 - `subjective_only` never falls back to Primary on empty, refused, failed, stale, or malformed Subjective retrieval;
 - continuing read-only/historical/operational consumers must be proved explicitly before a Primary source or runtime surface is retained;
-- R5/R6 own final runtime and source-document retirement disposition.
+- R6 owns remaining classified Primary source disposition.
 
 ## Current versus target architecture
 

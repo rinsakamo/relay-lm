@@ -85,13 +85,14 @@ RT-1 ordinary-memory authority is resolved before scene-aware candidate selectio
 
 ```text
 primary_only
-  -> scene policy may narrow the retained Primary compatibility reader
+  -> retired Primary reader remains unavailable
+  -> scene policy opens no durable memory
 
 neither
   -> no durable-memory retrieval, regardless of scene
 
 subjective_only
-  -> scene policy may narrow finalized Subjective retrieval only
+  -> scene policy may narrow the already-authorized finalized Subjective candidate set only
   -> no Primary fallback or probing
 ```
 
@@ -266,13 +267,11 @@ Public/audit diagnostics remain content-free by default. They may expose bounded
 
 They do not expose scene body text, memory prose, participant identities, relationship content, raw aliases, prompts, paths, namespaces, or unvalidated external metadata merely for diagnostics.
 
-## Primary compatibility boundary
+## Primary post-retirement boundary
 
-Historical Primary retrieval may still consume bounded scene scope while `primary_only` remains accepted.
+Scene policy cannot create or revive reader authority. Under `primary_only` or `neither`, it opens no durable-memory family and cannot resolve a Primary root, store, candidate, recall, or fallback path.
 
-That does not make scene scope a reason to preserve Primary ordinary serving after R5/R6 or a fallback path from Subjective retrieval.
-
-No old Primary scene-memory candidate, store path, ranking result, or scene match bypasses the RT-1 reader decision or Primary writer fence.
+Retained Primary scene-related artifacts may remain as historical, operational, migration, characterization, or regression evidence. Their existence does not authorize ordinary Primary serving. Under `subjective_only`, scene policy may only narrow the already-authorized Subjective candidate set; mismatch or empty results never probe Primary.
 
 ## Relationship to RelaySCN
 
