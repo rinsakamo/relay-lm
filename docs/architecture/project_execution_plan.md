@@ -28,7 +28,7 @@ relaylm_related_authority:
   - relaymem_slp_current_target.md
   - analyzer_candidate_governance.md
   - acg1_analyzer_candidate_governance_contract.md
-  - acg2_grounded_recall_detail_safety.md
+  - ../contracts/query-detail-analyzer.md
   - acg3_retrieval_query_normalization.md
   - acg4_reference_intent_analyzer.md
   - acg5_relayemo_scene_cleanup.md
