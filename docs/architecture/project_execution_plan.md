@@ -308,7 +308,7 @@ The currently eligible repository work is:
 
 ```text
 Lane R  R5 governed core package migration              COMPLETE
-Lane D  D6 final retirement / cutover-tool retirement   D6-R34 failed completion audit complete (#1143); D6-R35 in progress — SOUL Lab A6/A7 source family retired (#1151), UI-A0/A1 + UI-A2 foundation/adoption source family retired (#1157), UI-A3/A4/A5 preview source family retired (#1162), UI-B0/B1A real Home conversation / lifecycle visibility source family retired (#1171), and I-4E/I-4F Forget plus I-7C Held governance source family retired (#1175), and I-5B Pin/Unpin apply/API/UI source family retired (#1181); D6 incomplete
+Lane D  D6 final retirement / cutover-tool retirement   D6-R34 failed completion audit complete (#1143); D6-R35 in progress — SOUL Lab A6/A7 source family retired (#1151), UI-A0/A1 + UI-A2 foundation/adoption source family retired (#1157), UI-A3/A4/A5 preview source family retired (#1162), UI-B0/B1A real Home conversation / lifecycle visibility source family retired (#1171), and I-4E/I-4F Forget plus I-7C Held governance source family retired (#1175), and I-5B Pin/Unpin apply/API/UI source family retired (#1181), and I-7A/B Held Apply/Discard preflight source family retired (#1184); D6 incomplete
 Lane R  R6 Primary MEM disposition                      required cleanup after R5
 Lane C                                                  idle until PD-2 completes
 ```
