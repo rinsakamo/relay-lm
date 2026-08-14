@@ -209,6 +209,33 @@
       "retention_reason": "D6-R7 retired the historical VTuber memory-proxy design after its adopted product, context, realtime, and frontend-boundary responsibilities were covered by canonical character-interaction, context, performance, request/response, system, and voice authorities; historical single-proxy/per-character routing examples remain recoverable from Git rather than becoming a new permanent architecture authority."
     },
     {
+      "old_path": "docs/architecture/cw_a1_file_first_source_tree_parser_contracts.md",
+      "last_live_commit": "f8ec4e7988f39bb0393a8d4c397a18eeae351c28",
+      "old_blob_sha": "b74ba45617e710afc28c5b9e46fea073b6ecd5d0",
+      "removed_by_pr": 1198,
+      "replacement_paths": [
+        "docs/architecture/character-workspace/source-compiler.md",
+        "docs/architecture/character-workspace/system.md",
+        "docs/contracts/character-workspace/parser-and-validation.md",
+        "docs/contracts/character-workspace/source-tree.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-J retired the CW-A1 file-first source tree and parser handoff after the permanent source-tree and parser/validation contracts already owned its exact workspace layout, path classification, read-only validation, Markdown parsing and block identity, read-only manifest, and content-free public diagnostics. Stable source/parser/compiler architecture remains canonical; the exact source remains Git-recoverable."
+    },
+    {
+      "old_path": "docs/architecture/cw_a2_workspace_compiler_projections.md",
+      "last_live_commit": "51c3ffd7cd81953884d59514aaee7997ddc52d6f",
+      "old_blob_sha": "0dbb63098d5e6a1445706f43ba3bec619568bd57",
+      "removed_by_pr": 1198,
+      "replacement_paths": [
+        "docs/architecture/character-workspace/source-compiler.md",
+        "docs/architecture/character-workspace/system.md",
+        "docs/contracts/character-workspace/compiled-projections.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-J retired the CW-A2 workspace compiler projection handoff after the permanent compiled-projections contract already owned its exact build artifact set and schema versions, deterministic byte-stable output, dry-run-first explicit write, .relaylm/build write boundary, per-artifact tier responsibilities, and content-free public compiler projection. Stable source/parser/compiler architecture remains canonical; the exact source remains Git-recoverable."
+    },
+    {
       "old_path": "docs/architecture/i1ge_durable_finalization_crash_validation.md",
       "last_live_commit": "86d3af1b3c24569f1daf01b2b52ef8c5119046d8",
       "old_blob_sha": "c711874bc813f29e5ac23d85ebc315eeeb24eeba",
