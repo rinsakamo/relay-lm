@@ -20,10 +20,9 @@ relaylm_related_authority:
   - ../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
   - ../contracts/ui/home-conversation.md
   - ../contracts/ui/lifecycle-visibility.md
-  - phase_i4e_forget_api_ui.md
-  - phase_i4f_forget_validation.md
+  - phase_i4_primary_mem_forget_hide_contract.md
   - phase_i5b_pin_unpin_apply.md
-  - phase_i7c_held_apply_discard_runtime.md
+  - ../contracts/memory/held-governance.md
   - e1r1_trusted_home_scene_admission.md
   - e1r2_character_store_bootstrap.md
 ---

@@ -241,6 +241,39 @@
       "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #642 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
     },
     {
+      "old_path": "docs/architecture/phase_i4e_forget_api_ui.md",
+      "last_live_commit": "a21b9ac617fcf11d85a52e919f2ecb8678485927",
+      "old_blob_sha": "cc5c8b1117e4226adbf95b273ddccdd63d12a1c2",
+      "removed_by_pr": 1175,
+      "replacement_paths": [
+        "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R35-E1 retired the I-4E Forget API/UI handoff. The master Forget/Hide contract already owned lifecycle, concurrency, retrieval exclusion, routes, and schema anchors, so only the still-durable exact loopback request binding, bounded preflight/receipt projection, browser non-authority boundary, and authority-to-HTTP error mapping were absorbed into it. Stable browser semantics stay with the SOUL Lab UI architecture. The I-4E completion report and its exact source snapshot remain historical evidence."
+    },
+    {
+      "old_path": "docs/architecture/phase_i4f_forget_validation.md",
+      "last_live_commit": "6866bcb797db1448852a0ee4fede4b6f52c4417a",
+      "old_blob_sha": "ffdde2138dbb8552639a58217409aa348c4aba25",
+      "removed_by_pr": 1175,
+      "replacement_paths": [
+        "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R35-E1 retired the validation-only I-4F handoff, which was never an independent current semantic owner. Current Forget semantics remain with the master Forget/Hide contract, the stable mutation architecture, and the production implementation; the focused Forget validation smokes remain the executable evidence and are unchanged. The I-4F completion report and its exact source snapshot remain historical evidence."
+    },
+    {
+      "old_path": "docs/architecture/phase_i7c_held_apply_discard_runtime.md",
+      "last_live_commit": "ff7f5ba3fab8dd9224ff8d77aa87e47ac221726e",
+      "old_blob_sha": "cba33ad0c1743b29310d7d76e9a22443372677f7",
+      "removed_by_pr": 1175,
+      "replacement_paths": [
+        "docs/contracts/memory/held-governance.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R35-E1 retired the I-7C Held Apply/Discard runtime handoff. The Held governance contract already owned candidate evidence layout, decision persistence, token binding, public receipt, leakage boundary, and request models, so only the still-durable exact loopback route table was absorbed into its API boundary. Stable browser semantics stay with the SOUL Lab UI architecture. The I-7C completion report and its exact snapshot remain historical evidence."
+    },
+    {
       "old_path": "docs/architecture/pipeline_implementation_plan.md",
       "last_live_commit": "a3b475c841c6fdf7bb0d61c2a96c43786445f9e5",
       "old_blob_sha": "d33f1b5215bc35f19007f026f55b03c2aefea724",

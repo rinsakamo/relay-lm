@@ -10,8 +10,7 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../contracts/ui/lifecycle-visibility.md
   - ../../architecture/soul_lab_ui_mvp.md
-  - ../../architecture/phase_i4e_forget_api_ui.md
-  - ../../architecture/phase_i4f_forget_validation.md
+  - ../../architecture/phase_i4_primary_mem_forget_hide_contract.md
 relaylm_not_authoritative_for:
   - current repository-wide implementation status
   - current SOUL Lab API, UI, lifecycle, queue, worker, or durable-finalization behavior

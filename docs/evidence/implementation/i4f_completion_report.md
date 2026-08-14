@@ -8,8 +8,7 @@ relaylm_update_trigger:
   - metadata or link repair only
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../../architecture/phase_i4f_forget_validation.md
-  - ../../architecture/phase_i4e_forget_api_ui.md
+  - ../../architecture/phase_i4_primary_mem_forget_hide_contract.md
   - ../../architecture/phase_i4d_primary_retrieval_exclusion.md
   - i4c2-primary-forget-recovery-finalization-handoff.md
   - i4c1-primary-forget-hidden-successor-handoff.md
@@ -34,7 +33,7 @@ relaylm_exact_source_snapshot: i4f_completion_report-source.txt
 
 ## Status and authority
 
-This document is frozen implementation evidence for the validation-only I-4F Forget product-completion slice introduced by PR #427, whose final source head is `2aac80c51c65b64dc70fd2c5f58b6ac729e89a23` and merge commit is `937718dcb328fda5e3e37bb951b39fc66629f57a`. Current repository-wide status belongs to [Project Status](../../PROJECT_STATUS.md). Current I-4F validation authority belongs to [Phase I-4F Forget Product Completion Validation](../../architecture/phase_i4f_forget_validation.md), the existing production implementation and I-4 contracts, the focused I-4F smoke suite, and the SOUL Lab Forget UI validation.
+This document is frozen implementation evidence for the validation-only I-4F Forget product-completion slice introduced by PR #427, whose final source head is `2aac80c51c65b64dc70fd2c5f58b6ac729e89a23` and merge commit is `937718dcb328fda5e3e37bb951b39fc66629f57a`. Current repository-wide status belongs to [Project Status](../../PROJECT_STATUS.md). Current I-4F validation authority belongs to [Phase I-4A Primary MEM Forget / Hide contract](../../architecture/phase_i4_primary_mem_forget_hide_contract.md), the existing production implementation and I-4 contracts, the focused I-4F smoke suite, and the SOUL Lab Forget UI validation.
 
 The exact pre-cutover report is retained byte-for-byte as [i4f_completion_report-source.txt](i4f_completion_report-source.txt). The source PR final-head, source merge, and pre-cutover `main` forms all use Git blob `f7c451802f97109fd431cbb1f6a57910d4ea5b93` and content SHA-256 `45e486844536829d23b9e303ef5e7925385f94ac5887027669facadafc9bbce5`; no post-source report modification exists.
 

@@ -8,8 +8,7 @@ relaylm_update_trigger:
   - metadata or link repair only
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../../architecture/phase_i4e_forget_api_ui.md
-  - ../../architecture/phase_i4f_forget_validation.md
+  - ../../architecture/phase_i4_primary_mem_forget_hide_contract.md
   - ../../architecture/phase_i4b_primary_current_state_shared_fence.md
   - i4c2-primary-forget-recovery-finalization-handoff.md
   - ../../architecture/phase_i4d_primary_retrieval_exclusion.md
@@ -31,7 +30,7 @@ relaylm_exact_source_snapshot: i4e_completion_report-source.txt
 
 ## Status and authority
 
-This is frozen implementation evidence for PR #420. Current behavior belongs to [Phase I-4E Forget API and UI](../../architecture/phase_i4e_forget_api_ui.md), the existing I-4B/I-4C1/I-4C2/I-4D authorities and production implementation, the focused I-4E smokes, and the I-4F product validation boundary.
+This is frozen implementation evidence for PR #420. Current behavior belongs to [Phase I-4A Primary MEM Forget / Hide contract](../../architecture/phase_i4_primary_mem_forget_hide_contract.md), the existing I-4B/I-4C1/I-4C2/I-4D authorities and production implementation, the focused I-4E smokes, and the I-4F product validation boundary.
 
 The [exact snapshot](i4e_completion_report-source.txt) is byte-identical to the source final-head, source merge, and pre-cutover forms: blob `c98117190fd8de637784181e7a413e28800917ea`, SHA-256 `def12c88540101b20b26f815dc0afc0702f96b857b83bfb633d3add6d05c563d`. No post-source report modification exists.
 

@@ -36,14 +36,14 @@ relaylm_related_authority:
   - pm_d7_runtime_install_hook_fold_in.md
   - phase_i4d_primary_retrieval_exclusion.md
   - phase_i5b_pin_unpin_apply.md
-  - phase_i7c_held_apply_discard_runtime.md
+  - ../contracts/memory/held-governance.md
   - integration_i1_primary_mem_two_turn_recall.md
   - e1r1_trusted_home_scene_admission.md
   - e1r2_character_store_bootstrap.md
   - e1r3_provenance_preserving_primary_mem_formation_summary.md
   - e1r4_retrieval_response_grounding.md
   - e1r5_primary_mem_recall_candidate_bridge.md
-  - phase_i4f_forget_validation.md
+  - phase_i4_primary_mem_forget_hide_contract.md
   - e1_evaluation_consolidation.md
   - ../evidence/waves/wave7_cross_slice_convergence_audit.md
   - ../evidence/waves/wave6_cross_slice_convergence_audit.md

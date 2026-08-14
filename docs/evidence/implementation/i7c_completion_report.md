@@ -8,7 +8,7 @@ relaylm_update_trigger:
   - metadata or link repair only
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../../architecture/phase_i7c_held_apply_discard_runtime.md
+  - ../../contracts/memory/held-governance.md
 relaylm_not_authoritative_for:
   - current repository-wide implementation status
   - current Held Apply / Discard runtime, API, UI, or governance behavior
@@ -27,7 +27,7 @@ relaylm_exact_source_snapshot: i7c_completion_report-source.txt
 
 ## Status and authority
 
-This document is frozen implementation evidence for the I-7C Held Apply / Discard runtime-governance, API/UI, durable-evidence, and leakage-boundary slice introduced by PR #431, whose final source head is `4add07ae3084b8f4bf1364189411014bb71cf118` and merge commit is `21d10bfed22ed9626e4224bf927ff59a5e399505`. Current repository-wide status belongs to [Project Status](../../PROJECT_STATUS.md). Current Held Apply / Discard behavior belongs to [Phase I-7C Held Apply / Discard Runtime](../../architecture/phase_i7c_held_apply_discard_runtime.md), the production implementation, and the focused I-7A/B and I-7C smoke suite.
+This document is frozen implementation evidence for the I-7C Held Apply / Discard runtime-governance, API/UI, durable-evidence, and leakage-boundary slice introduced by PR #431, whose final source head is `4add07ae3084b8f4bf1364189411014bb71cf118` and merge commit is `21d10bfed22ed9626e4224bf927ff59a5e399505`. Current repository-wide status belongs to [Project Status](../../PROJECT_STATUS.md). Current Held Apply / Discard behavior belongs to [Held Apply / Discard Governance Contract](../../contracts/memory/held-governance.md), the production implementation, and the focused I-7A/B and I-7C smoke suite.
 
 The exact pre-cutover report is retained byte-for-byte as [i7c_completion_report-source.txt](i7c_completion_report-source.txt). Statements below describe the source PR boundary unless explicitly qualified. Legacy-path strings inside the exact snapshot are historical source text, not live repository references.
 

@@ -13,7 +13,7 @@ relaylm_related_authority:
   - phase_i4_primary_mem_forget_hide_contract.md
   - phase_i4b_primary_current_state_shared_fence.md
   - phase_i4d_primary_retrieval_exclusion.md
-  - phase_i7c_held_apply_discard_runtime.md
+  - ../contracts/memory/held-governance.md
   - phase6b3_relayslp_queue_state_helpers.md
   - project_execution_plan.md
 ---
@@ -21,7 +21,7 @@ relaylm_related_authority:
 
 ## Status and boundary
 
-I-7A/B defines the held outcome governance contract and read-only preflight boundary. I-7C is implemented as the runtime/API/UI/durable-evidence continuation. The current runtime decision path lives in [Phase I-7C Held Apply / Discard Runtime](phase_i7c_held_apply_discard_runtime.md).
+I-7A/B defines the held outcome governance contract and read-only preflight boundary. The I-7C runtime/API/UI/durable-evidence continuation is implemented, and the current runtime decision path, loopback routes, durable decision evidence, and public projection boundary live in the [Held Apply / Discard Governance Contract](../contracts/memory/held-governance.md).
 
 I-7A/B itself remains the governability preflight authority:
 
