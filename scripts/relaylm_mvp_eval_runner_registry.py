@@ -17,7 +17,7 @@ REQUIRED_DOC_ANCHORS = {
         "opt-in O2/O3 process operation",
         "## O1/O2/O3 boundary notes",
         "## Phase 6 and E1 boundary notes",
-        "E1-R5 remains a bounded query-hinted fallback",
+        "E1-R5 remains historical evidence; primary_only fails closed to neither",
         "o2_supervised_scheduler_service.md",
         "o3_always_on_local_scheduler.md",
     ),
