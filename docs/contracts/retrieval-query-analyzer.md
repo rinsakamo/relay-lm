@@ -22,7 +22,6 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../architecture/analyzers/candidate-governance.md
   - ../architecture/memory/retrieval-and-grounding.md
-  - ../architecture/acg3_retrieval_query_normalization.md
   - ../architecture/e1r5_primary_mem_recall_candidate_bridge.md
 relaylm_related_contracts:
   - analyzer-candidate.md
@@ -705,5 +704,4 @@ This contract does not define:
 - [Analyzer Candidate Governance Contract](analyzer-candidate.md)
 - [Analyzer Candidate Governance Architecture](../architecture/analyzers/candidate-governance.md)
 - [Ordinary Memory Retrieval and Grounding](../architecture/memory/retrieval-and-grounding.md)
-- [ACG-3 Retrieval Query Normalization](../architecture/acg3_retrieval_query_normalization.md)
 - [E1-R5 Primary MEM Recall Candidate Bridge](../architecture/e1r5_primary_mem_recall_candidate_bridge.md)

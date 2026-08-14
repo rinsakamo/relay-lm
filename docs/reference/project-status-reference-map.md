@@ -62,8 +62,8 @@ Home remains on the existing RelayLM `/v1/chat/completions` path. Real Runtime a
 ## Implementation handoff and evidence map
 
 - [P0 RelayREL / RelaySCN / RelayEMO Ordering Fix](../architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md)
-- [Analyzer Candidate Governance roadmap](../architecture/analyzer_candidate_governance.md)
-- [ACG-1](../architecture/acg1_analyzer_candidate_governance_contract.md), [ACG-2](../contracts/query-detail-analyzer.md), [ACG-3](../architecture/acg3_retrieval_query_normalization.md), [ACG-4](../architecture/acg4_reference_intent_analyzer.md), [ACG-5](../architecture/acg5_relayemo_scene_cleanup.md), [ACG-6](../architecture/acg6_scene_wiki_classifier.md)
+- [Analyzer Candidate Governance](../architecture/analyzers/candidate-governance.md)
+- [ACG-1](../contracts/analyzer-candidate.md), [ACG-2](../contracts/query-detail-analyzer.md), [ACG-3](../contracts/retrieval-query-analyzer.md), [ACG-4](../contracts/reference-intent-analyzer.md), [ACG-5](../contracts/relayemo-scene-hint.md), [ACG-6](../contracts/scene-classifier.md)
 - [CW-A1](../architecture/cw_a1_file_first_source_tree_parser_contracts.md), [CW-A2](../architecture/cw_a2_workspace_compiler_projections.md), [CW-A3](../architecture/cw_a3_character_workspace_ui_rebuild.md), [CW-A4](../architecture/cw_a4_slp_workspace_maintenance_candidates.md), [CW-A5](../architecture/cw_a5_character_creation_templates_showcase_import.md)
 - [O2 Supervised Scheduler Service](../architecture/o2_supervised_scheduler_service.md) and [O3 Always-On Local Scheduler](../architecture/o3_always_on_local_scheduler.md)
 - [PM-D5](../architecture/pm_d5_relaymem_flat_store_compatibility_removal.md), [PM-D6](../architecture/pm_d6_relayint_native_artifact_relayref_wrapper_removal.md), and [PM-D7](../architecture/pm_d7_runtime_install_hook_fold_in.md)

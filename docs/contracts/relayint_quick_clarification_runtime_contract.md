@@ -68,7 +68,7 @@ Enabling a later stage without its predecessor therefore never synthesizes a mis
 Producer: `build_relayint_fast_path_dry_run()` in `relaylm/relayint.py`. Config owners: `relayint_fast_path_dry_run_enabled` (default `False`), `relayint_fast_path_high_confidence_threshold` (default `0.80`), `relayint_fast_path_low_confidence_threshold` (default `0.55`) — all in `relaylm/config.py`.
 
 - Schema version: `relayint_fast_path_dry_run.v0`.
-- Reference/continuation/prior-memory-request detection is delegated to the shared, ACG-4-consolidated `relaylm.reference_intent_analyzer.analyze_reference_intent()` (`docs/architecture/acg4_reference_intent_analyzer.md`, `relaylm_status: current`); this stage no longer owns an independent local marker dictionary. Detection remains fully heuristic (no LLM call).
+- Reference/continuation/prior-memory-request detection is delegated to the shared, ACG-4-consolidated `relaylm.reference_intent_analyzer.analyze_reference_intent()` (`docs/contracts/reference-intent-analyzer.md`, `relaylm_status: current`); this stage no longer owns an independent local marker dictionary. Detection remains fully heuristic (no LLM call).
 - Exact candidate actions (`relaylm/relayint.py:18-23`, `_candidate_action()`):
 
 ```text

@@ -22,7 +22,6 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../architecture/analyzers/candidate-governance.md
   - ../architecture/analyzers/reference-and-intent.md
-  - ../architecture/acg4_reference_intent_analyzer.md
   - ../architecture/pm_d6_relayint_native_artifact_relayref_wrapper_removal.md
 relaylm_related_contracts:
   - analyzer-candidate.md
@@ -770,6 +769,5 @@ This contract does not define:
 
 - [Analyzer Candidate Governance Contract](analyzer-candidate.md)
 - [Reference and Intent Architecture](../architecture/analyzers/reference-and-intent.md)
-- [ACG-4 Reference/Intent Analyzer Consolidation](../architecture/acg4_reference_intent_analyzer.md)
 - [RelayINT Quick-Clarification Runtime Contract](relayint_quick_clarification_runtime_contract.md)
 - [PM-D6 RelayINT Native Artifact / RelayREF Wrapper Removal](../architecture/pm_d6_relayint_native_artifact_relayref_wrapper_removal.md)

@@ -21,7 +21,6 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../architecture/scene/scene-model.md
-  - ../architecture/acg6_scene_wiki_classifier.md
   - ../architecture/analyzers/candidate-governance.md
   - ../architecture/emotion/affect-modulation.md
 relaylm_related_contracts:
@@ -846,6 +845,5 @@ This contract does not define:
 ## Related authority
 
 - [RelaySCN Scene Model](../architecture/scene/scene-model.md)
-- [ACG-6 Scene-Wiki Classifier Boundary](../architecture/acg6_scene_wiki_classifier.md)
 - [Analyzer Candidate Governance Contract](analyzer-candidate.md)
 - [RelayEMO Scene Hint Non-Authority Contract](relayemo-scene-hint.md)

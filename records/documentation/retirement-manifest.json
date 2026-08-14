@@ -2,6 +2,18 @@
   "schema_version": "relaylm.documentation.retirement-manifest.v1",
   "entries": [
     {
+      "old_path": "docs/architecture/acg1_analyzer_candidate_governance_contract.md",
+      "last_live_commit": "b19cc294aa8dd97db6d3d30788310701ab5a74be",
+      "old_blob_sha": "45281097d9490fe52fd71385d000155e363661c6",
+      "removed_by_pr": 1195,
+      "replacement_paths": [
+        "docs/architecture/analyzers/candidate-governance.md",
+        "docs/contracts/analyzer-candidate.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-I retired the ACG-1 transitional contract after the permanent Analyzer Candidate contract already owned its exact source classes, fail-closed validation, authority model, and content-free public projection field list. Shared governance semantics remain with canonical architecture; the exact source remains Git-recoverable."
+    },
+    {
       "old_path": "docs/architecture/acg2_grounded_recall_detail_safety.md",
       "last_live_commit": "1fae464e1e52dc0c36d5354904da31028c93c1cd",
       "old_blob_sha": "281a2240b0f29f1ddb9ee9d141404f1b3ab2a89d",
@@ -13,6 +25,72 @@
       ],
       "disposition": "superseded",
       "retention_reason": "D6-R35-H retired the ACG-2 detail-safety handoff after the permanent Query Detail Analyzer contract already owned its exact schema, detail vocabulary, restrictive-only/fail-closed merge behavior, public projection, and Grounded Recall consumption boundary. Shared analyzer and retrieval semantics remain with canonical architecture; the exact source remains Git-recoverable."
+    },
+    {
+      "old_path": "docs/architecture/acg3_retrieval_query_normalization.md",
+      "last_live_commit": "6ad9af3a6af99aea55515aa77d5431f157a229ae",
+      "old_blob_sha": "413f03ff544aedefb18176ec3b23fee0b79fe229",
+      "removed_by_pr": 1195,
+      "replacement_paths": [
+        "docs/architecture/analyzers/candidate-governance.md",
+        "docs/architecture/memory/retrieval-and-grounding.md",
+        "docs/contracts/retrieval-query-analyzer.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-I retired the ACG-3 handoff after the permanent Retrieval Query Analyzer contract already owned its exact artifact shape, hint strategies, unknown-strategy fail-closed behavior, backend-private hint handling, and content-free public query projection. Stable retrieval semantics remain with canonical architecture; the exact source remains Git-recoverable."
+    },
+    {
+      "old_path": "docs/architecture/acg4_reference_intent_analyzer.md",
+      "last_live_commit": "5fc4266ed9e102299c92b172e0cb5287d8924372",
+      "old_blob_sha": "efb9a2a7bd6f0033ed3a50a93254cd9ab233059d",
+      "removed_by_pr": 1195,
+      "replacement_paths": [
+        "docs/architecture/analyzers/candidate-governance.md",
+        "docs/architecture/analyzers/reference-and-intent.md",
+        "docs/contracts/reference-intent-analyzer.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-I retired the ACG-4 consolidation handoff after the permanent Reference/Intent Analyzer contract already owned its exact reference and intent enums, preserved Japanese and English marker coverage, non-authoritative marker-source authority, and content-free public projection. Stable reference/intent architecture remains canonical; the exact source remains Git-recoverable."
+    },
+    {
+      "old_path": "docs/architecture/acg5_relayemo_scene_cleanup.md",
+      "last_live_commit": "788cf6a9127124eb7efaad1398ac411f28abfcd3",
+      "old_blob_sha": "57e7012c7d0e27eead2ecce3ce964dd65f63c4f1",
+      "removed_by_pr": 1195,
+      "replacement_paths": [
+        "docs/architecture/analyzers/candidate-governance.md",
+        "docs/architecture/emotion/affect-modulation.md",
+        "docs/contracts/relayemo-scene-hint.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-I retired the ACG-5 cleanup handoff after the permanent RelayEMO scene-hint contract already owned its exact scene_hint_candidate boundary, deprecated compatibility scene-state field, RelaySCN and RelayEMO ownership invariants, and content-free public projection. Stable affect ownership remains canonical; the exact source remains Git-recoverable."
+    },
+    {
+      "old_path": "docs/architecture/acg6_scene_wiki_classifier.md",
+      "last_live_commit": "c1787aeca0c7203f4085544cc16a2a39733b57d7",
+      "old_blob_sha": "c98c7adc6520b77d27a5021c0a8fecfc0b121516",
+      "removed_by_pr": 1195,
+      "replacement_paths": [
+        "docs/architecture/analyzers/candidate-governance.md",
+        "docs/architecture/memory/scene-memory-scope.md",
+        "docs/architecture/scene/scene-model.md",
+        "docs/contracts/scene-classifier.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-I retired the ACG-6 boundary handoff after the permanent Scene Classifier contract already owned its exact fixed scene-type enum, safe ID and alias matching, RelaySCN explicit-state precedence, and content-free public projection. Stable scene authority remains canonical; the exact source remains Git-recoverable."
+    },
+    {
+      "old_path": "docs/architecture/analyzer_candidate_governance.md",
+      "last_live_commit": "2006a420df1eb4ea41fa51109c391278908fbfea",
+      "old_blob_sha": "13574e72aab0a8fe00ae54bda486e7c951142c3e",
+      "removed_by_pr": 1195,
+      "replacement_paths": [
+        "docs/architecture/analyzers/candidate-governance.md",
+        "docs/architecture/project_execution_plan.md",
+        "docs/contracts/analyzer-candidate.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-I retired the ACG roadmap after it recorded ACG-0 through ACG-6 complete, leaving no unfinished sequencing authority. The permanent analyzer governance architecture owns the durable candidate-vs-authority model and repository sequencing stays with the Project Execution Plan; the exact source remains Git-recoverable."
     },
     {
       "old_path": "docs/architecture/archive/README.md",

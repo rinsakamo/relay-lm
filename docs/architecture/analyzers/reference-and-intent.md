@@ -17,7 +17,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - candidate-governance.md
-  - ../acg4_reference_intent_analyzer.md
+  - ../../contracts/reference-intent-analyzer.md
   - ../relayint_mvp_design.md
   - ../context/context-assembly.md
   - ../memory/retrieval-and-grounding.md
@@ -351,7 +351,7 @@ This architecture does not define:
 ## Related architecture
 
 - [Analyzer Candidate Governance](candidate-governance.md)
-- [ACG-4 Reference/Intent Analyzer Consolidation](../acg4_reference_intent_analyzer.md)
+- [Reference/Intent Analyzer Contract](../../contracts/reference-intent-analyzer.md)
 - [RelayINT MVP Design](../relayint_mvp_design.md)
 - [RelayCTX Context Assembly](../context/context-assembly.md)
 - [RelayMEM Retrieval and Grounding](../memory/retrieval-and-grounding.md)
