@@ -23,7 +23,7 @@ relaylm_related_authority:
   - ../release/v0.1-release-readiness.md
   - pipeline-responsibilities.md
   - file_first_character_workspace_design.md
-  - character_template_creation_flow.md
+  - character-workspace/creation-and-import.md
   - current_target_migration_guide.md
   - relaymem_slp_current_target.md
   - analyzers/candidate-governance.md
@@ -38,7 +38,7 @@ relaylm_related_authority:
   - ../contracts/character-workspace/compiled-projections.md
   - cw_a3_character_workspace_ui_rebuild.md
   - cw_a4_slp_workspace_maintenance_candidates.md
-  - cw_a5_character_creation_templates_showcase_import.md
+  - ../contracts/character-workspace/creation-commit.md
   - e1r5_primary_mem_recall_candidate_bridge.md
   - ../evidence/waves/e1r5_post_wave7_correction_convergence_audit.md
   - o2_supervised_scheduler_service.md

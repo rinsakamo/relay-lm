@@ -189,16 +189,16 @@ That representation is an implementation adapter, not the target ownership model
 
 For the onboarding/product-help knowledge boundary, this policy supersedes the target statements that describe official RelayLM onboarding knowledge as ordinary character memory in:
 
-- `docs/architecture/pinned_normal_memory_pages.md`, and
-- `docs/architecture/character_template_creation_flow.md`.
+- `docs/architecture/pinned_normal_memory_pages.md`.
 
-Those documents remain usable for their other scopes and for the current pinned-page adapter until their canonical cutover or migration update. They are not authoritative for the final product-knowledge ownership or lifecycle model.
+That document remains usable for its other scopes and for the current pinned-page adapter until its canonical cutover or migration update. It is not authoritative for the final product-knowledge ownership or lifecycle model.
 
-The retired RelaySOUL ReLM source-set draft carried the same superseded assumption. It is no longer a live document, so its onboarding-as-ordinary-memory target is not restored by this policy or by any successor.
+The retired RelaySOUL ReLM source-set draft and the retired Character Template and Creation Flow target source carried the same superseded assumption. Neither is a live document, so their onboarding-as-ordinary-memory target is not restored by this policy or by any successor.
 
-The current implementation handoff remains:
+The stable creation/import responsibility model and the exact current creation, template-validation, and commit semantics are owned by:
 
-- `docs/architecture/cw_a5_character_creation_templates_showcase_import.md`.
+- `docs/architecture/character-workspace/creation-and-import.md`, and
+- `docs/contracts/character-workspace/creation-commit.md`.
 
 ## Showcase publication boundary
 
@@ -221,9 +221,9 @@ These are durable ownership and publication constraints, not an exact machine sc
 ## Related documents
 
 - [File-first Character Workspace Design](../file_first_character_workspace_design.md)
-- [Character Template and Creation Flow](../character_template_creation_flow.md)
+- [Character Workspace Creation and Import](creation-and-import.md)
 - [Pinned Normal Memory Pages](../pinned_normal_memory_pages.md)
-- [CW-A5 Character Creation, Templates, and Showcase Import](../cw_a5_character_creation_templates_showcase_import.md)
+- [Character Workspace Creation and Commit Contract](../../contracts/character-workspace/creation-commit.md)
 - [Rin / ReLM Showcase Character Direction](../character/showcase-character-direction.md)
 
 ## Non-goals

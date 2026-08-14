@@ -7,7 +7,7 @@ relaylm_owner: architecture
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - memory_lifecycle_design.md
-  - character_template_creation_flow.md
+  - character-workspace/showcase-starter-product-knowledge.md
   - file_first_character_workspace_design.md
   - memory/pinned-memory.md
 ---
