@@ -7,8 +7,8 @@ relaylm_owner: offline_tooling
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - twin-extraction-prompts.md
-  - ../architecture/cw_a5_character_creation_templates_showcase_import.md
-  - ../architecture/character_template_creation_flow.md
+  - ../architecture/character-workspace/creation-and-import.md
+  - ../architecture/character-workspace/showcase-starter-product-knowledge.md
 relaylm_not_authoritative_for:
   - Twin Extraction private fixture processing
   - RelayMEM or RelaySLP runtime ingestion behavior

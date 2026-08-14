@@ -198,7 +198,7 @@ Open:
 http://127.0.0.1:5173/lab/
 ```
 
-The zero-character state opens Create / Import. Character creation and workspace commit require explicit approval, and a committed workspace is not made active automatically. The Vite server is a loopback development surface, not a supported public or Cloudflare Tunnel origin; production bundle serving remains a separate implementation boundary. See the [Character Workspace UI guide](apps/soul-lab/README.md) and [CW-A5 creation contract](docs/architecture/cw_a5_character_creation_templates_showcase_import.md).
+The zero-character state opens Create / Import. Character creation and workspace commit require explicit approval, and a committed workspace is not made active automatically. The Vite server is a loopback development surface, not a supported public or Cloudflare Tunnel origin; production bundle serving remains a separate implementation boundary. See the [Character Workspace UI guide](apps/soul-lab/README.md) and [Character Workspace creation and commit contract](docs/contracts/character-workspace/creation-commit.md).
 
 ## 🧰 Troubleshooting
 
@@ -255,7 +255,7 @@ For authoritative ownership and order, see the [Pipeline Responsibilities](docs/
 - 📍 [Current project status](docs/PROJECT_STATUS.md)
 - 🗺️ [Documentation index](docs/README.md)
 - 🧬 [File-first Character Workspace design](docs/architecture/file_first_character_workspace_design.md)
-- 🧭 [Character template creation flow](docs/architecture/character_template_creation_flow.md)
+- 🧭 [Character Workspace creation and import](docs/architecture/character-workspace/creation-and-import.md)
 - 🏗️ [Architecture documents](docs/architecture/README.md)
 - 🧭 [Project execution plan](docs/architecture/project_execution_plan.md)
 - 🚀 [OpenWebUI + LM Studio guide](docs/guides/openwebui-lmstudio-integration.md)

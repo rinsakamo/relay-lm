@@ -23,7 +23,7 @@ relaylm_related_authority:
   - ../release/v0.1-release-readiness.md
   - pipeline-responsibilities.md
   - file_first_character_workspace_design.md
-  - character_template_creation_flow.md
+  - character-workspace/creation-and-import.md
   - current_target_migration_guide.md
   - relaymem_slp_current_target.md
   - analyzers/candidate-governance.md
@@ -38,7 +38,7 @@ relaylm_related_authority:
   - ../contracts/character-workspace/compiled-projections.md
   - cw_a3_character_workspace_ui_rebuild.md
   - cw_a4_slp_workspace_maintenance_candidates.md
-  - cw_a5_character_creation_templates_showcase_import.md
+  - ../contracts/character-workspace/creation-commit.md
   - e1r5_primary_mem_recall_candidate_bridge.md
   - ../evidence/waves/e1r5_post_wave7_correction_convergence_audit.md
   - o2_supervised_scheduler_service.md
@@ -309,7 +309,7 @@ The currently eligible repository work is:
 
 ```text
 Lane R  R5 governed core package migration              COMPLETE
-Lane D  D6 final retirement / cutover-tool retirement   D6-R34 failed completion audit complete (#1143); D6-R35 in progress — SOUL Lab A6/A7 source family retired (#1151), UI-A0/A1 + UI-A2 foundation/adoption source family retired (#1157), UI-A3/A4/A5 preview source family retired (#1162), UI-B0/B1A real Home conversation / lifecycle visibility source family retired (#1171), and I-4E/I-4F Forget plus I-7C Held governance source family retired (#1175), and I-5B Pin/Unpin apply/API/UI source family retired (#1181), and I-7A/B Held Apply/Discard preflight source family retired (#1184), and ACG-2 Grounded Recall detail-safety source family retired (#1188), and remaining ACG roadmap plus ACG-1/3/4/5/6 source family retired (#1195), and CW-A1/A2 source tree/parser/compiler source family retired (#1198); D6 incomplete
+Lane D  D6 final retirement / cutover-tool retirement   D6-R34 failed completion audit complete (#1143); D6-R35 in progress — SOUL Lab A6/A7 source family retired (#1151), UI-A0/A1 + UI-A2 foundation/adoption source family retired (#1157), UI-A3/A4/A5 preview source family retired (#1162), UI-B0/B1A real Home conversation / lifecycle visibility source family retired (#1171), and I-4E/I-4F Forget plus I-7C Held governance source family retired (#1175), and I-5B Pin/Unpin apply/API/UI source family retired (#1181), and I-7A/B Held Apply/Discard preflight source family retired (#1184), and ACG-2 Grounded Recall detail-safety source family retired (#1188), and remaining ACG roadmap plus ACG-1/3/4/5/6 source family retired (#1195), and CW-A1/A2 source tree/parser/compiler source family retired (#1198), and CW-A5 plus target Character Template and Creation Flow creation/templates/import source family retired (#1201); D6 incomplete
 Lane R  R6 Primary MEM disposition                      required cleanup after R5
 Lane C                                                  idle until PD-2 completes
 ```

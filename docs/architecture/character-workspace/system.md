@@ -22,7 +22,7 @@ relaylm_related_authority:
   - ../../contracts/character-workspace/compiled-projections.md
   - ../cw_a3_character_workspace_ui_rebuild.md
   - ../cw_a4_slp_workspace_maintenance_candidates.md
-  - ../cw_a5_character_creation_templates_showcase_import.md
+  - creation-and-import.md
   - ../pipeline-responsibilities.md
   - ../context/context-assembly.md
   - ../relationship/relationship-state.md
@@ -500,7 +500,7 @@ This parent architecture does not define:
 - [Character Workspace Compiled Projections Contract](../../contracts/character-workspace/compiled-projections.md)
 - [CW-A3 Character Workspace UI](../cw_a3_character_workspace_ui_rebuild.md)
 - [CW-A4 Workspace Maintenance Candidates](../cw_a4_slp_workspace_maintenance_candidates.md)
-- [CW-A5 Character Creation / Templates / Import](../cw_a5_character_creation_templates_showcase_import.md)
+- [Character Workspace Creation and Import](creation-and-import.md)
 - [RelayCTX Context Assembly](../context/context-assembly.md)
 - [RelayREL Relationship State](../relationship/relationship-state.md)
 - [RelaySCN Scene Model](../scene/scene-model.md)

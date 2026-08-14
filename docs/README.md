@@ -28,11 +28,11 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Documentation synthesis and retirement](operations/documentation-synthesis-and-retirement.md) — the repeatable D2-D6 operator procedure.
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md) — the current product direction reset target: editable Markdown character sources compiled into runtime projections.
 - [Character Workspace Source Compiler](architecture/character-workspace/source-compiler.md) — the current source tree, parser/validation, and deterministic compiler architecture for the file-first Character Workspace reset.
-- [CW-A5 Character Creation, Templates, and Showcase Import](architecture/cw_a5_character_creation_templates_showcase_import.md) — the current bounded creation/template/import slice for deterministic local Character Workspace creation.
+- [Character Workspace Creation and Import](architecture/character-workspace/creation-and-import.md) — the current bounded creation, template, and local-import architecture for deterministic Character Workspace creation, with exact semantics in the [Character Workspace Creation and Commit Contract](contracts/character-workspace/creation-commit.md).
 - [O2 Supervised Scheduler Service](architecture/o2_supervised_scheduler_service.md) — the current opt-in supervised local scheduler service boundary.
 - [O3 Always-On Local Scheduler](architecture/o3_always_on_local_scheduler.md) — the current opt-in local CLI/process wrapper boundary.
 - [RelayREL relationship design](architecture/relayrel_relationship_design.md) — target-specific relationship state, relationship-conditioned interaction policy, and `RELATIONSHIP.md` / `relationships/<target>.md` ownership.
-- [Character template creation flow](architecture/character_template_creation_flow.md) — no-character startup, Quick/Advanced Create, template import, and showcase policy.
+- [Showcase, Public Starter, and Product Knowledge Ownership](architecture/character-workspace/showcase-starter-product-knowledge.md) — the accepted target ownership split between developer showcase characters, the public adoptable starter, user-authored/imported characters, and official RelayLM product knowledge.
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, AI reading rules, and the parallel implementation/convergence flow.
 - [Pipeline Responsibilities](architecture/pipeline-responsibilities.md) — component responsibility and canonical target order.
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) — compatibility interpretation.
@@ -49,9 +49,9 @@ Implementation PRs record bounded implementation and validation evidence in the 
 
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md)
 - [Character Workspace Source Tree Contract](contracts/character-workspace/source-tree.md)
-- [CW-A5 Character Creation, Templates, and Showcase Import](architecture/cw_a5_character_creation_templates_showcase_import.md)
+- [Character Workspace Creation and Commit Contract](contracts/character-workspace/creation-commit.md)
 - [RelayREL relationship design](architecture/relayrel_relationship_design.md)
-- [Character template creation flow](architecture/character_template_creation_flow.md)
+- [Character Workspace Creation and Import](architecture/character-workspace/creation-and-import.md)
 - [P0 RelayREL / RelaySCN / RelayEMO ordering fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md)
 - [Analyzer Candidate Contract](contracts/analyzer-candidate.md)
 - [Query Detail Analyzer Contract](contracts/query-detail-analyzer.md)
@@ -171,7 +171,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md)
 - [RelayREL relationship design](architecture/relayrel_relationship_design.md)
-- [Character template creation flow](architecture/character_template_creation_flow.md)
+- [Showcase, Public Starter, and Product Knowledge Ownership](architecture/character-workspace/showcase-starter-product-knowledge.md)
 - [Character belief, relationship, and social expression dynamics](architecture/character_belief_relationship_dynamics_design.md)
 - [ADR: character-conditioned belief without rewriting observation](adr/character_conditioned_belief_model.md)
 - [Character Personality and Experience Architecture](architecture/character/personality-and-experience.md)

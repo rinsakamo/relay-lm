@@ -23,7 +23,7 @@ relaylm_related_authority:
   - compiled-projections.md
   - ../../architecture/character-workspace/creation-and-import.md
   - ../../architecture/character-workspace/system.md
-  - ../../architecture/cw_a5_character_creation_templates_showcase_import.md
+  - ../../architecture/character-workspace/showcase-starter-product-knowledge.md
 relaylm_verified_by:
   - ../../../scripts/relaylm_cw_a5_character_creation_templates_smoke.py
 relaylm_lifecycle: stable
@@ -1150,7 +1150,7 @@ scripts/relaylm_cw_a5_character_creation_templates_smoke.py
 
 The smoke verifies current registry/no-default behavior, Quick/Advanced staging, showcase starter/as-is distinction, approval gate, successful build-containing commit with no activation, duplicate-target rejection, safe third-party validation, unsafe runtime/script/config/symlink/traversal rejection, and content-free public validation output.
 
-The older CW-A5 handoff remains transitional until a later reviewed retirement transaction accounts for incoming references and normative disposition. This contract does not retire it.
+The transitional CW-A5 implementation handoff was retired in D6-R35-K after this contract, the Character Workspace creation/import architecture, and the showcase/starter/product-knowledge policy already owned its current semantics. Its exact text remains Git-recoverable through the central retirement manifest.
 
 ## Stable invariants
 
@@ -1200,4 +1200,4 @@ This contract does not define:
 - [Character Workspace Compiled Projections Contract](compiled-projections.md)
 - [Character Workspace Creation and Import](../../architecture/character-workspace/creation-and-import.md)
 - [Character Workspace System](../../architecture/character-workspace/system.md)
-- [CW-A5 transitional implementation handoff](../../architecture/cw_a5_character_creation_templates_showcase_import.md)
+- [Showcase, Public Starter, and Product Knowledge Ownership](../../architecture/character-workspace/showcase-starter-product-knowledge.md)
