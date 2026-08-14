@@ -16,13 +16,12 @@ relaylm_not_authoritative_for:
   - current source-specific authority facts supplied by route, tool, user confirmation, or product policy
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../analyzer_candidate_governance.md
-  - ../acg1_analyzer_candidate_governance_contract.md
+  - ../../contracts/analyzer-candidate.md
   - ../../contracts/query-detail-analyzer.md
-  - ../acg3_retrieval_query_normalization.md
-  - ../acg4_reference_intent_analyzer.md
-  - ../acg5_relayemo_scene_cleanup.md
-  - ../acg6_scene_wiki_classifier.md
+  - ../../contracts/retrieval-query-analyzer.md
+  - ../../contracts/reference-intent-analyzer.md
+  - ../../contracts/relayemo-scene-hint.md
+  - ../../contracts/scene-classifier.md
   - ../scene/scene-model.md
   - ../memory/retrieval-and-grounding.md
   - ../emotion/affect-modulation.md
@@ -431,9 +430,9 @@ Project Status remains authoritative for exact implementation completion.
 
 ## Current implementation basis
 
-The current architecture is grounded in the shared ACG-1 governance helper/contract and implemented bounded ACG producer slices for detail safety, retrieval-query normalization, reference/intent consolidation, RelayEMO scene cleanup, and structured scene classification/wiki matching.
+The current architecture is grounded in the shared analyzer candidate governance helper/contract and implemented bounded producer slices for detail safety, retrieval-query normalization, reference/intent consolidation, RelayEMO scene cleanup, and structured scene classification/wiki matching.
 
-Those implementation handoffs retain exact local schema and producer behavior. This page owns only the stable cross-analyzer governance model.
+The exact producer contracts retain exact local schema and producer behavior. This page owns only the stable cross-analyzer governance model.
 
 ## Stable invariants
 
@@ -471,13 +470,12 @@ This architecture does not define:
 
 ## Related architecture
 
-- [Analyzer Candidate Governance and Multilingual Schema Policy](../analyzer_candidate_governance.md)
-- [ACG-1 Analyzer Candidate Governance Contract](../acg1_analyzer_candidate_governance_contract.md)
+- [Analyzer Candidate Contract](../../contracts/analyzer-candidate.md)
 - [Query Detail Analyzer Contract](../../contracts/query-detail-analyzer.md)
-- [ACG-3 Retrieval Query Normalization](../acg3_retrieval_query_normalization.md)
-- [ACG-4 Reference Intent Analyzer](../acg4_reference_intent_analyzer.md)
-- [ACG-5 RelayEMO Scene Cleanup](../acg5_relayemo_scene_cleanup.md)
-- [ACG-6 Scene Wiki Classifier](../acg6_scene_wiki_classifier.md)
+- [Retrieval Query Analyzer Contract](../../contracts/retrieval-query-analyzer.md)
+- [Reference/Intent Analyzer Contract](../../contracts/reference-intent-analyzer.md)
+- [RelayEMO Scene Hint Contract](../../contracts/relayemo-scene-hint.md)
+- [Scene Classifier Contract](../../contracts/scene-classifier.md)
 - [RelaySCN Scene Model](../scene/scene-model.md)
 - [RelayMEM Retrieval and Grounding](../memory/retrieval-and-grounding.md)
 - [RelayEMO Affect Modulation](../emotion/affect-modulation.md)

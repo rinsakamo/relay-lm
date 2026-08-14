@@ -16,8 +16,8 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - project_execution_plan.md
   - current_target_migration_guide.md
-  - analyzer_candidate_governance.md
-  - acg4_reference_intent_analyzer.md
+  - analyzers/candidate-governance.md
+  - ../contracts/reference-intent-analyzer.md
 ---
 # PM-D6 RelayINT Native Artifact / RelayREF Wrapper Removal
 

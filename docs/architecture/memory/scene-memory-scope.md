@@ -20,7 +20,7 @@ relaylm_related_authority:
   - retrieval-and-grounding.md
   - formation.md
   - system.md
-  - ../acg6_scene_wiki_classifier.md
+  - ../../contracts/scene-classifier.md
   - ../relayscn_mvp_scene_policy.md
   - ../subjective-mem-retrieval-projection-hard-cutover.md
 relaylm_lifecycle: stable
@@ -319,4 +319,4 @@ This concept does not define:
 - [Ordinary Memory Retrieval and Grounding](retrieval-and-grounding.md)
 - [Subjective Memory Formation](formation.md)
 - [Memory Subsystem Architecture](system.md)
-- [ACG-6 Scene-Wiki Classifier Boundary](../acg6_scene_wiki_classifier.md)
+- [Scene Classifier Contract](../../contracts/scene-classifier.md)

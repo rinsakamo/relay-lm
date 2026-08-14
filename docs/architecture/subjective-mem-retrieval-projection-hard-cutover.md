@@ -41,7 +41,7 @@ relaylm_related_authority:
   - phase_i4d_primary_retrieval_exclusion.md
   - e1r4_retrieval_response_grounding.md
   - e1r5_primary_mem_recall_candidate_bridge.md
-  - acg3_retrieval_query_normalization.md
+  - ../contracts/retrieval-query-analyzer.md
   - project_execution_plan.md
 ---
 # RT-1 Subjective MEM Retrieval Projection and Hard Cutover

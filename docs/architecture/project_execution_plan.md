@@ -26,13 +26,13 @@ relaylm_related_authority:
   - character_template_creation_flow.md
   - current_target_migration_guide.md
   - relaymem_slp_current_target.md
-  - analyzer_candidate_governance.md
-  - acg1_analyzer_candidate_governance_contract.md
+  - analyzers/candidate-governance.md
+  - ../contracts/analyzer-candidate.md
   - ../contracts/query-detail-analyzer.md
-  - acg3_retrieval_query_normalization.md
-  - acg4_reference_intent_analyzer.md
-  - acg5_relayemo_scene_cleanup.md
-  - acg6_scene_wiki_classifier.md
+  - ../contracts/retrieval-query-analyzer.md
+  - ../contracts/reference-intent-analyzer.md
+  - ../contracts/relayemo-scene-hint.md
+  - ../contracts/scene-classifier.md
   - cw_a1_file_first_source_tree_parser_contracts.md
   - cw_a2_workspace_compiler_projections.md
   - cw_a3_character_workspace_ui_rebuild.md

@@ -22,7 +22,6 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../architecture/emotion/affect-modulation.md
   - ../architecture/scene/scene-model.md
-  - ../architecture/acg5_relayemo_scene_cleanup.md
   - ../architecture/analyzers/candidate-governance.md
   - ../architecture/pipeline-responsibilities.md
 relaylm_related_contracts:
@@ -616,5 +615,4 @@ This contract does not define:
 
 - [RelayEMO Affect Modulation](../architecture/emotion/affect-modulation.md)
 - [Scene Model](../architecture/scene/scene-model.md)
-- [ACG-5 RelayEMO Scene Ownership Cleanup](../architecture/acg5_relayemo_scene_cleanup.md)
 - [Analyzer Candidate Governance Contract](analyzer-candidate.md)

@@ -19,7 +19,6 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../architecture/analyzers/candidate-governance.md
   - ../architecture/analyzers/reference-and-intent.md
-  - ../architecture/acg1_analyzer_candidate_governance_contract.md
 relaylm_verified_by:
   - ../../scripts/relaylm_analyzer_governance_smoke.py
 relaylm_lifecycle: stable
@@ -716,4 +715,3 @@ This contract does not define:
 
 - [Analyzer Candidate Governance Architecture](../architecture/analyzers/candidate-governance.md)
 - [Reference and Intent Analyzer Architecture](../architecture/analyzers/reference-and-intent.md)
-- [ACG-1 transitional implementation contract](../architecture/acg1_analyzer_candidate_governance_contract.md)

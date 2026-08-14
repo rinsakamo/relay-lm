@@ -16,7 +16,7 @@ relaylm_not_authoritative_for:
   - exact relationship, scene, memory, SOUL, or safety policy
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../acg5_relayemo_scene_cleanup.md
+  - ../../contracts/relayemo-scene-hint.md
   - ../relationship/relationship-state.md
   - ../scene/scene-model.md
   - ../memory/observation-and-character-belief.md
@@ -415,7 +415,7 @@ This architecture does not define:
 
 ## Related architecture
 
-- [ACG-5 RelayEMO Scene Ownership Cleanup](../acg5_relayemo_scene_cleanup.md)
+- [RelayEMO Scene Hint Contract](../../contracts/relayemo-scene-hint.md)
 - [RelayREL Relationship State](../relationship/relationship-state.md)
 - [RelaySCN Scene Model](../scene/scene-model.md)
 - [Observation and Character-Conditioned Belief](../memory/observation-and-character-belief.md)
