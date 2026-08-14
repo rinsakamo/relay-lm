@@ -74,27 +74,23 @@ At most one durable-memory family is active for one ordinary request. Primary an
 
 ## Current reader classes
 
-The current RT-1 reader decision has three bounded classes:
+The current RT-1 reader decision retains three bounded values while exposing only one ordinary serving family:
 
 ```text
 primary_only
-  -> retained Primary compatibility reader only
+  -> ordinary Primary serving is retired
+  -> fail closed to `neither` / no-reader behavior
+  -> no Primary root resolution, store open, discovery, selection, recall, fallback, or evidence release
 
 neither
   -> no ordinary durable-memory reader
 
 subjective_only
   -> finalized Subjective reader only
-  -> no Primary root resolution, discovery, recall, ranking, or fallback
+  -> no Primary probing or fallback
 ```
 
-A missing, malformed, foreign, stale, or otherwise invalid decision fails closed through the cutover owner rather than selecting another family.
-
-`primary_only` is a compatibility state whose final disposition belongs to RT-1D-R5/R6. This canonical architecture records how a retained compatibility reader must behave while it exists; it does not promise that Primary ordinary serving remains part of the final steady state.
-
-`neither` is a deliberate no-reader state. It is not an error-driven invitation to probe another store or retry a different authority.
-
-`subjective_only` is the transferred ordinary serving state. Failed, refused, empty, stale, or malformed Subjective retrieval releases no durable-memory evidence and never falls back to Primary.
+A missing, malformed, foreign, stale, or otherwise invalid decision fails closed through the cutover owner rather than selecting another family. `primary_only` is not a current serving capability; its presence as a decision value does not restore the retired reader. `neither` is a deliberate no-reader state. `subjective_only` is the sole ordinary serving state, and failed, refused, empty, stale, or malformed Subjective retrieval releases no durable-memory evidence and never falls back to Primary.
 
 ## Authority selection precedes memory access
 
@@ -125,33 +121,11 @@ RelayINT and RelaySCN may narrow, block, or shape retrieval inside the already-s
 
 Query normalization, lexical matching, embeddings, vectors, similarity, and ranking are candidate-generation or ordering mechanisms only. They cannot make a stale, hidden, cross-scope, unauthorized, corrupt, or non-current revision eligible.
 
-## Primary compatibility retrieval
+## Primary post-retirement handling
 
-While an exact `primary_only` decision remains accepted, the retained Primary branch may perform bounded compatibility retrieval.
+An exact `primary_only` decision performs no ordinary durable-memory retrieval. Retrieval must not resolve a Primary root, open a Primary store, inspect controls, discover or rank candidates, invoke historical E1-R5 fallback, select Primary evidence, or release it to grounding.
 
-The compatibility flow is conceptually:
-
-```text
-primary_only
-  -> exact character/namespace Primary scope
-  -> safe bounded store/control inspection
-  -> preferred Primary candidate discovery
-  -> shared Primary lifecycle/current-state eligibility
-  -> bounded compatibility fallback only after an eligible scoped preferred-path miss
-  -> request-local selected Primary evidence
-```
-
-The historical E1-R5 candidate-discovery behavior is folded into the canonical Primary recall owner rather than existing as a second bridge. It remains reachable only inside `primary_only`.
-
-Within that branch:
-
-- the preferred Primary relevance path remains preferred;
-- fallback remains bounded to the same exact character and namespace scope;
-- safe page, index, log, digest, currentness, lifecycle, mutation, and retrieval-eligibility checks remain mandatory;
-- an exact hidden or newer successor never authorizes fallback to an older active revision;
-- a failed or empty Subjective path never enters this compatibility branch.
-
-Primary compatibility evidence may remain useful as regression, migration, rollback, or operational evidence after ordinary serving transfers. Those continuing roles do not make it an ordinary reader.
+Retained Primary modules and artifacts may support explicitly classified read-only admin/history, observation, mutation governance, recovery, characterization, migration, and regression responsibilities. None of those responsibilities is an ordinary Retrieval branch, reader, ranking owner, or fallback.
 
 ## Subjective ordinary retrieval
 
@@ -250,8 +224,9 @@ Examples:
 invalid reader decision
   -> no unauthorized memory-family access
 
-primary_only candidate/store/lifecycle failure
-  -> bounded Primary compatibility failure/no selection
+primary_only
+  -> retired Primary reader remains unavailable
+  -> no Primary access or evidence release
   -> no Subjective substitution
 
 neither
@@ -287,11 +262,11 @@ Retrieval never writes canonical memory, lifecycle state, relationship state, pr
 
 ## Current migration and retirement boundary
 
-The stable architecture is one-authority selection plus one common grounding policy. Current implementation may still contain bounded Primary compatibility surfaces and temporary RT-1 characterization/rehearsal artifacts while their owning retirement transaction remains incomplete.
+The stable architecture is one-authority selection plus one common grounding policy. Primary ordinary-reader/fallback execution is retired; separately classified Primary admin, mutation, recovery, characterization, migration, and regression surfaces may remain without serving authority.
 
-RT-1D-R5/R6 own the final disposition of replaced Primary ordinary-reader/fallback execution and temporary cutover surfaces. Lane D documentation canonicalization does not authorize deleting runtime, tests, migration evidence, rollback support, or operational consumers before that exact dependency review completes.
+Lane D documentation canonicalization does not authorize deleting runtime, tests, migration evidence, or operational consumers before exact Lane R dependency review completes.
 
-The eventual removal of `primary_only` ordinary serving does not require a second grounding design. The same storage-neutral grounding responsibility continues to consume already-selected evidence from the surviving ordinary authority.
+The retired Primary serving path does not require a second grounding design. The same storage-neutral grounding responsibility continues to consume already-selected evidence from the surviving ordinary authority.
 
 ## Source and evidence disposition
 
