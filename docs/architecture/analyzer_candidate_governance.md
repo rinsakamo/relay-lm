@@ -20,7 +20,7 @@ relaylm_related_authority:
   - pipeline-responsibilities.md
   - p0_relayrel_relayscn_relayemo_ordering_fix.md
   - acg1_analyzer_candidate_governance_contract.md
-  - acg2_grounded_recall_detail_safety.md
+  - ../contracts/query-detail-analyzer.md
   - acg3_retrieval_query_normalization.md
   - acg4_reference_intent_analyzer.md
   - acg5_relayemo_scene_cleanup.md
@@ -158,7 +158,7 @@ ACG-2 is complete. It moves request-side remembered-detail detection out of ad h
 
 Existing regex checks remain as fallback candidates, but unsupported-detail suppression does not become weaker. The fallback is non-authoritative, restrictive-only, and may strengthen suppression only.
 
-The ACG-2 handoff is [ACG-2 Grounded Recall Detail Safety](acg2_grounded_recall_detail_safety.md).
+The exact current ACG-2 semantics are owned by the [Query Detail Analyzer Contract](../contracts/query-detail-analyzer.md).
 
 ### ACG-3: RelayMEM Query Analyzer / Retrieval Hint Normalization
 
