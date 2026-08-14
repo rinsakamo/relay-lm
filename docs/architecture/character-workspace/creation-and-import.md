@@ -20,8 +20,8 @@ relaylm_related_authority:
   - source-compiler.md
   - ../cw_a5_character_creation_templates_showcase_import.md
   - ../character_template_creation_flow.md
-  - ../cw_a1_file_first_source_tree_parser_contracts.md
-  - ../cw_a2_workspace_compiler_projections.md
+  - ../../contracts/character-workspace/source-tree.md
+  - ../../contracts/character-workspace/compiled-projections.md
   - ../cw_a3_character_workspace_ui_rebuild.md
   - ../../planning/documentation-target-architecture-graph.md
 relaylm_lifecycle: stable
@@ -431,6 +431,6 @@ This architecture does not define:
 - [Character Workspace Source Compiler](source-compiler.md)
 - [CW-A5 Character Creation, Templates, and Showcase Import](../cw_a5_character_creation_templates_showcase_import.md)
 - [Character Template / Creation Flow](../character_template_creation_flow.md)
-- [CW-A1 File-first Source Tree and Parser Contracts](../cw_a1_file_first_source_tree_parser_contracts.md)
-- [CW-A2 Workspace Compiler Projections and KV-cache Tiers](../cw_a2_workspace_compiler_projections.md)
+- [Character Workspace Source Tree Contract](../../contracts/character-workspace/source-tree.md)
+- [Character Workspace Compiled Projections Contract](../../contracts/character-workspace/compiled-projections.md)
 - [CW-A3 Character Workspace UI Rebuild](../cw_a3_character_workspace_ui_rebuild.md)

@@ -17,8 +17,8 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - file_first_character_workspace_design.md
-  - cw_a1_file_first_source_tree_parser_contracts.md
-  - cw_a2_workspace_compiler_projections.md
+  - character-workspace/source-compiler.md
+  - ../contracts/character-workspace/compiled-projections.md
   - soul_lab_ui_mvp.md
   - project_execution_plan.md
 ---

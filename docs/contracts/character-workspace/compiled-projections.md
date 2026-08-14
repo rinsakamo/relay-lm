@@ -21,7 +21,6 @@ relaylm_related_authority:
   - parser-and-validation.md
   - ../../architecture/character-workspace/source-compiler.md
   - ../../architecture/character-workspace/system.md
-  - ../../architecture/cw_a2_workspace_compiler_projections.md
 relaylm_verified_by:
   - ../../../scripts/relaylm_cw_a2_workspace_compiler_smoke.py
 relaylm_lifecycle: stable
@@ -954,4 +953,3 @@ This contract does not define:
 - [Character Workspace Parser and Validation Contract](parser-and-validation.md)
 - [Character Workspace Source Compiler](../../architecture/character-workspace/source-compiler.md)
 - [Character Workspace System](../../architecture/character-workspace/system.md)
-- [CW-A2 transitional implementation handoff](../../architecture/cw_a2_workspace_compiler_projections.md)

@@ -17,8 +17,9 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../file_first_character_workspace_design.md
-  - ../cw_a1_file_first_source_tree_parser_contracts.md
-  - ../cw_a2_workspace_compiler_projections.md
+  - ../../contracts/character-workspace/source-tree.md
+  - ../../contracts/character-workspace/parser-and-validation.md
+  - ../../contracts/character-workspace/compiled-projections.md
   - ../cw_a3_character_workspace_ui_rebuild.md
   - ../cw_a4_slp_workspace_maintenance_candidates.md
   - ../cw_a5_character_creation_templates_showcase_import.md
@@ -494,8 +495,9 @@ This parent architecture does not define:
 ## Related architecture
 
 - [File-first Character Workspace Design](../file_first_character_workspace_design.md)
-- [CW-A1 Source Tree and Parser Contracts](../cw_a1_file_first_source_tree_parser_contracts.md)
-- [CW-A2 Compiler Projections](../cw_a2_workspace_compiler_projections.md)
+- [Character Workspace Source Tree Contract](../../contracts/character-workspace/source-tree.md)
+- [Character Workspace Parser and Validation Contract](../../contracts/character-workspace/parser-and-validation.md)
+- [Character Workspace Compiled Projections Contract](../../contracts/character-workspace/compiled-projections.md)
 - [CW-A3 Character Workspace UI](../cw_a3_character_workspace_ui_rebuild.md)
 - [CW-A4 Workspace Maintenance Candidates](../cw_a4_slp_workspace_maintenance_candidates.md)
 - [CW-A5 Character Creation / Templates / Import](../cw_a5_character_creation_templates_showcase_import.md)

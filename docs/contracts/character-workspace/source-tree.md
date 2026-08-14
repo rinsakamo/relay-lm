@@ -19,7 +19,6 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/character-workspace/source-compiler.md
   - ../../architecture/character-workspace/system.md
-  - ../../architecture/cw_a1_file_first_source_tree_parser_contracts.md
 relaylm_verified_by:
   - ../../../scripts/relaylm_cw_a1_file_first_workspace_smoke.py
 relaylm_lifecycle: stable
@@ -480,4 +479,3 @@ This contract does not define:
 
 - [Character Workspace Source Compiler](../../architecture/character-workspace/source-compiler.md)
 - [Character Workspace System](../../architecture/character-workspace/system.md)
-- [CW-A1 transitional implementation handoff](../../architecture/cw_a1_file_first_source_tree_parser_contracts.md)

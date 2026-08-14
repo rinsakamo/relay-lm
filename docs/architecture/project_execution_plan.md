@@ -33,8 +33,9 @@ relaylm_related_authority:
   - ../contracts/reference-intent-analyzer.md
   - ../contracts/relayemo-scene-hint.md
   - ../contracts/scene-classifier.md
-  - cw_a1_file_first_source_tree_parser_contracts.md
-  - cw_a2_workspace_compiler_projections.md
+  - character-workspace/source-compiler.md
+  - ../contracts/character-workspace/source-tree.md
+  - ../contracts/character-workspace/compiled-projections.md
   - cw_a3_character_workspace_ui_rebuild.md
   - cw_a4_slp_workspace_maintenance_candidates.md
   - cw_a5_character_creation_templates_showcase_import.md

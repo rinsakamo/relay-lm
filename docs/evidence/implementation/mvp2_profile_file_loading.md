@@ -42,4 +42,4 @@ No post-source modification exists; the source blob equals the pre-cutover blob.
 
 ## Current authority
 
-Current file-first Character Workspace, SOUL, and profile-resolution design belongs to [File-first Character Workspace Design](../../architecture/file_first_character_workspace_design.md) and [CW-A1 File-first Source Tree and Parser Contracts](../../architecture/cw_a1_file_first_source_tree_parser_contracts.md). Repository-wide current implementation status remains owned by [Project Status](../../PROJECT_STATUS.md).
+Current file-first Character Workspace, SOUL, and profile-resolution design belongs to [File-first Character Workspace Design](../../architecture/file_first_character_workspace_design.md) and [Character Workspace Source Tree Contract](../../contracts/character-workspace/source-tree.md). Repository-wide current implementation status remains owned by [Project Status](../../PROJECT_STATUS.md).
