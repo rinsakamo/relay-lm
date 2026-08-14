@@ -456,10 +456,10 @@ records:
   - asset_id: r6.primary.recall_audit_projection
     paths: [scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py]
     responsibility: process_smoke
-    lifecycle: active
+    lifecycle: transitional
     owner: audit_projection
-    r6_disposition: retained_current_component
-    protected_boundary: content-free allowlisted projection of the retained relaymem.primary_recall_projection.v0 diagnostic schema
+    r6_disposition: retired_after_cutover
+    protected_boundary: transitional retirement and compatibility evidence for the former content-free relaymem.primary_recall_projection.v0 audit boundary after the ordinary Primary recall producer was retired; it authorizes no ordinary Primary reader, discovery, selection, recall, fallback, serving, or evidence release
     current_callers:
       - scripts/relaylm_mvp_eval_runner_registry.py E1_SCRIPTS
       - scripts/relaylm_e1_evaluation_consolidation_smoke.py EVIDENCE_PATHS
@@ -468,10 +468,14 @@ records:
     evidence:
       - scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py
       - relaylm/audit_projection.py
+      - relaylm/retrieval/runtime.py
+      - tests/test_memory_stage_extraction.py
+      - scripts/relaylm_primary_recall_post_retirement_structure_smoke.py
+      - scripts/relaylm_relaymem_retrieval_dry_run_smoke.py
       - scripts/relaylm_mvp_eval_runner_registry.py
       - scripts/relaylm_e1_evaluation_consolidation_smoke.py
-    removal_gate: null
-    replacement_validation: null
+    removal_gate: retire only in one reviewed atomic cleanup that removes the E1-R5 audit-projection smoke together with its current E1 registrations and evidence anchors; proves ordinary Retrieval emits no Primary recall projection and no production path constructs relaymem.primary_recall_projection.v0; removes remaining relaymem_primary_recall_projection audit, trace, or managed-pipeline compatibility plumbing or separately proves each survivor has an accepted current non-Primary consumer; and revives no Primary reader, discovery, selection, recall, fallback, serving, or evidence-release authority
+    replacement_validation: run the post-retirement Primary structure proof, ordinary Retrieval dry-run and retirement regression, audit projection contract validation, E1 runner and consolidation validation, classification registry drift validation, repository-wide negative searches for production constructors and current callers of the former schema, documentation semantic/current-boundary/governance/link gates, and exact changed-path and complete-diff checks on the cleanup head
     confidence: confirmed
 
   - asset_id: r6.primary.characterization_suite
@@ -743,14 +747,14 @@ records:
 ## Decision summary
 
 ```text
-active: 25
-transitional: 2
+active: 24
+transitional: 3
 retired: 0
 ```
 
 The R6 baseline classifies every surviving `relaylm/relaymem_primary*` and `relaylm/_relaymem_primary*` module, the four-test Primary characterization suite plus its separately protected shared characterization support, the RT-1D reader-retirement regression, and every existing `relaylm_e1r5_primary_mem_recall_*_smoke.py` asset. The corrected E1 surface separates current post-retirement structural proof and content-free audit projection from the removed pre-retirement relevance smoke. Fresh post-#1170 R6 P1 review separated the former mixed reader-seam rollback row into the active read-only Primary admin/store surface, an active retirement regression, and two legacy runtime installers that were explicit no-ops. Those two no-op installer modules have now been removed through their reviewed atomic gate together with the package-import purity smoke's explicit imports, calls, and legacy-alias assertions while preserving metadata-only import, canonical-state non-mutation, current retirement proof, and historical evidence. Post-transfer rollback remains a new governed authority transfer rather than an automatic Primary-reader fallback.
 
-Current R6 authority has no `retired_after_cutover` row. The four-test Primary characterization suite remains transitional because its replacement-coverage gate is not closed. The shared characterization support is active and `retained_current_component` because maintained RelaySLP queue characterization imports it outside that Primary-only removal gate; all retained-current and operator/recovery rows remain protected. Any later R6 cleanup must be selected from fresh dependency and removal-gate convergence evidence rather than inferred from naming.
+Current R6 authority has exactly one `retired_after_cutover` row: `r6.primary.recall_audit_projection`, protected by its explicit atomic removal gate. The four-test Primary characterization suite remains transitional because its replacement-coverage gate is not closed. The shared characterization support is active and `retained_current_component` because maintained RelaySLP queue characterization imports it outside that Primary-only removal gate; all retained-current and operator/recovery rows remain protected. Any later R6 cleanup must be selected from fresh dependency and removal-gate convergence evidence rather than inferred from naming.
 
 No classified responsibility in this bounded surface is lifecycle `retired`. R2-B retires two redundant pytest file partitions through Git history while preserving every assertion in the active repository-inventory test owner.
 
@@ -764,7 +768,7 @@ The following remain unresolved and must not be guessed:
 - whether each discovered `python -m` root is supported or only an implementation convenience;
 - whether milestone-named smoke outside this surface is active regression, process validation, transitional characterization, or retired;
 - callers outside the enumerated R6 Primary paths remain evidence consumers rather than separately owned R6 assets; any later cleanup must refresh them before writing;
-- after the no-op installer removal, no current `retired_after_cutover` row remains; the next R6 cleanup must be selected from fresh dependency and removal-gate convergence evidence rather than inferred from naming.
+- after the no-op installer removal, `r6.primary.recall_audit_projection` is the one reviewed `retired_after_cutover` row and remains protected by its explicit atomic removal gate; the next R6 cleanup must be selected from fresh dependency and removal-gate convergence evidence rather than inferred from naming.
 
 ## Wave register and accepted decisions
 
