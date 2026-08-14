@@ -29,9 +29,9 @@ relaylm_related_authority:
   - ../../architecture/memory_lifecycle_design.md
   - ../../architecture/phase_i4_primary_mem_forget_hide_contract.md
   - ../../architecture/phase_i5_pin_unpin_contract.md
-  - ../../architecture/phase_i7ab_held_apply_discard_contract.md
   - ../../architecture/soul_lab_ui_mvp.md
   - ../../architecture/soul_lab_runtime_mvp.md
+  - ../../contracts/memory/held-governance.md
   - ../../contracts/ui/home-conversation.md
   - ../../contracts/ui/lifecycle-visibility.md
 ---
