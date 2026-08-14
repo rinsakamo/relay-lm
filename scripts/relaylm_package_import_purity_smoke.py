@@ -80,11 +80,7 @@ def main() -> int:
     )
     print("ok import relaylm is metadata-only")
 
-    for legacy_alias in (
-        "install_audit_projection_contracts",
-        "install_relaymem_primary_recall_runtime",
-        "install_relaymem_primary_recall_candidate_bridge_runtime",
-    ):
+    for legacy_alias in ("install_audit_projection_contracts",):
         require(
             legacy_alias not in relaylm.__dict__,
             f"relaylm.__dict__ must not re-export {legacy_alias}",
@@ -92,34 +88,26 @@ def main() -> int:
     print("ok relaylm namespace has no legacy installer aliases")
 
     from relaylm.audit_projection_contracts import install_audit_projection_contracts
-    from relaylm.relaymem_primary_recall_runtime import (
-        install_relaymem_primary_recall_runtime,
-    )
-    from relaylm.relaymem_primary_recall_candidate_bridge_runtime import (
-        install_relaymem_primary_recall_candidate_bridge_runtime,
-    )
 
     install_audit_projection_contracts(audit_projection)
-    install_relaymem_primary_recall_runtime()
-    install_relaymem_primary_recall_candidate_bridge_runtime()
 
     require(
         relaymem_store.discover_relaymem_page_candidates is store_discover_before,
-        "no-op installer must not replace discover_relaymem_page_candidates",
+        "explicit installer must not replace discover_relaymem_page_candidates",
     )
     require(
         relaymem_retrieval.build_relaymem_retrieval_dry_run_artifact is retrieval_before,
-        "no-op installer must not replace build_relaymem_retrieval_dry_run_artifact",
+        "explicit installer must not replace build_relaymem_retrieval_dry_run_artifact",
     )
     require(
         audit_projection.TOP_LEVEL_PROJECTORS == top_projectors_before,
-        "no-op installer must not mutate TOP_LEVEL_PROJECTORS",
+        "explicit installer must not mutate TOP_LEVEL_PROJECTORS",
     )
     require(
         audit_projection.PIPELINE_NODE_PROJECTORS == node_projectors_before,
-        "no-op installer must not mutate PIPELINE_NODE_PROJECTORS",
+        "explicit installer must not mutate PIPELINE_NODE_PROJECTORS",
     )
-    print("ok explicit no-op installers leave canonical state unchanged")
+    print("ok explicit installer leaves canonical state unchanged")
 
     return 0
 
