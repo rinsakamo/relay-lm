@@ -277,6 +277,19 @@
       "retention_reason": "D6-R35-F retired the I-5B Pin/Unpin apply handoff after Lane R PR #1179/#1180 removed the r6.primary.pin_operations evidence dependency. Its exact management semantics were owned by the SOUL Lab management contract, so nothing was absorbed and no new owner was created; stable pin, ranking-after-eligibility, mutation, and candidate-consumption semantics stay with memory architecture. The I-5B completion report and exact snapshot stay historical evidence, not current authority; the source is Git-recoverable."
     },
     {
+      "old_path": "docs/architecture/phase_i7ab_held_apply_discard_contract.md",
+      "last_live_commit": "1fe282fb39b060cfa75d7fbe381caa4bdd99c6dc",
+      "old_blob_sha": "a168d775f4f40a2cdab253e83267bf13671b96fb",
+      "removed_by_pr": 1184,
+      "replacement_paths": [
+        "docs/architecture/memory/mutation-governance.md",
+        "docs/architecture/ui/soul-lab.md",
+        "docs/contracts/memory/held-governance.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-G retired the I-7A/B Held Apply/Discard preflight handoff. The permanent Held governance contract already owned its exact candidate, source-evidence, preflight, related-Primary reread, queue-evidence, and worker/scheduler non-authority rules, so nothing was absorbed and no new owner was created; stable browser and cross-operation semantics stay with the SOUL Lab UI and mutation-governance architecture. The completion report and exact snapshot stay historical evidence; the source is Git-recoverable."
+    },
+    {
       "old_path": "docs/architecture/phase_i7c_held_apply_discard_runtime.md",
       "last_live_commit": "ff7f5ba3fab8dd9224ff8d77aa87e47ac221726e",
       "old_blob_sha": "cba33ad0c1743b29310d7d76e9a22443372677f7",

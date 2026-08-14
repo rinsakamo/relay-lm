@@ -87,7 +87,6 @@ Implementation PRs record bounded implementation and validation evidence in the 
 - [Phase I-4D Primary retrieval exclusion](architecture/phase_i4d_primary_retrieval_exclusion.md)
 - [Phase I-5A Pin / Unpin contract and read-only preflight](architecture/phase_i5_pin_unpin_contract.md)
 - [SOUL Lab Memory Pin / Unpin management contract](contracts/ui/memory-pin-unpin-management.md)
-- [Phase I-7A/B Held Apply / Discard contract and read-only preflight](architecture/phase_i7ab_held_apply_discard_contract.md)
 - [Held Apply / Discard governance contract](contracts/memory/held-governance.md)
 - [SOUL Lab Home conversation contract](contracts/ui/home-conversation.md)
 - [SOUL Lab lifecycle visibility contract](contracts/ui/lifecycle-visibility.md)
