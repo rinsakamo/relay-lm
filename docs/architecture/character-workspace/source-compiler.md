@@ -17,8 +17,9 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - system.md
-  - ../cw_a1_file_first_source_tree_parser_contracts.md
-  - ../cw_a2_workspace_compiler_projections.md
+  - ../../contracts/character-workspace/source-tree.md
+  - ../../contracts/character-workspace/parser-and-validation.md
+  - ../../contracts/character-workspace/compiled-projections.md
   - ../file_first_character_workspace_design.md
   - ../context/context-assembly.md
   - ../relationship/relationship-state.md
@@ -547,8 +548,9 @@ This architecture does not define:
 ## Related architecture
 
 - [Character Workspace Architecture](system.md)
-- [CW-A1 File-first Source Tree and Parser Contracts](../cw_a1_file_first_source_tree_parser_contracts.md)
-- [CW-A2 Workspace Compiler Projections and KV-cache Tiers](../cw_a2_workspace_compiler_projections.md)
+- [Character Workspace Source Tree Contract](../../contracts/character-workspace/source-tree.md)
+- [Character Workspace Parser and Validation Contract](../../contracts/character-workspace/parser-and-validation.md)
+- [Character Workspace Compiled Projections Contract](../../contracts/character-workspace/compiled-projections.md)
 - [File-first Character Workspace Design](../file_first_character_workspace_design.md)
 - [RelayCTX Context Assembly](../context/context-assembly.md)
 - [RelayREL Relationship State](../relationship/relationship-state.md)

@@ -16,8 +16,8 @@ relaylm_related_authority:
   - ../PROJECT_STATUS.md
   - project_execution_plan.md
   - file_first_character_workspace_design.md
-  - cw_a1_file_first_source_tree_parser_contracts.md
-  - cw_a2_workspace_compiler_projections.md
+  - character-workspace/source-compiler.md
+  - ../contracts/character-workspace/compiled-projections.md
   - cw_a3_character_workspace_ui_rebuild.md
   - relaymem_slp_current_target.md
 ---

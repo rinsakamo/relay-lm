@@ -27,7 +27,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Repository maintenance system](architecture/repository-maintenance-system.md) — discovery, reviewed classification, deterministic projection, bounded cleanup, and retirement architecture.
 - [Documentation synthesis and retirement](operations/documentation-synthesis-and-retirement.md) — the repeatable D2-D6 operator procedure.
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md) — the current product direction reset target: editable Markdown character sources compiled into runtime projections.
-- [CW-A1 File-first Source Tree and Parser Contracts](architecture/cw_a1_file_first_source_tree_parser_contracts.md) — the current read-only source tree/parser contract slice for the file-first Character Workspace reset.
+- [Character Workspace Source Compiler](architecture/character-workspace/source-compiler.md) — the current source tree, parser/validation, and deterministic compiler architecture for the file-first Character Workspace reset.
 - [CW-A5 Character Creation, Templates, and Showcase Import](architecture/cw_a5_character_creation_templates_showcase_import.md) — the current bounded creation/template/import slice for deterministic local Character Workspace creation.
 - [O2 Supervised Scheduler Service](architecture/o2_supervised_scheduler_service.md) — the current opt-in supervised local scheduler service boundary.
 - [O3 Always-On Local Scheduler](architecture/o3_always_on_local_scheduler.md) — the current opt-in local CLI/process wrapper boundary.
@@ -48,7 +48,7 @@ Implementation PRs record bounded implementation and validation evidence in the 
 ## Product-critical boundaries
 
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md)
-- [CW-A1 File-first Source Tree and Parser Contracts](architecture/cw_a1_file_first_source_tree_parser_contracts.md)
+- [Character Workspace Source Tree Contract](contracts/character-workspace/source-tree.md)
 - [CW-A5 Character Creation, Templates, and Showcase Import](architecture/cw_a5_character_creation_templates_showcase_import.md)
 - [RelayREL relationship design](architecture/relayrel_relationship_design.md)
 - [Character template creation flow](architecture/character_template_creation_flow.md)
