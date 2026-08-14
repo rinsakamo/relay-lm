@@ -341,10 +341,10 @@ records:
   - asset_id: r6.primary.recall_audit_projection
     paths: [scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py]
     responsibility: process_smoke
-    lifecycle: active
+    lifecycle: transitional
     owner: audit_projection
-    r6_disposition: retained_current_component
-    protected_boundary: content-free allowlisted projection of the retained relaymem.primary_recall_projection.v0 diagnostic schema
+    r6_disposition: retired_after_cutover
+    protected_boundary: transitional retirement and compatibility evidence for the former content-free relaymem.primary_recall_projection.v0 audit boundary after the ordinary Primary recall producer was retired; it authorizes no ordinary Primary reader, discovery, selection, recall, fallback, serving, or evidence release
     current_callers:
       - scripts/relaylm_mvp_eval_runner_registry.py E1_SCRIPTS
       - scripts/relaylm_e1_evaluation_consolidation_smoke.py EVIDENCE_PATHS
@@ -353,10 +353,14 @@ records:
     evidence:
       - scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py
       - relaylm/audit_projection.py
+      - relaylm/retrieval/runtime.py
+      - tests/test_memory_stage_extraction.py
+      - scripts/relaylm_primary_recall_post_retirement_structure_smoke.py
+      - scripts/relaylm_relaymem_retrieval_dry_run_smoke.py
       - scripts/relaylm_mvp_eval_runner_registry.py
       - scripts/relaylm_e1_evaluation_consolidation_smoke.py
-    removal_gate: null
-    replacement_validation: null
+    removal_gate: retire only in one reviewed atomic cleanup that removes the E1-R5 audit-projection smoke together with its current E1 registrations and evidence anchors; proves ordinary Retrieval emits no Primary recall projection and no production path constructs relaymem.primary_recall_projection.v0; removes remaining relaymem_primary_recall_projection audit, trace, or managed-pipeline compatibility plumbing or separately proves each survivor has an accepted current non-Primary consumer; and revives no Primary reader, discovery, selection, recall, fallback, serving, or evidence-release authority
+    replacement_validation: run the post-retirement Primary structure proof, ordinary Retrieval dry-run and retirement regression, audit projection contract validation, E1 runner and consolidation validation, classification registry drift validation, repository-wide negative searches for production constructors and current callers of the former schema, documentation semantic/current-boundary/governance/link gates, and exact changed-path and complete-diff checks on the cleanup head
     confidence: confirmed
 
   - asset_id: r6.primary.characterization_suite
