@@ -20,7 +20,6 @@ relaylm_not_authoritative_for:
   - source retirement or documentation migration disposition
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../../architecture/phase_i7ab_held_apply_discard_contract.md
   - ../../evidence/implementation/i7c_completion_report.md
   - ../../architecture/ui/soul-lab.md
   - ../../architecture/memory/mutation-governance.md
@@ -816,7 +815,6 @@ This contract does not define:
 
 ## Related architecture
 
-- [I-7A/B Held Apply / Discard Preflight](../../architecture/phase_i7ab_held_apply_discard_contract.md)
 - [I-7C completion report](../../evidence/implementation/i7c_completion_report.md)
 - [SOUL Lab UI](../../architecture/ui/soul-lab.md)
 - [Memory Mutation Governance](../../architecture/memory/mutation-governance.md)
