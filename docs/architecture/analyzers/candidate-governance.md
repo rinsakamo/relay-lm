@@ -18,7 +18,7 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../analyzer_candidate_governance.md
   - ../acg1_analyzer_candidate_governance_contract.md
-  - ../acg2_grounded_recall_detail_safety.md
+  - ../../contracts/query-detail-analyzer.md
   - ../acg3_retrieval_query_normalization.md
   - ../acg4_reference_intent_analyzer.md
   - ../acg5_relayemo_scene_cleanup.md
@@ -473,7 +473,7 @@ This architecture does not define:
 
 - [Analyzer Candidate Governance and Multilingual Schema Policy](../analyzer_candidate_governance.md)
 - [ACG-1 Analyzer Candidate Governance Contract](../acg1_analyzer_candidate_governance_contract.md)
-- [ACG-2 Grounded Recall Detail Safety](../acg2_grounded_recall_detail_safety.md)
+- [Query Detail Analyzer Contract](../../contracts/query-detail-analyzer.md)
 - [ACG-3 Retrieval Query Normalization](../acg3_retrieval_query_normalization.md)
 - [ACG-4 Reference Intent Analyzer](../acg4_reference_intent_analyzer.md)
 - [ACG-5 RelayEMO Scene Cleanup](../acg5_relayemo_scene_cleanup.md)

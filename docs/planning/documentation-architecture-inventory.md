@@ -148,7 +148,7 @@ Their stable responsibilities are synthesized into memory system, formation, ret
 |---|---|---|
 | `analyzer_candidate_governance.md` | `architecture/analyzers/candidate-governance.md` plus any remaining roadmap in planning | split |
 | `acg1_analyzer_candidate_governance_contract.md` | `contracts/analyzer-candidate.md` | rebuilt_verbatim |
-| `acg2_grounded_recall_detail_safety.md` | analyzer policy/contract plus implementation evidence | split |
+| `acg2_grounded_recall_detail_safety.md` | `contracts/query-detail-analyzer.md` for exact Query Detail Analyzer / Grounded Recall detail-safety semantics; stable cross-analyzer governance remains in `architecture/analyzers/candidate-governance.md` | superseded; retired in D6-R35-H after the permanent exact contract already owned the source schema, fallback/structured-candidate union, restrictive-only/fail-closed behavior, content-free public projection, and Grounded Recall consumption boundary; no new owner or duplicate evidence copy is created, and the exact historical source remains Git-recoverable |
 | `acg3_retrieval_query_normalization.md` | retrieval architecture/contract plus evidence | split |
 | `acg4_reference_intent_analyzer.md` | `architecture/analyzers/reference-and-intent.md` plus contract/evidence | split/synthesized |
 | `acg5_relayemo_scene_cleanup.md` | emotion/scene ownership architecture plus evidence | split/absorbed |

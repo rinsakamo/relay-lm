@@ -2,6 +2,19 @@
   "schema_version": "relaylm.documentation.retirement-manifest.v1",
   "entries": [
     {
+      "old_path": "docs/architecture/acg2_grounded_recall_detail_safety.md",
+      "last_live_commit": "1fae464e1e52dc0c36d5354904da31028c93c1cd",
+      "old_blob_sha": "281a2240b0f29f1ddb9ee9d141404f1b3ab2a89d",
+      "removed_by_pr": 1188,
+      "replacement_paths": [
+        "docs/architecture/analyzers/candidate-governance.md",
+        "docs/architecture/memory/retrieval-and-grounding.md",
+        "docs/contracts/query-detail-analyzer.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-H retired the ACG-2 Grounded Recall detail-safety implementation handoff after its exact Query Detail Analyzer schema, requested-detail vocabulary, fallback/structured-candidate union, restrictive-only/fail-closed semantics, content-free public projection, and Grounded Recall consumption boundary were already owned by the permanent Query Detail Analyzer contract. Stable shared candidate governance and retrieval/grounding responsibility remain with their canonical architecture owners; no new semantic owner or duplicate evidence copy is created, and the exact historical source remains Git-recoverable."
+    },
+    {
       "old_path": "docs/architecture/archive/README.md",
       "last_live_commit": "4e10fbc358f0b23116ad7ec15d6972a95283a96d",
       "old_blob_sha": "2353be2cfa3d747fabe7ddf3955b8871a58bfb9f",

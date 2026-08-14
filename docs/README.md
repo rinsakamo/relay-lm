@@ -54,7 +54,7 @@ Implementation PRs record bounded implementation and validation evidence in the 
 - [Character template creation flow](architecture/character_template_creation_flow.md)
 - [P0 RelayREL / RelaySCN / RelayEMO ordering fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md)
 - [ACG-1 Analyzer Candidate Governance contract](architecture/acg1_analyzer_candidate_governance_contract.md)
-- [ACG-2 Grounded Recall Detail Safety](architecture/acg2_grounded_recall_detail_safety.md)
+- [Query Detail Analyzer Contract](contracts/query-detail-analyzer.md)
 - [ACG-3 Retrieval Query Normalization](architecture/acg3_retrieval_query_normalization.md)
 - [ACG-4 Reference Intent Analyzer](architecture/acg4_reference_intent_analyzer.md)
 - [ACG-5 RelayEMO Scene Cleanup](architecture/acg5_relayemo_scene_cleanup.md)
