@@ -23,7 +23,6 @@ relaylm_related_authority:
   - ../../architecture/subjective-mem-pin-unpin-runtime.md
   - ../../architecture/subjective-mem-lifecycle-publication-engine.md
   - ../../architecture/phase_i5_pin_unpin_contract.md
-  - ../../architecture/phase_i5b_pin_unpin_apply.md
 relaylm_related_contracts:
   - ../shared-assessment-subjective-mem.md
   - ../subjective-mem-storage-authority-and-commit-protocol.md

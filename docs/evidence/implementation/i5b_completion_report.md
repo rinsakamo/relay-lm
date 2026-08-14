@@ -8,7 +8,8 @@ relaylm_update_trigger:
   - metadata or link repair only
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../../architecture/phase_i5b_pin_unpin_apply.md
+  - ../../contracts/ui/memory-pin-unpin-management.md
+  - ../../architecture/memory/pinned-memory.md
 relaylm_not_authoritative_for:
   - current repository-wide implementation status
   - current Pin / Unpin runtime, API, UI, or ranking behavior
@@ -27,7 +28,7 @@ relaylm_exact_source_snapshot: i5b_completion_report-source.txt
 
 ## Status and authority
 
-This document is frozen implementation evidence for the I-5B Pin / Unpin apply, API/UI, durable-governance, and ranking-hint slice introduced by PR #430, whose final source head is `eac44fb0038c0a7eadd94c1d29b2ce90f52a6349` and merge commit is `734a3880035651f91eb065b892fc41af6f5cc026`. Current repository-wide status belongs to [Project Status](../../PROJECT_STATUS.md). Current Pin / Unpin behavior belongs to [Phase I-5B Pin / Unpin apply and ranking behavior](../../architecture/phase_i5b_pin_unpin_apply.md), the production implementation, and the focused I-5A/I-5B smoke suite.
+This document is frozen implementation evidence for the I-5B Pin / Unpin apply, API/UI, durable-governance, and ranking-hint slice introduced by PR #430, whose final source head is `eac44fb0038c0a7eadd94c1d29b2ce90f52a6349` and merge commit is `734a3880035651f91eb065b892fc41af6f5cc026`. Current repository-wide status belongs to [Project Status](../../PROJECT_STATUS.md). Current Pin / Unpin behavior belongs to the [SOUL Lab Memory Pin / Unpin Management Contract](../../contracts/ui/memory-pin-unpin-management.md), [Pinned Memory](../../architecture/memory/pinned-memory.md), the production implementation, and the focused I-5A/I-5B smoke suite.
 
 The exact pre-cutover report is retained byte-for-byte as [i5b_completion_report-source.txt](i5b_completion_report-source.txt). Statements below describe the source PR boundary unless explicitly qualified. Legacy-path strings inside the exact snapshot are historical source text, not live repository references.
 

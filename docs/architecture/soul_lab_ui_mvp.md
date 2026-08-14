@@ -21,7 +21,7 @@ relaylm_related_authority:
   - ../contracts/ui/home-conversation.md
   - ../contracts/ui/lifecycle-visibility.md
   - phase_i4_primary_mem_forget_hide_contract.md
-  - phase_i5b_pin_unpin_apply.md
+  - ../contracts/ui/memory-pin-unpin-management.md
   - ../contracts/memory/held-governance.md
   - e1r1_trusted_home_scene_admission.md
   - e1r2_character_store_bootstrap.md

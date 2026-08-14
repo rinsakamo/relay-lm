@@ -24,7 +24,7 @@ relaylm_related_authority:
   - e1r5_primary_mem_recall_candidate_bridge.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i4d_primary_retrieval_exclusion.md
-  - phase_i5b_pin_unpin_apply.md
+  - memory/pinned-memory.md
   - ../contracts/memory/held-governance.md
 ---
 # Ordinary Memory Retrieval-Response Grounding Compatibility Handoff

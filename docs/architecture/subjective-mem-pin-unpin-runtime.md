@@ -22,7 +22,7 @@ relaylm_related_authority:
   - subjective-mem-forget-runtime.md
   - subjective-mem-lifecycle-publication-engine.md
   - phase_i5_pin_unpin_contract.md
-  - phase_i5b_pin_unpin_apply.md
+  - memory/pinned-memory.md
   - project_execution_plan.md
 relaylm_lifecycle: stable
 relaylm_primary_consumers:

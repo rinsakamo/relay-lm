@@ -86,7 +86,7 @@ Implementation PRs record bounded implementation and validation evidence in the 
 - [Phase I-4B Primary Current State and Shared Mutation Fence](architecture/phase_i4b_primary_current_state_shared_fence.md)
 - [Phase I-4D Primary retrieval exclusion](architecture/phase_i4d_primary_retrieval_exclusion.md)
 - [Phase I-5A Pin / Unpin contract and read-only preflight](architecture/phase_i5_pin_unpin_contract.md)
-- [Phase I-5B Pin / Unpin apply and ranking behavior](architecture/phase_i5b_pin_unpin_apply.md)
+- [SOUL Lab Memory Pin / Unpin management contract](contracts/ui/memory-pin-unpin-management.md)
 - [Phase I-7A/B Held Apply / Discard contract and read-only preflight](architecture/phase_i7ab_held_apply_discard_contract.md)
 - [Held Apply / Discard governance contract](contracts/memory/held-governance.md)
 - [SOUL Lab Home conversation contract](contracts/ui/home-conversation.md)
@@ -135,7 +135,6 @@ Current runtime and implementation status is intentionally not summarized here. 
 - [E1-R2 completion report](evidence/implementation/e1r2_completion_report.md)
 - [Docs Horizontal Status Sweep completion report](evidence/implementation/docs_horizontal_status_sweep_completion_report.md)
 - [O1F operational validation](architecture/o1f_operational_validation.md)
-- [Phase I-5B Pin / Unpin apply and ranking behavior](architecture/phase_i5b_pin_unpin_apply.md)
 - [E1-R1 trusted Home scene admission](architecture/e1r1_trusted_home_scene_admission.md)
 - [E1-R2 character-store bootstrap command](architecture/e1r2_character_store_bootstrap.md)
 
