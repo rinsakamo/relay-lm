@@ -198,7 +198,7 @@ npm run dev
 http://127.0.0.1:5173/lab/
 ```
 
-キャラクターがない場合はCreate / Importが開きます。キャラクター作成とworkspace commitには明示的な承認が必要で、commit後もactive characterは自動選択されません。Vite serverはloopback向け開発surfaceであり、public公開やCloudflare Tunnelの接続先としてサポートされるものではありません。production bundle配信は別の実装境界です。詳細は [Character Workspace UIガイド](apps/soul-lab/README.md) と [CW-A5作成契約](docs/architecture/cw_a5_character_creation_templates_showcase_import.md) を参照してください。
+キャラクターがない場合はCreate / Importが開きます。キャラクター作成とworkspace commitには明示的な承認が必要で、commit後もactive characterは自動選択されません。Vite serverはloopback向け開発surfaceであり、public公開やCloudflare Tunnelの接続先としてサポートされるものではありません。production bundle配信は別の実装境界です。詳細は [Character Workspace UIガイド](apps/soul-lab/README.md) と [Character Workspace作成・コミット契約](docs/contracts/character-workspace/creation-commit.md) を参照してください。
 
 ## 🧰 トラブルシューティング
 
@@ -255,7 +255,7 @@ Out-of-band after-turn path:
 - 📍 [現在のプロジェクト状況](docs/PROJECT_STATUS.md)
 - 🗺️ [ドキュメント一覧](docs/README.md)
 - 🧬 [File-first Character Workspace設計](docs/architecture/file_first_character_workspace_design.md)
-- 🧭 [Character template creation flow](docs/architecture/character_template_creation_flow.md)
+- 🧭 [Character Workspace creation and import](docs/architecture/character-workspace/creation-and-import.md)
 - 🏗️ [アーキテクチャ文書](docs/architecture/README.md)
 - 🚀 [OpenWebUI + LM Studioガイド](docs/guides/openwebui-lmstudio-integration.md)
 - ⚙️ [設定リファレンス](docs/reference/configuration.md)

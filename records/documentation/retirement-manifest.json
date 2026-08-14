@@ -209,6 +209,20 @@
       "retention_reason": "D6-R7 retired the historical VTuber memory-proxy design after its adopted product, context, realtime, and frontend-boundary responsibilities were covered by canonical character-interaction, context, performance, request/response, system, and voice authorities; historical single-proxy/per-character routing examples remain recoverable from Git rather than becoming a new permanent architecture authority."
     },
     {
+      "old_path": "docs/architecture/character_template_creation_flow.md",
+      "last_live_commit": "c1f060cfb5bf865082de0e9007840d7aaf0a0712",
+      "old_blob_sha": "09d52aef61749e0936699775d1662db42b14532d",
+      "removed_by_pr": 1201,
+      "replacement_paths": [
+        "docs/architecture/character-workspace/creation-and-import.md",
+        "docs/architecture/character-workspace/showcase-starter-product-knowledge.md",
+        "docs/architecture/character-workspace/system.md",
+        "docs/contracts/character-workspace/creation-commit.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-K retired the target Character Template and Creation Flow doc after the permanent creation/import architecture, exact creation/commit contract, and accepted showcase/starter/product-knowledge policy already owned its durable target semantics. Its framing of RelayLM product-help knowledge as ordinary personal memory stays superseded and is not restored; remote registry, network distribution, and LLM-drafted generation stay separately governed future work. No accepted target lacked a permanent owner."
+    },
+    {
       "old_path": "docs/architecture/cw_a1_file_first_source_tree_parser_contracts.md",
       "last_live_commit": "f8ec4e7988f39bb0393a8d4c397a18eeae351c28",
       "old_blob_sha": "b74ba45617e710afc28c5b9e46fea073b6ecd5d0",
@@ -234,6 +248,20 @@
       ],
       "disposition": "superseded",
       "retention_reason": "D6-R35-J retired the CW-A2 workspace compiler projection handoff after the permanent compiled-projections contract already owned its exact build artifact set and schema versions, deterministic byte-stable output, dry-run-first explicit write, .relaylm/build write boundary, per-artifact tier responsibilities, and content-free public compiler projection. Stable source/parser/compiler architecture remains canonical; the exact source remains Git-recoverable."
+    },
+    {
+      "old_path": "docs/architecture/cw_a5_character_creation_templates_showcase_import.md",
+      "last_live_commit": "f05076951b36db6a4ccb59a590b46eff7d688338",
+      "old_blob_sha": "eb58edac216202d0f968ff49ddfb45ec55551309",
+      "removed_by_pr": 1201,
+      "replacement_paths": [
+        "docs/architecture/character-workspace/creation-and-import.md",
+        "docs/architecture/character-workspace/showcase-starter-product-knowledge.md",
+        "docs/architecture/character-workspace/system.md",
+        "docs/contracts/character-workspace/creation-commit.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-K retired the CW-A5 creation/templates/showcase-import handoff after the exact creation/commit contract already owned its current semantics more precisely: bundled template registry, no-character startup projection, Quick/Advanced/Showcase staging, pinned product-help onboarding source, approval/target-exists/revalidation/compiler gates, loopback routes, CLI write gate, validation-only external import, content-free projections, and active-character separation."
     },
     {
       "old_path": "docs/architecture/i1ge_durable_finalization_crash_validation.md",

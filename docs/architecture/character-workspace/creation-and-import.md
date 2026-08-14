@@ -18,8 +18,8 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - system.md
   - source-compiler.md
-  - ../cw_a5_character_creation_templates_showcase_import.md
-  - ../character_template_creation_flow.md
+  - ../../contracts/character-workspace/creation-commit.md
+  - showcase-starter-product-knowledge.md
   - ../../contracts/character-workspace/source-tree.md
   - ../../contracts/character-workspace/compiled-projections.md
   - ../cw_a3_character_workspace_ui_rebuild.md
@@ -429,8 +429,8 @@ This architecture does not define:
 
 - [Character Workspace Architecture](system.md)
 - [Character Workspace Source Compiler](source-compiler.md)
-- [CW-A5 Character Creation, Templates, and Showcase Import](../cw_a5_character_creation_templates_showcase_import.md)
-- [Character Template / Creation Flow](../character_template_creation_flow.md)
+- [Character Workspace Creation and Commit Contract](../../contracts/character-workspace/creation-commit.md)
+- [Showcase, Public Starter, and Product Knowledge Ownership](showcase-starter-product-knowledge.md)
 - [Character Workspace Source Tree Contract](../../contracts/character-workspace/source-tree.md)
 - [Character Workspace Compiled Projections Contract](../../contracts/character-workspace/compiled-projections.md)
 - [CW-A3 Character Workspace UI Rebuild](../cw_a3_character_workspace_ui_rebuild.md)
