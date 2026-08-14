@@ -9,7 +9,7 @@ relaylm_update_trigger:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/phase_i7ab_held_apply_discard_contract.md
-  - ../../architecture/phase_i7c_held_apply_discard_runtime.md
+  - ../../contracts/memory/held-governance.md
 relaylm_not_authoritative_for:
   - current repository-wide implementation status
   - current Held Apply or Discard runtime, API, UI, or durable-evidence behavior
@@ -28,7 +28,7 @@ relaylm_exact_source_snapshot: i7ab_completion_report-source.txt
 
 ## Status and authority
 
-This is frozen implementation evidence for PR #423. Current behavior belongs to [I-7A/B Held Governance Contract](../../architecture/phase_i7ab_held_apply_discard_contract.md), [I-7C Runtime Governance](../../architecture/phase_i7c_held_apply_discard_runtime.md), the production governance implementation, B3/C2/I-4 authorities, and the focused I-7A/B/I-7C smokes.
+This is frozen implementation evidence for PR #423. Current behavior belongs to [I-7A/B Held Governance Contract](../../architecture/phase_i7ab_held_apply_discard_contract.md), [Held Apply / Discard Governance Contract](../../contracts/memory/held-governance.md), the production governance implementation, B3/C2/I-4 authorities, and the focused I-7A/B/I-7C smokes.
 
 The [exact snapshot](i7ab_completion_report-source.txt) is byte-identical to the source final-head, source merge, and pre-cutover forms: blob `5b56fc515e9e5df74694cd14da7cf0b68be693f6`, SHA-256 `1705167bdcc55694c9b8d2c90f02eaecf5970ed3982eb9897d3d4d69ac05389d`. No post-source report modification exists.
 

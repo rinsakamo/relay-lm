@@ -20,8 +20,6 @@ relaylm_related_authority:
   - ../../architecture/phase_i4b_primary_current_state_shared_fence.md
   - i4c2-primary-forget-recovery-finalization-handoff.md
   - ../../architecture/phase_i4d_primary_retrieval_exclusion.md
-  - ../../architecture/phase_i4e_forget_api_ui.md
-  - ../../architecture/phase_i4f_forget_validation.md
 ---
 # Phase I-4C1 Primary Forget Hidden-Successor Commit
 

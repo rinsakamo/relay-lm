@@ -21,7 +21,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/phase_i7ab_held_apply_discard_contract.md
-  - ../../architecture/phase_i7c_held_apply_discard_runtime.md
+  - ../../evidence/implementation/i7c_completion_report.md
   - ../../architecture/ui/soul-lab.md
   - ../../architecture/memory/mutation-governance.md
 relaylm_verified_by:
@@ -682,14 +682,14 @@ The browser cannot supply store roots, queue roots, protected source bodies, que
 
 ## Loopback API boundary
 
-Current SOUL Lab routes include character-scoped Held operations for:
+The SOUL Lab app installs character/namespace-scoped loopback routes for Apply preflight, Apply decision, Discard preflight, Discard decision, and history read:
 
 ```text
-Apply preflight
-Apply decision
-Discard preflight
-Discard decision
-history read
+POST /lab/api/characters/{character_id}/held/{candidate_id}/apply/preflight
+POST /lab/api/characters/{character_id}/held/{candidate_id}/apply
+POST /lab/api/characters/{character_id}/held/{candidate_id}/discard/preflight
+POST /lab/api/characters/{character_id}/held/{candidate_id}/discard
+GET  /lab/api/characters/{character_id}/held/{candidate_id}/history
 ```
 
 Server/runtime code resolves the owning store/scope authority rather than accepting arbitrary filesystem roots from the browser.
@@ -817,6 +817,6 @@ This contract does not define:
 ## Related architecture
 
 - [I-7A/B Held Apply / Discard Preflight](../../architecture/phase_i7ab_held_apply_discard_contract.md)
-- [I-7C Held Apply / Discard Runtime](../../architecture/phase_i7c_held_apply_discard_runtime.md)
+- [I-7C completion report](../../evidence/implementation/i7c_completion_report.md)
 - [SOUL Lab UI](../../architecture/ui/soul-lab.md)
 - [Memory Mutation Governance](../../architecture/memory/mutation-governance.md)

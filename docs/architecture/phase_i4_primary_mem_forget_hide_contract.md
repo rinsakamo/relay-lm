@@ -21,8 +21,8 @@ relaylm_related_authority:
   - ../evidence/implementation/i4c1-primary-forget-hidden-successor-handoff.md
   - ../evidence/implementation/i4c2-primary-forget-recovery-finalization-handoff.md
   - phase_i4d_primary_retrieval_exclusion.md
-  - phase_i4e_forget_api_ui.md
-  - phase_i4f_forget_validation.md
+  - ../evidence/implementation/i4e_completion_report.md
+  - ../evidence/implementation/i4f_completion_report.md
   - memory_lifecycle_design.md
   - relaymem_slp_current_target.md
   - project_execution_plan.md
@@ -208,9 +208,37 @@ relaylm.lab.memory_forget_apply_request.v0
 relaylm.lab.memory_forget_history.v0
 ```
 
-I-4E owns the loopback-only mutation API and SOUL Lab Forget preflight/confirm/refusal/conflict/receipt UI. It consumes I-4B current-state/token authority, I-4C1/I-4C2 mutation/recovery authority, and I-4D read-only lifecycle result. It does not own the retrieval filtering algorithm, restore, or purge.
+Preflight accepts `expected_revision`, `expected_lifecycle_state=active`, a runtime-private `reason`, and `operation_id`. Apply accepts the same exact operation binding plus `apply_token`. History is read-only and bounded.
 
-I-4F owns fresh-conversation exclusion validation, crash/race/security validation, and product-level Forget completion proof. It does not add mutation authority.
+The browser never supplies store root, filesystem path, physical ID, backend ID, route authority, recovery control, or namespace path authority. The server resolves the store root from the same SOUL Lab observation/correction scope resolver used by the Correct API.
+
+The public preflight projection is intentionally smaller than the internal authority result: it carries only the current revision, target revision/lifecycle, bounded effects, token, and expiry. Apply returns only a bounded receipt proving hidden lifecycle, retrieval exclusion, RelayCTX exclusion, audit retention, convergence, and no physical deletion.
+
+This loopback surface exposes only bounded reason codes and maps the authority errors above as follows:
+
+| authority code | HTTP | public detail |
+| --- | ---: | --- |
+| invalid_request | 422 | invalid_request |
+| target_not_found | 404 | target_not_found |
+| not_found_or_wrong_scope | 404 | not_found_or_wrong_scope |
+| target_not_active | 409 | target_not_active |
+| stale_revision | 409 | stale_revision |
+| operation_conflict | 409 | operation_conflict |
+| preflight_required | 409 | preflight_required |
+| token_expired | 409 | token_expired |
+| token_invalid | 403 | token_invalid |
+| target_corrupt | 409 | target_corrupt |
+| reconciliation_required | 503 | reconciliation_required |
+| store_unavailable | 503 | store_unavailable |
+| access_refused | 403 | access_refused |
+| response_lost | 503 | response_lost |
+| already_hidden | 409 | already_hidden |
+
+Unknown internal exceptions are never surfaced; they collapse to bounded store/reconciliation failures. Raw exception text, private paths and store roots, token claims or digests, physical IDs, raw tombstone content, and the reason body or its digest are never exposed by the API or UI.
+
+The loopback API and SOUL Lab Forget preflight/confirm/refusal/conflict/receipt surface consume I-4B current-state/token authority, I-4C1/I-4C2 mutation/recovery authority, and the I-4D read-only lifecycle result. They do not own the retrieval filtering algorithm, restore, or purge. Stable browser semantics — preflight/confirmation separation, explicit-click apply, stale-generation fencing, and the leakage boundary — remain owned by [SOUL Lab UI](ui/soul-lab.md); cross-operation mutation semantics remain owned by [Memory Mutation Governance](memory/mutation-governance.md).
+
+Fresh-conversation exclusion validation, crash/race/security validation, and product-level Forget completion proof are validation obligations of this contract and its focused smoke suite. They add no mutation authority and no independent semantic owner.
 
 ## 12. Fault matrix
 

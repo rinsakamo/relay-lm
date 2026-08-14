@@ -30,8 +30,7 @@ relaylm_related_authority:
   - ../contracts/ui/lifecycle-visibility.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i4d_primary_retrieval_exclusion.md
-  - phase_i4e_forget_api_ui.md
-  - phase_i4f_forget_validation.md
+  - phase_i4_primary_mem_forget_hide_contract.md
   - o1f_operational_validation.md
 ---
 # E1 MVP Evaluation Evidence Consolidation
@@ -82,7 +81,7 @@ Recall evidence is present. E1-R4 provides evidence-grounded response behavior f
 | Local operation drain | Implemented as explicit bounded invocation | `docs/architecture/o0_local_one_job_runner.md`, `docs/architecture/o1f_operational_validation.md` | Operator-invoked local drain and caller-invoked O1 controls remain bounded and non-supervised. |
 | Primary MEM durable formation | Implemented | `docs/architecture/phase6c1_primary_mem_worker_contract.md`, `docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md` | M3a-M3h durable formation and worker fault convergence are covered by existing production smokes. |
 | Later Home recall | Implemented for eligible current Primary MEM | `docs/architecture/integration_i1_primary_mem_two_turn_recall.md`, `docs/architecture/phase_i4d_primary_retrieval_exclusion.md`, `docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md` | Later SOUL Lab Home requests can retrieve current eligible Primary MEM through the M2-preferred path or the bounded E1-R5 scoped Primary candidate bridge before RelayCTX and E1-R4 grounded recall response context. |
-| User governance | Implemented through Correct, Forget, Pin, and Held Governance | `docs/evidence/implementation/phase-i3-auditable-primary-mem-correct-handoff.md`, `docs/architecture/phase_i4f_forget_validation.md`, `docs/architecture/phase_i5b_pin_unpin_apply.md`, `docs/architecture/phase_i7c_held_apply_discard_runtime.md` | Explicit governance surfaces are available without giving the browser queue, worker, scheduler, store-root, or route authority. |
+| User governance | Implemented through Correct, Forget, Pin, and Held Governance | `docs/evidence/implementation/phase-i3-auditable-primary-mem-correct-handoff.md`, `docs/architecture/phase_i4_primary_mem_forget_hide_contract.md`, `docs/architecture/phase_i5b_pin_unpin_apply.md`, `docs/contracts/memory/held-governance.md` | Explicit governance surfaces are available without giving the browser queue, worker, scheduler, store-root, or route authority. |
 
 ## Implemented evidence vs remaining quality work
 

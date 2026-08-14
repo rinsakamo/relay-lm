@@ -26,7 +26,6 @@ REQUIRED = {
         "docs/evidence/implementation/i4f_completion_report.md",
         "docs/architecture/e1_evaluation_consolidation.md",
         "docs/architecture/o1e_scheduler_operational_controls.md",
-        "docs/architecture/phase_i4f_forget_validation.md",
         "O1F operational validation",
         "E1-R1 trusted Home scene-admission path",
         "W5-INT is merged.",
