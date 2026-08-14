@@ -28,7 +28,7 @@ The following completed boundaries are retained here as reference rather than re
 
 - managed-route correctness through Phase 5-C, pre-stream hardening through Phase 5-D2, and Stream Unpack through Phase 5.5;
 - RelaySLP durable enqueue, fenced lifecycle, one-job execution, local worker, O1 scheduler, and opt-in O2/O3 process operation;
-- RelayMEM M1/M2 and executable M3a-M3h, including scoped recall and the E1-R5 fallback fold-in;
+- RelayMEM M1/M2 and executable M3a-M3h, plus the historical E1-R5 fallback fold-in whose ordinary-serving role is now retired;
 - I1-G durable finalization and restart/recovery lifecycle;
 - Primary MEM Correct, Forget/Hide, Pin/Unpin, Held Apply/Discard, and their current UI/API boundaries;
 - P0-PIPE ordering, ACG-1 through ACG-6, CW-A1 through CW-A5, and current SOUL Lab management surfaces;
@@ -43,9 +43,9 @@ The former O1B status detail is historical reference: O1B performs one bounded, 
 
 ## Phase 6 and E1 boundary notes
 
-B0-B3 durable enqueue and fenced lifecycle, C1-5 claim-independent protected capture, C2 one-job claim/rehydrate/execute, next-turn Primary MEM recall, and character/namespace isolation are complete.
+B0-B3 durable enqueue and fenced lifecycle, C1-5 claim-independent protected capture, C2 one-job claim/rehydrate/execute, historical next-turn Primary MEM recall, and character/namespace isolation are complete.
 
-E1-R4 remains request-side grounding rather than post-hoc visible-response rewriting. E1-R5 remains a bounded query-hinted fallback; M2 remains preferred and no new mutation, scheduler, browser-trust, RelaySOUL, or media authority is added.
+E1-R4 remains the shared request-side grounding policy for already-selected current ordinary-memory evidence rather than post-hoc visible-response rewriting. E1-R5 remains historical implementation evidence, but RT-1D-R5 retired its ordinary Primary serving role: `primary_only` fails closed to `neither`, opens no Primary store, discovers or selects no Primary candidate, performs no Primary recall or fallback, and releases no Primary evidence. Finalized Subjective ordinary retrieval remains current only when reader authority selects `subjective_only`; no new mutation, scheduler, browser-trust, RelaySOUL, or media authority is added.
 
 ## Analyzer Candidate Governance boundary
 
