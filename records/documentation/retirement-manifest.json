@@ -438,6 +438,23 @@
       "retention_reason": "D6-R35-P retired the Phase 6 bounded implementation plan after its admission, response-handoff, dispatch, queue, enqueue, and queue-state semantics were already owned by permanent SLP contracts; Phase 6-C worker, source-capture, and finalization responsibilities remain governed by their current owners, and the exact source remains recoverable from Git."
     },
     {
+      "old_path": "docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md",
+      "last_live_commit": "e49e42e07cf9d1b32a17f8fdf3466ad6bd4ba8bd",
+      "old_blob_sha": "975df2c4633ebf341a4f25b142441d425e623791",
+      "removed_by_pr": 1223,
+      "replacement_paths": [
+        "docs/architecture/memory/formation.md",
+        "docs/contracts/governed-source-capture-admission.md",
+        "docs/contracts/slp/durable-finalization.md",
+        "docs/contracts/slp/durable-queue.md",
+        "docs/contracts/slp/job-admission.md",
+        "docs/contracts/slp/primary-worker.md",
+        "docs/contracts/slp/response-handoff.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-Q retired the Phase 6 I1-B source-capture and enqueue handoff after its finalized-turn source identity, governed capture boundary, protected-source availability, durable-finalization ordering, queue handoff, visible-response independence, and non-authority rules were already owned by the permanent formation and SLP contracts; the exact source remains recoverable from Git."
+    },
+    {
       "old_path": "docs/architecture/phase6a1_relayslp_job_admission_contract.md",
       "last_live_commit": "730581abdfdcbb9e81ee49d9c62ad57d32f13acd",
       "old_blob_sha": "0e402d02cabb4073f58e5173850bbc3bb5ffb3d1",
@@ -502,6 +519,99 @@
       ],
       "disposition": "superseded",
       "retention_reason": "D6-R35-P retired the Phase 6-B3 queue-state handoff after the permanent SLP durable-queue contract owned exact transition requests, canonical-record revalidation, claim/lease/retry/stale/terminal fences, CAS and locking, corruption fail-closed behavior, terminal immutability, and content-free diagnostics; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/phase6c1_durable_protected_source_persistence.md",
+      "last_live_commit": "e49e42e07cf9d1b32a17f8fdf3466ad6bd4ba8bd",
+      "old_blob_sha": "4596e5b67dace8acedc0b69d75c0b17a0f9ed53a",
+      "removed_by_pr": 1223,
+      "replacement_paths": [
+        "docs/contracts/governed-source-capture-admission.md",
+        "docs/contracts/slp/durable-finalization.md",
+        "docs/contracts/slp/durable-queue.md",
+        "docs/contracts/slp/primary-worker.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-Q retired the Phase 6-C1-5 protected-source persistence handoff after its writer-authorization separation, protected artifact identity, publication ordering, restart rehydration, retry/stale retention, terminal cleanup, and content-free boundary were already owned by the governed source-capture, durable-finalization, durable-queue, and primary-worker contracts; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/phase6c1_integrated_worker_fault_smoke_handoff.md",
+      "last_live_commit": "e49e42e07cf9d1b32a17f8fdf3466ad6bd4ba8bd",
+      "old_blob_sha": "ce8d33ea6a256f2d76ef4bff269e9868b51978ba",
+      "removed_by_pr": 1223,
+      "replacement_paths": [
+        "docs/contracts/slp/primary-worker.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-Q retired the Phase 6-C1-4 integrated worker fault-smoke handoff after its crash, lease, lock, idempotency, source one-shot, terminal isolation, and content-free projection evidence remained validated by the permanent primary-worker contract and focused read-only smokes; the exact implementation handoff remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md",
+      "last_live_commit": "e49e42e07cf9d1b32a17f8fdf3466ad6bd4ba8bd",
+      "old_blob_sha": "f29adf4cbfb2c589f5e6c639356bd6334f4cb810",
+      "removed_by_pr": 1223,
+      "replacement_paths": [
+        "docs/architecture/memory/formation.md",
+        "docs/contracts/governed-source-capture-admission.md",
+        "docs/contracts/slp/durable-finalization.md",
+        "docs/contracts/slp/durable-queue.md",
+        "docs/contracts/slp/primary-worker.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-Q retired the Phase 6-C1-2 one-claimed-worker handoff after its writer gate, claim/source correlation, one-shot source consumption, lease fencing, retry/replay convergence, outcome projection, and public-boundary semantics were already owned by the permanent formation and SLP contracts; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/phase6c1_primary_mem_worker_contract.md",
+      "last_live_commit": "e49e42e07cf9d1b32a17f8fdf3466ad6bd4ba8bd",
+      "old_blob_sha": "b55ff91e6ba1175687301af2bb0744b704c9c157",
+      "removed_by_pr": 1223,
+      "replacement_paths": [
+        "docs/architecture/memory/formation.md",
+        "docs/contracts/governed-source-capture-admission.md",
+        "docs/contracts/slp/durable-finalization.md",
+        "docs/contracts/slp/durable-queue.md",
+        "docs/contracts/slp/primary-worker.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-Q retired the Phase 6-C primary worker contract after its exact request/source boundary, writer-decision consumption, lease checkpoints, RelayMEM compose ordering, outcome classification, retry bounds, crash/restart convergence, public projection, and non-authority rules were already permanently owned by memory formation and the SLP worker/finalization contracts; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/phase6c1_primary_worker_outcome_classifier.md",
+      "last_live_commit": "e49e42e07cf9d1b32a17f8fdf3466ad6bd4ba8bd",
+      "old_blob_sha": "96be2184499f50ed2ce2d645e3d105edd05ea75b",
+      "removed_by_pr": 1223,
+      "replacement_paths": [
+        "docs/contracts/slp/durable-queue.md",
+        "docs/contracts/slp/primary-worker.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-Q retired the Phase 6-C1-3 outcome-classifier handoff after its pure RelayMEM outcome mapping, bounded B3 transition intent, writer-authorization separation, and content-free projection rules were already owned by the permanent primary-worker and durable-queue contracts; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/phase6c1_relaymem_primary_pipeline_compose.md",
+      "last_live_commit": "bcaea920426214310d4dab99ca6bf00cb7ff3195",
+      "old_blob_sha": "9e0743a4746dbdc9faf51da06fc270ed38e98327",
+      "removed_by_pr": 1223,
+      "replacement_paths": [
+        "docs/architecture/memory/formation.md",
+        "docs/contracts/slp/primary-worker.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-Q retired the Phase 6-C1 RelayMEM Primary compose handoff after its canonical M3a-M3h ordering, fail-closed stage gates, idempotent convergence, writer-decision carriage, runtime-private ledger, public projection, and scheduler/queue non-authority rules were already represented by permanent memory-formation and primary-worker owners; M3D/M3E/index-log responsibilities remain separate R35-R sources; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/phase6c2_one_queued_primary_worker_integration.md",
+      "last_live_commit": "e49e42e07cf9d1b32a17f8fdf3466ad6bd4ba8bd",
+      "old_blob_sha": "7ba055ec94d1a4bc36fa21daad5c5163c4137102",
+      "removed_by_pr": 1223,
+      "replacement_paths": [
+        "docs/architecture/memory/formation.md",
+        "docs/contracts/slp/durable-finalization.md",
+        "docs/contracts/slp/durable-queue.md",
+        "docs/contracts/slp/primary-worker.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-Q retired the Phase 6-C2 one-queued-worker integration handoff after its caller-selected job boundary, writer gate, canonical claim/rehydrate flow, worker delegation, terminal cleanup, retry/failure handling, public projection, and scheduler non-authority rules were already owned by permanent formation and SLP contracts; the exact source remains recoverable from Git."
     },
     {
       "old_path": "docs/architecture/phase_i2_real_soul_lab_observation.md",
