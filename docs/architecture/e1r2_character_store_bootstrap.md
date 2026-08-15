@@ -18,8 +18,8 @@ relaylm_related_authority:
   - e1_evaluation_consolidation.md
   - ../evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md
   - integration_i1_primary_mem_two_turn_recall.md
-  - phase6c1_primary_mem_worker_contract.md
-  - phase6c1_relaymem_primary_pipeline_compose.md
+  - ../contracts/slp/primary-worker.md
+  - memory/formation.md
   - relaymem_m3e_atomic_primary_page_writer.md
   - relaymem_m3g_primary_index_log_reconciliation_apply.md
 ---

@@ -8,7 +8,7 @@ relaylm_related_authority:
   - e1_evaluation_consolidation.md
   - ../evidence/evaluations/e1_local_runtime_evaluation_2026_06_25.md
   - ../contracts/ui/home-conversation.md
-  - phase6_i1b_runtime_enqueue_source_capture_handoff.md
+  - ../contracts/governed-source-capture-admission.md
 ---
 # E1-R1 Trusted Home Scene Admission
 

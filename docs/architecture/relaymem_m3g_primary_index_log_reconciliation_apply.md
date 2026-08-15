@@ -22,7 +22,7 @@ relaylm_related_authority:
   - relaymem_m3f_primary_index_log_reconciliation_preflight.md
   - relaymem_m3e_atomic_primary_page_writer.md
   - relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
-  - phase6c1_relaymem_primary_pipeline_compose.md
+  - memory/formation.md
   - subjective-mem-retrieval-projection-hard-cutover.md
   - project_execution_plan.md
   - relaymem_mvp_design.md

@@ -26,9 +26,9 @@ relaylm_related_authority:
   - o1f_operational_validation.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - o0_local_one_job_runner.md
-  - phase6c1_durable_protected_source_persistence.md
+  - ../contracts/slp/durable-finalization.md
   - ../contracts/slp/durable-queue.md
-  - phase6c2_one_queued_primary_worker_integration.md
+  - ../contracts/slp/primary-worker.md
   - ../evidence/waves/wave3_cross_slice_convergence_audit.md
 ---
 # O1B: Bounded Sealed I1-G Replay-Lane Discovery

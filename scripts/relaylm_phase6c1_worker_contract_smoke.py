@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6-C1 worker and Phase 6-C2 integration boundaries."""
+"""Validate the current SLP claimed-worker and queued-job boundaries."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTRACT = ROOT / "docs/architecture/phase6c1_primary_mem_worker_contract.md"
+CONTRACT = ROOT / "docs/contracts/slp/primary-worker.md"
 
 
 def require(text: str, *anchors: str) -> None:
     missing = [anchor for anchor in anchors if anchor not in text]
     if missing:
-        raise AssertionError(f"missing Phase 6-C1 contract anchors: {missing!r}")
+        raise AssertionError(f"missing primary-worker contract anchors: {missing!r}")
 
 
 def forbid(text: str, *anchors: str) -> None:
     present = [anchor for anchor in anchors if anchor in text]
     if present:
-        raise AssertionError(f"forbidden Phase 6-C1 contract claims: {present!r}")
+        raise AssertionError(f"forbidden primary-worker contract claims: {present!r}")
 
 
 def main() -> int:
@@ -24,34 +24,30 @@ def main() -> int:
     require(
         text,
         "relaylm_doc_type: contract",
-        "Phase 6-C1 is implemented through C1-5",
+        "This contract owns the exact current Phase 6-C1 boundary",
         "relaymem.slp_primary_worker_source.v0",
-        "The canonical B2/B3 durable queue record is intentionally content-free.",
-        "If neither the hot cache nor the exact durable artifact can supply the protected capture",
-        "before M3e page publication",
-        "before M3g index/log apply",
+        "content-free durable queue",
+        "missing/corrupt durable source after restart fails closed",
+        "before M3e publication checkpoint",
+        "before M3g reconciliation apply checkpoint",
         "dispatch_idempotency_key",
-        "memory-write idempotency key",
-        "retry_class = transient_lock_contention",
-        "retry_class = primary_reconciliation_retry",
-        "manual_confirmation_required",
-        "journaled_recovery_candidate",
-        "dead_letter",
-        "execute_relaymem_primary_pipeline",
-        "C1-5",
-        "durably enqueued jobs",
-        "no automatic retry for corruption",
-        "C2 one-job queued-record claim/rehydrate/execute adapter",
-        "Phase I-1 next-turn recall and scope isolation: complete",
+        "memory-write idempotency",
+        "transient resource contention",
+        "verified reconciliation partial progress",
+        "manual confirmation",
+        "uncertain/corrupt/diverged store state",
+        "RelayMEM Primary compose function",
+        "never become terminal success",
+        "C2/runner/scheduler layers remain separate",
     )
 
     require(
         text,
-        "after M3e and before M3f",
-        "after index publication and before log publication",
-        "lease loss before/after side effect",
-        "M3g/M3h lock contention",
-        "missing/corrupt source isolation",
+        "before M3g reconciliation apply checkpoint",
+        "after index publication before log publication",
+        "Lease loss prevents new stale-worker effects",
+        "M3g index-before-log apply",
+        "missing/corrupt durable source after restart fails closed",
     )
 
     forbid(
@@ -63,7 +59,7 @@ def main() -> int:
         "C1-2 one-already-claimed-job worker execution is not yet on `main`",
     )
 
-    print("RelayLM Phase 6-C1 worker contract smoke passed.")
+    print("RelayLM primary-worker contract smoke passed.")
     return 0
 
 

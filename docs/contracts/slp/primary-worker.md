@@ -22,12 +22,8 @@ relaylm_not_authoritative_for:
   - source retirement or documentation migration disposition
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../../architecture/phase6c1_primary_mem_worker_contract.md
-  - ../../architecture/phase6c1_one_claimed_primary_worker_handoff.md
-  - ../../architecture/phase6c1_relaymem_primary_pipeline_compose.md
-  - ../../architecture/phase6c1_primary_worker_outcome_classifier.md
-  - ../../architecture/phase6c1_durable_protected_source_persistence.md
-  - ../../architecture/phase6c2_one_queued_primary_worker_integration.md
+  - ../governed-source-capture-admission.md
+  - durable-finalization.md
   - ../../architecture/memory/formation.md
   - durable-queue.md
 relaylm_verified_by:
@@ -822,10 +818,7 @@ This contract does not define:
 
 ## Related architecture and contracts
 
-- [Phase 6-C1 transitional worker contract](../../architecture/phase6c1_primary_mem_worker_contract.md)
-- [One Claimed Primary Worker](../../architecture/phase6c1_one_claimed_primary_worker_handoff.md)
-- [Primary Pipeline Compose](../../architecture/phase6c1_relaymem_primary_pipeline_compose.md)
-- [Primary Worker Outcome Classifier](../../architecture/phase6c1_primary_worker_outcome_classifier.md)
-- [Durable Protected Source Persistence](../../architecture/phase6c1_durable_protected_source_persistence.md)
+- [Governed Source Capture and Admission Contract](../governed-source-capture-admission.md)
+- [Durable Finalization Contract](durable-finalization.md)
 - [Durable Queue Contract](durable-queue.md)
 - [Memory Formation Architecture](../../architecture/memory/formation.md)
