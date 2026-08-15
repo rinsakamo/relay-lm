@@ -25,7 +25,7 @@ relaylm_related_authority:
   - phase6c1_primary_worker_outcome_classifier.md
   - phase6c1_durable_protected_source_persistence.md
   - phase6c2_one_queued_primary_worker_integration.md
-  - phase6b3_relayslp_queue_state_helpers.md
+  - ../contracts/slp/durable-queue.md
   - subjective-mem-retrieval-projection-hard-cutover.md
   - ../PROJECT_STATUS.md
 ---

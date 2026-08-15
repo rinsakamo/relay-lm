@@ -111,7 +111,7 @@ Draft/showcase fixtures and templates do not become architecture merely because 
 | Source family | Representative current sources | Target authority | Disposition |
 |---|---|---|---|
 | memory system | `memory_lifecycle_design.md`, `relaymem_mvp_design.md`, `relaymem_slp_execution_design.md`, `relaymem_slp_current_target.md` | `architecture/memory/system.md` | synthesized; current/target interpretation moves to reference |
-| formation pipeline | Phase 6 A/B/C sources, RelayMEM M3 formation/writer sources, integration I1 source | `architecture/memory/formation.md` | synthesized; exact queue/worker contracts rebuilt; slice records to evidence |
+| formation pipeline | Phase 6 A/B/C sources, RelayMEM M3 formation/writer sources, integration I1 source | `architecture/memory/formation.md` | synthesized; exact queue/worker contracts rebuilt; the Phase 6 A/B admission, response-handoff, durable-queue, dispatch-preflight, enqueue, and queue-state sources are retired in D6-R35-P to permanent SLP contracts; Phase 6-C worker/source-capture/finalization sources remain current for D6-R35-Q; slice records to evidence |
 | retrieval and grounding | `e1r4_retrieval_response_grounding.md`, `e1r5_primary_mem_recall_candidate_bridge.md`, ACG retrieval sources | `architecture/memory/retrieval-and-grounding.md` | synthesized; current slice evidence retained |
 | mutation governance | I-3 Correct, I-4 Forget/Hide, I-5 Pin/Unpin, I-7 Held Apply/Discard sources | `architecture/memory/mutation-governance.md` | synthesized; exact commands/states extracted to contracts. The I-7A/B phase-named Held Apply/Discard contract and read-only preflight handoff is retired in PR #1184: the exact current candidate, source-evidence, governability-preflight, related-Primary fail-closed reread, queue-as-evidence, and worker/scheduler non-authority semantics were already owned by `contracts/memory/held-governance.md`, so nothing was absorbed and no new owner was created; stable browser semantics stay with `architecture/ui/soul-lab.md` and stable cross-operation semantics with `architecture/memory/mutation-governance.md`. The I-7A/B completion report and its exact source snapshot remain historical evidence rather than current authority, and recovery is recorded in the central retirement manifest. Retiring this family does not by itself complete D6-R35, which remains in progress |
 | pinned memory | `pinned_normal_memory_pages.md`, I-5 sources | `architecture/memory/pinned-memory.md` | concept-policy synthesis |
@@ -163,7 +163,7 @@ The permanent names describe semantic responsibility, not ACG slice numbers.
 | scheduler architecture | `o1a_two_lane_scheduler_contract.md` through `o1f_operational_validation.md`, `o2_supervised_scheduler_service.md`, `o3_always_on_local_scheduler.md` | `architecture/runtime/scheduler.md` | synthesized; exact gates/contracts rebuilt; validation to evidence |
 | one-job runner and production-round slices | `o0_local_one_job_runner.md`, `o1d1_production_scheduler_round.md` | scheduler architecture/evidence | split/absorbed |
 | operator procedures | existing manual runbooks and service operation instructions | `docs/operations/scheduler/` | moved during operations cutover |
-| durable queue/worker | Phase 6 queue and worker contracts/handoffs | memory formation plus contracts | synthesized/rebuilt/evidence |
+| durable queue/worker | Phase 6 queue and worker contracts/handoffs | memory formation plus contracts | synthesized/rebuilt/evidence; D6-R35-P retires the Phase 6 A/B queue family, while the Phase 6-C worker/source-capture/finalization family remains for D6-R35-Q |
 
 O2/O3 remain architecture only for their durable process-ownership boundaries. Commands, service operation, and troubleshooting move to operations/reference.
 
@@ -217,9 +217,6 @@ At minimum, Preparation C must detect normative blocks in:
 
 - `acg1_analyzer_candidate_governance_contract.md`
 - `cw_a1_file_first_source_tree_parser_contracts.md`
-- `phase6a1_relayslp_job_admission_contract.md`
-- `phase6a2_relayslp_response_handoff_contract.md`
-- `phase6b0_relayslp_durable_queue_contract.md`
 - `phase6c1_primary_mem_worker_contract.md`
 - `o1a_two_lane_scheduler_contract.md`
 - `i1g_pre_enqueue_durable_finalization_contract.md`

@@ -18,9 +18,7 @@ relaylm_not_authoritative_for:
   - source retirement or documentation migration disposition
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../../architecture/phase6a1_relayslp_job_admission_contract.md
-  - ../../architecture/phase6a2_relayslp_response_handoff_contract.md
-  - ../../architecture/phase6_async_relayslp_bounded_slice.md
+  - response-handoff.md
   - ../../architecture/memory/formation.md
 relaylm_verified_by:
   - ../../../scripts/relaylm_relaymem_slp_job_admission_smoke.py
@@ -888,9 +886,7 @@ This contract does not define:
 - repository-level sequencing;
 - source retirement.
 
-## Related architecture and transitional source
+## Related architecture and contracts
 
-- [Phase 6-A1 transitional contract](../../architecture/phase6a1_relayslp_job_admission_contract.md)
-- [Phase 6-A2 response handoff](../../architecture/phase6a2_relayslp_response_handoff_contract.md)
-- [Phase 6 bounded asynchronous RelaySLP slice](../../architecture/phase6_async_relayslp_bounded_slice.md)
+- [RelaySLP Response Handoff Contract](response-handoff.md)
 - [Memory Formation Architecture](../../architecture/memory/formation.md)

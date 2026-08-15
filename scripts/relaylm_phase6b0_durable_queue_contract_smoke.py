@@ -16,7 +16,7 @@ def require(text: str, *anchors: str) -> None:
 
 
 def main() -> None:
-    b0 = read("docs/architecture/phase6b0_relayslp_durable_queue_contract.md")
+    b0 = read("docs/contracts/slp/durable-queue.md")
     b1 = read("relaylm/relaymem_slp_dispatch_preflight.py")
     b2 = read("relaylm/relaymem_slp_durable_enqueue.py")
     b3 = read("relaylm/relaymem_slp_queue_state.py")
@@ -27,7 +27,7 @@ def main() -> None:
         "relaymem.slp_queue_status_projection.v0",
         "Dispatch idempotency",
         "memory-write idempotency",
-        "terminal-state immutability",
+        "Terminal records are immutable under B3.",
         "B3 does not generate `dead_letter`",
     )
     require(b1, "relaymem.slp_dispatch_preflight.v0", "relaymem.slp_durable_job.v0")

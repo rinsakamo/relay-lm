@@ -18,12 +18,9 @@ relaylm_not_authoritative_for:
   - source retirement or documentation migration disposition
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../../architecture/phase6a2_relayslp_response_handoff_contract.md
-  - ../../architecture/phase6a1_relayslp_job_admission_contract.md
-  - ../../architecture/phase6b0_relayslp_durable_queue_contract.md
-  - ../../architecture/phase6b1_relayslp_dispatch_preflight.md
-  - ../../architecture/phase6_async_relayslp_bounded_slice.md
   - job-admission.md
+  - durable-queue.md
+  - ../../architecture/memory/formation.md
 relaylm_verified_by:
   - ../../../scripts/relaylm_relaymem_slp_response_handoff_smoke.py
 relaylm_lifecycle: stable
@@ -1056,8 +1053,5 @@ This contract does not define:
 
 ## Related architecture and contracts
 
-- [Phase 6-A2 transitional contract](../../architecture/phase6a2_relayslp_response_handoff_contract.md)
-- [Phase 6-A1 transitional contract](../../architecture/phase6a1_relayslp_job_admission_contract.md)
 - [RelaySLP Job Admission Contract](job-admission.md)
-- [Phase 6-B0 Durable Queue](../../architecture/phase6b0_relayslp_durable_queue_contract.md)
-- [Phase 6-B1 Dispatch Preflight](../../architecture/phase6b1_relayslp_dispatch_preflight.md)
+- [RelaySLP Durable Queue Contract](durable-queue.md)

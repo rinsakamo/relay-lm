@@ -15,9 +15,8 @@ def check(text: str, *values: str) -> None:
 
 def main() -> None:
     check(
-        body("docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md"),
-        "Phase 6-B2 is implemented",
-        "atomic create-if-absent publication",
+        body("docs/contracts/slp/durable-queue.md"),
+        "B2 may inspect or atomically create one durable queue record",
         "enqueued_new",
         "duplicate_existing",
         "write_failed",

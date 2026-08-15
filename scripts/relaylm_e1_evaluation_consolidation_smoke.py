@@ -112,7 +112,7 @@ EVIDENCE_PATHS = (
     "docs/evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md",
     "docs/architecture/phase_i4d_primary_retrieval_exclusion.md",
     "docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md",
-    "docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md",
+    "docs/contracts/slp/durable-queue.md",
     "docs/architecture/phase6c1_durable_protected_source_persistence.md",
     "docs/architecture/phase6c2_one_queued_primary_worker_integration.md",
     "docs/architecture/o0_local_one_job_runner.md",

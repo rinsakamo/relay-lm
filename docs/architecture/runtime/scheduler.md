@@ -22,7 +22,7 @@ relaylm_related_authority:
   - compile-and-checkpoint.md
   - request-response-pipeline.md
   - ../memory/formation.md
-  - ../phase6b0_relayslp_durable_queue_contract.md
+  - ../../contracts/slp/durable-queue.md
   - ../phase_i4b_primary_current_state_shared_fence.md
 relaylm_related_contracts:
   - ../../contracts/relayrun-checkpoint-and-recovery.md

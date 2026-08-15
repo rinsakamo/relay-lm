@@ -22,7 +22,7 @@ relaylm_related_authority:
   - phase6c1_durable_protected_source_persistence.md
   - phase6c1_one_claimed_primary_worker_handoff.md
   - phase6c2_one_queued_primary_worker_integration.md
-  - phase6b2_relayslp_atomic_durable_enqueue.md
+  - ../contracts/slp/durable-queue.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - subjective-mem-retrieval-projection-hard-cutover.md
   - ../PROJECT_STATUS.md

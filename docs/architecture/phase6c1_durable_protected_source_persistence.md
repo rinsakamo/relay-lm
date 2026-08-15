@@ -20,8 +20,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - phase6_i1b_runtime_enqueue_source_capture_handoff.md
-  - phase6b2_relayslp_atomic_durable_enqueue.md
-  - phase6b3_relayslp_queue_state_helpers.md
+  - ../contracts/slp/durable-queue.md
   - phase6c1_primary_mem_worker_contract.md
   - phase6c1_one_claimed_primary_worker_handoff.md
   - phase6c1_integrated_worker_fault_smoke_handoff.md

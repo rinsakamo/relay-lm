@@ -24,8 +24,7 @@ relaylm_related_authority:
   - ../evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md
   - phase6_i1b_runtime_enqueue_source_capture_handoff.md
   - phase6c1_durable_protected_source_persistence.md
-  - phase6b2_relayslp_atomic_durable_enqueue.md
-  - phase6b3_relayslp_queue_state_helpers.md
+  - ../contracts/slp/durable-queue.md
   - phase6c2_one_queued_primary_worker_integration.md
   - o1a_two_lane_scheduler_contract.md
   - o1d1_production_scheduler_round.md

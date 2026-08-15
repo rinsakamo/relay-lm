@@ -421,6 +421,89 @@
       "retention_reason": "D6-R35-M retired the transitional Phase 5.5 master handoff after section-by-section review proved its durable stream-safety, segmentation, handoff, transport, compatibility, diagnostics, external-execution, and no-persistence semantics are owned by the stable voice architecture and exact runtime contracts; qualifying implementation chronology remains in docs/evidence/implementation/, and the exact source remains recoverable from Git."
     },
     {
+      "old_path": "docs/architecture/phase6_async_relayslp_bounded_slice.md",
+      "last_live_commit": "2e2651a4840395ad167464ec50ea87c0f5c958a6",
+      "old_blob_sha": "11a5665e81efeb1e7a1674fb70caaf06fc6a0b3a",
+      "removed_by_pr": 1221,
+      "replacement_paths": [
+        "docs/architecture/memory/formation.md",
+        "docs/contracts/governed-source-capture-admission.md",
+        "docs/contracts/slp/durable-finalization.md",
+        "docs/contracts/slp/durable-queue.md",
+        "docs/contracts/slp/job-admission.md",
+        "docs/contracts/slp/primary-worker.md",
+        "docs/contracts/slp/response-handoff.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-P retired the Phase 6 bounded implementation plan after its admission, response-handoff, dispatch, queue, enqueue, and queue-state semantics were already owned by permanent SLP contracts; Phase 6-C worker, source-capture, and finalization responsibilities remain governed by their current owners, and the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/phase6a1_relayslp_job_admission_contract.md",
+      "last_live_commit": "730581abdfdcbb9e81ee49d9c62ad57d32f13acd",
+      "old_blob_sha": "0e402d02cabb4073f58e5173850bbc3bb5ffb3d1",
+      "removed_by_pr": 1221,
+      "replacement_paths": [
+        "docs/contracts/slp/job-admission.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-P retired the Phase 6-A1 admission handoff after the permanent SLP job-admission contract owned its exact schemas, triggers, stages, statuses, gates, lineage validation, content-free projection, idempotency non-authority, and fail-closed helper boundary; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/phase6a2_relayslp_response_handoff_contract.md",
+      "last_live_commit": "29bc8adc26d6d9eae5ac4efa29c63a076b0e72ce",
+      "old_blob_sha": "57099225c4a80168d906198c3cf0ef5748fef507",
+      "removed_by_pr": 1221,
+      "replacement_paths": [
+        "docs/contracts/slp/response-handoff.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-P retired the Phase 6-A2 response-finalization handoff after the permanent SLP response-handoff contract owned its exact A1 compatibility, schemas, statuses, finalized-turn gates, private candidate boundary, content-free projection, queue non-authority, and fail-closed behavior; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/phase6b0_relayslp_durable_queue_contract.md",
+      "last_live_commit": "1224e95a473028cae4dc97bf27a306fd4d8c7038",
+      "old_blob_sha": "20c6afee44e0db4704432e06bb64119ddbb54b5f",
+      "removed_by_pr": 1221,
+      "replacement_paths": [
+        "docs/contracts/slp/durable-queue.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-P retired the Phase 6-B0 queue handoff after the permanent SLP durable-queue contract owned queue ownership, exact durable schema, dispatch idempotency, states, leases, retry/recovery, corruption handling, persistence safety, content-free diagnostics, and visible-response independence; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/phase6b1_relayslp_dispatch_preflight.md",
+      "last_live_commit": "58fea7c8901a9701aa588034c85325f5e0db6759",
+      "old_blob_sha": "983dc66463822dea6febd65a3b982e164fe44d7f",
+      "removed_by_pr": 1221,
+      "replacement_paths": [
+        "docs/contracts/slp/durable-queue.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-P retired the Phase 6-B1 dispatch-preflight handoff after the permanent SLP durable-queue contract owned exact typed A2 consumption, deterministic dispatch/job identity, queued-record initialization, default-off dry-run behavior, content-free projection, and non-authority boundaries; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md",
+      "last_live_commit": "d7fc4fa9d568f933ca352ff27402a0c088555bbc",
+      "old_blob_sha": "ee820700bb18afc6df1c04366978e8b24c714a50",
+      "removed_by_pr": 1221,
+      "replacement_paths": [
+        "docs/contracts/slp/durable-queue.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-P retired the Phase 6-B2 enqueue handoff after the permanent SLP durable-queue contract owned exact B1 consumption, gated atomic create-if-absent persistence, canonical timestamps, duplicate/collision/corruption classification, secure storage, content-free projection, and visible-response independence; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/phase6b3_relayslp_queue_state_helpers.md",
+      "last_live_commit": "67700219c1ba0a0b7db7a6f6c942846f79ef7637",
+      "old_blob_sha": "bf470002412e33acacc1ee70660a5e6e61469529",
+      "removed_by_pr": 1221,
+      "replacement_paths": [
+        "docs/contracts/slp/durable-queue.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-P retired the Phase 6-B3 queue-state handoff after the permanent SLP durable-queue contract owned exact transition requests, canonical-record revalidation, claim/lease/retry/stale/terminal fences, CAS and locking, corruption fail-closed behavior, terminal immutability, and content-free diagnostics; the exact source remains recoverable from Git."
+    },
+    {
       "old_path": "docs/architecture/phase_i2_real_soul_lab_observation.md",
       "last_live_commit": "80906b60aca640d9618d550d9decb12872d67a0d",
       "old_blob_sha": "496c29ad94558a4bb0e12921cf20ad5358ae1120",

@@ -15,8 +15,8 @@ def require(text: str, *values: str) -> None:
 
 def main() -> None:
     require(
-        read("docs/architecture/phase6b3_relayslp_queue_state_helpers.md"),
-        "Phase 6-B3 is implemented",
+        read("docs/contracts/slp/durable-queue.md"),
+        "B3 request schema",
         "relaymem.slp_queue_transition_request.v0",
         "relaymem.slp_queue_state_transition.v0",
     )

@@ -22,9 +22,8 @@ relaylm_not_authoritative_for:
   - SOUL Lab TTS audio or avatar execution
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - phase6_async_relayslp_bounded_slice.md
-  - phase6b0_relayslp_durable_queue_contract.md
-  - phase6b3_relayslp_queue_state_helpers.md
+  - ../contracts/slp/durable-queue.md
+  - ../contracts/slp/primary-worker.md
   - phase6_i1b_runtime_enqueue_source_capture_handoff.md
   - phase6c1_relaymem_primary_pipeline_compose.md
   - phase6c1_one_claimed_primary_worker_handoff.md
