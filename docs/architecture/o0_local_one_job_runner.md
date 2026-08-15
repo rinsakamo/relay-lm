@@ -9,7 +9,7 @@ relaylm_related_authority:
   - o1a_two_lane_scheduler_contract.md
   - o1c_eligible_b2_queue_lane.md
   - o1d1_production_scheduler_round.md
-  - phase6c2_one_queued_primary_worker_integration.md
+  - ../contracts/slp/primary-worker.md
 relaylm_not_authoritative_for:
   - O1 scheduler policy
   - recurring processing

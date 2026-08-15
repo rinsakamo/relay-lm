@@ -22,10 +22,9 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - i1gd_durable_finalization_retention_cleanup.md
   - ../evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md
-  - phase6_i1b_runtime_enqueue_source_capture_handoff.md
-  - phase6c1_durable_protected_source_persistence.md
+  - ../contracts/governed-source-capture-admission.md
+  - ../contracts/slp/primary-worker.md
   - ../contracts/slp/durable-queue.md
-  - phase6c2_one_queued_primary_worker_integration.md
   - o1a_two_lane_scheduler_contract.md
   - o1d1_production_scheduler_round.md
   - ../evidence/waves/wave3_cross_slice_convergence_audit.md

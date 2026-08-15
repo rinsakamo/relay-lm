@@ -17,7 +17,7 @@ relaylm_not_authoritative_for:
   - repository-wide implementation status
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - phase6c1_relaymem_primary_pipeline_compose.md
+  - memory/formation.md
   - subjective-mem-retrieval-projection-hard-cutover.md
   - relaymem_m3e_atomic_primary_page_writer.md
   - relaymem_m3f_primary_index_log_reconciliation_preflight.md

@@ -10,7 +10,7 @@ relaylm_related_authority:
   - docs/architecture/o1b_sealed_i1g_replay_lane.md
   - docs/architecture/o1d1_production_scheduler_round.md
   - docs/contracts/slp/durable-queue.md
-  - docs/architecture/phase6c2_one_queued_primary_worker_integration.md
+  - docs/contracts/slp/primary-worker.md
   - docs/evidence/waves/wave3_cross_slice_convergence_audit.md
 ---
 # O1C Eligible B2/B3 Queue-Lane Discovery

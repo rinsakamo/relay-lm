@@ -25,11 +25,9 @@ relaylm_related_authority:
   - relaymem_slp_current_target.md
   - subjective-mem-retrieval-projection-hard-cutover.md
   - ../evidence/waves/wave7_cross_slice_convergence_audit.md
-  - phase6_i1b_runtime_enqueue_source_capture_handoff.md
-  - phase6c1_primary_mem_worker_contract.md
-  - phase6c1_one_claimed_primary_worker_handoff.md
-  - phase6c1_relaymem_primary_pipeline_compose.md
-  - phase6c1_durable_protected_source_persistence.md
+  - ../contracts/governed-source-capture-admission.md
+  - ../contracts/slp/primary-worker.md
+  - ../contracts/slp/durable-finalization.md
 ---
 # E1-R3 Provenance-Preserving Primary MEM Formation Summary
 

@@ -90,7 +90,7 @@ The source is split or absorbed according to content. The milestone name survive
 
 Examples:
 
-- `phase6c1_primary_mem_worker_contract.md` -> memory formation architecture + worker contract + implementation evidence.
+- Phase 6-C worker sources -> memory formation architecture + SLP worker/finalization contracts + implementation evidence.
 - `phase_i5b_pin_unpin_apply.md` -> memory mutation governance + Pin/Unpin contracts + evidence.
 - `acg4_reference_intent_analyzer.md` -> reference/intent analyzer architecture + contract + ACG-4 evidence.
 - `cw_a5_character_creation_templates_showcase_import.md` -> creation/import architecture + evidence.

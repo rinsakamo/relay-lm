@@ -23,8 +23,7 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/i1g_pre_enqueue_durable_finalization_contract.md
   - ../../architecture/i1gd_durable_finalization_retention_cleanup.md
-  - ../../architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md
-  - ../../architecture/phase6c1_durable_protected_source_persistence.md
+  - ../governed-source-capture-admission.md
   - ../../architecture/o1b_sealed_i1g_replay_lane.md
   - durable-queue.md
   - primary-worker.md
@@ -1006,6 +1005,6 @@ This contract does not define:
 
 - [I1-G transitional contract](../../architecture/i1g_pre_enqueue_durable_finalization_contract.md)
 - [I1-GD Retention and Cleanup](../../architecture/i1gd_durable_finalization_retention_cleanup.md)
-- [Phase 6 I1-B Runtime Enqueue Source Capture](../../architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md)
+- [Governed Source Capture and Admission Contract](../governed-source-capture-admission.md)
 - [Durable Queue Contract](durable-queue.md)
 - [Primary Worker Contract](primary-worker.md)
