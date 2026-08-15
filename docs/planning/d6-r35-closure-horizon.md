@@ -83,7 +83,7 @@ Promote the exact current Character Workspace maintenance candidate/proposal bou
 
 Known gate at horizon creation:
 
-- `docs/architecture/cw_a4_slp_workspace_maintenance_candidates.md` remains live;
+- the CW-A4 implementation handoff remains live at horizon creation;
 - stable responsibility exists in `docs/architecture/character-workspace/maintenance-candidates.md`;
 - exact candidate/proposal schema identifiers still require permanent contract ownership before retirement.
 

@@ -36,8 +36,9 @@ relaylm_related_authority:
   - character-workspace/source-compiler.md
   - ../contracts/character-workspace/source-tree.md
   - ../contracts/character-workspace/compiled-projections.md
+  - ../contracts/character-workspace/maintenance-candidates.md
   - ui/soul-lab.md
-  - cw_a4_slp_workspace_maintenance_candidates.md
+  - character-workspace/maintenance-candidates.md
   - ../contracts/character-workspace/creation-commit.md
   - e1r5_primary_mem_recall_candidate_bridge.md
   - ../evidence/waves/e1r5_post_wave7_correction_convergence_audit.md

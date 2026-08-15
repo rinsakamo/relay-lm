@@ -19,7 +19,6 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/character-workspace/maintenance-candidates.md
-  - ../../architecture/cw_a4_slp_workspace_maintenance_candidates.md
   - source-tree.md
   - parser-and-validation.md
   - compiled-projections.md
@@ -45,7 +44,7 @@ This contract owns the exact current candidate/proposal planning boundary implem
 
 It owns the current RelaySLP Character Workspace maintenance run, candidate, proposal, source-evidence, write-candidate, validation-gate, identifier, status, and content-free projection semantics.
 
-The stable deferred-maintenance responsibility model remains in [Character Workspace Maintenance Candidates](../../architecture/character-workspace/maintenance-candidates.md). The live CW-A4 implementation handoff remains a current implementation source and is linked for provenance; it is not retired by this contract promotion.
+The stable deferred-maintenance responsibility model remains in [Character Workspace Maintenance Candidates](../../architecture/character-workspace/maintenance-candidates.md). The CW-A4 implementation handoff is the bounded D6-R35-O retirement target and is not a second exact owner.
 
 The exact lifecycle remains:
 
@@ -444,7 +443,6 @@ The exact current implementation is verified by the focused CW-A4 candidate and 
 ## Related authority
 
 - [Character Workspace Maintenance Candidates architecture](../../architecture/character-workspace/maintenance-candidates.md)
-- [CW-A4 SLP Workspace Maintenance Candidates implementation handoff](../../architecture/cw_a4_slp_workspace_maintenance_candidates.md)
 - [Character Workspace Source Tree Contract](source-tree.md)
 - [Character Workspace Parser and Validation Contract](parser-and-validation.md)
 - [Character Workspace Compiled Projections Contract](compiled-projections.md)

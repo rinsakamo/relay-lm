@@ -8,7 +8,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - twin-extraction-prompts.md
   - twin-extraction.md
-  - ../architecture/cw_a4_slp_workspace_maintenance_candidates.md
+  - ../contracts/character-workspace/maintenance-candidates.md
 relaylm_not_authoritative_for:
   - Twin Extraction P1 preprocessing/batch-runner/merge tool execution steps
   - PR2 review import bridge internal write/security contract
@@ -27,7 +27,7 @@ relaylm_not_authoritative_for:
 - P1前処理・バッチ実行・マージの詳細手順: [Twin Extraction 運用ランブック](twin-extraction.md)
 - 抽出プロンプト仕様: [Twin Extraction プロンプト仕様](twin-extraction-prompts.md)
 - review import bridge の書き込み境界・安全性の詳細: [Twin Extraction 運用ランブック 6章](twin-extraction.md#6-review-import-bridge-p1出力--cw-a4-governed-import-source)
-- CW-A4 candidate/proposal planningの契約: [CW-A4 SLP Workspace Maintenance Candidates](../architecture/cw_a4_slp_workspace_maintenance_candidates.md)
+- CW-A4 candidate/proposal planningの契約: [Character Workspace Maintenance Candidates Contract](../contracts/character-workspace/maintenance-candidates.md)
 
 このランブックが**行わないこと**は [非ゴール](#非ゴール) の通り。特に、MEM/SOUL/RELへの直接適用・Primary MEM semantic page作成・uppercase source (`SOUL.md` など) の直接書き換えはこのフローのどの段階でも行われない。
 
@@ -138,7 +138,7 @@ PYTHONPATH=. python scripts/relaylm_cw_a4_workspace_slp_candidates.py \
 
 ### 8. CW-A2 compiler rebuildが必要になる場合
 
-CW-A4はCW-A2の `.relaylm/build/**` 投影を直接更新しない。承認済みの変更をランタイム投影(KV-cacheティアなど)へ反映する必要がある場合、[CW-A4 SLP Workspace Maintenance Candidates](../architecture/cw_a4_slp_workspace_maintenance_candidates.md) が示す通り、CW-A2 compilerを別途明示的に実行する。この再ビルドはこのランブックの範囲外であり、このフロー自体はCW-A2 compilerを呼び出さない。
+CW-A4はCW-A2の `.relaylm/build/**` 投影を直接更新しない。承認済みの変更をランタイム投影(KV-cacheティアなど)へ反映する必要がある場合、[Character Workspace Compiled Projections Contract](../contracts/character-workspace/compiled-projections.md) が示す通り、CW-A2 compilerを別途明示的に実行する。この再ビルドはこのランブックの範囲外であり、このフロー自体はCW-A2 compilerを呼び出さない。
 
 ## 非ゴール
 
