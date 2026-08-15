@@ -21,7 +21,7 @@ relaylm_related_authority:
   - phase6c1_primary_mem_worker_contract.md
   - phase6c1_one_claimed_primary_worker_handoff.md
   - phase6c1_relaymem_primary_pipeline_compose.md
-  - phase6b3_relayslp_queue_state_helpers.md
+  - ../contracts/slp/durable-queue.md
   - subjective-mem-retrieval-projection-hard-cutover.md
   - ../PROJECT_STATUS.md
 ---

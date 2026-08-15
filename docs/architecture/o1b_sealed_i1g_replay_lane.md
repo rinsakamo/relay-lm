@@ -27,7 +27,7 @@ relaylm_related_authority:
   - i1g_pre_enqueue_durable_finalization_contract.md
   - o0_local_one_job_runner.md
   - phase6c1_durable_protected_source_persistence.md
-  - phase6b2_relayslp_atomic_durable_enqueue.md
+  - ../contracts/slp/durable-queue.md
   - phase6c2_one_queued_primary_worker_integration.md
   - ../evidence/waves/wave3_cross_slice_convergence_audit.md
 ---

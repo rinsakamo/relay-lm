@@ -9,7 +9,7 @@ relaylm_related_authority:
   - docs/architecture/o1a_two_lane_scheduler_contract.md
   - docs/architecture/o1b_sealed_i1g_replay_lane.md
   - docs/architecture/o1d1_production_scheduler_round.md
-  - docs/architecture/phase6b3_relayslp_queue_state_helpers.md
+  - docs/contracts/slp/durable-queue.md
   - docs/architecture/phase6c2_one_queued_primary_worker_integration.md
   - docs/evidence/waves/wave3_cross_slice_convergence_audit.md
 ---

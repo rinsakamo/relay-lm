@@ -27,7 +27,7 @@ relaylm_related_authority:
   - ../../architecture/o0_local_one_job_runner.md
   - ../../architecture/o1a_two_lane_scheduler_contract.md
   - ../../architecture/o1d1_production_scheduler_round.md
-  - ../../architecture/phase6b3_relayslp_queue_state_helpers.md
+  - ../slp/durable-queue.md
   - ../../architecture/phase6c2_one_queued_primary_worker_integration.md
 relaylm_related_contracts:
   - scheduler-round.md
