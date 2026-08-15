@@ -427,12 +427,12 @@
       "removed_by_pr": 1221,
       "replacement_paths": [
         "docs/architecture/memory/formation.md",
-        "docs/contracts/slp/job-admission.md",
-        "docs/contracts/slp/response-handoff.md",
-        "docs/contracts/slp/durable-queue.md",
         "docs/contracts/governed-source-capture-admission.md",
+        "docs/contracts/slp/durable-finalization.md",
+        "docs/contracts/slp/durable-queue.md",
+        "docs/contracts/slp/job-admission.md",
         "docs/contracts/slp/primary-worker.md",
-        "docs/contracts/slp/durable-finalization.md"
+        "docs/contracts/slp/response-handoff.md"
       ],
       "disposition": "superseded",
       "retention_reason": "D6-R35-P retired the Phase 6 bounded implementation plan after its admission, response-handoff, dispatch, queue, enqueue, and queue-state semantics were already owned by permanent SLP contracts; Phase 6-C worker, source-capture, and finalization responsibilities remain governed by their current owners, and the exact source remains recoverable from Git."

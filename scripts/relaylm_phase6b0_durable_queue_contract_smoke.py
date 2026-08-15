@@ -27,7 +27,7 @@ def main() -> None:
         "relaymem.slp_queue_status_projection.v0",
         "Dispatch idempotency",
         "memory-write idempotency",
-        "terminal-state immutability",
+        "Terminal records are immutable under B3.",
         "B3 does not generate `dead_letter`",
     )
     require(b1, "relaymem.slp_dispatch_preflight.v0", "relaymem.slp_durable_job.v0")
