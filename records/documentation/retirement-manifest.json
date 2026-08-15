@@ -250,6 +250,21 @@
       "retention_reason": "D6-R35-J retired the CW-A2 workspace compiler projection handoff after the permanent compiled-projections contract already owned its exact build artifact set and schema versions, deterministic byte-stable output, dry-run-first explicit write, .relaylm/build write boundary, per-artifact tier responsibilities, and content-free public compiler projection. Stable source/parser/compiler architecture remains canonical; the exact source remains Git-recoverable."
     },
     {
+      "old_path": "docs/architecture/cw_a3_character_workspace_ui_rebuild.md",
+      "last_live_commit": "f05076951b36db6a4ccb59a590b46eff7d688338",
+      "old_blob_sha": "8b8728ec2a99a64ae957fa1ec77a5200c51c843e",
+      "removed_by_pr": 1206,
+      "replacement_paths": [
+        "docs/architecture/character-workspace/system.md",
+        "docs/architecture/ui/soul-lab.md",
+        "docs/contracts/ui/home-conversation.md",
+        "docs/contracts/ui/lifecycle-visibility.md",
+        "docs/contracts/ui/soul-lab-management.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-L retired the CW-A3 Character Workspace UI rebuild handoff after the permanent SOUL Lab UI architecture already owned its surface split, Home real-versus-preview separation, draft-only character editing, candidate-versus-authority scene and relationship boundaries, human-facing Memory Wiki model, content-free Runtime evidence, and browser-storage and loopback boundaries. Exact UI semantics remain contract-owned; the stale hash-route table remains implementation detail."
+    },
+    {
       "old_path": "docs/architecture/cw_a5_character_creation_templates_showcase_import.md",
       "last_live_commit": "f05076951b36db6a4ccb59a590b46eff7d688338",
       "old_blob_sha": "eb58edac216202d0f968ff49ddfb45ec55551309",

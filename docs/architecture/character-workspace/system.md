@@ -20,7 +20,7 @@ relaylm_related_authority:
   - ../../contracts/character-workspace/source-tree.md
   - ../../contracts/character-workspace/parser-and-validation.md
   - ../../contracts/character-workspace/compiled-projections.md
-  - ../cw_a3_character_workspace_ui_rebuild.md
+  - ../ui/soul-lab.md
   - ../cw_a4_slp_workspace_maintenance_candidates.md
   - creation-and-import.md
   - ../pipeline-responsibilities.md
@@ -498,7 +498,7 @@ This parent architecture does not define:
 - [Character Workspace Source Tree Contract](../../contracts/character-workspace/source-tree.md)
 - [Character Workspace Parser and Validation Contract](../../contracts/character-workspace/parser-and-validation.md)
 - [Character Workspace Compiled Projections Contract](../../contracts/character-workspace/compiled-projections.md)
-- [CW-A3 Character Workspace UI](../cw_a3_character_workspace_ui_rebuild.md)
+- [SOUL Lab UI Architecture](../ui/soul-lab.md)
 - [CW-A4 Workspace Maintenance Candidates](../cw_a4_slp_workspace_maintenance_candidates.md)
 - [Character Workspace Creation and Import](creation-and-import.md)
 - [RelayCTX Context Assembly](../context/context-assembly.md)

@@ -16,7 +16,9 @@ relaylm_not_authoritative_for:
   - voice/TTS/avatar execution, communication transport, or static-bundle packaging implementation
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../cw_a3_character_workspace_ui_rebuild.md
+  - ../../contracts/ui/home-conversation.md
+  - ../../contracts/ui/soul-lab-management.md
+  - ../../contracts/ui/lifecycle-visibility.md
   - ../soul_lab_ui_mvp.md
   - ../character-workspace/system.md
   - ../character-workspace/creation-and-import.md
@@ -443,7 +445,9 @@ This architecture does not define:
 
 ## Related architecture
 
-- [CW-A3 Character Workspace UI Rebuild](../cw_a3_character_workspace_ui_rebuild.md)
+- [Home Conversation Contract](../../contracts/ui/home-conversation.md)
+- [SOUL Lab Management Read Contract](../../contracts/ui/soul-lab-management.md)
+- [Lifecycle Visibility Contract](../../contracts/ui/lifecycle-visibility.md)
 - [AITuber SOUL Lab UI MVP](../soul_lab_ui_mvp.md)
 - [Character Workspace Architecture](../character-workspace/system.md)
 - [Character Workspace Creation and Import](../character-workspace/creation-and-import.md)
