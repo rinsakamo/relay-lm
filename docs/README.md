@@ -49,6 +49,7 @@ Implementation PRs record bounded implementation and validation evidence in the 
 
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md)
 - [Character Workspace Source Tree Contract](contracts/character-workspace/source-tree.md)
+- [Character Workspace Maintenance Candidates Contract](contracts/character-workspace/maintenance-candidates.md)
 - [Character Workspace Creation and Commit Contract](contracts/character-workspace/creation-commit.md)
 - [RelayREL relationship design](architecture/relayrel_relationship_design.md)
 - [Character Workspace Creation and Import](architecture/character-workspace/creation-and-import.md)

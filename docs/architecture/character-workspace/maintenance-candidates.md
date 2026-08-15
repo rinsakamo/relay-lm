@@ -19,6 +19,7 @@ relaylm_related_authority:
   - system.md
   - source-compiler.md
   - creation-and-import.md
+  - ../../contracts/character-workspace/maintenance-candidates.md
   - ../cw_a4_slp_workspace_maintenance_candidates.md
   - ../relaymem_slp_current_target.md
   - ../memory/system.md
@@ -55,6 +56,12 @@ completed governed evidence
 ```
 
 The planner does not answer the current turn and does not become runtime memory, scene, relationship, or persona authority.
+
+## Exact current contract
+
+This page owns the durable responsibility model, conceptual lifecycle, and ownership boundaries for deferred maintenance. Exact current schemas, fields, identifiers, statuses, risk vocabulary, candidate/proposal distinction, validation and write gates, content-free public projection, private/content-bearing boundary, and non-authority rules are owned by the [Character Workspace Maintenance Candidates Contract](../../contracts/character-workspace/maintenance-candidates.md).
+
+The implementation handoff [CW-A4 SLP Workspace Maintenance Candidates](../cw_a4_slp_workspace_maintenance_candidates.md) remains live as the current implementation source. It is not retired or treated as a second permanent exact contract by this transaction.
 
 ## Deferred, not request-path authority
 
@@ -429,6 +436,7 @@ This architecture does not define:
 - [Character Workspace Architecture](system.md)
 - [Character Workspace Source Compiler](source-compiler.md)
 - [Character Workspace Creation and Import](creation-and-import.md)
+- [Character Workspace Maintenance Candidates Contract](../../contracts/character-workspace/maintenance-candidates.md)
 - [CW-A4 SLP Workspace Maintenance Candidates](../cw_a4_slp_workspace_maintenance_candidates.md)
 - [RelayMEM / RelaySLP Current Target](../relaymem_slp_current_target.md)
 - [RelayMEM System](../memory/system.md)

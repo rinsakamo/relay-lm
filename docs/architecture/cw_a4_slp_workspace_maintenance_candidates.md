@@ -18,6 +18,7 @@ relaylm_related_authority:
   - file_first_character_workspace_design.md
   - character-workspace/source-compiler.md
   - ../contracts/character-workspace/compiled-projections.md
+  - ../contracts/character-workspace/maintenance-candidates.md
   - ui/soul-lab.md
   - relaymem_slp_current_target.md
 ---
@@ -30,6 +31,8 @@ Last reviewed: 2026-07-04 JST
 CW-A4 adds a dry-run-first RelaySLP workspace maintenance planner for File-first Character Workspace MEM / SCENE / REL wiki candidates and proposals. It consumes bounded governed source evidence under `.relaylm/sources/**`, validates the workspace through the CW-A1 source-tree contract, and emits deterministic candidate/proposal schemas plus a content-free public projection.
 
 CW-A4 is complete only for SLP-maintained Memory Wiki, Scene Wiki, and Relationship candidate/proposal planning. It does not implement CW-A5 creation/templates/import.
+
+The permanent exact owner for the current run, candidate, proposal, identifier, status, field, validation, write-candidate, approval, and public-projection semantics is the [Character Workspace Maintenance Candidates Contract](../contracts/character-workspace/maintenance-candidates.md). This CW-A4 page remains the live implementation handoff and current implementation provenance; it is not retired by the contract promotion.
 
 ## Deferred workspace curator boundary
 
