@@ -22,7 +22,7 @@ relaylm_related_authority:
   - ../emotion/affect-modulation.md
   - ../runtime/request-response-pipeline.md
   - ../soul_lab_runtime_mvp.md
-  - ../phase5_5_stream_unpack_bounded_slice.md
+  - ../voice/streaming-and-tts.md
   - ../relayemo_return_side_expression_design.md
   - ../ai_vtuber_pipeline_profile.md
   - ../../planning/documentation-target-architecture-graph.md

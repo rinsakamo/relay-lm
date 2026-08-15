@@ -15,7 +15,7 @@ relaylm_not_authoritative_for:
   - TTS execution or avatar control
   - CTX/MEM/SOUL/SLP persistence
 relaylm_related_authority:
-  - ../../architecture/phase5_5_stream_unpack_bounded_slice.md
+  - ../../architecture/voice/streaming-and-tts.md
 ---
 # Phase 5.5-B2 Stream Suppression Runtime Wiring Handoff
 

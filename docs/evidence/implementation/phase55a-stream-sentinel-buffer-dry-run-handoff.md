@@ -15,7 +15,7 @@ relaylm_not_authoritative_for:
   - implementation sequencing
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../../architecture/phase5_5_stream_unpack_bounded_slice.md
+  - ../../architecture/voice/streaming-and-tts.md
 relaylm_source_commit: c0135a9547ef2eda6d58bf87a274cc009239b8aa
 relaylm_source_pr: 311
 relaylm_recorded_on: 2026-06-20
@@ -26,7 +26,7 @@ relaylm_pre_cutover_content_sha256: d46295251db3365fef805056a192278674ec09b043ac
 ---
 # Phase 5.5-A Stream Sentinel Buffer Dry-Run Evidence
 
-This frozen record preserves the bounded implementation handoff merged by PR #311 on 2026-06-20. The statements below describe that source-time Phase 5.5-A slice; current Stream Unpack architecture and runtime status remain owned by [Phase 5.5 Stream Unpack Bounded Slice](../../architecture/phase5_5_stream_unpack_bounded_slice.md), [Project Status](../../PROJECT_STATUS.md), and the implementation.
+This frozen record preserves the bounded implementation handoff merged by PR #311 on 2026-06-20. The statements below describe that source-time Phase 5.5-A slice; current Stream Unpack architecture and runtime status remain owned by [Voice Streaming and TTS Architecture](../../architecture/voice/streaming-and-tts.md), [Project Status](../../PROJECT_STATUS.md), and the implementation.
 
 ## Summary
 
@@ -49,7 +49,7 @@ relaylm/config.py
 config.example.yaml
 docs/PROJECT_STATUS.md
 docs/architecture/pipeline_implementation_plan.md
-docs/architecture/phase5_5_stream_unpack_bounded_slice.md
+docs/../../architecture/voice/streaming-and-tts.md
 ```
 
 ## Runtime boundary

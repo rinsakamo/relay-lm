@@ -227,8 +227,6 @@ At minimum, Preparation C must detect normative blocks in:
 - `phase_i5_pin_unpin_contract.md`
 - `phase_i7ab_held_apply_discard_contract.md`
 - `managed_route_fallback_contract.md`
-- `phase55c1_tts_adapter_handoff_contract.md`
-- `phase55c3_tts_adapter_transport_contract.md`
 
 Filename matching is not sufficient. Other architecture/handoff sources must be scanned for normative markers, exact field tables, states, gates, and literal anchors.
 

@@ -347,6 +347,43 @@
       "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #622 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
     },
     {
+      "old_path": "docs/architecture/phase55c1_tts_adapter_handoff_contract.md",
+      "last_live_commit": "ce02f5f726070df94d26584e18ed4e9ceba8f974",
+      "old_blob_sha": "1c784dd70b52e0dbe1b801a89eb08ec295effd5d",
+      "removed_by_pr": 1209,
+      "replacement_paths": [
+        "docs/architecture/voice/streaming-and-tts.md",
+        "docs/contracts/runtime/tts-transport.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R35-M retired the transitional C1 handoff after review proved its status propagation, enabled/dry-run/ready, runtime-private plan, content-free diagnostics, and no-execution/no-persistence semantics are owned by the exact TTS transport contract beneath the stable voice architecture; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/phase55c2_runtime_tts_adapter_handoff_wiring.md",
+      "last_live_commit": "ce02f5f726070df94d26584e18ed4e9ceba8f974",
+      "old_blob_sha": "4d32ff8529ca6f3f888f976c941b02e78f34e515",
+      "removed_by_pr": 1209,
+      "replacement_paths": [
+        "docs/architecture/voice/streaming-and-tts.md",
+        "docs/contracts/runtime/tts-segmentation.md",
+        "docs/contracts/runtime/tts-transport.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R35-M retired the transitional C2 wiring handoff after review proved safe-visible admission, unchanged stream bytes, default-off gates, fail-closed invalid observation, C0/C1 result recording, and no-delivery/no-persistence semantics are owned by the exact segmentation and transport contracts beneath the stable voice architecture; the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/phase55c3_tts_adapter_transport_contract.md",
+      "last_live_commit": "ce02f5f726070df94d26584e18ed4e9ceba8f974",
+      "old_blob_sha": "3946358c61d282f1d42ebba8011d1e428ac975a0",
+      "removed_by_pr": 1209,
+      "replacement_paths": [
+        "docs/architecture/voice/streaming-and-tts.md",
+        "docs/contracts/runtime/tts-transport.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R35-M retired the transitional C3 handoff after review proved C1-only input, conservative propagation, runtime-private envelope, content-free diagnostics, and no-delivery/no-execution/no-persistence semantics are owned by the exact TTS transport contract beneath the stable voice architecture; the exact source remains recoverable from Git."
+    },
+    {
       "old_path": "docs/architecture/phase55c4_runtime_tts_transport_envelope_wiring.md",
       "last_live_commit": "84bdafbfc2182710afb034f7b815b76e09616a50",
       "old_blob_sha": "79f03a5dfae1d6db472973ae3357b05f2c740682",
@@ -356,6 +393,20 @@
       ],
       "disposition": "replaced",
       "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #628 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
+    },
+    {
+      "old_path": "docs/architecture/phase5_5_stream_unpack_bounded_slice.md",
+      "last_live_commit": "ce02f5f726070df94d26584e18ed4e9ceba8f974",
+      "old_blob_sha": "9c905c97fa613df32903f459680883384570b32b",
+      "removed_by_pr": 1209,
+      "replacement_paths": [
+        "docs/architecture/voice/streaming-and-tts.md",
+        "docs/contracts/runtime/stream-suppression.md",
+        "docs/contracts/runtime/tts-segmentation.md",
+        "docs/contracts/runtime/tts-transport.md"
+      ],
+      "disposition": "absorbed",
+      "retention_reason": "D6-R35-M retired the transitional Phase 5.5 master handoff after section-by-section review proved its durable stream-safety, segmentation, handoff, transport, compatibility, diagnostics, external-execution, and no-persistence semantics are owned by the stable voice architecture and exact runtime contracts; qualifying implementation chronology remains in docs/evidence/implementation/, and the exact source remains recoverable from Git."
     },
     {
       "old_path": "docs/architecture/phase_i2_real_soul_lab_observation.md",

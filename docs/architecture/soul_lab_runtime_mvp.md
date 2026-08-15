@@ -22,7 +22,7 @@ relaylm_related_authority:
   - ai_vtuber_pipeline_profile.md
   - relayemo_return_side_expression_design.md
   - ai_character_product_principles.md
-  - phase5_5_stream_unpack_bounded_slice.md
+  - voice/streaming-and-tts.md
 ---
 # SOUL Lab Runtime MVP
 
@@ -180,7 +180,7 @@ Text-first Lab slices additionally do not complete TTS/audio/avatar adapter deli
 - [SOUL Lab Home Conversation Contract](../contracts/ui/home-conversation.md) owns the exact current real Home chat browser transport and session fencing.
 - [Phase I-2 Real SOUL Lab Observation](../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md) owns real bounded observation integration and explicitly does not own runtime adapter execution.
 - [Phase I-3 Auditable Primary MEM Correct](../evidence/implementation/phase-i3-auditable-primary-mem-correct-handoff.md) is frozen implementation evidence; current Correct behavior remains implementation-, SOUL-Lab-, and focused-smoke-owned.
-- [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md) owns RelayLM Core stream safety and TTS handoff metadata preparation through C4.
+- [Voice Streaming and TTS Architecture](voice/streaming-and-tts.md) owns RelayLM Core stream safety and TTS handoff metadata preparation through C4.
 - [AI VTuber Pipeline Profile](ai_vtuber_pipeline_profile.md) defines the realtime profile and per-chunk conceptual path.
 - [RelayEMO Return-side Expression Design](relayemo_return_side_expression_design.md) owns engine-neutral expression hint boundaries.
 - [AI Character Product Principles](ai_character_product_principles.md) owns the broad product invariant that RelayLM is not the frontend, TTS, ASR, or avatar runtime.

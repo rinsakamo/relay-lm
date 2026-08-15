@@ -43,7 +43,7 @@ mutating an already-sent headers artifact (not possible). LAT-2 does
 neither: it wraps the stream generator and records a **second, later**
 content-free trace record once the stream finishes (or errors), reusing the
 "stream-final trace" pattern already used by the Phase 5.5
-[C2 runtime TTS adapter handoff](phase55c2_runtime_tts_adapter_handoff_wiring.md)
+[TTS segmentation and runtime admission contract](../contracts/runtime/tts-segmentation.md)
 and [C4 runtime TTS transport wiring evidence](../evidence/implementation/phase55c4-runtime-tts-transport-envelope-wiring.md)
 (`relaylm/relayctx_tts_adapter_handoff_runtime.py`) -- but as an independent
 emission path, not by extending that TTS-specific state machine (see
