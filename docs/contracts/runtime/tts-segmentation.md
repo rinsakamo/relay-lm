@@ -22,7 +22,6 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/voice/streaming-and-tts.md
-  - ../../architecture/phase55c2_runtime_tts_adapter_handoff_wiring.md
   - ../../architecture/runtime/request-response-pipeline.md
 relaylm_related_contracts:
   - stream-suppression.md
@@ -1187,6 +1186,4 @@ This document supplies that exact current algorithm and runtime admission bounda
 
 ## Source-retirement boundary
 
-This transaction does not retire historical C0/C2 handoffs, implementation modules, focused smokes, or Phase 5.5 evidence.
-
-Any source retirement requires a separate bounded transaction with exact provenance, consumer repair, and migration disposition.
+Historical Phase 5.5 C0/C2 implementation evidence remains retained chronology. Source retirement does not retire implementation modules or focused smokes, and does not change this exact current contract.

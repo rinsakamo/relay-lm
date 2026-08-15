@@ -20,9 +20,6 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/voice/streaming-and-tts.md
-  - ../../architecture/phase55c1_tts_adapter_handoff_contract.md
-  - ../../architecture/phase55c3_tts_adapter_transport_contract.md
-  - ../../architecture/phase5_5_stream_unpack_bounded_slice.md
   - ../../architecture/runtime/request-response-pipeline.md
 relaylm_verified_by:
   - ../../../scripts/relaylm_relayctx_tts_adapter_handoff_smoke.py
@@ -73,7 +70,7 @@ Segmentation remains separately implemented in:
 relaylm/relayctx_tts_segmentation.py
 ```
 
-The Phase 5.5 C1/C3 architecture documents remain transitional handoffs. This contract does not retire them.
+Historical Phase 5.5 C1/C3 implementation evidence remains retained chronology. This contract is the exact current authority for their durable handoff and transport semantics.
 
 ## C1 status contract
 
@@ -686,7 +683,6 @@ This contract does not define:
 ## Related authority
 
 - [Voice Streaming and TTS Architecture](../../architecture/voice/streaming-and-tts.md)
-- [Phase 5.5 Stream Unpack Bounded Slice](../../architecture/phase5_5_stream_unpack_bounded_slice.md)
-- [Phase 5.5-C1 Handoff](../../architecture/phase55c1_tts_adapter_handoff_contract.md)
-- [Phase 5.5-C3 Transport Handoff](../../architecture/phase55c3_tts_adapter_transport_contract.md)
+- [RelayCTX Stream Suppression Contract](stream-suppression.md)
+- [RelayCTX TTS Segmentation Contract](tts-segmentation.md)
 - [Request / Response Pipeline](../../architecture/runtime/request-response-pipeline.md)

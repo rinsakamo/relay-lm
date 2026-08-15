@@ -19,9 +19,6 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../pipeline-responsibilities.md
   - ../runtime/request-response-pipeline.md
-  - ../phase5_5_stream_unpack_bounded_slice.md
-  - ../phase55c1_tts_adapter_handoff_contract.md
-  - ../phase55c3_tts_adapter_transport_contract.md
   - ../emotion/affect-modulation.md
   - ../open_llm_vtuber_integration.md
   - ../../planning/documentation-target-architecture-graph.md
@@ -485,8 +482,8 @@ This architecture does not define:
 
 - [RelayLM Pipeline Responsibilities](../pipeline-responsibilities.md)
 - [Request / Response Pipeline](../runtime/request-response-pipeline.md)
-- [Phase 5.5 Stream Unpack Bounded Slice](../phase5_5_stream_unpack_bounded_slice.md)
-- [Phase 5.5-C1 TTS Adapter Handoff Contract](../phase55c1_tts_adapter_handoff_contract.md)
-- [Phase 5.5-C3 TTS Adapter Transport Contract](../phase55c3_tts_adapter_transport_contract.md)
+- [RelayCTX Stream Suppression Contract](../../contracts/runtime/stream-suppression.md)
+- [RelayCTX TTS Segmentation Contract](../../contracts/runtime/tts-segmentation.md)
+- [Runtime TTS Transport Contract](../../contracts/runtime/tts-transport.md)
 - [RelayEMO Affect Modulation](../emotion/affect-modulation.md)
 - [Open-LLM-VTuber Integration](../open_llm_vtuber_integration.md)
