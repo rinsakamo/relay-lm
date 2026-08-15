@@ -265,6 +265,18 @@
       "retention_reason": "D6-R35-L retired the CW-A3 Character Workspace UI rebuild handoff after the permanent SOUL Lab UI architecture already owned its surface split, Home real-versus-preview separation, draft-only character editing, candidate-versus-authority scene and relationship boundaries, human-facing Memory Wiki model, content-free Runtime evidence, and browser-storage and loopback boundaries. Exact UI semantics remain contract-owned; the stale hash-route table remains implementation detail."
     },
     {
+      "old_path": "docs/architecture/cw_a4_slp_workspace_maintenance_candidates.md",
+      "last_live_commit": "3a7db9a8086c2365af17d78519588e78465475fb",
+      "old_blob_sha": "33363e0d97e3fb2566a4a63ba3a5f7a8c0b25afc",
+      "removed_by_pr": 1218,
+      "replacement_paths": [
+        "docs/architecture/character-workspace/maintenance-candidates.md",
+        "docs/contracts/character-workspace/maintenance-candidates.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-O retired the CW-A4 implementation handoff after the permanent Character Workspace maintenance architecture and exact contract already owned its durable lifecycle, exact schemas, candidate/proposal vocabulary, validation, write, approval, projection, privacy, and fail-closed semantics; the implementation source remains Git-recoverable."
+    },
+    {
       "old_path": "docs/architecture/cw_a5_character_creation_templates_showcase_import.md",
       "last_live_commit": "f05076951b36db6a4ccb59a590b46eff7d688338",
       "old_blob_sha": "eb58edac216202d0f968ff49ddfb45ec55551309",
