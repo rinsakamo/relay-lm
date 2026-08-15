@@ -314,6 +314,8 @@ Lane R  R6 Primary MEM disposition                      required cleanup after R
 Lane C                                                  idle until PD-2 completes
 ```
 
+The D6-R35-N Character Workspace maintenance exact-contract promotion is complete in implementation PR #1215. Its mandatory P8 authority synchronization records that the stable maintenance responsibility remains in Character Workspace architecture, exact current candidate/proposal semantics are owned by docs/contracts/character-workspace/maintenance-candidates.md, and the CW-A4 implementation handoff remains live until D6-R35-O. D6-R35 remains in progress, D6 remains incomplete, and D6-R36 has not started.
+
 Completed foundation retained for reference:
 
 ```text
