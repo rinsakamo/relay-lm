@@ -12,7 +12,7 @@ It complements:
 - [Phase 5-C4a Implementation Handoff](phase5c4a_instruction_bearing_managed_apply_handoff.md)
 - [Phase 5-C4b Cache-Hit RelaySCN Projection Handoff](phase5c4b_cache_hit_relayscn_projection_handoff.md)
 - [Phase 5-C5c Runtime Cache-Writer Boundary Handoff](phase5c5c_runtime_cache_writer_boundary_handoff.md)
-- [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md)
+- [Voice Streaming and TTS Architecture](voice/streaming-and-tts.md)
 - [Scene Lifecycle Design](scene_lifecycle_design.md)
 - [RelaySCN MVP Scene Policy](relayscn_mvp_scene_policy.md)
 - [Context Packing Design](context_packing_design.md)

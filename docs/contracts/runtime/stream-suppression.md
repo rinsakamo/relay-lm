@@ -21,7 +21,6 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../../architecture/voice/streaming-and-tts.md
-  - ../../architecture/phase5_5_stream_unpack_bounded_slice.md
   - ../../architecture/runtime/request-response-pipeline.md
 relaylm_related_contracts:
   - tts-transport.md
@@ -1044,10 +1043,4 @@ There is no duplicate authority between the two contracts.
 
 ## Source-retirement boundary
 
-This transaction does not retire:
-
-```text
-docs/architecture/phase5_5_stream_unpack_bounded_slice.md
-```
-
-Nor does it retire Phase55A/B1/B2 evidence, implementation modules, smokes, adapter wiring, or tests. Any retirement requires a separate bounded transaction with exact provenance, consumer repair, and migration disposition.
+Historical Phase55A/B1/B2 evidence remains retained implementation chronology. Source retirement does not retire implementation modules, smokes, adapter wiring, or tests, and does not change this exact current contract.

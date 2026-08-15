@@ -16,9 +16,9 @@ relaylm_not_authoritative_for:
   - avatar adapter behavior
   - RelaySOUL persistence
 relaylm_related_authority:
-  - ../../architecture/phase5_5_stream_unpack_bounded_slice.md
-  - ../../architecture/phase55c1_tts_adapter_handoff_contract.md
-  - ../../architecture/phase55c2_runtime_tts_adapter_handoff_wiring.md
+  - ../../architecture/voice/streaming-and-tts.md
+  - ../../contracts/runtime/tts-transport.md
+  - ../../contracts/runtime/tts-segmentation.md
 ---
 # Phase 5.5-C0 TTS Segmentation Helper Handoff
 

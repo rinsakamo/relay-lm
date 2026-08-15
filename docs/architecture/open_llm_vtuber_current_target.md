@@ -50,4 +50,4 @@ Required later work includes:
 - SOUL Lab Runtime adapter delivery and execution,
 - external Open-LLM-VTuber end-to-end validation.
 
-See [Open-LLM-VTuber Integration Design](open_llm_vtuber_integration.md), [Project Status](../PROJECT_STATUS.md), [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md), and [Project Execution Plan](project_execution_plan.md).
+See [Open-LLM-VTuber Integration Design](open_llm_vtuber_integration.md), [Project Status](../PROJECT_STATUS.md), [Voice Streaming and TTS Architecture](voice/streaming-and-tts.md), and [Project Execution Plan](project_execution_plan.md).

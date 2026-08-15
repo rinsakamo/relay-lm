@@ -17,9 +17,9 @@ relaylm_not_authoritative_for:
   - avatar adapter behavior
   - CTX/MEM/SOUL/SLP persistence
 relaylm_related_authority:
-  - ../../architecture/phase5_5_stream_unpack_bounded_slice.md
-  - ../../architecture/phase55c2_runtime_tts_adapter_handoff_wiring.md
-  - ../../architecture/phase55c3_tts_adapter_transport_contract.md
+  - ../../architecture/voice/streaming-and-tts.md
+  - ../../contracts/runtime/tts-segmentation.md
+  - ../../contracts/runtime/tts-transport.md
 ---
 # Phase 5.5-C4 Runtime TTS Transport Envelope Wiring
 

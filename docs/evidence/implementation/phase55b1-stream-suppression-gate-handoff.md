@@ -15,7 +15,7 @@ relaylm_not_authoritative_for:
   - TTS execution
   - RelaySOUL persistence
 relaylm_related_authority:
-  - ../../architecture/phase5_5_stream_unpack_bounded_slice.md
+  - ../../architecture/voice/streaming-and-tts.md
   - phase55b2-stream-suppression-runtime-handoff.md
 ---
 # Phase 5.5-B1 Stream Suppression Gate Handoff
