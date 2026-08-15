@@ -22,7 +22,7 @@ relaylm_related_authority:
   - showcase-starter-product-knowledge.md
   - ../../contracts/character-workspace/source-tree.md
   - ../../contracts/character-workspace/compiled-projections.md
-  - ../cw_a3_character_workspace_ui_rebuild.md
+  - ../ui/soul-lab.md
   - ../../planning/documentation-target-architecture-graph.md
 relaylm_lifecycle: stable
 relaylm_primary_consumers:
@@ -433,4 +433,4 @@ This architecture does not define:
 - [Showcase, Public Starter, and Product Knowledge Ownership](showcase-starter-product-knowledge.md)
 - [Character Workspace Source Tree Contract](../../contracts/character-workspace/source-tree.md)
 - [Character Workspace Compiled Projections Contract](../../contracts/character-workspace/compiled-projections.md)
-- [CW-A3 Character Workspace UI Rebuild](../cw_a3_character_workspace_ui_rebuild.md)
+- [SOUL Lab UI Architecture](../ui/soul-lab.md)

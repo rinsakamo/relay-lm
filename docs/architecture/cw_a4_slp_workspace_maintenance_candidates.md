@@ -18,7 +18,7 @@ relaylm_related_authority:
   - file_first_character_workspace_design.md
   - character-workspace/source-compiler.md
   - ../contracts/character-workspace/compiled-projections.md
-  - cw_a3_character_workspace_ui_rebuild.md
+  - ui/soul-lab.md
   - relaymem_slp_current_target.md
 ---
 # CW-A4 SLP Workspace Maintenance Candidates
