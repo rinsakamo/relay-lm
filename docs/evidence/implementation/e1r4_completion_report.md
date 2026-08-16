@@ -27,7 +27,7 @@ relaylm_exact_source_snapshot: e1r4_completion_report-source.txt
 
 ## Status and authority
 
-This document is frozen implementation evidence for the E1-R4 retrieval-response grounding slice introduced by PR #437, whose final source head is `cad2fc03c3a6e566de60684e6628b75a0e70eae8` and merge commit is `e6e5b32cd489dda493ff0171a260dd561a91765c`. Current repository status belongs to [Project Status](../../PROJECT_STATUS.md). Current E1-R4 behavior belongs to [E1-R4 Retrieval-Response Grounding](../../architecture/e1r4_retrieval_response_grounding.md), while cross-slice E1 evidence belongs to [E1 Evaluation Consolidation](../../architecture/e1_evaluation_consolidation.md).
+This document is frozen implementation evidence for the E1-R4 retrieval-response grounding slice introduced by PR #437, whose final source head is `cad2fc03c3a6e566de60684e6628b75a0e70eae8` and merge commit is `e6e5b32cd489dda493ff0171a260dd561a91765c`. Current repository status belongs to [Project Status](../../PROJECT_STATUS.md). Current E1-R4 behavior belongs to the [Grounded Recall contract](../../contracts/grounded-recall.md) and [retrieval and grounding architecture](../../architecture/memory/retrieval-and-grounding.md), while cross-slice E1 evidence belongs to [E1 Evaluation Consolidation](../../architecture/e1_evaluation_consolidation.md).
 
 The exact pre-cutover report is retained byte-for-byte as [e1r4_completion_report-source.txt](e1r4_completion_report-source.txt). Statements below describe the source PR boundary unless explicitly qualified.
 

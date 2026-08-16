@@ -20,7 +20,6 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../architecture/memory/retrieval-and-grounding.md
   - ../architecture/subjective-mem-retrieval-projection-hard-cutover.md
-  - ../architecture/e1r4_retrieval_response_grounding.md
   - ../architecture/e1_evaluation_consolidation.md
 relaylm_related_contracts:
   - query-detail-analyzer.md

@@ -67,7 +67,7 @@ Home remains on the existing RelayLM `/v1/chat/completions` path. Real Runtime a
 - [CW-A1](../contracts/character-workspace/source-tree.md), [CW-A2](../contracts/character-workspace/compiled-projections.md), [CW-A3](../architecture/ui/soul-lab.md), [CW-A4 stable architecture](../architecture/character-workspace/maintenance-candidates.md), [CW-A4 exact contract](../contracts/character-workspace/maintenance-candidates.md), [CW-A5](../contracts/character-workspace/creation-commit.md)
 - [O2 Supervised Scheduler Service](../architecture/o2_supervised_scheduler_service.md) and [O3 Always-On Local Scheduler](../architecture/o3_always_on_local_scheduler.md)
 - [PM-D5](../architecture/pm_d5_relaymem_flat_store_compatibility_removal.md), [PM-D6](../architecture/pm_d6_relayint_native_artifact_relayref_wrapper_removal.md), and [PM-D7](../architecture/pm_d7_runtime_install_hook_fold_in.md)
-- [E1-R3](../architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md), [E1-R4](../architecture/e1r4_retrieval_response_grounding.md), and [E1-R5](../architecture/e1r5_primary_mem_recall_candidate_bridge.md)
+- [E1-R3](../architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md), [Grounded Recall Contract](../contracts/grounded-recall.md), and retained E1-R4/E1-R5 completion evidence
 - [Wave 7 convergence](../evidence/waves/wave7_cross_slice_convergence_audit.md) and [E1-R5 post-correction convergence](../evidence/waves/e1r5_post_wave7_correction_convergence_audit.md)
 - [v0.1 readiness](../release/v0.1-release-readiness.md) and [final main validation/tag receipt](../evidence/releases/v0.1-final-main-validation-tag-receipt.md)
 
