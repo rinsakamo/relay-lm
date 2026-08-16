@@ -699,7 +699,6 @@ records:
       - maintained store characterization, worker fault, reconciliation, recovery-audit, and security validations
     invocation_roots: [pytest_root, smoke_only_root]
     evidence:
-      - docs/architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
       - tests/test_relaymem_store_io_characterization.py
       - scripts/relaylm_relaymem_primary_index_log_recovery_audit_smoke.py
     removal_gate: null
