@@ -209,6 +209,19 @@
       "retention_reason": "D6-R7 retired the historical VTuber memory-proxy design after its adopted product, context, realtime, and frontend-boundary responsibilities were covered by canonical character-interaction, context, performance, request/response, system, and voice authorities; historical single-proxy/per-character routing examples remain recoverable from Git rather than becoming a new permanent architecture authority."
     },
     {
+      "old_path": "docs/architecture/asm1_shared_assessment_runtime_foundation.md",
+      "last_live_commit": "5f85995678d01c8a0e4853fd38ae23eaa15bd303",
+      "old_blob_sha": "ed24b169df0fe6a9404c479345ca91628f2f1dab",
+      "removed_by_pr": 1244,
+      "replacement_paths": [
+        "docs/architecture/memory/formation.md",
+        "docs/contracts/governed-evidence-contract-family.md",
+        "docs/contracts/shared-assessment-subjective-mem.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-S retired the ASM-1 Shared Assessment runtime handoff after permanent formation and governed-Evidence/Shared-Assessment authorities covered its revision, authorization-receipt, split-pass, privacy, and fail-closed semantics; live runtime/tests/smokes remain and the exact source is Git-recoverable."
+    },
+    {
       "old_path": "docs/architecture/character_template_creation_flow.md",
       "last_live_commit": "c1f060cfb5bf865082de0e9007840d7aaf0a0712",
       "old_blob_sha": "09d52aef61749e0936699775d1662db42b14532d",
@@ -1005,6 +1018,20 @@
       "retention_reason": "D6-R8 retired the mixed runtime-operational source after its durable privacy/isolation, observability, and reliability/compatibility responsibilities were extracted by PRs #945, #946, and #948 and its remaining fallback, context, performance, request/response, memory, scheduler, and adapter responsibilities were already owned by canonical authorities; volatile implementation enumerations and historical mode ladders remain recoverable from Git rather than continuing as active architecture."
     },
     {
+      "old_path": "docs/architecture/sm1_subjective_mem_create_runtime.md",
+      "last_live_commit": "a69c65c8506628d8f2a57edfa91315557a743260",
+      "old_blob_sha": "181d40ce2b2b891b3e3a5463a35e1803f70b11c8",
+      "removed_by_pr": 1244,
+      "replacement_paths": [
+        "docs/architecture/memory/formation.md",
+        "docs/architecture/memory/system.md",
+        "docs/contracts/shared-assessment-subjective-mem.md",
+        "docs/contracts/subjective-mem-storage-authority-and-commit-protocol.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-S retired the SM-1 Subjective MEM create handoff after permanent formation, subsystem, logical-contract, and storage-contract authorities covered its assessment linkage, private creation, prepared boundary, provenance, idempotency, diagnostics, and fail-closed semantics; live runtime/tests/smokes remain and the exact source is Git-recoverable."
+    },
+    {
       "old_path": "docs/architecture/soul_lab_ui_a0_a1_handoff.md",
       "last_live_commit": "5e6c7179d7979af88fad2b2d4192d141e03c7dee",
       "old_blob_sha": "8324d8240be865c305118a85169a7f995a571040",
@@ -1117,6 +1144,20 @@
       ],
       "disposition": "replaced",
       "retention_reason": "D6-R35-D retired the SOUL Lab UI-B1A lifecycle visibility handoff in PR #1171 after the exact read-only lifecycle projection and browser-consumption contract became permanent and stable browser/server semantics plus current implementation completion stayed owned by the SOUL Lab UI architecture and plan; the frozen PR #421 completion report remains the retained implementation evidence and the source chronology stays Git-recoverable."
+    },
+    {
+      "old_path": "docs/architecture/st1_subjective_mem_commit_runtime.md",
+      "last_live_commit": "d2a3eb019a4659e6bb2f9bf343d24864d6afe646",
+      "old_blob_sha": "f359a5f57ef94ae124dae391d065bdb7d9d542de",
+      "removed_by_pr": 1244,
+      "replacement_paths": [
+        "docs/architecture/memory/storage-and-recovery.md",
+        "docs/architecture/subjective-mem-lifecycle-publication-engine.md",
+        "docs/contracts/subjective-mem-canonical-markdown-v1.md",
+        "docs/contracts/subjective-mem-storage-authority-and-commit-protocol.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-S retired the ST-1 Subjective MEM commit handoff after permanent storage/recovery, lifecycle publication, physical Markdown, and storage-contract authorities covered its post-image, receipt, publication, recovery, idempotency, privacy, and fail-closed semantics; live runtime/tests/smokes remain and the exact source is Git-recoverable."
     },
     {
       "old_path": "docs/architecture/vtuber_memory_proxy_design.md",
