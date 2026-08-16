@@ -34,7 +34,13 @@ def _cognitive_input() -> CognitiveInput:
                 sources=("old",),
             ),
         ),
-        context=(ContextItem("A trusted note", ("evt-trusted",)),),
+        context=(
+            ContextItem(
+                content="Earlier assistant utterance",
+                sources=("evt-trusted",),
+                actor="assistant",
+            ),
+        ),
         input=Event.create(
             type="message",
             actor="user",
@@ -104,7 +110,9 @@ def test_provider_makes_one_request_and_normalizes_set() -> None:
         "utterance",
         "state_candidates",
     ]
-    assert "complete non-empty natural-language reply" in seen[0]["messages"][0]["content"]
+    system_prompt = seen[0]["messages"][0]["content"]
+    assert "complete non-empty natural-language reply" in system_prompt
+    assert "Assistant-authored Context supports conversational continuity only" in system_prompt
     sent = json.loads(seen[0]["messages"][1]["content"])
     assert sent["input"] == {
         "event_id": "evt-now",
@@ -112,6 +120,11 @@ def test_provider_makes_one_request_and_normalizes_set() -> None:
         "content": "紅茶が好き",
     }
     assert sent["state"][0]["key"] == "tea"
+    assert sent["context"][0] == {
+        "content": "Earlier assistant utterance",
+        "sources": ["evt-trusted"],
+        "actor": "assistant",
+    }
     assert output.response == "覚えておくね。"
     assert output.state_candidates[0].op == "set"
     assert output.state_candidates[0].value == "likes"
@@ -211,6 +224,29 @@ def test_client_history_is_not_replayed(tmp_path: Path) -> None:
         "今の質問です",
         "今の入力だけを受け取ったよ。",
     ]
+
+
+def test_relaylm_owned_prior_events_are_used_on_followup_request(tmp_path: Path) -> None:
+    provider = RecordingProvider()
+    app = create_app(character=_make_character(tmp_path), provider=provider)
+
+    with TestClient(app) as client:
+        first = client.post(
+            "/v1/chat/completions",
+            json={"model": "relaylm", "messages": [{"role": "user", "content": "AとBで迷ってる"}]},
+        )
+        second = client.post(
+            "/v1/chat/completions",
+            json={"model": "relaylm", "messages": [{"role": "user", "content": "持ち運び重視かな"}]},
+        )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert [(item.actor, item.content) for item in provider.inputs[1].context] == [
+        ("user", "AとBで迷ってる"),
+        ("assistant", "今の入力だけを受け取ったよ。"),
+    ]
+    assert provider.inputs[1].input.payload["content"] == "持ち運び重視かな"
 
 
 def test_stream_request_is_explicitly_rejected(tmp_path: Path) -> None:
