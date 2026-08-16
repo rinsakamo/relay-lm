@@ -28,7 +28,7 @@ relaylm_related_authority:
   - o1d2_scheduler_policy.md
   - o1e_scheduler_operational_controls.md
   - o1f_operational_validation.md
-  - i1g_pre_enqueue_durable_finalization_contract.md
+  - ../contracts/slp/durable-finalization.md
   - ../evidence/waves/wave3_cross_slice_convergence_audit.md
   - project_execution_plan.md
   - relaymem_slp_current_target.md

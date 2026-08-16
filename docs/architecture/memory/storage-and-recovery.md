@@ -24,11 +24,6 @@ relaylm_related_authority:
   - ../st1_subjective_mem_commit_runtime.md
   - ../subjective-mem-lifecycle-publication-engine.md
   - ../subjective-mem-retrieval-projection-hard-cutover.md
-  - ../relaymem_m3d_primary_writer_handoff.md
-  - ../relaymem_m3e_atomic_primary_page_writer.md
-  - ../relaymem_m3f_primary_index_log_reconciliation_preflight.md
-  - ../relaymem_m3g_primary_index_log_reconciliation_apply.md
-  - ../relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
   - ../relaymem_slp_current_target.md
   - retrieval-and-grounding.md
   - formation.md
@@ -360,9 +355,9 @@ The detailed source pages remain for their narrower roles while current consumer
 - `st1_subjective_mem_commit_runtime.md` — current create-publication implementation;
 - `subjective-mem-lifecycle-publication-engine.md` — shared lifecycle publication/replay/recovery implementation architecture;
 - `subjective-mem-retrieval-projection-hard-cutover.md` — RT-1 projection/cutover target and transition authority;
-- `relaymem_m3d_primary_writer_handoff.md` through `relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md` — Primary compatibility implementation and retirement evidence.
+- The former M3D–M3H implementation handoffs — Primary compatibility implementation detail retired by D6-R35-R; live `relaylm/relaymem_primary_*` modules and focused smokes remain the implementation and validation surfaces, while the stable storage/recovery rules are retained above.
 
-These sources are not competing permanent storage/recovery architecture parents. Their final evidence or retirement disposition must be handled atomically after current consumers, contracts, R5/R6 gates, links, tests, and recovery needs are accounted for.
+These implementation handoffs were not competing permanent storage/recovery architecture parents. Their retirement preserves the live runtime, code, test, smoke, and frozen-evidence surfaces; their exact source identity remains recoverable through the retirement manifest and Git history.
 
 ## Stable invariants
 

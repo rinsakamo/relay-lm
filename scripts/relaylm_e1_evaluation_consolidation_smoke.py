@@ -116,7 +116,7 @@ EVIDENCE_PATHS = (
     "docs/contracts/slp/durable-finalization.md",
     "docs/contracts/slp/primary-worker.md",
     "docs/architecture/o0_local_one_job_runner.md",
-    "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
+    "docs/contracts/slp/durable-finalization.md",
     "docs/evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md",
     "scripts/relaylm_o0_local_one_job_runner_ci_runner.py",
     "scripts/relaylm_phase6c1_primary_worker_smoke.py",
