@@ -112,6 +112,66 @@ def test_validator_rejects_malformed_reserved_degree_hint_from_non_wire_provider
     assert result.state.states == ()
 
 
+def test_comparative_degree_hints_keep_both_positive_preferences() -> None:
+    event = _user_event()
+    candidates = (
+        StateCandidate.set(
+            state_class="user.preference",
+            key="tea",
+            value={"semantic": "likes", "degree_hint": 0.65},
+            sources=(event.id,),
+        ),
+        StateCandidate.set(
+            state_class="user.preference",
+            key="coffee",
+            value={"semantic": "likes", "degree_hint": 0.85},
+            sources=(event.id,),
+        ),
+    )
+
+    result = apply_state_candidates(
+        current_state=CanonicalState(),
+        candidates=candidates,
+        events={event.id: event},
+        required_source_ids=frozenset({event.id}),
+    )
+
+    values = {record.key: record.value for record in result.state.states}
+    assert values == {
+        "tea": {"semantic": "likes", "degree_hint": 0.65},
+        "coffee": {"semantic": "likes", "degree_hint": 0.85},
+    }
+    assert values["coffee"]["degree_hint"] > values["tea"]["degree_hint"]
+
+
+def test_identical_degree_hint_is_noop() -> None:
+    event = _user_event()
+    value = {"semantic": "likes", "degree_hint": 0.85}
+    initial = StateRecord(
+        state_id="coffee-old",
+        state_class="user.preference",
+        key="coffee",
+        value=value,
+        sources=("old-event",),
+    )
+    candidate = StateCandidate.set(
+        state_class="user.preference",
+        key="coffee",
+        value={"semantic": "likes", "degree_hint": 0.85},
+        sources=(event.id,),
+    )
+
+    result = apply_state_candidates(
+        current_state=CanonicalState(states=(initial,)),
+        candidates=(candidate,),
+        events={event.id: event},
+        required_source_ids=frozenset({event.id}),
+    )
+
+    assert result.decisions[0].status == "noop"
+    assert result.state.states == (initial,)
+
+
 def test_degree_weakening_is_a_set_replacement_not_removal() -> None:
     event = _user_event()
     initial = StateRecord(
