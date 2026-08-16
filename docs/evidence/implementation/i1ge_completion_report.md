@@ -28,7 +28,7 @@ relaylm_exact_source_snapshot: i1ge_completion_report-source.txt
 
 ## Status and authority
 
-This is frozen implementation evidence for PR #411. The later validation-governance handoff is retained as [I1-GE Durable-finalization Crash Validation](i1ge-durable-finalization-crash-validation-handoff.md). Current behavior remains owned by the [I1-G durable-finalization contract](../../architecture/i1g_pre_enqueue_durable_finalization_contract.md), [I1-GD retention and cleanup](../../architecture/i1gd_durable_finalization_retention_cleanup.md), implementation, and the focused I1-GE crash/security/concurrency smokes.
+This is frozen implementation evidence for PR #411. The later validation-governance handoff is retained as [I1-GE Durable-finalization Crash Validation](i1ge-durable-finalization-crash-validation-handoff.md). Current behavior remains owned by the [permanent durable-finalization contract](../../contracts/slp/durable-finalization.md), implementation, and the focused I1-GE crash/security/concurrency smokes.
 
 The [exact snapshot](i1ge_completion_report-source.txt) is byte-identical to the source final-head, source merge, and pre-cutover forms: blob `f03425235eea7a1a82bf881d796a4ce4e44205e8`, SHA-256 `088822c7c3c73503eee28572b3d084b34f6005e18a7aa1402c8d5173381e396c`. No post-source report modification exists.
 
@@ -59,7 +59,7 @@ This source slice proves crash/restart convergence for durable-finalization publ
 ## Shared documentation update inputs
 
 - Historical completion: I1-GE crash/restart validation completed at PR #411.
-- Historical governance handoff: [I1-GE Durable-finalization Crash Validation](i1ge-durable-finalization-crash-validation-handoff.md). Current authority remains the [I1-G durable-finalization contract](../../architecture/i1g_pre_enqueue_durable_finalization_contract.md), [I1-GD retention and cleanup](../../architecture/i1gd_durable_finalization_retention_cleanup.md), implementation, and the focused I1-GE smokes.
+- Historical governance handoff: [I1-GE Durable-finalization Crash Validation](i1ge-durable-finalization-crash-validation-handoff.md). Current authority remains the [permanent durable-finalization contract](../../contracts/slp/durable-finalization.md), implementation, and the focused I1-GE smokes.
 - Runtime non-change: this cutover changes documentation and validation paths only; no runtime behavior changes.
 
 ## Source pull request
