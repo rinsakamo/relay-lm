@@ -134,7 +134,7 @@ Primary sources:
 
 - current architecture router context;
 - `pipeline_responsibility_design.md` system-level sections;
-- `safe_soul_scene_ctx_compile_chain.md` system-level constraints;
+- canonical subsystem boundaries and privacy constraints;
 - durable sections of product/runtime hardening design.
 
 ### `architecture/pipeline-responsibilities.md`
@@ -175,7 +175,7 @@ Owns:
 
 Primary sources:
 
-- `file_first_character_workspace_design.md`;
+- `character-workspace/system.md` and `character-workspace/source-compiler.md`;
 - stable portions of CW-A1 through CW-A5;
 - RelaySOUL file-first source-set rationale.
 

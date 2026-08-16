@@ -175,7 +175,7 @@ No code path in this stage touches the backend response, writes a persistent sto
 
 ## Target RelayCTX working-state evolution (target only, not implemented by this chain)
 
-[Context Packing Design](../architecture/context_packing_design.md) and [Context Compiler Contract](../contracts/context_compiler_contract.md#relayctx-working-state) describe a conceptual, not-yet-implemented “RelayCTX working state” and target `ContextBlock` shape (`block_id`, `block_type`, `stability_class`, `source_class`, `content`, `token_budget_hint`, `include_in_prefix_cache_target`). That target shape has not been reconciled with this chain's shipped field names (`assembled_block_type`, `assembled_block_source`, `assembled_block_priority`, `assembled_block_token_budget_hint`). Nothing in this contract implements or requires that target shape; this document's field names own current behavior.
+[Context Assembly](../architecture/context/context-assembly.md) and [Context Compiler Contract](../contracts/context_compiler_contract.md#relayctx-working-state) describe a conceptual, not-yet-implemented “RelayCTX working state” and target `ContextBlock` shape (`block_id`, `block_type`, `stability_class`, `source_class`, `content`, `token_budget_hint`, `include_in_prefix_cache_target`). That target shape has not been reconciled with this chain's shipped field names (`assembled_block_type`, `assembled_block_source`, `assembled_block_priority`, `assembled_block_token_budget_hint`). Nothing in this contract implements or requires that target shape; this document's field names own current behavior.
 
 ## Non-authority
 

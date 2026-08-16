@@ -16,7 +16,7 @@ relaylm_not_authoritative_for:
   - exact filesystem transaction, template-registry, or remote-import implementation
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../file_first_character_workspace_design.md
+  - source-compiler.md
   - ../../contracts/character-workspace/source-tree.md
   - ../../contracts/character-workspace/parser-and-validation.md
   - ../../contracts/character-workspace/compiled-projections.md
@@ -494,7 +494,7 @@ This parent architecture does not define:
 
 ## Related architecture
 
-- [File-first Character Workspace Design](../file_first_character_workspace_design.md)
+- [Character Workspace Source Compiler](source-compiler.md)
 - [Character Workspace Source Tree Contract](../../contracts/character-workspace/source-tree.md)
 - [Character Workspace Parser and Validation Contract](../../contracts/character-workspace/parser-and-validation.md)
 - [Character Workspace Compiled Projections Contract](../../contracts/character-workspace/compiled-projections.md)

@@ -20,7 +20,7 @@ relaylm_related_authority:
   - runtime/request-response-pipeline.md
   - runtime/compile-and-checkpoint.md
   - runtime/scheduler.md
-  - file_first_character_workspace_design.md
+  - character-workspace/system.md
   - memory/formation.md
 relaylm_related_contracts:
   - ../contracts/governed-evidence-contract-family.md

@@ -24,7 +24,7 @@ relaylm_related_authority:
   - ../memory_lifecycle_design.md
   - ../relaymem_slp_execution_design.md
   - ../relaymem_slp_current_target.md
-  - ../context_packing_design.md
+  - ../context/context-assembly.md
   - ../runtime/request-response-pipeline.md
   - ../runtime/scheduler.md
 ---

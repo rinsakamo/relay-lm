@@ -17,7 +17,6 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../relayscn_mvp_scene_policy.md
-  - ../scene_lifecycle_design.md
   - ../runtime/request-response-pipeline.md
   - ../runtime/compile-and-checkpoint.md
   - ../memory/retrieval-and-grounding.md
@@ -347,7 +346,6 @@ This architecture does not define:
 ## Related architecture
 
 - [RelaySCN MVP Scene Policy](../relayscn_mvp_scene_policy.md)
-- [Scene Lifecycle Design](../scene_lifecycle_design.md)
 - [Runtime Request / Response Pipeline](../runtime/request-response-pipeline.md)
 - [Memory Subsystem Architecture](../memory/system.md)
 - [Ordinary Memory Retrieval and Grounding](../memory/retrieval-and-grounding.md)

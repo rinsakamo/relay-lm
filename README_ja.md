@@ -254,7 +254,7 @@ Out-of-band after-turn path:
 
 - 📍 [現在のプロジェクト状況](docs/PROJECT_STATUS.md)
 - 🗺️ [ドキュメント一覧](docs/README.md)
-- 🧬 [File-first Character Workspace設計](docs/architecture/file_first_character_workspace_design.md)
+- 🧬 [Character Workspaceアーキテクチャ](docs/architecture/character-workspace/system.md)
 - 🧭 [Character Workspace creation and import](docs/architecture/character-workspace/creation-and-import.md)
 - 🏗️ [アーキテクチャ文書](docs/architecture/README.md)
 - 🚀 [OpenWebUI + LM Studioガイド](docs/guides/openwebui-lmstudio-integration.md)

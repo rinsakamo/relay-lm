@@ -254,7 +254,7 @@ For authoritative ownership and order, see the [Pipeline Responsibilities](docs/
 
 - 📍 [Current project status](docs/PROJECT_STATUS.md)
 - 🗺️ [Documentation index](docs/README.md)
-- 🧬 [File-first Character Workspace design](docs/architecture/file_first_character_workspace_design.md)
+- 🧬 [Character Workspace architecture](docs/architecture/character-workspace/system.md)
 - 🧭 [Character Workspace creation and import](docs/architecture/character-workspace/creation-and-import.md)
 - 🏗️ [Architecture documents](docs/architecture/README.md)
 - 🧭 [Project execution plan](docs/architecture/project_execution_plan.md)

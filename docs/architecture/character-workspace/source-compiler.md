@@ -20,7 +20,7 @@ relaylm_related_authority:
   - ../../contracts/character-workspace/source-tree.md
   - ../../contracts/character-workspace/parser-and-validation.md
   - ../../contracts/character-workspace/compiled-projections.md
-  - ../file_first_character_workspace_design.md
+  - system.md
   - ../context/context-assembly.md
   - ../relationship/relationship-state.md
   - ../scene/scene-model.md
@@ -551,7 +551,7 @@ This architecture does not define:
 - [Character Workspace Source Tree Contract](../../contracts/character-workspace/source-tree.md)
 - [Character Workspace Parser and Validation Contract](../../contracts/character-workspace/parser-and-validation.md)
 - [Character Workspace Compiled Projections Contract](../../contracts/character-workspace/compiled-projections.md)
-- [File-first Character Workspace Design](../file_first_character_workspace_design.md)
+- [Character Workspace Architecture](system.md)
 - [RelayCTX Context Assembly](../context/context-assembly.md)
 - [RelayREL Relationship State](../relationship/relationship-state.md)
 - [RelaySCN Scene Model](../scene/scene-model.md)

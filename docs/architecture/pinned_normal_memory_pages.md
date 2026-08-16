@@ -8,7 +8,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - memory_lifecycle_design.md
   - character-workspace/showcase-starter-product-knowledge.md
-  - file_first_character_workspace_design.md
+  - character-workspace/system.md
   - memory/pinned-memory.md
 ---
 # Pinned Normal Memory Pages

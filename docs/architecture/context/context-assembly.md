@@ -16,8 +16,6 @@ relaylm_not_authoritative_for:
   - backend transport, model invocation, output finalization, or persistence implementation
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../context_packing_design.md
-  - ../safe_soul_scene_ctx_compile_chain.md
   - ../pipeline-responsibilities.md
   - ../runtime/request-response-pipeline.md
   - ../relationship/relationship-state.md
@@ -428,8 +426,8 @@ This architecture does not define:
 
 ## Related architecture
 
-- [RelayLM Context Packing Design](../context_packing_design.md)
-- [Safe REL / SOUL / Scene / CTX Compile Chain](../safe_soul_scene_ctx_compile_chain.md)
+- [Character Workspace Source Compiler](../character-workspace/source-compiler.md)
+- [RelayCTX Short-Term Runtime Contract](../../contracts/relayctx_short_term_runtime_contract.md)
 - [Runtime Request / Response Pipeline](../runtime/request-response-pipeline.md)
 - [RelayREL Relationship State](../relationship/relationship-state.md)
 - [RelaySCN Scene Model](../scene/scene-model.md)

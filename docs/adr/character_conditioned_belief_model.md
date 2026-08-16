@@ -110,7 +110,7 @@ Rejected as the sole policy because it is safe but socially flat. The selected d
 
 ## Related architecture
 
-- [Character Belief, Relationship, and Social Expression Dynamics](../architecture/character_belief_relationship_dynamics_design.md)
+- [Observation and Character-Conditioned Belief](../architecture/memory/observation-and-character-belief.md) and [Social Expression](../architecture/relationship/social-expression.md)
 - [AI Character Product Principles](../architecture/ai_character_product_principles.md)
 - [RelayMEM SLP Execution Design](../architecture/relaymem_slp_execution_design.md)
 - [RelaySCN MVP Scene Policy](../architecture/relayscn_mvp_scene_policy.md)

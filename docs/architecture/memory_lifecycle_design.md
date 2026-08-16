@@ -18,9 +18,9 @@ relaylm_not_authoritative_for:
   - RelayREL relationship update schema
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - file_first_character_workspace_design.md
-  - relayrel_relationship_design.md
-  - context_packing_design.md
+  - character-workspace/system.md
+  - relationship/relationship-state.md
+  - context/context-assembly.md
   - relaymem_mvp_design.md
   - relaymem_slp_execution_design.md
   - relaymem_slp_current_target.md

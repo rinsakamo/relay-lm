@@ -26,12 +26,12 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Documentation governance architecture](architecture/documentation-governance.md) — responsibility and control flow for active authority, retained records, synthesis, validation, and Git-history retirement.
 - [Repository maintenance system](architecture/repository-maintenance-system.md) — discovery, reviewed classification, deterministic projection, bounded cleanup, and retirement architecture.
 - [Documentation synthesis and retirement](operations/documentation-synthesis-and-retirement.md) — the repeatable D2-D6 operator procedure.
-- [File-first Character Workspace design](architecture/file_first_character_workspace_design.md) — the current product direction reset target: editable Markdown character sources compiled into runtime projections.
+- [Character Workspace architecture](architecture/character-workspace/system.md) — the current editable-source, generated-projection, and activation boundary.
 - [Character Workspace Source Compiler](architecture/character-workspace/source-compiler.md) — the current source tree, parser/validation, and deterministic compiler architecture for the file-first Character Workspace reset.
 - [Character Workspace Creation and Import](architecture/character-workspace/creation-and-import.md) — the current bounded creation, template, and local-import architecture for deterministic Character Workspace creation, with exact semantics in the [Character Workspace Creation and Commit Contract](contracts/character-workspace/creation-commit.md).
 - [O2 Supervised Scheduler Service](architecture/o2_supervised_scheduler_service.md) — the current opt-in supervised local scheduler service boundary.
 - [O3 Always-On Local Scheduler](architecture/o3_always_on_local_scheduler.md) — the current opt-in local CLI/process wrapper boundary.
-- [RelayREL relationship design](architecture/relayrel_relationship_design.md) — target-specific relationship state, relationship-conditioned interaction policy, and `RELATIONSHIP.md` / `relationships/<target>.md` ownership.
+- [RelayREL relationship state](architecture/relationship/relationship-state.md) — target-specific relationship state, relationship-conditioned interaction policy, and `RELATIONSHIP.md` / `relationships/<target>.md` ownership.
 - [Showcase, Public Starter, and Product Knowledge Ownership](architecture/character-workspace/showcase-starter-product-knowledge.md) — the accepted target ownership split between developer showcase characters, the public adoptable starter, user-authored/imported characters, and official RelayLM product knowledge.
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, AI reading rules, and the parallel implementation/convergence flow.
 - [Pipeline Responsibilities](architecture/pipeline-responsibilities.md) — component responsibility and canonical target order.
@@ -47,11 +47,11 @@ Implementation PRs record bounded implementation and validation evidence in the 
 
 ## Product-critical boundaries
 
-- [File-first Character Workspace design](architecture/file_first_character_workspace_design.md)
+- [Character Workspace architecture](architecture/character-workspace/system.md)
 - [Character Workspace Source Tree Contract](contracts/character-workspace/source-tree.md)
 - [Character Workspace Maintenance Candidates Contract](contracts/character-workspace/maintenance-candidates.md)
 - [Character Workspace Creation and Commit Contract](contracts/character-workspace/creation-commit.md)
-- [RelayREL relationship design](architecture/relayrel_relationship_design.md)
+- [RelayREL relationship state](architecture/relationship/relationship-state.md)
 - [Character Workspace Creation and Import](architecture/character-workspace/creation-and-import.md)
 - [P0 RelayREL / RelaySCN / RelayEMO ordering fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md)
 - [Analyzer Candidate Contract](contracts/analyzer-candidate.md)
@@ -163,10 +163,13 @@ Current runtime and implementation status is intentionally not summarized here. 
 
 ## Target architecture and post-MVP design
 
-- [File-first Character Workspace design](architecture/file_first_character_workspace_design.md)
-- [RelayREL relationship design](architecture/relayrel_relationship_design.md)
+- [Character Workspace architecture](architecture/character-workspace/system.md)
+- [RelayREL relationship state](architecture/relationship/relationship-state.md)
 - [Showcase, Public Starter, and Product Knowledge Ownership](architecture/character-workspace/showcase-starter-product-knowledge.md)
-- [Character belief, relationship, and social expression dynamics](architecture/character_belief_relationship_dynamics_design.md)
+- [Observation and Character-Conditioned Belief](architecture/memory/observation-and-character-belief.md)
+- [Social Expression](architecture/relationship/social-expression.md)
+- [Scene Model](architecture/scene/scene-model.md)
+- [Context Assembly](architecture/context/context-assembly.md)
 - [ADR: character-conditioned belief without rewriting observation](adr/character_conditioned_belief_model.md)
 - [Character Personality and Experience Architecture](architecture/character/personality-and-experience.md)
 

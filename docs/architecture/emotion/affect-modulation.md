@@ -22,7 +22,6 @@ relaylm_related_authority:
   - ../memory/observation-and-character-belief.md
   - ../privacy/protected-source-and-disclosure.md
   - ../pipeline-responsibilities.md
-  - ../safe_soul_scene_ctx_compile_chain.md
 relaylm_lifecycle: stable
 relaylm_primary_consumers:
   - RelayEMO and runtime maintainers
@@ -420,4 +419,4 @@ This architecture does not define:
 - [RelaySCN Scene Model](../scene/scene-model.md)
 - [Observation and Character-Conditioned Belief](../memory/observation-and-character-belief.md)
 - [Protected Source and Disclosure](../privacy/protected-source-and-disclosure.md)
-- [Safe REL / SOUL / Scene / CTX Compile Chain](../safe_soul_scene_ctx_compile_chain.md)
+- [Pipeline Responsibilities](../pipeline-responsibilities.md)

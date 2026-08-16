@@ -17,7 +17,7 @@ relaylm_related_authority:
   - subjective-mem-storage-authority-and-commit-protocol.md
   - ../adr/0005-subjective-mem-storage-authority.md
   - ../architecture/lc1a_subjective_mem_correct.md
-  - ../architecture/file_first_character_workspace_design.md
+  - ../architecture/character-workspace/system.md
 ---
 # Subjective MEM Canonical Markdown v1 Physical Contract
 
