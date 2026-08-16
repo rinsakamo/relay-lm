@@ -25,8 +25,8 @@ relaylm_related_authority:
   - ../privacy/protected-source-and-disclosure.md
   - ../memory/observation-and-character-belief.md
   - ../memory/scene-memory-scope.md
-  - ../character_belief_relationship_dynamics_design.md
-  - ../safe_soul_scene_ctx_compile_chain.md
+  - ../memory/observation-and-character-belief.md
+  - ../context/context-assembly.md
 relaylm_lifecycle: stable
 relaylm_primary_consumers:
   - relationship, scene, emotion, and response maintainers
@@ -459,5 +459,5 @@ This concept does not define:
 - [Protected Source and Disclosure](../privacy/protected-source-and-disclosure.md)
 - [Observation and Character-Conditioned Belief](../memory/observation-and-character-belief.md)
 - [Scene-Aware Memory Scope](../memory/scene-memory-scope.md)
-- [Character Belief, Relationship, and Social Expression Dynamics](../character_belief_relationship_dynamics_design.md)
-- [Safe REL / SOUL / Scene / CTX Compile Chain](../safe_soul_scene_ctx_compile_chain.md)
+- [Observation and Character-Conditioned Belief](../memory/observation-and-character-belief.md)
+- [RelayCTX Context Assembly](../context/context-assembly.md)

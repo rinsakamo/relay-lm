@@ -19,7 +19,6 @@ relaylm_decision_source: ../../adr/0004-single-response-call-ordinary-conversati
 relaylm_related_authority:
   - request-response-pipeline.md
   - ../pipeline-responsibilities.md
-  - ../safe_soul_scene_ctx_compile_chain.md
   - scheduler.md
 relaylm_related_contracts:
   - ../../contracts/runtime_compile_artifact_contract.md

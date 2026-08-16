@@ -6,7 +6,7 @@ This document preserves the product principles that distinguish RelayLM from a g
 
 RelayLM remains an OpenAI-compatible runtime proxy. Its product role is to improve persona stability, relationship continuity, memory usefulness, expression appropriateness, and conversational comfort while preserving frontend compatibility and low-latency generation.
 
-Detailed component ownership remains in [Pipeline Responsibilities](pipeline-responsibilities.md). Context layout remains in [Context Packing Design](context_packing_design.md). Current implementation state remains in [Project Status](../PROJECT_STATUS.md).
+Detailed component ownership remains in [Pipeline Responsibilities](pipeline-responsibilities.md). Context layout remains in [Context Assembly](context/context-assembly.md). Current implementation state remains in [Project Status](../PROJECT_STATUS.md).
 
 ## Product invariant
 

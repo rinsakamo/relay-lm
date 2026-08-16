@@ -220,7 +220,7 @@ These are durable ownership and publication constraints, not an exact machine sc
 
 ## Related documents
 
-- [File-first Character Workspace Design](../file_first_character_workspace_design.md)
+- [Character Workspace Architecture](system.md)
 - [Character Workspace Creation and Import](creation-and-import.md)
 - [Pinned Normal Memory Pages](../pinned_normal_memory_pages.md)
 - [Character Workspace Creation and Commit Contract](../../contracts/character-workspace/creation-commit.md)

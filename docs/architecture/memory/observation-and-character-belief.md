@@ -24,7 +24,6 @@ relaylm_related_authority:
   - retrieval-and-grounding.md
   - scene-memory-scope.md
   - ../scene/scene-model.md
-  - ../character_belief_relationship_dynamics_design.md
   - ../../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
 relaylm_related_contracts:
   - ../../contracts/shared-assessment-subjective-mem.md

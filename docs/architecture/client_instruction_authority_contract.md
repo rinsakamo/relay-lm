@@ -13,9 +13,9 @@ It complements:
 - [Phase 5-C4b Cache-Hit RelaySCN Projection Handoff](phase5c4b_cache_hit_relayscn_projection_handoff.md)
 - [Phase 5-C5c Runtime Cache-Writer Boundary Handoff](phase5c5c_runtime_cache_writer_boundary_handoff.md)
 - [Voice Streaming and TTS Architecture](voice/streaming-and-tts.md)
-- [Scene Lifecycle Design](scene_lifecycle_design.md)
+- [RelaySCN Scene Model](scene/scene-model.md)
 - [RelaySCN MVP Scene Policy](relayscn_mvp_scene_policy.md)
-- [Context Packing Design](context_packing_design.md)
+- [RelayCTX Context Assembly](context/context-assembly.md)
 - [Context Compiler Contract](../contracts/context_compiler_contract.md)
 - [Character Identity and Source Authority](character/identity-and-source-authority.md)
 

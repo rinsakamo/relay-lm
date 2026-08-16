@@ -24,8 +24,8 @@ relaylm_related_authority:
   - ../memory/retrieval-and-grounding.md
   - ../memory/storage-and-recovery.md
   - ../scene/scene-model.md
-  - ../relayrel_relationship_design.md
-  - ../safe_soul_scene_ctx_compile_chain.md
+  - ../relationship/relationship-state.md
+  - ../pipeline-responsibilities.md
 relaylm_related_contracts:
   - ../../contracts/shared-assessment-subjective-mem.md
   - ../../contracts/subjective-mem-storage-authority-and-commit-protocol.md
@@ -397,7 +397,7 @@ This concept does not define:
 - [Ordinary Memory Retrieval and Grounding](../memory/retrieval-and-grounding.md)
 - [Memory Storage and Recovery](../memory/storage-and-recovery.md)
 - [RelaySCN Scene Model](../scene/scene-model.md)
-- [RelayREL Relationship Design](../relayrel_relationship_design.md)
-- [Safe REL / SOUL / Scene / CTX Compile Chain](../safe_soul_scene_ctx_compile_chain.md)
+- [RelayREL Relationship State](../relationship/relationship-state.md)
+- [Pipeline Responsibilities](../pipeline-responsibilities.md)
 - [ADR: Character-conditioned belief without rewriting observation](../../adr/character_conditioned_belief_model.md)
 - [ADR 0003: Subjective MEM direction](../../adr/0003-subjective-mem-direction.md)

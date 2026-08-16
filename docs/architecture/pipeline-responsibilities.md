@@ -19,7 +19,6 @@ relaylm_related_authority:
   - system-overview.md
   - runtime/request-response-pipeline.md
   - runtime/compile-and-checkpoint.md
-  - safe_soul_scene_ctx_compile_chain.md
   - memory/formation.md
 relaylm_related_contracts:
   - ../contracts/pipeline_node_result_contract.md

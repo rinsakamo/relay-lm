@@ -16,14 +16,13 @@ relaylm_not_authoritative_for:
   - exact target authentication, identity resolution, UI, or model behavior
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../relayrel_relationship_design.md
-  - ../character_belief_relationship_dynamics_design.md
+  - ../memory/observation-and-character-belief.md
   - ../pipeline-responsibilities.md
   - ../scene/scene-model.md
   - ../memory/observation-and-character-belief.md
   - ../memory/scene-memory-scope.md
   - ../privacy/protected-source-and-disclosure.md
-  - ../safe_soul_scene_ctx_compile_chain.md
+  - ../context/context-assembly.md
   - ../character/identity-and-source-authority.md
 relaylm_lifecycle: stable
 relaylm_primary_consumers:
@@ -345,10 +344,10 @@ This architecture does not define:
 
 ## Related architecture
 
-- [RelayREL Relationship Design](../relayrel_relationship_design.md)
+- [Social Expression](social-expression.md)
 - [Observation and Character-Conditioned Belief](../memory/observation-and-character-belief.md)
 - [Scene-Aware Memory Scope](../memory/scene-memory-scope.md)
 - [Protected Source and Disclosure](../privacy/protected-source-and-disclosure.md)
 - [RelaySCN Scene Model](../scene/scene-model.md)
-- [Safe REL / SOUL / Scene / CTX Compile Chain](../safe_soul_scene_ctx_compile_chain.md)
+- [RelayCTX Context Assembly](../context/context-assembly.md)
 - [Character Identity and Source Authority](../character/identity-and-source-authority.md)

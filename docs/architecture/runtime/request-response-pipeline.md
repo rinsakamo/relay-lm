@@ -20,7 +20,7 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_decision_source: ../../adr/0004-single-response-call-ordinary-conversation-deferred-formation.md
 relaylm_related_authority:
   - ../pipeline-responsibilities.md
-  - ../context_packing_design.md
+  - ../context/context-assembly.md
   - ../relayscn_mvp_scene_policy.md
   - ../emotion/affect-modulation.md
   - ../relayint_mvp_design.md

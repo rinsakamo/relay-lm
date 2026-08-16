@@ -222,6 +222,21 @@
       "retention_reason": "D6-R35-S retired the ASM-1 Shared Assessment runtime handoff after permanent formation and governed-Evidence/Shared-Assessment authorities covered its revision, authorization-receipt, split-pass, privacy, and fail-closed semantics; live runtime/tests/smokes remain and the exact source is Git-recoverable."
     },
     {
+      "old_path": "docs/architecture/character_belief_relationship_dynamics_design.md",
+      "last_live_commit": "ea820f54a55520fd2786b29bab52edb78664abb9",
+      "old_blob_sha": "299f93db2478f8ba3d3e0b90afcb508f4cbe845e",
+      "removed_by_pr": 1253,
+      "replacement_paths": [
+        "docs/adr/character_conditioned_belief_model.md",
+        "docs/architecture/memory/observation-and-character-belief.md",
+        "docs/architecture/privacy/protected-source-and-disclosure.md",
+        "docs/architecture/relationship/relationship-state.md",
+        "docs/architecture/relationship/social-expression.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-V retired the pre-canonical character-belief, relationship-dynamics, and social-expression source after permanent observation/belief, relationship, social-expression, privacy, and decision authorities absorbed its durable provenance, provisional-belief, probing, repair, disclosure, and dependency-boundary semantics; the exact source remains recoverable from Git."
+    },
+    {
       "old_path": "docs/architecture/character_template_creation_flow.md",
       "last_live_commit": "c1f060cfb5bf865082de0e9007840d7aaf0a0712",
       "old_blob_sha": "09d52aef61749e0936699775d1662db42b14532d",
@@ -234,6 +249,20 @@
       ],
       "disposition": "superseded",
       "retention_reason": "D6-R35-K retired the target Character Template and Creation Flow doc after the permanent creation/import architecture, exact creation/commit contract, and accepted showcase/starter/product-knowledge policy already owned its durable target semantics. Its framing of RelayLM product-help knowledge as ordinary personal memory stays superseded and is not restored; remote registry, network distribution, and LLM-drafted generation stay separately governed future work. No accepted target lacked a permanent owner."
+    },
+    {
+      "old_path": "docs/architecture/context_packing_design.md",
+      "last_live_commit": "340c295bc7ee73a3dd8ad53633ef0114c1554682",
+      "old_blob_sha": "b90e2359028441b07e53bad4858b4fa5d5e5df81",
+      "removed_by_pr": 1253,
+      "replacement_paths": [
+        "docs/architecture/context/context-assembly.md",
+        "docs/architecture/pipeline-responsibilities.md",
+        "docs/architecture/runtime/request-response-pipeline.md",
+        "docs/contracts/relayctx_short_term_runtime_contract.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-V retired the pre-canonical RelayCTX context-packing source after current context-assembly, pipeline, request/response, and exact RelayCTX runtime authorities absorbed its context compilation, stable-to-dynamic ordering, privacy, and budget-degradation semantics; the exact source remains recoverable from Git."
     },
     {
       "old_path": "docs/architecture/cw_a1_file_first_source_tree_parser_contracts.md",
@@ -328,6 +357,21 @@
       ],
       "disposition": "superseded",
       "retention_reason": "D6-R35-U retired the transitional E1-R5 Primary recall bridge handoff after its former bridge behavior had already been folded into the canonical Primary compatibility implementation and RT-1D-R5 had retired ordinary Primary serving. Current reader/cutover boundaries, structural and audit smokes, and frozen evidence remain protected; the exact handoff remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/file_first_character_workspace_design.md",
+      "last_live_commit": "c0db7113b6a47fe70664b4d9659beb5f8a727344",
+      "old_blob_sha": "cb52516c9dba9c4ab7ae4d079257cd202dcf5b53",
+      "removed_by_pr": 1253,
+      "replacement_paths": [
+        "docs/architecture/character-workspace/source-compiler.md",
+        "docs/architecture/character-workspace/system.md",
+        "docs/contracts/character-workspace/compiled-projections.md",
+        "docs/contracts/character-workspace/parser-and-validation.md",
+        "docs/contracts/character-workspace/source-tree.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-V retired the pre-canonical file-first Character Workspace source after the permanent workspace and source/compiler authorities plus exact source-tree, parser/validation, and compiled-projection contracts absorbed its character-file ownership, source/compiled distinction, context-tier, activation, and mutation-boundary semantics; the exact source remains recoverable from Git."
     },
     {
       "old_path": "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
@@ -846,7 +890,7 @@
       "removed_by_pr": 957,
       "replacement_paths": [
         "docs/architecture/ai_character_product_principles.md",
-        "docs/architecture/context_packing_design.md",
+        "docs/architecture/context/context-assembly.md",
         "docs/architecture/open_llm_vtuber_integration.md",
         "docs/architecture/pipeline-responsibilities.md",
         "docs/architecture/privacy/local-first-runtime.md",
@@ -982,6 +1026,20 @@
       "retention_reason": "D6-R14 retired the dead RelayREF/RelaySLP compatibility pointer after PR #960 removed its historical source, repaired active authority edges, and left the pointer with no independent authority; delete-only exact-head link validation found no active Markdown consumers, so current readers resolve directly through the canonical timing, recovery, scene, scheduler, checkpoint, and deferred-formation authorities while the exact pointer remains recoverable from Git."
     },
     {
+      "old_path": "docs/architecture/relayrel_relationship_design.md",
+      "last_live_commit": "c0db7113b6a47fe70664b4d9659beb5f8a727344",
+      "old_blob_sha": "e923049b29b7d84d2e04bd00cfaabba4c9166e5a",
+      "removed_by_pr": 1253,
+      "replacement_paths": [
+        "docs/architecture/character-workspace/system.md",
+        "docs/architecture/privacy/protected-source-and-disclosure.md",
+        "docs/architecture/relationship/relationship-state.md",
+        "docs/architecture/relationship/social-expression.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-V retired the pre-canonical RelayREL relationship source after the permanent Character Workspace, relationship-state, social-expression, and privacy authorities absorbed its target-specific source ownership, interaction policy, disclosure, and no-silent-mutation boundaries; exact relationship schemas and update mechanics remain with their owning contracts/runtime, and the exact source remains recoverable from Git."
+    },
+    {
       "old_path": "docs/architecture/relayrun_runtime_checkpoint_design.md",
       "last_live_commit": "3cee07899121e8e75eaaa8ba37cbefb6eb9f832c",
       "old_blob_sha": "c9cf93e4841c1847d6b110a884516fa2f6cdb5e2",
@@ -1042,6 +1100,39 @@
       ],
       "disposition": "absorbed",
       "retention_reason": "D6-R8 retired the mixed runtime-operational source after its durable privacy/isolation, observability, and reliability/compatibility responsibilities were extracted by PRs #945, #946, and #948 and its remaining fallback, context, performance, request/response, memory, scheduler, and adapter responsibilities were already owned by canonical authorities; volatile implementation enumerations and historical mode ladders remain recoverable from Git rather than continuing as active architecture."
+    },
+    {
+      "old_path": "docs/architecture/safe_soul_scene_ctx_compile_chain.md",
+      "last_live_commit": "e9ebe5e8fd38c55b9ad38b0f05de9f6d87dc1015",
+      "old_blob_sha": "fa98383246be546fd0b454bbf8aa1e7fb0ab6cac",
+      "removed_by_pr": 1253,
+      "replacement_paths": [
+        "docs/architecture/character-workspace/system.md",
+        "docs/architecture/context/context-assembly.md",
+        "docs/architecture/emotion/affect-modulation.md",
+        "docs/architecture/pipeline-responsibilities.md",
+        "docs/architecture/privacy/protected-source-and-disclosure.md",
+        "docs/architecture/relationship/relationship-state.md",
+        "docs/architecture/runtime/compile-and-checkpoint.md",
+        "docs/architecture/scene/scene-model.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-V retired the pre-canonical SOUL/REL/SCN/EMO/CTX compile-chain source after permanent Character Workspace, context, affect, pipeline, privacy, relationship, runtime, and scene authorities absorbed its ownership, ordering, source/compiled, fallback, and content-free-boundary semantics; current implementation handoffs remain protected and the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/scene_lifecycle_design.md",
+      "last_live_commit": "340c295bc7ee73a3dd8ad53633ef0114c1554682",
+      "old_blob_sha": "b381ac12a911a0ac883638a4175a9fb9a15ac21e",
+      "removed_by_pr": 1253,
+      "replacement_paths": [
+        "docs/architecture/pipeline-responsibilities.md",
+        "docs/architecture/privacy/protected-source-and-disclosure.md",
+        "docs/architecture/scene/scene-model.md",
+        "docs/contracts/relayemo-scene-hint.md",
+        "docs/contracts/scene-classifier.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-V retired the pre-canonical Scene Lifecycle source after the permanent scene, pipeline, privacy, and scene-classification authorities absorbed its scene-state, policy, lifecycle, audience, persistence, and content-free-projection boundaries; current RelaySCN v0 implementation remains in its protected handoff and the exact source remains recoverable from Git."
     },
     {
       "old_path": "docs/architecture/sm1_subjective_mem_create_runtime.md",

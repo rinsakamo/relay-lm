@@ -22,7 +22,7 @@ relaylm_related_authority:
   - ../DOCUMENTATION_MODEL.md
   - ../release/v0.1-release-readiness.md
   - pipeline-responsibilities.md
-  - file_first_character_workspace_design.md
+  - character-workspace/system.md
   - character-workspace/creation-and-import.md
   - current_target_migration_guide.md
   - relaymem_slp_current_target.md

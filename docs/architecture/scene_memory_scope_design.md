@@ -18,11 +18,11 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - pipeline-responsibilities.md
-  - relayrel_relationship_design.md
-  - scene_lifecycle_design.md
+  - relationship/relationship-state.md
+  - scene/scene-model.md
   - memory_lifecycle_design.md
-  - context_packing_design.md
-  - file_first_character_workspace_design.md
+  - context/context-assembly.md
+  - character-workspace/system.md
 ---
 # Scene-aware Memory Scope Design
 
