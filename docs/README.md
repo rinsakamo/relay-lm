@@ -56,6 +56,7 @@ Implementation PRs record bounded implementation and validation evidence in the 
 - [P0 RelayREL / RelaySCN / RelayEMO ordering fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md)
 - [Analyzer Candidate Contract](contracts/analyzer-candidate.md)
 - [Query Detail Analyzer Contract](contracts/query-detail-analyzer.md)
+- [Grounded Recall Contract](contracts/grounded-recall.md)
 - [Retrieval Query Analyzer Contract](contracts/retrieval-query-analyzer.md)
 - [Reference/Intent Analyzer Contract](contracts/reference-intent-analyzer.md)
 - [RelayEMO Scene Hint Contract](contracts/relayemo-scene-hint.md)

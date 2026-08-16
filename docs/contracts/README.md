@@ -96,6 +96,13 @@ Machine-readable CTX-OVL v1 materials:
 - [prose/schema equivalence and coverage validator](../../scripts/relaylm_ctx_ovl_v1_equivalence.py);
 - [invalid-fixture registry guard](../../scripts/relaylm_ctx_ovl_v1_fixture_registry_guard.py).
 
+## Grounded Recall contract
+
+- [Grounded Recall Contract](grounded-recall.md)
+  - current exact owner of the `relaymem.grounded_recall_context.v0` private context and `relaymem.grounded_recall_projection.v0` content-free projection
+  - preserves one-authority selected-memory consumption, provenance/support and lifecycle/scope exclusion, unsupported-detail suppression, private/public separation, and fail-closed request-path semantics
+  - does not own ordinary reader selection, candidate discovery/ranking, memory storage, lifecycle mutation, or E1-R4 source retirement
+
 ## Shared Assessment and Subjective MEM contract
 
 - [Shared Assessment and Subjective MEM contract](shared-assessment-subjective-mem.md)
