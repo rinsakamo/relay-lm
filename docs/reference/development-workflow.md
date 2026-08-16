@@ -19,7 +19,8 @@ Every transaction:
 - owns one bounded responsibility;
 - avoids adjacent scope expansion;
 - leaves frozen 0.x `main` untouched;
-- merges only the exact reviewed head.
+- merges only the exact reviewed head;
+- reconciles its owning Issue after a successful merge when an Issue exists.
 
 ## 1. Classify the change
 
@@ -124,6 +125,32 @@ Any wrong or ambiguous answer means the transaction is incomplete.
 
 Re-read the PR head and current `v1`, verify the bounded diff, and merge only the exact reviewed head.
 
+### G. Issue reconciliation
+
+After the merge succeeds, reconcile the owning Issue against the merged reality. Use exactly one of these outcomes:
+
+```text
+implemented completely
+  -> close completed
+
+implemented partially
+  -> narrow the Issue to true remaining work
+     OR move remaining work to a successor Issue and close the original
+
+accepted design promoted to canonical docs
+  -> link the canonical authority / successor work and close or supersede the design Issue
+
+not adopted
+  -> close not planned
+
+real work remains
+  -> keep open, but update Current / Remaining scope so the Issue does not describe stale authority
+```
+
+Issue closure happens after merge so the Issue never claims completion before the repository does. Record the merged PR and resulting authority where useful.
+
+A completed semantic transaction is therefore:
+
 ```text
 fresh authority
   → meaning/examples
@@ -132,6 +159,7 @@ fresh authority
   → authority docs
   → semantic audit
   → exact-head merge
+  → Issue reconciliation
 ```
 
 ## 3. Behavior-preserving change
@@ -143,6 +171,7 @@ fresh authority
   → same tests GREEN
   → documentation impact: updated or explicitly none
   → exact-head audit / merge
+  → Issue reconciliation when an owning Issue exists
 ```
 
 If semantics changed, reclassify the work as a semantic transaction.
@@ -155,6 +184,7 @@ fresh authority
   → bounded docs correction
   → semantic contradiction audit
   → exact-head merge
+  → Issue reconciliation when an owning Issue exists
 ```
 
 Docs-only work must not invent new runtime semantics.
@@ -162,13 +192,13 @@ Docs-only work must not invent new runtime semantics.
 ## 5. Artifact roles
 
 ```text
-Issue / bounded spec   intention + examples
+Issue / bounded spec   intention + examples + remaining-work ledger
 Tests                  executable contract / regression evidence
 Code                   minimal implementation
 Authority docs         human-readable current semantics
 ```
 
-A semantic transaction is not complete while these materially disagree.
+A semantic transaction is not complete while these materially disagree. Issues are planning and traceability artifacts, not current semantic authority; completed or superseded Issues must not remain open in a way that implies stale design is still pending.
 
 ## 6. Current vs deferred
 
@@ -184,13 +214,22 @@ Deferred / future work
 Owner: #issue
 ```
 
-## 7. Supporting automation
+## 7. Issue reconciliation rule
+
+Issue hygiene is part of transaction completion, not a separate governance project.
+
+> **A completed transaction reconciles its Issue: close it, narrow it to true remaining work, or explicitly supersede it.**
+
+Do not keep an Issue open merely as historical documentation. Git history, merged PRs, and canonical docs preserve history; open Issues should represent real unresolved work.
+
+## 8. Supporting automation
 
 Small supporting automation may be added when useful, such as:
 
 - PR documentation-impact declarations;
 - runtime-owner → tests → authority-doc mapping;
-- lightweight checks for mechanically derivable constants or schemas.
+- lightweight checks for mechanically derivable constants or schemas;
+- post-merge reminders for owning-Issue reconciliation.
 
 These support the workflow; they are not new architecture concepts.
 
@@ -202,3 +241,4 @@ These support the workflow; they are not new architecture concepts.
 4. **Current authority never describes deferred behavior in the present tense.**
 5. **One transaction = one bounded responsibility.**
 6. **Implement the minimum machinery required to satisfy the contract.**
+7. **A completed transaction reconciles its owning Issue.**
