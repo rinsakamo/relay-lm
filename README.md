@@ -67,4 +67,14 @@ POST /v1/chat/completions
 
 It is intentionally non-streaming for now. Client-supplied history is not treated as RelayLM memory or Identity authority. Safe streaming is tracked in #1269.
 
-See `docs/architecture/core.md`, `docs/contracts/openai-api.md`, and issue #1259.
+## Development workflow
+
+The current `v1` development workflow is defined in `docs/reference/development-workflow.md`.
+
+For semantic changes, the governing sequence is:
+
+> **Meaning → Example → Test → Code → Docs → Audit**
+
+Semantic behavior changes are test-first; behavior-preserving and docs-only transactions use lighter paths. One transaction owns one bounded responsibility, current-authority docs must not describe deferred behavior in the present tense, and merge is exact-head.
+
+See `docs/architecture/core.md`, `docs/contracts/openai-api.md`, `docs/reference/development-workflow.md`, and issue #1259.
