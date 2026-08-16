@@ -241,11 +241,11 @@ Lane R LR-D35-1 remaining classification detachment gate
   -> D6-R36 eligibility
 ```
 
-The M3H edge that originally blocked R is already closed: Lane R PR #1233 removed the former M3H architecture source from the current `r6.primary.index_log_recovery` classification evidence without changing the active asset, and mandatory P8 PR #1235 synchronized that result. Lane D D6-R35-R now retires the former M3H implementation handoff while preserving the live Primary modules, tests, focused smokes, and Lane R classification evidence.
+The M3H edge that originally blocked R is already closed: Lane R PR #1233 removed the former M3H architecture source from the current `r6.primary.index_log_recovery` classification evidence without changing the active asset, and mandatory P8 PR #1235 synchronized that result. Lane D D6-R35-R implementation PR #1240 retired the former M3D–M3H and I1-G/I1-GD implementation handoffs while preserving the live Primary modules, tests, focused smokes, and Lane R classification evidence.
 
 ### LR-D35-1 — remaining Lane R classification detachment gate
 
-Before Lane D starts R, Lane R must converge the remaining known current classification dependencies on source paths scheduled for later R35 retirement. At exact main `297a56ed377b0e6b1777df0b6a1fd3124cad25c2`, fresh read-only review identified these edges:
+Before Lane D started R, Lane R had to converge the remaining known current classification dependencies on source paths scheduled for later R35 retirement. At exact main `297a56ed377b0e6b1777df0b6a1fd3124cad25c2`, fresh read-only review identified these edges:
 
 1. `docs/architecture/e1_evaluation_consolidation.md` remains a current caller/evidence anchor for the R6 post-retirement Primary recall proof and recall-audit-projection rows. Lane R must detach the document edge while retaining the current runner, consolidation smoke, runtime, and test evidence required by those classifications.
 2. `docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md` remains evidence for the active reader-retirement regression row. Lane R must detach that document edge while retaining the maintained regression test and post-retirement structural proof.
