@@ -72,22 +72,41 @@ def _select_working_context(
             continue
         candidates.append(event)
 
-    selected_newest_first: list[ContextItem] = []
+    events = tuple(candidates)
+    exchanges_newest_first: list[tuple[Event, ...]] = []
+    index = len(events) - 1
+    while index >= 0:
+        event = events[index]
+        if event.actor == "assistant":
+            if index == 0 or events[index - 1].actor != "user":
+                index -= 1
+                continue
+            exchanges_newest_first.append((events[index - 1], event))
+            index -= 2
+            continue
+        exchanges_newest_first.append((event,))
+        index -= 1
+
+    selected_exchanges: list[tuple[ContextItem, ...]] = []
     used_chars = 0
-    for event in reversed(candidates):
-        content = event.payload["content"]
-        assert isinstance(content, str)
-        cost = len(content)
+    for exchange in exchanges_newest_first:
+        cost = sum(len(event.payload["content"]) for event in exchange)
         if cost > max_chars - used_chars:
             break
-        selected_newest_first.append(
-            ContextItem(
-                content=content,
-                sources=(event.id,),
-                actor=event.actor,
+        selected_exchanges.append(
+            tuple(
+                ContextItem(
+                    content=event.payload["content"],
+                    sources=(event.id,),
+                    actor=event.actor,
+                )
+                for event in exchange
             )
         )
         used_chars += cost
 
-    selected_newest_first.reverse()
-    return tuple(selected_newest_first)
+    return tuple(
+        item
+        for exchange in reversed(selected_exchanges)
+        for item in exchange
+    )
