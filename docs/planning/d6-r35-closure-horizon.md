@@ -145,6 +145,8 @@ Retire pre-canonical stable-design sources whose durable content has already bee
 
 Representative legacy families include file-first workspace design, safe SOUL/scene/context compile-chain design, relationship design, and character-belief/relationship-dynamics design. Fresh P1 defines the exact coherent source set.
 
+V is complete in implementation PR #1253: the six pre-canonical stable Character / Relationship / Scene / Context sources are retired with exact recovery identities in the retirement manifest, while the permanent Character Workspace, relationship, belief/observation, scene, affect, context/pipeline, and privacy owners remain current. W is the next eligible slot; no W issue, branch, PR, or implementation has started.
+
 ### D6-R35-W — legacy Memory / pinned / scene-scope / current-target source family
 
 Converge legacy memory lifecycle, pinned-memory, scene-memory-scope, and memory current/target interpretation sources onto permanent memory architecture and reference authority.
