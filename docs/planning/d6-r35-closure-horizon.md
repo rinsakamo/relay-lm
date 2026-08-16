@@ -127,9 +127,9 @@ Known horizon gate:
 
 - `docs/architecture/e1r4_retrieval_response_grounding.md` remains live;
 - stable retrieval architecture exists in `docs/architecture/memory/retrieval-and-grounding.md`;
-- the exact Grounded Recall context/result identity must have a permanent exact owner before retirement.
+- the exact Grounded Recall context/result identity must have a permanent exact owner before retirement; that owner is now `docs/contracts/grounded-recall.md` from implementation PR #1249.
 
-T is convergence, not retirement.
+T is convergence, not retirement, and is complete in implementation PR #1249. U is the next eligible slot.
 
 ### D6-R35-U — E1 retrieval / grounding / evaluation-source retirement
 
@@ -241,7 +241,7 @@ Lane R LR-D35-1 remaining classification detachment gate
   -> D6-R36 eligibility
 ```
 
-The M3H edge that originally blocked R is already closed: Lane R PR #1233 removed the former M3H architecture source from the current `r6.primary.index_log_recovery` classification evidence without changing the active asset, and mandatory P8 PR #1235 synchronized that result. Lane D D6-R35-R implementation PR #1240 retired the former M3D–M3H and I1-G/I1-GD implementation handoffs, and D6-R35-S implementation PR #1244 retired the former ASM-1, SM-1, and ST-1 runtime handoffs, while preserving the live Primary and Subjective modules, tests, focused smokes, and Lane R classification evidence.
+The M3H edge that originally blocked R is already closed: Lane R PR #1233 removed the former M3H architecture source from the current `r6.primary.index_log_recovery` classification evidence without changing the active asset, and mandatory P8 PR #1235 synchronized that result. Lane D D6-R35-R implementation PR #1240 retired the former M3D–M3H and I1-G/I1-GD implementation handoffs, D6-R35-S implementation PR #1244 retired the former ASM-1, SM-1, and ST-1 runtime handoffs, and D6-R35-T implementation PR #1249 promoted the exact Grounded Recall contract, while preserving the live Primary and Subjective modules, tests, focused smokes, and Lane R classification evidence.
 
 ### LR-D35-1 — remaining Lane R classification detachment gate
 
