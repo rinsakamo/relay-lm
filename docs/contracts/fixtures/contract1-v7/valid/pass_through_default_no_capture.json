@@ -1,1 +1,0 @@
-{"scenario":"explicit pass-through without opt-in produces no Contract 1 records","records":[],"expectations":{"route_mode":"explicit_pass_through","capture_opt_in":false,"contract1_record_count":0}}

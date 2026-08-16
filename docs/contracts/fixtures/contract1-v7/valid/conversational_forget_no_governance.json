@@ -1,1 +1,0 @@
-{"scenario":"natural-language session suppression is not evidence purge","records":[],"expectations":{"utterance":"この会話ではもうその話を出さないで","allowed_effects":["relayint_intent_candidate","relayctx_session_suppression"],"forbidden_contract1b_operations":["revoke_grant","global_restrict","redact_parts","purge"]}}
