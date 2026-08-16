@@ -21,7 +21,7 @@ relaylm_related_authority:
   - e1_evaluation_consolidation.md
   - e1r1_trusted_home_scene_admission.md
   - e1r2_character_store_bootstrap.md
-  - e1r4_retrieval_response_grounding.md
+  - ../contracts/grounded-recall.md
   - relaymem_slp_current_target.md
   - subjective-mem-retrieval-projection-hard-cutover.md
   - ../evidence/waves/wave7_cross_slice_convergence_audit.md

@@ -41,8 +41,7 @@ relaylm_related_authority:
   - e1r1_trusted_home_scene_admission.md
   - e1r2_character_store_bootstrap.md
   - e1r3_provenance_preserving_primary_mem_formation_summary.md
-  - e1r4_retrieval_response_grounding.md
-  - e1r5_primary_mem_recall_candidate_bridge.md
+  - ../contracts/grounded-recall.md
   - phase_i4_primary_mem_forget_hide_contract.md
   - e1_evaluation_consolidation.md
   - ../evidence/waves/wave7_cross_slice_convergence_audit.md

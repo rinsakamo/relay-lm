@@ -125,7 +125,7 @@ Promote the exact current Grounded Recall response-grounding artifact boundary r
 
 Known horizon gate:
 
-- `docs/architecture/e1r4_retrieval_response_grounding.md` remains live;
+- `docs/contracts/grounded-recall.md` is the permanent Grounded Recall exact owner;
 - stable retrieval architecture exists in `docs/architecture/memory/retrieval-and-grounding.md`;
 - the exact Grounded Recall context/result identity must have a permanent exact owner before retirement; that owner is now `docs/contracts/grounded-recall.md` from implementation PR #1249.
 

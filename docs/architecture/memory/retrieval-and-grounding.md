@@ -24,8 +24,7 @@ relaylm_related_authority:
   - ../relaymem_retrieval_execution_design.md
   - ../subjective-mem-retrieval-projection-hard-cutover.md
   - ../../contracts/grounded-recall.md
-  - ../e1r4_retrieval_response_grounding.md
-  - ../e1r5_primary_mem_recall_candidate_bridge.md
+  - ../../contracts/grounded-recall.md
   - ../integration_i1_primary_mem_two_turn_recall.md
   - ../phase_i4d_primary_retrieval_exclusion.md
   - ../../contracts/retrieval-query-analyzer.md
@@ -276,8 +275,8 @@ This canonical page absorbs stable architecture from the current Retrieval execu
 - `relaymem_retrieval_execution_design.md` — current implementation and R5 transition detail;
 - `subjective-mem-retrieval-projection-hard-cutover.md` — accepted RT-1 cutover/projection authority;
 - `../../contracts/grounded-recall.md` — exact Grounded Recall context/projection contract;
-- `e1r4_retrieval_response_grounding.md` — retained grounding implementation/regression handoff;
-- `e1r5_primary_mem_recall_candidate_bridge.md` — Primary-only compatibility/evaluation evidence;
+- `../../contracts/grounded-recall.md` — exact Grounded Recall context/projection contract;
+- `../phase_i4d_primary_retrieval_exclusion.md` and the retained E1-R5 completion/audit evidence — Primary-only compatibility and post-retirement evidence;
 - `integration_i1_primary_mem_two_turn_recall.md` — historical Primary two-turn compatibility proof;
 - `phase_i4d_primary_retrieval_exclusion.md` — Primary lifecycle/currentness compatibility evidence.
 

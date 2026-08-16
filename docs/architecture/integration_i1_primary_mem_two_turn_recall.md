@@ -21,7 +21,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - subjective-mem-retrieval-projection-hard-cutover.md
   - phase_i4d_primary_retrieval_exclusion.md
-  - e1r5_primary_mem_recall_candidate_bridge.md
+  - memory/retrieval-and-grounding.md
   - ../contracts/slp/primary-worker.md
   - project_execution_plan.md
   - relaymem_slp_current_target.md

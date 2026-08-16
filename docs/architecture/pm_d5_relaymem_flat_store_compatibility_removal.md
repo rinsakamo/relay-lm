@@ -17,7 +17,7 @@ relaylm_related_authority:
   - project_execution_plan.md
   - current_target_migration_guide.md
   - relaymem_slp_current_target.md
-  - e1r5_primary_mem_recall_candidate_bridge.md
+  - memory/retrieval-and-grounding.md
 ---
 # PM-D5 RelayMEM flat-store compatibility removal
 

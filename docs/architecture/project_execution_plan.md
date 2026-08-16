@@ -40,7 +40,8 @@ relaylm_related_authority:
   - ui/soul-lab.md
   - character-workspace/maintenance-candidates.md
   - ../contracts/character-workspace/creation-commit.md
-  - e1r5_primary_mem_recall_candidate_bridge.md
+  - memory/retrieval-and-grounding.md
+  - ../contracts/grounded-recall.md
   - ../evidence/waves/e1r5_post_wave7_correction_convergence_audit.md
   - o2_supervised_scheduler_service.md
   - o3_always_on_local_scheduler.md

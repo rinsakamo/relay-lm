@@ -35,14 +35,14 @@ The exact submitted source is retained byte-for-byte as [e1r5_post_wave7_correct
 
 This audit records the post-Wave-7 E1-R5 correction convergence after the E1 recall proof boundary was corrected. It is historical evidence. Current repository status remains owned by [Project Status](../../PROJECT_STATUS.md), and MVP sequencing and Post-MVP decision debt remain owned by [Project Execution Plan](../../architecture/project_execution_plan.md).
 
-E1-R5 is a correction to the Wave 7 E1 proof boundary. It does not reopen Wave 7 and does not add production authority beyond the bounded request-side fallback described in [E1-R5 Primary MEM Recall Candidate Discovery Bridge](../../architecture/e1r5_primary_mem_recall_candidate_bridge.md).
+E1-R5 is a correction to the Wave 7 E1 proof boundary. It does not reopen Wave 7 and does not add production authority beyond the bounded request-side fallback now covered by the [retrieval and grounding architecture](../../architecture/memory/retrieval-and-grounding.md) and [Grounded Recall contract](../../contracts/grounded-recall.md).
 
 ## Source PR inventory
 
 | Slice | Source PR | Dedicated handoff | Completion report |
 |---|---:|---|---|
-| E1-R5 bounded scoped Primary MEM recall candidate discovery bridge | #439 | [E1-R5 Primary MEM Recall Candidate Discovery Bridge](../../architecture/e1r5_primary_mem_recall_candidate_bridge.md) | [E1-R5 completion report](../implementation/e1r5_completion_report.md) |
-| PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in | #491 | [E1-R5 Primary MEM Recall Candidate Discovery Bridge](../../architecture/e1r5_primary_mem_recall_candidate_bridge.md) | n/a |
+| E1-R5 bounded scoped Primary MEM recall candidate discovery bridge | #439 | [retrieval and grounding architecture](../../architecture/memory/retrieval-and-grounding.md) | [E1-R5 completion report](../implementation/e1r5_completion_report.md) |
+| PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in | #491 | [Grounded Recall contract](../../contracts/grounded-recall.md) | n/a |
 
 ## Converged correction boundary
 

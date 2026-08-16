@@ -38,9 +38,7 @@ relaylm_related_authority:
   - relaymem_slp_current_target.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i4d_primary_retrieval_exclusion.md
-  - e1r4_retrieval_response_grounding.md
   - ../contracts/grounded-recall.md
-  - e1r5_primary_mem_recall_candidate_bridge.md
   - ../contracts/retrieval-query-analyzer.md
   - project_execution_plan.md
 ---

@@ -28,7 +28,7 @@ relaylm_exact_source_snapshot: e1r5_completion_report-source.txt
 
 ## Status and authority
 
-This document is frozen implementation evidence for the E1-R5 bounded Primary MEM candidate-discovery bridge introduced by PR #439, whose final source head is `392810b74a0c76785beee7e3af7a5da3eacffa39` and merge commit is `477874cd08658297c4c6626e9423dd05d7bf45a4`. Current repository status belongs to [Project Status](../../PROJECT_STATUS.md). Current E1-R5 behavior, including the PR #491 canonical Primary recall adapter fold-in, belongs to [E1-R5 Primary MEM Recall Candidate Discovery Bridge](../../architecture/e1r5_primary_mem_recall_candidate_bridge.md), while cross-slice E1 evidence belongs to [E1 Evaluation Consolidation](../../architecture/e1_evaluation_consolidation.md).
+This document is frozen implementation evidence for the E1-R5 bounded Primary MEM candidate-discovery bridge introduced by PR #439, whose final source head is `392810b74a0c76785beee7e3af7a5da3eacffa39` and merge commit is `477874cd08658297c4c6626e9423dd05d7bf45a4`. Current repository status belongs to [Project Status](../../PROJECT_STATUS.md). Current E1-R5 behavior, including the PR #491 canonical Primary recall adapter fold-in, belongs to the [retrieval and grounding architecture](../../architecture/memory/retrieval-and-grounding.md) and [Grounded Recall contract](../../contracts/grounded-recall.md), while cross-slice E1 evidence belongs to [E1 Evaluation Consolidation](../../architecture/e1_evaluation_consolidation.md).
 
 The exact pre-cutover report is retained byte-for-byte as [e1r5_completion_report-source.txt](e1r5_completion_report-source.txt). Statements below describe the source PR boundary unless explicitly qualified.
 

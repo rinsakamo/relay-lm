@@ -16,7 +16,8 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - subjective-mem-retrieval-projection-hard-cutover.md
-  - e1r5_primary_mem_recall_candidate_bridge.md
+  - memory/retrieval-and-grounding.md
+  - ../contracts/grounded-recall.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i4b_primary_current_state_shared_fence.md
   - project_execution_plan.md

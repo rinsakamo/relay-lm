@@ -304,6 +304,32 @@
       "retention_reason": "D6-R35-K retired the CW-A5 creation/templates/showcase-import handoff after the exact creation/commit contract already owned its current semantics more precisely: bundled template registry, no-character startup projection, Quick/Advanced/Showcase staging, pinned product-help onboarding source, approval/target-exists/revalidation/compiler gates, loopback routes, CLI write gate, validation-only external import, content-free projections, and active-character separation."
     },
     {
+      "old_path": "docs/architecture/e1r4_retrieval_response_grounding.md",
+      "last_live_commit": "5edb2bbbfe45d6f59ebdae10bca6d0124a61e726",
+      "old_blob_sha": "ac367c1eef29ea8582276fe166a0f7568b7d67d4",
+      "removed_by_pr": 1251,
+      "replacement_paths": [
+        "docs/architecture/memory/retrieval-and-grounding.md",
+        "docs/contracts/grounded-recall.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-U retired the transitional E1-R4 grounding handoff after D6-R35-T established the exact Grounded Recall context/projection contract and the permanent retrieval/grounding architecture. Current request-path implementation, focused smokes, and frozen completion evidence remain protected; the exact handoff remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md",
+      "last_live_commit": "6f8d5d0d18c4460622e0a5e2e2e70e1488e611db",
+      "old_blob_sha": "c904d5f643fbe003055424d8094545aed0e2e607",
+      "removed_by_pr": 1251,
+      "replacement_paths": [
+        "docs/architecture/memory/retrieval-and-grounding.md",
+        "docs/architecture/phase_i4d_primary_retrieval_exclusion.md",
+        "docs/contracts/grounded-recall.md",
+        "docs/evidence/waves/e1r5_post_wave7_correction_convergence_audit.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-U retired the transitional E1-R5 Primary recall bridge handoff after its former bridge behavior had already been folded into the canonical Primary compatibility implementation and RT-1D-R5 had retired ordinary Primary serving. Current reader/cutover boundaries, structural and audit smokes, and frozen evidence remain protected; the exact handoff remains recoverable from Git."
+    },
+    {
       "old_path": "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
       "last_live_commit": "b07d85517ba4981896ba49bd8514e3dd8ffbecc2",
       "old_blob_sha": "b88c6f246cc4394e7e60c4510a754ad63bddd3dd",
