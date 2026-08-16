@@ -24,9 +24,20 @@ character:
   name: ReLM
 ```
 
+The current MVP accepts only `format_version: 1`. `character.id` and `character.name` are required non-empty strings. Invalid or malformed package metadata fails closed.
+
 Default paths are convention-based. Future versions may permit explicit path mapping without changing semantic roles.
 
 `config.yaml` is a package entrypoint, not an all-in-one prompt dump.
+
+## Current file behavior
+
+- `SOUL.md` is required and must contain non-empty Identity content.
+- `memory/events.jsonl` contains RelayLM-owned persisted Events. Missing Event storage is read as an empty journal; malformed non-empty Event lines fail closed.
+- `memory/state.json` contains the current `CanonicalState`. Missing State storage is read as an empty version-1 State; malformed State fails closed.
+- State writes use temporary-file replacement so the visible `state.json` is replaced atomically at the filesystem boundary rather than rewritten in place.
+
+These behaviors describe the current MVP filesystem adapter. They do not prevent a later compatible storage backend from preserving the same logical Character Package roles.
 
 ## Stable future envelope
 

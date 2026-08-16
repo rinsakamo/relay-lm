@@ -72,6 +72,28 @@ Material can leave Working Context under budget pressure while remaining durably
 
 The current implementation preserves normal prior `user → assistant` exchanges atomically so budget pressure cannot retain an assistant assertion while dropping the user Event that gave the exchange its conversational basis.
 
+## Ordinary turn ordering
+
+The current ordinary-turn runtime uses this order:
+
+```text
+load config / Identity / Canonical State
+        ↓
+persist Current User Event
+        ↓
+compile CognitiveInput
+        ↓
+exactly one provider generation
+        ↓
+persist Assistant Event from response
+        ↓
+validate StateCandidate[]
+        ↓
+persist Canonical State only if validation changed it
+```
+
+Persisting the User Event before provider execution is intentional: the Event Journal records that the user input occurred even if cognition later fails.
+
 ## CognitiveOutput
 
 ```json
@@ -101,5 +123,21 @@ CognitiveOutput
 ```
 
 An assistant response therefore remains useful for future conversational continuity without becoming self-certified factual authority.
+
+## Failure semantics
+
+If the cognitive provider fails before producing a valid `CognitiveOutput`:
+
+```text
+Current User Event    persisted
+Assistant Event       not created
+Canonical State       unchanged by that failed turn
+```
+
+The persisted unmatched User Event may later participate in bounded Working Context, because it is real user-origin conversational evidence even though the attempted assistant response failed.
+
+If a valid response is produced but one or more StateCandidates are rejected, the valid response still becomes an Assistant Event while rejected candidates do not mutate Canonical State. Response validity and State acceptance are deliberately separate channels.
+
+Adapter-level malformed provider output is fail-closed before a semantic `CognitiveOutput` is accepted.
 
 An ordinary turn targets exactly one cognitive generation. Working Context selection, deterministic validation, persistence, and Context compilation do not add a second ordinary cognitive LLM call.

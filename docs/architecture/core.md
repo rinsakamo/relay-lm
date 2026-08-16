@@ -28,13 +28,22 @@ LLM x 1
 CognitiveOutput
   response
   state_candidates
-      |
-      v
-Validator
-      |
-      v
-Canonical State
+    |           |
+    |           v
+    |        Validator
+    |           |
+    |           v
+    |      Canonical State
+    v
+Assistant Event
+    |
+    v
+Event Journal
+    |
+    +----> possible future Working Context
 ```
+
+The return path is deliberately split. `response` becomes an Assistant Event for future conversational continuity, while `state_candidates` remain non-authoritative until deterministic validation accepts them. Assistant-authored dialogue therefore does not become factual State merely because the character said it.
 
 ## Invariants
 
