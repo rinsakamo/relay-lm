@@ -39,6 +39,7 @@ relaylm_related_authority:
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i4d_primary_retrieval_exclusion.md
   - e1r4_retrieval_response_grounding.md
+  - ../contracts/grounded-recall.md
   - e1r5_primary_mem_recall_candidate_bridge.md
   - ../contracts/retrieval-query-analyzer.md
   - project_execution_plan.md
@@ -1094,7 +1095,7 @@ RT-1 does not authorize:
 
 RT-1D is architecture-authorized, not started, and is the next ordered Lane C implementation slice. Its single atomic boundary transfers ordinary served memory authority from Primary to Subjective, records that transfer durably, and retires replaced surfaces only after exact post-transfer validation. One logical Lane C writer owns the transaction and no interval may contain two semantic authorities.
 
-`relaylm/retrieval/runtime.py` owns the ordinary reader entry point; `relaylm/relaymem_primary_recall.py` owns Primary candidate discovery, bounded fallback, and the Primary runtime artifact; `relaylm/subjective_mem_retrieval_cutover.py` is the one dedicated RT-1D cutover domain owner; and `relaylm/relaymem_grounded_recall_response.py` remains the E1-R4 grounding-policy owner. The governed Subjective formation/writer family remains `relaylm/subjective_mem/commit_runtime.py` plus the existing LC-1 runtime owners (`subjective_mem/lifecycle_runtime.py`, `subjective_mem/forget_runtime.py`, `subjective_mem/pin_runtime.py`, `subjective_mem/restore_runtime.py`, and `subjective_mem/consolidate_runtime.py`). The current Primary reader, candidate fallback, `primary_recall_runtime` lifecycle projection, Primary page/index/log writer family, the two compatibility no-op runtime modules, and RT-1C shadow characterizer are temporary pre-cutover compatibility surfaces, not permanent authorities.
+`relaylm/retrieval/runtime.py` owns the ordinary reader entry point; `relaylm/relaymem_primary_recall.py` owns Primary candidate discovery, bounded fallback, and the Primary runtime artifact; `relaylm/subjective_mem_retrieval_cutover.py` is the one dedicated RT-1D cutover domain owner; and the [Grounded Recall Contract](../contracts/grounded-recall.md) owns the exact grounding context/projection boundary implemented by `relaylm/relaymem_grounded_recall_response.py`. The retained E1-R4 page remains implementation/regression evidence. The governed Subjective formation/writer family remains `relaylm/subjective_mem/commit_runtime.py` plus the existing LC-1 runtime owners (`subjective_mem/lifecycle_runtime.py`, `subjective_mem/forget_runtime.py`, `subjective_mem/pin_runtime.py`, `subjective_mem/restore_runtime.py`, and `subjective_mem/consolidate_runtime.py`). The current Primary reader, candidate fallback, `primary_recall_runtime` lifecycle projection, Primary page/index/log writer family, the two compatibility no-op runtime modules, and RT-1C shadow characterizer are temporary pre-cutover compatibility surfaces, not permanent authorities.
 
 #### Dedicated RT-1D cutover domain owner
 

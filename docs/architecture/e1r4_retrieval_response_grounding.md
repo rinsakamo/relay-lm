@@ -1,7 +1,7 @@
 ---
 relaylm_doc_type: implementation_handoff
 relaylm_authority: e1_r4_retrieval_response_grounding
-relaylm_status: current
+relaylm_status: transitional
 relaylm_volatility: medium
 relaylm_owner: e1_quality_gates
 relaylm_update_trigger:
@@ -17,6 +17,9 @@ relaylm_not_authoritative_for:
   - memory formation or lifecycle mutation internals
   - queue lifecycle, worker execution, or browser trust admission
 relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_current_exact_contract: ../contracts/grounded-recall.md
+relaylm_related_contracts:
+  - ../contracts/grounded-recall.md
 relaylm_related_authority:
   - subjective-mem-retrieval-projection-hard-cutover.md
   - e1_evaluation_consolidation.md
@@ -54,11 +57,19 @@ permanent responsibility-level path.
 RT-1D-R5 may retire Primary reader/fallback inputs to this policy; it does not
 retire the grounding policy itself.
 
-## Current responsibility
+The permanent exact owner of the live Grounded Recall context and projection is
+the [Grounded Recall Contract](../contracts/grounded-recall.md). This handoff
+retains implementation mapping, regression evidence, and the source-family
+retirement boundary; its repeated field and policy descriptions are
+implementation evidence for that contract, not a second semantic authority.
 
-E1-R4 owns request-side transformation from **already selected ordinary memory
-evidence** into bounded private backend grounding plus content-free diagnostics.
-It does not choose which durable memory authority serves the request.
+## Implementation responsibility
+
+The E1-R4 implementation provides request-side transformation from **already
+selected ordinary memory evidence** into the bounded private backend grounding
+and content-free diagnostics defined by the [Grounded Recall
+Contract](../contracts/grounded-recall.md). It does not choose which durable
+memory authority serves the request.
 
 The ordinary Retrieval stage first names exactly one authority in
 `ordinary_memory_authority`. RelayCTX repack then consumes selected memories from
@@ -79,7 +90,7 @@ Primary and Subjective selected memories are never combined. Grounding cannot
 probe the other family, infer fallback authority, or turn an empty selection into
 a cross-authority retry.
 
-The implementation owner remains
+The implementation anchor remains
 `relaylm/relaymem_grounded_recall_response.py`, invoked from RelayCTX repack after
 the retrieval authority decision and before the backend-bound request is
 finalized.
@@ -87,7 +98,8 @@ finalized.
 ## Request-side only boundary
 
 Grounding builds the private backend-bound
-`relaymem.grounded_recall_context.v0` contract and its instruction. It does not:
+`relaymem.grounded_recall_context.v0` context and its instruction under the
+[Grounded Recall Contract](../contracts/grounded-recall.md). It does not:
 
 - rewrite the visible response after generation;
 - alter SSE semantics;

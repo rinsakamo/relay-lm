@@ -22,6 +22,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../architecture/analyzers/candidate-governance.md
   - ../architecture/memory/retrieval-and-grounding.md
+  - grounded-recall.md
   - ../architecture/e1r4_retrieval_response_grounding.md
 relaylm_related_contracts:
   - analyzer-candidate.md
@@ -622,5 +623,6 @@ This contract does not define:
 
 - [Analyzer Candidate Governance](../architecture/analyzers/candidate-governance.md)
 - [Memory Retrieval and Grounding](../architecture/memory/retrieval-and-grounding.md)
-- [E1-R4 Retrieval Response Grounding source](../architecture/e1r4_retrieval_response_grounding.md)
+- [Grounded Recall Contract](grounded-recall.md)
+- [E1-R4 Retrieval Response Grounding implementation handoff](../architecture/e1r4_retrieval_response_grounding.md)
 - [Analyzer Candidate Governance exact contract](analyzer-candidate.md)
