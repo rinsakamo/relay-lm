@@ -45,6 +45,7 @@ async def run_user_turn(
         identity=identity,
         state=state,
         current_event=user_event,
+        recent_events=character.iter_events(),
     )
     output = await provider.generate(cognitive_input)
 

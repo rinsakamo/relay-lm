@@ -10,14 +10,19 @@ from relaylm.state import StateCandidate, StateRecord
 
 @dataclass(frozen=True, slots=True)
 class ContextItem:
-    """RelayLM-prepared trusted cognitive material."""
+    """RelayLM-prepared cognitive material with preserved provenance."""
 
     content: str
     sources: tuple[str, ...] = ()
+    actor: str | None = None
 
     def __post_init__(self) -> None:
         if not self.content.strip():
             raise ValueError("context content must not be empty")
+        if self.actor is not None and not self.actor.strip():
+            raise ValueError("context actor must not be empty when present")
+        if not all(isinstance(source, str) and source.strip() for source in self.sources):
+            raise ValueError("context sources must contain non-empty strings")
 
 
 @dataclass(frozen=True, slots=True)
