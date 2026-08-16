@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from typing import Any, Mapping
 
 import httpx
@@ -26,6 +27,7 @@ Preserve uncertainty, degree, and direction expressed by the user.
 Propose State only when current understanding meaningfully changes.
 Use set when State should currently exist and remove only for explicit revocation/cancellation/denial/correction.
 Do not remove State for mere weakening, uncertainty, hesitation, or temporary variation.
+For a set value, normally use a plain string. When the current Input materially expresses a useful comparative or intensity relation, you may instead use {"semantic": "...", "degree_hint": 0.0..1.0}. The degree is only a soft relative semantic hint, not confidence, probability, evidence strength, authority, relevance, salience, or a removal threshold. Compare degree hints only on compatible semantic axes. Do not add false precision. If accepted State already carries an adequate degree hint and the current Input does not materially change the strength/comparison, do not re-estimate it merely to produce a new number.
 Never invent source Event IDs.
 Preserve user-provided names and proper-noun spelling.
 Normally use the user's language.
@@ -36,9 +38,19 @@ PROVIDER_WIRE_INSTRUCTION = """Provider wire requirements:
 - `utterance` is the complete non-empty natural-language reply shown to the user. Do not put JSON framing text in `utterance`.
 - `state_candidates` is an array of internal State proposals.
 - Every wire candidate includes `state_class`, `key`, `op`, `value`, and `sources`.
-- For `set`, `value` is a non-null string.
+- For `set`, `value` is either a non-null string or exactly {`semantic`: non-empty string, `degree_hint`: finite number from 0.0 through 1.0}.
 - For `remove`, `value` is null and is normalized away by the adapter.
 - Use only Event IDs present in the supplied CognitiveInput."""
+
+DEGREE_HINT_VALUE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["semantic", "degree_hint"],
+    "properties": {
+        "semantic": {"type": "string", "minLength": 1},
+        "degree_hint": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    },
+}
 
 WIRE_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -56,7 +68,13 @@ WIRE_SCHEMA: dict[str, Any] = {
                     "state_class": {"type": "string", "enum": list(STATE_CLASS_DEFINITIONS)},
                     "key": {"type": "string", "minLength": 1},
                     "op": {"type": "string", "enum": ["set", "remove"]},
-                    "value": {"type": ["string", "null"]},
+                    "value": {
+                        "anyOf": [
+                            {"type": "string"},
+                            DEGREE_HINT_VALUE_SCHEMA,
+                            {"type": "null"},
+                        ]
+                    },
                     "sources": {
                         "type": "array",
                         "minItems": 1,
@@ -221,15 +239,12 @@ def parse_wire_output(wire: Any) -> CognitiveOutput:
         if "value" not in candidate:
             raise ProviderProtocolError(f"state_candidates[{index}] missing value")
         if op == "set":
-            if not isinstance(candidate["value"], str):
-                raise ProviderProtocolError(
-                    f"state_candidates[{index}] set value must be a string"
-                )
+            value = _parse_set_value(candidate["value"], index)
             candidates.append(
                 StateCandidate.set(
                     state_class=state_class,
                     key=key,
-                    value=candidate["value"],
+                    value=value,
                     sources=tuple(sources),
                 )
             )
@@ -249,6 +264,34 @@ def parse_wire_output(wire: Any) -> CognitiveOutput:
             raise ProviderProtocolError(f"state_candidates[{index}] unsupported op: {op}")
 
     return CognitiveOutput(response=utterance, state_candidates=tuple(candidates))
+
+
+def _parse_set_value(value: Any, index: int) -> Any:
+    if isinstance(value, str):
+        return value
+    if not isinstance(value, Mapping):
+        raise ProviderProtocolError(
+            f"state_candidates[{index}] set value must be a string or degree-hint object"
+        )
+    if set(value) != {"semantic", "degree_hint"}:
+        raise ProviderProtocolError(
+            f"state_candidates[{index}] degree-hint value must contain only semantic and degree_hint"
+        )
+    semantic = value.get("semantic")
+    degree = value.get("degree_hint")
+    if not isinstance(semantic, str) or not semantic.strip():
+        raise ProviderProtocolError(
+            f"state_candidates[{index}] degree-hint semantic must be a non-empty string"
+        )
+    if isinstance(degree, bool) or not isinstance(degree, (int, float)):
+        raise ProviderProtocolError(
+            f"state_candidates[{index}] degree_hint must be a number from 0 through 1"
+        )
+    if not math.isfinite(float(degree)) or not 0.0 <= float(degree) <= 1.0:
+        raise ProviderProtocolError(
+            f"state_candidates[{index}] degree_hint must be a number from 0 through 1"
+        )
+    return {"semantic": semantic, "degree_hint": degree}
 
 
 def _mapping(value: Any, label: str) -> Mapping[str, Any]:
