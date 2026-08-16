@@ -83,7 +83,7 @@ class FailingProvider:
         raise RuntimeError("provider failed")
 
 
-def test_context_compiler_does_not_replay_event_history() -> None:
+def test_context_compiler_without_recent_events_keeps_context_empty() -> None:
     current = Event.create(
         type="message",
         actor="user",
@@ -114,6 +114,88 @@ def test_context_compiler_does_not_replay_event_history() -> None:
     assert compiled.context == ()
 
 
+def test_context_compiler_selects_bounded_recent_dialogue_with_actor_provenance() -> None:
+    old = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": "old"},
+        event_id="old",
+        timestamp="2026-08-16T11:57:00+00:00",
+    )
+    middle = Event.create(
+        type="message",
+        actor="assistant",
+        payload={"content": "middle"},
+        event_id="middle",
+        timestamp="2026-08-16T11:58:00+00:00",
+    )
+    newest = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": "new"},
+        event_id="newest",
+        timestamp="2026-08-16T11:59:00+00:00",
+    )
+    current = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": "current"},
+        event_id="current",
+        timestamp="2026-08-16T12:00:00+00:00",
+    )
+
+    compiled = compile_cognitive_input(
+        identity=Identity("# ReLM\n"),
+        state=CanonicalState(),
+        current_event=current,
+        recent_events=(old, middle, newest, current),
+        max_working_context_events=3,
+        max_working_context_chars=len("middle") + len("new"),
+    )
+
+    assert [(item.actor, item.content, item.sources) for item in compiled.context] == [
+        ("assistant", "middle", ("middle",)),
+        ("user", "new", ("newest",)),
+    ]
+    assert all("current" not in item.sources for item in compiled.context)
+
+
+def test_context_compiler_zero_working_budget_preserves_state_and_current_event() -> None:
+    current = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": "current"},
+        event_id="current",
+        timestamp="2026-08-16T12:00:00+00:00",
+    )
+    initial = StateRecord(
+        state_id="s1",
+        state_class="user.preference",
+        key="tea",
+        value="likes",
+        sources=("old",),
+    )
+    prior = Event.create(
+        type="message",
+        actor="assistant",
+        payload={"content": "prior"},
+        event_id="prior",
+        timestamp="2026-08-16T11:59:00+00:00",
+    )
+
+    compiled = compile_cognitive_input(
+        identity=Identity("# ReLM\n"),
+        state=CanonicalState(states=(initial,)),
+        current_event=current,
+        recent_events=(prior, current),
+        max_working_context_events=0,
+    )
+
+    assert compiled.state == (initial,)
+    assert compiled.context == ()
+    assert compiled.input is current
+
+
 def test_turn_calls_provider_once_and_persists_state(tmp_path: Path) -> None:
     character = _make_character(tmp_path)
     provider = SetPreferenceProvider()
@@ -134,7 +216,23 @@ def test_turn_calls_provider_once_and_persists_state(tmp_path: Path) -> None:
     assert [event.actor for event in events] == ["user", "assistant"]
 
 
-def test_next_turn_receives_accepted_state_without_transcript(tmp_path: Path) -> None:
+def test_second_turn_receives_prior_relaylm_events_as_working_context(tmp_path: Path) -> None:
+    character = _make_character(tmp_path)
+    provider = SetPreferenceProvider()
+
+    asyncio.run(run_user_turn(character=character, provider=provider, content="紅茶が好き"))
+    asyncio.run(run_user_turn(character=character, provider=provider, content="それに合うお菓子は？"))
+
+    supplied = provider.inputs[1]
+    assert [(item.actor, item.content) for item in supplied.context] == [
+        ("user", "紅茶が好き"),
+        ("assistant", "紅茶が好きなんだね。覚えておくね。"),
+    ]
+    assert supplied.state[0].key == "tea"
+    assert supplied.input.payload["content"] == "それに合うお菓子は？"
+
+
+def test_next_turn_receives_accepted_state_without_prior_events(tmp_path: Path) -> None:
     initial = StateRecord(
         state_id="s1",
         state_class="user.preference",
