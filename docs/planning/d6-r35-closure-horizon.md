@@ -137,6 +137,8 @@ After T, retire the residual E1 retrieval and response-grounding architecture ha
 
 Permanent retrieval architecture and exact retrieval/analyzer contracts remain semantic owners.
 
+U is complete in implementation PR #1251: the E1-R4 and E1-R5 handoffs are retired with exact recovery identities in the retirement manifest, while permanent retrieval/grounding authorities and current evidence remain protected. V is the next eligible slot.
+
 ### D6-R35-V — legacy stable Character / Relationship / Scene source family
 
 Retire pre-canonical stable-design sources whose durable content has already been synthesized into permanent Character Workspace, relationship, scene, affect, context, privacy, and pipeline architecture.
