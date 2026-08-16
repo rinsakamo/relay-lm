@@ -10,6 +10,7 @@ from relaylm.events import Event
 from relaylm.state import (
     CanonicalState,
     STATE_CLASS_DEFINITIONS,
+    USER_PREFERENCE_GENERIC_KEYS,
     StateCandidate,
     StateRecord,
 )
@@ -119,6 +120,11 @@ def _rejection_reason(
 ) -> str | None:
     if candidate.state_class not in STATE_CLASS_DEFINITIONS:
         return "unsupported_state_class"
+    if (
+        candidate.state_class == "user.preference"
+        and candidate.key.strip().casefold() in USER_PREFERENCE_GENERIC_KEYS
+    ):
+        return "generic_preference_key"
     if not candidate.sources:
         return "missing_sources"
     if any(source not in events for source in candidate.sources):
