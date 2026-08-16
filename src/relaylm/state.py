@@ -14,7 +14,7 @@ STATE_CLASS_DEFINITIONS = MappingProxyType(
             "(for example tea, coffee, spicy_food, preferred_beverage) rather than a generic "
             "predicate such as likes, dislikes, or preference; value carries the preference "
             "relation or current dimension value; comparative preference does not by itself "
-            "imply dislike of the weaker item"
+            "imply dislike of the weaker item or revoke an existing weaker-item liking"
         ),
         "user.goal": "a goal the user currently has",
         "user.condition": "a current condition or ongoing circumstance of the user",
