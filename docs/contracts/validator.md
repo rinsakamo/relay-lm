@@ -25,10 +25,13 @@ The Validator must not re-read natural language and reproduce semantic interpret
 M2 applies precision-first checks before current-State mutation:
 
 - state class must be in the bounded registry;
+- bounded key-policy exclusions are deterministic; for `user.preference`, the known generic keys `likes`, `dislikes`, and `preference` are rejected;
 - every candidate must cite persisted Event IDs;
 - ordinary-turn candidates must cite the current user Event as current evidence;
 - `user.*` candidates require a cited user-authored Event;
 - `set` values must be JSON-serializable;
 - exact `state_class + key` controls create/no-op/replace/remove transitions.
+
+The key-policy check does not infer semantic aliases or merge alternate spellings. Specific preference subjects/dimensions remain model-chosen grammar under the registry guidance.
 
 Invalid candidates are rejected while the already-valid user-visible response may still be returned. Incomplete/malformed provider wire output remains an adapter-level fail-closed concern for M3.
