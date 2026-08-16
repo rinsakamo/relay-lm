@@ -9,7 +9,13 @@ STATE_CLASS_DEFINITIONS = MappingProxyType(
     {
         "user.identity": "stable identity information explicitly stated about the user",
         "user.fact": "current factual information about the user",
-        "user.preference": "the user's likes, dislikes, and preferences",
+        "user.preference": (
+            "the user's preferences; key names a specific subject or dimension "
+            "(for example tea, coffee, spicy_food, preferred_beverage) rather than a generic "
+            "predicate such as likes, dislikes, or preference; value carries the preference "
+            "relation or current dimension value; comparative preference does not by itself "
+            "imply dislike of the weaker item"
+        ),
         "user.goal": "a goal the user currently has",
         "user.condition": "a current condition or ongoing circumstance of the user",
         "user.experience": "an experience the user has had",
@@ -20,6 +26,8 @@ STATE_CLASS_DEFINITIONS = MappingProxyType(
         "relationship.commitment": "a current commitment or agreement in the relationship",
     }
 )
+
+USER_PREFERENCE_GENERIC_KEYS = frozenset({"likes", "dislikes", "preference"})
 
 _MISSING = object()
 
