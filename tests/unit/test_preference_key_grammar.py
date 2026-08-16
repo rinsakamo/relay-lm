@@ -10,11 +10,16 @@ from relaylm.state import CanonicalState, StateCandidate, StateRecord
 from relaylm.validation import apply_state_candidates
 
 
-def _event(*, actor: str = "user", event_id: str = "evt-now") -> Event:
+def _event(
+    *,
+    actor: str = "user",
+    event_id: str = "evt-now",
+    content: str = "preference update",
+) -> Event:
     return Event.create(
         type="message",
         actor=actor,
-        payload={"content": "preference update"},
+        payload={"content": content},
         event_id=event_id,
         timestamp="2026-08-16T13:30:00+00:00",
     )
@@ -150,3 +155,75 @@ def test_preference_key_grammar_does_not_bypass_user_source_authority() -> None:
     assert result.decisions[0].status == "rejected"
     assert result.decisions[0].reason == "user_state_requires_user_source"
     assert result.state.states == ()
+
+
+def test_comparative_preference_provider_input_preserves_weaker_state_context() -> None:
+    current = _event(content="そういえば、最近は紅茶よりコーヒーの方が好きなんだ。")
+    initial = StateRecord(
+        state_id="state-tea",
+        state_class="user.preference",
+        key="tea",
+        value="好き",
+        sources=("evt-old",),
+    )
+    compiled = compile_cognitive_input(
+        identity=Identity("# ReLM\nBe kind."),
+        state=CanonicalState(states=(initial,)),
+        current_event=current,
+    )
+
+    payload = serialize_cognitive_input(compiled)
+    guidance = payload["state_classes"]["user.preference"]
+
+    assert payload["state"] == [
+        {
+            "state_class": "user.preference",
+            "key": "tea",
+            "value": "好き",
+            "sources": ["evt-old"],
+        }
+    ]
+    assert payload["input"]["content"] == "そういえば、最近は紅茶よりコーヒーの方が好きなんだ。"
+    assert "keep that State unless" in guidance
+    assert "explicitly denies or revokes it" in guidance
+    assert "separate specific keys" in guidance
+
+
+def test_comparative_preference_additions_preserve_existing_weaker_state() -> None:
+    current = _event(content="最近は紅茶よりコーヒーの方が好き")
+    initial = StateRecord(
+        state_id="state-tea",
+        state_class="user.preference",
+        key="tea",
+        value="likes",
+        sources=("evt-old",),
+    )
+    candidates = (
+        StateCandidate.set(
+            state_class="user.preference",
+            key="coffee",
+            value="likes",
+            sources=(current.id,),
+        ),
+        StateCandidate.set(
+            state_class="user.preference",
+            key="preferred_beverage",
+            value="coffee",
+            sources=(current.id,),
+        ),
+    )
+
+    result = apply_state_candidates(
+        current_state=CanonicalState(states=(initial,)),
+        candidates=candidates,
+        events={current.id: current},
+        required_source_ids=frozenset({current.id}),
+    )
+
+    assert [decision.action for decision in result.decisions] == ["create", "create"]
+    assert result.state.states[0] == initial
+    assert {(record.key, record.value) for record in result.state.states} == {
+        ("tea", "likes"),
+        ("coffee", "likes"),
+        ("preferred_beverage", "coffee"),
+    }
