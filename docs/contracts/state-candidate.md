@@ -61,4 +61,8 @@ Generic predicate keys such as `likes`, `dislikes`, and `preference` are invalid
 
 Comparative preference preserves its stated direction and degree. For example, preferring coffee over tea does not by itself mean tea became disliked and does not justify removing `tea = likes` without explicit revocation, denial, or correction.
 
+If the weaker subject already has an accepted positive preference State, that exact State remains current unless the current Input explicitly denies or revokes it. The cognitive model should represent the stronger subject and any supported category-level preference as separate specific keys instead of treating comparison as replacement. For example, an existing `tea = likes` plus a new statement that coffee is preferred over tea may yield `coffee = likes` and `preferred_beverage = coffee` while preserving `tea = likes`.
+
+This retention rule is cognitive grammar, not Validator natural-language interpretation. The Validator continues to apply candidates deterministically and still accepts an explicit `remove` proposal when the model identifies genuine revocation from current evidence.
+
 The model does not generate state IDs, confidence, validation status, validity intervals, supersedes IDs, lifecycle decisions, privacy/delete decisions, or commit status.
