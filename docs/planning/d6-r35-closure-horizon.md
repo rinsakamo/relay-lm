@@ -219,25 +219,75 @@ AE must therefore perform whatever bounded authority convergence is required bef
 
 AE is the last planned R35 slot.
 
-## Cross-lane gates
+## Cross-lane execution DAG
 
-The following files remain outside Lane D write authority while they are owned by Lane R classification work:
+Lane D does not own the current repository-classification authority files:
 
 ```text
 docs/reference/repository-asset-classification.md
 records/repository/asset_classification_v1.yaml
 ```
 
-If AC or AD is blocked by those authorities, Lane D waits for reviewed Lane R detachment rather than editing them.
+Cross-lane dependency removal therefore runs in the owning lane and does not create additional R35 slots.
 
-A cross-lane wait does not create a new R35 slot.
+The reviewed execution DAG for the remaining R35 horizon is:
+
+```text
+Lane R LR-D35-1 remaining classification detachment gate
+  -> D6-R35-R -> S -> T -> U -> V -> W -> X -> Y -> Z -> AA -> AB
+  -> mandatory execution-epoch re-bootstrap
+  -> D6-R35-AC -> AD -> AE
+  -> fresh independent R35 closure audit
+  -> D6-R36 eligibility
+```
+
+The M3H edge that originally blocked R is already closed: Lane R PR #1233 removed `docs/architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md` from the current `r6.primary.index_log_recovery` classification evidence without deleting the source or changing the active asset, and mandatory P8 PR #1235 synchronized that result. M3H remains live until Lane D R reviews and retires its source family.
+
+### LR-D35-1 — remaining Lane R classification detachment gate
+
+Before Lane D starts R, Lane R must converge the remaining known current classification dependencies on source paths scheduled for later R35 retirement. At exact main `297a56ed377b0e6b1777df0b6a1fd3124cad25c2`, fresh read-only review identified these edges:
+
+1. `docs/architecture/e1_evaluation_consolidation.md` remains a current caller/evidence anchor for the R6 post-retirement Primary recall proof and recall-audit-projection rows. Lane R must detach the document edge while retaining the current runner, consolidation smoke, runtime, and test evidence required by those classifications.
+2. `docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md` remains evidence for the active reader-retirement regression row. Lane R must detach that document edge while retaining the maintained regression test and post-retirement structural proof.
+3. `docs/architecture/o3_always_on_local_scheduler.md` remains a current caller/evidence anchor for the O3 CLI and O3 process-smoke rows. Lane R must detach that document edge only after preserving current runtime, smoke, process-contract, operator, or other accepted evidence required by the classification.
+4. `docs/reference/repository-asset-classification.md` still names `../architecture/project_execution_plan.md` as related sequencing authority even though `docs/planning/project-execution.md` is the permanent repository-level sequencing owner. Lane R must converge that related-authority edge to the permanent planning path. Record-level changes must keep the human authority and machine-readable mirror semantically aligned.
+
+LR-D35-1 changes classification evidence/related-authority edges only. It must not change runtime behavior, lifecycle, `r6_disposition`, protected responsibilities, supported invocation roots, or Lane D source-retirement state.
+
+Fresh Lane R P1 decides whether all four edges form one Maximum Coherent Cluster. If a stable-structure gate requires multiple bounded Lane R sub-transactions, every LR-D35-1 sub-transaction must complete before R becomes eligible; splitting the gate does not add a new R35 slot or change the D6-R35 horizon.
+
+After LR-D35-1 closes, Lane D proceeds serially from R through AB under fresh P0/P1 for every transaction. No additional known Lane R classification transaction is scheduled between R and AB; any newly discovered live cross-lane dependency still fails closed and returns to its owning lane.
+
+### AB execution-epoch boundary
+
+AB is an execution-epoch boundary, not an ordinary source retirement followed immediately by AC.
+
+The current governance reading order still names `docs/architecture/project_execution_plan.md`. AB must transfer current consumers of that milestone-oriented source to `docs/planning/project-execution.md` as part of the reviewed authority transfer, including governance reading-order consumers when they remain live at fresh P1. Any AB change to `AGENTS.md`, `docs/planning/workstream-orchestration.md`, or another `GOVERNANCE_PATHS` input changes the governance epoch.
+
+Therefore, after the AB implementation merge:
+
+1. stop all branch writers;
+2. fetch the exact resulting `main`;
+3. recompute the governance epoch from the live guard algorithm and current governance blobs;
+4. re-bootstrap P0/P1 before any AB mandatory P8 or other repository write;
+5. run any required AB P8 as a separate fresh transaction using the new epoch;
+6. after AB/P8 convergence, run another fresh P0 before AC.
+
+A pre-AB receipt or governance epoch is never carried into AC.
+
+### AC and AD gates after the re-bootstrap
+
+LR-D35-1 is intended to remove the known O3 classification dependency before R, so AC has no separate planned Lane R detachment step. Fresh AC P1 must nevertheless prove that no current Lane R classification record still depends on an O0/O1/O2/O3 source selected for retirement. If that proof fails, Lane R detaches the exact dependency before Lane D writes AC.
+
+At the DAG-lock bootstrap, fresh classification review found no direct Lane R classification dependency on the PM-D5/D6/D7 architecture source paths, so AD has no separate planned Lane R detachment step. Fresh AD P1 must prove that this remains true. A newly introduced or previously missed current dependency belongs to Lane R and blocks Lane D until reviewed detachment.
+
+After AE, R35 is still not complete by implication. The independent R35 closure gate below must pass on exact current main before D6-R36 becomes eligible.
 
 ## Stay-live and evidence rules
 
 A source remains live when it still owns an exact current responsibility that no permanent owner has accepted. Such a source is not retired merely to satisfy the horizon schedule.
 
 Conversely, a completed implementation report or exact source snapshot under a governed evidence collection is not counted as an active transitional source simply because it retains the historical milestone name.
-
 The closure distinction is:
 
 ```text
