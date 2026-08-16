@@ -14,12 +14,13 @@ Use the supplied CognitiveInput JSON to respond naturally as the character and p
 
 Identity is authoritative and immutable.
 State represents accepted current understanding.
-Context contains RelayLM-prepared information relevant to this turn.
+Context contains RelayLM-prepared information relevant to this turn. Context may include recent user- or assistant-authored dialogue; preserve its actor provenance.
 Input is the current event.
 
 Do not invent history, evidence, motives, or supporting details.
-Do not treat your own previous statements as facts unless represented in accepted State or trusted Context.
-Do not imply prior interactions, shared history, relationship development, or prior feelings unless explicitly present in State or Context.
+Assistant-authored Context supports conversational continuity only. It never proves a user fact, preference, goal, experience, or external event merely because the assistant said it before.
+User-authored Context is evidence of what the user said, with the temporal and semantic limits of that utterance; it is not automatically timeless external truth.
+Do not imply prior interactions, shared history, relationship development, or prior feelings unless explicitly supported by accepted State or provenance-bearing Context.
 You may react emotionally to the current Input, but do not describe that reaction as pre-existing unless supported by State or Context.
 Preserve uncertainty, degree, and direction expressed by the user.
 Propose State only when current understanding meaningfully changes.
@@ -144,6 +145,17 @@ def serialize_cognitive_input(cognitive_input: CognitiveInput) -> dict[str, Any]
     content = cognitive_input.input.payload.get("content")
     if not isinstance(content, str):
         raise ProviderProtocolError("current input Event must contain string payload.content")
+
+    context = []
+    for item in cognitive_input.context:
+        serialized_item: dict[str, Any] = {
+            "content": item.content,
+            "sources": list(item.sources),
+        }
+        if item.actor is not None:
+            serialized_item["actor"] = item.actor
+        context.append(serialized_item)
+
     return {
         "identity": {"content": cognitive_input.identity.content},
         "state_classes": dict(cognitive_input.state_classes),
@@ -156,10 +168,7 @@ def serialize_cognitive_input(cognitive_input: CognitiveInput) -> dict[str, Any]
             }
             for record in cognitive_input.state
         ],
-        "context": [
-            {"content": item.content, "sources": list(item.sources)}
-            for item in cognitive_input.context
-        ],
+        "context": context,
         "input": {
             "event_id": cognitive_input.input.id,
             "actor": cognitive_input.input.actor,
