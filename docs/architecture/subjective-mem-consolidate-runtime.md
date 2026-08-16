@@ -17,7 +17,6 @@ relaylm_not_authoritative_for:
 relaylm_related_authority:
   - ../contracts/shared-assessment-subjective-mem.md
   - ../contracts/subjective-mem-storage-authority-and-commit-protocol.md
-  - st1_subjective_mem_commit_runtime.md
   - lc1a_subjective_mem_correct.md
   - subjective-mem-forget-runtime.md
   - subjective-mem-pin-unpin-runtime.md

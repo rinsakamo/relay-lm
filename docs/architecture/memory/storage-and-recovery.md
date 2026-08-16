@@ -21,7 +21,6 @@ relaylm_decision_source:
   - ../../adr/0003-subjective-mem-direction.md
   - ../../adr/0005-subjective-mem-storage-authority.md
 relaylm_related_authority:
-  - ../st1_subjective_mem_commit_runtime.md
   - ../subjective-mem-lifecycle-publication-engine.md
   - ../subjective-mem-retrieval-projection-hard-cutover.md
   - ../relaymem_slp_current_target.md
@@ -350,9 +349,8 @@ Retrieval cannot repair storage corruption or complete a pending mutation. Stora
 
 This permanent page absorbs stable architecture from ADR 0005, the Subjective storage contract, ST-1, the shared lifecycle publication engine, and the Primary M3 persistence/reconciliation family.
 
-The detailed source pages remain for their narrower roles while current consumers still depend on them:
+The detailed lifecycle source pages remain for their narrower roles while current consumers still depend on them. The former ASM-1, SM-1, and ST-1 implementation handoffs are retired by D6-R35-S; their live runtime, code, tests, and focused smokes remain implementation and validation surfaces, while stable logical formation, storage, commit, and recovery rules remain with the permanent architecture and contracts above.
 
-- `st1_subjective_mem_commit_runtime.md` — current create-publication implementation;
 - `subjective-mem-lifecycle-publication-engine.md` — shared lifecycle publication/replay/recovery implementation architecture;
 - `subjective-mem-retrieval-projection-hard-cutover.md` — RT-1 projection/cutover target and transition authority;
 - The former M3D–M3H implementation handoffs — Primary compatibility implementation detail retired by D6-R35-R; live `relaylm/relaymem_primary_*` modules and focused smokes remain the implementation and validation surfaces, while the stable storage/recovery rules are retained above.

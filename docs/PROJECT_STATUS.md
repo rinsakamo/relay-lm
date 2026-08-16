@@ -19,9 +19,8 @@ relaylm_related_authority:
   - docs/DOCUMENTATION_MODEL.md
   - docs/release/v0.1-release-readiness.md
   - docs/architecture/project_execution_plan.md
-  - docs/architecture/asm1_shared_assessment_runtime_foundation.md
-  - docs/architecture/sm1_subjective_mem_create_runtime.md
-  - docs/architecture/st1_subjective_mem_commit_runtime.md
+  - docs/architecture/memory/formation.md
+  - docs/architecture/memory/storage-and-recovery.md
   - docs/architecture/lc1a_subjective_mem_correct.md
   - docs/architecture/subjective-mem-forget-runtime.md
   - docs/architecture/subjective-mem-restore-runtime.md
@@ -30,6 +29,7 @@ relaylm_related_authority:
   - docs/contracts/governed-evidence-contract-family.md
   - docs/contracts/relayctx-session-evidence-overlay.md
   - docs/contracts/shared-assessment-subjective-mem.md
+  - docs/contracts/subjective-mem-storage-authority-and-commit-protocol.md
   - docs/contracts/subjective-mem-canonical-markdown-v1.md
   - docs/reference/project-status-reference-map.md
 ---
