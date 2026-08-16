@@ -18,7 +18,6 @@ relaylm_related_authority:
   - ../adr/0007-architecture-first-stable-implementation.md
   - ../contracts/shared-assessment-subjective-mem.md
   - ../contracts/subjective-mem-storage-authority-and-commit-protocol.md
-  - st1_subjective_mem_commit_runtime.md
   - lc1a_subjective_mem_correct.md
   - subjective-mem-forget-runtime.md
   - subjective-mem-pin-unpin-runtime.md
