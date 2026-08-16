@@ -25,3 +25,9 @@ A bounded `CognitiveInput` object.
 - The current valid request kernel remains protected.
 
 > **Conversation history != Cognitive Context.**
+
+## MVP implementation
+
+M2 begins with a deliberately small projection: Identity + all active Canonical State + the current Event, with `context=[]`. It does not replay prior Events. This is sufficient to prove session continuity without introducing a retrieval subsystem before it is needed.
+
+Large-State relevance selection, Event-derived trusted Context, and bounded budgeting are deferred to #1267 without changing this authority model.
