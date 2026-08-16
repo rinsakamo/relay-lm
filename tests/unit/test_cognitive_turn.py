@@ -114,26 +114,63 @@ def test_context_compiler_without_recent_events_keeps_context_empty() -> None:
     assert compiled.context == ()
 
 
-def test_context_compiler_selects_bounded_recent_dialogue_with_actor_provenance() -> None:
-    old = Event.create(
+def test_context_compiler_preserves_actor_provenance_and_excludes_current() -> None:
+    prior_user = Event.create(
         type="message",
         actor="user",
-        payload={"content": "old"},
-        event_id="old",
-        timestamp="2026-08-16T11:57:00+00:00",
-    )
-    middle = Event.create(
-        type="message",
-        actor="assistant",
-        payload={"content": "middle"},
-        event_id="middle",
+        payload={"content": "AとBで迷ってる"},
+        event_id="prior-user",
         timestamp="2026-08-16T11:58:00+00:00",
     )
-    newest = Event.create(
+    prior_assistant = Event.create(
+        type="message",
+        actor="assistant",
+        payload={"content": "持ち運び重視？"},
+        event_id="prior-assistant",
+        timestamp="2026-08-16T11:59:00+00:00",
+    )
+    current = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": "うん"},
+        event_id="current",
+        timestamp="2026-08-16T12:00:00+00:00",
+    )
+
+    compiled = compile_cognitive_input(
+        identity=Identity("# ReLM\n"),
+        state=CanonicalState(),
+        current_event=current,
+        recent_events=(prior_user, prior_assistant, current),
+    )
+
+    assert [(item.actor, item.content, item.sources) for item in compiled.context] == [
+        ("user", "AとBで迷ってる", ("prior-user",)),
+        ("assistant", "持ち運び重視？", ("prior-assistant",)),
+    ]
+    assert all("current" not in item.sources for item in compiled.context)
+
+
+def test_context_budget_does_not_orphan_assistant_exchange() -> None:
+    prior_user = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": "long-user-turn"},
+        event_id="prior-user",
+        timestamp="2026-08-16T11:57:00+00:00",
+    )
+    prior_assistant = Event.create(
+        type="message",
+        actor="assistant",
+        payload={"content": "reply"},
+        event_id="prior-assistant",
+        timestamp="2026-08-16T11:58:00+00:00",
+    )
+    recent_user = Event.create(
         type="message",
         actor="user",
         payload={"content": "new"},
-        event_id="newest",
+        event_id="recent-user",
         timestamp="2026-08-16T11:59:00+00:00",
     )
     current = Event.create(
@@ -148,16 +185,14 @@ def test_context_compiler_selects_bounded_recent_dialogue_with_actor_provenance(
         identity=Identity("# ReLM\n"),
         state=CanonicalState(),
         current_event=current,
-        recent_events=(old, middle, newest, current),
+        recent_events=(prior_user, prior_assistant, recent_user, current),
         max_working_context_events=3,
-        max_working_context_chars=len("middle") + len("new"),
+        max_working_context_chars=len("new") + len("reply"),
     )
 
-    assert [(item.actor, item.content, item.sources) for item in compiled.context] == [
-        ("assistant", "middle", ("middle",)),
-        ("user", "new", ("newest",)),
+    assert [(item.actor, item.content) for item in compiled.context] == [
+        ("user", "new"),
     ]
-    assert all("current" not in item.sources for item in compiled.context)
 
 
 def test_context_compiler_zero_working_budget_preserves_state_and_current_event() -> None:
