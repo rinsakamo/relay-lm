@@ -18,7 +18,7 @@ relaylm_not_authoritative_for:
   - classification of assets not explicitly listed here
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../architecture/project_execution_plan.md
+  - ../planning/project-execution.md
   - ../adr/0006-repository-structure-and-maintenance-sequencing.md
   - ../planning/repository-structure-migration.md
   - ../planning/workstream-orchestration.md
@@ -405,12 +405,12 @@ records:
     owner: relaymem_scheduler
     protected_boundary: opt-in local O2 process wrapper, signal cancellation, JSON projection, and bounded exit codes
     current_callers:
-      - docs/architecture/o3_always_on_local_scheduler.md
+      - docs/contracts/runtime/local-scheduler-process.md exact CLI/process contract
       - scripts/relaylm_o3_always_on_local_scheduler_smoke.py
     invocation_roots: [operator_cli, subprocess_child]
     evidence:
       - scripts/relaylm_o3_always_on_local_scheduler.py
-      - docs/architecture/o3_always_on_local_scheduler.md
+      - docs/contracts/runtime/local-scheduler-process.md
       - scripts/relaylm_o3_always_on_local_scheduler_smoke.py
     removal_gate: null
     replacement_validation: null
@@ -422,11 +422,16 @@ records:
     lifecycle: active
     owner: relaymem_scheduler
     protected_boundary: real subprocess invocation, stdout and stderr contract, exit status, config failure, and disclosure boundary
-    current_callers: [docs/architecture/o3_always_on_local_scheduler.md validation commands]
+    current_callers:
+      - docs/contracts/runtime/local-scheduler-process.md current focused evidence
+      - scripts/relaylm_v01_final_validation.py
+      - docs/release/v0.1-release-readiness.md final validation checklist
     invocation_roots: [smoke_only_root]
     evidence:
       - scripts/relaylm_o3_always_on_local_scheduler_smoke.py
-      - docs/architecture/o3_always_on_local_scheduler.md
+      - docs/contracts/runtime/local-scheduler-process.md
+      - scripts/relaylm_v01_final_validation.py
+      - docs/release/v0.1-release-readiness.md
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
@@ -442,7 +447,6 @@ records:
     current_callers:
       - scripts/relaylm_mvp_eval_runner_registry.py E1_SCRIPTS
       - scripts/relaylm_e1_evaluation_consolidation_smoke.py EVIDENCE_PATHS
-      - docs/architecture/e1_evaluation_consolidation.md current evidence inventory and validation command
     invocation_roots: [registry, smoke_only_root]
     evidence:
       - scripts/relaylm_primary_recall_post_retirement_structure_smoke.py
@@ -463,7 +467,6 @@ records:
     current_callers:
       - scripts/relaylm_mvp_eval_runner_registry.py E1_SCRIPTS
       - scripts/relaylm_e1_evaluation_consolidation_smoke.py EVIDENCE_PATHS
-      - docs/architecture/e1_evaluation_consolidation.md evidence inventory
     invocation_roots: [registry, smoke_only_root]
     evidence:
       - scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py
@@ -560,7 +563,6 @@ records:
     evidence:
       - tests/test_rt1d_reader_seams.py
       - scripts/relaylm_primary_recall_post_retirement_structure_smoke.py
-      - docs/architecture/subjective-mem-retrieval-projection-hard-cutover.md
     removal_gate: null
     replacement_validation: null
     confidence: confirmed
