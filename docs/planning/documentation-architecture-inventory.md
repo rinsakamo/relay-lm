@@ -117,7 +117,7 @@ Draft/showcase fixtures and templates do not become architecture merely because 
 | pinned memory | `pinned_normal_memory_pages.md`, I-5 sources | `architecture/memory/pinned-memory.md` | concept-policy synthesis |
 | scene-scoped memory | `scene_memory_scope_design.md`, `scene_memory_scope_current_target.md` | `architecture/memory/scene-memory-scope.md` | design moved; interpretation to reference |
 | observation and character belief | `character_belief_relationship_dynamics_design.md`, ADR character-conditioned belief | `architecture/memory/observation-and-character-belief.md` | synthesized concept policy; ADR remains decision authority |
-| index/log reconciliation | `relaymem_m3f_primary_index_log_reconciliation_preflight.md`, `relaymem_m3g_primary_index_log_reconciliation_apply.md`, `relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md` | architecture content absorbed into memory storage/recovery; records to evidence | split/absorbed/evidence_retained |
+| Primary writer, index/log reconciliation, and recovery | former M3D–M3H implementation handoffs | `architecture/memory/storage-and-recovery.md`; live Primary modules and focused smokes remain implementation/validation surfaces | superseded in D6-R35-R; exact source identity remains in the retirement manifest and Git history |
 
 ### Phase 6 and Primary MEM source disposition
 
@@ -219,7 +219,7 @@ At minimum, Preparation C must detect normative blocks in:
 - `cw_a1_file_first_source_tree_parser_contracts.md`
 - `../contracts/slp/primary-worker.md`
 - `o1a_two_lane_scheduler_contract.md`
-- `i1g_pre_enqueue_durable_finalization_contract.md`
+- `contracts/slp/durable-finalization.md`
 - `phase_i4_primary_mem_forget_hide_contract.md`
 - `phase_i5_pin_unpin_contract.md`
 - `phase_i7ab_held_apply_discard_contract.md`

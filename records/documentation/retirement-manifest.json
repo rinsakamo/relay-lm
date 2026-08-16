@@ -291,6 +291,29 @@
       "retention_reason": "D6-R35-K retired the CW-A5 creation/templates/showcase-import handoff after the exact creation/commit contract already owned its current semantics more precisely: bundled template registry, no-character startup projection, Quick/Advanced/Showcase staging, pinned product-help onboarding source, approval/target-exists/revalidation/compiler gates, loopback routes, CLI write gate, validation-only external import, content-free projections, and active-character separation."
     },
     {
+      "old_path": "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
+      "last_live_commit": "b07d85517ba4981896ba49bd8514e3dd8ffbecc2",
+      "old_blob_sha": "b88c6f246cc4394e7e60c4510a754ad63bddd3dd",
+      "removed_by_pr": 1240,
+      "replacement_paths": [
+        "docs/contracts/slp/durable-finalization.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-R retired the transitional I1-G publication, replay, completion, durable-finalization identity, source-before-queue, idempotency, and content-free-boundary handoff after the exact current semantics were consolidated in the permanent SLP durable-finalization contract; implementation anchors and frozen I1-GE evidence remain available, and the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/i1gd_durable_finalization_retention_cleanup.md",
+      "last_live_commit": "8791d0495e1c4b56aa97b49acc27b745a65bdd4c",
+      "old_blob_sha": "ce92a8b452f52d5e3961920782bc40964d449487",
+      "removed_by_pr": 1240,
+      "replacement_paths": [
+        "docs/contracts/slp/durable-finalization.md",
+        "docs/evidence/implementation/i1ge-durable-finalization-crash-validation-handoff.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-R retired the I1-GD retention, isolation-before-cleanup, shared-fence, crash-convergence, security, and content-free maintenance handoff after the exact current semantics were consolidated in the permanent SLP durable-finalization contract; I1-GE validation evidence remains frozen and the exact source remains recoverable from Git."
+    },
+    {
       "old_path": "docs/architecture/i1ge_durable_finalization_crash_validation.md",
       "last_live_commit": "86d3af1b3c24569f1daf01b2b52ef8c5119046d8",
       "old_blob_sha": "c711874bc813f29e5ac23d85ebc315eeeb24eeba",
@@ -824,6 +847,67 @@
       ],
       "disposition": "replaced",
       "retention_reason": "D2-B2b4c37 replaced the source-specific guard for original cutover PR #667 with manifest-driven retired-path, replacement-metadata, active-reference, and Git-recoverability validation; the former architecture handoff remains available as frozen implementation evidence."
+    },
+    {
+      "old_path": "docs/architecture/relaymem_m3d_primary_writer_handoff.md",
+      "last_live_commit": "b07d85517ba4981896ba49bd8514e3dd8ffbecc2",
+      "old_blob_sha": "1e0c1121ff4486417f9441744f2b0817f38f1d4d",
+      "removed_by_pr": 1240,
+      "replacement_paths": [
+        "docs/architecture/memory/formation.md",
+        "docs/architecture/memory/storage-and-recovery.md",
+        "docs/contracts/slp/primary-worker.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-R retired the M3D Primary writer-handoff preflight after its read-only source identity, exact candidate revalidation, writer-decision boundary, fail-closed state, private receipt, and content-free projection semantics were covered by permanent formation/storage-recovery and Primary worker owners; live implementation and focused smokes remain, and the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/relaymem_m3e_atomic_primary_page_writer.md",
+      "last_live_commit": "b07d85517ba4981896ba49bd8514e3dd8ffbecc2",
+      "old_blob_sha": "ffedecf7171f7912386ee3eb404678f37c6bc77b",
+      "removed_by_pr": 1240,
+      "replacement_paths": [
+        "docs/architecture/memory/storage-and-recovery.md",
+        "docs/contracts/slp/primary-worker.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-R retired the M3E atomic Primary page-writer handoff after its exact revalidation, secure page publication, no-clobber/idempotency, durability, failure-state, private receipt, and content-free projection semantics were covered by permanent storage-recovery and Primary worker owners; live implementation and focused smokes remain, and the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/relaymem_m3f_primary_index_log_reconciliation_preflight.md",
+      "last_live_commit": "b07d85517ba4981896ba49bd8514e3dd8ffbecc2",
+      "old_blob_sha": "95c2634380d1a46e19ac926f5c352f28119e8f54",
+      "removed_by_pr": 1240,
+      "replacement_paths": [
+        "docs/architecture/memory/storage-and-recovery.md",
+        "docs/contracts/slp/primary-worker.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-R retired the M3F deterministic index/log reconciliation preflight handoff after its exact M3E receipt validation, read-only store/page checks, index-before-log plan, reconciliation states, and content-free projection semantics were covered by permanent storage-recovery and Primary worker owners; live implementation and focused smokes remain, and the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/relaymem_m3g_primary_index_log_reconciliation_apply.md",
+      "last_live_commit": "b07d85517ba4981896ba49bd8514e3dd8ffbecc2",
+      "old_blob_sha": "3b1fc672da6864c3fa112314a1e2b3855fb55a9b",
+      "removed_by_pr": 1240,
+      "replacement_paths": [
+        "docs/architecture/memory/storage-and-recovery.md",
+        "docs/contracts/slp/primary-worker.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-R retired the M3G index-before-log reconciliation apply handoff after its exact-plan validation, writer fencing, secure atomic replacement, resumable intermediate state, idempotent result states, and content-free projection semantics were covered by permanent storage-recovery and Primary worker owners; live implementation and focused smokes remain, and the exact source remains recoverable from Git."
+    },
+    {
+      "old_path": "docs/architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md",
+      "last_live_commit": "b07d85517ba4981896ba49bd8514e3dd8ffbecc2",
+      "old_blob_sha": "3d3783ea20ad1ff5478d3d600f66c9199b785ee1",
+      "removed_by_pr": 1240,
+      "replacement_paths": [
+        "docs/architecture/memory/storage-and-recovery.md",
+        "docs/contracts/slp/primary-worker.md"
+      ],
+      "disposition": "superseded",
+      "retention_reason": "D6-R35-R retired the M3H read-only recovery-audit handoff after its exact M3G receipt consumption, digest/revision classifications, recovery-state vocabulary, no-repair boundary, fail-closed behavior, and content-free projection semantics were covered by permanent storage-recovery and Primary worker owners; live implementation, focused smokes, and Lane R classification evidence remain, and the exact source remains recoverable from Git."
     },
     {
       "old_path": "docs/architecture/relaymem_mvp_implementation_plan.md",

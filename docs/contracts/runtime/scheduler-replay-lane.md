@@ -26,7 +26,7 @@ relaylm_related_authority:
   - ../../architecture/o1b_sealed_i1g_replay_lane.md
   - ../../architecture/o1a_two_lane_scheduler_contract.md
   - ../../architecture/o1d1_production_scheduler_round.md
-  - ../../architecture/i1g_pre_enqueue_durable_finalization_contract.md
+  - ../slp/durable-finalization.md
 relaylm_related_contracts:
   - scheduler-round.md
   - scheduler-policy.md

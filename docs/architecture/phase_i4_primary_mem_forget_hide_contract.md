@@ -29,10 +29,7 @@ relaylm_related_authority:
   - ../evidence/waves/wave3_cross_slice_convergence_audit.md
   - ../evidence/waves/wave4_cross_slice_convergence_audit.md
   - ../evidence/waves/wave5_cross_slice_convergence_audit.md
-  - relaymem_m3e_atomic_primary_page_writer.md
-  - relaymem_m3f_primary_index_log_reconciliation_preflight.md
-  - relaymem_m3g_primary_index_log_reconciliation_apply.md
-  - relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
+  - memory/storage-and-recovery.md
   - integration_i1_primary_mem_two_turn_recall.md
   - ../evidence/implementation/phase-i2-real-soul-lab-observation-handoff.md
 ---

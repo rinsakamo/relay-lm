@@ -21,8 +21,7 @@ relaylm_not_authoritative_for:
   - source retirement or documentation migration disposition
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../../architecture/i1g_pre_enqueue_durable_finalization_contract.md
-  - ../../architecture/i1gd_durable_finalization_retention_cleanup.md
+  - ../../architecture/memory/storage-and-recovery.md
   - ../governed-source-capture-admission.md
   - ../../architecture/o1b_sealed_i1g_replay_lane.md
   - durable-queue.md
@@ -95,7 +94,7 @@ relaylm/relaymem_slp_durable_finalization_isolation.py
 relaylm/relaymem_slp_durable_finalization_fence.py
 ```
 
-The existing I1-G/I1-GD architecture documents remain transitional current sources. This transaction does not retire them.
+The former I1-G/I1-GD architecture handoffs are retired by D6-R35-R. This contract is the exact current durable-finalization authority; live implementation anchors and frozen I1-GE evidence remain available for validation and recovery provenance.
 
 ## Current schema identifiers
 
@@ -1003,8 +1002,7 @@ This contract does not define:
 
 ## Related architecture and contracts
 
-- [I1-G transitional contract](../../architecture/i1g_pre_enqueue_durable_finalization_contract.md)
-- [I1-GD Retention and Cleanup](../../architecture/i1gd_durable_finalization_retention_cleanup.md)
+- [Memory Storage and Recovery](../../architecture/memory/storage-and-recovery.md)
 - [Governed Source Capture and Admission Contract](../governed-source-capture-admission.md)
 - [Durable Queue Contract](durable-queue.md)
 - [Primary Worker Contract](primary-worker.md)

@@ -24,7 +24,7 @@ relaylm_related_authority:
   - o1d2_scheduler_policy.md
   - o1e_scheduler_operational_controls.md
   - o1f_operational_validation.md
-  - i1g_pre_enqueue_durable_finalization_contract.md
+  - ../contracts/slp/durable-finalization.md
   - o0_local_one_job_runner.md
   - ../contracts/slp/durable-finalization.md
   - ../contracts/slp/durable-queue.md

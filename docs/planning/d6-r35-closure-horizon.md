@@ -241,7 +241,7 @@ Lane R LR-D35-1 remaining classification detachment gate
   -> D6-R36 eligibility
 ```
 
-The M3H edge that originally blocked R is already closed: Lane R PR #1233 removed `docs/architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md` from the current `r6.primary.index_log_recovery` classification evidence without deleting the source or changing the active asset, and mandatory P8 PR #1235 synchronized that result. M3H remains live until Lane D R reviews and retires its source family.
+The M3H edge that originally blocked R is already closed: Lane R PR #1233 removed the former M3H architecture source from the current `r6.primary.index_log_recovery` classification evidence without changing the active asset, and mandatory P8 PR #1235 synchronized that result. Lane D D6-R35-R now retires the former M3H implementation handoff while preserving the live Primary modules, tests, focused smokes, and Lane R classification evidence.
 
 ### LR-D35-1 — remaining Lane R classification detachment gate
 

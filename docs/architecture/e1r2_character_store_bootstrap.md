@@ -20,8 +20,7 @@ relaylm_related_authority:
   - integration_i1_primary_mem_two_turn_recall.md
   - ../contracts/slp/primary-worker.md
   - memory/formation.md
-  - relaymem_m3e_atomic_primary_page_writer.md
-  - relaymem_m3g_primary_index_log_reconciliation_apply.md
+  - memory/storage-and-recovery.md
 ---
 
 # E1-R2 Character Store Bootstrap
