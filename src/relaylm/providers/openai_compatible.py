@@ -214,25 +214,6 @@ def parse_chat_completion(envelope: Any) -> CognitiveOutput:
     return parse_wire_output(wire)
 
 
-def parse_chat_completion(envelope: Any) -> CognitiveOutput:
-    try:
-        choices = _mapping(envelope, "provider response")["choices"]
-        if not isinstance(choices, list) or not choices:
-            raise ProviderProtocolError("provider response choices must be a non-empty array")
-        message = _mapping(choices[0], "provider choice")["message"]
-        content = _mapping(message, "provider message")["content"]
-    except KeyError as exc:
-        raise ProviderProtocolError(f"provider response missing field: {exc.args[0]}") from exc
-
-    if not isinstance(content, str):
-        raise ProviderProtocolError("provider message content must be a JSON string")
-    try:
-        wire = json.loads(content)
-    except json.JSONDecodeError as exc:
-        raise ProviderProtocolError("provider message content is not valid JSON") from exc
-    return parse_wire_output(wire)
-
-
 def parse_wire_output(wire: Any) -> CognitiveOutput:
     wire = _mapping(wire, "cognitive wire output")
     utterance = wire.get("utterance")
