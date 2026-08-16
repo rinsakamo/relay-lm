@@ -9,10 +9,18 @@ description = "Persistent character continuity around a replaceable language mod
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
-dependencies = ["PyYAML>=6.0.2"]
+dependencies = [
+  "PyYAML>=6.0.2",
+  "fastapi>=0.115",
+  "httpx>=0.28",
+  "uvicorn>=0.34",
+]
 
 [project.optional-dependencies]
 test = ["pytest>=8.3"]
+
+[project.scripts]
+relaylm = "relaylm.server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/relaylm"]

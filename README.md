@@ -43,4 +43,28 @@ response   candidates
 
 A successful MVP can stop and restart a character and continue naturally without replaying raw transcript history as truth.
 
-See `docs/architecture/core.md` and issue #1259.
+## Run the current text MVP
+
+Install the `v1` package and point RelayLM at one Character Package and one OpenAI-compatible provider:
+
+```bash
+pip install -e .
+
+export RELAYLM_CHARACTER_DIR=examples/starter
+export RELAYLM_PROVIDER_BASE_URL=http://127.0.0.1:1234/v1
+export RELAYLM_PROVIDER_MODEL='<provider-model-id>'
+
+relaylm
+```
+
+Optional provider authentication uses `RELAYLM_PROVIDER_API_KEY`. The server binds to `127.0.0.1:8090` by default; `RELAYLM_HOST` and `RELAYLM_PORT` can override this runtime setting.
+
+The M3 client endpoint is:
+
+```text
+POST /v1/chat/completions
+```
+
+It is intentionally non-streaming for now. Client-supplied history is not treated as RelayLM memory or Identity authority. Safe streaming is tracked in #1269.
+
+See `docs/architecture/core.md`, `docs/contracts/openai-api.md`, and issue #1259.
