@@ -225,6 +225,12 @@ async def evaluate_persistence_integrity() -> EvaluationScenarioResult:
     return await evaluate()
 
 
+async def evaluate_event_snapshot_reuse() -> EvaluationScenarioResult:
+    from relaylm.evaluation_persistence import evaluate_event_snapshot_reuse as evaluate
+
+    return await evaluate()
+
+
 async def evaluate_correction_remove_semantics() -> EvaluationScenarioResult:
     from relaylm.evaluation_correction import evaluate_correction_remove_semantics as evaluate
 
@@ -299,6 +305,7 @@ async def run_native_evaluation() -> EvaluationReport:
             await evaluate_degree_hint_integrity(),
             await evaluate_working_context_budget_atomicity(),
             await evaluate_persistence_integrity(),
+            await evaluate_event_snapshot_reuse(),
             await evaluate_correction_remove_semantics(),
             await evaluate_crystallization_integrity(),
             await evaluate_streaming_safety(),
