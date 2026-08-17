@@ -571,10 +571,10 @@ def _explicit_current_state_key_claims(content: str, key: str) -> tuple[str, ...
     key_pattern = r"[\s_]+".join(re.escape(term) for term in key_terms)
     patterns = (
         re.compile(
-            rf"(?<!\w)current\s+{key_pattern}(?!\w)\s+is\s+(.+?)(?:[.!?])?\s*$"
+            rf"^\s*current\s+{key_pattern}(?!\w)\s+is\s+(.+?)(?:[.!?])?\s*$"
         ),
         re.compile(
-            rf"(?<!\w){key_pattern}(?!\w)\s+is\s+(?:currently|now)\s+"
+            rf"^\s*(?:the\s+)?{key_pattern}(?!\w)\s+is\s+(?:currently|now)\s+"
             r"(.+?)(?:[.!?])?\s*$"
         ),
     )
