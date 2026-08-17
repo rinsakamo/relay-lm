@@ -12,6 +12,7 @@ from relaylm.cognitive import CognitiveInput, ContextItem, EventEvidenceItem, Re
 from relaylm.continuity import ContinuityContext
 from relaylm.events import Event
 from relaylm.identity import Identity
+from relaylm.memory_provenance import MemoryTemporalScope
 from relaylm.memory_retrieval import MemoryChunk
 from relaylm.state import CanonicalState, STATE_CLASS_DEFINITIONS, StateRecord
 
@@ -469,7 +470,7 @@ def _filter_retrieved_memory_against_active_state(
     retrieved_memory: Iterable[MemoryChunk],
     state: CanonicalState,
 ) -> tuple[MemoryChunk, ...]:
-    """Suppress lower-authority explicit State shadows against active State."""
+    """Suppress lower-authority current/unknown explicit State shadows against active State."""
 
     active_state = tuple(
         record
@@ -491,6 +492,9 @@ def _memory_chunk_is_shadowed(
     chunk: MemoryChunk,
     active_state: tuple[StateRecord, ...],
 ) -> bool:
+    if chunk.temporal_authority.temporal_scope is MemoryTemporalScope.HISTORICAL:
+        return False
+
     heading_terms = frozenset(_lexical_terms(" ".join(chunk.heading_path)))
 
     for record in active_state:
