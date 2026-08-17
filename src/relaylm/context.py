@@ -465,6 +465,22 @@ def _memory_chunk_is_shadowed(
                 return True
             continue
 
+        degree_value = _reserved_degree_state_value(record.value)
+        if degree_value is not None:
+            current_semantic, current_degree = degree_value
+            if not _contains_lexical_value(chunk.content, current_semantic):
+                return True
+            explicit_degrees = _explicit_degree_hint_assignments(
+                chunk.content,
+                key=record.key,
+                heading_addresses_key=heading_addresses_key,
+            )
+            if explicit_degrees and any(
+                degree != current_degree for degree in explicit_degrees
+            ):
+                return True
+            continue
+
         current_values = tuple(
             value_text
             for value_text in _value_lexical_strings(record.value)
@@ -479,6 +495,49 @@ def _memory_chunk_is_shadowed(
             return True
 
     return False
+
+
+def _reserved_degree_state_value(value: Any) -> tuple[str, float] | None:
+    if not isinstance(value, dict) or set(value) != {"semantic", "degree_hint"}:
+        return None
+    semantic = value.get("semantic")
+    degree = value.get("degree_hint")
+    if not isinstance(semantic, str) or not semantic.strip():
+        return None
+    if isinstance(degree, bool) or not isinstance(degree, (int, float)):
+        return None
+    if not 0.0 <= degree <= 1.0:
+        return None
+    return semantic, float(degree)
+
+
+def _explicit_degree_hint_assignments(
+    content: str,
+    *,
+    key: str,
+    heading_addresses_key: bool,
+) -> tuple[float, ...]:
+    normalized_content = _normalize_lexical_text(content)
+    if heading_addresses_key:
+        scopes = (normalized_content,)
+    else:
+        normalized_key = _normalize_lexical_text(key)
+        key_pattern = rf"(?<!\w){re.escape(normalized_key)}\s*[:=]"
+        scopes = tuple(
+            line
+            for line in normalized_content.splitlines()
+            if re.search(key_pattern, line) is not None
+        )
+
+    return tuple(
+        float(match.group(1))
+        for scope in scopes
+        for match in re.finditer(
+            r"(?<!\w)degree_hint\s*[:=]\s*"
+            r"(-?(?:0|[1-9]\d*)(?:\.\d+)?(?:e[+-]?\d+)?)(?![\w.])",
+            scope,
+        )
+    )
 
 
 def _contains_explicit_opposite_boolean_value(content: str, *, current_value: bool) -> bool:

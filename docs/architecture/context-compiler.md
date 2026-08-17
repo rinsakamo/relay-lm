@@ -179,17 +179,21 @@ Current filtering is intentionally narrow:
 - authority eligibility uses every State record with `status == "active"` and `valid_to is None`, independently of any later `max_state_records` projection cap;
 - a Memory chunk is State-addressing when its heading path contains every normalized lexical term of a State key, or when its body contains the canonical State key as an explicit `key:` / `key=` field assignment;
 - inline field detection requires the exact normalized canonical key token and a field delimiter; arbitrary prose mention is not treated as State addressing;
-- when that State value has lexically comparable text, the chunk is retained if at least one current State value appears as an exact lexical token sequence in the chunk;
+- for State values handled by the general lexical rule, the chunk is retained if at least one current State value appears as an exact lexical token sequence in the chunk;
 - if the chunk explicitly addresses the key but none of the comparable current State values appears, the whole chunk is suppressed from `CognitiveInput.memory`;
 - for a boolean State value, an explicitly State-addressing chunk is suppressed only when it contains the exact opposite `true` / `false` token and does not also contain the current boolean token;
 - a boolean chunk containing the current token remains compatible; a chunk containing neither boolean token, or both tokens, is left untouched rather than being semantically or temporally reclassified;
+- for the reserved structured State value `{semantic, degree_hint}`, the current `semantic` must appear as an exact lexical token sequence; a matching numeric degree alone cannot make conflicting semantic text compatible;
+- when the State key is identified by the chunk heading, an explicit numeric `degree_hint:` / `degree_hint=` assignment in that section must equal the active State degree or the whole chunk is suppressed;
+- when State addressing exists only through an inline canonical `key:` / `key=` assignment, a degree claim is associated with that key only when `degree_hint:` / `degree_hint=` occurs on the same assignment line; degree fields on another key's line are not borrowed;
+- absence of an associated explicit degree assignment is not inferred as a conflict, and arbitrary prose numbers are not interpreted as degree claims;
 - exact token sequences are used rather than substring matching, so for example `likes` is not treated as present inside `dislikes`;
 - inactive or expired State records do not suppress memory;
 - a chunk that neither addresses a State key through its heading nor uses an explicit canonical-key field assignment is left untouched, even if its prose happens to mention an older or different value.
 
 Whole-chunk suppression changes only current cognitive residency. It does not rewrite or delete `MEMORY.md`, mutate State or Events, create a second semantic owner, or add an LLM call.
 
-This filter deliberately does **not** infer arbitrary natural-language contradiction, distinguish historical from current prose when headings/fields are ambiguous, compare semantic degree envelopes, or decide conflicts for other non-lexically-comparable State values. Those remain later #1267 work.
+This filter deliberately does **not** infer arbitrary natural-language contradiction, distinguish historical from current prose when headings/fields are ambiguous, infer degree from adjectives or free-form intensity language, compare degree values across keys/semantic axes, apply degree tolerances/orderings, or decide conflicts for other non-lexically-comparable State values. Those remain later #1267 work.
 
 ### Opt-in ordinary-turn MEMORY retrieval
 
@@ -290,7 +294,7 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 
 - evidence-backed runtime default State/MEMORY/Event budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
 - `unresolved`, `referent`, and `active_task` retention beyond pure recency;
-- semantic State-vs-memory conflict detection beyond explicit State-key headings and canonical-key field assignments, including historical/current interpretation, degree-level conflicts, and other non-lexically-comparable values;
+- semantic State-vs-memory conflict detection beyond explicit State-key headings and canonical-key field assignments, including historical/current interpretation, free-form degree/intensity interpretation, and other non-lexically-comparable values;
 - durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
 - persistent/segmented Event Journal indexing and retrieval-scaled targeted discovery beyond the current process-local validated snapshot reuse;
 - redundancy reduction across State / Working Context / Memory / Events beyond the current exact Working Context/Event Evidence Event-ID residency rule;
