@@ -59,13 +59,13 @@ relaylm
 
 Optional provider authentication uses `RELAYLM_PROVIDER_API_KEY`. The server binds to `127.0.0.1:8090` by default; `RELAYLM_HOST` and `RELAYLM_PORT` can override this runtime setting.
 
-The M3 client endpoint is:
+The client endpoint is:
 
 ```text
 POST /v1/chat/completions
 ```
 
-It is intentionally non-streaming for now. Client-supplied history is not treated as RelayLM memory or Identity authority. Safe streaming is tracked in #1269.
+The current OpenAI-compatible provider path supports both buffered `stream=false` responses and safe structured `stream=true` delivery. Streaming can expose safely decoded character text before the full structured provider object completes, while Assistant Event creation and State mutation remain blocked until the complete cognitive result is valid. Client-supplied history is not treated as RelayLM memory or Identity authority.
 
 ## Development workflow
 
