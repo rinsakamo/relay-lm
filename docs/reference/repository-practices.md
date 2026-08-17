@@ -73,6 +73,10 @@ Dependabot alerts and Dependabot security updates remain repository-host securit
 
 GitHub Actions are executable CI supply-chain dependencies rather than Python support floors. Keep maintained Actions pinned to full commit SHAs, and use reviewed Dependabot GitHub Actions PRs to advance those pins after exact-head CI succeeds.
 
+## Package integrity
+
+Editable installs are development convenience, not proof that a distributable package works. The `v1 CI / package-smoke` job builds the RelayLM wheel from the exact transaction head, installs that wheel into a clean Python 3.12 virtual environment, runs `pip check`, imports the installed package, verifies the package version, and verifies the declared `relaylm` and `relaylm-eval` console entry points. Packaging metadata or build-system changes must keep this smoke green.
+
 ## Repository-host protections
 
 The desired GitHub-host configuration is intentionally small:
