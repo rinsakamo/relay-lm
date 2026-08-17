@@ -12,31 +12,33 @@ replaceable LM
 CognitiveOutput
   response
   state_candidates
+  continuity_candidates
 ```
 
 `response` is the user-facing natural-language channel.
 
 `state_candidates` is an internal proposal channel and is never canonical merely because the model emitted it.
 
-Provider-specific structured-output grammar belongs in adapters. Semantic architecture uses `response` regardless of provider wire field names.
+`continuity_candidates` is an internal proposal channel for bounded non-durable continuity and is never accepted temporary authority merely because the model emitted it.
 
-No mandatory second semantic LLM call is part of an ordinary turn. Later reflection/crystallization may run out of band and must return through the same validation authority rather than creating a competing memory truth.
+Provider-specific structured-output grammar belongs in adapters. Semantic architecture uses `response`, `state_candidates`, and `continuity_candidates` independently of provider wire field names.
 
-## Accepted Continuity Context extension
+No mandatory second semantic LLM call is part of an ordinary turn. Later reflection/crystallization may run out of band and must return through the relevant validation authority rather than creating a competing truth source.
 
-`docs/architecture/continuity-context.md` freezes an additional proposal channel, `continuity_candidates`, for implementation under #1371.
+## Continuity Context return path
 
-K1 implements the typed proposal / accepted-item / immutable-container boundary in `relaylm.continuity`. K2 implements deterministic continuity acceptance/lifecycle in `relaylm.continuity_validation`. The current `CognitiveOutput` still does **not** expose `continuity_candidates`; ordinary buffered/streamed return-path wiring remains K3.
+`docs/architecture/continuity-context.md` owns the Continuity semantics tracked by #1371.
 
-The accepted target shape is:
+K1 implements the typed proposal / accepted-item / immutable-container boundary in `relaylm.continuity`. K2 implements deterministic continuity acceptance/lifecycle in `relaylm.continuity_validation`. K3 exposes `CognitiveOutput.continuity_candidates` and wires the provider-independent ordinary-turn return path through the same single buffered or streamed cognitive generation.
 
-```text
-CognitiveOutput
-  response
-  state_candidates
-  continuity_candidates
-```
+Buffered execution performs exactly one `provider.generate()` call. Streamed execution performs exactly one `stream_generate()` call. In both paths, the completed `CognitiveOutput` reaches the same Turn commit boundary. No continuity-specific semantic provider call is added.
 
-`continuity_candidates` must be produced by the same ordinary semantic generation rather than a mandatory second model call. Like `state_candidates`, they are proposals only. Deterministic continuity validation must accept a candidate before it can become a `ContinuityItem` in Continuity Context.
+When an explicit process-local `ContinuityRuntime` is configured, Turn applies K2 exactly once after successful generation and advances the Continuity Context revision even for an empty candidate tuple. Streaming deltas are visible before final structured completion, but the Continuity runtime is not updated until generation has completed and deterministic validation has run.
 
-Provider-specific structured-output grammar may carry the field when K3 lands, but provider adapters do not own referent, unresolved, active-task, acceptance, or lifecycle semantics.
+When continuity proposals are present without an explicit runtime, Turn rejects the output before Assistant Event, State, or Continuity commit rather than silently dropping the proposal channel.
+
+The runtime holder requires an explicit immutable `ContinuityContext` and explicit positive lifetime. It does not define default capacity or lifetime policy and does not persist Continuity Context.
+
+Provider-specific structured-output grammar may expose `continuity_candidates` separately. Adapters do not own referent, unresolved, active-task, provenance, acceptance, or lifecycle semantics.
+
+Context Compiler consumption remains a separate #1267 C2/C3 transaction after K3 merges and must operate on already-accepted `ContinuityItem` values.
