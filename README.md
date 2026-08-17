@@ -67,6 +67,16 @@ POST /v1/chat/completions
 
 The current OpenAI-compatible provider path supports both buffered `stream=false` responses and safe structured `stream=true` delivery. Streaming can expose safely decoded character text before the full structured provider object completes, while Assistant Event creation and State mutation remain blocked until the complete cognitive result is valid. Client-supplied history is not treated as RelayLM memory or Identity authority.
 
+## Native evaluation
+
+The current deterministic RelayLM-native evaluation foundation can be run with:
+
+```bash
+relaylm-eval
+```
+
+It emits machine-readable invariant checks by RelayLM boundary. The current report intentionally has no weighted composite score. See `docs/reference/evaluation.md` and #1247.
+
 ## Development workflow
 
 The current `v1` development workflow is defined in `docs/reference/development-workflow.md`.

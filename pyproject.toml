@@ -21,6 +21,7 @@ test = ["pytest>=8.3"]
 
 [project.scripts]
 relaylm = "relaylm.server:main"
+relaylm-eval = "relaylm.evaluation:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/relaylm"]
