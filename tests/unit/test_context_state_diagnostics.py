@@ -40,11 +40,11 @@ def _state() -> CanonicalState:
     )
 
 
-def _compile(*, max_state_records: int | None):
+def _compile(*, max_state_records: int | None, content: str = "Help me choose coffee today"):
     return compile_cognitive_input_with_diagnostics(
         identity=Identity("# ReLM\nBe grounded."),
         state=_state(),
-        current_event=_current(),
+        current_event=_current(content),
         max_state_records=max_state_records,
     )
 
@@ -67,8 +67,9 @@ def test_diagnostics_report_content_free_lexical_budget_pressure() -> None:
         "budget_limit": 2,
         "budget_used": 2,
         "budget_pressure": True,
-        "selected_reasons": ({"reason": "lexical_match", "count": 2},),
-        "evicted_reasons": ({"reason": "budget_limit", "count": 2},),
+        "selected_lexical_match_count": 2,
+        "selected_fallback_count": 0,
+        "evicted_budget_limit_count": 2,
     }
 
     serialized = json.dumps(asdict(diagnostic), ensure_ascii=False)
@@ -84,9 +85,20 @@ def test_diagnostics_report_content_free_lexical_budget_pressure() -> None:
         assert forbidden not in serialized
 
 
+def test_diagnostics_count_zero_match_fallback_without_leaking_records() -> None:
+    diagnostic = _compile(
+        max_state_records=2,
+        content="Tell me something unrelated about weather",
+    ).diagnostics[0]
+
+    assert diagnostic.mode == "lexical_ranked"
+    assert diagnostic.selected_lexical_match_count == 0
+    assert diagnostic.selected_fallback_count == 2
+    assert diagnostic.evicted_budget_limit_count == 2
+
+
 def test_diagnostics_report_unbounded_projection_without_pressure() -> None:
-    result = _compile(max_state_records=None)
-    diagnostic = result.diagnostics[0]
+    diagnostic = _compile(max_state_records=None).diagnostics[0]
 
     assert diagnostic.layer == "canonical_state"
     assert diagnostic.mode == "unbounded"
@@ -96,10 +108,9 @@ def test_diagnostics_report_unbounded_projection_without_pressure() -> None:
     assert diagnostic.budget_limit is None
     assert diagnostic.budget_used == 4
     assert diagnostic.budget_pressure is False
-    assert [(item.reason, item.count) for item in diagnostic.selected_reasons] == [
-        ("eligible_unbounded", 4)
-    ]
-    assert diagnostic.evicted_reasons == ()
+    assert diagnostic.selected_lexical_match_count == 0
+    assert diagnostic.selected_fallback_count == 0
+    assert diagnostic.evicted_budget_limit_count == 0
 
 
 def test_diagnostics_report_zero_budget_as_budget_eviction() -> None:
@@ -112,20 +123,17 @@ def test_diagnostics_report_zero_budget_as_budget_eviction() -> None:
     assert diagnostic.evicted_count == 4
     assert diagnostic.budget_used == 0
     assert diagnostic.budget_pressure is True
-    assert [(item.reason, item.count) for item in diagnostic.evicted_reasons] == [
-        ("budget_limit", 4)
-    ]
+    assert diagnostic.evicted_budget_limit_count == 4
 
 
 def test_diagnostics_report_within_budget_without_ranking() -> None:
-    result = _compile(max_state_records=10)
-    diagnostic = result.diagnostics[0]
+    diagnostic = _compile(max_state_records=10).diagnostics[0]
 
     assert diagnostic.mode == "within_budget"
     assert diagnostic.selected_count == 4
     assert diagnostic.evicted_count == 0
     assert diagnostic.budget_limit == 10
     assert diagnostic.budget_pressure is False
-    assert [(item.reason, item.count) for item in diagnostic.selected_reasons] == [
-        ("within_budget", 4)
-    ]
+    assert diagnostic.selected_lexical_match_count == 0
+    assert diagnostic.selected_fallback_count == 0
+    assert diagnostic.evicted_budget_limit_count == 0
