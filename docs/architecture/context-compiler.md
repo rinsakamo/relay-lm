@@ -270,7 +270,7 @@ Current retrieval behavior:
 - equal relevance prefers the newer occurrence by source order;
 - explicit `max_events` and `max_chars` bound admission;
 - Events are admitted whole; an oversized relevant Event is skipped rather than truncated, and a later fitting relevant Event may still be admitted;
-- selected Events are returned in original source chronology after ranking/selection;
+- selected Events are returned in original source chronology after ranking/admission;
 - the original `Event` objects are returned unchanged; retrieval does not mutate Events, State, MEMORY, indexes, or call an LLM.
 
 `compile_cognitive_input(..., event_evidence=...)` accepts already-selected persisted Events and projects them into a distinct `CognitiveInput.event_evidence` layer. Each item preserves:
