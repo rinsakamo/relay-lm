@@ -54,7 +54,7 @@ _MISSING = object()
 
 
 class RuntimeConfigResolutionError(ValueError):
-    """Safe, typed failure while discovering, parsing, or resolving runtime config."""
+    """Safe typed failure while discovering, parsing, or resolving runtime config."""
 
     def __init__(
         self,
@@ -71,7 +71,7 @@ class RuntimeConfigResolutionError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class RuntimeConfigOverrides:
-    """Named release-CLI override inputs frozen by the RCFG1 contract."""
+    """Named explicit CLI override inputs frozen by the RCFG1 contract."""
 
     character_directory: str | None = None
     provider_adapter: str | None = None
@@ -85,7 +85,7 @@ class RuntimeConfigOverrides:
 
 @dataclass(frozen=True, slots=True)
 class ResolvedRuntimeConfig:
-    """Validated non-secret config, process-local secrets, and source provenance."""
+    """Validated non-secret config, process-local secrets, and provenance."""
 
     config: RuntimeConfig
     secrets: RuntimeSecretInputs
@@ -95,11 +95,7 @@ class ResolvedRuntimeConfig:
     config_path_source: ConfigSource | None
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "provenance",
-            MappingProxyType(dict(self.provenance)),
-        )
+        object.__setattr__(self, "provenance", MappingProxyType(dict(self.provenance)))
 
     def source_for(self, field_path: str) -> ConfigSource:
         return self.provenance[field_path].source
@@ -125,9 +121,8 @@ class ResolvedRuntimeConfig:
                 else self.secret_effective.material_source.value
             ),
         }
-        config_path: dict[str, object] | None
         if self.config_path is None:
-            config_path = None
+            config_path: dict[str, object] | None = None
         else:
             assert self.config_path_source is not None
             config_path = {
@@ -198,22 +193,20 @@ def resolve_runtime_config(
     provenance: dict[str, EffectiveConfigValue] = {}
     if selected_path is not None:
         _collect_file_provenance(raw, provenance)
-
-    if selected_path is None:
-        format_version = RUNTIME_CONFIG_FORMAT_VERSION
-        _record(
-            provenance,
-            "format_version",
-            format_version,
-            ConfigSource.CANONICAL_DEFAULT,
-        )
-    else:
         format_version = raw["format_version"]
         _record(
             provenance,
             "format_version",
             format_version,
             ConfigSource.CONFIG_FILE,
+        )
+    else:
+        format_version = RUNTIME_CONFIG_FORMAT_VERSION
+        _record(
+            provenance,
+            "format_version",
+            format_version,
+            ConfigSource.CANONICAL_DEFAULT,
         )
 
     character_directory = _resolve_string_leaf(
@@ -234,6 +227,9 @@ def resolve_runtime_config(
         provenance=provenance,
         default=DEFAULT_PROVIDER_ADAPTER,
     )
+    if provider_adapter != DEFAULT_PROVIDER_ADAPTER:
+        _invalid_value("provider.adapter", "unsupported provider adapter")
+
     provider_base_url = _resolve_string_leaf(
         "provider.base_url",
         cli_value=active_overrides.provider_base_url,
@@ -270,6 +266,8 @@ def resolve_runtime_config(
         provenance=provenance,
         default=DEFAULT_SERVER_PORT,
     )
+    _validate_port(server_port, "server.port")
+
     profile = _resolve_optional_string_leaf(
         "runtime.profile",
         cli_value=active_overrides.profile,
@@ -293,64 +291,22 @@ def resolve_runtime_config(
         environ=active_env,
         raw=raw,
     )
+    runtime_policy = _parse_runtime_policy(raw.get("runtime", {}))
 
-    runtime_raw = raw.get("runtime", {})
-    assert isinstance(runtime_raw, dict)
-    memory_retrieval = (
-        _parse_memory_retrieval(runtime_raw["memory_retrieval"])
-        if "memory_retrieval" in runtime_raw
-        else None
+    config = RuntimeConfig(
+        format_version=format_version,
+        character=CharacterRuntimeConfig(directory=character_directory),
+        provider=ProviderRuntimeConfig(
+            adapter=provider_adapter,
+            base_url=provider_base_url,
+            model=provider_model,
+            api_key=provider_api_key_ref,
+        ),
+        server=ServerRuntimeConfig(host=server_host, port=server_port),
+        runtime=runtime_policy,
     )
-    event_retrieval = (
-        _parse_event_retrieval(runtime_raw["event_retrieval"])
-        if "event_retrieval" in runtime_raw
-        else None
-    )
-    continuity = (
-        _parse_continuity(runtime_raw["continuity"])
-        if "continuity" in runtime_raw
-        else None
-    )
-    cognitive_budget = (
-        _parse_cognitive_budget(runtime_raw["cognitive_budget"])
-        if "cognitive_budget" in runtime_raw
-        else None
-    )
-
-    try:
-        resolved_config = RuntimeConfig(
-            format_version=format_version,
-            character=CharacterRuntimeConfig(directory=character_directory),
-            provider=ProviderRuntimeConfig(
-                adapter=provider_adapter,
-                base_url=provider_base_url,
-                model=provider_model,
-                api_key=provider_api_key_ref,
-            ),
-            server=ServerRuntimeConfig(host=server_host, port=server_port),
-            runtime=RuntimePolicyConfig(
-                profile=None,
-                memory_retrieval=memory_retrieval,
-                event_retrieval=event_retrieval,
-                continuity=continuity,
-                cognitive_budget=cognitive_budget,
-            ),
-        )
-    except TypeError as exc:
-        raise RuntimeConfigResolutionError(
-            RuntimeConfigErrorCode.INVALID_TYPE,
-            field="runtime",
-            message=str(exc),
-        ) from exc
-    except ValueError as exc:
-        raise RuntimeConfigResolutionError(
-            RuntimeConfigErrorCode.INVALID_VALUE,
-            field="runtime",
-            message=str(exc),
-        ) from exc
-
     return ResolvedRuntimeConfig(
-        config=resolved_config,
+        config=config,
         secrets=secrets,
         provenance=provenance,
         secret_effective=secret_effective,
@@ -424,11 +380,7 @@ def _load_config_mapping(path: Path) -> dict[str, Any]:
         ) from exc
 
     if not isinstance(loaded, dict):
-        raise RuntimeConfigResolutionError(
-            RuntimeConfigErrorCode.INVALID_TYPE,
-            field="runtime_config",
-            message="runtime configuration root must be a mapping",
-        )
+        _invalid_type("runtime_config", "runtime configuration root must be a mapping")
     return loaded
 
 
@@ -445,7 +397,11 @@ def _validate_file_shape(raw: dict[str, Any]) -> None:
             message=f"unsupported runtime format version: {version}",
         )
 
-    _reject_unknown(raw, "", {"format_version", "character", "provider", "server", "runtime"})
+    _reject_unknown(
+        raw,
+        "",
+        {"format_version", "character", "provider", "server", "runtime"},
+    )
 
     if "character" in raw:
         character = _mapping(raw["character"], "character")
@@ -455,20 +411,22 @@ def _validate_file_shape(raw: dict[str, Any]) -> None:
 
     if "provider" in raw:
         provider = _mapping(raw["provider"], "provider")
-        _reject_unknown(provider, "provider", {"adapter", "base_url", "model", "api_key"})
-        for key in ("adapter", "base_url", "model"):
+        _reject_unknown(
+            provider,
+            "provider",
+            {"adapter", "base_url", "model", "api_key"},
+        )
+        if "adapter" in provider:
+            adapter = _string(provider["adapter"], "provider.adapter")
+            if adapter != DEFAULT_PROVIDER_ADAPTER:
+                _invalid_value("provider.adapter", "unsupported provider adapter")
+        for key in ("base_url", "model"):
             if key in provider:
                 _string(provider[key], f"provider.{key}")
         if "api_key" in provider:
             secret = _mapping(provider["api_key"], "provider.api_key")
-            _reject_unknown(secret, "provider.api_key", {"env"})
-            if "env" not in secret:
-                _missing("provider.api_key.env")
-            env_name = _string(secret["env"], "provider.api_key.env")
-            try:
-                SecretEnvReference(env=env_name)
-            except ValueError as exc:
-                _invalid_value("provider.api_key.env", str(exc))
+            _require_exact_keys(secret, "provider.api_key", {"env"})
+            _secret_reference(secret["env"], field="provider.api_key.env")
 
     if "server" in raw:
         server = _mapping(raw["server"], "server")
@@ -476,7 +434,8 @@ def _validate_file_shape(raw: dict[str, Any]) -> None:
         if "host" in server:
             _string(server["host"], "server.host")
         if "port" in server:
-            _integer(server["port"], "server.port")
+            port = _integer(server["port"], "server.port")
+            _validate_port(port, "server.port")
 
     if "runtime" in raw:
         runtime = _mapping(raw["runtime"], "runtime")
@@ -493,14 +452,38 @@ def _validate_file_shape(raw: dict[str, Any]) -> None:
         )
         if "profile" in runtime:
             _string(runtime["profile"], "runtime.profile")
-        if "memory_retrieval" in runtime:
-            _parse_memory_retrieval(runtime["memory_retrieval"])
-        if "event_retrieval" in runtime:
-            _parse_event_retrieval(runtime["event_retrieval"])
-        if "continuity" in runtime:
-            _parse_continuity(runtime["continuity"])
-        if "cognitive_budget" in runtime:
-            _parse_cognitive_budget(runtime["cognitive_budget"])
+        _parse_runtime_policy(runtime)
+
+
+def _parse_runtime_policy(raw: object) -> RuntimePolicyConfig:
+    runtime = _mapping(raw, "runtime")
+    memory = (
+        _parse_memory_retrieval(runtime["memory_retrieval"])
+        if "memory_retrieval" in runtime
+        else None
+    )
+    event = (
+        _parse_event_retrieval(runtime["event_retrieval"])
+        if "event_retrieval" in runtime
+        else None
+    )
+    continuity = (
+        _parse_continuity(runtime["continuity"])
+        if "continuity" in runtime
+        else None
+    )
+    cognitive_budget = (
+        _parse_cognitive_budget(runtime["cognitive_budget"])
+        if "cognitive_budget" in runtime
+        else None
+    )
+    return RuntimePolicyConfig(
+        profile=None,
+        memory_retrieval=memory,
+        event_retrieval=event,
+        continuity=continuity,
+        cognitive_budget=cognitive_budget,
+    )
 
 
 def _parse_memory_retrieval(raw: object) -> MemoryRetrievalRuntimeConfig:
@@ -532,10 +515,7 @@ def _parse_continuity(raw: object) -> ContinuityRuntimeSettings:
     mapping = _mapping(raw, path)
     _require_exact_keys(mapping, path, {"max_items", "lifetime_revisions"})
     max_items = _integer(mapping["max_items"], f"{path}.max_items")
-    lifetime = _integer(
-        mapping["lifetime_revisions"],
-        f"{path}.lifetime_revisions",
-    )
+    lifetime = _integer(mapping["lifetime_revisions"], f"{path}.lifetime_revisions")
     try:
         return ContinuityRuntimeSettings(
             max_items=max_items,
@@ -573,21 +553,20 @@ def _parse_cognitive_budget(raw: object) -> ExplicitCognitiveBudgetConfig:
     except ValueError as exc:
         _invalid_value(total_path, str(exc))
 
-    policy = _parse_budget_policy(mapping["policy"], f"{path}.policy")
-    token_counter = _parse_token_counter(
-        mapping["token_counter"],
-        f"{path}.token_counter",
-    )
     return ExplicitCognitiveBudgetConfig(
         total=total,
-        policy=policy,
-        token_counter=token_counter,
+        policy=_parse_budget_policy(mapping["policy"], f"{path}.policy"),
+        token_counter=_parse_token_counter(
+            mapping["token_counter"],
+            f"{path}.token_counter",
+        ),
     )
 
 
 def _parse_budget_policy(raw: object, path: str) -> BudgetDegradationPolicy:
     mapping = _mapping(raw, path)
     _require_exact_keys(mapping, path, {"initial_plan", "steps"})
+
     plan_path = f"{path}.initial_plan"
     plan_raw = _mapping(mapping["initial_plan"], plan_path)
     _require_exact_keys(
@@ -596,26 +575,33 @@ def _parse_budget_policy(raw: object, path: str) -> BudgetDegradationPolicy:
         {"canonical_state", "working_context", "retrieved_memory", "event_evidence"},
     )
     try:
-        plan = BudgetPlan(
-            canonical_state=_parse_count_envelope(
-                plan_raw["canonical_state"],
-                f"{plan_path}.canonical_state",
-            ),
-            working_context=_parse_count_character_envelope(
-                plan_raw["working_context"],
-                f"{plan_path}.working_context",
-            ),
-            retrieved_memory=_parse_count_character_envelope(
-                plan_raw["retrieved_memory"],
-                f"{plan_path}.retrieved_memory",
-            ),
-            event_evidence=_parse_count_character_envelope(
-                plan_raw["event_evidence"],
-                f"{plan_path}.event_evidence",
-            ),
+        canonical_state = _parse_count_envelope(
+            plan_raw["canonical_state"],
+            f"{plan_path}.canonical_state",
         )
-    except (TypeError, ValueError) as exc:
-        _invalid_value(path, str(exc))
+        working_context = _parse_count_character_envelope(
+            plan_raw["working_context"],
+            f"{plan_path}.working_context",
+        )
+        retrieved_memory = _parse_count_character_envelope(
+            plan_raw["retrieved_memory"],
+            f"{plan_path}.retrieved_memory",
+        )
+        event_evidence = _parse_count_character_envelope(
+            plan_raw["event_evidence"],
+            f"{plan_path}.event_evidence",
+        )
+    except RuntimeConfigResolutionError as exc:
+        if exc.code is RuntimeConfigErrorCode.INVALID_VALUE:
+            _invalid_value(path, "invalid owner-defined budget envelope")
+        raise
+
+    plan = BudgetPlan(
+        canonical_state=canonical_state,
+        working_context=working_context,
+        retrieved_memory=retrieved_memory,
+        event_evidence=event_evidence,
+    )
 
     steps_raw = mapping["steps"]
     if not isinstance(steps_raw, list):
@@ -628,13 +614,10 @@ def _parse_budget_policy(raw: object, path: str) -> BudgetDegradationPolicy:
         layer_name = _string(step_raw["layer"], f"{step_path}.layer")
         try:
             layer = BudgetLayer(layer_name)
-        except ValueError as exc:
+        except ValueError:
             _invalid_value(f"{step_path}.layer", "unsupported budget layer")
         if layer is BudgetLayer.CANONICAL_STATE:
-            target = _parse_count_envelope(
-                step_raw["target"],
-                f"{step_path}.target",
-            )
+            target = _parse_count_envelope(step_raw["target"], f"{step_path}.target")
         else:
             target = _parse_count_character_envelope(
                 step_raw["target"],
@@ -691,7 +674,7 @@ def _parse_token_counter(raw: object, path: str) -> TokenCounterCapabilityConfig
     mode_name = _string(mapping["mode"], f"{path}.mode")
     try:
         mode = TokenCountMode(mode_name)
-    except ValueError as exc:
+    except ValueError:
         _invalid_value(f"{path}.mode", "unsupported token accounting mode")
     return TokenCounterCapabilityConfig(capability=capability, mode=mode)
 
@@ -703,20 +686,9 @@ def _resolve_provider_secret(
     raw: dict[str, Any],
 ) -> tuple[SecretEnvReference | None, RuntimeSecretInputs, EffectiveConfigSecret]:
     if overrides.provider_api_key_env is not None:
-        ref = _secret_reference(
-            overrides.provider_api_key_env,
-            field="provider.api_key",
-        )
+        ref = _secret_reference(overrides.provider_api_key_env, field="provider.api_key")
         material = _referenced_secret(environ, ref.env)
-        return (
-            ref,
-            RuntimeSecretInputs(provider_api_key=material),
-            EffectiveConfigSecret(
-                configured=True,
-                source=ConfigSource.CLI,
-                material_source=ConfigSource.ENV,
-            ),
-        )
+        return _secret_result(ref, material, ConfigSource.CLI)
 
     if _RAW_PROVIDER_API_KEY_ENV in environ:
         material = environ[_RAW_PROVIDER_API_KEY_ENV]
@@ -741,20 +713,28 @@ def _resolve_provider_secret(
         assert isinstance(file_secret, dict)
         ref = _secret_reference(file_secret["env"], field="provider.api_key")
         material = _referenced_secret(environ, ref.env)
-        return (
-            ref,
-            RuntimeSecretInputs(provider_api_key=material),
-            EffectiveConfigSecret(
-                configured=True,
-                source=ConfigSource.CONFIG_FILE,
-                material_source=ConfigSource.ENV,
-            ),
-        )
+        return _secret_result(ref, material, ConfigSource.CONFIG_FILE)
 
     return (
         None,
         RuntimeSecretInputs(),
         EffectiveConfigSecret(configured=False, source=None, material_source=None),
+    )
+
+
+def _secret_result(
+    ref: SecretEnvReference,
+    material: str,
+    source: ConfigSource,
+) -> tuple[SecretEnvReference, RuntimeSecretInputs, EffectiveConfigSecret]:
+    return (
+        ref,
+        RuntimeSecretInputs(provider_api_key=material),
+        EffectiveConfigSecret(
+            configured=True,
+            source=source,
+            material_source=ConfigSource.ENV,
+        ),
     )
 
 
@@ -805,7 +785,7 @@ def _resolve_string_leaf(
     if value is _MISSING:
         if required:
             _missing(path)
-        raise AssertionError(f"optional resolver used for required leaf: {path}")
+        raise AssertionError(f"unresolved configuration leaf: {path}")
     resolved = _string(value, path)
     _record(provenance, path, resolved, source)
     return resolved
@@ -907,12 +887,7 @@ def _collect_file_provenance(
                 visit(nested, f"{path}.{index}")
             return
         if path:
-            _record(
-                provenance,
-                path,
-                value,
-                ConfigSource.CONFIG_FILE,
-            )
+            _record(provenance, path, value, ConfigSource.CONFIG_FILE)
 
     visit(raw, "")
 
@@ -975,6 +950,11 @@ def _integer(value: object, path: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         _invalid_type(path, "must be an integer")
     return value
+
+
+def _validate_port(value: int, path: str) -> None:
+    if not 1 <= value <= 65535:
+        _invalid_value(path, "must be between 1 and 65535")
 
 
 def _missing(path: str) -> None:
