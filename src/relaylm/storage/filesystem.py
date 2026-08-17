@@ -43,6 +43,10 @@ class CharacterDirectory:
     def state_path(self) -> Path:
         return self.memory_path / "state.json"
 
+    @property
+    def memory_markdown_path(self) -> Path:
+        return self.memory_path / "MEMORY.md"
+
     def load_config(self) -> CharacterConfig:
         raw = self._load_yaml_mapping(self.config_path)
         character = raw.get("character")
@@ -104,6 +108,34 @@ class CharacterDirectory:
                 handle.write("\n")
         except (OSError, TypeError, ValueError) as exc:
             raise CharacterDataError(f"cannot append events.jsonl: {exc}") from exc
+
+    def load_memory_markdown(self) -> str | None:
+        try:
+            return self.memory_markdown_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return None
+        except OSError as exc:
+            raise CharacterDataError(f"cannot read MEMORY.md: {exc}") from exc
+
+    def save_memory_markdown(self, content: str) -> bool:
+        if not content.strip():
+            raise CharacterDataError("MEMORY.md must not be empty")
+        current = self.load_memory_markdown()
+        if current == content:
+            return False
+
+        self.memory_path.mkdir(parents=True, exist_ok=True)
+        temporary = self.memory_markdown_path.with_name(f".{self.memory_markdown_path.name}.tmp")
+        try:
+            temporary.write_text(content, encoding="utf-8")
+            os.replace(temporary, self.memory_markdown_path)
+        except OSError as exc:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise CharacterDataError(f"cannot write MEMORY.md: {exc}") from exc
+        return True
 
     def load_state(self) -> CanonicalState:
         try:
