@@ -73,6 +73,7 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "state_memory_authority_filter",
         "targeted_event_retrieval",
         "event_evidence_cognitive_projection",
+        "ordinary_turn_event_retrieval",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()

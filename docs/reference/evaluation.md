@@ -164,7 +164,7 @@ With a character budget exactly large enough for the newer exchange but not both
 
 The scenario checks exact actor/source provenance for the admitted pair and verifies that the current user Event remains the current Input rather than being duplicated into Working Context.
 
-This evaluates only the current bounded recent-dialogue behavior. Future semantic retention, ordinary-turn Event-evidence retrieval, and token-aware cross-layer selection remain #1267 work.
+This evaluates only the current bounded recent-dialogue behavior. Future semantic retention, retrieval-scaled Event Journal access, and token-aware cross-layer selection remain #1267 work.
 
 ### `persistence_integrity`
 
@@ -304,7 +304,21 @@ It verifies that:
 - provider serialization emits the same occurrences in a separate `event_evidence` array;
 - real Event-evidence IDs remain provenance-bearing through the provider contract while MEMORY locations remain explicitly ineligible as StateCandidate sources.
 
-This scenario evaluates projection and provider provenance separation only. It does not perform Event retrieval itself, wire Event retrieval into ordinary turns, choose an Event budget, scale filesystem Event Journal reads, infer temporal/current-State conflicts, or measure actual-model response benefit.
+This scenario evaluates projection and provider provenance separation only. It does not perform Event retrieval itself, choose an Event budget, scale filesystem Event Journal reads, infer temporal/current-State conflicts, or measure actual-model response benefit.
+
+### `ordinary_turn_event_retrieval`
+
+This deterministic #1267 scenario evaluates the opt-in ordinary-turn Event retrieval boundary introduced by PR #1320 against isolated Character Packages.
+
+It checks that:
+
+- an explicit `EventRetrievalBudget` re-admits an older relevant persisted Event that has fallen outside recent Working Context;
+- the Current User Event is excluded from Event evidence and remains Current Input;
+- the successful ordinary turn calls the cognitive provider exactly once;
+- when Event retrieval is enabled, the pre-generation Event Journal snapshot is shared with Working Context selection rather than causing an extra retrieval-only scan;
+- omitting the Event budget preserves the previous empty Event-evidence behavior.
+
+This evaluates deterministic runtime wiring and one-generation behavior only. It does not claim retrieval-scaled Event Journal indexing, default Event budgets, cross-layer redundancy suppression, semantic/multilingual/temporal retrieval, or actual-model response benefit. Buffered/streaming path parity remains directly covered by unit contracts through the same preparation owner.
 
 Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
@@ -312,7 +326,7 @@ Current scenario implementations may use deterministic synthetic providers or di
 
 Still owned by #1247:
 
-- #1267 evidence-backed default MEMORY/State/Event budgeting, broader State-vs-memory authority semantics beyond explicit-key lexical filtering, ordinary-turn Event-evidence retrieval, retrieval-scaled Event Journal access, and cross-layer/token-aware diagnostics as those runtime slices land;
+- #1267 evidence-backed default MEMORY/State/Event budgeting, broader State-vs-memory authority semantics beyond explicit-key lexical filtering, retrieval-scaled Event Journal access, cross-layer redundancy/retention policy, and cross-layer/token-aware diagnostics as those runtime slices land;
 - future privacy/lifecycle evaluation from #1270;
 - response/persona and actual local-model quality measurements;
 - external benchmark adapters after current benchmark availability/version suitability is re-verified.

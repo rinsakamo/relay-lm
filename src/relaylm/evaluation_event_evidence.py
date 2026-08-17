@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
+
+from relaylm.cognitive import CognitiveInput, CognitiveOutput
 from relaylm.context import compile_cognitive_input
 from relaylm.evaluation import EvaluationCheck, EvaluationScenarioResult
 from relaylm.events import Event
@@ -10,6 +14,8 @@ from relaylm.providers.openai_compatible import (
     serialize_cognitive_input,
 )
 from relaylm.state import CanonicalState
+from relaylm.storage.filesystem import CharacterDirectory
+from relaylm.turn import EventRetrievalBudget, run_user_turn
 
 
 def _message(*, event_id: str, actor: str, content: str, second: int) -> Event:
@@ -20,6 +26,45 @@ def _message(*, event_id: str, actor: str, content: str, second: int) -> Event:
         event_id=event_id,
         timestamp=f"2026-08-17T06:50:{second:02d}+00:00",
     )
+
+
+class _RecordingProvider:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.inputs: list[CognitiveInput] = []
+
+    async def generate(self, cognitive_input: CognitiveInput) -> CognitiveOutput:
+        self.calls += 1
+        self.inputs.append(cognitive_input)
+        return CognitiveOutput("ok")
+
+
+class _CountingCharacter(CharacterDirectory):
+    def __init__(self, root: Path) -> None:
+        super().__init__(root)
+        self.iter_events_calls = 0
+
+    def iter_events(self):
+        self.iter_events_calls += 1
+        return super().iter_events()
+
+
+def _make_character(root: Path, *, counting: bool = False) -> CharacterDirectory:
+    (root / "memory").mkdir(parents=True)
+    (root / "SOUL.md").write_text(
+        "# Evaluation Character\n\nBe honest and grounded.\n",
+        encoding="utf-8",
+    )
+    (root / "config.yaml").write_text(
+        "format_version: 1\ncharacter:\n  id: event-eval\n  name: Event Eval\n",
+        encoding="utf-8",
+    )
+    (root / "memory" / "events.jsonl").write_text("", encoding="utf-8")
+    (root / "memory" / "state.json").write_text(
+        '{"format_version":1,"states":[]}\n', encoding="utf-8"
+    )
+    cls = _CountingCharacter if counting else CharacterDirectory
+    return cls(root)
 
 
 async def evaluate_event_evidence_cognitive_projection() -> EvaluationScenarioResult:
@@ -131,5 +176,108 @@ async def evaluate_event_evidence_cognitive_projection() -> EvaluationScenarioRe
             "current_input_duplicate_count": current_duplicate_count,
             "working_context_count": len(compiled.context),
             "memory_count": len(compiled.memory),
+        },
+    )
+
+
+async def evaluate_ordinary_turn_event_retrieval() -> EvaluationScenarioResult:
+    with tempfile.TemporaryDirectory(prefix="relaylm-event-turn-eval-") as temporary:
+        root = Path(temporary)
+        character = _make_character(root, counting=True)
+        assert isinstance(character, _CountingCharacter)
+        target = Event.create(
+            type="message",
+            actor="user",
+            payload={"content": "Rin mentioned coffee before."},
+        )
+        character.append_event(target)
+        for index in range(7):
+            character.append_event(
+                Event.create(
+                    type="message",
+                    actor="user",
+                    payload={"content": f"unrelated weather note {index}"},
+                )
+            )
+        provider = _RecordingProvider()
+        result = await run_user_turn(
+            character=character,
+            provider=provider,
+            content="What did I say about coffee?",
+            event_budget=EventRetrievalBudget(max_events=1, max_chars=200),
+        )
+        supplied = provider.inputs[0]
+        retrieved_ids = [item.event_id for item in supplied.event_evidence]
+        context_sources = {
+            source for item in supplied.context for source in item.sources
+        }
+        current_duplicate_count = retrieved_ids.count(result.user_event.id)
+        explicit_iter_events_calls = character.iter_events_calls
+
+    with tempfile.TemporaryDirectory(prefix="relaylm-event-default-eval-") as temporary:
+        root = Path(temporary)
+        default_character = _make_character(root)
+        default_character.append_event(
+            Event.create(
+                type="message",
+                actor="user",
+                payload={"content": "Coffee preference was discussed."},
+            )
+        )
+        default_provider = _RecordingProvider()
+        await run_user_turn(
+            character=default_character,
+            provider=default_provider,
+            content="Coffee history?",
+        )
+        default_event_evidence_count = len(default_provider.inputs[0].event_evidence)
+
+    checks = (
+        EvaluationCheck(
+            check_id="explicit_budget_retrieves_older_relevant_event",
+            boundary="event_retrieval",
+            passed=retrieved_ids == [target.id]
+            and target.id not in context_sources,
+            expected=target.id,
+            observed=",".join(retrieved_ids) or "none",
+        ),
+        EvaluationCheck(
+            check_id="current_event_is_not_duplicated_as_evidence",
+            boundary="event_provenance",
+            passed=current_duplicate_count == 0,
+            expected=0,
+            observed=current_duplicate_count,
+        ),
+        EvaluationCheck(
+            check_id="ordinary_turn_calls_provider_once",
+            boundary="ordinary_turn",
+            passed=provider.calls == 1,
+            expected=1,
+            observed=provider.calls,
+        ),
+        EvaluationCheck(
+            check_id="pre_generation_snapshot_is_shared_with_working_context",
+            boundary="event_journal",
+            passed=explicit_iter_events_calls == 2,
+            expected=2,
+            observed=explicit_iter_events_calls,
+        ),
+        EvaluationCheck(
+            check_id="omitted_budget_preserves_empty_event_evidence",
+            boundary="ordinary_turn",
+            passed=default_event_evidence_count == 0,
+            expected=0,
+            observed=default_event_evidence_count,
+        ),
+    )
+    return EvaluationScenarioResult(
+        scenario_id="ordinary_turn_event_retrieval",
+        checks=checks,
+        metrics={
+            "provider_calls": provider.calls,
+            "retrieved_event_count": len(retrieved_ids),
+            "current_duplicate_count": current_duplicate_count,
+            "explicit_iter_events_calls": explicit_iter_events_calls,
+            "default_event_evidence_count": default_event_evidence_count,
         },
     )
