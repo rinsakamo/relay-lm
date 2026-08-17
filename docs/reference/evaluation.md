@@ -203,6 +203,18 @@ The scenario verifies that:
 
 This evaluates RelayLM-owned authority and rerun stability only. It does not claim actual local-model crystallization quality, semantic note splitting, or retrieval behavior.
 
+### `streaming_safety`
+
+This deterministic #1269 scenario evaluates the RelayLM-owned streamed completion boundary in three cases.
+
+For a successful stream, user-visible text is emitted while persistence still contains only the User Event and no State mutation. After the complete structured cognitive result returns, the Assistant Event and accepted State are committed and the stream ends with `[DONE]`.
+
+For a truncated provider stream, already-safe visible text may be delivered, but no `[DONE]` marker is emitted and persistence remains User-only with no State mutation.
+
+For downstream client closure, closing the RelayLM stream after the first visible chunk cancels the in-flight producer. Persistence again remains User-only with no State mutation.
+
+This scenario evaluates delivery/commit/cancellation semantics already implemented under #1269. Provider-wire incremental JSON parsing remains covered by its dedicated unit contracts rather than duplicated in the native report.
+
 Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
 ## Deferred evaluation work
@@ -210,7 +222,6 @@ Current scenario implementations may use deterministic synthetic providers or di
 Still owned by #1247:
 
 - relevance/retrieval evaluation from #1267;
-- streaming/abort evaluation expansion beyond the existing deterministic contracts;
 - future privacy/lifecycle evaluation from #1270;
 - response/persona and actual local-model quality measurements;
 - external benchmark adapters after current benchmark availability/version suitability is re-verified.

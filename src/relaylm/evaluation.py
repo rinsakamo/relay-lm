@@ -231,6 +231,12 @@ async def evaluate_crystallization_integrity() -> EvaluationScenarioResult:
     return await evaluate()
 
 
+async def evaluate_streaming_safety() -> EvaluationScenarioResult:
+    from relaylm.evaluation_streaming import evaluate_streaming_safety as evaluate
+
+    return await evaluate()
+
+
 async def run_native_evaluation() -> EvaluationReport:
     return EvaluationReport(
         scenarios=(
@@ -243,6 +249,7 @@ async def run_native_evaluation() -> EvaluationReport:
             await evaluate_persistence_integrity(),
             await evaluate_correction_remove_semantics(),
             await evaluate_crystallization_integrity(),
+            await evaluate_streaming_safety(),
         ),
     )
 
