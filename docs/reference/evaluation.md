@@ -124,6 +124,26 @@ assistant dialogue
   != authority to establish user truth
 ```
 
+### `comparative_preference_preservation`
+
+This deterministic State/Validator scenario starts with accepted `user.preference / tea = likes` and one current user Event expressing a stronger current preference for coffee.
+
+It supplies only the two additive specific-key proposals expected from the frozen preference semantics:
+
+```text
+user.preference / coffee = likes
+user.preference / preferred_beverage = coffee
+```
+
+It checks that:
+
+- both proposals are accepted as creates;
+- the existing weaker positive `tea = likes` State is preserved rather than implicitly removed or replaced;
+- final preference State contains `tea`, `coffee`, and `preferred_beverage` simultaneously;
+- both new States retain the current user Event as provenance.
+
+This scenario evaluates RelayLM's deterministic preservation/State-transition behavior after candidate proposal. It does not claim that an actual model has correctly interpreted every comparative natural-language phrasing; model-side comparative extraction remains part of future actual-model quality evaluation.
+
 Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
 ## Deferred evaluation work
@@ -131,9 +151,8 @@ Current scenario implementations may use deterministic synthetic providers or di
 Still owned by #1247:
 
 - correction/remove behavior;
-- comparative preference preservation;
 - degree-hint integrity;
-- Working Context provenance/budget invariants beyond the restart/authority scenarios;
+- Working Context provenance/budget invariants beyond the current restart/authority scenarios;
 - persistence malformed-data safety;
 - crystallization quality and Markdown fidelity from #1260;
 - relevance/retrieval evaluation from #1267;
