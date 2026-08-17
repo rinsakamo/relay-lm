@@ -6,6 +6,7 @@ The Context Compiler constructs the smallest sufficient cognitive context for th
 
 - Identity Core;
 - relevant Canonical State;
+- already-accepted Continuity Context when supplied;
 - RelayLM-owned recent message Events used as Working Context;
 - retrieved crystallized memory and targeted Event evidence when those layers are enabled;
 - the current governed Event;
@@ -30,6 +31,7 @@ Per-turn cognitive layer
   Identity            protected
   Current Event       protected
   Relevant State      current accepted understanding
+  Accepted Continuity accepted temporary referent/unresolved continuity
   Working Context     recent conversational continuity
   Retrieved Memory    optional long-term semantic context
   Event Evidence      targeted grounding / chronology
@@ -40,6 +42,8 @@ Per-turn cognitive layer
 ## Authority and continuity rules
 
 - Raw client transcript replay is not a trusted context mechanism.
+- Accepted Continuity Context is temporary, non-durable continuity authority owned upstream; Context compilation may consume it but never accepts candidates, advances its lifecycle, or infers missing continuity semantics from raw language.
+- Projected Continuity preserves its accepted Event sources and epistemic role without pretending that the compiler-generated projection itself was authored by the user or assistant.
 - Working Context is built only from RelayLM-owned persisted Events.
 - Working Context may contain both user-authored and assistant-authored dialogue and must preserve actor/source provenance.
 - Assistant-authored Working Context supports conversational continuity, reference resolution, and unfinished dialogue. It does **not** prove user facts, preferences, goals, experiences, or external events merely because the assistant said them before.
@@ -92,6 +96,26 @@ Additional rules:
 
 These are deterministic residency rules, not semantic truth rules.
 
+## Current accepted Continuity projection
+
+`compile_cognitive_input(..., continuity_context=...)` accepts an already-validated `ContinuityContext` as an optional input. This is a consumer boundary only: candidate acceptance, replacement/resolution, revision advancement, expiry, and capacity eviction remain owned by the Continuity lifecycle authority.
+
+The first bounded retention slice is deliberately limited to accepted `referent` and `unresolved` items:
+
+- accepted item order is preserved;
+- accepted `referent` / `unresolved` items are projected before recent Event-derived Working Context;
+- each item becomes a `ContextItem` whose `sources` are the accepted source Event IDs;
+- `content` is a compact deterministic JSON object carrying `kind`, `key`, semantic `value`, and `epistemic_role` under a `continuity` field;
+- the projection leaves `ContextItem.actor` unset because accepted Continuity is a compiler-generated typed projection, not replayed user- or assistant-authored dialogue;
+- immutable Mapping/tuple semantic values are converted only to their JSON projection shape; accepted Continuity itself is not mutated;
+- the Working Context Event-count and character budgets do not evict accepted C2 Continuity items, so zero recent-message budget does not erase already-accepted referent/unresolved continuity;
+- `continuity_context=None`, or an accepted context containing no C2-eligible items, preserves the previous cognitive projection;
+- accepted `active_task` is intentionally not projected by this slice; active-task retention is the next separately bounded #1267 Context Compiler responsibility.
+
+This slice does not resolve references from raw language, synthesize unresolved questions, accept Continuity candidates, create a second Continuity lifecycle owner, or infer semantic redundancy with recent dialogue or Event Evidence.
+
+The ordinary-turn runtime now owns process-local Continuity acceptance/lifecycle orchestration, but the current runtime compilation call does not yet supply its `ContinuityRuntime.context` to this compiler input. That cross-lane orchestration wiring remains outside the Context Compiler semantic owner and must consume this capability only after it exists on `v1`.
+
 ## Current active-State selection primitive
 
 `compile_cognitive_input` supports an optional explicit `max_state_records` cap for large active-State sets.
@@ -124,6 +148,8 @@ The diagnostics surface currently covers four compiler-owned layers:
 - `working_context` — eligible prior message count after Current Event exclusion, selected count, explicit Event-window and character budgets, selected character usage, Current Event exclusion count, Event-window eviction count, unmatched-assistant drop count, and character-budget eviction count;
 - `retrieved_memory` — number of already-retrieved MEMORY chunks supplied to the compiler, number projected after the active-State authority filter, and deterministic State-shadow suppression count;
 - `event_evidence` — number of already-selected Event candidates supplied to the compiler, number projected after Current Event and exact Working Context Event-ID de-duplication, Current Event exclusion count, and the count of supplied non-current Event IDs that were already resident in selected Working Context.
+
+Accepted Continuity projection does not add a fifth diagnostics authority in this slice. `working_context` diagnostics continue to describe only recent Event-derived Working Context, and Event-Evidence exact-ID overlap diagnostics continue to compare against that selected Working Context rather than treating Continuity source provenance as duplicate dialogue residency.
 
 Shared diagnostic fields include layer/mode, aggregate eligible/selected/evicted counts, budget unit/limit/used/pressure, plus bounded reason counters. Working Context additionally reports `character_budget_limit`, `character_budget_used`, `evicted_event_window_count`, `evicted_character_budget_count`, and `evicted_orphan_assistant_count`. Cross-layer additions remain `authority_suppressed_count`, `current_event_excluded_count`, and `redundancy_overlap_count`.
 
@@ -279,25 +305,26 @@ Context budgeting is role-aware rather than one flat relevance competition.
 Conceptually:
 
 ```text
-protected tier   Identity + Current Event
-current tier     relevant active Canonical State
-working tier     bounded recent conversational continuity
-retrieved tier   MEMORY chunks + targeted Events
-reserve tier     prompt / schema / provider overhead
+protected tier    Identity + Current Event
+current tier      relevant active Canonical State
+continuity tier   accepted referent/unresolved continuity, bounded upstream
+working tier      bounded recent conversational continuity
+retrieved tier    MEMORY chunks + targeted Events
+reserve tier      prompt / schema / provider overhead
 ```
 
-Budgets should use floors/caps/residual allocation rather than fixed percentages that must always be consumed. Correct but irrelevant memory should remain out of Context; token availability alone is not a reason to inject it.
+Budgets should use floors/caps/residual allocation rather than fixed percentages that must always be consumed. Correct but irrelevant memory should remain out of Context; token availability alone is not a reason to inject it. The C2 Continuity projection does not establish a new runtime/default token budget; it consumes an already capacity/lifecycle-bounded Continuity Context.
 
 ## Deferred selection work
 
 #1267 remains the authority for later Context selection and retrieval work, including:
 
 - evidence-backed runtime default State/MEMORY/Event budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
-- `unresolved`, `referent`, and `active_task` retention beyond pure recency;
+- accepted `active_task` retention beyond pure recency and any later Continuity-specific selection/degradation policy beyond the current accepted referent/unresolved projection;
 - semantic State-vs-memory conflict detection beyond explicit State-key headings and canonical-key field assignments, including historical/current interpretation, free-form degree/intensity interpretation, and other non-lexically-comparable values;
 - durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
 - persistent/segmented Event Journal indexing and retrieval-scaled targeted discovery beyond the current process-local validated snapshot reuse;
-- redundancy reduction across State / Working Context / Memory / Events beyond the current exact Working Context/Event Evidence Event-ID residency rule;
+- redundancy reduction across State / Working Context / Continuity / Memory / Events beyond the current exact Working Context/Event Evidence Event-ID residency rule;
 - retrieval-stage MEMORY/Event diagnostics, total token-aware tier budgeting, and explicit cross-layer degradation/fallback evidence;
 - embedding/index acceleration only after authority eligibility is preserved.
 
