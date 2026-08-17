@@ -8,6 +8,8 @@ from relaylm.evaluation import (
     EvaluationReport,
     EvaluationScenarioResult,
     evaluate_assistant_self_certification_prevention,
+    evaluate_boolean_state_memory_authority,
+    evaluate_cjk_retrieval_relevance,
     evaluate_comparative_preference_preservation,
     evaluate_correction_remove_semantics,
     evaluate_crystallization_integrity,
@@ -16,6 +18,7 @@ from relaylm.evaluation import (
     evaluate_persistence_integrity,
     evaluate_provider_failure_safety,
     evaluate_restart_continuity,
+    evaluate_retrieval_aggregate_diagnostics,
     evaluate_retrieval_stage_diagnostics,
     evaluate_state_selection_diagnostics,
     evaluate_streaming_safety,
@@ -80,6 +83,9 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "event_evidence_cognitive_projection",
         "ordinary_turn_event_retrieval",
         "retrieval_stage_diagnostics",
+        "boolean_state_memory_authority",
+        "retrieval_aggregate_diagnostics",
+        "cjk_retrieval_relevance",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
@@ -266,5 +272,29 @@ def test_retrieval_stage_diagnostics_evaluation_is_registered() -> None:
     result = asyncio.run(evaluate_retrieval_stage_diagnostics())
 
     assert result.scenario_id == "retrieval_stage_diagnostics"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+
+
+def test_boolean_state_memory_authority_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_boolean_state_memory_authority())
+
+    assert result.scenario_id == "boolean_state_memory_authority"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+
+
+def test_retrieval_aggregate_diagnostics_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_retrieval_aggregate_diagnostics())
+
+    assert result.scenario_id == "retrieval_aggregate_diagnostics"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+
+
+def test_cjk_retrieval_relevance_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_cjk_retrieval_relevance())
+
+    assert result.scenario_id == "cjk_retrieval_relevance"
     assert result.status == "pass"
     assert all(check.passed for check in result.checks)
