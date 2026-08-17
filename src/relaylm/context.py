@@ -536,11 +536,15 @@ def _memory_chunk_is_shadowed(
             current_value = _simple_scalar_state_value_text(record.value)
             if current_value is None:
                 continue
-            if claims and any(
-                _lexical_terms(claim) != _lexical_terms(current_value)
-                for claim in claims
-            ):
-                return True
+            current_terms = _lexical_terms(current_value)
+            for claim in claims:
+                claim_terms = _lexical_terms(claim)
+                if len(claim_terms) > 1 and claim_terms[0] == "not":
+                    if claim_terms[1:] == current_terms:
+                        return True
+                    continue
+                if claim_terms != current_terms:
+                    return True
             continue
 
         if isinstance(record.value, bool):
