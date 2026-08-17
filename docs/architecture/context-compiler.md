@@ -114,6 +114,22 @@ The current lexical selector is candidate selection, not authority. It does not 
 
 The ordinary runtime does **not** yet impose a default State cap, so existing turns continue to receive all eligible active State unless a caller explicitly requests bounded State selection. Runtime budget policy and stronger semantic/multilingual discovery remain #1267 work.
 
+### Content-free State selection diagnostics
+
+Callers that explicitly need selection evidence may use `compile_cognitive_input_with_diagnostics`. It returns the same `CognitiveInput` produced by the ordinary compiler plus a diagnostics tuple. The ordinary `compile_cognitive_input` path does not generate or persist diagnostics.
+
+The current diagnostics surface covers only the `canonical_state` layer and exposes aggregate, content-free fields:
+
+- selection mode: `unbounded`, `within_budget`, `zero_budget`, or `lexical_ranked`;
+- eligible / selected / evicted record counts;
+- budget unit (`records`), explicit limit, used count, and whether budget pressure occurred;
+- selected lexical-match count and selected deterministic-fallback count when lexical ranking is active;
+- evicted-by-budget-limit count.
+
+Diagnostics deliberately exclude State IDs, keys, values, source Event IDs, Current Event content/ID, and any other semantic payload. They are observations about selection mechanics, not a new truth source, persistence layer, ranking authority, or telemetry requirement.
+
+This first diagnostics slice is record-count based because the current explicit State cap is record-count based. Cross-layer token cost, Working Context diagnostics, retrieved-memory/Event diagnostics, and total-budget degradation/fallback reporting remain later #1267 work.
+
 ## Budget model
 
 Context budgeting is role-aware rather than one flat relevance competition.
@@ -140,7 +156,7 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 - targeted Event evidence retrieval;
 - source-role-aware stale/conflict suppression;
 - redundancy reduction across State / Working Context / Memory / Events;
-- token-aware tier budgeting and diagnostics;
+- total token-aware tier budgeting and cross-layer diagnostics;
 - embedding/index acceleration only after authority eligibility is preserved.
 
 The governing principle is:

@@ -4,6 +4,7 @@ import re
 import unicodedata
 from collections import deque
 from collections.abc import Iterable
+from dataclasses import dataclass
 from typing import Any
 
 from relaylm.cognitive import CognitiveInput, ContextItem
@@ -14,6 +15,28 @@ from relaylm.state import CanonicalState, STATE_CLASS_DEFINITIONS, StateRecord
 
 DEFAULT_WORKING_CONTEXT_MAX_EVENTS = 6
 DEFAULT_WORKING_CONTEXT_MAX_CHARS = 4000
+
+
+@dataclass(frozen=True, slots=True)
+class ContextSelectionDiagnostics:
+    layer: str
+    mode: str
+    eligible_count: int
+    selected_count: int
+    evicted_count: int
+    budget_unit: str
+    budget_limit: int | None
+    budget_used: int
+    budget_pressure: bool
+    selected_lexical_match_count: int = 0
+    selected_fallback_count: int = 0
+    evicted_budget_limit_count: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class CognitiveCompilationResult:
+    cognitive_input: CognitiveInput
+    diagnostics: tuple[ContextSelectionDiagnostics, ...]
 
 
 def compile_cognitive_input(
@@ -55,6 +78,40 @@ def compile_cognitive_input(
     )
 
 
+def compile_cognitive_input_with_diagnostics(
+    *,
+    identity: Identity,
+    state: CanonicalState,
+    current_event: Event,
+    recent_events: Iterable[Event] = (),
+    max_working_context_events: int = DEFAULT_WORKING_CONTEXT_MAX_EVENTS,
+    max_working_context_chars: int = DEFAULT_WORKING_CONTEXT_MAX_CHARS,
+    max_state_records: int | None = None,
+) -> CognitiveCompilationResult:
+    """Build cognitive input plus content-free State selection diagnostics."""
+
+    cognitive_input = compile_cognitive_input(
+        identity=identity,
+        state=state,
+        current_event=current_event,
+        recent_events=recent_events,
+        max_working_context_events=max_working_context_events,
+        max_working_context_chars=max_working_context_chars,
+        max_state_records=max_state_records,
+    )
+    return CognitiveCompilationResult(
+        cognitive_input=cognitive_input,
+        diagnostics=(
+            _diagnose_active_state_selection(
+                state=state,
+                current_event=current_event,
+                max_records=max_state_records,
+                selected_state=cognitive_input.state,
+            ),
+        ),
+    )
+
+
 def _select_active_state(
     *,
     state: CanonicalState,
@@ -81,6 +138,56 @@ def _select_active_state(
     )
     selected_indices = sorted(index for index, _ in ranked[:max_records])
     return tuple(active_state[index] for index in selected_indices)
+
+
+def _diagnose_active_state_selection(
+    *,
+    state: CanonicalState,
+    current_event: Event,
+    max_records: int | None,
+    selected_state: tuple[StateRecord, ...],
+) -> ContextSelectionDiagnostics:
+    eligible_count = sum(
+        1
+        for record in state.states
+        if record.status == "active" and record.valid_to is None
+    )
+    selected_count = len(selected_state)
+    evicted_count = eligible_count - selected_count
+
+    if max_records is None:
+        mode = "unbounded"
+    elif max_records == 0:
+        mode = "zero_budget"
+    elif eligible_count <= max_records:
+        mode = "within_budget"
+    else:
+        mode = "lexical_ranked"
+
+    lexical_match_count = 0
+    fallback_count = 0
+    if mode == "lexical_ranked":
+        content = current_event.payload.get("content")
+        query = _normalize_lexical_text(content if isinstance(content, str) else "")
+        lexical_match_count = sum(
+            1 for record in selected_state if _state_lexical_score(record, query) > 0
+        )
+        fallback_count = selected_count - lexical_match_count
+
+    return ContextSelectionDiagnostics(
+        layer="canonical_state",
+        mode=mode,
+        eligible_count=eligible_count,
+        selected_count=selected_count,
+        evicted_count=evicted_count,
+        budget_unit="records",
+        budget_limit=max_records,
+        budget_used=selected_count,
+        budget_pressure=evicted_count > 0,
+        selected_lexical_match_count=lexical_match_count,
+        selected_fallback_count=fallback_count,
+        evicted_budget_limit_count=evicted_count,
+    )
 
 
 def _state_lexical_score(record: StateRecord, query: str) -> int:
