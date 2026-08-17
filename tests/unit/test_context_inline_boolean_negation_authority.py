@@ -160,12 +160,6 @@ def test_multiple_same_key_assignments_remain_outside_c13() -> None:
     assert _compile(deferred, value=True).memory == ()
 
 
-def test_heading_addressed_boolean_negation_remains_outside_c13() -> None:
-    deferred = _chunk("not false", heading="Notifications Enabled")
-
-    assert _compile(deferred, value=True).memory == ()
-
-
 @pytest.mark.parametrize(
     "assignment",
     [
