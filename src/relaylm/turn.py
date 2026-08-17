@@ -76,11 +76,23 @@ class EventTurnRetrievalDiagnostics:
 
 
 @dataclass(frozen=True, slots=True)
+class RetrievalAggregateDiagnostics:
+    """Content-free retrieval-only totals derived from configured layers."""
+
+    enabled_layer_count: int
+    configured_character_budget_total: int
+    selected_character_usage_total: int
+    character_budget_pressured_layer_count: int
+    any_character_budget_pressure: bool
+
+
+@dataclass(frozen=True, slots=True)
 class TurnRetrievalDiagnostics:
     """Content-free retrieval diagnostics for one explicit ordinary-turn observation."""
 
     memory: MemoryTurnRetrievalDiagnostics | None
     event: EventTurnRetrievalDiagnostics | None
+    aggregate: RetrievalAggregateDiagnostics
 
 
 @dataclass(frozen=True, slots=True)
@@ -323,6 +335,30 @@ def _compile_turn_cognitive_input(
     return cognitive_input, TurnRetrievalDiagnostics(
         memory=memory_diagnostics,
         event=event_diagnostics,
+        aggregate=_aggregate_retrieval_diagnostics(
+            memory=memory_diagnostics,
+            event=event_diagnostics,
+        ),
+    )
+
+
+def _aggregate_retrieval_diagnostics(
+    *,
+    memory: MemoryTurnRetrievalDiagnostics | None,
+    event: EventTurnRetrievalDiagnostics | None,
+) -> RetrievalAggregateDiagnostics:
+    layers = tuple(layer for layer in (memory, event) if layer is not None)
+    pressure_flags = tuple(
+        layer.selector.character_budget_pressure for layer in layers
+    )
+    return RetrievalAggregateDiagnostics(
+        enabled_layer_count=len(layers),
+        configured_character_budget_total=sum(layer.budget.max_chars for layer in layers),
+        selected_character_usage_total=sum(
+            layer.selector.character_budget_used for layer in layers
+        ),
+        character_budget_pressured_layer_count=sum(pressure_flags),
+        any_character_budget_pressure=any(pressure_flags),
     )
 
 
