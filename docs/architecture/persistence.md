@@ -30,17 +30,21 @@ Filesystem format is not semantic architecture. Storage may later use segmentati
 
 The current filesystem implementation intentionally keeps a small, strict contract:
 
-- `config.yaml` uses `format_version: 1` and requires non-empty `character.id` and `character.name`;
+- `config.yaml` explicitly contains integer `format_version: 1` and requires non-empty `character.id` and `character.name`; version values are not string-coerced or defaulted;
 - `SOUL.md` must exist and contain non-empty Identity content;
 - `events.jsonl` stores one Event object per non-empty line and is appended in Event order;
 - a missing `events.jsonl` is treated as an empty Event Journal;
 - malformed Event JSON, malformed Event shape, malformed config, or malformed State fails closed rather than being silently repaired;
-- a missing `state.json` is treated as an empty `CanonicalState(format_version=1)`;
+- a missing `state.json` file is treated as an empty `CanonicalState(format_version=1)`;
+- an existing `state.json` must explicitly contain integer `format_version: 1` and a `states` array; missing fields and version type coercion are rejected rather than interpreted as an older/looser format;
+- every persisted State record explicitly contains `state_id`, `state_class`, `key`, `value`, `status`, and `sources`; only `valid_from` and `valid_to` are optional in the current record representation;
 - `state.json` writes use a temporary file followed by atomic filesystem replacement, and a failed write attempts to remove the temporary file;
 - State persistence preserves JSON-serializable State values and provenance source IDs;
 - a missing `MEMORY.md` means no prior crystallized readable memory and does not block ordinary character operation;
 - `MEMORY.md` writes also use temporary-file replacement;
 - byte-for-byte unchanged crystallized Markdown is not rewritten.
+
+File absence and malformed existing content are deliberately different: an unmaterialized optional persistence file may have a defined empty/absent meaning, while an existing versioned file is never repaired through compatibility defaults.
 
 These are current implementation guarantees, not a claim that the underlying filesystem is the permanent storage architecture. Crash-consistent multi-file transactions, multi-process writers, backup/restore, schema migration, package integrity tooling, and broader lifecycle operations remain deferred.
 
