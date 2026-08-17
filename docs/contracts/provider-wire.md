@@ -2,7 +2,7 @@
 
 Provider wire grammar is adapter detail and must not redefine RelayLM semantic contracts.
 
-Gate B (#1258) validated V6 / Framing D against the target local OpenAI-compatible provider. M3 implements the complete-response form of that wire.
+Gate B (#1258) validated V6 / Framing D against the target local OpenAI-compatible provider. The current adapter implements both buffered and safe streaming delivery forms of that same wire.
 
 ## Complete provider response
 
@@ -113,6 +113,12 @@ This authority distinction belongs to RelayLM semantics even though provider-spe
 
 The provider-facing instruction defines `utterance` as the complete non-empty natural-language reply shown to the user. This is a wire/model reliability constraint established by the V6 Gate B evidence, not a new semantic field.
 
-M3 buffers the complete provider response. Safe early visible-response streaming while State remains commit-ineligible is deferred to #1269; the semantic `CognitiveOutput(response, state_candidates)` contract remains unchanged.
+For buffered generation, RelayLM waits for the complete provider response and then normalizes the structured object into `CognitiveOutput`.
+
+For streaming generation, the provider still generates the same single structured object. The adapter accumulates the complete structured text while incrementally decoding only characters that can be proven to belong to the leading top-level `utterance` JSON string. Those safe characters may be delivered to the client before the candidate tail completes.
+
+`state_candidates` are never parsed or made commit-eligible incrementally. Only after the provider stream reaches completion does RelayLM parse the complete JSON object, normalize it through the same wire rules, and return the semantic `CognitiveOutput(response, state_candidates)`. If the stream is truncated or malformed, no semantic `CognitiveOutput` is accepted and no candidate becomes eligible for State mutation.
+
+If the adapter cannot safely identify an incremental `utterance` prefix, it may buffer visible text until the complete object is validated; safety takes precedence over early display. Streaming does not introduce a second semantic generation or change the semantic output contract.
 
 Provider/model-specific prompt wording and schema constraints may change without reopening semantic architecture unless evidence reveals a semantic defect.
