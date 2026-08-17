@@ -1,3 +1,5 @@
+import pytest
+
 from relaylm.continuity import ContinuityCandidate, ContinuityContext
 from relaylm.continuity_validation import apply_continuity_candidates
 from relaylm.events import Event
@@ -318,3 +320,33 @@ def test_non_json_value_is_rejected_and_lifetime_policy_is_explicitly_positive()
         assert str(exc) == "lifetime_revisions must be positive"
     else:
         raise AssertionError("zero lifetime must be rejected")
+
+
+def test_accepted_semantic_value_is_deeply_immutable_and_detached_from_candidate() -> None:
+    user_event = _event("event-user-1", "user")
+    proposal_value = {"drafts": [{"name": "first"}], "tags": ["active"]}
+    candidate = ContinuityCandidate.set(
+        kind="active_task",
+        key="task.draft",
+        value=proposal_value,
+        sources=(user_event.id,),
+        epistemic_role="assistant_inference",
+    )
+
+    result = apply_continuity_candidates(
+        current_context=ContinuityContext(max_items=2),
+        candidates=(candidate,),
+        events={user_event.id: user_event},
+        lifetime_revisions=3,
+    )
+    item = result.context.items[0]
+
+    proposal_value["drafts"][0]["name"] = "mutated proposal"
+    proposal_value["tags"].append("mutated")
+
+    assert item.value["drafts"][0]["name"] == "first"
+    assert item.value["tags"] == ("active",)
+    with pytest.raises(TypeError):
+        item.value["drafts"][0]["name"] = "mutated authority"
+    with pytest.raises(AttributeError):
+        item.value["tags"].append("mutated authority")
