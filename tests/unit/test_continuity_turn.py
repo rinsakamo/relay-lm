@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 
 import pytest
@@ -45,6 +46,17 @@ class _BufferedContinuityProvider:
                 ),
             ),
         )
+
+
+class _InspectContinuityInputProvider:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.inputs: list[CognitiveInput] = []
+
+    async def generate(self, cognitive_input: CognitiveInput) -> CognitiveOutput:
+        self.calls += 1
+        self.inputs.append(cognitive_input)
+        return CognitiveOutput(response="了解。")
 
 
 class _EmptyContinuityProvider:
@@ -120,6 +132,53 @@ def test_buffered_turn_accepts_continuity_from_exactly_one_semantic_generation(
         "user",
         "assistant",
     ]
+
+
+def test_turn_projects_preexisting_accepted_continuity_before_advancing_lifecycle(
+    tmp_path: Path,
+) -> None:
+    character = _make_character(tmp_path)
+    provider = _InspectContinuityInputProvider()
+    retained = ContinuityItem(
+        item_id="continuity:1:1",
+        kind="referent",
+        key="draft.current",
+        value={"entity": "the blue draft"},
+        sources=("accepted-source",),
+        epistemic_role="user_assertion",
+        accepted_revision=1,
+        expires_revision=5,
+    )
+    runtime = ContinuityRuntime(
+        context=ContinuityContext(max_items=3, revision=1, items=(retained,)),
+        lifetime_revisions=4,
+    )
+
+    result = asyncio.run(
+        run_user_turn(
+            character=character,
+            provider=provider,
+            content="その続きはどうする？",
+            continuity_runtime=runtime,
+        )
+    )
+
+    assert provider.calls == 1
+    assert len(provider.inputs[0].context) == 1
+    projected = provider.inputs[0].context[0]
+    assert json.loads(projected.content) == {
+        "continuity": {
+            "epistemic_role": "user_assertion",
+            "key": "draft.current",
+            "kind": "referent",
+            "value": {"entity": "the blue draft"},
+        }
+    }
+    assert projected.sources == ("accepted-source",)
+    assert projected.actor is None
+    assert runtime.context.revision == 2
+    assert result.continuity is not None
+    assert result.continuity.context is runtime.context
 
 
 def test_streamed_turn_commits_continuity_only_after_one_stream_generation(
