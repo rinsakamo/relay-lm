@@ -13,10 +13,12 @@ domains:
       - tests/unit/test_cognitive_turn.py
       - tests/unit/test_turn_memory_retrieval.py
       - tests/unit/test_turn_event_retrieval.py
+      - tests/unit/test_turn_retrieval_diagnostics.py
       - tests/unit/test_event_evidence_projection.py
     docs:
       - docs/contracts/cognitive-turn.md
       - docs/architecture/core.md
+      - docs/reference/turn-retrieval-diagnostics.md
 
   context_compiler:
     runtime:
@@ -30,6 +32,7 @@ domains:
       - tests/unit/test_context_cross_layer_diagnostics.py
       - tests/unit/test_memory_retrieval_diagnostics.py
       - tests/unit/test_event_retrieval_diagnostics.py
+      - tests/unit/test_event_discovery_index.py
       - tests/unit/test_turn_memory_retrieval.py
       - tests/unit/test_turn_event_retrieval.py
       - tests/unit/test_event_retrieval.py
@@ -38,6 +41,7 @@ domains:
       - docs/architecture/context-compiler.md
       - docs/reference/memory-retrieval-diagnostics.md
       - docs/reference/event-retrieval-diagnostics.md
+      - docs/reference/event-retrieval-discovery.md
 
   state_and_validation:
     runtime:
@@ -57,9 +61,11 @@ domains:
     tests:
       - tests/unit/test_character_directory.py
       - tests/unit/test_event_snapshot_cache.py
+      - tests/unit/test_event_discovery_index.py
     docs:
       - docs/architecture/persistence.md
       - docs/reference/character-directory.md
+      - docs/reference/event-retrieval-discovery.md
 
   crystallization:
     runtime:
@@ -89,6 +95,7 @@ domains:
       - src/relaylm/evaluation_persistence.py
       - src/relaylm/evaluation_memory.py
       - src/relaylm/evaluation_event_evidence.py
+      - src/relaylm/evaluation_retrieval_diagnostics.py
     tests:
       - tests/unit/test_evaluation.py
       - tests/unit/test_evaluation_cross_layer_diagnostics.py
@@ -97,9 +104,11 @@ domains:
       - tests/unit/test_evaluation_memory.py
       - tests/unit/test_evaluation_event_evidence.py
       - tests/unit/test_evaluation_ordinary_event_retrieval.py
+      - tests/unit/test_evaluation_retrieval_diagnostics.py
     docs:
       - docs/reference/evaluation.md
       - docs/reference/evaluation-working-context-diagnostics.md
+      - docs/reference/evaluation-retrieval-stage-diagnostics.md
 
   development_workflow:
     runtime: []

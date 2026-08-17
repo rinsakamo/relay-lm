@@ -311,6 +311,14 @@ async def evaluate_ordinary_turn_event_retrieval() -> EvaluationScenarioResult:
     return await evaluate()
 
 
+async def evaluate_retrieval_stage_diagnostics() -> EvaluationScenarioResult:
+    from relaylm.evaluation_retrieval_diagnostics import (
+        evaluate_retrieval_stage_diagnostics as evaluate,
+    )
+
+    return await evaluate()
+
+
 async def run_native_evaluation() -> EvaluationReport:
     return EvaluationReport(
         scenarios=(
@@ -335,6 +343,7 @@ async def run_native_evaluation() -> EvaluationReport:
             await evaluate_targeted_event_retrieval(),
             await evaluate_event_evidence_cognitive_projection(),
             await evaluate_ordinary_turn_event_retrieval(),
+            await evaluate_retrieval_stage_diagnostics(),
         ),
     )
 
