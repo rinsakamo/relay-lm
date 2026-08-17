@@ -1,0 +1,42 @@
+name: Bug / regression
+description: Report behavior that contradicts a current RelayLM v1 contract or previously working behavior.
+title: "[v1 bug] "
+body:
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What current contract or prior behavior should have held?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Smallest reliable steps, input, or fixture that demonstrates the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: authority
+    attributes:
+      label: Relevant authority / tests
+      description: Name current docs, contracts, tests, or runtime owners if known.
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Which user-visible or authority boundary is affected?
+  - type: checkboxes
+    id: regression_contract
+    attributes:
+      label: Regression expectation
+      options:
+        - label: The fix should add or strengthen regression coverage without creating a compatibility bridge or second authority path.
+          required: true

@@ -87,4 +87,6 @@ For semantic changes, the governing sequence is:
 
 Semantic behavior changes are test-first; behavior-preserving and docs-only transactions use lighter paths. One transaction owns one bounded responsibility, current-authority docs must not describe deferred behavior in the present tense, and merge is exact-head.
 
+Repository-use conventions are in `docs/reference/repository-practices.md`. Durable architecture decisions are intentionally sparse under `docs/decisions/`, and `docs/authority-map.yaml` provides a non-enforcing owner → tests → docs navigation index.
+
 See `docs/architecture/core.md`, `docs/contracts/openai-api.md`, `docs/reference/development-workflow.md`, and issue #1259.

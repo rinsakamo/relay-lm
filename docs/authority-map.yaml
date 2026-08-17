@@ -1,0 +1,86 @@
+version: 1
+purpose: >-
+  Navigation index from major RelayLM v1 owners to representative tests and
+  current-authority documentation. This file is intentionally non-enforcing;
+  repository code/tests/docs remain the authority.
+
+domains:
+  cognitive_turn:
+    runtime:
+      - src/relaylm/cognitive.py
+      - src/relaylm/turn.py
+    tests:
+      - tests/unit/test_cognitive_turn.py
+      - tests/unit/test_turn_memory_retrieval.py
+    docs:
+      - docs/contracts/cognitive-turn.md
+      - docs/architecture/core.md
+
+  context_compiler:
+    runtime:
+      - src/relaylm/context.py
+      - src/relaylm/memory_retrieval.py
+    tests:
+      - tests/unit/test_context_state_selection.py
+      - tests/unit/test_context_state_diagnostics.py
+      - tests/unit/test_turn_memory_retrieval.py
+    docs:
+      - docs/architecture/context-compiler.md
+
+  state_and_validation:
+    runtime:
+      - src/relaylm/state.py
+      - src/relaylm/validation.py
+    tests:
+      - tests/unit/test_cognitive_turn.py
+      - tests/unit/test_degree_hint.py
+    docs:
+      - docs/architecture/events-and-state.md
+      - docs/contracts/state-candidate.md
+      - docs/contracts/validator.md
+
+  persistence:
+    runtime:
+      - src/relaylm/storage/filesystem.py
+    tests:
+      - tests/unit/test_character_directory.py
+    docs:
+      - docs/architecture/persistence.md
+      - docs/reference/character-directory.md
+
+  crystallization:
+    runtime:
+      - src/relaylm/crystallization.py
+    tests:
+      - tests/unit/test_crystallization.py
+      - tests/unit/test_evaluation_crystallization.py
+    docs:
+      - docs/contracts/crystallization.md
+
+  provider_and_api:
+    runtime:
+      - src/relaylm/providers/openai_compatible.py
+      - src/relaylm/api/openai.py
+      - src/relaylm/server.py
+    tests: []
+    docs:
+      - docs/contracts/provider-wire.md
+      - docs/contracts/openai-api.md
+
+  evaluation:
+    runtime:
+      - src/relaylm/evaluation.py
+      - src/relaylm/evaluation_memory.py
+    tests:
+      - tests/unit/test_evaluation.py
+      - tests/unit/test_evaluation_memory.py
+    docs:
+      - docs/reference/evaluation.md
+
+  development_workflow:
+    runtime: []
+    tests: []
+    docs:
+      - docs/reference/development-workflow.md
+      - docs/reference/repository-practices.md
+      - docs/decisions/0003-direct-canonical-convergence.md

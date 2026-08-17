@@ -1,0 +1,53 @@
+name: Feature / semantic change
+description: Propose one bounded RelayLM v1 behavior or contract change.
+title: "[v1] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues describe intention and remaining work. Current semantic authority lives in repository docs and executable contracts.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected behavior
+      description: What should RelayLM guarantee when this work is complete?
+      placeholder: State the behavior, not the implementation mechanism.
+    validations:
+      required: true
+  - type: textarea
+    id: examples
+    attributes:
+      label: Given / When / Then examples
+      description: Provide concrete examples that can become contract tests.
+      placeholder: |
+        Given: ...
+        When: ...
+        Then: ...
+    validations:
+      required: true
+  - type: textarea
+    id: authority
+    attributes:
+      label: Affected authority boundaries
+      description: Event, State, Context, Validator, provider wire, persistence, API, or another current boundary.
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: What adjacent work is explicitly outside this transaction?
+    validations:
+      required: true
+  - type: textarea
+    id: current_authority
+    attributes:
+      label: Current authority / evidence
+      description: Link or name relevant current docs, tests, or implementation owners if known.
+  - type: checkboxes
+    id: convergence
+    attributes:
+      label: Canonical convergence
+      options:
+        - label: This work will not preserve superseded internal semantics through a compatibility shim, bridge, old-path forwarder, dual authority, or deprecated fallback.
+          required: true
