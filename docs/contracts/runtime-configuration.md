@@ -1,8 +1,8 @@
 # Release Runtime Configuration Contract
 
-Status: RCFG1 contract for RelayLM v1 release runtime configuration. Owning Issue: #1446.
+Status: RCFG1 contract + RCFG2 validated loader/resolver for RelayLM v1. Owning Issue: #1446.
 
-This contract defines the release-facing configuration boundary only. It does not choose cognitive semantics, retrieval relevance, Continuity lifecycle semantics, or calibrated numeric defaults.
+This contract defines the release-facing configuration boundary only. It does not choose cognitive semantics, Retrieval relevance, Continuity lifecycle semantics, or calibrated cognitive numeric defaults.
 
 ## 1. Ownership boundary
 
@@ -28,11 +28,18 @@ configuration value
 
 The runtime configuration layer may only carry values into already-owned runtime controls.
 
+Canonical implementation surfaces are:
+
+- `src/relaylm/runtime_config.py` — versioned non-secret configuration types, provenance vocabulary, secret-redacted process input boundary, and error taxonomy;
+- `src/relaylm/runtime_config_loader.py` — RCFG2 discovery, strict parse/validation, leaf resolution, process-local secret resolution, and content-free effective diagnostics.
+
+Runtime assembly into provider/Character/Retrieval/Continuity/Cognitive Budget owners remains RCFG3 and is intentionally absent from the loader.
+
 ## 2. Runtime configuration format
 
-The runtime configuration file uses YAML and requires exact integer `format_version: 1`. Boolean, string-coerced, missing, or unsupported versions fail closed.
+The runtime configuration file uses YAML and requires exact integer `format_version: 1`. Boolean, string-coerced, missing, or unsupported file versions fail closed.
 
-Version-1 top-level shape:
+Version-1 shape:
 
 ```yaml
 format_version: 1
@@ -51,8 +58,8 @@ server:                    # optional; release-owned defaults shown
   host: 127.0.0.1
   port: 8090
 
-runtime:                   # optional; every child is explicit opt-in
-  profile: profile-name    # reserved for #1388 canonical profile consumption
+runtime:                   # optional; children are explicit opt-in
+  profile: profile-name    # reserved for #1388; currently fails resolution
 
   memory_retrieval:
     max_chunks: 4
@@ -102,51 +109,51 @@ runtime:                   # optional; every child is explicit opt-in
       mode: exact          # exact | conservative_estimate
 ```
 
-Every retrieval, Continuity, and cognitive number above is an **explicit example value only**, not a RelayLM default. #1388 remains the sole owner of canonical cognitive values and profile boundaries; #1371 remains the owner of Continuity lifecycle semantics and defines no release default here.
+Every Retrieval, Continuity, and Cognitive Budget number above is an **explicit schema example only**, not a RelayLM default. #1388 remains the sole owner of canonical cognitive numeric values and profile boundaries. #1371 remains the owner of Continuity lifecycle semantics and supplies no release default here.
 
-The serialized `policy` shape maps directly to the existing #1387 `BudgetDegradationPolicy`, `BudgetPlan`, envelope, and degradation-step types. RCFG2 may parse those types; it must not invent alternative degradation semantics.
+The serialized Cognitive Budget policy maps directly into existing #1387 types: `TotalBudgetConfig`, `BudgetPlan`, `CountEnvelope`, `CountCharacterEnvelope`, `BudgetDegradationStep`, `BudgetDegradationPolicy`, and `TokenCountMode`. The configuration layer does not invent parallel budget semantics.
 
-`runtime.continuity.max_items` and `lifetime_revisions` are explicit lifecycle inputs already required by the Continuity owner. Their presence here does not establish default values.
+## 3. Strict file validation
 
-`token_counter.capability` is an assembly capability identifier. RCFG1 does not claim that any arbitrary identifier is available. RCFG3/`doctor` must fail with `capability_unavailable` when the configured capability cannot construct the provider/model-specific serialized-input counter. `mode` carries the existing #1387 `TokenCountMode` values unchanged: `exact` or `conservative_estimate`.
+A selected runtime file is validated before precedence resolution.
 
-## 3. Unknown fields and validation
+RCFG2 requires:
 
-Unknown keys fail with `unknown_field` at every mapping level. No version-1 key is silently ignored.
+1. YAML root is a mapping;
+2. `format_version` exists and is exact integer `1`;
+3. duplicate YAML mapping keys are rejected rather than using last-value-wins behavior;
+4. unknown keys fail at every governed mapping level;
+5. configured scalar types are exact — boolean is not accepted as integer;
+6. configured strings that are required to be meaningful are non-empty;
+7. nested explicit owner-control objects contain exactly their required keys;
+8. owner-defined value invariants such as non-negative budgets, floors, tier order, and valid `TokenCountMode` are validated by the existing owner types;
+9. raw secret material is never a valid config-file field.
 
-Validation is staged and fail-fast:
+A malformed lower-precedence config file is not silently ignored merely because a higher-precedence override could replace the bad leaf. Selecting a file means the file itself must be a valid version-1 runtime configuration document.
 
-1. discover the explicitly selected configuration file;
-2. read and parse YAML;
-3. require a mapping and exact supported format version;
-4. reject unknown keys and invalid field types/values;
-5. resolve field precedence;
-6. require complete Character/provider inputs;
-7. validate cross-field combinations;
-8. during assembly/preflight, validate Character Package, secret availability, provider compatibility, token-counter capability, and other machine requirements;
-9. only after successful validation may `serve` begin accepting generation requests.
-
-Configuration validation does not inspect SOUL, State, Event, MEMORY, Continuity payload, or user text to choose runtime policy. Character Package validity may be checked through its existing owner contract without reinterpreting semantic content.
+Generic parse errors do not echo arbitrary YAML text. Typed errors expose safe field paths where practical.
 
 ## 4. Configuration discovery
 
 Version 1 performs **no ambient filesystem search** for runtime configuration.
 
-File selection is explicit:
+File selection is deterministic:
 
 ```text
-relaylm ... --config PATH
-        > RELAYLM_CONFIG=PATH
+explicit --config-equivalent path input
+        > RELAYLM_CONFIG
         > no runtime config file
 ```
 
-If an explicit path is supplied and cannot be read, RelayLM fails; it does not fall through to another file or silently start from a guessed working-directory config.
+RCFG2 exposes the first input programmatically as `config_path`; RCFG4 will bind it to the CLI spelling.
 
-Absence of a config file is allowed only when all required values can be resolved from higher-precedence explicit inputs or future canonical defaults.
+If an explicitly selected path cannot be read, resolution fails with `read_error`. It does not fall through to `RELAYLM_CONFIG` or a guessed current-working-directory file.
+
+If there is no file, the v1 runtime schema version remains `1` and required runtime leaves may be supplied by explicit environment/CLI inputs. This preserves the existing env-only startup boundary without turning the Character Package into runtime config.
 
 ## 5. Leaf-level precedence
 
-For every field that has the corresponding source binding, precedence is resolved per leaf:
+For every field with a named override binding:
 
 ```text
 explicit CLI override
@@ -155,11 +162,11 @@ explicit CLI override
     > canonical default/profile value
 ```
 
-A higher-precedence source replaces only the leaf it explicitly supplies; it does not discard unrelated lower-source siblings. Missing and explicit false/zero are distinct values.
+Resolution is per leaf. A higher source replaces only the leaf it explicitly supplies; it does not erase unrelated lower-source siblings. Missing and explicit zero are distinct.
 
-There is no generic arbitrary `--set key=value` override in the version-1 contract. RCFG4 may expose only named CLI arguments whose field mapping is fixed by this contract.
+There is no generic arbitrary `--set key=value` contract in version 1.
 
-Initial named scalar bindings are:
+Named scalar bindings are:
 
 | Runtime field | CLI shape reserved for RCFG4 | Environment |
 |---|---|---|
@@ -173,13 +180,38 @@ Initial named scalar bindings are:
 | `server.port` | `--port` | `RELAYLM_PORT` |
 | `runtime.profile` | `--profile` | `RELAYLM_PROFILE` |
 
-Complex Retrieval, Continuity, and explicit Cognitive Budget structures have no generic environment/CLI expansion in format version 1. An explicit runtime-config leaf outranks any selected canonical profile value. Additional named overrides require a later contract change rather than implicit environment-variable synthesis.
+Complex Retrieval, Continuity, and explicit Cognitive Budget objects are file-only in format version 1. There is no implicit environment-variable synthesis for their nested fields.
 
-Until #1388 publishes canonical profiles, a non-empty `runtime.profile` is only a schema-valid selector; resolution must fail closed rather than guess profile values.
+## 6. Current non-cognitive release defaults
 
-## 6. Secret boundary
+RCFG2 currently supplies only defaults that already belonged to the release/startup boundary before calibration:
 
-The runtime config file may persist only a secret reference:
+```text
+runtime format version = 1
+provider adapter        = openai_compatible
+server host             = 127.0.0.1
+server port             = 8090
+```
+
+These values appear with `canonical_default` provenance because that is the common RCFG1 source category. They are **not #1388 cognitive defaults**.
+
+There is currently no default for:
+
+- MEMORY retrieval counts/characters;
+- Event Evidence retrieval counts/characters;
+- Continuity capacity or lifetime;
+- model context window;
+- output reserve;
+- State/Working Context/MEMORY/Event Evidence budget envelopes/floors;
+- degradation step values;
+- token-counter capability;
+- cognitive runtime profile.
+
+Until #1388 publishes calibrated profile authority, any non-empty `runtime.profile` selected from CLI, environment, or file fails closed with `invalid_combination`. RCFG2 never guesses profile values from a model name or context-window folklore.
+
+## 7. Secret boundary and precedence
+
+The config file may persist only an environment-variable reference:
 
 ```yaml
 provider:
@@ -187,61 +219,116 @@ provider:
     env: OPENAI_API_KEY
 ```
 
-It must not persist an API-key value. A raw provider secret may enter the process through the existing dedicated environment input `RELAYLM_PROVIDER_API_KEY`. RCFG4 must not add a raw `--api-key VALUE` argument because process argv and shell history are not an acceptable secret transport.
+A raw provider secret may enter the process through the existing dedicated environment input `RELAYLM_PROVIDER_API_KEY`. There is no raw CLI secret value contract.
 
-A CLI `--provider-api-key-env NAME` is a reference override, not a secret value. If selected, the named variable must exist at preflight/assembly time or resolution fails with `secret_unavailable`.
+Secret selection is deterministic:
 
-Resolved raw secret material is process-local `RuntimeSecretInputs`, separate from non-secret `RuntimeConfig` and from diagnostics. Its representation must redact secret values.
-
-Generic diagnostics never emit the secret value. Effective secret diagnostics expose whether a secret is configured, the source that selected the secret/reference, and—when distinct—the material source category. For a config-file or CLI env reference, the selector source can therefore be `config_file` or `cli` while the material source is `env`.
-
-## 7. Existing runtime controls carried by this contract
-
-The contract mirrors current owner inputs without changing their meaning:
-
-- `memory_retrieval` -> current MEMORY retrieval count/character controls;
-- `event_retrieval` -> current Event Evidence retrieval count/character controls;
-- `continuity` -> current process-local `ContinuityContext.max_items` and `ContinuityRuntime.lifetime_revisions` inputs;
-- `cognitive_budget.total` -> current `TotalBudgetConfig`;
-- `cognitive_budget.policy` -> current deterministic `BudgetDegradationPolicy` and owner envelopes;
-- `cognitive_budget.token_counter.mode` -> existing `TokenCountMode` from #1387;
-- `cognitive_budget.token_counter.capability` -> capability required to construct the current provider/model serialized-input counter.
-
-Presence of a config value is not authority to alter selection/ranking/lifecycle/degradation semantics.
-
-The release-owned server default remains loopback `127.0.0.1:8090`, matching the pre-RCFG startup path. External exposure requires an explicit override and remains observable in effective config.
-
-## 8. Effective configuration
-
-RCFG2 must resolve one effective non-secret configuration plus source provenance and separate process-local secret inputs. Non-secret leaves are representable as:
-
-```json
-{"value": "...", "source": "cli|env|config_file|canonical_default"}
+```text
+CLI env-name reference
+    > raw RELAYLM_PROVIDER_API_KEY material
+    > config-file env-name reference
+    > no provider secret
 ```
 
-A secret leaf is represented without material, for example:
+An explicitly selected reference must resolve to a present, non-empty environment value. Failure is `secret_unavailable`; the resolver does not fall through to a lower source.
+
+Resolved raw material lives only in `RuntimeSecretInputs`. Its field is excluded from representation. The non-secret `RuntimeConfig` may retain an env reference when the winning selector is CLI/file, but raw environment material is never copied into it.
+
+Effective diagnostics report only:
 
 ```json
-{"configured": true, "source": "config_file", "material_source": "env"}
+{
+  "configured": true,
+  "source": "cli|env|config_file",
+  "material_source": "env"
+}
 ```
 
-The effective diagnostic surface may report only configuration metadata such as:
+They never emit the secret value or the referenced environment variable name.
 
-- runtime config format version and config-file source/path;
-- Character directory selection, never Character semantic content;
-- provider adapter/base URL/model identity;
-- server host/port;
-- enabled runtime layers;
-- profile/default/explicit-override identity and provenance once available;
-- cognitive capacity/reserve/envelopes when configured or canonically resolved;
-- token-accounting capability identity and `TokenCountMode`;
-- validation status.
+## 8. RCFG2 resolved result
 
-It must never emit API-key values, SOUL/Identity text, State keys/values, Event content, MEMORY content, Continuity semantic payload, or conversation content.
+`resolve_runtime_config(...)` returns one `ResolvedRuntimeConfig` containing:
 
-## 9. Error taxonomy
+```text
+RuntimeConfig
+    non-secret validated effective config
 
-Version-1 release configuration/preflight uses these stable categories:
+RuntimeSecretInputs
+    process-local provider secret material, redacted from repr
+
+provenance
+    immutable mapping of non-secret effective leaf -> EffectiveConfigValue
+
+secret_effective
+    EffectiveConfigSecret without material
+
+config_path / config_path_source
+    selected file identity and discovery provenance, if any
+```
+
+The resolver is deterministic for the same explicit inputs, file bytes, and environment mapping. It performs no network call, Character semantic read, persistence mutation, provider construction, or LLM generation.
+
+## 9. Effective-config diagnostics
+
+`ResolvedRuntimeConfig.effective_diagnostics()` is a content-free/secret-free machine-readable view.
+
+Its shape is bounded to:
+
+```json
+{
+  "format_version": 1,
+  "config_path": {
+    "value": "/selected/runtime.yaml",
+    "source": "cli"
+  },
+  "values": {
+    "provider.model": {
+      "value": "model-id",
+      "source": "config_file"
+    }
+  },
+  "secrets": {
+    "provider.api_key": {
+      "configured": true,
+      "source": "config_file",
+      "material_source": "env"
+    }
+  },
+  "validation_status": "valid"
+}
+```
+
+The flattened `values` map may contain runtime configuration metadata and explicit numeric owner controls, but never:
+
+- API-key values;
+- secret-reference environment names;
+- SOUL/Identity text;
+- State keys or values;
+- Event content;
+- MEMORY content;
+- Continuity semantic payload;
+- conversation content.
+
+## 10. Existing owner controls carried by configuration
+
+RCFG2 parses explicit file controls into current owner types without changing their meaning:
+
+- `runtime.memory_retrieval` -> release carriage for current MEMORY retrieval count/character controls;
+- `runtime.event_retrieval` -> release carriage for current Event Evidence retrieval count/character controls;
+- `runtime.continuity` -> explicit `ContinuityContext.max_items` / `ContinuityRuntime.lifetime_revisions` inputs;
+- `runtime.cognitive_budget.total` -> `TotalBudgetConfig`;
+- `runtime.cognitive_budget.policy` -> current deterministic #1387 Budget Plan/degradation types;
+- `runtime.cognitive_budget.token_counter.mode` -> existing `TokenCountMode` unchanged;
+- `runtime.cognitive_budget.token_counter.capability` -> assembly capability identifier only.
+
+The token-counter capability name is not proof that such a capability exists. Capability availability and construction belong to RCFG3/doctor and must fail with `capability_unavailable` when unsupported.
+
+Presence of any config value is not permission to alter Retrieval ranking, Context authority, Continuity acceptance/lifecycle, or Cognitive Budget degradation semantics.
+
+## 11. Error taxonomy
+
+Version-1 release configuration/preflight uses the RCFG1 categories:
 
 ```text
 discovery_error
@@ -259,17 +346,22 @@ character_invalid
 provider_invalid
 ```
 
-Errors should include a safe field path and actionable message where possible, but never echo a secret value or semantic character payload.
+RCFG2 produces discovery/read/parse/schema/value/missing/combination/secret failures. The later assembly/preflight layer owns machine capability, Character validation, and provider validation failures.
 
-## 10. CLI and assembly dependency shape
+Errors include a safe field path and actionable message where practical, without secret material or character semantic payload.
 
-RCFG1 does not wire production runtime behavior. The next slices consume this contract as follows:
+## 12. Assembly and operator dependency shape
+
+Current boundary after RCFG2:
 
 ```text
 RCFG2 loader/resolver
-  explicit file + env + CLI inputs
-        -> strict parse / leaf merge / provenance
-        -> RuntimeConfig + RuntimeSecretInputs + redacted effective config
+  explicit file + env + named CLI inputs
+        -> strict parse / validation
+        -> leaf merge / provenance
+        -> RuntimeConfig
+        -> RuntimeSecretInputs
+        -> redacted effective diagnostics
 
 RCFG3 assembly
   RuntimeConfig + RuntimeSecretInputs
@@ -289,11 +381,11 @@ RCFG4 operator CLI
 
 `doctor` should remain non-generative and non-mutating with respect to character semantic state where practical.
 
-RCFG5 may add canonical profile/default consumption only from current #1388 authority. It must not change the semantic owner types above.
+RCFG5 may add canonical cognitive profile/default consumption only from current #1388 authority. It must not alter the semantic owner types above.
 
-## 11. Preserved runtime invariants
+## 13. Preserved runtime invariants
 
-Configuration assembly must preserve:
+Configuration loading and later assembly must preserve:
 
 - exactly one ordinary semantic generation;
 - buffered/streaming semantic equivalence;
@@ -301,6 +393,7 @@ Configuration assembly must preserve:
 - deterministic cognitive-budget degradation;
 - protected-floor fail-before-generation;
 - Retrieval semantic ownership;
-- Continuity lifecycle ownership.
+- Continuity lifecycle ownership;
+- no semantic-payload inspection for runtime policy selection.
 
-The configuration layer never inspects semantic payload to choose a policy.
+> A release configuration can select and carry runtime policy; it cannot become a new semantic authority.
