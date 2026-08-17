@@ -77,6 +77,10 @@ GitHub Actions are executable CI supply-chain dependencies rather than Python su
 
 Editable installs are development convenience, not proof that a distributable package works. The `v1 CI / package-smoke` job builds the RelayLM wheel from the exact transaction head, installs that wheel into a clean Python 3.12 virtual environment, runs `pip check`, imports the installed package, verifies the package version, and verifies the declared `relaylm` and `relaylm-eval` console entry points. Packaging metadata or build-system changes must keep this smoke green.
 
+## Linting
+
+Ruff is used as a lint-only mechanical error gate, not as an automatic formatter or broad style authority. `pyproject.toml` explicitly selects only `E4`, `E7`, `E9`, and `F` rules and targets Python 3.12 so Ruff release-default expansion cannot silently broaden RelayLM policy. The `v1 CI / lint` job uses an exact Ruff version and runs `ruff check .`. Expanding the rule set, enabling formatting, or advancing the pinned Ruff version is an explicit reviewed tooling transaction rather than an incidental source rewrite.
+
 ## Repository-host protections
 
 The desired GitHub-host configuration is intentionally small:
