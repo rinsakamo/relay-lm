@@ -8,6 +8,7 @@ from relaylm.evaluation import (
     EvaluationReport,
     EvaluationScenarioResult,
     evaluate_assistant_self_certification_prevention,
+    evaluate_comparative_preference_preservation,
     evaluate_provider_failure_safety,
     evaluate_restart_continuity,
     main,
@@ -51,6 +52,7 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "provider_failure_safety",
         "restart_continuity",
         "assistant_self_certification_prevention",
+        "comparative_preference_preservation",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
@@ -119,4 +121,22 @@ def test_assistant_self_certification_evaluation_preserves_context_but_rejects_s
         "working_context_count": 2,
         "rejected_candidate_count": 1,
         "accepted_state_count": 0,
+    }
+
+
+def test_comparative_preference_evaluation_preserves_weaker_positive_state() -> None:
+    result = asyncio.run(evaluate_comparative_preference_preservation())
+
+    assert result.scenario_id == "comparative_preference_preservation"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+    assert {check.boundary for check in result.checks} == {
+        "validator",
+        "canonical_state",
+        "event_provenance",
+    }
+    assert result.metrics == {
+        "accepted_candidate_count": 2,
+        "final_preference_state_count": 3,
+        "preserved_existing_state_count": 1,
     }

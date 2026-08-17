@@ -191,12 +191,21 @@ async def evaluate_assistant_self_certification_prevention() -> EvaluationScenar
     return await evaluate()
 
 
+async def evaluate_comparative_preference_preservation() -> EvaluationScenarioResult:
+    from relaylm.evaluation_preference import (
+        evaluate_comparative_preference_preservation as evaluate,
+    )
+
+    return await evaluate()
+
+
 async def run_native_evaluation() -> EvaluationReport:
     return EvaluationReport(
         scenarios=(
             await evaluate_provider_failure_safety(),
             await evaluate_restart_continuity(),
             await evaluate_assistant_self_certification_prevention(),
+            await evaluate_comparative_preference_preservation(),
         ),
     )
 
