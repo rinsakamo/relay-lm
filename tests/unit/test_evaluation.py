@@ -10,6 +10,7 @@ from relaylm.evaluation import (
     evaluate_assistant_self_certification_prevention,
     evaluate_comparative_preference_preservation,
     evaluate_correction_remove_semantics,
+    evaluate_crystallization_integrity,
     evaluate_degree_hint_integrity,
     evaluate_persistence_integrity,
     evaluate_provider_failure_safety,
@@ -61,6 +62,7 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "working_context_budget_atomicity",
         "persistence_integrity",
         "correction_remove_semantics",
+        "crystallization_integrity",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
@@ -197,5 +199,13 @@ def test_correction_remove_evaluation_is_registered() -> None:
     result = asyncio.run(evaluate_correction_remove_semantics())
 
     assert result.scenario_id == "correction_remove_semantics"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+
+
+def test_crystallization_integrity_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_crystallization_integrity())
+
+    assert result.scenario_id == "crystallization_integrity"
     assert result.status == "pass"
     assert all(check.passed for check in result.checks)
