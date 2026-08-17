@@ -44,7 +44,7 @@ Minimal semantic shape:
 
 - `identity` is authoritative stable character identity.
 - `state` contains selected accepted Canonical State.
-- `context` contains RelayLM-prepared Event-backed cognitive material, not authority-equivalent raw transcript replay.
+- `context` contains RelayLM-prepared cognitive material. Current compiler-owned material may include already-accepted Continuity Context followed by bounded Event-backed Working Context; inclusion never upgrades source authority.
 - `memory` contains selected crystallized synthesis. It is a distinct optional layer and is not Canonical State or Event provenance.
 - `event_evidence` contains selected persisted Event occurrences with real Event provenance. Occurrence evidence is not automatically current State.
 - `input` is the current governed Event.
@@ -70,6 +70,16 @@ The actor/source metadata is semantically important:
 - inclusion in Context never upgrades the authority of the underlying source.
 
 Context compilation is read/select/project only. `ContextItem` is not a memory mutation or State acceptance mechanism.
+
+## Accepted Continuity Context
+
+`ContinuityRuntime` is an explicit process-local orchestration holder over an accepted immutable `ContinuityContext`. When a runtime is configured for an ordinary turn, Turn snapshots its current pre-generation context and supplies that accepted context to `compile_cognitive_input(...)`.
+
+Turn does not inspect Continuity kinds or reproduce Context Compiler retention semantics. The compiler owns whether and how already-accepted Continuity enters `CognitiveInput.context`; current compiler authority includes accepted `referent`, `unresolved`, and `active_task` projection while preserving their accepted Event sources and epistemic role.
+
+The snapshot supplied to cognition is the pre-turn accepted context. The runtime revision is advanced only after the single provider generation completes and deterministic Continuity validation runs at the common commit boundary. Streaming deltas do not mutate accepted Continuity while generation is in progress.
+
+No runtime means no accepted Continuity Context is supplied to compilation. Runtime capacity and lifetime remain explicit caller-provided policy, and Continuity Context remains non-durable.
 
 ## Retrieved crystallized memory
 
@@ -188,6 +198,9 @@ load config / Identity / Canonical State
         ↓
 persist Current User Event
         ↓
+if explicit ContinuityRuntime exists:
+  snapshot its current accepted ContinuityContext
+        ↓
 if explicit MEMORY budget exists:
   read MEMORY.md → bounded retrieval
         ↓
@@ -198,6 +211,7 @@ if explicit Event budget exists:
   → bounded Event retrieval excluding Current User Event
         ↓
 compile CognitiveInput
+  ├─ consume the accepted pre-turn ContinuityContext through compiler-owned projection
   ├─ filter explicit State-shadowed MEMORY before projection
   └─ project selected targeted Events into Event Evidence
         ↓
@@ -205,16 +219,23 @@ exactly one provider generation
         ↓
 accept complete valid CognitiveOutput
         ↓
+reject non-empty ContinuityCandidate[] if no explicit runtime exists
+        ↓
 persist Assistant Event from response
         ↓
 validate StateCandidate[]
         ↓
+if ContinuityRuntime exists:
+  validate/apply ContinuityCandidate[] exactly once
+        ↓
 persist Canonical State only if validation changed it
+        ↓
+replace ContinuityRuntime.context with the validated immutable result
 ```
 
 Persisting the User Event before retrieval/provider execution is intentional: the Event Journal records that the user input occurred even if optional retrieval or cognition later fails.
 
-Buffered and streamed delivery share this semantic ordering and the same optional-memory/Event preparation owner. A streaming adapter may expose safely decoded response characters while the single provider generation is still producing its structured wire object, but this early display is not a semantic `CognitiveOutput` acceptance point. Assistant Event creation and StateCandidate validation wait for the complete valid cognitive result.
+Buffered and streamed delivery share this semantic ordering and the same optional-memory/Event/Continuity preparation owner. A streaming adapter may expose safely decoded response characters while the single provider generation is still producing its structured wire object, but this early display is not a semantic `CognitiveOutput` acceptance point. Assistant Event creation, StateCandidate validation, and Continuity validation wait for the complete valid cognitive result.
 
 The same occurrence may currently qualify for recent Working Context and targeted Event evidence when both selectors admit it. Cross-layer redundancy suppression is intentionally deferred rather than silently changing either selector's semantics.
 
@@ -223,11 +244,12 @@ The same occurrence may currently qualify for recent Working Context and targete
 ```json
 {
   "response": "...",
-  "state_candidates": []
+  "state_candidates": [],
+  "continuity_candidates": []
 }
 ```
 
-`response` is user-visible natural language. `state_candidates` are non-authoritative proposals.
+`response` is user-visible natural language. `state_candidates` are non-authoritative proposals. `continuity_candidates` are proposals for bounded non-durable Continuity and require deterministic Continuity validation before becoming accepted temporary authority.
 
 The return path is deliberately symmetric with the input path:
 
@@ -239,16 +261,24 @@ CognitiveOutput
   │    ↓
   │  possible future Working Context
   │
-  └─ StateCandidate[]
+  ├─ StateCandidate[]
+  │    ↓
+  │  Validator
+  │    ↓
+  │  Canonical State
+  │
+  └─ ContinuityCandidate[]
        ↓
-     Validator
+     deterministic Continuity validation
        ↓
-     Canonical State
+     process-local Continuity Context
+       ↓
+     later-turn Context Compiler consumption
 ```
 
-An assistant response therefore remains useful for future conversational continuity without becoming self-certified factual authority.
+An assistant response therefore remains useful for future conversational continuity without becoming self-certified factual authority. A Continuity proposal likewise does not become accepted temporary authority merely because the model emitted it.
 
-Streaming does not create a second semantic output form. Provider wire `utterance` deltas are delivery fragments only; the final complete structured provider result is normalized into the same `CognitiveOutput(response, state_candidates)` used by buffered turns.
+Streaming does not create a second semantic output form. Provider wire `utterance` deltas are delivery fragments only; the final complete structured provider result is normalized into the same `CognitiveOutput(response, state_candidates, continuity_candidates)` used by buffered turns.
 
 ## Failure semantics
 
@@ -259,6 +289,7 @@ Current User Event    persisted
 Provider generation   not called
 Assistant Event       not created
 Canonical State       unchanged by that failed turn
+Continuity Context    unchanged by that failed turn
 ```
 
 If the cognitive provider fails before producing a valid `CognitiveOutput`:
@@ -267,14 +298,17 @@ If the cognitive provider fails before producing a valid `CognitiveOutput`:
 Current User Event    persisted
 Assistant Event       not created
 Canonical State       unchanged by that failed turn
+Continuity Context    unchanged by that failed turn
 ```
 
 The persisted unmatched User Event may later participate in bounded Working Context, because it is real user-origin conversational evidence even though retrieval or the attempted assistant response failed.
 
-For a streamed turn, the same provider-failure rule applies even if a safe prefix of the provider `utterance` was already delivered to the client. A truncated or malformed structured stream does not retroactively turn that visible prefix into an accepted Assistant Event, does not make incomplete candidates authoritative, and does not trigger semantic regeneration. Successful Assistant/State persistence occurs only after complete structured provider output.
+For a streamed turn, the same provider-failure rule applies even if a safe prefix of the provider `utterance` was already delivered to the client. A truncated or malformed structured stream does not retroactively turn that visible prefix into an accepted Assistant Event, does not make incomplete candidates authoritative, and does not trigger semantic regeneration. Successful Assistant/State/Continuity commit occurs only after complete structured provider output.
 
-If a valid response is produced but one or more StateCandidates are rejected, the valid response still becomes an Assistant Event while rejected candidates do not mutate Canonical State. Response validity and State acceptance are deliberately separate channels.
+If a valid response is produced but one or more StateCandidates are rejected, the valid response still becomes an Assistant Event while rejected candidates do not mutate Canonical State. StateCandidate acceptance and ContinuityCandidate acceptance remain separate deterministic channels.
+
+If a completed output contains non-empty ContinuityCandidates without an explicit Continuity runtime, the turn fails before Assistant Event, State, or Continuity commit instead of silently dropping those proposals.
 
 Adapter-level malformed provider output is fail-closed before a semantic `CognitiveOutput` is accepted.
 
-An ordinary turn targets exactly one cognitive generation. Working Context selection, deterministic State-shadow filtering, deterministic validation, persistence, Context compilation, optional retrieved-memory selection/projection, optional targeted Event retrieval/projection, and streamed delivery do not add a second ordinary cognitive LLM call.
+An ordinary turn targets exactly one cognitive generation. Working Context selection, accepted Continuity projection, deterministic State-shadow filtering, deterministic State/Continuity validation, persistence, Context compilation, optional retrieved-memory selection/projection, optional targeted Event retrieval/projection, and streamed delivery do not add a second ordinary cognitive LLM call.
