@@ -14,6 +14,7 @@ from relaylm.turn import (
     EventRetrievalBudget,
     MemoryRetrievalBudget,
     run_user_turn,
+    run_user_turn_streaming,
     run_user_turn_streaming_with_retrieval_diagnostics,
     run_user_turn_with_retrieval_diagnostics,
 )
@@ -70,7 +71,9 @@ class StreamingProvider:
         self.stream_calls = 0
         self.inputs: list[CognitiveInput] = []
 
-    async def stream_generate(self, cognitive_input: CognitiveInput, emit_response_delta) -> CognitiveOutput:
+    async def stream_generate(
+        self, cognitive_input: CognitiveInput, emit_response_delta
+    ) -> CognitiveOutput:
         self.stream_calls += 1
         self.inputs.append(cognitive_input)
         await emit_response_delta("ok")
@@ -193,6 +196,23 @@ def test_non_diagnostic_turn_does_not_enable_retrieval_diagnostics(
 
     assert result.response == "ok"
     assert provider.calls == 1
+
+
+def test_streaming_empty_input_keeps_value_error_precedence(tmp_path: Path) -> None:
+    character = _make_character(tmp_path)
+
+    with pytest.raises(ValueError, match="user content must not be empty"):
+        asyncio.run(
+            run_user_turn_streaming(
+                character=character,
+                provider=BufferedProvider(),
+                content="   ",
+                emit_response_delta=lambda delta: _record_delta([], delta),
+            )
+        )
+
+    events = list(CharacterDirectory(tmp_path).iter_events())
+    assert [event.id for event in events] == ["prior-user-1", "prior-assistant-1"]
 
 
 def test_retrieval_diagnostic_failure_keeps_user_event_only_and_skips_generation(
