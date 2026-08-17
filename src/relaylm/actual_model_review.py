@@ -6,10 +6,7 @@ import os
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from relaylm.actual_model_evaluation import (
-    ActualModelEvidence,
-    ProductQualityObservation,
-)
+from relaylm.actual_model_evaluation import ActualModelEvidence
 from relaylm.actual_model_execution import ActualModelScenarioExecutionResult
 from relaylm.actual_model_quality import (
     QUALITY_RUBRIC_VERSION,
