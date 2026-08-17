@@ -186,13 +186,29 @@ In a separate weakening case, active coffee preference degree `0.9` is updated t
 
 This evaluates deterministic behavior after the candidate operation has already been proposed. It does not claim that an actual model will classify every natural-language correction, hesitation, or weakening correctly.
 
+### `crystallization_integrity`
+
+This deterministic off-turn scenario exercises the current #1260 crystallization core without an actual model.
+
+A user Event states that Rin likes tea, while a separate assistant Event claims that Rin lives in Hokkaido. The crystallizer emits readable `MEMORY.md` containing both pieces of prose and proposes two StateCandidates: a user preference sourced from the user Event and a user fact sourced only from the assistant Event.
+
+The scenario verifies that:
+
+- readable Markdown is materialized as crystallized synthesis even when it includes explicitly unverified assistant continuity;
+- the user-sourced tea preference passes the existing Validator and becomes Canonical State;
+- the assistant-only Hokkaido user fact is rejected as `user_state_requires_user_source`;
+- the presence of that Hokkaido sentence in `MEMORY.md` does not promote it into Canonical State;
+- a second identical explicit crystallization pass does not rewrite unchanged Markdown and produces a State noop for the already-accepted tea preference while continuing to reject the assistant-only fact;
+- each explicit crystallization pass invokes the crystallizer once, and the second pass receives prior `MEMORY.md` as input.
+
+This evaluates RelayLM-owned authority and rerun stability only. It does not claim actual local-model crystallization quality, semantic note splitting, or retrieval behavior.
+
 Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
 ## Deferred evaluation work
 
 Still owned by #1247:
 
-- crystallization quality and Markdown fidelity from #1260;
 - relevance/retrieval evaluation from #1267;
 - streaming/abort evaluation expansion beyond the existing deterministic contracts;
 - future privacy/lifecycle evaluation from #1270;
