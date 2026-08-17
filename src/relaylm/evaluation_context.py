@@ -5,6 +5,7 @@ from dataclasses import asdict
 
 from relaylm.context import compile_cognitive_input, compile_cognitive_input_with_diagnostics
 from relaylm.evaluation import EvaluationCheck, EvaluationScenarioResult
+from relaylm.event_retrieval import select_event_evidence
 from relaylm.events import Event
 from relaylm.identity import Identity
 from relaylm.state import CanonicalState, StateRecord
@@ -257,5 +258,201 @@ async def evaluate_state_selection_diagnostics() -> EvaluationScenarioResult:
             "selected_state_count": fallback_diagnostic.selected_count,
             "evicted_state_count": fallback_diagnostic.evicted_count,
             "selected_fallback_count": fallback_diagnostic.selected_fallback_count,
+        },
+    )
+
+
+async def evaluate_targeted_event_retrieval() -> EvaluationScenarioResult:
+    tea = _message(event_id="tea", actor="user", content="Rin likes tea.", second=10)
+    coffee = _message(
+        event_id="coffee",
+        actor="user",
+        content="Rin prefers coffee now.",
+        second=11,
+    )
+    travel = _message(
+        event_id="travel",
+        actor="user",
+        content="Rin visited Fukuoka.",
+        second=12,
+    )
+    relevant = select_event_evidence(
+        events=(tea, coffee, travel),
+        query="What did I say about coffee?",
+        max_events=2,
+        max_chars=200,
+    )
+    irrelevant = select_event_evidence(
+        events=(tea, travel),
+        query="astronomy",
+        max_events=2,
+        max_chars=200,
+    )
+
+    prior = _message(
+        event_id="prior-coffee",
+        actor="user",
+        content="Coffee is good.",
+        second=13,
+    )
+    current = _message(
+        event_id="current-coffee",
+        actor="user",
+        content="Coffee coffee coffee.",
+        second=14,
+    )
+    excluded_current = select_event_evidence(
+        events=(prior, current),
+        query="coffee",
+        max_events=1,
+        max_chars=200,
+        exclude_event_ids=(current.id,),
+    )
+
+    oversized_event = _message(
+        event_id="oversized",
+        actor="user",
+        content="Coffee " + "details " * 30,
+        second=15,
+    )
+    summary = _message(
+        event_id="summary",
+        actor="user",
+        content="Coffee summary.",
+        second=16,
+    )
+    oversized = select_event_evidence(
+        events=(oversized_event, summary),
+        query="coffee",
+        max_events=2,
+        max_chars=len(summary.payload["content"]),
+    )
+
+    older = _message(
+        event_id="older-ranked",
+        actor="user",
+        content="Coffee preference changed.",
+        second=17,
+    )
+    middle = _message(
+        event_id="middle-ranked",
+        actor="user",
+        content="Coffee was mentioned.",
+        second=18,
+    )
+    newer = _message(
+        event_id="newer-ranked",
+        actor="user",
+        content="Preference for coffee was confirmed.",
+        second=19,
+    )
+    ranked = select_event_evidence(
+        events=(older, middle, newer),
+        query="coffee preference",
+        max_events=2,
+        max_chars=300,
+    )
+
+    tie_older = _message(
+        event_id="tie-older",
+        actor="user",
+        content="Coffee note.",
+        second=20,
+    )
+    tie_newer = _message(
+        event_id="tie-newer",
+        actor="user",
+        content="Coffee update.",
+        second=21,
+    )
+    tie = select_event_evidence(
+        events=(tie_older, tie_newer),
+        query="coffee",
+        max_events=1,
+        max_chars=200,
+    )
+
+    dislikes = _message(
+        event_id="dislikes",
+        actor="user",
+        content="Rin dislikes coffee.",
+        second=22,
+    )
+    likes = _message(
+        event_id="likes",
+        actor="user",
+        content="Rin likes tea.",
+        second=23,
+    )
+    token_boundary = select_event_evidence(
+        events=(dislikes, likes),
+        query="likes",
+        max_events=2,
+        max_chars=200,
+    )
+
+    checks = (
+        EvaluationCheck(
+            check_id="positive_relevant_event_selected",
+            boundary="event_retrieval",
+            passed=relevant == (coffee,),
+            expected="coffee",
+            observed=",".join(event.id for event in relevant) or "none",
+        ),
+        EvaluationCheck(
+            check_id="irrelevant_events_have_no_fallback",
+            boundary="event_retrieval",
+            passed=irrelevant == (),
+            expected=0,
+            observed=len(irrelevant),
+        ),
+        EvaluationCheck(
+            check_id="current_event_can_be_excluded_from_evidence",
+            boundary="event_provenance",
+            passed=excluded_current == (prior,) and current not in excluded_current,
+            expected="prior-coffee",
+            observed=",".join(event.id for event in excluded_current) or "none",
+        ),
+        EvaluationCheck(
+            check_id="oversized_event_is_skipped_without_truncation",
+            boundary="event_budget",
+            passed=oversized == (summary,)
+            and oversized[0].payload["content"] == "Coffee summary.",
+            expected="summary",
+            observed=",".join(event.id for event in oversized) or "none",
+        ),
+        EvaluationCheck(
+            check_id="relevance_admission_restores_source_chronology",
+            boundary="event_retrieval",
+            passed=ranked == (older, newer),
+            expected="older-ranked,newer-ranked",
+            observed=",".join(event.id for event in ranked) or "none",
+        ),
+        EvaluationCheck(
+            check_id="equal_relevance_prefers_newer_occurrence",
+            boundary="event_retrieval",
+            passed=tie == (tie_newer,),
+            expected="tie-newer",
+            observed=",".join(event.id for event in tie) or "none",
+        ),
+        EvaluationCheck(
+            check_id="exact_tokens_do_not_match_substrings",
+            boundary="event_retrieval",
+            passed=token_boundary == (likes,),
+            expected="likes",
+            observed=",".join(event.id for event in token_boundary) or "none",
+        ),
+    )
+    return EvaluationScenarioResult(
+        scenario_id="targeted_event_retrieval",
+        checks=checks,
+        metrics={
+            "relevant_selected_count": len(relevant),
+            "irrelevant_selected_count": len(irrelevant),
+            "excluded_current_selected_count": len(excluded_current),
+            "oversized_selected_count": len(oversized),
+            "ranked_selected_count": len(ranked),
+            "tie_selected_count": len(tie),
+            "token_boundary_selected_count": len(token_boundary),
         },
     )
