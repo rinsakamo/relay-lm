@@ -204,34 +204,37 @@ Current filtering is intentionally narrow:
 
 - typed `historical` MEMORY is explicitly not a current-State shadow and is retained even when its heading path or canonical `key:` / `key=` field structurally addresses an active State key with a different scalar, boolean, or reserved `{semantic, degree_hint}` value;
 - typed `current` MEMORY receives no exemption from State-shadow rules: active Canonical State remains current-understanding authority for a conflicting current MEMORY claim;
-- typed `unknown` MEMORY receives no historical exemption from the existing structural State-shadow rules, but it does **not** gain the typed-current free-form scalar grammar and is not reclassified as current;
+- typed `unknown` MEMORY receives no historical exemption from the existing structural State-shadow rules, but it does **not** gain the typed-current free-form claim grammar and is not reclassified as current;
 - the typed scope is consumed as already-validated authority. Context Compiler does not reinterpret `memory_id`, `derivation_id`, Event/State source references, or other provenance fields to create a second temporal owner;
 - authority eligibility uses every State record with `status == "active"` and `valid_to is None`, independently of any later `max_state_records` projection cap;
 - a non-historical MEMORY chunk is structurally State-addressing when its heading path contains every normalized lexical term of a State key, or when its body contains the canonical State key as an explicit `key:` / `key=` field assignment;
 - inline field detection requires the exact normalized canonical key token and a field delimiter;
 - temporal wording never classifies MEMORY. `current`, `currently`, `now`, year/date literals, `previous`, `formerly`, grammatical tense, and similar prose do not establish `current` or `historical` scope;
-- only after upstream metadata has already classified a chunk as typed `current`, a non-structural free-form claim may address a simple scalar State key through exactly two bounded line-leading forms: `current <canonical key> is <value>` or optional `the` + `<canonical key> is currently/now <value>`;
-- in that typed-current free-form subset, simple lexically comparable `str`, `int`, and `float` State values are retained when the claimed scalar lexically equals active State and the whole chunk is suppressed when the claimed scalar conflicts; `bool` and structured values are excluded;
+- only after upstream metadata has already classified a chunk as typed `current`, a non-structural free-form claim may address a bounded State key through exactly two line-leading forms: `current <canonical key> is <value>` or optional `the` + `<canonical key> is currently/now <value>`;
+- in that typed-current free-form subset, simple lexically comparable `str`, `int`, and `float` State values are retained when the claimed scalar lexically equals active State and the whole chunk is suppressed when the claimed scalar conflicts;
+- for a typed-current boolean State value in the same free-form grammar, the captured claim is recognized only when its normalized lexical terms are exactly one token, `true` or `false`; a matching literal retains the chunk and an opposite literal suppresses it;
+- boolean synonyms, negation, and composite expressions are not inferred: `yes/no`, `enabled/disabled`, `not true`, `not false`, `true or false`, and other non-literal captured wording remain uninterpreted;
+- if multiple recognized free-form claim lines address the same State key, any explicitly recognized conflicting scalar or boolean claim suppresses the whole chunk;
 - the words `current`, `currently`, and `now` in those two forms are claim syntax only. They supply no temporal authority and the same wording on typed `unknown` MEMORY does not activate this free-form rule;
 - an unannotated non-structural sentence such as `Current residence location is Hokkaido.` therefore remains temporally `unknown` and is retained by this free-form rule even when active State differs;
 - prefix and key boundaries remain conservative: `Previous current residence location is Hokkaido.` is outside the bounded free-form grammar, and `Rin currently lives in Hokkaido.` does not infer the canonical key `residence_location`;
 - prose appearance never overrides typed scope: typed historical MEMORY remains historical even if its wording sounds current, while typed unknown MEMORY is not inferred historical from dates, `previous`, `formerly`, or tense;
-- boolean and reserved `{semantic, degree_hint}` State values continue to use only the existing explicitly State-addressing structural rules for non-historical MEMORY;
+- reserved `{semantic, degree_hint}` State values continue to use only the existing explicitly State-addressing structural rules for non-historical MEMORY;
 - for State values handled by the structural heading/field rule, the non-historical chunk is retained if at least one current State value appears as an exact lexical token sequence in the chunk;
 - if a non-historical chunk explicitly addresses the key through those structural heading/field forms but none of the comparable current State values appears, the whole chunk is suppressed from `CognitiveInput.memory`;
 - for a boolean State value, an explicitly State-addressing non-historical chunk is suppressed only when it contains the exact opposite `true` / `false` token and does not also contain the current boolean token;
-- a boolean chunk containing the current token remains compatible; a chunk containing neither boolean token, or both tokens, is left untouched rather than being semantically or temporally reclassified;
+- a structurally State-addressing boolean chunk containing the current token remains compatible; a chunk containing neither boolean token, or both tokens, is left untouched rather than being semantically or temporally reclassified;
 - for the reserved structured State value `{semantic, degree_hint}`, the current `semantic` must appear as an exact lexical token sequence; a matching numeric degree alone cannot make conflicting semantic text compatible;
 - when the State key is identified by the chunk heading, an explicit numeric `degree_hint:` / `degree_hint=` assignment in that section must equal the active State degree or the whole non-historical chunk is suppressed;
 - when State addressing exists only through an inline canonical `key:` / `key=` assignment, a degree claim is associated with that key only when `degree_hint:` / `degree_hint=` occurs on the same assignment line; degree fields on another key's line are not borrowed;
 - absence of an associated explicit degree assignment is not inferred as a conflict, and arbitrary prose numbers are not interpreted as degree claims;
 - exact token sequences are used rather than substring matching, so for example `likes` is not treated as present inside `dislikes`;
 - inactive or expired State records do not suppress memory;
-- outside the structural forms and the typed-current simple-scalar grammar above, free-form MEMORY is left untouched even if its prose happens to mention an older, newer, current-sounding, or different value.
+- outside the structural forms and the typed-current simple scalar / exact-boolean grammar above, free-form MEMORY is left untouched even if its prose happens to mention an older, newer, current-sounding, or different value.
 
-Whole-chunk suppression changes only current cognitive residency. It does not rewrite or delete `MEMORY.md`, mutate State or Events, create a second semantic owner, alter upstream retrieval ranking, or add an LLM call. Historical retention and typed-current scalar suppression use the existing retrieved-memory projection and the existing four-layer content-free diagnostics; they do not create a new diagnostics layer or change `RetrievedMemoryItem` shape.
+Whole-chunk suppression changes only current cognitive residency. It does not rewrite or delete `MEMORY.md`, mutate State or Events, create a second semantic owner, alter upstream retrieval ranking, or add an LLM call. Historical retention and typed-current scalar/boolean suppression use the existing retrieved-memory projection and the existing four-layer content-free diagnostics; they do not create a new diagnostics layer or change `RetrievedMemoryItem` shape.
 
-The former C4 **lexical temporal-authority classifier** from #1385 remains retired. C5 consumes `MemoryChunk.temporal_authority` directly; C6 reuses only the former bounded line-leading canonical-key scalar **claim syntax after typed `current` is already established upstream**. Context Compiler never recreates temporal/currentness authority from prose.
+The former C4 **lexical temporal-authority classifier** from #1385 remains retired. C5 consumes `MemoryChunk.temporal_authority` directly; C6 and C7 reuse only the former bounded line-leading canonical-key **claim syntax after typed `current` is already established upstream**. Context Compiler never recreates temporal/currentness authority from prose.
 
 ### Opt-in ordinary-turn MEMORY retrieval
 
@@ -333,7 +336,7 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 
 - evidence-backed runtime default State/MEMORY/Event budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
 - any later Continuity-specific selection/degradation policy beyond the current projection of all accepted initial Continuity kinds;
-- State-vs-memory authority beyond the current deterministic structural addressing forms and typed-current simple-scalar grammar, including omitted-key alias/synonym/negation semantics, free-form degree/intensity interpretation, free-form boolean handling, and other non-lexically-comparable values;
+- State-vs-memory authority beyond the current deterministic structural addressing forms and typed-current simple-scalar/exact-boolean grammar, including omitted-key alias/synonym/negation semantics, free-form degree/intensity interpretation, and other non-lexically-comparable values;
 - richer durable logical memory identity/provenance behavior beyond the current governed `MemoryChunk.temporal_authority` carriage when #1260 work justifies it;
 - persistent/segmented Event Journal indexing and retrieval-scaled targeted discovery beyond the current process-local validated snapshot reuse;
 - redundancy reduction across State / Working Context / Continuity / Memory / Events beyond the current exact Working Context/Event Evidence Event-ID residency rule;
