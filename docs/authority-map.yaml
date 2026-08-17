@@ -21,8 +21,15 @@ domains:
       - docs/reference/turn-retrieval-diagnostics.md
 
   continuity_context:
-    runtime: []
-    tests: []
+    runtime:
+      - src/relaylm/continuity.py
+      - src/relaylm/continuity_validation.py
+      - src/relaylm/cognitive.py
+      - src/relaylm/turn.py
+    tests:
+      - tests/unit/test_continuity.py
+      - tests/unit/test_continuity_validation.py
+      - tests/unit/test_continuity_turn.py
     docs:
       - docs/architecture/continuity-context.md
       - docs/architecture/cognitive-runtime.md
