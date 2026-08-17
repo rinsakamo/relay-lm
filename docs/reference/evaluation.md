@@ -74,7 +74,7 @@ Event / provenance
 
 The current labels are diagnostic metadata, not new runtime authorities.
 
-## Current native scenario
+## Current native scenarios
 
 ### `provider_failure_safety`
 
@@ -90,18 +90,35 @@ It checks independently that:
 
 The report also records bounded counts for provider calls, persisted Events, and persisted State records.
 
-This scenario evaluates an existing RelayLM invariant; it does not alter runtime behavior to make the evaluation pass.
+### `restart_continuity`
+
+This deterministic scenario uses the OpenAI-compatible client boundary across two separately constructed RelayLM applications that point to the same Character Package.
+
+The first session establishes an accepted `user.preference / tea = likes` State and a user/assistant Event pair. The second application then receives a request containing only the new follow-up user message.
+
+It checks independently that:
+
+- both client requests complete through the API;
+- each cognitive provider is called exactly once;
+- the pre-restart State and Events were persisted;
+- the restarted CognitiveInput contains the accepted tea State;
+- Working Context contains the pre-restart user/assistant exchange;
+- Working Context sources are exactly the persisted pre-restart Event IDs;
+- the current Input is only the new follow-up message.
+
+This is deterministic runtime evidence. It does not replace #1259's required actual local-model restart product proof or make a naturalness/persona-quality claim.
+
+Current scenario implementations may use deterministic synthetic providers so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
 ## Deferred evaluation work
 
 Still owned by #1247:
 
-- restart continuity as a native evaluation scenario;
 - assistant self-certification prevention;
 - correction/remove behavior;
 - comparative preference preservation;
 - degree-hint integrity;
-- Working Context provenance/budget invariants;
+- Working Context provenance/budget invariants beyond the restart scenario;
 - persistence malformed-data safety;
 - crystallization quality and Markdown fidelity from #1260;
 - relevance/retrieval evaluation from #1267;
