@@ -80,17 +80,29 @@ The current contract deliberately keeps this separate from Event-backed `Context
 - retrieved crystallized prose is lower authority than active Canonical State for current understanding;
 - including memory in CognitiveInput does not mutate `MEMORY.md`, State, or Events.
 
-`compile_cognitive_input(..., retrieved_memory=...)` accepts already-selected `MemoryChunk` values and projects them without widening retrieval scope.
+`compile_cognitive_input(..., retrieved_memory=...)` accepts already-selected `MemoryChunk` values without widening retrieval scope. Before projection, it applies a conservative deterministic State-shadow filter using the full eligible active Canonical State set, independently of any later State projection cap.
 
-The ordinary turn APIs now accept an optional `MemoryRetrievalBudget(max_chunks, max_chars)`:
+The current State-shadow contract is intentionally explicit rather than semantic:
+
+- a retrieved chunk is State-addressing only when its heading path contains every normalized lexical term of a State key;
+- if the corresponding active State value has comparable lexical text and at least one current value appears as an exact lexical token sequence in the chunk, the chunk is retained;
+- if the heading addresses the key but none of the comparable current values appears, the whole chunk is excluded from `CognitiveInput.memory`;
+- exact lexical tokens prevent substring equivalence such as treating `likes` as present inside `dislikes`;
+- inactive or expired State does not suppress memory;
+- headings that do not identify a State key remain untouched rather than being reclassified from arbitrary prose.
+
+This filter affects cognitive residency only. It does not rewrite `MEMORY.md`, mutate State or Events, or create another truth owner. Arbitrary natural-language contradiction inference, historical/current interpretation under ambiguous headings, degree-level conflicts, and non-lexically-comparable values remain deferred.
+
+The ordinary turn APIs accept an optional `MemoryRetrievalBudget(max_chunks, max_chars)`:
 
 - with no budget, the runtime does not read `MEMORY.md` and the memory layer remains empty;
 - with a budget, the Current User Event text is used as the query for the existing bounded `select_memory_chunks` primitive;
 - buffered and streamed turns use the same retrieval/compilation path;
+- retrieved chunks pass through the State-shadow filter before entering the memory layer;
 - no default MEMORY budget is chosen by this contract;
 - the OpenAI client boundary does not yet expose this budget as a request parameter.
 
-Deterministic stale/conflict filtering between active State and retrieved memory is still deferred. The provider is instructed to treat active State as current understanding if already-projected memory conflicts, but that instruction does not replace the later RelayLM-owned suppression/filtering layer.
+The provider remains instructed to treat active State as current understanding. That instruction is defense in depth for cases beyond the current narrow deterministic filter, not a substitute for RelayLM authority.
 
 ## Working Context
 
@@ -123,6 +135,7 @@ if explicit MEMORY budget exists:
   read MEMORY.md → bounded retrieval
         ↓
 compile CognitiveInput
+  └─ filter explicit State-shadowed MEMORY before projection
         ↓
 exactly one provider generation
         ↓
@@ -198,4 +211,4 @@ If a valid response is produced but one or more StateCandidates are rejected, th
 
 Adapter-level malformed provider output is fail-closed before a semantic `CognitiveOutput` is accepted.
 
-An ordinary turn targets exactly one cognitive generation. Working Context selection, deterministic validation, persistence, Context compilation, optional retrieved-memory selection/projection, and streamed delivery do not add a second ordinary cognitive LLM call.
+An ordinary turn targets exactly one cognitive generation. Working Context selection, deterministic State-shadow filtering, deterministic validation, persistence, Context compilation, optional retrieved-memory selection/projection, and streamed delivery do not add a second ordinary cognitive LLM call.
