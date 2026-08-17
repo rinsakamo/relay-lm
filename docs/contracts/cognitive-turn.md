@@ -149,7 +149,17 @@ Authority remains source-role-aware. A user-authored Event proves what the user 
 
 The OpenAI-compatible provider serializes Event evidence separately and permits its real Event IDs as StateCandidate `sources`. MEMORY `location` values remain ineligible as sources.
 
-The ordinary-turn runtime does **not yet** automatically retrieve or supply Event evidence. Runtime Event-budget plumbing, journal indexing/retrieval-scaled reads, and automatic Current-Input querying remain later #1267 work.
+The ordinary turn APIs now also accept an optional `EventRetrievalBudget(max_events, max_chars)`:
+
+- `event_budget=None` preserves the previous behavior and supplies no targeted Event evidence;
+- with an explicit budget, the Current User Event text is the retrieval query and the Current User Event ID is excluded from evidence;
+- buffered and streamed turns use the same retrieval/compilation helper;
+- when Event retrieval is enabled, the current Event Journal sequence is materialized once before provider generation and reused both for Working Context selection and `select_event_evidence`, avoiding an additional pre-generation journal scan solely for targeted retrieval;
+- selected Events enter only the dedicated `event_evidence` layer through the existing projection owner;
+- zero Event budgets are allowed and select no evidence; negative budgets fail explicitly;
+- no default Event budget is chosen and the OpenAI client boundary does not expose Event-budget controls in this slice.
+
+This runtime wiring still obtains that pre-generation snapshot through `CharacterDirectory.iter_events()`, which scans the file-backed Event Journal. Retrieval-scaled journal access/indexing remains later #1267 work.
 
 ## Working Context
 
@@ -181,8 +191,16 @@ persist Current User Event
 if explicit MEMORY budget exists:
   read MEMORY.md → bounded retrieval
         ↓
+if explicit Event budget exists:
+  snapshot current Event Journal once
+  → bounded Event retrieval excluding Current User Event
+  → reuse same snapshot for Working Context
+else:
+  use ordinary Event iterator for Working Context only
+        ↓
 compile CognitiveInput
-  └─ filter explicit State-shadowed MEMORY before projection
+  ├─ filter explicit State-shadowed MEMORY before projection
+  └─ project selected targeted Events into Event Evidence
         ↓
 exactly one provider generation
         ↓
@@ -197,9 +215,9 @@ persist Canonical State only if validation changed it
 
 Persisting the User Event before retrieval/provider execution is intentional: the Event Journal records that the user input occurred even if optional retrieval or cognition later fails.
 
-Buffered and streamed delivery share this semantic ordering and the same optional-memory preparation path. A streaming adapter may expose safely decoded response characters while the single provider generation is still producing its structured wire object, but this early display is not a semantic `CognitiveOutput` acceptance point. Assistant Event creation and StateCandidate validation wait for the complete valid cognitive result.
+Buffered and streamed delivery share this semantic ordering and the same optional-memory/Event preparation owner. A streaming adapter may expose safely decoded response characters while the single provider generation is still producing its structured wire object, but this early display is not a semantic `CognitiveOutput` acceptance point. Assistant Event creation and StateCandidate validation wait for the complete valid cognitive result.
 
-Targeted Event evidence can currently be supplied only through explicit Context compilation; it is not part of this ordinary-turn preparation path yet.
+The same occurrence may currently qualify for recent Working Context and targeted Event evidence when both selectors admit it. Cross-layer redundancy suppression is intentionally deferred rather than silently changing either selector's semantics.
 
 ## CognitiveOutput
 
@@ -260,4 +278,4 @@ If a valid response is produced but one or more StateCandidates are rejected, th
 
 Adapter-level malformed provider output is fail-closed before a semantic `CognitiveOutput` is accepted.
 
-An ordinary turn targets exactly one cognitive generation. Working Context selection, deterministic State-shadow filtering, deterministic validation, persistence, Context compilation, optional retrieved-memory selection/projection, optional explicit Event-evidence projection, and streamed delivery do not add a second ordinary cognitive LLM call.
+An ordinary turn targets exactly one cognitive generation. Working Context selection, deterministic State-shadow filtering, deterministic validation, persistence, Context compilation, optional retrieved-memory selection/projection, optional targeted Event retrieval/projection, and streamed delivery do not add a second ordinary cognitive LLM call.
