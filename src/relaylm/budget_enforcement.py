@@ -195,6 +195,9 @@ def enforce_serialized_input_budget(
     the function raises before any generation can occur.
     """
 
+    final_plan: BudgetPlan | None = None
+    final_count: SerializedInputTokenCount | None = None
+
     for step_count in range(len(policy.steps) + 1):
         plan = policy.plan_after_steps(step_count)
         cognitive_input = compile_cognitive_input(plan)
@@ -205,6 +208,8 @@ def enforce_serialized_input_budget(
             raise TypeError(
                 "token_counter.count_serialized_input must return SerializedInputTokenCount"
             )
+        final_plan = plan
+        final_count = count
         fit = evaluate_serialized_input_fit(config=config, count=count)
         if fit.fits:
             return BudgetEnforcementResult(
@@ -214,15 +219,8 @@ def enforce_serialized_input_budget(
                 degradation_step_count=step_count,
             )
 
-    final_plan = policy.final_plan
-    final_cognitive_input = compile_cognitive_input(final_plan)
-    if not isinstance(final_cognitive_input, CognitiveInput):
-        raise TypeError("compile_cognitive_input must return CognitiveInput")
-    final_count = token_counter.count_serialized_input(final_cognitive_input)
-    if not isinstance(final_count, SerializedInputTokenCount):
-        raise TypeError(
-            "token_counter.count_serialized_input must return SerializedInputTokenCount"
-        )
+    assert final_plan is not None
+    assert final_count is not None
     raise CognitiveBudgetExceeded(
         reason=BudgetEnforcementFailureReason.DEGRADATION_EXHAUSTED,
         config=config,
