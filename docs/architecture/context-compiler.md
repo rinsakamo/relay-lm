@@ -197,15 +197,21 @@ The OpenAI-compatible provider serializes this layer separately from `context` a
 
 ### Deterministic State-shadow filtering
 
-Before retrieved chunks become `CognitiveInput.memory`, the Context Compiler compares only an explicitly State-addressing subset against the full eligible active Canonical State set.
+Before retrieved chunks become `CognitiveInput.memory`, the Context Compiler compares a bounded set of deterministic State-addressing forms against the full eligible active Canonical State set.
 
 Current filtering is intentionally narrow:
 
 - authority eligibility uses every State record with `status == "active"` and `valid_to is None`, independently of any later `max_state_records` projection cap;
 - a Memory chunk is State-addressing when its heading path contains every normalized lexical term of a State key, or when its body contains the canonical State key as an explicit `key:` / `key=` field assignment;
-- inline field detection requires the exact normalized canonical key token and a field delimiter; arbitrary prose mention is not treated as State addressing;
-- for State values handled by the general lexical rule, the chunk is retained if at least one current State value appears as an exact lexical token sequence in the chunk;
-- if the chunk explicitly addresses the key but none of the comparable current State values appears, the whole chunk is suppressed from `CognitiveInput.memory`;
+- inline field detection requires the exact normalized canonical key token and a field delimiter;
+- when neither existing explicit form addresses a key, a simple scalar State value (`str`, `int`, or `float`, excluding `bool`) may additionally be addressed by one explicit-current free-form line using either `current <canonical key> is <value>` or `<canonical key> is currently/now <value>`;
+- the free-form grammar uses the canonical key's own normalized lexical terms in contiguous readable order, allowing normal spaces in place of underscores; it does not infer aliases or synonyms for the State key;
+- for that free-form scalar grammar, a claimed value whose normalized lexical terms differ from the current scalar State value suppresses the whole chunk; an exact lexical current-value claim remains compatible;
+- absence of the explicit `current` / `currently` / `now` marker is not interpreted by this grammar, so historical or temporally ambiguous free-form prose remains untouched for separate historical/current interpretation;
+- free-form prose that omits the canonical key, such as `Rin currently lives in Hokkaido`, is not mapped to `residence_location` by this rule;
+- boolean and reserved `{semantic, degree_hint}` State values do not enter the free-form scalar grammar; their existing explicitly State-addressing rules remain separate;
+- for State values handled by the general lexical heading/field rule, the chunk is retained if at least one current State value appears as an exact lexical token sequence in the chunk;
+- if the chunk explicitly addresses the key through those heading/field forms but none of the comparable current State values appears, the whole chunk is suppressed from `CognitiveInput.memory`;
 - for a boolean State value, an explicitly State-addressing chunk is suppressed only when it contains the exact opposite `true` / `false` token and does not also contain the current boolean token;
 - a boolean chunk containing the current token remains compatible; a chunk containing neither boolean token, or both tokens, is left untouched rather than being semantically or temporally reclassified;
 - for the reserved structured State value `{semantic, degree_hint}`, the current `semantic` must appear as an exact lexical token sequence; a matching numeric degree alone cannot make conflicting semantic text compatible;
@@ -214,11 +220,11 @@ Current filtering is intentionally narrow:
 - absence of an associated explicit degree assignment is not inferred as a conflict, and arbitrary prose numbers are not interpreted as degree claims;
 - exact token sequences are used rather than substring matching, so for example `likes` is not treated as present inside `dislikes`;
 - inactive or expired State records do not suppress memory;
-- a chunk that neither addresses a State key through its heading nor uses an explicit canonical-key field assignment is left untouched, even if its prose happens to mention an older or different value.
+- a chunk that uses none of the accepted State-addressing forms is left untouched even if its prose happens to mention an older or different value.
 
 Whole-chunk suppression changes only current cognitive residency. It does not rewrite or delete `MEMORY.md`, mutate State or Events, create a second semantic owner, or add an LLM call.
 
-This filter deliberately does **not** infer arbitrary natural-language contradiction, distinguish historical from current prose when headings/fields are ambiguous, infer degree from adjectives or free-form intensity language, compare degree values across keys/semantic axes, apply degree tolerances/orderings, or decide conflicts for other non-lexically-comparable State values. Those remain later #1267 work.
+This filter deliberately does **not** infer arbitrary natural-language aliases, synonyms, negation, or omitted-key contradiction; distinguish historical from current prose without the explicit-current scalar markers above; infer degree from adjectives or free-form intensity language; compare degree values across keys/semantic axes; apply degree tolerances/orderings; or decide free-form conflicts for boolean and other non-lexically-comparable State values. Those remain later #1267 work.
 
 ### Opt-in ordinary-turn MEMORY retrieval
 
@@ -320,7 +326,7 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 
 - evidence-backed runtime default State/MEMORY/Event budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
 - any later Continuity-specific selection/degradation policy beyond the current projection of all accepted initial Continuity kinds;
-- semantic State-vs-memory conflict detection beyond explicit State-key headings and canonical-key field assignments, including historical/current interpretation, free-form degree/intensity interpretation, and other non-lexically-comparable values;
+- State-vs-memory authority beyond the current deterministic addressing forms, including ambiguous historical/current interpretation, omitted-key alias/synonym/negation semantics, free-form degree/intensity interpretation, free-form boolean handling, and other non-lexically-comparable values;
 - durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
 - persistent/segmented Event Journal indexing and retrieval-scaled targeted discovery beyond the current process-local validated snapshot reuse;
 - redundancy reduction across State / Working Context / Continuity / Memory / Events beyond the current exact Working Context/Event Evidence Event-ID residency rule;
