@@ -574,6 +574,19 @@ def _memory_chunk_is_shadowed(
         current_scalar = _simple_scalar_state_value_text(record.value)
         if (
             current_scalar is not None
+            and heading_addresses_key
+            and not inline_addresses_key
+        ):
+            body_value = _single_atx_heading_body_value(chunk.content)
+            if body_value is not None:
+                body_terms = _lexical_terms(body_value)
+                if len(body_terms) > 1 and body_terms[0] == "not":
+                    if body_terms[1:] == _lexical_terms(current_scalar):
+                        return True
+                    continue
+
+        if (
+            current_scalar is not None
             and inline_addresses_key
             and not heading_addresses_key
         ):
@@ -612,6 +625,26 @@ def _simple_scalar_state_value_text(value: Any) -> str | None:
     if isinstance(value, (int, float)):
         return str(value)
     return None
+
+
+def _single_atx_heading_body_value(content: str) -> str | None:
+    lines = content.splitlines()
+    first_nonempty_index = next(
+        (index for index, line in enumerate(lines) if line.strip()),
+        None,
+    )
+    if first_nonempty_index is None:
+        return None
+    if re.fullmatch(r"\s{0,3}#{1,6}\s+\S.*", lines[first_nonempty_index]) is None:
+        return None
+    body_lines = tuple(
+        line.strip()
+        for line in lines[first_nonempty_index + 1 :]
+        if line.strip()
+    )
+    if len(body_lines) != 1:
+        return None
+    return body_lines[0]
 
 
 def _bounded_freeform_state_key_claims(content: str, key: str) -> tuple[str, ...]:

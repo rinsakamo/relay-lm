@@ -20,7 +20,7 @@ def _current_event() -> Event:
         actor="user",
         payload={"content": "What is current?"},
         event_id="current-event",
-        timestamp="2026-08-18T06:45:00+09:00",
+        timestamp="2026-08-18T06:55:00+09:00",
     )
 
 
@@ -44,8 +44,8 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
     return MemoryTemporalAuthority(
         temporal_scope=scope,
         provenance=MemoryProvenance(
-            memory_id=f"memory-inline-negation-{scope.value}",
-            derivation_id=f"derivation-inline-negation-{scope.value}",
+            memory_id=f"memory-heading-negation-{scope.value}",
+            derivation_id=f"derivation-heading-negation-{scope.value}",
             sources=(
                 MemoryProvenanceSource(
                     kind=MemoryProvenanceSourceKind.EVENT,
@@ -57,15 +57,15 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
 
 
 def _chunk(
-    content: str,
+    body: str,
     *,
     scope: MemoryTemporalScope = MemoryTemporalScope.UNKNOWN,
-    heading: str = "Profile Notes",
+    heading: str = "Residence Location",
 ) -> MemoryChunk:
     return MemoryChunk(
         heading_path=("Memory", heading),
-        location=f"memory/MEMORY.md#memory/inline-negation-{scope.value}",
-        content=f"## {heading}\n\n{content}",
+        location=f"memory/MEMORY.md#memory/heading-negation-{scope.value}",
+        content=f"## {heading}\n\n{body}",
         temporal_authority=_authority(scope),
     )
 
@@ -79,42 +79,36 @@ def _compile(*, chunk: MemoryChunk, state: CanonicalState | None = None):
     )
 
 
-def test_unknown_single_inline_assignment_negating_current_scalar_is_suppressed() -> None:
-    stale = _chunk("residence_location: not Fukuoka")
+def test_unknown_heading_single_body_negating_current_scalar_is_suppressed() -> None:
+    stale = _chunk("not Fukuoka")
 
     assert _compile(chunk=stale).memory == ()
 
 
-def test_unknown_single_inline_assignment_negating_different_scalar_is_retained() -> None:
-    compatible = _chunk("residence_location = not Hokkaido")
+def test_unknown_heading_single_body_negating_different_scalar_is_retained() -> None:
+    compatible = _chunk("not Hokkaido")
 
     compiled = _compile(chunk=compatible)
 
     assert [item.location for item in compiled.memory] == [compatible.location]
 
 
-def test_current_single_inline_assignment_negating_current_scalar_is_suppressed() -> None:
-    stale = _chunk(
-        "residence_location: not Fukuoka",
-        scope=MemoryTemporalScope.CURRENT,
-    )
+def test_current_heading_single_body_negating_current_scalar_is_suppressed() -> None:
+    stale = _chunk("not Fukuoka", scope=MemoryTemporalScope.CURRENT)
 
     assert _compile(chunk=stale).memory == ()
 
 
-def test_current_single_inline_assignment_negating_different_scalar_is_retained() -> None:
-    compatible = _chunk(
-        "residence_location: not Hokkaido",
-        scope=MemoryTemporalScope.CURRENT,
-    )
+def test_current_heading_single_body_negating_different_scalar_is_retained() -> None:
+    compatible = _chunk("not Hokkaido", scope=MemoryTemporalScope.CURRENT)
 
     compiled = _compile(chunk=compatible)
 
     assert [item.location for item in compiled.memory] == [compatible.location]
 
 
-def test_numeric_inline_assignment_negating_different_scalar_is_retained() -> None:
-    compatible = _chunk("lucky_number: not 7")
+def test_numeric_heading_single_body_negating_different_scalar_is_retained() -> None:
+    compatible = _chunk("not 7", heading="Lucky Number")
 
     compiled = _compile(
         chunk=compatible,
@@ -124,53 +118,54 @@ def test_numeric_inline_assignment_negating_different_scalar_is_retained() -> No
     assert [item.location for item in compiled.memory] == [compatible.location]
 
 
-def test_numeric_inline_assignment_negating_current_scalar_is_suppressed() -> None:
-    stale = _chunk("lucky_number = not 5")
+def test_numeric_heading_single_body_negating_current_scalar_is_suppressed() -> None:
+    stale = _chunk("not 5", heading="Lucky Number")
 
     assert _compile(chunk=stale, state=_state(key="lucky_number", value=5)).memory == ()
 
 
-def test_historical_inline_negation_remains_exempt() -> None:
-    historical = _chunk(
-        "residence_location: not Fukuoka",
-        scope=MemoryTemporalScope.HISTORICAL,
-    )
+def test_historical_heading_negation_remains_exempt() -> None:
+    historical = _chunk("not Fukuoka", scope=MemoryTemporalScope.HISTORICAL)
 
     compiled = _compile(chunk=historical)
 
     assert [item.location for item in compiled.memory] == [historical.location]
 
 
-def test_positive_inline_assignment_mismatch_remains_suppressed() -> None:
-    stale = _chunk("residence_location: Hokkaido")
+def test_positive_heading_mismatch_remains_suppressed() -> None:
+    stale = _chunk("Hokkaido")
 
     assert _compile(chunk=stale).memory == ()
 
 
-def test_positive_inline_assignment_match_remains_retained() -> None:
-    current = _chunk("residence_location: Fukuoka")
+def test_positive_heading_match_remains_retained() -> None:
+    current = _chunk("Fukuoka")
 
     compiled = _compile(chunk=current)
 
     assert [item.location for item in compiled.memory] == [current.location]
 
 
-def test_multiple_inline_assignments_remain_outside_c10() -> None:
-    deferred = _chunk(
-        "residence_location: not Hokkaido\nresidence_location: Hokkaido"
-    )
+def test_multiple_nonempty_body_lines_remain_outside_c11() -> None:
+    deferred = _chunk("not Hokkaido\nadditional note")
+
+    assert _compile(chunk=deferred).memory == ()
+
+
+def test_heading_plus_inline_assignment_remains_outside_c11() -> None:
+    deferred = _chunk("residence_location: not Hokkaido")
 
     assert _compile(chunk=deferred).memory == ()
 
 
 def test_not_prefix_without_token_boundary_remains_positive_mismatch() -> None:
-    stale = _chunk("residence_location: notFukuoka")
+    stale = _chunk("notFukuoka")
 
     assert _compile(chunk=stale).memory == ()
 
 
-def test_boolean_inline_negation_remains_outside_c10() -> None:
-    deferred = _chunk("notifications_enabled: not true")
+def test_boolean_heading_negation_remains_outside_c11() -> None:
+    deferred = _chunk("not true", heading="Notifications Enabled")
 
     compiled = _compile(
         chunk=deferred,
@@ -180,8 +175,8 @@ def test_boolean_inline_negation_remains_outside_c10() -> None:
     assert [item.location for item in compiled.memory] == [deferred.location]
 
 
-def test_reserved_degree_inline_negation_remains_outside_c10() -> None:
-    deferred = _chunk("tea: not likes; degree_hint: 0.85")
+def test_reserved_degree_heading_negation_remains_outside_c11() -> None:
+    deferred = _chunk("not likes; degree_hint: 0.85", heading="Tea")
 
     compiled = _compile(
         chunk=deferred,
