@@ -225,6 +225,20 @@ The scenario also serializes the diagnostics objects and verifies that known Sta
 
 The scenario does not choose a runtime State cap, expose content, or evaluate future cross-layer token budgets.
 
+### `cross_layer_context_diagnostics`
+
+This deterministic #1267 scenario evaluates the compiler-owned cross-layer diagnostics introduced by PR #1335 using the real `compile_cognitive_input_with_diagnostics` path.
+
+It verifies that:
+
+- the opt-in result reports exactly the current `canonical_state`, `retrieved_memory`, and `event_evidence` diagnostic layers;
+- one stale explicit-key MEMORY chunk suppressed by active Canonical State is counted as `authority_suppressed_count=1` while the unrelated chunk remains projected;
+- a supplied Current Event in Event Evidence is de-duplicated and counted as `current_event_excluded_count=1`;
+- one Event Evidence occurrence that also remains in selected Working Context is observed as `redundancy_overlap_count=1` without changing residency;
+- serialized diagnostics omit known State keys/values/IDs, Event IDs, MEMORY locations/content, and Current Event IDs.
+
+This scenario evaluates only compiler-owned aggregate observation. It does not claim retrieval-stage candidate/budget diagnostics, Working Context budget diagnostics, token-cost accounting, redundancy suppression, runtime default budgets, or actual-model quality.
+
 ### `memory_heading_retrieval`
 
 This deterministic #1267 scenario evaluates the first bounded retrieval primitive over crystallized `MEMORY.md` content.
@@ -326,7 +340,7 @@ Current scenario implementations may use deterministic synthetic providers or di
 
 Still owned by #1247:
 
-- #1267 evidence-backed default MEMORY/State/Event budgeting, broader State-vs-memory authority semantics beyond explicit-key lexical filtering, retrieval-scaled Event Journal access, cross-layer redundancy/retention policy, and cross-layer/token-aware diagnostics as those runtime slices land;
+- #1267 evidence-backed default MEMORY/State/Event budgeting, broader State-vs-memory authority semantics beyond explicit-key lexical filtering, retrieval-scaled Event Journal access, cross-layer redundancy/retention policy, and remaining retrieval-stage/Working Context/token-aware diagnostics as those runtime slices land;
 - future privacy/lifecycle evaluation from #1270;
 - response/persona and actual local-model quality measurements;
 - external benchmark adapters after current benchmark availability/version suitability is re-verified.
