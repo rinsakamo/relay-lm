@@ -22,6 +22,9 @@ class CharacterDirectory:
 
     def __init__(self, root: str | Path) -> None:
         self.root = Path(root)
+        self._event_cache: tuple[Event, ...] = ()
+        self._event_cache_signature: tuple[int, int, int, int] | None = None
+        self._event_cache_loaded = False
 
     @property
     def config_path(self) -> Path:
@@ -74,27 +77,56 @@ class CharacterDirectory:
             raise CharacterDataError(str(exc)) from exc
 
     def iter_events(self) -> Iterator[Event]:
+        signature = self._events_signature()
+        if not self._event_cache_loaded or signature != self._event_cache_signature:
+            snapshot = self._read_events_snapshot()
+            signature_after_read = self._events_signature()
+            if signature_after_read != signature:
+                snapshot = self._read_events_snapshot()
+                signature_after_read = self._events_signature()
+            self._event_cache = snapshot
+            self._event_cache_signature = signature_after_read
+            self._event_cache_loaded = True
+        return iter(self._event_cache)
+
+    def _read_events_snapshot(self) -> tuple[Event, ...]:
         try:
             handle = self.events_path.open("r", encoding="utf-8")
         except FileNotFoundError:
-            return
+            return ()
         except OSError as exc:
             raise CharacterDataError(f"cannot read events.jsonl: {exc}") from exc
 
+        events: list[Event] = []
         with handle:
             for line_number, line in enumerate(handle, start=1):
                 if not line.strip():
                     continue
                 try:
                     raw = json.loads(line)
-                    yield _event_from_mapping(raw)
+                    events.append(_event_from_mapping(raw))
                 except (json.JSONDecodeError, TypeError, ValueError, KeyError) as exc:
                     raise CharacterDataError(
                         f"events.jsonl line {line_number}: {exc}"
                     ) from exc
+        return tuple(events)
+
+    def _events_signature(self) -> tuple[int, int, int, int] | None:
+        try:
+            stat = self.events_path.stat()
+        except FileNotFoundError:
+            return None
+        except OSError as exc:
+            raise CharacterDataError(f"cannot stat events.jsonl: {exc}") from exc
+        return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
 
     def append_event(self, event: Event) -> None:
         self.memory_path.mkdir(parents=True, exist_ok=True)
+        signature_before_append = self._events_signature()
+        can_extend_cache = (
+            self._event_cache_loaded
+            and self._event_cache_signature == signature_before_append
+        )
         payload = {
             "id": event.id,
             "type": event.type,
@@ -108,6 +140,14 @@ class CharacterDirectory:
                 handle.write("\n")
         except (OSError, TypeError, ValueError) as exc:
             raise CharacterDataError(f"cannot append events.jsonl: {exc}") from exc
+
+        if can_extend_cache:
+            self._event_cache = (*self._event_cache, event)
+            self._event_cache_signature = self._events_signature()
+        else:
+            self._event_cache = ()
+            self._event_cache_signature = None
+            self._event_cache_loaded = False
 
     def load_memory_markdown(self) -> str | None:
         try:
