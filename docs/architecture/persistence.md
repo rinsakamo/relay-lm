@@ -2,7 +2,7 @@
 
 RelayLM 1.0 treats the Character Package as a portability contract rather than an incidental filesystem layout.
 
-## MVP package
+## Current package
 
 ```text
 <Character>/
@@ -10,7 +10,8 @@ RelayLM 1.0 treats the Character Package as a portability contract rather than a
 ├─ config.yaml
 └─ memory/
    ├─ events.jsonl
-   └─ state.json
+   ├─ state.json
+   └─ MEMORY.md        # optional crystallized readable synthesis
 ```
 
 The package can live under a default data root or any user-selected local directory.
@@ -18,13 +19,14 @@ The package can live under a default data root or any user-selected local direct
 ## Semantic ownership
 
 - `SOUL.md` — Identity authority;
-- `memory/events.jsonl` — Event persistence;
+- `memory/events.jsonl` — Event persistence and occurrence/provenance history;
 - `memory/state.json` — accepted current State;
+- `memory/MEMORY.md` — optional readable crystallized semantic synthesis, not current-State authority;
 - `config.yaml` — package identity/layout/config entrypoint.
 
 Filesystem format is not semantic architecture. Storage may later use segmentation or a database while preserving these logical roles and migration guarantees.
 
-## Current MVP persistence contract
+## Current filesystem persistence contract
 
 The current filesystem implementation intentionally keeps a small, strict contract:
 
@@ -35,13 +37,16 @@ The current filesystem implementation intentionally keeps a small, strict contra
 - malformed Event JSON, malformed Event shape, malformed config, or malformed State fails closed rather than being silently repaired;
 - a missing `state.json` is treated as an empty `CanonicalState(format_version=1)`;
 - `state.json` writes use a temporary file followed by atomic filesystem replacement, and a failed write attempts to remove the temporary file;
-- State persistence preserves JSON-serializable State values and provenance source IDs.
+- State persistence preserves JSON-serializable State values and provenance source IDs;
+- a missing `MEMORY.md` means no prior crystallized readable memory and does not block ordinary character operation;
+- `MEMORY.md` writes also use temporary-file replacement;
+- byte-for-byte unchanged crystallized Markdown is not rewritten.
 
-These are current implementation guarantees, not a claim that the underlying filesystem is the permanent storage architecture. Crash-consistent journaling, multi-process writers, backup/restore, schema migration, package integrity tooling, and broader lifecycle operations remain deferred.
+These are current implementation guarantees, not a claim that the underlying filesystem is the permanent storage architecture. Crash-consistent multi-file transactions, multi-process writers, backup/restore, schema migration, package integrity tooling, and broader lifecycle operations remain deferred.
 
-## Event and State durability roles
+## Event, State, and crystallized-memory durability roles
 
-Event persistence and Canonical State persistence are intentionally different:
+The durable layers are intentionally different:
 
 ```text
 Event Journal
@@ -49,12 +54,17 @@ Event Journal
 
 Canonical State
   accepted current understanding
+
+MEMORY.md
+  readable long-term semantic synthesis
 ```
 
-Removing a current State does not delete its source Events. Conversely, the presence of an Event does not make every statement in that Event accepted State.
+Removing a current State does not delete its source Events. Conversely, the presence of an Event does not make every statement in that Event accepted State. `MEMORY.md` may summarize durable meaning but does not override State for current truth or Events for what occurred.
+
+Crystallization write-back into current State is governed through the existing StateCandidate + Validator path; writing Markdown alone never promotes prose into accepted State. See `docs/contracts/crystallization.md`.
 
 ## Future envelope
 
 Future features may materialize `knowledge/`, `examples/`, `settings/`, `assets/`, and `cache/` only when they contain real data. Their semantics are tracked in #1262.
 
-Crystallized readable memory/graph projection is tracked separately in #1260.
+Richer `memory/notes/*.md` wiki organization and actual crystallizer-provider behavior remain tracked in #1260. Retrieval of crystallized memory into bounded ordinary-turn Context remains tracked in #1267.
