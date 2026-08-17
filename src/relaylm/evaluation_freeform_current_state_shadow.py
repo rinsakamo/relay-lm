@@ -54,17 +54,17 @@ def _retained(compiled, chunk: MemoryChunk) -> bool:
 
 
 async def evaluate_freeform_current_state_shadow() -> EvaluationScenarioResult:
-    explicit_conflict = _chunk(
-        "explicit-conflict",
+    current_conflict = _chunk(
+        "current-conflict",
         "Current residence location is Hokkaido.",
     )
-    explicit_conflict_result = _compile(chunk=explicit_conflict)
+    current_conflict_result = _compile(chunk=current_conflict)
 
-    explicit_match = _chunk(
-        "explicit-match",
+    current_match = _chunk(
+        "current-match",
         "The residence location is currently Fukuoka.",
     )
-    explicit_match_result = _compile(chunk=explicit_match)
+    current_match_result = _compile(chunk=current_match)
 
     now_conflict = _chunk(
         "now-conflict",
@@ -103,8 +103,8 @@ async def evaluate_freeform_current_state_shadow() -> EvaluationScenarioResult:
     )
 
     cases = (
-        explicit_conflict_result,
-        explicit_match_result,
+        current_conflict_result,
+        current_match_result,
         now_conflict_result,
         prefixed_result,
         historical_result,
@@ -112,8 +112,8 @@ async def evaluate_freeform_current_state_shadow() -> EvaluationScenarioResult:
         boolean_result,
     )
     retained_flags = (
-        _retained(explicit_conflict_result, explicit_conflict),
-        _retained(explicit_match_result, explicit_match),
+        _retained(current_conflict_result, current_conflict),
+        _retained(current_match_result, current_match),
         _retained(now_conflict_result, now_conflict),
         _retained(prefixed_result, prefixed),
         _retained(historical_result, historical),
@@ -123,25 +123,25 @@ async def evaluate_freeform_current_state_shadow() -> EvaluationScenarioResult:
 
     checks = (
         EvaluationCheck(
-            check_id="explicit_current_conflict_suppressed",
+            check_id="current_wording_non_authoritative",
             boundary="context_compiler",
-            passed=explicit_conflict_result.memory == (),
-            expected=0,
-            observed=len(explicit_conflict_result.memory),
+            passed=retained_flags[0],
+            expected=True,
+            observed=retained_flags[0],
         ),
         EvaluationCheck(
-            check_id="explicit_current_match_retained",
+            check_id="currently_wording_non_authoritative",
             boundary="context_compiler",
             passed=retained_flags[1],
             expected=True,
             observed=retained_flags[1],
         ),
         EvaluationCheck(
-            check_id="now_form_conflict_suppressed",
+            check_id="now_wording_non_authoritative",
             boundary="context_compiler",
-            passed=now_conflict_result.memory == (),
-            expected=0,
-            observed=len(now_conflict_result.memory),
+            passed=retained_flags[2],
+            expected=True,
+            observed=retained_flags[2],
         ),
         EvaluationCheck(
             check_id="prefixed_current_phrase_retained",
@@ -165,7 +165,7 @@ async def evaluate_freeform_current_state_shadow() -> EvaluationScenarioResult:
             observed=retained_flags[5],
         ),
         EvaluationCheck(
-            check_id="boolean_freeform_not_expanded",
+            check_id="boolean_freeform_not_temporally_inferred",
             boundary="context_compiler",
             passed=retained_flags[6],
             expected=True,
@@ -179,6 +179,6 @@ async def evaluate_freeform_current_state_shadow() -> EvaluationScenarioResult:
             "case_count": len(cases),
             "suppressed_case_count": sum(len(case.memory) == 0 for case in cases),
             "retained_case_count": sum(retained_flags),
-            "scalar_current_claim_count": 3,
+            "lexical_temporal_marker_case_count": 3,
         },
     )

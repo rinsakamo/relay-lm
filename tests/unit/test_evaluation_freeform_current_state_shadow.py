@@ -21,18 +21,18 @@ def test_freeform_current_state_shadow_component_uses_real_compiler_api() -> Non
     assert result.scenario_id == "freeform_current_state_shadow"
     assert result.status == "pass"
     assert {check.check_id for check in result.checks} == {
-        "explicit_current_conflict_suppressed",
-        "explicit_current_match_retained",
-        "now_form_conflict_suppressed",
+        "current_wording_non_authoritative",
+        "currently_wording_non_authoritative",
+        "now_wording_non_authoritative",
         "prefixed_current_phrase_retained",
         "historical_freeform_retained",
         "omitted_key_freeform_retained",
-        "boolean_freeform_not_expanded",
+        "boolean_freeform_not_temporally_inferred",
     }
     assert {check.boundary for check in result.checks} == {"context_compiler"}
     assert result.metrics == {
         "case_count": 7,
-        "suppressed_case_count": 2,
-        "retained_case_count": 5,
-        "scalar_current_claim_count": 3,
+        "suppressed_case_count": 0,
+        "retained_case_count": 7,
+        "lexical_temporal_marker_case_count": 3,
     }

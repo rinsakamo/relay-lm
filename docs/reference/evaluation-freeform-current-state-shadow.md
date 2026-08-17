@@ -1,27 +1,25 @@
-# Free-form current State-shadow evaluation
+# Free-form temporal State-shadow evaluation
 
-`src/relaylm/evaluation_freeform_current_state_shadow.py` provides the isolated deterministic `freeform_current_state_shadow` evaluation component for the merged #1267 Context Compiler C4 capability from PR #1385.
+`src/relaylm/evaluation_freeform_current_state_shadow.py` provides the isolated deterministic `freeform_current_state_shadow` regression component for the Context Compiler State-vs-MEMORY boundary.
 
 ## Current component contract
 
-`evaluate_freeform_current_state_shadow()` calls the real `compile_cognitive_input(...)` API and observes only the resulting MEMORY residency. It does not reproduce the Context Compiler's current-claim grammar.
+`evaluate_freeform_current_state_shadow()` calls the real `compile_cognitive_input(...)` API and observes only resulting MEMORY residency. It does not reproduce or invent temporal parsing rules.
 
-The deterministic fixture verifies that:
+The component now verifies the post-#1409 authority boundary:
 
-- a line-leading `Current <canonical key> is <value>` scalar conflict is suppressed by active Canonical State;
-- an explicit current scalar claim matching active State is retained;
-- `<canonical key> is now <value>` is also an explicit-current claim;
-- a prefixed phrase such as `Previous current ...` remains outside the C4 grammar;
-- historical or temporally ambiguous free-form key prose remains resident for later interpretation;
-- free-form prose that omits the canonical key is not semantically mapped by C4;
-- free-form boolean claims are not added to the scalar C4 rule.
+- line-leading `Current <canonical key> is <value>` prose does not itself establish typed currentness;
+- `<canonical key> is currently <value>` prose does not itself establish typed currentness;
+- `<canonical key> is now <value>` prose does not itself establish typed currentness;
+- prefixed `Previous current ...`, year-bearing historical prose, omitted-key prose, and free-form boolean prose likewise remain non-authoritative;
+- all of those ordinary unannotated MEMORY chunks remain resident unless a separate accepted structural State-addressing rule applies.
 
-All checks are attributed to the `context_compiler` boundary. The component deliberately preserves C4's bounded negative space rather than widening contradiction semantics.
+The scenario ID is retained for compatibility with already-merged isolated-component references, but its oracle is corrective: lexical temporal wording is evidence text, not temporal authority. Typed MEMORY temporal/currentness metadata is owned by #1260/#1409 and future C5 may consume that metadata directly.
 
 ## Non-goals
 
-This component does not add historical/current interpretation, alias or synonym inference, omitted-key mapping, negation handling, free-form boolean/degree semantics, retrieval ranking changes, State mutation, MEMORY mutation, or any LLM contradiction classifier.
+This component does not implement C5, parse years/dates/tense, infer aliases or synonyms, interpret negation, add free-form boolean/degree semantics, change retrieval ranking, mutate State or MEMORY, or add an LLM contradiction classifier.
 
 ## Integration status
 
-This component is intentionally not registered in the native deterministic evaluation registry by this transaction. Shared scenario count, `src/relaylm/evaluation.py`, `docs/authority-map.yaml`, shared navigation, and aggregate Issue status remain for serial integration after component merge.
+This isolated component does not modify the native deterministic evaluation registry, aggregate scenario count, `docs/authority-map.yaml`, shared navigation, or aggregate implementation status. Any shared registration/reconciliation remains Serial Integration work after the corrected component is merged.
