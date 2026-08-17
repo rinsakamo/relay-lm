@@ -70,6 +70,9 @@ def test_diagnostics_report_content_free_lexical_budget_pressure() -> None:
         "selected_lexical_match_count": 2,
         "selected_fallback_count": 0,
         "evicted_budget_limit_count": 2,
+        "authority_suppressed_count": 0,
+        "current_event_excluded_count": 0,
+        "redundancy_overlap_count": 0,
     }
 
     serialized = json.dumps(asdict(diagnostic), ensure_ascii=False)
@@ -111,6 +114,9 @@ def test_diagnostics_report_unbounded_projection_without_pressure() -> None:
     assert diagnostic.selected_lexical_match_count == 0
     assert diagnostic.selected_fallback_count == 0
     assert diagnostic.evicted_budget_limit_count == 0
+    assert diagnostic.authority_suppressed_count == 0
+    assert diagnostic.current_event_excluded_count == 0
+    assert diagnostic.redundancy_overlap_count == 0
 
 
 def test_diagnostics_report_zero_budget_as_budget_eviction() -> None:
