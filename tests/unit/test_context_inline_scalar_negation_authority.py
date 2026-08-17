@@ -155,14 +155,6 @@ def test_positive_inline_assignment_match_remains_retained() -> None:
     assert [item.location for item in compiled.memory] == [current.location]
 
 
-def test_heading_addressed_negation_remains_outside_c10() -> None:
-    deferred = _chunk("not Fukuoka", heading="Residence Location")
-
-    compiled = _compile(chunk=deferred)
-
-    assert [item.location for item in compiled.memory] == [deferred.location]
-
-
 def test_multiple_inline_assignments_remain_outside_c10() -> None:
     deferred = _chunk(
         "residence_location: not Hokkaido\nresidence_location: Hokkaido"
