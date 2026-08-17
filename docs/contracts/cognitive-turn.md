@@ -25,6 +25,15 @@ Minimal semantic shape:
       "location": "memory/MEMORY.md#memory/coffee"
     }
   ],
+  "event_evidence": [
+    {
+      "event_id": "019b...",
+      "type": "message",
+      "actor": "user",
+      "timestamp": "2026-08-17T00:00:00+00:00",
+      "content": "..."
+    }
+  ],
   "input": {
     "event_id": "019c...",
     "actor": "user",
@@ -37,6 +46,7 @@ Minimal semantic shape:
 - `state` contains selected accepted Canonical State.
 - `context` contains RelayLM-prepared Event-backed cognitive material, not authority-equivalent raw transcript replay.
 - `memory` contains selected crystallized synthesis. It is a distinct optional layer and is not Canonical State or Event provenance.
+- `event_evidence` contains selected persisted Event occurrences with real Event provenance. Occurrence evidence is not automatically current State.
 - `input` is the current governed Event.
 - `state_classes` provides bounded semantic definitions and may be rendered through provider/schema metadata without changing semantics.
 
@@ -104,6 +114,43 @@ The ordinary turn APIs accept an optional `MemoryRetrievalBudget(max_chunks, max
 
 The provider remains instructed to treat active State as current understanding. That instruction is defense in depth for cases beyond the current narrow deterministic filter, not a substitute for RelayLM authority.
 
+## Targeted Event evidence
+
+An Event evidence item carries:
+
+```text
+event_id
+event_type
+actor
+timestamp
+content
+```
+
+`compile_cognitive_input(..., event_evidence=...)` accepts already-selected persisted Events and projects them into the dedicated `event_evidence` layer without widening retrieval scope.
+
+The current projection contract is:
+
+- the real persisted Event ID is preserved and may be cited as StateCandidate provenance;
+- Event type, actor, timestamp, and content are preserved so occurrence role and chronology remain visible to cognition;
+- supplied order is preserved;
+- the Current Event is excluded if accidentally supplied because it is already carried separately as protected `input`;
+- a selected Event without non-empty string `payload.content` fails explicitly rather than being silently rewritten or dropped;
+- projection does not mutate Events, State, MEMORY, or indexes and does not add an LLM call.
+
+Event evidence has different semantics from both Working Context and MEMORY:
+
+```text
+Working Context   recent conversational continuity backed by Event sources
+MEMORY            crystallized synthesis, document locator only
+Event Evidence    targeted persisted occurrence with real Event ID
+```
+
+Authority remains source-role-aware. A user-authored Event proves what the user said at that occurrence, subject to temporal and semantic scope. An assistant-authored Event remains assistant-authored and cannot self-certify user facts or external truth. An Event occurrence is not automatically accepted current Canonical State merely because it was retrieved.
+
+The OpenAI-compatible provider serializes Event evidence separately and permits its real Event IDs as StateCandidate `sources`. MEMORY `location` values remain ineligible as sources.
+
+The ordinary-turn runtime does **not yet** automatically retrieve or supply Event evidence. Runtime Event-budget plumbing, journal indexing/retrieval-scaled reads, and automatic Current-Input querying remain later #1267 work.
+
 ## Working Context
 
 The current runtime may include bounded RelayLM-owned recent dialogue in `context`.
@@ -151,6 +198,8 @@ persist Canonical State only if validation changed it
 Persisting the User Event before retrieval/provider execution is intentional: the Event Journal records that the user input occurred even if optional retrieval or cognition later fails.
 
 Buffered and streamed delivery share this semantic ordering and the same optional-memory preparation path. A streaming adapter may expose safely decoded response characters while the single provider generation is still producing its structured wire object, but this early display is not a semantic `CognitiveOutput` acceptance point. Assistant Event creation and StateCandidate validation wait for the complete valid cognitive result.
+
+Targeted Event evidence can currently be supplied only through explicit Context compilation; it is not part of this ordinary-turn preparation path yet.
 
 ## CognitiveOutput
 
@@ -211,4 +260,4 @@ If a valid response is produced but one or more StateCandidates are rejected, th
 
 Adapter-level malformed provider output is fail-closed before a semantic `CognitiveOutput` is accepted.
 
-An ordinary turn targets exactly one cognitive generation. Working Context selection, deterministic State-shadow filtering, deterministic validation, persistence, Context compilation, optional retrieved-memory selection/projection, and streamed delivery do not add a second ordinary cognitive LLM call.
+An ordinary turn targets exactly one cognitive generation. Working Context selection, deterministic State-shadow filtering, deterministic validation, persistence, Context compilation, optional retrieved-memory selection/projection, optional explicit Event-evidence projection, and streamed delivery do not add a second ordinary cognitive LLM call.
