@@ -8,7 +8,13 @@ For semantic changes:
 
 > **Meaning first. Tests freeze the meaning. Code realizes it. Docs preserve the authority.**
 
-The workflow is intentionally lightweight. CI or tooling may enforce parts of it later, but tooling must not become a second architecture or recreate the heavy 0.x governance system.
+The workflow is intentionally lightweight. It preserves the quality properties worth carrying forward from 0.x without recreating the old governance system:
+
+- fresh authority;
+- one bounded responsibility;
+- fresh-head verification;
+- exact-head CI;
+- code / test / docs authority convergence.
 
 ## Universal rules
 
@@ -19,8 +25,12 @@ Every transaction:
 - owns one bounded responsibility;
 - avoids adjacent scope expansion;
 - leaves frozen 0.x `main` untouched;
-- merges only the exact reviewed head;
+- performs a fresh verification pass over the exact current PR head before merge;
+- requires the exact current PR head to pass the required `v1` CI checks;
+- merges only the exact reviewed and tested head;
 - reconciles its owning Issue after a successful merge when an Issue exists.
+
+If `v1` moves during a transaction, reconstruct authority and classify overlap before merge. Do not silently rebase, merge, or assume the previous review/CI result is still sufficient.
 
 ## 1. Classify the change
 
@@ -48,7 +58,7 @@ Do not add test-first ceremony that provides no evidence.
 
 ### A. Meaning + examples
 
-Before implementation, the issue or bounded spec states:
+Before implementation, the Issue or bounded spec states:
 
 - expected behavior;
 - non-goals;
@@ -110,22 +120,58 @@ After behavior is GREEN, update affected current-authority docs in the same tran
 
 > **Documentation is part of the implementation.**
 
-### E. Semantic audit
+### E. Fresh-head semantic review
 
-Before merge, answer four questions:
+After implementation and documentation are complete, re-fetch the exact current PR head from GitHub and review the cumulative diff as a fresh verification pass.
+
+This review is independent verification, not necessarily a second human reviewer. It must inspect the actual head/diff/tests/docs rather than trust the implementation summary or earlier local state.
+
+Answer four questions:
 
 1. Does the test express the intended meaning/examples?
 2. Did the code add more semantics or machinery than required?
-3. Do current-authority docs match the implementation?
-4. Is any deferred behavior written as already implemented?
+3. Are failure cases, edge cases, or authority-boundary regressions materially under-tested?
+4. Do current-authority docs match the implementation and keep deferred behavior explicitly deferred?
+
+Also verify that the cumulative changed-path set still matches the bounded responsibility.
 
 Any wrong or ambiguous answer means the transaction is incomplete.
 
-### F. Exact-head merge
+### F. Exact-head CI gate
 
-Re-read the PR head and current `v1`, verify the bounded diff, and merge only the exact reviewed head.
+The required `v1` CI result must belong to the exact PR head that was just reviewed.
 
-### G. Issue reconciliation
+Current baseline:
+
+```text
+workflow: .github/workflows/v1-ci.yml
+check:    v1 CI / pytest
+python:   3.12
+command:  python -m pytest -q
+```
+
+The workflow explicitly checks out and verifies the PR head SHA before running the full test suite.
+
+Rules:
+
+- the required exact-head CI check must be GREEN before merge;
+- a GREEN result from an older PR head is stale and does not count;
+- local/manual test output is useful evidence but does not replace the required CI result;
+- if CI is unavailable, cancelled, or not attached to the exact reviewed head, do not claim `CI GREEN` and do not merge;
+- after any new push, repeat fresh-head review and wait for the new exact-head CI result.
+
+### G. Exact-head merge
+
+Immediately before merge:
+
+1. re-read current `v1`;
+2. re-read the PR head;
+3. confirm the head is the reviewed SHA;
+4. confirm required exact-head CI is GREEN;
+5. confirm the bounded diff is unchanged;
+6. merge only with expected-head protection.
+
+### H. Issue reconciliation
 
 After the merge succeeds, reconcile the owning Issue against the merged reality. Use exactly one of these outcomes:
 
@@ -157,7 +203,8 @@ fresh authority
   → existing GREEN + new RED
   → minimal code GREEN
   → authority docs
-  → semantic audit
+  → fresh-head semantic review
+  → exact-head CI GREEN
   → exact-head merge
   → Issue reconciliation
 ```
@@ -170,7 +217,9 @@ fresh authority
   → bounded change
   → same tests GREEN
   → documentation impact: updated or explicitly none
-  → exact-head audit / merge
+  → fresh-head cumulative-diff review
+  → exact-head CI GREEN
+  → exact-head merge
   → Issue reconciliation when an owning Issue exists
 ```
 
@@ -182,25 +231,44 @@ If semantics changed, reclassify the work as a semantic transaction.
 fresh authority
   → inspect current implementation / accepted authority
   → bounded docs correction
-  → semantic contradiction audit
+  → fresh-head semantic-contradiction review
+  → exact-head CI GREEN
   → exact-head merge
   → Issue reconciliation when an owning Issue exists
 ```
 
 Docs-only work must not invent new runtime semantics.
 
-## 5. Artifact roles
+## 5. Quality model
+
+The workflow protects three distinct layers:
+
+```text
+Semantic quality
+  Meaning → Example → contract RED/GREEN
+
+Implementation quality
+  regression / structural coverage + relevant suite
+
+Repository quality
+  fresh authority + fresh-head review + exact-head CI + docs convergence
+```
+
+The goal is not to reproduce heavy governance. The goal is to make the wrong semantic change, stale-head merge, or documentation drift difficult to ship.
+
+## 6. Artifact roles
 
 ```text
 Issue / bounded spec   intention + examples + remaining-work ledger
 Tests                  executable contract / regression evidence
 Code                   minimal implementation
 Authority docs         human-readable current semantics
+CI                     exact-head executable verification
 ```
 
 A semantic transaction is not complete while these materially disagree. Issues are planning and traceability artifacts, not current semantic authority; completed or superseded Issues must not remain open in a way that implies stale design is still pending.
 
-## 6. Current vs deferred
+## 7. Current vs deferred
 
 Mandatory rule:
 
@@ -214,7 +282,7 @@ Deferred / future work
 Owner: #issue
 ```
 
-## 7. Issue reconciliation rule
+## 8. Issue reconciliation rule
 
 Issue hygiene is part of transaction completion, not a separate governance project.
 
@@ -222,9 +290,11 @@ Issue hygiene is part of transaction completion, not a separate governance proje
 
 Do not keep an Issue open merely as historical documentation. Git history, merged PRs, and canonical docs preserve history; open Issues should represent real unresolved work.
 
-## 8. Supporting automation
+## 9. Supporting automation
 
-Small supporting automation may be added when useful, such as:
+The current mandatory baseline is the exact-head `v1 CI / pytest` workflow.
+
+Additional small automation may be added when useful, such as:
 
 - PR documentation-impact declarations;
 - runtime-owner → tests → authority-doc mapping;
@@ -241,4 +311,6 @@ These support the workflow; they are not new architecture concepts.
 4. **Current authority never describes deferred behavior in the present tense.**
 5. **One transaction = one bounded responsibility.**
 6. **Implement the minimum machinery required to satisfy the contract.**
-7. **A completed transaction reconciles its owning Issue.**
+7. **Fresh-head review verifies the repository, not the implementation narrative.**
+8. **Only the exact reviewed head may satisfy the required CI gate.**
+9. **A completed transaction reconciles its owning Issue.**
