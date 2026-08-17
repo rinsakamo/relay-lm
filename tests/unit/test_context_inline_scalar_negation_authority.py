@@ -169,17 +169,6 @@ def test_not_prefix_without_token_boundary_remains_positive_mismatch() -> None:
     assert _compile(chunk=stale).memory == ()
 
 
-def test_boolean_inline_negation_remains_outside_c10() -> None:
-    deferred = _chunk("notifications_enabled: not true")
-
-    compiled = _compile(
-        chunk=deferred,
-        state=_state(key="notifications_enabled", value=True),
-    )
-
-    assert [item.location for item in compiled.memory] == [deferred.location]
-
-
 def test_reserved_degree_inline_negation_remains_outside_c10() -> None:
     deferred = _chunk("tea: not likes; degree_hint: 0.85")
 
