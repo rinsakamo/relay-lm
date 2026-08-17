@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from relaylm.context import compile_cognitive_input
+import json
+from dataclasses import asdict
+
+from relaylm.context import compile_cognitive_input, compile_cognitive_input_with_diagnostics
 from relaylm.evaluation import EvaluationCheck, EvaluationScenarioResult
 from relaylm.events import Event
 from relaylm.identity import Identity
-from relaylm.state import CanonicalState
+from relaylm.state import CanonicalState, StateRecord
 
 
 def _message(*, event_id: str, actor: str, content: str, second: int) -> Event:
@@ -126,5 +129,133 @@ async def evaluate_working_context_budget_atomicity() -> EvaluationScenarioResul
             "event_window_context_count": len(event_window.context),
             "character_budget_context_count": len(char_budget.context),
             "selected_source_count": len(selected_sources),
+        },
+    )
+
+
+async def evaluate_state_selection_diagnostics() -> EvaluationScenarioResult:
+    state = CanonicalState(
+        states=(
+            StateRecord(
+                state_id="tea-secret",
+                state_class="user.preference",
+                key="tea",
+                value="likes",
+                sources=("source-tea-secret",),
+            ),
+            StateRecord(
+                state_id="coffee-secret",
+                state_class="user.preference",
+                key="coffee",
+                value="likes",
+                sources=("source-coffee-secret",),
+            ),
+            StateRecord(
+                state_id="preferred-secret",
+                state_class="user.preference",
+                key="preferred_beverage",
+                value="coffee",
+                sources=("source-preferred-secret",),
+            ),
+            StateRecord(
+                state_id="home-secret",
+                state_class="user.fact",
+                key="residence_location",
+                value="Fukuoka",
+                sources=("source-home-secret",),
+            ),
+        )
+    )
+    identity = Identity("# Evaluation Character\nBe grounded.\n")
+    matched_event = _message(
+        event_id="matched-current-secret",
+        actor="user",
+        content="Help me choose coffee today",
+        second=5,
+    )
+    fallback_event = _message(
+        event_id="fallback-current-secret",
+        actor="user",
+        content="Tell me something unrelated about weather",
+        second=6,
+    )
+
+    matched = compile_cognitive_input_with_diagnostics(
+        identity=identity,
+        state=state,
+        current_event=matched_event,
+        max_state_records=2,
+    )
+    fallback = compile_cognitive_input_with_diagnostics(
+        identity=identity,
+        state=state,
+        current_event=fallback_event,
+        max_state_records=2,
+    )
+    matched_diagnostic = matched.diagnostics[0]
+    fallback_diagnostic = fallback.diagnostics[0]
+    serialized = json.dumps(
+        [asdict(matched_diagnostic), asdict(fallback_diagnostic)],
+        ensure_ascii=False,
+    )
+    forbidden = (
+        "coffee",
+        "preferred_beverage",
+        "Fukuoka",
+        "tea-secret",
+        "coffee-secret",
+        "source-coffee-secret",
+        "matched-current-secret",
+        "fallback-current-secret",
+    )
+
+    checks = (
+        EvaluationCheck(
+            check_id="matched_selection_reports_lexical_reason_counts",
+            boundary="diagnostics",
+            passed=matched_diagnostic.mode == "lexical_ranked"
+            and matched_diagnostic.eligible_count == 4
+            and matched_diagnostic.selected_count == 2
+            and matched_diagnostic.evicted_count == 2
+            and matched_diagnostic.selected_lexical_match_count == 2
+            and matched_diagnostic.selected_fallback_count == 0
+            and matched_diagnostic.evicted_budget_limit_count == 2,
+            expected=True,
+            observed=matched_diagnostic.selected_lexical_match_count == 2,
+        ),
+        EvaluationCheck(
+            check_id="zero_match_selection_reports_deterministic_fallback",
+            boundary="diagnostics",
+            passed=fallback_diagnostic.mode == "lexical_ranked"
+            and fallback_diagnostic.selected_lexical_match_count == 0
+            and fallback_diagnostic.selected_fallback_count == 2
+            and fallback_diagnostic.evicted_budget_limit_count == 2,
+            expected=2,
+            observed=fallback_diagnostic.selected_fallback_count,
+        ),
+        EvaluationCheck(
+            check_id="diagnostics_match_selected_state_cardinality",
+            boundary="context_compiler",
+            passed=matched_diagnostic.selected_count == len(matched.cognitive_input.state)
+            and fallback_diagnostic.selected_count == len(fallback.cognitive_input.state),
+            expected=True,
+            observed=matched_diagnostic.selected_count == len(matched.cognitive_input.state),
+        ),
+        EvaluationCheck(
+            check_id="diagnostics_do_not_expose_semantic_payload",
+            boundary="diagnostics",
+            passed=all(value not in serialized for value in forbidden),
+            expected=True,
+            observed=all(value not in serialized for value in forbidden),
+        ),
+    )
+    return EvaluationScenarioResult(
+        scenario_id="state_selection_diagnostics",
+        checks=checks,
+        metrics={
+            "eligible_state_count": fallback_diagnostic.eligible_count,
+            "selected_state_count": fallback_diagnostic.selected_count,
+            "evicted_state_count": fallback_diagnostic.evicted_count,
+            "selected_fallback_count": fallback_diagnostic.selected_fallback_count,
         },
     )
