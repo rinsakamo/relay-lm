@@ -175,7 +175,7 @@ Current retrieval behavior:
 - return selected chunks in original document order after ranking/selection;
 - zero budgets return no chunks and negative budgets fail explicitly.
 
-`compile_cognitive_input(..., retrieved_memory=...)` accepts already-selected `MemoryChunk` values and projects them into a dedicated `CognitiveInput.memory` layer. Each projected item contains only:
+`compile_cognitive_input(..., retrieved_memory=...)` accepts already-selected `MemoryChunk` values and projects them into a dedicated `CognitiveInput.memory` layer. The canonical `MemoryChunk` now also carries #1260/#1409-owned typed `temporal_authority`; the current `RetrievedMemoryItem` provider projection still contains only:
 
 ```text
 content
@@ -185,33 +185,30 @@ location
 This separation is intentional:
 
 ```text
-Working Context sources[]   RelayLM Event provenance
-Retrieved Memory location   current Markdown document locator
+Working Context sources[]      RelayLM Event provenance
+MemoryChunk temporal_authority typed MEMORY temporal/provenance authority
+Retrieved Memory location      current Markdown document locator
 ```
 
-A memory `location` is **not** an Event ID, is **not** eligible as StateCandidate provenance, and is **not yet** durable logical-memory identity across Markdown reorganization. #1260 still owns richer Markdown provenance conventions and stable logical memory identity.
+A memory `location` is **not** an Event ID and is **not** eligible as StateCandidate provenance. When governed MEMORY metadata is present, stable logical `memory_id`, `derivation_id`, typed Event/State source references, and `current | historical | unknown` temporal scope are carried separately on `MemoryChunk.temporal_authority`; unannotated MEMORY remains typed `unknown`.
 
 The compiler consumes the supplied `retrieved_memory` exactly as already-selected evidence; it does not silently run broader retrieval or change its scope. Projection is read/select/project only and does not mutate `MEMORY.md`, State, Events, or indexes and does not call an LLM.
 
-The OpenAI-compatible provider serializes this layer separately from `context` and instructs the model that crystallized memory is lower authority than active State. That instruction remains a defense-in-depth rule; RelayLM now also owns a conservative deterministic State-shadow filter before projection.
+The OpenAI-compatible provider serializes this layer separately from `context` and instructs the model that crystallized memory is lower authority than active State. That instruction remains a defense-in-depth rule; RelayLM also owns a conservative deterministic State-shadow filter before projection.
 
 ### Deterministic State-shadow filtering
 
-Before retrieved chunks become `CognitiveInput.memory`, the Context Compiler compares a bounded set of deterministic State-addressing forms against the full eligible active Canonical State set.
+Before retrieved chunks become `CognitiveInput.memory`, the Context Compiler compares a bounded set of deterministic **structural State-addressing forms** against the full eligible active Canonical State set.
 
 Current filtering is intentionally narrow:
 
 - authority eligibility uses every State record with `status == "active"` and `valid_to is None`, independently of any later `max_state_records` projection cap;
 - a Memory chunk is State-addressing when its heading path contains every normalized lexical term of a State key, or when its body contains the canonical State key as an explicit `key:` / `key=` field assignment;
 - inline field detection requires the exact normalized canonical key token and a field delimiter;
-- when neither existing explicit form addresses a key, a simple scalar State value (`str`, `int`, or `float`, excluding `bool`) may additionally be addressed only by a line-leading explicit-current free-form form: either `current <canonical key> is <value>` at line start, or optional leading `the` followed by `<canonical key> is currently/now <value>`;
-- the free-form grammar uses the canonical key's own normalized lexical terms in contiguous readable order, allowing normal spaces in place of underscores; it does not infer aliases or synonyms for the State key;
-- text preceding those line-leading forms is not ignored or reinterpreted: a prefixed phrase such as `previous current residence location is ...` remains outside C4 and is left for separate historical/current interpretation;
-- for that free-form scalar grammar, a claimed value whose normalized lexical terms differ from the current scalar State value suppresses the whole chunk; an exact lexical current-value claim remains compatible;
-- absence of the explicit `current` / `currently` / `now` marker is not interpreted by this grammar, so historical or temporally ambiguous free-form prose remains untouched for separate historical/current interpretation;
-- free-form prose that omits the canonical key, such as `Rin currently lives in Hokkaido`, is not mapped to `residence_location` by this rule;
-- boolean and reserved `{semantic, degree_hint}` State values do not enter the free-form scalar grammar; their existing explicitly State-addressing rules remain separate;
-- for State values handled by the general lexical heading/field rule, the chunk is retained if at least one current State value appears as an exact lexical token sequence in the chunk;
+- ordinary free-form prose does **not** become State-addressing or temporally classified merely because it contains `current`, `currently`, `now`, a year/date literal, `previous`, `formerly`, grammatical tense, or other temporal wording;
+- therefore an unannotated non-structural sentence such as `Current residence location is Hokkaido.` remains temporally `unknown` input and is not suppressed by a lexical-current grammar;
+- boolean and reserved `{semantic, degree_hint}` State values continue to use only the existing explicitly State-addressing structural rules;
+- for State values handled by the structural heading/field rule, the chunk is retained if at least one current State value appears as an exact lexical token sequence in the chunk;
 - if the chunk explicitly addresses the key through those heading/field forms but none of the comparable current State values appears, the whole chunk is suppressed from `CognitiveInput.memory`;
 - for a boolean State value, an explicitly State-addressing chunk is suppressed only when it contains the exact opposite `true` / `false` token and does not also contain the current boolean token;
 - a boolean chunk containing the current token remains compatible; a chunk containing neither boolean token, or both tokens, is left untouched rather than being semantically or temporally reclassified;
@@ -221,11 +218,11 @@ Current filtering is intentionally narrow:
 - absence of an associated explicit degree assignment is not inferred as a conflict, and arbitrary prose numbers are not interpreted as degree claims;
 - exact token sequences are used rather than substring matching, so for example `likes` is not treated as present inside `dislikes`;
 - inactive or expired State records do not suppress memory;
-- a chunk that uses none of the accepted State-addressing forms is left untouched even if its prose happens to mention an older or different value.
+- a chunk that uses none of the accepted structural State-addressing forms is left untouched even if its prose happens to mention an older, newer, current-sounding, or different value.
 
 Whole-chunk suppression changes only current cognitive residency. It does not rewrite or delete `MEMORY.md`, mutate State or Events, create a second semantic owner, or add an LLM call.
 
-This filter deliberately does **not** infer arbitrary natural-language aliases, synonyms, negation, or omitted-key contradiction; distinguish historical from current prose outside the line-leading explicit-current scalar forms above; infer degree from adjectives or free-form intensity language; compare degree values across keys/semantic axes; apply degree tolerances/orderings; or decide free-form conflicts for boolean and other non-lexically-comparable State values. Those remain later #1267 work.
+The former C4 line-leading lexical-current grammar from #1385 is retired after #1409 established typed MEMORY temporal authority. Context Compiler must not recreate temporal/currentness authority from prose. C5 remains a separate bounded transaction that may consume `MemoryChunk.temporal_authority` directly when deciding historical/current ambiguity; it must not derive that metadata from raw language.
 
 ### Opt-in ordinary-turn MEMORY retrieval
 
@@ -327,8 +324,9 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 
 - evidence-backed runtime default State/MEMORY/Event budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
 - any later Continuity-specific selection/degradation policy beyond the current projection of all accepted initial Continuity kinds;
-- State-vs-memory authority beyond the current deterministic addressing forms, including ambiguous historical/current interpretation, omitted-key alias/synonym/negation semantics, free-form degree/intensity interpretation, free-form boolean handling, and other non-lexically-comparable values;
-- durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
+- C5 consumption of merged #1260/#1409 typed MEMORY temporal authority for historical/current ambiguity, without year/date/`previous`/`formerly`/tense/free-form temporal inference;
+- State-vs-memory authority beyond the current deterministic structural addressing forms, including omitted-key alias/synonym/negation semantics, free-form degree/intensity interpretation, free-form boolean handling, and other non-lexically-comparable values;
+- richer durable logical memory identity/provenance behavior beyond the current governed `MemoryChunk.temporal_authority` carriage when #1260 work justifies it;
 - persistent/segmented Event Journal indexing and retrieval-scaled targeted discovery beyond the current process-local validated snapshot reuse;
 - redundancy reduction across State / Working Context / Continuity / Memory / Events beyond the current exact Working Context/Event Evidence Event-ID residency rule;
 - retrieval-stage MEMORY/Event diagnostics, total token-aware tier budgeting, and explicit cross-layer degradation/fallback evidence;
