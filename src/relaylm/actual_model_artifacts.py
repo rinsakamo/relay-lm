@@ -68,8 +68,15 @@ def prepare_character_fixture_workspace(
 
     try:
         shutil.copytree(source, destination, copy_function=shutil.copy2)
-    except OSError as exc:
+        copied_revision = character_fixture_revision(destination)
+    except (OSError, ActualModelArtifactError) as exc:
+        shutil.rmtree(destination, ignore_errors=True)
         raise ActualModelArtifactError(f"cannot create actual-model workspace: {exc}") from exc
+    if copied_revision != manifest.character_fixture_revision:
+        shutil.rmtree(destination, ignore_errors=True)
+        raise ActualModelArtifactError(
+            "character fixture changed while preparing the run workspace"
+        )
     return CharacterDirectory(destination)
 
 
@@ -114,15 +121,7 @@ def write_actual_model_evidence(
     payload = evidence.to_json() + "\n"
 
     if path.exists():
-        try:
-            existing = path.read_text(encoding="utf-8")
-        except OSError as exc:
-            raise ActualModelArtifactError(f"cannot read existing evidence artifact: {exc}") from exc
-        if existing == payload:
-            return path
-        raise ActualModelArtifactError(
-            "run ID already exists with different evidence; use a distinct replicate_id"
-        )
+        return _resolve_existing_evidence(path=path, payload=payload)
 
     temporary = root / f".{evidence.run_id}.{os.getpid()}.tmp"
     try:
@@ -130,13 +129,17 @@ def write_actual_model_evidence(
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
-        temporary.replace(path)
+        try:
+            os.link(temporary, path)
+        except FileExistsError:
+            return _resolve_existing_evidence(path=path, payload=payload)
     except OSError as exc:
+        raise ActualModelArtifactError(f"cannot persist actual-model evidence: {exc}") from exc
+    finally:
         try:
             temporary.unlink(missing_ok=True)
         except OSError:
             pass
-        raise ActualModelArtifactError(f"cannot persist actual-model evidence: {exc}") from exc
     return path
 
 
@@ -150,3 +153,15 @@ def load_actual_model_evidence_mapping(path: str | Path) -> dict[str, object]:
     if not isinstance(raw, dict):
         raise ActualModelArtifactError("actual-model evidence root must be a JSON object")
     return raw
+
+
+def _resolve_existing_evidence(*, path: Path, payload: str) -> Path:
+    try:
+        existing = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ActualModelArtifactError(f"cannot read existing evidence artifact: {exc}") from exc
+    if existing == payload:
+        return path
+    raise ActualModelArtifactError(
+        "run ID already exists with different evidence; use a distinct replicate_id"
+    )
