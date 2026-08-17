@@ -69,6 +69,7 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "crystallization_integrity",
         "streaming_safety",
         "state_selection_diagnostics",
+        "cross_layer_context_diagnostics",
         "memory_heading_retrieval",
         "memory_cognitive_projection",
         "ordinary_turn_memory_retrieval",
