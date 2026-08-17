@@ -164,7 +164,7 @@ With a character budget exactly large enough for the newer exchange but not both
 
 The scenario checks exact actor/source provenance for the admitted pair and verifies that the current user Event remains the current Input rather than being duplicated into Working Context.
 
-This evaluates only the current bounded recent-dialogue behavior. Future relevance ranking, unresolved-task retention, MEMORY retrieval, targeted Event evidence retrieval, and token-aware selection remain #1267 work.
+This evaluates only the current bounded recent-dialogue behavior. Future semantic retention, targeted Event evidence retrieval, and token-aware cross-layer selection remain #1267 work.
 
 ### `persistence_integrity`
 
@@ -231,7 +231,22 @@ This deterministic #1267 scenario evaluates the first bounded retrieval primitiv
 
 It checks three independent behaviors: a coffee-related query selects the complete Coffee heading section; an unrelated astronomy query selects no optional memory rather than falling back to irrelevant prose; and a relevant section that exceeds the character budget is skipped without truncation while a later complete relevant summary may still fit.
 
-The scenario evaluates retrieval and local budget semantics only. It does not claim CognitiveInput projection, durable Markdown identity/Event provenance, State-vs-memory conflict suppression, multilingual semantic retrieval, or actual-model response benefit.
+The scenario evaluates retrieval and local budget semantics only. It does not evaluate CognitiveInput projection, durable Markdown identity/Event provenance, State-vs-memory conflict suppression, multilingual semantic retrieval, or actual-model response benefit.
+
+### `memory_cognitive_projection`
+
+This deterministic #1267 scenario evaluates the distinct crystallized-memory projection boundary introduced by PR #1305.
+
+Given one already-selected Coffee `MemoryChunk`, it verifies that:
+
+- exactly one item is projected into `CognitiveInput.memory`;
+- the selected memory does not become Event-backed Working Context;
+- provider serialization emits the memory content and Markdown location in the separate `memory` array;
+- the Markdown location does not appear in any serialized State/Context `sources` array;
+- the current Input retains its real current Event ID;
+- compiling without retrieved memory produces an empty memory layer.
+
+This evaluates projection and provenance separation only. It does not claim ordinary-turn automatic retrieval, deterministic stale/conflict suppression, durable logical-memory identity, runtime MEMORY budget quality, or actual-model response benefit.
 
 Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
@@ -239,7 +254,7 @@ Current scenario implementations may use deterministic synthetic providers or di
 
 Still owned by #1247:
 
-- additional relevance/retrieval evaluation as later #1267 features land;
+- #1267 ordinary-runtime MEMORY retrieval/budgeting, State-vs-memory conflict suppression, targeted Event retrieval, and cross-layer/token-aware diagnostics as those runtime slices land;
 - future privacy/lifecycle evaluation from #1270;
 - response/persona and actual local-model quality measurements;
 - external benchmark adapters after current benchmark availability/version suitability is re-verified.
