@@ -71,9 +71,13 @@ def compile_cognitive_input(
         max_events=max_working_context_events,
         max_chars=max_working_context_chars,
     )
+    filtered_memory = _filter_retrieved_memory_against_active_state(
+        retrieved_memory=retrieved_memory,
+        state=state,
+    )
     memory = tuple(
         RetrievedMemoryItem(content=chunk.content, location=chunk.location)
-        for chunk in retrieved_memory
+        for chunk in filtered_memory
     )
     return CognitiveInput(
         identity=identity,
@@ -196,6 +200,71 @@ def _diagnose_active_state_selection(
         selected_lexical_match_count=lexical_match_count,
         selected_fallback_count=fallback_count,
         evicted_budget_limit_count=evicted_count,
+    )
+
+
+def _filter_retrieved_memory_against_active_state(
+    *,
+    retrieved_memory: Iterable[MemoryChunk],
+    state: CanonicalState,
+) -> tuple[MemoryChunk, ...]:
+    """Suppress explicitly State-addressing chunks that omit the current State value."""
+
+    active_state = tuple(
+        record
+        for record in state.states
+        if record.status == "active" and record.valid_to is None
+    )
+    if not active_state:
+        return tuple(retrieved_memory)
+
+    return tuple(
+        chunk
+        for chunk in retrieved_memory
+        if not _memory_chunk_is_shadowed(chunk=chunk, active_state=active_state)
+    )
+
+
+def _memory_chunk_is_shadowed(
+    *,
+    chunk: MemoryChunk,
+    active_state: tuple[StateRecord, ...],
+) -> bool:
+    heading_terms = frozenset(_lexical_terms(" ".join(chunk.heading_path)))
+    if not heading_terms:
+        return False
+
+    for record in active_state:
+        key_terms = tuple(term for term in _lexical_terms(record.key) if len(term) >= 2)
+        if not key_terms or not all(term in heading_terms for term in key_terms):
+            continue
+
+        current_values = tuple(
+            value_text
+            for value_text in _value_lexical_strings(record.value)
+            if _lexical_terms(value_text)
+        )
+        if not current_values:
+            continue
+        if not any(
+            _contains_lexical_value(chunk.content, value_text)
+            for value_text in current_values
+        ):
+            return True
+
+    return False
+
+
+def _contains_lexical_value(content: str, value_text: str) -> bool:
+    content_terms = _lexical_terms(content)
+    value_terms = _lexical_terms(value_text)
+    if not value_terms or len(value_terms) > len(content_terms):
+        return False
+
+    width = len(value_terms)
+    return any(
+        content_terms[index : index + width] == value_terms
+        for index in range(len(content_terms) - width + 1)
     )
 
 
