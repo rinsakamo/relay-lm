@@ -359,6 +359,36 @@ async def evaluate_retrieval_query_features() -> EvaluationScenarioResult:
     return await evaluate()
 
 
+async def evaluate_continuity_lifecycle() -> EvaluationScenarioResult:
+    from relaylm.evaluation_continuity_lifecycle import (
+        evaluate_continuity_lifecycle as evaluate,
+    )
+
+    return await evaluate()
+
+
+async def evaluate_continuity_turn() -> EvaluationScenarioResult:
+    from relaylm.evaluation_continuity_turn import evaluate_continuity_turn as evaluate
+
+    return await evaluate()
+
+
+async def evaluate_continuity_context_retention() -> EvaluationScenarioResult:
+    from relaylm.evaluation_continuity_context_retention import (
+        evaluate_continuity_context_retention as evaluate,
+    )
+
+    return await evaluate()
+
+
+async def evaluate_continuity_active_task_retention() -> EvaluationScenarioResult:
+    from relaylm.evaluation_continuity_active_task import (
+        evaluate_continuity_active_task_retention as evaluate,
+    )
+
+    return await evaluate()
+
+
 async def run_native_evaluation() -> EvaluationReport:
     return EvaluationReport(
         scenarios=(
@@ -389,6 +419,10 @@ async def run_native_evaluation() -> EvaluationReport:
             await evaluate_cjk_retrieval_relevance(),
             await evaluate_degree_state_memory_authority(),
             await evaluate_retrieval_query_features(),
+            await evaluate_continuity_lifecycle(),
+            await evaluate_continuity_turn(),
+            await evaluate_continuity_context_retention(),
+            await evaluate_continuity_active_task_retention(),
         ),
     )
 
