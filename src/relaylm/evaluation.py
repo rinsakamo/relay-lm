@@ -213,6 +213,12 @@ async def evaluate_working_context_budget_atomicity() -> EvaluationScenarioResul
     return await evaluate()
 
 
+async def evaluate_state_selection_diagnostics() -> EvaluationScenarioResult:
+    from relaylm.evaluation_context import evaluate_state_selection_diagnostics as evaluate
+
+    return await evaluate()
+
+
 async def evaluate_persistence_integrity() -> EvaluationScenarioResult:
     from relaylm.evaluation_persistence import evaluate_persistence_integrity as evaluate
 
@@ -250,6 +256,7 @@ async def run_native_evaluation() -> EvaluationReport:
             await evaluate_correction_remove_semantics(),
             await evaluate_crystallization_integrity(),
             await evaluate_streaming_safety(),
+            await evaluate_state_selection_diagnostics(),
         ),
     )
 

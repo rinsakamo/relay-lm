@@ -215,13 +215,23 @@ For downstream client closure, closing the RelayLM stream after the first visibl
 
 This scenario evaluates delivery/commit/cancellation semantics already implemented under #1269. Provider-wire incremental JSON parsing remains covered by its dedicated unit contracts rather than duplicated in the native report.
 
+### `state_selection_diagnostics`
+
+This deterministic #1267 scenario evaluates the content-free diagnostics surface for explicit bounded active-State selection.
+
+It runs the same four-record active State set under two `max_state_records=2` queries. A coffee-related Current Event must report two lexical-match selections; an unrelated weather query must report two deterministic fallback selections. Both runs must report four eligible records, two selected records, two evicted records, and two budget-limit evictions.
+
+The scenario also serializes the diagnostics objects and verifies that known State IDs, keys, semantic values, source Event IDs, and Current Event IDs are absent. This tests the diagnostics contract itself rather than assuming that aggregate metadata is safe because it is labeled diagnostic.
+
+The scenario does not choose a runtime State cap, expose content, or evaluate future cross-layer token budgets.
+
 Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
 ## Deferred evaluation work
 
 Still owned by #1247:
 
-- relevance/retrieval evaluation from #1267;
+- additional relevance/retrieval evaluation as later #1267 features land;
 - future privacy/lifecycle evaluation from #1270;
 - response/persona and actual local-model quality measurements;
 - external benchmark adapters after current benchmark availability/version suitability is re-verified.

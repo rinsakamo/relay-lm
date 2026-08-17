@@ -15,6 +15,7 @@ from relaylm.evaluation import (
     evaluate_persistence_integrity,
     evaluate_provider_failure_safety,
     evaluate_restart_continuity,
+    evaluate_state_selection_diagnostics,
     evaluate_streaming_safety,
     evaluate_working_context_budget_atomicity,
     main,
@@ -65,6 +66,7 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "correction_remove_semantics",
         "crystallization_integrity",
         "streaming_safety",
+        "state_selection_diagnostics",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
@@ -219,3 +221,21 @@ def test_streaming_safety_evaluation_is_registered() -> None:
     assert result.scenario_id == "streaming_safety"
     assert result.status == "pass"
     assert all(check.passed for check in result.checks)
+
+
+def test_state_selection_diagnostics_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_state_selection_diagnostics())
+
+    assert result.scenario_id == "state_selection_diagnostics"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+    assert {check.boundary for check in result.checks} == {
+        "context_compiler",
+        "diagnostics",
+    }
+    assert result.metrics == {
+        "eligible_state_count": 4,
+        "selected_state_count": 2,
+        "evicted_state_count": 2,
+        "selected_fallback_count": 2,
+    }
