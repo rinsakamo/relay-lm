@@ -16,7 +16,7 @@ def test_cross_layer_context_diagnostics_evaluation_is_registered() -> None:
         "diagnostics",
     }
     assert result.metrics == {
-        "diagnostic_layer_count": 3,
+        "diagnostic_layer_count": 4,
         "memory_authority_suppressed_count": 1,
         "event_current_excluded_count": 1,
         "event_redundancy_overlap_count": 1,
