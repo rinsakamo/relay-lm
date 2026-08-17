@@ -14,6 +14,10 @@ from relaylm.continuity import (
     CONTINUITY_KINDS,
     ContinuityCandidate,
 )
+from relaylm.providers.openai_compatible_decoding import (
+    OpenAICompatibleDecodingCapabilities,
+    OpenAICompatibleDecodingConfig,
+)
 from relaylm.state import STATE_CLASS_DEFINITIONS, StateCandidate
 
 SYSTEM_INSTRUCTION = """You are the cognitive substrate of a persistent character managed by RelayLM.
@@ -159,17 +163,43 @@ class OpenAICompatibleProvider:
         model: str,
         api_key: str | None = None,
         timeout: float = 120.0,
+        decoding_config: OpenAICompatibleDecodingConfig | None = None,
+        decoding_capabilities: OpenAICompatibleDecodingCapabilities | None = None,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
         if not base_url.strip():
             raise ValueError("provider base_url must not be empty")
         if not model.strip():
             raise ValueError("provider model must not be empty")
+        if decoding_config is not None and not isinstance(
+            decoding_config, OpenAICompatibleDecodingConfig
+        ):
+            raise TypeError("decoding_config must be OpenAICompatibleDecodingConfig or None")
+        if decoding_capabilities is not None and not isinstance(
+            decoding_capabilities, OpenAICompatibleDecodingCapabilities
+        ):
+            raise TypeError(
+                "decoding_capabilities must be OpenAICompatibleDecodingCapabilities or None"
+            )
+        effective_decoding = decoding_config or OpenAICompatibleDecodingConfig()
+        effective_capabilities = (
+            decoding_capabilities or OpenAICompatibleDecodingCapabilities()
+        )
+        effective_capabilities.require(effective_decoding)
+
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.api_key = api_key
+        self.decoding_config = effective_decoding
+        self.decoding_capabilities = effective_capabilities
         self._client = http_client or httpx.AsyncClient(timeout=timeout)
         self._owns_client = http_client is None
+
+    @property
+    def effective_decoding_configuration(self) -> dict[str, int | float]:
+        """Exact content-free decoding fields carried on every provider request."""
+
+        return self.decoding_config.to_mapping()
 
     async def aclose(self) -> None:
         if self._owns_client:
@@ -184,6 +214,7 @@ class OpenAICompatibleProvider:
                     model=self.model,
                     cognitive_input=cognitive_input,
                     stream=False,
+                    decoding_config=self.decoding_config,
                 ),
             )
             response.raise_for_status()
@@ -212,6 +243,7 @@ class OpenAICompatibleProvider:
                     model=self.model,
                     cognitive_input=cognitive_input,
                     stream=True,
+                    decoding_config=self.decoding_config,
                 ),
             ) as response:
                 response.raise_for_status()
@@ -261,8 +293,13 @@ def _request_body(
     model: str,
     cognitive_input: CognitiveInput,
     stream: bool,
+    decoding_config: OpenAICompatibleDecodingConfig | None = None,
 ) -> dict[str, Any]:
-    return {
+    if decoding_config is not None and not isinstance(
+        decoding_config, OpenAICompatibleDecodingConfig
+    ):
+        raise TypeError("decoding_config must be OpenAICompatibleDecodingConfig or None")
+    body: dict[str, Any] = {
         "model": model,
         "messages": [
             {"role": "system", "content": f"{SYSTEM_INSTRUCTION}\n\n{PROVIDER_WIRE_INSTRUCTION}"},
@@ -285,6 +322,9 @@ def _request_body(
         },
         "stream": stream,
     }
+    if decoding_config is not None:
+        body.update(decoding_config.to_mapping())
+    return body
 
 
 async def _iter_sse_data(response: httpx.Response) -> AsyncIterator[str]:
