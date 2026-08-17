@@ -19,6 +19,12 @@ Minimal semantic shape:
       "actor": "user"
     }
   ],
+  "memory": [
+    {
+      "content": "## Coffee\n\n...",
+      "location": "memory/MEMORY.md#memory/coffee"
+    }
+  ],
   "input": {
     "event_id": "019c...",
     "actor": "user",
@@ -29,7 +35,8 @@ Minimal semantic shape:
 
 - `identity` is authoritative stable character identity.
 - `state` contains selected accepted Canonical State.
-- `context` contains RelayLM-prepared cognitive material, not authority-equivalent raw transcript replay.
+- `context` contains RelayLM-prepared Event-backed cognitive material, not authority-equivalent raw transcript replay.
+- `memory` contains already-selected crystallized synthesis. It is a distinct optional layer and is not Canonical State or Event provenance.
 - `input` is the current governed Event.
 - `state_classes` provides bounded semantic definitions and may be rendered through provider/schema metadata without changing semantics.
 
@@ -53,6 +60,29 @@ The actor/source metadata is semantically important:
 - inclusion in Context never upgrades the authority of the underlying source.
 
 Context compilation is read/select/project only. `ContextItem` is not a memory mutation or State acceptance mechanism.
+
+## Retrieved crystallized memory
+
+A retrieved memory item carries:
+
+```text
+content
+location
+```
+
+`content` is selected readable crystallized synthesis. `location` is only the deterministic location of that selection in the current Markdown document, such as `memory/MEMORY.md#memory/coffee`.
+
+The current contract deliberately keeps this separate from Event-backed `ContextItem.sources`:
+
+- a memory `location` is **not** an Event ID;
+- a memory `location` is **not** a StateCandidate source;
+- a memory `location` is **not yet** durable logical-memory identity across Markdown reorganization;
+- retrieved crystallized prose is lower authority than active Canonical State for current understanding;
+- including memory in CognitiveInput does not mutate `MEMORY.md`, State, or Events.
+
+`compile_cognitive_input(..., retrieved_memory=...)` accepts already-selected `MemoryChunk` values and projects them without widening retrieval scope. The ordinary `run_user_turn` path does not yet select or populate this layer automatically; runtime retrieval policy and default MEMORY budgets remain #1267 work.
+
+Deterministic stale/conflict filtering between active State and retrieved memory is also still deferred. The provider is instructed to treat active State as current understanding if already-projected memory conflicts, but that instruction does not replace the later RelayLM-owned suppression/filtering layer.
 
 ## Working Context
 
@@ -148,4 +178,4 @@ If a valid response is produced but one or more StateCandidates are rejected, th
 
 Adapter-level malformed provider output is fail-closed before a semantic `CognitiveOutput` is accepted.
 
-An ordinary turn targets exactly one cognitive generation. Working Context selection, deterministic validation, persistence, Context compilation, and streamed delivery do not add a second ordinary cognitive LLM call.
+An ordinary turn targets exactly one cognitive generation. Working Context selection, deterministic validation, persistence, Context compilation, retrieved-memory projection, and streamed delivery do not add a second ordinary cognitive LLM call.

@@ -7,9 +7,10 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
-from relaylm.cognitive import CognitiveInput, ContextItem
+from relaylm.cognitive import CognitiveInput, ContextItem, RetrievedMemoryItem
 from relaylm.events import Event
 from relaylm.identity import Identity
+from relaylm.memory_retrieval import MemoryChunk
 from relaylm.state import CanonicalState, STATE_CLASS_DEFINITIONS, StateRecord
 
 
@@ -45,6 +46,7 @@ def compile_cognitive_input(
     state: CanonicalState,
     current_event: Event,
     recent_events: Iterable[Event] = (),
+    retrieved_memory: Iterable[MemoryChunk] = (),
     max_working_context_events: int = DEFAULT_WORKING_CONTEXT_MAX_EVENTS,
     max_working_context_chars: int = DEFAULT_WORKING_CONTEXT_MAX_CHARS,
     max_state_records: int | None = None,
@@ -69,12 +71,17 @@ def compile_cognitive_input(
         max_events=max_working_context_events,
         max_chars=max_working_context_chars,
     )
+    memory = tuple(
+        RetrievedMemoryItem(content=chunk.content, location=chunk.location)
+        for chunk in retrieved_memory
+    )
     return CognitiveInput(
         identity=identity,
         state_classes=STATE_CLASS_DEFINITIONS,
         state=active_state,
         context=working_context,
         input=current_event,
+        memory=memory,
     )
 
 
@@ -84,6 +91,7 @@ def compile_cognitive_input_with_diagnostics(
     state: CanonicalState,
     current_event: Event,
     recent_events: Iterable[Event] = (),
+    retrieved_memory: Iterable[MemoryChunk] = (),
     max_working_context_events: int = DEFAULT_WORKING_CONTEXT_MAX_EVENTS,
     max_working_context_chars: int = DEFAULT_WORKING_CONTEXT_MAX_CHARS,
     max_state_records: int | None = None,
@@ -95,6 +103,7 @@ def compile_cognitive_input_with_diagnostics(
         state=state,
         current_event=current_event,
         recent_events=recent_events,
+        retrieved_memory=retrieved_memory,
         max_working_context_events=max_working_context_events,
         max_working_context_chars=max_working_context_chars,
         max_state_records=max_state_records,
