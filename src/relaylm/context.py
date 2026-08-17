@@ -509,10 +509,18 @@ def _memory_chunk_is_shadowed(
         if not heading_addresses_key and not inline_addresses_key:
             if chunk.temporal_authority.temporal_scope is not MemoryTemporalScope.CURRENT:
                 continue
+            claims = _bounded_freeform_state_key_claims(chunk.content, record.key)
+            if isinstance(record.value, bool):
+                if any(
+                    (claim_value := _explicit_boolean_claim_value(claim)) is not None
+                    and claim_value is not record.value
+                    for claim in claims
+                ):
+                    return True
+                continue
             current_value = _simple_scalar_state_value_text(record.value)
             if current_value is None:
                 continue
-            claims = _bounded_freeform_scalar_state_key_claims(chunk.content, record.key)
             if claims and any(
                 _lexical_terms(claim) != _lexical_terms(current_value)
                 for claim in claims
@@ -570,7 +578,7 @@ def _simple_scalar_state_value_text(value: Any) -> str | None:
     return None
 
 
-def _bounded_freeform_scalar_state_key_claims(content: str, key: str) -> tuple[str, ...]:
+def _bounded_freeform_state_key_claims(content: str, key: str) -> tuple[str, ...]:
     key_terms = _lexical_terms(key)
     if not key_terms:
         return ()
@@ -591,6 +599,15 @@ def _bounded_freeform_scalar_state_key_claims(content: str, key: str) -> tuple[s
         for pattern in patterns
         if (match := pattern.search(line)) is not None
     )
+
+
+def _explicit_boolean_claim_value(claim: str) -> bool | None:
+    terms = _lexical_terms(claim)
+    if terms == ("true",):
+        return True
+    if terms == ("false",):
+        return False
+    return None
 
 
 def _reserved_degree_state_value(value: Any) -> tuple[str, float] | None:
