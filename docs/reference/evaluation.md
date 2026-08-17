@@ -144,6 +144,16 @@ It checks that:
 
 This scenario evaluates RelayLM's deterministic preservation/State-transition behavior after candidate proposal. It does not claim that an actual model has correctly interpreted every comparative natural-language phrasing; model-side comparative extraction remains part of future actual-model quality evaluation.
 
+### `degree_hint_integrity`
+
+This deterministic Validator scenario starts with active `user.preference / coffee = {semantic: likes, degree_hint: 0.9}` and a current user Event supporting a weaker but still-positive coffee preference.
+
+It checks that a valid replacement with degree `0.6` remains a `set` replacement rather than becoming an implicit remove. The final coffee State remains active and retains the current user Event as provenance.
+
+The same pass also submits two invalid reserved envelopes: one with boolean `degree_hint: true`, and one adding a `confidence` field. Both must be rejected as `invalid_degree_hint_value` and neither may enter Canonical State.
+
+This scenario verifies the current machine contract that degree is bounded semantic relative strength, not a removal threshold or confidence field. It does not infer or calibrate what a particular numeric degree should be for arbitrary natural language.
+
 Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
 ## Deferred evaluation work
@@ -151,7 +161,6 @@ Current scenario implementations may use deterministic synthetic providers or di
 Still owned by #1247:
 
 - correction/remove behavior;
-- degree-hint integrity;
 - Working Context provenance/budget invariants beyond the current restart/authority scenarios;
 - persistence malformed-data safety;
 - crystallization quality and Markdown fidelity from #1260;
