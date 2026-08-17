@@ -201,6 +201,26 @@ Current behavior is intentionally opt-in:
 
 The Current User Event is persisted before optional retrieval, matching the existing ordinary-turn occurrence semantics. If reading `MEMORY.md` fails after that point, the turn fails closed before provider generation: the User Event remains recorded, no Assistant Event is created, and Canonical State is unchanged by the failed turn.
 
+## Current targeted Event evidence retrieval primitive
+
+`select_event_evidence(...)` provides deterministic bounded selection over caller-supplied persisted Events without replaying the whole supplied sequence into cognitive context.
+
+The current primitive is deliberately retrieval-only:
+
+- input Event order is treated as Event Journal chronology;
+- only `message` Events with non-empty string `payload.content` are eligible;
+- explicit `exclude_event_ids` can remove the Current Event or any other occurrence from eligibility;
+- query and Event content use NFKC/casefold normalized exact lexical tokens;
+- only positive token overlap is eligible; there is no zero-match fallback;
+- higher lexical overlap wins admission;
+- equal relevance prefers the newer occurrence by source order;
+- explicit `max_events` and `max_chars` bound admission;
+- Events are admitted whole; an oversized relevant Event is skipped rather than truncated, and a later fitting relevant Event may still be admitted;
+- selected Events are returned in original source chronology after ranking/admission;
+- the original `Event` objects are returned unchanged; retrieval does not mutate Events, State, MEMORY, indexes, or call an LLM.
+
+This primitive does **not yet** project targeted Events into `CognitiveInput`, change provider serialization/instructions, or run automatically during an ordinary turn. The file-backed `CharacterDirectory.iter_events()` path also still scans `events.jsonl`; retrieval-scaled journal reads/indexing remain separate work. Semantic/vector retrieval, temporal interpretation, conflict authority, and cross-layer diagnostics are likewise deferred.
+
 ## Budget model
 
 Context budgeting is role-aware rather than one flat relevance competition.
@@ -225,7 +245,7 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 - `unresolved`, `referent`, and `active_task` retention beyond pure recency;
 - semantic State-vs-memory conflict detection beyond explicit State-key headings, including historical/current interpretation, degree-level conflicts, and non-lexical values;
 - durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
-- targeted Event evidence retrieval;
+- projection of targeted Event evidence into a distinct CognitiveInput/provider layer, ordinary-turn wiring, and retrieval-scaled Event Journal reads/indexing;
 - redundancy reduction across State / Working Context / Memory / Events;
 - total token-aware tier budgeting and cross-layer diagnostics;
 - embedding/index acceleration only after authority eligibility is preserved.
