@@ -12,6 +12,7 @@ domains:
     tests:
       - tests/unit/test_cognitive_turn.py
       - tests/unit/test_turn_memory_retrieval.py
+      - tests/unit/test_turn_event_retrieval.py
       - tests/unit/test_event_evidence_projection.py
     docs:
       - docs/contracts/cognitive-turn.md
@@ -26,6 +27,7 @@ domains:
       - tests/unit/test_context_state_selection.py
       - tests/unit/test_context_state_diagnostics.py
       - tests/unit/test_turn_memory_retrieval.py
+      - tests/unit/test_turn_event_retrieval.py
       - tests/unit/test_event_retrieval.py
       - tests/unit/test_event_evidence_projection.py
     docs:
