@@ -61,11 +61,10 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install minimum supported build backend
-        run: python -m pip install -c constraints/minimum.txt hatchling==1.25.0
-
-      - name: Install minimum supported RelayLM dependencies
-        run: python -m pip install --no-build-isolation -c constraints/minimum.txt -e ".[test]"
+      - name: Install RelayLM at minimum support floors
+        env:
+          PIP_CONSTRAINT: constraints/minimum.txt
+        run: python -m pip install -e ".[test]"
 
       - name: Verify dependency consistency
         run: python -m pip check
