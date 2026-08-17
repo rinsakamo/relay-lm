@@ -164,7 +164,7 @@ With a character budget exactly large enough for the newer exchange but not both
 
 The scenario checks exact actor/source provenance for the admitted pair and verifies that the current user Event remains the current Input rather than being duplicated into Working Context.
 
-This evaluates only the current bounded recent-dialogue behavior. Future semantic retention, Event-evidence projection/runtime wiring, and token-aware cross-layer selection remain #1267 work.
+This evaluates only the current bounded recent-dialogue behavior. Future semantic retention, ordinary-turn Event-evidence retrieval, and token-aware cross-layer selection remain #1267 work.
 
 ### `persistence_integrity`
 
@@ -290,7 +290,21 @@ It verifies that:
 - equal-relevance cutoff prefers the newer occurrence deterministically;
 - exact lexical tokens prevent `likes` from matching inside `dislikes`.
 
-This scenario evaluates only the current retrieval primitive over caller-supplied Events. It does not claim Event-evidence `CognitiveInput` projection, provider serialization/instructions, ordinary-turn retrieval wiring, retrieval-scaled filesystem indexing, semantic/multilingual or temporal retrieval, conflict resolution, or actual-model response quality.
+This scenario evaluates only the current retrieval primitive over caller-supplied Events. It does not claim ordinary-turn retrieval wiring, retrieval-scaled filesystem indexing, semantic/multilingual or temporal retrieval, conflict resolution, or actual-model response quality.
+
+### `event_evidence_cognitive_projection`
+
+This deterministic #1267 scenario evaluates the distinct Event-evidence CognitiveInput/provider boundary introduced by PR #1318.
+
+It verifies that:
+
+- already-selected persisted user/assistant Events project into `CognitiveInput.event_evidence` rather than Working Context or MEMORY;
+- real Event ID, type, actor, timestamp, and content survive projection in supplied order;
+- an accidentally supplied Current Event is excluded from Event evidence while remaining protected as `input`;
+- provider serialization emits the same occurrences in a separate `event_evidence` array;
+- real Event-evidence IDs remain provenance-bearing through the provider contract while MEMORY locations remain explicitly ineligible as StateCandidate sources.
+
+This scenario evaluates projection and provider provenance separation only. It does not perform Event retrieval itself, wire Event retrieval into ordinary turns, choose an Event budget, scale filesystem Event Journal reads, infer temporal/current-State conflicts, or measure actual-model response benefit.
 
 Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
@@ -298,7 +312,7 @@ Current scenario implementations may use deterministic synthetic providers or di
 
 Still owned by #1247:
 
-- #1267 evidence-backed default MEMORY/State/Event budgeting, broader State-vs-memory authority semantics beyond explicit-key lexical filtering, Event-evidence CognitiveInput/runtime wiring, retrieval-scaled Event Journal access, and cross-layer/token-aware diagnostics as those runtime slices land;
+- #1267 evidence-backed default MEMORY/State/Event budgeting, broader State-vs-memory authority semantics beyond explicit-key lexical filtering, ordinary-turn Event-evidence retrieval, retrieval-scaled Event Journal access, and cross-layer/token-aware diagnostics as those runtime slices land;
 - future privacy/lifecycle evaluation from #1270;
 - response/persona and actual local-model quality measurements;
 - external benchmark adapters after current benchmark availability/version suitability is re-verified.
