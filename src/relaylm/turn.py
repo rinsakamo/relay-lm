@@ -3,12 +3,28 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
-from relaylm.cognitive import CognitiveOutput, CognitiveProvider
+from relaylm.cognitive import CognitiveInput, CognitiveOutput, CognitiveProvider
 from relaylm.context import compile_cognitive_input
 from relaylm.events import Event
+from relaylm.identity import Identity
+from relaylm.memory_retrieval import select_memory_chunks
 from relaylm.state import CanonicalState
 from relaylm.storage.filesystem import CharacterDirectory
 from relaylm.validation import CandidateDecision, apply_state_candidates
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryRetrievalBudget:
+    """Explicit opt-in budget for ordinary-turn crystallized-memory retrieval."""
+
+    max_chunks: int
+    max_chars: int
+
+    def __post_init__(self) -> None:
+        if self.max_chunks < 0:
+            raise ValueError("memory max_chunks must not be negative")
+        if self.max_chars < 0:
+            raise ValueError("memory max_chars must not be negative")
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,6 +41,7 @@ async def run_user_turn(
     character: CharacterDirectory,
     provider: CognitiveProvider,
     content: str,
+    memory_budget: MemoryRetrievalBudget | None = None,
 ) -> TurnResult:
     """Run one ordinary turn with one semantic cognitive generation."""
 
@@ -42,11 +59,12 @@ async def run_user_turn(
     )
     character.append_event(user_event)
 
-    cognitive_input = compile_cognitive_input(
+    cognitive_input = _compile_turn_cognitive_input(
+        character=character,
         identity=identity,
         state=state,
-        current_event=user_event,
-        recent_events=character.iter_events(),
+        user_event=user_event,
+        memory_budget=memory_budget,
     )
     output = await provider.generate(cognitive_input)
     return _commit_cognitive_output(
@@ -63,6 +81,7 @@ async def run_user_turn_streaming(
     provider: CognitiveProvider,
     content: str,
     emit_response_delta: Callable[[str], Awaitable[None]],
+    memory_budget: MemoryRetrievalBudget | None = None,
 ) -> TurnResult:
     """Run one streamed ordinary turn without committing before provider completion."""
 
@@ -84,11 +103,12 @@ async def run_user_turn_streaming(
     )
     character.append_event(user_event)
 
-    cognitive_input = compile_cognitive_input(
+    cognitive_input = _compile_turn_cognitive_input(
+        character=character,
         identity=identity,
         state=state,
-        current_event=user_event,
-        recent_events=character.iter_events(),
+        user_event=user_event,
+        memory_budget=memory_budget,
     )
     output = await stream_generate(cognitive_input, emit_response_delta)
     return _commit_cognitive_output(
@@ -96,6 +116,32 @@ async def run_user_turn_streaming(
         state=state,
         user_event=user_event,
         output=output,
+    )
+
+
+def _compile_turn_cognitive_input(
+    *,
+    character: CharacterDirectory,
+    identity: Identity,
+    state: CanonicalState,
+    user_event: Event,
+    memory_budget: MemoryRetrievalBudget | None,
+) -> CognitiveInput:
+    retrieved_memory = ()
+    if memory_budget is not None:
+        retrieved_memory = select_memory_chunks(
+            memory_markdown=character.load_memory_markdown(),
+            query=user_event.payload["content"],
+            max_chunks=memory_budget.max_chunks,
+            max_chars=memory_budget.max_chars,
+        )
+
+    return compile_cognitive_input(
+        identity=identity,
+        state=state,
+        current_event=user_event,
+        recent_events=character.iter_events(),
+        retrieved_memory=retrieved_memory,
     )
 
 
