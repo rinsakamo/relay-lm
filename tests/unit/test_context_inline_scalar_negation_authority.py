@@ -113,6 +113,23 @@ def test_current_single_inline_assignment_negating_different_scalar_is_retained(
     assert [item.location for item in compiled.memory] == [compatible.location]
 
 
+def test_numeric_inline_assignment_negating_different_scalar_is_retained() -> None:
+    compatible = _chunk("lucky_number: not 7")
+
+    compiled = _compile(
+        chunk=compatible,
+        state=_state(key="lucky_number", value=5),
+    )
+
+    assert [item.location for item in compiled.memory] == [compatible.location]
+
+
+def test_numeric_inline_assignment_negating_current_scalar_is_suppressed() -> None:
+    stale = _chunk("lucky_number = not 5")
+
+    assert _compile(chunk=stale, state=_state(key="lucky_number", value=5)).memory == ()
+
+
 def test_historical_inline_negation_remains_exempt() -> None:
     historical = _chunk(
         "residence_location: not Fukuoka",
