@@ -98,6 +98,17 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "continuity_turn",
         "continuity_context_retention",
         "continuity_active_task_retention",
+        "continuity_cognition_wiring",
+        "freeform_current_state_shadow",
+        "total_budget_accounting",
+        "budget_degradation_plan",
+        "budget_owner_controls",
+        "serialized_input_fit",
+        "openai_serialized_counter",
+        "serialized_fit_enforcement",
+        "protected_serialized_floor",
+        "cognitive_budget_turn_wiring",
+        "cognitive_budget_turn_diagnostics",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
