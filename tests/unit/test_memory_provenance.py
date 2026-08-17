@@ -40,6 +40,11 @@ def test_provenance_sources_are_typed_event_or_state_references() -> None:
 
     with pytest.raises(ValueError):
         MemoryProvenanceSourceKind("markdown")
+    with pytest.raises(TypeError, match="kind must be MemoryProvenanceSourceKind"):
+        MemoryProvenanceSource(  # type: ignore[arg-type]
+            kind="event",
+            reference_id="event-123",
+        )
 
 
 def test_provenance_requires_stable_derivation_identity_and_sources() -> None:
@@ -106,6 +111,12 @@ def test_classified_temporal_authority_requires_typed_provenance() -> None:
             match="classified memory temporal authority requires provenance",
         ):
             MemoryTemporalAuthority(temporal_scope=scope)
+
+    with pytest.raises(TypeError, match="temporal_scope must be MemoryTemporalScope"):
+        MemoryTemporalAuthority(  # type: ignore[arg-type]
+            temporal_scope="current",
+            provenance=provenance,
+        )
 
 
 def test_unknown_scope_may_preserve_known_provenance_without_guessing() -> None:
