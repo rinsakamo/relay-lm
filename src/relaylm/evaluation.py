@@ -343,6 +343,22 @@ async def evaluate_cjk_retrieval_relevance() -> EvaluationScenarioResult:
     return await evaluate()
 
 
+async def evaluate_degree_state_memory_authority() -> EvaluationScenarioResult:
+    from relaylm.evaluation_degree_state_memory_authority import (
+        evaluate_degree_state_memory_authority as evaluate,
+    )
+
+    return await evaluate()
+
+
+async def evaluate_retrieval_query_features() -> EvaluationScenarioResult:
+    from relaylm.evaluation_retrieval_query_features import (
+        evaluate_retrieval_query_features as evaluate,
+    )
+
+    return await evaluate()
+
+
 async def run_native_evaluation() -> EvaluationReport:
     return EvaluationReport(
         scenarios=(
@@ -371,6 +387,8 @@ async def run_native_evaluation() -> EvaluationReport:
             await evaluate_boolean_state_memory_authority(),
             await evaluate_retrieval_aggregate_diagnostics(),
             await evaluate_cjk_retrieval_relevance(),
+            await evaluate_degree_state_memory_authority(),
+            await evaluate_retrieval_query_features(),
         ),
     )
 

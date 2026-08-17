@@ -21,4 +21,4 @@ This component does not change lexical features, CJK behavior, ranking weights, 
 
 ## Integration status
 
-This component is intentionally not registered in the native evaluation registry by this transaction. Shared scenario count, `src/relaylm/evaluation.py`, `docs/authority-map.yaml`, shared navigation, and #1247 aggregate status remain pending for serial integration.
+PR #1370 registers this already-merged component in the shared `relaylm-native` registry. Its component semantics remain owned here and by the underlying Retrieval authorities; the serial integration adds no alternate selector, index, or runtime behavior.
