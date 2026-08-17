@@ -146,6 +146,12 @@ def test_matching_exact_assignment_ignores_unrelated_opposite_token() -> None:
     assert [item.location for item in compiled.memory] == [compatible.location]
 
 
+def test_assignment_does_not_consume_a_boolean_value_from_the_next_line() -> None:
+    deferred = _chunk("notifications_enabled:\nnot true")
+
+    assert _compile(deferred, value=False).memory == ()
+
+
 def test_multiple_same_key_assignments_remain_outside_c13() -> None:
     deferred = _chunk(
         "notifications_enabled: not false\nnotifications_enabled: false"
