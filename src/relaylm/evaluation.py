@@ -319,6 +319,30 @@ async def evaluate_retrieval_stage_diagnostics() -> EvaluationScenarioResult:
     return await evaluate()
 
 
+async def evaluate_boolean_state_memory_authority() -> EvaluationScenarioResult:
+    from relaylm.evaluation_retrieval_refinements import (
+        evaluate_boolean_state_memory_authority as evaluate,
+    )
+
+    return await evaluate()
+
+
+async def evaluate_retrieval_aggregate_diagnostics() -> EvaluationScenarioResult:
+    from relaylm.evaluation_retrieval_refinements import (
+        evaluate_retrieval_aggregate_diagnostics as evaluate,
+    )
+
+    return await evaluate()
+
+
+async def evaluate_cjk_retrieval_relevance() -> EvaluationScenarioResult:
+    from relaylm.evaluation_retrieval_refinements import (
+        evaluate_cjk_retrieval_relevance as evaluate,
+    )
+
+    return await evaluate()
+
+
 async def run_native_evaluation() -> EvaluationReport:
     return EvaluationReport(
         scenarios=(
@@ -344,6 +368,9 @@ async def run_native_evaluation() -> EvaluationReport:
             await evaluate_event_evidence_cognitive_projection(),
             await evaluate_ordinary_turn_event_retrieval(),
             await evaluate_retrieval_stage_diagnostics(),
+            await evaluate_boolean_state_memory_authority(),
+            await evaluate_retrieval_aggregate_diagnostics(),
+            await evaluate_cjk_retrieval_relevance(),
         ),
     )
 
