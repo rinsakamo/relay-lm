@@ -12,6 +12,7 @@ from relaylm.budget_enforcement import (
     TokenCountMode,
 )
 from relaylm.cognitive import CognitiveInput
+from relaylm.continuity import ContinuityContext
 from relaylm.runtime_assembly import (
     RuntimeAssemblyError,
     TokenCounterCapability,
@@ -299,7 +300,7 @@ def test_buffered_openai_route_carries_all_assembled_turn_controls(monkeypatch) 
     memory = MemoryRetrievalBudget(max_chunks=2, max_chars=800)
     event = EventRetrievalBudget(max_events=3, max_chars=900)
     continuity = ContinuityRuntime(
-        context=openai_api.ContinuityRuntime.__annotations__["context"](max_items=4),
+        context=ContinuityContext(max_items=4),
         lifetime_revisions=5,
     )
     captured: dict[str, object] = {}
