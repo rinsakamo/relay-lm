@@ -32,6 +32,9 @@ class ContextSelectionDiagnostics:
     selected_lexical_match_count: int = 0
     selected_fallback_count: int = 0
     evicted_budget_limit_count: int = 0
+    authority_suppressed_count: int = 0
+    current_event_excluded_count: int = 0
+    redundancy_overlap_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,15 +110,18 @@ def compile_cognitive_input_with_diagnostics(
     max_working_context_chars: int = DEFAULT_WORKING_CONTEXT_MAX_CHARS,
     max_state_records: int | None = None,
 ) -> CognitiveCompilationResult:
-    """Build cognitive input plus content-free State selection diagnostics."""
+    """Build cognitive input plus opt-in content-free selection diagnostics."""
 
+    recent_event_sequence = tuple(recent_events)
+    retrieved_memory_sequence = tuple(retrieved_memory)
+    event_evidence_sequence = tuple(event_evidence)
     cognitive_input = compile_cognitive_input(
         identity=identity,
         state=state,
         current_event=current_event,
-        recent_events=recent_events,
-        retrieved_memory=retrieved_memory,
-        event_evidence=event_evidence,
+        recent_events=recent_event_sequence,
+        retrieved_memory=retrieved_memory_sequence,
+        event_evidence=event_evidence_sequence,
         max_working_context_events=max_working_context_events,
         max_working_context_chars=max_working_context_chars,
         max_state_records=max_state_records,
@@ -128,6 +134,16 @@ def compile_cognitive_input_with_diagnostics(
                 current_event=current_event,
                 max_records=max_state_records,
                 selected_state=cognitive_input.state,
+            ),
+            _diagnose_retrieved_memory_projection(
+                retrieved_memory=retrieved_memory_sequence,
+                selected_memory=cognitive_input.memory,
+            ),
+            _diagnose_event_evidence_projection(
+                event_evidence=event_evidence_sequence,
+                current_event=current_event,
+                selected_evidence=cognitive_input.event_evidence,
+                working_context=cognitive_input.context,
             ),
         ),
     )
@@ -208,6 +224,68 @@ def _diagnose_active_state_selection(
         selected_lexical_match_count=lexical_match_count,
         selected_fallback_count=fallback_count,
         evicted_budget_limit_count=evicted_count,
+    )
+
+
+def _diagnose_retrieved_memory_projection(
+    *,
+    retrieved_memory: tuple[MemoryChunk, ...],
+    selected_memory: tuple[RetrievedMemoryItem, ...],
+) -> ContextSelectionDiagnostics:
+    eligible_count = len(retrieved_memory)
+    selected_count = len(selected_memory)
+    suppressed_count = eligible_count - selected_count
+    return ContextSelectionDiagnostics(
+        layer="retrieved_memory",
+        mode="authority_filtered" if suppressed_count else "pass_through",
+        eligible_count=eligible_count,
+        selected_count=selected_count,
+        evicted_count=suppressed_count,
+        budget_unit="chunks",
+        budget_limit=None,
+        budget_used=selected_count,
+        budget_pressure=False,
+        authority_suppressed_count=suppressed_count,
+    )
+
+
+def _diagnose_event_evidence_projection(
+    *,
+    event_evidence: tuple[Event, ...],
+    current_event: Event,
+    selected_evidence: tuple[EventEvidenceItem, ...],
+    working_context: tuple[ContextItem, ...],
+) -> ContextSelectionDiagnostics:
+    selected_count = len(selected_evidence)
+    current_event_excluded_count = sum(
+        1 for event in event_evidence if event.id == current_event.id
+    )
+    working_context_source_ids = {
+        source
+        for item in working_context
+        for source in item.sources
+    }
+    redundancy_overlap_count = sum(
+        1
+        for item in selected_evidence
+        if item.event_id in working_context_source_ids
+    )
+    return ContextSelectionDiagnostics(
+        layer="event_evidence",
+        mode=(
+            "current_event_deduplicated"
+            if current_event_excluded_count
+            else "pass_through"
+        ),
+        eligible_count=len(event_evidence),
+        selected_count=selected_count,
+        evicted_count=len(event_evidence) - selected_count,
+        budget_unit="events",
+        budget_limit=None,
+        budget_used=selected_count,
+        budget_pressure=False,
+        current_event_excluded_count=current_event_excluded_count,
+        redundancy_overlap_count=redundancy_overlap_count,
     )
 
 
