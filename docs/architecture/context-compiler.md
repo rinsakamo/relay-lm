@@ -147,7 +147,7 @@ Current retrieval behavior:
 - return selected chunks in original document order after ranking/selection;
 - zero budgets return no chunks and negative budgets fail explicitly.
 
-`compile_cognitive_input(..., retrieved_memory=...)` now accepts already-selected `MemoryChunk` values and projects them into a dedicated `CognitiveInput.memory` layer. Each projected item contains only:
+`compile_cognitive_input(..., retrieved_memory=...)` accepts already-selected `MemoryChunk` values and projects them into a dedicated `CognitiveInput.memory` layer. Each projected item contains only:
 
 ```text
 content
@@ -167,7 +167,23 @@ The compiler consumes the supplied `retrieved_memory` exactly as already-selecte
 
 The OpenAI-compatible provider serializes this layer separately from `context` and instructs the model that crystallized memory is lower authority than active State. This is a provider-facing safety rule, not the final deterministic conflict solution.
 
-The ordinary `run_user_turn` / streaming paths do **not** yet automatically retrieve or populate `CognitiveInput.memory`. No runtime default MEMORY chunk or character budget has been chosen. Deterministic stale/conflict suppression before projection also remains deferred under #1267.
+### Opt-in ordinary-turn retrieval
+
+`run_user_turn` and `run_user_turn_streaming` now accept `memory_budget: MemoryRetrievalBudget | None`.
+
+Current behavior is intentionally opt-in:
+
+- `memory_budget=None` preserves the previous behavior and does not read `MEMORY.md` at all;
+- a supplied `MemoryRetrievalBudget(max_chunks, max_chars)` uses the Current User Event text as the retrieval query and delegates selection to `select_memory_chunks`;
+- buffered and streaming turns share the same retrieval/compilation helper and therefore the same selection semantics;
+- selected chunks enter only the dedicated `CognitiveInput.memory` layer;
+- a zero budget is allowed and selects no memory; negative budget values fail explicitly;
+- no default runtime MEMORY budget is implied by the existence of this opt-in path;
+- the public OpenAI client boundary does not yet expose a MEMORY-budget control in this slice.
+
+The Current User Event is persisted before optional retrieval, matching the existing ordinary-turn occurrence semantics. If reading `MEMORY.md` fails after that point, the turn fails closed before provider generation: the User Event remains recorded, no Assistant Event is created, and Canonical State is unchanged by the failed turn.
+
+Deterministic State-vs-memory stale/conflict suppression before provider projection remains deferred under #1267. The provider instruction that active State wins current-understanding conflicts is still a safety layer rather than the final RelayLM-owned conflict algorithm.
 
 ## Budget model
 
@@ -189,9 +205,8 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 
 #1267 remains the authority for later Context selection and retrieval work, including:
 
-- runtime default State/MEMORY budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
+- evidence-backed runtime default State/MEMORY budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
 - `unresolved`, `referent`, and `active_task` retention beyond pure recency;
-- ordinary-runtime MEMORY retrieval wiring using evidence-backed explicit tier budgets;
 - deterministic State-vs-memory stale/conflict suppression before provider projection;
 - durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
 - targeted Event evidence retrieval;
