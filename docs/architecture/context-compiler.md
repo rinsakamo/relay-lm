@@ -130,6 +130,29 @@ Diagnostics deliberately exclude State IDs, keys, values, source Event IDs, Curr
 
 This first diagnostics slice is record-count based because the current explicit State cap is record-count based. Cross-layer token cost, Working Context diagnostics, retrieved-memory/Event diagnostics, and total-budget degradation/fallback reporting remain later #1267 work.
 
+## Current MEMORY.md retrieval primitive
+
+`select_memory_chunks` provides the first bounded read/select primitive over crystallized `memory/MEMORY.md` content. It is deliberately separate from CognitiveInput projection in this slice.
+
+Current behavior:
+
+- parse ATX Markdown heading sections into locally complete chunks that include the section heading and direct body;
+- ignore heading-looking lines inside fenced code blocks;
+- retain the current heading path and expose a deterministic current-location reference such as `memory/MEMORY.md#memory/coffee`;
+- disambiguate duplicate current heading locations deterministically within the document;
+- use simple normalized lexical token matching, with heading matches weighted above body matches;
+- select only chunks with a positive lexical match; optional crystallized memory has no zero-match fallback merely because budget remains;
+- require explicit caller-supplied chunk-count and character budgets;
+- never truncate a chunk to make it fit; an oversized relevant chunk is skipped and a later relevant complete chunk may still fit;
+- return selected chunks in original document order after ranking/selection;
+- zero budgets return no chunks and negative budgets fail explicitly.
+
+The current `location` is a deterministic location in the current Markdown document, **not** a durable logical-memory identifier and **not** Event provenance. #1260 still owns richer provenance conventions and durable logical identity across Markdown reorganization.
+
+This primitive is pure read/select behavior. It does not mutate `MEMORY.md`, State, Events, or indexes and does not call an LLM. It also does not yet place the selected chunks into `CognitiveInput`: `ContextItem.sources` currently carries Event-oriented provenance, so this slice intentionally avoids inventing pseudo Event IDs or collapsing crystallized synthesis into dialogue provenance.
+
+Projection into the ordinary cognitive input needs an explicit crystallized-memory layer/reference contract, followed by State-vs-memory stale/conflict handling. Those remain later #1267 slices.
+
 ## Budget model
 
 Context budgeting is role-aware rather than one flat relevance competition.
@@ -150,9 +173,10 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 
 #1267 remains the authority for later Context selection and retrieval work, including:
 
-- runtime default State budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitive;
+- runtime default State budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
 - `unresolved`, `referent`, and `active_task` retention beyond pure recency;
-- crystallized `MEMORY.md` retrieval;
+- projection of selected `MEMORY.md` chunks into CognitiveInput with explicit crystallized-memory layer/reference semantics;
+- durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
 - targeted Event evidence retrieval;
 - source-role-aware stale/conflict suppression;
 - redundancy reduction across State / Working Context / Memory / Events;
