@@ -207,3 +207,24 @@ def test_current_value_match_uses_tokens_not_substrings() -> None:
     compiled = _compile(state=state, chunks=(conflicting,))
 
     assert compiled.memory == ()
+
+
+def test_inline_state_key_addressing_memory_is_suppressed_without_key_heading() -> None:
+    state = CanonicalState(
+        states=(
+            _record(
+                state_id="residence",
+                state_class="user.fact",
+                key="residence_location",
+                value="Fukuoka",
+            ),
+        )
+    )
+    stale = _chunk(
+        heading="Profile Notes",
+        content="residence_location: Hokkaido",
+    )
+
+    compiled = _compile(state=state, chunks=(stale,))
+
+    assert compiled.memory == ()
