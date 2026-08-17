@@ -12,6 +12,7 @@ The workflow is intentionally lightweight. It preserves the quality properties w
 
 - fresh authority;
 - one bounded responsibility;
+- direct canonical convergence;
 - fresh-head verification;
 - exact-head CI;
 - code / test / docs authority convergence.
@@ -24,6 +25,7 @@ Every transaction:
 - checks open `v1` PRs / competing work;
 - owns one bounded responsibility;
 - avoids adjacent scope expansion;
+- converges directly on the current canonical owner instead of preserving superseded semantics through compatibility machinery;
 - leaves frozen 0.x `main` untouched;
 - performs a fresh verification pass over the exact current PR head before merge;
 - requires the exact current PR head to pass the required `v1` CI checks;
@@ -31,6 +33,35 @@ Every transaction:
 - reconciles its owning Issue after a successful merge when an Issue exists.
 
 If `v1` moves during a transaction, reconstruct authority and classify overlap before merge. Do not silently rebase, merge, or assume the previous review/CI result is still sufficient.
+
+## Canonical convergence rule
+
+`v1` is a greenfield product line. Internal compatibility machinery for superseded RelayLM semantics is prohibited by default.
+
+Do not introduce or retain:
+
+- compatibility patches or shims;
+- old-path aliases or forwarding modules;
+- temporary bridges intended to be removed later;
+- monkey patches that preserve an obsolete contract;
+- dual-read or dual-write migration paths;
+- simultaneous old/new semantic authorities;
+- fallbacks to deprecated RelayLM behavior;
+- wrappers whose purpose is to keep a superseded owner alive.
+
+Instead:
+
+```text
+change the canonical owner / contract
+  → migrate all affected internal consumers in the same bounded transaction
+  → remove the superseded path
+```
+
+> **One concept = one current owner.**
+
+Intentional permanent adapters remain allowed at genuine architecture boundaries, such as an external protocol/provider/storage boundary, when they translate between the current RelayLM contract and an external contract. Current package exports, facades, and registries are also allowed when they are the canonical public boundary rather than a preservation path for obsolete internal semantics.
+
+If post-release compatibility with an external/public RelayLM contract is ever required, it must be designed explicitly as a versioned compatibility contract. It must not enter the repository as an unnamed temporary bridge.
 
 ## 1. Classify the change
 
@@ -107,6 +138,8 @@ relevant suite     = GREEN
 
 Prefer existing Event / State / Context / Validator / provider / persistence machinery over creating a new subsystem.
 
+Do not solve a transition by adding a compatibility shim or a second authority path. Change the canonical owner directly and migrate affected internal consumers together.
+
 > **Implement the minimum machinery required to satisfy the contract.**
 
 ### D. Authority docs sync
@@ -126,12 +159,13 @@ After implementation and documentation are complete, re-fetch the exact current 
 
 This review is independent verification, not necessarily a second human reviewer. It must inspect the actual head/diff/tests/docs rather than trust the implementation summary or earlier local state.
 
-Answer four questions:
+Answer five questions:
 
 1. Does the test express the intended meaning/examples?
 2. Did the code add more semantics or machinery than required?
 3. Are failure cases, edge cases, or authority-boundary regressions materially under-tested?
 4. Do current-authority docs match the implementation and keep deferred behavior explicitly deferred?
+5. Does the diff introduce or preserve a compatibility bridge, shim, dual-authority path, old-path forwarder, or deprecated-behavior fallback instead of direct canonical convergence?
 
 Also verify that the cumulative changed-path set still matches the bounded responsibility.
 
@@ -223,6 +257,8 @@ fresh authority
   → Issue reconciliation when an owning Issue exists
 ```
 
+A behavior-preserving refactor must still converge consumers directly on the canonical owner; it must not leave an old-path compatibility alias or forwarder behind.
+
 If semantics changed, reclassify the work as a semantic transaction.
 
 ## 4. Docs-only change
@@ -251,10 +287,10 @@ Implementation quality
   regression / structural coverage + relevant suite
 
 Repository quality
-  fresh authority + fresh-head review + exact-head CI + docs convergence
+  fresh authority + direct canonical convergence + fresh-head review + exact-head CI + docs convergence
 ```
 
-The goal is not to reproduce heavy governance. The goal is to make the wrong semantic change, stale-head merge, or documentation drift difficult to ship.
+The goal is not to reproduce heavy governance. The goal is to make the wrong semantic change, stale-head merge, compatibility accretion, or documentation drift difficult to ship.
 
 ## 6. Artifact roles
 
@@ -299,6 +335,7 @@ Additional small automation may be added when useful, such as:
 - PR documentation-impact declarations;
 - runtime-owner → tests → authority-doc mapping;
 - lightweight checks for mechanically derivable constants or schemas;
+- structural checks that detect prohibited compatibility paths when they can be identified without false positives;
 - post-merge reminders for owning-Issue reconciliation.
 
 These support the workflow; they are not new architecture concepts.
@@ -311,6 +348,7 @@ These support the workflow; they are not new architecture concepts.
 4. **Current authority never describes deferred behavior in the present tense.**
 5. **One transaction = one bounded responsibility.**
 6. **Implement the minimum machinery required to satisfy the contract.**
-7. **Fresh-head review verifies the repository, not the implementation narrative.**
-8. **Only the exact reviewed head may satisfy the required CI gate.**
-9. **A completed transaction reconciles its owning Issue.**
+7. **No bridges, no shims, no dual authority: converge directly on the canonical owner.**
+8. **Fresh-head review verifies the repository, not the implementation narrative.**
+9. **Only the exact reviewed head may satisfy the required CI gate.**
+10. **A completed transaction reconciles its owning Issue.**
