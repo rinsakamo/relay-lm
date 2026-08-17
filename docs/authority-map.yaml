@@ -20,6 +20,13 @@ domains:
       - docs/architecture/core.md
       - docs/reference/turn-retrieval-diagnostics.md
 
+  continuity_context:
+    runtime: []
+    tests: []
+    docs:
+      - docs/architecture/continuity-context.md
+      - docs/architecture/cognitive-runtime.md
+
   context_compiler:
     runtime:
       - src/relaylm/context.py
