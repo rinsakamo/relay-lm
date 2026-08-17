@@ -228,3 +228,87 @@ def test_inline_state_key_addressing_memory_is_suppressed_without_key_heading() 
     compiled = _compile(state=state, chunks=(stale,))
 
     assert compiled.memory == ()
+
+
+def test_boolean_key_heading_with_opposite_value_is_suppressed() -> None:
+    state = CanonicalState(
+        states=(
+            _record(
+                state_id="notifications",
+                state_class="user.fact",
+                key="notifications_enabled",
+                value=True,
+            ),
+        )
+    )
+    stale = _chunk(
+        heading="Notifications Enabled",
+        content="false",
+    )
+
+    compiled = _compile(state=state, chunks=(stale,))
+
+    assert compiled.memory == ()
+
+
+def test_boolean_inline_assignment_with_opposite_value_is_suppressed() -> None:
+    state = CanonicalState(
+        states=(
+            _record(
+                state_id="notifications",
+                state_class="user.fact",
+                key="notifications_enabled",
+                value=True,
+            ),
+        )
+    )
+    stale = _chunk(
+        heading="Profile Notes",
+        content="notifications_enabled = false",
+    )
+
+    compiled = _compile(state=state, chunks=(stale,))
+
+    assert compiled.memory == ()
+
+
+def test_boolean_key_addressing_memory_with_current_value_is_retained() -> None:
+    state = CanonicalState(
+        states=(
+            _record(
+                state_id="notifications",
+                state_class="user.fact",
+                key="notifications_enabled",
+                value=True,
+            ),
+        )
+    )
+    current = _chunk(
+        heading="Notifications Enabled",
+        content="true",
+    )
+
+    compiled = _compile(state=state, chunks=(current,))
+
+    assert [item.location for item in compiled.memory] == [current.location]
+
+
+def test_boolean_general_historical_prose_without_key_addressing_is_retained() -> None:
+    state = CanonicalState(
+        states=(
+            _record(
+                state_id="notifications",
+                state_class="user.fact",
+                key="notifications_enabled",
+                value=True,
+            ),
+        )
+    )
+    history = _chunk(
+        heading="Notification History",
+        content="Notifications were disabled during a past quiet period.",
+    )
+
+    compiled = _compile(state=state, chunks=(history,))
+
+    assert [item.location for item in compiled.memory] == [history.location]

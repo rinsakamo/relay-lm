@@ -421,7 +421,7 @@ def _filter_retrieved_memory_against_active_state(
     retrieved_memory: Iterable[MemoryChunk],
     state: CanonicalState,
 ) -> tuple[MemoryChunk, ...]:
-    """Suppress explicitly State-addressing chunks that omit the current State value."""
+    """Suppress lower-authority explicit State shadows against active State."""
 
     active_state = tuple(
         record
@@ -457,6 +457,14 @@ def _memory_chunk_is_shadowed(
         if not heading_addresses_key and not inline_addresses_key:
             continue
 
+        if isinstance(record.value, bool):
+            if _contains_explicit_opposite_boolean_value(
+                chunk.content,
+                current_value=record.value,
+            ):
+                return True
+            continue
+
         current_values = tuple(
             value_text
             for value_text in _value_lexical_strings(record.value)
@@ -471,6 +479,13 @@ def _memory_chunk_is_shadowed(
             return True
 
     return False
+
+
+def _contains_explicit_opposite_boolean_value(content: str, *, current_value: bool) -> bool:
+    terms = frozenset(_lexical_terms(content))
+    current_term = "true" if current_value else "false"
+    opposite_term = "false" if current_value else "true"
+    return opposite_term in terms and current_term not in terms
 
 
 def _contains_explicit_state_key_assignment(content: str, key: str) -> bool:
