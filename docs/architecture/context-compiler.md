@@ -114,21 +114,21 @@ The current lexical selector is candidate selection, not authority. It does not 
 
 The ordinary runtime does **not** yet impose a default State cap, so existing turns continue to receive all eligible active State unless a caller explicitly requests bounded State selection. Runtime budget policy and stronger semantic/multilingual discovery remain #1267 work.
 
-### Content-free State selection diagnostics
+### Content-free selection diagnostics
 
 Callers that explicitly need selection evidence may use `compile_cognitive_input_with_diagnostics`. It returns the same `CognitiveInput` produced by the ordinary compiler plus a diagnostics tuple. The ordinary `compile_cognitive_input` path does not generate or persist diagnostics.
 
-The current diagnostics surface covers only the `canonical_state` layer and exposes aggregate, content-free fields:
+The diagnostics surface currently covers three compiler-owned layers:
 
-- selection mode: `unbounded`, `within_budget`, `zero_budget`, or `lexical_ranked`;
-- eligible / selected / evicted record counts;
-- budget unit (`records`), explicit limit, used count, and whether budget pressure occurred;
-- selected lexical-match count and selected deterministic-fallback count when lexical ranking is active;
-- evicted-by-budget-limit count.
+- `canonical_state` — existing active-State eligibility, selection mode, selected/evicted counts, explicit record budget, lexical-match/fallback counts, and budget-limit eviction count;
+- `retrieved_memory` — number of already-retrieved MEMORY chunks supplied to the compiler, number projected after the active-State authority filter, and deterministic State-shadow suppression count;
+- `event_evidence` — number of already-selected Event candidates supplied to the compiler, number projected after Current Event de-duplication, Current Event exclusion count, and the count of projected Event IDs that also remain in selected Working Context.
 
-Diagnostics deliberately exclude State IDs, keys, values, source Event IDs, Current Event content/ID, and any other semantic payload. They are observations about selection mechanics, not a new truth source, persistence layer, ranking authority, or telemetry requirement.
+Shared diagnostic fields include layer/mode, aggregate eligible/selected/evicted counts, budget unit/limit/used/pressure, plus bounded reason counters. Cross-layer additions are `authority_suppressed_count`, `current_event_excluded_count`, and `redundancy_overlap_count`.
 
-This first diagnostics slice is record-count based because the current explicit State cap is record-count based. Cross-layer token cost, Working Context diagnostics, retrieved-memory/Event diagnostics, and total-budget degradation/fallback reporting remain later #1267 work.
+Diagnostics deliberately exclude State IDs, keys, values, Event IDs, MEMORY locations/content, Current Event content/ID, and other semantic payload. The Event-overlap counter compares real Event IDs internally but emits only an aggregate count. Diagnostics are observations about selection/projection mechanics, not a new truth source, persistence layer, ranking authority, or telemetry requirement.
+
+For MEMORY and Event Evidence, `budget_limit=None` and `budget_pressure=False` mean only that the Context Compiler itself did not own the upstream retrieval budget. The compiler does **not** infer MEMORY/Event candidate populations, retrieval-stage ranking pressure, or token costs that were never provided to it. Working Context budget diagnostics, retrieval-stage diagnostics, total cross-layer token cost, degradation/fallback reporting, and runtime default-budget evidence remain later #1267 work.
 
 ## Current MEMORY.md retrieval and projection primitives
 
@@ -256,11 +256,11 @@ Current runtime behavior is deliberately opt-in:
 - zero budgets are valid and select no evidence; negative budgets fail explicitly;
 - no default Event budget and no OpenAI/client-facing Event-budget request field are introduced.
 
-The Current User Event is persisted before the snapshot/retrieval step. Ordinary turns still make exactly one cognitive provider generation. The same occurrence may currently appear in both Working Context and Event Evidence if both selectors admit it; cross-layer redundancy suppression remains deferred.
+The Current User Event is persisted before the snapshot/retrieval step. Ordinary turns still make exactly one cognitive provider generation. The same occurrence may currently appear in both Working Context and Event Evidence if both selectors admit it; cross-layer redundancy suppression remains deferred. The opt-in compiler diagnostics can now count that exact Event-ID overlap without changing residency.
 
 `CharacterDirectory` now keeps a process-local validated Event snapshot. An unchanged `events.jsonl` is not reopened and reparsed for every later `iter_events()` call in the same directory instance; a successful RelayLM-owned append incrementally extends an already-valid snapshot. File signature changes invalidate the snapshot and force authoritative JSONL revalidation, so malformed external edits are not hidden by cached Events.
 
-This snapshot optimization does **not** make Event retrieval independent of Event count. The first read after process start/reopen or external invalidation still parses the authoritative JSONL, and the current lexical targeted selector still evaluates the supplied Event snapshot. Persistent/segmented indexing, retrieval-scaled targeted discovery beyond O(N) candidate inspection, semantic/vector retrieval, temporal interpretation, stronger conflict authority, and cross-layer diagnostics remain deferred.
+This snapshot optimization does **not** make Event retrieval independent of Event count. The first read after process start/reopen or external invalidation still parses the authoritative JSONL, and the current lexical targeted selector still evaluates the supplied Event snapshot. Persistent/segmented indexing, retrieval-scaled targeted discovery beyond O(N) candidate inspection, semantic/vector retrieval, temporal interpretation, and stronger conflict authority remain deferred.
 
 ## Budget model
 
@@ -287,8 +287,8 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 - semantic State-vs-memory conflict detection beyond explicit State-key headings, including historical/current interpretation, degree-level conflicts, and non-lexical values;
 - durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
 - persistent/segmented Event Journal indexing and retrieval-scaled targeted discovery beyond the current process-local validated snapshot reuse;
-- redundancy reduction across State / Working Context / Memory / Events;
-- total token-aware tier budgeting and cross-layer diagnostics;
+- redundancy reduction across State / Working Context / Memory / Events beyond the current content-free exact Event-overlap observation;
+- retrieval-stage and Working Context budget diagnostics, total token-aware tier budgeting, and explicit cross-layer degradation/fallback evidence;
 - embedding/index acceleration only after authority eligibility is preserved.
 
 The governing principle is:
