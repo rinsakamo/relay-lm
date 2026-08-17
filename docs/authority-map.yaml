@@ -147,6 +147,37 @@ domains:
       - docs/contracts/provider-wire.md
       - docs/contracts/openai-api.md
 
+  actual_model_evaluation:
+    runtime:
+      - src/relaylm/actual_model_evaluation.py
+      - src/relaylm/actual_model_artifacts.py
+      - src/relaylm/actual_model_restart.py
+      - src/relaylm/actual_model_comparison.py
+      - src/relaylm/actual_model_quality.py
+      - src/relaylm/actual_model_scenarios.py
+      - src/relaylm/actual_model_execution.py
+      - src/relaylm/actual_model_execution_artifacts.py
+      - src/relaylm/actual_model_review.py
+      - src/relaylm/actual_model_cohort.py
+      - src/relaylm/actual_model_boundary.py
+      - src/relaylm/actual_model_pressure.py
+    tests:
+      - tests/unit/test_actual_model_evaluation.py
+      - tests/unit/test_actual_model_artifacts.py
+      - tests/unit/test_actual_model_restart.py
+      - tests/unit/test_actual_model_comparison.py
+      - tests/unit/test_actual_model_quality.py
+      - tests/unit/test_actual_model_continuity_runtime_identity.py
+      - tests/unit/test_actual_model_scenarios.py
+      - tests/unit/test_actual_model_execution.py
+      - tests/unit/test_actual_model_execution_artifacts.py
+      - tests/unit/test_actual_model_review.py
+      - tests/unit/test_actual_model_cohort.py
+      - tests/unit/test_actual_model_boundary.py
+      - tests/unit/test_actual_model_pressure.py
+      - tests/unit/test_actual_model_scenario_coverage.py
+    docs: []
+
   evaluation:
     runtime:
       - src/relaylm/evaluation.py
