@@ -26,12 +26,27 @@ class ContextItem:
 
 
 @dataclass(frozen=True, slots=True)
+class RetrievedMemoryItem:
+    """Selected crystallized synthesis with a non-authoritative document locator."""
+
+    content: str
+    location: str
+
+    def __post_init__(self) -> None:
+        if not self.content.strip():
+            raise ValueError("memory content must not be empty")
+        if not self.location.strip():
+            raise ValueError("memory location must not be empty")
+
+
+@dataclass(frozen=True, slots=True)
 class CognitiveInput:
     identity: Identity
     state_classes: Mapping[str, str]
     state: tuple[StateRecord, ...]
     context: tuple[ContextItem, ...]
     input: Event
+    memory: tuple[RetrievedMemoryItem, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True, slots=True)
