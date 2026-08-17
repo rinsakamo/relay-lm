@@ -198,31 +198,36 @@ The OpenAI-compatible provider serializes this layer separately from `context` a
 
 ### Deterministic State-shadow filtering
 
-Before retrieved chunks become `CognitiveInput.memory`, the Context Compiler compares a bounded set of deterministic **structural State-addressing forms** against the full eligible active Canonical State set.
+Before retrieved chunks become `CognitiveInput.memory`, the Context Compiler compares a bounded set of deterministic **structural State-addressing forms** against the full eligible active Canonical State set. It consumes the upstream #1260/#1409 `MemoryChunk.temporal_authority` classification before applying those structural current-State conflict rules.
 
 Current filtering is intentionally narrow:
 
+- typed `historical` MEMORY is explicitly not a current-State shadow and is retained even when its heading path or canonical `key:` / `key=` field structurally addresses an active State key with a different scalar, boolean, or reserved `{semantic, degree_hint}` value;
+- typed `current` MEMORY receives no exemption from the existing structural State-shadow rules: active Canonical State remains current-understanding authority for a conflicting current MEMORY claim;
+- typed `unknown` MEMORY likewise receives no historical exemption and remains subject to the existing structural State-shadow rules; this does **not** reclassify `unknown` as `current`, it only refuses to invent historical status that upstream authority did not establish;
+- the typed scope is consumed as already-validated authority. Context Compiler does not reinterpret `memory_id`, `derivation_id`, Event/State source references, or other provenance fields to create a second temporal owner;
 - authority eligibility uses every State record with `status == "active"` and `valid_to is None`, independently of any later `max_state_records` projection cap;
-- a Memory chunk is State-addressing when its heading path contains every normalized lexical term of a State key, or when its body contains the canonical State key as an explicit `key:` / `key=` field assignment;
+- a non-historical Memory chunk is State-addressing when its heading path contains every normalized lexical term of a State key, or when its body contains the canonical State key as an explicit `key:` / `key=` field assignment;
 - inline field detection requires the exact normalized canonical key token and a field delimiter;
 - ordinary free-form prose does **not** become State-addressing or temporally classified merely because it contains `current`, `currently`, `now`, a year/date literal, `previous`, `formerly`, grammatical tense, or other temporal wording;
 - therefore an unannotated non-structural sentence such as `Current residence location is Hokkaido.` remains temporally `unknown` input and is not suppressed by a lexical-current grammar;
-- boolean and reserved `{semantic, degree_hint}` State values continue to use only the existing explicitly State-addressing structural rules;
-- for State values handled by the structural heading/field rule, the chunk is retained if at least one current State value appears as an exact lexical token sequence in the chunk;
-- if the chunk explicitly addresses the key through those heading/field forms but none of the comparable current State values appears, the whole chunk is suppressed from `CognitiveInput.memory`;
-- for a boolean State value, an explicitly State-addressing chunk is suppressed only when it contains the exact opposite `true` / `false` token and does not also contain the current boolean token;
+- prose appearance never overrides typed scope: typed historical MEMORY remains historical even if its wording sounds current, while typed unknown MEMORY is not inferred historical from dates, `previous`, `formerly`, or tense;
+- boolean and reserved `{semantic, degree_hint}` State values continue to use only the existing explicitly State-addressing structural rules for non-historical MEMORY;
+- for State values handled by the structural heading/field rule, the non-historical chunk is retained if at least one current State value appears as an exact lexical token sequence in the chunk;
+- if a non-historical chunk explicitly addresses the key through those heading/field forms but none of the comparable current State values appears, the whole chunk is suppressed from `CognitiveInput.memory`;
+- for a boolean State value, an explicitly State-addressing non-historical chunk is suppressed only when it contains the exact opposite `true` / `false` token and does not also contain the current boolean token;
 - a boolean chunk containing the current token remains compatible; a chunk containing neither boolean token, or both tokens, is left untouched rather than being semantically or temporally reclassified;
 - for the reserved structured State value `{semantic, degree_hint}`, the current `semantic` must appear as an exact lexical token sequence; a matching numeric degree alone cannot make conflicting semantic text compatible;
-- when the State key is identified by the chunk heading, an explicit numeric `degree_hint:` / `degree_hint=` assignment in that section must equal the active State degree or the whole chunk is suppressed;
+- when the State key is identified by the chunk heading, an explicit numeric `degree_hint:` / `degree_hint=` assignment in that section must equal the active State degree or the whole non-historical chunk is suppressed;
 - when State addressing exists only through an inline canonical `key:` / `key=` assignment, a degree claim is associated with that key only when `degree_hint:` / `degree_hint=` occurs on the same assignment line; degree fields on another key's line are not borrowed;
 - absence of an associated explicit degree assignment is not inferred as a conflict, and arbitrary prose numbers are not interpreted as degree claims;
 - exact token sequences are used rather than substring matching, so for example `likes` is not treated as present inside `dislikes`;
 - inactive or expired State records do not suppress memory;
-- a chunk that uses none of the accepted structural State-addressing forms is left untouched even if its prose happens to mention an older, newer, current-sounding, or different value.
+- a non-historical chunk that uses none of the accepted structural State-addressing forms is left untouched even if its prose happens to mention an older, newer, current-sounding, or different value.
 
-Whole-chunk suppression changes only current cognitive residency. It does not rewrite or delete `MEMORY.md`, mutate State or Events, create a second semantic owner, or add an LLM call.
+Whole-chunk suppression changes only current cognitive residency. It does not rewrite or delete `MEMORY.md`, mutate State or Events, create a second semantic owner, alter upstream retrieval ranking, or add an LLM call. Historical retention uses the existing retrieved-memory projection and the existing four-layer content-free diagnostics; it does not create a new diagnostics layer or change `RetrievedMemoryItem` shape.
 
-The former C4 line-leading lexical-current grammar from #1385 is retired after #1409 established typed MEMORY temporal authority. Context Compiler must not recreate temporal/currentness authority from prose. C5 remains a separate bounded transaction that may consume `MemoryChunk.temporal_authority` directly when deciding historical/current ambiguity; it must not derive that metadata from raw language.
+The former C4 line-leading lexical-current grammar from #1385 remains retired. C5 consumes `MemoryChunk.temporal_authority` directly and never recreates temporal/currentness authority from prose.
 
 ### Opt-in ordinary-turn MEMORY retrieval
 
@@ -324,7 +329,6 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 
 - evidence-backed runtime default State/MEMORY/Event budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
 - any later Continuity-specific selection/degradation policy beyond the current projection of all accepted initial Continuity kinds;
-- C5 consumption of merged #1260/#1409 typed MEMORY temporal authority for historical/current ambiguity, without year/date/`previous`/`formerly`/tense/free-form temporal inference;
 - State-vs-memory authority beyond the current deterministic structural addressing forms, including omitted-key alias/synonym/negation semantics, free-form degree/intensity interpretation, free-form boolean handling, and other non-lexically-comparable values;
 - richer durable logical memory identity/provenance behavior beyond the current governed `MemoryChunk.temporal_authority` carriage when #1260 work justifies it;
 - persistent/segmented Event Journal indexing and retrieval-scaled targeted discovery beyond the current process-local validated snapshot reuse;
