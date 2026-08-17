@@ -176,13 +176,22 @@ The same scenario then corrupts `state.json` and `events.jsonl` deliberately. Ma
 
 This measures the current fail-closed filesystem contract. It does not claim crash-consistent multi-file transactions, backup/restore, migration, or multi-process writer safety.
 
+### `correction_remove_semantics`
+
+This deterministic State lifecycle scenario separates an explicit current-State removal from a weaker-but-still-positive update.
+
+For explicit removal, it starts with accepted `user.preference / tea = likes`, records both the earlier supporting user Event and the later revocation Event, then applies a `remove` candidate sourced from the current revocation. The Validator must accept a `remove`, the persisted current State view must contain no tea slot, and both Events must remain in the Event Journal.
+
+In a separate weakening case, active coffee preference degree `0.9` is updated to `0.6` using a `set` candidate. The action must remain `replace`, not `remove`, and the weakened positive State must remain current.
+
+This evaluates deterministic behavior after the candidate operation has already been proposed. It does not claim that an actual model will classify every natural-language correction, hesitation, or weakening correctly.
+
 Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
 ## Deferred evaluation work
 
 Still owned by #1247:
 
-- correction/remove behavior;
 - crystallization quality and Markdown fidelity from #1260;
 - relevance/retrieval evaluation from #1267;
 - streaming/abort evaluation expansion beyond the existing deterministic contracts;
