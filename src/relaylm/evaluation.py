@@ -267,6 +267,12 @@ async def evaluate_state_memory_authority_filter() -> EvaluationScenarioResult:
     return await evaluate()
 
 
+async def evaluate_targeted_event_retrieval() -> EvaluationScenarioResult:
+    from relaylm.evaluation_context import evaluate_targeted_event_retrieval as evaluate
+
+    return await evaluate()
+
+
 async def run_native_evaluation() -> EvaluationReport:
     return EvaluationReport(
         scenarios=(
@@ -285,6 +291,7 @@ async def run_native_evaluation() -> EvaluationReport:
             await evaluate_memory_cognitive_projection(),
             await evaluate_ordinary_turn_memory_retrieval(),
             await evaluate_state_memory_authority_filter(),
+            await evaluate_targeted_event_retrieval(),
         ),
     )
 
