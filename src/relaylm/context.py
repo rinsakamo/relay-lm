@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from collections import deque
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
 from relaylm.cognitive import CognitiveInput, ContextItem, EventEvidenceItem, RetrievedMemoryItem
+from relaylm.continuity import ContinuityContext
 from relaylm.events import Event
 from relaylm.identity import Identity
 from relaylm.memory_retrieval import MemoryChunk
@@ -16,6 +18,7 @@ from relaylm.state import CanonicalState, STATE_CLASS_DEFINITIONS, StateRecord
 
 DEFAULT_WORKING_CONTEXT_MAX_EVENTS = 6
 DEFAULT_WORKING_CONTEXT_MAX_CHARS = 4000
+_C2_CONTINUITY_KINDS = frozenset({"referent", "unresolved"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +57,7 @@ def compile_cognitive_input(
     state: CanonicalState,
     current_event: Event,
     recent_events: Iterable[Event] = (),
+    continuity_context: ContinuityContext | None = None,
     retrieved_memory: Iterable[MemoryChunk] = (),
     event_evidence: Iterable[Event] = (),
     max_working_context_events: int = DEFAULT_WORKING_CONTEXT_MAX_EVENTS,
@@ -74,6 +78,7 @@ def compile_cognitive_input(
         current_event=current_event,
         max_records=max_state_records,
     )
+    continuity = _project_c2_continuity(continuity_context)
     working_context = _select_working_context(
         recent_events=recent_events,
         current_event=current_event,
@@ -97,7 +102,7 @@ def compile_cognitive_input(
         identity=identity,
         state_classes=STATE_CLASS_DEFINITIONS,
         state=active_state,
-        context=working_context,
+        context=continuity + working_context,
         input=current_event,
         memory=memory,
         event_evidence=evidence,
@@ -110,6 +115,7 @@ def compile_cognitive_input_with_diagnostics(
     state: CanonicalState,
     current_event: Event,
     recent_events: Iterable[Event] = (),
+    continuity_context: ContinuityContext | None = None,
     retrieved_memory: Iterable[MemoryChunk] = (),
     event_evidence: Iterable[Event] = (),
     max_working_context_events: int = DEFAULT_WORKING_CONTEXT_MAX_EVENTS,
@@ -121,17 +127,20 @@ def compile_cognitive_input_with_diagnostics(
     recent_event_sequence = tuple(recent_events)
     retrieved_memory_sequence = tuple(retrieved_memory)
     event_evidence_sequence = tuple(event_evidence)
+    projected_continuity = _project_c2_continuity(continuity_context)
     cognitive_input = compile_cognitive_input(
         identity=identity,
         state=state,
         current_event=current_event,
         recent_events=recent_event_sequence,
+        continuity_context=continuity_context,
         retrieved_memory=retrieved_memory_sequence,
         event_evidence=event_evidence_sequence,
         max_working_context_events=max_working_context_events,
         max_working_context_chars=max_working_context_chars,
         max_state_records=max_state_records,
     )
+    selected_working_context = cognitive_input.context[len(projected_continuity) :]
     return CognitiveCompilationResult(
         cognitive_input=cognitive_input,
         diagnostics=(
@@ -144,7 +153,7 @@ def compile_cognitive_input_with_diagnostics(
             _diagnose_working_context_selection(
                 recent_events=recent_event_sequence,
                 current_event=current_event,
-                selected_context=cognitive_input.context,
+                selected_context=selected_working_context,
                 max_events=max_working_context_events,
                 max_chars=max_working_context_chars,
             ),
@@ -156,7 +165,7 @@ def compile_cognitive_input_with_diagnostics(
                 event_evidence=event_evidence_sequence,
                 current_event=current_event,
                 selected_evidence=cognitive_input.event_evidence,
-                working_context=cognitive_input.context,
+                working_context=selected_working_context,
             ),
         ),
     )
@@ -382,6 +391,45 @@ def _diagnose_event_evidence_projection(
         current_event_excluded_count=current_event_excluded_count,
         redundancy_overlap_count=redundancy_overlap_count,
     )
+
+
+def _project_c2_continuity(
+    continuity_context: ContinuityContext | None,
+) -> tuple[ContextItem, ...]:
+    if continuity_context is None:
+        return ()
+
+    return tuple(
+        ContextItem(
+            content=json.dumps(
+                {
+                    "continuity": {
+                        "kind": item.kind,
+                        "key": item.key,
+                        "value": _continuity_value_for_projection(item.value),
+                        "epistemic_role": item.epistemic_role,
+                    }
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ),
+            sources=item.sources,
+        )
+        for item in continuity_context.items
+        if item.kind in _C2_CONTINUITY_KINDS
+    )
+
+
+def _continuity_value_for_projection(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {
+            key: _continuity_value_for_projection(nested)
+            for key, nested in value.items()
+        }
+    if isinstance(value, tuple):
+        return [_continuity_value_for_projection(nested) for nested in value]
+    return value
 
 
 def _project_event_evidence(
