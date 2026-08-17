@@ -12,6 +12,7 @@ from relaylm.evaluation import (
     evaluate_correction_remove_semantics,
     evaluate_crystallization_integrity,
     evaluate_degree_hint_integrity,
+    evaluate_event_snapshot_reuse,
     evaluate_persistence_integrity,
     evaluate_provider_failure_safety,
     evaluate_restart_continuity,
@@ -63,6 +64,7 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "degree_hint_integrity",
         "working_context_budget_atomicity",
         "persistence_integrity",
+        "event_snapshot_reuse",
         "correction_remove_semantics",
         "crystallization_integrity",
         "streaming_safety",
@@ -202,6 +204,14 @@ def test_persistence_integrity_evaluation_is_registered() -> None:
     result = asyncio.run(evaluate_persistence_integrity())
 
     assert result.scenario_id == "persistence_integrity"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+
+
+def test_event_snapshot_reuse_evaluation_is_registered_in_core_suite() -> None:
+    result = asyncio.run(evaluate_event_snapshot_reuse())
+
+    assert result.scenario_id == "event_snapshot_reuse"
     assert result.status == "pass"
     assert all(check.passed for check in result.checks)
 
