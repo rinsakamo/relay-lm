@@ -41,4 +41,4 @@ The runtime holder requires an explicit immutable `ContinuityContext` and explic
 
 Provider-specific structured-output grammar may expose `continuity_candidates` separately. Adapters do not own referent, unresolved, active-task, provenance, acceptance, or lifecycle semantics.
 
-Context Compiler consumption remains a separate #1267 C2/C3 transaction after K3 merges and must operate on already-accepted `ContinuityItem` values.
+With K3 present on current `v1`, Context Compiler C2 is unblocked as a separate #1267 transaction and must operate on already-accepted `ContinuityItem` values. C3 remains ordered after C2.
