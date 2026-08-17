@@ -4,7 +4,12 @@ import json
 from dataclasses import dataclass
 from typing import Iterable, Literal, Mapping
 
-from relaylm.continuity import ContinuityCandidate, ContinuityContext, ContinuityItem
+from relaylm.continuity import (
+    ContinuityCandidate,
+    ContinuityContext,
+    ContinuityItem,
+    freeze_continuity_value,
+)
 from relaylm.events import Event
 
 ContinuityDecisionStatus = Literal["accepted", "noop", "rejected"]
@@ -208,7 +213,7 @@ def _is_exact_duplicate(
 ) -> bool:
     return (
         existing.kind == candidate.kind
-        and existing.value == candidate.value
+        and existing.value == freeze_continuity_value(candidate.value)
         and existing.sources == sources
         and existing.epistemic_role == candidate.epistemic_role
     )
