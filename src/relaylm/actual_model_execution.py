@@ -12,6 +12,9 @@ from relaylm.actual_model_artifacts import (
     prepare_character_fixture_workspace,
     run_actual_model_fixture,
 )
+from relaylm.actual_model_cognitive_budget import (
+    validate_cognitive_budget_runtime_identity,
+)
 from relaylm.actual_model_evaluation import ActualModelEvidence, ActualModelRunManifest
 from relaylm.actual_model_restart import (
     ActualModelRestartEvidence,
@@ -22,6 +25,7 @@ from relaylm.actual_model_scenarios import (
     ActualModelScenarioDefinition,
     ActualModelScenarioSet,
 )
+from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveProvider
 from relaylm.storage.filesystem import CharacterDirectory
 
@@ -171,6 +175,11 @@ def plan_actual_model_scenario_execution(
             raise ActualModelScenarioExecutionError(
                 "restart scenarios require explicit Continuity Runtime identity"
             )
+        if manifest.cognitive_budget is not None:
+            raise ActualModelScenarioExecutionError(
+                "restart scenarios do not support total cognitive-budget evidence "
+                "in the ordinary-turn evidence bridge"
+            )
 
     plan_payload = {
         "scenario_set_version": scenario_set.scenario_set_version,
@@ -200,6 +209,7 @@ async def run_actual_model_scenario_definition(
     workspace_root: str | Path,
     provider: CognitiveProvider,
     manifest: ActualModelRunManifest,
+    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
 ) -> ActualModelScenarioExecutionResult:
     """Execute a loaded scenario definition through the existing real RelayLM path."""
 
@@ -208,6 +218,11 @@ async def run_actual_model_scenario_definition(
         scenario_id=scenario_id,
         fixture_root=fixture_root,
         manifest=manifest,
+    )
+    validate_cognitive_budget_runtime_identity(
+        declared=manifest.cognitive_budget,
+        runtime=cognitive_budget,
+        effective_context_window=manifest.effective_context_window,
     )
     if manifest.execution_path == "streaming" and not callable(
         getattr(provider, "stream_generate", None)
@@ -245,6 +260,7 @@ async def run_actual_model_scenario_definition(
             provider=provider,
             manifest=manifest,
             scenario=definition.scenario,
+            cognitive_budget=cognitive_budget,
         )
 
     execution_id = _stable_id(

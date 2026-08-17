@@ -33,6 +33,10 @@ class ActualModelRestartRunManifest:
             raise ValueError(
                 "restart wrapper requires base.restart_boundary='none'; the wrapper owns the boundary"
             )
+        if self.base.cognitive_budget is not None:
+            raise ValueError(
+                "restart evidence does not support the ordinary-turn total cognitive-budget bridge"
+            )
         _require_positive_int(self.restart_after_turn_count, "restart_after_turn_count")
         _require_positive_int(self.continuity_max_items, "continuity_max_items")
         _require_positive_int(

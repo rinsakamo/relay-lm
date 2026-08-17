@@ -6,12 +6,16 @@ import os
 import shutil
 from pathlib import Path
 
+from relaylm.actual_model_cognitive_budget import (
+    validate_cognitive_budget_runtime_identity,
+)
 from relaylm.actual_model_evaluation import (
     ActualModelEvidence,
     ActualModelRunManifest,
     ActualModelScenario,
     run_actual_model_scenario,
 )
+from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveProvider
 from relaylm.storage.filesystem import CharacterDirectory
 
@@ -87,15 +91,21 @@ async def run_actual_model_fixture(
     provider: CognitiveProvider,
     manifest: ActualModelRunManifest,
     scenario: ActualModelScenario,
+    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
 ) -> ActualModelEvidence:
     """Run one verified fixture snapshot in a fresh workspace.
 
     Durable Character Package state is copied exactly. Process-local Continuity is
-    never persisted in the fixture: when the run manifest declares an explicit
-    Continuity Runtime configuration, the ordinary actual-model harness constructs
-    a fresh empty runtime for that run.
+    never persisted in the fixture. A declared total cognitive-budget condition
+    must receive the exact caller-supplied #1387 runtime object; only total/policy
+    identity is persisted while the configured token counter remains process-local.
     """
 
+    validate_cognitive_budget_runtime_identity(
+        declared=manifest.cognitive_budget,
+        runtime=cognitive_budget,
+        effective_context_window=manifest.effective_context_window,
+    )
     character = prepare_character_fixture_workspace(
         fixture_root=fixture_root,
         workspace_root=workspace_root,
@@ -107,6 +117,7 @@ async def run_actual_model_fixture(
         manifest=manifest,
         scenario=scenario,
         continuity_runtime=None,
+        cognitive_budget=cognitive_budget,
     )
 
 

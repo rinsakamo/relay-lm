@@ -6,6 +6,14 @@ from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
+from relaylm.actual_model_cognitive_budget import (
+    ActualModelBoundedBudgetFailureEvidence,
+    ActualModelCognitiveBudgetDiagnostics,
+    ExplicitCognitiveBudgetConfiguration,
+    validate_cognitive_budget_runtime_identity,
+)
+from relaylm.budget_diagnostics import CognitiveBudgetExceededWithDiagnostics
+from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveInput, CognitiveOutput, CognitiveProvider
 from relaylm.continuity import ContinuityCandidate, ContinuityContext, ContinuityItem
 from relaylm.state import StateCandidate, StateRecord
@@ -17,6 +25,8 @@ from relaylm.turn import (
     TurnResult,
     run_user_turn,
     run_user_turn_streaming,
+    run_user_turn_streaming_with_cognitive_budget_diagnostics,
+    run_user_turn_with_cognitive_budget_diagnostics,
 )
 from relaylm.validation import CandidateDecision
 
@@ -35,7 +45,7 @@ ScenarioFamily = Literal[
 
 @dataclass(frozen=True, slots=True)
 class ExplicitBudgetConfiguration:
-    """Caller-chosen layer budgets used as an evaluation condition, never defaults."""
+    """Caller-chosen legacy layer budgets used as an evaluation condition, never defaults."""
 
     memory_max_chunks: int | None = None
     memory_max_chars: int | None = None
@@ -100,6 +110,7 @@ class ActualModelRunManifest:
     scenario_set_version: str
     condition_id: str
     budgets: ExplicitBudgetConfiguration = field(default_factory=ExplicitBudgetConfiguration)
+    cognitive_budget: ExplicitCognitiveBudgetConfiguration | None = None
     continuity_runtime: ExplicitContinuityRuntimeConfiguration | None = None
     execution_path: ExecutionPath = "buffered"
     restart_boundary: RestartBoundary = "none"
@@ -150,12 +161,33 @@ class ActualModelRunManifest:
         for key, value in self.decoding_configuration:
             if not isinstance(key, str) or not key.strip():
                 raise ValueError("decoding_configuration keys must be non-empty strings")
-            if isinstance(value, float) and (value != value or value in {float("inf"), -float("inf")}):
+            if isinstance(value, float) and (
+                value != value or value in {float("inf"), -float("inf")}
+            ):
                 raise ValueError("decoding_configuration values must be finite")
         if len(set(self.provider_capabilities)) != len(self.provider_capabilities):
             raise ValueError("provider_capabilities must not contain duplicates")
         if not all(item.strip() for item in self.provider_capabilities):
             raise ValueError("provider_capabilities must contain non-empty strings")
+        if self.cognitive_budget is not None:
+            if not isinstance(
+                self.cognitive_budget,
+                ExplicitCognitiveBudgetConfiguration,
+            ):
+                raise TypeError(
+                    "cognitive_budget must be ExplicitCognitiveBudgetConfiguration or None"
+                )
+            if self.budgets != ExplicitBudgetConfiguration():
+                raise ValueError(
+                    "cognitive_budget cannot be combined with legacy explicit MEMORY/Event budgets"
+                )
+            if (
+                self.cognitive_budget.total.model_context_window
+                != self.effective_context_window
+            ):
+                raise ValueError(
+                    "cognitive budget model_context_window must match effective_context_window"
+                )
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -179,6 +211,11 @@ class ActualModelRunManifest:
             "scenario_set_version": self.scenario_set_version,
             "condition_id": self.condition_id,
             "budgets": self.budgets.to_mapping(),
+            "cognitive_budget": (
+                self.cognitive_budget.to_mapping()
+                if self.cognitive_budget is not None
+                else None
+            ),
             "continuity_runtime": (
                 self.continuity_runtime.to_mapping()
                 if self.continuity_runtime is not None
@@ -215,7 +252,9 @@ class ActualModelScenario:
             raise ValueError(f"unsupported scenario family: {self.family}")
         if not self.version.strip():
             raise ValueError("scenario version must not be empty")
-        if not self.turns or not all(isinstance(turn, str) and turn.strip() for turn in self.turns):
+        if not self.turns or not all(
+            isinstance(turn, str) and turn.strip() for turn in self.turns
+        ):
             raise ValueError("scenario turns must contain at least one non-empty turn")
 
     def to_mapping(self) -> dict[str, object]:
@@ -283,6 +322,7 @@ class ActualModelTurnEvidence:
     raw_model: RawModelObservation
     deterministic: DeterministicRelayObservation
     product_quality: tuple[ProductQualityObservation, ...] = field(default_factory=tuple)
+    cognitive_budget: ActualModelCognitiveBudgetDiagnostics | None = None
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -291,6 +331,11 @@ class ActualModelTurnEvidence:
             "raw_model": self.raw_model.to_mapping(),
             "deterministic_relay": self.deterministic.to_mapping(),
             "product_quality": [item.to_mapping() for item in self.product_quality],
+            "cognitive_budget": (
+                self.cognitive_budget.to_mapping()
+                if self.cognitive_budget is not None
+                else None
+            ),
         }
 
 
@@ -300,6 +345,7 @@ class ActualModelEvidence:
     manifest: ActualModelRunManifest
     scenario: ActualModelScenario
     turns: tuple[ActualModelTurnEvidence, ...]
+    bounded_failure: ActualModelBoundedBudgetFailureEvidence | None = None
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -308,10 +354,20 @@ class ActualModelEvidence:
             "manifest": self.manifest.to_mapping(),
             "scenario": self.scenario.to_mapping(),
             "turns": [turn.to_mapping() for turn in self.turns],
+            "bounded_failure": (
+                self.bounded_failure.to_mapping()
+                if self.bounded_failure is not None
+                else None
+            ),
         }
 
     def to_json(self) -> str:
-        return json.dumps(self.to_mapping(), ensure_ascii=False, allow_nan=False, indent=2)
+        return json.dumps(
+            self.to_mapping(),
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=2,
+        )
 
 
 class _RecordingProvider:
@@ -344,18 +400,26 @@ async def run_actual_model_scenario(
     manifest: ActualModelRunManifest,
     scenario: ActualModelScenario,
     continuity_runtime: ContinuityRuntime | None = None,
+    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
 ) -> ActualModelEvidence:
     """Execute a semantic fixture through the real ordinary-turn path.
 
-    The harness records the raw CognitiveOutput before treating the TurnResult as
-    deterministic RelayLM evidence. It never scores model quality itself and never
-    adds another semantic model call.
+    The harness records raw CognitiveOutput separately from deterministic RelayLM
+    evidence. When the manifest declares the #1387 total-budget path, the caller
+    must supply the matching CognitiveBudgetRuntimeConfig and the harness preserves
+    aggregate runtime diagnostics without adding another semantic model call.
     """
 
+    validate_cognitive_budget_runtime_identity(
+        declared=manifest.cognitive_budget,
+        runtime=cognitive_budget,
+        effective_context_window=manifest.effective_context_window,
+    )
     recording_provider = _RecordingProvider(provider)
     evidence: list[ActualModelTurnEvidence] = []
-    memory_budget = _memory_budget(manifest.budgets)
-    event_budget = _event_budget(manifest.budgets)
+    bounded_failure: ActualModelBoundedBudgetFailureEvidence | None = None
+    memory_budget = None if cognitive_budget is not None else _memory_budget(manifest.budgets)
+    event_budget = None if cognitive_budget is not None else _event_budget(manifest.budgets)
     manifest, continuity_runtime = _materialize_continuity_runtime(
         manifest=manifest,
         runtime=continuity_runtime,
@@ -365,25 +429,64 @@ async def run_actual_model_scenario(
         character = CharacterDirectory(character.root)
 
     for turn_index, content in enumerate(scenario.turns, start=1):
-        if manifest.execution_path == "buffered":
-            result = await run_user_turn(
-                character=character,
-                provider=recording_provider,
-                content=content,
-                memory_budget=memory_budget,
-                event_budget=event_budget,
-                continuity_runtime=continuity_runtime,
+        budget_observation: ActualModelCognitiveBudgetDiagnostics | None = None
+        try:
+            if cognitive_budget is None:
+                if manifest.execution_path == "buffered":
+                    result = await run_user_turn(
+                        character=character,
+                        provider=recording_provider,
+                        content=content,
+                        memory_budget=memory_budget,
+                        event_budget=event_budget,
+                        continuity_runtime=continuity_runtime,
+                    )
+                else:
+                    result = await run_user_turn_streaming(
+                        character=character,
+                        provider=recording_provider,
+                        content=content,
+                        emit_response_delta=_discard_delta,
+                        memory_budget=memory_budget,
+                        event_budget=event_budget,
+                        continuity_runtime=continuity_runtime,
+                    )
+            else:
+                if manifest.execution_path == "buffered":
+                    budgeted = await run_user_turn_with_cognitive_budget_diagnostics(
+                        character=character,
+                        provider=recording_provider,
+                        content=content,
+                        cognitive_budget=cognitive_budget,
+                        continuity_runtime=continuity_runtime,
+                    )
+                else:
+                    budgeted = (
+                        await run_user_turn_streaming_with_cognitive_budget_diagnostics(
+                            character=character,
+                            provider=recording_provider,
+                            content=content,
+                            emit_response_delta=_discard_delta,
+                            cognitive_budget=cognitive_budget,
+                            continuity_runtime=continuity_runtime,
+                        )
+                    )
+                result = budgeted.turn
+                budget_observation = ActualModelCognitiveBudgetDiagnostics.from_runtime(
+                    budgeted.cognitive_budget
+                )
+        except CognitiveBudgetExceededWithDiagnostics as failure:
+            if cognitive_budget is None:
+                raise
+            bounded_failure = ActualModelBoundedBudgetFailureEvidence(
+                turn_index=turn_index,
+                input=content,
+                cognitive_budget=ActualModelCognitiveBudgetDiagnostics.from_runtime(
+                    failure.diagnostics
+                ),
             )
-        else:
-            result = await run_user_turn_streaming(
-                character=character,
-                provider=recording_provider,
-                content=content,
-                emit_response_delta=_discard_delta,
-                memory_budget=memory_budget,
-                event_budget=event_budget,
-                continuity_runtime=continuity_runtime,
-            )
+            break
+
         output = recording_provider.outputs[-1]
         evidence.append(
             ActualModelTurnEvidence(
@@ -391,6 +494,7 @@ async def run_actual_model_scenario(
                 input=content,
                 raw_model=_raw_observation(output),
                 deterministic=_deterministic_observation(result),
+                cognitive_budget=budget_observation,
             )
         )
 
@@ -399,6 +503,7 @@ async def run_actual_model_scenario(
         manifest=manifest,
         scenario=scenario,
         turns=tuple(evidence),
+        bounded_failure=bounded_failure,
     )
 
 
@@ -477,7 +582,9 @@ def _materialize_continuity_runtime(
 def _raw_observation(output: CognitiveOutput) -> RawModelObservation:
     return RawModelObservation(
         response=output.response,
-        state_candidates=tuple(_serialize_state_candidate(item) for item in output.state_candidates),
+        state_candidates=tuple(
+            _serialize_state_candidate(item) for item in output.state_candidates
+        ),
         continuity_candidates=tuple(
             _serialize_continuity_candidate(item) for item in output.continuity_candidates
         ),
@@ -499,9 +606,13 @@ def _deterministic_observation(result: TurnResult) -> DeterministicRelayObservat
         )
         resulting_continuity = _serialize_continuity_context(result.continuity.context)
     return DeterministicRelayObservation(
-        state_decisions=tuple(_serialize_state_decision(item) for item in result.decisions),
+        state_decisions=tuple(
+            _serialize_state_decision(item) for item in result.decisions
+        ),
         continuity_decisions=continuity_decisions,
-        resulting_state=tuple(_serialize_state_record(item) for item in result.state.states),
+        resulting_state=tuple(
+            _serialize_state_record(item) for item in result.state.states
+        ),
         resulting_continuity=resulting_continuity,
     )
 
