@@ -336,3 +336,197 @@ async def evaluate_ordinary_turn_memory_retrieval() -> EvaluationScenarioResult:
             "failed_retrieval_event_count": len(failed_events),
         },
     )
+
+
+async def evaluate_state_memory_authority_filter() -> EvaluationScenarioResult:
+    identity = Identity("# Evaluation Character\nBe grounded.")
+    current = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": "What do you remember?"},
+        event_id="current-authority-event",
+        timestamp="2026-08-17T06:05:00+00:00",
+    )
+
+    def record(
+        *,
+        state_id: str,
+        state_class: str,
+        key: str,
+        value: object,
+    ) -> StateRecord:
+        return StateRecord(
+            state_id=state_id,
+            state_class=state_class,
+            key=key,
+            value=value,
+            sources=("source-event",),
+        )
+
+    def chunk(*, heading: str, content: str) -> MemoryChunk:
+        slug = heading.casefold().replace(" ", "-")
+        return MemoryChunk(
+            heading_path=("Memory", heading),
+            location=f"memory/MEMORY.md#memory/{slug}",
+            content=f"## {heading}\n\n{content}",
+        )
+
+    residence_state = CanonicalState(
+        states=(
+            record(
+                state_id="residence",
+                state_class="user.fact",
+                key="residence_location",
+                value="Fukuoka",
+            ),
+        )
+    )
+    stale_residence = chunk(
+        heading="Residence Location",
+        content="Rin lives in Hokkaido.",
+    )
+    compatible_residence = chunk(
+        heading="Residence Location",
+        content="Rin lives in Fukuoka.",
+    )
+    trip_history = chunk(
+        heading="Trip History",
+        content="Rin once stayed in Hokkaido.",
+    )
+
+    stale = compile_cognitive_input(
+        identity=identity,
+        state=residence_state,
+        current_event=current,
+        retrieved_memory=(stale_residence,),
+    )
+    compatible = compile_cognitive_input(
+        identity=identity,
+        state=residence_state,
+        current_event=current,
+        retrieved_memory=(compatible_residence,),
+    )
+    capped = compile_cognitive_input(
+        identity=identity,
+        state=residence_state,
+        current_event=current,
+        retrieved_memory=(stale_residence,),
+        max_state_records=0,
+    )
+    historical = compile_cognitive_input(
+        identity=identity,
+        state=residence_state,
+        current_event=current,
+        retrieved_memory=(trip_history,),
+    )
+
+    coffee_state = CanonicalState(
+        states=(
+            record(
+                state_id="coffee-liking",
+                state_class="user.preference",
+                key="coffee",
+                value="likes",
+            ),
+        )
+    )
+    substring_conflict = compile_cognitive_input(
+        identity=identity,
+        state=coffee_state,
+        current_event=current,
+        retrieved_memory=(chunk(heading="Coffee", content="Rin dislikes coffee."),),
+    )
+
+    comparative_state = CanonicalState(
+        states=(
+            record(
+                state_id="tea-liking",
+                state_class="user.preference",
+                key="tea",
+                value="likes",
+            ),
+            record(
+                state_id="preferred-beverage",
+                state_class="user.preference",
+                key="preferred_beverage",
+                value="coffee",
+            ),
+        )
+    )
+    comparative = compile_cognitive_input(
+        identity=identity,
+        state=comparative_state,
+        current_event=current,
+        retrieved_memory=(
+            chunk(
+                heading="Preferred Beverage",
+                content="Tea is Rin's preferred beverage.",
+            ),
+            chunk(heading="Tea", content="Rin likes tea."),
+        ),
+    )
+    preserved_tea_state_count = sum(
+        1
+        for state_record in comparative.state
+        if state_record.key == "tea" and state_record.value == "likes"
+    )
+
+    checks = (
+        EvaluationCheck(
+            check_id="stale_explicit_key_memory_is_suppressed",
+            boundary="context_authority",
+            passed=stale.memory == (),
+            expected=0,
+            observed=len(stale.memory),
+        ),
+        EvaluationCheck(
+            check_id="compatible_current_value_memory_is_retained",
+            boundary="context_authority",
+            passed=len(compatible.memory) == 1,
+            expected=1,
+            observed=len(compatible.memory),
+        ),
+        EvaluationCheck(
+            check_id="authority_uses_full_active_state_before_residency_cap",
+            boundary="canonical_state",
+            passed=capped.state == () and capped.memory == (),
+            expected=0,
+            observed=len(capped.memory),
+        ),
+        EvaluationCheck(
+            check_id="unrelated_historical_heading_is_retained",
+            boundary="context_authority",
+            passed=len(historical.memory) == 1,
+            expected=1,
+            observed=len(historical.memory),
+        ),
+        EvaluationCheck(
+            check_id="lexical_value_matching_is_not_substring_matching",
+            boundary="context_authority",
+            passed=substring_conflict.memory == (),
+            expected=0,
+            observed=len(substring_conflict.memory),
+        ),
+        EvaluationCheck(
+            check_id="comparative_preference_shadow_preserves_weaker_positive_state",
+            boundary="canonical_state",
+            passed=len(comparative.memory) == 1
+            and comparative.memory[0].location.endswith("/tea")
+            and preserved_tea_state_count == 1,
+            expected=1,
+            observed=preserved_tea_state_count,
+        ),
+    )
+    return EvaluationScenarioResult(
+        scenario_id="state_memory_authority_filter",
+        checks=checks,
+        metrics={
+            "stale_memory_count": len(stale.memory),
+            "compatible_memory_count": len(compatible.memory),
+            "capped_state_memory_count": len(capped.memory),
+            "historical_memory_count": len(historical.memory),
+            "substring_conflict_memory_count": len(substring_conflict.memory),
+            "comparative_memory_count": len(comparative.memory),
+            "preserved_tea_state_count": preserved_tea_state_count,
+        },
+    )
