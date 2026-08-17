@@ -518,6 +518,21 @@ def _memory_chunk_is_shadowed(
                 ):
                     return True
                 continue
+            degree_value = _reserved_degree_state_value(record.value)
+            if degree_value is not None:
+                current_semantic, current_degree = degree_value
+                for claim in claims:
+                    explicit_claim = _explicit_reserved_degree_claim(claim)
+                    if explicit_claim is None:
+                        continue
+                    claimed_semantic, claimed_degree = explicit_claim
+                    if (
+                        _lexical_terms(claimed_semantic)
+                        != _lexical_terms(current_semantic)
+                        or claimed_degree != current_degree
+                    ):
+                        return True
+                continue
             current_value = _simple_scalar_state_value_text(record.value)
             if current_value is None:
                 continue
@@ -608,6 +623,20 @@ def _explicit_boolean_claim_value(claim: str) -> bool | None:
     if terms == ("false",):
         return False
     return None
+
+
+def _explicit_reserved_degree_claim(claim: str) -> tuple[str, float] | None:
+    match = re.fullmatch(
+        r"\s*(.+?)\s*;\s*degree_hint\s*[:=]\s*"
+        r"(-?(?:0|[1-9]\d*)(?:\.\d+)?(?:e[+-]?\d+)?)\s*",
+        _normalize_lexical_text(claim),
+    )
+    if match is None:
+        return None
+    semantic = match.group(1).strip()
+    if not _lexical_terms(semantic):
+        return None
+    return semantic, float(match.group(2))
 
 
 def _reserved_degree_state_value(value: Any) -> tuple[str, float] | None:
