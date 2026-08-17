@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from relaylm.cognitive import CognitiveInput, CognitiveOutput, CognitiveProvider
 from relaylm.context import compile_cognitive_input
+from relaylm.event_retrieval import select_event_evidence
 from relaylm.events import Event
 from relaylm.identity import Identity
 from relaylm.memory_retrieval import select_memory_chunks
@@ -28,6 +29,20 @@ class MemoryRetrievalBudget:
 
 
 @dataclass(frozen=True, slots=True)
+class EventRetrievalBudget:
+    """Explicit opt-in budget for ordinary-turn targeted Event retrieval."""
+
+    max_events: int
+    max_chars: int
+
+    def __post_init__(self) -> None:
+        if self.max_events < 0:
+            raise ValueError("event max_events must not be negative")
+        if self.max_chars < 0:
+            raise ValueError("event max_chars must not be negative")
+
+
+@dataclass(frozen=True, slots=True)
 class TurnResult:
     response: str
     user_event: Event
@@ -42,6 +57,7 @@ async def run_user_turn(
     provider: CognitiveProvider,
     content: str,
     memory_budget: MemoryRetrievalBudget | None = None,
+    event_budget: EventRetrievalBudget | None = None,
 ) -> TurnResult:
     """Run one ordinary turn with one semantic cognitive generation."""
 
@@ -65,6 +81,7 @@ async def run_user_turn(
         state=state,
         user_event=user_event,
         memory_budget=memory_budget,
+        event_budget=event_budget,
     )
     output = await provider.generate(cognitive_input)
     return _commit_cognitive_output(
@@ -82,6 +99,7 @@ async def run_user_turn_streaming(
     content: str,
     emit_response_delta: Callable[[str], Awaitable[None]],
     memory_budget: MemoryRetrievalBudget | None = None,
+    event_budget: EventRetrievalBudget | None = None,
 ) -> TurnResult:
     """Run one streamed ordinary turn without committing before provider completion."""
 
@@ -109,6 +127,7 @@ async def run_user_turn_streaming(
         state=state,
         user_event=user_event,
         memory_budget=memory_budget,
+        event_budget=event_budget,
     )
     output = await stream_generate(cognitive_input, emit_response_delta)
     return _commit_cognitive_output(
@@ -126,6 +145,7 @@ def _compile_turn_cognitive_input(
     state: CanonicalState,
     user_event: Event,
     memory_budget: MemoryRetrievalBudget | None,
+    event_budget: EventRetrievalBudget | None,
 ) -> CognitiveInput:
     retrieved_memory = ()
     if memory_budget is not None:
@@ -136,12 +156,26 @@ def _compile_turn_cognitive_input(
             max_chars=memory_budget.max_chars,
         )
 
+    event_evidence = ()
+    if event_budget is None:
+        recent_events = character.iter_events()
+    else:
+        recent_events = tuple(character.iter_events())
+        event_evidence = select_event_evidence(
+            events=recent_events,
+            query=user_event.payload["content"],
+            max_events=event_budget.max_events,
+            max_chars=event_budget.max_chars,
+            exclude_event_ids=(user_event.id,),
+        )
+
     return compile_cognitive_input(
         identity=identity,
         state=state,
         current_event=user_event,
-        recent_events=character.iter_events(),
+        recent_events=recent_events,
         retrieved_memory=retrieved_memory,
+        event_evidence=event_evidence,
     )
 
 
