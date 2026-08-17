@@ -432,12 +432,17 @@ def _memory_chunk_is_shadowed(
     active_state: tuple[StateRecord, ...],
 ) -> bool:
     heading_terms = frozenset(_lexical_terms(" ".join(chunk.heading_path)))
-    if not heading_terms:
-        return False
 
     for record in active_state:
         key_terms = tuple(term for term in _lexical_terms(record.key) if len(term) >= 2)
-        if not key_terms or not all(term in heading_terms for term in key_terms):
+        heading_addresses_key = bool(key_terms) and all(
+            term in heading_terms for term in key_terms
+        )
+        inline_addresses_key = _contains_explicit_state_key_assignment(
+            chunk.content,
+            record.key,
+        )
+        if not heading_addresses_key and not inline_addresses_key:
             continue
 
         current_values = tuple(
@@ -454,6 +459,17 @@ def _memory_chunk_is_shadowed(
             return True
 
     return False
+
+
+def _contains_explicit_state_key_assignment(content: str, key: str) -> bool:
+    normalized_key = _normalize_lexical_text(key)
+    if not normalized_key:
+        return False
+    normalized_content = _normalize_lexical_text(content)
+    return re.search(
+        rf"(?<!\w){re.escape(normalized_key)}\s*[:=]",
+        normalized_content,
+    ) is not None
 
 
 def _contains_lexical_value(content: str, value_text: str) -> bool:
