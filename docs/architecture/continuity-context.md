@@ -1,6 +1,6 @@
 # Continuity Context
 
-> **Status:** accepted semantic architecture tracked by #1371. K1 typed boundaries are implemented in `relaylm.continuity`; deterministic acceptance/lifecycle (K2) and ordinary-turn return-path wiring (K3) remain deferred.
+> **Status:** accepted semantic architecture tracked by #1371. K1 typed boundaries are implemented in `relaylm.continuity`; K2 deterministic acceptance/lifecycle is implemented in `relaylm.continuity_validation`; ordinary-turn return-path wiring (K3) remains deferred.
 
 ## Purpose
 
@@ -98,11 +98,39 @@ A `ContinuityCandidate` carries:
 
 The candidate remains a proposal. Constructor validity does not grant acceptance authority.
 
-A `ContinuityItem` is the typed shape reserved for accepted temporary authority. It preserves kind, key, semantic value, Event sources, epistemic role, and an explicit revision-bounded lifetime (`accepted_revision` / `expires_revision`). K1 does not itself create accepted items.
+A `ContinuityItem` is the typed shape reserved for accepted temporary authority. It preserves kind, key, semantic value, Event sources, epistemic role, and an explicit revision-bounded lifetime (`accepted_revision` / `expires_revision`).
 
 `ContinuityContext` is an immutable container with an explicit positive `max_items`, a monotonic non-negative `revision`, and a tuple of non-expired `ContinuityItem` values. It has no default runtime capacity policy and no persistence contract. The explicit bound is a semantic container boundary, not a runtime/default budgeting decision.
 
-K1 intentionally does **not** define deterministic admit/reject/duplicate/supersede/resolve/evict/expire transitions; those rules are K2.
+## Deterministic acceptance and lifecycle — K2
+
+`src/relaylm/continuity_validation.py` is the deterministic acceptance/lifecycle owner.
+
+One call to `apply_continuity_candidates` advances the context revision exactly once. Its order is fixed:
+
+1. advance to the next revision;
+2. expire items whose `expires_revision` has been reached;
+3. validate and apply candidates in input order;
+4. if capacity is exceeded, evict oldest accepted items deterministically.
+
+The caller must provide a positive `lifetime_revisions` value. K2 does not choose a default TTL or runtime budget. Accepted items expire at `accepted_revision + lifetime_revisions` unless they are superseded, resolved, or evicted earlier.
+
+Candidate acceptance requires known Event source IDs. A caller may additionally require intersection with a set of current-evidence Event IDs. A `user_assertion` candidate must include at least one user-authored source Event. A `set` value must be JSON-serializable with non-finite numeric values rejected. These checks preserve provenance and reject malformed authority rather than inferring missing meaning.
+
+For each lifecycle `key`, transition semantics are:
+
+- no existing item + valid `set` -> `admit`;
+- existing item + exact same kind/value/deduplicated sources/epistemic role -> `duplicate` noop, with no lifetime refresh;
+- existing item + valid changed `set` on the same key -> `supersede`, replacing the prior item directly;
+- valid `resolve` + no existing key -> `not_found` noop;
+- valid `resolve` + existing same-kind key -> `resolve`, removing the item;
+- valid `resolve` + existing different-kind key -> reject `kind_mismatch`.
+
+Accepted item IDs are deterministic from the new context revision and candidate order. Superseded items are treated as newly accepted for lifecycle age. When `max_items` is exceeded after candidate processing, eviction chooses the oldest `accepted_revision`, using existing tuple order as the deterministic tie-breaker.
+
+The validation result exposes candidate decisions plus expired and evicted item IDs. Its `changed` flag means accepted-item membership/payload changed; revision-only advancement after duplicates/rejections/no candidates does not make `changed` true.
+
+K2 does not inspect raw language, mutate Canonical State/MEMORY/Event occurrence history, persist Continuity Context, or wire the cognitive return path. Those ownership boundaries remain unchanged.
 
 ## Ownership
 
@@ -114,9 +142,9 @@ No separate semantic producer subsystem and no mandatory second LLM call are int
 
 ### Acceptance owner
 
-Continuity acceptance is deterministic. The acceptance boundary owns schema, provenance, scope, lifecycle, duplicate/supersession/resolution rules, and rejection.
+Continuity acceptance is deterministic and implemented by `relaylm.continuity_validation`. The acceptance boundary owns schema validation, provenance checks, lifecycle-key transitions, duplicate/supersession/resolution rules, expiry, eviction, and rejection.
 
-Candidate generation is not acceptance. K2 implements this acceptance boundary.
+Candidate generation is not acceptance.
 
 ### Accepted temporary authority
 
@@ -168,7 +196,7 @@ It does not require:
 
 The first runtime holder may be process/runtime-local, but implementation must expose typed boundaries so storage can change later without changing semantic ownership.
 
-K1 exposes those typed boundaries. K2 freezes deterministic admit/reject/duplicate/resolve-supersede/evict-expire behavior, and K3 wires the accepted result into ordinary buffered/streamed turn orchestration.
+K1 exposes typed boundaries and K2 supplies deterministic admit/reject/duplicate/supersede/resolve/evict/expire behavior. K3 wires the accepted result into ordinary buffered/streamed turn orchestration.
 
 ## Context Compiler dependency
 
