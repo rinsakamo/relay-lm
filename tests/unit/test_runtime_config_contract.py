@@ -9,6 +9,7 @@ from relaylm.budget import (
     CountEnvelope,
     TotalBudgetConfig,
 )
+from relaylm.budget_enforcement import TokenCountMode
 from relaylm.runtime_config import (
     CONFIG_PRECEDENCE,
     DEFAULT_SERVER_HOST,
@@ -27,9 +28,9 @@ from relaylm.runtime_config import (
     RuntimeConfig,
     RuntimeConfigErrorCode,
     RuntimePolicyConfig,
+    RuntimeSecretInputs,
     SecretEnvReference,
     ServerRuntimeConfig,
-    TokenAccountingMode,
     TokenCounterCapabilityConfig,
 )
 
@@ -142,7 +143,7 @@ def test_existing_runtime_controls_remain_explicit_inputs() -> None:
     assert policy.continuity.lifetime_revisions == 6
 
 
-def test_explicit_cognitive_budget_carries_owner_types_and_counter_capability() -> None:
+def test_explicit_cognitive_budget_carries_owner_types_and_counter_mode() -> None:
     configured = ExplicitCognitiveBudgetConfig(
         total=TotalBudgetConfig(
             model_context_window=8192,
@@ -151,20 +152,28 @@ def test_explicit_cognitive_budget_carries_owner_types_and_counter_capability() 
         policy=_empty_policy(),
         token_counter=TokenCounterCapabilityConfig(
             capability="example.counter",
-            mode=TokenAccountingMode.EXACT,
+            mode=TokenCountMode.EXACT,
         ),
     )
 
     assert configured.total.model_context_window == 8192
     assert configured.policy.steps == ()
-    assert configured.token_counter.mode is TokenAccountingMode.EXACT
+    assert configured.token_counter.mode is TokenCountMode.EXACT
 
 
-def test_effective_secret_diagnostics_never_contain_secret_value() -> None:
-    secret = EffectiveConfigSecret(configured=True, source=ConfigSource.ENV)
+def test_secret_material_is_process_local_and_redacted_from_repr() -> None:
+    inputs = RuntimeSecretInputs(provider_api_key="api-key-value")
+    secret = EffectiveConfigSecret(
+        configured=True,
+        source=ConfigSource.ENV,
+        material_source=ConfigSource.ENV,
+    )
 
+    assert inputs.provider_api_key == "api-key-value"
+    assert "api-key-value" not in repr(inputs)
     assert secret.configured is True
     assert secret.source is ConfigSource.ENV
+    assert secret.material_source is ConfigSource.ENV
     assert not hasattr(secret, "value")
     assert "api-key-value" not in repr(secret)
 
