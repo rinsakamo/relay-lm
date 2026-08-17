@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 
@@ -7,6 +8,16 @@ from relaylm.evaluation import EvaluationCheck, EvaluationScenarioResult
 from relaylm.events import Event
 from relaylm.state import CanonicalState, StateRecord
 from relaylm.storage.filesystem import CharacterDataError, CharacterDirectory
+
+
+class _CountingCharacterDirectory(CharacterDirectory):
+    def __init__(self, root: Path) -> None:
+        super().__init__(root)
+        self.disk_reads = 0
+
+    def _read_events_snapshot(self) -> tuple[Event, ...]:
+        self.disk_reads += 1
+        return super()._read_events_snapshot()
 
 
 async def evaluate_persistence_integrity() -> EvaluationScenarioResult:
@@ -120,3 +131,105 @@ async def evaluate_persistence_integrity() -> EvaluationScenarioResult:
             "malformed_failure_count": int(state_failure) + int(event_failure),
         },
     )
+
+
+async def evaluate_event_snapshot_reuse() -> EvaluationScenarioResult:
+    with tempfile.TemporaryDirectory(prefix="relaylm-eval-event-snapshot-") as temporary:
+        root = Path(temporary)
+        (root / "memory").mkdir(parents=True)
+        character = _CountingCharacterDirectory(root)
+
+        first = _snapshot_event("snapshot-event-1", "coffee", second=0)
+        second = _snapshot_event("snapshot-event-2", "tea", second=1)
+        external = _snapshot_event("snapshot-event-3", "water", second=2)
+        character.events_path.write_text(_event_line(first), encoding="utf-8")
+
+        first_read = list(character.iter_events())
+        second_read = list(character.iter_events())
+        initial_disk_parse_count = character.disk_reads
+
+        character.append_event(second)
+        post_append = list(character.iter_events())
+        post_append_disk_parse_count = character.disk_reads
+
+        with character.events_path.open("a", encoding="utf-8", newline="\n") as handle:
+            handle.write(_event_line(external))
+        post_external_change = list(character.iter_events())
+        post_external_change_disk_parse_count = character.disk_reads
+
+        character.events_path.write_text("not-json\n", encoding="utf-8")
+        corruption_failed_closed = False
+        try:
+            list(character.iter_events())
+        except CharacterDataError:
+            corruption_failed_closed = True
+        post_corruption_disk_parse_count = character.disk_reads
+
+    checks = (
+        EvaluationCheck(
+            check_id="unchanged_journal_reuses_validated_snapshot",
+            boundary="filesystem_cache",
+            passed=first_read == [first]
+            and second_read == [first]
+            and initial_disk_parse_count == 1,
+            expected=1,
+            observed=initial_disk_parse_count,
+        ),
+        EvaluationCheck(
+            check_id="owned_append_extends_snapshot_without_old_line_reparse",
+            boundary="filesystem_cache",
+            passed=post_append == [first, second]
+            and post_append_disk_parse_count == 1,
+            expected=1,
+            observed=post_append_disk_parse_count,
+        ),
+        EvaluationCheck(
+            check_id="external_change_revalidates_authoritative_journal",
+            boundary="event_journal",
+            passed=post_external_change == [first, second, external]
+            and post_external_change_disk_parse_count == 2,
+            expected=2,
+            observed=post_external_change_disk_parse_count,
+        ),
+        EvaluationCheck(
+            check_id="external_corruption_is_not_hidden_by_cached_events",
+            boundary="event_journal",
+            passed=corruption_failed_closed and post_corruption_disk_parse_count == 3,
+            expected=True,
+            observed=corruption_failed_closed,
+        ),
+    )
+    return EvaluationScenarioResult(
+        scenario_id="event_snapshot_reuse",
+        checks=checks,
+        metrics={
+            "initial_disk_parse_count": initial_disk_parse_count,
+            "post_append_disk_parse_count": post_append_disk_parse_count,
+            "post_external_change_disk_parse_count": post_external_change_disk_parse_count,
+            "post_corruption_disk_parse_count": post_corruption_disk_parse_count,
+        },
+    )
+
+
+def _snapshot_event(event_id: str, content: str, *, second: int) -> Event:
+    return Event.create(
+        type="message",
+        actor="user",
+        payload={"content": content},
+        event_id=event_id,
+        timestamp=f"2026-08-17T08:40:{second:02d}+00:00",
+    )
+
+
+def _event_line(event: Event) -> str:
+    return json.dumps(
+        {
+            "id": event.id,
+            "type": event.type,
+            "actor": event.actor,
+            "timestamp": event.timestamp,
+            "payload": event.payload,
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ) + "\n"
