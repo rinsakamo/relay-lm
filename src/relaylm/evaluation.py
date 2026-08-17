@@ -183,11 +183,20 @@ async def evaluate_restart_continuity() -> EvaluationScenarioResult:
     return await evaluate()
 
 
+async def evaluate_assistant_self_certification_prevention() -> EvaluationScenarioResult:
+    from relaylm.evaluation_authority import (
+        evaluate_assistant_self_certification_prevention as evaluate,
+    )
+
+    return await evaluate()
+
+
 async def run_native_evaluation() -> EvaluationReport:
     return EvaluationReport(
         scenarios=(
             await evaluate_provider_failure_safety(),
             await evaluate_restart_continuity(),
+            await evaluate_assistant_self_certification_prevention(),
         ),
     )
 
