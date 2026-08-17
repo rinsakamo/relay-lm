@@ -80,41 +80,126 @@ The current labels are diagnostic metadata, not new runtime authorities.
 
 This deterministic scenario creates an isolated synthetic Character Package and runs one ordinary turn against a provider that intentionally fails on its first `generate` call.
 
-It checks independently that the provider fails after exactly one call, the current User Event remains persisted, no Assistant Event is persisted, and Canonical State remains unchanged.
+It checks independently that:
+
+- the provider failure is actually observed;
+- the provider was called exactly once;
+- the current User Event remains persisted;
+- no Assistant Event is persisted;
+- Canonical State remains unchanged.
+
+The report also records bounded counts for provider calls, persisted Events, and persisted State records.
 
 ### `restart_continuity`
 
-This deterministic scenario uses the OpenAI-compatible client boundary across two separately constructed RelayLM applications that point to the same Character Package. The restarted request contains only the new follow-up user message while persisted State and RelayLM-owned Event-derived Working Context provide continuity.
+This deterministic scenario uses the OpenAI-compatible client boundary across two separately constructed RelayLM applications that point to the same Character Package.
+
+The first session establishes an accepted `user.preference / tea = likes` State and a user/assistant Event pair. The second application then receives a request containing only the new follow-up user message.
+
+It checks independently that:
+
+- both client requests complete through the API;
+- each cognitive provider is called exactly once;
+- the pre-restart State and Events were persisted;
+- the restarted CognitiveInput contains the accepted tea State;
+- Working Context contains the pre-restart user/assistant exchange;
+- Working Context sources are exactly the persisted pre-restart Event IDs;
+- the current Input is only the new follow-up message.
 
 This is deterministic runtime evidence. It does not replace #1259's required actual local-model restart product proof or make a naturalness/persona-quality claim.
 
 ### `assistant_self_certification_prevention`
 
-A prior assistant statement may remain in Working Context with `actor=assistant` and exact Event provenance, but an assistant-only `user.fact` candidate is rejected as `user_state_requires_user_source`. Continuity evidence therefore does not become user truth merely through prompt placement.
+This deterministic authority scenario separates conversational continuity from factual authority.
+
+A prior user/assistant exchange is compiled into Working Context where the assistant says `あなたは北海道に住んでいる`. The scenario verifies that this utterance remains available for continuity with its `actor=assistant` and source Event ID intact.
+
+It then proposes `user.fact / residence_location = Hokkaido` using only that assistant Event as provenance and checks that the existing Validator rejects the candidate as `user_state_requires_user_source`. Canonical State must remain unchanged.
+
+The scenario therefore does **not** solve self-certification by deleting assistant dialogue from Context. It measures the intended separation:
+
+```text
+assistant dialogue
+  may support continuity
+  != authority to establish user truth
+```
 
 ### `comparative_preference_preservation`
 
-With existing `user.preference / tea = likes`, additive `coffee = likes` and `preferred_beverage = coffee` candidates are accepted while the weaker positive tea preference remains unchanged. This evaluates RelayLM-side preservation after candidate proposal, not actual-model comparative-language extraction quality.
+This deterministic State/Validator scenario starts with accepted `user.preference / tea = likes` and one current user Event expressing a stronger current preference for coffee.
+
+It supplies only the two additive specific-key proposals expected from the frozen preference semantics:
+
+```text
+user.preference / coffee = likes
+user.preference / preferred_beverage = coffee
+```
+
+It checks that:
+
+- both proposals are accepted as creates;
+- the existing weaker positive `tea = likes` State is preserved rather than implicitly removed or replaced;
+- final preference State contains `tea`, `coffee`, and `preferred_beverage` simultaneously;
+- both new States retain the current user Event as provenance.
+
+This scenario evaluates RelayLM's deterministic preservation/State-transition behavior after candidate proposal. It does not claim that an actual model has correctly interpreted every comparative natural-language phrasing; model-side comparative extraction remains part of future actual-model quality evaluation.
 
 ### `degree_hint_integrity`
 
-A valid weakening from degree `0.9` to `0.6` remains a `set` replacement, not an implicit remove. Boolean degree values and reserved envelopes containing `confidence` are rejected. The scenario does not calibrate what degree an actual model should assign to arbitrary language.
+This deterministic Validator scenario starts with active `user.preference / coffee = {semantic: likes, degree_hint: 0.9}` and a current user Event supporting a weaker but still-positive coffee preference.
+
+It checks that a valid replacement with degree `0.6` remains a `set` replacement rather than becoming an implicit remove. The final coffee State remains active and retains the current user Event as provenance.
+
+The same pass also submits two invalid reserved envelopes: one with boolean `degree_hint: true`, and one adding a `confidence` field. Both must be rejected as `invalid_degree_hint_value` and neither may enter Canonical State.
+
+This scenario verifies the current machine contract that degree is bounded semantic relative strength, not a removal threshold or confidence field. It does not infer or calibrate what a particular numeric degree should be for arbitrary natural language.
 
 ### `working_context_budget_atomicity`
 
-Event-count and character-budget pressure preserve complete prior `user → assistant` exchanges, do not admit an orphan assistant Event, preserve exact source provenance, and keep the current user Event solely as current Input. Future relevance ranking/retrieval remains #1267 work.
+This deterministic Context Compiler scenario uses two prior `user → assistant` exchanges plus the current user Event and applies the current Working Context budgets in two ways.
+
+With an event-count limit that leaves the candidate window beginning on the older exchange's assistant Event, the unmatched assistant is dropped rather than admitted alone; only the newer complete user→assistant exchange remains.
+
+With a character budget exactly large enough for the newer exchange but not both exchanges, the newer pair is again admitted together and the older pair is omitted together.
+
+The scenario checks exact actor/source provenance for the admitted pair and verifies that the current user Event remains the current Input rather than being duplicated into Working Context.
+
+This evaluates only the current bounded recent-dialogue behavior. Future relevance ranking, unresolved-task retention, MEMORY retrieval, targeted Event evidence retrieval, and token-aware selection remain #1267 work.
 
 ### `persistence_integrity`
 
-Event and State round-trip exactly across reopen. Successful State replacement leaves no temporary-file residue. Deliberately malformed State/Event persistence fails closed with `CharacterDataError` and is not silently repaired or rewritten.
+This deterministic filesystem scenario exercises the current Character Package persistence boundary directly.
+
+It writes one Event and one Canonical State record, reopens the same Character Package, and verifies exact round-trip equality. It also checks that the atomic State writer leaves no `.state.json.tmp` residue after a successful replacement.
+
+The same scenario then corrupts `state.json` and `events.jsonl` deliberately. Malformed State must raise `CharacterDataError`; a malformed second Event line must likewise fail with line-location information. In both cases the malformed persisted file must remain unchanged rather than being silently repaired or rewritten.
+
+This measures the current fail-closed filesystem contract. It does not claim crash-consistent multi-file transactions, backup/restore, migration, or multi-process writer safety.
 
 ### `correction_remove_semantics`
 
-Explicit current user-sourced `remove` closes the current State slot while retaining Event history. A weaker-but-still-positive preference supplied as `set` remains `replace`, not `remove`. This evaluates deterministic behavior after candidate operation selection, not model-side correction classification.
+This deterministic State lifecycle scenario separates an explicit current-State removal from a weaker-but-still-positive update.
+
+For explicit removal, it starts with accepted `user.preference / tea = likes`, records both the earlier supporting user Event and the later revocation Event, then applies a `remove` candidate sourced from the current revocation. The Validator must accept a `remove`, the persisted current State view must contain no tea slot, and both Events must remain in the Event Journal.
+
+In a separate weakening case, active coffee preference degree `0.9` is updated to `0.6` using a `set` candidate. The action must remain `replace`, not `remove`, and the weakened positive State must remain current.
+
+This evaluates deterministic behavior after the candidate operation has already been proposed. It does not claim that an actual model will classify every natural-language correction, hesitation, or weakening correctly.
 
 ### `crystallization_integrity`
 
-The current #1260 off-turn core materializes readable `MEMORY.md`, while State write-back still passes through the existing Validator. A user-supported tea preference can be accepted; an assistant-only Hokkaido user fact remains rejected even when similar prose appears in Markdown. An unchanged second explicit pass avoids Markdown churn and yields a State noop for the already-accepted preference.
+This deterministic off-turn scenario exercises the current #1260 crystallization core without an actual model.
+
+A user Event states that Rin likes tea, while a separate assistant Event claims that Rin lives in Hokkaido. The crystallizer emits readable `MEMORY.md` containing both pieces of prose and proposes two StateCandidates: a user preference sourced from the user Event and a user fact sourced only from the assistant Event.
+
+The scenario verifies that:
+
+- readable Markdown is materialized as crystallized synthesis even when it includes explicitly unverified assistant continuity;
+- the user-sourced tea preference passes the existing Validator and becomes Canonical State;
+- the assistant-only Hokkaido user fact is rejected as `user_state_requires_user_source`;
+- the presence of that Hokkaido sentence in `MEMORY.md` does not promote it into Canonical State;
+- a second identical explicit crystallization pass does not rewrite unchanged Markdown and produces a State noop for the already-accepted tea preference while continuing to reject the assistant-only fact;
+- each explicit crystallization pass invokes the crystallizer once, and the second pass receives prior `MEMORY.md` as input.
 
 This evaluates RelayLM-owned authority and rerun stability only. It does not claim actual local-model crystallization quality, semantic note splitting, or retrieval behavior.
 
