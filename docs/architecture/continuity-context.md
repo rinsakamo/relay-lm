@@ -1,6 +1,6 @@
 # Continuity Context
 
-> **Status:** accepted semantic architecture for implementation tracked by #1371. The current runtime does not yet expose or retain Continuity Context; this document freezes the ownership boundary that implementation must follow.
+> **Status:** accepted semantic architecture tracked by #1371. K1 typed boundaries are implemented in `relaylm.continuity`; deterministic acceptance/lifecycle (K2) and ordinary-turn return-path wiring (K3) remain deferred.
 
 ## Purpose
 
@@ -83,11 +83,32 @@ Initial item kinds are:
 
 Additional kinds require separately bounded semantics. Different meanings do not imply separate machinery by default.
 
+## Current typed boundary — K1
+
+`src/relaylm/continuity.py` is the current typed semantic owner for the K1 boundary.
+
+A `ContinuityCandidate` carries:
+
+- one of the three bounded initial kinds;
+- a non-empty lifecycle `key` used by deterministic lifecycle rules;
+- an explicit `set` or `resolve` operation;
+- Event source IDs;
+- an explicit epistemic role: `user_assertion`, `assistant_inference`, or `assistant_commitment`;
+- a semantic value only for `set` proposals.
+
+The candidate remains a proposal. Constructor validity does not grant acceptance authority.
+
+A `ContinuityItem` is the typed shape reserved for accepted temporary authority. It preserves kind, key, semantic value, Event sources, epistemic role, and an explicit revision-bounded lifetime (`accepted_revision` / `expires_revision`). K1 does not itself create accepted items.
+
+`ContinuityContext` is an immutable container with an explicit positive `max_items`, a monotonic non-negative `revision`, and a tuple of non-expired `ContinuityItem` values. It has no default runtime capacity policy and no persistence contract. The explicit bound is a semantic container boundary, not a runtime/default budgeting decision.
+
+K1 intentionally does **not** define deterministic admit/reject/duplicate/supersede/resolve/evict/expire transitions; those rules are K2.
+
 ## Ownership
 
 ### Proposal producer
 
-The existing cognitive generation may produce `continuity_candidates` alongside `response` and `state_candidates`.
+The existing cognitive generation may produce `continuity_candidates` alongside `response` and `state_candidates` after K3 wires the return path.
 
 No separate semantic producer subsystem and no mandatory second LLM call are introduced.
 
@@ -95,7 +116,7 @@ No separate semantic producer subsystem and no mandatory second LLM call are int
 
 Continuity acceptance is deterministic. The acceptance boundary owns schema, provenance, scope, lifecycle, duplicate/supersession/resolution rules, and rejection.
 
-Candidate generation is not acceptance.
+Candidate generation is not acceptance. K2 implements this acceptance boundary.
 
 ### Accepted temporary authority
 
@@ -103,7 +124,7 @@ Continuity Context owns only accepted temporary continuity. It does not gain dur
 
 ### Turn / Runtime
 
-Turn / Runtime may orchestrate candidate validation and commit, but does not redefine referent, unresolved, active-task, provenance, or lifecycle semantics.
+Turn / Runtime may orchestrate candidate validation and commit after K3, but does not redefine referent, unresolved, active-task, provenance, or lifecycle semantics.
 
 ### Context Compiler
 
@@ -147,7 +168,7 @@ It does not require:
 
 The first runtime holder may be process/runtime-local, but implementation must expose typed boundaries so storage can change later without changing semantic ownership.
 
-Lifecycle semantics are frozen transaction-by-transaction under #1371. The minimal lifecycle may include deterministic admit, retain, resolve/supersede, and evict/expire operations.
+K1 exposes those typed boundaries. K2 freezes deterministic admit/reject/duplicate/resolve-supersede/evict-expire behavior, and K3 wires the accepted result into ordinary buffered/streamed turn orchestration.
 
 ## Context Compiler dependency
 
