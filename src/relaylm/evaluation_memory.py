@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
+
+from relaylm.cognitive import CognitiveInput, CognitiveOutput
 from relaylm.context import compile_cognitive_input
 from relaylm.evaluation import EvaluationCheck, EvaluationScenarioResult
 from relaylm.events import Event
@@ -7,6 +11,8 @@ from relaylm.identity import Identity
 from relaylm.memory_retrieval import MemoryChunk, select_memory_chunks
 from relaylm.providers.openai_compatible import serialize_cognitive_input
 from relaylm.state import CanonicalState, StateRecord
+from relaylm.storage.filesystem import CharacterDataError, CharacterDirectory
+from relaylm.turn import MemoryRetrievalBudget, run_user_turn
 
 
 _MEMORY = """# Memory
@@ -23,6 +29,48 @@ Rin currently prefers coffee over tea.
 
 Rin visited Fukuoka last year.
 """
+
+
+class _RecordingMemoryProvider:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.inputs: list[CognitiveInput] = []
+
+    async def generate(self, cognitive_input: CognitiveInput) -> CognitiveOutput:
+        self.calls += 1
+        self.inputs.append(cognitive_input)
+        return CognitiveOutput("ok")
+
+
+class _ExplodingMemoryReadCharacter(CharacterDirectory):
+    def load_memory_markdown(self) -> str | None:
+        raise AssertionError("MEMORY.md must not be read without an explicit budget")
+
+
+class _FailingMemoryReadCharacter(CharacterDirectory):
+    def load_memory_markdown(self) -> str | None:
+        raise CharacterDataError("cannot read MEMORY.md: intentional evaluation failure")
+
+
+def _make_memory_character(
+    root: Path,
+    *,
+    cls: type[CharacterDirectory] = CharacterDirectory,
+) -> CharacterDirectory:
+    (root / "memory").mkdir(parents=True)
+    (root / "SOUL.md").write_text(
+        "# Evaluation Character\n\nBe honest and grounded.\n", encoding="utf-8"
+    )
+    (root / "config.yaml").write_text(
+        "format_version: 1\ncharacter:\n  id: evaluation\n  name: Evaluation\n",
+        encoding="utf-8",
+    )
+    (root / "memory" / "events.jsonl").write_text("", encoding="utf-8")
+    (root / "memory" / "state.json").write_text(
+        '{"format_version":1,"states":[]}\n', encoding="utf-8"
+    )
+    (root / "memory" / "MEMORY.md").write_text(_MEMORY, encoding="utf-8")
+    return cls(root)
 
 
 async def evaluate_memory_heading_retrieval() -> EvaluationScenarioResult:
@@ -188,5 +236,103 @@ async def evaluate_memory_cognitive_projection() -> EvaluationScenarioResult:
             "projected_memory_count": len(compiled.memory),
             "working_context_count": len(compiled.context),
             "memory_location_source_leak_count": source_leak_count,
+        },
+    )
+
+
+async def evaluate_ordinary_turn_memory_retrieval() -> EvaluationScenarioResult:
+    with tempfile.TemporaryDirectory(prefix="relaylm-memory-turn-eval-") as temporary:
+        root = Path(temporary)
+        character = _make_memory_character(root)
+        provider = _RecordingMemoryProvider()
+        await run_user_turn(
+            character=character,
+            provider=provider,
+            content="What do you remember about coffee?",
+            memory_budget=MemoryRetrievalBudget(max_chunks=1, max_chars=200),
+        )
+        selected_memory = provider.inputs[0].memory if provider.inputs else ()
+
+    with tempfile.TemporaryDirectory(prefix="relaylm-memory-default-eval-") as temporary:
+        root = Path(temporary)
+        default_character = _make_memory_character(
+            root, cls=_ExplodingMemoryReadCharacter
+        )
+        default_provider = _RecordingMemoryProvider()
+        await run_user_turn(
+            character=default_character,
+            provider=default_provider,
+            content="What do you remember about coffee?",
+        )
+        default_memory = default_provider.inputs[0].memory if default_provider.inputs else ()
+
+    with tempfile.TemporaryDirectory(prefix="relaylm-memory-failure-eval-") as temporary:
+        root = Path(temporary)
+        failing_character = _make_memory_character(
+            root, cls=_FailingMemoryReadCharacter
+        )
+        failing_provider = _RecordingMemoryProvider()
+        failure_observed = False
+        try:
+            await run_user_turn(
+                character=failing_character,
+                provider=failing_provider,
+                content="What do you remember about coffee?",
+                memory_budget=MemoryRetrievalBudget(max_chunks=1, max_chars=200),
+            )
+        except CharacterDataError as exc:
+            failure_observed = "intentional evaluation failure" in str(exc)
+        reopened = CharacterDirectory(root)
+        failed_events = list(reopened.iter_events())
+        failed_state = reopened.load_state()
+
+    checks = (
+        EvaluationCheck(
+            check_id="explicit_budget_projects_relevant_memory",
+            boundary="memory_retrieval",
+            passed=len(selected_memory) == 1
+            and selected_memory[0].location == "memory/MEMORY.md#memory/coffee",
+            expected=1,
+            observed=len(selected_memory),
+        ),
+        EvaluationCheck(
+            check_id="successful_turn_calls_provider_once",
+            boundary="ordinary_turn",
+            passed=provider.calls == 1,
+            expected=1,
+            observed=provider.calls,
+        ),
+        EvaluationCheck(
+            check_id="omitted_budget_preserves_no_retrieval_behavior",
+            boundary="ordinary_turn",
+            passed=default_provider.calls == 1 and default_memory == (),
+            expected=0,
+            observed=len(default_memory),
+        ),
+        EvaluationCheck(
+            check_id="memory_read_failure_skips_provider",
+            boundary="ordinary_turn",
+            passed=failure_observed and failing_provider.calls == 0,
+            expected=0,
+            observed=failing_provider.calls,
+        ),
+        EvaluationCheck(
+            check_id="memory_read_failure_preserves_user_only",
+            boundary="persistence",
+            passed=[event.actor for event in failed_events] == ["user"]
+            and failed_state.states == (),
+            expected="user",
+            observed=",".join(event.actor for event in failed_events) or "none",
+        ),
+    )
+    return EvaluationScenarioResult(
+        scenario_id="ordinary_turn_memory_retrieval",
+        checks=checks,
+        metrics={
+            "successful_provider_calls": provider.calls,
+            "selected_memory_count": len(selected_memory),
+            "default_memory_count": len(default_memory),
+            "failed_retrieval_provider_calls": failing_provider.calls,
+            "failed_retrieval_event_count": len(failed_events),
         },
     )
