@@ -344,7 +344,7 @@ async def evaluate_cjk_retrieval_relevance() -> EvaluationScenarioResult:
 
 
 async def evaluate_distinct_query_feature_relevance() -> EvaluationScenarioResult:
-    from relaylm.evaluation_post1361_refinements import (
+    from relaylm.evaluation_retrieval_refinements import (
         evaluate_distinct_query_feature_relevance as evaluate,
     )
 
@@ -352,7 +352,7 @@ async def evaluate_distinct_query_feature_relevance() -> EvaluationScenarioResul
 
 
 async def evaluate_degree_state_memory_authority() -> EvaluationScenarioResult:
-    from relaylm.evaluation_post1361_refinements import (
+    from relaylm.evaluation_retrieval_refinements import (
         evaluate_degree_state_memory_authority as evaluate,
     )
 
