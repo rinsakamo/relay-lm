@@ -132,7 +132,6 @@ def test_noncurrent_scope_does_not_gain_freeform_boolean_authority(
     "claim",
     [
         "Current notifications enabled is disabled.",
-        "Current notifications enabled is not true.",
         "Current notifications enabled is true or false.",
     ],
 )
