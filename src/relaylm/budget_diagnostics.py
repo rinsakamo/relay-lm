@@ -41,7 +41,7 @@ class CognitiveBudgetDiagnostics:
     """
 
     model_context_window: int
-    effective_input_capacity: int
+    effective_context_capacity: int
     reserved_output_tokens: int
     required_input_framing_tokens: int
     final_input_tokens: int
@@ -130,15 +130,15 @@ def _build_diagnostics(
         )
         for tier in reduced_tiers
     )
-    effective_input_capacity = config.serialized_input_capacity
+    effective_context_capacity = config.serialized_input_capacity
     available_cognitive_capacity = max(
         0,
-        effective_input_capacity - count.required_input_framing_tokens,
+        effective_context_capacity - count.required_input_framing_tokens,
     )
 
     return CognitiveBudgetDiagnostics(
         model_context_window=config.model_context_window,
-        effective_input_capacity=effective_input_capacity,
+        effective_context_capacity=effective_context_capacity,
         reserved_output_tokens=config.reserved_output_tokens,
         required_input_framing_tokens=count.required_input_framing_tokens,
         final_input_tokens=count.total_input_tokens,
