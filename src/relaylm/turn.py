@@ -156,6 +156,9 @@ async def run_user_turn_streaming(
 ) -> TurnResult:
     """Run one streamed ordinary turn without committing before provider completion."""
 
+    if not content.strip():
+        raise ValueError("user content must not be empty")
+
     stream_generate = getattr(provider, "stream_generate", None)
     if stream_generate is None:
         raise TypeError("provider does not support cognitive streaming")
@@ -186,6 +189,9 @@ async def run_user_turn_streaming_with_retrieval_diagnostics(
     event_budget: EventRetrievalBudget | None = None,
 ) -> TurnResultWithRetrievalDiagnostics:
     """Run one streamed ordinary turn and explicitly return retrieval diagnostics."""
+
+    if not content.strip():
+        raise ValueError("user content must not be empty")
 
     stream_generate = getattr(provider, "stream_generate", None)
     if stream_generate is None:
