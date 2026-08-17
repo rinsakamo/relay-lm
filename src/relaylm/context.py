@@ -676,6 +676,10 @@ def _explicit_boolean_claim_value(claim: str) -> bool | None:
         return True
     if terms == ("false",):
         return False
+    if terms == ("not", "true"):
+        return False
+    if terms == ("not", "false"):
+        return True
     return None
 
 

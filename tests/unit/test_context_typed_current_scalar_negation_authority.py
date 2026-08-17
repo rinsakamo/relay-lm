@@ -149,20 +149,6 @@ def test_not_prefix_without_token_boundary_remains_positive_mismatch() -> None:
     assert _compile(chunk=stale).memory == ()
 
 
-def test_boolean_negation_remains_outside_c9() -> None:
-    boolean_claim = _chunk(
-        "Current notifications enabled is not true.",
-        scope=MemoryTemporalScope.CURRENT,
-    )
-
-    compiled = _compile(
-        chunk=boolean_claim,
-        state=_state(key="notifications_enabled", value=True),
-    )
-
-    assert [item.location for item in compiled.memory] == [boolean_claim.location]
-
-
 def test_unknown_scope_does_not_gain_scalar_negation_authority() -> None:
     unknown = _chunk(
         "Current residence location is not Fukuoka.",
