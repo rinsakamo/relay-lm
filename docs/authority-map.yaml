@@ -81,18 +81,21 @@ domains:
     runtime:
       - src/relaylm/evaluation.py
       - src/relaylm/evaluation_cross_layer.py
+      - src/relaylm/evaluation_working_context.py
       - src/relaylm/evaluation_persistence.py
       - src/relaylm/evaluation_memory.py
       - src/relaylm/evaluation_event_evidence.py
     tests:
       - tests/unit/test_evaluation.py
       - tests/unit/test_evaluation_cross_layer_diagnostics.py
+      - tests/unit/test_evaluation_working_context_diagnostics.py
       - tests/unit/test_evaluation_event_snapshot.py
       - tests/unit/test_evaluation_memory.py
       - tests/unit/test_evaluation_event_evidence.py
       - tests/unit/test_evaluation_ordinary_event_retrieval.py
     docs:
       - docs/reference/evaluation.md
+      - docs/reference/evaluation-working-context-diagnostics.md
 
   development_workflow:
     runtime: []
