@@ -19,11 +19,13 @@ The existing Journal signature boundary remains `(device, inode, size, mtime_ns)
 
 ## Discovery and selection
 
-The derived index records lexical postings only for eligible non-blank `message` Events plus aggregate eligibility metadata needed by the existing content-free diagnostics. Query-time discovery visits postings for the normalized positive query terms instead of iterating every Event in the validated snapshot.
+The derived index records lexical-feature postings only for eligible non-blank `message` Events plus aggregate eligibility metadata needed by the existing content-free diagnostics. Query-time discovery visits postings for the normalized positive query features instead of iterating every Event in the validated snapshot.
+
+The shared retrieval feature rule is defined in `docs/reference/retrieval-lexical-relevance.md`: existing normalized whole tokens are preserved, while contiguous CJK runs additionally contribute bounded 2- and 3-character n-grams. Latin/ASCII tokens do not gain substring features.
 
 After discovery, `select_event_evidence(...)` retains the existing selector contract:
 
-- only positive exact lexical-token matches are candidates;
+- only positive shared lexical-feature matches are candidates;
 - explicit Event IDs, including the Current Event ID, are excluded before ranking/admission;
 - higher lexical overlap ranks first;
 - equal scores prefer the newer Journal occurrence;
@@ -31,11 +33,11 @@ After discovery, `select_event_evidence(...)` retains the existing selector cont
 - selected Events are returned in Journal chronology;
 - diagnostics remain content-free and preserve their existing aggregate meanings.
 
-The generic iterable selector path remains valid for callers that do not have a `CharacterDirectory` discovery source. That path necessarily inspects its supplied iterable. Ordinary-turn targeted Event retrieval uses `CharacterDirectory.event_retrieval_source()` so it receives the indexed path without changing runtime budget defaults.
+The generic iterable selector path remains valid for callers that do not have a `CharacterDirectory` discovery source. It uses the same shared lexical features and necessarily inspects its supplied iterable. Ordinary-turn targeted Event retrieval uses `CharacterDirectory.event_retrieval_source()` so it receives the indexed path without changing runtime budget defaults.
 
 ## Scaling boundary
 
-For a validated, unchanged process-local Journal snapshot, targeted lexical discovery no longer performs unconditional O(N) Event inspection. It reads postings for the query terms and materializes only positive candidates; work therefore scales with matching postings/candidates rather than the full Event count. A term that legitimately occurs in most Events can still produce O(N) matching work.
+For a validated, unchanged process-local Journal snapshot, targeted lexical discovery no longer performs unconditional O(N) Event inspection. It reads postings for the query features and materializes only positive candidates; work therefore scales with matching postings/candidates rather than the full Event count. A feature that legitimately occurs in most Events can still produce O(N) matching work.
 
 The following operations intentionally remain full-authority work and are not hidden by the index:
 
@@ -43,8 +45,8 @@ The following operations intentionally remain full-authority work and are not hi
 - Journal revalidation after reopen or external mutation;
 - rebuilding the derived index after such invalidation.
 
-This change does not introduce semantic/vector retrieval, change ranking quality, alter MEMORY/State authority, or add another cognitive LLM generation.
+This change does not introduce semantic/vector retrieval, alter MEMORY/State authority, or add another cognitive LLM generation.
 
 ## Deferred
 
-Persistent or segmented indexes, semantic/vector retrieval, ranking-quality changes, total token-aware runtime budgeting, and cross-layer redundancy policy remain outside this boundary. Any future persistent acceleration must remain derived from and invalidatable against the Event Journal rather than becoming a second occurrence/provenance authority.
+Persistent or segmented indexes, semantic/vector retrieval, broader semantic ranking, total token-aware runtime budgeting, and cross-layer redundancy policy remain outside this boundary. Any future persistent acceleration must remain derived from and invalidatable against the Event Journal rather than becoming a second occurrence/provenance authority.
