@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -89,6 +90,17 @@ def test_invalid_config_fails_closed(tmp_path: Path) -> None:
         character.load_config()
 
 
+def test_config_format_version_does_not_coerce_string_compatibility(tmp_path: Path) -> None:
+    character = _make_character(tmp_path)
+    (tmp_path / "config.yaml").write_text(
+        'format_version: "1"\ncharacter:\n  id: relm\n  name: ReLM\n',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(CharacterDataError):
+        character.load_config()
+
+
 def test_invalid_event_line_reports_line_number(tmp_path: Path) -> None:
     character = _make_character(tmp_path)
     (tmp_path / "memory" / "events.jsonl").write_text(
@@ -98,3 +110,46 @@ def test_invalid_event_line_reports_line_number(tmp_path: Path) -> None:
 
     with pytest.raises(CharacterDataError, match="line 2"):
         list(character.iter_events())
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"states": []},
+        {"format_version": 1},
+        {"format_version": "1", "states": []},
+    ],
+)
+def test_existing_state_file_requires_explicit_versioned_shape(
+    tmp_path: Path,
+    payload: dict[str, object],
+) -> None:
+    character = _make_character(tmp_path)
+    character.state_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(CharacterDataError):
+        character.load_state()
+
+
+@pytest.mark.parametrize("missing_field", ["value", "status", "sources"])
+def test_persisted_state_record_does_not_receive_compatibility_defaults(
+    tmp_path: Path,
+    missing_field: str,
+) -> None:
+    character = _make_character(tmp_path)
+    record: dict[str, object] = {
+        "state_id": "state-1",
+        "state_class": "user.preference",
+        "key": "tea",
+        "value": "likes",
+        "status": "active",
+        "sources": ["evt-1"],
+    }
+    del record[missing_field]
+    character.state_path.write_text(
+        json.dumps({"format_version": 1, "states": [record]}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(CharacterDataError):
+        character.load_state()
