@@ -179,13 +179,14 @@ Current filtering is intentionally narrow:
 - authority eligibility uses every State record with `status == "active"` and `valid_to is None`, independently of any later `max_state_records` projection cap;
 - a Memory chunk is State-addressing when its heading path contains every normalized lexical term of a State key, or when its body contains the canonical State key as an explicit `key:` / `key=` field assignment;
 - inline field detection requires the exact normalized canonical key token and a field delimiter; arbitrary prose mention is not treated as State addressing;
-- when that State value has lexically comparable text, the chunk is retained if at least one current State value appears as an exact lexical token sequence in the chunk;
+- for State values handled by the general lexical rule, the chunk is retained if at least one current State value appears as an exact lexical token sequence in the chunk;
 - if the chunk explicitly addresses the key but none of the comparable current State values appears, the whole chunk is suppressed from `CognitiveInput.memory`;
 - for a boolean State value, an explicitly State-addressing chunk is suppressed only when it contains the exact opposite `true` / `false` token and does not also contain the current boolean token;
 - a boolean chunk containing the current token remains compatible; a chunk containing neither boolean token, or both tokens, is left untouched rather than being semantically or temporally reclassified;
 - for the reserved structured State value `{semantic, degree_hint}`, the current `semantic` must appear as an exact lexical token sequence; a matching numeric degree alone cannot make conflicting semantic text compatible;
-- if that same explicitly State-addressing chunk contains an explicit numeric `degree_hint:` / `degree_hint=` assignment, every such assignment must equal the active State degree or the whole chunk is suppressed;
-- absence of an explicit degree assignment is not inferred as a conflict, and arbitrary prose numbers are not interpreted as degree claims;
+- when the State key is identified by the chunk heading, an explicit numeric `degree_hint:` / `degree_hint=` assignment in that section must equal the active State degree or the whole chunk is suppressed;
+- when State addressing exists only through an inline canonical `key:` / `key=` assignment, a degree claim is associated with that key only when `degree_hint:` / `degree_hint=` occurs on the same assignment line; degree fields on another key's line are not borrowed;
+- absence of an associated explicit degree assignment is not inferred as a conflict, and arbitrary prose numbers are not interpreted as degree claims;
 - exact token sequences are used rather than substring matching, so for example `likes` is not treated as present inside `dislikes`;
 - inactive or expired State records do not suppress memory;
 - a chunk that neither addresses a State key through its heading nor uses an explicit canonical-key field assignment is left untouched, even if its prose happens to mention an older or different value.
@@ -224,7 +225,7 @@ Current retrieval behavior:
 - higher lexical overlap wins admission;
 - equal relevance prefers the newer occurrence by source order;
 - explicit `max_events` and `max_chars` bound admission;
-- Events are admitted whole; an oversized relevant Event is skipped rather than truncated, and a later fitting relevant Event may still fit;
+- Events are admitted whole; an oversized relevant Event is skipped rather than truncated, and a later fitting relevant Event may still be admitted;
 - selected Events are returned in original source chronology after ranking/admission;
 - the original `Event` objects are returned unchanged; retrieval does not mutate Events, State, MEMORY, indexes, or call an LLM.
 
