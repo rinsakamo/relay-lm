@@ -571,6 +571,23 @@ def _memory_chunk_is_shadowed(
                 return True
             continue
 
+        current_scalar = _simple_scalar_state_value_text(record.value)
+        if (
+            current_scalar is not None
+            and inline_addresses_key
+            and not heading_addresses_key
+        ):
+            assignment_values = _explicit_state_key_assignment_values(
+                chunk.content,
+                record.key,
+            )
+            if len(assignment_values) == 1:
+                assignment_terms = _lexical_terms(assignment_values[0])
+                if len(assignment_terms) > 1 and assignment_terms[0] == "not":
+                    if assignment_terms[1:] == _lexical_terms(current_scalar):
+                        return True
+                    continue
+
         current_values = tuple(
             value_text
             for value_text in _value_lexical_strings(record.value)
@@ -691,6 +708,21 @@ def _contains_explicit_opposite_boolean_value(content: str, *, current_value: bo
     current_term = "true" if current_value else "false"
     opposite_term = "false" if current_value else "true"
     return opposite_term in terms and current_term not in terms
+
+
+def _explicit_state_key_assignment_values(content: str, key: str) -> tuple[str, ...]:
+    normalized_key = _normalize_lexical_text(key)
+    if not normalized_key:
+        return ()
+    normalized_content = _normalize_lexical_text(content)
+    pattern = re.compile(rf"(?<!\w){re.escape(normalized_key)}\s*[:=]\s*")
+    values: list[str] = []
+    for line in normalized_content.splitlines():
+        matches = tuple(pattern.finditer(line))
+        for index, match in enumerate(matches):
+            end = matches[index + 1].start() if index + 1 < len(matches) else len(line)
+            values.append(line[match.end() : end].strip())
+    return tuple(values)
 
 
 def _contains_explicit_state_key_assignment(content: str, key: str) -> bool:
