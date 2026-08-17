@@ -109,7 +109,7 @@ def test_fit_diagnostics_report_capacity_counts_and_exact_mode() -> None:
     )
 
     assert diagnostics.model_context_window == 100
-    assert diagnostics.effective_input_capacity == 80
+    assert diagnostics.effective_context_capacity == 80
     assert diagnostics.reserved_output_tokens == 20
     assert diagnostics.required_input_framing_tokens == 15
     assert diagnostics.final_input_tokens == 70
@@ -215,20 +215,21 @@ def test_degradation_exhaustion_reports_all_applied_reductions() -> None:
     assert [item.tier for item in diagnostics.tier_reductions] == [3, 2, 1]
 
 
-def test_available_cognitive_capacity_clamps_when_framing_exceeds_input_capacity() -> None:
+def test_available_cognitive_capacity_clamps_when_framing_exceeds_context_capacity() -> None:
+    config = TotalBudgetConfig(model_context_window=32, reserved_output_tokens=20)
     diagnostics = diagnostics_for_budget_failure(
-        config=TotalBudgetConfig(model_context_window=32, reserved_output_tokens=20),
+        config=config,
         policy=BudgetDegradationPolicy(initial_plan=_plan(), steps=()),
         failure=CognitiveBudgetExceeded(
             reason=BudgetEnforcementFailureReason.PROTECTED_FLOOR_EXCEEDS_CONTEXT,
-            config=TotalBudgetConfig(model_context_window=32, reserved_output_tokens=20),
+            config=config,
             final_plan=None,
             final_count=_count(20, framing=20),
             degradation_step_count=0,
         ),
     )
 
-    assert diagnostics.effective_input_capacity == 12
+    assert diagnostics.effective_context_capacity == 12
     assert diagnostics.available_cognitive_capacity == 0
 
 
