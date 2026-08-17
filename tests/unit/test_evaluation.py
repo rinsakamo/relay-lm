@@ -7,6 +7,7 @@ from relaylm.evaluation import (
     EvaluationCheck,
     EvaluationReport,
     EvaluationScenarioResult,
+    evaluate_assistant_self_certification_prevention,
     evaluate_provider_failure_safety,
     evaluate_restart_continuity,
     main,
@@ -49,6 +50,7 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
     assert [scenario["id"] for scenario in payload["scenarios"]] == [
         "provider_failure_safety",
         "restart_continuity",
+        "assistant_self_certification_prevention",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
@@ -99,4 +101,22 @@ def test_restart_continuity_evaluation_uses_persisted_state_and_events() -> None
         "provider_calls": 2,
         "pre_restart_event_count": 2,
         "restart_context_count": 2,
+    }
+
+
+def test_assistant_self_certification_evaluation_preserves_context_but_rejects_state() -> None:
+    result = asyncio.run(evaluate_assistant_self_certification_prevention())
+
+    assert result.scenario_id == "assistant_self_certification_prevention"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+    assert {check.boundary for check in result.checks} == {
+        "context_compiler",
+        "validator",
+        "canonical_state",
+    }
+    assert result.metrics == {
+        "working_context_count": 2,
+        "rejected_candidate_count": 1,
+        "accepted_state_count": 0,
     }
