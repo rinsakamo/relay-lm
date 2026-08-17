@@ -74,7 +74,7 @@ The current implementation preserves normal prior `user → assistant` exchanges
 
 ## Ordinary turn ordering
 
-The current ordinary-turn runtime uses this order:
+The current ordinary-turn runtime uses this semantic order:
 
 ```text
 load config / Identity / Canonical State
@@ -85,6 +85,8 @@ compile CognitiveInput
         ↓
 exactly one provider generation
         ↓
+accept complete valid CognitiveOutput
+        ↓
 persist Assistant Event from response
         ↓
 validate StateCandidate[]
@@ -93,6 +95,8 @@ persist Canonical State only if validation changed it
 ```
 
 Persisting the User Event before provider execution is intentional: the Event Journal records that the user input occurred even if cognition later fails.
+
+Buffered and streamed delivery share this semantic ordering. A streaming adapter may expose safely decoded response characters while the single provider generation is still producing its structured wire object, but this early display is not a semantic `CognitiveOutput` acceptance point. Assistant Event creation and StateCandidate validation wait for the complete valid cognitive result.
 
 ## CognitiveOutput
 
@@ -124,6 +128,8 @@ CognitiveOutput
 
 An assistant response therefore remains useful for future conversational continuity without becoming self-certified factual authority.
 
+Streaming does not create a second semantic output form. Provider wire `utterance` deltas are delivery fragments only; the final complete structured provider result is normalized into the same `CognitiveOutput(response, state_candidates)` used by buffered turns.
+
 ## Failure semantics
 
 If the cognitive provider fails before producing a valid `CognitiveOutput`:
@@ -136,8 +142,10 @@ Canonical State       unchanged by that failed turn
 
 The persisted unmatched User Event may later participate in bounded Working Context, because it is real user-origin conversational evidence even though the attempted assistant response failed.
 
+For a streamed turn, the same failure rule applies even if a safe prefix of the provider `utterance` was already delivered to the client. A truncated or malformed structured stream does not retroactively turn that visible prefix into an accepted Assistant Event, does not make incomplete candidates authoritative, and does not trigger semantic regeneration. Successful Assistant/State persistence occurs only after complete structured provider output.
+
 If a valid response is produced but one or more StateCandidates are rejected, the valid response still becomes an Assistant Event while rejected candidates do not mutate Canonical State. Response validity and State acceptance are deliberately separate channels.
 
 Adapter-level malformed provider output is fail-closed before a semantic `CognitiveOutput` is accepted.
 
-An ordinary turn targets exactly one cognitive generation. Working Context selection, deterministic validation, persistence, and Context compilation do not add a second ordinary cognitive LLM call.
+An ordinary turn targets exactly one cognitive generation. Working Context selection, deterministic validation, persistence, Context compilation, and streamed delivery do not add a second ordinary cognitive LLM call.
