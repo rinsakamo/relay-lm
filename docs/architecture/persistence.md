@@ -35,6 +35,9 @@ The current filesystem implementation intentionally keeps a small, strict contra
 - `events.jsonl` stores one Event object per non-empty line and is appended in Event order;
 - a missing `events.jsonl` is treated as an empty Event Journal;
 - malformed Event JSON, malformed Event shape, malformed config, or malformed State fails closed rather than being silently repaired;
+- within one `CharacterDirectory` process, a successfully validated Event Journal snapshot may be reused while the authoritative file signature is unchanged;
+- RelayLM-owned successful `append_event` calls incrementally extend an already-valid process-local snapshot, while detected external file changes invalidate the snapshot and force authoritative JSONL revalidation;
+- the Event snapshot is derived, non-persistent, and never replaces `events.jsonl` as occurrence/provenance authority; malformed external edits remain fail-closed rather than being masked by stale cached Events;
 - a missing `state.json` file is treated as an empty `CanonicalState(format_version=1)`;
 - an existing `state.json` must explicitly contain integer `format_version: 1` and a `states` array; missing fields and version type coercion are rejected rather than interpreted as an older/looser format;
 - every persisted State record explicitly contains `state_id`, `state_class`, `key`, `value`, `status`, and `sources`; only `valid_from` and `valid_to` are optional in the current record representation;
@@ -45,6 +48,8 @@ The current filesystem implementation intentionally keeps a small, strict contra
 - byte-for-byte unchanged crystallized Markdown is not rewritten.
 
 File absence and malformed existing content are deliberately different: an unmaterialized optional persistence file may have a defined empty/absent meaning, while an existing versioned file is never repaired through compatibility defaults.
+
+The process-local Event snapshot only removes repeated disk parsing of an unchanged journal within one live `CharacterDirectory`. It is not a persistent search index and does not make targeted retrieval asymptotically independent of Event count. Persistent/segmented indexing, if later justified, must remain derived from the Event Journal rather than becoming a second Event authority.
 
 These are current implementation guarantees, not a claim that the underlying filesystem is the permanent storage architecture. Crash-consistent multi-file transactions, multi-process writers, backup/restore, schema migration, package integrity tooling, and broader lifecycle operations remain deferred.
 
