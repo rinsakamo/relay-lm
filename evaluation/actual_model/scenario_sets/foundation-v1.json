@@ -1,0 +1,290 @@
+{
+  "format_version": 1,
+  "scenario_set_version": "actual-model-foundation-v1",
+  "quality_rubric_version": "actual-model-quality-v1",
+  "character_fixture_id": "actual-model-foundation-v1",
+  "scenarios": [
+    {
+      "format_version": 1,
+      "id": "response-persona-correction-v1",
+      "family": "response_persona_continuity",
+      "version": "1",
+      "turns": [
+        "僕はユウ。今日は机の青いノートについて話したい。",
+        "さっき名前をユウと言ったけど、正しくはユウト。青いノートの話を続けよう。",
+        "そのノートに僕の誕生日が書いてあった、なんて話はしてないよ。内容を勝手に思い出さないで。"
+      ],
+      "required_provider_capabilities": [
+        "state_candidates"
+      ],
+      "restart_after_turn_count": null,
+      "proposal_labels": [
+        {
+          "turn_index": 1,
+          "state": [
+            {
+              "state_class": "user.identity",
+              "key": "name",
+              "op": "set",
+              "match_value": true,
+              "value": "ユウ"
+            }
+          ],
+          "continuity": []
+        },
+        {
+          "turn_index": 2,
+          "state": [
+            {
+              "state_class": "user.identity",
+              "key": "name",
+              "op": "set",
+              "match_value": true,
+              "value": "ユウト"
+            }
+          ],
+          "continuity": []
+        },
+        {
+          "turn_index": 3,
+          "state": [],
+          "continuity": []
+        }
+      ]
+    },
+    {
+      "format_version": 1,
+      "id": "continuity-lifecycle-v1",
+      "family": "continuity_proposal_quality",
+      "version": "1",
+      "turns": [
+        "机の青い箱の話を続けたい。次のターンで『それ』と言うよ。中身をあとで確認する作業も続けたい。",
+        "それの中身は何だと思う？まだ開けていないから、答えは未解決のままにして。",
+        "開けたら空だった。中身の疑問は解決したし、確認作業も完了したよ。"
+      ],
+      "required_provider_capabilities": [
+        "continuity_candidates"
+      ],
+      "restart_after_turn_count": null,
+      "proposal_labels": [
+        {
+          "turn_index": 1,
+          "state": [],
+          "continuity": [
+            {
+              "kind": "referent",
+              "key": "current_subject",
+              "op": "set",
+              "match_value": false
+            },
+            {
+              "kind": "active_task",
+              "key": "check_box_contents",
+              "op": "set",
+              "match_value": false
+            }
+          ]
+        },
+        {
+          "turn_index": 2,
+          "state": [],
+          "continuity": [
+            {
+              "kind": "unresolved",
+              "key": "box_contents_question",
+              "op": "set",
+              "match_value": false
+            }
+          ]
+        },
+        {
+          "turn_index": 3,
+          "state": [],
+          "continuity": [
+            {
+              "kind": "unresolved",
+              "key": "box_contents_question",
+              "op": "resolve",
+              "match_value": false
+            },
+            {
+              "kind": "active_task",
+              "key": "check_box_contents",
+              "op": "resolve",
+              "match_value": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "format_version": 1,
+      "id": "state-correction-comparison-inference-v1",
+      "family": "state_candidate_quality",
+      "version": "1",
+      "turns": [
+        "僕の名前はミカ。",
+        "コーヒーも好きだけど、紅茶の方がかなり好き。",
+        "今は辛い物は苦手。前に好きだと言ったなら訂正して。",
+        "君が僕を夜型だと推測しても、それを僕が言った事実として保存しないで。"
+      ],
+      "required_provider_capabilities": [
+        "state_candidates"
+      ],
+      "restart_after_turn_count": null,
+      "proposal_labels": [
+        {
+          "turn_index": 1,
+          "state": [
+            {
+              "state_class": "user.identity",
+              "key": "name",
+              "op": "set",
+              "match_value": true,
+              "value": "ミカ"
+            }
+          ],
+          "continuity": []
+        },
+        {
+          "turn_index": 2,
+          "state": [
+            {
+              "state_class": "user.preference",
+              "key": "coffee",
+              "op": "set",
+              "match_value": false
+            },
+            {
+              "state_class": "user.preference",
+              "key": "tea",
+              "op": "set",
+              "match_value": false
+            }
+          ],
+          "continuity": []
+        },
+        {
+          "turn_index": 3,
+          "state": [
+            {
+              "state_class": "user.preference",
+              "key": "spicy_food",
+              "op": "set",
+              "match_value": false
+            }
+          ],
+          "continuity": []
+        },
+        {
+          "turn_index": 4,
+          "state": [],
+          "continuity": []
+        }
+      ]
+    },
+    {
+      "format_version": 1,
+      "id": "cognitive-pressure-shared-semantics-v1",
+      "family": "cognitive_pressure_robustness",
+      "version": "1",
+      "turns": [
+        "僕はナオ。旅行用の赤いポーチを準備する作業を一緒に続けたい。",
+        "そのポーチには充電器を入れた。まだ薬を入れたかは確認できていない。",
+        "今の時点で、確実に分かっていることだけを整理して。"
+      ],
+      "required_provider_capabilities": [
+        "state_candidates",
+        "continuity_candidates"
+      ],
+      "restart_after_turn_count": null,
+      "proposal_labels": [
+        {
+          "turn_index": 1,
+          "state": [
+            {
+              "state_class": "user.identity",
+              "key": "name",
+              "op": "set",
+              "match_value": true,
+              "value": "ナオ"
+            }
+          ],
+          "continuity": [
+            {
+              "kind": "active_task",
+              "key": "prepare_travel_pouch",
+              "op": "set",
+              "match_value": false
+            }
+          ]
+        },
+        {
+          "turn_index": 2,
+          "state": [],
+          "continuity": [
+            {
+              "kind": "unresolved",
+              "key": "medicine_packed",
+              "op": "set",
+              "match_value": false
+            }
+          ]
+        },
+        {
+          "turn_index": 3,
+          "state": [],
+          "continuity": []
+        }
+      ]
+    },
+    {
+      "format_version": 1,
+      "id": "restart-durable-vs-temporary-v1",
+      "family": "restart_quality",
+      "version": "1",
+      "turns": [
+        "僕の名前はソラ。青い封筒を確認する作業を続けたい。",
+        "その確認はまだ終わっていない。再起動の前はここまでにしよう。",
+        "再起動したあと、僕の名前は何だと分かる？直前の一時的な作業文脈を知らないなら、知らないと言って。"
+      ],
+      "required_provider_capabilities": [
+        "state_candidates",
+        "continuity_candidates"
+      ],
+      "restart_after_turn_count": 2,
+      "proposal_labels": [
+        {
+          "turn_index": 1,
+          "state": [
+            {
+              "state_class": "user.identity",
+              "key": "name",
+              "op": "set",
+              "match_value": true,
+              "value": "ソラ"
+            }
+          ],
+          "continuity": [
+            {
+              "kind": "active_task",
+              "key": "review_blue_envelope",
+              "op": "set",
+              "match_value": false
+            }
+          ]
+        },
+        {
+          "turn_index": 2,
+          "state": [],
+          "continuity": []
+        },
+        {
+          "turn_index": 3,
+          "state": [],
+          "continuity": []
+        }
+      ]
+    }
+  ]
+}
