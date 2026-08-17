@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 
 _HEADING = re.compile(r"^(#{1,6})[ \t]+(.+?)\s*$")
+_FENCE = re.compile(r"^[ \t]{0,3}(`{3,}|~{3,})")
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +77,8 @@ def _parse_heading_chunks(markdown: str) -> tuple[MemoryChunk, ...]:
     current_title: str | None = None
     current_body: list[str] = []
     location_counts: dict[str, int] = {}
+    fence_char: str | None = None
+    fence_length = 0
 
     def flush() -> None:
         if current_level is None or current_title is None:
@@ -98,6 +101,23 @@ def _parse_heading_chunks(markdown: str) -> tuple[MemoryChunk, ...]:
         )
 
     for raw_line in markdown.splitlines():
+        fence = _FENCE.match(raw_line)
+        if fence_char is not None:
+            if current_level is not None:
+                current_body.append(raw_line)
+            marker = fence.group(1) if fence is not None else ""
+            if marker and marker[0] == fence_char and len(marker) >= fence_length:
+                fence_char = None
+                fence_length = 0
+            continue
+        if fence is not None:
+            marker = fence.group(1)
+            fence_char = marker[0]
+            fence_length = len(marker)
+            if current_level is not None:
+                current_body.append(raw_line)
+            continue
+
         match = _HEADING.match(raw_line)
         if match is None:
             if current_level is not None:
