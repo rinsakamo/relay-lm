@@ -91,6 +91,7 @@ def compile_cognitive_input(
     evidence = _project_event_evidence(
         event_evidence=event_evidence,
         current_event=current_event,
+        working_context=working_context,
     )
     return CognitiveInput(
         identity=identity,
@@ -356,16 +357,21 @@ def _diagnose_event_evidence_projection(
     }
     redundancy_overlap_count = sum(
         1
-        for item in selected_evidence
-        if item.event_id in working_context_source_ids
+        for event in event_evidence
+        if event.id != current_event.id and event.id in working_context_source_ids
     )
+    if current_event_excluded_count and redundancy_overlap_count:
+        mode = "current_event_and_working_context_deduplicated"
+    elif current_event_excluded_count:
+        mode = "current_event_deduplicated"
+    elif redundancy_overlap_count:
+        mode = "working_context_deduplicated"
+    else:
+        mode = "pass_through"
+
     return ContextSelectionDiagnostics(
         layer="event_evidence",
-        mode=(
-            "current_event_deduplicated"
-            if current_event_excluded_count
-            else "pass_through"
-        ),
+        mode=mode,
         eligible_count=len(event_evidence),
         selected_count=selected_count,
         evicted_count=len(event_evidence) - selected_count,
@@ -382,10 +388,16 @@ def _project_event_evidence(
     *,
     event_evidence: Iterable[Event],
     current_event: Event,
+    working_context: tuple[ContextItem, ...],
 ) -> tuple[EventEvidenceItem, ...]:
+    working_context_source_ids = {
+        source
+        for item in working_context
+        for source in item.sources
+    }
     projected: list[EventEvidenceItem] = []
     for event in event_evidence:
-        if event.id == current_event.id:
+        if event.id == current_event.id or event.id in working_context_source_ids:
             continue
         content = event.payload.get("content")
         if not isinstance(content, str) or not content.strip():

@@ -127,7 +127,9 @@ def test_streaming_turn_uses_same_explicit_event_retrieval_path(tmp_path: Path) 
 
     assert provider.calls == 1
     assert emitted == ["ok"]
-    assert [item.event_id for item in provider.inputs[0].event_evidence] == [coffee.id]
+    supplied = provider.inputs[0]
+    assert supplied.event_evidence == ()
+    assert coffee.id in {source for item in supplied.context for source in item.sources}
 
 
 def test_omitted_event_budget_preserves_empty_event_evidence(tmp_path: Path) -> None:
@@ -185,7 +187,8 @@ def test_memory_and_event_retrieval_remain_distinct_layers(tmp_path: Path) -> No
     supplied = provider.inputs[0]
     assert len(supplied.memory) == 1
     assert supplied.memory[0].location == "memory/MEMORY.md#memory/coffee"
-    assert [item.event_id for item in supplied.event_evidence] == [coffee.id]
+    assert supplied.event_evidence == ()
+    assert coffee.id in {source for item in supplied.context for source in item.sources}
 
 
 def test_event_retrieval_budget_rejects_negative_values() -> None:
