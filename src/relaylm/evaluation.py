@@ -225,6 +225,12 @@ async def evaluate_correction_remove_semantics() -> EvaluationScenarioResult:
     return await evaluate()
 
 
+async def evaluate_crystallization_integrity() -> EvaluationScenarioResult:
+    from relaylm.evaluation_crystallization import evaluate_crystallization_integrity as evaluate
+
+    return await evaluate()
+
+
 async def run_native_evaluation() -> EvaluationReport:
     return EvaluationReport(
         scenarios=(
@@ -236,6 +242,7 @@ async def run_native_evaluation() -> EvaluationReport:
             await evaluate_working_context_budget_atomicity(),
             await evaluate_persistence_integrity(),
             await evaluate_correction_remove_semantics(),
+            await evaluate_crystallization_integrity(),
         ),
     )
 
