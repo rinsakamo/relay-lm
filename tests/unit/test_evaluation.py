@@ -15,6 +15,7 @@ from relaylm.evaluation import (
     evaluate_persistence_integrity,
     evaluate_provider_failure_safety,
     evaluate_restart_continuity,
+    evaluate_streaming_safety,
     evaluate_working_context_budget_atomicity,
     main,
     run_native_evaluation,
@@ -63,6 +64,7 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "persistence_integrity",
         "correction_remove_semantics",
         "crystallization_integrity",
+        "streaming_safety",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
@@ -189,7 +191,6 @@ def test_working_context_budget_evaluation_keeps_complete_exchange_and_provenanc
 
 def test_persistence_integrity_evaluation_is_registered() -> None:
     result = asyncio.run(evaluate_persistence_integrity())
-
     assert result.scenario_id == "persistence_integrity"
     assert result.status == "pass"
     assert all(check.passed for check in result.checks)
@@ -197,7 +198,6 @@ def test_persistence_integrity_evaluation_is_registered() -> None:
 
 def test_correction_remove_evaluation_is_registered() -> None:
     result = asyncio.run(evaluate_correction_remove_semantics())
-
     assert result.scenario_id == "correction_remove_semantics"
     assert result.status == "pass"
     assert all(check.passed for check in result.checks)
@@ -205,7 +205,13 @@ def test_correction_remove_evaluation_is_registered() -> None:
 
 def test_crystallization_integrity_evaluation_is_registered() -> None:
     result = asyncio.run(evaluate_crystallization_integrity())
-
     assert result.scenario_id == "crystallization_integrity"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+
+
+def test_streaming_safety_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_streaming_safety())
+    assert result.scenario_id == "streaming_safety"
     assert result.status == "pass"
     assert all(check.passed for check in result.checks)
