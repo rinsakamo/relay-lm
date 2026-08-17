@@ -29,6 +29,7 @@ domains:
       - tests/unit/test_context_working_diagnostics.py
       - tests/unit/test_context_cross_layer_diagnostics.py
       - tests/unit/test_memory_retrieval_diagnostics.py
+      - tests/unit/test_event_retrieval_diagnostics.py
       - tests/unit/test_turn_memory_retrieval.py
       - tests/unit/test_turn_event_retrieval.py
       - tests/unit/test_event_retrieval.py
@@ -36,6 +37,7 @@ domains:
     docs:
       - docs/architecture/context-compiler.md
       - docs/reference/memory-retrieval-diagnostics.md
+      - docs/reference/event-retrieval-diagnostics.md
 
   state_and_validation:
     runtime:
