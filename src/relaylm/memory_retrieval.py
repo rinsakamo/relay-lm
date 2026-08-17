@@ -26,6 +26,29 @@ class MemoryChunk:
             raise ValueError("memory chunk content must not be empty")
 
 
+@dataclass(frozen=True, slots=True)
+class MemoryRetrievalDiagnostics:
+    """Content-free aggregate observations from one MEMORY retrieval attempt."""
+
+    mode: str
+    parsed_chunk_count: int
+    positive_candidate_count: int
+    selected_count: int
+    chunk_budget_limit: int
+    character_budget_limit: int
+    character_budget_used: int
+    skipped_character_budget_count: int
+    unadmitted_chunk_limit_count: int
+    chunk_budget_pressure: bool
+    character_budget_pressure: bool
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryRetrievalResult:
+    chunks: tuple[MemoryChunk, ...]
+    diagnostics: MemoryRetrievalDiagnostics
+
+
 def select_memory_chunks(
     *,
     memory_markdown: str | None,
@@ -35,20 +58,80 @@ def select_memory_chunks(
 ) -> tuple[MemoryChunk, ...]:
     """Select complete, positively relevant MEMORY.md heading sections under explicit budgets."""
 
+    return _select_memory_chunks(
+        memory_markdown=memory_markdown,
+        query=query,
+        max_chunks=max_chunks,
+        max_chars=max_chars,
+    ).chunks
+
+
+def select_memory_chunks_with_diagnostics(
+    *,
+    memory_markdown: str | None,
+    query: str,
+    max_chunks: int,
+    max_chars: int,
+) -> MemoryRetrievalResult:
+    """Select MEMORY chunks and return content-free retrieval-stage diagnostics."""
+
+    return _select_memory_chunks(
+        memory_markdown=memory_markdown,
+        query=query,
+        max_chunks=max_chunks,
+        max_chars=max_chars,
+    )
+
+
+def _select_memory_chunks(
+    *,
+    memory_markdown: str | None,
+    query: str,
+    max_chunks: int,
+    max_chars: int,
+) -> MemoryRetrievalResult:
     if max_chunks < 0:
         raise ValueError("max_chunks must not be negative")
     if max_chars < 0:
         raise ValueError("max_chars must not be negative")
-    if max_chunks == 0 or max_chars == 0 or not memory_markdown or not query.strip():
-        return ()
+    if max_chunks == 0 or max_chars == 0:
+        return _empty_retrieval_result(
+            mode="zero_budget",
+            max_chunks=max_chunks,
+            max_chars=max_chars,
+        )
+    if not memory_markdown:
+        return _empty_retrieval_result(
+            mode="no_memory",
+            max_chunks=max_chunks,
+            max_chars=max_chars,
+        )
+    if not query.strip():
+        return _empty_retrieval_result(
+            mode="no_query",
+            max_chunks=max_chunks,
+            max_chars=max_chars,
+        )
 
     chunks = _parse_heading_chunks(memory_markdown)
-    if not chunks:
-        return ()
-
     query_terms = _lexical_terms(query)
     if not query_terms:
-        return ()
+        return MemoryRetrievalResult(
+            chunks=(),
+            diagnostics=MemoryRetrievalDiagnostics(
+                mode="no_query_terms",
+                parsed_chunk_count=len(chunks),
+                positive_candidate_count=0,
+                selected_count=0,
+                chunk_budget_limit=max_chunks,
+                character_budget_limit=max_chars,
+                character_budget_used=0,
+                skipped_character_budget_count=0,
+                unadmitted_chunk_limit_count=0,
+                chunk_budget_pressure=False,
+                character_budget_pressure=False,
+            ),
+        )
 
     scored = tuple(_memory_lexical_score(chunk, query_terms) for chunk in chunks)
     ranked_indices = sorted(
@@ -58,16 +141,60 @@ def select_memory_chunks(
 
     selected_indices: list[int] = []
     used_chars = 0
+    skipped_character_budget_count = 0
+    unadmitted_chunk_limit_count = 0
     for index in ranked_indices:
         if len(selected_indices) >= max_chunks:
-            break
+            unadmitted_chunk_limit_count += 1
+            continue
         cost = len(chunks[index].content)
         if cost > max_chars - used_chars:
+            skipped_character_budget_count += 1
             continue
         selected_indices.append(index)
         used_chars += cost
 
-    return tuple(chunks[index] for index in sorted(selected_indices))
+    selected = tuple(chunks[index] for index in sorted(selected_indices))
+    return MemoryRetrievalResult(
+        chunks=selected,
+        diagnostics=MemoryRetrievalDiagnostics(
+            mode="lexical",
+            parsed_chunk_count=len(chunks),
+            positive_candidate_count=len(ranked_indices),
+            selected_count=len(selected),
+            chunk_budget_limit=max_chunks,
+            character_budget_limit=max_chars,
+            character_budget_used=used_chars,
+            skipped_character_budget_count=skipped_character_budget_count,
+            unadmitted_chunk_limit_count=unadmitted_chunk_limit_count,
+            chunk_budget_pressure=unadmitted_chunk_limit_count > 0,
+            character_budget_pressure=skipped_character_budget_count > 0,
+        ),
+    )
+
+
+def _empty_retrieval_result(
+    *,
+    mode: str,
+    max_chunks: int,
+    max_chars: int,
+) -> MemoryRetrievalResult:
+    return MemoryRetrievalResult(
+        chunks=(),
+        diagnostics=MemoryRetrievalDiagnostics(
+            mode=mode,
+            parsed_chunk_count=0,
+            positive_candidate_count=0,
+            selected_count=0,
+            chunk_budget_limit=max_chunks,
+            character_budget_limit=max_chars,
+            character_budget_used=0,
+            skipped_character_budget_count=0,
+            unadmitted_chunk_limit_count=0,
+            chunk_budget_pressure=False,
+            character_budget_pressure=False,
+        ),
+    )
 
 
 def _parse_heading_chunks(markdown: str) -> tuple[MemoryChunk, ...]:
