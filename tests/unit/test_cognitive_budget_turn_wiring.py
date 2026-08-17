@@ -150,7 +150,7 @@ def test_budgeted_buffered_turn_generates_once_after_hard_fit(tmp_path: Path) ->
     assert provider.stream_calls == 0
     assert len(provider.inputs) == 1
     supplied = provider.inputs[0]
-    assert supplied.identity.markdown.startswith("# ReLM")
+    assert supplied.identity.content.startswith("# ReLM")
     assert supplied.input.payload["content"] == "hello"
     assert supplied.state == ()
     assert supplied.context == ()
