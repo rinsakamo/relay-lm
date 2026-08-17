@@ -5,6 +5,8 @@ import asyncio
 from relaylm.evaluation import (
     evaluate_boolean_state_memory_authority,
     evaluate_cjk_retrieval_relevance,
+    evaluate_degree_state_memory_authority,
+    evaluate_distinct_query_feature_relevance,
     evaluate_retrieval_aggregate_diagnostics,
 )
 
@@ -72,4 +74,49 @@ def test_cjk_retrieval_relevance_evaluation_checks_shared_selector_semantics() -
         "memory_selected_count": 1,
         "event_selected_count": 1,
         "indexed_event_selected_count": 1,
+    }
+
+
+def test_distinct_query_feature_relevance_evaluation_checks_shared_set_semantics() -> None:
+    result = asyncio.run(evaluate_distinct_query_feature_relevance())
+
+    assert result.scenario_id == "distinct_query_feature_relevance"
+    assert result.status == "pass"
+    assert {check.check_id for check in result.checks} == {
+        "memory_distinct_overlap_wins",
+        "event_distinct_overlap_wins",
+        "event_iterable_indexed_equivalent",
+        "index_candidate_scores_deduplicate_query_features",
+    }
+    assert {check.boundary for check in result.checks} == {
+        "memory_retrieval",
+        "event_retrieval",
+        "event_discovery_index",
+    }
+    assert result.metrics == {
+        "memory_selected_count": 1,
+        "event_selected_count": 1,
+        "indexed_event_selected_count": 1,
+        "direct_index_candidate_count": 2,
+    }
+
+
+def test_degree_state_memory_authority_evaluation_checks_reserved_degree_cases() -> None:
+    result = asyncio.run(evaluate_degree_state_memory_authority())
+
+    assert result.scenario_id == "degree_state_memory_authority"
+    assert result.status == "pass"
+    assert {check.check_id for check in result.checks} == {
+        "stale_heading_degree_suppressed",
+        "matching_heading_degree_retained",
+        "matching_number_does_not_rescue_semantic_conflict",
+        "inline_degree_is_same_line_scoped",
+        "other_key_degree_not_borrowed",
+        "unaddressed_degree_history_retained",
+    }
+    assert {check.boundary for check in result.checks} == {"context_compiler"}
+    assert result.metrics == {
+        "input_memory_count": 6,
+        "selected_memory_count": 3,
+        "suppressed_memory_count": 3,
     }
