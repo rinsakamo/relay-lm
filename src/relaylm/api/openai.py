@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from relaylm.cognitive import CognitiveProvider
 from relaylm.providers.openai_compatible import ProviderProtocolError
 from relaylm.storage.filesystem import CharacterDataError, CharacterDirectory
-from relaylm.turn import run_user_turn, run_user_turn_streaming
+from relaylm.turn import ContinuityRuntime, run_user_turn, run_user_turn_streaming
 
 
 class ChatMessage(BaseModel):
@@ -55,6 +55,7 @@ def create_openai_router(
     *,
     character: CharacterDirectory,
     provider: CognitiveProvider,
+    continuity_runtime: ContinuityRuntime | None = None,
 ) -> APIRouter:
     router = APIRouter()
     turn_lock = asyncio.Lock()
@@ -79,6 +80,7 @@ def create_openai_router(
                     completion_id=completion_id,
                     created=created,
                     model=request.model,
+                    continuity_runtime=continuity_runtime,
                 ),
                 media_type="text/event-stream",
             )
@@ -89,6 +91,7 @@ def create_openai_router(
                     character=character,
                     provider=provider,
                     content=content,
+                    continuity_runtime=continuity_runtime,
                 )
             except ProviderProtocolError as exc:
                 raise HTTPException(status_code=502, detail="upstream cognitive provider failed") from exc
@@ -118,6 +121,7 @@ async def _stream_chat_completion(
     completion_id: str,
     created: int,
     model: str,
+    continuity_runtime: ContinuityRuntime | None = None,
 ):
     queue: asyncio.Queue[tuple[str, object]] = asyncio.Queue()
 
@@ -133,6 +137,7 @@ async def _stream_chat_completion(
                     provider=provider,
                     content=content,
                     emit_response_delta=emit_response_delta,
+                    continuity_runtime=continuity_runtime,
                 )
         except asyncio.CancelledError:
             raise
