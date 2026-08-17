@@ -123,8 +123,8 @@ The current diagnostics surface covers only the `canonical_state` layer and expo
 - selection mode: `unbounded`, `within_budget`, `zero_budget`, or `lexical_ranked`;
 - eligible / selected / evicted record counts;
 - budget unit (`records`), explicit limit, used count, and whether budget pressure occurred;
-- aggregate selected reasons such as `eligible_unbounded`, `within_budget`, `lexical_match`, and `fallback`;
-- aggregate eviction reason `budget_limit`.
+- selected lexical-match count and selected deterministic-fallback count when lexical ranking is active;
+- evicted-by-budget-limit count.
 
 Diagnostics deliberately exclude State IDs, keys, values, source Event IDs, Current Event content/ID, and any other semantic payload. They are observations about selection mechanics, not a new truth source, persistence layer, ranking authority, or telemetry requirement.
 
