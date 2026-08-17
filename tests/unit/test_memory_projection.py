@@ -4,7 +4,11 @@ from relaylm.context import compile_cognitive_input
 from relaylm.events import Event
 from relaylm.identity import Identity
 from relaylm.memory_retrieval import MemoryChunk
-from relaylm.providers.openai_compatible import serialize_cognitive_input
+from relaylm.providers.openai_compatible import (
+    PROVIDER_WIRE_INSTRUCTION,
+    SYSTEM_INSTRUCTION,
+    serialize_cognitive_input,
+)
 from relaylm.state import CanonicalState
 
 
@@ -62,6 +66,13 @@ def test_memory_location_is_not_event_provenance_in_provider_payload() -> None:
         for record in payload["state"]
     )
     assert payload["input"]["event_id"] == "current-event"
+
+
+def test_provider_instructions_keep_memory_below_state_and_out_of_sources() -> None:
+    assert "Memory is not accepted current State" in SYSTEM_INSTRUCTION
+    assert "treat active State as the current understanding" in SYSTEM_INSTRUCTION
+    assert "Memory `location` values" in PROVIDER_WIRE_INSTRUCTION
+    assert "must never be used as `sources`" in PROVIDER_WIRE_INSTRUCTION
 
 
 def test_no_retrieved_memory_preserves_empty_memory_layer() -> None:
