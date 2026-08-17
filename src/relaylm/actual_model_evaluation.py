@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Awaitable, Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 from relaylm.cognitive import CognitiveInput, CognitiveOutput, CognitiveProvider
@@ -62,6 +62,28 @@ class ExplicitBudgetConfiguration:
 
 
 @dataclass(frozen=True, slots=True)
+class ExplicitContinuityRuntimeConfiguration:
+    """Evaluation-owned identity for process-local Continuity Runtime settings."""
+
+    max_items: int
+    lifetime_revisions: int
+
+    def __post_init__(self) -> None:
+        _validate_positive_int(self.max_items, "continuity max_items")
+        _validate_positive_int(
+            self.lifetime_revisions,
+            "continuity lifetime_revisions",
+        )
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "max_items": self.max_items,
+            "lifetime_revisions": self.lifetime_revisions,
+            "persistence": "process_local_non_durable",
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ActualModelRunManifest:
     """Reproducible identity for one actual-model scenario execution."""
 
@@ -78,6 +100,7 @@ class ActualModelRunManifest:
     scenario_set_version: str
     condition_id: str
     budgets: ExplicitBudgetConfiguration = field(default_factory=ExplicitBudgetConfiguration)
+    continuity_runtime: ExplicitContinuityRuntimeConfiguration | None = None
     execution_path: ExecutionPath = "buffered"
     restart_boundary: RestartBoundary = "none"
     seed: int | None = None
@@ -156,6 +179,11 @@ class ActualModelRunManifest:
             "scenario_set_version": self.scenario_set_version,
             "condition_id": self.condition_id,
             "budgets": self.budgets.to_mapping(),
+            "continuity_runtime": (
+                self.continuity_runtime.to_mapping()
+                if self.continuity_runtime is not None
+                else None
+            ),
             "execution_path": self.execution_path,
             "restart_boundary": self.restart_boundary,
             "replicate_id": self.replicate_id,
@@ -328,6 +356,10 @@ async def run_actual_model_scenario(
     evidence: list[ActualModelTurnEvidence] = []
     memory_budget = _memory_budget(manifest.budgets)
     event_budget = _event_budget(manifest.budgets)
+    manifest, continuity_runtime = _materialize_continuity_runtime(
+        manifest=manifest,
+        runtime=continuity_runtime,
+    )
 
     if manifest.restart_boundary == "before_scenario":
         character = CharacterDirectory(character.root)
@@ -406,6 +438,40 @@ def _event_budget(config: ExplicitBudgetConfiguration) -> EventRetrievalBudget |
         max_events=config.event_max_events,
         max_chars=config.event_max_chars,
     )
+
+
+def _materialize_continuity_runtime(
+    *,
+    manifest: ActualModelRunManifest,
+    runtime: ContinuityRuntime | None,
+) -> tuple[ActualModelRunManifest, ContinuityRuntime | None]:
+    declared = manifest.continuity_runtime
+    if runtime is None:
+        if declared is None:
+            return manifest, None
+        return (
+            manifest,
+            ContinuityRuntime(
+                context=ContinuityContext(max_items=declared.max_items),
+                lifetime_revisions=declared.lifetime_revisions,
+            ),
+        )
+
+    if runtime.context.revision != 0 or runtime.context.items:
+        raise ValueError(
+            "actual-model Continuity Runtime must start from an empty revision-0 context"
+        )
+    observed = ExplicitContinuityRuntimeConfiguration(
+        max_items=runtime.context.max_items,
+        lifetime_revisions=runtime.lifetime_revisions,
+    )
+    if declared is None:
+        return replace(manifest, continuity_runtime=observed), runtime
+    if declared != observed:
+        raise ValueError(
+            "actual-model Continuity Runtime does not match the run manifest"
+        )
+    return manifest, runtime
 
 
 def _raw_observation(output: CognitiveOutput) -> RawModelObservation:
@@ -523,3 +589,10 @@ def _validate_optional_non_negative_int(value: int | None, label: str) -> None:
         raise TypeError(f"{label} must be an integer when provided")
     if value < 0:
         raise ValueError(f"{label} must not be negative")
+
+
+def _validate_positive_int(value: int, label: str) -> None:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"{label} must be an integer")
+    if value <= 0:
+        raise ValueError(f"{label} must be positive")
