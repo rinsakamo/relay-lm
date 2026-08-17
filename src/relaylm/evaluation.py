@@ -431,7 +431,7 @@ async def evaluate_budget_owner_controls() -> EvaluationScenarioResult:
 
 async def evaluate_serialized_input_fit() -> EvaluationScenarioResult:
     from relaylm.evaluation_serialized_input_fit import (
-        evaluate_serialized_input_fit as evaluate,
+        evaluate_serialized_input_fit_component as evaluate,
     )
 
     return await evaluate()
