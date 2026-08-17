@@ -22,11 +22,11 @@ def _current_event() -> Event:
         actor="user",
         payload={"content": "Are notifications enabled?"},
         event_id="current-event",
-        timestamp="2026-08-17T16:35:00+00:00",
+        timestamp="2026-08-18T07:02:00+09:00",
     )
 
 
-def _state(value: bool = True) -> CanonicalState:
+def _state(value: bool) -> CanonicalState:
     return CanonicalState(
         states=(
             StateRecord(
@@ -46,8 +46,8 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
     return MemoryTemporalAuthority(
         temporal_scope=scope,
         provenance=MemoryProvenance(
-            memory_id=f"memory-notifications-{scope.value}",
-            derivation_id=f"derivation-notifications-{scope.value}",
+            memory_id=f"memory-boolean-negation-{scope.value}",
+            derivation_id=f"derivation-boolean-negation-{scope.value}",
             sources=(
                 MemoryProvenanceSource(
                     kind=MemoryProvenanceSourceKind.EVENT,
@@ -61,13 +61,13 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
 def _chunk(content: str, scope: MemoryTemporalScope) -> MemoryChunk:
     return MemoryChunk(
         heading_path=("Memory", "Profile Notes"),
-        location=f"memory/MEMORY.md#memory/notifications-{scope.value}",
+        location=f"memory/MEMORY.md#memory/boolean-negation-{scope.value}",
         content=f"## Profile Notes\n\n{content}",
         temporal_authority=_authority(scope),
     )
 
 
-def _compile(chunk: MemoryChunk, *, value: bool = True):
+def _compile(chunk: MemoryChunk, *, value: bool):
     return compile_cognitive_input(
         identity=Identity("# ReLM\nBe grounded."),
         state=_state(value),
@@ -76,54 +76,56 @@ def _compile(chunk: MemoryChunk, *, value: bool = True):
     )
 
 
-def test_typed_current_freeform_false_conflicts_with_true_state() -> None:
+def test_not_true_conflicts_with_true_state() -> None:
     stale = _chunk(
-        "Current notifications enabled is false.",
+        "Current notifications enabled is not true.",
         MemoryTemporalScope.CURRENT,
     )
 
-    assert _compile(stale).memory == ()
+    assert _compile(stale, value=True).memory == ()
 
 
-def test_typed_current_freeform_true_matches_true_state() -> None:
-    current = _chunk(
-        "The notifications enabled is currently true.",
+def test_not_false_matches_true_state() -> None:
+    compatible = _chunk(
+        "Current notifications enabled is not false.",
         MemoryTemporalScope.CURRENT,
     )
 
-    compiled = _compile(current)
+    compiled = _compile(compatible, value=True)
 
-    assert [item.location for item in compiled.memory] == [current.location]
+    assert [item.location for item in compiled.memory] == [compatible.location]
 
 
-def test_typed_current_now_false_conflicts_with_true_state() -> None:
+def test_not_false_conflicts_with_false_state() -> None:
     stale = _chunk(
-        "Notifications enabled is now false.",
-        MemoryTemporalScope.CURRENT,
-    )
-
-    assert _compile(stale).memory == ()
-
-
-def test_typed_current_true_conflicts_with_false_state() -> None:
-    stale = _chunk(
-        "Current notifications enabled is true.",
+        "The notifications enabled is currently not false.",
         MemoryTemporalScope.CURRENT,
     )
 
     assert _compile(stale, value=False).memory == ()
 
 
+def test_not_true_matches_false_state() -> None:
+    compatible = _chunk(
+        "Notifications enabled is now not true.",
+        MemoryTemporalScope.CURRENT,
+    )
+
+    compiled = _compile(compatible, value=False)
+
+    assert [item.location for item in compiled.memory] == [compatible.location]
+
+
 @pytest.mark.parametrize(
     "scope",
     [MemoryTemporalScope.UNKNOWN, MemoryTemporalScope.HISTORICAL],
 )
-def test_noncurrent_scope_does_not_gain_freeform_boolean_authority(
+def test_noncurrent_scope_does_not_gain_boolean_negation_authority(
     scope: MemoryTemporalScope,
 ) -> None:
-    chunk = _chunk("Current notifications enabled is false.", scope)
+    chunk = _chunk("Current notifications enabled is not true.", scope)
 
-    compiled = _compile(chunk)
+    compiled = _compile(chunk, value=True)
 
     assert [item.location for item in compiled.memory] == [chunk.location]
 
@@ -131,24 +133,35 @@ def test_noncurrent_scope_does_not_gain_freeform_boolean_authority(
 @pytest.mark.parametrize(
     "claim",
     [
+        "Current notifications enabled is not true or false.",
+        "Current notifications enabled is not not true.",
+        "Current notifications enabled is never true.",
         "Current notifications enabled is disabled.",
-        "Current notifications enabled is true or false.",
     ],
 )
-def test_nonliteral_boolean_claims_remain_uninterpreted(claim: str) -> None:
+def test_nonexact_boolean_negations_remain_uninterpreted(claim: str) -> None:
     chunk = _chunk(claim, MemoryTemporalScope.CURRENT)
 
-    compiled = _compile(chunk)
+    compiled = _compile(chunk, value=True)
 
     assert [item.location for item in compiled.memory] == [chunk.location]
 
 
-def test_prefixed_boolean_claim_remains_outside_bounded_grammar() -> None:
-    chunk = _chunk(
-        "Previous current notifications enabled is false.",
+def test_positive_boolean_conflict_remains_suppressed_by_c7() -> None:
+    stale = _chunk(
+        "Current notifications enabled is false.",
         MemoryTemporalScope.CURRENT,
     )
 
-    compiled = _compile(chunk)
+    assert _compile(stale, value=True).memory == ()
 
-    assert [item.location for item in compiled.memory] == [chunk.location]
+
+def test_positive_boolean_match_remains_retained_by_c7() -> None:
+    current = _chunk(
+        "Current notifications enabled is true.",
+        MemoryTemporalScope.CURRENT,
+    )
+
+    compiled = _compile(current, value=True)
+
+    assert [item.location for item in compiled.memory] == [current.location]
