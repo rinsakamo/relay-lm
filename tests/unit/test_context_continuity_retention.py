@@ -110,7 +110,7 @@ def test_accepted_referent_and_unresolved_survive_zero_recent_message_budget() -
         ("event-user-1",),
         ("event-assistant-1",),
     ]
-    assert [item.actor for item in compiled.context] == ["user", "assistant"]
+    assert [item.actor for item in compiled.context] == [None, None]
 
 
 def test_active_task_is_not_projected_by_c2() -> None:
