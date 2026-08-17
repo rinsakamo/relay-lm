@@ -13,7 +13,7 @@ dependencies = [
   "PyYAML>=6.0.2",
   "fastapi>=0.115",
   "httpx>=0.28",
-  "uvicorn>=0.34",
+  "uvicorn>=0.52.3",
 ]
 
 [project.optional-dependencies]
