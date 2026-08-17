@@ -1,0 +1,1009 @@
+from __future__ import annotations
+
+import os
+import re
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from enum import Enum
+from pathlib import Path
+from types import MappingProxyType
+from typing import Any
+
+import yaml
+from yaml.nodes import MappingNode
+from yaml.resolver import BaseResolver
+
+from relaylm.budget import (
+    BudgetDegradationPolicy,
+    BudgetDegradationStep,
+    BudgetLayer,
+    BudgetPlan,
+    CountCharacterEnvelope,
+    CountEnvelope,
+    TotalBudgetConfig,
+)
+from relaylm.budget_enforcement import TokenCountMode
+from relaylm.runtime_config import (
+    DEFAULT_SERVER_HOST,
+    DEFAULT_SERVER_PORT,
+    RUNTIME_CONFIG_FORMAT_VERSION,
+    RUNTIME_CONFIG_PATH_ENV,
+    CharacterRuntimeConfig,
+    ConfigSource,
+    ContinuityRuntimeSettings,
+    EffectiveConfigSecret,
+    EffectiveConfigValue,
+    EventRetrievalRuntimeConfig,
+    ExplicitCognitiveBudgetConfig,
+    MemoryRetrievalRuntimeConfig,
+    ProviderRuntimeConfig,
+    RuntimeConfig,
+    RuntimeConfigErrorCode,
+    RuntimePolicyConfig,
+    RuntimeSecretInputs,
+    SecretEnvReference,
+    ServerRuntimeConfig,
+    TokenCounterCapabilityConfig,
+)
+
+
+DEFAULT_PROVIDER_ADAPTER = "openai_compatible"
+_RAW_PROVIDER_API_KEY_ENV = "RELAYLM_PROVIDER_API_KEY"
+_INTEGER_TEXT_RE = re.compile(r"^[0-9]+$")
+_MISSING = object()
+
+
+class RuntimeConfigResolutionError(ValueError):
+    """Safe, typed failure while discovering, parsing, or resolving runtime config."""
+
+    def __init__(
+        self,
+        code: RuntimeConfigErrorCode,
+        *,
+        field: str | None,
+        message: str,
+    ) -> None:
+        self.code = code
+        self.field = field
+        prefix = code.value if field is None else f"{code.value}: {field}"
+        super().__init__(f"{prefix}: {message}")
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeConfigOverrides:
+    """Named release-CLI override inputs frozen by the RCFG1 contract."""
+
+    character_directory: str | None = None
+    provider_adapter: str | None = None
+    provider_base_url: str | None = None
+    provider_model: str | None = None
+    provider_api_key_env: str | None = field(default=None, repr=False)
+    server_host: str | None = None
+    server_port: int | None = None
+    profile: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedRuntimeConfig:
+    """Validated non-secret config, process-local secrets, and source provenance."""
+
+    config: RuntimeConfig
+    secrets: RuntimeSecretInputs
+    provenance: Mapping[str, EffectiveConfigValue]
+    secret_effective: EffectiveConfigSecret
+    config_path: Path | None
+    config_path_source: ConfigSource | None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "provenance",
+            MappingProxyType(dict(self.provenance)),
+        )
+
+    def source_for(self, field_path: str) -> ConfigSource:
+        return self.provenance[field_path].source
+
+    def effective_diagnostics(self) -> dict[str, object]:
+        values = {
+            path: {
+                "value": _diagnostic_value(item.value),
+                "source": item.source.value,
+            }
+            for path, item in sorted(self.provenance.items())
+        }
+        secret = {
+            "configured": self.secret_effective.configured,
+            "source": (
+                None
+                if self.secret_effective.source is None
+                else self.secret_effective.source.value
+            ),
+            "material_source": (
+                None
+                if self.secret_effective.material_source is None
+                else self.secret_effective.material_source.value
+            ),
+        }
+        config_path: dict[str, object] | None
+        if self.config_path is None:
+            config_path = None
+        else:
+            assert self.config_path_source is not None
+            config_path = {
+                "value": str(self.config_path),
+                "source": self.config_path_source.value,
+            }
+        return {
+            "format_version": self.config.format_version,
+            "config_path": config_path,
+            "values": values,
+            "secrets": {"provider.api_key": secret},
+            "validation_status": "valid",
+        }
+
+
+class _DuplicateKeyError(yaml.YAMLError):
+    def __init__(self, key: object) -> None:
+        self.key = key
+        super().__init__(f"duplicate YAML key: {key}")
+
+
+class _UniqueKeyLoader(yaml.SafeLoader):
+    pass
+
+
+def _construct_unique_mapping(
+    loader: _UniqueKeyLoader,
+    node: MappingNode,
+    deep: bool = False,
+) -> dict[object, object]:
+    mapping: dict[object, object] = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        try:
+            duplicate = key in mapping
+        except TypeError as exc:
+            raise yaml.YAMLError("runtime config mapping key must be scalar") from exc
+        if duplicate:
+            raise _DuplicateKeyError(key)
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+_UniqueKeyLoader.add_constructor(
+    BaseResolver.DEFAULT_MAPPING_TAG,
+    _construct_unique_mapping,
+)
+
+
+def resolve_runtime_config(
+    *,
+    config_path: str | Path | None = None,
+    overrides: RuntimeConfigOverrides | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> ResolvedRuntimeConfig:
+    """Resolve one deterministic v1 runtime configuration without assembly effects."""
+
+    active_overrides = overrides or RuntimeConfigOverrides()
+    active_env: Mapping[str, str] = os.environ if environ is None else environ
+    selected_path, selected_path_source = _discover_config_path(
+        config_path=config_path,
+        environ=active_env,
+    )
+    raw = _load_config_mapping(selected_path) if selected_path is not None else {}
+    if selected_path is not None:
+        _validate_file_shape(raw)
+
+    provenance: dict[str, EffectiveConfigValue] = {}
+    if selected_path is not None:
+        _collect_file_provenance(raw, provenance)
+
+    if selected_path is None:
+        format_version = RUNTIME_CONFIG_FORMAT_VERSION
+        _record(
+            provenance,
+            "format_version",
+            format_version,
+            ConfigSource.CANONICAL_DEFAULT,
+        )
+    else:
+        format_version = raw["format_version"]
+        _record(
+            provenance,
+            "format_version",
+            format_version,
+            ConfigSource.CONFIG_FILE,
+        )
+
+    character_directory = _resolve_string_leaf(
+        "character.directory",
+        cli_value=active_overrides.character_directory,
+        env_name="RELAYLM_CHARACTER_DIR",
+        environ=active_env,
+        file_value=_file_value(raw, "character", "directory"),
+        provenance=provenance,
+        required=True,
+    )
+    provider_adapter = _resolve_string_leaf(
+        "provider.adapter",
+        cli_value=active_overrides.provider_adapter,
+        env_name="RELAYLM_PROVIDER_ADAPTER",
+        environ=active_env,
+        file_value=_file_value(raw, "provider", "adapter"),
+        provenance=provenance,
+        default=DEFAULT_PROVIDER_ADAPTER,
+    )
+    provider_base_url = _resolve_string_leaf(
+        "provider.base_url",
+        cli_value=active_overrides.provider_base_url,
+        env_name="RELAYLM_PROVIDER_BASE_URL",
+        environ=active_env,
+        file_value=_file_value(raw, "provider", "base_url"),
+        provenance=provenance,
+        required=True,
+    )
+    provider_model = _resolve_string_leaf(
+        "provider.model",
+        cli_value=active_overrides.provider_model,
+        env_name="RELAYLM_PROVIDER_MODEL",
+        environ=active_env,
+        file_value=_file_value(raw, "provider", "model"),
+        provenance=provenance,
+        required=True,
+    )
+    server_host = _resolve_string_leaf(
+        "server.host",
+        cli_value=active_overrides.server_host,
+        env_name="RELAYLM_HOST",
+        environ=active_env,
+        file_value=_file_value(raw, "server", "host"),
+        provenance=provenance,
+        default=DEFAULT_SERVER_HOST,
+    )
+    server_port = _resolve_int_leaf(
+        "server.port",
+        cli_value=active_overrides.server_port,
+        env_name="RELAYLM_PORT",
+        environ=active_env,
+        file_value=_file_value(raw, "server", "port"),
+        provenance=provenance,
+        default=DEFAULT_SERVER_PORT,
+    )
+    profile = _resolve_optional_string_leaf(
+        "runtime.profile",
+        cli_value=active_overrides.profile,
+        env_name="RELAYLM_PROFILE",
+        environ=active_env,
+        file_value=_file_value(raw, "runtime", "profile"),
+        provenance=provenance,
+    )
+    if profile is not None:
+        raise RuntimeConfigResolutionError(
+            RuntimeConfigErrorCode.INVALID_COMBINATION,
+            field="runtime.profile",
+            message=(
+                "calibrated runtime profiles are not current authority; "
+                "use explicit owner controls until #1388 publishes them"
+            ),
+        )
+
+    provider_api_key_ref, secrets, secret_effective = _resolve_provider_secret(
+        overrides=active_overrides,
+        environ=active_env,
+        raw=raw,
+    )
+
+    runtime_raw = raw.get("runtime", {})
+    assert isinstance(runtime_raw, dict)
+    memory_retrieval = (
+        _parse_memory_retrieval(runtime_raw["memory_retrieval"])
+        if "memory_retrieval" in runtime_raw
+        else None
+    )
+    event_retrieval = (
+        _parse_event_retrieval(runtime_raw["event_retrieval"])
+        if "event_retrieval" in runtime_raw
+        else None
+    )
+    continuity = (
+        _parse_continuity(runtime_raw["continuity"])
+        if "continuity" in runtime_raw
+        else None
+    )
+    cognitive_budget = (
+        _parse_cognitive_budget(runtime_raw["cognitive_budget"])
+        if "cognitive_budget" in runtime_raw
+        else None
+    )
+
+    try:
+        resolved_config = RuntimeConfig(
+            format_version=format_version,
+            character=CharacterRuntimeConfig(directory=character_directory),
+            provider=ProviderRuntimeConfig(
+                adapter=provider_adapter,
+                base_url=provider_base_url,
+                model=provider_model,
+                api_key=provider_api_key_ref,
+            ),
+            server=ServerRuntimeConfig(host=server_host, port=server_port),
+            runtime=RuntimePolicyConfig(
+                profile=None,
+                memory_retrieval=memory_retrieval,
+                event_retrieval=event_retrieval,
+                continuity=continuity,
+                cognitive_budget=cognitive_budget,
+            ),
+        )
+    except TypeError as exc:
+        raise RuntimeConfigResolutionError(
+            RuntimeConfigErrorCode.INVALID_TYPE,
+            field="runtime",
+            message=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise RuntimeConfigResolutionError(
+            RuntimeConfigErrorCode.INVALID_VALUE,
+            field="runtime",
+            message=str(exc),
+        ) from exc
+
+    return ResolvedRuntimeConfig(
+        config=resolved_config,
+        secrets=secrets,
+        provenance=provenance,
+        secret_effective=secret_effective,
+        config_path=selected_path,
+        config_path_source=selected_path_source,
+    )
+
+
+def _discover_config_path(
+    *,
+    config_path: str | Path | None,
+    environ: Mapping[str, str],
+) -> tuple[Path | None, ConfigSource | None]:
+    if config_path is not None:
+        if isinstance(config_path, str) and not config_path.strip():
+            raise RuntimeConfigResolutionError(
+                RuntimeConfigErrorCode.DISCOVERY_ERROR,
+                field="config_path",
+                message="explicit config path must not be empty",
+            )
+        try:
+            return Path(config_path).expanduser(), ConfigSource.CLI
+        except TypeError as exc:
+            raise RuntimeConfigResolutionError(
+                RuntimeConfigErrorCode.DISCOVERY_ERROR,
+                field="config_path",
+                message="explicit config path must be a path-like value",
+            ) from exc
+
+    if RUNTIME_CONFIG_PATH_ENV not in environ:
+        return None, None
+    raw_path = environ[RUNTIME_CONFIG_PATH_ENV]
+    if not isinstance(raw_path, str):
+        raise RuntimeConfigResolutionError(
+            RuntimeConfigErrorCode.DISCOVERY_ERROR,
+            field="config_path",
+            message=f"{RUNTIME_CONFIG_PATH_ENV} must be a string path",
+        )
+    if not raw_path.strip():
+        raise RuntimeConfigResolutionError(
+            RuntimeConfigErrorCode.DISCOVERY_ERROR,
+            field="config_path",
+            message=f"{RUNTIME_CONFIG_PATH_ENV} must not be empty",
+        )
+    return Path(raw_path).expanduser(), ConfigSource.ENV
+
+
+def _load_config_mapping(path: Path) -> dict[str, Any]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise RuntimeConfigResolutionError(
+            RuntimeConfigErrorCode.READ_ERROR,
+            field="config_path",
+            message=f"cannot read selected runtime config: {path}",
+        ) from exc
+
+    try:
+        loaded = yaml.load(text, Loader=_UniqueKeyLoader)
+    except _DuplicateKeyError as exc:
+        raise RuntimeConfigResolutionError(
+            RuntimeConfigErrorCode.PARSE_ERROR,
+            field="config_path",
+            message=f"duplicate YAML key is not allowed: {exc.key}",
+        ) from exc
+    except yaml.YAMLError as exc:
+        raise RuntimeConfigResolutionError(
+            RuntimeConfigErrorCode.PARSE_ERROR,
+            field="config_path",
+            message="runtime configuration YAML is invalid",
+        ) from exc
+
+    if not isinstance(loaded, dict):
+        raise RuntimeConfigResolutionError(
+            RuntimeConfigErrorCode.INVALID_TYPE,
+            field="runtime_config",
+            message="runtime configuration root must be a mapping",
+        )
+    return loaded
+
+
+def _validate_file_shape(raw: dict[str, Any]) -> None:
+    if "format_version" not in raw:
+        _missing("format_version")
+    version = raw["format_version"]
+    if isinstance(version, bool) or not isinstance(version, int):
+        _invalid_type("format_version", "must be integer 1")
+    if version != RUNTIME_CONFIG_FORMAT_VERSION:
+        raise RuntimeConfigResolutionError(
+            RuntimeConfigErrorCode.UNSUPPORTED_FORMAT_VERSION,
+            field="format_version",
+            message=f"unsupported runtime format version: {version}",
+        )
+
+    _reject_unknown(raw, "", {"format_version", "character", "provider", "server", "runtime"})
+
+    if "character" in raw:
+        character = _mapping(raw["character"], "character")
+        _reject_unknown(character, "character", {"directory"})
+        if "directory" in character:
+            _string(character["directory"], "character.directory")
+
+    if "provider" in raw:
+        provider = _mapping(raw["provider"], "provider")
+        _reject_unknown(provider, "provider", {"adapter", "base_url", "model", "api_key"})
+        for key in ("adapter", "base_url", "model"):
+            if key in provider:
+                _string(provider[key], f"provider.{key}")
+        if "api_key" in provider:
+            secret = _mapping(provider["api_key"], "provider.api_key")
+            _reject_unknown(secret, "provider.api_key", {"env"})
+            if "env" not in secret:
+                _missing("provider.api_key.env")
+            env_name = _string(secret["env"], "provider.api_key.env")
+            try:
+                SecretEnvReference(env=env_name)
+            except ValueError as exc:
+                _invalid_value("provider.api_key.env", str(exc))
+
+    if "server" in raw:
+        server = _mapping(raw["server"], "server")
+        _reject_unknown(server, "server", {"host", "port"})
+        if "host" in server:
+            _string(server["host"], "server.host")
+        if "port" in server:
+            _integer(server["port"], "server.port")
+
+    if "runtime" in raw:
+        runtime = _mapping(raw["runtime"], "runtime")
+        _reject_unknown(
+            runtime,
+            "runtime",
+            {
+                "profile",
+                "memory_retrieval",
+                "event_retrieval",
+                "continuity",
+                "cognitive_budget",
+            },
+        )
+        if "profile" in runtime:
+            _string(runtime["profile"], "runtime.profile")
+        if "memory_retrieval" in runtime:
+            _parse_memory_retrieval(runtime["memory_retrieval"])
+        if "event_retrieval" in runtime:
+            _parse_event_retrieval(runtime["event_retrieval"])
+        if "continuity" in runtime:
+            _parse_continuity(runtime["continuity"])
+        if "cognitive_budget" in runtime:
+            _parse_cognitive_budget(runtime["cognitive_budget"])
+
+
+def _parse_memory_retrieval(raw: object) -> MemoryRetrievalRuntimeConfig:
+    path = "runtime.memory_retrieval"
+    mapping = _mapping(raw, path)
+    _require_exact_keys(mapping, path, {"max_chunks", "max_chars"})
+    max_chunks = _integer(mapping["max_chunks"], f"{path}.max_chunks")
+    max_chars = _integer(mapping["max_chars"], f"{path}.max_chars")
+    try:
+        return MemoryRetrievalRuntimeConfig(max_chunks=max_chunks, max_chars=max_chars)
+    except ValueError as exc:
+        _invalid_value(path, str(exc))
+
+
+def _parse_event_retrieval(raw: object) -> EventRetrievalRuntimeConfig:
+    path = "runtime.event_retrieval"
+    mapping = _mapping(raw, path)
+    _require_exact_keys(mapping, path, {"max_events", "max_chars"})
+    max_events = _integer(mapping["max_events"], f"{path}.max_events")
+    max_chars = _integer(mapping["max_chars"], f"{path}.max_chars")
+    try:
+        return EventRetrievalRuntimeConfig(max_events=max_events, max_chars=max_chars)
+    except ValueError as exc:
+        _invalid_value(path, str(exc))
+
+
+def _parse_continuity(raw: object) -> ContinuityRuntimeSettings:
+    path = "runtime.continuity"
+    mapping = _mapping(raw, path)
+    _require_exact_keys(mapping, path, {"max_items", "lifetime_revisions"})
+    max_items = _integer(mapping["max_items"], f"{path}.max_items")
+    lifetime = _integer(
+        mapping["lifetime_revisions"],
+        f"{path}.lifetime_revisions",
+    )
+    try:
+        return ContinuityRuntimeSettings(
+            max_items=max_items,
+            lifetime_revisions=lifetime,
+        )
+    except ValueError as exc:
+        _invalid_value(path, str(exc))
+
+
+def _parse_cognitive_budget(raw: object) -> ExplicitCognitiveBudgetConfig:
+    path = "runtime.cognitive_budget"
+    mapping = _mapping(raw, path)
+    _require_exact_keys(mapping, path, {"total", "policy", "token_counter"})
+
+    total_path = f"{path}.total"
+    total_raw = _mapping(mapping["total"], total_path)
+    _require_exact_keys(
+        total_raw,
+        total_path,
+        {"model_context_window", "reserved_output_tokens"},
+    )
+    model_context_window = _integer(
+        total_raw["model_context_window"],
+        f"{total_path}.model_context_window",
+    )
+    reserved_output_tokens = _integer(
+        total_raw["reserved_output_tokens"],
+        f"{total_path}.reserved_output_tokens",
+    )
+    try:
+        total = TotalBudgetConfig(
+            model_context_window=model_context_window,
+            reserved_output_tokens=reserved_output_tokens,
+        )
+    except ValueError as exc:
+        _invalid_value(total_path, str(exc))
+
+    policy = _parse_budget_policy(mapping["policy"], f"{path}.policy")
+    token_counter = _parse_token_counter(
+        mapping["token_counter"],
+        f"{path}.token_counter",
+    )
+    return ExplicitCognitiveBudgetConfig(
+        total=total,
+        policy=policy,
+        token_counter=token_counter,
+    )
+
+
+def _parse_budget_policy(raw: object, path: str) -> BudgetDegradationPolicy:
+    mapping = _mapping(raw, path)
+    _require_exact_keys(mapping, path, {"initial_plan", "steps"})
+    plan_path = f"{path}.initial_plan"
+    plan_raw = _mapping(mapping["initial_plan"], plan_path)
+    _require_exact_keys(
+        plan_raw,
+        plan_path,
+        {"canonical_state", "working_context", "retrieved_memory", "event_evidence"},
+    )
+    try:
+        plan = BudgetPlan(
+            canonical_state=_parse_count_envelope(
+                plan_raw["canonical_state"],
+                f"{plan_path}.canonical_state",
+            ),
+            working_context=_parse_count_character_envelope(
+                plan_raw["working_context"],
+                f"{plan_path}.working_context",
+            ),
+            retrieved_memory=_parse_count_character_envelope(
+                plan_raw["retrieved_memory"],
+                f"{plan_path}.retrieved_memory",
+            ),
+            event_evidence=_parse_count_character_envelope(
+                plan_raw["event_evidence"],
+                f"{plan_path}.event_evidence",
+            ),
+        )
+    except (TypeError, ValueError) as exc:
+        _invalid_value(path, str(exc))
+
+    steps_raw = mapping["steps"]
+    if not isinstance(steps_raw, list):
+        _invalid_type(f"{path}.steps", "must be a sequence")
+    steps: list[BudgetDegradationStep] = []
+    for index, item in enumerate(steps_raw):
+        step_path = f"{path}.steps.{index}"
+        step_raw = _mapping(item, step_path)
+        _require_exact_keys(step_raw, step_path, {"layer", "target"})
+        layer_name = _string(step_raw["layer"], f"{step_path}.layer")
+        try:
+            layer = BudgetLayer(layer_name)
+        except ValueError as exc:
+            _invalid_value(f"{step_path}.layer", "unsupported budget layer")
+        if layer is BudgetLayer.CANONICAL_STATE:
+            target = _parse_count_envelope(
+                step_raw["target"],
+                f"{step_path}.target",
+            )
+        else:
+            target = _parse_count_character_envelope(
+                step_raw["target"],
+                f"{step_path}.target",
+            )
+        steps.append(BudgetDegradationStep(layer=layer, target=target))
+
+    try:
+        return BudgetDegradationPolicy(initial_plan=plan, steps=tuple(steps))
+    except (TypeError, ValueError) as exc:
+        _invalid_value(path, str(exc))
+
+
+def _parse_count_envelope(raw: object, path: str) -> CountEnvelope:
+    mapping = _mapping(raw, path)
+    _require_exact_keys(mapping, path, {"max_items", "floor_items"})
+    max_items = _integer(mapping["max_items"], f"{path}.max_items")
+    floor_items = _integer(mapping["floor_items"], f"{path}.floor_items")
+    try:
+        return CountEnvelope(max_items=max_items, floor_items=floor_items)
+    except ValueError as exc:
+        _invalid_value(path, str(exc))
+
+
+def _parse_count_character_envelope(
+    raw: object,
+    path: str,
+) -> CountCharacterEnvelope:
+    mapping = _mapping(raw, path)
+    _require_exact_keys(
+        mapping,
+        path,
+        {"max_items", "floor_items", "max_chars", "floor_chars"},
+    )
+    max_items = _integer(mapping["max_items"], f"{path}.max_items")
+    floor_items = _integer(mapping["floor_items"], f"{path}.floor_items")
+    max_chars = _integer(mapping["max_chars"], f"{path}.max_chars")
+    floor_chars = _integer(mapping["floor_chars"], f"{path}.floor_chars")
+    try:
+        return CountCharacterEnvelope(
+            max_items=max_items,
+            floor_items=floor_items,
+            max_chars=max_chars,
+            floor_chars=floor_chars,
+        )
+    except ValueError as exc:
+        _invalid_value(path, str(exc))
+
+
+def _parse_token_counter(raw: object, path: str) -> TokenCounterCapabilityConfig:
+    mapping = _mapping(raw, path)
+    _require_exact_keys(mapping, path, {"capability", "mode"})
+    capability = _string(mapping["capability"], f"{path}.capability")
+    mode_name = _string(mapping["mode"], f"{path}.mode")
+    try:
+        mode = TokenCountMode(mode_name)
+    except ValueError as exc:
+        _invalid_value(f"{path}.mode", "unsupported token accounting mode")
+    return TokenCounterCapabilityConfig(capability=capability, mode=mode)
+
+
+def _resolve_provider_secret(
+    *,
+    overrides: RuntimeConfigOverrides,
+    environ: Mapping[str, str],
+    raw: dict[str, Any],
+) -> tuple[SecretEnvReference | None, RuntimeSecretInputs, EffectiveConfigSecret]:
+    if overrides.provider_api_key_env is not None:
+        ref = _secret_reference(
+            overrides.provider_api_key_env,
+            field="provider.api_key",
+        )
+        material = _referenced_secret(environ, ref.env)
+        return (
+            ref,
+            RuntimeSecretInputs(provider_api_key=material),
+            EffectiveConfigSecret(
+                configured=True,
+                source=ConfigSource.CLI,
+                material_source=ConfigSource.ENV,
+            ),
+        )
+
+    if _RAW_PROVIDER_API_KEY_ENV in environ:
+        material = environ[_RAW_PROVIDER_API_KEY_ENV]
+        if not isinstance(material, str) or not material.strip():
+            raise RuntimeConfigResolutionError(
+                RuntimeConfigErrorCode.SECRET_UNAVAILABLE,
+                field="provider.api_key",
+                message=f"{_RAW_PROVIDER_API_KEY_ENV} is present but empty",
+            )
+        return (
+            None,
+            RuntimeSecretInputs(provider_api_key=material),
+            EffectiveConfigSecret(
+                configured=True,
+                source=ConfigSource.ENV,
+                material_source=ConfigSource.ENV,
+            ),
+        )
+
+    file_secret = _file_value(raw, "provider", "api_key")
+    if file_secret is not _MISSING:
+        assert isinstance(file_secret, dict)
+        ref = _secret_reference(file_secret["env"], field="provider.api_key")
+        material = _referenced_secret(environ, ref.env)
+        return (
+            ref,
+            RuntimeSecretInputs(provider_api_key=material),
+            EffectiveConfigSecret(
+                configured=True,
+                source=ConfigSource.CONFIG_FILE,
+                material_source=ConfigSource.ENV,
+            ),
+        )
+
+    return (
+        None,
+        RuntimeSecretInputs(),
+        EffectiveConfigSecret(configured=False, source=None, material_source=None),
+    )
+
+
+def _secret_reference(value: object, *, field: str) -> SecretEnvReference:
+    if not isinstance(value, str):
+        _invalid_type(field, "secret reference must be an environment variable name")
+    try:
+        return SecretEnvReference(env=value)
+    except ValueError as exc:
+        _invalid_value(field, str(exc))
+
+
+def _referenced_secret(environ: Mapping[str, str], name: str) -> str:
+    if name not in environ:
+        raise RuntimeConfigResolutionError(
+            RuntimeConfigErrorCode.SECRET_UNAVAILABLE,
+            field="provider.api_key",
+            message=f"referenced environment variable is unavailable: {name}",
+        )
+    value = environ[name]
+    if not isinstance(value, str) or not value.strip():
+        raise RuntimeConfigResolutionError(
+            RuntimeConfigErrorCode.SECRET_UNAVAILABLE,
+            field="provider.api_key",
+            message=f"referenced environment variable is empty: {name}",
+        )
+    return value
+
+
+def _resolve_string_leaf(
+    path: str,
+    *,
+    cli_value: object,
+    env_name: str,
+    environ: Mapping[str, str],
+    file_value: object,
+    provenance: dict[str, EffectiveConfigValue],
+    required: bool = False,
+    default: object = _MISSING,
+) -> str:
+    value, source = _choose_leaf(
+        cli_value=cli_value,
+        env_name=env_name,
+        environ=environ,
+        file_value=file_value,
+        default=default,
+    )
+    if value is _MISSING:
+        if required:
+            _missing(path)
+        raise AssertionError(f"optional resolver used for required leaf: {path}")
+    resolved = _string(value, path)
+    _record(provenance, path, resolved, source)
+    return resolved
+
+
+def _resolve_optional_string_leaf(
+    path: str,
+    *,
+    cli_value: object,
+    env_name: str,
+    environ: Mapping[str, str],
+    file_value: object,
+    provenance: dict[str, EffectiveConfigValue],
+) -> str | None:
+    value, source = _choose_leaf(
+        cli_value=cli_value,
+        env_name=env_name,
+        environ=environ,
+        file_value=file_value,
+        default=_MISSING,
+    )
+    if value is _MISSING:
+        provenance.pop(path, None)
+        return None
+    resolved = _string(value, path)
+    _record(provenance, path, resolved, source)
+    return resolved
+
+
+def _resolve_int_leaf(
+    path: str,
+    *,
+    cli_value: object,
+    env_name: str,
+    environ: Mapping[str, str],
+    file_value: object,
+    provenance: dict[str, EffectiveConfigValue],
+    default: int,
+) -> int:
+    value, source = _choose_leaf(
+        cli_value=cli_value,
+        env_name=env_name,
+        environ=environ,
+        file_value=file_value,
+        default=default,
+    )
+    if source is ConfigSource.ENV:
+        if not isinstance(value, str) or not _INTEGER_TEXT_RE.fullmatch(value):
+            _invalid_type(path, f"{env_name} must be an unsigned integer string")
+        resolved = int(value)
+    else:
+        resolved = _integer(value, path)
+    _record(provenance, path, resolved, source)
+    return resolved
+
+
+def _choose_leaf(
+    *,
+    cli_value: object,
+    env_name: str,
+    environ: Mapping[str, str],
+    file_value: object,
+    default: object,
+) -> tuple[object, ConfigSource]:
+    if cli_value is not None:
+        return cli_value, ConfigSource.CLI
+    if env_name in environ:
+        return environ[env_name], ConfigSource.ENV
+    if file_value is not _MISSING:
+        return file_value, ConfigSource.CONFIG_FILE
+    if default is not _MISSING:
+        return default, ConfigSource.CANONICAL_DEFAULT
+    return _MISSING, ConfigSource.CANONICAL_DEFAULT
+
+
+def _file_value(raw: dict[str, Any], *path: str) -> object:
+    current: object = raw
+    for component in path:
+        if not isinstance(current, dict) or component not in current:
+            return _MISSING
+        current = current[component]
+    return current
+
+
+def _collect_file_provenance(
+    raw: dict[str, Any],
+    provenance: dict[str, EffectiveConfigValue],
+) -> None:
+    def visit(value: object, path: str) -> None:
+        if path == "provider.api_key" or path.startswith("provider.api_key."):
+            return
+        if isinstance(value, dict):
+            for key, nested in value.items():
+                nested_path = str(key) if not path else f"{path}.{key}"
+                visit(nested, nested_path)
+            return
+        if isinstance(value, list):
+            for index, nested in enumerate(value):
+                visit(nested, f"{path}.{index}")
+            return
+        if path:
+            _record(
+                provenance,
+                path,
+                value,
+                ConfigSource.CONFIG_FILE,
+            )
+
+    visit(raw, "")
+
+
+def _record(
+    provenance: dict[str, EffectiveConfigValue],
+    path: str,
+    value: object,
+    source: ConfigSource,
+) -> None:
+    provenance[path] = EffectiveConfigValue(value=value, source=source)
+
+
+def _mapping(value: object, path: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        _invalid_type(path, "must be a mapping")
+    for key in value:
+        if not isinstance(key, str):
+            _invalid_type(path, "mapping keys must be strings")
+    return value
+
+
+def _reject_unknown(
+    mapping: dict[str, Any],
+    path: str,
+    allowed: set[str],
+) -> None:
+    for key in mapping:
+        if not isinstance(key, str):
+            _invalid_type(path or "runtime_config", "mapping keys must be strings")
+        if key not in allowed:
+            field_path = key if not path else f"{path}.{key}"
+            raise RuntimeConfigResolutionError(
+                RuntimeConfigErrorCode.UNKNOWN_FIELD,
+                field=field_path,
+                message="unknown runtime configuration field",
+            )
+
+
+def _require_exact_keys(
+    mapping: dict[str, Any],
+    path: str,
+    required: set[str],
+) -> None:
+    _reject_unknown(mapping, path, required)
+    for key in sorted(required):
+        if key not in mapping:
+            _missing(f"{path}.{key}")
+
+
+def _string(value: object, path: str) -> str:
+    if not isinstance(value, str):
+        _invalid_type(path, "must be a string")
+    if not value.strip():
+        _invalid_value(path, "must be a non-empty string")
+    return value
+
+
+def _integer(value: object, path: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        _invalid_type(path, "must be an integer")
+    return value
+
+
+def _missing(path: str) -> None:
+    raise RuntimeConfigResolutionError(
+        RuntimeConfigErrorCode.MISSING_REQUIRED,
+        field=path,
+        message="required runtime configuration value is missing",
+    )
+
+
+def _invalid_type(path: str, message: str) -> None:
+    raise RuntimeConfigResolutionError(
+        RuntimeConfigErrorCode.INVALID_TYPE,
+        field=path,
+        message=message,
+    )
+
+
+def _invalid_value(path: str, message: str) -> None:
+    raise RuntimeConfigResolutionError(
+        RuntimeConfigErrorCode.INVALID_VALUE,
+        field=path,
+        message=message,
+    )
+
+
+def _diagnostic_value(value: object) -> object:
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, Path):
+        return str(value)
+    return value
