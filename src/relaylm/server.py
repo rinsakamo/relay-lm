@@ -11,12 +11,14 @@ from relaylm.api.openai import create_openai_router
 from relaylm.cognitive import CognitiveProvider
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
 from relaylm.storage.filesystem import CharacterDirectory
+from relaylm.turn import ContinuityRuntime
 
 
 def create_app(
     *,
     character: CharacterDirectory,
     provider: CognitiveProvider,
+    continuity_runtime: ContinuityRuntime | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -28,7 +30,13 @@ def create_app(
                 await close()
 
     app = FastAPI(title="RelayLM", version="1.0.0.dev0", lifespan=lifespan)
-    app.include_router(create_openai_router(character=character, provider=provider))
+    app.include_router(
+        create_openai_router(
+            character=character,
+            provider=provider,
+            continuity_runtime=continuity_runtime,
+        )
+    )
 
     @app.get("/health")
     async def health() -> dict[str, str]:
