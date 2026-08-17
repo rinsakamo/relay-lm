@@ -25,20 +25,20 @@ Provider-specific structured-output grammar belongs in adapters. Semantic archit
 
 No mandatory second semantic LLM call is part of an ordinary turn. Later reflection/crystallization may run out of band and must return through the relevant validation authority rather than creating a competing truth source.
 
-## Continuity Context return path
+## Continuity Context ordinary-turn path
 
-`docs/architecture/continuity-context.md` owns the Continuity semantics tracked by #1371.
+`docs/architecture/continuity-context.md` owns Continuity semantics. `relaylm.continuity` owns the typed proposal / accepted-item / immutable-container boundary, and `relaylm.continuity_validation` owns deterministic acceptance and lifecycle. Turn/Runtime only coordinates those owners with the Context Compiler and the existing single cognitive generation.
 
-K1 implements the typed proposal / accepted-item / immutable-container boundary in `relaylm.continuity`. K2 implements deterministic continuity acceptance/lifecycle in `relaylm.continuity_validation`. K3 exposes `CognitiveOutput.continuity_candidates` and wires the provider-independent ordinary-turn return path through the same single buffered or streamed cognitive generation.
+When an explicit process-local `ContinuityRuntime` is configured, ordinary-turn preparation snapshots its current immutable `ContinuityContext` before provider generation and passes that accepted context to the Context Compiler. The compiler remains the owner of current cognitive projection: Turn does not inspect Continuity kinds, reconstruct referent/unresolved/active-task meaning, or decide which accepted items belong in `CognitiveInput`.
 
-Buffered execution performs exactly one `provider.generate()` call. Streamed execution performs exactly one `stream_generate()` call. In both paths, the completed `CognitiveOutput` reaches the same Turn commit boundary. No continuity-specific semantic provider call is added.
+Current Context Compiler authority can project already-accepted `referent`, `unresolved`, and `active_task` Continuity while preserving accepted ordering, Event sources, and epistemic role. Those selection/projection semantics are compiler-owned; the runtime only supplies the accepted pre-turn context.
 
-When an explicit process-local `ContinuityRuntime` is configured, Turn applies K2 exactly once after successful generation and advances the Continuity Context revision even for an empty candidate tuple. Streaming deltas are visible before final structured completion, but the Continuity runtime is not updated until generation has completed and deterministic validation has run.
+Buffered execution performs exactly one `provider.generate()` call. Streamed execution performs exactly one `stream_generate()` call. In both paths, the provider sees the pre-turn accepted Continuity projection before the completed `CognitiveOutput` reaches the common Turn commit boundary. No continuity-specific semantic provider call is added.
 
-When continuity proposals are present without an explicit runtime, Turn rejects the output before Assistant Event, State, or Continuity commit rather than silently dropping the proposal channel.
+After successful generation, Turn applies deterministic Continuity validation exactly once when a runtime is configured and replaces the runtime's context pointer with the resulting immutable context. This happens even for an empty candidate tuple so revision-based expiry advances deterministically. Streaming deltas may be visible before final structured completion, but neither accepted Continuity nor its revision changes during delta emission.
+
+When no Continuity runtime is configured, ordinary-turn preparation supplies no accepted Continuity Context to the compiler. If the completed output nevertheless contains non-empty continuity proposals, Turn rejects that output before Assistant Event, State, or Continuity commit rather than silently dropping the proposal channel.
 
 The runtime holder requires an explicit immutable `ContinuityContext` and explicit positive lifetime. It does not define default capacity or lifetime policy and does not persist Continuity Context.
 
-Provider-specific structured-output grammar may expose `continuity_candidates` separately. Adapters do not own referent, unresolved, active-task, provenance, acceptance, or lifecycle semantics.
-
-With K3 present on current `v1`, Context Compiler C2 is unblocked as a separate #1267 transaction and must operate on already-accepted `ContinuityItem` values. C3 remains ordered after C2.
+Provider-specific structured-output grammar may expose `continuity_candidates` separately. Adapters do not own referent, unresolved, active-task, provenance, acceptance, lifecycle, or Context Compiler projection semantics.

@@ -141,6 +141,7 @@ async def run_user_turn(
         content=content,
         memory_budget=memory_budget,
         event_budget=event_budget,
+        continuity_runtime=continuity_runtime,
         include_retrieval_diagnostics=False,
     )
     output = await provider.generate(cognitive_input)
@@ -169,6 +170,7 @@ async def run_user_turn_with_retrieval_diagnostics(
         content=content,
         memory_budget=memory_budget,
         event_budget=event_budget,
+        continuity_runtime=continuity_runtime,
         include_retrieval_diagnostics=True,
     )
     output = await provider.generate(cognitive_input)
@@ -207,6 +209,7 @@ async def run_user_turn_streaming(
         content=content,
         memory_budget=memory_budget,
         event_budget=event_budget,
+        continuity_runtime=continuity_runtime,
         include_retrieval_diagnostics=False,
     )
     output = await stream_generate(cognitive_input, emit_response_delta)
@@ -243,6 +246,7 @@ async def run_user_turn_streaming_with_retrieval_diagnostics(
         content=content,
         memory_budget=memory_budget,
         event_budget=event_budget,
+        continuity_runtime=continuity_runtime,
         include_retrieval_diagnostics=True,
     )
     output = await stream_generate(cognitive_input, emit_response_delta)
@@ -263,6 +267,7 @@ def _prepare_user_turn(
     content: str,
     memory_budget: MemoryRetrievalBudget | None,
     event_budget: EventRetrievalBudget | None,
+    continuity_runtime: ContinuityRuntime | None,
     include_retrieval_diagnostics: bool,
 ) -> tuple[Event, CanonicalState, CognitiveInput, TurnRetrievalDiagnostics | None]:
     if not content.strip():
@@ -279,6 +284,9 @@ def _prepare_user_turn(
     )
     character.append_event(user_event)
 
+    continuity_context = (
+        continuity_runtime.context if continuity_runtime is not None else None
+    )
     cognitive_input, diagnostics = _compile_turn_cognitive_input(
         character=character,
         identity=identity,
@@ -286,6 +294,7 @@ def _prepare_user_turn(
         user_event=user_event,
         memory_budget=memory_budget,
         event_budget=event_budget,
+        continuity_context=continuity_context,
         include_retrieval_diagnostics=include_retrieval_diagnostics,
     )
     return user_event, state, cognitive_input, diagnostics
@@ -299,6 +308,7 @@ def _compile_turn_cognitive_input(
     user_event: Event,
     memory_budget: MemoryRetrievalBudget | None,
     event_budget: EventRetrievalBudget | None,
+    continuity_context: ContinuityContext | None,
     include_retrieval_diagnostics: bool = False,
 ) -> tuple[CognitiveInput, TurnRetrievalDiagnostics | None]:
     retrieved_memory = ()
@@ -357,6 +367,7 @@ def _compile_turn_cognitive_input(
         state=state,
         current_event=user_event,
         recent_events=recent_events,
+        continuity_context=continuity_context,
         retrieved_memory=retrieved_memory,
         event_evidence=event_evidence,
     )
