@@ -12,6 +12,8 @@ domains:
     tests:
       - tests/unit/test_cognitive_turn.py
       - tests/unit/test_continuity_turn.py
+      - tests/unit/test_cognitive_budget_turn_wiring.py
+      - tests/unit/test_cognitive_budget_turn_diagnostics.py
       - tests/unit/test_turn_memory_retrieval.py
       - tests/unit/test_turn_event_retrieval.py
       - tests/unit/test_turn_retrieval_diagnostics.py
@@ -19,6 +21,7 @@ domains:
     docs:
       - docs/contracts/cognitive-turn.md
       - docs/architecture/core.md
+      - docs/architecture/cognitive-runtime.md
       - docs/reference/turn-retrieval-diagnostics.md
 
   continuity_context:
@@ -31,6 +34,7 @@ domains:
       - tests/unit/test_continuity.py
       - tests/unit/test_continuity_validation.py
       - tests/unit/test_continuity_turn.py
+      - tests/unit/test_continuity_cognition_wiring.py
     docs:
       - docs/architecture/continuity-context.md
       - docs/architecture/cognitive-runtime.md
@@ -65,6 +69,39 @@ domains:
       - docs/reference/event-retrieval-discovery.md
       - docs/reference/retrieval-lexical-relevance.md
       - docs/reference/retrieval-lexical-semantics.md
+
+  cognitive_budget:
+    runtime:
+      - src/relaylm/budget.py
+      - src/relaylm/budget_controls.py
+      - src/relaylm/budget_enforcement.py
+      - src/relaylm/budget_runtime.py
+      - src/relaylm/budget_diagnostics.py
+      - src/relaylm/providers/openai_compatible.py
+      - src/relaylm/turn.py
+    tests:
+      - tests/unit/test_cognitive_budget_accounting.py
+      - tests/unit/test_cognitive_budget_plan.py
+      - tests/unit/test_cognitive_budget_owner_controls.py
+      - tests/unit/test_cognitive_budget_enforcement.py
+      - tests/unit/test_cognitive_budget_enforcement_loop.py
+      - tests/unit/test_cognitive_budget_protected_floor.py
+      - tests/unit/test_cognitive_budget_turn_wiring.py
+      - tests/unit/test_cognitive_budget_diagnostics.py
+      - tests/unit/test_cognitive_budget_turn_diagnostics.py
+    docs:
+      - docs/architecture/cognitive-runtime.md
+      - docs/architecture/core.md
+
+  memory_provenance:
+    runtime:
+      - src/relaylm/memory_provenance.py
+      - src/relaylm/memory_retrieval.py
+    tests:
+      - tests/unit/test_memory_provenance.py
+      - tests/unit/test_memory_provenance_carriage.py
+    docs:
+      - docs/contracts/crystallization.md
 
   state_and_validation:
     runtime:
@@ -126,6 +163,18 @@ domains:
       - src/relaylm/evaluation_continuity_turn.py
       - src/relaylm/evaluation_continuity_context_retention.py
       - src/relaylm/evaluation_continuity_active_task.py
+      - src/relaylm/evaluation_continuity_cognition_wiring.py
+      - src/relaylm/evaluation_freeform_current_state_shadow.py
+      - src/relaylm/evaluation_total_budget_accounting.py
+      - src/relaylm/evaluation_budget_degradation_plan.py
+      - src/relaylm/evaluation_budget_owner_controls.py
+      - src/relaylm/evaluation_serialized_input_fit.py
+      - src/relaylm/evaluation_openai_serialized_counter.py
+      - src/relaylm/evaluation_serialized_fit_enforcement.py
+      - src/relaylm/evaluation_protected_serialized_floor.py
+      - src/relaylm/evaluation_cognitive_budget_turn_wiring.py
+      - src/relaylm/evaluation_cognitive_budget_turn_diagnostics.py
+      - src/relaylm/evaluation_memory_temporal_provenance.py
     tests:
       - tests/unit/test_evaluation.py
       - tests/unit/test_evaluation_cross_layer_diagnostics.py
@@ -143,6 +192,19 @@ domains:
       - tests/unit/test_evaluation_continuity_context_retention.py
       - tests/unit/test_evaluation_continuity_active_task.py
       - tests/unit/test_evaluation_continuity_registration.py
+      - tests/unit/test_evaluation_continuity_cognition_wiring.py
+      - tests/unit/test_evaluation_freeform_current_state_shadow.py
+      - tests/unit/test_evaluation_total_budget_accounting.py
+      - tests/unit/test_evaluation_budget_degradation_plan.py
+      - tests/unit/test_evaluation_budget_owner_controls.py
+      - tests/unit/test_evaluation_serialized_input_fit.py
+      - tests/unit/test_evaluation_openai_serialized_counter.py
+      - tests/unit/test_evaluation_serialized_fit_enforcement.py
+      - tests/unit/test_evaluation_protected_serialized_floor.py
+      - tests/unit/test_evaluation_cognitive_budget_turn_wiring.py
+      - tests/unit/test_evaluation_cognitive_budget_turn_diagnostics.py
+      - tests/unit/test_evaluation_memory_temporal_provenance.py
+      - tests/unit/test_evaluation_post_continuity_registration.py
     docs:
       - docs/reference/evaluation.md
       - docs/reference/evaluation-working-context-diagnostics.md
@@ -154,6 +216,18 @@ domains:
       - docs/reference/evaluation-continuity-turn.md
       - docs/reference/evaluation-continuity-context-retention.md
       - docs/reference/evaluation-continuity-active-task.md
+      - docs/reference/evaluation-continuity-cognition-wiring.md
+      - docs/reference/evaluation-freeform-current-state-shadow.md
+      - docs/reference/evaluation-total-budget-accounting.md
+      - docs/reference/evaluation-budget-degradation-plan.md
+      - docs/reference/evaluation-budget-owner-controls.md
+      - docs/reference/evaluation-serialized-input-fit.md
+      - docs/reference/evaluation-openai-serialized-counter.md
+      - docs/reference/evaluation-serialized-fit-enforcement.md
+      - docs/reference/evaluation-protected-serialized-floor.md
+      - docs/reference/evaluation-cognitive-budget-turn-wiring.md
+      - docs/reference/evaluation-cognitive-budget-turn-diagnostics.md
+      - docs/reference/evaluation-memory-temporal-provenance.md
 
   development_workflow:
     runtime: []
