@@ -126,16 +126,16 @@ async def evaluate_cross_layer_context_diagnostics() -> EvaluationScenarioResult
             check_id="current_event_evidence_dedup_is_counted",
             boundary="diagnostics",
             passed=event_diagnostic.eligible_count == 3
-            and event_diagnostic.selected_count == 2
+            and event_diagnostic.selected_count == 1
             and event_diagnostic.current_event_excluded_count == 1,
             expected=1,
             observed=event_diagnostic.current_event_excluded_count,
         ),
         EvaluationCheck(
-            check_id="working_context_event_overlap_is_counted_without_suppression",
+            check_id="working_context_event_overlap_is_counted_and_suppressed",
             boundary="diagnostics",
             passed=event_diagnostic.redundancy_overlap_count == 1
-            and len(result.cognitive_input.event_evidence) == 2,
+            and len(result.cognitive_input.event_evidence) == 1,
             expected=1,
             observed=event_diagnostic.redundancy_overlap_count,
         ),
