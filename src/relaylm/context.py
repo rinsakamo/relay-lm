@@ -548,6 +548,14 @@ def _memory_chunk_is_shadowed(
             continue
 
         if isinstance(record.value, bool):
+            if heading_addresses_key and not inline_addresses_key:
+                body_value = _single_atx_heading_body_value(chunk.content)
+                if body_value is not None:
+                    body_boolean = _explicit_boolean_claim_value(body_value)
+                    if body_boolean is not None:
+                        if body_boolean is not record.value:
+                            return True
+                        continue
             if inline_addresses_key and not heading_addresses_key:
                 assignment_values = _explicit_state_key_assignment_values(
                     chunk.content,

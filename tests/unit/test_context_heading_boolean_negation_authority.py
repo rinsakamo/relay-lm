@@ -22,7 +22,7 @@ def _current_event() -> Event:
         actor="user",
         payload={"content": "Are notifications enabled?"},
         event_id="current-event",
-        timestamp="2026-08-18T07:15:00+09:00",
+        timestamp="2026-08-18T07:48:00+09:00",
     )
 
 
@@ -46,8 +46,8 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
     return MemoryTemporalAuthority(
         temporal_scope=scope,
         provenance=MemoryProvenance(
-            memory_id=f"memory-inline-boolean-{scope.value}",
-            derivation_id=f"derivation-inline-boolean-{scope.value}",
+            memory_id=f"memory-heading-boolean-{scope.value}",
+            derivation_id=f"derivation-heading-boolean-{scope.value}",
             sources=(
                 MemoryProvenanceSource(
                     kind=MemoryProvenanceSourceKind.EVENT,
@@ -59,15 +59,15 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
 
 
 def _chunk(
-    content: str,
+    body: str,
     *,
     scope: MemoryTemporalScope = MemoryTemporalScope.UNKNOWN,
-    heading: str = "Profile Notes",
+    heading: str = "Notifications Enabled",
 ) -> MemoryChunk:
     return MemoryChunk(
         heading_path=("Memory", heading),
-        location=f"memory/MEMORY.md#memory/inline-boolean-{scope.value}",
-        content=f"## {heading}\n\n{content}",
+        location=f"memory/MEMORY.md#memory/heading-boolean-{scope.value}",
+        content=f"## {heading}\n\n{body}",
         temporal_authority=_authority(scope),
     )
 
@@ -82,96 +82,71 @@ def _compile(chunk: MemoryChunk, *, value: bool):
 
 
 @pytest.mark.parametrize(
-    ("state_value", "assignment", "retained"),
+    ("state_value", "body", "retained"),
     [
-        (True, "notifications_enabled: true", True),
-        (True, "notifications_enabled: false", False),
-        (True, "notifications_enabled: not true", False),
-        (True, "notifications_enabled: not false", True),
-        (False, "notifications_enabled = false", True),
-        (False, "notifications_enabled = true", False),
-        (False, "notifications_enabled = not false", False),
-        (False, "notifications_enabled = not true", True),
+        (True, "true", True),
+        (True, "false", False),
+        (True, "not true", False),
+        (True, "not false", True),
+        (False, "false", True),
+        (False, "true", False),
+        (False, "not false", False),
+        (False, "not true", True),
     ],
 )
-def test_single_inline_assignment_uses_exact_boolean_value(
+def test_single_heading_body_uses_exact_boolean_value(
     state_value: bool,
-    assignment: str,
+    body: str,
     retained: bool,
 ) -> None:
-    chunk = _chunk(assignment)
+    chunk = _chunk(body)
 
     compiled = _compile(chunk, value=state_value)
 
     assert bool(compiled.memory) is retained
 
 
-def test_typed_current_uses_same_structural_inline_boolean_rule() -> None:
-    compatible = _chunk(
-        "notifications_enabled: not false",
-        scope=MemoryTemporalScope.CURRENT,
-    )
+def test_typed_current_uses_same_structural_heading_boolean_rule() -> None:
+    compatible = _chunk("not false", scope=MemoryTemporalScope.CURRENT)
 
     compiled = _compile(compatible, value=True)
 
     assert [item.location for item in compiled.memory] == [compatible.location]
 
 
-def test_historical_inline_boolean_negation_remains_exempt() -> None:
-    historical = _chunk(
-        "notifications_enabled: not true",
-        scope=MemoryTemporalScope.HISTORICAL,
-    )
+def test_historical_heading_boolean_negation_remains_exempt() -> None:
+    historical = _chunk("not true", scope=MemoryTemporalScope.HISTORICAL)
 
     compiled = _compile(historical, value=True)
 
     assert [item.location for item in compiled.memory] == [historical.location]
 
 
-def test_exact_assignment_is_not_overridden_by_unrelated_boolean_token() -> None:
-    stale = _chunk(
-        "notifications_enabled: false\nA separate note contains true."
-    )
+def test_multiple_nonempty_body_lines_remain_outside_c14() -> None:
+    deferred = _chunk("not false\ntrue")
 
-    assert _compile(stale, value=True).memory == ()
+    compiled = _compile(deferred, value=True)
 
-
-def test_matching_exact_assignment_ignores_unrelated_opposite_token() -> None:
-    compatible = _chunk(
-        "notifications_enabled: not false\nA separate note contains false."
-    )
-
-    compiled = _compile(compatible, value=True)
-
-    assert [item.location for item in compiled.memory] == [compatible.location]
+    assert [item.location for item in compiled.memory] == [deferred.location]
 
 
-def test_assignment_does_not_consume_a_boolean_value_from_the_next_line() -> None:
-    deferred = _chunk("notifications_enabled:\nnot true")
-
-    assert _compile(deferred, value=False).memory == ()
-
-
-def test_multiple_same_key_assignments_remain_outside_c13() -> None:
-    deferred = _chunk(
-        "notifications_enabled: not false\nnotifications_enabled: false"
-    )
+def test_heading_plus_inline_assignment_remains_outside_c14() -> None:
+    deferred = _chunk("not false\nnotifications_enabled: false")
 
     assert _compile(deferred, value=True).memory == ()
 
 
 @pytest.mark.parametrize(
-    "assignment",
+    "body",
     [
-        "notifications_enabled: disabled",
-        "notifications_enabled: not not true",
-        "notifications_enabled: not true or false",
+        "disabled",
+        "not not true",
+        "not true or false",
+        "never true",
     ],
 )
-def test_nonexact_inline_boolean_values_fall_through_existing_rule(
-    assignment: str,
-) -> None:
-    chunk = _chunk(assignment)
+def test_nonexact_heading_boolean_values_fall_through_existing_rule(body: str) -> None:
+    chunk = _chunk(body)
 
     compiled = _compile(chunk, value=True)
 

@@ -97,7 +97,8 @@ def test_provider_streams_safe_utterance_before_final_candidate_parse() -> None:
         'にちは","state_candidates":[',
         (
             '{"state_class":"user.preference","key":"tea","op":"set",'
-            '"value":"likes","sources":["evt-now"]}]}'
+            '"value":"likes","sources":["evt-now"]}],'
+            '"continuity_candidates":[]}'
         ),
     ]
     chunks = [
@@ -144,6 +145,7 @@ def test_provider_streams_safe_utterance_before_final_candidate_parse() -> None:
             sources=("evt-now",),
         ),
     )
+    assert output.continuity_candidates == ()
 
 
 class _SuccessfulStreamingProvider:
