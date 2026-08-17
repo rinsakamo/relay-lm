@@ -242,3 +242,51 @@ def test_truncated_stream_keeps_user_event_but_never_commits_assistant_or_state(
     events = list(persisted.iter_events())
     assert [event.actor for event in events] == ["user"]
     assert persisted.load_state().states == ()
+
+
+class _ClientCancelledStreamingProvider:
+    def __init__(self) -> None:
+        self.cancelled = False
+
+    async def generate(self, _: CognitiveInput) -> CognitiveOutput:
+        raise AssertionError("stream=true must not use buffered generate")
+
+    async def stream_generate(self, _: CognitiveInput, emit) -> CognitiveOutput:
+        try:
+            await emit("見えている途中")
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            self.cancelled = True
+            raise
+        raise AssertionError("unreachable")
+
+
+def test_downstream_stream_close_cancels_turn_before_assistant_or_state_commit(
+    tmp_path: Path,
+) -> None:
+    from relaylm.api.openai import _stream_chat_completion
+
+    async def run() -> _ClientCancelledStreamingProvider:
+        character = _make_character(tmp_path)
+        provider = _ClientCancelledStreamingProvider()
+        stream = _stream_chat_completion(
+            character=character,
+            provider=provider,
+            turn_lock=asyncio.Lock(),
+            content="途中で切断する",
+            completion_id="chatcmpl-test",
+            created=0,
+            model="relaylm",
+        )
+
+        first_chunk = await anext(stream)
+        assert "見えている途中" in first_chunk.decode("utf-8")
+        await stream.aclose()
+        assert provider.cancelled is True
+        return provider
+
+    asyncio.run(run())
+
+    persisted = CharacterDirectory(tmp_path)
+    assert [event.actor for event in persisted.iter_events()] == ["user"]
+    assert persisted.load_state().states == ()
