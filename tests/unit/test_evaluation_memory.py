@@ -6,6 +6,7 @@ from relaylm.evaluation import (
     evaluate_memory_cognitive_projection,
     evaluate_memory_heading_retrieval,
     evaluate_ordinary_turn_memory_retrieval,
+    evaluate_state_memory_authority_filter,
 )
 
 
@@ -61,4 +62,25 @@ def test_ordinary_turn_memory_retrieval_evaluation_is_registered() -> None:
         "default_memory_count": 0,
         "failed_retrieval_provider_calls": 0,
         "failed_retrieval_event_count": 1,
+    }
+
+
+def test_state_memory_authority_filter_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_state_memory_authority_filter())
+
+    assert result.scenario_id == "state_memory_authority_filter"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+    assert {check.boundary for check in result.checks} == {
+        "context_authority",
+        "canonical_state",
+    }
+    assert result.metrics == {
+        "stale_memory_count": 0,
+        "compatible_memory_count": 1,
+        "capped_state_memory_count": 0,
+        "historical_memory_count": 1,
+        "substring_conflict_memory_count": 0,
+        "comparative_memory_count": 1,
+        "preserved_tea_state_count": 1,
     }
