@@ -389,6 +389,94 @@ async def evaluate_continuity_active_task_retention() -> EvaluationScenarioResul
     return await evaluate()
 
 
+async def evaluate_continuity_cognition_wiring() -> EvaluationScenarioResult:
+    from relaylm.evaluation_continuity_cognition_wiring import (
+        evaluate_continuity_cognition_wiring as evaluate,
+    )
+
+    return await evaluate()
+
+
+async def evaluate_freeform_current_state_shadow() -> EvaluationScenarioResult:
+    from relaylm.evaluation_freeform_current_state_shadow import (
+        evaluate_freeform_current_state_shadow as evaluate,
+    )
+
+    return await evaluate()
+
+
+async def evaluate_total_budget_accounting() -> EvaluationScenarioResult:
+    from relaylm.evaluation_total_budget_accounting import (
+        evaluate_total_budget_accounting as evaluate,
+    )
+
+    return await evaluate()
+
+
+async def evaluate_budget_degradation_plan() -> EvaluationScenarioResult:
+    from relaylm.evaluation_budget_degradation_plan import (
+        evaluate_budget_degradation_plan as evaluate,
+    )
+
+    return await evaluate()
+
+
+async def evaluate_budget_owner_controls() -> EvaluationScenarioResult:
+    from relaylm.evaluation_budget_owner_controls import (
+        evaluate_budget_owner_controls as evaluate,
+    )
+
+    return await evaluate()
+
+
+async def evaluate_serialized_input_fit() -> EvaluationScenarioResult:
+    from relaylm.evaluation_serialized_input_fit import (
+        evaluate_serialized_input_fit_component as evaluate,
+    )
+
+    return await evaluate()
+
+
+async def evaluate_openai_serialized_counter() -> EvaluationScenarioResult:
+    from relaylm.evaluation_openai_serialized_counter import (
+        evaluate_openai_serialized_counter as evaluate,
+    )
+
+    return await evaluate()
+
+
+async def evaluate_serialized_fit_enforcement() -> EvaluationScenarioResult:
+    from relaylm.evaluation_serialized_fit_enforcement import (
+        evaluate_serialized_fit_enforcement as evaluate,
+    )
+
+    return await evaluate()
+
+
+async def evaluate_protected_serialized_floor() -> EvaluationScenarioResult:
+    from relaylm.evaluation_protected_serialized_floor import (
+        evaluate_protected_serialized_floor as evaluate,
+    )
+
+    return await evaluate()
+
+
+async def evaluate_cognitive_budget_turn_wiring() -> EvaluationScenarioResult:
+    from relaylm.evaluation_cognitive_budget_turn_wiring import (
+        evaluate_cognitive_budget_turn_wiring as evaluate,
+    )
+
+    return await evaluate()
+
+
+async def evaluate_cognitive_budget_turn_diagnostics() -> EvaluationScenarioResult:
+    from relaylm.evaluation_cognitive_budget_turn_diagnostics import (
+        evaluate_cognitive_budget_turn_diagnostics as evaluate,
+    )
+
+    return await evaluate()
+
+
 async def run_native_evaluation() -> EvaluationReport:
     return EvaluationReport(
         scenarios=(
@@ -423,6 +511,17 @@ async def run_native_evaluation() -> EvaluationReport:
             await evaluate_continuity_turn(),
             await evaluate_continuity_context_retention(),
             await evaluate_continuity_active_task_retention(),
+            await evaluate_continuity_cognition_wiring(),
+            await evaluate_freeform_current_state_shadow(),
+            await evaluate_total_budget_accounting(),
+            await evaluate_budget_degradation_plan(),
+            await evaluate_budget_owner_controls(),
+            await evaluate_serialized_input_fit(),
+            await evaluate_openai_serialized_counter(),
+            await evaluate_serialized_fit_enforcement(),
+            await evaluate_protected_serialized_floor(),
+            await evaluate_cognitive_budget_turn_wiring(),
+            await evaluate_cognitive_budget_turn_diagnostics(),
         ),
     )
 
