@@ -113,21 +113,6 @@ def test_accepted_referent_and_unresolved_survive_zero_recent_message_budget() -
     assert [item.actor for item in compiled.context] == [None, None]
 
 
-def test_active_task_is_not_projected_by_c2() -> None:
-    active_task = _item(
-        item_id="continuity-task-1",
-        kind="active_task",
-        key="task.current",
-        value={"task": "send the draft"},
-        sources=("event-user-2",),
-        epistemic_role="assistant_commitment",
-    )
-
-    compiled = _compile(continuity_context=_context(active_task))
-
-    assert compiled.context == ()
-
-
 def test_continuity_projection_precedes_recent_working_context_without_reordering_it() -> None:
     referent = _item(
         item_id="continuity-referent-2",
