@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from relaylm.cognitive import CognitiveInput, CognitiveOutput, CognitiveProvider
 from relaylm.context import compile_cognitive_input
 from relaylm.events import Event
+from relaylm.identity import Identity
 from relaylm.memory_retrieval import select_memory_chunks
 from relaylm.state import CanonicalState
 from relaylm.storage.filesystem import CharacterDirectory
@@ -121,7 +122,7 @@ async def run_user_turn_streaming(
 def _compile_turn_cognitive_input(
     *,
     character: CharacterDirectory,
-    identity,
+    identity: Identity,
     state: CanonicalState,
     user_event: Event,
     memory_budget: MemoryRetrievalBudget | None,
