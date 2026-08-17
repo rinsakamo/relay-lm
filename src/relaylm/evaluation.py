@@ -213,6 +213,12 @@ async def evaluate_working_context_budget_atomicity() -> EvaluationScenarioResul
     return await evaluate()
 
 
+async def evaluate_persistence_integrity() -> EvaluationScenarioResult:
+    from relaylm.evaluation_persistence import evaluate_persistence_integrity as evaluate
+
+    return await evaluate()
+
+
 async def run_native_evaluation() -> EvaluationReport:
     return EvaluationReport(
         scenarios=(
@@ -222,6 +228,7 @@ async def run_native_evaluation() -> EvaluationReport:
             await evaluate_comparative_preference_preservation(),
             await evaluate_degree_hint_integrity(),
             await evaluate_working_context_budget_atomicity(),
+            await evaluate_persistence_integrity(),
         ),
     )
 
