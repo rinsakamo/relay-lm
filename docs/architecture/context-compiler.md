@@ -177,16 +177,17 @@ Before retrieved chunks become `CognitiveInput.memory`, the Context Compiler com
 Current filtering is intentionally narrow:
 
 - authority eligibility uses every State record with `status == "active"` and `valid_to is None`, independently of any later `max_state_records` projection cap;
-- a Memory chunk is State-addressing only when its heading path contains every normalized lexical term of a State key;
+- a Memory chunk is State-addressing when its heading path contains every normalized lexical term of a State key, or when its body contains the canonical State key as an explicit `key:` / `key=` field assignment;
+- inline field detection requires the exact normalized canonical key token and a field delimiter; arbitrary prose mention is not treated as State addressing;
 - when that State value has lexically comparable text, the chunk is retained if at least one current State value appears as an exact lexical token sequence in the chunk;
-- if the heading addresses the key but none of the comparable current State values appears, the whole chunk is suppressed from `CognitiveInput.memory`;
+- if the chunk explicitly addresses the key but none of the comparable current State values appears, the whole chunk is suppressed from `CognitiveInput.memory`;
 - exact token sequences are used rather than substring matching, so for example `likes` is not treated as present inside `dislikes`;
 - inactive or expired State records do not suppress memory;
-- a chunk whose heading does not explicitly identify a State key is left untouched, even if its prose happens to mention an older or different value.
+- a chunk that neither addresses a State key through its heading nor uses an explicit canonical-key field assignment is left untouched, even if its prose happens to mention an older or different value.
 
 Whole-chunk suppression changes only current cognitive residency. It does not rewrite or delete `MEMORY.md`, mutate State or Events, create a second semantic owner, or add an LLM call.
 
-This first filter deliberately does **not** infer arbitrary natural-language contradiction, distinguish historical from current prose when the heading is ambiguous, compare semantic degree envelopes, or decide conflicts for non-lexically-comparable State values. Those remain later #1267 work.
+This filter deliberately does **not** infer arbitrary natural-language contradiction, distinguish historical from current prose when headings/fields are ambiguous, compare semantic degree envelopes, or decide conflicts for non-lexically-comparable State values. Those remain later #1267 work.
 
 ### Opt-in ordinary-turn MEMORY retrieval
 
@@ -287,7 +288,7 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 
 - evidence-backed runtime default State/MEMORY/Event budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
 - `unresolved`, `referent`, and `active_task` retention beyond pure recency;
-- semantic State-vs-memory conflict detection beyond explicit State-key headings, including historical/current interpretation, degree-level conflicts, and non-lexical values;
+- semantic State-vs-memory conflict detection beyond explicit State-key headings and canonical-key field assignments, including historical/current interpretation, degree-level conflicts, and non-lexical values;
 - durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
 - persistent/segmented Event Journal indexing and retrieval-scaled targeted discovery beyond the current process-local validated snapshot reuse;
 - redundancy reduction across State / Working Context / Memory / Events beyond the current content-free exact Event-overlap observation;
