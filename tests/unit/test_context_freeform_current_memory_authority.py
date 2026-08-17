@@ -48,32 +48,32 @@ def _compile(*, chunk: MemoryChunk, state: CanonicalState | None = None):
     )
 
 
-def test_explicit_current_freeform_canonical_key_conflict_is_suppressed() -> None:
-    stale = _chunk("Current residence location is Hokkaido.")
+def test_current_wording_without_typed_metadata_is_retained() -> None:
+    unknown = _chunk("Current residence location is Hokkaido.")
 
-    compiled = _compile(chunk=stale)
+    compiled = _compile(chunk=unknown)
 
-    assert compiled.memory == ()
-
-
-def test_explicit_current_freeform_canonical_key_match_is_retained() -> None:
-    current = _chunk("The residence location is currently Fukuoka.")
-
-    compiled = _compile(chunk=current)
-
-    assert [item.location for item in compiled.memory] == [current.location]
+    assert [item.location for item in compiled.memory] == [unknown.location]
 
 
-def test_now_form_is_an_explicit_current_claim() -> None:
-    stale = _chunk("Preferred beverage is now tea.")
+def test_currently_wording_without_typed_metadata_is_retained() -> None:
+    unknown = _chunk("The residence location is currently Fukuoka.")
+
+    compiled = _compile(chunk=unknown)
+
+    assert [item.location for item in compiled.memory] == [unknown.location]
+
+
+def test_now_wording_without_typed_metadata_is_retained() -> None:
+    unknown = _chunk("Preferred beverage is now tea.")
     state = _state(key="preferred_beverage", value="coffee")
 
-    compiled = _compile(chunk=stale, state=state)
+    compiled = _compile(chunk=unknown, state=state)
 
-    assert compiled.memory == ()
+    assert [item.location for item in compiled.memory] == [unknown.location]
 
 
-def test_prefixed_current_phrase_remains_outside_c4_grammar() -> None:
+def test_prefixed_current_phrase_remains_non_authoritative() -> None:
     ambiguous = _chunk("Previous current residence location is Hokkaido.")
 
     compiled = _compile(chunk=ambiguous)
@@ -97,7 +97,7 @@ def test_freeform_prose_without_canonical_key_is_not_semantically_inferred() -> 
     assert [item.location for item in compiled.memory] == [unaddressed.location]
 
 
-def test_freeform_current_boolean_claim_is_not_expanded_by_scalar_c4() -> None:
+def test_freeform_current_boolean_claim_is_not_temporally_inferred() -> None:
     boolean_claim = _chunk("Current notifications enabled is false.")
     state = _state(key="notifications_enabled", value=True)
 
