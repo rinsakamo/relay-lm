@@ -59,7 +59,7 @@ def create_openai_router(
     router = APIRouter()
     turn_lock = asyncio.Lock()
 
-    @router.post("/v1/chat/completions", response_model=None)
+    @router.post("/v1/chat/completions", response_model=ChatCompletionResponse)
     async def chat_completions(request: ChatCompletionRequest):
         content = _last_user_content(request.messages)
         if request.stream:
