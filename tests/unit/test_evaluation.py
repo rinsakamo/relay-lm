@@ -16,6 +16,7 @@ from relaylm.evaluation import (
     evaluate_persistence_integrity,
     evaluate_provider_failure_safety,
     evaluate_restart_continuity,
+    evaluate_retrieval_stage_diagnostics,
     evaluate_state_selection_diagnostics,
     evaluate_streaming_safety,
     evaluate_working_context_budget_atomicity,
@@ -78,6 +79,7 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "targeted_event_retrieval",
         "event_evidence_cognitive_projection",
         "ordinary_turn_event_retrieval",
+        "retrieval_stage_diagnostics",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
@@ -258,3 +260,11 @@ def test_state_selection_diagnostics_evaluation_is_registered() -> None:
         "evicted_state_count": 2,
         "selected_fallback_count": 2,
     }
+
+
+def test_retrieval_stage_diagnostics_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_retrieval_stage_diagnostics())
+
+    assert result.scenario_id == "retrieval_stage_diagnostics"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
