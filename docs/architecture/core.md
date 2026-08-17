@@ -47,9 +47,11 @@ The return path is deliberately split. `response` becomes an Assistant Event for
 
 ## Accepted Continuity Context extension
 
-The semantic boundary for bounded non-durable cross-turn continuity is frozen in `docs/architecture/continuity-context.md` and tracked by #1371. It is **not implemented by the current core flow yet**.
+The semantic boundary for bounded non-durable cross-turn continuity is frozen in `docs/architecture/continuity-context.md` and tracked by #1371.
 
-When that implementation lands, the existing single cognitive generation may additionally emit `continuity_candidates`. Those proposals remain non-authoritative until deterministic continuity validation accepts them into Continuity Context. Continuity Context is temporary semantic authority, not Canonical State, Event occurrence authority, crystallized MEMORY, or current-turn Working Context.
+K1 now implements the typed `ContinuityCandidate`, `ContinuityItem`, and immutable explicitly bounded `ContinuityContext` boundary in `relaylm.continuity`. The current ordinary core flow still does **not** expose `continuity_candidates` or commit Continuity Context; deterministic acceptance/lifecycle is K2 and ordinary-turn return-path wiring is K3.
+
+After K3, the existing single cognitive generation may additionally emit `continuity_candidates`. Those proposals remain non-authoritative until deterministic continuity validation accepts them into Continuity Context. Continuity Context is temporary semantic authority, not Canonical State, Event occurrence authority, crystallized MEMORY, or current-turn Working Context.
 
 The Context Compiler may later consume accepted continuity; it does not become the producer or acceptance owner for referent, unresolved, or active-task semantics.
 
