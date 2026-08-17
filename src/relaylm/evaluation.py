@@ -249,6 +249,12 @@ async def evaluate_memory_heading_retrieval() -> EvaluationScenarioResult:
     return await evaluate()
 
 
+async def evaluate_memory_cognitive_projection() -> EvaluationScenarioResult:
+    from relaylm.evaluation_memory import evaluate_memory_cognitive_projection as evaluate
+
+    return await evaluate()
+
+
 async def run_native_evaluation() -> EvaluationReport:
     return EvaluationReport(
         scenarios=(
@@ -264,6 +270,7 @@ async def run_native_evaluation() -> EvaluationReport:
             await evaluate_streaming_safety(),
             await evaluate_state_selection_diagnostics(),
             await evaluate_memory_heading_retrieval(),
+            await evaluate_memory_cognitive_projection(),
         ),
     )
 
