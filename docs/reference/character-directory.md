@@ -27,7 +27,7 @@ character:
   name: ReLM
 ```
 
-The current package accepts only `format_version: 1`. `character.id` and `character.name` are required non-empty strings. Invalid or malformed package metadata fails closed.
+The current package accepts only an explicit integer `format_version: 1`. String/coerced or missing version values are invalid. `character.id` and `character.name` are required non-empty strings. Invalid or malformed package metadata fails closed.
 
 Default paths are convention-based. Future versions may permit explicit path mapping without changing semantic roles.
 
@@ -37,12 +37,15 @@ Default paths are convention-based. Future versions may permit explicit path map
 
 - `SOUL.md` is required and must contain non-empty Identity content.
 - `memory/events.jsonl` contains RelayLM-owned persisted Events. Missing Event storage is read as an empty journal; malformed non-empty Event lines fail closed.
-- `memory/state.json` contains the current `CanonicalState`. Missing State storage is read as an empty version-1 State; malformed State fails closed.
+- a missing `memory/state.json` file is read as an empty version-1 State;
+- an existing `memory/state.json` must explicitly contain integer `format_version: 1` and a `states` array; RelayLM does not infer either field for an existing file;
+- each persisted State record explicitly contains `state_id`, `state_class`, `key`, `value`, `status`, and `sources`; `valid_from` and `valid_to` are optional;
+- malformed State, missing required persisted fields, or version type coercion fails closed rather than receiving compatibility defaults;
 - `memory/MEMORY.md` is optional readable crystallized synthesis. Missing readable memory is treated as absent rather than as an empty truth source. It does not replace Canonical State or Event provenance.
 - State and `MEMORY.md` writes use temporary-file replacement so the visible target is replaced atomically at the filesystem boundary rather than rewritten in place.
 - An unchanged crystallized Markdown body is not rewritten.
 
-These behaviors describe the current filesystem adapter. They do not prevent a later compatible storage backend from preserving the same logical Character Package roles.
+These behaviors describe the current filesystem adapter. A later storage backend may implement the same current logical contract as an intentional architecture boundary; it must not preserve superseded RelayLM semantics through an internal compatibility bridge.
 
 ## Stable future envelope
 
