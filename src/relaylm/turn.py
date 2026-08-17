@@ -3,6 +3,10 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
+from relaylm.budget import BudgetPlan
+from relaylm.budget_controls import owner_controls_for_budget_plan
+from relaylm.budget_enforcement import enforce_total_cognitive_budget
+from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveInput, CognitiveOutput, CognitiveProvider
 from relaylm.context import compile_cognitive_input
 from relaylm.continuity import ContinuityContext
@@ -133,17 +137,30 @@ async def run_user_turn(
     memory_budget: MemoryRetrievalBudget | None = None,
     event_budget: EventRetrievalBudget | None = None,
     continuity_runtime: ContinuityRuntime | None = None,
+    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
 ) -> TurnResult:
     """Run one ordinary turn with one semantic cognitive generation."""
 
-    user_event, state, cognitive_input, _diagnostics = _prepare_user_turn(
-        character=character,
-        content=content,
-        memory_budget=memory_budget,
-        event_budget=event_budget,
-        continuity_runtime=continuity_runtime,
-        include_retrieval_diagnostics=False,
-    )
+    if cognitive_budget is None:
+        user_event, state, cognitive_input, _diagnostics = _prepare_user_turn(
+            character=character,
+            content=content,
+            memory_budget=memory_budget,
+            event_budget=event_budget,
+            continuity_runtime=continuity_runtime,
+            include_retrieval_diagnostics=False,
+        )
+    else:
+        _reject_overlapping_budget_configuration(
+            memory_budget=memory_budget,
+            event_budget=event_budget,
+        )
+        user_event, state, cognitive_input = _prepare_budgeted_user_turn(
+            character=character,
+            content=content,
+            continuity_runtime=continuity_runtime,
+            cognitive_budget=cognitive_budget,
+        )
     output = await provider.generate(cognitive_input)
     return _commit_cognitive_output(
         character=character,
@@ -194,6 +211,7 @@ async def run_user_turn_streaming(
     memory_budget: MemoryRetrievalBudget | None = None,
     event_budget: EventRetrievalBudget | None = None,
     continuity_runtime: ContinuityRuntime | None = None,
+    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
 ) -> TurnResult:
     """Run one streamed ordinary turn without committing before provider completion."""
 
@@ -204,14 +222,26 @@ async def run_user_turn_streaming(
     if stream_generate is None:
         raise TypeError("provider does not support cognitive streaming")
 
-    user_event, state, cognitive_input, _diagnostics = _prepare_user_turn(
-        character=character,
-        content=content,
-        memory_budget=memory_budget,
-        event_budget=event_budget,
-        continuity_runtime=continuity_runtime,
-        include_retrieval_diagnostics=False,
-    )
+    if cognitive_budget is None:
+        user_event, state, cognitive_input, _diagnostics = _prepare_user_turn(
+            character=character,
+            content=content,
+            memory_budget=memory_budget,
+            event_budget=event_budget,
+            continuity_runtime=continuity_runtime,
+            include_retrieval_diagnostics=False,
+        )
+    else:
+        _reject_overlapping_budget_configuration(
+            memory_budget=memory_budget,
+            event_budget=event_budget,
+        )
+        user_event, state, cognitive_input = _prepare_budgeted_user_turn(
+            character=character,
+            content=content,
+            continuity_runtime=continuity_runtime,
+            cognitive_budget=cognitive_budget,
+        )
     output = await stream_generate(cognitive_input, emit_response_delta)
     return _commit_cognitive_output(
         character=character,
@@ -259,6 +289,138 @@ async def run_user_turn_streaming_with_retrieval_diagnostics(
     )
     assert diagnostics is not None
     return TurnResultWithRetrievalDiagnostics(turn=turn, retrieval=diagnostics)
+
+
+def _reject_overlapping_budget_configuration(
+    *,
+    memory_budget: MemoryRetrievalBudget | None,
+    event_budget: EventRetrievalBudget | None,
+) -> None:
+    if memory_budget is not None or event_budget is not None:
+        raise ValueError(
+            "cognitive_budget cannot be combined with legacy memory_budget/event_budget"
+        )
+
+
+def _prepare_budgeted_user_turn(
+    *,
+    character: CharacterDirectory,
+    content: str,
+    continuity_runtime: ContinuityRuntime | None,
+    cognitive_budget: CognitiveBudgetRuntimeConfig,
+) -> tuple[Event, CanonicalState, CognitiveInput]:
+    if not content.strip():
+        raise ValueError("user content must not be empty")
+
+    character.load_config()
+    identity = character.load_identity()
+    state = character.load_state()
+
+    user_event = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": content},
+    )
+    character.append_event(user_event)
+
+    continuity_context = (
+        continuity_runtime.context if continuity_runtime is not None else None
+    )
+    enforcement = enforce_total_cognitive_budget(
+        config=cognitive_budget.total,
+        policy=cognitive_budget.policy,
+        compile_protected_cognitive_input=lambda: _compile_protected_turn_cognitive_input(
+            identity=identity,
+            state=state,
+            user_event=user_event,
+        ),
+        compile_cognitive_input=lambda plan: _compile_budget_plan_cognitive_input(
+            character=character,
+            identity=identity,
+            state=state,
+            user_event=user_event,
+            continuity_context=continuity_context,
+            plan=plan,
+        ),
+        token_counter=cognitive_budget.token_counter,
+    )
+    return user_event, state, enforcement.cognitive_input
+
+
+def _compile_protected_turn_cognitive_input(
+    *,
+    identity: Identity,
+    state: CanonicalState,
+    user_event: Event,
+) -> CognitiveInput:
+    """Project only mandatory framing, Identity, and Current Event for fit probing."""
+
+    return compile_cognitive_input(
+        identity=identity,
+        state=state,
+        current_event=user_event,
+        recent_events=(),
+        continuity_context=None,
+        retrieved_memory=(),
+        event_evidence=(),
+        max_working_context_events=0,
+        max_working_context_chars=0,
+        max_state_records=0,
+    )
+
+
+def _compile_budget_plan_cognitive_input(
+    *,
+    character: CharacterDirectory,
+    identity: Identity,
+    state: CanonicalState,
+    user_event: Event,
+    continuity_context: ContinuityContext | None,
+    plan: BudgetPlan,
+) -> CognitiveInput:
+    """Apply Budget-owned room limits through existing semantic-owner controls."""
+
+    controls = owner_controls_for_budget_plan(plan)
+
+    retrieved_memory = ()
+    if (
+        controls.retrieval.memory_max_chunks > 0
+        and controls.retrieval.memory_max_chars > 0
+    ):
+        retrieved_memory = select_memory_chunks(
+            memory_markdown=character.load_memory_markdown(),
+            query=user_event.payload["content"],
+            max_chunks=controls.retrieval.memory_max_chunks,
+            max_chars=controls.retrieval.memory_max_chars,
+        )
+
+    event_evidence = ()
+    if (
+        controls.retrieval.event_max_events > 0
+        and controls.retrieval.event_max_chars > 0
+    ):
+        event_evidence = select_event_evidence(
+            events=character.event_retrieval_source(),
+            query=user_event.payload["content"],
+            max_events=controls.retrieval.event_max_events,
+            max_chars=controls.retrieval.event_max_chars,
+            exclude_event_ids=(user_event.id,),
+        )
+
+    return compile_cognitive_input(
+        identity=identity,
+        state=state,
+        current_event=user_event,
+        recent_events=character.iter_events(),
+        continuity_context=continuity_context,
+        retrieved_memory=retrieved_memory,
+        event_evidence=event_evidence,
+        max_working_context_events=(
+            controls.context_compiler.max_working_context_events
+        ),
+        max_working_context_chars=controls.context_compiler.max_working_context_chars,
+        max_state_records=controls.context_compiler.max_state_records,
+    )
 
 
 def _prepare_user_turn(
