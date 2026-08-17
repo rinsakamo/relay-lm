@@ -35,6 +35,11 @@ class ContextSelectionDiagnostics:
     authority_suppressed_count: int = 0
     current_event_excluded_count: int = 0
     redundancy_overlap_count: int = 0
+    character_budget_limit: int | None = None
+    character_budget_used: int = 0
+    evicted_event_window_count: int = 0
+    evicted_character_budget_count: int = 0
+    evicted_orphan_assistant_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,6 +140,13 @@ def compile_cognitive_input_with_diagnostics(
                 max_records=max_state_records,
                 selected_state=cognitive_input.state,
             ),
+            _diagnose_working_context_selection(
+                recent_events=recent_event_sequence,
+                current_event=current_event,
+                selected_context=cognitive_input.context,
+                max_events=max_working_context_events,
+                max_chars=max_working_context_chars,
+            ),
             _diagnose_retrieved_memory_projection(
                 retrieved_memory=retrieved_memory_sequence,
                 selected_memory=cognitive_input.memory,
@@ -224,6 +236,83 @@ def _diagnose_active_state_selection(
         selected_lexical_match_count=lexical_match_count,
         selected_fallback_count=fallback_count,
         evicted_budget_limit_count=evicted_count,
+    )
+
+
+def _diagnose_working_context_selection(
+    *,
+    recent_events: tuple[Event, ...],
+    current_event: Event,
+    selected_context: tuple[ContextItem, ...],
+    max_events: int,
+    max_chars: int,
+) -> ContextSelectionDiagnostics:
+    current_event_excluded_count = sum(
+        1 for event in recent_events if event.id == current_event.id
+    )
+    eligible_events = tuple(
+        event
+        for event in recent_events
+        if event.id != current_event.id
+        and event.type == "message"
+        and event.actor in {"user", "assistant"}
+        and isinstance(event.payload.get("content"), str)
+        and bool(event.payload["content"].strip())
+    )
+    eligible_count = len(eligible_events)
+    selected_count = len(selected_context)
+
+    if max_events == 0:
+        window: tuple[Event, ...] = ()
+    else:
+        window = eligible_events[-max_events:]
+    event_window_evicted_count = eligible_count - len(window)
+
+    orphan_assistant_count = 0
+    if max_chars > 0:
+        index = len(window) - 1
+        while index >= 0:
+            event = window[index]
+            if event.actor == "assistant":
+                if index == 0 or window[index - 1].actor != "user":
+                    orphan_assistant_count += 1
+                    index -= 1
+                    continue
+                index -= 2
+                continue
+            index -= 1
+
+    after_window_and_orphan_count = len(window) - orphan_assistant_count
+    character_budget_evicted_count = max(
+        0,
+        after_window_and_orphan_count - selected_count,
+    )
+    evicted_count = eligible_count - selected_count
+    character_budget_used = sum(len(item.content) for item in selected_context)
+
+    if max_events == 0 or max_chars == 0:
+        mode = "zero_budget"
+    elif evicted_count > 0:
+        mode = "budget_filtered"
+    else:
+        mode = "within_budget"
+
+    return ContextSelectionDiagnostics(
+        layer="working_context",
+        mode=mode,
+        eligible_count=eligible_count,
+        selected_count=selected_count,
+        evicted_count=evicted_count,
+        budget_unit="events",
+        budget_limit=max_events,
+        budget_used=selected_count,
+        budget_pressure=evicted_count > 0,
+        current_event_excluded_count=current_event_excluded_count,
+        character_budget_limit=max_chars,
+        character_budget_used=character_budget_used,
+        evicted_event_window_count=event_window_evicted_count,
+        evicted_character_budget_count=character_budget_evicted_count,
+        evicted_orphan_assistant_count=orphan_assistant_count,
     )
 
 

@@ -231,13 +231,13 @@ This deterministic #1267 scenario evaluates the compiler-owned cross-layer diagn
 
 It verifies that:
 
-- the opt-in result reports exactly the current `canonical_state`, `retrieved_memory`, and `event_evidence` diagnostic layers;
+- the opt-in result reports exactly the current `canonical_state`, `working_context`, `retrieved_memory`, and `event_evidence` diagnostic layers;
 - one stale explicit-key MEMORY chunk suppressed by active Canonical State is counted as `authority_suppressed_count=1` while the unrelated chunk remains projected;
 - a supplied Current Event in Event Evidence is de-duplicated and counted as `current_event_excluded_count=1`;
 - one Event Evidence occurrence that also remains in selected Working Context is observed as `redundancy_overlap_count=1` without changing residency;
 - serialized diagnostics omit known State keys/values/IDs, Event IDs, MEMORY locations/content, and Current Event IDs.
 
-This scenario evaluates only compiler-owned aggregate observation. It does not claim retrieval-stage candidate/budget diagnostics, Working Context budget diagnostics, token-cost accounting, redundancy suppression, runtime default budgets, or actual-model quality.
+The existing scenario now follows the four-layer schema but does not yet assert the new Working Context reason-by-reason budget counters. It also does not claim retrieval-stage candidate/budget diagnostics, token-cost accounting, redundancy suppression, runtime default budgets, or actual-model quality.
 
 ### `memory_heading_retrieval`
 
@@ -340,7 +340,7 @@ Current scenario implementations may use deterministic synthetic providers or di
 
 Still owned by #1247:
 
-- #1267 evidence-backed default MEMORY/State/Event budgeting, broader State-vs-memory authority semantics beyond explicit-key lexical filtering, retrieval-scaled Event Journal access, cross-layer redundancy/retention policy, and remaining retrieval-stage/Working Context/token-aware diagnostics as those runtime slices land;
+- #1267 evidence-backed default MEMORY/State/Event budgeting, broader State-vs-memory authority semantics beyond explicit-key lexical filtering, retrieval-scaled Event Journal access, cross-layer redundancy/retention policy, dedicated Working Context reason-counter evaluation, and remaining retrieval-stage/token-aware diagnostics as those runtime slices land;
 - future privacy/lifecycle evaluation from #1270;
 - response/persona and actual local-model quality measurements;
 - external benchmark adapters after current benchmark availability/version suitability is re-verified.
