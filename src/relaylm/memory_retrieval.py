@@ -4,7 +4,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
-from relaylm.retrieval_lexical import lexical_terms
+from relaylm.retrieval_lexical import lexical_query_terms, lexical_terms
 
 
 _HEADING = re.compile(r"^(#{1,6})[ \t]+(.+?)\s*$")
@@ -116,7 +116,7 @@ def _select_memory_chunks(
         )
 
     chunks = _parse_heading_chunks(memory_markdown)
-    query_terms = lexical_terms(query)
+    query_terms = lexical_query_terms(query)
     if not query_terms:
         return MemoryRetrievalResult(
             chunks=(),
@@ -273,13 +273,11 @@ def _parse_heading_chunks(markdown: str) -> tuple[MemoryChunk, ...]:
     return tuple(chunks)
 
 
-def _memory_lexical_score(chunk: MemoryChunk, query_terms: tuple[str, ...]) -> int:
+def _memory_lexical_score(chunk: MemoryChunk, query_terms: frozenset[str]) -> int:
     heading_terms = frozenset(lexical_terms(" ".join(chunk.heading_path)))
     content_terms = frozenset(lexical_terms(chunk.content))
     score = 0
     for term in query_terms:
-        if len(term) < 2:
-            continue
         if term in heading_terms:
             score += 4
         if term in content_terms:

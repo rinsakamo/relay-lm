@@ -30,6 +30,12 @@ def lexical_terms(text: str) -> tuple[str, ...]:
     return tuple(features)
 
 
+def lexical_query_terms(text: str) -> frozenset[str]:
+    """Return distinct query features eligible for shared retrieval relevance."""
+
+    return frozenset(term for term in lexical_terms(text) if len(term) >= 2)
+
+
 def _cjk_runs(token: str) -> tuple[str, ...]:
     runs: list[str] = []
     current: list[str] = []
