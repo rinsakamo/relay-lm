@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 from relaylm.events import Event
-from relaylm.retrieval_lexical import lexical_terms
+from relaylm.retrieval_lexical import lexical_query_terms, lexical_terms
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,7 +179,7 @@ def _select_event_evidence(
             max_chars=max_chars,
         )
 
-    query_terms = frozenset(term for term in lexical_terms(query) if len(term) >= 2)
+    query_terms = lexical_query_terms(query)
     if not query_terms:
         return _empty_retrieval_result(
             mode="no_query_terms",

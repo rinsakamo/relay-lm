@@ -123,3 +123,41 @@ def test_ascii_exact_token_protection_still_does_not_match_likes_inside_dislikes
         max_events=2,
         max_chars=200,
     ) == (likes,)
+
+
+def test_repeated_query_feature_does_not_outweigh_distinct_overlap() -> None:
+    memory = """# Memory
+
+## Coffee
+
+Coffee note.
+
+## Fukuoka Trip
+
+Fukuoka trip notes.
+"""
+    query = "coffee coffee coffee fukuoka trip"
+
+    selected_memory = select_memory_chunks(
+        memory_markdown=memory,
+        query=query,
+        max_chunks=1,
+        max_chars=500,
+    )
+    coffee = _event("coffee", "Coffee note.")
+    fukuoka_trip = _event("fukuoka-trip", "Fukuoka trip notes.")
+    events = (coffee, fukuoka_trip)
+
+    assert [chunk.heading_path[-1] for chunk in selected_memory] == ["Fukuoka Trip"]
+    assert select_event_evidence(
+        events=events,
+        query=query,
+        max_events=1,
+        max_chars=500,
+    ) == (fukuoka_trip,)
+    assert select_event_evidence(
+        events=EventDiscoveryIndex(events),
+        query=query,
+        max_events=1,
+        max_chars=500,
+    ) == (fukuoka_trip,)
