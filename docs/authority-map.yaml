@@ -20,10 +20,12 @@ domains:
     runtime:
       - src/relaylm/context.py
       - src/relaylm/memory_retrieval.py
+      - src/relaylm/event_retrieval.py
     tests:
       - tests/unit/test_context_state_selection.py
       - tests/unit/test_context_state_diagnostics.py
       - tests/unit/test_turn_memory_retrieval.py
+      - tests/unit/test_event_retrieval.py
     docs:
       - docs/architecture/context-compiler.md
 
