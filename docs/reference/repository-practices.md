@@ -83,18 +83,22 @@ Ruff is used as a lint-only mechanical error gate, not as an automatic formatter
 
 ## Repository-host protections
 
-The desired GitHub-host configuration is intentionally small:
+The live GitHub-host configuration is intentionally small and should remain aligned with this contract.
 
 ### `v1`
 
 - require pull request before branch updates/merge;
-- require the current `v1 CI / pytest` status check;
+- require `v1 CI / pytest`;
+- require `v1 CI / minimum-supported`;
+- require `v1 CI / package-smoke`;
+- require `v1 CI / lint`;
+- do not require branches to be automatically updated/rebased onto the latest `v1` before merge;
 - block force pushes;
 - block branch deletion;
 - require linear history where compatible with squash-only merge;
 - allow no routine bypass that would make the checks advisory.
 
-Do not require branches to be automatically updated/rebased onto the latest `v1`; RelayLM instead reconstructs authority when `v1` moves and does not silently rebase a transaction.
+RelayLM reconstructs authority when `v1` moves and does not silently rebase a transaction.
 
 ### frozen `main`
 
@@ -110,6 +114,7 @@ Do not require branches to be automatically updated/rebased onto the latest `v1`
 - enable Dependabot alerts and Dependabot security updates;
 - run routine Dependabot version updates for GitHub Actions only;
 - enable secret scanning and repository push protection;
-- keep GitHub Actions on maintained versions and pin workflow uses to full commit SHAs.
+- require GitHub Actions workflow references to use full-length commit SHA pins;
+- keep GitHub Actions on maintained versions and advance pinned SHAs through reviewed dependency transactions.
 
-These repository-host settings are not considered implemented merely because they are documented here. Any setting not observable as active in GitHub remains explicit administrative work.
+Ruleset details that are available through the GitHub API should be verified from live repository authority rather than inferred from this document. Repository settings that the linked automation cannot read must be explicitly confirmed in GitHub UI during an audit; documentation alone is not proof that a host-side setting is active.
