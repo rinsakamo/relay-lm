@@ -132,3 +132,34 @@ def test_cross_layer_diagnostics_report_passthrough_without_false_suppression() 
     assert event_diagnostic.evicted_count == 0
     assert event_diagnostic.current_event_excluded_count == 0
     assert event_diagnostic.redundancy_overlap_count == 0
+
+
+def test_exact_working_context_overlap_is_suppressed_from_event_evidence_but_observed() -> None:
+    prior_user = _event("prior-user-overlap", "user", "coffee again", 5)
+    prior_assistant = _event("prior-assistant-overlap", "assistant", "got it", 6)
+    historical = _event("historical-evidence", "user", "coffee last year", 7)
+    current = _event("current-overlap", "user", "coffee now", 8)
+
+    result = compile_cognitive_input_with_diagnostics(
+        identity=Identity("# ReLM\nBe grounded."),
+        state=CanonicalState(),
+        current_event=current,
+        recent_events=(prior_user, prior_assistant),
+        event_evidence=(historical, prior_user),
+    )
+
+    assert [item.sources for item in result.cognitive_input.context] == [
+        (prior_user.id,),
+        (prior_assistant.id,),
+    ]
+    assert [item.event_id for item in result.cognitive_input.event_evidence] == [
+        historical.id
+    ]
+
+    event_diagnostic = result.diagnostics[3]
+    assert event_diagnostic.mode == "working_context_deduplicated"
+    assert event_diagnostic.eligible_count == 2
+    assert event_diagnostic.selected_count == 1
+    assert event_diagnostic.evicted_count == 1
+    assert event_diagnostic.current_event_excluded_count == 0
+    assert event_diagnostic.redundancy_overlap_count == 1
