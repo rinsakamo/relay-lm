@@ -165,7 +165,25 @@ A memory `location` is **not** an Event ID, is **not** eligible as StateCandidat
 
 The compiler consumes the supplied `retrieved_memory` exactly as already-selected evidence; it does not silently run broader retrieval or change its scope. Projection is read/select/project only and does not mutate `MEMORY.md`, State, Events, or indexes and does not call an LLM.
 
-The OpenAI-compatible provider serializes this layer separately from `context` and instructs the model that crystallized memory is lower authority than active State. This is a provider-facing safety rule, not the final deterministic conflict solution.
+The OpenAI-compatible provider serializes this layer separately from `context` and instructs the model that crystallized memory is lower authority than active State. That instruction remains a defense-in-depth rule; RelayLM now also owns a conservative deterministic State-shadow filter before projection.
+
+### Deterministic State-shadow filtering
+
+Before retrieved chunks become `CognitiveInput.memory`, the Context Compiler compares only an explicitly State-addressing subset against the full eligible active Canonical State set.
+
+Current filtering is intentionally narrow:
+
+- authority eligibility uses every State record with `status == "active"` and `valid_to is None`, independently of any later `max_state_records` projection cap;
+- a Memory chunk is State-addressing only when its heading path contains every normalized lexical term of a State key;
+- when that State value has lexically comparable text, the chunk is retained if at least one current State value appears as an exact lexical token sequence in the chunk;
+- if the heading addresses the key but none of the comparable current State values appears, the whole chunk is suppressed from `CognitiveInput.memory`;
+- exact token sequences are used rather than substring matching, so for example `likes` is not treated as present inside `dislikes`;
+- inactive or expired State records do not suppress memory;
+- a chunk whose heading does not explicitly identify a State key is left untouched, even if its prose happens to mention an older or different value.
+
+Whole-chunk suppression changes only current cognitive residency. It does not rewrite or delete `MEMORY.md`, mutate State or Events, create a second semantic owner, or add an LLM call.
+
+This first filter deliberately does **not** infer arbitrary natural-language contradiction, distinguish historical from current prose when the heading is ambiguous, compare semantic degree envelopes, or decide conflicts for non-lexically-comparable State values. Those remain later #1267 work.
 
 ### Opt-in ordinary-turn retrieval
 
@@ -176,14 +194,12 @@ Current behavior is intentionally opt-in:
 - `memory_budget=None` preserves the previous behavior and does not read `MEMORY.md` at all;
 - a supplied `MemoryRetrievalBudget(max_chunks, max_chars)` uses the Current User Event text as the retrieval query and delegates selection to `select_memory_chunks`;
 - buffered and streaming turns share the same retrieval/compilation helper and therefore the same selection semantics;
-- selected chunks enter only the dedicated `CognitiveInput.memory` layer;
+- selected chunks pass through the deterministic State-shadow filter and then enter only the dedicated `CognitiveInput.memory` layer;
 - a zero budget is allowed and selects no memory; negative budget values fail explicitly;
 - no default runtime MEMORY budget is implied by the existence of this opt-in path;
 - the public OpenAI client boundary does not yet expose a MEMORY-budget control in this slice.
 
 The Current User Event is persisted before optional retrieval, matching the existing ordinary-turn occurrence semantics. If reading `MEMORY.md` fails after that point, the turn fails closed before provider generation: the User Event remains recorded, no Assistant Event is created, and Canonical State is unchanged by the failed turn.
-
-Deterministic State-vs-memory stale/conflict suppression before provider projection remains deferred under #1267. The provider instruction that active State wins current-understanding conflicts is still a safety layer rather than the final RelayLM-owned conflict algorithm.
 
 ## Budget model
 
@@ -207,7 +223,7 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 
 - evidence-backed runtime default State/MEMORY budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
 - `unresolved`, `referent`, and `active_task` retention beyond pure recency;
-- deterministic State-vs-memory stale/conflict suppression before provider projection;
+- semantic State-vs-memory conflict detection beyond explicit State-key headings, including historical/current interpretation, degree-level conflicts, and non-lexical values;
 - durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
 - targeted Event evidence retrieval;
 - redundancy reduction across State / Working Context / Memory / Events;
