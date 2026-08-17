@@ -68,7 +68,11 @@ def test_counter_receives_same_model_input_shape_as_buffered_generation() -> Non
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         sent.append(body)
-        wire = {"utterance": "了解。", "state_candidates": []}
+        wire = {
+            "utterance": "了解。",
+            "state_candidates": [],
+            "continuity_candidates": [],
+        }
         return httpx.Response(
             200,
             json={"choices": [{"message": {"content": json.dumps(wire, ensure_ascii=False)}}]},

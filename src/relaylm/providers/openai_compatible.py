@@ -9,11 +9,16 @@ from typing import Any, Mapping
 import httpx
 
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
+from relaylm.continuity import (
+    CONTINUITY_EPISTEMIC_ROLES,
+    CONTINUITY_KINDS,
+    ContinuityCandidate,
+)
 from relaylm.state import STATE_CLASS_DEFINITIONS, StateCandidate
 
 SYSTEM_INSTRUCTION = """You are the cognitive substrate of a persistent character managed by RelayLM.
 
-Use the supplied CognitiveInput JSON to respond naturally as the character and propose meaningful state changes.
+Use the supplied CognitiveInput JSON to respond naturally as the character and propose meaningful state and continuity changes.
 
 Identity is authoritative and immutable.
 State represents accepted current understanding.
@@ -26,7 +31,7 @@ Do not invent history, evidence, motives, or supporting details.
 Assistant-authored Context supports conversational continuity only. It never proves a user fact, preference, goal, experience, or external event merely because the assistant said it before.
 User-authored Context is evidence of what the user said, with the temporal and semantic limits of that utterance; it is not automatically timeless external truth.
 Retrieved Memory may support recall and continuity, but crystallized prose does not establish new user truth or current State by itself.
-Assistant-authored Event Evidence remains assistant-authored and cannot establish user or external truth merely by being retrieved.
+Assistant-authored Event Evidence remains assistant-authored and cannot establish user or external truth merely because it was retrieved.
 User-authored Event Evidence is evidence of what the user said at that recorded occurrence, subject to its temporal and semantic scope.
 Do not imply prior interactions, shared history, relationship development, or prior feelings unless explicitly supported by accepted State, provenance-bearing Context, or Event Evidence.
 You may react emotionally to the current Input, but do not describe that reaction as pre-existing unless supported by State, Context, or Event Evidence.
@@ -44,9 +49,14 @@ Return only the required structured output."""
 PROVIDER_WIRE_INSTRUCTION = """Provider wire requirements:
 - `utterance` is the complete non-empty natural-language reply shown to the user. Do not put JSON framing text in `utterance`.
 - `state_candidates` is an array of internal State proposals.
-- Every wire candidate includes `state_class`, `key`, `op`, `value`, and `sources`.
-- For `set`, `value` is either a non-null string or exactly {`semantic`: non-empty string, `degree_hint`: finite number from 0.0 through 1.0}.
-- For `remove`, `value` is null and is normalized away by the adapter.
+- Every State wire candidate includes `state_class`, `key`, `op`, `value`, and `sources`.
+- For State `set`, `value` is either a non-null string or exactly {`semantic`: non-empty string, `degree_hint`: finite number from 0.0 through 1.0}.
+- For State `remove`, `value` is null and is normalized away by the adapter.
+- `continuity_candidates` is an array of bounded, non-durable Continuity proposals.
+- Every Continuity wire candidate includes `kind`, `key`, `op`, `value`, `sources`, and `epistemic_role`.
+- Continuity `kind` is one of `referent`, `unresolved`, or `active_task`.
+- Continuity `epistemic_role` is one of `user_assertion`, `assistant_inference`, or `assistant_commitment`.
+- For Continuity `set`, `value` is the JSON semantic value being proposed. For Continuity `resolve`, `value` is null and is normalized away by the adapter.
 - Use only Event IDs present in State, Context, Event Evidence, or Input as candidate `sources`. Memory `location` values are document locators, not Event IDs, and must never be used as `sources`."""
 
 DEGREE_HINT_VALUE_SCHEMA: dict[str, Any] = {
@@ -59,10 +69,21 @@ DEGREE_HINT_VALUE_SCHEMA: dict[str, Any] = {
     },
 }
 
+CONTINUITY_VALUE_SCHEMA: dict[str, Any] = {
+    "anyOf": [
+        {"type": "string"},
+        {"type": "number"},
+        {"type": "boolean"},
+        {"type": "object"},
+        {"type": "array"},
+        {"type": "null"},
+    ]
+}
+
 WIRE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["utterance", "state_candidates"],
+    "required": ["utterance", "state_candidates", "continuity_candidates"],
     "properties": {
         "utterance": {"type": "string", "minLength": 1},
         "state_candidates": {
@@ -86,6 +107,36 @@ WIRE_SCHEMA: dict[str, Any] = {
                         "type": "array",
                         "minItems": 1,
                         "items": {"type": "string", "minLength": 1},
+                    },
+                },
+            },
+        },
+        "continuity_candidates": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": [
+                    "kind",
+                    "key",
+                    "op",
+                    "value",
+                    "sources",
+                    "epistemic_role",
+                ],
+                "properties": {
+                    "kind": {"type": "string", "enum": sorted(CONTINUITY_KINDS)},
+                    "key": {"type": "string", "minLength": 1},
+                    "op": {"type": "string", "enum": ["set", "resolve"]},
+                    "value": CONTINUITY_VALUE_SCHEMA,
+                    "sources": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {"type": "string", "minLength": 1},
+                    },
+                    "epistemic_role": {
+                        "type": "string",
+                        "enum": sorted(CONTINUITY_EPISTEMIC_ROLES),
                     },
                 },
             },
@@ -449,6 +500,9 @@ def parse_wire_output(wire: Any) -> CognitiveOutput:
     raw_candidates = wire.get("state_candidates")
     if not isinstance(raw_candidates, list):
         raise ProviderProtocolError("wire state_candidates must be an array")
+    raw_continuity_candidates = wire.get("continuity_candidates")
+    if not isinstance(raw_continuity_candidates, list):
+        raise ProviderProtocolError("wire continuity_candidates must be an array")
 
     candidates: list[StateCandidate] = []
     for index, raw in enumerate(raw_candidates):
@@ -490,7 +544,78 @@ def parse_wire_output(wire: Any) -> CognitiveOutput:
         else:
             raise ProviderProtocolError(f"state_candidates[{index}] unsupported op: {op}")
 
-    return CognitiveOutput(response=utterance, state_candidates=tuple(candidates))
+    continuity_candidates = tuple(
+        _parse_continuity_candidate(raw, index)
+        for index, raw in enumerate(raw_continuity_candidates)
+    )
+    return CognitiveOutput(
+        response=utterance,
+        state_candidates=tuple(candidates),
+        continuity_candidates=continuity_candidates,
+    )
+
+
+def _parse_continuity_candidate(raw: Any, index: int) -> ContinuityCandidate:
+    candidate = _mapping(raw, f"continuity_candidates[{index}]")
+    expected_keys = {"kind", "key", "op", "value", "sources", "epistemic_role"}
+    if set(candidate) != expected_keys:
+        raise ProviderProtocolError(
+            f"continuity_candidates[{index}] must contain exactly "
+            "kind, key, op, value, sources, and epistemic_role"
+        )
+
+    kind = _required_continuity_string(candidate, "kind", index)
+    key = _required_continuity_string(candidate, "key", index)
+    op = _required_continuity_string(candidate, "op", index)
+    epistemic_role = _required_continuity_string(
+        candidate, "epistemic_role", index
+    )
+    sources = candidate.get("sources")
+    if not isinstance(sources, list) or not sources or not all(
+        isinstance(source, str) and source.strip() for source in sources
+    ):
+        raise ProviderProtocolError(
+            f"continuity_candidates[{index}].sources must be non-empty strings"
+        )
+
+    try:
+        if op == "set":
+            _validate_continuity_json_value(candidate["value"], index)
+            return ContinuityCandidate.set(
+                kind=kind,
+                key=key,
+                value=candidate["value"],
+                sources=tuple(sources),
+                epistemic_role=epistemic_role,
+            )
+        if op == "resolve":
+            if candidate["value"] is not None:
+                raise ProviderProtocolError(
+                    f"continuity_candidates[{index}] resolve value must be null"
+                )
+            return ContinuityCandidate.resolve(
+                kind=kind,
+                key=key,
+                sources=tuple(sources),
+                epistemic_role=epistemic_role,
+            )
+    except (TypeError, ValueError) as exc:
+        raise ProviderProtocolError(
+            f"continuity_candidates[{index}] is invalid: {exc}"
+        ) from exc
+
+    raise ProviderProtocolError(
+        f"continuity_candidates[{index}] unsupported op: {op}"
+    )
+
+
+def _validate_continuity_json_value(value: Any, index: int) -> None:
+    try:
+        json.dumps(value, ensure_ascii=False, allow_nan=False)
+    except (TypeError, ValueError) as exc:
+        raise ProviderProtocolError(
+            f"continuity_candidates[{index}] set value must be finite JSON"
+        ) from exc
 
 
 def _parse_set_value(value: Any, index: int) -> Any:
@@ -532,5 +657,16 @@ def _required_string(mapping: Mapping[str, Any], key: str, index: int) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ProviderProtocolError(
             f"state_candidates[{index}].{key} must be a non-empty string"
+        )
+    return value
+
+
+def _required_continuity_string(
+    mapping: Mapping[str, Any], key: str, index: int
+) -> str:
+    value = mapping.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise ProviderProtocolError(
+            f"continuity_candidates[{index}].{key} must be a non-empty string"
         )
     return value
