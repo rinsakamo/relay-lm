@@ -18,11 +18,13 @@ Use the supplied CognitiveInput JSON to respond naturally as the character and p
 Identity is authoritative and immutable.
 State represents accepted current understanding.
 Context contains RelayLM-prepared information relevant to this turn. Context may include recent user- or assistant-authored dialogue; preserve its actor provenance.
+Memory contains optional retrieved crystallized synthesis. Memory is not accepted current State, and its location is a document locator rather than Event provenance. When Memory conflicts with active State, treat active State as the current understanding.
 Input is the current event.
 
 Do not invent history, evidence, motives, or supporting details.
 Assistant-authored Context supports conversational continuity only. It never proves a user fact, preference, goal, experience, or external event merely because the assistant said it before.
 User-authored Context is evidence of what the user said, with the temporal and semantic limits of that utterance; it is not automatically timeless external truth.
+Retrieved Memory may support recall and continuity, but crystallized prose does not establish new user truth or current State by itself.
 Do not imply prior interactions, shared history, relationship development, or prior feelings unless explicitly supported by accepted State or provenance-bearing Context.
 You may react emotionally to the current Input, but do not describe that reaction as pre-existing unless supported by State or Context.
 Preserve uncertainty, degree, and direction expressed by the user.
@@ -42,7 +44,7 @@ PROVIDER_WIRE_INSTRUCTION = """Provider wire requirements:
 - Every wire candidate includes `state_class`, `key`, `op`, `value`, and `sources`.
 - For `set`, `value` is either a non-null string or exactly {`semantic`: non-empty string, `degree_hint`: finite number from 0.0 through 1.0}.
 - For `remove`, `value` is null and is normalized away by the adapter.
-- Use only Event IDs present in the supplied CognitiveInput."""
+- Use only Event IDs present in State, Context, or Input as candidate `sources`. Memory `location` values are document locators, not Event IDs, and must never be used as `sources`."""
 
 DEGREE_HINT_VALUE_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -392,6 +394,13 @@ def serialize_cognitive_input(cognitive_input: CognitiveInput) -> dict[str, Any]
             for record in cognitive_input.state
         ],
         "context": context,
+        "memory": [
+            {
+                "content": item.content,
+                "location": item.location,
+            }
+            for item in cognitive_input.memory
+        ],
         "input": {
             "event_id": cognitive_input.input.id,
             "actor": cognitive_input.input.actor,
