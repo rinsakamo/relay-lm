@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
-from relaylm.cognitive import CognitiveInput, ContextItem, RetrievedMemoryItem
+from relaylm.cognitive import CognitiveInput, ContextItem, EventEvidenceItem, RetrievedMemoryItem
 from relaylm.events import Event
 from relaylm.identity import Identity
 from relaylm.memory_retrieval import MemoryChunk
@@ -47,6 +47,7 @@ def compile_cognitive_input(
     current_event: Event,
     recent_events: Iterable[Event] = (),
     retrieved_memory: Iterable[MemoryChunk] = (),
+    event_evidence: Iterable[Event] = (),
     max_working_context_events: int = DEFAULT_WORKING_CONTEXT_MAX_EVENTS,
     max_working_context_chars: int = DEFAULT_WORKING_CONTEXT_MAX_CHARS,
     max_state_records: int | None = None,
@@ -79,6 +80,10 @@ def compile_cognitive_input(
         RetrievedMemoryItem(content=chunk.content, location=chunk.location)
         for chunk in filtered_memory
     )
+    evidence = _project_event_evidence(
+        event_evidence=event_evidence,
+        current_event=current_event,
+    )
     return CognitiveInput(
         identity=identity,
         state_classes=STATE_CLASS_DEFINITIONS,
@@ -86,6 +91,7 @@ def compile_cognitive_input(
         context=working_context,
         input=current_event,
         memory=memory,
+        event_evidence=evidence,
     )
 
 
@@ -96,6 +102,7 @@ def compile_cognitive_input_with_diagnostics(
     current_event: Event,
     recent_events: Iterable[Event] = (),
     retrieved_memory: Iterable[MemoryChunk] = (),
+    event_evidence: Iterable[Event] = (),
     max_working_context_events: int = DEFAULT_WORKING_CONTEXT_MAX_EVENTS,
     max_working_context_chars: int = DEFAULT_WORKING_CONTEXT_MAX_CHARS,
     max_state_records: int | None = None,
@@ -108,6 +115,7 @@ def compile_cognitive_input_with_diagnostics(
         current_event=current_event,
         recent_events=recent_events,
         retrieved_memory=retrieved_memory,
+        event_evidence=event_evidence,
         max_working_context_events=max_working_context_events,
         max_working_context_chars=max_working_context_chars,
         max_state_records=max_state_records,
@@ -201,6 +209,32 @@ def _diagnose_active_state_selection(
         selected_fallback_count=fallback_count,
         evicted_budget_limit_count=evicted_count,
     )
+
+
+def _project_event_evidence(
+    *,
+    event_evidence: Iterable[Event],
+    current_event: Event,
+) -> tuple[EventEvidenceItem, ...]:
+    projected: list[EventEvidenceItem] = []
+    for event in event_evidence:
+        if event.id == current_event.id:
+            continue
+        content = event.payload.get("content")
+        if not isinstance(content, str) or not content.strip():
+            raise ValueError(
+                "event evidence Event must contain non-empty string payload.content"
+            )
+        projected.append(
+            EventEvidenceItem(
+                event_id=event.id,
+                event_type=event.type,
+                actor=event.actor,
+                timestamp=event.timestamp,
+                content=content,
+            )
+        )
+    return tuple(projected)
 
 
 def _filter_retrieved_memory_against_active_state(

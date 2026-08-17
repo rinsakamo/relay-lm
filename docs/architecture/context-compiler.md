@@ -201,11 +201,11 @@ Current behavior is intentionally opt-in:
 
 The Current User Event is persisted before optional retrieval, matching the existing ordinary-turn occurrence semantics. If reading `MEMORY.md` fails after that point, the turn fails closed before provider generation: the User Event remains recorded, no Assistant Event is created, and Canonical State is unchanged by the failed turn.
 
-## Current targeted Event evidence retrieval primitive
+## Current targeted Event evidence retrieval and projection primitives
 
 `select_event_evidence(...)` provides deterministic bounded selection over caller-supplied persisted Events without replaying the whole supplied sequence into cognitive context.
 
-The current primitive is deliberately retrieval-only:
+Current retrieval behavior:
 
 - input Event order is treated as Event Journal chronology;
 - only `message` Events with non-empty string `payload.content` are eligible;
@@ -219,7 +219,30 @@ The current primitive is deliberately retrieval-only:
 - selected Events are returned in original source chronology after ranking/admission;
 - the original `Event` objects are returned unchanged; retrieval does not mutate Events, State, MEMORY, indexes, or call an LLM.
 
-This primitive does **not yet** project targeted Events into `CognitiveInput`, change provider serialization/instructions, or run automatically during an ordinary turn. The file-backed `CharacterDirectory.iter_events()` path also still scans `events.jsonl`; retrieval-scaled journal reads/indexing remain separate work. Semantic/vector retrieval, temporal interpretation, conflict authority, and cross-layer diagnostics are likewise deferred.
+`compile_cognitive_input(..., event_evidence=...)` now accepts already-selected persisted Events and projects them into a distinct `CognitiveInput.event_evidence` layer. Each item preserves:
+
+```text
+event_id
+event_type
+actor
+timestamp
+content
+```
+
+Projection preserves supplied order and excludes the Current Event by ID because Current Input is already carried separately. A selected Event without non-empty string `payload.content` fails explicitly rather than being silently dropped or rewritten.
+
+The layer remains distinct by authority and purpose:
+
+```text
+Working Context   recent dialogue continuity with Event sources
+Retrieved Memory  crystallized synthesis with document location
+Event Evidence    targeted persisted occurrence with real Event ID
+Current Input     protected current governed Event
+```
+
+The OpenAI-compatible provider serializes Event Evidence separately. Real Event-evidence IDs may be used as StateCandidate provenance; MEMORY locations remain ineligible. User/assistant actor role and occurrence time remain visible, and retrieved occurrence evidence is not automatically current Canonical State.
+
+Retrieval and projection remain read/select/project only and add no LLM call. The ordinary turn does **not yet** retrieve or supply Event evidence automatically. The file-backed `CharacterDirectory.iter_events()` path also still scans `events.jsonl`; runtime budget plumbing and retrieval-scaled journal reads/indexing remain separate work. Semantic/vector retrieval, temporal interpretation, conflict authority beyond current source roles, and cross-layer diagnostics are likewise deferred.
 
 ## Budget model
 
@@ -241,11 +264,11 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 
 #1267 remains the authority for later Context selection and retrieval work, including:
 
-- evidence-backed runtime default State/MEMORY budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
+- evidence-backed runtime default State/MEMORY/Event budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
 - `unresolved`, `referent`, and `active_task` retention beyond pure recency;
 - semantic State-vs-memory conflict detection beyond explicit State-key headings, including historical/current interpretation, degree-level conflicts, and non-lexical values;
 - durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
-- projection of targeted Event evidence into a distinct CognitiveInput/provider layer, ordinary-turn wiring, and retrieval-scaled Event Journal reads/indexing;
+- ordinary-turn targeted Event retrieval wiring and retrieval-scaled Event Journal reads/indexing;
 - redundancy reduction across State / Working Context / Memory / Events;
 - total token-aware tier budgeting and cross-layer diagnostics;
 - embedding/index acceleration only after authority eligibility is preserved.
