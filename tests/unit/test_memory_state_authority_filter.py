@@ -189,3 +189,21 @@ def test_preferred_beverage_shadow_does_not_delete_separate_tea_liking_memory() 
     assert [item.location for item in compiled.memory] == [tea_liking.location]
     assert compiled.state[0].key == "tea"
     assert compiled.state[0].value == "likes"
+
+
+def test_current_value_match_uses_tokens_not_substrings() -> None:
+    state = CanonicalState(
+        states=(
+            _record(
+                state_id="coffee-liking",
+                state_class="user.preference",
+                key="coffee",
+                value="likes",
+            ),
+        )
+    )
+    conflicting = _chunk(heading="Coffee", content="Rin dislikes coffee.")
+
+    compiled = _compile(state=state, chunks=(conflicting,))
+
+    assert compiled.memory == ()
