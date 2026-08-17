@@ -90,10 +90,10 @@ async def run_actual_model_fixture(
 ) -> ActualModelEvidence:
     """Run one verified fixture snapshot in a fresh workspace.
 
-    This foundation deliberately starts with no process-local Continuity Runtime.
-    Durable Character Package state is copied exactly; Continuity-specific restart
-    scenarios are a later bounded slice and must construct their temporary runtime
-    explicitly rather than smuggling it through fixture persistence.
+    Durable Character Package state is copied exactly. Process-local Continuity is
+    never persisted in the fixture: when the run manifest declares an explicit
+    Continuity Runtime configuration, the ordinary actual-model harness constructs
+    a fresh empty runtime for that run.
     """
 
     character = prepare_character_fixture_workspace(
