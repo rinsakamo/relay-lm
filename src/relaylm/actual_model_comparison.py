@@ -11,6 +11,7 @@ from relaylm.actual_model_evaluation import (
     ActualModelRunManifest,
     ActualModelScenario,
 )
+from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveProvider
 
 
@@ -24,6 +25,7 @@ class ProposalObservationSummary:
     rejected_state_candidate_count: int
     continuity_candidate_count: int
     rejected_continuity_candidate_count: int
+    bounded_budget_failure_count: int
 
     def to_mapping(self) -> dict[str, int]:
         return {
@@ -33,6 +35,7 @@ class ProposalObservationSummary:
             "rejected_state_candidate_count": self.rejected_state_candidate_count,
             "continuity_candidate_count": self.continuity_candidate_count,
             "rejected_continuity_candidate_count": self.rejected_continuity_candidate_count,
+            "bounded_budget_failure_count": self.bounded_budget_failure_count,
         }
 
 
@@ -45,6 +48,7 @@ class ProposalObservationDelta:
     rejected_state_candidate_count: int
     continuity_candidate_count: int
     rejected_continuity_candidate_count: int
+    bounded_budget_failure_count: int
 
     def to_mapping(self) -> dict[str, int]:
         return {
@@ -53,6 +57,7 @@ class ProposalObservationDelta:
             "rejected_state_candidate_count": self.rejected_state_candidate_count,
             "continuity_candidate_count": self.continuity_candidate_count,
             "rejected_continuity_candidate_count": self.rejected_continuity_candidate_count,
+            "bounded_budget_failure_count": self.bounded_budget_failure_count,
         }
 
 
@@ -92,6 +97,8 @@ async def run_actual_model_condition_comparison(
     baseline_manifest: ActualModelRunManifest,
     pressure_manifest: ActualModelRunManifest,
     scenario: ActualModelScenario,
+    baseline_cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
+    pressure_cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
 ) -> ActualModelConditionComparisonEvidence:
     """Run the identical semantic fixture under two explicit budget conditions."""
 
@@ -111,6 +118,7 @@ async def run_actual_model_condition_comparison(
         provider=baseline_provider,
         manifest=baseline_manifest,
         scenario=scenario,
+        cognitive_budget=baseline_cognitive_budget,
     )
     pressure = await run_actual_model_fixture(
         fixture_root=fixture_root,
@@ -118,6 +126,7 @@ async def run_actual_model_condition_comparison(
         provider=pressure_provider,
         manifest=pressure_manifest,
         scenario=scenario,
+        cognitive_budget=pressure_cognitive_budget,
     )
     baseline_summary = summarize_proposal_observations(baseline)
     pressure_summary = summarize_proposal_observations(pressure)
@@ -159,6 +168,7 @@ def summarize_proposal_observations(evidence: ActualModelEvidence) -> ProposalOb
             for turn in evidence.turns
             for decision in turn.deterministic.continuity_decisions
         ),
+        bounded_budget_failure_count=int(evidence.bounded_failure is not None),
     )
 
 
@@ -191,7 +201,19 @@ def _validate_comparable_manifests(
 ) -> None:
     if baseline.condition_id == pressure.condition_id:
         raise ValueError("baseline and pressure condition_id values must differ")
-    if baseline.budgets == pressure.budgets:
+
+    baseline_total_budget = baseline.cognitive_budget is not None
+    pressure_total_budget = pressure.cognitive_budget is not None
+    if baseline_total_budget != pressure_total_budget:
+        raise ValueError(
+            "baseline and pressure must use the same budget-control mode"
+        )
+    if baseline_total_budget:
+        if baseline.cognitive_budget == pressure.cognitive_budget:
+            raise ValueError(
+                "baseline and pressure cognitive budget configurations must differ"
+            )
+    elif baseline.budgets == pressure.budgets:
         raise ValueError("baseline and pressure explicit budget configurations must differ")
 
     baseline_identity = baseline.to_mapping()
@@ -199,6 +221,7 @@ def _validate_comparable_manifests(
     for mapping in (baseline_identity, pressure_identity):
         mapping.pop("condition_id")
         mapping.pop("budgets")
+        mapping.pop("cognitive_budget")
     if baseline_identity != pressure_identity:
         raise ValueError(
             "baseline and pressure runs may differ only by condition_id and explicit budgets"
@@ -222,5 +245,9 @@ def _delta(
         rejected_continuity_candidate_count=(
             pressure.rejected_continuity_candidate_count
             - baseline.rejected_continuity_candidate_count
+        ),
+        bounded_budget_failure_count=(
+            pressure.bounded_budget_failure_count
+            - baseline.bounded_budget_failure_count
         ),
     )

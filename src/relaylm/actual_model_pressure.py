@@ -19,6 +19,7 @@ from relaylm.actual_model_scenarios import (
     ActualModelScenarioDefinition,
     ActualModelScenarioSet,
 )
+from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveProvider
 
 ACTUAL_MODEL_PRESSURE_FORMAT_VERSION = 1
@@ -91,6 +92,8 @@ async def run_actual_model_scenario_pressure_comparison(
     pressure_provider: CognitiveProvider,
     baseline_manifest: ActualModelRunManifest,
     pressure_manifest: ActualModelRunManifest,
+    baseline_cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
+    pressure_cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
 ) -> ActualModelScenarioPressureComparison:
     """Run a preflighted same-definition comparison under explicit budget conditions."""
 
@@ -137,6 +140,8 @@ async def run_actual_model_scenario_pressure_comparison(
         baseline_manifest=baseline_manifest,
         pressure_manifest=pressure_manifest,
         scenario=definition.scenario,
+        baseline_cognitive_budget=baseline_cognitive_budget,
+        pressure_cognitive_budget=pressure_cognitive_budget,
     )
     identity = {
         "format_version": ACTUAL_MODEL_PRESSURE_FORMAT_VERSION,
