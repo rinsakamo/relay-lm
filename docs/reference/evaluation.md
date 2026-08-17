@@ -262,13 +262,28 @@ It checks that:
 
 This evaluates deterministic runtime wiring and failure ordering only. It does not choose or validate a default runtime budget, expose a client/API retrieval control, solve State-vs-memory conflict suppression, or claim actual-model response benefit. Streaming uses the same retrieval preparation helper and remains directly covered by unit contracts; this native scenario does not duplicate the streaming-delivery matrix.
 
+### `state_memory_authority_filter`
+
+This deterministic #1267 scenario evaluates the explicit-key State-shadow authority boundary introduced by PR #1312.
+
+It verifies that:
+
+- active `residence_location=Fukuoka` suppresses a `Residence Location` MEMORY chunk that says Hokkaido;
+- a same-key chunk containing Fukuoka remains available;
+- the full active State set still governs authority when `max_state_records=0` removes State from the projected residency set;
+- an unrelated `Trip History` heading mentioning Hokkaido remains available instead of being reclassified as a current-state conflict;
+- exact lexical matching rejects the false equivalence of active `coffee=likes` with a Coffee chunk saying `dislikes`;
+- stale `preferred_beverage=tea` memory is suppressed while separate positive `tea=likes` State and its compatible Tea memory remain preserved.
+
+This scenario measures only the deterministic explicit-key lexical subset implemented today. It does not claim arbitrary natural-language contradiction understanding, historical/current interpretation under ambiguous headings, degree-level conflict handling, non-lexical value comparison, or actual-model quality.
+
 Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
 ## Deferred evaluation work
 
 Still owned by #1247:
 
-- #1267 evidence-backed default MEMORY/State budgeting, State-vs-memory conflict suppression, targeted Event retrieval, and cross-layer/token-aware diagnostics as those runtime slices land;
+- #1267 evidence-backed default MEMORY/State budgeting, broader State-vs-memory authority semantics beyond explicit-key lexical filtering, targeted Event retrieval, and cross-layer/token-aware diagnostics as those runtime slices land;
 - future privacy/lifecycle evaluation from #1270;
 - response/persona and actual local-model quality measurements;
 - external benchmark adapters after current benchmark availability/version suitability is re-verified.
