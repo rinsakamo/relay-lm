@@ -8,17 +8,25 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 
 from relaylm.api.openai import create_openai_router
+from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveProvider
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
 from relaylm.storage.filesystem import CharacterDirectory
-from relaylm.turn import ContinuityRuntime
+from relaylm.turn import (
+    ContinuityRuntime,
+    EventRetrievalBudget,
+    MemoryRetrievalBudget,
+)
 
 
 def create_app(
     *,
     character: CharacterDirectory,
     provider: CognitiveProvider,
+    memory_budget: MemoryRetrievalBudget | None = None,
+    event_budget: EventRetrievalBudget | None = None,
     continuity_runtime: ContinuityRuntime | None = None,
+    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -34,7 +42,10 @@ def create_app(
         create_openai_router(
             character=character,
             provider=provider,
+            memory_budget=memory_budget,
+            event_budget=event_budget,
             continuity_runtime=continuity_runtime,
+            cognitive_budget=cognitive_budget,
         )
     )
 

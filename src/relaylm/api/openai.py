@@ -11,10 +11,17 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveProvider
 from relaylm.providers.openai_compatible import ProviderProtocolError
 from relaylm.storage.filesystem import CharacterDataError, CharacterDirectory
-from relaylm.turn import ContinuityRuntime, run_user_turn, run_user_turn_streaming
+from relaylm.turn import (
+    ContinuityRuntime,
+    EventRetrievalBudget,
+    MemoryRetrievalBudget,
+    run_user_turn,
+    run_user_turn_streaming,
+)
 
 
 class ChatMessage(BaseModel):
@@ -55,7 +62,10 @@ def create_openai_router(
     *,
     character: CharacterDirectory,
     provider: CognitiveProvider,
+    memory_budget: MemoryRetrievalBudget | None = None,
+    event_budget: EventRetrievalBudget | None = None,
     continuity_runtime: ContinuityRuntime | None = None,
+    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
 ) -> APIRouter:
     router = APIRouter()
     turn_lock = asyncio.Lock()
@@ -80,7 +90,10 @@ def create_openai_router(
                     completion_id=completion_id,
                     created=created,
                     model=request.model,
+                    memory_budget=memory_budget,
+                    event_budget=event_budget,
                     continuity_runtime=continuity_runtime,
+                    cognitive_budget=cognitive_budget,
                 ),
                 media_type="text/event-stream",
             )
@@ -91,7 +104,10 @@ def create_openai_router(
                     character=character,
                     provider=provider,
                     content=content,
+                    memory_budget=memory_budget,
+                    event_budget=event_budget,
                     continuity_runtime=continuity_runtime,
+                    cognitive_budget=cognitive_budget,
                 )
             except ProviderProtocolError as exc:
                 raise HTTPException(status_code=502, detail="upstream cognitive provider failed") from exc
@@ -121,7 +137,10 @@ async def _stream_chat_completion(
     completion_id: str,
     created: int,
     model: str,
+    memory_budget: MemoryRetrievalBudget | None = None,
+    event_budget: EventRetrievalBudget | None = None,
     continuity_runtime: ContinuityRuntime | None = None,
+    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
 ):
     queue: asyncio.Queue[tuple[str, object]] = asyncio.Queue()
 
@@ -137,7 +156,10 @@ async def _stream_chat_completion(
                     provider=provider,
                     content=content,
                     emit_response_delta=emit_response_delta,
+                    memory_budget=memory_budget,
+                    event_budget=event_budget,
                     continuity_runtime=continuity_runtime,
+                    cognitive_budget=cognitive_budget,
                 )
         except asyncio.CancelledError:
             raise
