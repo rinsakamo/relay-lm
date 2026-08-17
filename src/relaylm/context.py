@@ -469,7 +469,7 @@ def _filter_retrieved_memory_against_active_state(
     retrieved_memory: Iterable[MemoryChunk],
     state: CanonicalState,
 ) -> tuple[MemoryChunk, ...]:
-    """Suppress lower-authority explicit State shadows against active State."""
+    """Suppress lower-authority current/unknown explicit State shadows against active State."""
 
     active_state = tuple(
         record
@@ -491,6 +491,9 @@ def _memory_chunk_is_shadowed(
     chunk: MemoryChunk,
     active_state: tuple[StateRecord, ...],
 ) -> bool:
+    if chunk.temporal_authority.temporal_scope.value == "historical":
+        return False
+
     heading_terms = frozenset(_lexical_terms(" ".join(chunk.heading_path)))
 
     for record in active_state:
