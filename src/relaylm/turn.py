@@ -5,7 +5,16 @@ from dataclasses import dataclass
 
 from relaylm.budget import BudgetPlan
 from relaylm.budget_controls import owner_controls_for_budget_plan
-from relaylm.budget_enforcement import enforce_total_cognitive_budget
+from relaylm.budget_diagnostics import (
+    CognitiveBudgetDiagnostics,
+    budget_failure_with_diagnostics,
+    diagnostics_for_budget_result,
+)
+from relaylm.budget_enforcement import (
+    BudgetEnforcementResult,
+    CognitiveBudgetExceeded,
+    enforce_total_cognitive_budget,
+)
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveInput, CognitiveOutput, CognitiveProvider
 from relaylm.context import compile_cognitive_input
@@ -129,6 +138,14 @@ class TurnResultWithRetrievalDiagnostics:
     retrieval: TurnRetrievalDiagnostics
 
 
+@dataclass(frozen=True, slots=True)
+class TurnResultWithCognitiveBudgetDiagnostics:
+    """Ordinary turn result plus explicitly requested total-budget diagnostics."""
+
+    turn: TurnResult
+    cognitive_budget: CognitiveBudgetDiagnostics
+
+
 async def run_user_turn(
     *,
     character: CharacterDirectory,
@@ -200,6 +217,49 @@ async def run_user_turn_with_retrieval_diagnostics(
     )
     assert diagnostics is not None
     return TurnResultWithRetrievalDiagnostics(turn=turn, retrieval=diagnostics)
+
+
+async def run_user_turn_with_cognitive_budget_diagnostics(
+    *,
+    character: CharacterDirectory,
+    provider: CognitiveProvider,
+    content: str,
+    cognitive_budget: CognitiveBudgetRuntimeConfig,
+    continuity_runtime: ContinuityRuntime | None = None,
+) -> TurnResultWithCognitiveBudgetDiagnostics:
+    """Run one budget-enforced turn and explicitly return content-free diagnostics."""
+
+    try:
+        user_event, state, enforcement = _enforce_budgeted_user_turn(
+            character=character,
+            content=content,
+            continuity_runtime=continuity_runtime,
+            cognitive_budget=cognitive_budget,
+        )
+    except CognitiveBudgetExceeded as failure:
+        raise budget_failure_with_diagnostics(
+            config=cognitive_budget.total,
+            policy=cognitive_budget.policy,
+            failure=failure,
+        ) from failure
+
+    diagnostics = diagnostics_for_budget_result(
+        config=cognitive_budget.total,
+        policy=cognitive_budget.policy,
+        result=enforcement,
+    )
+    output = await provider.generate(enforcement.cognitive_input)
+    turn = _commit_cognitive_output(
+        character=character,
+        state=state,
+        user_event=user_event,
+        output=output,
+        continuity_runtime=continuity_runtime,
+    )
+    return TurnResultWithCognitiveBudgetDiagnostics(
+        turn=turn,
+        cognitive_budget=diagnostics,
+    )
 
 
 async def run_user_turn_streaming(
@@ -291,6 +351,57 @@ async def run_user_turn_streaming_with_retrieval_diagnostics(
     return TurnResultWithRetrievalDiagnostics(turn=turn, retrieval=diagnostics)
 
 
+async def run_user_turn_streaming_with_cognitive_budget_diagnostics(
+    *,
+    character: CharacterDirectory,
+    provider: CognitiveProvider,
+    content: str,
+    emit_response_delta: Callable[[str], Awaitable[None]],
+    cognitive_budget: CognitiveBudgetRuntimeConfig,
+    continuity_runtime: ContinuityRuntime | None = None,
+) -> TurnResultWithCognitiveBudgetDiagnostics:
+    """Run one streamed budget-enforced turn and return content-free diagnostics."""
+
+    if not content.strip():
+        raise ValueError("user content must not be empty")
+
+    stream_generate = getattr(provider, "stream_generate", None)
+    if stream_generate is None:
+        raise TypeError("provider does not support cognitive streaming")
+
+    try:
+        user_event, state, enforcement = _enforce_budgeted_user_turn(
+            character=character,
+            content=content,
+            continuity_runtime=continuity_runtime,
+            cognitive_budget=cognitive_budget,
+        )
+    except CognitiveBudgetExceeded as failure:
+        raise budget_failure_with_diagnostics(
+            config=cognitive_budget.total,
+            policy=cognitive_budget.policy,
+            failure=failure,
+        ) from failure
+
+    diagnostics = diagnostics_for_budget_result(
+        config=cognitive_budget.total,
+        policy=cognitive_budget.policy,
+        result=enforcement,
+    )
+    output = await stream_generate(enforcement.cognitive_input, emit_response_delta)
+    turn = _commit_cognitive_output(
+        character=character,
+        state=state,
+        user_event=user_event,
+        output=output,
+        continuity_runtime=continuity_runtime,
+    )
+    return TurnResultWithCognitiveBudgetDiagnostics(
+        turn=turn,
+        cognitive_budget=diagnostics,
+    )
+
+
 def _reject_overlapping_budget_configuration(
     *,
     memory_budget: MemoryRetrievalBudget | None,
@@ -309,6 +420,22 @@ def _prepare_budgeted_user_turn(
     continuity_runtime: ContinuityRuntime | None,
     cognitive_budget: CognitiveBudgetRuntimeConfig,
 ) -> tuple[Event, CanonicalState, CognitiveInput]:
+    user_event, state, enforcement = _enforce_budgeted_user_turn(
+        character=character,
+        content=content,
+        continuity_runtime=continuity_runtime,
+        cognitive_budget=cognitive_budget,
+    )
+    return user_event, state, enforcement.cognitive_input
+
+
+def _enforce_budgeted_user_turn(
+    *,
+    character: CharacterDirectory,
+    content: str,
+    continuity_runtime: ContinuityRuntime | None,
+    cognitive_budget: CognitiveBudgetRuntimeConfig,
+) -> tuple[Event, CanonicalState, BudgetEnforcementResult]:
     if not content.strip():
         raise ValueError("user content must not be empty")
 
@@ -344,7 +471,7 @@ def _prepare_budgeted_user_turn(
         ),
         token_counter=cognitive_budget.token_counter,
     )
-    return user_event, state, enforcement.cognitive_input
+    return user_event, state, enforcement
 
 
 def _compile_protected_turn_cognitive_input(

@@ -57,6 +57,25 @@ class CognitiveBudgetDiagnostics:
     count_mode: TokenCountMode
 
 
+class CognitiveBudgetExceededWithDiagnostics(CognitiveBudgetExceeded):
+    """The same bounded budget failure plus aggregate content-free diagnostics."""
+
+    def __init__(
+        self,
+        *,
+        failure: CognitiveBudgetExceeded,
+        diagnostics: CognitiveBudgetDiagnostics,
+    ) -> None:
+        super().__init__(
+            reason=failure.reason,
+            config=failure.config,
+            final_plan=failure.final_plan,
+            final_count=failure.final_count,
+            degradation_step_count=failure.degradation_step_count,
+        )
+        self.diagnostics = diagnostics
+
+
 def diagnostics_for_budget_result(
     *,
     config: TotalBudgetConfig,
@@ -97,6 +116,24 @@ def diagnostics_for_budget_failure(
         degradation_step_count=failure.degradation_step_count,
         outcome=CognitiveBudgetDiagnosticOutcome.BOUNDED_FAILURE,
         failure_reason=failure.reason,
+    )
+
+
+def budget_failure_with_diagnostics(
+    *,
+    config: TotalBudgetConfig,
+    policy: BudgetDegradationPolicy,
+    failure: CognitiveBudgetExceeded,
+) -> CognitiveBudgetExceededWithDiagnostics:
+    """Preserve bounded failure catchability while attaching only aggregate data."""
+
+    return CognitiveBudgetExceededWithDiagnostics(
+        failure=failure,
+        diagnostics=diagnostics_for_budget_failure(
+            config=config,
+            policy=policy,
+            failure=failure,
+        ),
     )
 
 
