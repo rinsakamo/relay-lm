@@ -12,6 +12,7 @@ from relaylm.evaluation import (
     evaluate_degree_hint_integrity,
     evaluate_provider_failure_safety,
     evaluate_restart_continuity,
+    evaluate_working_context_budget_atomicity,
     main,
     run_native_evaluation,
 )
@@ -55,6 +56,7 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "assistant_self_certification_prevention",
         "comparative_preference_preservation",
         "degree_hint_integrity",
+        "working_context_budget_atomicity",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
@@ -159,4 +161,21 @@ def test_degree_hint_evaluation_treats_weakening_as_set_and_rejects_invalid_enve
         "accepted_candidate_count": 1,
         "rejected_candidate_count": 2,
         "final_state_count": 1,
+    }
+
+
+def test_working_context_budget_evaluation_keeps_complete_exchange_and_provenance() -> None:
+    result = asyncio.run(evaluate_working_context_budget_atomicity())
+
+    assert result.scenario_id == "working_context_budget_atomicity"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+    assert {check.boundary for check in result.checks} == {
+        "context_compiler",
+        "event_provenance",
+    }
+    assert result.metrics == {
+        "event_window_context_count": 2,
+        "character_budget_context_count": 2,
+        "selected_source_count": 2,
     }
