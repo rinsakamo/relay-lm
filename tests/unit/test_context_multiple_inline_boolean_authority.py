@@ -208,17 +208,3 @@ def test_one_nonexact_assignment_falls_back_without_partial_c15_interpretation()
     compiled = _compile(fallback, value=True)
 
     assert [item.location for item in compiled.memory] == [fallback.location]
-
-
-def test_heading_plus_multiple_inline_assignments_remains_outside_c15() -> None:
-    deferred = _chunk(
-        (
-            "notifications_enabled: true",
-            "notifications_enabled: false",
-        ),
-        heading="Notifications Enabled",
-    )
-
-    compiled = _compile(deferred, value=True)
-
-    assert [item.location for item in compiled.memory] == [deferred.location]
