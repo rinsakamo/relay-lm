@@ -9,6 +9,7 @@ from relaylm.evaluation import (
     EvaluationScenarioResult,
     evaluate_assistant_self_certification_prevention,
     evaluate_comparative_preference_preservation,
+    evaluate_degree_hint_integrity,
     evaluate_provider_failure_safety,
     evaluate_restart_continuity,
     main,
@@ -53,6 +54,7 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "restart_continuity",
         "assistant_self_certification_prevention",
         "comparative_preference_preservation",
+        "degree_hint_integrity",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
@@ -139,4 +141,22 @@ def test_comparative_preference_evaluation_preserves_weaker_positive_state() -> 
         "accepted_candidate_count": 2,
         "final_preference_state_count": 3,
         "preserved_existing_state_count": 1,
+    }
+
+
+def test_degree_hint_evaluation_treats_weakening_as_set_and_rejects_invalid_envelopes() -> None:
+    result = asyncio.run(evaluate_degree_hint_integrity())
+
+    assert result.scenario_id == "degree_hint_integrity"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+    assert {check.boundary for check in result.checks} == {
+        "validator",
+        "canonical_state",
+        "event_provenance",
+    }
+    assert result.metrics == {
+        "accepted_candidate_count": 1,
+        "rejected_candidate_count": 2,
+        "final_state_count": 1,
     }
