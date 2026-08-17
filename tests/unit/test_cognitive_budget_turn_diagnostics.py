@@ -27,6 +27,7 @@ from relaylm.budget_enforcement import (
 )
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
+from relaylm.state import CanonicalState
 from relaylm.storage.filesystem import CharacterDirectory
 from relaylm.turn import (
     run_user_turn_streaming_with_cognitive_budget_diagnostics,
@@ -43,7 +44,7 @@ def _make_character(root: Path) -> CharacterDirectory:
     )
     (root / "memory" / "events.jsonl").write_text("", encoding="utf-8")
     character = CharacterDirectory(root)
-    character.save_state(character.load_state())
+    character.save_state(CanonicalState())
     return character
 
 
