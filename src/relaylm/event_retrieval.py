@@ -35,9 +35,90 @@ class EventRetrievalResult:
     diagnostics: EventRetrievalDiagnostics
 
 
+class EventDiscoveryIndex:
+    """Rebuildable process-local lexical lookup over already validated Events.
+
+    The index is acceleration only. Event Journal validation and lifecycle ownership
+    remain with the persistence boundary that constructs and invalidates it.
+    """
+
+    _NON_MESSAGE = "non_message"
+    _BLANK = "blank"
+    _ELIGIBLE = "eligible"
+
+    def __init__(self, events: Iterable[Event] = ()) -> None:
+        self._events: list[Event] = []
+        self._term_indexes: dict[str, list[int]] = {}
+        self._id_indexes: dict[str, list[int]] = {}
+        self._classifications: list[str] = []
+        self._non_message_count = 0
+        self._blank_content_count = 0
+        self._eligible_message_count = 0
+        for event in events:
+            self.append(event)
+
+    @property
+    def event_count(self) -> int:
+        return len(self._events)
+
+    @property
+    def non_message_count(self) -> int:
+        return self._non_message_count
+
+    @property
+    def blank_content_count(self) -> int:
+        return self._blank_content_count
+
+    @property
+    def eligible_message_count(self) -> int:
+        return self._eligible_message_count
+
+    def append(self, event: Event) -> None:
+        """Extend the derived lookup for one already-authoritative owned append."""
+
+        index = len(self._events)
+        self._events.append(event)
+        self._id_indexes.setdefault(event.id, []).append(index)
+
+        if event.type != "message":
+            self._classifications.append(self._NON_MESSAGE)
+            self._non_message_count += 1
+            return
+
+        content = event.payload.get("content")
+        if not isinstance(content, str) or not content.strip():
+            self._classifications.append(self._BLANK)
+            self._blank_content_count += 1
+            return
+
+        self._classifications.append(self._ELIGIBLE)
+        self._eligible_message_count += 1
+        for term in frozenset(_lexical_terms(content)):
+            self._term_indexes.setdefault(term, []).append(index)
+
+    def event_at(self, index: int) -> Event:
+        return self._events[index]
+
+    def indexes_for_event_ids(self, event_ids: Iterable[str]) -> frozenset[int]:
+        indexes: set[int] = set()
+        for event_id in event_ids:
+            indexes.update(self._id_indexes.get(event_id, ()))
+        return frozenset(indexes)
+
+    def classification_at(self, index: int) -> str:
+        return self._classifications[index]
+
+    def candidate_scores(self, query_terms: Iterable[str]) -> dict[int, int]:
+        scores: dict[int, int] = {}
+        for term in query_terms:
+            for index in self._term_indexes.get(term, ()):
+                scores[index] = scores.get(index, 0) + 1
+        return scores
+
+
 def select_event_evidence(
     *,
-    events: Iterable[Event],
+    events: Iterable[Event] | EventDiscoveryIndex,
     query: str,
     max_events: int,
     max_chars: int,
@@ -45,9 +126,11 @@ def select_event_evidence(
 ) -> tuple[Event, ...]:
     """Select bounded relevant persisted message Events as occurrence evidence.
 
-    The input iterable is expected to be in Event Journal chronology. Selection is
+    The source is expected to represent Event Journal chronology. Selection is
     relevance-first, uses source order as the deterministic recency tie-break, and
-    restores the selected Events to source chronology before returning them.
+    restores the selected Events to source chronology before returning them. A
+    derived ``EventDiscoveryIndex`` avoids full-snapshot inspection while retaining
+    the same selector semantics.
     """
 
     return _select_event_evidence(
@@ -61,7 +144,7 @@ def select_event_evidence(
 
 def select_event_evidence_with_diagnostics(
     *,
-    events: Iterable[Event],
+    events: Iterable[Event] | EventDiscoveryIndex,
     query: str,
     max_events: int,
     max_chars: int,
@@ -80,7 +163,7 @@ def select_event_evidence_with_diagnostics(
 
 def _select_event_evidence(
     *,
-    events: Iterable[Event],
+    events: Iterable[Event] | EventDiscoveryIndex,
     query: str,
     max_events: int,
     max_chars: int,
@@ -97,9 +180,7 @@ def _select_event_evidence(
             max_chars=max_chars,
         )
 
-    query_terms = frozenset(
-        term for term in _lexical_terms(query) if len(term) >= 2
-    )
+    query_terms = frozenset(term for term in _lexical_terms(query) if len(term) >= 2)
     if not query_terms:
         return _empty_retrieval_result(
             mode="no_query_terms",
@@ -108,6 +189,74 @@ def _select_event_evidence(
         )
 
     excluded = frozenset(exclude_event_ids)
+    if isinstance(events, EventDiscoveryIndex):
+        return _select_indexed_event_evidence(
+            source=events,
+            query_terms=query_terms,
+            max_events=max_events,
+            max_chars=max_chars,
+            excluded=excluded,
+        )
+    return _select_iterable_event_evidence(
+        events=events,
+        query_terms=query_terms,
+        max_events=max_events,
+        max_chars=max_chars,
+        excluded=excluded,
+    )
+
+
+def _select_indexed_event_evidence(
+    *,
+    source: EventDiscoveryIndex,
+    query_terms: frozenset[str],
+    max_events: int,
+    max_chars: int,
+    excluded: frozenset[str],
+) -> EventRetrievalResult:
+    excluded_indexes = source.indexes_for_event_ids(excluded)
+    excluded_non_message = 0
+    excluded_blank = 0
+    excluded_eligible = 0
+    for index in excluded_indexes:
+        classification = source.classification_at(index)
+        if classification == EventDiscoveryIndex._NON_MESSAGE:
+            excluded_non_message += 1
+        elif classification == EventDiscoveryIndex._BLANK:
+            excluded_blank += 1
+        else:
+            excluded_eligible += 1
+
+    scores = source.candidate_scores(query_terms)
+    for index in excluded_indexes:
+        scores.pop(index, None)
+
+    candidates: list[tuple[int, Event, str, int]] = []
+    for index, score in scores.items():
+        event = source.event_at(index)
+        content = event.payload["content"]
+        candidates.append((index, event, content, score))
+
+    return _rank_and_admit_candidates(
+        candidates=candidates,
+        input_event_count=source.event_count,
+        excluded_event_count=len(excluded_indexes),
+        non_message_count=source.non_message_count - excluded_non_message,
+        blank_content_count=source.blank_content_count - excluded_blank,
+        eligible_message_count=source.eligible_message_count - excluded_eligible,
+        max_events=max_events,
+        max_chars=max_chars,
+    )
+
+
+def _select_iterable_event_evidence(
+    *,
+    events: Iterable[Event],
+    query_terms: frozenset[str],
+    max_events: int,
+    max_chars: int,
+    excluded: frozenset[str],
+) -> EventRetrievalResult:
     candidates: list[tuple[int, Event, str, int]] = []
     input_event_count = 0
     excluded_event_count = 0
@@ -133,6 +282,29 @@ def _select_event_evidence(
             continue
         candidates.append((index, event, content, score))
 
+    return _rank_and_admit_candidates(
+        candidates=candidates,
+        input_event_count=input_event_count,
+        excluded_event_count=excluded_event_count,
+        non_message_count=non_message_count,
+        blank_content_count=blank_content_count,
+        eligible_message_count=eligible_message_count,
+        max_events=max_events,
+        max_chars=max_chars,
+    )
+
+
+def _rank_and_admit_candidates(
+    *,
+    candidates: list[tuple[int, Event, str, int]],
+    input_event_count: int,
+    excluded_event_count: int,
+    non_message_count: int,
+    blank_content_count: int,
+    eligible_message_count: int,
+    max_events: int,
+    max_chars: int,
+) -> EventRetrievalResult:
     ranked = sorted(candidates, key=lambda item: (-item[3], -item[0]))
 
     selected: list[tuple[int, Event]] = []
