@@ -19,4 +19,4 @@ This component does not infer or classify tasks from raw language, decide whethe
 
 ## Integration status
 
-This component is intentionally not registered in the native evaluation registry by this transaction. Shared scenario count, `src/relaylm/evaluation.py`, `docs/authority-map.yaml`, shared navigation, and aggregate Issue status remain for serial integration after component merge.
+PR #1389 registers this already-merged component in the native evaluation registry and shared evaluation/navigation surfaces without changing its semantics.
