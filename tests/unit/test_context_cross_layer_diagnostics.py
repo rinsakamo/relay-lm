@@ -59,11 +59,12 @@ def test_cross_layer_diagnostics_report_only_compiler_owned_counts() -> None:
 
     assert [diagnostic.layer for diagnostic in result.diagnostics] == [
         "canonical_state",
+        "working_context",
         "retrieved_memory",
         "event_evidence",
     ]
 
-    memory_diagnostic = result.diagnostics[1]
+    memory_diagnostic = result.diagnostics[2]
     assert memory_diagnostic.mode == "authority_filtered"
     assert memory_diagnostic.eligible_count == 2
     assert memory_diagnostic.selected_count == 1
@@ -74,7 +75,7 @@ def test_cross_layer_diagnostics_report_only_compiler_owned_counts() -> None:
     assert memory_diagnostic.budget_limit is None
     assert memory_diagnostic.budget_pressure is False
 
-    event_diagnostic = result.diagnostics[2]
+    event_diagnostic = result.diagnostics[3]
     assert event_diagnostic.mode == "current_event_deduplicated"
     assert event_diagnostic.eligible_count == 3
     assert event_diagnostic.selected_count == 2
@@ -118,8 +119,8 @@ def test_cross_layer_diagnostics_report_passthrough_without_false_suppression() 
         event_evidence=(evidence,),
     )
 
-    memory_diagnostic = result.diagnostics[1]
-    event_diagnostic = result.diagnostics[2]
+    memory_diagnostic = result.diagnostics[2]
+    event_diagnostic = result.diagnostics[3]
     assert memory_diagnostic.mode == "pass_through"
     assert memory_diagnostic.eligible_count == 1
     assert memory_diagnostic.selected_count == 1
