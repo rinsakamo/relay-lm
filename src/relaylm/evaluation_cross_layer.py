@@ -78,8 +78,8 @@ async def evaluate_cross_layer_context_diagnostics() -> EvaluationScenarioResult
         max_working_context_events=2,
     )
     layers = tuple(diagnostic.layer for diagnostic in result.diagnostics)
-    memory_diagnostic = result.diagnostics[1]
-    event_diagnostic = result.diagnostics[2]
+    memory_diagnostic = result.diagnostics[2]
+    event_diagnostic = result.diagnostics[3]
     serialized = json.dumps(
         [asdict(diagnostic) for diagnostic in result.diagnostics],
         ensure_ascii=False,
@@ -99,10 +99,16 @@ async def evaluate_cross_layer_context_diagnostics() -> EvaluationScenarioResult
 
     checks = (
         EvaluationCheck(
-            check_id="compiler_reports_three_owned_diagnostic_layers",
+            check_id="compiler_reports_four_owned_diagnostic_layers",
             boundary="context_compiler",
-            passed=layers == ("canonical_state", "retrieved_memory", "event_evidence"),
-            expected=3,
+            passed=layers
+            == (
+                "canonical_state",
+                "working_context",
+                "retrieved_memory",
+                "event_evidence",
+            ),
+            expected=4,
             observed=len(layers),
         ),
         EvaluationCheck(
