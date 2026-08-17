@@ -185,9 +185,9 @@ Whole-chunk suppression changes only current cognitive residency. It does not re
 
 This first filter deliberately does **not** infer arbitrary natural-language contradiction, distinguish historical from current prose when the heading is ambiguous, compare semantic degree envelopes, or decide conflicts for non-lexically-comparable State values. Those remain later #1267 work.
 
-### Opt-in ordinary-turn retrieval
+### Opt-in ordinary-turn MEMORY retrieval
 
-`run_user_turn` and `run_user_turn_streaming` now accept `memory_budget: MemoryRetrievalBudget | None`.
+`run_user_turn` and `run_user_turn_streaming` accept `memory_budget: MemoryRetrievalBudget | None`.
 
 Current behavior is intentionally opt-in:
 
@@ -197,9 +197,9 @@ Current behavior is intentionally opt-in:
 - selected chunks pass through the deterministic State-shadow filter and then enter only the dedicated `CognitiveInput.memory` layer;
 - a zero budget is allowed and selects no memory; negative budget values fail explicitly;
 - no default runtime MEMORY budget is implied by the existence of this opt-in path;
-- the public OpenAI client boundary does not yet expose a MEMORY-budget control in this slice.
+- the public OpenAI client boundary does not expose a MEMORY-budget control.
 
-The Current User Event is persisted before optional retrieval, matching the existing ordinary-turn occurrence semantics. If reading `MEMORY.md` fails after that point, the turn fails closed before provider generation: the User Event remains recorded, no Assistant Event is created, and Canonical State is unchanged by the failed turn.
+The Current User Event is persisted before optional retrieval. If reading `MEMORY.md` fails after that point, the turn fails closed before provider generation: the User Event remains recorded, no Assistant Event is created, and Canonical State is unchanged by the failed turn.
 
 ## Current targeted Event evidence retrieval and projection primitives
 
@@ -219,7 +219,7 @@ Current retrieval behavior:
 - selected Events are returned in original source chronology after ranking/admission;
 - the original `Event` objects are returned unchanged; retrieval does not mutate Events, State, MEMORY, indexes, or call an LLM.
 
-`compile_cognitive_input(..., event_evidence=...)` now accepts already-selected persisted Events and projects them into a distinct `CognitiveInput.event_evidence` layer. Each item preserves:
+`compile_cognitive_input(..., event_evidence=...)` accepts already-selected persisted Events and projects them into a distinct `CognitiveInput.event_evidence` layer. Each item preserves:
 
 ```text
 event_id
@@ -242,7 +242,23 @@ Current Input     protected current governed Event
 
 The OpenAI-compatible provider serializes Event Evidence separately. Real Event-evidence IDs may be used as StateCandidate provenance; MEMORY locations remain ineligible. User/assistant actor role and occurrence time remain visible, and retrieved occurrence evidence is not automatically current Canonical State.
 
-Retrieval and projection remain read/select/project only and add no LLM call. The ordinary turn does **not yet** retrieve or supply Event evidence automatically. The file-backed `CharacterDirectory.iter_events()` path also still scans `events.jsonl`; runtime budget plumbing and retrieval-scaled journal reads/indexing remain separate work. Semantic/vector retrieval, temporal interpretation, conflict authority beyond current source roles, and cross-layer diagnostics are likewise deferred.
+### Opt-in ordinary-turn Event retrieval
+
+`run_user_turn` and `run_user_turn_streaming` now also accept `event_budget: EventRetrievalBudget | None`.
+
+Current runtime behavior is deliberately opt-in:
+
+- `event_budget=None` preserves the previous ordinary-turn behavior and supplies an empty Event-evidence layer;
+- a supplied `EventRetrievalBudget(max_events, max_chars)` uses the Current User Event content as the lexical query and explicitly excludes the Current User Event ID;
+- buffered and streaming paths share `_compile_turn_cognitive_input` and therefore the same retrieval/projection semantics;
+- when Event retrieval is enabled, the current Event Journal sequence is materialized once before provider generation and reused by both Working Context selection and `select_event_evidence`; this avoids an additional pre-generation scan solely for targeted retrieval;
+- selected Events enter only `CognitiveInput.event_evidence` through the existing projection owner;
+- zero budgets are valid and select no evidence; negative budgets fail explicitly;
+- no default Event budget and no OpenAI/client-facing Event-budget request field are introduced.
+
+The Current User Event is persisted before the snapshot/retrieval step. Ordinary turns still make exactly one cognitive provider generation. The same occurrence may currently appear in both Working Context and Event Evidence if both selectors admit it; cross-layer redundancy suppression remains deferred.
+
+The file-backed snapshot still comes from `CharacterDirectory.iter_events()` and therefore scans `events.jsonl`. Retrieval-scaled Event Journal access/indexing remains separate work. Semantic/vector retrieval, temporal interpretation, stronger conflict authority, and cross-layer diagnostics are likewise deferred.
 
 ## Budget model
 
@@ -268,7 +284,7 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 - `unresolved`, `referent`, and `active_task` retention beyond pure recency;
 - semantic State-vs-memory conflict detection beyond explicit State-key headings, including historical/current interpretation, degree-level conflicts, and non-lexical values;
 - durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
-- ordinary-turn targeted Event retrieval wiring and retrieval-scaled Event Journal reads/indexing;
+- retrieval-scaled Event Journal reads/indexing beyond the current full file-backed snapshot;
 - redundancy reduction across State / Working Context / Memory / Events;
 - total token-aware tier budgeting and cross-layer diagnostics;
 - embedding/index acceleration only after authority eligibility is preserved.
