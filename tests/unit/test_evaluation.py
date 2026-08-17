@@ -14,11 +14,13 @@ from relaylm.evaluation import (
     evaluate_correction_remove_semantics,
     evaluate_crystallization_integrity,
     evaluate_degree_hint_integrity,
+    evaluate_degree_state_memory_authority,
     evaluate_event_snapshot_reuse,
     evaluate_persistence_integrity,
     evaluate_provider_failure_safety,
     evaluate_restart_continuity,
     evaluate_retrieval_aggregate_diagnostics,
+    evaluate_retrieval_query_features,
     evaluate_retrieval_stage_diagnostics,
     evaluate_state_selection_diagnostics,
     evaluate_streaming_safety,
@@ -86,6 +88,8 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "boolean_state_memory_authority",
         "retrieval_aggregate_diagnostics",
         "cjk_retrieval_relevance",
+        "degree_state_memory_authority",
+        "retrieval_query_features",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
@@ -296,5 +300,21 @@ def test_cjk_retrieval_relevance_evaluation_is_registered() -> None:
     result = asyncio.run(evaluate_cjk_retrieval_relevance())
 
     assert result.scenario_id == "cjk_retrieval_relevance"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+
+
+def test_degree_state_memory_authority_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_degree_state_memory_authority())
+
+    assert result.scenario_id == "degree_state_memory_authority"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+
+
+def test_retrieval_query_features_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_retrieval_query_features())
+
+    assert result.scenario_id == "retrieval_query_features"
     assert result.status == "pass"
     assert all(check.passed for check in result.checks)
