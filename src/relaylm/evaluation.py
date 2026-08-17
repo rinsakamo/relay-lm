@@ -199,6 +199,12 @@ async def evaluate_comparative_preference_preservation() -> EvaluationScenarioRe
     return await evaluate()
 
 
+async def evaluate_degree_hint_integrity() -> EvaluationScenarioResult:
+    from relaylm.evaluation_degree import evaluate_degree_hint_integrity as evaluate
+
+    return await evaluate()
+
+
 async def run_native_evaluation() -> EvaluationReport:
     return EvaluationReport(
         scenarios=(
@@ -206,6 +212,7 @@ async def run_native_evaluation() -> EvaluationReport:
             await evaluate_restart_continuity(),
             await evaluate_assistant_self_certification_prevention(),
             await evaluate_comparative_preference_preservation(),
+            await evaluate_degree_hint_integrity(),
         ),
     )
 
