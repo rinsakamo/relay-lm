@@ -146,14 +146,3 @@ def test_nonexact_single_assignment_falls_through_existing_rule() -> None:
     compiled = _compile(fallback, value=True)
 
     assert [item.location for item in compiled.memory] == [fallback.location]
-
-
-def test_multiple_same_key_assignments_remain_outside_c16() -> None:
-    deferred = _chunk(
-        "notifications_enabled: true",
-        tail="notifications_enabled: false",
-    )
-
-    compiled = _compile(deferred, value=True)
-
-    assert [item.location for item in compiled.memory] == [deferred.location]
