@@ -251,14 +251,16 @@ Current runtime behavior is deliberately opt-in:
 - `event_budget=None` preserves the previous ordinary-turn behavior and supplies an empty Event-evidence layer;
 - a supplied `EventRetrievalBudget(max_events, max_chars)` uses the Current User Event content as the lexical query and explicitly excludes the Current User Event ID;
 - buffered and streaming paths share `_compile_turn_cognitive_input` and therefore the same retrieval/projection semantics;
-- when Event retrieval is enabled, the current Event Journal sequence is materialized once before provider generation and reused by both Working Context selection and `select_event_evidence`; this avoids an additional pre-generation scan solely for targeted retrieval;
+- when Event retrieval is enabled, the current Event Journal sequence is materialized once before provider generation and reused by both Working Context selection and `select_event_evidence`;
 - selected Events enter only `CognitiveInput.event_evidence` through the existing projection owner;
 - zero budgets are valid and select no evidence; negative budgets fail explicitly;
 - no default Event budget and no OpenAI/client-facing Event-budget request field are introduced.
 
 The Current User Event is persisted before the snapshot/retrieval step. Ordinary turns still make exactly one cognitive provider generation. The same occurrence may currently appear in both Working Context and Event Evidence if both selectors admit it; cross-layer redundancy suppression remains deferred.
 
-The file-backed snapshot still comes from `CharacterDirectory.iter_events()` and therefore scans `events.jsonl`. Retrieval-scaled Event Journal access/indexing remains separate work. Semantic/vector retrieval, temporal interpretation, stronger conflict authority, and cross-layer diagnostics are likewise deferred.
+`CharacterDirectory` now keeps a process-local validated Event snapshot. An unchanged `events.jsonl` is not reopened and reparsed for every later `iter_events()` call in the same directory instance; a successful RelayLM-owned append incrementally extends an already-valid snapshot. File signature changes invalidate the snapshot and force authoritative JSONL revalidation, so malformed external edits are not hidden by cached Events.
+
+This snapshot optimization does **not** make Event retrieval independent of Event count. The first read after process start/reopen or external invalidation still parses the authoritative JSONL, and the current lexical targeted selector still evaluates the supplied Event snapshot. Persistent/segmented indexing, retrieval-scaled targeted discovery beyond O(N) candidate inspection, semantic/vector retrieval, temporal interpretation, stronger conflict authority, and cross-layer diagnostics remain deferred.
 
 ## Budget model
 
@@ -284,7 +286,7 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 - `unresolved`, `referent`, and `active_task` retention beyond pure recency;
 - semantic State-vs-memory conflict detection beyond explicit State-key headings, including historical/current interpretation, degree-level conflicts, and non-lexical values;
 - durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
-- retrieval-scaled Event Journal reads/indexing beyond the current full file-backed snapshot;
+- persistent/segmented Event Journal indexing and retrieval-scaled targeted discovery beyond the current process-local validated snapshot reuse;
 - redundancy reduction across State / Working Context / Memory / Events;
 - total token-aware tier budgeting and cross-layer diagnostics;
 - embedding/index acceleration only after authority eligibility is preserved.

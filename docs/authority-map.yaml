@@ -50,6 +50,7 @@ domains:
       - src/relaylm/storage/filesystem.py
     tests:
       - tests/unit/test_character_directory.py
+      - tests/unit/test_event_snapshot_cache.py
     docs:
       - docs/architecture/persistence.md
       - docs/reference/character-directory.md
