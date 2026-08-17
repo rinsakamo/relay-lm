@@ -110,6 +110,7 @@ def evaluate_serialized_input_fit(
 
 
 CompileCognitiveInputForBudgetPlan = Callable[[BudgetPlan], CognitiveInput]
+CompileProtectedCognitiveInput = Callable[[], CognitiveInput]
 
 
 class BudgetEnforcementOutcome(str, Enum):
@@ -118,6 +119,7 @@ class BudgetEnforcementOutcome(str, Enum):
 
 
 class BudgetEnforcementFailureReason(str, Enum):
+    PROTECTED_FLOOR_EXCEEDS_CONTEXT = "protected_floor_exceeds_context"
     DEGRADATION_EXHAUSTED = "degradation_exhausted"
 
 
@@ -151,14 +153,14 @@ class BudgetEnforcementResult:
 
 
 class CognitiveBudgetExceeded(RuntimeError):
-    """Bounded pre-generation failure after all configured reductions are exhausted."""
+    """Bounded pre-generation total-context failure."""
 
     def __init__(
         self,
         *,
         reason: BudgetEnforcementFailureReason,
         config: TotalBudgetConfig,
-        final_plan: BudgetPlan,
+        final_plan: BudgetPlan | None,
         final_count: SerializedInputTokenCount,
         degradation_step_count: int,
     ) -> None:
@@ -172,6 +174,39 @@ class CognitiveBudgetExceeded(RuntimeError):
             count=final_count,
         ).overflow_tokens
         super().__init__(f"cognitive budget exceeded: {reason.value}; overflow_tokens={overflow}")
+
+
+def enforce_protected_serialized_input_floor(
+    *,
+    config: TotalBudgetConfig,
+    protected_cognitive_input: CognitiveInput,
+    token_counter: SerializedCognitiveInputTokenCounter,
+) -> SerializedInputTokenCount:
+    """Fail if mandatory framing + Identity + Current Event cannot fit.
+
+    ``protected_cognitive_input`` is an owner-supplied projection used only for
+    accounting. It must preserve the real provider framing/schema, Identity, and
+    Current Event while omitting degradable semantic layers without mutating their
+    authority or lifecycle. The budget lane does not construct or semantically
+    summarize that projection.
+    """
+
+    if not isinstance(protected_cognitive_input, CognitiveInput):
+        raise TypeError("protected_cognitive_input must be CognitiveInput")
+    count = token_counter.count_serialized_input(protected_cognitive_input)
+    if not isinstance(count, SerializedInputTokenCount):
+        raise TypeError(
+            "token_counter.count_serialized_input must return SerializedInputTokenCount"
+        )
+    if not evaluate_serialized_input_fit(config=config, count=count).fits:
+        raise CognitiveBudgetExceeded(
+            reason=BudgetEnforcementFailureReason.PROTECTED_FLOOR_EXCEEDS_CONTEXT,
+            config=config,
+            final_plan=None,
+            final_count=count,
+            degradation_step_count=0,
+        )
+    return count
 
 
 def enforce_serialized_input_budget(
@@ -227,4 +262,30 @@ def enforce_serialized_input_budget(
         final_plan=final_plan,
         final_count=final_count,
         degradation_step_count=len(policy.steps),
+    )
+
+
+def enforce_total_cognitive_budget(
+    *,
+    config: TotalBudgetConfig,
+    policy: BudgetDegradationPolicy,
+    compile_protected_cognitive_input: CompileProtectedCognitiveInput,
+    compile_cognitive_input: CompileCognitiveInputForBudgetPlan,
+    token_counter: SerializedCognitiveInputTokenCounter,
+) -> BudgetEnforcementResult:
+    """Enforce protected anchors first, then deterministic degradable layers."""
+
+    protected_cognitive_input = compile_protected_cognitive_input()
+    if not isinstance(protected_cognitive_input, CognitiveInput):
+        raise TypeError("compile_protected_cognitive_input must return CognitiveInput")
+    enforce_protected_serialized_input_floor(
+        config=config,
+        protected_cognitive_input=protected_cognitive_input,
+        token_counter=token_counter,
+    )
+    return enforce_serialized_input_budget(
+        config=config,
+        policy=policy,
+        compile_cognitive_input=compile_cognitive_input,
+        token_counter=token_counter,
     )
