@@ -34,6 +34,24 @@ Every transaction:
 
 If `v1` moves during a transaction, reconstruct authority and classify overlap before merge. Do not silently rebase, merge, or assume the previous review/CI result is still sufficient.
 
+## Parallel implementation rule
+
+Parallel implementation is allowed across disjoint canonical owners. This relaxes a repository-wide single-writer assumption; it does not relax authority ownership.
+
+> **Single writer per concept, not single writer for the entire repository. Parallel implementation; serial integration.**
+
+Rules:
+
+- one canonical owner or semantic concept has at most one active writer;
+- each parallel transaction starts from fresh `v1`, declares its bounded responsibility, and inspects open competing work before writing;
+- transactions that share a canonical owner, semantic contract, or unavoidable write surface are serialized instead of being treated as independent;
+- when practical, shared aggregate surfaces such as evaluation registries, authority maps, scenario counts, and Issue current-status summaries are reconciled in a short serial integration transaction after the owning component transactions merge rather than becoming parallel-writer hotspots;
+- merge and authority reconciliation remain serial: before each merge, re-read current `v1`, the transaction head, and relevant competing work, then perform the normal fresh-head review and exact-head required CI gate;
+- when an earlier merge moves `v1`, every still-open parallel transaction reconstructs authority and classifies overlap before merge; semantic or ownership overlap returns the work to a fresh bounded transaction instead of carrying stale assumptions forward;
+- parallelism never bypasses test-first semantics, exact-head CI, expected-head protected squash merge, documentation convergence, or Issue reconciliation.
+
+This means independent runtime owners, provider/storage boundaries, isolated evaluation work, or non-overlapping documentation can be developed concurrently. Two transactions must not concurrently redefine the same Context, State, Validator, retrieval, persistence, provider, or other canonical semantic owner.
+
 ## Canonical convergence rule
 
 `v1` is a greenfield product line. Internal compatibility machinery for superseded RelayLM semantics is prohibited by default.
@@ -368,3 +386,4 @@ These support the workflow; they are not new architecture concepts.
 8. **Fresh-head review verifies the repository, not the implementation narrative.**
 9. **Only the exact reviewed head may satisfy the required CI gate.**
 10. **A completed transaction reconciles its owning Issue.**
+11. **Parallel implementation is allowed only across disjoint canonical owners; integration and authority reconciliation remain serial.**
