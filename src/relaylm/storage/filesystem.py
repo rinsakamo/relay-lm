@@ -54,11 +54,11 @@ class CharacterDirectory:
             raise CharacterDataError("config.yaml: character must be a mapping")
         try:
             return CharacterConfig(
-                format_version=int(raw["format_version"]),
+                format_version=_required_int(raw, "format_version", "config.yaml: format_version"),
                 character_id=_required_string(character, "id", "config.yaml: character.id"),
                 name=_required_string(character, "name", "config.yaml: character.name"),
             )
-        except (KeyError, TypeError, ValueError) as exc:
+        except (TypeError, ValueError) as exc:
             if isinstance(exc, CharacterDataError):
                 raise
             raise CharacterDataError(f"config.yaml: {exc}") from exc
@@ -147,13 +147,15 @@ class CharacterDirectory:
 
         if not isinstance(raw, dict):
             raise CharacterDataError("state.json must contain a JSON object")
-        states_raw = raw.get("states", [])
+        if "states" not in raw:
+            raise CharacterDataError("state.json: states is required")
+        states_raw = raw["states"]
         if not isinstance(states_raw, list):
             raise CharacterDataError("state.json: states must be an array")
         try:
             records = tuple(_state_record_from_mapping(item) for item in states_raw)
             return CanonicalState(
-                format_version=int(raw.get("format_version", 1)),
+                format_version=_required_int(raw, "format_version", "state.json: format_version"),
                 states=records,
             )
         except (TypeError, ValueError, KeyError) as exc:
@@ -192,6 +194,15 @@ class CharacterDirectory:
         return raw
 
 
+def _required_int(mapping: dict[str, Any], key: str, label: str) -> int:
+    if key not in mapping:
+        raise CharacterDataError(f"{label} is required")
+    value = mapping[key]
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise CharacterDataError(f"{label} must be an integer")
+    return value
+
+
 def _required_string(mapping: dict[str, Any], key: str, label: str) -> str:
     value = mapping.get(key)
     if not isinstance(value, str) or not value.strip():
@@ -217,16 +228,21 @@ def _event_from_mapping(raw: Any) -> Event:
 def _state_record_from_mapping(raw: Any) -> StateRecord:
     if not isinstance(raw, dict):
         raise CharacterDataError("state record must be an object")
-    sources = raw.get("sources", [])
+    if "value" not in raw:
+        raise CharacterDataError("state.value is required")
+    if "sources" not in raw:
+        raise CharacterDataError("state.sources is required")
+    sources = raw["sources"]
     if not isinstance(sources, list) or not all(isinstance(item, str) for item in sources):
         raise CharacterDataError("state record sources must be an array of strings")
+    status = _required_string(raw, "status", "state.status")
     return StateRecord(
         state_id=_required_string(raw, "state_id", "state.state_id"),
         state_class=_required_string(raw, "state_class", "state.state_class"),
         key=_required_string(raw, "key", "state.key"),
-        value=raw.get("value"),
+        value=raw["value"],
         sources=tuple(sources),
-        status=str(raw.get("status", "active")),
+        status=status,
         valid_from=_optional_string(raw.get("valid_from"), "state.valid_from"),
         valid_to=_optional_string(raw.get("valid_to"), "state.valid_to"),
     )
