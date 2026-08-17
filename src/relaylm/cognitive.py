@@ -40,6 +40,29 @@ class RetrievedMemoryItem:
 
 
 @dataclass(frozen=True, slots=True)
+class EventEvidenceItem:
+    """Selected persisted occurrence with real Event provenance."""
+
+    event_id: str
+    event_type: str
+    actor: str
+    timestamp: str
+    content: str
+
+    def __post_init__(self) -> None:
+        if not self.event_id.strip():
+            raise ValueError("event evidence event_id must not be empty")
+        if not self.event_type.strip():
+            raise ValueError("event evidence event_type must not be empty")
+        if not self.actor.strip():
+            raise ValueError("event evidence actor must not be empty")
+        if not self.timestamp.strip():
+            raise ValueError("event evidence timestamp must not be empty")
+        if not self.content.strip():
+            raise ValueError("event evidence content must not be empty")
+
+
+@dataclass(frozen=True, slots=True)
 class CognitiveInput:
     identity: Identity
     state_classes: Mapping[str, str]
@@ -47,6 +70,7 @@ class CognitiveInput:
     context: tuple[ContextItem, ...]
     input: Event
     memory: tuple[RetrievedMemoryItem, ...] = field(default_factory=tuple)
+    event_evidence: tuple[EventEvidenceItem, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True, slots=True)
