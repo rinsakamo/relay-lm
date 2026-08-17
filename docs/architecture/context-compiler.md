@@ -123,13 +123,13 @@ The diagnostics surface currently covers four compiler-owned layers:
 - `canonical_state` — active-State eligibility, selection mode, selected/evicted counts, explicit record budget, lexical-match/fallback counts, and budget-limit eviction count;
 - `working_context` — eligible prior message count after Current Event exclusion, selected count, explicit Event-window and character budgets, selected character usage, Current Event exclusion count, Event-window eviction count, unmatched-assistant drop count, and character-budget eviction count;
 - `retrieved_memory` — number of already-retrieved MEMORY chunks supplied to the compiler, number projected after the active-State authority filter, and deterministic State-shadow suppression count;
-- `event_evidence` — number of already-selected Event candidates supplied to the compiler, number projected after Current Event de-duplication, Current Event exclusion count, and the count of projected Event IDs that also remain in selected Working Context.
+- `event_evidence` — number of already-selected Event candidates supplied to the compiler, number projected after Current Event and exact Working Context Event-ID de-duplication, Current Event exclusion count, and the count of supplied non-current Event IDs that were already resident in selected Working Context.
 
 Shared diagnostic fields include layer/mode, aggregate eligible/selected/evicted counts, budget unit/limit/used/pressure, plus bounded reason counters. Working Context additionally reports `character_budget_limit`, `character_budget_used`, `evicted_event_window_count`, `evicted_character_budget_count`, and `evicted_orphan_assistant_count`. Cross-layer additions remain `authority_suppressed_count`, `current_event_excluded_count`, and `redundancy_overlap_count`.
 
 Working Context reason attribution follows the existing selector order without changing it: the Event window is applied first, unmatched assistant Events inside that window are not independently admitted, then complete exchanges are admitted newest-first under the character budget. A zero Event budget is therefore observed as Event-window eviction; with a nonzero Event budget and zero character budget, the remaining eligible window is observed as character-budget eviction. These counters describe residency mechanics only.
 
-Diagnostics deliberately exclude State IDs, keys, values, Event IDs, MEMORY locations/content, Current Event content/ID, and other semantic payload. The Event-overlap counter compares real Event IDs internally but emits only an aggregate count. Diagnostics are observations about selection/projection mechanics, not a new truth source, persistence layer, ranking authority, or telemetry requirement.
+Diagnostics deliberately exclude State IDs, keys, values, Event IDs, MEMORY locations/content, Current Event content/ID, and other semantic payload. The Event-overlap counter compares real Event IDs internally but emits only an aggregate count and is computed from supplied Event-evidence candidates before exact overlap residency suppression. Diagnostics are observations about selection/projection mechanics, not a new truth source, persistence layer, ranking authority, or telemetry requirement.
 
 For MEMORY and Event Evidence, `budget_limit=None` and `budget_pressure=False` mean only that the Context Compiler itself did not own the upstream retrieval budget. The compiler does **not** infer MEMORY/Event candidate populations, retrieval-stage ranking pressure, or token costs that were never provided to it. Retrieval-stage diagnostics, total cross-layer token cost, degradation/fallback reporting, and runtime default-budget evidence remain later #1267 work.
 
@@ -233,7 +233,7 @@ timestamp
 content
 ```
 
-Projection preserves supplied order and excludes the Current Event by ID because Current Input is already carried separately. A selected Event without non-empty string `payload.content` fails explicitly rather than being silently dropped or rewritten.
+Projection preserves supplied order among retained evidence. It excludes the Current Event by ID because Current Input is already carried separately, and it excludes an Event whose exact ID is already resident in selected Working Context. The retained Working Context item keeps that Event ID in `sources`, so occurrence provenance is not lost. This is exact occurrence residency de-duplication only: equal or similar content with a different Event ID remains separate evidence. A selected Event without non-empty string `payload.content` fails explicitly rather than being silently dropped or rewritten.
 
 The layer remains distinct by authority and purpose:
 
@@ -260,7 +260,7 @@ Current runtime behavior is deliberately opt-in:
 - zero budgets are valid and select no evidence; negative budgets fail explicitly;
 - no default Event budget and no OpenAI/client-facing Event-budget request field are introduced.
 
-The Current User Event is persisted before the snapshot/retrieval step. Ordinary turns still make exactly one cognitive provider generation. The same occurrence may currently appear in both Working Context and Event Evidence if both selectors admit it; cross-layer redundancy suppression remains deferred. The opt-in compiler diagnostics can now count that exact Event-ID overlap without changing residency.
+The Current User Event is persisted before the snapshot/retrieval step. Ordinary turns still make exactly one cognitive provider generation. If the same exact Event occurrence is selected both for Working Context and targeted Event Evidence, the Context Compiler keeps the Working Context residency and suppresses only the duplicate Event Evidence projection. Working Context user→assistant exchange admission remains unchanged, and the opt-in diagnostics report the supplied exact Event-ID overlap as a content-free count. Similarity-based or semantic cross-layer deduplication remains deferred.
 
 `CharacterDirectory` now keeps a process-local validated Event snapshot. An unchanged `events.jsonl` is not reopened and reparsed for every later `iter_events()` call in the same directory instance; a successful RelayLM-owned append incrementally extends an already-valid snapshot. File signature changes invalidate the snapshot and force authoritative JSONL revalidation, so malformed external edits are not hidden by cached Events.
 
@@ -291,7 +291,7 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 - semantic State-vs-memory conflict detection beyond explicit State-key headings and canonical-key field assignments, including historical/current interpretation, degree-level conflicts, and non-lexical values;
 - durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
 - persistent/segmented Event Journal indexing and retrieval-scaled targeted discovery beyond the current process-local validated snapshot reuse;
-- redundancy reduction across State / Working Context / Memory / Events beyond the current content-free exact Event-overlap observation;
+- redundancy reduction across State / Working Context / Memory / Events beyond the current exact Working Context/Event Evidence Event-ID residency rule;
 - retrieval-stage MEMORY/Event diagnostics, total token-aware tier budgeting, and explicit cross-layer degradation/fallback evidence;
 - embedding/index acceleration only after authority eligibility is preserved.
 
