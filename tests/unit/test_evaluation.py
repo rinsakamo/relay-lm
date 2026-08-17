@@ -8,6 +8,7 @@ from relaylm.evaluation import (
     EvaluationReport,
     EvaluationScenarioResult,
     evaluate_provider_failure_safety,
+    evaluate_restart_continuity,
     main,
     run_native_evaluation,
 )
@@ -46,7 +47,8 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
     assert payload["suite"] == "relaylm-native"
     assert payload["status"] == "pass"
     assert [scenario["id"] for scenario in payload["scenarios"]] == [
-        "provider_failure_safety"
+        "provider_failure_safety",
+        "restart_continuity",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
@@ -78,3 +80,23 @@ def test_failed_check_propagates_to_scenario_and_report_status() -> None:
 
     assert scenario.status == "fail"
     assert report.status == "fail"
+
+
+def test_restart_continuity_evaluation_uses_persisted_state_and_events() -> None:
+    result = asyncio.run(evaluate_restart_continuity())
+
+    assert result.scenario_id == "restart_continuity"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+    assert {check.boundary for check in result.checks} == {
+        "client_api",
+        "provider",
+        "canonical_state",
+        "event_journal",
+        "context_compiler",
+    }
+    assert result.metrics == {
+        "provider_calls": 2,
+        "pre_restart_event_count": 2,
+        "restart_context_count": 2,
+    }

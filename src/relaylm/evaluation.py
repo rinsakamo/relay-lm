@@ -177,9 +177,18 @@ async def evaluate_provider_failure_safety() -> EvaluationScenarioResult:
     )
 
 
+async def evaluate_restart_continuity() -> EvaluationScenarioResult:
+    from relaylm.evaluation_restart import evaluate_restart_continuity as evaluate
+
+    return await evaluate()
+
+
 async def run_native_evaluation() -> EvaluationReport:
     return EvaluationReport(
-        scenarios=(await evaluate_provider_failure_safety(),),
+        scenarios=(
+            await evaluate_provider_failure_safety(),
+            await evaluate_restart_continuity(),
+        ),
     )
 
 
