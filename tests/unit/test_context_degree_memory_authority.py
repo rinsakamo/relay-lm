@@ -93,15 +93,26 @@ def test_matching_degree_number_does_not_rescue_conflicting_semantic_value() -> 
     assert compiled.memory == ()
 
 
-def test_inline_key_assignment_uses_the_same_degree_authority_rule() -> None:
+def test_inline_key_assignment_uses_same_line_degree_authority() -> None:
     stale = _chunk(
         heading="Profile Notes",
-        content="tea: likes\ndegree_hint: 0.65",
+        content="tea: likes; degree_hint: 0.65",
     )
 
     compiled = _compile(stale)
 
     assert compiled.memory == ()
+
+
+def test_inline_key_does_not_borrow_another_assignment_degree_hint() -> None:
+    mixed = _chunk(
+        heading="Profile Notes",
+        content="tea: likes\ncoffee: likes; degree_hint: 0.65",
+    )
+
+    compiled = _compile(mixed)
+
+    assert [item.location for item in compiled.memory] == [mixed.location]
 
 
 def test_unaddressed_historical_degree_prose_is_left_untouched() -> None:
