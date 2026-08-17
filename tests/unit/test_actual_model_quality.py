@@ -21,9 +21,10 @@ from relaylm.actual_model_quality import (
     required_quality_axes,
 )
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
-from relaylm.continuity import ContinuityCandidate
+from relaylm.continuity import ContinuityCandidate, ContinuityContext
 from relaylm.state import CanonicalState, StateCandidate
 from relaylm.storage.filesystem import CharacterDirectory
+from relaylm.turn import ContinuityRuntime
 
 
 class _QualityProvider:
@@ -110,6 +111,10 @@ def _evidence(tmp_path: Path, *, family: str = "state_candidate_quality"):
             provider=_QualityProvider(),
             manifest=_manifest(),
             scenario=_scenario(family=family),
+            continuity_runtime=ContinuityRuntime(
+                context=ContinuityContext(max_items=4),
+                lifetime_revisions=3,
+            ),
         )
     )
 
