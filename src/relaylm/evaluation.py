@@ -30,13 +30,7 @@ class EvaluationCheck:
             raise ValueError("evaluation boundary must not be empty")
 
     def to_mapping(self) -> dict[str, MetricValue]:
-        return {
-            "id": self.check_id,
-            "boundary": self.boundary,
-            "passed": self.passed,
-            "expected": self.expected,
-            "observed": self.observed,
-        }
+        return {"id": self.check_id, "boundary": self.boundary, "passed": self.passed, "expected": self.expected, "observed": self.observed}
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,12 +50,7 @@ class EvaluationScenarioResult:
         return "pass" if all(check.passed for check in self.checks) else "fail"
 
     def to_mapping(self) -> dict[str, object]:
-        return {
-            "id": self.scenario_id,
-            "status": self.status,
-            "checks": [check.to_mapping() for check in self.checks],
-            "metrics": dict(self.metrics),
-        }
+        return {"id": self.scenario_id, "status": self.status, "checks": [check.to_mapping() for check in self.checks], "metrics": dict(self.metrics)}
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,20 +72,10 @@ class EvaluationReport:
         return "pass" if all(scenario.status == "pass" for scenario in self.scenarios) else "fail"
 
     def to_mapping(self) -> dict[str, object]:
-        return {
-            "format_version": self.format_version,
-            "suite": self.suite,
-            "status": self.status,
-            "scenarios": [scenario.to_mapping() for scenario in self.scenarios],
-        }
+        return {"format_version": self.format_version, "suite": self.suite, "status": self.status, "scenarios": [scenario.to_mapping() for scenario in self.scenarios]}
 
     def to_json(self) -> str:
-        return json.dumps(
-            self.to_mapping(),
-            ensure_ascii=False,
-            allow_nan=False,
-            indent=2,
-        )
+        return json.dumps(self.to_mapping(), ensure_ascii=False, allow_nan=False, indent=2)
 
 
 class _FailingEvaluationProvider:
@@ -114,137 +93,82 @@ async def evaluate_provider_failure_safety() -> EvaluationScenarioResult:
         character = _make_character(root)
         provider = _FailingEvaluationProvider()
         failure_observed = False
-
         try:
-            await run_user_turn(
-                character=character,
-                provider=provider,
-                content="この入力は記録される？",
-            )
+            await run_user_turn(character=character, provider=provider, content="この入力は記録される？")
         except RuntimeError as exc:
             failure_observed = str(exc) == "intentional evaluation provider failure"
-
         reopened = CharacterDirectory(root)
         events = list(reopened.iter_events())
         actors = [event.actor for event in events]
         state = reopened.load_state()
-
     checks = (
-        EvaluationCheck(
-            check_id="provider_failure_observed",
-            boundary="provider",
-            passed=failure_observed,
-            expected=True,
-            observed=failure_observed,
-        ),
-        EvaluationCheck(
-            check_id="provider_called_once",
-            boundary="provider",
-            passed=provider.calls == 1,
-            expected=1,
-            observed=provider.calls,
-        ),
-        EvaluationCheck(
-            check_id="current_user_event_persisted",
-            boundary="event_journal",
-            passed=actors == ["user"],
-            expected="user",
-            observed=",".join(actors) if actors else "none",
-        ),
-        EvaluationCheck(
-            check_id="assistant_event_not_persisted",
-            boundary="event_journal",
-            passed="assistant" not in actors,
-            expected=False,
-            observed="assistant" in actors,
-        ),
-        EvaluationCheck(
-            check_id="canonical_state_unchanged",
-            boundary="canonical_state",
-            passed=state == CanonicalState(),
-            expected=0,
-            observed=len(state.states),
-        ),
+        EvaluationCheck("provider_failure_observed", "provider", failure_observed, True, failure_observed),
+        EvaluationCheck("provider_called_once", "provider", provider.calls == 1, 1, provider.calls),
+        EvaluationCheck("current_user_event_persisted", "event_journal", actors == ["user"], "user", ",".join(actors) if actors else "none"),
+        EvaluationCheck("assistant_event_not_persisted", "event_journal", "assistant" not in actors, False, "assistant" in actors),
+        EvaluationCheck("canonical_state_unchanged", "canonical_state", state == CanonicalState(), 0, len(state.states)),
     )
-    return EvaluationScenarioResult(
-        scenario_id="provider_failure_safety",
-        checks=checks,
-        metrics={
-            "provider_calls": provider.calls,
-            "persisted_event_count": len(events),
-            "persisted_state_count": len(state.states),
-        },
-    )
+    return EvaluationScenarioResult("provider_failure_safety", checks, {"provider_calls": provider.calls, "persisted_event_count": len(events), "persisted_state_count": len(state.states)})
 
 
 async def evaluate_restart_continuity() -> EvaluationScenarioResult:
     from relaylm.evaluation_restart import evaluate_restart_continuity as evaluate
-
     return await evaluate()
 
 
 async def evaluate_assistant_self_certification_prevention() -> EvaluationScenarioResult:
-    from relaylm.evaluation_authority import (
-        evaluate_assistant_self_certification_prevention as evaluate,
-    )
-
+    from relaylm.evaluation_authority import evaluate_assistant_self_certification_prevention as evaluate
     return await evaluate()
 
 
 async def evaluate_comparative_preference_preservation() -> EvaluationScenarioResult:
-    from relaylm.evaluation_preference import (
-        evaluate_comparative_preference_preservation as evaluate,
-    )
-
+    from relaylm.evaluation_preference import evaluate_comparative_preference_preservation as evaluate
     return await evaluate()
 
 
 async def evaluate_degree_hint_integrity() -> EvaluationScenarioResult:
     from relaylm.evaluation_degree import evaluate_degree_hint_integrity as evaluate
-
     return await evaluate()
 
 
 async def evaluate_working_context_budget_atomicity() -> EvaluationScenarioResult:
-    from relaylm.evaluation_context import (
-        evaluate_working_context_budget_atomicity as evaluate,
-    )
-
+    from relaylm.evaluation_context import evaluate_working_context_budget_atomicity as evaluate
     return await evaluate()
 
 
 async def evaluate_persistence_integrity() -> EvaluationScenarioResult:
     from relaylm.evaluation_persistence import evaluate_persistence_integrity as evaluate
-
     return await evaluate()
 
 
 async def evaluate_correction_remove_semantics() -> EvaluationScenarioResult:
     from relaylm.evaluation_correction import evaluate_correction_remove_semantics as evaluate
-
     return await evaluate()
 
 
 async def evaluate_crystallization_integrity() -> EvaluationScenarioResult:
     from relaylm.evaluation_crystallization import evaluate_crystallization_integrity as evaluate
+    return await evaluate()
 
+
+async def evaluate_streaming_safety() -> EvaluationScenarioResult:
+    from relaylm.evaluation_streaming import evaluate_streaming_safety as evaluate
     return await evaluate()
 
 
 async def run_native_evaluation() -> EvaluationReport:
-    return EvaluationReport(
-        scenarios=(
-            await evaluate_provider_failure_safety(),
-            await evaluate_restart_continuity(),
-            await evaluate_assistant_self_certification_prevention(),
-            await evaluate_comparative_preference_preservation(),
-            await evaluate_degree_hint_integrity(),
-            await evaluate_working_context_budget_atomicity(),
-            await evaluate_persistence_integrity(),
-            await evaluate_correction_remove_semantics(),
-            await evaluate_crystallization_integrity(),
-        ),
-    )
+    return EvaluationReport(scenarios=(
+        await evaluate_provider_failure_safety(),
+        await evaluate_restart_continuity(),
+        await evaluate_assistant_self_certification_prevention(),
+        await evaluate_comparative_preference_preservation(),
+        await evaluate_degree_hint_integrity(),
+        await evaluate_working_context_budget_atomicity(),
+        await evaluate_persistence_integrity(),
+        await evaluate_correction_remove_semantics(),
+        await evaluate_crystallization_integrity(),
+        await evaluate_streaming_safety(),
+    ))
 
 
 def main() -> int:
@@ -255,14 +179,8 @@ def main() -> int:
 
 def _make_character(root: Path) -> CharacterDirectory:
     (root / "memory").mkdir(parents=True)
-    (root / "SOUL.md").write_text(
-        "# Evaluation Character\n\nBe honest and grounded.\n",
-        encoding="utf-8",
-    )
-    (root / "config.yaml").write_text(
-        "format_version: 1\ncharacter:\n  id: evaluation\n  name: Evaluation\n",
-        encoding="utf-8",
-    )
+    (root / "SOUL.md").write_text("# Evaluation Character\n\nBe honest and grounded.\n", encoding="utf-8")
+    (root / "config.yaml").write_text("format_version: 1\ncharacter:\n  id: evaluation\n  name: Evaluation\n", encoding="utf-8")
     character = CharacterDirectory(root)
     character.save_state(CanonicalState())
     return character
