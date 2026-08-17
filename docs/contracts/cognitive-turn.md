@@ -154,12 +154,12 @@ The ordinary turn APIs now also accept an optional `EventRetrievalBudget(max_eve
 - `event_budget=None` preserves the previous behavior and supplies no targeted Event evidence;
 - with an explicit budget, the Current User Event text is the retrieval query and the Current User Event ID is excluded from evidence;
 - buffered and streamed turns use the same retrieval/compilation helper;
-- when Event retrieval is enabled, the current Event Journal sequence is materialized once before provider generation and reused both for Working Context selection and `select_event_evidence`, avoiding an additional pre-generation journal scan solely for targeted retrieval;
+- ordinary-turn Working Context reads `CharacterDirectory.iter_events()` while targeted retrieval consumes `CharacterDirectory.event_retrieval_source()`; both are tied to the same validated process-local Event Journal snapshot, so the turn layer does not create an independent Event authority or reparse the unchanged journal solely for targeted retrieval;
 - selected Events enter only the dedicated `event_evidence` layer through the existing projection owner;
 - zero Event budgets are allowed and select no evidence; negative budgets fail explicitly;
 - no default Event budget is chosen and the OpenAI client boundary does not expose Event-budget controls in this slice.
 
-This runtime wiring still obtains that pre-generation snapshot through `CharacterDirectory.iter_events()`, which scans the file-backed Event Journal. Retrieval-scaled journal access/indexing remains later #1267 work.
+`CharacterDirectory` owns validation, snapshot-cache, and discovery-index lifecycle. `event_retrieval_source()` exposes the derived `EventDiscoveryIndex` for targeted discovery, while `iter_events()` exposes source chronology for Working Context. The turn layer consumes those APIs without inspecting postings or redefining retrieval semantics; initial/reopen/external-mutation validation and rebuild remain storage/retrieval-owner work.
 
 ## Working Context
 
@@ -191,12 +191,11 @@ persist Current User Event
 if explicit MEMORY budget exists:
   read MEMORY.md → bounded retrieval
         ↓
+obtain validated Event chronology for Working Context
+        ↓
 if explicit Event budget exists:
-  snapshot current Event Journal once
+  obtain the derived Event retrieval source tied to that validated snapshot
   → bounded Event retrieval excluding Current User Event
-  → reuse same snapshot for Working Context
-else:
-  use ordinary Event iterator for Working Context only
         ↓
 compile CognitiveInput
   ├─ filter explicit State-shadowed MEMORY before projection
