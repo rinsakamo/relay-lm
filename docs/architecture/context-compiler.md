@@ -92,6 +92,28 @@ Additional rules:
 
 These are deterministic residency rules, not semantic truth rules.
 
+## Current active-State selection primitive
+
+`compile_cognitive_input` now supports an optional explicit `max_state_records` cap for large active-State sets.
+
+Eligibility is applied before ranking: only records with `status == "active"` and no `valid_to` are candidates. The selector never changes State records or provenance.
+
+Current behavior is deliberately conservative:
+
+- `max_state_records=None` preserves the previous behavior and projects every eligible active State record;
+- if the eligible set already fits the explicit cap, order and contents are unchanged;
+- only under explicit cap pressure, deterministic lexical relevance against the Current Event is used;
+- specific State-key matches receive the strongest lexical weight, followed by matching semantic value text and then State-class text;
+- positive lexical matches are ranked before zero-match fallback records;
+- ties and fallback are deterministic by existing State order;
+- after selection, records are projected in their original Canonical State order rather than score order;
+- `max_state_records=0` removes only the State projection; Identity, Current Event, and Working Context remain independent;
+- negative caps fail explicitly.
+
+The current lexical selector is candidate selection, not authority. It does not mutate State, call an LLM, resolve contradictions, or infer truth from similarity.
+
+The ordinary runtime does **not** yet impose a default State cap, so existing turns continue to receive all eligible active State unless a caller explicitly requests bounded State selection. Runtime budget policy and stronger semantic/multilingual discovery remain #1267 work.
+
 ## Budget model
 
 Context budgeting is role-aware rather than one flat relevance competition.
@@ -112,14 +134,14 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 
 #1267 remains the authority for later Context selection and retrieval work, including:
 
-- relevance selection across large Canonical State sets;
+- runtime default State budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitive;
 - `unresolved`, `referent`, and `active_task` retention beyond pure recency;
 - crystallized `MEMORY.md` retrieval;
 - targeted Event evidence retrieval;
 - source-role-aware stale/conflict suppression;
 - redundancy reduction across State / Working Context / Memory / Events;
 - token-aware tier budgeting and diagnostics;
-- lexical/embedding/index acceleration only after authority eligibility is preserved.
+- embedding/index acceleration only after authority eligibility is preserved.
 
 The governing principle is:
 
