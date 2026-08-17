@@ -10,6 +10,7 @@ from relaylm.evaluation import (
     evaluate_assistant_self_certification_prevention,
     evaluate_comparative_preference_preservation,
     evaluate_degree_hint_integrity,
+    evaluate_persistence_integrity,
     evaluate_provider_failure_safety,
     evaluate_restart_continuity,
     evaluate_working_context_budget_atomicity,
@@ -57,6 +58,7 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "comparative_preference_preservation",
         "degree_hint_integrity",
         "working_context_budget_atomicity",
+        "persistence_integrity",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
@@ -179,3 +181,11 @@ def test_working_context_budget_evaluation_keeps_complete_exchange_and_provenanc
         "character_budget_context_count": 2,
         "selected_source_count": 2,
     }
+
+
+def test_persistence_integrity_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_persistence_integrity())
+
+    assert result.scenario_id == "persistence_integrity"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)

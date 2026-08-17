@@ -166,6 +166,16 @@ The scenario checks exact actor/source provenance for the admitted pair and veri
 
 This evaluates only the current bounded recent-dialogue behavior. Future relevance ranking, unresolved-task retention, MEMORY retrieval, targeted Event evidence retrieval, and token-aware selection remain #1267 work.
 
+### `persistence_integrity`
+
+This deterministic filesystem scenario exercises the current Character Package persistence boundary directly.
+
+It writes one Event and one Canonical State record, reopens the same Character Package, and verifies exact round-trip equality. It also checks that the atomic State writer leaves no `.state.json.tmp` residue after a successful replacement.
+
+The same scenario then corrupts `state.json` and `events.jsonl` deliberately. Malformed State must raise `CharacterDataError`; a malformed second Event line must likewise fail with line-location information. In both cases the malformed persisted file must remain unchanged rather than being silently repaired or rewritten.
+
+This measures the current fail-closed filesystem contract. It does not claim crash-consistent multi-file transactions, backup/restore, migration, or multi-process writer safety.
+
 Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
 ## Deferred evaluation work
@@ -173,7 +183,6 @@ Current scenario implementations may use deterministic synthetic providers or di
 Still owned by #1247:
 
 - correction/remove behavior;
-- persistence malformed-data safety;
 - crystallization quality and Markdown fidelity from #1260;
 - relevance/retrieval evaluation from #1267;
 - streaming/abort evaluation expansion beyond the existing deterministic contracts;
