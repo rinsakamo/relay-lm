@@ -24,7 +24,7 @@ def test_continuity_context_retention_component_uses_real_compiler_apis() -> Non
     ):
         result = asyncio.run(evaluate_continuity_context_retention())
 
-    assert compiler.call_count == 2
+    assert compiler.call_count == 3
     assert diagnostic_compiler.call_count == 1
     assert result.scenario_id == "continuity_context_retention"
     assert result.status == "pass"
