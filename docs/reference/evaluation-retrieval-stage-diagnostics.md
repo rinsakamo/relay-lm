@@ -1,6 +1,6 @@
 # Retrieval-stage diagnostics evaluation component
 
-`src/relaylm/evaluation_retrieval_diagnostics.py` provides the isolated deterministic evaluation component `retrieval_stage_diagnostics`.
+`src/relaylm/evaluation_retrieval_diagnostics.py` provides the deterministic native evaluation component `retrieval_stage_diagnostics`.
 
 ## Current component contract
 
@@ -51,6 +51,8 @@ This is a selector-contract evaluation only. It does not evaluate actual-model r
 
 ## Registration status
 
-This component is **not registered in the native evaluation scenario registry by this transaction**. `src/relaylm/evaluation.py`, shared scenario counts/lists, `docs/authority-map.yaml`, and Issue current-status summaries are intentionally unchanged.
+`retrieval_stage_diagnostics` is registered in the `relaylm-native` scenario sequence through the thin wrapper in `src/relaylm/evaluation.py`.
 
-Registration and shared aggregate reconciliation are deferred to a serial integration transaction after the isolated component is merged.
+Registration does not move selector ownership into the evaluation layer. The shared registry only invokes the already-merged component and preserves its raw checks/metrics. The native suite now contains 22 deterministic scenarios; scenario order and registration are covered by `tests/unit/test_evaluation.py`.
+
+Shared navigation and Issue status are reconciled by the same serial integration transaction. Runtime selection, Context, Turn, persistence, and provider semantics remain unchanged by registration.
