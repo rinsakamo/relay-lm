@@ -22,7 +22,7 @@ def _current_event() -> Event:
         actor="user",
         payload={"content": "Are notifications enabled?"},
         event_id="current-event",
-        timestamp="2026-08-18T08:02:00+09:00",
+        timestamp="2026-08-18T08:25:00+09:00",
     )
 
 
@@ -46,8 +46,8 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
     return MemoryTemporalAuthority(
         temporal_scope=scope,
         provenance=MemoryProvenance(
-            memory_id=f"memory-multiple-inline-boolean-{scope.value}",
-            derivation_id=f"derivation-multiple-inline-boolean-{scope.value}",
+            memory_id=f"memory-heading-multi-bool-{scope.value}",
+            derivation_id=f"derivation-heading-multi-bool-{scope.value}",
             sources=(
                 MemoryProvenanceSource(
                     kind=MemoryProvenanceSourceKind.EVENT,
@@ -59,17 +59,16 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
 
 
 def _chunk(
-    lines: tuple[str, ...],
+    assignments: tuple[str, ...],
     *,
     scope: MemoryTemporalScope = MemoryTemporalScope.UNKNOWN,
-    heading: str = "Profile Notes",
     tail: str | None = None,
 ) -> MemoryChunk:
-    body = "\n".join(lines + ((tail,) if tail is not None else ()))
+    lines = assignments + ((tail,) if tail is not None else ())
     return MemoryChunk(
-        heading_path=("Memory", heading),
-        location=f"memory/MEMORY.md#memory/multiple-inline-boolean-{scope.value}",
-        content=f"## {heading}\n\n{body}",
+        heading_path=("Memory", "Notifications Enabled"),
+        location=f"memory/MEMORY.md#memory/heading-multi-bool-{scope.value}",
+        content="## Notifications Enabled\n\n" + "\n".join(lines),
         temporal_authority=_authority(scope),
     )
 
@@ -104,7 +103,7 @@ def _compile(chunk: MemoryChunk, *, value: bool):
         ),
     ],
 )
-def test_any_conflicting_exact_assignment_suppresses(
+def test_any_conflicting_exact_heading_assignment_suppresses(
     state_value: bool,
     assignments: tuple[str, ...],
 ) -> None:
@@ -132,7 +131,7 @@ def test_any_conflicting_exact_assignment_suppresses(
         ),
     ],
 )
-def test_all_matching_exact_assignments_retain(
+def test_all_matching_exact_heading_assignments_retain(
     state_value: bool,
     assignments: tuple[str, ...],
 ) -> None:
@@ -143,35 +142,19 @@ def test_all_matching_exact_assignments_retain(
     assert [item.location for item in compiled.memory] == [compatible.location]
 
 
-def test_three_matching_exact_assignments_retain() -> None:
-    compatible = _chunk(
+def test_conflicting_assignment_set_is_not_rescued_by_unrelated_current_token() -> None:
+    stale = _chunk(
         (
             "notifications_enabled: true",
-            "notifications_enabled = not false",
-            "notifications_enabled: true",
-        )
-    )
-
-    compiled = _compile(compatible, value=True)
-
-    assert [item.location for item in compiled.memory] == [compatible.location]
-
-
-def test_exact_assignment_set_ignores_unrelated_opposite_boolean_token() -> None:
-    compatible = _chunk(
-        (
-            "notifications_enabled: true",
-            "notifications_enabled: not false",
+            "notifications_enabled: false",
         ),
-        tail="A separate note contains false.",
+        tail="A separate note says true.",
     )
 
-    compiled = _compile(compatible, value=True)
-
-    assert [item.location for item in compiled.memory] == [compatible.location]
+    assert _compile(stale, value=True).memory == ()
 
 
-def test_typed_current_uses_same_multiple_assignment_rule() -> None:
+def test_typed_current_uses_same_heading_multiple_assignment_rule() -> None:
     stale = _chunk(
         (
             "notifications_enabled: true",
@@ -183,7 +166,7 @@ def test_typed_current_uses_same_multiple_assignment_rule() -> None:
     assert _compile(stale, value=True).memory == ()
 
 
-def test_historical_multiple_assignments_remain_exempt() -> None:
+def test_historical_heading_multiple_assignments_remain_exempt() -> None:
     historical = _chunk(
         (
             "notifications_enabled: true",
@@ -197,7 +180,7 @@ def test_historical_multiple_assignments_remain_exempt() -> None:
     assert [item.location for item in compiled.memory] == [historical.location]
 
 
-def test_one_nonexact_assignment_falls_back_without_partial_c15_interpretation() -> None:
+def test_nonexact_assignment_prevents_partial_c17_interpretation() -> None:
     fallback = _chunk(
         (
             "notifications_enabled: true",

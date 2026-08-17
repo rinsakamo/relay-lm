@@ -561,6 +561,17 @@ def _memory_chunk_is_shadowed(
                         if assignment_value is not record.value:
                             return True
                         continue
+                elif len(assignment_values) >= 2:
+                    assignment_booleans = tuple(
+                        _explicit_boolean_claim_value(value)
+                        for value in assignment_values
+                    )
+                    if all(value is not None for value in assignment_booleans):
+                        if any(
+                            value is not record.value for value in assignment_booleans
+                        ):
+                            return True
+                        continue
             if heading_addresses_key and not inline_addresses_key:
                 body_value = _single_atx_heading_body_value(chunk.content)
                 if body_value is not None:
