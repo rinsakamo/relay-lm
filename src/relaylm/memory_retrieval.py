@@ -4,6 +4,8 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
+from relaylm.retrieval_lexical import lexical_terms
+
 
 _HEADING = re.compile(r"^(#{1,6})[ \t]+(.+?)\s*$")
 _FENCE = re.compile(r"^[ \t]{0,3}(`{3,}|~{3,})")
@@ -114,7 +116,7 @@ def _select_memory_chunks(
         )
 
     chunks = _parse_heading_chunks(memory_markdown)
-    query_terms = _lexical_terms(query)
+    query_terms = lexical_terms(query)
     if not query_terms:
         return MemoryRetrievalResult(
             chunks=(),
@@ -272,8 +274,8 @@ def _parse_heading_chunks(markdown: str) -> tuple[MemoryChunk, ...]:
 
 
 def _memory_lexical_score(chunk: MemoryChunk, query_terms: tuple[str, ...]) -> int:
-    heading_terms = frozenset(_lexical_terms(" ".join(chunk.heading_path)))
-    content_terms = frozenset(_lexical_terms(chunk.content))
+    heading_terms = frozenset(lexical_terms(" ".join(chunk.heading_path)))
+    content_terms = frozenset(lexical_terms(chunk.content))
     score = 0
     for term in query_terms:
         if len(term) < 2:
@@ -297,8 +299,3 @@ def _slug(text: str) -> str:
 
 def _normalize(text: str) -> str:
     return unicodedata.normalize("NFKC", text).casefold()
-
-
-def _lexical_terms(text: str) -> tuple[str, ...]:
-    normalized = _normalize(text).replace("_", " ")
-    return tuple(term for term in re.split(r"[^\w]+", normalized) if term)
