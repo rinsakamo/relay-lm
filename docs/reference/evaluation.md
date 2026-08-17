@@ -154,6 +154,18 @@ The same pass also submits two invalid reserved envelopes: one with boolean `deg
 
 This scenario verifies the current machine contract that degree is bounded semantic relative strength, not a removal threshold or confidence field. It does not infer or calibrate what a particular numeric degree should be for arbitrary natural language.
 
+### `working_context_budget_atomicity`
+
+This deterministic Context Compiler scenario uses two prior `user → assistant` exchanges plus the current user Event and applies the current Working Context budgets in two ways.
+
+With an event-count limit that leaves the candidate window beginning on the older exchange's assistant Event, the unmatched assistant is dropped rather than admitted alone; only the newer complete user→assistant exchange remains.
+
+With a character budget exactly large enough for the newer exchange but not both exchanges, the newer pair is again admitted together and the older pair is omitted together.
+
+The scenario checks exact actor/source provenance for the admitted pair and verifies that the current user Event remains the current Input rather than being duplicated into Working Context.
+
+This evaluates only the current bounded recent-dialogue behavior. Future relevance ranking, unresolved-task retention, MEMORY retrieval, targeted Event evidence retrieval, and token-aware selection remain #1267 work.
+
 Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
 ## Deferred evaluation work
@@ -161,7 +173,6 @@ Current scenario implementations may use deterministic synthetic providers or di
 Still owned by #1247:
 
 - correction/remove behavior;
-- Working Context provenance/budget invariants beyond the current restart/authority scenarios;
 - persistence malformed-data safety;
 - crystallization quality and Markdown fidelity from #1260;
 - relevance/retrieval evaluation from #1267;
