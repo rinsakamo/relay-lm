@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+from relaylm.context import compile_cognitive_input
 from relaylm.evaluation import EvaluationCheck, EvaluationScenarioResult
-from relaylm.memory_retrieval import select_memory_chunks
+from relaylm.events import Event
+from relaylm.identity import Identity
+from relaylm.memory_retrieval import MemoryChunk, select_memory_chunks
+from relaylm.providers.openai_compatible import serialize_cognitive_input
+from relaylm.state import CanonicalState, StateRecord
 
 
 _MEMORY = """# Memory
@@ -86,5 +91,102 @@ Coffee is preferred.
             "relevant_selected_count": len(relevant),
             "irrelevant_selected_count": len(irrelevant),
             "oversized_selected_count": len(oversized),
+        },
+    )
+
+
+async def evaluate_memory_cognitive_projection() -> EvaluationScenarioResult:
+    current = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": "What did I say about coffee?"},
+        event_id="current-event",
+        timestamp="2026-08-17T04:00:00+00:00",
+    )
+    chunk = MemoryChunk(
+        heading_path=("Memory", "Coffee"),
+        location="memory/MEMORY.md#memory/coffee",
+        content="## Coffee\n\nRin currently prefers coffee over tea.",
+    )
+    state = CanonicalState(
+        states=(
+            StateRecord(
+                state_id="tea-state",
+                state_class="user.preference",
+                key="tea",
+                value="likes",
+                sources=("old-user-event",),
+            ),
+        )
+    )
+    compiled = compile_cognitive_input(
+        identity=Identity("# Evaluation Character\nBe grounded."),
+        state=state,
+        current_event=current,
+        retrieved_memory=(chunk,),
+    )
+    without_memory = compile_cognitive_input(
+        identity=Identity("# Evaluation Character\nBe grounded."),
+        state=state,
+        current_event=current,
+    )
+    payload = serialize_cognitive_input(compiled)
+    without_memory_payload = serialize_cognitive_input(without_memory)
+
+    serialized_sources = [
+        source
+        for record in payload["state"]
+        for source in record.get("sources", [])
+    ] + [
+        source
+        for item in payload["context"]
+        for source in item.get("sources", [])
+    ]
+    source_leak_count = serialized_sources.count(chunk.location)
+
+    checks = (
+        EvaluationCheck(
+            check_id="selected_memory_projects_into_distinct_layer",
+            boundary="context_compiler",
+            passed=len(compiled.memory) == 1
+            and compiled.memory[0].content == chunk.content
+            and compiled.memory[0].location == chunk.location
+            and compiled.context == (),
+            expected=1,
+            observed=len(compiled.memory),
+        ),
+        EvaluationCheck(
+            check_id="provider_serializes_memory_separately",
+            boundary="provider_serialization",
+            passed=payload["memory"]
+            == [{"content": chunk.content, "location": chunk.location}]
+            and payload["context"] == [],
+            expected=1,
+            observed=len(payload["memory"]),
+        ),
+        EvaluationCheck(
+            check_id="memory_location_is_not_event_source",
+            boundary="event_provenance",
+            passed=source_leak_count == 0
+            and payload["input"]["event_id"] == "current-event",
+            expected=0,
+            observed=source_leak_count,
+        ),
+        EvaluationCheck(
+            check_id="missing_memory_projects_empty_layer",
+            boundary="context_compiler",
+            passed=without_memory.memory == ()
+            and without_memory_payload["memory"] == [],
+            expected=0,
+            observed=len(without_memory_payload["memory"]),
+        ),
+    )
+    return EvaluationScenarioResult(
+        scenario_id="memory_cognitive_projection",
+        checks=checks,
+        metrics={
+            "projected_memory_count": len(compiled.memory),
+            "working_context_count": len(compiled.context),
+            "memory_location_source_leak_count": source_leak_count,
         },
     )
