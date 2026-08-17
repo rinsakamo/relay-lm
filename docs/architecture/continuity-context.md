@@ -1,6 +1,6 @@
 # Continuity Context
 
-> **Status:** accepted semantic architecture tracked by #1371. K1 typed boundaries are implemented in `relaylm.continuity`; K2 deterministic acceptance/lifecycle is implemented in `relaylm.continuity_validation`; K3 ordinary-turn return-path wiring is implemented by the current transaction and becomes repository authority when it merges.
+> **Status:** accepted semantic architecture tracked by #1371. K1 typed boundaries are implemented in `relaylm.continuity`; K2 deterministic acceptance/lifecycle is implemented in `relaylm.continuity_validation`; K3 ordinary-turn return-path wiring is implemented in `relaylm.cognitive`, `relaylm.turn`, and the explicit app/router runtime carriage.
 
 ## Purpose
 
@@ -238,7 +238,7 @@ accepted referent / unresolved retention
 #1267 C3 active_task retention
 ```
 
-When the K3 transaction merges to current `v1`, the Continuity foundation dependency for #1267 C2 is satisfied. C2 remains a separate Context Compiler transaction and must consume accepted `ContinuityItem` values rather than introduce raw-language inference, temporary fields, duplicate semantic owners, compatibility bridges, or speculative retention classification.
+With K1-K3 present on current `v1`, the Continuity foundation dependency for #1267 C2 is satisfied. C2 remains a separate Context Compiler transaction and must consume accepted `ContinuityItem` values rather than introduce raw-language inference, temporary fields, duplicate semantic owners, compatibility bridges, or speculative retention classification.
 
 ## Non-goals
 
