@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Mapping, Protocol
 
+from relaylm.continuity import ContinuityCandidate
 from relaylm.events import Event
 from relaylm.identity import Identity
 from relaylm.state import StateCandidate, StateRecord
@@ -77,6 +78,7 @@ class CognitiveInput:
 class CognitiveOutput:
     response: str
     state_candidates: tuple[StateCandidate, ...] = field(default_factory=tuple)
+    continuity_candidates: tuple[ContinuityCandidate, ...] = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
         if not self.response.strip():
