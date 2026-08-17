@@ -160,8 +160,8 @@ def test_buffered_and_streaming_diagnostics_share_retrieval_preparation_semantic
     assert emitted == ["ok"]
     assert buffered_result.retrieval == streaming_result.retrieval
     assert buffered_provider.inputs[0].memory == streaming_provider.inputs[0].memory
-    assert [event.id for event in buffered_provider.inputs[0].event_evidence] == [
-        event.id for event in streaming_provider.inputs[0].event_evidence
+    assert [event.event_id for event in buffered_provider.inputs[0].event_evidence] == [
+        event.event_id for event in streaming_provider.inputs[0].event_evidence
     ]
 
 
