@@ -19,20 +19,30 @@ configured cognitive provider
 
 The client-facing `model` field is a compatibility field. It does not select or override RelayLM's configured cognitive provider/model.
 
-## MVP request authority
+## Request authority
 
-For M3, RelayLM selects only the last non-empty `user` message as the current governed input.
+RelayLM selects only the last non-empty `user` message as the current governed input.
 
 Earlier client-supplied `system`, `assistant`, and `user` messages are not replayed into Cognitive Context and are not appended into the Event Journal merely because the client sent them. Character continuity comes from `SOUL.md`, Canonical State, and RelayLM-governed Context.
 
 This prevents unsupported prior assistant statements or arbitrary client system prompts from overriding character Identity or becoming self-reinforcing memory.
 
-## MVP response
+## Buffered response
 
-The endpoint returns a non-streaming OpenAI-style `chat.completion` containing the RelayLM semantic response.
+With `stream=false`, the endpoint returns an OpenAI-style `chat.completion` containing the RelayLM semantic response after the complete structured cognitive result has been validated and committed through the ordinary turn path.
 
-`stream=true` is rejected explicitly in M3. Safe structured-response streaming is owned by #1269 so that delivery framing cannot leak into semantic cognition/state contracts.
+## Streaming response
+
+With `stream=true`, the current OpenAI-compatible provider path returns `text/event-stream` using OpenAI-style `chat.completion.chunk` frames.
+
+RelayLM may expose safely decoded characters from the provider wire `utterance` before the complete structured provider object has arrived. This early visible text is delivery only: `state_candidates` remain non-authoritative, and RelayLM creates the Assistant Event and applies State mutation only after the provider stream completes as a valid structured result and the existing Validator accepts the candidates.
+
+A successful stream ends with a final chunk carrying `finish_reason: "stop"` followed by `data: [DONE]`.
+
+If the structured provider stream truncates or becomes invalid after some safe utterance text was already emitted, that visible prefix is not semantically regenerated. The current User Event remains persisted, but RelayLM creates no Assistant Event and performs no State mutation for the failed turn. The incomplete stream does not emit the normal successful `stop` / `[DONE]` terminator.
+
+A configured provider that does not implement RelayLM's streaming provider contract rejects `stream=true` rather than silently falling back to a second generation or a different semantic path.
 
 ## Concurrency
 
-The one-character MVP serializes turns at the API boundary to prevent overlapping requests from racing Event/State persistence. Multi-character routing and broader scheduling are outside M3.
+The one-character runtime serializes turns at the API boundary to prevent overlapping requests from racing Event/State persistence. Streaming retains the same turn lock through provider completion and final commit. Multi-character routing and broader scheduling remain outside the current boundary.
