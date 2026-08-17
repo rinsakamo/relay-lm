@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import re
-import unicodedata
 from collections.abc import Iterable
 from dataclasses import dataclass
 
 from relaylm.events import Event
+from relaylm.retrieval_lexical import lexical_terms
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,7 +92,7 @@ class EventDiscoveryIndex:
 
         self._classifications.append(self._ELIGIBLE)
         self._eligible_message_count += 1
-        for term in frozenset(_lexical_terms(content)):
+        for term in frozenset(lexical_terms(content)):
             self._term_indexes.setdefault(term, []).append(index)
 
     def event_at(self, index: int) -> Event:
@@ -180,7 +179,7 @@ def _select_event_evidence(
             max_chars=max_chars,
         )
 
-    query_terms = frozenset(term for term in _lexical_terms(query) if len(term) >= 2)
+    query_terms = frozenset(term for term in lexical_terms(query) if len(term) >= 2)
     if not query_terms:
         return _empty_retrieval_result(
             mode="no_query_terms",
@@ -276,7 +275,7 @@ def _select_iterable_event_evidence(
             blank_content_count += 1
             continue
         eligible_message_count += 1
-        content_terms = frozenset(_lexical_terms(content))
+        content_terms = frozenset(lexical_terms(content))
         score = sum(1 for term in query_terms if term in content_terms)
         if score <= 0:
             continue
@@ -372,8 +371,3 @@ def _empty_retrieval_result(
             character_budget_pressure=False,
         ),
     )
-
-
-def _lexical_terms(text: str) -> tuple[str, ...]:
-    normalized = unicodedata.normalize("NFKC", text).casefold().replace("_", " ")
-    return tuple(term for term in re.split(r"[^\w]+", normalized) if term)
