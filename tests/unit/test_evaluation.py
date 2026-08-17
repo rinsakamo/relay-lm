@@ -67,6 +67,7 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "crystallization_integrity",
         "streaming_safety",
         "state_selection_diagnostics",
+        "memory_heading_retrieval",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
