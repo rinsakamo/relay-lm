@@ -179,86 +179,113 @@ async def evaluate_provider_failure_safety() -> EvaluationScenarioResult:
 
 async def evaluate_restart_continuity() -> EvaluationScenarioResult:
     from relaylm.evaluation_restart import evaluate_restart_continuity as evaluate
+
     return await evaluate()
 
 
 async def evaluate_assistant_self_certification_prevention() -> EvaluationScenarioResult:
-    from relaylm.evaluation_authority import evaluate_assistant_self_certification_prevention as evaluate
+    from relaylm.evaluation_authority import (
+        evaluate_assistant_self_certification_prevention as evaluate,
+    )
+
     return await evaluate()
 
 
 async def evaluate_comparative_preference_preservation() -> EvaluationScenarioResult:
-    from relaylm.evaluation_preference import evaluate_comparative_preference_preservation as evaluate
+    from relaylm.evaluation_preference import (
+        evaluate_comparative_preference_preservation as evaluate,
+    )
+
     return await evaluate()
 
 
 async def evaluate_degree_hint_integrity() -> EvaluationScenarioResult:
     from relaylm.evaluation_degree import evaluate_degree_hint_integrity as evaluate
+
     return await evaluate()
 
 
 async def evaluate_working_context_budget_atomicity() -> EvaluationScenarioResult:
-    from relaylm.evaluation_context import evaluate_working_context_budget_atomicity as evaluate
+    from relaylm.evaluation_context import (
+        evaluate_working_context_budget_atomicity as evaluate,
+    )
+
     return await evaluate()
 
 
 async def evaluate_state_selection_diagnostics() -> EvaluationScenarioResult:
     from relaylm.evaluation_context import evaluate_state_selection_diagnostics as evaluate
+
     return await evaluate()
 
 
 async def evaluate_persistence_integrity() -> EvaluationScenarioResult:
     from relaylm.evaluation_persistence import evaluate_persistence_integrity as evaluate
+
     return await evaluate()
 
 
 async def evaluate_correction_remove_semantics() -> EvaluationScenarioResult:
     from relaylm.evaluation_correction import evaluate_correction_remove_semantics as evaluate
+
     return await evaluate()
 
 
 async def evaluate_crystallization_integrity() -> EvaluationScenarioResult:
     from relaylm.evaluation_crystallization import evaluate_crystallization_integrity as evaluate
+
     return await evaluate()
 
 
 async def evaluate_streaming_safety() -> EvaluationScenarioResult:
     from relaylm.evaluation_streaming import evaluate_streaming_safety as evaluate
+
     return await evaluate()
 
 
 async def evaluate_memory_heading_retrieval() -> EvaluationScenarioResult:
     from relaylm.evaluation_memory import evaluate_memory_heading_retrieval as evaluate
+
     return await evaluate()
 
 
 async def evaluate_memory_cognitive_projection() -> EvaluationScenarioResult:
     from relaylm.evaluation_memory import evaluate_memory_cognitive_projection as evaluate
+
     return await evaluate()
 
 
 async def evaluate_ordinary_turn_memory_retrieval() -> EvaluationScenarioResult:
     from relaylm.evaluation_memory import evaluate_ordinary_turn_memory_retrieval as evaluate
+
     return await evaluate()
 
 
 async def evaluate_state_memory_authority_filter() -> EvaluationScenarioResult:
     from relaylm.evaluation_memory import evaluate_state_memory_authority_filter as evaluate
+
     return await evaluate()
 
 
 async def evaluate_targeted_event_retrieval() -> EvaluationScenarioResult:
     from relaylm.evaluation_context import evaluate_targeted_event_retrieval as evaluate
+
     return await evaluate()
 
 
 async def evaluate_event_evidence_cognitive_projection() -> EvaluationScenarioResult:
-    from relaylm.evaluation_event_evidence import evaluate_event_evidence_cognitive_projection as evaluate
+    from relaylm.evaluation_event_evidence import (
+        evaluate_event_evidence_cognitive_projection as evaluate,
+    )
+
     return await evaluate()
 
 
 async def evaluate_ordinary_turn_event_retrieval() -> EvaluationScenarioResult:
-    from relaylm.evaluation_event_evidence import evaluate_ordinary_turn_event_retrieval as evaluate
+    from relaylm.evaluation_event_evidence import (
+        evaluate_ordinary_turn_event_retrieval as evaluate,
+    )
+
     return await evaluate()
 
 
