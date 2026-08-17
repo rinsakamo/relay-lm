@@ -36,7 +36,7 @@ Minimal semantic shape:
 - `identity` is authoritative stable character identity.
 - `state` contains selected accepted Canonical State.
 - `context` contains RelayLM-prepared Event-backed cognitive material, not authority-equivalent raw transcript replay.
-- `memory` contains already-selected crystallized synthesis. It is a distinct optional layer and is not Canonical State or Event provenance.
+- `memory` contains selected crystallized synthesis. It is a distinct optional layer and is not Canonical State or Event provenance.
 - `input` is the current governed Event.
 - `state_classes` provides bounded semantic definitions and may be rendered through provider/schema metadata without changing semantics.
 
@@ -80,9 +80,17 @@ The current contract deliberately keeps this separate from Event-backed `Context
 - retrieved crystallized prose is lower authority than active Canonical State for current understanding;
 - including memory in CognitiveInput does not mutate `MEMORY.md`, State, or Events.
 
-`compile_cognitive_input(..., retrieved_memory=...)` accepts already-selected `MemoryChunk` values and projects them without widening retrieval scope. The ordinary `run_user_turn` path does not yet select or populate this layer automatically; runtime retrieval policy and default MEMORY budgets remain #1267 work.
+`compile_cognitive_input(..., retrieved_memory=...)` accepts already-selected `MemoryChunk` values and projects them without widening retrieval scope.
 
-Deterministic stale/conflict filtering between active State and retrieved memory is also still deferred. The provider is instructed to treat active State as current understanding if already-projected memory conflicts, but that instruction does not replace the later RelayLM-owned suppression/filtering layer.
+The ordinary turn APIs now accept an optional `MemoryRetrievalBudget(max_chunks, max_chars)`:
+
+- with no budget, the runtime does not read `MEMORY.md` and the memory layer remains empty;
+- with a budget, the Current User Event text is used as the query for the existing bounded `select_memory_chunks` primitive;
+- buffered and streamed turns use the same retrieval/compilation path;
+- no default MEMORY budget is chosen by this contract;
+- the OpenAI client boundary does not yet expose this budget as a request parameter.
+
+Deterministic stale/conflict filtering between active State and retrieved memory is still deferred. The provider is instructed to treat active State as current understanding if already-projected memory conflicts, but that instruction does not replace the later RelayLM-owned suppression/filtering layer.
 
 ## Working Context
 
@@ -111,6 +119,9 @@ load config / Identity / Canonical State
         ↓
 persist Current User Event
         ↓
+if explicit MEMORY budget exists:
+  read MEMORY.md → bounded retrieval
+        ↓
 compile CognitiveInput
         ↓
 exactly one provider generation
@@ -124,9 +135,9 @@ validate StateCandidate[]
 persist Canonical State only if validation changed it
 ```
 
-Persisting the User Event before provider execution is intentional: the Event Journal records that the user input occurred even if cognition later fails.
+Persisting the User Event before retrieval/provider execution is intentional: the Event Journal records that the user input occurred even if optional retrieval or cognition later fails.
 
-Buffered and streamed delivery share this semantic ordering. A streaming adapter may expose safely decoded response characters while the single provider generation is still producing its structured wire object, but this early display is not a semantic `CognitiveOutput` acceptance point. Assistant Event creation and StateCandidate validation wait for the complete valid cognitive result.
+Buffered and streamed delivery share this semantic ordering and the same optional-memory preparation path. A streaming adapter may expose safely decoded response characters while the single provider generation is still producing its structured wire object, but this early display is not a semantic `CognitiveOutput` acceptance point. Assistant Event creation and StateCandidate validation wait for the complete valid cognitive result.
 
 ## CognitiveOutput
 
@@ -162,6 +173,15 @@ Streaming does not create a second semantic output form. Provider wire `utteranc
 
 ## Failure semantics
 
+If optional MEMORY retrieval fails after the Current User Event is persisted but before provider generation:
+
+```text
+Current User Event    persisted
+Provider generation   not called
+Assistant Event       not created
+Canonical State       unchanged by that failed turn
+```
+
 If the cognitive provider fails before producing a valid `CognitiveOutput`:
 
 ```text
@@ -170,12 +190,12 @@ Assistant Event       not created
 Canonical State       unchanged by that failed turn
 ```
 
-The persisted unmatched User Event may later participate in bounded Working Context, because it is real user-origin conversational evidence even though the attempted assistant response failed.
+The persisted unmatched User Event may later participate in bounded Working Context, because it is real user-origin conversational evidence even though retrieval or the attempted assistant response failed.
 
-For a streamed turn, the same failure rule applies even if a safe prefix of the provider `utterance` was already delivered to the client. A truncated or malformed structured stream does not retroactively turn that visible prefix into an accepted Assistant Event, does not make incomplete candidates authoritative, and does not trigger semantic regeneration. Successful Assistant/State persistence occurs only after complete structured provider output.
+For a streamed turn, the same provider-failure rule applies even if a safe prefix of the provider `utterance` was already delivered to the client. A truncated or malformed structured stream does not retroactively turn that visible prefix into an accepted Assistant Event, does not make incomplete candidates authoritative, and does not trigger semantic regeneration. Successful Assistant/State persistence occurs only after complete structured provider output.
 
 If a valid response is produced but one or more StateCandidates are rejected, the valid response still becomes an Assistant Event while rejected candidates do not mutate Canonical State. Response validity and State acceptance are deliberately separate channels.
 
 Adapter-level malformed provider output is fail-closed before a semantic `CognitiveOutput` is accepted.
 
-An ordinary turn targets exactly one cognitive generation. Working Context selection, deterministic validation, persistence, Context compilation, retrieved-memory projection, and streamed delivery do not add a second ordinary cognitive LLM call.
+An ordinary turn targets exactly one cognitive generation. Working Context selection, deterministic validation, persistence, Context compilation, optional retrieved-memory selection/projection, and streamed delivery do not add a second ordinary cognitive LLM call.
