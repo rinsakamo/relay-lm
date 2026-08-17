@@ -56,6 +56,28 @@ The Markdown body is the readable synthesis produced by the crystallizer. Proven
 
 `StateCandidate[]` uses the existing RelayLM StateCandidate contract. The crystallizer has no privileged mutation path.
 
+## Typed MEMORY temporal/provenance model
+
+RelayLM defines a #1260-owned typed authority model for the temporal role and lineage of a retrievable crystallized MEMORY semantic unit.
+
+The closed temporal domain is:
+
+- `current` — explicitly classified as currently applicable MEMORY;
+- `historical` — explicitly classified as historical/not-current MEMORY;
+- `unknown` — no current/historical classification is authorized.
+
+`unknown` is first-class. RelayLM does not derive a stronger classification from years, date literals, words such as `previous` or `formerly`, grammatical tense, heading names, or arbitrary prose.
+
+Classified `current` or `historical` authority requires typed provenance. Provenance carries:
+
+- a stable logical `memory_id`, independent of Markdown path/heading organization;
+- a `derivation_id` identifying the semantic derivation that produced the MEMORY unit;
+- one or more typed source references whose source kind is `event` or `state`.
+
+The source vocabulary follows existing RelayLM authority roots: persisted Events are occurrence/provenance records and Canonical State is accepted current machine understanding. A Markdown path, heading, retrieval score, or fluent memory sentence is not itself a provenance source kind.
+
+This model does not promote MEMORY into Canonical State and does not change retrieval relevance/ranking. The governed Markdown metadata convention and parser/carriage into retrieval are a separate bounded step; until such metadata is explicitly present and parsed, ordinary MEMORY text has no typed current/historical authority.
+
 ## Governed State write-back
 
 Candidate write-back follows the existing deterministic Validator/State engine:
@@ -89,7 +111,8 @@ A future crystallizer provider may itself use an LLM, but that invocation is a s
 Still owned by #1260:
 
 - an actual OpenAI-compatible / local-model crystallizer adapter and prompt/schema contract;
-- richer provenance conventions inside Markdown;
+- governed machine-readable MEMORY metadata carriage from Markdown into retrieval;
+- richer provenance conventions for human/Obsidian presentation beyond the typed authority contract;
 - `memory/notes/*.md` splitting, linking, and wiki organization;
 - autonomous scheduling or background crystallization policy;
 - manual/external Markdown import and governed write-back;
