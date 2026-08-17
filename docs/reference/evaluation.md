@@ -108,17 +108,32 @@ It checks independently that:
 
 This is deterministic runtime evidence. It does not replace #1259's required actual local-model restart product proof or make a naturalness/persona-quality claim.
 
-Current scenario implementations may use deterministic synthetic providers so failures can be attributed to RelayLM-owned boundaries instead of model variance.
+### `assistant_self_certification_prevention`
+
+This deterministic authority scenario separates conversational continuity from factual authority.
+
+A prior user/assistant exchange is compiled into Working Context where the assistant says `あなたは北海道に住んでいる`. The scenario verifies that this utterance remains available for continuity with its `actor=assistant` and source Event ID intact.
+
+It then proposes `user.fact / residence_location = Hokkaido` using only that assistant Event as provenance and checks that the existing Validator rejects the candidate as `user_state_requires_user_source`. Canonical State must remain unchanged.
+
+The scenario therefore does **not** solve self-certification by deleting assistant dialogue from Context. It measures the intended separation:
+
+```text
+assistant dialogue
+  may support continuity
+  != authority to establish user truth
+```
+
+Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
 ## Deferred evaluation work
 
 Still owned by #1247:
 
-- assistant self-certification prevention;
 - correction/remove behavior;
 - comparative preference preservation;
 - degree-hint integrity;
-- Working Context provenance/budget invariants beyond the restart scenario;
+- Working Context provenance/budget invariants beyond the restart/authority scenarios;
 - persistence malformed-data safety;
 - crystallization quality and Markdown fidelity from #1260;
 - relevance/retrieval evaluation from #1267;
