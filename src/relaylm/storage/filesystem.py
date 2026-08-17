@@ -8,6 +8,7 @@ from typing import Any, Iterator
 import yaml
 
 from relaylm.character import CharacterConfig
+from relaylm.event_retrieval import EventDiscoveryIndex
 from relaylm.events import Event
 from relaylm.identity import Identity
 from relaylm.state import CanonicalState, StateRecord
@@ -25,6 +26,8 @@ class CharacterDirectory:
         self._event_cache: tuple[Event, ...] = ()
         self._event_cache_signature: tuple[int, int, int, int] | None = None
         self._event_cache_loaded = False
+        self._event_discovery_index: EventDiscoveryIndex | None = None
+        self._event_discovery_signature: tuple[int, int, int, int] | None = None
 
     @property
     def config_path(self) -> Path:
@@ -89,6 +92,18 @@ class CharacterDirectory:
             self._event_cache_loaded = True
         return iter(self._event_cache)
 
+    def event_retrieval_source(self) -> EventDiscoveryIndex:
+        """Return derived lexical discovery tied to the validated Journal snapshot."""
+
+        self.iter_events()
+        if (
+            self._event_discovery_index is None
+            or self._event_discovery_signature != self._event_cache_signature
+        ):
+            self._event_discovery_index = EventDiscoveryIndex(self._event_cache)
+            self._event_discovery_signature = self._event_cache_signature
+        return self._event_discovery_index
+
     def _read_events_snapshot(self) -> tuple[Event, ...]:
         try:
             handle = self.events_path.open("r", encoding="utf-8")
@@ -127,6 +142,11 @@ class CharacterDirectory:
             self._event_cache_loaded
             and self._event_cache_signature == signature_before_append
         )
+        can_extend_discovery = (
+            can_extend_cache
+            and self._event_discovery_index is not None
+            and self._event_discovery_signature == signature_before_append
+        )
         payload = {
             "id": event.id,
             "type": event.type,
@@ -143,11 +163,21 @@ class CharacterDirectory:
 
         if can_extend_cache:
             self._event_cache = (*self._event_cache, event)
-            self._event_cache_signature = self._events_signature()
+            signature_after_append = self._events_signature()
+            self._event_cache_signature = signature_after_append
+            if can_extend_discovery:
+                assert self._event_discovery_index is not None
+                self._event_discovery_index.append(event)
+                self._event_discovery_signature = signature_after_append
+            else:
+                self._event_discovery_index = None
+                self._event_discovery_signature = None
         else:
             self._event_cache = ()
             self._event_cache_signature = None
             self._event_cache_loaded = False
+            self._event_discovery_index = None
+            self._event_discovery_signature = None
 
     def load_memory_markdown(self) -> str | None:
         try:
