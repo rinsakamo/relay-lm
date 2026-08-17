@@ -225,6 +225,14 @@ The scenario also serializes the diagnostics objects and verifies that known Sta
 
 The scenario does not choose a runtime State cap, expose content, or evaluate future cross-layer token budgets.
 
+### `memory_heading_retrieval`
+
+This deterministic #1267 scenario evaluates the first bounded retrieval primitive over crystallized `MEMORY.md` content.
+
+It checks three independent behaviors: a coffee-related query selects the complete Coffee heading section; an unrelated astronomy query selects no optional memory rather than falling back to irrelevant prose; and a relevant section that exceeds the character budget is skipped without truncation while a later complete relevant summary may still fit.
+
+The scenario evaluates retrieval and local budget semantics only. It does not claim CognitiveInput projection, durable Markdown identity/Event provenance, State-vs-memory conflict suppression, multilingual semantic retrieval, or actual-model response benefit.
+
 Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
 ## Deferred evaluation work
