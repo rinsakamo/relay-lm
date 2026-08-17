@@ -109,7 +109,7 @@ class EventDiscoveryIndex:
 
     def candidate_scores(self, query_terms: Iterable[str]) -> dict[int, int]:
         scores: dict[int, int] = {}
-        for term in query_terms:
+        for term in frozenset(query_terms):
             for index in self._term_indexes.get(term, ()):
                 scores[index] = scores.get(index, 0) + 1
         return scores
