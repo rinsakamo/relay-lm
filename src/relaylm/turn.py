@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
-from relaylm.cognitive import CognitiveProvider
+from relaylm.cognitive import CognitiveOutput, CognitiveProvider
 from relaylm.context import compile_cognitive_input
 from relaylm.events import Event
 from relaylm.state import CanonicalState
@@ -48,7 +49,63 @@ async def run_user_turn(
         recent_events=character.iter_events(),
     )
     output = await provider.generate(cognitive_input)
+    return _commit_cognitive_output(
+        character=character,
+        state=state,
+        user_event=user_event,
+        output=output,
+    )
 
+
+async def run_user_turn_streaming(
+    *,
+    character: CharacterDirectory,
+    provider: CognitiveProvider,
+    content: str,
+    emit_response_delta: Callable[[str], Awaitable[None]],
+) -> TurnResult:
+    """Run one streamed ordinary turn without committing before provider completion."""
+
+    if not content.strip():
+        raise ValueError("user content must not be empty")
+
+    stream_generate = getattr(provider, "stream_generate", None)
+    if stream_generate is None:
+        raise TypeError("provider does not support cognitive streaming")
+
+    character.load_config()
+    identity = character.load_identity()
+    state = character.load_state()
+
+    user_event = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": content},
+    )
+    character.append_event(user_event)
+
+    cognitive_input = compile_cognitive_input(
+        identity=identity,
+        state=state,
+        current_event=user_event,
+        recent_events=character.iter_events(),
+    )
+    output = await stream_generate(cognitive_input, emit_response_delta)
+    return _commit_cognitive_output(
+        character=character,
+        state=state,
+        user_event=user_event,
+        output=output,
+    )
+
+
+def _commit_cognitive_output(
+    *,
+    character: CharacterDirectory,
+    state: CanonicalState,
+    user_event: Event,
+    output: CognitiveOutput,
+) -> TurnResult:
     assistant_event = Event.create(
         type="message",
         actor="assistant",
