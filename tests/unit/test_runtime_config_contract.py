@@ -1,0 +1,187 @@
+from __future__ import annotations
+
+import pytest
+
+from relaylm.budget import (
+    BudgetDegradationPolicy,
+    BudgetPlan,
+    CountCharacterEnvelope,
+    CountEnvelope,
+    TotalBudgetConfig,
+)
+from relaylm.runtime_config import (
+    CONFIG_PRECEDENCE,
+    DEFAULT_SERVER_HOST,
+    DEFAULT_SERVER_PORT,
+    RUNTIME_CONFIG_FORMAT_VERSION,
+    RUNTIME_CONFIG_PATH_ENV,
+    UNKNOWN_FIELD_POLICY,
+    CharacterRuntimeConfig,
+    ConfigSource,
+    ContinuityRuntimeSettings,
+    EffectiveConfigSecret,
+    EventRetrievalRuntimeConfig,
+    ExplicitCognitiveBudgetConfig,
+    MemoryRetrievalRuntimeConfig,
+    ProviderRuntimeConfig,
+    RuntimeConfig,
+    RuntimeConfigErrorCode,
+    RuntimePolicyConfig,
+    SecretEnvReference,
+    ServerRuntimeConfig,
+    TokenAccountingMode,
+    TokenCounterCapabilityConfig,
+)
+
+
+def _empty_policy() -> BudgetDegradationPolicy:
+    return BudgetDegradationPolicy(
+        initial_plan=BudgetPlan(
+            canonical_state=CountEnvelope(max_items=0, floor_items=0),
+            working_context=CountCharacterEnvelope(
+                max_items=0,
+                floor_items=0,
+                max_chars=0,
+                floor_chars=0,
+            ),
+            retrieved_memory=CountCharacterEnvelope(
+                max_items=0,
+                floor_items=0,
+                max_chars=0,
+                floor_chars=0,
+            ),
+            event_evidence=CountCharacterEnvelope(
+                max_items=0,
+                floor_items=0,
+                max_chars=0,
+                floor_chars=0,
+            ),
+        ),
+        steps=(),
+    )
+
+
+def test_runtime_configuration_version_and_discovery_are_explicit() -> None:
+    assert RUNTIME_CONFIG_FORMAT_VERSION == 1
+    assert RUNTIME_CONFIG_PATH_ENV == "RELAYLM_CONFIG"
+    assert UNKNOWN_FIELD_POLICY == "error"
+
+
+def test_runtime_configuration_precedence_is_leaf_level_and_deterministic() -> None:
+    assert CONFIG_PRECEDENCE == (
+        ConfigSource.CLI,
+        ConfigSource.ENV,
+        ConfigSource.CONFIG_FILE,
+        ConfigSource.CANONICAL_DEFAULT,
+    )
+
+
+def test_runtime_config_rejects_coerced_or_unsupported_format_version() -> None:
+    kwargs = {
+        "character": CharacterRuntimeConfig(directory="/characters/relm"),
+        "provider": ProviderRuntimeConfig(
+            adapter="openai_compatible",
+            base_url="http://127.0.0.1:1234/v1",
+            model="example-model",
+        ),
+    }
+    with pytest.raises(TypeError, match="format_version must be integer 1"):
+        RuntimeConfig(format_version=True, **kwargs)
+    with pytest.raises(ValueError, match="unsupported runtime format_version: 2"):
+        RuntimeConfig(format_version=2, **kwargs)
+
+
+def test_current_release_server_defaults_preserve_loopback_exposure() -> None:
+    server = ServerRuntimeConfig()
+
+    assert DEFAULT_SERVER_HOST == "127.0.0.1"
+    assert DEFAULT_SERVER_PORT == 8090
+    assert server.host == DEFAULT_SERVER_HOST
+    assert server.port == DEFAULT_SERVER_PORT
+
+
+def test_provider_config_accepts_only_current_adapter_and_secret_reference() -> None:
+    provider = ProviderRuntimeConfig(
+        adapter="openai_compatible",
+        base_url="http://127.0.0.1:1234/v1",
+        model="example-model",
+        api_key=SecretEnvReference(env="OPENAI_API_KEY"),
+    )
+
+    assert provider.api_key == SecretEnvReference(env="OPENAI_API_KEY")
+    with pytest.raises(ValueError, match="unsupported provider adapter"):
+        ProviderRuntimeConfig(
+            adapter="invented_adapter",
+            base_url="http://127.0.0.1:1234/v1",
+            model="example-model",
+        )
+    with pytest.raises(ValueError, match="environment variable name"):
+        SecretEnvReference(env="not valid")
+
+
+def test_runtime_policy_has_no_uncalibrated_profile_or_cognitive_defaults() -> None:
+    policy = RuntimePolicyConfig()
+
+    assert policy.profile is None
+    assert policy.memory_retrieval is None
+    assert policy.event_retrieval is None
+    assert policy.continuity is None
+    assert policy.cognitive_budget is None
+
+
+def test_existing_runtime_controls_remain_explicit_inputs() -> None:
+    policy = RuntimePolicyConfig(
+        memory_retrieval=MemoryRetrievalRuntimeConfig(max_chunks=3, max_chars=900),
+        event_retrieval=EventRetrievalRuntimeConfig(max_events=4, max_chars=1200),
+        continuity=ContinuityRuntimeSettings(max_items=5, lifetime_revisions=6),
+    )
+
+    assert policy.memory_retrieval.max_chunks == 3
+    assert policy.event_retrieval.max_events == 4
+    assert policy.continuity.max_items == 5
+    assert policy.continuity.lifetime_revisions == 6
+
+
+def test_explicit_cognitive_budget_carries_owner_types_and_counter_capability() -> None:
+    configured = ExplicitCognitiveBudgetConfig(
+        total=TotalBudgetConfig(
+            model_context_window=8192,
+            reserved_output_tokens=1024,
+        ),
+        policy=_empty_policy(),
+        token_counter=TokenCounterCapabilityConfig(
+            capability="example.counter",
+            mode=TokenAccountingMode.EXACT,
+        ),
+    )
+
+    assert configured.total.model_context_window == 8192
+    assert configured.policy.steps == ()
+    assert configured.token_counter.mode is TokenAccountingMode.EXACT
+
+
+def test_effective_secret_diagnostics_never_contain_secret_value() -> None:
+    secret = EffectiveConfigSecret(configured=True, source=ConfigSource.ENV)
+
+    assert secret.configured is True
+    assert secret.source is ConfigSource.ENV
+    assert not hasattr(secret, "value")
+    assert "api-key-value" not in repr(secret)
+
+
+def test_error_taxonomy_contains_preflight_without_semantic_error_categories() -> None:
+    assert {code.value for code in RuntimeConfigErrorCode} == {
+        "discovery_error",
+        "read_error",
+        "parse_error",
+        "unsupported_format_version",
+        "unknown_field",
+        "invalid_type",
+        "invalid_value",
+        "missing_required",
+        "invalid_combination",
+        "secret_unavailable",
+        "capability_unavailable",
+        "character_invalid",
+        "provider_invalid",
+    }
