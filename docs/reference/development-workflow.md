@@ -173,26 +173,42 @@ Any wrong or ambiguous answer means the transaction is incomplete.
 
 ### F. Exact-head CI gate
 
-The required `v1` CI result must belong to the exact PR head that was just reviewed.
+All required `v1` CI results must belong to the exact PR head that was just reviewed.
 
-Current baseline:
+Current required baseline:
 
 ```text
 workflow: .github/workflows/v1-ci.yml
-check:    v1 CI / pytest
 python:   3.12
-command:  python -m pytest -q
+
+required checks:
+  v1 CI / pytest
+    python -m pytest -q
+
+  v1 CI / minimum-supported
+    install declared direct dependency floors
+    python -m pip check
+    python -m pytest -q
+
+  v1 CI / package-smoke
+    build RelayLM wheel
+    install into a clean virtual environment
+    python -m pip check
+    verify package import, version, and console entry points
+
+  v1 CI / lint
+    ruff check .
 ```
 
-The workflow explicitly checks out and verifies the PR head SHA before running the full test suite.
+Each job explicitly checks out and verifies the PR head SHA before running its verification.
 
 Rules:
 
-- the required exact-head CI check must be GREEN before merge;
+- all required exact-head CI checks must be GREEN before merge;
 - a GREEN result from an older PR head is stale and does not count;
-- local/manual test output is useful evidence but does not replace the required CI result;
-- if CI is unavailable, cancelled, or not attached to the exact reviewed head, do not claim `CI GREEN` and do not merge;
-- after any new push, repeat fresh-head review and wait for the new exact-head CI result.
+- local/manual test output is useful evidence but does not replace the required CI results;
+- if any required CI check is unavailable, cancelled, or not attached to the exact reviewed head, do not claim `CI GREEN` and do not merge;
+- after any new push, repeat fresh-head review and wait for the new exact-head required CI results.
 
 ### G. Exact-head merge
 
@@ -201,7 +217,7 @@ Immediately before merge:
 1. re-read current `v1`;
 2. re-read the PR head;
 3. confirm the head is the reviewed SHA;
-4. confirm required exact-head CI is GREEN;
+4. confirm all required exact-head CI checks are GREEN;
 5. confirm the bounded diff is unchanged;
 6. merge only with expected-head protection.
 
@@ -238,7 +254,7 @@ fresh authority
   → minimal code GREEN
   → authority docs
   → fresh-head semantic review
-  → exact-head CI GREEN
+  → exact-head required CI GREEN
   → exact-head merge
   → Issue reconciliation
 ```
@@ -252,7 +268,7 @@ fresh authority
   → same tests GREEN
   → documentation impact: updated or explicitly none
   → fresh-head cumulative-diff review
-  → exact-head CI GREEN
+  → exact-head required CI GREEN
   → exact-head merge
   → Issue reconciliation when an owning Issue exists
 ```
@@ -268,7 +284,7 @@ fresh authority
   → inspect current implementation / accepted authority
   → bounded docs correction
   → fresh-head semantic-contradiction review
-  → exact-head CI GREEN
+  → exact-head required CI GREEN
   → exact-head merge
   → Issue reconciliation when an owning Issue exists
 ```
@@ -328,7 +344,7 @@ Do not keep an Issue open merely as historical documentation. Git history, merge
 
 ## 9. Supporting automation
 
-The current mandatory baseline is the exact-head `v1 CI / pytest` workflow.
+The current mandatory baseline is the four exact-head `v1 CI` checks: `pytest`, `minimum-supported`, `package-smoke`, and `lint`.
 
 Additional small automation may be added when useful, such as:
 
