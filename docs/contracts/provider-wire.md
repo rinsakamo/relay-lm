@@ -109,6 +109,30 @@ User-authored Context records what the user said but remains bounded by that utt
 
 This authority distinction belongs to RelayLM semantics even though provider-specific wording may evolve.
 
+## CognitiveInput crystallized memory
+
+Provider-facing `CognitiveInput.memory` is a separate optional layer for already-selected crystallized synthesis:
+
+```json
+{
+  "content": "## Coffee\n\nRin currently prefers coffee over tea.",
+  "location": "memory/MEMORY.md#memory/coffee"
+}
+```
+
+The two metadata systems are intentionally different:
+
+```text
+Context.sources[]     Event provenance
+Memory.location       current Markdown document locator
+```
+
+A memory `location` is not an Event ID and must never be copied into StateCandidate `sources`. The provider wire instruction restricts candidate `sources` to Event IDs present through State, Context, or the current Input.
+
+Crystallized memory is readable synthesis rather than accepted current State. The provider instruction therefore treats active State as current understanding if an already-projected memory item conflicts with it, and explicitly states that memory prose cannot establish new user truth by itself.
+
+This is only the provider-facing authority boundary. Deterministic RelayLM-owned stale/conflict filtering before projection remains future #1267 work. The current adapter does not reinterpret a Markdown location as provenance or perform hidden retrieval.
+
 ## Response framing
 
 The provider-facing instruction defines `utterance` as the complete non-empty natural-language reply shown to the user. This is a wire/model reliability constraint established by the V6 Gate B evidence, not a new semantic field.
