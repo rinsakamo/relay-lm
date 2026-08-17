@@ -157,12 +157,10 @@ def _compile_turn_cognitive_input(
         )
 
     event_evidence = ()
-    if event_budget is None:
-        recent_events = character.iter_events()
-    else:
-        recent_events = tuple(character.iter_events())
+    recent_events = character.iter_events()
+    if event_budget is not None:
         event_evidence = select_event_evidence(
-            events=recent_events,
+            events=character.event_retrieval_source(),
             query=user_event.payload["content"],
             max_events=event_budget.max_events,
             max_chars=event_budget.max_chars,
