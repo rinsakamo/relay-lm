@@ -15,6 +15,23 @@ from relaylm.evaluation import (
     evaluate_serialized_fit_enforcement,
     evaluate_serialized_input_fit,
     evaluate_total_budget_accounting,
+    run_native_evaluation,
+)
+
+
+_REGISTERED_SCENARIOS = (
+    "continuity_cognition_wiring",
+    "freeform_current_state_shadow",
+    "total_budget_accounting",
+    "budget_degradation_plan",
+    "budget_owner_controls",
+    "serialized_input_fit",
+    "openai_serialized_counter",
+    "serialized_fit_enforcement",
+    "protected_serialized_floor",
+    "cognitive_budget_turn_wiring",
+    "cognitive_budget_turn_diagnostics",
+    "memory_temporal_provenance",
 )
 
 
@@ -37,18 +54,14 @@ def test_merged_evaluation_components_are_registered() -> None:
         )
     )
 
-    assert tuple(result.scenario_id for result in results) == (
-        "continuity_cognition_wiring",
-        "freeform_current_state_shadow",
-        "total_budget_accounting",
-        "budget_degradation_plan",
-        "budget_owner_controls",
-        "serialized_input_fit",
-        "openai_serialized_counter",
-        "serialized_fit_enforcement",
-        "protected_serialized_floor",
-        "cognitive_budget_turn_wiring",
-        "cognitive_budget_turn_diagnostics",
-        "memory_temporal_provenance",
-    )
+    assert tuple(result.scenario_id for result in results) == _REGISTERED_SCENARIOS
     assert all(result.status == "pass" for result in results)
+
+
+def test_native_suite_appends_only_merged_components() -> None:
+    report = asyncio.run(run_native_evaluation())
+
+    assert len(report.scenarios) == 43
+    assert tuple(result.scenario_id for result in report.scenarios[-12:]) == (
+        _REGISTERED_SCENARIOS
+    )
