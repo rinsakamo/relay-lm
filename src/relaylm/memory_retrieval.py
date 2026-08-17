@@ -1,14 +1,34 @@
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
+from relaylm.memory_provenance import (
+    MemoryProvenance,
+    MemoryProvenanceSource,
+    MemoryProvenanceSourceKind,
+    MemoryTemporalAuthority,
+    MemoryTemporalScope,
+)
 from relaylm.retrieval_lexical import lexical_query_terms, lexical_terms
 
 
 _HEADING = re.compile(r"^(#{1,6})[ \t]+(.+?)\s*$")
 _FENCE = re.compile(r"^[ \t]{0,3}(`{3,}|~{3,})")
+_MEMORY_METADATA_RESERVED = re.compile(r"^[ \t]*<!--[ \t]+relaylm-memory:")
+_MEMORY_METADATA_V1 = re.compile(
+    r"^[ \t]*<!--[ \t]+relaylm-memory:v1[ \t]+(.+?)[ \t]+-->[ \t]*$"
+)
+_MEMORY_METADATA_KEYS = frozenset(
+    {"memory_id", "derivation_id", "temporal_scope", "sources"}
+)
+_MEMORY_SOURCE_KEYS = frozenset({"kind", "reference_id"})
+
+
+def _unknown_temporal_authority() -> MemoryTemporalAuthority:
+    return MemoryTemporalAuthority(temporal_scope=MemoryTemporalScope.UNKNOWN)
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,6 +38,9 @@ class MemoryChunk:
     heading_path: tuple[str, ...]
     location: str
     content: str
+    temporal_authority: MemoryTemporalAuthority = field(
+        default_factory=_unknown_temporal_authority
+    )
 
     def __post_init__(self) -> None:
         if not self.heading_path or not all(part.strip() for part in self.heading_path):
@@ -26,6 +49,8 @@ class MemoryChunk:
             raise ValueError("memory chunk location must not be empty")
         if not self.content.strip():
             raise ValueError("memory chunk content must not be empty")
+        if not isinstance(self.temporal_authority, MemoryTemporalAuthority):
+            raise TypeError("memory chunk temporal_authority must be MemoryTemporalAuthority")
 
 
 @dataclass(frozen=True, slots=True)
@@ -212,7 +237,8 @@ def _parse_heading_chunks(markdown: str) -> tuple[MemoryChunk, ...]:
     def flush() -> None:
         if current_level is None or current_title is None:
             return
-        body = "\n".join(current_body).strip()
+        temporal_authority, semantic_body_lines = _extract_memory_metadata(current_body)
+        body = "\n".join(semantic_body_lines).strip()
         if not body:
             return
         path = tuple(heading_stack)
@@ -226,6 +252,7 @@ def _parse_heading_chunks(markdown: str) -> tuple[MemoryChunk, ...]:
                 heading_path=path,
                 location=location,
                 content=f"{heading_line}\n\n{body}",
+                temporal_authority=temporal_authority,
             )
         )
 
@@ -271,6 +298,117 @@ def _parse_heading_chunks(markdown: str) -> tuple[MemoryChunk, ...]:
 
     flush()
     return tuple(chunks)
+
+
+def _extract_memory_metadata(
+    body_lines: list[str],
+) -> tuple[MemoryTemporalAuthority, list[str]]:
+    authority = _unknown_temporal_authority()
+    semantic_lines: list[str] = []
+    first_nonblank_seen = False
+    fence_char: str | None = None
+    fence_length = 0
+
+    for line in body_lines:
+        fence = _FENCE.match(line)
+        if fence_char is not None:
+            semantic_lines.append(line)
+            marker = fence.group(1) if fence is not None else ""
+            if marker and marker[0] == fence_char and len(marker) >= fence_length:
+                fence_char = None
+                fence_length = 0
+            continue
+
+        if fence is not None:
+            marker = fence.group(1)
+            fence_char = marker[0]
+            fence_length = len(marker)
+            if line.strip():
+                first_nonblank_seen = True
+            semantic_lines.append(line)
+            continue
+
+        if not line.strip():
+            semantic_lines.append(line)
+            continue
+
+        reserved = _MEMORY_METADATA_RESERVED.match(line) is not None
+        if not first_nonblank_seen:
+            first_nonblank_seen = True
+            if reserved:
+                authority = _parse_memory_metadata_line(line)
+                continue
+
+        if reserved:
+            continue
+        semantic_lines.append(line)
+
+    return authority, semantic_lines
+
+
+def _parse_memory_metadata_line(line: str) -> MemoryTemporalAuthority:
+    match = _MEMORY_METADATA_V1.match(line)
+    if match is None:
+        return _unknown_temporal_authority()
+
+    try:
+        payload = json.loads(match.group(1), object_pairs_hook=_unique_json_object)
+        if not isinstance(payload, dict) or frozenset(payload) != _MEMORY_METADATA_KEYS:
+            raise ValueError("unsupported memory metadata shape")
+
+        memory_id = payload["memory_id"]
+        derivation_id = payload["derivation_id"]
+        temporal_scope = payload["temporal_scope"]
+        raw_sources = payload["sources"]
+        if not isinstance(memory_id, str):
+            raise TypeError("memory_id must be a string")
+        if not isinstance(derivation_id, str):
+            raise TypeError("derivation_id must be a string")
+        if not isinstance(temporal_scope, str):
+            raise TypeError("temporal_scope must be a string")
+        if not isinstance(raw_sources, list):
+            raise TypeError("sources must be a list")
+
+        sources: list[MemoryProvenanceSource] = []
+        for raw_source in raw_sources:
+            if (
+                not isinstance(raw_source, dict)
+                or frozenset(raw_source) != _MEMORY_SOURCE_KEYS
+            ):
+                raise ValueError("unsupported memory provenance source shape")
+            kind = raw_source["kind"]
+            reference_id = raw_source["reference_id"]
+            if not isinstance(kind, str):
+                raise TypeError("source kind must be a string")
+            if not isinstance(reference_id, str):
+                raise TypeError("source reference_id must be a string")
+            sources.append(
+                MemoryProvenanceSource(
+                    kind=MemoryProvenanceSourceKind(kind),
+                    reference_id=reference_id,
+                )
+            )
+
+        provenance = MemoryProvenance(
+            memory_id=memory_id,
+            derivation_id=derivation_id,
+            sources=tuple(sources),
+        )
+        return MemoryTemporalAuthority(
+            temporal_scope=MemoryTemporalScope(temporal_scope),
+            provenance=provenance,
+        )
+    except (TypeError, ValueError):
+        return _unknown_temporal_authority()
+
+
+def _unique_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    value: dict[str, object] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON key: {key}")
+        value[key] = item
+    return value
 
 
 def _memory_lexical_score(chunk: MemoryChunk, query_terms: frozenset[str]) -> int:
