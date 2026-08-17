@@ -24,7 +24,9 @@ No mandatory second semantic LLM call is part of an ordinary turn. Later reflect
 
 ## Accepted Continuity Context extension
 
-`docs/architecture/continuity-context.md` freezes an additional future proposal channel, `continuity_candidates`, for implementation under #1371. The current runtime does **not** expose that field yet.
+`docs/architecture/continuity-context.md` freezes an additional proposal channel, `continuity_candidates`, for implementation under #1371.
+
+K1 now implements the typed proposal / accepted-item / immutable-container boundary in `relaylm.continuity`. The current `CognitiveOutput` still does **not** expose `continuity_candidates`; deterministic acceptance/lifecycle remains K2 and ordinary buffered/streamed return-path wiring remains K3.
 
 The accepted target shape is:
 
@@ -37,4 +39,4 @@ CognitiveOutput
 
 `continuity_candidates` must be produced by the same ordinary semantic generation rather than a mandatory second model call. Like `state_candidates`, they are proposals only. Deterministic continuity validation must accept a candidate before it can become a `ContinuityItem` in Continuity Context.
 
-Provider-specific structured-output grammar may carry the field when implementation lands, but provider adapters do not own referent, unresolved, active-task, acceptance, or lifecycle semantics.
+Provider-specific structured-output grammar may carry the field when K3 lands, but provider adapters do not own referent, unresolved, active-task, acceptance, or lifecycle semantics.
