@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Any, Literal
 
 
@@ -108,6 +110,7 @@ class ContinuityItem:
         _validate_revision(self.expires_revision, label="expires_revision")
         if self.expires_revision <= self.accepted_revision:
             raise ValueError("item lifetime must advance beyond acceptance")
+        object.__setattr__(self, "value", freeze_continuity_value(self.value))
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,6 +137,18 @@ class ContinuityContext:
             raise ValueError("continuity item cannot be accepted after context revision")
         if any(item.expires_revision <= self.revision for item in self.items):
             raise ValueError("continuity context must not contain expired items")
+
+
+def freeze_continuity_value(value: Any) -> Any:
+    """Detach and deeply freeze JSON-like semantic values for accepted authority."""
+
+    if isinstance(value, Mapping):
+        return MappingProxyType(
+            {key: freeze_continuity_value(nested) for key, nested in value.items()}
+        )
+    if isinstance(value, (list, tuple)):
+        return tuple(freeze_continuity_value(nested) for nested in value)
+    return value
 
 
 def _validate_kind(kind: str) -> None:
