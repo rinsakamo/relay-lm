@@ -52,6 +52,213 @@ Rules:
 
 This means independent runtime owners, provider/storage boundaries, isolated evaluation work, or non-overlapping documentation can be developed concurrently. Two transactions must not concurrently redefine the same Context, State, Validator, retrieval, persistence, provider, or other canonical semantic owner.
 
+## Semantic lane execution rule
+
+A body of work that contains multiple disjoint semantic segments may be organized into **semantic lanes**.
+
+A semantic lane is a temporary execution boundary for an ordered sequence of related bounded transactions. It is defined by semantic ownership, not by file, package, Issue, PR, or implementation convenience.
+
+> **One lane = one coherent semantic ownership boundary. Parallel across disjoint lanes; serial within each lane; serial at shared integration surfaces.**
+
+Before a lane starts, declare:
+
+```text
+lane:
+semantic owner:
+canonical surfaces:
+non-goals:
+cross-lane dependencies:
+shared integration surfaces:
+ordered transactions:
+```
+
+### Lane ownership
+
+The semantic owner is authoritative. File paths are supporting write surfaces only.
+
+Multiple files that implement one semantic rule belong to the same lane when separating them would create competing or divergent semantic authorities. File-level disjointness is not sufficient evidence of semantic independence.
+
+For example, if MEMORY retrieval and Event retrieval must share one lexical relevance contract, their corresponding implementations belong to the same retrieval lane even when they live in different modules.
+
+Conversely, two responsibilities must not be placed in the same lane merely because they happen to touch the same subsystem or Issue.
+
+The existing single-writer rule therefore applies at lane level:
+
+> **One semantic concept has at most one active writer.**
+
+No two active lanes may independently redefine:
+
+- the same canonical semantic owner;
+- the same semantic contract;
+- derived implementations whose correctness requires one shared rule;
+- an unavoidable shared write surface whose concurrent modification would create ambiguous authority.
+
+If ownership cannot be cleanly separated, serialize the work.
+
+### Serial execution inside a lane
+
+Transactions inside one lane execute in declared dependency order:
+
+```text
+L1
+  → merge
+  → fresh authority reconstruction
+  → L2
+  → merge
+  → fresh authority reconstruction
+  → L3
+```
+
+Completion of one transaction does not by itself require the lane to stop.
+
+After every successful merge, the lane:
+
+1. re-fetches current `v1`;
+2. re-checks open PRs and competing semantic writers;
+3. reconstructs its authority against the new head;
+4. verifies that the next transaction is still owned by the lane;
+5. continues with the next bounded transaction.
+
+Each transaction remains independently subject to the full development workflow. A lane never weakens **one transaction = one bounded responsibility**.
+
+### Parallel execution across lanes
+
+Different lanes may execute concurrently only when their semantic ownership is disjoint.
+
+Typical valid separation may include retrieval semantics, Context Compiler semantics, turn/runtime orchestration, isolated evaluation components, or provider/storage boundaries, provided the concrete responsibilities do not share a semantic contract or canonical owner.
+
+A lane must not consume an unmerged assumption from another lane as though it were current authority.
+
+### Cross-lane dependencies
+
+Cross-lane dependencies must be explicit. A dependent transaction may consume another lane's capability only after the required authority exists on current `v1`.
+
+For example:
+
+```text
+R3 retrieval diagnostics
+  ├─> T2 aggregate runtime diagnostics
+  └─> E1 retrieval diagnostics evaluation
+```
+
+If the dependency is not yet merged, the dependent transaction waits at that boundary while unrelated lanes may continue.
+
+An unmet dependency never justifies:
+
+- a temporary bridge;
+- a compatibility layer;
+- speculative duplicate implementation;
+- fallback semantics;
+- a temporary alternate owner;
+- code intended to be replaced immediately after another lane merges.
+
+### Shared integration surfaces
+
+Shared aggregate surfaces are not owned by component lanes unless they are themselves the bounded semantic owner.
+
+Examples include:
+
+- evaluation registries;
+- aggregate scenario counts;
+- authority maps;
+- repository-wide status tables;
+- shared navigation indexes;
+- aggregate Issue status;
+- other cross-component registration surfaces.
+
+Component lanes stop at:
+
+```text
+component implemented
+component tested
+component documented
+component merged
+integration pending
+```
+
+Shared integration is then performed in a short serial integration transaction after the required component authorities exist on current `v1`:
+
+```text
+Lane A ─┐
+Lane B ─┼─> serial integration
+Lane C ─┤
+Lane D ─┘
+```
+
+There is one writer for a shared integration surface at a time. Serial integration registers or aggregates merged component authority; it must not redefine component semantics.
+
+### Moving `v1`
+
+Every lane is based on live repository authority, not on its initial bootstrap SHA.
+
+When another lane moves `v1`, an active lane must reconstruct authority before its next merge and classify the result:
+
+```text
+no relevant overlap
+  → continue normal verification
+
+compatible dependency now available
+  → consume only after it exists on current v1
+
+semantic or ownership overlap
+  → stop the stale transaction
+  → reconstruct a fresh bounded transaction
+
+canonical owner conflict
+  → stop lane execution until ownership is resolved
+```
+
+Do not silently rebase, merge, rewrite history, or carry stale semantic assumptions forward.
+
+### Lane stop conditions
+
+A lane continues through its declared ordered transactions unless one of these conditions occurs:
+
+- canonical-owner conflict;
+- semantic ownership ambiguity;
+- newly discovered cross-lane overlap;
+- required dependency not yet merged;
+- architecture or authority ambiguity;
+- required permission is unavailable;
+- irreversible scope expansion would be required;
+- fresh-head semantic review fails;
+- exact-head required CI fails or is unavailable;
+- the next declared transaction is no longer necessary against current `v1`.
+
+Routine successful transaction completion is not a stop condition.
+
+### Lane and work-package completion
+
+A lane is complete when all currently valid lane-owned transactions are merged, their owning Issues are reconciled, no lane-owned semantic work remains, and any remaining shared integration work is explicitly identified.
+
+Lane completion does not imply shared integration completion.
+
+A multi-lane work package is complete only after:
+
+```text
+all required component lanes complete
+  → shared serial integration complete
+  → aggregate authority/docs converge
+  → remaining Issues represent only real unresolved work
+```
+
+### Prohibited decomposition
+
+Do not use lanes to create artificial concurrency.
+
+Invalid decomposition includes separating files that encode one semantic contract, for example:
+
+```text
+Lane A = memory_retrieval.py
+Lane B = event_retrieval.py
+```
+
+when both implement one retrieval relevance rule.
+
+Likewise, do not split one semantic change into separate implementation, test, and documentation lanes. Tests, code, and authority documentation remain part of the same bounded transaction.
+
+Semantic lanes are an execution optimization, not a new authority layer. Issues remain planning and remaining-work ledgers; tests remain executable contracts; code remains implementation; authority documents remain current semantic authority; `v1` remains repository authority.
+
 ## Canonical convergence rule
 
 `v1` is a greenfield product line. Internal compatibility machinery for superseded RelayLM semantics is prohibited by default.
@@ -387,3 +594,4 @@ These support the workflow; they are not new architecture concepts.
 9. **Only the exact reviewed head may satisfy the required CI gate.**
 10. **A completed transaction reconciles its owning Issue.**
 11. **Parallel implementation is allowed only across disjoint canonical owners; integration and authority reconciliation remain serial.**
+12. **Semantic lanes follow ownership boundaries: lane-internal transactions are serial, disjoint lanes may run in parallel, and shared integration remains serial.**
