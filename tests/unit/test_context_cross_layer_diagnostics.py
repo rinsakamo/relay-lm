@@ -76,10 +76,10 @@ def test_cross_layer_diagnostics_report_only_compiler_owned_counts() -> None:
     assert memory_diagnostic.budget_pressure is False
 
     event_diagnostic = result.diagnostics[3]
-    assert event_diagnostic.mode == "current_event_deduplicated"
+    assert event_diagnostic.mode == "current_event_and_working_context_deduplicated"
     assert event_diagnostic.eligible_count == 3
-    assert event_diagnostic.selected_count == 2
-    assert event_diagnostic.evicted_count == 1
+    assert event_diagnostic.selected_count == 1
+    assert event_diagnostic.evicted_count == 2
     assert event_diagnostic.current_event_excluded_count == 1
     assert event_diagnostic.authority_suppressed_count == 0
     assert event_diagnostic.redundancy_overlap_count == 1
@@ -163,3 +163,25 @@ def test_exact_working_context_overlap_is_suppressed_from_event_evidence_but_obs
     assert event_diagnostic.evicted_count == 1
     assert event_diagnostic.current_event_excluded_count == 0
     assert event_diagnostic.redundancy_overlap_count == 1
+
+
+def test_same_content_with_different_event_id_is_not_cross_layer_deduplicated() -> None:
+    prior_user = _event("prior-user-content", "user", "coffee again", 9)
+    prior_assistant = _event("prior-assistant-content", "assistant", "got it", 10)
+    distinct_evidence = _event("distinct-evidence", "user", "coffee again", 11)
+    current = _event("current-content", "user", "coffee now", 12)
+
+    result = compile_cognitive_input_with_diagnostics(
+        identity=Identity("# ReLM\nBe grounded."),
+        state=CanonicalState(),
+        current_event=current,
+        recent_events=(prior_user, prior_assistant),
+        event_evidence=(distinct_evidence,),
+    )
+
+    assert [item.event_id for item in result.cognitive_input.event_evidence] == [
+        distinct_evidence.id
+    ]
+    event_diagnostic = result.diagnostics[3]
+    assert event_diagnostic.mode == "pass_through"
+    assert event_diagnostic.redundancy_overlap_count == 0
