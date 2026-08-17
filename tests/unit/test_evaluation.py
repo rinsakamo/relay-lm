@@ -9,9 +9,12 @@ from relaylm.evaluation import (
     EvaluationScenarioResult,
     evaluate_assistant_self_certification_prevention,
     evaluate_boolean_state_memory_authority,
+    evaluate_budget_degradation_plan,
+    evaluate_budget_owner_controls,
     evaluate_cjk_retrieval_relevance,
     evaluate_comparative_preference_preservation,
     evaluate_continuity_active_task_retention,
+    evaluate_continuity_cognition_wiring,
     evaluate_continuity_context_retention,
     evaluate_continuity_lifecycle,
     evaluate_continuity_turn,
@@ -20,14 +23,19 @@ from relaylm.evaluation import (
     evaluate_degree_hint_integrity,
     evaluate_degree_state_memory_authority,
     evaluate_event_snapshot_reuse,
+    evaluate_freeform_current_state_shadow,
+    evaluate_openai_serialized_counter,
     evaluate_persistence_integrity,
     evaluate_provider_failure_safety,
     evaluate_restart_continuity,
     evaluate_retrieval_aggregate_diagnostics,
     evaluate_retrieval_query_features,
     evaluate_retrieval_stage_diagnostics,
+    evaluate_serialized_fit_enforcement,
+    evaluate_serialized_input_fit,
     evaluate_state_selection_diagnostics,
     evaluate_streaming_safety,
+    evaluate_total_budget_accounting,
     evaluate_working_context_budget_atomicity,
     main,
     run_native_evaluation,
@@ -98,6 +106,14 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "continuity_turn",
         "continuity_context_retention",
         "continuity_active_task_retention",
+        "continuity_cognition_wiring",
+        "freeform_current_state_shadow",
+        "total_budget_accounting",
+        "budget_degradation_plan",
+        "budget_owner_controls",
+        "serialized_input_fit",
+        "openai_serialized_counter",
+        "serialized_fit_enforcement",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
@@ -358,3 +374,31 @@ def test_continuity_active_task_retention_evaluation_is_registered() -> None:
     assert result.scenario_id == "continuity_active_task_retention"
     assert result.status == "pass"
     assert all(check.passed for check in result.checks)
+
+
+def test_post_continuity_evaluations_are_registered() -> None:
+    results = tuple(
+        asyncio.run(evaluate())
+        for evaluate in (
+            evaluate_continuity_cognition_wiring,
+            evaluate_freeform_current_state_shadow,
+            evaluate_total_budget_accounting,
+            evaluate_budget_degradation_plan,
+            evaluate_budget_owner_controls,
+            evaluate_serialized_input_fit,
+            evaluate_openai_serialized_counter,
+            evaluate_serialized_fit_enforcement,
+        )
+    )
+
+    assert tuple(result.scenario_id for result in results) == (
+        "continuity_cognition_wiring",
+        "freeform_current_state_shadow",
+        "total_budget_accounting",
+        "budget_degradation_plan",
+        "budget_owner_controls",
+        "serialized_input_fit",
+        "openai_serialized_counter",
+        "serialized_fit_enforcement",
+    )
+    assert all(result.status == "pass" for result in results)
