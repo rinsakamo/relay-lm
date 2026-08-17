@@ -73,6 +73,14 @@ def test_now_form_is_an_explicit_current_claim() -> None:
     assert compiled.memory == ()
 
 
+def test_prefixed_current_phrase_remains_outside_c4_grammar() -> None:
+    ambiguous = _chunk("Previous current residence location is Hokkaido.")
+
+    compiled = _compile(chunk=ambiguous)
+
+    assert [item.location for item in compiled.memory] == [ambiguous.location]
+
+
 def test_temporally_ambiguous_freeform_key_prose_remains_for_c5() -> None:
     history = _chunk("Residence location in 2020 was Hokkaido.")
 
