@@ -18,7 +18,7 @@ from relaylm.state import CanonicalState, STATE_CLASS_DEFINITIONS, StateRecord
 
 DEFAULT_WORKING_CONTEXT_MAX_EVENTS = 6
 DEFAULT_WORKING_CONTEXT_MAX_CHARS = 4000
-_C2_CONTINUITY_KINDS = frozenset({"referent", "unresolved"})
+_PROJECTED_CONTINUITY_KINDS = frozenset({"referent", "unresolved", "active_task"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,7 +78,7 @@ def compile_cognitive_input(
         current_event=current_event,
         max_records=max_state_records,
     )
-    continuity = _project_c2_continuity(continuity_context)
+    continuity = _project_accepted_continuity(continuity_context)
     working_context = _select_working_context(
         recent_events=recent_events,
         current_event=current_event,
@@ -127,7 +127,7 @@ def compile_cognitive_input_with_diagnostics(
     recent_event_sequence = tuple(recent_events)
     retrieved_memory_sequence = tuple(retrieved_memory)
     event_evidence_sequence = tuple(event_evidence)
-    projected_continuity = _project_c2_continuity(continuity_context)
+    projected_continuity = _project_accepted_continuity(continuity_context)
     cognitive_input = compile_cognitive_input(
         identity=identity,
         state=state,
@@ -393,7 +393,7 @@ def _diagnose_event_evidence_projection(
     )
 
 
-def _project_c2_continuity(
+def _project_accepted_continuity(
     continuity_context: ContinuityContext | None,
 ) -> tuple[ContextItem, ...]:
     if continuity_context is None:
@@ -417,7 +417,7 @@ def _project_c2_continuity(
             sources=item.sources,
         )
         for item in continuity_context.items
-        if item.kind in _C2_CONTINUITY_KINDS
+        if item.kind in _PROJECTED_CONTINUITY_KINDS
     )
 
 

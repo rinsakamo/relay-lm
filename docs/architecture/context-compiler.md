@@ -31,7 +31,7 @@ Per-turn cognitive layer
   Identity            protected
   Current Event       protected
   Relevant State      current accepted understanding
-  Accepted Continuity accepted temporary referent/unresolved continuity
+  Accepted Continuity accepted temporary referent/unresolved/active-task continuity
   Working Context     recent conversational continuity
   Retrieved Memory    optional long-term semantic context
   Event Evidence      targeted grounding / chronology
@@ -100,19 +100,18 @@ These are deterministic residency rules, not semantic truth rules.
 
 `compile_cognitive_input(..., continuity_context=...)` accepts an already-validated `ContinuityContext` as an optional input. This is a consumer boundary only: candidate acceptance, replacement/resolution, revision advancement, expiry, and capacity eviction remain owned by the Continuity lifecycle authority.
 
-The first bounded retention slice is deliberately limited to accepted `referent` and `unresolved` items:
+The current bounded projection covers all three accepted initial Continuity kinds: `referent`, `unresolved`, and `active_task`.
 
-- accepted item order is preserved;
-- accepted `referent` / `unresolved` items are projected before recent Event-derived Working Context;
+- accepted item order is preserved across all projected kinds;
+- accepted `referent`, `unresolved`, and `active_task` items are projected before recent Event-derived Working Context;
 - each item becomes a `ContextItem` whose `sources` are the accepted source Event IDs;
 - `content` is a compact deterministic JSON object carrying `kind`, `key`, semantic `value`, and `epistemic_role` under a `continuity` field;
 - the projection leaves `ContextItem.actor` unset because accepted Continuity is a compiler-generated typed projection, not replayed user- or assistant-authored dialogue;
 - immutable Mapping/tuple semantic values are converted only to their JSON projection shape; accepted Continuity itself is not mutated;
-- the Working Context Event-count and character budgets do not evict accepted C2 Continuity items, so zero recent-message budget does not erase already-accepted referent/unresolved continuity;
-- `continuity_context=None`, or an accepted context containing no C2-eligible items, preserves the previous cognitive projection;
-- accepted `active_task` is intentionally not projected by this slice; active-task retention is the next separately bounded #1267 Context Compiler responsibility.
+- the Working Context Event-count and character budgets do not evict accepted Continuity items, so zero recent-message budget does not erase already-accepted referent, unresolved, or active-task continuity;
+- `continuity_context=None`, or an accepted context containing no projected items, preserves the previous cognitive projection.
 
-This slice does not resolve references from raw language, synthesize unresolved questions, accept Continuity candidates, create a second Continuity lifecycle owner, or infer semantic redundancy with recent dialogue or Event Evidence.
+The compiler does not resolve references from raw language, synthesize unresolved questions, infer active tasks from dialogue, accept Continuity candidates, create a second Continuity lifecycle owner, or infer semantic redundancy with recent dialogue or Event Evidence.
 
 The ordinary-turn runtime now owns process-local Continuity acceptance/lifecycle orchestration, but the current runtime compilation call does not yet supply its `ContinuityRuntime.context` to this compiler input. That cross-lane orchestration wiring remains outside the Context Compiler semantic owner and must consume this capability only after it exists on `v1`.
 
@@ -307,20 +306,20 @@ Conceptually:
 ```text
 protected tier    Identity + Current Event
 current tier      relevant active Canonical State
-continuity tier   accepted referent/unresolved continuity, bounded upstream
+continuity tier   accepted referent/unresolved/active-task continuity, bounded upstream
 working tier      bounded recent conversational continuity
 retrieved tier    MEMORY chunks + targeted Events
 reserve tier      prompt / schema / provider overhead
 ```
 
-Budgets should use floors/caps/residual allocation rather than fixed percentages that must always be consumed. Correct but irrelevant memory should remain out of Context; token availability alone is not a reason to inject it. The C2 Continuity projection does not establish a new runtime/default token budget; it consumes an already capacity/lifecycle-bounded Continuity Context.
+Budgets should use floors/caps/residual allocation rather than fixed percentages that must always be consumed. Correct but irrelevant memory should remain out of Context; token availability alone is not a reason to inject it. The accepted Continuity projection does not establish a new runtime/default token budget; it consumes an already capacity/lifecycle-bounded Continuity Context.
 
 ## Deferred selection work
 
 #1267 remains the authority for later Context selection and retrieval work, including:
 
 - evidence-backed runtime default State/MEMORY/Event budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
-- accepted `active_task` retention beyond pure recency and any later Continuity-specific selection/degradation policy beyond the current accepted referent/unresolved projection;
+- any later Continuity-specific selection/degradation policy beyond the current projection of all accepted initial Continuity kinds;
 - semantic State-vs-memory conflict detection beyond explicit State-key headings and canonical-key field assignments, including historical/current interpretation, free-form degree/intensity interpretation, and other non-lexically-comparable values;
 - durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
 - persistent/segmented Event Journal indexing and retrieval-scaled targeted discovery beyond the current process-local validated snapshot reuse;
