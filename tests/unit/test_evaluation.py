@@ -191,6 +191,7 @@ def test_working_context_budget_evaluation_keeps_complete_exchange_and_provenanc
 
 def test_persistence_integrity_evaluation_is_registered() -> None:
     result = asyncio.run(evaluate_persistence_integrity())
+
     assert result.scenario_id == "persistence_integrity"
     assert result.status == "pass"
     assert all(check.passed for check in result.checks)
@@ -198,6 +199,7 @@ def test_persistence_integrity_evaluation_is_registered() -> None:
 
 def test_correction_remove_evaluation_is_registered() -> None:
     result = asyncio.run(evaluate_correction_remove_semantics())
+
     assert result.scenario_id == "correction_remove_semantics"
     assert result.status == "pass"
     assert all(check.passed for check in result.checks)
@@ -205,6 +207,7 @@ def test_correction_remove_evaluation_is_registered() -> None:
 
 def test_crystallization_integrity_evaluation_is_registered() -> None:
     result = asyncio.run(evaluate_crystallization_integrity())
+
     assert result.scenario_id == "crystallization_integrity"
     assert result.status == "pass"
     assert all(check.passed for check in result.checks)
@@ -212,6 +215,7 @@ def test_crystallization_integrity_evaluation_is_registered() -> None:
 
 def test_streaming_safety_evaluation_is_registered() -> None:
     result = asyncio.run(evaluate_streaming_safety())
+
     assert result.scenario_id == "streaming_safety"
     assert result.status == "pass"
     assert all(check.passed for check in result.checks)
