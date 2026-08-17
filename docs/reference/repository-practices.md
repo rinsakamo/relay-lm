@@ -67,6 +67,8 @@ It is deliberately non-enforcing at first. Update it when a major ownership boun
 
 Python requirements in `pyproject.toml` are lower-bound support declarations rather than lockfile pins. A routine Dependabot change such as `package>=old` to `package>=new` changes RelayLM's supported compatibility floor without selecting the installed version. Python dependency floors are therefore raised only by an explicit reviewed RelayLM transaction with a compatibility or security reason and relevant evidence; routine Dependabot `pip` version-update PRs are disabled.
 
+`constraints/minimum.txt` is an executable CI projection of the direct lower bounds declared by `pyproject.toml`, not a lockfile and not a second dependency authority. The `v1 CI / minimum-supported` job installs those direct floor versions on Python 3.12, runs `pip check`, and runs the full v1 test suite. Any intentional lower-bound change must update the projection in the same transaction and remain green at the new floor.
+
 Dependabot alerts and Dependabot security updates remain repository-host security controls. They are independent of routine version-update scheduling and may still produce a security update against the default branch, which is `v1`. A security advisory can justify a bounded dependency-floor change when the vulnerable range requires it.
 
 GitHub Actions are executable CI supply-chain dependencies rather than Python support floors. Keep maintained Actions pinned to full commit SHAs, and use reviewed Dependabot GitHub Actions PRs to advance those pins after exact-head CI succeeds.
