@@ -1,0 +1,53 @@
+name: Design proposal
+description: Explore a bounded architectural decision without treating the Issue as current authority.
+title: "[Design] "
+body:
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Design stage
+      options:
+        - Exploratory
+        - Accepted direction needing canonical promotion
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What concrete problem or missing capability motivates this design?
+    validations:
+      required: true
+  - type: textarea
+    id: invariants
+    attributes:
+      label: Invariants to preserve
+      description: Which current RelayLM principles or authority boundaries must remain true?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed direction
+      description: Describe the smallest architectural direction, not an implementation patch.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives / rejected directions
+      description: What simpler or competing approaches were considered?
+  - type: textarea
+    id: promotion
+    attributes:
+      label: Promotion / completion condition
+      description: What would allow this Issue to close as promoted, completed, or not planned?
+    validations:
+      required: true
+  - type: checkboxes
+    id: authority_note
+    attributes:
+      label: Authority note
+      options:
+        - label: I understand this Issue remains planning/design evidence until accepted behavior is promoted into canonical repository docs/tests/code.
+          required: true
