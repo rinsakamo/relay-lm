@@ -164,7 +164,7 @@ With a character budget exactly large enough for the newer exchange but not both
 
 The scenario checks exact actor/source provenance for the admitted pair and verifies that the current user Event remains the current Input rather than being duplicated into Working Context.
 
-This evaluates only the current bounded recent-dialogue behavior. Future semantic retention, targeted Event evidence retrieval, and token-aware cross-layer selection remain #1267 work.
+This evaluates only the current bounded recent-dialogue behavior. Future semantic retention, Event-evidence projection/runtime wiring, and token-aware cross-layer selection remain #1267 work.
 
 ### `persistence_integrity`
 
@@ -277,13 +277,28 @@ It verifies that:
 
 This scenario measures only the deterministic explicit-key lexical subset implemented today. It does not claim arbitrary natural-language contradiction understanding, historical/current interpretation under ambiguous headings, degree-level conflict handling, non-lexical value comparison, or actual-model quality.
 
+### `targeted_event_retrieval`
+
+This deterministic #1267 scenario evaluates the retrieval-only targeted Event evidence primitive introduced by PR #1316.
+
+It verifies that:
+
+- a coffee-related query selects the relevant persisted coffee message Event and unrelated Event content is not used as fallback;
+- an explicitly excluded Current Event is not returned, allowing later projection to avoid duplicating Current Input as Event evidence;
+- a relevant Event that exceeds the character budget is skipped whole while a later complete relevant Event may still fit;
+- relevance controls admission, while selected results are restored to original Event Journal chronology;
+- equal-relevance cutoff prefers the newer occurrence deterministically;
+- exact lexical tokens prevent `likes` from matching inside `dislikes`.
+
+This scenario evaluates only the current retrieval primitive over caller-supplied Events. It does not claim Event-evidence `CognitiveInput` projection, provider serialization/instructions, ordinary-turn retrieval wiring, retrieval-scaled filesystem indexing, semantic/multilingual or temporal retrieval, conflict resolution, or actual-model response quality.
+
 Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
 ## Deferred evaluation work
 
 Still owned by #1247:
 
-- #1267 evidence-backed default MEMORY/State budgeting, broader State-vs-memory authority semantics beyond explicit-key lexical filtering, targeted Event retrieval, and cross-layer/token-aware diagnostics as those runtime slices land;
+- #1267 evidence-backed default MEMORY/State/Event budgeting, broader State-vs-memory authority semantics beyond explicit-key lexical filtering, Event-evidence CognitiveInput/runtime wiring, retrieval-scaled Event Journal access, and cross-layer/token-aware diagnostics as those runtime slices land;
 - future privacy/lifecycle evaluation from #1270;
 - response/persona and actual local-model quality measurements;
 - external benchmark adapters after current benchmark availability/version suitability is re-verified.
