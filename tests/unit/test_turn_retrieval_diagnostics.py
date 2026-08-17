@@ -244,3 +244,69 @@ def test_retrieval_diagnostic_failure_keeps_user_event_only_and_skips_generation
     events = list(CharacterDirectory(tmp_path).iter_events())
     assert [event.actor for event in events] == ["user", "assistant", "user"]
     assert CharacterDirectory(tmp_path).load_state().states == ()
+
+
+def test_retrieval_only_aggregate_sums_configured_capacity_and_selector_usage(
+    tmp_path: Path,
+) -> None:
+    character = _make_character(tmp_path)
+    provider = BufferedProvider()
+    memory_budget = MemoryRetrievalBudget(max_chunks=2, max_chars=30)
+    event_budget = EventRetrievalBudget(max_events=2, max_chars=20)
+
+    observed = asyncio.run(
+        run_user_turn_with_retrieval_diagnostics(
+            character=character,
+            provider=provider,
+            content="coffee",
+            memory_budget=memory_budget,
+            event_budget=event_budget,
+        )
+    )
+
+    assert provider.calls == 1
+    assert observed.retrieval.memory is not None
+    assert observed.retrieval.event is not None
+    aggregate = observed.retrieval.aggregate
+    assert aggregate.enabled_layer_count == 2
+    assert aggregate.configured_character_budget_total == 50
+    assert aggregate.selected_character_usage_total == (
+        observed.retrieval.memory.selector.character_budget_used
+        + observed.retrieval.event.selector.character_budget_used
+    )
+    assert aggregate.character_budget_pressured_layer_count == sum(
+        (
+            observed.retrieval.memory.selector.character_budget_pressure,
+            observed.retrieval.event.selector.character_budget_pressure,
+        )
+    )
+    assert aggregate.any_character_budget_pressure is (
+        observed.retrieval.memory.selector.character_budget_pressure
+        or observed.retrieval.event.selector.character_budget_pressure
+    )
+
+
+def test_retrieval_only_aggregate_is_zero_when_no_retrieval_layer_is_enabled(
+    tmp_path: Path,
+) -> None:
+    character = _make_character(tmp_path)
+    provider = BufferedProvider()
+
+    observed = asyncio.run(
+        run_user_turn_with_retrieval_diagnostics(
+            character=character,
+            provider=provider,
+            content="coffee",
+        )
+    )
+
+    assert provider.calls == 1
+    assert observed.retrieval.memory is None
+    assert observed.retrieval.event is None
+    assert asdict(observed.retrieval.aggregate) == {
+        "enabled_layer_count": 0,
+        "configured_character_budget_total": 0,
+        "selected_character_usage_total": 0,
+        "character_budget_pressured_layer_count": 0,
+        "any_character_budget_pressure": False,
+    }

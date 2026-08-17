@@ -16,7 +16,7 @@ Retrieval diagnostics are requested only through:
 - `run_user_turn_with_retrieval_diagnostics(...)`
 - `run_user_turn_streaming_with_retrieval_diagnostics(...)`
 
-Both diagnostic APIs return `TurnResultWithRetrievalDiagnostics`. Its `turn` member is the ordinary `TurnResult`; its `retrieval` member is a `TurnRetrievalDiagnostics` aggregate.
+Both diagnostic APIs return `TurnResultWithRetrievalDiagnostics`. Its `turn` member is the ordinary `TurnResult`; its `retrieval` member is a `TurnRetrievalDiagnostics` observation.
 
 If a MEMORY or Event retrieval budget is not configured for the turn, the corresponding diagnostic member is `None`. The diagnostic API does not invent a default budget or pretend that an unrequested selector ran.
 
@@ -30,9 +30,25 @@ The turn layer does not recalculate candidate populations, admissions, budget us
 
 The Event diagnostic path also uses the same `character.event_retrieval_source()` as ordinary Event selection. The turn layer neither inspects nor redefines the process-local discovery index; storage/index lifecycle and Event selection semantics remain with their existing owners.
 
+## Retrieval-only aggregate
+
+Each explicit diagnostic turn also returns `TurnRetrievalDiagnostics.aggregate`, a `RetrievalAggregateDiagnostics` value derived only from the configured MEMORY/Event retrieval layers and their selector-owned character observations.
+
+It reports:
+
+- `enabled_layer_count`: the number of configured retrieval layers among MEMORY and Event;
+- `configured_character_budget_total`: the sum of configured `max_chars` across those enabled retrieval layers;
+- `selected_character_usage_total`: the sum of each selector's existing `character_budget_used` observation;
+- `character_budget_pressured_layer_count`: the number of enabled retrieval layers whose selector already reported `character_budget_pressure=True`;
+- `any_character_budget_pressure`: whether any enabled retrieval layer reported that selector-owned pressure flag.
+
+When no retrieval layer is configured, all aggregate counts/totals are zero and `any_character_budget_pressure` is false.
+
+This aggregation is arithmetic over already configured budgets and already observed selector diagnostics. The turn layer does not infer eligibility, rerank candidates, reconstruct admissions, compare selected content against budgets, or otherwise redefine what character-budget pressure means.
+
 ## Content-free contract
 
-Turn retrieval diagnostics contain only configured numeric budgets and selector-owned aggregate diagnostics. They do not expose Event IDs, actors, timestamps, dialogue content, MEMORY headings/locations/content, State keys/values, lexical query terms, or lexical scores.
+Turn retrieval diagnostics contain only configured numeric budgets, selector-owned aggregate diagnostics, and the retrieval-only numeric/boolean aggregate above. They do not expose Event IDs, actors, timestamps, dialogue content, MEMORY headings/locations/content, State keys/values, lexical query terms, or lexical scores.
 
 The ordinary `TurnResult` still contains the persisted user/assistant Events required by normal turn behavior. The content-free restriction applies to the retrieval diagnostics surface, not to the ordinary turn result that accompanies it.
 
