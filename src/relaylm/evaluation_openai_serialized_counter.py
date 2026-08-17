@@ -84,7 +84,11 @@ async def evaluate_openai_serialized_counter() -> EvaluationScenarioResult:
 
     def handler(request: httpx.Request) -> httpx.Response:
         sent.append(json.loads(request.content))
-        wire = {"utterance": "了解。", "state_candidates": []}
+        wire = {
+            "utterance": "了解。",
+            "state_candidates": [],
+            "continuity_candidates": [],
+        }
         return httpx.Response(
             200,
             json={

@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from relaylm.cognitive import CognitiveInput, CognitiveOutput, ContextItem
+from relaylm.continuity import ContinuityCandidate
 from relaylm.events import Event
 from relaylm.identity import Identity
 from relaylm.providers.openai_compatible import (
@@ -67,7 +68,7 @@ def _make_character(root: Path) -> CharacterDirectory:
     return CharacterDirectory(root)
 
 
-def test_provider_makes_one_request_and_normalizes_set() -> None:
+def test_provider_makes_one_request_and_normalizes_state_and_continuity_set() -> None:
     seen: list[dict[str, object]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -81,6 +82,16 @@ def test_provider_makes_one_request_and_normalizes_set() -> None:
                     "op": "set",
                     "value": "likes",
                     "sources": ["evt-now"],
+                }
+            ],
+            "continuity_candidates": [
+                {
+                    "kind": "unresolved",
+                    "key": "tea.followup",
+                    "op": "set",
+                    "value": {"question": "どの紅茶？", "options": ["earl grey", "assam"]},
+                    "sources": ["evt-now"],
+                    "epistemic_role": "assistant_inference",
                 }
             ],
         }
@@ -106,12 +117,35 @@ def test_provider_makes_one_request_and_normalizes_set() -> None:
 
     assert len(seen) == 1
     assert seen[0]["stream"] is False
-    assert seen[0]["response_format"]["json_schema"]["schema"]["required"] == [
+    schema = seen[0]["response_format"]["json_schema"]["schema"]
+    assert schema["required"] == [
         "utterance",
         "state_candidates",
+        "continuity_candidates",
+    ]
+    continuity_schema = schema["properties"]["continuity_candidates"]["items"]
+    assert continuity_schema["additionalProperties"] is False
+    assert continuity_schema["required"] == [
+        "kind",
+        "key",
+        "op",
+        "value",
+        "sources",
+        "epistemic_role",
+    ]
+    assert continuity_schema["properties"]["kind"]["enum"] == [
+        "active_task",
+        "referent",
+        "unresolved",
+    ]
+    assert continuity_schema["properties"]["epistemic_role"]["enum"] == [
+        "assistant_commitment",
+        "assistant_inference",
+        "user_assertion",
     ]
     system_prompt = seen[0]["messages"][0]["content"]
     assert "complete non-empty natural-language reply" in system_prompt
+    assert "`continuity_candidates`" in system_prompt
     assert "Assistant-authored Context supports conversational continuity only" in system_prompt
     sent = json.loads(seen[0]["messages"][1]["content"])
     assert sent["input"] == {
@@ -128,6 +162,15 @@ def test_provider_makes_one_request_and_normalizes_set() -> None:
     assert output.response == "覚えておくね。"
     assert output.state_candidates[0].op == "set"
     assert output.state_candidates[0].value == "likes"
+    assert output.continuity_candidates == (
+        ContinuityCandidate.set(
+            kind="unresolved",
+            key="tea.followup",
+            value={"question": "どの紅茶？", "options": ["earl grey", "assam"]},
+            sources=("evt-now",),
+            epistemic_role="assistant_inference",
+        ),
+    )
 
 
 def test_remove_null_normalizes_to_semantic_remove() -> None:
@@ -143,11 +186,102 @@ def test_remove_null_normalizes_to_semantic_remove() -> None:
                     "sources": ["evt-now"],
                 }
             ],
+            "continuity_candidates": [],
         }
     )
 
     assert output.state_candidates[0].op == "remove"
     assert not output.state_candidates[0].has_value
+
+
+def test_continuity_resolve_null_normalizes_to_semantic_resolve() -> None:
+    output = parse_wire_output(
+        {
+            "utterance": "解決したね。",
+            "state_candidates": [],
+            "continuity_candidates": [
+                {
+                    "kind": "active_task",
+                    "key": "task.current",
+                    "op": "resolve",
+                    "value": None,
+                    "sources": ["evt-now"],
+                    "epistemic_role": "assistant_inference",
+                }
+            ],
+        }
+    )
+
+    assert output.continuity_candidates == (
+        ContinuityCandidate.resolve(
+            kind="active_task",
+            key="task.current",
+            sources=("evt-now",),
+            epistemic_role="assistant_inference",
+        ),
+    )
+    assert not output.continuity_candidates[0].has_value
+
+
+def test_missing_continuity_channel_fails_closed() -> None:
+    with pytest.raises(
+        ProviderProtocolError, match="wire continuity_candidates must be an array"
+    ):
+        parse_wire_output(
+            {
+                "utterance": "x",
+                "state_candidates": [],
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    [
+        {
+            "kind": "unknown",
+            "key": "referent.current",
+            "op": "set",
+            "value": "the draft",
+            "sources": ["evt-now"],
+            "epistemic_role": "assistant_inference",
+        },
+        {
+            "kind": "referent",
+            "key": "referent.current",
+            "op": "resolve",
+            "value": "must-be-null",
+            "sources": ["evt-now"],
+            "epistemic_role": "assistant_inference",
+        },
+        {
+            "kind": "referent",
+            "key": "referent.current",
+            "op": "set",
+            "value": "the draft",
+            "sources": ["evt-now"],
+            "epistemic_role": "assistant_inference",
+            "unexpected": True,
+        },
+        {
+            "kind": "referent",
+            "key": "referent.current",
+            "op": "set",
+            "value": {"score": float("nan")},
+            "sources": ["evt-now"],
+            "epistemic_role": "assistant_inference",
+        },
+    ],
+)
+def test_malformed_continuity_candidate_fails_closed(candidate: dict[str, object]) -> None:
+    with pytest.raises(ProviderProtocolError):
+        parse_wire_output(
+            {
+                "utterance": "x",
+                "state_candidates": [],
+                "continuity_candidates": [candidate],
+            }
+        )
 
 
 def test_bad_remove_wire_fails_closed() -> None:
@@ -164,6 +298,7 @@ def test_bad_remove_wire_fails_closed() -> None:
                         "sources": ["evt-now"],
                     }
                 ],
+                "continuity_candidates": [],
             }
         )
 
@@ -286,6 +421,7 @@ def test_http_api_drives_one_adapter_request_and_commits_state(tmp_path: Path) -
                     "sources": [event_id],
                 }
             ],
+            "continuity_candidates": [],
         }
         return httpx.Response(
             200,

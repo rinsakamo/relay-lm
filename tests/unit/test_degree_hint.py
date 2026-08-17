@@ -30,6 +30,7 @@ def _wire_value(value: object) -> dict[str, object]:
                 "sources": ["evt-now"],
             }
         ],
+        "continuity_candidates": [],
     }
 
 
