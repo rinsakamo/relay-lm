@@ -204,8 +204,9 @@ Current filtering is intentionally narrow:
 - authority eligibility uses every State record with `status == "active"` and `valid_to is None`, independently of any later `max_state_records` projection cap;
 - a Memory chunk is State-addressing when its heading path contains every normalized lexical term of a State key, or when its body contains the canonical State key as an explicit `key:` / `key=` field assignment;
 - inline field detection requires the exact normalized canonical key token and a field delimiter;
-- when neither existing explicit form addresses a key, a simple scalar State value (`str`, `int`, or `float`, excluding `bool`) may additionally be addressed by one explicit-current free-form line using either `current <canonical key> is <value>` or `<canonical key> is currently/now <value>`;
+- when neither existing explicit form addresses a key, a simple scalar State value (`str`, `int`, or `float`, excluding `bool`) may additionally be addressed only by a line-leading explicit-current free-form form: either `current <canonical key> is <value>` at line start, or optional leading `the` followed by `<canonical key> is currently/now <value>`;
 - the free-form grammar uses the canonical key's own normalized lexical terms in contiguous readable order, allowing normal spaces in place of underscores; it does not infer aliases or synonyms for the State key;
+- text preceding those line-leading forms is not ignored or reinterpreted: a prefixed phrase such as `previous current residence location is ...` remains outside C4 and is left for separate historical/current interpretation;
 - for that free-form scalar grammar, a claimed value whose normalized lexical terms differ from the current scalar State value suppresses the whole chunk; an exact lexical current-value claim remains compatible;
 - absence of the explicit `current` / `currently` / `now` marker is not interpreted by this grammar, so historical or temporally ambiguous free-form prose remains untouched for separate historical/current interpretation;
 - free-form prose that omits the canonical key, such as `Rin currently lives in Hokkaido`, is not mapped to `residence_location` by this rule;
@@ -224,7 +225,7 @@ Current filtering is intentionally narrow:
 
 Whole-chunk suppression changes only current cognitive residency. It does not rewrite or delete `MEMORY.md`, mutate State or Events, create a second semantic owner, or add an LLM call.
 
-This filter deliberately does **not** infer arbitrary natural-language aliases, synonyms, negation, or omitted-key contradiction; distinguish historical from current prose without the explicit-current scalar markers above; infer degree from adjectives or free-form intensity language; compare degree values across keys/semantic axes; apply degree tolerances/orderings; or decide free-form conflicts for boolean and other non-lexically-comparable State values. Those remain later #1267 work.
+This filter deliberately does **not** infer arbitrary natural-language aliases, synonyms, negation, or omitted-key contradiction; distinguish historical from current prose outside the line-leading explicit-current scalar forms above; infer degree from adjectives or free-form intensity language; compare degree values across keys/semantic axes; apply degree tolerances/orderings; or decide free-form conflicts for boolean and other non-lexically-comparable State values. Those remain later #1267 work.
 
 ### Opt-in ordinary-turn MEMORY retrieval
 
