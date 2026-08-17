@@ -248,13 +248,27 @@ Given one already-selected Coffee `MemoryChunk`, it verifies that:
 
 This evaluates projection and provenance separation only. It does not claim ordinary-turn automatic retrieval, deterministic stale/conflict suppression, durable logical-memory identity, runtime MEMORY budget quality, or actual-model response benefit.
 
+### `ordinary_turn_memory_retrieval`
+
+This deterministic #1267 scenario evaluates the opt-in ordinary-turn retrieval boundary introduced by PR #1307 against isolated Character Packages.
+
+It checks that:
+
+- an explicit `MemoryRetrievalBudget` selects the relevant Coffee heading into the provider's `CognitiveInput.memory`;
+- the successful ordinary turn calls the provider exactly once;
+- omitting the budget preserves the previous no-retrieval behavior, verified with a CharacterDirectory variant that would fail if `MEMORY.md` were read;
+- a deliberate `MEMORY.md` read failure prevents provider generation;
+- the failed retrieval still leaves the Current User Event persisted while no Assistant Event or State mutation is created.
+
+This evaluates deterministic runtime wiring and failure ordering only. It does not choose or validate a default runtime budget, expose a client/API retrieval control, solve State-vs-memory conflict suppression, or claim actual-model response benefit. Streaming uses the same retrieval preparation helper and remains directly covered by unit contracts; this native scenario does not duplicate the streaming-delivery matrix.
+
 Current scenario implementations may use deterministic synthetic providers or direct deterministic core contracts so failures can be attributed to RelayLM-owned boundaries instead of model variance.
 
 ## Deferred evaluation work
 
 Still owned by #1247:
 
-- #1267 ordinary-runtime MEMORY retrieval/budgeting, State-vs-memory conflict suppression, targeted Event retrieval, and cross-layer/token-aware diagnostics as those runtime slices land;
+- #1267 evidence-backed default MEMORY/State budgeting, State-vs-memory conflict suppression, targeted Event retrieval, and cross-layer/token-aware diagnostics as those runtime slices land;
 - future privacy/lifecycle evaluation from #1270;
 - response/persona and actual local-model quality measurements;
 - external benchmark adapters after current benchmark availability/version suitability is re-verified.
