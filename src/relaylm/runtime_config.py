@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from relaylm.budget import BudgetDegradationPolicy, TotalBudgetConfig
+from relaylm.budget_enforcement import TokenCountMode
 
 
 RUNTIME_CONFIG_FORMAT_VERSION = 1
@@ -51,13 +52,6 @@ class RuntimeConfigErrorCode(str, Enum):
     PROVIDER_INVALID = "provider_invalid"
 
 
-class TokenAccountingMode(str, Enum):
-    """#1387-owned exact-versus-conservative serialized accounting mode."""
-
-    EXACT = "exact"
-    CONSERVATIVE = "conservative"
-
-
 @dataclass(frozen=True, slots=True)
 class SecretEnvReference:
     """Persistable reference to a secret, never the secret value itself."""
@@ -67,6 +61,20 @@ class SecretEnvReference:
     def __post_init__(self) -> None:
         if not isinstance(self.env, str) or not _ENV_NAME_RE.fullmatch(self.env):
             raise ValueError("secret env must be a valid environment variable name")
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeSecretInputs:
+    """Process-local resolved secret material kept outside RuntimeConfig diagnostics."""
+
+    provider_api_key: str | None = field(default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        if self.provider_api_key is not None:
+            _require_non_empty_string(
+                "provider_api_key",
+                self.provider_api_key,
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,17 +164,18 @@ class ContinuityRuntimeSettings:
 class TokenCounterCapabilityConfig:
     """Declared assembly capability for #1387 serialized-input accounting.
 
-    RCFG1 freezes only the identity and exact/conservative mode. Availability and
-    construction of the named counter are runtime-assembly/preflight concerns.
+    RCFG1 freezes only the capability identity and carries the existing #1387
+    TokenCountMode unchanged. Availability and construction are assembly/preflight
+    concerns rather than configuration semantics.
     """
 
     capability: str
-    mode: TokenAccountingMode
+    mode: TokenCountMode
 
     def __post_init__(self) -> None:
         _require_non_empty_string("token_counter.capability", self.capability)
-        if not isinstance(self.mode, TokenAccountingMode):
-            raise TypeError("token_counter.mode must be TokenAccountingMode")
+        if not isinstance(self.mode, TokenCountMode):
+            raise TypeError("token_counter.mode must be TokenCountMode")
 
 
 @dataclass(frozen=True, slots=True)
@@ -236,10 +245,11 @@ class RuntimePolicyConfig:
 
 @dataclass(frozen=True, slots=True)
 class RuntimeConfig:
-    """Version-1 resolved runtime configuration contract.
+    """Version-1 non-secret resolved runtime configuration contract.
 
-    Loading, strict unknown-field rejection, precedence merging, and environment
-    lookup are RCFG2 responsibilities. This type is the contract they must emit.
+    Loading, strict unknown-field rejection, precedence merging, environment
+    lookup, and process-local secret resolution are RCFG2 responsibilities. This
+    type is the non-secret contract they must emit for later assembly.
     """
 
     format_version: int
@@ -281,16 +291,23 @@ class EffectiveConfigValue:
 
 @dataclass(frozen=True, slots=True)
 class EffectiveConfigSecret:
-    """Secret-free effective diagnostic: presence and source only."""
+    """Secret-free diagnostic for selected reference and material provenance."""
 
     configured: bool
     source: ConfigSource | None
+    material_source: ConfigSource | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.configured, bool):
             raise TypeError("configured must be bool")
         if self.source is not None and not isinstance(self.source, ConfigSource):
             raise TypeError("effective secret source must be ConfigSource or None")
+        if self.material_source is not None and not isinstance(
+            self.material_source, ConfigSource
+        ):
+            raise TypeError(
+                "effective secret material_source must be ConfigSource or None"
+            )
 
 
 def _require_non_empty_string(name: str, value: str) -> None:
