@@ -227,6 +227,14 @@ async def evaluate_cross_layer_context_diagnostics() -> EvaluationScenarioResult
     return await evaluate()
 
 
+async def evaluate_working_context_budget_diagnostics() -> EvaluationScenarioResult:
+    from relaylm.evaluation_working_context import (
+        evaluate_working_context_budget_diagnostics as evaluate,
+    )
+
+    return await evaluate()
+
+
 async def evaluate_persistence_integrity() -> EvaluationScenarioResult:
     from relaylm.evaluation_persistence import evaluate_persistence_integrity as evaluate
 
@@ -319,6 +327,7 @@ async def run_native_evaluation() -> EvaluationReport:
             await evaluate_streaming_safety(),
             await evaluate_state_selection_diagnostics(),
             await evaluate_cross_layer_context_diagnostics(),
+            await evaluate_working_context_budget_diagnostics(),
             await evaluate_memory_heading_retrieval(),
             await evaluate_memory_cognitive_projection(),
             await evaluate_ordinary_turn_memory_retrieval(),
