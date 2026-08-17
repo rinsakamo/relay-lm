@@ -205,6 +205,14 @@ async def evaluate_degree_hint_integrity() -> EvaluationScenarioResult:
     return await evaluate()
 
 
+async def evaluate_working_context_budget_atomicity() -> EvaluationScenarioResult:
+    from relaylm.evaluation_context import (
+        evaluate_working_context_budget_atomicity as evaluate,
+    )
+
+    return await evaluate()
+
+
 async def run_native_evaluation() -> EvaluationReport:
     return EvaluationReport(
         scenarios=(
@@ -213,6 +221,7 @@ async def run_native_evaluation() -> EvaluationReport:
             await evaluate_assistant_self_certification_prevention(),
             await evaluate_comparative_preference_preservation(),
             await evaluate_degree_hint_integrity(),
+            await evaluate_working_context_budget_atomicity(),
         ),
     )
 
