@@ -5,6 +5,7 @@ import asyncio
 from relaylm.evaluation import (
     evaluate_memory_cognitive_projection,
     evaluate_memory_heading_retrieval,
+    evaluate_ordinary_turn_memory_retrieval,
 )
 
 
@@ -40,4 +41,24 @@ def test_memory_cognitive_projection_evaluation_is_registered() -> None:
         "projected_memory_count": 1,
         "working_context_count": 0,
         "memory_location_source_leak_count": 0,
+    }
+
+
+def test_ordinary_turn_memory_retrieval_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_ordinary_turn_memory_retrieval())
+
+    assert result.scenario_id == "ordinary_turn_memory_retrieval"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+    assert {check.boundary for check in result.checks} == {
+        "ordinary_turn",
+        "memory_retrieval",
+        "persistence",
+    }
+    assert result.metrics == {
+        "successful_provider_calls": 1,
+        "selected_memory_count": 1,
+        "default_memory_count": 0,
+        "failed_retrieval_provider_calls": 0,
+        "failed_retrieval_event_count": 1,
     }
