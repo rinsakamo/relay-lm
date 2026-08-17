@@ -56,15 +56,31 @@ def compile_cognitive_input(
 ) -> CognitiveInput:
     """Build bounded cognitive context from RelayLM-owned authorities."""
 
-    return compile_cognitive_input_with_diagnostics(
-        identity=identity,
+    if max_working_context_events < 0:
+        raise ValueError("max_working_context_events must not be negative")
+    if max_working_context_chars < 0:
+        raise ValueError("max_working_context_chars must not be negative")
+    if max_state_records is not None and max_state_records < 0:
+        raise ValueError("max_state_records must not be negative")
+
+    active_state = _select_active_state(
         state=state,
         current_event=current_event,
+        max_records=max_state_records,
+    )
+    working_context = _select_working_context(
         recent_events=recent_events,
-        max_working_context_events=max_working_context_events,
-        max_working_context_chars=max_working_context_chars,
-        max_state_records=max_state_records,
-    ).cognitive_input
+        current_event=current_event,
+        max_events=max_working_context_events,
+        max_chars=max_working_context_chars,
+    )
+    return CognitiveInput(
+        identity=identity,
+        state_classes=STATE_CLASS_DEFINITIONS,
+        state=active_state,
+        context=working_context,
+        input=current_event,
+    )
 
 
 def compile_cognitive_input_with_diagnostics(
@@ -77,36 +93,26 @@ def compile_cognitive_input_with_diagnostics(
     max_working_context_chars: int = DEFAULT_WORKING_CONTEXT_MAX_CHARS,
     max_state_records: int | None = None,
 ) -> CognitiveCompilationResult:
-    """Build cognitive input plus content-free Context selection diagnostics."""
+    """Build cognitive input plus content-free State selection diagnostics."""
 
-    if max_working_context_events < 0:
-        raise ValueError("max_working_context_events must not be negative")
-    if max_working_context_chars < 0:
-        raise ValueError("max_working_context_chars must not be negative")
-    if max_state_records is not None and max_state_records < 0:
-        raise ValueError("max_state_records must not be negative")
-
-    active_state, state_diagnostics = _select_active_state_with_diagnostics(
+    cognitive_input = compile_cognitive_input(
+        identity=identity,
+        state=state,
+        current_event=current_event,
+        recent_events=recent_events,
+        max_working_context_events=max_working_context_events,
+        max_working_context_chars=max_working_context_chars,
+        max_state_records=max_state_records,
+    )
+    diagnostics = _diagnose_active_state_selection(
         state=state,
         current_event=current_event,
         max_records=max_state_records,
-    )
-    working_context = _select_working_context(
-        recent_events=recent_events,
-        current_event=current_event,
-        max_events=max_working_context_events,
-        max_chars=max_working_context_chars,
-    )
-    cognitive_input = CognitiveInput(
-        identity=identity,
-        state_classes=STATE_CLASS_DEFINITIONS,
-        state=active_state,
-        context=working_context,
-        input=current_event,
+        selected_state=cognitive_input.state,
     )
     return CognitiveCompilationResult(
         cognitive_input=cognitive_input,
-        diagnostics=(state_diagnostics,),
+        diagnostics=(diagnostics,),
     )
 
 
@@ -118,75 +124,84 @@ def _select_active_state(
 ) -> tuple[StateRecord, ...]:
     """Select eligible active State, applying lexical ranking only under an explicit cap."""
 
-    selected, _ = _select_active_state_with_diagnostics(
-        state=state,
-        current_event=current_event,
-        max_records=max_records,
+    active_state = tuple(
+        record
+        for record in state.states
+        if record.status == "active" and record.valid_to is None
     )
-    return selected
+    if max_records is None or len(active_state) <= max_records:
+        return active_state
+    if max_records == 0:
+        return ()
+
+    content = current_event.payload.get("content")
+    query = _normalize_lexical_text(content if isinstance(content, str) else "")
+    ranked = sorted(
+        enumerate(active_state),
+        key=lambda item: (-_state_lexical_score(item[1], query), item[0]),
+    )
+    selected_indices = sorted(index for index, _ in ranked[:max_records])
+    return tuple(active_state[index] for index in selected_indices)
 
 
-def _select_active_state_with_diagnostics(
+def _diagnose_active_state_selection(
     *,
     state: CanonicalState,
     current_event: Event,
     max_records: int | None,
-) -> tuple[tuple[StateRecord, ...], ContextSelectionDiagnostics]:
+    selected_state: tuple[StateRecord, ...],
+) -> ContextSelectionDiagnostics:
     active_state = tuple(
         record
         for record in state.states
         if record.status == "active" and record.valid_to is None
     )
     eligible_count = len(active_state)
+    selected_count = len(selected_state)
 
     if max_records is None:
-        return active_state, _state_diagnostics(
+        return _state_diagnostics(
             mode="unbounded",
             eligible_count=eligible_count,
-            selected_count=eligible_count,
+            selected_count=selected_count,
             budget_limit=None,
-            selected_reasons=_reason_counts(("eligible_unbounded", eligible_count)),
+            selected_reasons=_reason_counts(("eligible_unbounded", selected_count)),
         )
 
     if max_records == 0:
-        return (), _state_diagnostics(
+        return _state_diagnostics(
             mode="zero_budget",
             eligible_count=eligible_count,
-            selected_count=0,
+            selected_count=selected_count,
             budget_limit=0,
-            evicted_reasons=_reason_counts(("budget_limit", eligible_count)),
+            evicted_reasons=_reason_counts(("budget_limit", eligible_count - selected_count)),
         )
 
     if eligible_count <= max_records:
-        return active_state, _state_diagnostics(
+        return _state_diagnostics(
             mode="within_budget",
             eligible_count=eligible_count,
-            selected_count=eligible_count,
+            selected_count=selected_count,
             budget_limit=max_records,
-            selected_reasons=_reason_counts(("within_budget", eligible_count)),
+            selected_reasons=_reason_counts(("within_budget", selected_count)),
         )
 
     content = current_event.payload.get("content")
     query = _normalize_lexical_text(content if isinstance(content, str) else "")
-    scored = tuple(_state_lexical_score(record, query) for record in active_state)
-    ranked = sorted(
-        enumerate(active_state),
-        key=lambda item: (-scored[item[0]], item[0]),
+    lexical_match_count = sum(
+        1 for record in selected_state if _state_lexical_score(record, query) > 0
     )
-    selected_indices = sorted(index for index, _ in ranked[:max_records])
-    selected = tuple(active_state[index] for index in selected_indices)
-    lexical_match_count = sum(1 for index in selected_indices if scored[index] > 0)
-    fallback_count = len(selected_indices) - lexical_match_count
-    return selected, _state_diagnostics(
+    fallback_count = selected_count - lexical_match_count
+    return _state_diagnostics(
         mode="lexical_ranked",
         eligible_count=eligible_count,
-        selected_count=len(selected),
+        selected_count=selected_count,
         budget_limit=max_records,
         selected_reasons=_reason_counts(
             ("lexical_match", lexical_match_count),
             ("fallback", fallback_count),
         ),
-        evicted_reasons=_reason_counts(("budget_limit", eligible_count - len(selected))),
+        evicted_reasons=_reason_counts(("budget_limit", eligible_count - selected_count)),
     )
 
 
