@@ -120,18 +120,44 @@ Provider-facing `CognitiveInput.memory` is a separate optional layer for already
 }
 ```
 
-The two metadata systems are intentionally different:
+The metadata is intentionally not Event provenance:
 
 ```text
 Context.sources[]     Event provenance
 Memory.location       current Markdown document locator
 ```
 
-A memory `location` is not an Event ID and must never be copied into StateCandidate `sources`. The provider wire instruction restricts candidate `sources` to Event IDs present through State, Context, or the current Input.
+A memory `location` is not an Event ID and must never be copied into StateCandidate `sources`.
 
-Crystallized memory is readable synthesis rather than accepted current State. The provider instruction therefore treats active State as current understanding if an already-projected memory item conflicts with it, and explicitly states that memory prose cannot establish new user truth by itself.
+Crystallized memory is readable synthesis rather than accepted current State. The provider instruction therefore treats active State as current understanding if already-projected memory conflicts with it, and explicitly states that memory prose cannot establish new user truth by itself.
 
-This is only the provider-facing authority boundary. Deterministic RelayLM-owned stale/conflict filtering before projection remains future #1267 work. The current adapter does not reinterpret a Markdown location as provenance or perform hidden retrieval.
+RelayLM also applies the current deterministic explicit-key State-shadow filter before memory projection. Provider wording is defense in depth, not the only authority mechanism. The adapter does not reinterpret a Markdown location as provenance or perform hidden retrieval.
+
+## CognitiveInput Event evidence
+
+Provider-facing `CognitiveInput.event_evidence` is a distinct optional layer for already-selected persisted Event occurrences:
+
+```json
+{
+  "event_id": "019b...",
+  "type": "message",
+  "actor": "user",
+  "timestamp": "2026-08-17T00:00:00+00:00",
+  "content": "以前は北海道に住んでいた"
+}
+```
+
+Event evidence remains separate from Working Context, crystallized Memory, active State, and Current Input. It preserves the real persisted Event ID plus occurrence type, actor, timestamp, and content.
+
+Authority remains source-role-aware:
+
+- user-authored Event evidence supports what the user said at that recorded occurrence, subject to temporal and semantic scope;
+- assistant-authored Event evidence remains assistant-authored and cannot establish user facts or external truth merely because it was retrieved;
+- a retrieved occurrence is not automatically accepted current State.
+
+Real Event-evidence IDs are eligible StateCandidate provenance. The provider wire instruction therefore restricts candidate `sources` to Event IDs present through State, Context, Event Evidence, or the current Input. Memory `location` values remain explicitly ineligible.
+
+The adapter only serializes already-projected Event evidence. It does not widen retrieval scope, read the Event Journal, or choose an Event retrieval budget.
 
 ## Response framing
 
