@@ -503,6 +503,15 @@ def _memory_chunk_is_shadowed(
             record.key,
         )
         if not heading_addresses_key and not inline_addresses_key:
+            current_value = _simple_scalar_state_value_text(record.value)
+            if current_value is None:
+                continue
+            claims = _explicit_current_state_key_claims(chunk.content, record.key)
+            if claims and any(
+                _lexical_terms(claim) != _lexical_terms(current_value)
+                for claim in claims
+            ):
+                return True
             continue
 
         if isinstance(record.value, bool):
@@ -543,6 +552,39 @@ def _memory_chunk_is_shadowed(
             return True
 
     return False
+
+
+def _simple_scalar_state_value_text(value: Any) -> str | None:
+    if isinstance(value, str):
+        return value if _lexical_terms(value) else None
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return str(value)
+    return None
+
+
+def _explicit_current_state_key_claims(content: str, key: str) -> tuple[str, ...]:
+    key_terms = _lexical_terms(key)
+    if not key_terms:
+        return ()
+    key_pattern = r"[\s_]+".join(re.escape(term) for term in key_terms)
+    patterns = (
+        re.compile(
+            rf"(?<!\w)current\s+{key_pattern}(?!\w)\s+is\s+(.+?)(?:[.!?])?\s*$"
+        ),
+        re.compile(
+            rf"(?<!\w){key_pattern}(?!\w)\s+is\s+(?:currently|now)\s+"
+            r"(.+?)(?:[.!?])?\s*$"
+        ),
+    )
+    normalized_content = _normalize_lexical_text(content)
+    return tuple(
+        match.group(1).strip()
+        for line in normalized_content.splitlines()
+        for pattern in patterns
+        if (match := pattern.search(line)) is not None
+    )
 
 
 def _reserved_degree_state_value(value: Any) -> tuple[str, float] | None:
