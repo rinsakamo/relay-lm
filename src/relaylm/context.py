@@ -18,12 +18,6 @@ DEFAULT_WORKING_CONTEXT_MAX_CHARS = 4000
 
 
 @dataclass(frozen=True, slots=True)
-class SelectionReasonCount:
-    reason: str
-    count: int
-
-
-@dataclass(frozen=True, slots=True)
 class ContextSelectionDiagnostics:
     layer: str
     mode: str
@@ -34,8 +28,9 @@ class ContextSelectionDiagnostics:
     budget_limit: int | None
     budget_used: int
     budget_pressure: bool
-    selected_reasons: tuple[SelectionReasonCount, ...] = ()
-    evicted_reasons: tuple[SelectionReasonCount, ...] = ()
+    selected_lexical_match_count: int = 0
+    selected_fallback_count: int = 0
+    evicted_budget_limit_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,15 +99,16 @@ def compile_cognitive_input_with_diagnostics(
         max_working_context_chars=max_working_context_chars,
         max_state_records=max_state_records,
     )
-    diagnostics = _diagnose_active_state_selection(
-        state=state,
-        current_event=current_event,
-        max_records=max_state_records,
-        selected_state=cognitive_input.state,
-    )
     return CognitiveCompilationResult(
         cognitive_input=cognitive_input,
-        diagnostics=(diagnostics,),
+        diagnostics=(
+            _diagnose_active_state_selection(
+                state=state,
+                current_event=current_event,
+                max_records=max_state_records,
+                selected_state=cognitive_input.state,
+            ),
+        ),
     )
 
 
@@ -151,70 +147,33 @@ def _diagnose_active_state_selection(
     max_records: int | None,
     selected_state: tuple[StateRecord, ...],
 ) -> ContextSelectionDiagnostics:
-    active_state = tuple(
-        record
+    eligible_count = sum(
+        1
         for record in state.states
         if record.status == "active" and record.valid_to is None
     )
-    eligible_count = len(active_state)
     selected_count = len(selected_state)
+    evicted_count = eligible_count - selected_count
 
     if max_records is None:
-        return _state_diagnostics(
-            mode="unbounded",
-            eligible_count=eligible_count,
-            selected_count=selected_count,
-            budget_limit=None,
-            selected_reasons=_reason_counts(("eligible_unbounded", selected_count)),
+        mode = "unbounded"
+    elif max_records == 0:
+        mode = "zero_budget"
+    elif eligible_count <= max_records:
+        mode = "within_budget"
+    else:
+        mode = "lexical_ranked"
+
+    lexical_match_count = 0
+    fallback_count = 0
+    if mode == "lexical_ranked":
+        content = current_event.payload.get("content")
+        query = _normalize_lexical_text(content if isinstance(content, str) else "")
+        lexical_match_count = sum(
+            1 for record in selected_state if _state_lexical_score(record, query) > 0
         )
+        fallback_count = selected_count - lexical_match_count
 
-    if max_records == 0:
-        return _state_diagnostics(
-            mode="zero_budget",
-            eligible_count=eligible_count,
-            selected_count=selected_count,
-            budget_limit=0,
-            evicted_reasons=_reason_counts(("budget_limit", eligible_count - selected_count)),
-        )
-
-    if eligible_count <= max_records:
-        return _state_diagnostics(
-            mode="within_budget",
-            eligible_count=eligible_count,
-            selected_count=selected_count,
-            budget_limit=max_records,
-            selected_reasons=_reason_counts(("within_budget", selected_count)),
-        )
-
-    content = current_event.payload.get("content")
-    query = _normalize_lexical_text(content if isinstance(content, str) else "")
-    lexical_match_count = sum(
-        1 for record in selected_state if _state_lexical_score(record, query) > 0
-    )
-    fallback_count = selected_count - lexical_match_count
-    return _state_diagnostics(
-        mode="lexical_ranked",
-        eligible_count=eligible_count,
-        selected_count=selected_count,
-        budget_limit=max_records,
-        selected_reasons=_reason_counts(
-            ("lexical_match", lexical_match_count),
-            ("fallback", fallback_count),
-        ),
-        evicted_reasons=_reason_counts(("budget_limit", eligible_count - selected_count)),
-    )
-
-
-def _state_diagnostics(
-    *,
-    mode: str,
-    eligible_count: int,
-    selected_count: int,
-    budget_limit: int | None,
-    selected_reasons: tuple[SelectionReasonCount, ...] = (),
-    evicted_reasons: tuple[SelectionReasonCount, ...] = (),
-) -> ContextSelectionDiagnostics:
-    evicted_count = eligible_count - selected_count
     return ContextSelectionDiagnostics(
         layer="canonical_state",
         mode=mode,
@@ -222,19 +181,12 @@ def _state_diagnostics(
         selected_count=selected_count,
         evicted_count=evicted_count,
         budget_unit="records",
-        budget_limit=budget_limit,
+        budget_limit=max_records,
         budget_used=selected_count,
         budget_pressure=evicted_count > 0,
-        selected_reasons=selected_reasons,
-        evicted_reasons=evicted_reasons,
-    )
-
-
-def _reason_counts(*items: tuple[str, int]) -> tuple[SelectionReasonCount, ...]:
-    return tuple(
-        SelectionReasonCount(reason=reason, count=count)
-        for reason, count in items
-        if count > 0
+        selected_lexical_match_count=lexical_match_count,
+        selected_fallback_count=fallback_count,
+        evicted_budget_limit_count=evicted_count,
     )
 
 
