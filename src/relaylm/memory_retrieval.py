@@ -125,15 +125,15 @@ def _parse_heading_chunks(markdown: str) -> tuple[MemoryChunk, ...]:
 
 
 def _memory_lexical_score(chunk: MemoryChunk, query_terms: tuple[str, ...]) -> int:
-    heading = _normalize(" ".join(chunk.heading_path))
-    content = _normalize(chunk.content)
+    heading_terms = frozenset(_lexical_terms(" ".join(chunk.heading_path)))
+    content_terms = frozenset(_lexical_terms(chunk.content))
     score = 0
     for term in query_terms:
         if len(term) < 2:
             continue
-        if term in heading:
+        if term in heading_terms:
             score += 4
-        if term in content:
+        if term in content_terms:
             score += 1
     return score
 
