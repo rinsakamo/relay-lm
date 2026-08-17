@@ -5,6 +5,11 @@ from dataclasses import dataclass
 
 from relaylm.cognitive import CognitiveInput, CognitiveOutput, CognitiveProvider
 from relaylm.context import compile_cognitive_input
+from relaylm.continuity import ContinuityContext
+from relaylm.continuity_validation import (
+    ContinuityValidationResult,
+    apply_continuity_candidates,
+)
 from relaylm.event_retrieval import (
     EventRetrievalDiagnostics,
     select_event_evidence,
@@ -50,6 +55,22 @@ class EventRetrievalBudget:
             raise ValueError("event max_chars must not be negative")
 
 
+@dataclass(slots=True)
+class ContinuityRuntime:
+    """Process-local holder that orchestrates already-owned Continuity semantics."""
+
+    context: ContinuityContext
+    lifetime_revisions: int
+
+    def __post_init__(self) -> None:
+        if isinstance(self.lifetime_revisions, bool) or not isinstance(
+            self.lifetime_revisions, int
+        ):
+            raise TypeError("lifetime_revisions must be an integer")
+        if self.lifetime_revisions <= 0:
+            raise ValueError("lifetime_revisions must be positive")
+
+
 @dataclass(frozen=True, slots=True)
 class TurnResult:
     response: str
@@ -57,6 +78,7 @@ class TurnResult:
     assistant_event: Event
     state: CanonicalState
     decisions: tuple[CandidateDecision, ...]
+    continuity: ContinuityValidationResult | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,6 +132,7 @@ async def run_user_turn(
     content: str,
     memory_budget: MemoryRetrievalBudget | None = None,
     event_budget: EventRetrievalBudget | None = None,
+    continuity_runtime: ContinuityRuntime | None = None,
 ) -> TurnResult:
     """Run one ordinary turn with one semantic cognitive generation."""
 
@@ -126,6 +149,7 @@ async def run_user_turn(
         state=state,
         user_event=user_event,
         output=output,
+        continuity_runtime=continuity_runtime,
     )
 
 
@@ -136,6 +160,7 @@ async def run_user_turn_with_retrieval_diagnostics(
     content: str,
     memory_budget: MemoryRetrievalBudget | None = None,
     event_budget: EventRetrievalBudget | None = None,
+    continuity_runtime: ContinuityRuntime | None = None,
 ) -> TurnResultWithRetrievalDiagnostics:
     """Run one ordinary turn and explicitly return content-free retrieval diagnostics."""
 
@@ -152,6 +177,7 @@ async def run_user_turn_with_retrieval_diagnostics(
         state=state,
         user_event=user_event,
         output=output,
+        continuity_runtime=continuity_runtime,
     )
     assert diagnostics is not None
     return TurnResultWithRetrievalDiagnostics(turn=turn, retrieval=diagnostics)
@@ -165,6 +191,7 @@ async def run_user_turn_streaming(
     emit_response_delta: Callable[[str], Awaitable[None]],
     memory_budget: MemoryRetrievalBudget | None = None,
     event_budget: EventRetrievalBudget | None = None,
+    continuity_runtime: ContinuityRuntime | None = None,
 ) -> TurnResult:
     """Run one streamed ordinary turn without committing before provider completion."""
 
@@ -188,6 +215,7 @@ async def run_user_turn_streaming(
         state=state,
         user_event=user_event,
         output=output,
+        continuity_runtime=continuity_runtime,
     )
 
 
@@ -199,6 +227,7 @@ async def run_user_turn_streaming_with_retrieval_diagnostics(
     emit_response_delta: Callable[[str], Awaitable[None]],
     memory_budget: MemoryRetrievalBudget | None = None,
     event_budget: EventRetrievalBudget | None = None,
+    continuity_runtime: ContinuityRuntime | None = None,
 ) -> TurnResultWithRetrievalDiagnostics:
     """Run one streamed ordinary turn and explicitly return retrieval diagnostics."""
 
@@ -222,6 +251,7 @@ async def run_user_turn_streaming_with_retrieval_diagnostics(
         state=state,
         user_event=user_event,
         output=output,
+        continuity_runtime=continuity_runtime,
     )
     assert diagnostics is not None
     return TurnResultWithRetrievalDiagnostics(turn=turn, retrieval=diagnostics)
@@ -368,7 +398,11 @@ def _commit_cognitive_output(
     state: CanonicalState,
     user_event: Event,
     output: CognitiveOutput,
+    continuity_runtime: ContinuityRuntime | None,
 ) -> TurnResult:
+    if output.continuity_candidates and continuity_runtime is None:
+        raise RuntimeError("continuity candidates require an explicit runtime")
+
     assistant_event = Event.create(
         type="message",
         actor="assistant",
@@ -377,19 +411,33 @@ def _commit_cognitive_output(
     character.append_event(assistant_event)
 
     event_by_id = {event.id: event for event in character.iter_events()}
-    validation = apply_state_candidates(
+    state_validation = apply_state_candidates(
         current_state=state,
         candidates=output.state_candidates,
         events=event_by_id,
         required_source_ids=frozenset({user_event.id}),
     )
-    if validation.changed:
-        character.save_state(validation.state)
+
+    continuity_validation = None
+    if continuity_runtime is not None:
+        continuity_validation = apply_continuity_candidates(
+            current_context=continuity_runtime.context,
+            candidates=output.continuity_candidates,
+            events=event_by_id,
+            required_source_ids=frozenset({user_event.id}),
+            lifetime_revisions=continuity_runtime.lifetime_revisions,
+        )
+
+    if state_validation.changed:
+        character.save_state(state_validation.state)
+    if continuity_validation is not None:
+        continuity_runtime.context = continuity_validation.context
 
     return TurnResult(
         response=output.response,
         user_event=user_event,
         assistant_event=assistant_event,
-        state=validation.state,
-        decisions=validation.decisions,
+        state=state_validation.state,
+        decisions=state_validation.decisions,
+        continuity=continuity_validation,
     )
