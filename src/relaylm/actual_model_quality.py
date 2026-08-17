@@ -90,14 +90,14 @@ class StateProposalLabel:
 class ContinuityProposalLabel:
     kind: str
     key: str
-    op: Literal["set", "remove"]
+    op: Literal["set", "resolve"]
     match_value: bool = False
     value: Any = None
 
     def __post_init__(self) -> None:
         if not self.kind.strip() or not self.key.strip():
             raise ValueError("Continuity proposal labels require non-empty kind and key")
-        if self.op not in {"set", "remove"}:
+        if self.op not in {"set", "resolve"}:
             raise ValueError(f"unsupported Continuity proposal op: {self.op}")
         if self.match_value and self.op != "set":
             raise ValueError("value matching is only valid for Continuity set labels")
