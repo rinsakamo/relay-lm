@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from relaylm.event_retrieval import select_event_evidence
+from relaylm.event_retrieval import EventDiscoveryIndex, select_event_evidence
 from relaylm.events import Event
 
 
@@ -145,6 +145,14 @@ def test_non_message_and_blank_content_events_are_ineligible() -> None:
     )
 
     assert selected == (valid,)
+
+
+def test_index_candidate_scores_count_each_query_feature_once() -> None:
+    coffee = _event("coffee", content="Coffee note.")
+    coffee_tea = _event("coffee-tea", content="Coffee and tea note.")
+    index = EventDiscoveryIndex((coffee, coffee_tea))
+
+    assert index.candidate_scores(("coffee", "coffee", "tea")) == {0: 1, 1: 2}
 
 
 def test_zero_and_negative_budgets_are_explicit_and_input_is_unchanged() -> None:
