@@ -26,7 +26,7 @@ The repository PR template asks for:
 
 The intended merge method for v1 is squash so one merged PR corresponds to one bounded transaction. Head branches should be deleted after merge.
 
-Repository-host enforcement of squash-only merge and automatic head-branch deletion is a GitHub setting, not a source-controlled semantic contract. Until those settings are mechanically enabled, the development workflow still requires expected-head protected squash merges.
+Repository-host enforcement of squash-only merge and automatic head-branch deletion is a GitHub setting, not a source-controlled semantic contract. Current v1 operation expects those settings to remain active; if live GitHub no longer matches them, treat that as repository-administration drift rather than silently weakening the workflow.
 
 ## Issues
 
@@ -63,9 +63,13 @@ It is deliberately non-enforcing at first. Update it when a major ownership boun
 
 ## Dependency maintenance
 
-`.github/dependabot.yml` defines weekly version-update checks for Python dependencies and GitHub Actions, targeting `v1`.
+`.github/dependabot.yml` defines weekly version-update checks for GitHub Actions targeting `v1`.
 
-GitHub reads Dependabot and community templates from the repository default branch. While frozen 0.x `main` remains the default branch, the v1 copies are staged repository configuration rather than active GitHub UI/Dependabot configuration. Activation therefore depends on a repository-host decision such as making `v1` the default branch at the appropriate product-line transition; `main` must not be modified merely to activate v1 tooling.
+Python requirements in `pyproject.toml` are lower-bound support declarations rather than lockfile pins. A routine Dependabot change such as `package>=old` to `package>=new` changes RelayLM's supported compatibility floor without selecting the installed version. Python dependency floors are therefore raised only by an explicit reviewed RelayLM transaction with a compatibility or security reason and relevant evidence; routine Dependabot `pip` version-update PRs are disabled.
+
+Dependabot alerts and Dependabot security updates remain repository-host security controls. They are independent of routine version-update scheduling and may still produce a security update against the default branch, which is `v1`. A security advisory can justify a bounded dependency-floor change when the vulnerable range requires it.
+
+GitHub Actions are executable CI supply-chain dependencies rather than Python support floors. Keep maintained Actions pinned to full commit SHAs, and use reviewed Dependabot GitHub Actions PRs to advance those pins after exact-head CI succeeds.
 
 ## Repository-host protections
 
@@ -93,8 +97,9 @@ Do not require branches to be automatically updated/rebased onto the latest `v1`
 
 - allow squash merge only for active v1 work;
 - automatically delete merged head branches;
-- enable Dependabot alerts/version updates when v1 configuration is active;
+- enable Dependabot alerts and Dependabot security updates;
+- run routine Dependabot version updates for GitHub Actions only;
 - enable secret scanning and repository push protection;
-- keep GitHub Actions on maintained major versions.
+- keep GitHub Actions on maintained versions and pin workflow uses to full commit SHAs.
 
 These repository-host settings are not considered implemented merely because they are documented here. Any setting not observable as active in GitHub remains explicit administrative work.
