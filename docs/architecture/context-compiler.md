@@ -118,17 +118,20 @@ The ordinary runtime does **not** yet impose a default State cap, so existing tu
 
 Callers that explicitly need selection evidence may use `compile_cognitive_input_with_diagnostics`. It returns the same `CognitiveInput` produced by the ordinary compiler plus a diagnostics tuple. The ordinary `compile_cognitive_input` path does not generate or persist diagnostics.
 
-The diagnostics surface currently covers three compiler-owned layers:
+The diagnostics surface currently covers four compiler-owned layers:
 
-- `canonical_state` — existing active-State eligibility, selection mode, selected/evicted counts, explicit record budget, lexical-match/fallback counts, and budget-limit eviction count;
+- `canonical_state` — active-State eligibility, selection mode, selected/evicted counts, explicit record budget, lexical-match/fallback counts, and budget-limit eviction count;
+- `working_context` — eligible prior message count after Current Event exclusion, selected count, explicit Event-window and character budgets, selected character usage, Current Event exclusion count, Event-window eviction count, unmatched-assistant drop count, and character-budget eviction count;
 - `retrieved_memory` — number of already-retrieved MEMORY chunks supplied to the compiler, number projected after the active-State authority filter, and deterministic State-shadow suppression count;
 - `event_evidence` — number of already-selected Event candidates supplied to the compiler, number projected after Current Event de-duplication, Current Event exclusion count, and the count of projected Event IDs that also remain in selected Working Context.
 
-Shared diagnostic fields include layer/mode, aggregate eligible/selected/evicted counts, budget unit/limit/used/pressure, plus bounded reason counters. Cross-layer additions are `authority_suppressed_count`, `current_event_excluded_count`, and `redundancy_overlap_count`.
+Shared diagnostic fields include layer/mode, aggregate eligible/selected/evicted counts, budget unit/limit/used/pressure, plus bounded reason counters. Working Context additionally reports `character_budget_limit`, `character_budget_used`, `evicted_event_window_count`, `evicted_character_budget_count`, and `evicted_orphan_assistant_count`. Cross-layer additions remain `authority_suppressed_count`, `current_event_excluded_count`, and `redundancy_overlap_count`.
+
+Working Context reason attribution follows the existing selector order without changing it: the Event window is applied first, unmatched assistant Events inside that window are not independently admitted, then complete exchanges are admitted newest-first under the character budget. A zero Event budget is therefore observed as Event-window eviction; with a nonzero Event budget and zero character budget, the remaining eligible window is observed as character-budget eviction. These counters describe residency mechanics only.
 
 Diagnostics deliberately exclude State IDs, keys, values, Event IDs, MEMORY locations/content, Current Event content/ID, and other semantic payload. The Event-overlap counter compares real Event IDs internally but emits only an aggregate count. Diagnostics are observations about selection/projection mechanics, not a new truth source, persistence layer, ranking authority, or telemetry requirement.
 
-For MEMORY and Event Evidence, `budget_limit=None` and `budget_pressure=False` mean only that the Context Compiler itself did not own the upstream retrieval budget. The compiler does **not** infer MEMORY/Event candidate populations, retrieval-stage ranking pressure, or token costs that were never provided to it. Working Context budget diagnostics, retrieval-stage diagnostics, total cross-layer token cost, degradation/fallback reporting, and runtime default-budget evidence remain later #1267 work.
+For MEMORY and Event Evidence, `budget_limit=None` and `budget_pressure=False` mean only that the Context Compiler itself did not own the upstream retrieval budget. The compiler does **not** infer MEMORY/Event candidate populations, retrieval-stage ranking pressure, or token costs that were never provided to it. Retrieval-stage diagnostics, total cross-layer token cost, degradation/fallback reporting, and runtime default-budget evidence remain later #1267 work.
 
 ## Current MEMORY.md retrieval and projection primitives
 
@@ -288,7 +291,7 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 - durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
 - persistent/segmented Event Journal indexing and retrieval-scaled targeted discovery beyond the current process-local validated snapshot reuse;
 - redundancy reduction across State / Working Context / Memory / Events beyond the current content-free exact Event-overlap observation;
-- retrieval-stage and Working Context budget diagnostics, total token-aware tier budgeting, and explicit cross-layer degradation/fallback evidence;
+- retrieval-stage MEMORY/Event diagnostics, total token-aware tier budgeting, and explicit cross-layer degradation/fallback evidence;
 - embedding/index acceleration only after authority eligibility is preserved.
 
 The governing principle is:
