@@ -127,7 +127,34 @@ Coffee coffee coffee.
     ]
 
 
+def test_fenced_code_heading_is_not_split_into_memory_chunk() -> None:
+    markdown = """# Memory
+
+## Notes
+
+Coffee example:
+
+```markdown
+## Not a memory heading
+coffee code
+```
+
+Still the same notes section.
+"""
+    selected = select_memory_chunks(
+        memory_markdown=markdown,
+        query="coffee",
+        max_chunks=2,
+        max_chars=500,
+    )
+
+    assert len(selected) == 1
+    assert selected[0].heading_path == ("Memory", "Notes")
+    assert "## Not a memory heading" in selected[0].content
+
+
 def test_zero_and_negative_budgets_are_explicit() -> None:
+    original = MEMORY
     assert select_memory_chunks(
         memory_markdown=MEMORY,
         query="coffee",
@@ -140,6 +167,7 @@ def test_zero_and_negative_budgets_are_explicit() -> None:
         max_chunks=2,
         max_chars=0,
     ) == ()
+    assert MEMORY == original
 
     with pytest.raises(ValueError, match="max_chunks must not be negative"):
         select_memory_chunks(
