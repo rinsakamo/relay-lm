@@ -99,16 +99,16 @@ runtime:                   # optional; every child is explicit opt-in
             floor_chars: 0
     token_counter:
       capability: implementation-id
-      mode: exact          # exact | conservative
+      mode: exact          # exact | conservative_estimate
 ```
 
-The numbers above are schema examples only. They are **not RelayLM defaults**. #1388 owns canonical cognitive numeric values and profile boundaries.
+Every retrieval, Continuity, and cognitive number above is an **explicit example value only**, not a RelayLM default. #1388 remains the sole owner of canonical cognitive values and profile boundaries; #1371 remains the owner of Continuity lifecycle semantics and defines no release default here.
 
 The serialized `policy` shape maps directly to the existing #1387 `BudgetDegradationPolicy`, `BudgetPlan`, envelope, and degradation-step types. RCFG2 may parse those types; it must not invent alternative degradation semantics.
 
 `runtime.continuity.max_items` and `lifetime_revisions` are explicit lifecycle inputs already required by the Continuity owner. Their presence here does not establish default values.
 
-`token_counter.capability` is an assembly capability identifier. RCFG1 does not claim that any arbitrary identifier is available. RCFG3/`doctor` must fail with `capability_unavailable` when the configured capability cannot construct the provider/model-specific serialized-input counter. `mode` preserves the #1387 exact-versus-conservative distinction.
+`token_counter.capability` is an assembly capability identifier. RCFG1 does not claim that any arbitrary identifier is available. RCFG3/`doctor` must fail with `capability_unavailable` when the configured capability cannot construct the provider/model-specific serialized-input counter. `mode` carries the existing #1387 `TokenCountMode` values unchanged: `exact` or `conservative_estimate`.
 
 ## 3. Unknown fields and validation
 
@@ -187,11 +187,13 @@ provider:
     env: OPENAI_API_KEY
 ```
 
-It must not persist an API-key value. A raw provider secret may enter the process through the dedicated environment input `RELAYLM_PROVIDER_API_KEY`. RCFG4 must not add a raw `--api-key VALUE` argument because process argv and shell history are not an acceptable secret transport.
+It must not persist an API-key value. A raw provider secret may enter the process through the existing dedicated environment input `RELAYLM_PROVIDER_API_KEY`. RCFG4 must not add a raw `--api-key VALUE` argument because process argv and shell history are not an acceptable secret transport.
 
 A CLI `--provider-api-key-env NAME` is a reference override, not a secret value. If selected, the named variable must exist at preflight/assembly time or resolution fails with `secret_unavailable`.
 
-Generic diagnostics never emit the secret value. Effective secret diagnostics expose only whether a secret is configured and the winning source category.
+Resolved raw secret material is process-local `RuntimeSecretInputs`, separate from non-secret `RuntimeConfig` and from diagnostics. Its representation must redact secret values.
+
+Generic diagnostics never emit the secret value. Effective secret diagnostics expose whether a secret is configured, the source that selected the secret/reference, and—when distinct—the material source category. For a config-file or CLI env reference, the selector source can therefore be `config_file` or `cli` while the material source is `env`.
 
 ## 7. Existing runtime controls carried by this contract
 
@@ -202,7 +204,8 @@ The contract mirrors current owner inputs without changing their meaning:
 - `continuity` -> current process-local `ContinuityContext.max_items` and `ContinuityRuntime.lifetime_revisions` inputs;
 - `cognitive_budget.total` -> current `TotalBudgetConfig`;
 - `cognitive_budget.policy` -> current deterministic `BudgetDegradationPolicy` and owner envelopes;
-- `cognitive_budget.token_counter` -> capability required to construct the current provider/model serialized-input counter.
+- `cognitive_budget.token_counter.mode` -> existing `TokenCountMode` from #1387;
+- `cognitive_budget.token_counter.capability` -> capability required to construct the current provider/model serialized-input counter.
 
 Presence of a config value is not authority to alter selection/ranking/lifecycle/degradation semantics.
 
@@ -210,16 +213,16 @@ The release-owned server default remains loopback `127.0.0.1:8090`, matching the
 
 ## 8. Effective configuration
 
-RCFG2 must resolve one effective configuration plus source provenance. Non-secret leaves are representable as:
+RCFG2 must resolve one effective non-secret configuration plus source provenance and separate process-local secret inputs. Non-secret leaves are representable as:
 
 ```json
 {"value": "...", "source": "cli|env|config_file|canonical_default"}
 ```
 
-A secret leaf is represented only as:
+A secret leaf is represented without material, for example:
 
 ```json
-{"configured": true, "source": "env"}
+{"configured": true, "source": "config_file", "material_source": "env"}
 ```
 
 The effective diagnostic surface may report only configuration metadata such as:
@@ -231,7 +234,7 @@ The effective diagnostic surface may report only configuration metadata such as:
 - enabled runtime layers;
 - profile/default/explicit-override identity and provenance once available;
 - cognitive capacity/reserve/envelopes when configured or canonically resolved;
-- token-accounting capability identity and exact/conservative mode;
+- token-accounting capability identity and `TokenCountMode`;
 - validation status.
 
 It must never emit API-key values, SOUL/Identity text, State keys/values, Event content, MEMORY content, Continuity semantic payload, or conversation content.
@@ -266,10 +269,10 @@ RCFG1 does not wire production runtime behavior. The next slices consume this co
 RCFG2 loader/resolver
   explicit file + env + CLI inputs
         -> strict parse / leaf merge / provenance
-        -> RuntimeConfig + redacted effective config
+        -> RuntimeConfig + RuntimeSecretInputs + redacted effective config
 
 RCFG3 assembly
-  RuntimeConfig
+  RuntimeConfig + RuntimeSecretInputs
         -> CharacterDirectory
         -> OpenAICompatibleProvider
         -> owner-defined Retrieval controls
