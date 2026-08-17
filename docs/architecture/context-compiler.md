@@ -94,7 +94,7 @@ These are deterministic residency rules, not semantic truth rules.
 
 ## Current active-State selection primitive
 
-`compile_cognitive_input` now supports an optional explicit `max_state_records` cap for large active-State sets.
+`compile_cognitive_input` supports an optional explicit `max_state_records` cap for large active-State sets.
 
 Eligibility is applied before ranking: only records with `status == "active"` and no `valid_to` are candidates. The selector never changes State records or provenance.
 
@@ -130,11 +130,11 @@ Diagnostics deliberately exclude State IDs, keys, values, source Event IDs, Curr
 
 This first diagnostics slice is record-count based because the current explicit State cap is record-count based. Cross-layer token cost, Working Context diagnostics, retrieved-memory/Event diagnostics, and total-budget degradation/fallback reporting remain later #1267 work.
 
-## Current MEMORY.md retrieval primitive
+## Current MEMORY.md retrieval and projection primitives
 
-`select_memory_chunks` provides the first bounded read/select primitive over crystallized `memory/MEMORY.md` content. It is deliberately separate from CognitiveInput projection in this slice.
+`select_memory_chunks` provides bounded read/select behavior over crystallized `memory/MEMORY.md` content.
 
-Current behavior:
+Current retrieval behavior:
 
 - parse ATX Markdown heading sections into locally complete chunks that include the section heading and direct body;
 - ignore heading-looking lines inside fenced code blocks;
@@ -147,11 +147,27 @@ Current behavior:
 - return selected chunks in original document order after ranking/selection;
 - zero budgets return no chunks and negative budgets fail explicitly.
 
-The current `location` is a deterministic location in the current Markdown document, **not** a durable logical-memory identifier and **not** Event provenance. #1260 still owns richer provenance conventions and durable logical identity across Markdown reorganization.
+`compile_cognitive_input(..., retrieved_memory=...)` now accepts already-selected `MemoryChunk` values and projects them into a dedicated `CognitiveInput.memory` layer. Each projected item contains only:
 
-This primitive is pure read/select behavior. It does not mutate `MEMORY.md`, State, Events, or indexes and does not call an LLM. It also does not yet place the selected chunks into `CognitiveInput`: `ContextItem.sources` currently carries Event-oriented provenance, so this slice intentionally avoids inventing pseudo Event IDs or collapsing crystallized synthesis into dialogue provenance.
+```text
+content
+location
+```
 
-Projection into the ordinary cognitive input needs an explicit crystallized-memory layer/reference contract, followed by State-vs-memory stale/conflict handling. Those remain later #1267 slices.
+This separation is intentional:
+
+```text
+Working Context sources[]   RelayLM Event provenance
+Retrieved Memory location   current Markdown document locator
+```
+
+A memory `location` is **not** an Event ID, is **not** eligible as StateCandidate provenance, and is **not yet** durable logical-memory identity across Markdown reorganization. #1260 still owns richer Markdown provenance conventions and stable logical memory identity.
+
+The compiler consumes the supplied `retrieved_memory` exactly as already-selected evidence; it does not silently run broader retrieval or change its scope. Projection is read/select/project only and does not mutate `MEMORY.md`, State, Events, or indexes and does not call an LLM.
+
+The OpenAI-compatible provider serializes this layer separately from `context` and instructs the model that crystallized memory is lower authority than active State. This is a provider-facing safety rule, not the final deterministic conflict solution.
+
+The ordinary `run_user_turn` / streaming paths do **not** yet automatically retrieve or populate `CognitiveInput.memory`. No runtime default MEMORY chunk or character budget has been chosen. Deterministic stale/conflict suppression before projection also remains deferred under #1267.
 
 ## Budget model
 
@@ -173,12 +189,12 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 
 #1267 remains the authority for later Context selection and retrieval work, including:
 
-- runtime default State budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
+- runtime default State/MEMORY budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
 - `unresolved`, `referent`, and `active_task` retention beyond pure recency;
-- projection of selected `MEMORY.md` chunks into CognitiveInput with explicit crystallized-memory layer/reference semantics;
+- ordinary-runtime MEMORY retrieval wiring using evidence-backed explicit tier budgets;
+- deterministic State-vs-memory stale/conflict suppression before provider projection;
 - durable logical memory identity/provenance and temporal-scope consumption as #1260 conventions become available;
 - targeted Event evidence retrieval;
-- source-role-aware stale/conflict suppression;
 - redundancy reduction across State / Working Context / Memory / Events;
 - total token-aware tier budgeting and cross-layer diagnostics;
 - embedding/index acceleration only after authority eligibility is preserved.
