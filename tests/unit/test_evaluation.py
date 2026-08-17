@@ -11,6 +11,10 @@ from relaylm.evaluation import (
     evaluate_boolean_state_memory_authority,
     evaluate_cjk_retrieval_relevance,
     evaluate_comparative_preference_preservation,
+    evaluate_continuity_active_task_retention,
+    evaluate_continuity_context_retention,
+    evaluate_continuity_lifecycle,
+    evaluate_continuity_turn,
     evaluate_correction_remove_semantics,
     evaluate_crystallization_integrity,
     evaluate_degree_hint_integrity,
@@ -90,6 +94,10 @@ def test_native_report_is_machine_readable_without_composite_score() -> None:
         "cjk_retrieval_relevance",
         "degree_state_memory_authority",
         "retrieval_query_features",
+        "continuity_lifecycle",
+        "continuity_turn",
+        "continuity_context_retention",
+        "continuity_active_task_retention",
     ]
     assert "score" not in payload
     assert "weight" not in report.to_json()
@@ -316,5 +324,37 @@ def test_retrieval_query_features_evaluation_is_registered() -> None:
     result = asyncio.run(evaluate_retrieval_query_features())
 
     assert result.scenario_id == "retrieval_query_features"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+
+
+def test_continuity_lifecycle_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_continuity_lifecycle())
+
+    assert result.scenario_id == "continuity_lifecycle"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+
+
+def test_continuity_turn_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_continuity_turn())
+
+    assert result.scenario_id == "continuity_turn"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+
+
+def test_continuity_context_retention_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_continuity_context_retention())
+
+    assert result.scenario_id == "continuity_context_retention"
+    assert result.status == "pass"
+    assert all(check.passed for check in result.checks)
+
+
+def test_continuity_active_task_retention_evaluation_is_registered() -> None:
+    result = asyncio.run(evaluate_continuity_active_task_retention())
+
+    assert result.scenario_id == "continuity_active_task_retention"
     assert result.status == "pass"
     assert all(check.passed for check in result.checks)
