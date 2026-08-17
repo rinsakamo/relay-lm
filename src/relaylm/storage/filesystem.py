@@ -80,6 +80,22 @@ class CharacterDirectory:
             raise CharacterDataError(str(exc)) from exc
 
     def iter_events(self) -> Iterator[Event]:
+        self._ensure_event_cache()
+        return iter(self._event_cache)
+
+    def event_retrieval_source(self) -> EventDiscoveryIndex:
+        """Return derived lexical discovery tied to the validated Journal snapshot."""
+
+        self._ensure_event_cache()
+        if (
+            self._event_discovery_index is None
+            or self._event_discovery_signature != self._event_cache_signature
+        ):
+            self._event_discovery_index = EventDiscoveryIndex(self._event_cache)
+            self._event_discovery_signature = self._event_cache_signature
+        return self._event_discovery_index
+
+    def _ensure_event_cache(self) -> None:
         signature = self._events_signature()
         if not self._event_cache_loaded or signature != self._event_cache_signature:
             snapshot = self._read_events_snapshot()
@@ -90,19 +106,6 @@ class CharacterDirectory:
             self._event_cache = snapshot
             self._event_cache_signature = signature_after_read
             self._event_cache_loaded = True
-        return iter(self._event_cache)
-
-    def event_retrieval_source(self) -> EventDiscoveryIndex:
-        """Return derived lexical discovery tied to the validated Journal snapshot."""
-
-        self.iter_events()
-        if (
-            self._event_discovery_index is None
-            or self._event_discovery_signature != self._event_cache_signature
-        ):
-            self._event_discovery_index = EventDiscoveryIndex(self._event_cache)
-            self._event_discovery_signature = self._event_cache_signature
-        return self._event_discovery_index
 
     def _read_events_snapshot(self) -> tuple[Event, ...]:
         try:
