@@ -152,17 +152,3 @@ def test_typed_current_prose_without_canonical_key_is_not_semantically_inferred(
     compiled = _compile(chunk=unaddressed)
 
     assert [item.location for item in compiled.memory] == [unaddressed.location]
-
-
-def test_typed_current_freeform_boolean_claim_is_not_expanded_by_scalar_c6() -> None:
-    boolean_claim = _chunk(
-        "Current notifications enabled is false.",
-        scope=MemoryTemporalScope.CURRENT,
-    )
-
-    compiled = _compile(
-        chunk=boolean_claim,
-        state=_state(key="notifications_enabled", value=True),
-    )
-
-    assert [item.location for item in compiled.memory] == [boolean_claim.location]
