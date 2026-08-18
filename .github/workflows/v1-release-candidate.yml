@@ -34,7 +34,7 @@ jobs:
           test -z "$(git status --porcelain)"
           git fetch --force --tags origin v1:refs/remotes/origin/v1
           CURRENT_V1_COMMIT="$(git rev-parse origin/v1)"
-          python tools/release_candidate.py check-source \
+          python -m tools.release_candidate check-source \
             --candidate "$CANDIDATE_COMMIT" \
             --current-v1 "$CURRENT_V1_COMMIT"
 
@@ -48,7 +48,7 @@ jobs:
           CANDIDATE_COMMIT: ${{ inputs.candidate_commit }}
         run: |
           RELAYLM_PACKAGE_VERSION="$(PYTHONPATH=src python -c 'from relaylm import __version__; print(__version__)')"
-          python tools/release_candidate.py check-version "$RELAYLM_PACKAGE_VERSION"
+          python -m tools.release_candidate check-version "$RELAYLM_PACKAGE_VERSION"
           python tools/release_identity.py assert-tag-absent "$RELAYLM_PACKAGE_VERSION"
           echo "RELAYLM_PACKAGE_VERSION=$RELAYLM_PACKAGE_VERSION" >> "$GITHUB_ENV"
           echo "CANDIDATE_COMMIT=$CANDIDATE_COMMIT" >> "$GITHUB_ENV"
@@ -67,7 +67,7 @@ jobs:
             name="$(basename "$artifact")"
             cmp "$artifact" "rebuild/$name"
           done
-          python tools/release_candidate.py inspect \
+          python -m tools.release_candidate inspect \
             --version "$RELAYLM_PACKAGE_VERSION" \
             --artifacts candidate
 
@@ -78,7 +78,7 @@ jobs:
             --commit "$CANDIDATE_COMMIT" \
             candidate/relaylm-*.whl candidate/relaylm-*.tar.gz \
             > candidate/release-identity.json
-          python tools/release_candidate.py verify-manifest \
+          python -m tools.release_candidate verify-manifest \
             --version "$RELAYLM_PACKAGE_VERSION" \
             --commit "$CANDIDATE_COMMIT" \
             --manifest candidate/release-identity.json \
@@ -124,7 +124,7 @@ jobs:
           test "$(cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" --version)" = "relaylm $RELAYLM_PACKAGE_VERSION"
           (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" doctor --config "$SMOKE_ROOT/runtime.yaml" --json > "$GITHUB_WORKSPACE/candidate/wheel-doctor.json")
           (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm-eval" > "$GITHUB_WORKSPACE/candidate/wheel-evaluation.json")
-          python tools/release_candidate.py verify-runtime \
+          python -m tools.release_candidate verify-runtime \
             --doctor candidate/wheel-doctor.json \
             --evaluation candidate/wheel-evaluation.json
           pushd "$RUNNER_TEMP" >/dev/null
@@ -145,7 +145,7 @@ jobs:
             sleep 1
           done
           test "$HEALTH_OK" -eq 1
-          kill "$SERVER_PID"
+          kill "$SERVER_PID" 2>/dev/null || true
           wait "$SERVER_PID" || true
           trap - EXIT
 
@@ -159,13 +159,13 @@ jobs:
           test "$(cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" --version)" = "relaylm $RELAYLM_PACKAGE_VERSION"
           (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" doctor --config "$SMOKE_ROOT/runtime.yaml" --json > "$GITHUB_WORKSPACE/candidate/sdist-doctor.json")
           (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm-eval" > "$GITHUB_WORKSPACE/candidate/sdist-evaluation.json")
-          python tools/release_candidate.py verify-runtime \
+          python -m tools.release_candidate verify-runtime \
             --doctor candidate/sdist-doctor.json \
             --evaluation candidate/sdist-evaluation.json
 
       - name: Reverify immutable candidate bytes after execution
         run: |
-          python tools/release_candidate.py verify-manifest \
+          python -m tools.release_candidate verify-manifest \
             --version "$RELAYLM_PACKAGE_VERSION" \
             --commit "$CANDIDATE_COMMIT" \
             --manifest candidate/release-identity.json \
