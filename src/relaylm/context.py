@@ -719,6 +719,25 @@ def _memory_chunk_is_shadowed(
                         if assignment is not None
                     ):
                         return True
+            if heading_addresses_key and not inline_addresses_key:
+                body_value = _single_atx_heading_body_value(chunk.content)
+                if body_value is not None:
+                    explicit_body = _explicit_reserved_degree_claim(body_value)
+                    if explicit_body is not None:
+                        body_semantic, body_degree = explicit_body
+                        body_semantic_terms = _lexical_terms(body_semantic)
+                        current_semantic_terms = _lexical_terms(current_semantic)
+                        if (
+                            len(body_semantic_terms) > 1
+                            and body_semantic_terms[0] == "not"
+                            and body_semantic_terms[1] != "not"
+                        ):
+                            if (
+                                body_semantic_terms[1:] == current_semantic_terms
+                                and body_degree == current_degree
+                            ):
+                                return True
+                            continue
             if not _contains_lexical_value(chunk.content, current_semantic):
                 return True
             explicit_degrees = _explicit_degree_hint_assignments(
