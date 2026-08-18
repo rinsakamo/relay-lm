@@ -7,6 +7,7 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI
 
+from relaylm import __version__
 from relaylm.api.openai import create_openai_router
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveProvider
@@ -37,7 +38,7 @@ def create_app(
             if close is not None:
                 await close()
 
-    app = FastAPI(title="RelayLM", version="1.0.0.dev0", lifespan=lifespan)
+    app = FastAPI(title="RelayLM", version=__version__, lifespan=lifespan)
     app.include_router(
         create_openai_router(
             character=character,

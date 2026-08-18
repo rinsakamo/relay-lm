@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from relaylm import __version__
 from relaylm.cli import run_cli
 from relaylm.runtime_config import RuntimeConfigErrorCode
 from relaylm.runtime_preflight import RuntimePreflightError
@@ -50,7 +51,7 @@ def test_version_is_available_without_runtime_configuration() -> None:
     code = run_cli(["--version"], environ={}, stdout=stdout, stderr=stderr)
 
     assert code == 0
-    assert stdout.getvalue().strip() == "relaylm 1.0.0.dev0"
+    assert stdout.getvalue().strip() == f"relaylm {__version__}"
     assert stderr.getvalue() == ""
 
 
