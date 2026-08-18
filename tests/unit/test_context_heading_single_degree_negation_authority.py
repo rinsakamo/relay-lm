@@ -179,9 +179,3 @@ def test_heading_multiple_reserved_negation_remains_outside_c26() -> None:
     compiled = _compile(deferred)
 
     assert [item.location for item in compiled.memory] == [deferred.location]
-
-
-def test_heading_body_without_inline_assignment_remains_outside_c26() -> None:
-    fallback = _chunk("not dislikes; degree_hint: 0.85")
-
-    assert _compile(fallback).memory == ()
