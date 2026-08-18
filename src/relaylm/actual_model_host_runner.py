@@ -10,6 +10,10 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from relaylm.actual_model_artifacts import character_fixture_revision
+from relaylm.actual_model_boundary import (
+    evaluate_actual_model_deterministic_boundary,
+    write_actual_model_deterministic_boundary_verdict,
+)
 from relaylm.actual_model_evaluation import (
     ActualModelRunManifest,
     ExplicitBudgetConfiguration,
@@ -203,6 +207,9 @@ class ActualModelHostRunArtifact:
     execution_id: str
     run_id: str
     artifact_path: str
+    boundary_verdict_id: str
+    boundary_outcome: str
+    boundary_artifact_path: str
 
     def to_mapping(self) -> dict[str, str]:
         return {
@@ -210,6 +217,9 @@ class ActualModelHostRunArtifact:
             "execution_id": self.execution_id,
             "run_id": self.run_id,
             "artifact_path": self.artifact_path,
+            "boundary_verdict_id": self.boundary_verdict_id,
+            "boundary_outcome": self.boundary_outcome,
+            "boundary_artifact_path": self.boundary_artifact_path,
         }
 
 
@@ -465,12 +475,22 @@ async def execute_actual_model_host_run(
                 result=result,
                 artifact_root=artifact_base,
             )
+            verdict = evaluate_actual_model_deterministic_boundary(
+                result=result.execution,
+            )
+            boundary_path = write_actual_model_deterministic_boundary_verdict(
+                verdict=verdict,
+                artifact_root=artifact_base,
+            )
             results.append(
                 ActualModelHostRunArtifact(
                     scenario_id=scenario_id,
                     execution_id=result.execution_id,
                     run_id=result.run_id,
                     artifact_path=str(path),
+                    boundary_verdict_id=verdict.verdict_id,
+                    boundary_outcome=verdict.outcome,
+                    boundary_artifact_path=str(boundary_path),
                 )
             )
     finally:
