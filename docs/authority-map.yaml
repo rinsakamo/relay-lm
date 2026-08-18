@@ -78,6 +78,7 @@ domains:
       - src/relaylm/budget_runtime.py
       - src/relaylm/budget_diagnostics.py
       - src/relaylm/providers/openai_compatible.py
+      - src/relaylm/providers/openai_compatible_budget.py
       - src/relaylm/turn.py
     tests:
       - tests/unit/test_cognitive_budget_accounting.py
@@ -89,6 +90,7 @@ domains:
       - tests/unit/test_cognitive_budget_turn_wiring.py
       - tests/unit/test_cognitive_budget_diagnostics.py
       - tests/unit/test_cognitive_budget_turn_diagnostics.py
+      - tests/unit/test_openai_compatible_budget.py
     docs:
       - docs/architecture/cognitive-runtime.md
       - docs/architecture/core.md
@@ -139,13 +141,43 @@ domains:
   provider_and_api:
     runtime:
       - src/relaylm/providers/openai_compatible.py
+      - src/relaylm/providers/openai_compatible_budget.py
+      - src/relaylm/providers/openai_compatible_decoding.py
+      - src/relaylm/providers/openai_compatible_identity.py
       - src/relaylm/api/openai.py
       - src/relaylm/server.py
     tests:
+      - tests/unit/test_openai_boundary.py
+      - tests/unit/test_streaming_boundary.py
+      - tests/unit/test_openai_compatible_budget.py
+      - tests/unit/test_openai_compatible_streaming_parity.py
+      - tests/unit/test_openai_compatible_decoding.py
+      - tests/unit/test_openai_compatible_identity.py
       - tests/unit/test_event_evidence_projection.py
     docs:
       - docs/contracts/provider-wire.md
+      - docs/contracts/provider-decoding.md
+      - docs/contracts/provider-identity.md
       - docs/contracts/openai-api.md
+
+  runtime_configuration:
+    runtime:
+      - src/relaylm/runtime_config.py
+      - src/relaylm/runtime_config_loader.py
+      - src/relaylm/runtime_assembly.py
+      - src/relaylm/runtime_preflight.py
+      - src/relaylm/cli.py
+      - src/relaylm/api/openai.py
+      - src/relaylm/server.py
+    tests:
+      - tests/unit/test_runtime_config_contract.py
+      - tests/unit/test_runtime_config_loader.py
+      - tests/unit/test_runtime_assembly.py
+      - tests/unit/test_runtime_cli.py
+    docs:
+      - docs/contracts/runtime-configuration.md
+      - docs/contracts/runtime-assembly.md
+      - docs/contracts/runtime-operator.md
 
   actual_model_evaluation:
     runtime:
@@ -161,6 +193,9 @@ domains:
       - src/relaylm/actual_model_cohort.py
       - src/relaylm/actual_model_boundary.py
       - src/relaylm/actual_model_pressure.py
+      - src/relaylm/actual_model_cognitive_budget.py
+      - src/relaylm/actual_model_targets.py
+      - evaluation/actual_model/targets/gemma-4-12b-it-q4-k-m-v1.json
     tests:
       - tests/unit/test_actual_model_evaluation.py
       - tests/unit/test_actual_model_artifacts.py
@@ -176,7 +211,34 @@ domains:
       - tests/unit/test_actual_model_boundary.py
       - tests/unit/test_actual_model_pressure.py
       - tests/unit/test_actual_model_scenario_coverage.py
-    docs: []
+      - tests/unit/test_actual_model_cognitive_budget.py
+      - tests/unit/test_actual_model_targets.py
+    docs:
+      - docs/reference/actual-model-cognitive-budget-evidence.md
+
+  calibration:
+    runtime: []
+    tests: []
+    docs:
+      - docs/contracts/calibration-evidence.md
+
+  release_engineering:
+    runtime:
+      - pyproject.toml
+      - src/relaylm/_version.py
+      - tools/release_identity.py
+      - tools/release_candidate.py
+      - .github/workflows/v1-ci.yml
+      - .github/workflows/v1-release-identity.yml
+      - .github/workflows/v1-release-candidate.yml
+    tests:
+      - tests/unit/test_release_version.py
+      - tests/unit/test_release_identity_policy.py
+      - tests/unit/test_release_candidate.py
+    docs:
+      - docs/contracts/release-distribution.md
+      - docs/contracts/release-identity.md
+      - docs/contracts/release-candidate.md
 
   evaluation:
     runtime:
