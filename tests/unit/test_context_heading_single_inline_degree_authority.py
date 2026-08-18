@@ -141,14 +141,3 @@ def test_nonexact_heading_single_inline_degree_value_remains_c1_fallback() -> No
     compiled = _compile(fallback)
 
     assert [item.location for item in compiled.memory] == [fallback.location]
-
-
-def test_heading_multiple_same_key_reserved_assignments_remain_outside_c21() -> None:
-    deferred = _chunk(
-        "tea: likes; degree_hint: 0.85\n"
-        "tea: dislikes; degree_hint: 0.85"
-    )
-
-    compiled = _compile(deferred)
-
-    assert [item.location for item in compiled.memory] == [deferred.location]

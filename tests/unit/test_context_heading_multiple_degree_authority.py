@@ -22,7 +22,7 @@ def _current_event() -> Event:
         actor="user",
         payload={"content": "What is current about tea?"},
         event_id="current-event",
-        timestamp="2026-08-18T18:58:00+09:00",
+        timestamp="2026-08-18T21:05:00+09:00",
     )
 
 
@@ -46,8 +46,8 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
     return MemoryTemporalAuthority(
         temporal_scope=scope,
         provenance=MemoryProvenance(
-            memory_id=f"memory-inline-multi-degree-{scope.value}",
-            derivation_id=f"derivation-inline-multi-degree-{scope.value}",
+            memory_id=f"memory-heading-multi-degree-{scope.value}",
+            derivation_id=f"derivation-heading-multi-degree-{scope.value}",
             sources=(
                 MemoryProvenanceSource(
                     kind=MemoryProvenanceSourceKind.EVENT,
@@ -62,13 +62,13 @@ def _chunk(
     assignments: tuple[str, ...],
     *,
     scope: MemoryTemporalScope = MemoryTemporalScope.UNKNOWN,
-    heading: str = "Profile Notes",
+    heading: str = "Tea",
     tail: str | None = None,
 ) -> MemoryChunk:
     body_lines = assignments + ((tail,) if tail is not None else ())
     return MemoryChunk(
         heading_path=("Memory", heading),
-        location=f"memory/MEMORY.md#memory/inline-multi-degree-{scope.value}",
+        location=f"memory/MEMORY.md#memory/heading-multi-degree-{scope.value}",
         content=f"## {heading}\n\n" + "\n".join(body_lines),
         temporal_authority=_authority(scope),
     )
@@ -83,7 +83,7 @@ def _compile(chunk: MemoryChunk):
     )
 
 
-def test_inline_multiple_semantic_conflict_suppresses_despite_local_match() -> None:
+def test_heading_multiple_semantic_conflict_suppresses_despite_local_match() -> None:
     stale = _chunk(
         (
             "tea: likes; degree_hint: 0.85",
@@ -94,7 +94,7 @@ def test_inline_multiple_semantic_conflict_suppresses_despite_local_match() -> N
     assert _compile(stale).memory == ()
 
 
-def test_inline_multiple_semantic_conflicts_suppress_despite_tail_match() -> None:
+def test_heading_multiple_semantic_conflicts_suppress_despite_tail_match() -> None:
     stale = _chunk(
         (
             "tea: dislikes; degree_hint: 0.85",
@@ -106,7 +106,7 @@ def test_inline_multiple_semantic_conflicts_suppress_despite_tail_match() -> Non
     assert _compile(stale).memory == ()
 
 
-def test_typed_current_uses_same_inline_multiple_degree_rule() -> None:
+def test_typed_current_uses_same_heading_multiple_degree_rule() -> None:
     stale = _chunk(
         (
             "tea: likes; degree_hint: 0.85",
@@ -118,7 +118,7 @@ def test_typed_current_uses_same_inline_multiple_degree_rule() -> None:
     assert _compile(stale).memory == ()
 
 
-def test_inline_multiple_all_matching_exact_reserved_assignments_retain() -> None:
+def test_heading_multiple_all_matching_exact_reserved_assignments_retain() -> None:
     current = _chunk(
         (
             "tea: likes; degree_hint: 0.85",
@@ -131,7 +131,7 @@ def test_inline_multiple_all_matching_exact_reserved_assignments_retain() -> Non
     assert [item.location for item in compiled.memory] == [current.location]
 
 
-def test_inline_multiple_degree_mismatch_remains_suppressed() -> None:
+def test_heading_multiple_degree_mismatch_remains_suppressed() -> None:
     stale = _chunk(
         (
             "tea: likes; degree_hint: 0.85",
@@ -142,7 +142,19 @@ def test_inline_multiple_degree_mismatch_remains_suppressed() -> None:
     assert _compile(stale).memory == ()
 
 
-def test_historical_inline_multiple_reserved_assignments_remain_exempt() -> None:
+def test_heading_multiple_matches_do_not_override_section_wide_stale_degree() -> None:
+    stale = _chunk(
+        (
+            "tea: likes; degree_hint: 0.85",
+            "tea: likes; degree_hint: 0.85",
+        ),
+        tail="degree_hint: 0.65",
+    )
+
+    assert _compile(stale).memory == ()
+
+
+def test_historical_heading_multiple_reserved_assignments_remain_exempt() -> None:
     historical = _chunk(
         (
             "tea: likes; degree_hint: 0.85",
@@ -156,7 +168,7 @@ def test_historical_inline_multiple_reserved_assignments_remain_exempt() -> None
     assert [item.location for item in compiled.memory] == [historical.location]
 
 
-def test_nonexact_member_prevents_partial_c23_interpretation() -> None:
+def test_nonexact_member_prevents_partial_c24_interpretation() -> None:
     fallback = _chunk(
         (
             "tea: likes; degree_hint: 0.85; note: survey",
@@ -169,7 +181,7 @@ def test_nonexact_member_prevents_partial_c23_interpretation() -> None:
     assert [item.location for item in compiled.memory] == [fallback.location]
 
 
-def test_negated_member_prevents_partial_c23_interpretation() -> None:
+def test_negated_member_prevents_partial_c24_interpretation() -> None:
     fallback = _chunk(
         (
             "tea: not likes; degree_hint: 0.85",
@@ -182,7 +194,19 @@ def test_negated_member_prevents_partial_c23_interpretation() -> None:
     assert [item.location for item in compiled.memory] == [fallback.location]
 
 
-def test_single_inline_reserved_assignment_remains_governed_by_c22() -> None:
+def test_inline_only_multiple_reserved_assignments_remain_governed_by_c23() -> None:
+    stale = _chunk(
+        (
+            "tea: likes; degree_hint: 0.85",
+            "tea: dislikes; degree_hint: 0.85",
+        ),
+        heading="Profile Notes",
+    )
+
+    assert _compile(stale).memory == ()
+
+
+def test_heading_single_reserved_assignment_remains_governed_by_c21() -> None:
     stale = _chunk(
         ("tea: dislikes; degree_hint: 0.85",),
         tail="A separate note says Rin likes tea.",
@@ -204,7 +228,7 @@ def test_single_inline_reserved_assignment_remains_governed_by_c22() -> None:
         ),
     ],
 )
-def test_any_unrecognized_member_keeps_set_on_c1_fallback(
+def test_any_unrecognized_member_keeps_heading_set_on_c1_fallback(
     assignments: tuple[str, ...],
 ) -> None:
     fallback = _chunk(assignments)
