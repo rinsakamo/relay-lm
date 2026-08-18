@@ -43,21 +43,29 @@ response   candidates
 
 A successful MVP can stop and restart a character and continue naturally without replaying raw transcript history as truth.
 
-## Run the current text MVP
+## Build and run the current v1 artifact
 
-Install the `v1` package and point RelayLM at one Character Package and one OpenAI-compatible provider:
+No public publication channel is assumed yet. From a clean `v1` source checkout, build the current distribution artifacts and install the wheel non-editably:
 
 ```bash
-pip install -e .
+python -m pip install build
+python -m build --wheel --sdist
+python -m venv .relaylm-runtime
+.relaylm-runtime/bin/python -m pip install dist/relaylm-*.whl
+```
 
-export RELAYLM_CHARACTER_DIR=examples/starter
+Keep the Character Package outside the installed Python package and point the runtime at its filesystem path:
+
+```bash
+export RELAYLM_CHARACTER_DIR=/absolute/path/to/character
 export RELAYLM_PROVIDER_BASE_URL=http://127.0.0.1:1234/v1
 export RELAYLM_PROVIDER_MODEL='<provider-model-id>'
 
-relaylm
+.relaylm-runtime/bin/relaylm doctor
+.relaylm-runtime/bin/relaylm serve
 ```
 
-Optional provider authentication uses `RELAYLM_PROVIDER_API_KEY`. The server binds to `127.0.0.1:8090` by default; `RELAYLM_HOST` and `RELAYLM_PORT` can override this runtime setting.
+Optional provider authentication uses `RELAYLM_PROVIDER_API_KEY`. The server binds to `127.0.0.1:8090` by default; `RELAYLM_HOST` and `RELAYLM_PORT` can override this runtime setting. `examples/starter` is a source-checkout example, not an installed-artifact runtime dependency.
 
 The client endpoint is:
 
@@ -69,10 +77,10 @@ The current OpenAI-compatible provider path supports both buffered `stream=false
 
 ## Native evaluation
 
-The current deterministic RelayLM-native evaluation foundation can be run with:
+The current deterministic RelayLM-native evaluation foundation can be run from the installed artifact with:
 
 ```bash
-relaylm-eval
+.relaylm-runtime/bin/relaylm-eval
 ```
 
 It emits machine-readable invariant checks by RelayLM boundary. The current report intentionally has no weighted composite score. See `docs/reference/evaluation.md` and #1247.
@@ -89,4 +97,4 @@ Semantic behavior changes are test-first; behavior-preserving and docs-only tran
 
 Repository-use conventions are in `docs/reference/repository-practices.md`. Durable architecture decisions are intentionally sparse under `docs/decisions/`, and `docs/authority-map.yaml` provides a non-enforcing owner → tests → docs navigation index.
 
-See `docs/architecture/core.md`, `docs/contracts/openai-api.md`, `docs/reference/development-workflow.md`, and issue #1259.
+See `docs/architecture/core.md`, `docs/contracts/openai-api.md`, `docs/contracts/release-distribution.md`, `docs/reference/development-workflow.md`, and issue #1259.

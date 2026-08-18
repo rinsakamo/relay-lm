@@ -23,8 +23,14 @@ test = ["pytest>=8.3"]
 relaylm = "relaylm.cli:main"
 relaylm-eval = "relaylm.evaluation:main"
 
+[tool.hatch.build]
+reproducible = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/relaylm"]
+
+[tool.hatch.build.targets.sdist]
+only-include = ["src/relaylm", "LICENSE"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

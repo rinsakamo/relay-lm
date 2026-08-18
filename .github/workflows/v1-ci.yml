@@ -74,7 +74,7 @@ jobs:
 
   package-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Check out exact transaction head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -91,26 +91,140 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Build RelayLM wheel
-        run: python -m pip wheel . --no-deps --wheel-dir dist
+      - name: Install build frontend
+        run: python -m pip install build
 
-      - name: Install wheel into clean virtual environment
+      - name: Build wheel and sdist twice
         run: |
-          python -m venv .package-smoke
-          .package-smoke/bin/python -m pip install dist/relaylm-*.whl
+          python -m build --wheel --sdist --outdir dist/first
+          python -m build --wheel --sdist --outdir dist/second
+          test "$(find dist/first -maxdepth 1 -type f | wc -l)" -eq 2
+          test "$(find dist/second -maxdepth 1 -type f | wc -l)" -eq 2
+          for artifact in dist/first/*; do
+            name="$(basename "$artifact")"
+            cmp "$artifact" "dist/second/$name"
+            cp "$artifact" "dist/$name"
+          done
+          sha256sum dist/relaylm-*.whl dist/relaylm-*.tar.gz
 
-      - name: Verify installed package consistency
-        run: .package-smoke/bin/python -m pip check
-
-      - name: Verify package imports and console entry points
+      - name: Inspect built artifact contents and metadata
         run: |
-          .package-smoke/bin/python - <<'PY'
-          from importlib.metadata import entry_points, version
+          python - <<'PY'
+          from email.parser import BytesParser
+          from pathlib import Path
+          import tarfile
+          import zipfile
+
+          expected_name = "relaylm"
+          expected_version = "1.0.0.dev0"
+          wheel_files = list(Path("dist").glob("relaylm-*.whl"))
+          sdist_files = list(Path("dist").glob("relaylm-*.tar.gz"))
+          assert len(wheel_files) == 1, wheel_files
+          assert len(sdist_files) == 1, sdist_files
+
+          forbidden_roots = ("tests/", "docs/", "examples/", "evaluation/", ".github/", "constraints/")
+
+          with zipfile.ZipFile(wheel_files[0]) as archive:
+              names = set(archive.namelist())
+              assert "relaylm/__init__.py" in names
+              assert "relaylm/cli.py" in names
+              assert "relaylm/evaluation.py" in names
+              assert not any(name.startswith(forbidden_roots) for name in names)
+
+              metadata_name = next(name for name in names if name.endswith(".dist-info/METADATA"))
+              metadata = BytesParser().parsebytes(archive.read(metadata_name))
+              assert metadata["Name"] == expected_name
+              assert metadata["Version"] == expected_version
+              assert metadata["Requires-Python"] == ">=3.12"
+
+              entry_points_name = next(name for name in names if name.endswith(".dist-info/entry_points.txt"))
+              entry_points = archive.read(entry_points_name).decode("utf-8")
+              assert "relaylm = relaylm.cli:main" in entry_points
+              assert "relaylm-eval = relaylm.evaluation:main" in entry_points
+
+          with tarfile.open(sdist_files[0], "r:gz") as archive:
+              names = set(archive.getnames())
+              root = f"relaylm-{expected_version}/"
+              required = {
+                  root + "pyproject.toml",
+                  root + "README.md",
+                  root + "LICENSE",
+                  root + "src/relaylm/__init__.py",
+                  root + "src/relaylm/cli.py",
+                  root + "src/relaylm/evaluation.py",
+              }
+              assert required <= names, sorted(required - names)
+              assert not any(
+                  name.startswith(root + forbidden)
+                  for name in names
+                  for forbidden in forbidden_roots
+              )
+          PY
+
+      - name: Create installed-artifact smoke fixture
+        run: |
+          SMOKE_ROOT="$RUNNER_TEMP/relaylm-installed-smoke"
+          CHARACTER="$SMOKE_ROOT/character"
+          mkdir -p "$CHARACTER"
+          cat > "$CHARACTER/config.yaml" <<'YAML'
+          format_version: 1
+          character:
+            id: release-smoke
+            name: Release Smoke
+          YAML
+          printf '%s\n' 'A valid release smoke identity.' > "$CHARACTER/SOUL.md"
+          cat > "$SMOKE_ROOT/runtime.yaml" <<YAML
+          format_version: 1
+          character:
+            directory: $CHARACTER
+          provider:
+            adapter: openai_compatible
+            base_url: http://127.0.0.1:1234/v1
+            model: release-smoke-model
+          server:
+            host: 127.0.0.1
+            port: 8090
+          YAML
+
+      - name: Install and execute wheel outside checkout
+        run: |
+          ENV_ROOT="$RUNNER_TEMP/relaylm-wheel-env"
+          SMOKE_ROOT="$RUNNER_TEMP/relaylm-installed-smoke"
+          python -m venv "$ENV_ROOT"
+          "$ENV_ROOT/bin/python" -m pip install dist/relaylm-*.whl
+          "$ENV_ROOT/bin/python" -m pip check
+          test "$(cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" --version)" = "relaylm 1.0.0.dev0"
+          (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" doctor --config "$SMOKE_ROOT/runtime.yaml" --json > "$SMOKE_ROOT/wheel-doctor.json")
+          (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm-eval" > "$SMOKE_ROOT/wheel-eval.json")
+          "$ENV_ROOT/bin/python" - <<'PY'
+          import json
+          from importlib.metadata import version
+          from pathlib import Path
           import relaylm
 
+          root = Path(__import__("os").environ["RUNNER_TEMP"]) / "relaylm-installed-smoke"
           assert version("relaylm") == "1.0.0.dev0"
-          scripts = {entry.name for entry in entry_points(group="console_scripts")}
-          assert {"relaylm", "relaylm-eval"} <= scripts
+          assert relaylm.__version__ == "1.0.0.dev0"
+          assert json.loads((root / "wheel-doctor.json").read_text())["status"] == "ok"
+          assert json.loads((root / "wheel-eval.json").read_text())["status"] == "pass"
+          PY
+
+      - name: Install and execute sdist outside checkout
+        run: |
+          ENV_ROOT="$RUNNER_TEMP/relaylm-sdist-env"
+          SMOKE_ROOT="$RUNNER_TEMP/relaylm-installed-smoke"
+          python -m venv "$ENV_ROOT"
+          "$ENV_ROOT/bin/python" -m pip install dist/relaylm-*.tar.gz
+          "$ENV_ROOT/bin/python" -m pip check
+          test "$(cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" --version)" = "relaylm 1.0.0.dev0"
+          (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" doctor --config "$SMOKE_ROOT/runtime.yaml" --json > "$SMOKE_ROOT/sdist-doctor.json")
+          "$ENV_ROOT/bin/python" - <<'PY'
+          import json
+          from pathlib import Path
+          import os
+
+          root = Path(os.environ["RUNNER_TEMP"]) / "relaylm-installed-smoke"
+          assert json.loads((root / "sdist-doctor.json").read_text())["status"] == "ok"
           PY
 
   lint:
