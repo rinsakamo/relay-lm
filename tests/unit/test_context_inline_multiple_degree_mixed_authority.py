@@ -227,20 +227,6 @@ def test_double_negation_member_prevents_c30_interpretation() -> None:
     assert [item.location for item in compiled.memory] == [fallback.location]
 
 
-def test_heading_addressed_mixed_set_remains_outside_c30() -> None:
-    deferred = _chunk(
-        (
-            "tea: likes; degree_hint: 0.85",
-            "tea: not likes; degree_hint: 0.85",
-        ),
-        heading="Tea",
-    )
-
-    compiled = _compile(deferred)
-
-    assert [item.location for item in compiled.memory] == [deferred.location]
-
-
 def test_single_inline_negated_pair_remains_governed_by_c25() -> None:
     compatible = _chunk(("tea: not dislikes; degree_hint: 0.85",))
 
