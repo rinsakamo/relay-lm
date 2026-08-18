@@ -5,6 +5,7 @@ import asyncio
 import json
 import os
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
@@ -910,6 +911,44 @@ async def execute_actual_model_host_run(
     return tuple(results)
 
 
+def _resolve_canonical_host_token_counter_capabilities(
+    *,
+    condition: ActualModelHostCondition,
+    repo_root: str | Path,
+    model_artifact_path: str | Path,
+    proof_path: str | Path | None,
+    node_path: str | Path | None = None,
+    sdk_root: str | Path | None = None,
+) -> Mapping[str, HostTokenCounterCapability] | None:
+    """Resolve the host-only counter for strict total-budget conditions."""
+
+    if condition.format_version != ACTUAL_MODEL_HOST_TOTAL_BUDGET_FORMAT_VERSION:
+        return None
+    target_path = CANONICAL_TARGET_PATHS.get(condition.target_id)
+    if target_path is None:
+        raise ActualModelHostRunnerError(
+            "no canonical LM Studio counter target is registered for this condition"
+        )
+    try:
+        from relaylm.actual_model_lm_studio_counter import (
+            build_lm_studio_counter_capabilities,
+        )
+
+        target = load_actual_model_target(Path(repo_root) / target_path)
+        return build_lm_studio_counter_capabilities(
+            condition=condition,
+            target=target,
+            artifact_path=model_artifact_path,
+            proof_path=proof_path,
+            node_path=node_path,
+            sdk_root=sdk_root,
+        )
+    except (OSError, ValueError) as exc:
+        raise ActualModelHostRunnerError(
+            f"LM Studio counter capability is unavailable: {exc}"
+        ) from exc
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
@@ -922,14 +961,32 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--model-artifact", required=True)
     parser.add_argument("--workspace-root", required=True)
     parser.add_argument("--artifact-root", required=True)
+    parser.add_argument("--counter-proof")
+    parser.add_argument("--lmstudio-node")
+    parser.add_argument("--lmstudio-sdk-root")
     args = parser.parse_args(argv)
 
     condition = load_actual_model_host_condition(args.condition)
-    prepared = prepare_actual_model_host_run(
-        condition=condition,
-        repo_root=args.repo_root,
-        model_artifact_path=args.model_artifact,
-    )
+    token_counter_capabilities: Mapping[str, HostTokenCounterCapability] | None = None
+    try:
+        if condition.format_version == ACTUAL_MODEL_HOST_TOTAL_BUDGET_FORMAT_VERSION:
+            token_counter_capabilities = _resolve_canonical_host_token_counter_capabilities(
+                condition=condition,
+                repo_root=args.repo_root,
+                model_artifact_path=args.model_artifact,
+                proof_path=args.counter_proof,
+                node_path=args.lmstudio_node,
+                sdk_root=args.lmstudio_sdk_root,
+            )
+        prepared = prepare_actual_model_host_run(
+            condition=condition,
+            repo_root=args.repo_root,
+            model_artifact_path=args.model_artifact,
+            token_counter_capabilities=token_counter_capabilities,
+        )
+    except ActualModelHostRunnerError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
     results = asyncio.run(
         execute_actual_model_host_run(
             prepared=prepared,

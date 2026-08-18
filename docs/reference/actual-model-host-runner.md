@@ -43,8 +43,16 @@ python -m relaylm.actual_model_host_runner \
   --repo-root /path/to/relay-lm \
   --model-artifact /path/to/gemma-4-12B-it-Q4_K_M.gguf \
   --workspace-root /outside/repo/workspaces \
-  --artifact-root /outside/repo/evidence
+  --artifact-root /outside/repo/evidence \
+  --counter-proof /outside/repo/lmstudio-counter-proof-v1/counter-proof.json \
+  --lmstudio-node /path/to/node \
+  --lmstudio-sdk-root /path/to/node_modules
 ```
+
+The last three options are used only by a strict `format_version: 3` condition. They
+are optional CLI paths because the LM Studio SDK is a host-local dependency; a v2
+legacy run never imports or resolves this counter. For v3, omitting the proof or an
+available SDK runtime fails before provider construction and before semantic generation.
 
 There is intentionally no `relaylm-eval` registration. `relaylm-eval` remains the #1247 RelayLM-native deterministic suite.
 
@@ -179,6 +187,48 @@ The parser constructs the existing `TotalBudgetConfig`, `BudgetPlan`, `BudgetDeg
 The host must register a `HostTokenCounterCapability` for the declared capability when calling `prepare_actual_model_host_run`. That capability must return the canonical `OpenAICompatibleSerializedInputCounter`, whose callback receives the exact existing `_request_body(...)` model-input shape. The runner does not select a tokenizer, infer a provider endpoint, or apply a byte/character heuristic. If the capability is absent, its model/decoding identity drifts, its identity differs from the condition, or its truthfulness attestation is not satisfied, execution fails closed before generation.
 
 `exact` is accepted only for a registered capability whose exact behavior has been demonstrated for the configured serving path. `conservative_estimate` is accepted only for a registered capability with a demonstrated safe upper-bound proof. The mode is recorded both in the counter identity and in existing #1467 per-turn diagnostics. A returned count whose mode differs from the declared identity is rejected.
+
+### Frozen LM Studio Community capability
+
+The canonical host CLI resolves one bounded host-only capability for
+`gemma-4-12b-it-q4-k-m-lmstudio-community-v1`:
+
+```text
+capability:    lmstudio.gemma4.loaded-sdk.serialized-input.v1
+implementation: lmstudio-js-loaded-model-counter
+version:       1
+mode:          exact
+```
+
+The bridge is in `relaylm.actual_model_lm_studio_counter`. It talks to the optional
+`@lmstudio/sdk` package through a short-lived Node worker, so the SDK is not an
+ordinary RelayLM runtime dependency. It selects exactly one loaded instance by the
+frozen model key and uses that instance's `applyPromptTemplate(messages)` followed by
+`countTokens(formatted_prompt)`. The messages are copied losslessly from the
+`_request_body(...)` `messages` array; no second handwritten prompt is constructed.
+
+`--counter-proof` must point to a secret-free host artifact with these evidence
+classes:
+
+- current RelayLM commit, frozen target id/size/SHA, request model, LM Studio
+  version/build/deployment identity, SDK package/version, loaded model key/path/
+  quantization, and a hash of the loaded instance reference;
+- a request-model-to-loaded-instance binding verdict and a prompt-template parity
+  verdict;
+- at least the eight required synthetic probe classes: minimal identity/current
+  event, Japanese input, ASCII input, accepted State, Working Context, retrieved
+  MEMORY, Event Evidence, and a larger mixed input. Each records only a request
+  identity/hash, SDK prompt count, server `usage.prompt_tokens`, and equality;
+- a controlled structured-output comparison proving whether the JSON-schema
+  `response_format` adds prompt tokens, plus reproducible empty-user framing
+  accounting.
+
+The SDK-loaded model path must link to the frozen GGUF bytes, not merely to a family
+name, quantization label, or upstream tokenizer assumption. If the host API exposes
+only a relative/non-byte-identifying path, the loaded-artifact hop remains unproven
+and the capability is rejected; it is never downgraded to a heuristic or an
+unproven conservative estimate. No base URL, API key, token, or secret value is
+stored in the counter identity or proof schema.
 
 The frozen LM Studio Community GGUF embeds tokenizer metadata, and the installed LM Studio 0.4.x SDK exposes native `applyPromptTemplate` and `countTokens` operations. Those facts do not by themselves prove that an OpenAI-compatible request has been counted by the loaded serving model. The host integration must prove the loaded model/artifact and the message/template mapping before registering an exact capability; otherwise it must register a demonstrated conservative bound or remain fail-closed. No separately published upstream `tokenizer.json` is assumed equivalent.
 
