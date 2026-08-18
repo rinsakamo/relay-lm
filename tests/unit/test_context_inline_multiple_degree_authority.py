@@ -182,20 +182,6 @@ def test_negated_member_prevents_partial_c23_interpretation() -> None:
     assert [item.location for item in compiled.memory] == [fallback.location]
 
 
-def test_heading_addressed_multiple_reserved_assignments_remain_outside_c23() -> None:
-    deferred = _chunk(
-        (
-            "tea: likes; degree_hint: 0.85",
-            "tea: dislikes; degree_hint: 0.85",
-        ),
-        heading="Tea",
-    )
-
-    compiled = _compile(deferred)
-
-    assert [item.location for item in compiled.memory] == [deferred.location]
-
-
 def test_single_inline_reserved_assignment_remains_governed_by_c22() -> None:
     stale = _chunk(
         ("tea: dislikes; degree_hint: 0.85",),

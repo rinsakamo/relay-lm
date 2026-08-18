@@ -631,6 +631,23 @@ def _memory_chunk_is_shadowed(
                             or assignment_degree != current_degree
                         ):
                             return True
+                elif len(assignment_values) >= 2:
+                    explicit_assignments = tuple(
+                        _explicit_reserved_degree_claim(value)
+                        for value in assignment_values
+                    )
+                    if all(
+                        assignment is not None
+                        and _lexical_terms(assignment[0])[0] != "not"
+                        for assignment in explicit_assignments
+                    ) and any(
+                        _lexical_terms(assignment[0])
+                        != _lexical_terms(current_semantic)
+                        or assignment[1] != current_degree
+                        for assignment in explicit_assignments
+                        if assignment is not None
+                    ):
+                        return True
             if inline_addresses_key and not heading_addresses_key:
                 assignment_values = _explicit_state_key_assignment_values(
                     chunk.content,
