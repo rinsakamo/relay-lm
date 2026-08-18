@@ -614,6 +614,23 @@ def _memory_chunk_is_shadowed(
         degree_value = _reserved_degree_state_value(record.value)
         if degree_value is not None:
             current_semantic, current_degree = degree_value
+            if heading_addresses_key and inline_addresses_key:
+                assignment_values = _explicit_state_key_assignment_values(
+                    chunk.content,
+                    record.key,
+                )
+                if len(assignment_values) == 1:
+                    explicit_assignment = _explicit_reserved_degree_claim(
+                        assignment_values[0]
+                    )
+                    if explicit_assignment is not None:
+                        assignment_semantic, assignment_degree = explicit_assignment
+                        if (
+                            _lexical_terms(assignment_semantic)
+                            != _lexical_terms(current_semantic)
+                            or assignment_degree != current_degree
+                        ):
+                            return True
             if not _contains_lexical_value(chunk.content, current_semantic):
                 return True
             explicit_degrees = _explicit_degree_hint_assignments(
