@@ -4,6 +4,7 @@ import asyncio
 import json
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -265,3 +266,89 @@ def test_exact_repo_preflight_rejects_head_drift_and_dirty_worktree(
             root=tmp_path,
             expected_commit="9" * 40,
         )
+
+
+def test_execute_persists_boundary_sidecar_from_existing_execution_result(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _Provider:
+        closed = False
+
+        async def aclose(self) -> None:
+            self.closed = True
+
+    provider = _Provider()
+    execution = object()
+    wrapped = SimpleNamespace(
+        execution_id="amlsx-example",
+        run_id="amr-example",
+        execution=execution,
+    )
+    verdict = SimpleNamespace(
+        verdict_id="amb-example",
+        outcome="pass",
+    )
+    condition = SimpleNamespace(
+        scenario_ids=("response-persona-correction-v1",),
+        environment=object(),
+        effective_context_window=32768,
+        condition_id="baseline",
+        replicate_id="0",
+    )
+    prepared = SimpleNamespace(
+        condition=condition,
+        target=object(),
+        artifact_verification=object(),
+        scenario_set=object(),
+        fixture_root=tmp_path / "fixture",
+        provider=provider,
+        manifest=object(),
+    )
+
+    async def fake_run(**_: object) -> object:
+        return wrapped
+
+    def fake_evaluate(*, result: object) -> object:
+        assert result is execution
+        return verdict
+
+    monkeypatch.setattr(
+        host_runner,
+        "run_lm_studio_actual_model_scenario_definition",
+        fake_run,
+    )
+    monkeypatch.setattr(
+        host_runner,
+        "write_lm_studio_actual_model_execution_result",
+        lambda **_: tmp_path / "amlsx-example.lm-studio.json",
+    )
+    monkeypatch.setattr(
+        host_runner,
+        "evaluate_actual_model_deterministic_boundary",
+        fake_evaluate,
+    )
+    monkeypatch.setattr(
+        host_runner,
+        "write_actual_model_deterministic_boundary_verdict",
+        lambda **_: tmp_path / "amb-example.boundary.json",
+    )
+
+    artifacts = asyncio.run(
+        host_runner.execute_actual_model_host_run(
+            prepared=prepared,  # type: ignore[arg-type]
+            workspace_root=tmp_path / "workspaces",
+            artifact_root=tmp_path / "evidence",
+        )
+    )
+
+    assert provider.closed is True
+    assert len(artifacts) == 1
+    artifact = artifacts[0]
+    assert artifact.scenario_id == "response-persona-correction-v1"
+    assert artifact.execution_id == "amlsx-example"
+    assert artifact.run_id == "amr-example"
+    assert artifact.artifact_path.endswith("amlsx-example.lm-studio.json")
+    assert artifact.boundary_verdict_id == "amb-example"
+    assert artifact.boundary_outcome == "pass"
+    assert artifact.boundary_artifact_path.endswith("amb-example.boundary.json")
