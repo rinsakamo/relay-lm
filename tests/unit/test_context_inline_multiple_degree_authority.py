@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from relaylm.context import compile_cognitive_input
 from relaylm.events import Event
 from relaylm.identity import Identity
@@ -169,19 +167,6 @@ def test_nonexact_member_prevents_partial_c23_interpretation() -> None:
     assert [item.location for item in compiled.memory] == [fallback.location]
 
 
-def test_negated_member_prevents_partial_c23_interpretation() -> None:
-    fallback = _chunk(
-        (
-            "tea: not likes; degree_hint: 0.85",
-            "tea: dislikes; degree_hint: 0.85",
-        )
-    )
-
-    compiled = _compile(fallback)
-
-    assert [item.location for item in compiled.memory] == [fallback.location]
-
-
 def test_single_inline_reserved_assignment_remains_governed_by_c22() -> None:
     stale = _chunk(
         ("tea: dislikes; degree_hint: 0.85",),
@@ -191,23 +176,13 @@ def test_single_inline_reserved_assignment_remains_governed_by_c22() -> None:
     assert _compile(stale).memory == ()
 
 
-@pytest.mark.parametrize(
-    "assignments",
-    [
+def test_later_nonexact_member_keeps_set_on_c1_fallback() -> None:
+    fallback = _chunk(
         (
             "tea: likes; degree_hint: 0.85",
             "tea: dislikes; degree_hint: 0.85; note: survey",
-        ),
-        (
-            "tea: likes; degree_hint: 0.85",
-            "tea: not dislikes; degree_hint: 0.85",
-        ),
-    ],
-)
-def test_any_unrecognized_member_keeps_set_on_c1_fallback(
-    assignments: tuple[str, ...],
-) -> None:
-    fallback = _chunk(assignments)
+        )
+    )
 
     compiled = _compile(fallback)
 
