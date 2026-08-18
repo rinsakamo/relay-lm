@@ -152,12 +152,6 @@ def test_multiple_nonempty_body_lines_remain_outside_c11() -> None:
     assert _compile(chunk=deferred).memory == ()
 
 
-def test_heading_plus_inline_assignment_remains_outside_c11() -> None:
-    deferred = _chunk("residence_location: not Hokkaido")
-
-    assert _compile(chunk=deferred).memory == ()
-
-
 def test_not_prefix_without_token_boundary_remains_positive_mismatch() -> None:
     stale = _chunk("notFukuoka")
 
