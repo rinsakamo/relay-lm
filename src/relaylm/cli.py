@@ -6,9 +6,9 @@ import json
 import os
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from importlib.metadata import version
 from typing import TextIO
 
+from relaylm import __version__
 from relaylm.runtime_assembly import RuntimeAssemblyError, TokenCounterCapability
 from relaylm.runtime_config_loader import (
     RuntimeConfigOverrides,
@@ -23,7 +23,7 @@ from relaylm.runtime_preflight import (
 from relaylm.server import create_app
 
 
-RELAYLM_VERSION = version("relaylm")
+RELAYLM_VERSION = __version__
 ServeRunner = Callable[..., None]
 
 

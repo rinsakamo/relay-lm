@@ -11,9 +11,9 @@ The current source distribution authority is `pyproject.toml` with Hatchling as 
 - a wheel containing the `relaylm` Python package;
 - a source distribution (`sdist`) capable of producing/installing the same package through the declared build backend.
 
-The package name is `relaylm`. The current package metadata version is `1.0.0.dev0`. REL2 owns the durable package-version/tag/commit release-identity policy; REL1 does not infer a public release tag from this development version.
+The package name is `relaylm`. Package metadata resolves its version dynamically from the release-owned source at `src/relaylm/_version.py`; see `release-identity.md`. REL1 does not infer a public release tag from the current development version.
 
-Hatch reproducible-build mode is explicitly enabled. REL1 CI proves byte-for-byte equality for two consecutive wheel/sdist builds of the exact same transaction head in the same build environment. This is a bounded build-mechanics proof, not yet the REL2/REL3 immutable release identity or long-term toolchain pinning policy.
+Hatch reproducible-build mode is explicitly enabled. REL1 CI proves byte-for-byte equality for two consecutive wheel/sdist builds of the exact same transaction head in the same build environment. This is a bounded build-mechanics proof, not yet the full REL2/REL3 immutable release identity or long-term toolchain pinning policy.
 
 ## Package metadata and runtime dependencies
 
@@ -47,16 +47,18 @@ Character content is external user/product data. Packaging mechanics must not si
 The v1 `package-smoke` job validates the exact artifact produced from the exact transaction head. It must:
 
 1. verify the checked-out commit is the event's exact head;
-2. build wheel and sdist twice and compare exact bytes within the same build environment;
-3. inspect wheel/sdist filenames, metadata, entrypoints, required package files, and forbidden repository-only roots;
-4. install the built wheel into a fresh virtual environment without editable mode;
-5. change working directory outside the repository checkout;
-6. execute installed `relaylm --version`;
-7. execute installed non-generative `relaylm doctor` against a scratch Character Package and runtime config created outside the checkout;
-8. execute installed `relaylm-eval` and require a passing native evaluation report;
-9. install the exact built sdist into a second fresh environment without editable mode;
-10. execute installed `relaylm --version` and `relaylm doctor` from outside the checkout;
-11. run `pip check` in both installed environments.
+2. resolve the authoritative source package version before building;
+3. build wheel and sdist twice and compare exact bytes within the same build environment;
+4. inspect wheel/sdist filenames, metadata, entrypoints, required package files, and forbidden repository-only roots;
+5. require built metadata and installed runtime version surfaces to match the authoritative source version;
+6. install the built wheel into a fresh virtual environment without editable mode;
+7. change working directory outside the repository checkout;
+8. execute installed `relaylm --version`;
+9. execute installed non-generative `relaylm doctor` against a scratch Character Package and runtime config created outside the checkout;
+10. execute installed `relaylm-eval` and require a passing native evaluation report;
+11. install the exact built sdist into a second fresh environment without editable mode;
+12. execute installed `relaylm --version` and `relaylm doctor` from outside the checkout;
+13. run `pip check` in both installed environments.
 
 The scratch Character and runtime config are release-smoke inputs only. They are created at CI runtime outside the repository and are not distributed package data or Character semantic authority.
 
@@ -76,7 +78,7 @@ REL1 consumes the merged #1446 RCFG4 operator path. `doctor` is suitable for the
 
 REL1 does not freeze:
 
-- package version/tag/commit immutable identity (REL2);
+- the remaining package version/tag/commit immutable identity policy beyond the single package-version source (REL2);
 - exact release-candidate provenance and artifact acceptance workflow beyond this build/install foundation (REL3);
 - publication registry/channel, credentials, signing, yank, rollback, or reissue mechanics (REL4);
 - the final RelayLM 1.0 readiness decision (#1449).

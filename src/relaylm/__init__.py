@@ -1,3 +1,5 @@
 """RelayLM 1.0."""
 
-__version__ = "1.0.0.dev0"
+from ._version import __version__
+
+__all__ = ["__version__"]
