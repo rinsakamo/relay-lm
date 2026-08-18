@@ -34,9 +34,15 @@ class _CLIExit(Exception):
 
 
 class _ArgumentParser(argparse.ArgumentParser):
-    def __init__(self, *args: object, stdout: TextIO, stderr: TextIO, **kwargs: object) -> None:
-        self._stdout = stdout
-        self._stderr = stderr
+    def __init__(
+        self,
+        *args: object,
+        stdout: TextIO | None = None,
+        stderr: TextIO | None = None,
+        **kwargs: object,
+    ) -> None:
+        self._stdout = sys.stdout if stdout is None else stdout
+        self._stderr = sys.stderr if stderr is None else stderr
         super().__init__(*args, **kwargs)
 
     def _print_message(self, message: str | None, file: TextIO | None = None) -> None:
@@ -141,7 +147,15 @@ def _build_parser(*, stdout: TextIO, stderr: TextIO) -> _ArgumentParser:
         action="version",
         version=f"relaylm {RELAYLM_VERSION}",
     )
-    subcommands = parser.add_subparsers(dest="command")
+    subcommands = parser.add_subparsers(
+        dest="command",
+        parser_class=lambda *args, **kwargs: _ArgumentParser(
+            *args,
+            stdout=stdout,
+            stderr=stderr,
+            **kwargs,
+        ),
+    )
 
     serve = subcommands.add_parser(
         "serve",
