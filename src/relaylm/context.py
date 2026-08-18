@@ -625,10 +625,34 @@ def _memory_chunk_is_shadowed(
                     )
                     if explicit_assignment is not None:
                         assignment_semantic, assignment_degree = explicit_assignment
+                        assignment_semantic_terms = _lexical_terms(
+                            assignment_semantic
+                        )
+                        current_semantic_terms = _lexical_terms(current_semantic)
                         if (
-                            _lexical_terms(assignment_semantic)
-                            != _lexical_terms(current_semantic)
-                            or assignment_degree != current_degree
+                            len(assignment_semantic_terms) > 1
+                            and assignment_semantic_terms[0] == "not"
+                            and assignment_semantic_terms[1] != "not"
+                        ):
+                            explicit_degrees = _explicit_degree_hint_assignments(
+                                chunk.content,
+                                key=record.key,
+                                heading_addresses_key=True,
+                            )
+                            if len(explicit_degrees) == 1:
+                                if (
+                                    assignment_semantic_terms[1:]
+                                    == current_semantic_terms
+                                    and assignment_degree == current_degree
+                                ):
+                                    return True
+                                continue
+                        if assignment_semantic_terms and (
+                            assignment_semantic_terms[0] != "not"
+                            and (
+                                assignment_semantic_terms != current_semantic_terms
+                                or assignment_degree != current_degree
+                            )
                         ):
                             return True
                 elif len(assignment_values) >= 2:
