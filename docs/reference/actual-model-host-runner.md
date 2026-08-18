@@ -9,14 +9,14 @@ It does **not** define runtime defaults, calibration values, provider tuning, or
 The host runner removes handwritten Python glue from the first real-evidence path while preserving the already-merged evidence contracts:
 
 ```text
-explicit host condition
+explicit host condition + explicit target id
         +
 exact clean RelayLM checkout
         +
 frozen Gemma GGUF bytes
         |
         v
-canonical target / fixture / foundation-v2 verification
+allowlisted target / fixture / foundation-v2 verification
         |
         v
 OpenAI-compatible provider construction
@@ -50,13 +50,31 @@ There is intentionally no `relaylm-eval` registration. `relaylm-eval` remains th
 
 ## Canonical first-track inputs
 
-The runner fixes these repository-side identities rather than accepting arbitrary alternatives:
+The runner fixes the scenario-set and Character-fixture identities and accepts only explicitly allowlisted frozen target IDs.
 
-- target: `evaluation/actual_model/targets/gemma-4-12b-it-q4-k-m-v1.json`;
+Current target IDs are:
+
+- `gemma-4-12b-it-q4-k-m-v1`
+  - target file: `evaluation/actual_model/targets/gemma-4-12b-it-q4-k-m-v1.json`;
+  - artifact repository: `bartowski/gemma-4-12B-it-GGUF`;
+  - artifact repository revision: `2ae7d41be21ca62de00a2d320ee9cec50daa3aa6`;
+  - artifact size: `7662531872` bytes;
+  - artifact SHA-256: `3962624dcd25b947d889dc9ae1bf275b61db6cd4dbe694057f34fffef1671509`.
+- `gemma-4-12b-it-q4-k-m-lmstudio-community-v1`
+  - target file: `evaluation/actual_model/targets/gemma-4-12b-it-q4-k-m-lmstudio-community-v1.json`;
+  - artifact repository: `lmstudio-community/gemma-4-12B-it-GGUF`;
+  - artifact repository revision: `65fe312c53d8b4579f444382adf078bacb1972d0`;
+  - artifact size: `7381384864` bytes;
+  - artifact SHA-256: `c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed`.
+
+The LM Studio Community target deliberately freezes the exact historical bytes observed in the local LM Studio cache. A later upstream commit replaced the Q4_K_M object, so a mutable `main` alias or the quantization name alone is not sufficient evidence.
+
+The remaining fixed repository-side identities are:
+
 - scenario set: `evaluation/actual_model/scenario_sets/foundation-v2.json`;
 - Character fixture: `evaluation/actual_model/characters/foundation-v1`.
 
-The local model file must pass the exact size and SHA-256 verification owned by `actual_model_targets.py` before a provider is constructed.
+There is no implicit target default. The host condition must name one allowlisted `target_id`, and the local model file must pass the exact size and SHA-256 verification owned by `actual_model_targets.py` before a provider is constructed.
 
 The repository checkout must be at exactly the `relaylm_commit` declared by the condition and must be clean, including no untracked files. Keep the condition file, mutable workspaces, model artifact, and generated evidence outside the repository unless they are already part of a clean tracked snapshot.
 
@@ -64,11 +82,14 @@ The repository checkout must be at exactly the `relaylm_commit` declared by the 
 
 The condition is strict JSON. Unknown, missing, and duplicate fields are rejected.
 
+Target selection was made explicit before the first real canonical execution, so the current host-condition schema is `format_version: 2`. Version 1 conditions do not silently acquire a target default.
+
 The shape is:
 
 ```text
 {
-  "format_version": 1,
+  "format_version": 2,
+  "target_id": "<one exact allowlisted target id>",
   "relaylm_commit": "<exact 40-character v1 commit>",
   "lm_studio": {
     "version": "<observed LM Studio version>",
@@ -112,6 +133,12 @@ The snippet is schema-shaped pseudodata, not a canonical condition. No number sh
 
 If any selected scenario requires `continuity_candidates`, `continuity_runtime` must be explicit. The runner never invents Continuity capacity or lifetime.
 
+## Target truthfulness
+
+`target_id` selects repository-owned frozen metadata; it does not accept an arbitrary path or mutable model alias. The selected target metadata must itself declare the same `target_id`, then the supplied `--model-artifact` bytes must match that target's exact size and SHA-256.
+
+The run manifest derives `model_artifact` and effective serving-tokenizer identity from the selected frozen target. This keeps two Q4_K_M files with different bytes as different evidence identities even when LM Studio displays the same model family and quantization label.
+
 ## Decoding truthfulness
 
 `temperature`, `top_p`, and `seed` are optional only in the sense that the operator may explicitly set them to null. There is no numeric default in this runner.
@@ -133,8 +160,8 @@ The operator does not hand-author an `ActualModelRunManifest`.
 The runner derives it from:
 
 - exact clean Git HEAD;
+- explicitly selected frozen target and verification receipt;
 - canonical scenario-set and Character-fixture revisions;
-- canonical frozen GGUF target and verification receipt;
 - the actual constructed provider P4 identity;
 - explicit host condition values.
 
@@ -156,6 +183,7 @@ A boundary `pass` means only that the observed RelayLM deterministic/runtime bou
 The command also prints a content-free index containing:
 
 - RelayLM commit;
+- selected target id;
 - condition and replicate identity;
 - scenario id;
 - execution id;
@@ -186,7 +214,9 @@ The command fails before semantic generation when, among other cases:
 
 - checkout HEAD differs from `relaylm_commit`;
 - checkout is dirty;
-- the GGUF bytes do not match the frozen target;
+- `target_id` is outside the repository allowlist;
+- selected target metadata does not match the condition target id;
+- the GGUF bytes do not match the selected frozen target;
 - a scenario id is outside canonical foundation-v2;
 - Continuity identity is required but missing;
 - a declared decoding control is unsupported;
