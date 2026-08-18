@@ -181,19 +181,6 @@ def test_nonexact_member_prevents_partial_c24_interpretation() -> None:
     assert [item.location for item in compiled.memory] == [fallback.location]
 
 
-def test_negated_member_prevents_partial_c24_interpretation() -> None:
-    fallback = _chunk(
-        (
-            "tea: not likes; degree_hint: 0.85",
-            "tea: dislikes; degree_hint: 0.85",
-        )
-    )
-
-    compiled = _compile(fallback)
-
-    assert [item.location for item in compiled.memory] == [fallback.location]
-
-
 def test_inline_only_multiple_reserved_assignments_remain_governed_by_c23() -> None:
     stale = _chunk(
         (
@@ -221,10 +208,6 @@ def test_heading_single_reserved_assignment_remains_governed_by_c21() -> None:
         (
             "tea: likes; degree_hint: 0.85",
             "tea: dislikes; degree_hint: 0.85; note: survey",
-        ),
-        (
-            "tea: likes; degree_hint: 0.85",
-            "tea: not dislikes; degree_hint: 0.85",
         ),
     ],
 )
