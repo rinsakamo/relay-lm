@@ -177,9 +177,9 @@ def _manifest(
         continuity_runtime=continuity_runtime,
         execution_path=execution_path,  # type: ignore[arg-type]
         provider_capabilities=(
-            ("state_candidates", "continuity_candidates", "streaming")
+            ("state_candidates", "streaming")
             if execution_path == "streaming"
-            else ("state_candidates", "continuity_candidates")
+            else ("state_candidates",)
         ),
     )
 
