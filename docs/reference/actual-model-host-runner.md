@@ -27,8 +27,12 @@ OpenAI-compatible provider construction
         v
 existing #1386 scenario execution
         |
-        v
-immutable *.lm-studio.json evidence
+        +--> immutable *.lm-studio.json execution evidence
+        |
+        +--> existing #1433 deterministic-boundary evaluator
+                 |
+                 v
+             immutable *.boundary.json verdict
 ```
 
 Run it as a module:
@@ -138,11 +142,16 @@ The #1484 binding rechecks target/provider/manifest agreement before scenario ex
 
 ## Output
 
-Each successful selected scenario writes the existing immutable condition-bound artifact:
+Each successful selected scenario writes two immutable #1386 artifacts:
 
 ```text
 <execution_id>.lm-studio.json
+<verdict_id>.boundary.json
 ```
+
+The execution artifact is persisted first. The runner then passes the already-produced `ActualModelScenarioExecutionResult` directly to the existing #1433 `evaluate_actual_model_deterministic_boundary(...)` implementation and persists its verdict sidecar. The host runner does not duplicate or reinterpret any deterministic State/Continuity rule.
+
+A boundary `pass` means only that the observed RelayLM deterministic/runtime boundary satisfied the #1433 protocol invariants for that execution. A boundary `fail` remains citable evidence. It is **not** a judgment that the model response or semantic proposals were good or bad.
 
 The command also prints a content-free index containing:
 
@@ -151,10 +160,13 @@ The command also prints a content-free index containing:
 - scenario id;
 - execution id;
 - run id;
-- artifact path;
+- execution artifact path;
+- deterministic-boundary verdict id;
+- deterministic-boundary outcome;
+- deterministic-boundary artifact path;
 - `score: null`.
 
-Human/product-quality review and deterministic-boundary verdicts remain separate #1386 sidecars. The host runner does not synthesize a composite score.
+Human/product-quality review remains a separate #1386 sidecar. The host runner does not synthesize human ratings, a model-quality verdict, or a composite score.
 
 ## Current boundary
 
@@ -164,8 +176,8 @@ It deliberately does **not** manufacture a #1387 total `CognitiveBudgetRuntimeCo
 
 Accordingly:
 
-- this runner can produce the first citable foundation-v2 real-model executions;
-- those executions do not, by themselves, justify #1388 numeric defaults;
+- this runner can produce the first citable foundation-v2 real-model executions plus deterministic-boundary verdict sidecars;
+- those executions and boundary verdicts do not, by themselves, justify #1388 numeric defaults;
 - #1388 pressure/default decisions still require the separately controlled total-budget evidence path.
 
 ## Failure behavior
@@ -181,5 +193,7 @@ The command fails before semantic generation when, among other cases:
 - provider/runtime/manifest identity drifts at the #1484 binding boundary;
 - a workspace path for the run already exists;
 - an immutable evidence id already exists with different bytes.
+
+After a model execution has completed, a filesystem/conflict failure while writing the boundary sidecar causes the command to fail rather than pretending the evidence chain is complete. The already-written execution artifact remains immutable evidence and no automatic semantic retry is introduced.
 
 No automatic retry is introduced by this runner. One RelayLM semantic turn remains one model generation.
