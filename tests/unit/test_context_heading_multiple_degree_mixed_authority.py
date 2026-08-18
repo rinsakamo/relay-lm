@@ -20,7 +20,7 @@ def _current_event() -> Event:
         actor="user",
         payload={"content": "What is current about tea?"},
         event_id="current-event",
-        timestamp="2026-08-19T08:00:00+09:00",
+        timestamp="2026-08-19T08:15:00+09:00",
     )
 
 
@@ -44,8 +44,8 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
     return MemoryTemporalAuthority(
         temporal_scope=scope,
         provenance=MemoryProvenance(
-            memory_id=f"memory-inline-multi-degree-mixed-{scope.value}",
-            derivation_id=f"derivation-inline-multi-degree-mixed-{scope.value}",
+            memory_id=f"memory-heading-multi-degree-mixed-{scope.value}",
+            derivation_id=f"derivation-heading-multi-degree-mixed-{scope.value}",
             sources=(
                 MemoryProvenanceSource(
                     kind=MemoryProvenanceSourceKind.EVENT,
@@ -60,13 +60,13 @@ def _chunk(
     assignments: tuple[str, ...],
     *,
     scope: MemoryTemporalScope = MemoryTemporalScope.UNKNOWN,
-    heading: str = "Profile Notes",
+    heading: str = "Tea",
     tail: str | None = None,
 ) -> MemoryChunk:
     body_lines = assignments + ((tail,) if tail is not None else ())
     return MemoryChunk(
         heading_path=("Memory", heading),
-        location=f"memory/MEMORY.md#memory/inline-multi-degree-mixed-{scope.value}",
+        location=f"memory/MEMORY.md#memory/heading-multi-degree-mixed-{scope.value}",
         content=f"## {heading}\n\n" + "\n".join(body_lines),
         temporal_authority=_authority(scope),
     )
@@ -81,7 +81,7 @@ def _compile(chunk: MemoryChunk):
     )
 
 
-def test_inline_multiple_mixed_active_pair_negation_suppresses() -> None:
+def test_heading_multiple_mixed_active_pair_negation_suppresses() -> None:
     stale = _chunk(
         (
             "tea: likes; degree_hint: 0.85",
@@ -92,7 +92,7 @@ def test_inline_multiple_mixed_active_pair_negation_suppresses() -> None:
     assert _compile(stale).memory == ()
 
 
-def test_inline_multiple_mixed_different_semantic_negation_is_compatible() -> None:
+def test_heading_multiple_mixed_different_semantic_negation_is_compatible() -> None:
     compatible = _chunk(
         (
             "tea: likes; degree_hint: 0.85",
@@ -105,7 +105,7 @@ def test_inline_multiple_mixed_different_semantic_negation_is_compatible() -> No
     assert [item.location for item in compiled.memory] == [compatible.location]
 
 
-def test_inline_multiple_mixed_different_degree_negation_is_compatible() -> None:
+def test_heading_multiple_mixed_different_degree_negation_is_compatible() -> None:
     compatible = _chunk(
         (
             "tea: likes; degree_hint: 0.85",
@@ -118,7 +118,7 @@ def test_inline_multiple_mixed_different_degree_negation_is_compatible() -> None
     assert [item.location for item in compiled.memory] == [compatible.location]
 
 
-def test_inline_multiple_mixed_positive_mismatch_suppresses() -> None:
+def test_heading_multiple_mixed_positive_mismatch_suppresses() -> None:
     stale = _chunk(
         (
             "tea: dislikes; degree_hint: 0.85",
@@ -129,7 +129,7 @@ def test_inline_multiple_mixed_positive_mismatch_suppresses() -> None:
     assert _compile(stale).memory == ()
 
 
-def test_inline_multiple_mixed_positive_mismatch_and_active_negation_suppress() -> None:
+def test_heading_multiple_mixed_positive_mismatch_and_active_negation_suppress() -> None:
     stale = _chunk(
         (
             "tea: dislikes; degree_hint: 0.85",
@@ -140,19 +140,21 @@ def test_inline_multiple_mixed_positive_mismatch_and_active_negation_suppress() 
     assert _compile(stale).memory == ()
 
 
-def test_typed_current_uses_same_inline_multiple_mixed_rule() -> None:
-    stale = _chunk(
+def test_typed_current_uses_same_heading_multiple_mixed_rule() -> None:
+    compatible = _chunk(
         (
             "tea: likes; degree_hint: 0.85",
-            "tea: not likes; degree_hint: 0.85",
+            "tea: not likes; degree_hint: 0.65",
         ),
         scope=MemoryTemporalScope.CURRENT,
     )
 
-    assert _compile(stale).memory == ()
+    compiled = _compile(compatible)
+
+    assert [item.location for item in compiled.memory] == [compatible.location]
 
 
-def test_historical_inline_multiple_mixed_set_remains_exempt() -> None:
+def test_historical_heading_multiple_mixed_set_remains_exempt() -> None:
     historical = _chunk(
         (
             "tea: dislikes; degree_hint: 0.85",
@@ -166,7 +168,7 @@ def test_historical_inline_multiple_mixed_set_remains_exempt() -> None:
     assert [item.location for item in compiled.memory] == [historical.location]
 
 
-def test_positive_only_multiple_set_remains_governed_by_c23() -> None:
+def test_positive_only_heading_multiple_set_remains_governed_by_c24() -> None:
     stale = _chunk(
         (
             "tea: likes; degree_hint: 0.85",
@@ -177,7 +179,7 @@ def test_positive_only_multiple_set_remains_governed_by_c23() -> None:
     assert _compile(stale).memory == ()
 
 
-def test_all_negated_multiple_set_remains_governed_by_c28() -> None:
+def test_all_negated_heading_multiple_set_remains_governed_by_c29() -> None:
     stale = _chunk(
         (
             "tea: not likes; degree_hint: 0.85",
@@ -188,7 +190,19 @@ def test_all_negated_multiple_set_remains_governed_by_c28() -> None:
     assert _compile(stale).memory == ()
 
 
-def test_nonexact_member_prevents_partial_c30_interpretation() -> None:
+def test_inline_only_mixed_set_remains_governed_by_c30() -> None:
+    stale = _chunk(
+        (
+            "tea: likes; degree_hint: 0.85",
+            "tea: not likes; degree_hint: 0.85",
+        ),
+        heading="Profile Notes",
+    )
+
+    assert _compile(stale).memory == ()
+
+
+def test_nonexact_member_prevents_partial_c31_interpretation() -> None:
     fallback = _chunk(
         (
             "tea: likes; degree_hint: 0.85",
@@ -201,7 +215,7 @@ def test_nonexact_member_prevents_partial_c30_interpretation() -> None:
     assert [item.location for item in compiled.memory] == [fallback.location]
 
 
-def test_bare_not_member_prevents_c30_interpretation() -> None:
+def test_bare_not_member_prevents_c31_interpretation() -> None:
     fallback = _chunk(
         (
             "tea: likes; degree_hint: 0.85",
@@ -214,7 +228,7 @@ def test_bare_not_member_prevents_c30_interpretation() -> None:
     assert [item.location for item in compiled.memory] == [fallback.location]
 
 
-def test_double_negation_member_prevents_c30_interpretation() -> None:
+def test_double_negation_member_prevents_c31_interpretation() -> None:
     fallback = _chunk(
         (
             "tea: likes; degree_hint: 0.85",
@@ -227,7 +241,33 @@ def test_double_negation_member_prevents_c30_interpretation() -> None:
     assert [item.location for item in compiled.memory] == [fallback.location]
 
 
-def test_single_inline_negated_pair_remains_governed_by_c25() -> None:
+def test_additional_stale_section_degree_keeps_mixed_set_on_c1_authority() -> None:
+    stale = _chunk(
+        (
+            "tea: likes; degree_hint: 0.85",
+            "tea: not dislikes; degree_hint: 0.85",
+        ),
+        tail="degree_hint: 0.65",
+    )
+
+    assert _compile(stale).memory == ()
+
+
+def test_additional_same_section_degree_disables_active_pair_c31_decision() -> None:
+    fallback = _chunk(
+        (
+            "tea: likes; degree_hint: 0.85",
+            "tea: not likes; degree_hint: 0.85",
+        ),
+        tail="degree_hint: 0.85",
+    )
+
+    compiled = _compile(fallback)
+
+    assert [item.location for item in compiled.memory] == [fallback.location]
+
+
+def test_heading_single_negated_pair_remains_governed_by_c26() -> None:
     compatible = _chunk(("tea: not dislikes; degree_hint: 0.85",))
 
     compiled = _compile(compatible)

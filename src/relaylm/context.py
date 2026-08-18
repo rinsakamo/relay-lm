@@ -695,6 +695,53 @@ def _memory_chunk_is_shadowed(
                             ):
                                 return True
                             continue
+                    if (
+                        all(
+                            assignment is not None
+                            and (
+                                _lexical_terms(assignment[0])[0] != "not"
+                                or (
+                                    len(_lexical_terms(assignment[0])) > 1
+                                    and _lexical_terms(assignment[0])[1] != "not"
+                                )
+                            )
+                            for assignment in explicit_assignments
+                        )
+                        and any(
+                            assignment is not None
+                            and _lexical_terms(assignment[0])[0] == "not"
+                            for assignment in explicit_assignments
+                        )
+                        and any(
+                            assignment is not None
+                            and _lexical_terms(assignment[0])[0] != "not"
+                            for assignment in explicit_assignments
+                        )
+                    ):
+                        explicit_degrees = _explicit_degree_hint_assignments(
+                            chunk.content,
+                            key=record.key,
+                            heading_addresses_key=True,
+                        )
+                        if len(explicit_degrees) == len(assignment_values):
+                            current_semantic_terms = _lexical_terms(current_semantic)
+                            for assignment in explicit_assignments:
+                                if assignment is None:
+                                    continue
+                                assignment_terms = _lexical_terms(assignment[0])
+                                if assignment_terms[0] == "not":
+                                    if (
+                                        assignment_terms[1:] == current_semantic_terms
+                                        and assignment[1] == current_degree
+                                    ):
+                                        return True
+                                    continue
+                                if (
+                                    assignment_terms != current_semantic_terms
+                                    or assignment[1] != current_degree
+                                ):
+                                    return True
+                            continue
             if inline_addresses_key and not heading_addresses_key:
                 assignment_values = _explicit_state_key_assignment_values(
                     chunk.content,
