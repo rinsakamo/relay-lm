@@ -222,9 +222,9 @@ For total-budget comparisons, changes are limited to the declared budget conditi
 
 The repository-neutral #1386 bridge for explicit `CognitiveBudgetRuntimeConfig` evidence is implemented: it can preserve total-budget identity, final serialized-token diagnostics, degradation observations, and bounded pre-generation failures when supplied a truthful runtime and token counter.
 
-The canonical LM Studio host runner currently does not construct a provider/model-specific serialized-input token counter or bind an explicit total `CognitiveBudgetRuntimeConfig` from its host condition. Normal foundation-v2 LM Studio evidence therefore does not by itself satisfy this CAL2 sweep contract.
+The canonical LM Studio host runner now has a bounded v3 capability resolver for the frozen Community Gemma target. It binds the explicit total `CognitiveBudgetRuntimeConfig` through the existing runner and can use the exact SDK-backed counter only when a fresh host proof artifact attests loaded-instance identity, request serialization/template parity, server prompt-token equality, structured-output accounting, and required framing. Normal foundation-v2 LM Studio evidence, or a missing/unproven host proof, still does not satisfy this CAL2 sweep contract and fails closed before generation.
 
-That host-local execution dependency belongs to #1386 or an explicitly delegated evidence-execution owner. Calibration must not fork a second LM Studio/Actual-model runner.
+That host-local execution dependency remains owned by #1386. Calibration must not fork a second LM Studio/Actual-model runner.
 
 Once the host path supplies the frozen token counter and total-budget runtime, the measurement probe and derived candidate rules above provide the experiment values; #1386 does **not** need a canonical runtime default from CAL6 in order to execute CAL2.
 

@@ -402,6 +402,328 @@ def test_exact_counter_mode_requires_demonstrated_exact_behavior(
         )
 
 
+def test_conservative_counter_mode_requires_demonstrated_safe_bound(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    condition = load_actual_model_host_condition(
+        _write_condition(tmp_path, _total_condition_mapping())
+    )
+    monkeypatch.setattr(host_runner, "_verify_clean_exact_repo", lambda **_: None)
+    monkeypatch.setattr(
+        host_runner,
+        "verify_actual_model_artifact",
+        lambda **_: _verification(),
+    )
+
+    with pytest.raises(ActualModelHostRunnerError, match="safe bound"):
+        prepare_actual_model_host_run(
+            condition=condition,
+            repo_root=REPO_ROOT,
+            model_artifact_path=tmp_path / "not-read-because-verifier-is-patched.gguf",
+            token_counter_capabilities=_counter_capability(
+                conservative_bound_demonstrated=False,
+            ),
+        )
+
+
+def test_total_host_preparation_rejects_model_counter_mismatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    condition = load_actual_model_host_condition(
+        _write_condition(tmp_path, _total_condition_mapping())
+    )
+    monkeypatch.setattr(host_runner, "_verify_clean_exact_repo", lambda **_: None)
+    monkeypatch.setattr(
+        host_runner,
+        "verify_actual_model_artifact",
+        lambda **_: _verification(),
+    )
+
+    def factory(condition, provider):
+        assert condition.cognitive_budget is not None
+        return OpenAICompatibleSerializedInputCounter(
+            model="different-model",
+            count_input=lambda _: SerializedInputTokenCount(
+                total_input_tokens=100,
+                required_input_framing_tokens=10,
+                mode=TokenCountMode.CONSERVATIVE_ESTIMATE,
+            ),
+            decoding_config=provider.decoding_config,
+            evidence_identity=condition.cognitive_budget.token_counter_identity,
+        )
+
+    capabilities = {
+        "lmstudio.gemma4.serialized-input.v1": HostTokenCounterCapability(
+            factory=factory,
+            exact_behavior_demonstrated=False,
+            conservative_bound_demonstrated=True,
+        )
+    }
+
+    with pytest.raises(ActualModelHostRunnerError, match="model does not match"):
+        prepare_actual_model_host_run(
+            condition=condition,
+            repo_root=REPO_ROOT,
+            model_artifact_path=tmp_path / "not-read-because-verifier-is-patched.gguf",
+            token_counter_capabilities=capabilities,
+        )
+
+
+def test_total_host_preparation_rejects_decoding_counter_mismatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    condition = load_actual_model_host_condition(
+        _write_condition(tmp_path, _total_condition_mapping())
+    )
+    monkeypatch.setattr(host_runner, "_verify_clean_exact_repo", lambda **_: None)
+    monkeypatch.setattr(
+        host_runner,
+        "verify_actual_model_artifact",
+        lambda **_: _verification(),
+    )
+
+    def factory(condition, provider):
+        assert condition.cognitive_budget is not None
+        return OpenAICompatibleSerializedInputCounter(
+            model=provider.model,
+            count_input=lambda _: SerializedInputTokenCount(
+                total_input_tokens=100,
+                required_input_framing_tokens=10,
+                mode=TokenCountMode.CONSERVATIVE_ESTIMATE,
+            ),
+            decoding_config=host_runner.OpenAICompatibleDecodingConfig(
+                temperature=0.7,
+                top_p=provider.decoding_config.top_p,
+                seed=provider.decoding_config.seed,
+            ),
+            evidence_identity=condition.cognitive_budget.token_counter_identity,
+        )
+
+    capabilities = {
+        "lmstudio.gemma4.serialized-input.v1": HostTokenCounterCapability(
+            factory=factory,
+            exact_behavior_demonstrated=False,
+            conservative_bound_demonstrated=True,
+        )
+    }
+
+    with pytest.raises(ActualModelHostRunnerError, match="decoding configuration"):
+        prepare_actual_model_host_run(
+            condition=condition,
+            repo_root=REPO_ROOT,
+            model_artifact_path=tmp_path / "not-read-because-verifier-is-patched.gguf",
+            token_counter_capabilities=capabilities,
+        )
+
+
+def test_total_host_preparation_rejects_tokenizer_identity_mismatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mapping = _total_condition_mapping()
+    mapping["cognitive_budget"]["token_counter"]["tokenizer_identity"] = (  # type: ignore[index]
+        "gguf-embedded-tokenizer:sha256:"
+        "1" * 64
+    )
+    condition = load_actual_model_host_condition(_write_condition(tmp_path, mapping))
+    monkeypatch.setattr(host_runner, "_verify_clean_exact_repo", lambda **_: None)
+    monkeypatch.setattr(
+        host_runner,
+        "verify_actual_model_artifact",
+        lambda **_: _verification(),
+    )
+
+    with pytest.raises(ActualModelHostRunnerError, match="tokenizer identity"):
+        prepare_actual_model_host_run(
+            condition=condition,
+            repo_root=REPO_ROOT,
+            model_artifact_path=tmp_path / "not-read-because-verifier-is-patched.gguf",
+            token_counter_capabilities=_counter_capability(),
+        )
+
+
+def test_v3_cli_passes_resolved_capability_map_before_generation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    condition_path = _write_condition(tmp_path, _total_condition_mapping())
+    capability_map = {"lmstudio.gemma4.loaded-sdk.serialized-input.v1": object()}
+    captured: dict[str, object] = {}
+
+    def resolve_capabilities(**kwargs: object) -> object:
+        captured["resolver_kwargs"] = kwargs
+        return capability_map
+
+    def fake_prepare(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return SimpleNamespace()
+
+    async def fake_execute(**kwargs: object) -> tuple[object, ...]:
+        captured["execute_kwargs"] = kwargs
+        return ()
+
+    monkeypatch.setattr(
+        host_runner,
+        "_resolve_canonical_host_token_counter_capabilities",
+        resolve_capabilities,
+    )
+    monkeypatch.setattr(host_runner, "prepare_actual_model_host_run", fake_prepare)
+    monkeypatch.setattr(host_runner, "execute_actual_model_host_run", fake_execute)
+
+    assert (
+        host_runner.main(
+            [
+                "--condition",
+                str(condition_path),
+                "--repo-root",
+                str(REPO_ROOT),
+                "--model-artifact",
+                str(tmp_path / "model.gguf"),
+                "--workspace-root",
+                str(tmp_path / "workspaces"),
+                "--artifact-root",
+                str(tmp_path / "evidence"),
+                "--counter-proof",
+                str(tmp_path / "counter-proof.json"),
+            ]
+        )
+        == 0
+    )
+    assert captured["token_counter_capabilities"] is capability_map
+    assert capsys.readouterr().out
+
+
+def test_v2_cli_does_not_resolve_lm_studio_counter_capability(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    condition_path = _write_condition(tmp_path, _condition_mapping())
+    captured: dict[str, object] = {}
+
+    def unexpected_resolver(**kwargs: object) -> object:
+        raise AssertionError("v2 must not resolve the LM Studio SDK counter")
+
+    def fake_prepare(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return SimpleNamespace()
+
+    async def fake_execute(**kwargs: object) -> tuple[object, ...]:
+        return ()
+
+    monkeypatch.setattr(
+        host_runner,
+        "_resolve_canonical_host_token_counter_capabilities",
+        unexpected_resolver,
+    )
+    monkeypatch.setattr(host_runner, "prepare_actual_model_host_run", fake_prepare)
+    monkeypatch.setattr(host_runner, "execute_actual_model_host_run", fake_execute)
+
+    assert (
+        host_runner.main(
+            [
+                "--condition",
+                str(condition_path),
+                "--repo-root",
+                str(REPO_ROOT),
+                "--model-artifact",
+                str(tmp_path / "model.gguf"),
+                "--workspace-root",
+                str(tmp_path / "workspaces"),
+                "--artifact-root",
+                str(tmp_path / "evidence"),
+            ]
+        )
+        == 0
+    )
+    assert captured["token_counter_capabilities"] is None
+
+
+def test_v3_cli_reports_missing_sdk_or_proof_before_generation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    condition_path = _write_condition(tmp_path, _total_condition_mapping())
+    generated = False
+
+    def unavailable(**kwargs: object) -> object:
+        raise host_runner.ActualModelHostRunnerError(
+            "LM Studio counter capability is unavailable: SDK or exact proof is missing"
+        )
+
+    async def should_not_execute(**kwargs: object) -> tuple[object, ...]:
+        nonlocal generated
+        generated = True
+        return ()
+
+    monkeypatch.setattr(
+        host_runner,
+        "_resolve_canonical_host_token_counter_capabilities",
+        unavailable,
+    )
+    monkeypatch.setattr(host_runner, "execute_actual_model_host_run", should_not_execute)
+
+    assert (
+        host_runner.main(
+            [
+                "--condition",
+                str(condition_path),
+                "--repo-root",
+                str(REPO_ROOT),
+                "--model-artifact",
+                str(tmp_path / "model.gguf"),
+                "--workspace-root",
+                str(tmp_path / "workspaces"),
+                "--artifact-root",
+                str(tmp_path / "evidence"),
+            ]
+        )
+        == 2
+    )
+    assert generated is False
+    assert "SDK or exact proof" in capsys.readouterr().err
+
+
+def test_v3_cli_real_resolver_rejects_missing_counter_proof_before_generation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    condition_path = _write_condition(tmp_path, _total_condition_mapping())
+    generated = False
+
+    async def should_not_execute(**kwargs: object) -> tuple[object, ...]:
+        nonlocal generated
+        generated = True
+        return ()
+
+    monkeypatch.setattr(host_runner, "execute_actual_model_host_run", should_not_execute)
+
+    assert (
+        host_runner.main(
+            [
+                "--condition",
+                str(condition_path),
+                "--repo-root",
+                str(REPO_ROOT),
+                "--model-artifact",
+                str(tmp_path / "model.gguf"),
+                "--workspace-root",
+                str(tmp_path / "workspaces"),
+                "--artifact-root",
+                str(tmp_path / "evidence"),
+            ]
+        )
+        == 2
+    )
+    assert generated is False
+    assert "exact LM Studio counter proof" in capsys.readouterr().err
+
+
 def test_host_condition_loader_rejects_duplicate_json_keys_and_scenarios(
     tmp_path: Path,
 ) -> None:
