@@ -22,7 +22,7 @@ def _current_event() -> Event:
         actor="user",
         payload={"content": "What is current?"},
         event_id="current-event",
-        timestamp="2026-08-18T08:40:00+09:00",
+        timestamp="2026-08-18T10:45:00+09:00",
     )
 
 
@@ -46,8 +46,8 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
     return MemoryTemporalAuthority(
         temporal_scope=scope,
         provenance=MemoryProvenance(
-            memory_id=f"memory-multi-scalar-{scope.value}",
-            derivation_id=f"derivation-multi-scalar-{scope.value}",
+            memory_id=f"memory-heading-multi-scalar-{scope.value}",
+            derivation_id=f"derivation-heading-multi-scalar-{scope.value}",
             sources=(
                 MemoryProvenanceSource(
                     kind=MemoryProvenanceSourceKind.EVENT,
@@ -59,17 +59,17 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
 
 
 def _chunk(
-    lines: tuple[str, ...],
+    assignments: tuple[str, ...],
     *,
     scope: MemoryTemporalScope = MemoryTemporalScope.UNKNOWN,
-    heading: str = "Profile Notes",
+    heading: str = "Residence Location",
     tail: str | None = None,
 ) -> MemoryChunk:
-    body = "\n".join(lines + ((tail,) if tail is not None else ()))
+    body_lines = assignments + ((tail,) if tail is not None else ())
     return MemoryChunk(
         heading_path=("Memory", heading),
-        location=f"memory/MEMORY.md#memory/multi-scalar-{scope.value}",
-        content=f"## {heading}\n\n{body}",
+        location=f"memory/MEMORY.md#memory/heading-multi-scalar-{scope.value}",
+        content=f"## {heading}\n\n" + "\n".join(body_lines),
         temporal_authority=_authority(scope),
     )
 
@@ -91,7 +91,7 @@ def _compile(*, chunk: MemoryChunk, state: CanonicalState | None = None):
         ("residence_location: Hokkaido", "residence_location: Tokyo"),
     ],
 )
-def test_any_conflicting_scalar_assignment_suppresses(
+def test_heading_multiple_any_conflicting_scalar_assignment_suppresses(
     assignments: tuple[str, ...],
 ) -> None:
     stale = _chunk(assignments, tail="A separate note mentions Fukuoka.")
@@ -106,7 +106,7 @@ def test_any_conflicting_scalar_assignment_suppresses(
         ("residence_location: not Hokkaido", "residence_location: not Tokyo"),
     ],
 )
-def test_all_compatible_scalar_assignments_retain(
+def test_heading_multiple_all_compatible_scalar_assignments_retain(
     assignments: tuple[str, ...],
 ) -> None:
     compatible = _chunk(assignments)
@@ -116,8 +116,12 @@ def test_all_compatible_scalar_assignments_retain(
     assert [item.location for item in compiled.memory] == [compatible.location]
 
 
-def test_numeric_conflicting_assignment_suppresses() -> None:
-    stale = _chunk(("lucky_number: 5", "lucky_number: 7"))
+def test_heading_multiple_numeric_conflicting_assignment_suppresses() -> None:
+    stale = _chunk(
+        ("lucky_number: 5", "lucky_number: 7"),
+        heading="Lucky Number",
+        tail="A separate note mentions 5.",
+    )
 
     assert _compile(
         chunk=stale,
@@ -125,8 +129,11 @@ def test_numeric_conflicting_assignment_suppresses() -> None:
     ).memory == ()
 
 
-def test_numeric_compatible_negative_assignments_retain() -> None:
-    compatible = _chunk(("lucky_number: not 7", "lucky_number: not 8"))
+def test_heading_multiple_numeric_compatible_negations_retain() -> None:
+    compatible = _chunk(
+        ("lucky_number: not 7", "lucky_number: not 8"),
+        heading="Lucky Number",
+    )
 
     compiled = _compile(
         chunk=compatible,
@@ -136,7 +143,7 @@ def test_numeric_compatible_negative_assignments_retain() -> None:
     assert [item.location for item in compiled.memory] == [compatible.location]
 
 
-def test_typed_current_uses_same_multiple_scalar_rule() -> None:
+def test_typed_current_uses_same_heading_multiple_scalar_rule() -> None:
     stale = _chunk(
         ("residence_location: Fukuoka", "residence_location: Hokkaido"),
         scope=MemoryTemporalScope.CURRENT,
@@ -145,7 +152,7 @@ def test_typed_current_uses_same_multiple_scalar_rule() -> None:
     assert _compile(chunk=stale).memory == ()
 
 
-def test_historical_multiple_scalar_assignments_remain_exempt() -> None:
+def test_historical_heading_multiple_scalar_assignments_remain_exempt() -> None:
     historical = _chunk(
         ("residence_location: Fukuoka", "residence_location: Hokkaido"),
         scope=MemoryTemporalScope.HISTORICAL,
@@ -156,9 +163,27 @@ def test_historical_multiple_scalar_assignments_remain_exempt() -> None:
     assert [item.location for item in compiled.memory] == [historical.location]
 
 
-def test_empty_assignment_prevents_partial_c18_interpretation() -> None:
-    fallback = _chunk(("residence_location:", "residence_location: Fukuoka"))
+def test_empty_assignment_prevents_partial_c20_interpretation() -> None:
+    fallback = _chunk(
+        ("residence_location:", "residence_location: Fukuoka"),
+    )
 
     compiled = _compile(chunk=fallback)
 
     assert [item.location for item in compiled.memory] == [fallback.location]
+
+
+def test_nonlexical_assignment_prevents_partial_c20_interpretation() -> None:
+    fallback = _chunk(
+        ("residence_location: !!!", "residence_location: Fukuoka"),
+    )
+
+    compiled = _compile(chunk=fallback)
+
+    assert [item.location for item in compiled.memory] == [fallback.location]
+
+
+def test_heading_single_inline_scalar_remains_governed_by_c19() -> None:
+    stale = _chunk(("residence_location: Hokkaido",), tail="Fukuoka is mentioned elsewhere.")
+
+    assert _compile(chunk=stale).memory == ()

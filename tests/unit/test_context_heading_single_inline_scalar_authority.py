@@ -150,20 +150,3 @@ def test_empty_heading_single_inline_assignment_falls_through_existing_rule() ->
     empty = _chunk("residence_location:")
 
     assert _compile(chunk=empty).memory == ()
-
-
-def test_heading_multiple_inline_scalar_assignments_remain_outside_c19() -> None:
-    deferred = MemoryChunk(
-        heading_path=("Memory", "Residence Location"),
-        location="memory/MEMORY.md#memory/heading-multiple-scalar-unknown",
-        content=(
-            "## Residence Location\n\n"
-            "residence_location: Fukuoka\n"
-            "residence_location: Hokkaido"
-        ),
-        temporal_authority=_authority(MemoryTemporalScope.UNKNOWN),
-    )
-
-    compiled = _compile(chunk=deferred)
-
-    assert [item.location for item in compiled.memory] == [deferred.location]
