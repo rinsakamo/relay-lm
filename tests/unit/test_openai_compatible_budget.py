@@ -19,6 +19,7 @@ from relaylm.identity import Identity
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
 from relaylm.providers.openai_compatible_budget import (
     OpenAICompatibleSerializedInputCounter,
+    SerializedInputCounterIdentity,
 )
 from relaylm.state import STATE_CLASS_DEFINITIONS, StateRecord
 
@@ -157,4 +158,26 @@ def test_counter_rejects_missing_model_and_untyped_result() -> None:
         count_input=lambda _: 10,  # type: ignore[arg-type,return-value]
     )
     with pytest.raises(TypeError, match="SerializedInputTokenCount"):
+        counter.count_serialized_input(_cognitive_input())
+
+
+def test_counter_rejects_result_mode_drift_from_evidence_identity() -> None:
+    identity = SerializedInputCounterIdentity(
+        capability="test.counter",
+        implementation="test-counter",
+        version="1",
+        mode=TokenCountMode.CONSERVATIVE_ESTIMATE,
+        tokenizer_identity="gguf-embedded-tokenizer:sha256:test",
+    )
+    counter = OpenAICompatibleSerializedInputCounter(
+        model="gemma",
+        count_input=lambda _: SerializedInputTokenCount(
+            total_input_tokens=10,
+            required_input_framing_tokens=4,
+            mode=TokenCountMode.EXACT,
+        ),
+        evidence_identity=identity,
+    )
+
+    with pytest.raises(ValueError, match="result mode"):
         counter.count_serialized_input(_cognitive_input())

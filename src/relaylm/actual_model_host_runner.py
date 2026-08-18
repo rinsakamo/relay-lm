@@ -7,7 +7,7 @@ import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 from relaylm.actual_model_artifacts import character_fixture_revision
 from relaylm.actual_model_boundary import (
@@ -16,6 +16,7 @@ from relaylm.actual_model_boundary import (
 )
 from relaylm.actual_model_evaluation import (
     ActualModelRunManifest,
+    ExplicitCognitiveBudgetConfiguration,
     ExplicitBudgetConfiguration,
     ExplicitContinuityRuntimeConfiguration,
 )
@@ -35,15 +36,34 @@ from relaylm.actual_model_targets import (
     verify_actual_model_artifact,
 )
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
+from relaylm.providers.openai_compatible_budget import (
+    OpenAICompatibleSerializedInputCounter,
+    SerializedInputCounterIdentity,
+)
 from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
     OpenAICompatibleDecodingConfig,
 )
+from relaylm.budget import (
+    BudgetDegradationPolicy,
+    BudgetDegradationStep,
+    BudgetLayer,
+    BudgetPlan,
+    CountCharacterEnvelope,
+    CountEnvelope,
+    TotalBudgetConfig,
+)
+from relaylm.budget_enforcement import (
+    SerializedCognitiveInputTokenCounter,
+    TokenCountMode,
+)
+from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.providers.openai_compatible_identity import (
     describe_openai_compatible_provider,
 )
 
 ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION = 2
+ACTUAL_MODEL_HOST_TOTAL_BUDGET_FORMAT_VERSION = 3
 CANONICAL_TARGET_PATHS = {
     "gemma-4-12b-it-q4-k-m-v1": Path(
         "evaluation/actual_model/targets/gemma-4-12b-it-q4-k-m-v1.json"
@@ -92,6 +112,34 @@ class HostContinuityCondition:
         )
 
 
+HostTokenCounterFactory = Callable[
+    ["ActualModelHostCondition", OpenAICompatibleProvider],
+    OpenAICompatibleSerializedInputCounter,
+]
+
+
+@dataclass(frozen=True, slots=True)
+class HostTokenCounterCapability:
+    """Host-local counter construction and truthfulness attestation.
+
+    The runner owns serialization and identity binding. The host supplies the
+    provider/model-specific callback through this explicit capability; there is
+    no heuristic fallback or hidden tokenizer choice.
+    """
+
+    factory: HostTokenCounterFactory
+    exact_behavior_demonstrated: bool
+    conservative_bound_demonstrated: bool
+
+    def __post_init__(self) -> None:
+        if not callable(self.factory):
+            raise TypeError("token counter factory must be callable")
+        if not isinstance(self.exact_behavior_demonstrated, bool):
+            raise TypeError("exact_behavior_demonstrated must be boolean")
+        if not isinstance(self.conservative_bound_demonstrated, bool):
+            raise TypeError("conservative_bound_demonstrated must be boolean")
+
+
 @dataclass(frozen=True, slots=True)
 class ActualModelHostCondition:
     target_id: str
@@ -113,13 +161,43 @@ class ActualModelHostCondition:
     condition_id: str
     replicate_id: str
     scenario_ids: tuple[str, ...]
+    cognitive_budget: ExplicitCognitiveBudgetConfiguration | None = None
     format_version: int = ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION
 
     def __post_init__(self) -> None:
-        if self.format_version != ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION:
+        if self.format_version not in {
+            ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION,
+            ACTUAL_MODEL_HOST_TOTAL_BUDGET_FORMAT_VERSION,
+        }:
             raise ActualModelHostRunnerError(
                 f"unsupported host condition format_version: {self.format_version}"
             )
+        if not isinstance(self.budgets, HostLegacyBudgetCondition):
+            raise TypeError("budgets must be HostLegacyBudgetCondition")
+        if self.format_version == ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION:
+            if self.cognitive_budget is not None:
+                raise ActualModelHostRunnerError(
+                    "format_version 2 cannot carry total cognitive-budget evidence"
+                )
+        else:
+            if not isinstance(
+                self.cognitive_budget,
+                ExplicitCognitiveBudgetConfiguration,
+            ):
+                raise ActualModelHostRunnerError(
+                    "format_version 3 requires complete cognitive_budget identity"
+                )
+            if self.budgets.to_runtime() != ExplicitBudgetConfiguration():
+                raise ActualModelHostRunnerError(
+                    "format_version 3 cannot mix legacy MEMORY/Event budgets"
+                )
+            if (
+                self.cognitive_budget.total.model_context_window
+                != self.effective_context_window
+            ):
+                raise ActualModelHostRunnerError(
+                    "cognitive budget model_context_window must match effective_context_window"
+                )
         if len(self.relaylm_commit) != 40 or any(
             char not in "0123456789abcdef" for char in self.relaylm_commit
         ):
@@ -207,6 +285,7 @@ class PreparedActualModelHostRun:
     fixture_root: Path
     provider: OpenAICompatibleProvider
     manifest: ActualModelRunManifest
+    cognitive_budget: CognitiveBudgetRuntimeConfig | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,25 +322,37 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
             f"cannot load actual-model host condition: {exc}"
         ) from exc
     mapping = _require_mapping(raw, "host condition")
-    _require_exact_keys(
-        mapping,
-        {
-            "format_version",
-            "target_id",
-            "relaylm_commit",
-            "lm_studio",
-            "effective_context_window",
-            "decoding",
-            "supported_decoding_controls",
-            "execution_path",
-            "continuity_runtime",
-            "budgets",
-            "condition_id",
-            "replicate_id",
-            "scenario_ids",
-        },
-        "host condition",
-    )
+    format_version = _require_int(mapping.get("format_version"), "format_version")
+    common_keys = {
+        "format_version",
+        "target_id",
+        "relaylm_commit",
+        "lm_studio",
+        "effective_context_window",
+        "decoding",
+        "supported_decoding_controls",
+        "execution_path",
+        "continuity_runtime",
+        "condition_id",
+        "replicate_id",
+        "scenario_ids",
+    }
+    if format_version == ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION:
+        _require_exact_keys(
+            mapping,
+            common_keys | {"budgets"},
+            "host condition",
+        )
+    elif format_version == ACTUAL_MODEL_HOST_TOTAL_BUDGET_FORMAT_VERSION:
+        _require_exact_keys(
+            mapping,
+            common_keys | {"cognitive_budget"},
+            "host condition",
+        )
+    else:
+        raise ActualModelHostRunnerError(
+            f"unsupported host condition format_version: {format_version}"
+        )
     lm_studio = _require_mapping(mapping["lm_studio"], "lm_studio")
     _require_exact_keys(
         lm_studio,
@@ -277,17 +368,41 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
     )
     decoding = _require_mapping(mapping["decoding"], "decoding")
     _require_exact_keys(decoding, {"temperature", "top_p", "seed"}, "decoding")
-    budgets = _require_mapping(mapping["budgets"], "budgets")
-    _require_exact_keys(
-        budgets,
-        {
-            "memory_max_chunks",
-            "memory_max_chars",
-            "event_max_events",
-            "event_max_chars",
-        },
-        "budgets",
+    legacy_budgets = HostLegacyBudgetCondition(
+        memory_max_chunks=None,
+        memory_max_chars=None,
+        event_max_events=None,
+        event_max_chars=None,
     )
+    cognitive_budget = None
+    if format_version == ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION:
+        budgets = _require_mapping(mapping["budgets"], "budgets")
+        _require_exact_keys(
+            budgets,
+            {
+                "memory_max_chunks",
+                "memory_max_chars",
+                "event_max_events",
+                "event_max_chars",
+            },
+            "budgets",
+        )
+        legacy_budgets = HostLegacyBudgetCondition(
+            memory_max_chunks=_optional_int(
+                budgets["memory_max_chunks"], "budgets.memory_max_chunks"
+            ),
+            memory_max_chars=_optional_int(
+                budgets["memory_max_chars"], "budgets.memory_max_chars"
+            ),
+            event_max_events=_optional_int(
+                budgets["event_max_events"], "budgets.event_max_events"
+            ),
+            event_max_chars=_optional_int(
+                budgets["event_max_chars"], "budgets.event_max_chars"
+            ),
+        )
+    else:
+        cognitive_budget = _parse_host_cognitive_budget(mapping["cognitive_budget"])
     continuity_raw = mapping["continuity_runtime"]
     continuity = None
     if continuity_raw is not None:
@@ -311,7 +426,7 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
     )
     try:
         return ActualModelHostCondition(
-            format_version=_require_int(mapping["format_version"], "format_version"),
+            format_version=format_version,
             target_id=_require_string(mapping["target_id"], "target_id"),
             relaylm_commit=_require_string(mapping["relaylm_commit"], "relaylm_commit"),
             lm_studio_version=_require_string(lm_studio["version"], "lm_studio.version"),
@@ -336,26 +451,14 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
             ),
             execution_path=_require_string(mapping["execution_path"], "execution_path"),
             continuity=continuity,
-            budgets=HostLegacyBudgetCondition(
-                memory_max_chunks=_optional_int(
-                    budgets["memory_max_chunks"], "budgets.memory_max_chunks"
-                ),
-                memory_max_chars=_optional_int(
-                    budgets["memory_max_chars"], "budgets.memory_max_chars"
-                ),
-                event_max_events=_optional_int(
-                    budgets["event_max_events"], "budgets.event_max_events"
-                ),
-                event_max_chars=_optional_int(
-                    budgets["event_max_chars"], "budgets.event_max_chars"
-                ),
-            ),
+            budgets=legacy_budgets,
             condition_id=_require_string(mapping["condition_id"], "condition_id"),
             replicate_id=_require_string(mapping["replicate_id"], "replicate_id"),
             scenario_ids=tuple(
                 _require_string(item, f"scenario_ids[{index}]")
                 for index, item in enumerate(scenario_ids, start=1)
             ),
+            cognitive_budget=cognitive_budget,
         )
     except (TypeError, ValueError) as exc:
         if isinstance(exc, ActualModelHostRunnerError):
@@ -363,11 +466,216 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
         raise ActualModelHostRunnerError(str(exc)) from exc
 
 
+def _parse_host_cognitive_budget(value: object) -> ExplicitCognitiveBudgetConfiguration:
+    mapping = _require_mapping(value, "cognitive_budget")
+    _require_exact_keys(
+        mapping,
+        {
+            "model_context_window",
+            "reserved_output_tokens",
+            "initial_plan",
+            "degradation_steps",
+            "token_counter",
+        },
+        "cognitive_budget",
+    )
+    try:
+        total = TotalBudgetConfig(
+            model_context_window=_require_int(
+                mapping["model_context_window"],
+                "cognitive_budget.model_context_window",
+            ),
+            reserved_output_tokens=_require_int(
+                mapping["reserved_output_tokens"],
+                "cognitive_budget.reserved_output_tokens",
+            ),
+        )
+        initial_plan = _parse_host_budget_plan(mapping["initial_plan"])
+        steps = _parse_host_degradation_steps(mapping["degradation_steps"])
+        policy = BudgetDegradationPolicy(
+            initial_plan=initial_plan,
+            steps=tuple(steps),
+        )
+        identity = _parse_host_counter_identity(mapping["token_counter"])
+        return ExplicitCognitiveBudgetConfiguration(
+            total=total,
+            policy=policy,
+            token_counter_identity=identity,
+        )
+    except (TypeError, ValueError) as exc:
+        if isinstance(exc, ActualModelHostRunnerError):
+            raise
+        raise ActualModelHostRunnerError(
+            f"invalid cognitive_budget: {exc}"
+        ) from exc
+
+
+def _parse_host_budget_plan(value: object) -> BudgetPlan:
+    mapping = _require_mapping(value, "cognitive_budget.initial_plan")
+    _require_exact_keys(
+        mapping,
+        {"canonical_state", "working_context", "retrieved_memory", "event_evidence"},
+        "cognitive_budget.initial_plan",
+    )
+    return BudgetPlan(
+        canonical_state=_parse_host_count_envelope(
+            mapping["canonical_state"],
+            "cognitive_budget.initial_plan.canonical_state",
+        ),
+        working_context=_parse_host_count_character_envelope(
+            mapping["working_context"],
+            "cognitive_budget.initial_plan.working_context",
+        ),
+        retrieved_memory=_parse_host_count_character_envelope(
+            mapping["retrieved_memory"],
+            "cognitive_budget.initial_plan.retrieved_memory",
+        ),
+        event_evidence=_parse_host_count_character_envelope(
+            mapping["event_evidence"],
+            "cognitive_budget.initial_plan.event_evidence",
+        ),
+    )
+
+
+def _parse_host_degradation_steps(value: object) -> list[BudgetDegradationStep]:
+    raw_steps = _require_list(value, "cognitive_budget.degradation_steps")
+    steps: list[BudgetDegradationStep] = []
+    for index, raw_step in enumerate(raw_steps):
+        label = f"cognitive_budget.degradation_steps[{index}]"
+        mapping = _require_mapping(raw_step, label)
+        _require_exact_keys(mapping, {"layer", "tier", "target"}, label)
+        layer_name = _require_string(mapping["layer"], f"{label}.layer")
+        try:
+            layer = BudgetLayer(layer_name)
+        except ValueError as exc:
+            raise ActualModelHostRunnerError(
+                f"{label}.layer is not a supported budget layer"
+            ) from exc
+        tier = _require_int(mapping["tier"], f"{label}.tier")
+        if tier != layer.tier:
+            raise ActualModelHostRunnerError(
+                f"{label}.tier does not match the canonical layer tier"
+            )
+        if layer is BudgetLayer.CANONICAL_STATE:
+            target = _parse_host_count_envelope(mapping["target"], f"{label}.target")
+        else:
+            target = _parse_host_count_character_envelope(
+                mapping["target"],
+                f"{label}.target",
+            )
+        steps.append(BudgetDegradationStep(layer=layer, target=target))
+    return steps
+
+
+def _parse_host_count_envelope(value: object, label: str) -> CountEnvelope:
+    mapping = _require_mapping(value, label)
+    _require_exact_keys(mapping, {"max_items", "floor_items"}, label)
+    try:
+        return CountEnvelope(
+            max_items=_require_int(mapping["max_items"], f"{label}.max_items"),
+            floor_items=_require_int(mapping["floor_items"], f"{label}.floor_items"),
+        )
+    except (TypeError, ValueError) as exc:
+        raise ActualModelHostRunnerError(f"invalid {label}: {exc}") from exc
+
+
+def _parse_host_count_character_envelope(
+    value: object,
+    label: str,
+) -> CountCharacterEnvelope:
+    mapping = _require_mapping(value, label)
+    _require_exact_keys(
+        mapping,
+        {"max_items", "floor_items", "max_chars", "floor_chars"},
+        label,
+    )
+    try:
+        return CountCharacterEnvelope(
+            max_items=_require_int(mapping["max_items"], f"{label}.max_items"),
+            floor_items=_require_int(mapping["floor_items"], f"{label}.floor_items"),
+            max_chars=_require_int(mapping["max_chars"], f"{label}.max_chars"),
+            floor_chars=_require_int(mapping["floor_chars"], f"{label}.floor_chars"),
+        )
+    except (TypeError, ValueError) as exc:
+        raise ActualModelHostRunnerError(f"invalid {label}: {exc}") from exc
+
+
+def _parse_host_counter_identity(value: object) -> SerializedInputCounterIdentity:
+    mapping = _require_mapping(value, "cognitive_budget.token_counter")
+    _require_exact_keys(
+        mapping,
+        {
+            "format_version",
+            "capability",
+            "implementation",
+            "version",
+            "mode",
+            "tokenizer_identity",
+            "parameters",
+        },
+        "cognitive_budget.token_counter",
+    )
+    mode_name = _require_string(mapping["mode"], "cognitive_budget.token_counter.mode")
+    try:
+        mode = TokenCountMode(mode_name)
+    except ValueError as exc:
+        raise ActualModelHostRunnerError(
+            "cognitive_budget.token_counter.mode is unsupported"
+        ) from exc
+    parameters_mapping = _require_mapping(
+        mapping["parameters"],
+        "cognitive_budget.token_counter.parameters",
+    )
+    parameters: list[tuple[str, object]] = []
+    for key, parameter in parameters_mapping.items():
+        if not isinstance(key, str) or not key.strip():
+            raise ActualModelHostRunnerError(
+                "cognitive_budget.token_counter.parameters keys must be non-empty strings"
+            )
+        if not isinstance(parameter, (str, int, float, bool)) and parameter is not None:
+            raise ActualModelHostRunnerError(
+                "cognitive_budget.token_counter.parameters values must be JSON scalars"
+            )
+        parameters.append((key, parameter))
+    try:
+        return SerializedInputCounterIdentity(
+            format_version=_require_int(
+                mapping["format_version"],
+                "cognitive_budget.token_counter.format_version",
+            ),
+            capability=_require_string(
+                mapping["capability"],
+                "cognitive_budget.token_counter.capability",
+            ),
+            implementation=_require_string(
+                mapping["implementation"],
+                "cognitive_budget.token_counter.implementation",
+            ),
+            version=_require_string(
+                mapping["version"],
+                "cognitive_budget.token_counter.version",
+            ),
+            mode=mode,
+            tokenizer_identity=_require_string(
+                mapping["tokenizer_identity"],
+                "cognitive_budget.token_counter.tokenizer_identity",
+            ),
+            parameters=tuple(sorted(parameters)),
+        )
+    except (TypeError, ValueError) as exc:
+        if isinstance(exc, ActualModelHostRunnerError):
+            raise
+        raise ActualModelHostRunnerError(
+            f"invalid cognitive_budget.token_counter: {exc}"
+        ) from exc
+
+
 def prepare_actual_model_host_run(
     *,
     condition: ActualModelHostCondition,
     repo_root: str | Path,
     model_artifact_path: str | Path,
+    token_counter_capabilities: Mapping[str, HostTokenCounterCapability] | None = None,
 ) -> PreparedActualModelHostRun:
     root = Path(repo_root).resolve()
     _verify_clean_exact_repo(root=root, expected_commit=condition.relaylm_commit)
@@ -424,6 +732,12 @@ def prepare_actual_model_host_run(
         decoding_capabilities=condition.decoding_capabilities,
     )
     identity = describe_openai_compatible_provider(provider)
+    cognitive_budget = _build_host_cognitive_budget(
+        condition=condition,
+        target=target,
+        provider=provider,
+        token_counter_capabilities=token_counter_capabilities,
+    )
     manifest = ActualModelRunManifest(
         relaylm_commit=condition.relaylm_commit,
         character_fixture_id=scenario_set.character_fixture_id,
@@ -439,7 +753,16 @@ def prepare_actual_model_host_run(
         structured_output_schema_version=CANONICAL_STRUCTURED_OUTPUT_SCHEMA_VERSION,
         scenario_set_version=scenario_set.scenario_set_version,
         condition_id=condition.condition_id,
-        budgets=condition.budgets.to_runtime(),
+        budgets=(
+            condition.budgets.to_runtime()
+            if cognitive_budget is None
+            else ExplicitBudgetConfiguration()
+        ),
+        cognitive_budget=(
+            ExplicitCognitiveBudgetConfiguration.from_runtime(cognitive_budget)
+            if cognitive_budget is not None
+            else None
+        ),
         continuity_runtime=(
             condition.continuity.to_runtime_identity()
             if condition.continuity is not None
@@ -459,6 +782,75 @@ def prepare_actual_model_host_run(
         fixture_root=fixture_root,
         provider=provider,
         manifest=manifest,
+        cognitive_budget=cognitive_budget,
+    )
+
+
+def _build_host_cognitive_budget(
+    *,
+    condition: ActualModelHostCondition,
+    target: ActualModelArtifactTarget,
+    provider: OpenAICompatibleProvider,
+    token_counter_capabilities: Mapping[str, HostTokenCounterCapability] | None,
+) -> CognitiveBudgetRuntimeConfig | None:
+    if condition.cognitive_budget is None:
+        return None
+    identity = condition.cognitive_budget.token_counter_identity
+    if identity is None:
+        raise ActualModelHostRunnerError(
+            "total-budget condition must carry token counter identity"
+        )
+    if identity.tokenizer_identity != target.tokenizer_identity:
+        raise ActualModelHostRunnerError(
+            "serialized-input counter tokenizer identity does not match the frozen target"
+        )
+    capability = (token_counter_capabilities or {}).get(identity.capability)
+    if capability is None:
+        raise ActualModelHostRunnerError(
+            "configured serialized-input counter capability is unavailable; "
+            "refusing to execute without a reproducible provider/model counter"
+        )
+    if identity.mode is TokenCountMode.EXACT and not capability.exact_behavior_demonstrated:
+        raise ActualModelHostRunnerError(
+            "exact counter mode requires an explicitly demonstrated exact capability"
+        )
+    if (
+        identity.mode is TokenCountMode.CONSERVATIVE_ESTIMATE
+        and not capability.conservative_bound_demonstrated
+    ):
+        raise ActualModelHostRunnerError(
+            "conservative_estimate mode requires an explicitly demonstrated safe bound"
+        )
+    try:
+        counter = capability.factory(condition, provider)
+    except Exception as exc:
+        raise ActualModelHostRunnerError(
+            "configured serialized-input counter capability could not be constructed"
+        ) from exc
+    if not isinstance(counter, OpenAICompatibleSerializedInputCounter):
+        raise ActualModelHostRunnerError(
+            "host counter capability must return OpenAICompatibleSerializedInputCounter"
+        )
+    if not isinstance(counter, SerializedCognitiveInputTokenCounter):
+        raise ActualModelHostRunnerError(
+            "host counter capability returned an incompatible counter"
+        )
+    if counter.model != provider.model:
+        raise ActualModelHostRunnerError(
+            "serialized-input counter model does not match the configured provider model"
+        )
+    if counter.decoding_config != provider.decoding_config:
+        raise ActualModelHostRunnerError(
+            "serialized-input counter decoding configuration does not match provider"
+        )
+    if counter.evidence_identity != identity:
+        raise ActualModelHostRunnerError(
+            "serialized-input counter identity does not match the host condition"
+        )
+    return CognitiveBudgetRuntimeConfig(
+        total=condition.cognitive_budget.total,
+        policy=condition.cognitive_budget.policy,
+        token_counter=counter,
     )
 
 
@@ -489,6 +881,7 @@ async def execute_actual_model_host_run(
                 ),
                 provider=prepared.provider,
                 manifest=prepared.manifest,
+                cognitive_budget=getattr(prepared, "cognitive_budget", None),
             )
             path = write_lm_studio_actual_model_execution_result(
                 result=result,
