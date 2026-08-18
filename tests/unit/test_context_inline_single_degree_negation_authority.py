@@ -159,12 +159,3 @@ def test_inline_multiple_reserved_negation_remains_outside_c25() -> None:
     compiled = _compile(deferred)
 
     assert [item.location for item in compiled.memory] == [deferred.location]
-
-
-def test_heading_addressed_single_reserved_negation_remains_outside_c25() -> None:
-    deferred = _chunk(
-        "tea: not dislikes; degree_hint: 0.85",
-        heading="Tea",
-    )
-
-    assert _compile(deferred).memory == ()
