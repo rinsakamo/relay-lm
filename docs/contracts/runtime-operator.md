@@ -1,6 +1,6 @@
 # Release Runtime Operator Contract
 
-Status: RCFG4 implementation contract for RelayLM v1. Owning Issue: #1446.
+Status: RCFG4 operator implementation + RCFG6 installed-artifact evidence reconciliation for RelayLM v1. Owning Issue: #1446.
 
 RCFG4 exposes the RCFG1 configuration contract, RCFG2 resolver, and RCFG3 assembly through the installed `relaylm` console entrypoint. It adds operator ergonomics and preflight only; it does not choose cognitive semantics or calibrated numeric defaults.
 
@@ -105,9 +105,30 @@ invalid_combination
 
 Successful `doctor`, `serve` shutdown, and `--version` return status `0`.
 
+## RCFG6 installed-artifact evidence
+
+RCFG6 does not introduce a second packaging or distribution implementation inside #1446. The mechanical artifact owner is #1447, and its merged REL1/REL2A work supplies the installed-product evidence consumed by this operator contract.
+
+The required `v1` `package-smoke` gate now builds both supported artifact forms from the exact transaction head and validates them outside editable-development assumptions. In particular, it:
+
+1. builds wheel and sdist twice and requires byte-identical repeat builds in the same build environment;
+2. inspects artifact metadata, required package files, and console entrypoints;
+3. installs the built wheel into a fresh virtual environment without editable mode;
+4. changes the working directory outside the repository checkout;
+5. runs installed `relaylm --version` and requires agreement with the single package-version authority;
+6. runs installed `relaylm doctor --config ... --json` against a scratch Character/runtime config created outside the checkout and requires `status: ok`;
+7. runs installed `relaylm-eval` and requires its native evaluation report to pass;
+8. installs the built sdist into a second fresh environment without editable mode;
+9. again runs installed `relaylm --version` and `relaylm doctor` outside the checkout;
+10. runs `pip check` in both installed environments.
+
+This satisfies the #1446 RCFG6 requirement that the supported operator path execute from built artifacts without repository-relative imports, editable installation, or bundled Character fixtures. The package/version/build mechanics themselves remain owned by #1447 and `docs/contracts/release-distribution.md`; #1446 consumes that evidence rather than redefining it.
+
+RCFG6 does not claim that a public 1.0 release is ready. Exact tag/commit/release-candidate identity and publication remain #1447 work, while the final integrated readiness decision remains #1449.
+
 ## Preserved ownership
 
-RCFG4 does not own or alter:
+RCFG4/RCFG6 do not own or alter:
 
 - Retrieval ranking/selection semantics;
 - Context Compiler authority;
@@ -115,9 +136,11 @@ RCFG4 does not own or alter:
 - Cognitive Budget degradation semantics;
 - provider wire/prompt/decoding semantics;
 - Character Identity/State/Event/MEMORY authority;
-- #1388 profile/default numbers.
+- #1388 profile/default numbers;
+- #1447 distribution/version/tag/publication mechanics.
 
-## Remaining release work
+## Remaining release-runtime work
 
-- RCFG5: consume evidence-backed #1388 canonical profiles/defaults after that authority exists;
-- RCFG6: installed-artifact execution smoke for `relaylm --version`, `doctor`, and supported startup outside editable-repository assumptions.
+- RCFG5: consume evidence-backed #1388 canonical profiles/defaults after that authority exists.
+
+RCFG6 installed-artifact execution smoke is satisfied by the current #1447 REL1/REL2A package-smoke authority and remains continuously rechecked by `v1` CI on relevant transaction heads.
