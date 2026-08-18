@@ -642,9 +642,9 @@ def _memory_chunk_is_shadowed(
                     )
                     if explicit_assignment is not None:
                         assignment_semantic, assignment_degree = explicit_assignment
-                        if (
-                            _lexical_terms(assignment_semantic)
-                            != _lexical_terms(current_semantic)
+                        assignment_semantic_terms = _lexical_terms(assignment_semantic)
+                        if assignment_semantic_terms[0] != "not" and (
+                            assignment_semantic_terms != _lexical_terms(current_semantic)
                             or assignment_degree != current_degree
                         ):
                             return True
