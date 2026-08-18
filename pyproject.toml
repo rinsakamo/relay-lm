@@ -20,7 +20,7 @@ dependencies = [
 test = ["pytest>=8.3"]
 
 [project.scripts]
-relaylm = "relaylm.server:main"
+relaylm = "relaylm.cli:main"
 relaylm-eval = "relaylm.evaluation:main"
 
 [tool.hatch.build.targets.wheel]
