@@ -643,6 +643,27 @@ def _memory_chunk_is_shadowed(
 
         if (
             current_scalar is not None
+            and heading_addresses_key
+            and inline_addresses_key
+        ):
+            assignment_values = _explicit_state_key_assignment_values(
+                chunk.content,
+                record.key,
+            )
+            if len(assignment_values) == 1:
+                assignment_terms = _lexical_terms(assignment_values[0])
+                if assignment_terms:
+                    current_terms = _lexical_terms(current_scalar)
+                    if len(assignment_terms) > 1 and assignment_terms[0] == "not":
+                        if assignment_terms[1:] == current_terms:
+                            return True
+                        continue
+                    if assignment_terms != current_terms:
+                        return True
+                    continue
+
+        if (
+            current_scalar is not None
             and inline_addresses_key
             and not heading_addresses_key
         ):
