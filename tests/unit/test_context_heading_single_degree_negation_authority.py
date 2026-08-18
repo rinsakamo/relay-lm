@@ -20,7 +20,7 @@ def _current_event() -> Event:
         actor="user",
         payload={"content": "What is current about tea?"},
         event_id="current-event",
-        timestamp="2026-08-18T21:35:00+09:00",
+        timestamp="2026-08-18T23:05:00+09:00",
     )
 
 
@@ -44,8 +44,8 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
     return MemoryTemporalAuthority(
         temporal_scope=scope,
         provenance=MemoryProvenance(
-            memory_id=f"memory-inline-degree-negation-{scope.value}",
-            derivation_id=f"derivation-inline-degree-negation-{scope.value}",
+            memory_id=f"memory-heading-degree-negation-{scope.value}",
+            derivation_id=f"derivation-heading-degree-negation-{scope.value}",
             sources=(
                 MemoryProvenanceSource(
                     kind=MemoryProvenanceSourceKind.EVENT,
@@ -60,11 +60,11 @@ def _chunk(
     body: str,
     *,
     scope: MemoryTemporalScope = MemoryTemporalScope.UNKNOWN,
-    heading: str = "Profile Notes",
+    heading: str = "Tea",
 ) -> MemoryChunk:
     return MemoryChunk(
         heading_path=("Memory", heading),
-        location=f"memory/MEMORY.md#memory/inline-degree-negation-{scope.value}",
+        location=f"memory/MEMORY.md#memory/heading-degree-negation-{scope.value}",
         content=f"## {heading}\n\n{body}",
         temporal_authority=_authority(scope),
     )
@@ -79,13 +79,13 @@ def _compile(chunk: MemoryChunk):
     )
 
 
-def test_inline_single_exact_negation_of_active_reserved_pair_suppresses() -> None:
+def test_heading_single_exact_negation_of_active_reserved_pair_suppresses() -> None:
     stale = _chunk("tea: not likes; degree_hint: 0.85")
 
     assert _compile(stale).memory == ()
 
 
-def test_inline_single_negation_of_different_semantic_pair_is_compatible() -> None:
+def test_heading_single_negation_of_different_semantic_pair_is_compatible() -> None:
     compatible = _chunk("tea: not dislikes; degree_hint: 0.85")
 
     compiled = _compile(compatible)
@@ -93,7 +93,7 @@ def test_inline_single_negation_of_different_semantic_pair_is_compatible() -> No
     assert [item.location for item in compiled.memory] == [compatible.location]
 
 
-def test_inline_single_negation_of_different_degree_pair_is_compatible() -> None:
+def test_heading_single_negation_of_different_degree_pair_is_compatible() -> None:
     compatible = _chunk("tea: not likes; degree_hint: 0.65")
 
     compiled = _compile(compatible)
@@ -101,16 +101,18 @@ def test_inline_single_negation_of_different_degree_pair_is_compatible() -> None
     assert [item.location for item in compiled.memory] == [compatible.location]
 
 
-def test_typed_current_uses_same_inline_single_degree_negation_rule() -> None:
-    stale = _chunk(
-        "tea: not likes; degree_hint: 0.85",
+def test_typed_current_uses_same_heading_single_degree_negation_rule() -> None:
+    compatible = _chunk(
+        "tea: not dislikes; degree_hint: 0.85",
         scope=MemoryTemporalScope.CURRENT,
     )
 
-    assert _compile(stale).memory == ()
+    compiled = _compile(compatible)
+
+    assert [item.location for item in compiled.memory] == [compatible.location]
 
 
-def test_historical_inline_single_degree_negation_remains_exempt() -> None:
+def test_historical_heading_single_degree_negation_remains_exempt() -> None:
     historical = _chunk(
         "tea: not likes; degree_hint: 0.85",
         scope=MemoryTemporalScope.HISTORICAL,
@@ -121,7 +123,16 @@ def test_historical_inline_single_degree_negation_remains_exempt() -> None:
     assert [item.location for item in compiled.memory] == [historical.location]
 
 
-def test_positive_inline_single_reserved_pair_remains_governed_by_c22() -> None:
+def test_additional_section_degree_keeps_c1_authority() -> None:
+    fallback = _chunk(
+        "tea: not dislikes; degree_hint: 0.85\n"
+        "degree_hint: 0.65"
+    )
+
+    assert _compile(fallback).memory == ()
+
+
+def test_positive_heading_single_reserved_pair_remains_governed_by_c21() -> None:
     stale = _chunk(
         "tea: dislikes; degree_hint: 0.85\n"
         "A separate note says Rin likes tea."
@@ -130,27 +141,36 @@ def test_positive_inline_single_reserved_pair_remains_governed_by_c22() -> None:
     assert _compile(stale).memory == ()
 
 
-def test_double_negation_remains_outside_c25_and_on_c1_fallback() -> None:
-    fallback = _chunk("tea: not not dislikes; degree_hint: 0.85")
+def test_inline_only_single_reserved_negation_remains_governed_by_c25() -> None:
+    inline_only = _chunk(
+        "tea: not dislikes; degree_hint: 0.85",
+        heading="Profile Notes",
+    )
 
-    assert _compile(fallback).memory == ()
+    compiled = _compile(inline_only)
+
+    assert [item.location for item in compiled.memory] == [inline_only.location]
 
 
-def test_bare_not_remains_outside_c25_and_on_c1_fallback() -> None:
+def test_bare_not_remains_outside_c26_and_on_c1_fallback() -> None:
     fallback = _chunk("tea: not; degree_hint: 0.85")
 
     assert _compile(fallback).memory == ()
 
 
+def test_double_negation_remains_outside_c26_and_on_c1_fallback() -> None:
+    fallback = _chunk("tea: not not dislikes; degree_hint: 0.85")
+
+    assert _compile(fallback).memory == ()
+
+
 def test_nonexact_negated_reserved_pair_remains_on_c1_fallback() -> None:
-    fallback = _chunk("tea: not likes; degree_hint: 0.85; note: survey")
+    fallback = _chunk("tea: not dislikes; degree_hint: 0.85; note: survey")
 
-    compiled = _compile(fallback)
-
-    assert [item.location for item in compiled.memory] == [fallback.location]
+    assert _compile(fallback).memory == ()
 
 
-def test_inline_multiple_reserved_negation_remains_outside_c25() -> None:
+def test_heading_multiple_reserved_negation_remains_outside_c26() -> None:
     deferred = _chunk(
         "tea: not dislikes; degree_hint: 0.85\n"
         "tea: likes; degree_hint: 0.85"
@@ -159,3 +179,9 @@ def test_inline_multiple_reserved_negation_remains_outside_c25() -> None:
     compiled = _compile(deferred)
 
     assert [item.location for item in compiled.memory] == [deferred.location]
+
+
+def test_heading_body_without_inline_assignment_remains_outside_c26() -> None:
+    fallback = _chunk("not dislikes; degree_hint: 0.85")
+
+    assert _compile(fallback).memory == ()
