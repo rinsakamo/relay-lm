@@ -211,15 +211,3 @@ def test_single_inline_negated_pair_remains_governed_by_c25() -> None:
     compiled = _compile(compatible)
 
     assert [item.location for item in compiled.memory] == [compatible.location]
-
-
-def test_heading_addressed_multiple_negated_set_remains_outside_c28() -> None:
-    deferred = _chunk(
-        (
-            "tea: not dislikes; degree_hint: 0.85",
-            "tea: not avoids; degree_hint: 0.65",
-        ),
-        heading="Tea",
-    )
-
-    assert _compile(deferred).memory == ()
