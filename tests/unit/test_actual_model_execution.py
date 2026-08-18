@@ -172,6 +172,37 @@ def test_continuity_capability_requires_explicit_runtime_identity_before_generat
     assert provider.calls == 0
 
 
+def test_state_only_scenario_still_requires_runtime_for_continuity_capable_provider(
+    tmp_path: Path,
+) -> None:
+    scenario_set = load_actual_model_scenario_set(_SCENARIO_SET_PATH)
+    provider = _Provider()
+    workspace = tmp_path / "run"
+
+    with pytest.raises(
+        ActualModelScenarioExecutionError,
+        match="providers declaring continuity_candidates require explicit",
+    ):
+        asyncio.run(
+            run_actual_model_scenario_definition(
+                scenario_set=scenario_set,
+                scenario_id="response-persona-correction-v1",
+                fixture_root=_FIXTURE_ROOT,
+                workspace_root=workspace,
+                provider=provider,
+                manifest=_manifest(
+                    provider_capabilities=(
+                        "state_candidates",
+                        "continuity_candidates",
+                    )
+                ),
+            )
+        )
+
+    assert provider.calls == 0
+    assert not workspace.exists()
+
+
 def test_restart_definition_routes_through_restart_evidence_with_fixture_owned_split(
     tmp_path: Path,
 ) -> None:

@@ -131,7 +131,7 @@ The snippet is schema-shaped pseudodata, not a canonical condition. No number sh
 
 `memory_max_chunks` and `memory_max_chars` must either both be supplied or both be null. The same rule applies to `event_max_events` and `event_max_chars`.
 
-If any selected scenario requires `continuity_candidates`, `continuity_runtime` must be explicit. The runner never invents Continuity capacity or lifetime.
+The canonical OpenAI-compatible provider declares the `continuity_candidates` semantic channel even when a selected scenario does not require a Continuity proposal. Therefore an actual-model execution whose manifest declares `continuity_candidates` must also carry explicit `continuity_runtime`. This is a capability-safety requirement: the provider may emit an optional ContinuityCandidate on any turn, and ordinary-turn commit cannot truthfully accept or reject that proposal without a runtime. The runner never invents Continuity capacity or lifetime and no numeric default is implied.
 
 ## Target truthfulness
 
@@ -218,7 +218,7 @@ The command fails before semantic generation when, among other cases:
 - selected target metadata does not match the condition target id;
 - the GGUF bytes do not match the selected frozen target;
 - a scenario id is outside canonical foundation-v2;
-- Continuity identity is required but missing;
+- the provider declares `continuity_candidates` but explicit Continuity Runtime identity is missing;
 - a declared decoding control is unsupported;
 - provider/runtime/manifest identity drifts at the #1484 binding boundary;
 - a workspace path for the run already exists;
