@@ -1,0 +1,182 @@
+name: v1 release candidate gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_commit:
+        description: Exact current v1 commit to validate as an RC/final artifact
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v1-release-candidate-${{ inputs.candidate_commit }}
+  cancel-in-progress: false
+
+jobs:
+  exact-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out exact candidate commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_commit }}
+          fetch-depth: 0
+
+      - name: Reacquire current v1 and tag authority
+        env:
+          CANDIDATE_COMMIT: ${{ inputs.candidate_commit }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_COMMIT"
+          test -z "$(git status --porcelain)"
+          git fetch --force --tags origin v1:refs/remotes/origin/v1
+          CURRENT_V1_COMMIT="$(git rev-parse origin/v1)"
+          python tools/release_candidate.py check-source \
+            --candidate "$CANDIDATE_COMMIT" \
+            --current-v1 "$CURRENT_V1_COMMIT"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Resolve releasable source identity
+        env:
+          CANDIDATE_COMMIT: ${{ inputs.candidate_commit }}
+        run: |
+          RELAYLM_PACKAGE_VERSION="$(PYTHONPATH=src python -c 'from relaylm import __version__; print(__version__)')"
+          python tools/release_candidate.py check-version "$RELAYLM_PACKAGE_VERSION"
+          python tools/release_identity.py assert-tag-absent "$RELAYLM_PACKAGE_VERSION"
+          echo "RELAYLM_PACKAGE_VERSION=$RELAYLM_PACKAGE_VERSION" >> "$GITHUB_ENV"
+          echo "CANDIDATE_COMMIT=$CANDIDATE_COMMIT" >> "$GITHUB_ENV"
+
+      - name: Install build frontend
+        run: python -m pip install build
+
+      - name: Build exact candidate and reproducibility comparison
+        run: |
+          mkdir -p candidate rebuild
+          python -m build --wheel --sdist --outdir candidate
+          python -m build --wheel --sdist --outdir rebuild
+          test "$(find candidate -maxdepth 1 -type f | wc -l)" -eq 2
+          test "$(find rebuild -maxdepth 1 -type f | wc -l)" -eq 2
+          for artifact in candidate/*; do
+            name="$(basename "$artifact")"
+            cmp "$artifact" "rebuild/$name"
+          done
+          python tools/release_candidate.py inspect \
+            --version "$RELAYLM_PACKAGE_VERSION" \
+            --artifacts candidate
+
+      - name: Bind exact artifact provenance
+        run: |
+          python tools/release_identity.py manifest \
+            --version "$RELAYLM_PACKAGE_VERSION" \
+            --commit "$CANDIDATE_COMMIT" \
+            candidate/relaylm-*.whl candidate/relaylm-*.tar.gz \
+            > candidate/release-identity.json
+          python tools/release_candidate.py verify-manifest \
+            --version "$RELAYLM_PACKAGE_VERSION" \
+            --commit "$CANDIDATE_COMMIT" \
+            --manifest candidate/release-identity.json \
+            --artifacts candidate
+          {
+            python --version
+            python -m pip --version
+            python -m pip freeze
+          } > candidate/build-environment.txt
+
+      - name: Create checkout-external operator fixture
+        run: |
+          SMOKE_ROOT="$RUNNER_TEMP/relaylm-candidate-smoke"
+          CHARACTER="$SMOKE_ROOT/character"
+          mkdir -p "$CHARACTER"
+          cat > "$CHARACTER/config.yaml" <<'YAML'
+          format_version: 1
+          character:
+            id: release-candidate-smoke
+            name: Release Candidate Smoke
+          YAML
+          printf '%s\n' 'A valid release candidate smoke identity.' > "$CHARACTER/SOUL.md"
+          cat > "$SMOKE_ROOT/runtime.yaml" <<YAML
+          format_version: 1
+          character:
+            directory: $CHARACTER
+          provider:
+            adapter: openai_compatible
+            base_url: http://127.0.0.1:1234/v1
+            model: release-candidate-smoke-model
+          server:
+            host: 127.0.0.1
+            port: 18090
+          YAML
+
+      - name: Validate exact wheel through installed operator and deterministic paths
+        run: |
+          ENV_ROOT="$RUNNER_TEMP/relaylm-candidate-wheel-env"
+          SMOKE_ROOT="$RUNNER_TEMP/relaylm-candidate-smoke"
+          python -m venv "$ENV_ROOT"
+          "$ENV_ROOT/bin/python" -m pip install candidate/relaylm-*.whl
+          "$ENV_ROOT/bin/python" -m pip check
+          test "$(cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" --version)" = "relaylm $RELAYLM_PACKAGE_VERSION"
+          (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" doctor --config "$SMOKE_ROOT/runtime.yaml" --json > "$GITHUB_WORKSPACE/candidate/wheel-doctor.json")
+          (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm-eval" > "$GITHUB_WORKSPACE/candidate/wheel-evaluation.json")
+          python tools/release_candidate.py verify-runtime \
+            --doctor candidate/wheel-doctor.json \
+            --evaluation candidate/wheel-evaluation.json
+          pushd "$RUNNER_TEMP" >/dev/null
+          "$ENV_ROOT/bin/relaylm" serve --config "$SMOKE_ROOT/runtime.yaml" > "$GITHUB_WORKSPACE/candidate/wheel-serve.log" 2>&1 &
+          SERVER_PID=$!
+          popd >/dev/null
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          HEALTH_OK=0
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18090/health > candidate/wheel-health.json; then
+              HEALTH_OK=1
+              break
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              cat candidate/wheel-serve.log
+              exit 1
+            fi
+            sleep 1
+          done
+          test "$HEALTH_OK" -eq 1
+          kill "$SERVER_PID"
+          wait "$SERVER_PID" || true
+          trap - EXIT
+
+      - name: Validate exact sdist through a second fresh installed environment
+        run: |
+          ENV_ROOT="$RUNNER_TEMP/relaylm-candidate-sdist-env"
+          SMOKE_ROOT="$RUNNER_TEMP/relaylm-candidate-smoke"
+          python -m venv "$ENV_ROOT"
+          "$ENV_ROOT/bin/python" -m pip install candidate/relaylm-*.tar.gz
+          "$ENV_ROOT/bin/python" -m pip check
+          test "$(cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" --version)" = "relaylm $RELAYLM_PACKAGE_VERSION"
+          (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm" doctor --config "$SMOKE_ROOT/runtime.yaml" --json > "$GITHUB_WORKSPACE/candidate/sdist-doctor.json")
+          (cd "$RUNNER_TEMP" && "$ENV_ROOT/bin/relaylm-eval" > "$GITHUB_WORKSPACE/candidate/sdist-evaluation.json")
+          python tools/release_candidate.py verify-runtime \
+            --doctor candidate/sdist-doctor.json \
+            --evaluation candidate/sdist-evaluation.json
+
+      - name: Reverify immutable candidate bytes after execution
+        run: |
+          python tools/release_candidate.py verify-manifest \
+            --version "$RELAYLM_PACKAGE_VERSION" \
+            --commit "$CANDIDATE_COMMIT" \
+            --manifest candidate/release-identity.json \
+            --artifacts candidate
+
+      - name: Preserve exact candidate evidence bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: relaylm-candidate-${{ env.RELAYLM_PACKAGE_VERSION }}-${{ inputs.candidate_commit }}
+          path: candidate/
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          retention-days: 90
