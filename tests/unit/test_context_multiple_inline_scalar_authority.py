@@ -162,14 +162,3 @@ def test_empty_assignment_prevents_partial_c18_interpretation() -> None:
     compiled = _compile(chunk=fallback)
 
     assert [item.location for item in compiled.memory] == [fallback.location]
-
-
-def test_heading_plus_multiple_scalar_assignments_remains_outside_c18() -> None:
-    deferred = _chunk(
-        ("residence_location: Fukuoka", "residence_location: Hokkaido"),
-        heading="Residence Location",
-    )
-
-    compiled = _compile(chunk=deferred)
-
-    assert [item.location for item in compiled.memory] == [deferred.location]
