@@ -151,11 +151,12 @@ def plan_actual_model_scenario_execution(
         )
 
     if (
-        "continuity_candidates" in required_capabilities
+        "continuity_candidates" in declared_capabilities
         and manifest.continuity_runtime is None
     ):
         raise ActualModelScenarioExecutionError(
-            "continuity_candidates scenarios require explicit Continuity Runtime identity"
+            "providers declaring continuity_candidates require explicit "
+            "Continuity Runtime identity"
         )
     if manifest.execution_path == "streaming" and "streaming" not in declared_capabilities:
         raise ActualModelScenarioExecutionError(
