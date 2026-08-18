@@ -195,7 +195,10 @@ domains:
       - src/relaylm/actual_model_pressure.py
       - src/relaylm/actual_model_cognitive_budget.py
       - src/relaylm/actual_model_targets.py
+      - src/relaylm/actual_model_lm_studio.py
+      - src/relaylm/actual_model_host_runner.py
       - evaluation/actual_model/targets/gemma-4-12b-it-q4-k-m-v1.json
+      - evaluation/actual_model/targets/gemma-4-12b-it-q4-k-m-lmstudio-community-v1.json
     tests:
       - tests/unit/test_actual_model_evaluation.py
       - tests/unit/test_actual_model_artifacts.py
@@ -213,8 +216,12 @@ domains:
       - tests/unit/test_actual_model_scenario_coverage.py
       - tests/unit/test_actual_model_cognitive_budget.py
       - tests/unit/test_actual_model_targets.py
+      - tests/unit/test_actual_model_lm_studio.py
+      - tests/unit/test_actual_model_host_runner.py
     docs:
       - docs/reference/actual-model-cognitive-budget-evidence.md
+      - docs/reference/actual-model-lm-studio-binding.md
+      - docs/reference/actual-model-host-runner.md
 
   calibration:
     runtime: []
