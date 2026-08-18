@@ -43,10 +43,16 @@ from relaylm.providers.openai_compatible_identity import (
     describe_openai_compatible_provider,
 )
 
-ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION = 1
-CANONICAL_TARGET_PATH = Path(
-    "evaluation/actual_model/targets/gemma-4-12b-it-q4-k-m-v1.json"
-)
+ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION = 2
+CANONICAL_TARGET_PATHS = {
+    "gemma-4-12b-it-q4-k-m-v1": Path(
+        "evaluation/actual_model/targets/gemma-4-12b-it-q4-k-m-v1.json"
+    ),
+    "gemma-4-12b-it-q4-k-m-lmstudio-community-v1": Path(
+        "evaluation/actual_model/targets/"
+        "gemma-4-12b-it-q4-k-m-lmstudio-community-v1.json"
+    ),
+}
 CANONICAL_SCENARIO_SET_PATH = Path(
     "evaluation/actual_model/scenario_sets/foundation-v2.json"
 )
@@ -88,6 +94,7 @@ class HostContinuityCondition:
 
 @dataclass(frozen=True, slots=True)
 class ActualModelHostCondition:
+    target_id: str
     relaylm_commit: str
     lm_studio_version: str
     lm_studio_build: str
@@ -120,6 +127,7 @@ class ActualModelHostCondition:
                 "relaylm_commit must be an exact lowercase 40-character Git SHA"
             )
         for name in (
+            "target_id",
             "lm_studio_version",
             "lm_studio_build",
             "deployment_identity",
@@ -239,6 +247,7 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
         mapping,
         {
             "format_version",
+            "target_id",
             "relaylm_commit",
             "lm_studio",
             "effective_context_window",
@@ -303,6 +312,7 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
     try:
         return ActualModelHostCondition(
             format_version=_require_int(mapping["format_version"], "format_version"),
+            target_id=_require_string(mapping["target_id"], "target_id"),
             relaylm_commit=_require_string(mapping["relaylm_commit"], "relaylm_commit"),
             lm_studio_version=_require_string(lm_studio["version"], "lm_studio.version"),
             lm_studio_build=_require_string(lm_studio["build"], "lm_studio.build"),
@@ -362,7 +372,16 @@ def prepare_actual_model_host_run(
     root = Path(repo_root).resolve()
     _verify_clean_exact_repo(root=root, expected_commit=condition.relaylm_commit)
 
-    target = load_actual_model_target(root / CANONICAL_TARGET_PATH)
+    target_path = CANONICAL_TARGET_PATHS.get(condition.target_id)
+    if target_path is None:
+        raise ActualModelHostRunnerError(
+            f"target_id is not an allowed actual-model target: {condition.target_id}"
+        )
+    target = load_actual_model_target(root / target_path)
+    if target.target_id != condition.target_id:
+        raise ActualModelHostRunnerError(
+            "selected target metadata does not match host condition target_id"
+        )
     artifact_verification = verify_actual_model_artifact(
         target=target,
         artifact_path=model_artifact_path,
@@ -501,8 +520,8 @@ async def execute_actual_model_host_run(
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Run canonical foundation-v2 actual-model evidence against a verified "
-            "Gemma 4 12B IT Q4_K_M artifact through LM Studio."
+            "Run canonical foundation-v2 actual-model evidence against an explicitly "
+            "selected verified Gemma 4 12B IT Q4_K_M target through LM Studio."
         )
     )
     parser.add_argument("--condition", required=True)
@@ -531,6 +550,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "format_version": 1,
                 "suite": "actual-model-foundation-v2-lm-studio",
                 "relaylm_commit": condition.relaylm_commit,
+                "target_id": condition.target_id,
                 "condition_id": condition.condition_id,
                 "replicate_id": condition.replicate_id,
                 "results": [item.to_mapping() for item in results],

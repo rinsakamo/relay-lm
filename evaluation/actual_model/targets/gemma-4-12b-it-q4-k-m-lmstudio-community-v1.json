@@ -1,0 +1,12 @@
+{
+  "format_version": 1,
+  "target_id": "gemma-4-12b-it-q4-k-m-lmstudio-community-v1",
+  "model_family": "google/gemma-4-12B-it",
+  "artifact_repository": "lmstudio-community/gemma-4-12B-it-GGUF",
+  "artifact_repository_revision": "65fe312c53d8b4579f444382adf078bacb1972d0",
+  "artifact_filename": "gemma-4-12B-it-Q4_K_M.gguf",
+  "quantization": "Q4_K_M",
+  "artifact_size_bytes": 7381384864,
+  "artifact_sha256": "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed",
+  "upstream_tokenizer_sha256": "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f"
+}

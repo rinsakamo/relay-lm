@@ -25,23 +25,34 @@ from relaylm.providers.openai_compatible_identity import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TARGET_PATH = (
+PRIMARY_TARGET_ID = "gemma-4-12b-it-q4-k-m-v1"
+LMSTUDIO_COMMUNITY_TARGET_ID = "gemma-4-12b-it-q4-k-m-lmstudio-community-v1"
+PRIMARY_TARGET_PATH = (
     REPO_ROOT
     / "evaluation"
     / "actual_model"
     / "targets"
     / "gemma-4-12b-it-q4-k-m-v1.json"
 )
+LMSTUDIO_COMMUNITY_TARGET_PATH = (
+    REPO_ROOT
+    / "evaluation"
+    / "actual_model"
+    / "targets"
+    / "gemma-4-12b-it-q4-k-m-lmstudio-community-v1.json"
+)
 FIXTURE_ROOT = REPO_ROOT / "evaluation" / "actual_model" / "characters" / "foundation-v1"
 
 
 def _condition_mapping(
     *,
+    target_id: str = LMSTUDIO_COMMUNITY_TARGET_ID,
     scenario_ids: list[str] | None = None,
     continuity_runtime: dict[str, int] | None = None,
 ) -> dict[str, object]:
     return {
-        "format_version": 1,
+        "format_version": 2,
+        "target_id": target_id,
         "relaylm_commit": "9" * 40,
         "lm_studio": {
             "version": "0.3.30",
@@ -78,8 +89,10 @@ def _write_condition(tmp_path: Path, mapping: dict[str, object]) -> Path:
     return path
 
 
-def _verification() -> ActualModelArtifactVerification:
-    target = load_actual_model_target(TARGET_PATH)
+def _verification(
+    target_path: Path = LMSTUDIO_COMMUNITY_TARGET_PATH,
+) -> ActualModelArtifactVerification:
+    target = load_actual_model_target(target_path)
     return ActualModelArtifactVerification(
         target_id=target.target_id,
         target_revision=target.revision,
@@ -95,6 +108,7 @@ def test_host_condition_loader_is_strict_and_has_no_hidden_runtime_defaults(
 
     condition = load_actual_model_host_condition(path)
 
+    assert condition.target_id == LMSTUDIO_COMMUNITY_TARGET_ID
     assert condition.relaylm_commit == "9" * 40
     assert condition.environment.version == "0.3.30"
     assert condition.environment.build == "example-build-123"
@@ -118,7 +132,7 @@ def test_host_condition_loader_rejects_duplicate_json_keys_and_scenarios(
 ) -> None:
     duplicate_key = tmp_path / "duplicate-key.json"
     duplicate_key.write_text(
-        '{"format_version":1,"format_version":1}',
+        '{"format_version":2,"format_version":2}',
         encoding="utf-8",
     )
     with pytest.raises(ActualModelHostRunnerError, match="duplicate JSON key"):
@@ -133,7 +147,7 @@ def test_host_condition_loader_rejects_duplicate_json_keys_and_scenarios(
         )
 
 
-def test_prepare_derives_manifest_from_canonical_target_fixture_and_provider(
+def test_prepare_derives_manifest_from_selected_target_fixture_and_provider(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -153,11 +167,22 @@ def test_prepare_derives_manifest_from_canonical_target_fixture_and_provider(
         model_artifact_path=tmp_path / "not-read-because-verifier-is-patched.gguf",
     )
     try:
-        target = load_actual_model_target(TARGET_PATH)
+        target = load_actual_model_target(LMSTUDIO_COMMUNITY_TARGET_PATH)
         identity = describe_openai_compatible_provider(prepared.provider)
         manifest = prepared.manifest
 
         assert prepared.target == target
+        assert prepared.target.target_id == LMSTUDIO_COMMUNITY_TARGET_ID
+        assert prepared.target.artifact_repository == "lmstudio-community/gemma-4-12B-it-GGUF"
+        assert (
+            prepared.target.artifact_repository_revision
+            == "65fe312c53d8b4579f444382adf078bacb1972d0"
+        )
+        assert prepared.target.artifact_size_bytes == 7_381_384_864
+        assert (
+            prepared.target.artifact_sha256
+            == "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed"
+        )
         assert prepared.scenario_set.scenario_set_version == "actual-model-foundation-v2"
         assert manifest.relaylm_commit == condition.relaylm_commit
         assert manifest.character_fixture_id == "actual-model-foundation-v1"
@@ -178,6 +203,54 @@ def test_prepare_derives_manifest_from_canonical_target_fixture_and_provider(
         assert manifest.scenario_set_version == "actual-model-foundation-v2"
     finally:
         asyncio.run(prepared.provider.aclose())
+
+
+def test_prepare_keeps_original_bartowski_target_selectable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    condition = load_actual_model_host_condition(
+        _write_condition(
+            tmp_path,
+            _condition_mapping(target_id=PRIMARY_TARGET_ID),
+        )
+    )
+    monkeypatch.setattr(host_runner, "_verify_clean_exact_repo", lambda **_: None)
+    monkeypatch.setattr(
+        host_runner,
+        "verify_actual_model_artifact",
+        lambda **_: _verification(PRIMARY_TARGET_PATH),
+    )
+
+    prepared = prepare_actual_model_host_run(
+        condition=condition,
+        repo_root=REPO_ROOT,
+        model_artifact_path=tmp_path / "not-read-because-verifier-is-patched.gguf",
+    )
+    try:
+        assert prepared.target == load_actual_model_target(PRIMARY_TARGET_PATH)
+    finally:
+        asyncio.run(prepared.provider.aclose())
+
+
+def test_prepare_rejects_target_outside_allowlist(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    condition = load_actual_model_host_condition(
+        _write_condition(
+            tmp_path,
+            _condition_mapping(target_id="not-a-canonical-target"),
+        )
+    )
+    monkeypatch.setattr(host_runner, "_verify_clean_exact_repo", lambda **_: None)
+
+    with pytest.raises(ActualModelHostRunnerError, match="not an allowed actual-model target"):
+        prepare_actual_model_host_run(
+            condition=condition,
+            repo_root=REPO_ROOT,
+            model_artifact_path=tmp_path / "model.gguf",
+        )
 
 
 def test_prepare_requires_continuity_identity_for_selected_continuity_scenario(
