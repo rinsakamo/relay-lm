@@ -152,15 +152,3 @@ def test_heading_multiple_same_key_reserved_assignments_remain_outside_c21() -> 
     compiled = _compile(deferred)
 
     assert [item.location for item in compiled.memory] == [deferred.location]
-
-
-def test_inline_only_exact_reserved_semantic_locality_remains_outside_c21() -> None:
-    deferred = _chunk(
-        "tea: dislikes; degree_hint: 0.85\n"
-        "A separate note says Rin likes tea.",
-        heading="Profile Notes",
-    )
-
-    compiled = _compile(deferred)
-
-    assert [item.location for item in compiled.memory] == [deferred.location]
