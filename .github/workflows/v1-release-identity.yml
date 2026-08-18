@@ -1,0 +1,61 @@
+name: v1 release identity
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - v1
+  push:
+    branches:
+      - v1
+    tags:
+      - "v1.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v1-release-identity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  identity-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact event head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact head
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Resolve package version authority
+        run: |
+          RELAYLM_PACKAGE_VERSION="$(PYTHONPATH=src python -c 'from relaylm import __version__; print(__version__)')"
+          test -n "$RELAYLM_PACKAGE_VERSION"
+          echo "RELAYLM_PACKAGE_VERSION=$RELAYLM_PACKAGE_VERSION" >> "$GITHUB_ENV"
+
+      - name: Validate REL2 version and tag identity
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          TAG_CREATED: ${{ github.event.created }}
+          TAG_FORCED: ${{ github.event.forced }}
+        run: |
+          python tools/release_identity.py ci \
+            --version "$RELAYLM_PACKAGE_VERSION" \
+            --event-name "$EVENT_NAME" \
+            --ref-type "$REF_TYPE" \
+            --ref-name "$REF_NAME" \
+            --created "$TAG_CREATED" \
+            --forced "$TAG_FORCED"
