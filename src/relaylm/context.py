@@ -656,6 +656,20 @@ def _memory_chunk_is_shadowed(
                     if assignment_terms[1:] == _lexical_terms(current_scalar):
                         return True
                     continue
+            elif len(assignment_values) >= 2:
+                assignment_term_sets = tuple(
+                    _lexical_terms(value) for value in assignment_values
+                )
+                if all(assignment_terms for assignment_terms in assignment_term_sets):
+                    current_terms = _lexical_terms(current_scalar)
+                    for assignment_terms in assignment_term_sets:
+                        if len(assignment_terms) > 1 and assignment_terms[0] == "not":
+                            if assignment_terms[1:] == current_terms:
+                                return True
+                            continue
+                        if assignment_terms != current_terms:
+                            return True
+                    continue
 
         current_values = tuple(
             value_text
