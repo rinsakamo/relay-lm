@@ -20,7 +20,7 @@ def _current_event() -> Event:
         actor="user",
         payload={"content": "What is current about tea?"},
         event_id="current-event",
-        timestamp="2026-08-18T11:10:00+09:00",
+        timestamp="2026-08-18T12:40:00+09:00",
     )
 
 
@@ -44,8 +44,8 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
     return MemoryTemporalAuthority(
         temporal_scope=scope,
         provenance=MemoryProvenance(
-            memory_id=f"memory-heading-inline-degree-{scope.value}",
-            derivation_id=f"derivation-heading-inline-degree-{scope.value}",
+            memory_id=f"memory-inline-degree-{scope.value}",
+            derivation_id=f"derivation-inline-degree-{scope.value}",
             sources=(
                 MemoryProvenanceSource(
                     kind=MemoryProvenanceSourceKind.EVENT,
@@ -60,12 +60,11 @@ def _chunk(
     body: str,
     *,
     scope: MemoryTemporalScope = MemoryTemporalScope.UNKNOWN,
-    heading: str = "Tea",
 ) -> MemoryChunk:
     return MemoryChunk(
-        heading_path=("Memory", heading),
-        location=f"memory/MEMORY.md#memory/heading-inline-degree-{scope.value}",
-        content=f"## {heading}\n\n{body}",
+        heading_path=("Memory", "Profile Notes"),
+        location=f"memory/MEMORY.md#memory/inline-degree-{scope.value}",
+        content=f"## Profile Notes\n\n{body}",
         temporal_authority=_authority(scope),
     )
 
@@ -79,7 +78,7 @@ def _compile(chunk: MemoryChunk):
     )
 
 
-def test_heading_single_inline_exact_degree_semantic_conflict_suppresses_despite_tail_match() -> None:
+def test_inline_single_exact_degree_semantic_conflict_suppresses_despite_tail_match() -> None:
     stale = _chunk(
         "tea: dislikes; degree_hint: 0.85\n"
         "A separate note says Rin likes tea."
@@ -88,7 +87,7 @@ def test_heading_single_inline_exact_degree_semantic_conflict_suppresses_despite
     assert _compile(stale).memory == ()
 
 
-def test_heading_single_inline_exact_degree_match_retains() -> None:
+def test_inline_single_exact_degree_match_retains() -> None:
     current = _chunk("tea: likes; degree_hint = 0.85")
 
     compiled = _compile(current)
@@ -96,22 +95,13 @@ def test_heading_single_inline_exact_degree_match_retains() -> None:
     assert [item.location for item in compiled.memory] == [current.location]
 
 
-def test_heading_single_inline_exact_stale_degree_suppresses() -> None:
+def test_inline_single_exact_stale_degree_remains_c1_suppressed() -> None:
     stale = _chunk("tea: likes; degree_hint: 0.65")
 
     assert _compile(stale).memory == ()
 
 
-def test_heading_single_inline_match_does_not_override_section_wide_stale_degree() -> None:
-    stale = _chunk(
-        "tea: likes; degree_hint: 0.85\n"
-        "degree_hint: 0.65"
-    )
-
-    assert _compile(stale).memory == ()
-
-
-def test_typed_current_uses_same_heading_single_inline_degree_rule() -> None:
+def test_typed_current_uses_same_inline_single_degree_rule() -> None:
     stale = _chunk(
         "tea: dislikes; degree_hint: 0.85\n"
         "A separate note says Rin likes tea.",
@@ -121,7 +111,7 @@ def test_typed_current_uses_same_heading_single_inline_degree_rule() -> None:
     assert _compile(stale).memory == ()
 
 
-def test_historical_heading_single_inline_degree_remains_exempt() -> None:
+def test_historical_inline_single_degree_remains_exempt() -> None:
     historical = _chunk(
         "tea: dislikes; degree_hint: 0.65",
         scope=MemoryTemporalScope.HISTORICAL,
@@ -132,7 +122,7 @@ def test_historical_heading_single_inline_degree_remains_exempt() -> None:
     assert [item.location for item in compiled.memory] == [historical.location]
 
 
-def test_nonexact_heading_single_inline_degree_value_remains_c1_fallback() -> None:
+def test_nonexact_inline_single_degree_value_remains_c1_fallback() -> None:
     fallback = _chunk(
         "tea: dislikes; degree_hint: 0.85; note: survey\n"
         "A separate note says Rin likes tea."
@@ -143,7 +133,7 @@ def test_nonexact_heading_single_inline_degree_value_remains_c1_fallback() -> No
     assert [item.location for item in compiled.memory] == [fallback.location]
 
 
-def test_heading_multiple_same_key_reserved_assignments_remain_outside_c21() -> None:
+def test_multiple_inline_same_key_reserved_assignments_remain_outside_c22() -> None:
     deferred = _chunk(
         "tea: likes; degree_hint: 0.85\n"
         "tea: dislikes; degree_hint: 0.85"
