@@ -228,6 +228,7 @@ domains:
     tests: []
     docs:
       - docs/contracts/calibration-evidence.md
+      - docs/contracts/calibration-candidate-sweep.md
 
   release_engineering:
     runtime:
