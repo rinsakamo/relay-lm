@@ -82,7 +82,7 @@ The repository checkout must be at exactly the `relaylm_commit` declared by the 
 
 The condition is strict JSON. Unknown, missing, and duplicate fields are rejected.
 
-Target selection was made explicit before the first real canonical execution, so the current host-condition schema is `format_version: 2`. Version 1 conditions do not silently acquire a target default.
+Target selection was made explicit before the first real canonical execution, so legacy host conditions remain strict `format_version: 2`. Version 1 conditions do not silently acquire a target default. Total cognitive-budget conditions use strict `format_version: 3`; a v2 condition is never reinterpreted as total-budget evidence.
 
 The shape is:
 
@@ -130,6 +130,57 @@ The shape is:
 The snippet is schema-shaped pseudodata, not a canonical condition. No number shown as a placeholder above is a RelayLM default.
 
 `memory_max_chunks` and `memory_max_chars` must either both be supplied or both be null. The same rule applies to `event_max_events` and `event_max_chars`.
+
+### Total-budget condition (`format_version: 3`)
+
+The total-budget mode replaces `budgets` with the existing manifest-shaped `cognitive_budget` identity. It has no numeric defaults:
+
+```text
+{
+  "format_version": 3,
+  "target_id": "<one exact allowlisted target id>",
+  "relaylm_commit": "<exact 40-character v1 commit>",
+  "lm_studio": { "...": "the same strict v2 fields" },
+  "effective_context_window": <explicit host context integer>,
+  "decoding": { "temperature": <number or null>, "top_p": <number or null>, "seed": <integer or null> },
+  "supported_decoding_controls": ["<explicit controls>"],
+  "execution_path": "buffered",
+  "continuity_runtime": null,
+  "cognitive_budget": {
+    "model_context_window": <caller-supplied integer equal to effective_context_window>,
+    "reserved_output_tokens": <caller-supplied integer>,
+    "initial_plan": {
+      "canonical_state": { "max_items": <integer>, "floor_items": <integer> },
+      "working_context": { "max_items": <integer>, "floor_items": <integer>, "max_chars": <integer>, "floor_chars": <integer> },
+      "retrieved_memory": { "max_items": <integer>, "floor_items": <integer>, "max_chars": <integer>, "floor_chars": <integer> },
+      "event_evidence": { "max_items": <integer>, "floor_items": <integer>, "max_chars": <integer>, "floor_chars": <integer> }
+    },
+    "degradation_steps": [
+      { "layer": "<canonical BudgetLayer>", "tier": <canonical tier>, "target": { "...": "owner-shaped envelope" } }
+    ],
+    "token_counter": {
+      "format_version": 1,
+      "capability": "<registered host capability>",
+      "implementation": "<provider/model counter implementation>",
+      "version": "<stable implementation identity>",
+      "mode": "exact | conservative_estimate",
+      "tokenizer_identity": "<artifact actually consumed by the counter>",
+      "parameters": { "<explicit reproducibility parameter>": "<scalar>" }
+    }
+  },
+  "condition_id": "<explicit evidence condition name>",
+  "replicate_id": "<explicit replicate identity>",
+  "scenario_ids": ["<one or more exact foundation-v2 scenario ids>"]
+}
+```
+
+The parser constructs the existing `TotalBudgetConfig`, `BudgetPlan`, `BudgetDegradationPolicy`, and owner envelope types. It therefore rejects malformed envelopes, tier drift, invalid reduction order, mixed legacy/total shapes, unknown fields, and a total `model_context_window` that differs from the effective host context before workspace or model generation.
+
+The host must register a `HostTokenCounterCapability` for the declared capability when calling `prepare_actual_model_host_run`. That capability must return the canonical `OpenAICompatibleSerializedInputCounter`, whose callback receives the exact existing `_request_body(...)` model-input shape. The runner does not select a tokenizer, infer a provider endpoint, or apply a byte/character heuristic. If the capability is absent, its model/decoding identity drifts, its identity differs from the condition, or its truthfulness attestation is not satisfied, execution fails closed before generation.
+
+`exact` is accepted only for a registered capability whose exact behavior has been demonstrated for the configured serving path. `conservative_estimate` is accepted only for a registered capability with a demonstrated safe upper-bound proof. The mode is recorded both in the counter identity and in existing #1467 per-turn diagnostics. A returned count whose mode differs from the declared identity is rejected.
+
+The frozen LM Studio Community GGUF embeds tokenizer metadata, and the installed LM Studio 0.4.x SDK exposes native `applyPromptTemplate` and `countTokens` operations. Those facts do not by themselves prove that an OpenAI-compatible request has been counted by the loaded serving model. The host integration must prove the loaded model/artifact and the message/template mapping before registering an exact capability; otherwise it must register a demonstrated conservative bound or remain fail-closed. No separately published upstream `tokenizer.json` is assumed equivalent.
 
 The canonical OpenAI-compatible provider declares the `continuity_candidates` semantic channel even when a selected scenario does not require a Continuity proposal. Therefore an actual-model execution whose manifest declares `continuity_candidates` must also carry explicit `continuity_runtime`. This is a capability-safety requirement: the provider may emit an optional ContinuityCandidate on any turn, and ordinary-turn commit cannot truthfully accept or reject that proposal without a runtime. The runner never invents Continuity capacity or lifetime and no numeric default is implied.
 
@@ -198,15 +249,16 @@ Human/product-quality review remains a separate #1386 sidecar. The host runner d
 
 ## Current boundary
 
-This first host runner supports the already-existing legacy explicit MEMORY/Event budget condition carried by `ExplicitBudgetConfiguration`.
+The legacy v2 path continues to carry the already-existing explicit MEMORY/Event condition through `ExplicitBudgetConfiguration` with unchanged semantics.
 
-It deliberately does **not** manufacture a #1387 total `CognitiveBudgetRuntimeConfig` token counter. Total-budget pressure/calibration evidence requires a demonstrably correct serialized-input token counter for the actual tokenizer/provider path and remains a separate bounded transaction.
+The v3 path carries the complete caller-supplied total condition through `CognitiveBudgetRuntimeConfig` and the existing #1467 evidence bridge. It preserves the content-free serialized count, count mode, effective capacity/output reserve, degradation observations, fit/degraded-fit, and bounded pre-generation failure evidence. It does not change #1387 degradation order or semantics.
 
 Accordingly:
 
-- this runner can produce the first citable foundation-v2 real-model executions plus deterministic-boundary verdict sidecars;
-- those executions and boundary verdicts do not, by themselves, justify #1388 numeric defaults;
-- #1388 pressure/default decisions still require the separately controlled total-budget evidence path.
+- a v2 condition can produce the historical foundation-v2 real-model executions plus deterministic-boundary verdict sidecars;
+- a v3 condition can produce total-budget evidence only when its provider/model counter capability is explicitly registered and truthful;
+- total-budget evidence is experimental calibration evidence and does not select #1388 numeric defaults or runtime profiles;
+- CAL2 candidates remain measurement inputs, not runtime defaults.
 
 ## Failure behavior
 
@@ -221,6 +273,9 @@ The command fails before semantic generation when, among other cases:
 - the provider declares `continuity_candidates` but explicit Continuity Runtime identity is missing;
 - a declared decoding control is unsupported;
 - provider/runtime/manifest identity drifts at the #1484 binding boundary;
+- a v3 total-budget condition has malformed total/policy/envelope identity;
+- `model_context_window` differs from the effective host context;
+- the declared serialized-input counter is unavailable, unreproducible, mismatched, or lacks the required exact/conservative truthfulness basis;
 - a workspace path for the run already exists;
 - an immutable evidence id already exists with different bytes.
 

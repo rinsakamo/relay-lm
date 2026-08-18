@@ -12,6 +12,7 @@ import relaylm.actual_model_host_runner as host_runner
 from relaylm.actual_model_artifacts import character_fixture_revision
 from relaylm.actual_model_host_runner import (
     ActualModelHostRunnerError,
+    HostTokenCounterCapability,
     load_actual_model_host_condition,
     prepare_actual_model_host_run,
 )
@@ -22,6 +23,11 @@ from relaylm.actual_model_targets import (
 from relaylm.providers.openai_compatible_identity import (
     describe_openai_compatible_provider,
 )
+from relaylm.providers.openai_compatible_budget import (
+    OpenAICompatibleSerializedInputCounter,
+    SerializedInputCounterIdentity,
+)
+from relaylm.budget_enforcement import SerializedInputTokenCount, TokenCountMode
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -101,6 +107,99 @@ def _verification(
     )
 
 
+def _total_condition_mapping(
+    *,
+    mode: str = "conservative_estimate",
+    effective_context_window: int = 32768,
+) -> dict[str, object]:
+    mapping = _condition_mapping()
+    mapping.pop("budgets")
+    mapping["format_version"] = 3
+    mapping["effective_context_window"] = effective_context_window
+    mapping["cognitive_budget"] = {
+        "model_context_window": 32768,
+        "reserved_output_tokens": 512,
+        "initial_plan": {
+            "canonical_state": {"max_items": 0, "floor_items": 0},
+            "working_context": {
+                "max_items": 0,
+                "floor_items": 0,
+                "max_chars": 0,
+                "floor_chars": 0,
+            },
+            "retrieved_memory": {
+                "max_items": 2,
+                "floor_items": 0,
+                "max_chars": 512,
+                "floor_chars": 0,
+            },
+            "event_evidence": {
+                "max_items": 0,
+                "floor_items": 0,
+                "max_chars": 0,
+                "floor_chars": 0,
+            },
+        },
+        "degradation_steps": [
+            {
+                "layer": "retrieved_memory",
+                "tier": 3,
+                "target": {
+                    "max_items": 0,
+                    "floor_items": 0,
+                    "max_chars": 0,
+                    "floor_chars": 0,
+                },
+            }
+        ],
+        "token_counter": {
+            "format_version": 1,
+            "capability": "lmstudio.gemma4.serialized-input.v1",
+            "implementation": "operator-supplied-lm-studio-counter",
+            "version": "counter-contract-v1",
+            "mode": mode,
+            "tokenizer_identity": (
+                "gguf-embedded-tokenizer:sha256:"
+                "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed"
+            ),
+            "parameters": {
+                "request_shape": "openai-compatible-request-body-v1",
+                "truthfulness_basis": "caller-verified-provider-model-counter",
+            },
+        },
+    }
+    return mapping
+
+
+def _counter_capability(
+    *,
+    identity: SerializedInputCounterIdentity | None = None,
+    exact_behavior_demonstrated: bool = False,
+    conservative_bound_demonstrated: bool = True,
+) -> dict[str, HostTokenCounterCapability]:
+    def factory(condition, provider):
+        counter_identity = identity or condition.cognitive_budget.token_counter_identity
+        assert counter_identity is not None
+        return OpenAICompatibleSerializedInputCounter(
+            model=provider.model,
+            count_input=lambda _: SerializedInputTokenCount(
+                total_input_tokens=100,
+                required_input_framing_tokens=10,
+                mode=counter_identity.mode,
+            ),
+            decoding_config=provider.decoding_config,
+            evidence_identity=counter_identity,
+        )
+
+    return {
+        "lmstudio.gemma4.serialized-input.v1": HostTokenCounterCapability(
+            factory=factory,
+            exact_behavior_demonstrated=exact_behavior_demonstrated,
+            conservative_bound_demonstrated=conservative_bound_demonstrated,
+        )
+    }
+
+
 def test_host_condition_loader_is_strict_and_has_no_hidden_runtime_defaults(
     tmp_path: Path,
 ) -> None:
@@ -125,6 +224,182 @@ def test_host_condition_loader_is_strict_and_has_no_hidden_runtime_defaults(
     unknown["hidden_default"] = 4096
     with pytest.raises(ActualModelHostRunnerError, match="unknown fields"):
         load_actual_model_host_condition(_write_condition(tmp_path, unknown))
+
+
+def test_total_host_condition_parses_complete_cognitive_budget_identity(
+    tmp_path: Path,
+) -> None:
+    condition = load_actual_model_host_condition(
+        _write_condition(tmp_path, _total_condition_mapping())
+    )
+
+    assert condition.format_version == 3
+    assert condition.budgets.to_runtime() == host_runner.ExplicitBudgetConfiguration()
+    assert condition.cognitive_budget is not None
+    assert condition.cognitive_budget.total.model_context_window == 32768
+    assert condition.cognitive_budget.total.reserved_output_tokens == 512
+    assert condition.cognitive_budget.policy.steps[0].layer.value == "retrieved_memory"
+    assert (
+        condition.cognitive_budget.token_counter_identity.mode
+        is TokenCountMode.CONSERVATIVE_ESTIMATE
+    )
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda mapping: mapping["cognitive_budget"].pop("reserved_output_tokens"),
+        lambda mapping: mapping["cognitive_budget"]["initial_plan"]["canonical_state"].update(
+            {"hidden": 1}
+        ),
+        lambda mapping: mapping["cognitive_budget"]["degradation_steps"][0].update(
+            {"tier": 2}
+        ),
+        lambda mapping: mapping["cognitive_budget"]["token_counter"].update(
+            {"mode": "heuristic_guess"}
+        ),
+    ],
+)
+def test_total_host_condition_rejects_malformed_or_unsupported_shapes(
+    tmp_path: Path,
+    mutate,
+) -> None:
+    mapping = _total_condition_mapping()
+    mutate(mapping)
+
+    with pytest.raises(ActualModelHostRunnerError):
+        load_actual_model_host_condition(_write_condition(tmp_path, mapping))
+
+
+def test_total_host_condition_rejects_context_drift_before_preparation(
+    tmp_path: Path,
+) -> None:
+    mapping = _total_condition_mapping(effective_context_window=8192)
+
+    with pytest.raises(
+        ActualModelHostRunnerError,
+        match="model_context_window must match effective_context_window",
+    ):
+        load_actual_model_host_condition(_write_condition(tmp_path, mapping))
+
+
+def test_total_host_preparation_binds_runtime_and_counter_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    condition = load_actual_model_host_condition(
+        _write_condition(tmp_path, _total_condition_mapping())
+    )
+    monkeypatch.setattr(host_runner, "_verify_clean_exact_repo", lambda **_: None)
+    monkeypatch.setattr(
+        host_runner,
+        "verify_actual_model_artifact",
+        lambda **_: _verification(),
+    )
+
+    prepared = prepare_actual_model_host_run(
+        condition=condition,
+        repo_root=REPO_ROOT,
+        model_artifact_path=tmp_path / "not-read-because-verifier-is-patched.gguf",
+        token_counter_capabilities=_counter_capability(),
+    )
+    try:
+        assert prepared.cognitive_budget is not None
+        assert prepared.manifest.cognitive_budget is not None
+        assert prepared.manifest.budgets == host_runner.ExplicitBudgetConfiguration()
+        assert (
+            prepared.manifest.cognitive_budget.token_counter_identity
+            == prepared.cognitive_budget.token_counter.evidence_identity
+        )
+        evidence_identity = prepared.manifest.to_mapping()["cognitive_budget"][
+            "token_counter"
+        ]
+        assert evidence_identity["mode"] == "conservative_estimate"
+        assert "base_url" not in json.dumps(prepared.manifest.to_mapping())
+        assert "api_key" not in json.dumps(prepared.manifest.to_mapping())
+    finally:
+        asyncio.run(prepared.provider.aclose())
+
+
+def test_total_host_preparation_fails_closed_without_counter_capability(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    condition = load_actual_model_host_condition(
+        _write_condition(tmp_path, _total_condition_mapping())
+    )
+    monkeypatch.setattr(host_runner, "_verify_clean_exact_repo", lambda **_: None)
+    monkeypatch.setattr(
+        host_runner,
+        "verify_actual_model_artifact",
+        lambda **_: _verification(),
+    )
+
+    with pytest.raises(ActualModelHostRunnerError, match="counter capability"):
+        prepare_actual_model_host_run(
+            condition=condition,
+            repo_root=REPO_ROOT,
+            model_artifact_path=tmp_path / "not-read-because-verifier-is-patched.gguf",
+        )
+
+
+def test_total_host_preparation_rejects_counter_identity_drift(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    condition = load_actual_model_host_condition(
+        _write_condition(tmp_path, _total_condition_mapping())
+    )
+    monkeypatch.setattr(host_runner, "_verify_clean_exact_repo", lambda **_: None)
+    monkeypatch.setattr(
+        host_runner,
+        "verify_actual_model_artifact",
+        lambda **_: _verification(),
+    )
+    declared = condition.cognitive_budget.token_counter_identity
+    assert declared is not None
+    drifted = SerializedInputCounterIdentity(
+        capability=declared.capability,
+        implementation=declared.implementation,
+        version="different-version",
+        mode=declared.mode,
+        tokenizer_identity=declared.tokenizer_identity,
+        parameters=declared.parameters,
+    )
+
+    with pytest.raises(ActualModelHostRunnerError, match="identity"):
+        prepare_actual_model_host_run(
+            condition=condition,
+            repo_root=REPO_ROOT,
+            model_artifact_path=tmp_path / "not-read-because-verifier-is-patched.gguf",
+            token_counter_capabilities=_counter_capability(identity=drifted),
+        )
+
+
+def test_exact_counter_mode_requires_demonstrated_exact_behavior(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    condition = load_actual_model_host_condition(
+        _write_condition(
+            tmp_path,
+            _total_condition_mapping(mode="exact"),
+        )
+    )
+    monkeypatch.setattr(host_runner, "_verify_clean_exact_repo", lambda **_: None)
+    monkeypatch.setattr(
+        host_runner,
+        "verify_actual_model_artifact",
+        lambda **_: _verification(),
+    )
+
+    with pytest.raises(ActualModelHostRunnerError, match="demonstrated exact"):
+        prepare_actual_model_host_run(
+            condition=condition,
+            repo_root=REPO_ROOT,
+            model_artifact_path=tmp_path / "not-read-because-verifier-is-patched.gguf",
+            token_counter_capabilities=_counter_capability(),
+        )
 
 
 def test_host_condition_loader_rejects_duplicate_json_keys_and_scenarios(
@@ -377,9 +652,12 @@ def test_execute_persists_boundary_sidecar_from_existing_execution_result(
         fixture_root=tmp_path / "fixture",
         provider=provider,
         manifest=object(),
+        cognitive_budget=object(),
     )
+    captured: dict[str, object] = {}
 
-    async def fake_run(**_: object) -> object:
+    async def fake_run(**kwargs: object) -> object:
+        captured.update(kwargs)
         return wrapped
 
     def fake_evaluate(*, result: object) -> object:
@@ -425,3 +703,4 @@ def test_execute_persists_boundary_sidecar_from_existing_execution_result(
     assert artifact.boundary_verdict_id == "amb-example"
     assert artifact.boundary_outcome == "pass"
     assert artifact.boundary_artifact_path.endswith("amb-example.boundary.json")
+    assert captured["cognitive_budget"] is prepared.cognitive_budget

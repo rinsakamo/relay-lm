@@ -13,6 +13,7 @@ from relaylm.budget import (
 )
 from relaylm.budget_diagnostics import CognitiveBudgetDiagnostics
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
+from relaylm.providers.openai_compatible_budget import SerializedInputCounterIdentity
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,12 +22,20 @@ class ExplicitCognitiveBudgetConfiguration:
 
     total: TotalBudgetConfig
     policy: BudgetDegradationPolicy
+    token_counter_identity: SerializedInputCounterIdentity | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.total, TotalBudgetConfig):
             raise TypeError("total must be TotalBudgetConfig")
         if not isinstance(self.policy, BudgetDegradationPolicy):
             raise TypeError("policy must be BudgetDegradationPolicy")
+        if self.token_counter_identity is not None and not isinstance(
+            self.token_counter_identity,
+            SerializedInputCounterIdentity,
+        ):
+            raise TypeError(
+                "token_counter_identity must be SerializedInputCounterIdentity or None"
+            )
 
     @classmethod
     def from_runtime(
@@ -35,10 +44,19 @@ class ExplicitCognitiveBudgetConfiguration:
     ) -> "ExplicitCognitiveBudgetConfiguration":
         if not isinstance(runtime, CognitiveBudgetRuntimeConfig):
             raise TypeError("runtime must be CognitiveBudgetRuntimeConfig")
-        return cls(total=runtime.total, policy=runtime.policy)
+        identity = getattr(runtime.token_counter, "evidence_identity", None)
+        if identity is not None and not isinstance(identity, SerializedInputCounterIdentity):
+            raise TypeError(
+                "runtime token counter evidence_identity must be SerializedInputCounterIdentity"
+            )
+        return cls(
+            total=runtime.total,
+            policy=runtime.policy,
+            token_counter_identity=identity,
+        )
 
     def to_mapping(self) -> dict[str, object]:
-        return {
+        mapping: dict[str, object] = {
             "model_context_window": self.total.model_context_window,
             "reserved_output_tokens": self.total.reserved_output_tokens,
             "initial_plan": _serialize_budget_plan(self.policy.initial_plan),
@@ -46,6 +64,9 @@ class ExplicitCognitiveBudgetConfiguration:
                 _serialize_degradation_step(step) for step in self.policy.steps
             ],
         }
+        if self.token_counter_identity is not None:
+            mapping["token_counter"] = self.token_counter_identity.to_mapping()
+        return mapping
 
 
 @dataclass(frozen=True, slots=True)
