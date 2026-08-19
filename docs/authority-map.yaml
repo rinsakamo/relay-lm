@@ -132,9 +132,11 @@ domains:
   crystallization:
     runtime:
       - src/relaylm/crystallization.py
+      - src/relaylm/providers/openai_compatible_crystallization.py
     tests:
       - tests/unit/test_crystallization.py
       - tests/unit/test_evaluation_crystallization.py
+      - tests/unit/test_openai_compatible_crystallization.py
     docs:
       - docs/contracts/crystallization.md
 
