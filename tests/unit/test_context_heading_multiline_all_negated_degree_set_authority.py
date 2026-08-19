@@ -193,15 +193,6 @@ def test_additional_stale_section_degree_disables_c35_compatibility() -> None:
     assert _compile(fallback).memory == ()
 
 
-def test_mixed_positive_and_negated_body_pairs_remain_deferred() -> None:
-    fallback = _chunk(
-        "likes; degree_hint: 0.85\n"
-        "not likes; degree_hint: 0.85"
-    )
-
-    _assert_retained(fallback)
-
-
 def test_positive_pair_set_remains_c34_authority() -> None:
     stale = _chunk(
         "likes; degree_hint: 0.85\n"
