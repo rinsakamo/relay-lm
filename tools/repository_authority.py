@@ -29,15 +29,28 @@ from typing import Any, Iterable, Mapping, Sequence
 import yaml
 
 AUTHORITY_DIRECTORY = ".ai/authority"
+AGENT_CONTRACT_PATH = ".ai/agent-contract.yaml"
 DOCUMENTATION_DIRECTORY = "docs"
 DECLARATION_SCHEMA_VERSION = 1
 
 #: Aggregates that a semantic lane would otherwise have to share a write on.
 PROHIBITED_AGGREGATES = ("docs/authority-map.yaml",)
 
+#: Freshness classes every agent contract must declare.
+REQUIRED_FRESHNESS_CLASSES = ("evidence", "historical", "live", "repository")
+
+#: Repository/host facts that must always be re-fetched rather than remembered.
+REQUIRED_LIVE_FACTS = (
+    "ci_check_state",
+    "issue_state",
+    "open_pull_requests",
+    "repository_head",
+)
+
 _OWNER_ID_PATTERN = r"^[a-z][a-z0-9_]*$"
 _EVIDENCE_ID_PATTERN = r"^[a-z0-9][a-z0-9._-]*$"
 _OWNER_ID_RE = re.compile(_OWNER_ID_PATTERN)
+_COMMIT_RE = re.compile(r"\b[0-9a-f]{40}\b")
 _EVIDENCE_ID_RE = re.compile(_EVIDENCE_ID_PATTERN)
 
 _SURFACE_FIELDS = ("canonical_surfaces", "references", "implementation", "tests", "annotations")
@@ -52,6 +65,10 @@ _DECLARATION_FIELDS = (
     "evidence_refs",
 )
 _EVIDENCE_FIELDS = ("id", "summary", "surfaces")
+_CONTRACT_FIELDS = ("schema_version", "bootstrap", "freshness")
+_BOOTSTRAP_FIELDS = ("path", "purpose")
+_FRESHNESS_FIELDS = ("classes", "facts")
+_FRESHNESS_CLASS_FIELDS = ("summary", "persistent_authority")
 
 
 class AuthorityError(ValueError):
@@ -83,6 +100,47 @@ class Declaration:
     depends_on: tuple[str, ...] = ()
     evidence: tuple[EvidenceRecord, ...] = ()
     evidence_refs: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class BootstrapStep:
+    """One ordered step an agent reads when orienting in the repository."""
+
+    path: str
+    purpose: str
+
+
+@dataclass(frozen=True, slots=True)
+class FreshnessClass:
+    """One freshness class and whether it may be persistent repository authority."""
+
+    id: str
+    summary: str
+    persistent_authority: bool
+
+
+@dataclass(frozen=True, slots=True)
+class AgentContract:
+    """The repository bootstrap read order and freshness contract."""
+
+    bootstrap: tuple[BootstrapStep, ...]
+    classes: Mapping[str, FreshnessClass]
+    facts: Mapping[str, str]
+
+    def freshness_of(self, fact: str) -> str:
+        """Return the declared freshness class of ``fact``."""
+
+        try:
+            return self.facts[fact]
+        except KeyError:
+            raise AuthorityError(
+                f"freshness fact '{fact}' is not classified by {AGENT_CONTRACT_PATH}"
+            ) from None
+
+    def is_persistent_authority(self, fact: str) -> bool:
+        """Return whether ``fact`` may be stored as persistent repository authority."""
+
+        return self.classes[self.freshness_of(fact)].persistent_authority
 
 
 @dataclass(slots=True)
@@ -164,6 +222,13 @@ def _validate_document(root: Path, item: _Parsed) -> None:
         if key not in _DECLARATION_FIELDS:
             errors.append(f"{prefix}: unknown field '{key}'")
 
+    for value in _scalar_strings(document):
+        for match in sorted(set(_COMMIT_RE.findall(value))):
+            errors.append(
+                f"{prefix}: live repository state '{match}' must not be copied into"
+                " persistent authority"
+            )
+
     if document.get("schema_version") != DECLARATION_SCHEMA_VERSION:
         errors.append(f"{prefix}: schema_version must be {DECLARATION_SCHEMA_VERSION}")
 
@@ -223,6 +288,19 @@ def _validate_document(root: Path, item: _Parsed) -> None:
         evidence=evidence,
         evidence_refs=evidence_refs,
     )
+
+
+def _scalar_strings(value: Any) -> Iterable[str]:
+    """Yield every string scalar reachable from ``value``."""
+
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, Mapping):
+        for entry in value.values():
+            yield from _scalar_strings(entry)
+    elif isinstance(value, list):
+        for entry in value:
+            yield from _scalar_strings(entry)
 
 
 def _read_paths(
@@ -399,6 +477,161 @@ def _dependency_cycle_errors(owners_by_id: Mapping[str, Declaration]) -> list[st
     return errors
 
 
+def agent_contract_errors(root: Path) -> tuple[str, ...]:
+    """Return sorted validation errors for the repository agent contract."""
+
+    path = root / AGENT_CONTRACT_PATH
+    if not path.is_file():
+        return (f"{AGENT_CONTRACT_PATH}: agent contract is missing",)
+
+    try:
+        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as error:  # pragma: no cover - defensive
+        return (f"{AGENT_CONTRACT_PATH}: agent contract is not readable YAML: {error}",)
+
+    errors: list[str] = []
+    if not isinstance(document, Mapping):
+        return (f"{AGENT_CONTRACT_PATH}: agent contract must be a YAML mapping",)
+
+    for key in document:
+        if key not in _CONTRACT_FIELDS:
+            errors.append(f"{AGENT_CONTRACT_PATH}: unknown field '{key}'")
+
+    if document.get("schema_version") != DECLARATION_SCHEMA_VERSION:
+        errors.append(
+            f"{AGENT_CONTRACT_PATH}: schema_version must be {DECLARATION_SCHEMA_VERSION}"
+        )
+
+    errors.extend(_bootstrap_errors(root, document.get("bootstrap")))
+    errors.extend(_freshness_errors(document.get("freshness")))
+    return tuple(sorted(errors))
+
+
+def read_agent_contract(root: Path) -> AgentContract:
+    """Return the validated agent contract declared under ``root``."""
+
+    errors = agent_contract_errors(root)
+    if errors:
+        raise AuthorityError("\n".join(errors))
+
+    document = yaml.safe_load((root / AGENT_CONTRACT_PATH).read_text(encoding="utf-8"))
+    bootstrap = tuple(
+        BootstrapStep(str(step["path"]), str(step["purpose"]))
+        for step in document["bootstrap"]
+    )
+    freshness = document["freshness"]
+    classes = {
+        name: FreshnessClass(
+            name, str(body["summary"]), bool(body["persistent_authority"])
+        )
+        for name, body in sorted(freshness["classes"].items())
+    }
+    facts = {name: str(value) for name, value in sorted(freshness["facts"].items())}
+    return AgentContract(bootstrap, classes, facts)
+
+
+def _bootstrap_errors(root: Path, value: Any) -> list[str]:
+    if not isinstance(value, list) or not all(isinstance(step, Mapping) for step in value):
+        return [f"{AGENT_CONTRACT_PATH}: bootstrap must be a list of read steps"]
+    if not value:
+        return [f"{AGENT_CONTRACT_PATH}: bootstrap must declare at least one read step"]
+
+    errors: list[str] = []
+    seen: list[str] = []
+    for step in value:
+        for key in step:
+            if key not in _BOOTSTRAP_FIELDS:
+                errors.append(f"{AGENT_CONTRACT_PATH}: unknown bootstrap field '{key}'")
+        path = step.get("path")
+        purpose = step.get("purpose")
+        if not isinstance(path, str) or not _is_repository_relative(path):
+            errors.append(f"{AGENT_CONTRACT_PATH}: bootstrap path '{path}' must be repository-relative")
+            continue
+        if not isinstance(purpose, str) or not purpose.strip():
+            errors.append(
+                f"{AGENT_CONTRACT_PATH}: bootstrap step '{path}' must state a purpose"
+            )
+        if path in seen:
+            errors.append(f"{AGENT_CONTRACT_PATH}: bootstrap repeats '{path}'")
+            continue
+        seen.append(path)
+        if not (root / path).exists():
+            errors.append(f"{AGENT_CONTRACT_PATH}: bootstrap path '{path}' does not exist")
+    return errors
+
+
+def _freshness_errors(value: Any) -> list[str]:
+    if not isinstance(value, Mapping):
+        return [f"{AGENT_CONTRACT_PATH}: freshness must be a mapping"]
+
+    errors: list[str] = []
+    for key in value:
+        if key not in _FRESHNESS_FIELDS:
+            errors.append(f"{AGENT_CONTRACT_PATH}: unknown freshness field '{key}'")
+
+    declared = value.get("classes")
+    classes: dict[str, bool] = {}
+    if not isinstance(declared, Mapping):
+        errors.append(f"{AGENT_CONTRACT_PATH}: freshness.classes must be a mapping")
+        declared = {}
+    for name, body in sorted(declared.items()):
+        if not isinstance(body, Mapping):
+            errors.append(f"{AGENT_CONTRACT_PATH}: freshness class '{name}' must be a mapping")
+            continue
+        for key in body:
+            if key not in _FRESHNESS_CLASS_FIELDS:
+                errors.append(
+                    f"{AGENT_CONTRACT_PATH}: unknown freshness class field '{key}'"
+                )
+        summary = body.get("summary")
+        if not isinstance(summary, str) or not summary.strip():
+            errors.append(
+                f"{AGENT_CONTRACT_PATH}: freshness class '{name}' summary must be a"
+                " non-empty string"
+            )
+        persistent = body.get("persistent_authority")
+        if not isinstance(persistent, bool):
+            errors.append(
+                f"{AGENT_CONTRACT_PATH}: freshness class '{name}' persistent_authority"
+                " must be a boolean"
+            )
+            continue
+        classes[str(name)] = persistent
+
+    known = {str(name) for name in declared}
+    missing_required = {
+        required for required in REQUIRED_FRESHNESS_CLASSES if required not in known
+    }
+    for required in sorted(missing_required):
+        errors.append(f"{AGENT_CONTRACT_PATH}: freshness.classes must declare '{required}'")
+
+    facts = value.get("facts")
+    if not isinstance(facts, Mapping):
+        errors.append(f"{AGENT_CONTRACT_PATH}: freshness.facts must be a mapping")
+        facts = {}
+    for name, class_id in sorted(facts.items()):
+        if class_id not in known and class_id not in missing_required:
+            errors.append(
+                f"{AGENT_CONTRACT_PATH}: freshness fact '{name}' names undeclared"
+                f" class '{class_id}'"
+            )
+
+    for required in REQUIRED_LIVE_FACTS:
+        if required not in facts:
+            errors.append(
+                f"{AGENT_CONTRACT_PATH}: freshness.facts must classify '{required}'"
+            )
+            continue
+        class_id = facts[required]
+        if classes.get(class_id, False):
+            errors.append(
+                f"{AGENT_CONTRACT_PATH}: freshness fact '{required}' must be classified"
+                " as a non-persistent class that is re-fetched live"
+            )
+
+    return errors
+
+
 def documentation_coverage_errors(root: Path) -> tuple[str, ...]:
     """Return sorted errors for documents without a declared semantic owner."""
 
@@ -456,6 +689,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     errors = tuple(
         sorted(
             validate_repository(arguments.root)
+            + agent_contract_errors(arguments.root)
             + documentation_coverage_errors(arguments.root)
         )
     )

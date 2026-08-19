@@ -1,13 +1,17 @@
 schema_version: 1
 id: repository_authority
-summary: Owner-local repository authority declarations and their single-writer validation.
+summary: >-
+  Owner-local repository authority declarations, the agent bootstrap read order,
+  and the repository freshness contract.
 owner_issue: 1525
 canonical_surfaces:
 - .ai/README.md
+- .ai/agent-contract.yaml
 implementation:
 - tools/repository_authority.py
 tests:
 - tests/unit/test_repository_authority_contract.py
 - tests/unit/test_repository_authority.py
+- tests/unit/test_repository_freshness_contract.py
 depends_on:
 - development_workflow

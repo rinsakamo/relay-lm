@@ -1,0 +1,85 @@
+# RelayLM v1 agent contract.
+#
+# Canonical writer: the repository_authority semantic owner (#1525).
+#
+# This file answers two questions before an agent writes anything:
+#   1. in what order is repository authority read;
+#   2. which facts must be re-fetched live rather than remembered.
+#
+# It exists so freshness is a repository contract rather than a prompt
+# convention. An agent does not need bootstrap prose telling it to distrust the
+# SHA or status quoted in a handoff: those facts are classified `historical`
+# here, and their live classes name where the current value comes from.
+
+schema_version: 1
+
+bootstrap:
+  - path: .ai/README.md
+    purpose: >-
+      Authority root. Single-writer rules and the shape of an owner-local
+      authority declaration.
+  - path: .ai/agent-contract.yaml
+    purpose: >-
+      This contract. Read order and the freshness class of every fact the
+      transaction will rely on.
+  - path: docs/reference/development-workflow.md
+    purpose: >-
+      The transaction workflow, stop conditions, and the exact-head
+      review/CI/merge gate.
+  - path: .ai/authority
+    purpose: >-
+      The semantic owner that owns the intended change, its canonical
+      surfaces, dependencies, and evidence.
+  - path: docs/reference/repository-practices.md
+    purpose: >-
+      Branch, pull request, Issue, packaging, lint, and repository-host
+      conventions.
+
+freshness:
+  classes:
+    live:
+      summary: >-
+        Re-fetch from the live repository or host at the start of the
+        transaction and again immediately before merge. Never remembered
+        across a transaction boundary and never written into a declaration.
+      persistent_authority: false
+
+    repository:
+      summary: >-
+        Owned by committed repository authority at the current HEAD. Read it
+        from the working tree rather than from a summary of it.
+      persistent_authority: true
+
+    evidence:
+      summary: >-
+        An immutable merged evidence artifact identified by its evidence id.
+        Consumers reference the id; they do not copy the producer's results.
+      persistent_authority: true
+
+    historical:
+      summary: >-
+        A past snapshot. Never current authority unless history is explicitly
+        what was asked for.
+      persistent_authority: false
+
+  facts:
+    repository_head: live
+    open_pull_requests: live
+    ci_check_state: live
+    issue_state: live
+    issue_comments: live
+    branch_protection_state: live
+    release_tag_state: live
+
+    semantic_ownership: repository
+    canonical_surfaces: repository
+    dependency_graph: repository
+    executable_contracts: repository
+    package_version: repository
+
+    merged_evidence: evidence
+    evidence_reference: evidence
+
+    handoff_prompt_state: historical
+    projection_output: historical
+    merged_pull_request_body: historical

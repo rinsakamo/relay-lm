@@ -11,8 +11,44 @@ hand-maintained global registry:
 
 ```text
 .ai/
+  README.md                         this file: the bootstrap entry point
+  agent-contract.yaml               read order and freshness contract
   authority/<semantic_owner>.yaml   one writable authority unit per semantic owner
 ```
+
+## Bootstrap
+
+`.ai/agent-contract.yaml` declares the ordered read path an agent follows when
+orienting:
+
+```text
+entry point
+  -> read order and freshness
+  -> development workflow
+  -> semantic owner
+  -> that owner's canonical surfaces
+```
+
+## Freshness
+
+The same contract classifies every fact a transaction relies on. Freshness is
+repository authority, not prompt convention:
+
+```text
+repository HEAD / open PRs / CI state / Issue state   live
+semantic ownership / canonical surfaces               repository
+merged evidence                                       evidence
+handoff prompt state / projection output              historical
+```
+
+A `live` fact is re-fetched at the start of a transaction and again immediately
+before merge; it is never written into a declaration. A `historical` fact —
+including the SHA, PR, and status quoted in a handoff prompt — is never current
+authority. Because those classes are declared, an agent does not need bootstrap
+prose telling it which parts of a handoff to distrust.
+
+Declarations are checked for copied live state: a 40-character commit id
+appearing anywhere in a declaration fails validation.
 
 ## Owner-local authority declarations
 
