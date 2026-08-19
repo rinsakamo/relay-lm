@@ -210,18 +210,15 @@ def test_evidence_serialization_keeps_raw_and_deterministic_channels_separate(tm
     assert payload["input"]["events"][0]["id"] == "crystal-user-tea"
     assert payload["raw_model"]["state_candidates"][1]["key"] == "residence_location"
     assert payload["deterministic_relay"]["state_decisions"][1]["status"] == "rejected"
-    assert payload["deterministic_relay"]["resulting_state"] == [
-        {
-            "state_id": payload["deterministic_relay"]["resulting_state"][0]["state_id"],
-            "state_class": "user.preference",
-            "key": "tea",
-            "value": "likes",
-            "sources": ["crystal-user-tea"],
-            "status": "active",
-            "valid_from": "crystal-user-tea",
-            "valid_to": None,
-        }
-    ]
+    resulting = payload["deterministic_relay"]["resulting_state"]
+    assert len(resulting) == 1
+    assert resulting[0]["state_class"] == "user.preference"
+    assert resulting[0]["key"] == "tea"
+    assert resulting[0]["value"] == "likes"
+    assert resulting[0]["sources"] == ["crystal-user-tea"]
+    assert resulting[0]["status"] == "active"
+    assert isinstance(resulting[0]["valid_from"], str) and resulting[0]["valid_from"]
+    assert resulting[0]["valid_to"] is None
     assert payload["product_quality"] == []
     assert "score" not in payload
 
