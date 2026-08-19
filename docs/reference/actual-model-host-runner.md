@@ -196,14 +196,14 @@ The canonical host CLI resolves one bounded host-only capability for
 ```text
 capability:    lmstudio.gemma4.loaded-sdk.serialized-input.v1
 implementation: lmstudio-js-loaded-model-counter
-version:       1
+version:       2
 mode:          exact
 ```
 
 The bridge is in `relaylm.actual_model_lm_studio_counter`. It talks to the optional
 `@lmstudio/sdk` package through a short-lived Node worker, so the SDK is not an
 ordinary RelayLM runtime dependency. It selects exactly one loaded instance by the
-frozen model key and uses that instance's `applyPromptTemplate(messages)` followed by
+attested serving request model key and uses that instance's `applyPromptTemplate(messages)` followed by
 `countTokens(formatted_prompt)`. The messages are copied losslessly from the
 `_request_body(...)` `messages` array; no second handwritten prompt is constructed.
 
@@ -213,24 +213,44 @@ classes:
 - current RelayLM commit, frozen target id/size/SHA, request model, LM Studio
   version/build/deployment identity, SDK package/version, loaded model key/path/
   quantization, and a hash of the loaded instance reference;
-- a request-model-to-loaded-instance binding verdict and a prompt-template parity
-  verdict;
+- a request-model-to-loaded-instance binding verdict, a frozen-entrypoint linkage
+  verdict, and a prompt-template parity verdict;
 - at least the eight required synthetic probe classes: minimal identity/current
   event, Japanese input, ASCII input, accepted State, Working Context, retrieved
   MEMORY, Event Evidence, and a larger mixed input. Each records only a request
-  identity/hash, SDK prompt count, server `usage.prompt_tokens`, and equality;
+  identity/hash, SDK prompt count, server `usage.prompt_tokens`, the proof-attested
+  accounted count, and raw/accounted equality;
 - a controlled structured-output comparison proving whether the JSON-schema
   `response_format` adds prompt tokens, plus reproducible empty-user framing
   accounting.
 
-The SDK-loaded model path must link to the frozen GGUF bytes, not merely to a family
-name, quantization label, or upstream tokenizer assumption. If the host API exposes
-only a relative/non-byte-identifying path, the loaded-artifact hop remains unproven
-and the capability is rejected; it is never downgraded to a heuristic or an
-unproven conservative estimate. No base URL, API key, token, or secret value is
-stored in the counter identity or proof schema.
+The SDK-loaded model identity may be a logical serving key and its reported size may
+be an aggregate package size. It must nevertheless link through host-local LM Studio
+model metadata to the exact frozen GGUF entrypoint, including the target path, size,
+and SHA-256. A family name, quantization label, or upstream tokenizer assumption is
+not such a link. If that metadata hop is unavailable, the capability is rejected; it
+is never downgraded to a heuristic or an unproven conservative estimate. No base URL,
+API key, token, or secret value is stored in the counter identity or proof schema.
 
-The frozen LM Studio Community GGUF embeds tokenizer metadata, and the installed LM Studio 0.4.x SDK exposes native `applyPromptTemplate` and `countTokens` operations. Those facts do not by themselves prove that an OpenAI-compatible request has been counted by the loaded serving model. The host integration must prove the loaded model/artifact and the message/template mapping before registering an exact capability; otherwise it must register a demonstrated conservative bound or remain fail-closed. No separately published upstream `tokenizer.json` is assumed equivalent.
+The serving endpoint may be a host-local deployment detail supplied by the condition
+(for example, a LAN address when a WSL process cannot use the host loopback). It is
+not a RelayLM runtime default and is not embedded in this capability implementation.
+
+For the currently attested LM Studio serving path, the SDK-derived messages-only
+count has a deterministic server prompt-token offset. The proof records that offset
+from the same empty-user framing baseline and every required probe must satisfy:
+
+```text
+accounted_prompt_tokens = sdk_prompt_tokens + server_prompt_offset
+accounted_prompt_tokens = server usage.prompt_tokens
+```
+
+The returned `SerializedInputTokenCount` uses the accounted total and the likewise
+accounted framing baseline as its hard-fit authority. A raw SDK/server mismatch is
+therefore visible in the proof; it is not mislabeled as direct equality. A different
+serving path must produce a new proof rather than inheriting this offset.
+
+The frozen LM Studio Community GGUF embeds tokenizer metadata, and the installed LM Studio 0.4.x SDK exposes native `applyPromptTemplate` and `countTokens` operations. Those facts do not by themselves prove that an OpenAI-compatible request has been counted by the loaded serving model. The host integration must prove the loaded model/artifact and the message/template mapping before registering an exact capability; otherwise it must register a demonstrated conservative bound or remain fail-closed. No separately published upstream `tokenizer.json` is assumed equivalent. The proof's controlled schema/no-schema pair must also show that the JSON-schema `response_format` contributes no hidden prompt tokens; if it does, that contribution must be included in the accounted counter.
 
 The canonical OpenAI-compatible provider declares the `continuity_candidates` semantic channel even when a selected scenario does not require a Continuity proposal. Therefore an actual-model execution whose manifest declares `continuity_candidates` must also carry explicit `continuity_runtime`. This is a capability-safety requirement: the provider may emit an optional ContinuityCandidate on any turn, and ordinary-turn commit cannot truthfully accept or reject that proposal without a runtime. The runner never invents Continuity capacity or lifetime and no numeric default is implied.
 

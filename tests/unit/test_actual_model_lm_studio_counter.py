@@ -19,6 +19,7 @@ from relaylm.actual_model_lm_studio_counter import (
     build_lm_studio_counter_capabilities,
     load_lm_studio_counter_proof,
 )
+from relaylm.budget_enforcement import SerializedInputTokenCount, TokenCountMode
 from relaylm.actual_model_targets import load_actual_model_target
 from relaylm.providers.openai_compatible_decoding import OpenAICompatibleDecodingConfig
 
@@ -36,11 +37,11 @@ TARGET_PATH = (
 def _proof_mapping(path: Path) -> dict[str, object]:
     target = load_actual_model_target(TARGET_PATH)
     return {
-        "format_version": 1,
+        "format_version": 2,
         "attestation": "exact",
         "capability": LM_STUDIO_GEMMA4_COUNTER_CAPABILITY,
         "implementation": "lmstudio-js-loaded-model-counter",
-        "version": "1",
+        "version": "2",
         "relaylm_commit": "a" * 40,
         "target_id": target.target_id,
         "request_model": "google/gemma-4-12b",
@@ -50,13 +51,16 @@ def _proof_mapping(path: Path) -> dict[str, object]:
             "deployment_identity": "local-proof-test",
         },
         "loaded_model": {
-            "model_key": (
+            "model_key": "google/gemma-4-12b",
+            "path": "google/gemma-4-12b",
+            "artifact_model_key": (
                 "lmstudio-community/gemma-4-12B-it-GGUF/"
                 "gemma-4-12B-it-Q4_K_M.gguf"
             ),
-            "path": str(path),
+            "artifact_path": str(path),
             "quantization": target.quantization,
-            "size_bytes": target.artifact_size_bytes,
+            "size_bytes": 7556574286,
+            "artifact_size_bytes": target.artifact_size_bytes,
             "sha256": target.artifact_sha256,
             "instance_reference_sha256": "b" * 64,
         },
@@ -73,7 +77,9 @@ def _proof_mapping(path: Path) -> dict[str, object]:
                 "probe_id": probe_id,
                 "request_sha256": f"{index:064x}",
                 "sdk_prompt_tokens": 100 + index,
-                "server_prompt_tokens": 100 + index,
+                "server_prompt_tokens": 100 + index + 3,
+                "accounted_prompt_tokens": 100 + index + 3,
+                "raw_equal": False,
                 "equal": True,
             }
             for index, probe_id in enumerate(
@@ -87,15 +93,24 @@ def _proof_mapping(path: Path) -> dict[str, object]:
         },
         "prompt_template_parity": {
             "method": LM_STUDIO_PROMPT_PARITY_METHOD,
-            "verdict": "all-required-probes-equal",
+            "verdict": "all-required-probes-accounted-equal",
         },
         "structured_output": {
             "comparison": "response_format-json-schema-vs-messages-only",
+            "with_schema_prompt_tokens": 1249,
+            "without_schema_prompt_tokens": 1249,
             "schema_token_delta": 0,
             "verdict": "no-token-bearing-prompt-delta",
         },
+        "artifact_linkage": {
+            "method": "lmstudio-model-index-cache-entrypoint-v1",
+            "verdict": "same-frozen-entrypoint",
+        },
         "framing_accounting": {
             "method": "empty-user-message-baseline-v1",
+            "sdk_framing_tokens": 944,
+            "server_framing_tokens": 947,
+            "server_prompt_token_offset": 3,
             "verdict": "reproducible",
         },
     }
@@ -213,3 +228,46 @@ def test_missing_proof_fails_before_optional_sdk_resolution(tmp_path: Path) -> N
             artifact_path=tmp_path / "gemma.gguf",
             proof_path=None,
         )
+
+
+def test_proof_preserves_raw_delta_and_accounted_server_parity(tmp_path: Path) -> None:
+    path = tmp_path / "counter-proof.json"
+    path.write_text(json.dumps(_proof_mapping(tmp_path / "gemma.gguf")), encoding="utf-8")
+
+    proof = load_lm_studio_counter_proof(path)
+
+    assert proof.server_prompt_token_offset == 3
+    assert proof.sdk_framing_tokens == 944
+    assert proof.server_framing_tokens == 947
+
+
+def test_server_prompt_offset_is_applied_to_sdk_count(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport = counter_module._LMStudioSdkTransport(
+        base_url="http://192.0.2.10:1234/v1",
+        request_model="google/gemma-4-12b",
+        expected_model_key="google/gemma-4-12b",
+        artifact_path="C:/frozen/gemma.gguf",
+        expected_artifact_size=7381384864,
+        node_path=None,
+        sdk_root=None,
+        server_prompt_token_offset=3,
+    )
+    monkeypatch.setattr(
+        counter_module._LMStudioSdkTransport,
+        "_invoke",
+        lambda _self, _payload: {
+            "total_input_tokens": 100,
+            "required_input_framing_tokens": 20,
+            "mode": TokenCountMode.EXACT.value,
+        },
+    )
+
+    count = transport.count_input({"model": "google/gemma-4-12b"})
+
+    assert count == SerializedInputTokenCount(
+        total_input_tokens=103,
+        required_input_framing_tokens=23,
+        mode=TokenCountMode.EXACT,
+    )
