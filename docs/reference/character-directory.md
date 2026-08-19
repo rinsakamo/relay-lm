@@ -36,7 +36,7 @@ Default paths are convention-based. Future versions may permit explicit path map
 ## Current file behavior
 
 - `SOUL.md` is required and must contain non-empty Identity content.
-- `memory/events.jsonl` contains RelayLM-owned persisted Events. Missing Event storage is read as an empty journal; malformed non-empty Event lines fail closed.
+- `memory/events.jsonl` contains RelayLM-owned persisted Events. Missing Event storage is read as an empty journal; malformed non-empty Event lines fail closed. Event IDs must be unique within the journal; a later duplicate ID fails closed with that record's line context.
 - a missing `memory/state.json` file is read as an empty version-1 State;
 - an existing `memory/state.json` must explicitly contain integer `format_version: 1` and a `states` array; RelayLM does not infer either field for an existing file;
 - each persisted State record explicitly contains `state_id`, `state_class`, `key`, `value`, `status`, and `sources`; `valid_from` and `valid_to` are optional;
