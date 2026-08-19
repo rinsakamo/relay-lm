@@ -451,6 +451,39 @@ def _cross_owner_errors(declarations: Sequence[Declaration]) -> list[str]:
                 )
 
     errors.extend(_dependency_cycle_errors(owners_by_id))
+    errors.extend(_evidence_surface_errors(declarations))
+    return errors
+
+
+def _evidence_surface_errors(declarations: Sequence[Declaration]) -> list[str]:
+    """Return errors where an evidence surface is claimed outside its producer."""
+
+    errors: list[str] = []
+    producers: dict[str, str] = {}
+    for declaration in declarations:
+        for record in declaration.evidence:
+            for surface in record.surfaces:
+                producers.setdefault(surface, declaration.id)
+
+    for declaration in declarations:
+        owned = {
+            surface for record in declaration.evidence for surface in record.surfaces
+        }
+        for name in _SURFACE_FIELDS:
+            for surface in getattr(declaration, name):
+                producer = producers.get(surface)
+                if producer is None:
+                    continue
+                if surface in owned:
+                    errors.append(
+                        f"{declaration.path}: '{surface}' is an evidence surface and"
+                        f" must not also be declared as {name}"
+                    )
+                else:
+                    errors.append(
+                        f"{surface}: evidence surface owned by {producer} must not be"
+                        f" declared by {declaration.id}"
+                    )
     return errors
 
 

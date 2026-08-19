@@ -9,3 +9,7 @@ depends_on:
 - actual_model_evaluation
 - cognitive_budget
 - context_compiler
+evidence_refs:
+- actual-model-foundation-scenarios-v2
+- actual-model-gemma-lmstudio-target-v1
+- actual-model-gemma-target-v1

@@ -69,6 +69,17 @@ python tools/repository_authority.py validate
 
 Global authority, dependency, and navigation views are derived from these declarations rather than hand-maintained. Reverse dependencies are computed from consumers' `depends_on` and are never declared a second time.
 
+## Evidence ownership
+
+Evidence follows producer ownership.
+
+```text
+producer   declares the evidence record and owns its surfaces
+consumer   declares evidence_refs and cites the id
+```
+
+Actual-model Evaluation owns the frozen scenario sets, target identities, and Character fixtures under `evaluation/actual_model/`. Calibration cites those evidence ids; it does not copy result tables, scenario counts, or target identity into its own authority. Validation rejects an evidence surface declared by any other owner, and rejects a producer restating its own evidence surface as implementation.
+
 ## Ephemeral projections
 
 Global developer views — semantic-owner map, dependency graph, derived consumers, architecture overview, evidence map, repository status — are not committed. `.ai/projections/<id>.yaml` stores the recipe; the view is reconstructed when someone needs it.
