@@ -1,9 +1,10 @@
 schema_version: 1
 id: cognitive_turn
-summary: Ordinary-turn cognition execution policy and runtime assembly over unchanged deterministic State/Continuity authority.
+summary: Ordinary-turn cognition execution policy, per-pass execution intent, and runtime assembly over unchanged deterministic State/Continuity authority.
 owner_issue: 1533
 canonical_surfaces:
 - docs/contracts/cognition-execution-policy.md
+- docs/contracts/cognition-pass-execution.md
 - docs/contracts/cognitive-turn.md
 - docs/architecture/cognitive-runtime.md
 - docs/reference/turn-retrieval-diagnostics.md
@@ -11,9 +12,11 @@ references:
 - docs/architecture/core.md
 implementation:
 - src/relaylm/cognitive.py
+- src/relaylm/cognition_execution.py
 - src/relaylm/turn.py
 tests:
 - tests/unit/test_cognition_execution_policy.py
+- tests/unit/test_cognition_pass_execution.py
 - tests/unit/test_cognitive_turn.py
 - tests/unit/test_continuity_turn.py
 - tests/unit/test_cognitive_budget_turn_wiring.py

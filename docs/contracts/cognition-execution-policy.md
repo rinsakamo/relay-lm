@@ -1,8 +1,8 @@
 # Cognition Execution Policy Contract
 
-Status: COGP1 semantic execution-policy contract for RelayLM v1.
+Status: current ordinary-turn cognition execution-policy contract for RelayLM v1 through COGP2.
 
-This contract is owned by #1533 and is part of the existing `cognitive_turn` semantic owner. It replaces the former architectural assumption that one ordinary turn must always contain exactly one semantic model generation. The current one-generation runtime remains the implemented `single_pass` baseline until later COGP transactions add the other execution paths.
+This contract is owned by #1533 and is part of the existing `cognitive_turn` semantic owner. It replaces the former architectural assumption that one ordinary turn must always contain exactly one semantic model generation. The current runtime remains the implemented `single_pass` baseline until COGP3 adds the two-pass runtime path.
 
 Execution topology never changes RelayLM semantic authority:
 
@@ -72,7 +72,7 @@ Pass 2 is responsible for proposals for:
 - transient-vs-durable discipline;
 - provenance/source preservation.
 
-Pass 2 may later carry a different provider-neutral reasoning/decoding policy from Pass 1, but those typed options and capability-resolution semantics belong to COGP2. COGP1 chooses no numeric default and no reasoning budget.
+Pass 1 and Pass 2 now have provider-neutral reasoning/decoding intent semantics under `docs/contracts/cognition-pass-execution.md`. Those types distinguish policy-owned `auto` from a fully resolved generation request, classify effective values as applied/omitted/unsupported, and fail closed on explicit unsupported behavior. COGP2 chooses no numeric default and does not add provider-specific reasoning wire fields.
 
 # Evidence and authority ordering
 
@@ -141,16 +141,16 @@ Two-pass completion may overlap later user input. RelayLM 1.0 therefore requires
 
 COGP1 freezes these invariants. COGP3 owns the runtime mechanism and executable race/failure tests that realize them.
 
-# Current implementation status after COGP1
+# Current implementation status after COGP2
 
 ```text
 single_pass       implemented baseline
-two_pass          semantic contract frozen; runtime deferred to COGP3
+two_pass          execution + per-pass policy contracts frozen; runtime deferred to COGP3
 shadow_two_pass   semantic contract frozen; evidence carriage deferred to COGP4
-auto              semantic contract frozen; resolution/default deferred to #1388/#1446 after evidence
+auto              semantic/policy contract frozen; profile resolution/default deferred to #1388/#1446
 ```
 
-The existing ordinary-turn functions continue to execute the current single-pass path until COGP3 changes their runtime assembly. COGP1 does not introduce a compatibility shim, second owner, fallback execution path, or temporary dual authority.
+The existing ordinary-turn functions continue to execute the current single-pass path until COGP3 changes runtime assembly. The provider-neutral capability view in COGP2 does not by itself assert that any concrete provider supports reasoning, reasoning budgets, or `max_output_tokens`; provider owners remain the source of those facts.
 
 # Ownership boundaries
 
@@ -162,7 +162,9 @@ COGP / #1533 owns:
 - same-loaded-model initial 1.0 topology;
 - Pass 2 failure semantics;
 - turn-bound ordering/stale-result invariants;
-- later provider-neutral per-pass execution intent semantics.
+- provider-neutral per-pass execution intent;
+- `auto` versus effective omission semantics;
+- applied/omitted/unsupported capability-resolution outcomes.
 
 #1386 owns controlled actual-model evidence for execution modes.
 
@@ -170,16 +172,16 @@ COGP / #1533 owns:
 
 #1446 owns runtime-config schema carriage, precedence, direct operator overrides, runtime assembly, and effective-config reporting.
 
-Provider owners retain provider wire, decoding, capability, and truthful applied/omitted/unsupported configuration semantics.
+Provider owners retain provider wire, capability discovery/declaration, provider-specific validation, and exact applied request configuration.
 
 State, Continuity, Context Compiler, Retrieval, Cognitive Budget, and crystallization owners retain their existing semantic authority.
 
-# COGP1 non-goals
+# Current deferred work
 
-COGP1 does not implement:
+Not yet implemented by COGP1/COGP2:
 
-- per-pass reasoning/decoding option types or capability resolution;
 - two-pass generation/orchestration;
+- provider-specific per-pass reasoning/output-control carriage where unsupported today;
 - response/Pass-2 asynchronous scheduling;
 - stale-result revision machinery;
 - shadow evidence artifacts;
