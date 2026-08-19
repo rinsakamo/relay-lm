@@ -69,6 +69,17 @@ python tools/repository_authority.py validate
 
 Global authority, dependency, and navigation views are derived from these declarations rather than hand-maintained. Reverse dependencies are computed from consumers' `depends_on` and are never declared a second time.
 
+## Ephemeral projections
+
+Global developer views — semantic-owner map, dependency graph, derived consumers, architecture overview, evidence map, repository status — are not committed. `.ai/projections/<id>.yaml` stores the recipe; the view is reconstructed when someone needs it.
+
+```bash
+python -m tools.repository_projection list
+python -m tools.repository_projection render semantic-owner-map
+```
+
+A recipe declares its inputs, the freshness requirements of the facts it relies on, selection rules, prohibited inferences, and a preferred output shape. Rendering is deterministic and derives every fact from `.ai/authority/`; facts the recipe cannot derive from committed authority are printed as live inputs the agent must fetch. A rendered view is therefore never a second authority, and a stale rendered view cannot be mistaken for current state.
+
 ## Bootstrap and freshness
 
 `.ai/agent-contract.yaml` declares the ordered read path into repository authority and the freshness class of every fact a transaction relies on.

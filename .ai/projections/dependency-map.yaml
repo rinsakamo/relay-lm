@@ -1,0 +1,25 @@
+# Reconstruct the current dependency graph. Do not commit the output.
+schema_version: 1
+id: dependency-map
+summary: Dependency edges between semantic owners, declared by the consuming owner.
+
+inputs:
+  - .ai/authority
+
+freshness_requirements:
+  - repository_head
+  - open_pull_requests
+
+include:
+  - semantic_owners
+  - dependencies
+
+prohibit:
+  - infer_current_status_from_historical_snapshot
+  - treat_stale_handoff_as_current_authority
+
+output_hint:
+  preferred: mermaid
+  note: >-
+    Edges point from consumer to dependency. Reverse edges are derived, never
+    declared.

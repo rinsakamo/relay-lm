@@ -1,0 +1,25 @@
+# Reconstruct evidence producer/consumer ownership. Do not commit the output.
+schema_version: 1
+id: evidence-map
+summary: Evidence records by producing owner and the owners that reference them.
+
+inputs:
+  - .ai/authority
+
+freshness_requirements:
+  - repository_head
+
+include:
+  - semantic_owners
+  - evidence
+  - evidence_refs
+
+prohibit:
+  - copy_live_state_into_authority
+  - infer_current_status_from_historical_snapshot
+
+output_hint:
+  preferred: table
+  note: >-
+    A consumer references an evidence id. It never copies the producer's result
+    table into its own authority.

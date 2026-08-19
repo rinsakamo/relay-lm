@@ -1,0 +1,24 @@
+# Reconstruct derived reverse dependencies. Do not commit the output.
+schema_version: 1
+id: consumer-map
+summary: Which owners consume each semantic owner, derived from consumers' depends_on.
+
+inputs:
+  - .ai/authority
+
+freshness_requirements:
+  - repository_head
+
+include:
+  - semantic_owners
+  - consumers
+
+prohibit:
+  - invent_unowned_surface
+  - treat_stale_handoff_as_current_authority
+
+output_hint:
+  preferred: table
+  note: >-
+    No owner declares consumed_by. Changing this view means changing a
+    consumer's depends_on.
