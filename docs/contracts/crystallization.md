@@ -115,7 +115,9 @@ The executable provider instruction preserves these boundaries:
 - corrections, supersession, uncertainty, comparative meaning, and current-versus-historical distinctions should be preserved rather than flattened;
 - assistant-authored Events do not certify user facts, preferences, goals, experiences, or external facts merely because the assistant said them;
 - short-lived referents, unresolved questions, and active tasks should not become durable memory merely because they appeared recently;
+- when a temporary active task or goal is explicitly completed, cancelled, or withdrawn as a future goal by later user Event evidence, do not replace it with durable semantic `completed`; if corrective State output is warranted, prefer `remove` for the exact existing `state_class + key`, preserve the Event history, and omit short-lived task mechanics from long-horizon MEMORY unless the event has independent durable significance;
 - when Canonical State already represents the same durable concept, a corrective proposal should reuse its exact `state_class + key` rather than inventing an alias;
+- when correcting an existing exact `state_class + key`, preserve its existing plain-string versus degree-hint representation unless current evidence materially requires new or changed comparative/intensity semantics; `degree_hint` is not confidence, evidence strength, importance, or stylistic emphasis, and categorical values that are adequately represented as strings should remain strings unless graded meaning is required;
 - redundant durable concepts and duplicate aliases should be avoided when the evidence permits one coherent representation;
 - corrective StateCandidate output is reserved for a genuinely supported change to accepted current understanding; otherwise no State candidate is required;
 - Event IDs must never be invented and prior MEMORY prose must never be treated as Event evidence.
@@ -141,6 +143,8 @@ Classified `current` or `historical` authority requires typed provenance. Proven
 - a stable logical `memory_id`, independent of Markdown path/heading organization;
 - a `derivation_id` identifying the semantic derivation that produced the MEMORY unit;
 - one or more typed source references whose source kind is `event` or `state`.
+
+MEMORY should be organized around stable semantic units rather than transient wording or arbitrary heading choices. When current and historical aspects of one durable concept are both represented, keep their semantic units and stable logical identities coherent across updates; do not split or merge them solely because of Markdown organization.
 
 The source vocabulary follows existing RelayLM authority roots: persisted Events are occurrence/provenance records and Canonical State is accepted current machine understanding. A Markdown path, heading, retrieval score, or fluent memory sentence is not itself a provenance source kind.
 

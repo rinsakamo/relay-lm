@@ -9,6 +9,7 @@ import pytest
 import relaylm.providers as providers
 from relaylm.providers.openai_compatible_crystallization import (
     STATE_CANDIDATE_WIRE_SCHEMA,
+    SYSTEM_INSTRUCTION,
 )
 from relaylm.crystallization import CrystallizationInput, CrystallizationOutput
 from relaylm.events import Event
@@ -124,6 +125,47 @@ def test_state_candidate_wire_schema_pairs_operation_and_value() -> None:
         ]
     }
     assert by_op["remove"]["properties"]["value"] == {"type": "null"}
+
+
+def test_system_instruction_retires_completed_transient_state_without_completion_value() -> None:
+    assert (
+        "When Canonical State contains a temporary active task or goal and later user "
+        "Event evidence explicitly establishes completion, cancellation, or that it "
+        "should no longer remain a future goal"
+    ) in SYSTEM_INSTRUCTION
+    assert "do not replace its active value with durable semantic `completed`" in SYSTEM_INSTRUCTION
+    assert "prefer `remove` for that exact existing `state_class + key`" in SYSTEM_INSTRUCTION
+    assert "preserve the Event history" in SYSTEM_INSTRUCTION
+    assert (
+        "omit short-lived task mechanics from long-horizon MEMORY unless the event "
+        "has independently durable significance"
+    ) in SYSTEM_INSTRUCTION
+
+
+def test_system_instruction_preserves_value_representation_and_limits_degree_hint() -> None:
+    assert (
+        "When correcting an existing exact `state_class + key`, preserve the existing "
+        "plain-string versus degree-hint representation form"
+    ) in SYSTEM_INSTRUCTION
+    assert "unless supplied current evidence materially requires new or changed comparative/intensity semantics" in SYSTEM_INSTRUCTION
+    assert "Never introduce `degree_hint` as confidence, evidence strength, importance, or stylistic emphasis" in SYSTEM_INSTRUCTION
+    assert "Avoid false precision" in SYSTEM_INSTRUCTION
+    assert (
+        "A categorical current-value correction represented adequately by a string "
+        "should remain a string unless actual semantic evidence requires a graded representation"
+    ) in SYSTEM_INSTRUCTION
+
+
+def test_system_instruction_keeps_memory_units_stable_across_organization() -> None:
+    assert (
+        "Organize MEMORY around stable semantic units rather than transient wording or "
+        "arbitrary heading choices"
+    ) in SYSTEM_INSTRUCTION
+    assert (
+        "When current and historical aspects of one concept are both durable, keep "
+        "their semantic units and stable logical identities coherent across updates"
+    ) in SYSTEM_INSTRUCTION
+    assert "do not split or merge them solely because of Markdown organization" in SYSTEM_INSTRUCTION
 
 
 def test_provider_makes_one_nonstreaming_strict_request_and_returns_crystallization_output() -> None:

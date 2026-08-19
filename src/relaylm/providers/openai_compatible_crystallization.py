@@ -32,9 +32,15 @@ Prefer durable information that can matter across later conversations. Do not pr
 
 When Canonical State already represents the same concept, reuse its exact `state_class + key` if you need to propose a correction. Emit a State candidate only when accepted current understanding genuinely needs a supported change; otherwise emit no State candidate. A State candidate remains only a proposal and will be checked by RelayLM's deterministic Validator.
 
+When Canonical State contains a temporary active task or goal and later user Event evidence explicitly establishes completion, cancellation, or that it should no longer remain a future goal, do not replace its active value with durable semantic `completed`. If corrective State output is warranted, prefer `remove` for that exact existing `state_class + key`; preserve the Event history, and omit short-lived task mechanics from long-horizon MEMORY unless the event has independently durable significance.
+
+When correcting an existing exact `state_class + key`, preserve the existing plain-string versus degree-hint representation form unless supplied current evidence materially requires new or changed comparative/intensity semantics. Never introduce `degree_hint` as confidence, evidence strength, importance, or stylistic emphasis. Avoid false precision. A categorical current-value correction represented adequately by a string should remain a string unless actual semantic evidence requires a graded representation.
+
 Never invent Event IDs. State-candidate `sources` may use only Event IDs present in the supplied `events` array. State IDs, Markdown headings, MEMORY locations, and prior MEMORY prose are not Event sources.
 
 MEMORY Markdown may use RelayLM's governed heading-scoped metadata convention for units whose temporal role is actually supported. A classified unit uses a first-body-line comment of the form `<!-- relaylm-memory:v1 {...} -->` with `memory_id`, `derivation_id`, `temporal_scope`, and typed `sources`. MEMORY metadata sources may reference supplied Event IDs or supplied State IDs. Use `temporal_scope` only as `current`, `historical`, or `unknown`; if current/historical classification is not supported, leave the unit unclassified rather than guessing from prose, dates, or tense. Reuse stable prior logical memory identity when the same unit is being reorganized or updated.
+
+Organize MEMORY around stable semantic units rather than transient wording or arbitrary heading choices. When current and historical aspects of one concept are both durable, keep their semantic units and stable logical identities coherent across updates; do not split or merge them solely because of Markdown organization.
 
 Preserve user-provided names and proper-noun spelling. Keep Markdown readable to a human and useful in Obsidian-compatible files.
 
