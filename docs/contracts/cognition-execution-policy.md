@@ -1,14 +1,12 @@
 # Cognition Execution Policy Contract
 
-Status: current ordinary-turn cognition execution-policy contract for RelayLM v1 through COGP2.
+Status: current ordinary-turn cognition execution-policy contract for RelayLM v1 through COGP3.
 
-This contract is owned by #1533 and is part of the existing `cognitive_turn` semantic owner. It replaces the former architectural assumption that one ordinary turn must always contain exactly one semantic model generation. The current runtime remains the implemented `single_pass` baseline until COGP3 adds the two-pass runtime path.
-
-Execution topology never changes RelayLM semantic authority:
+This contract is owned by #1533 under the existing `cognitive_turn` semantic owner. Ordinary-turn execution topology is configurable policy; State/Continuity authority remains unchanged.
 
 ```text
-model output
-  -> proposal
+model cognition
+  -> response / proposals
   -> existing deterministic State / Continuity validation and lifecycle
   -> RelayLM authority
 ```
@@ -30,40 +28,42 @@ auto
 
 ### `single_pass`
 
-One model generation produces the visible response plus StateCandidate and ContinuityCandidate proposals. This is the current implemented ordinary-turn behavior and remains a supported baseline even after two-pass support exists.
+One model generation produces the visible response plus StateCandidate and ContinuityCandidate proposals. The existing ordinary-turn APIs retain this implemented baseline.
 
 ### `two_pass`
 
-Pass 1 owns the visible conversational response. Pass 2 owns immediate structured State/Continuity proposal extraction. Pass 2 remains proposal-producing cognition and uses the existing deterministic authority boundary.
+Pass 1 produces only the visible conversational response. Pass 2 produces only immediate State/Continuity proposals. COGP3 implements this as an explicit response-first runtime path.
 
-The response is **response-first**: a successful Pass 1 response is semantically valid independently of whether Pass 2 later completes successfully.
+Pass 1 success creates the Assistant Event before Pass 2 completes. The returned two-pass turn therefore contains the already-valid visible response plus an independently completing extraction task.
+
+Pass 2 receives the originating `CognitiveInput` and the Pass 1 response. The response is interpretive context only; its text is not source evidence and cannot self-certify user or external facts.
+
+The initial OpenAI-compatible implementation reuses one constructed provider object, its existing client, configured request model, endpoint, and provider-owned explicit decoding configuration for Pass 1 then Pass 2. It does not require a second resident online model.
 
 ### `shadow_two_pass`
 
-Canonical behavior remains the normal `single_pass` result and its existing validation/commit path. An additional Pass 2 extraction is evidence-only and must not mutate Canonical State or accepted Continuity.
-
-Shadow output is not a second State authority.
+Canonical behavior remains `single_pass`; an additional Pass 2 result is evidence-only and cannot mutate State or accepted Continuity. COGP4 owns this still-deferred evidence carriage.
 
 ### `auto`
 
-`auto` means resolution through an evidence-backed calibrated cognition profile against actual provider/model/runtime capability. It does not mean “omit the field and inherit a hidden provider default,” and it is not a hard-coded vendor/model-name table.
+`auto` means evidence-backed calibrated profile resolution against actual provider/model/runtime capability. It never means silently inheriting an unknown provider default. #1388 owns the canonical profile/default decision; #1446 later carries it through release configuration.
 
-# Pass responsibility boundary
+## Pass responsibility boundary
 
-## Pass 1 — conversation
+### Pass 1 — conversation
 
-Pass 1 is responsible for:
+Pass 1 owns:
 
 - visible natural-language response;
 - persona / identity continuity;
 - current-context coherence;
 - latency-sensitive conversational tempo.
 
-In `two_pass`, Pass 1 is not required to produce StateCandidate or ContinuityCandidate proposals.
+It does not produce StateCandidate or ContinuityCandidate proposals in `two_pass` mode.
 
-## Pass 2 — immediate structured cognition
+### Pass 2 — immediate structured cognition
 
-Pass 2 is responsible for proposals for:
+Pass 2 owns proposals for:
 
 - StateCandidate extraction;
 - ContinuityCandidate extraction;
@@ -72,11 +72,9 @@ Pass 2 is responsible for proposals for:
 - transient-vs-durable discipline;
 - provenance/source preservation.
 
-Pass 1 and Pass 2 now have provider-neutral reasoning/decoding intent semantics under `docs/contracts/cognition-pass-execution.md`. Those types distinguish policy-owned `auto` from a fully resolved generation request, classify effective values as applied/omitted/unsupported, and fail closed on explicit unsupported behavior. COGP2 chooses no numeric default and does not add provider-specific reasoning wire fields.
+The provider-neutral per-pass reasoning/decoding intent contract remains `docs/contracts/cognition-pass-execution.md`. COGP3 does not choose numeric defaults or invent unsupported reasoning controls.
 
-# Evidence and authority ordering
-
-Pass 2 may consume the current governed User Event, relevant accepted Canonical State, accepted Continuity, allowed State classes/relevant exact keys, and the Pass 1 response as interpretive context.
+## Evidence and authority ordering
 
 The authority order is:
 
@@ -86,108 +84,101 @@ user/source evidence
   > assistant response interpretation
 ```
 
-The Pass 1 response cannot self-certify a user or external fact. For example, if the user says only that they have recently been drinking coffee and Pass 1 paraphrases that as liking coffee, that assistant paraphrase alone cannot authorize `user.preference/coffee = likes`.
+For example, if the user says only that they have recently been drinking coffee and Pass 1 paraphrases that as liking coffee, the assistant paraphrase alone cannot authorize `user.preference/coffee = likes`.
 
-Existing source-role/provenance, StateCandidate validation, and Continuity validation rules remain unchanged.
+Existing source-role/provenance, StateCandidate validation, and Continuity validation rules are reused unchanged.
 
-# RelayLM 1.0 online resource boundary
-
-The initial supported two-pass topology reuses the **same already-loaded online model sequentially**:
-
-```text
-same loaded model
-  Pass 1
-    -> Pass 2
-```
-
-RelayLM 1.0 does not require two online model artifacts to remain resident simultaneously. This is an execution-topology boundary, not a provider-specific model-loading API contract.
-
-Off-turn crystallization remains separately governed by #1260 and may use a different/larger/offloaded model without changing this ordinary-turn contract.
-
-# Pass 2 failure semantics
+## Response-first failure semantics
 
 For `two_pass`:
 
 ```text
 Pass 1 = success
-Pass 2 = failure / timeout / malformed structured output
+Pass 2 = failure / malformed output / provider error
 ```
 
 means:
 
 ```text
-visible response remains valid/deliverable
-failed Pass 2 proposals do not commit
-partial State mutation = prohibited
-partial Continuity mutation = prohibited
-original governed Event evidence remains preserved
-failure may be observed only through bounded/content-free diagnostics or evidence
+visible response remains valid
+User Event remains preserved
+Assistant Event remains preserved
+failed Pass 2 proposals commit nothing
+partial State mutation is prohibited
+partial Continuity mutation is prohibited
+failure is reported by bounded/content-free extraction status
 ```
 
-A post-response extraction failure does not retroactively convert a valid conversation response into a failed conversation turn.
+The current COGP3 result statuses are:
 
-Later off-turn crystallization may re-interpret retained Event evidence through its separately governed proposal/validation path.
+```text
+committed
+stale
+failed
+```
 
-# Turn ordering and stale-result invariants
+`failed` may include bounded reasons such as `pass2_failed` or `continuity_runtime_required`. Raw exception text and semantic payload are not promoted into the result contract.
 
-Two-pass completion may overlap later user input. RelayLM 1.0 therefore requires:
+A Pass 2 output that includes Continuity proposals without an explicit Continuity runtime fails before any State mutation, so a missing Continuity runtime cannot create a partial cross-channel commit.
 
-- every Pass 2 result is bound to its originating turn/User Event identity;
-- a late extraction result must not overwrite newer accepted State/Continuity as though it were current merely because it finished later;
-- commit ordering/revision checks are deterministic;
-- Turn N+1 Pass 1 should not ordinarily block only because Turn N Pass 2 is pending;
-- recent governed Events / Working Context may bridge temporary structured-extraction staleness;
-- any join/wait policy must be explicit rather than an accidental lock.
+## Turn ordering and stale-result prevention
 
-COGP1 freezes these invariants. COGP3 owns the runtime mechanism and executable race/failure tests that realize them.
+`CognitionExecutionRuntime` is a process-local ordering holder for the explicit two-pass path. It is not State or Continuity authority.
 
-# Current implementation status after COGP2
+The runtime uses two deliberately different lock scopes:
+
+- a conversation lock serializes Pass 1 preparation/generation so ordinary user turns keep deterministic Event ordering;
+- a short authority lock serializes only new-turn reservation/binding and the final Pass 2 stale-check/validation/commit boundary.
+
+Pass 2 model inference runs outside both locks after Pass 1 returns. Therefore Turn N+1 Pass 1 does not wait merely because Turn N Pass 2 is still reasoning.
+
+When a newer turn enters the two-pass runtime, it advances the process-local execution revision before preparing its input. Older pending extraction is thereby stale before the newer turn can become current.
+
+A Pass 2 result may commit only while the short authority lock proves all of the following together:
+
+- its execution revision is still the latest revision;
+- its originating User Event is still the latest bound two-pass turn;
+- persisted Canonical State still equals the origin State snapshot;
+- accepted Continuity still equals the origin Continuity snapshot when a runtime is present.
+
+Only after those checks do the existing State and Continuity validators run and any mutations apply. The stale check and mutation therefore cannot be interleaved with a newer two-pass turn reservation inside this runtime.
+
+If any guard fails, the result is `stale` and performs no State/Continuity mutation. Working Context and retained Events remain available to bridge the temporary extraction gap.
+
+This process-local guard does not create a new durable State revision scheme or change the persistence owner's cross-process concurrency guarantees.
+
+## Streaming
+
+The explicit two-pass streaming path streams only the Pass 1 `utterance`. The complete Pass 1 structured conversation result must still validate before the Assistant Event is created and Pass 2 is scheduled.
+
+Pass 2 starts only after Pass 1 completion; it does not stream a second user-visible response.
+
+## Current implementation status after COGP3
 
 ```text
 single_pass       implemented baseline
-two_pass          execution + per-pass policy contracts frozen; runtime deferred to COGP3
+two_pass          implemented explicit response-first runtime path
 shadow_two_pass   semantic contract frozen; evidence carriage deferred to COGP4
-auto              semantic/policy contract frozen; profile resolution/default deferred to #1388/#1446
+auto              semantic/policy contract frozen; default/profile deferred to #1388/#1446
 ```
 
-The existing ordinary-turn functions continue to execute the current single-pass path until COGP3 changes runtime assembly. The provider-neutral capability view in COGP2 does not by itself assert that any concrete provider supports reasoning, reasoning budgets, or `max_output_tokens`; provider owners remain the source of those facts.
+COGP3 does not yet make `two_pass` the release default or expose a release-config selector. Those are later owner transactions.
 
-# Ownership boundaries
+## Ownership boundaries
 
-COGP / #1533 owns:
+COGP / #1533 owns execution topology, pass responsibility, response-first semantics, turn ordering, stale-result rules, and provider-neutral per-pass intent.
 
-- available cognition execution modes;
-- Pass 1 / Pass 2 responsibility split;
-- response-first semantics;
-- same-loaded-model initial 1.0 topology;
-- Pass 2 failure semantics;
-- turn-bound ordering/stale-result invariants;
-- provider-neutral per-pass execution intent;
-- `auto` versus effective omission semantics;
-- applied/omitted/unsupported capability-resolution outcomes.
+Provider owners retain external request/response transport semantics, capability truth, provider-specific validation, and exact applied request configuration. The COGP3 OpenAI-compatible two-pass extension reuses the canonical adapter machinery rather than redefining State/Continuity candidate grammar.
 
-#1386 owns controlled actual-model evidence for execution modes.
+#1386 owns controlled actual-model evidence. #1388 owns evidence-backed profile/default selection. #1446 owns release config carriage and effective-config provenance. State, Continuity, Context Compiler, Retrieval, Cognitive Budget, and crystallization owners retain their existing semantic authority.
 
-#1388 owns evidence-backed profile/default selection and provenance.
+## Deferred after COGP3
 
-#1446 owns runtime-config schema carriage, precedence, direct operator overrides, runtime assembly, and effective-config reporting.
-
-Provider owners retain provider wire, capability discovery/declaration, provider-specific validation, and exact applied request configuration.
-
-State, Continuity, Context Compiler, Retrieval, Cognitive Budget, and crystallization owners retain their existing semantic authority.
-
-# Current deferred work
-
-Not yet implemented by COGP1/COGP2:
-
-- two-pass generation/orchestration;
-- provider-specific per-pass reasoning/output-control carriage where unsupported today;
-- response/Pass-2 asynchronous scheduling;
-- stale-result revision machinery;
-- shadow evidence artifacts;
-- actual-model A/B/C execution;
-- calibrated default/profile selection;
-- release runtime-config fields;
+- shadow evidence carriage and execution identity (COGP4);
+- actual-model A/B/C comparison (#1386 / COGP5);
+- calibrated default/profile selection (#1388 / COGP6);
+- release runtime-config integration (#1446 / COGP7);
+- provider-specific per-request reasoning controls not already supported;
 - a second resident online model;
-- StateCandidate or ContinuityCandidate grammar changes;
+- StateCandidate or ContinuityCandidate grammar redesign;
 - direct model mutation of State or Continuity.
