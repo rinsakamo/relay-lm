@@ -118,6 +118,14 @@ def _manifest(*, model_artifact: str = "google/gemma-4-12b@sha256:111", max_even
         tokenizer_identity="gemma-4-tokenizer-v1",
         effective_context_window=32768,
         decoding_configuration=(("temperature", 0.0), ("top_p", 1.0)),
+        reasoning_identity=subject.ActualModelCrystallizationReasoningIdentity(
+            required_setting="on",
+            effective_setting="on",
+            allowed_options=("off", "on"),
+            live_default="on",
+            control_source="lmstudio_model_default",
+            control_mode="attested_default_without_per_request_override",
+        ),
         seed=7,
         structured_output_schema_version="relaylm_crystallization_output:v1",
         evaluation_contract_version="actual-model-crystallization-v1",
@@ -141,6 +149,15 @@ def test_manifest_is_exact_and_crystallization_specific() -> None:
 
     assert manifest.max_events == 2
     assert manifest.structured_output_schema_version == "relaylm_crystallization_output:v1"
+    assert manifest.reasoning_identity.to_mapping() == {
+        "format_version": 1,
+        "required_setting": "on",
+        "effective_setting": "on",
+        "allowed_options": ["off", "on"],
+        "live_default": "on",
+        "control_source": "lmstudio_model_default",
+        "control_mode": "attested_default_without_per_request_override",
+    }
     assert manifest.to_mapping()["execution_kind"] == "off_turn_crystallization"
     assert "continuity_runtime" not in manifest.to_mapping()
     assert "scenario_set_version" not in manifest.to_mapping()
@@ -152,7 +169,7 @@ def test_manifest_is_exact_and_crystallization_specific() -> None:
     with pytest.raises(ValueError, match="decoding_configuration keys must be unique"):
         replace(manifest, decoding_configuration=(("temperature", 0.0), ("temperature", 1.0)))
 
-    assert subject.ACTUAL_MODEL_CRYSTALLIZATION_EVIDENCE_FORMAT_VERSION == 1
+    assert subject.ACTUAL_MODEL_CRYSTALLIZATION_EVIDENCE_FORMAT_VERSION == 2
 
 
 def test_runner_records_exact_bounded_input_raw_output_and_deterministic_result(tmp_path: Path) -> None:
@@ -250,6 +267,24 @@ def test_run_identity_changes_with_model_budget_or_actual_prepass_input(tmp_path
             case=_case(),
         )
     )
+    changed_reasoning = asyncio.run(
+        subject.run_actual_model_crystallization(
+            character=_make_character(tmp_path / "reasoning", prior_memory="# Prior\n\nA\n"),
+            crystallizer=_ScriptedCrystallizer(),
+            manifest=replace(
+                _manifest(),
+                reasoning_identity=subject.ActualModelCrystallizationReasoningIdentity(
+                    required_setting="off",
+                    effective_setting="off",
+                    allowed_options=("off", "on"),
+                    live_default="off",
+                    control_source="lmstudio_model_default",
+                    control_mode="attested_default_without_per_request_override",
+                ),
+            ),
+            case=_case(),
+        )
+    )
     changed_budget = asyncio.run(
         subject.run_actual_model_crystallization(
             character=_make_character(tmp_path / "budget", prior_memory="# Prior\n\nA\n"),
@@ -269,6 +304,7 @@ def test_run_identity_changes_with_model_budget_or_actual_prepass_input(tmp_path
 
     assert first.run_id == same.run_id
     assert first.run_id != changed_model.run_id
+    assert first.run_id != changed_reasoning.run_id
     assert first.run_id != changed_budget.run_id
     assert first.run_id != changed_input.run_id
 

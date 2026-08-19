@@ -5,6 +5,7 @@ import importlib
 import importlib.util
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -36,7 +37,7 @@ def _subject():
 
 def _condition_mapping() -> dict[str, object]:
     return {
-        "format_version": 1,
+        "format_version": 2,
         "target_id": TARGET_ID,
         "relaylm_commit": "9" * 40,
         "lm_studio": {
@@ -54,6 +55,7 @@ def _condition_mapping() -> dict[str, object]:
             "seed": 7,
         },
         "supported_decoding_controls": ["temperature", "top_p", "seed"],
+        "reasoning": {"required_setting": "on"},
         "character_fixture": {
             "id": "actual-model-foundation-v1",
             "path": FIXTURE_RELATIVE.as_posix(),
@@ -82,6 +84,50 @@ def _verification() -> ActualModelArtifactVerification:
         target_revision=target.revision,
         artifact_size_bytes=target.artifact_size_bytes,
         artifact_sha256=target.artifact_sha256,
+    )
+
+
+def _reasoning_identity(subject):
+    return subject.ActualModelCrystallizationReasoningIdentity(
+        required_setting="on",
+        effective_setting="on",
+        allowed_options=("off", "on"),
+        live_default="on",
+        control_source="lmstudio_model_default",
+        control_mode="attested_default_without_per_request_override",
+    )
+
+
+def _native_models_response(
+    *,
+    reasoning: dict[str, object] | None = None,
+    loaded_instances: list[dict[str, object]] | None = None,
+) -> dict[str, object]:
+    return {
+        "models": [
+            {
+                "type": "llm",
+                "key": "google/gemma-4-12b",
+                "size_bytes": 7556574286,
+                "quantization": {"name": "Q4_K_M"},
+                "loaded_instances": loaded_instances
+                if loaded_instances is not None
+                else [{"id": "google/gemma-4-12b"}],
+                "capabilities": {
+                    "reasoning": reasoning
+                    if reasoning is not None
+                    else {"allowed_options": ["off", "on"], "default": "on"}
+                },
+            }
+        ]
+    }
+
+
+def _proof_stub() -> SimpleNamespace:
+    return SimpleNamespace(
+        request_model="google/gemma-4-12b",
+        model_key="google/gemma-4-12b",
+        loaded_size_bytes=7556574286,
     )
 
 
@@ -125,6 +171,7 @@ def test_condition_loader_is_strict_and_crystallization_specific(tmp_path: Path)
     assert condition.fixture_revision == FIXTURE_REVISION
     assert condition.case.case_id == "crystallization-baseline"
     assert condition.max_events == 100
+    assert condition.reasoning_required_setting == "on"
     assert condition.to_mapping()["execution_kind"] == "off_turn_crystallization"
 
     serialized = json.dumps(condition.to_mapping(), ensure_ascii=False)
@@ -142,6 +189,13 @@ def test_condition_loader_is_strict_and_crystallization_specific(tmp_path: Path)
     with pytest.raises(subject.ActualModelCrystallizationHostRunnerError, match="unknown fields"):
         subject.load_actual_model_crystallization_host_condition(
             _write_condition(tmp_path, unknown)
+        )
+
+    missing_reasoning = _condition_mapping()
+    del missing_reasoning["reasoning"]
+    with pytest.raises(subject.ActualModelCrystallizationHostRunnerError, match="missing fields"):
+        subject.load_actual_model_crystallization_host_condition(
+            _write_condition(tmp_path, missing_reasoning)
         )
 
 
@@ -163,6 +217,227 @@ def test_condition_rejects_non_repo_relative_fixture_and_negative_budget(tmp_pat
         )
 
 
+def test_live_reasoning_capability_is_attested(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    subject = _subject()
+    condition = subject.load_actual_model_crystallization_host_condition(
+        _write_condition(tmp_path, _condition_mapping())
+    )
+    target = load_actual_model_target(TARGET_PATH)
+    monkeypatch.setattr(subject, "load_lm_studio_counter_proof", lambda _: _proof_stub())
+    monkeypatch.setattr(
+        subject,
+        "_fetch_lm_studio_native_models",
+        lambda **_: _native_models_response(),
+    )
+
+    identity = subject._attest_lm_studio_reasoning(
+        condition=condition,
+        target=target,
+        proof_path=tmp_path / "proof.json",
+        api_key=None,
+    )
+
+    assert identity.to_mapping() == {
+        "format_version": 1,
+        "required_setting": "on",
+        "effective_setting": "on",
+        "allowed_options": ["off", "on"],
+        "live_default": "on",
+        "control_source": "lmstudio_model_default",
+        "control_mode": "attested_default_without_per_request_override",
+    }
+
+
+def test_live_native_models_uses_lm_studio_native_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    subject = _subject()
+    requests: list[tuple[str, str | None, float]] = []
+
+    class _Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"models": []}'
+
+    def _urlopen(request, *, timeout: float):
+        requests.append((request.full_url, request.get_header("Authorization"), timeout))
+        return _Response()
+
+    monkeypatch.setattr(subject.urllib.request, "urlopen", _urlopen)
+
+    assert subject._fetch_lm_studio_native_models(
+        base_url="http://127.0.0.1:1234/v1",
+        api_key="secret",
+    ) == {"models": []}
+    assert requests == [
+        ("http://127.0.0.1:1234/api/v1/models", "Bearer secret", 10)
+    ]
+
+
+def test_live_reasoning_attestation_fails_without_capability(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    subject = _subject()
+    condition = subject.load_actual_model_crystallization_host_condition(
+        _write_condition(tmp_path, _condition_mapping())
+    )
+    target = load_actual_model_target(TARGET_PATH)
+    metadata = _native_models_response()
+    model = metadata["models"][0]
+    assert isinstance(model, dict)
+    del model["capabilities"]
+    monkeypatch.setattr(subject, "load_lm_studio_counter_proof", lambda _: _proof_stub())
+    monkeypatch.setattr(subject, "_fetch_lm_studio_native_models", lambda **_: metadata)
+
+    with pytest.raises(subject.ActualModelCrystallizationHostRunnerError, match="reasoning capability"):
+        subject._attest_lm_studio_reasoning(
+            condition=condition,
+            target=target,
+            proof_path=tmp_path / "proof.json",
+            api_key=None,
+        )
+
+
+def test_live_reasoning_attestation_fails_for_unallowed_setting(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    subject = _subject()
+    mapping = _condition_mapping()
+    mapping["reasoning"] = {"required_setting": "high"}
+    condition = subject.load_actual_model_crystallization_host_condition(
+        _write_condition(tmp_path, mapping)
+    )
+    target = load_actual_model_target(TARGET_PATH)
+    monkeypatch.setattr(subject, "load_lm_studio_counter_proof", lambda _: _proof_stub())
+    monkeypatch.setattr(
+        subject,
+        "_fetch_lm_studio_native_models",
+        lambda **_: _native_models_response(),
+    )
+
+    with pytest.raises(subject.ActualModelCrystallizationHostRunnerError, match="not in LM Studio allowed_options"):
+        subject._attest_lm_studio_reasoning(
+            condition=condition,
+            target=target,
+            proof_path=tmp_path / "proof.json",
+            api_key=None,
+        )
+
+
+def test_live_reasoning_attestation_fails_for_default_drift(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    subject = _subject()
+    condition = subject.load_actual_model_crystallization_host_condition(
+        _write_condition(tmp_path, _condition_mapping())
+    )
+    target = load_actual_model_target(TARGET_PATH)
+    monkeypatch.setattr(subject, "load_lm_studio_counter_proof", lambda _: _proof_stub())
+    monkeypatch.setattr(
+        subject,
+        "_fetch_lm_studio_native_models",
+        lambda **_: _native_models_response(
+            reasoning={"allowed_options": ["off", "on"], "default": "off"}
+        ),
+    )
+
+    with pytest.raises(subject.ActualModelCrystallizationHostRunnerError, match="default does not match"):
+        subject._attest_lm_studio_reasoning(
+            condition=condition,
+            target=target,
+            proof_path=tmp_path / "proof.json",
+            api_key=None,
+        )
+
+
+@pytest.mark.parametrize(
+    ("metadata", "message"),
+    [
+        ({"models": {}}, "must be a JSON array"),
+        (_native_models_response(loaded_instances=[]), "loaded instance"),
+        (
+            {
+                "models": [
+                    *_native_models_response()["models"],
+                    *_native_models_response()["models"],
+                ]
+            },
+            "exactly one matching request model",
+        ),
+    ],
+)
+def test_live_reasoning_attestation_fails_for_ambiguous_metadata(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    metadata: dict[str, object],
+    message: str,
+) -> None:
+    subject = _subject()
+    condition = subject.load_actual_model_crystallization_host_condition(
+        _write_condition(tmp_path, _condition_mapping())
+    )
+    target = load_actual_model_target(TARGET_PATH)
+    monkeypatch.setattr(subject, "load_lm_studio_counter_proof", lambda _: _proof_stub())
+    monkeypatch.setattr(subject, "_fetch_lm_studio_native_models", lambda **_: metadata)
+
+    with pytest.raises(subject.ActualModelCrystallizationHostRunnerError, match=message):
+        subject._attest_lm_studio_reasoning(
+            condition=condition,
+            target=target,
+            proof_path=tmp_path / "proof.json",
+            api_key=None,
+        )
+
+
+def test_reasoning_failure_precedes_crystallizer_construction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    subject = _subject()
+    condition = subject.load_actual_model_crystallization_host_condition(
+        _write_condition(tmp_path, _condition_mapping())
+    )
+    monkeypatch.setattr(subject, "_verify_clean_exact_repo", lambda **_: None)
+    monkeypatch.setattr(subject, "verify_actual_model_artifact", lambda **_: _verification())
+    monkeypatch.setattr(
+        subject,
+        "_attest_lm_studio_serving_target",
+        lambda **_: "lm-studio-serving-proof:sha256:" + "a" * 64,
+    )
+    monkeypatch.setattr(subject, "load_lm_studio_counter_proof", lambda _: _proof_stub())
+    monkeypatch.setattr(
+        subject,
+        "_fetch_lm_studio_native_models",
+        lambda **_: {"models": []},
+    )
+
+    class NeverConstructed:
+        def __init__(self, **_: object) -> None:
+            raise AssertionError("crystallizer construction must not follow failed attestation")
+
+    monkeypatch.setattr(subject, "OpenAICompatibleCrystallizer", NeverConstructed)
+    with pytest.raises(subject.ActualModelCrystallizationHostRunnerError):
+        subject.prepare_actual_model_crystallization_host_run(
+            condition=condition,
+            repo_root=REPO_ROOT,
+            model_artifact_path=tmp_path / "verified-by-patched-verifier.gguf",
+            serving_proof_path=tmp_path / "proof.json",
+        )
+
+
 def test_prepare_binds_verified_target_fixture_attestation_and_applied_decoding(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -178,6 +453,7 @@ def test_prepare_binds_verified_target_fixture_attestation_and_applied_decoding(
         "_attest_lm_studio_serving_target",
         lambda **_: "lm-studio-serving-proof:sha256:" + "a" * 64,
     )
+    monkeypatch.setattr(subject, "_attest_lm_studio_reasoning", lambda **_: _reasoning_identity(subject))
 
     prepared = subject.prepare_actual_model_crystallization_host_run(
         condition=condition,
@@ -196,6 +472,7 @@ def test_prepare_binds_verified_target_fixture_attestation_and_applied_decoding(
         assert prepared.manifest.tokenizer_identity == target.tokenizer_identity
         assert prepared.manifest.max_events == 100
         assert prepared.manifest.seed == 7
+        assert prepared.manifest.reasoning_identity.required_setting == "on"
         assert prepared.manifest.decoding_configuration == (
             ("seed", 7),
             ("temperature", 0.0),
@@ -227,6 +504,7 @@ def test_prepare_fails_closed_on_fixture_revision_drift(
         "_attest_lm_studio_serving_target",
         lambda **_: "lm-studio-serving-proof:sha256:" + "a" * 64,
     )
+    monkeypatch.setattr(subject, "_attest_lm_studio_reasoning", lambda **_: _reasoning_identity(subject))
 
     with pytest.raises(
         subject.ActualModelCrystallizationHostRunnerError,
@@ -255,6 +533,7 @@ def test_execute_uses_fresh_workspace_one_pass_and_existing_cry2_writer(
         "_attest_lm_studio_serving_target",
         lambda **_: "lm-studio-serving-proof:sha256:" + "b" * 64,
     )
+    monkeypatch.setattr(subject, "_attest_lm_studio_reasoning", lambda **_: _reasoning_identity(subject))
     monkeypatch.setattr(subject, "OpenAICompatibleCrystallizer", _ScriptedCrystallizer)
 
     prepared = subject.prepare_actual_model_crystallization_host_run(
@@ -309,6 +588,7 @@ def test_execute_rejects_reusing_existing_workspace_before_generation(
         "_attest_lm_studio_serving_target",
         lambda **_: "lm-studio-serving-proof:sha256:" + "c" * 64,
     )
+    monkeypatch.setattr(subject, "_attest_lm_studio_reasoning", lambda **_: _reasoning_identity(subject))
     monkeypatch.setattr(subject, "OpenAICompatibleCrystallizer", _ScriptedCrystallizer)
     prepared = subject.prepare_actual_model_crystallization_host_run(
         condition=condition,
