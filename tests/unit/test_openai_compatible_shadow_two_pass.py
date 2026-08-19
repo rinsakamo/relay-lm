@@ -1,0 +1,84 @@
+from __future__ import annotations
+
+import asyncio
+import json
+from pathlib import Path
+
+import httpx
+
+from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPassProvider
+from relaylm.state import CanonicalState
+from relaylm.storage.filesystem import CharacterDirectory
+from relaylm.shadow_turn import run_user_turn_shadow_two_pass
+
+
+def _make_character(root: Path) -> CharacterDirectory:
+    (root / "memory").mkdir(parents=True)
+    (root / "SOUL.md").write_text("# ReLM\n\nBe kind and honest.\n", encoding="utf-8")
+    (root / "config.yaml").write_text(
+        "format_version: 1\ncharacter:\n  id: relm\n  name: ReLM\n",
+        encoding="utf-8",
+    )
+    (root / "memory" / "events.jsonl").write_text("", encoding="utf-8")
+    character = CharacterDirectory(root)
+    character.save_state(CanonicalState())
+    return character
+
+
+def test_shadow_two_pass_reuses_one_openai_adapter_object_and_distinct_schemas(
+    tmp_path: Path,
+) -> None:
+    seen: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        seen.append(body)
+        schema_name = body["response_format"]["json_schema"]["name"]
+        if schema_name == "relaylm_cognitive_output":
+            wire = {
+                "utterance": "canonical",
+                "state_candidates": [],
+                "continuity_candidates": [],
+            }
+        elif schema_name == "relaylm_structured_cognition_output":
+            wire = {
+                "state_candidates": [],
+                "continuity_candidates": [],
+            }
+        else:
+            raise AssertionError(schema_name)
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {"message": {"content": json.dumps(wire, ensure_ascii=False)}}
+                ]
+            },
+        )
+
+    async def run() -> None:
+        character = _make_character(tmp_path)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = OpenAICompatibleTwoPassProvider(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            result = await run_user_turn_shadow_two_pass(
+                character=character,
+                provider=provider,
+                content="hello",
+            )
+            shadow = await result.shadow
+            assert shadow.output is not None
+
+    asyncio.run(run())
+
+    assert len(seen) == 2
+    assert [body["model"] for body in seen] == ["gemma", "gemma"]
+    assert [
+        body["response_format"]["json_schema"]["name"] for body in seen
+    ] == [
+        "relaylm_cognitive_output",
+        "relaylm_structured_cognition_output",
+    ]
