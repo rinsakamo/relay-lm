@@ -521,14 +521,27 @@ def _memory_chunk_is_shadowed(
             degree_value = _reserved_degree_state_value(record.value)
             if degree_value is not None:
                 current_semantic, current_degree = degree_value
+                current_semantic_terms = _lexical_terms(current_semantic)
                 for claim in claims:
                     explicit_claim = _explicit_reserved_degree_claim(claim)
                     if explicit_claim is None:
                         continue
                     claimed_semantic, claimed_degree = explicit_claim
+                    claimed_semantic_terms = _lexical_terms(claimed_semantic)
+                    if claimed_semantic_terms and claimed_semantic_terms[0] == "not":
+                        if (
+                            len(claimed_semantic_terms) <= 1
+                            or claimed_semantic_terms[1] == "not"
+                        ):
+                            continue
+                        if (
+                            claimed_semantic_terms[1:] == current_semantic_terms
+                            and claimed_degree == current_degree
+                        ):
+                            return True
+                        continue
                     if (
-                        _lexical_terms(claimed_semantic)
-                        != _lexical_terms(current_semantic)
+                        claimed_semantic_terms != current_semantic_terms
                         or claimed_degree != current_degree
                     ):
                         return True
