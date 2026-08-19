@@ -15,7 +15,21 @@ from relaylm.actual_model_cognitive_budget import (
 from relaylm.budget_diagnostics import CognitiveBudgetExceededWithDiagnostics
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveInput, CognitiveOutput, CognitiveProvider
+from relaylm.cognition_execution import (
+    CognitionConversationOutput,
+    CognitionExtractionInput,
+    CognitionExtractionOutput,
+)
+from relaylm.cognition_execution_evidence import (
+    CognitionExecutionEvidenceIdentity,
+    ShadowExtractionEvidence,
+    ShadowExtractionStatus,
+)
 from relaylm.continuity import ContinuityCandidate, ContinuityContext, ContinuityItem
+from relaylm.shadow_turn import (
+    run_user_turn_shadow_two_pass,
+    run_user_turn_shadow_two_pass_streaming,
+)
 from relaylm.state import StateCandidate, StateRecord
 from relaylm.storage.filesystem import CharacterDirectory
 from relaylm.turn import (
@@ -27,6 +41,13 @@ from relaylm.turn import (
     run_user_turn_streaming,
     run_user_turn_streaming_with_cognitive_budget_diagnostics,
     run_user_turn_with_cognitive_budget_diagnostics,
+)
+from relaylm.two_pass_turn import (
+    CognitionExecutionRuntime,
+    TwoPassExtractionResult,
+    TwoPassExtractionStatus,
+    run_user_turn_two_pass,
+    run_user_turn_two_pass_streaming,
 )
 from relaylm.validation import CandidateDecision
 
@@ -117,6 +138,7 @@ class ActualModelRunManifest:
     seed: int | None = None
     provider_capabilities: tuple[str, ...] = field(default_factory=tuple)
     replicate_id: str = "0"
+    cognition_execution: CognitionExecutionEvidenceIdentity | None = None
     format_version: int = ACTUAL_MODEL_EVIDENCE_FORMAT_VERSION
 
     def __post_init__(self) -> None:
@@ -188,9 +210,21 @@ class ActualModelRunManifest:
                 raise ValueError(
                     "cognitive budget model_context_window must match effective_context_window"
                 )
+        if self.cognition_execution is not None:
+            if not isinstance(
+                self.cognition_execution,
+                CognitionExecutionEvidenceIdentity,
+            ):
+                raise TypeError(
+                    "cognition_execution must be CognitionExecutionEvidenceIdentity or None"
+                )
+            if self.cognition_execution.execution_path != self.execution_path:
+                raise ValueError(
+                    "cognition execution path must match manifest execution_path"
+                )
 
     def to_mapping(self) -> dict[str, object]:
-        return {
+        mapping: dict[str, object] = {
             "format_version": self.format_version,
             "relaylm_commit": self.relaylm_commit,
             "character_fixture": {
@@ -225,6 +259,9 @@ class ActualModelRunManifest:
             "restart_boundary": self.restart_boundary,
             "replicate_id": self.replicate_id,
         }
+        if self.cognition_execution is not None:
+            mapping["cognition_execution"] = self.cognition_execution.to_mapping()
+        return mapping
 
 
 @dataclass(frozen=True, slots=True)
@@ -300,6 +337,78 @@ class RawModelObservation:
 
 
 @dataclass(frozen=True, slots=True)
+class RawStructuredModelObservation:
+    """Raw structured proposal output from canonical or shadow Pass 2."""
+
+    state_candidates: tuple[dict[str, object], ...]
+    continuity_candidates: tuple[dict[str, object], ...]
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "state_candidates": list(self.state_candidates),
+            "continuity_candidates": list(self.continuity_candidates),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ActualModelCognitionExecutionObservation:
+    """Per-turn execution-policy observation kept separate from RelayLM decisions."""
+
+    mode: str
+    pass2_status: str | None = None
+    pass2_failure_reason: str | None = None
+    pass2_raw: RawStructuredModelObservation | None = None
+    shadow_status: str | None = None
+    shadow_failure_reason: str | None = None
+    shadow_raw: RawStructuredModelObservation | None = None
+
+    def __post_init__(self) -> None:
+        if self.mode == "two_pass":
+            if self.pass2_status not in {"committed", "stale", "failed"}:
+                raise ValueError("two_pass observation requires a valid pass2_status")
+            if self.shadow_status is not None or self.shadow_raw is not None:
+                raise ValueError("two_pass observation must not carry shadow fields")
+            if self.shadow_failure_reason is not None:
+                raise ValueError("two_pass observation must not carry shadow failure")
+            if self.pass2_status == "failed":
+                if self.pass2_failure_reason is None:
+                    raise ValueError("failed Pass 2 observation requires failure reason")
+            elif self.pass2_failure_reason is not None:
+                raise ValueError("non-failed Pass 2 observation cannot carry failure reason")
+            return
+        if self.mode == "shadow_two_pass":
+            if self.shadow_status not in {"completed", "failed"}:
+                raise ValueError("shadow observation requires a valid shadow_status")
+            if self.pass2_status is not None or self.pass2_raw is not None:
+                raise ValueError("shadow observation must not carry canonical Pass 2 fields")
+            if self.pass2_failure_reason is not None:
+                raise ValueError("shadow observation must not carry Pass 2 failure")
+            if self.shadow_status == "completed":
+                if self.shadow_raw is None:
+                    raise ValueError("completed shadow observation requires raw output")
+                if self.shadow_failure_reason is not None:
+                    raise ValueError("completed shadow observation cannot carry failure")
+            else:
+                if self.shadow_raw is not None:
+                    raise ValueError("failed shadow observation cannot carry raw output")
+                if self.shadow_failure_reason is None:
+                    raise ValueError("failed shadow observation requires failure reason")
+            return
+        raise ValueError(f"unsupported cognition execution observation mode: {self.mode}")
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "mode": self.mode,
+            "pass2_status": self.pass2_status,
+            "pass2_failure_reason": self.pass2_failure_reason,
+            "pass2_raw": self.pass2_raw.to_mapping() if self.pass2_raw is not None else None,
+            "shadow_status": self.shadow_status,
+            "shadow_failure_reason": self.shadow_failure_reason,
+            "shadow_raw": self.shadow_raw.to_mapping() if self.shadow_raw is not None else None,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class DeterministicRelayObservation:
     state_decisions: tuple[dict[str, object], ...]
     continuity_decisions: tuple[dict[str, object], ...]
@@ -323,9 +432,10 @@ class ActualModelTurnEvidence:
     deterministic: DeterministicRelayObservation
     product_quality: tuple[ProductQualityObservation, ...] = field(default_factory=tuple)
     cognitive_budget: ActualModelCognitiveBudgetDiagnostics | None = None
+    cognition_execution: ActualModelCognitionExecutionObservation | None = None
 
     def to_mapping(self) -> dict[str, object]:
-        return {
+        mapping: dict[str, object] = {
             "turn_index": self.turn_index,
             "input": self.input,
             "raw_model": self.raw_model.to_mapping(),
@@ -337,6 +447,9 @@ class ActualModelTurnEvidence:
                 else None
             ),
         }
+        if self.cognition_execution is not None:
+            mapping["cognition_execution"] = self.cognition_execution.to_mapping()
+        return mapping
 
 
 @dataclass(frozen=True, slots=True)
@@ -374,9 +487,13 @@ class _RecordingProvider:
     def __init__(self, delegate: CognitiveProvider) -> None:
         self.delegate = delegate
         self.outputs: list[CognitiveOutput] = []
+        self.conversation_outputs: list[CognitionConversationOutput] = []
+        self.extraction_outputs: list[CognitionExtractionOutput] = []
 
     async def generate(self, cognitive_input: CognitiveInput) -> CognitiveOutput:
         output = await self.delegate.generate(cognitive_input)
+        if not isinstance(output, CognitiveOutput):
+            raise TypeError("provider generate must return CognitiveOutput")
         self.outputs.append(output)
         return output
 
@@ -389,7 +506,57 @@ class _RecordingProvider:
         if stream_generate is None:
             raise TypeError("provider does not support cognitive streaming")
         output = await stream_generate(cognitive_input, emit_response_delta)
+        if not isinstance(output, CognitiveOutput):
+            raise TypeError("provider stream_generate must return CognitiveOutput")
         self.outputs.append(output)
+        return output
+
+    async def generate_conversation(
+        self,
+        cognitive_input: CognitiveInput,
+    ) -> CognitionConversationOutput:
+        generate_conversation = getattr(self.delegate, "generate_conversation", None)
+        if not callable(generate_conversation):
+            raise TypeError("provider does not support two-pass conversation generation")
+        output = await generate_conversation(cognitive_input)
+        if not isinstance(output, CognitionConversationOutput):
+            raise TypeError(
+                "provider generate_conversation must return CognitionConversationOutput"
+            )
+        self.conversation_outputs.append(output)
+        return output
+
+    async def stream_generate_conversation(
+        self,
+        cognitive_input: CognitiveInput,
+        emit_response_delta: Callable[[str], Awaitable[None]],
+    ) -> CognitionConversationOutput:
+        stream_generate_conversation = getattr(
+            self.delegate,
+            "stream_generate_conversation",
+            None,
+        )
+        if not callable(stream_generate_conversation):
+            raise TypeError("provider does not support two-pass conversation streaming")
+        output = await stream_generate_conversation(cognitive_input, emit_response_delta)
+        if not isinstance(output, CognitionConversationOutput):
+            raise TypeError(
+                "provider stream_generate_conversation must return CognitionConversationOutput"
+            )
+        self.conversation_outputs.append(output)
+        return output
+
+    async def generate_extraction(
+        self,
+        extraction_input: CognitionExtractionInput,
+    ) -> CognitionExtractionOutput:
+        generate_extraction = getattr(self.delegate, "generate_extraction", None)
+        if not callable(generate_extraction):
+            raise TypeError("provider does not support structured extraction")
+        output = await generate_extraction(extraction_input)
+        if not isinstance(output, CognitionExtractionOutput):
+            raise TypeError("provider generate_extraction must return CognitionExtractionOutput")
+        self.extraction_outputs.append(output)
         return output
 
 
@@ -402,12 +569,12 @@ async def run_actual_model_scenario(
     continuity_runtime: ContinuityRuntime | None = None,
     cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
 ) -> ActualModelEvidence:
-    """Execute a semantic fixture through the real ordinary-turn path.
+    """Execute a semantic fixture through the resolved real ordinary-turn path.
 
-    The harness records raw CognitiveOutput separately from deterministic RelayLM
-    evidence. When the manifest declares the #1387 total-budget path, the caller
-    must supply the matching CognitiveBudgetRuntimeConfig and the harness preserves
-    aggregate runtime diagnostics without adding another semantic model call.
+    Historical manifests without cognition-execution identity preserve the original
+    single-pass harness exactly. New execution-policy evidence dispatches through
+    the corresponding COGP runtime while keeping raw model proposals separate from
+    deterministic RelayLM authority.
     """
 
     validate_cognitive_budget_runtime_identity(
@@ -415,6 +582,13 @@ async def run_actual_model_scenario(
         runtime=cognitive_budget,
         effective_context_window=manifest.effective_context_window,
     )
+    execution_mode = _execution_mode(manifest)
+    if execution_mode in {"two_pass", "shadow_two_pass"} and cognitive_budget is not None:
+        raise ValueError(
+            "two-pass cognition execution does not yet expose #1386 total cognitive-budget "
+            "diagnostics; use a separately implemented evidence bridge before declaring it"
+        )
+
     recording_provider = _RecordingProvider(provider)
     evidence: list[ActualModelTurnEvidence] = []
     bounded_failure: ActualModelBoundedBudgetFailureEvidence | None = None
@@ -424,16 +598,59 @@ async def run_actual_model_scenario(
         manifest=manifest,
         runtime=continuity_runtime,
     )
+    two_pass_runtime = CognitionExecutionRuntime() if execution_mode == "two_pass" else None
 
     if manifest.restart_boundary == "before_scenario":
         character = CharacterDirectory(character.root)
 
     for turn_index, content in enumerate(scenario.turns, start=1):
         budget_observation: ActualModelCognitiveBudgetDiagnostics | None = None
+        execution_observation: ActualModelCognitionExecutionObservation | None = None
         try:
-            if cognitive_budget is None:
+            if execution_mode == "two_pass":
+                assert two_pass_runtime is not None
                 if manifest.execution_path == "buffered":
-                    result = await run_user_turn(
+                    two_pass = await run_user_turn_two_pass(
+                        character=character,
+                        provider=recording_provider,
+                        content=content,
+                        execution_runtime=two_pass_runtime,
+                        memory_budget=memory_budget,
+                        event_budget=event_budget,
+                        continuity_runtime=continuity_runtime,
+                    )
+                else:
+                    two_pass = await run_user_turn_two_pass_streaming(
+                        character=character,
+                        provider=recording_provider,
+                        content=content,
+                        emit_response_delta=_discard_delta,
+                        execution_runtime=two_pass_runtime,
+                        memory_budget=memory_budget,
+                        event_budget=event_budget,
+                        continuity_runtime=continuity_runtime,
+                    )
+                extraction = await two_pass.extraction
+                extraction_output = (
+                    recording_provider.extraction_outputs[-1]
+                    if recording_provider.extraction_outputs
+                    else None
+                )
+                raw_model = _raw_two_pass_observation(
+                    response=two_pass.response,
+                    output=extraction_output,
+                )
+                deterministic = _deterministic_two_pass_observation(
+                    extraction,
+                    continuity_runtime=continuity_runtime,
+                )
+                execution_observation = _two_pass_execution_observation(
+                    extraction=extraction,
+                    output=extraction_output,
+                )
+            elif execution_mode == "shadow_two_pass":
+                if manifest.execution_path == "buffered":
+                    shadow_turn = await run_user_turn_shadow_two_pass(
                         character=character,
                         provider=recording_provider,
                         content=content,
@@ -442,7 +659,7 @@ async def run_actual_model_scenario(
                         continuity_runtime=continuity_runtime,
                     )
                 else:
-                    result = await run_user_turn_streaming(
+                    shadow_turn = await run_user_turn_shadow_two_pass_streaming(
                         character=character,
                         provider=recording_provider,
                         content=content,
@@ -451,30 +668,59 @@ async def run_actual_model_scenario(
                         event_budget=event_budget,
                         continuity_runtime=continuity_runtime,
                     )
+                shadow = await shadow_turn.shadow
+                output = recording_provider.outputs[-1]
+                raw_model = _raw_observation(output)
+                deterministic = _deterministic_observation(shadow_turn.turn)
+                execution_observation = _shadow_execution_observation(shadow)
             else:
-                if manifest.execution_path == "buffered":
-                    budgeted = await run_user_turn_with_cognitive_budget_diagnostics(
-                        character=character,
-                        provider=recording_provider,
-                        content=content,
-                        cognitive_budget=cognitive_budget,
-                        continuity_runtime=continuity_runtime,
-                    )
-                else:
-                    budgeted = (
-                        await run_user_turn_streaming_with_cognitive_budget_diagnostics(
+                if cognitive_budget is None:
+                    if manifest.execution_path == "buffered":
+                        result = await run_user_turn(
+                            character=character,
+                            provider=recording_provider,
+                            content=content,
+                            memory_budget=memory_budget,
+                            event_budget=event_budget,
+                            continuity_runtime=continuity_runtime,
+                        )
+                    else:
+                        result = await run_user_turn_streaming(
                             character=character,
                             provider=recording_provider,
                             content=content,
                             emit_response_delta=_discard_delta,
+                            memory_budget=memory_budget,
+                            event_budget=event_budget,
+                            continuity_runtime=continuity_runtime,
+                        )
+                else:
+                    if manifest.execution_path == "buffered":
+                        budgeted = await run_user_turn_with_cognitive_budget_diagnostics(
+                            character=character,
+                            provider=recording_provider,
+                            content=content,
                             cognitive_budget=cognitive_budget,
                             continuity_runtime=continuity_runtime,
                         )
+                    else:
+                        budgeted = (
+                            await run_user_turn_streaming_with_cognitive_budget_diagnostics(
+                                character=character,
+                                provider=recording_provider,
+                                content=content,
+                                emit_response_delta=_discard_delta,
+                                cognitive_budget=cognitive_budget,
+                                continuity_runtime=continuity_runtime,
+                            )
+                        )
+                    result = budgeted.turn
+                    budget_observation = ActualModelCognitiveBudgetDiagnostics.from_runtime(
+                        budgeted.cognitive_budget
                     )
-                result = budgeted.turn
-                budget_observation = ActualModelCognitiveBudgetDiagnostics.from_runtime(
-                    budgeted.cognitive_budget
-                )
+                output = recording_provider.outputs[-1]
+                raw_model = _raw_observation(output)
+                deterministic = _deterministic_observation(result)
         except CognitiveBudgetExceededWithDiagnostics as failure:
             if cognitive_budget is None:
                 raise
@@ -487,14 +733,14 @@ async def run_actual_model_scenario(
             )
             break
 
-        output = recording_provider.outputs[-1]
         evidence.append(
             ActualModelTurnEvidence(
                 turn_index=turn_index,
                 input=content,
-                raw_model=_raw_observation(output),
-                deterministic=_deterministic_observation(result),
+                raw_model=raw_model,
+                deterministic=deterministic,
                 cognitive_budget=budget_observation,
+                cognition_execution=execution_observation,
             )
         )
 
@@ -523,6 +769,12 @@ def stable_actual_model_run_id(
 
 async def _discard_delta(_: str) -> None:
     return None
+
+
+def _execution_mode(manifest: ActualModelRunManifest) -> str:
+    if manifest.cognition_execution is None:
+        return "single_pass"
+    return manifest.cognition_execution.mode
 
 
 def _memory_budget(config: ExplicitBudgetConfiguration) -> MemoryRetrievalBudget | None:
@@ -591,6 +843,69 @@ def _raw_observation(output: CognitiveOutput) -> RawModelObservation:
     )
 
 
+def _raw_structured_observation(
+    output: CognitionExtractionOutput,
+) -> RawStructuredModelObservation:
+    return RawStructuredModelObservation(
+        state_candidates=tuple(
+            _serialize_state_candidate(item) for item in output.state_candidates
+        ),
+        continuity_candidates=tuple(
+            _serialize_continuity_candidate(item) for item in output.continuity_candidates
+        ),
+    )
+
+
+def _raw_two_pass_observation(
+    *,
+    response: str,
+    output: CognitionExtractionOutput | None,
+) -> RawModelObservation:
+    if output is None:
+        return RawModelObservation(
+            response=response,
+            state_candidates=(),
+            continuity_candidates=(),
+        )
+    raw = _raw_structured_observation(output)
+    return RawModelObservation(
+        response=response,
+        state_candidates=raw.state_candidates,
+        continuity_candidates=raw.continuity_candidates,
+    )
+
+
+def _two_pass_execution_observation(
+    *,
+    extraction: TwoPassExtractionResult,
+    output: CognitionExtractionOutput | None,
+) -> ActualModelCognitionExecutionObservation:
+    return ActualModelCognitionExecutionObservation(
+        mode="two_pass",
+        pass2_status=extraction.status.value,
+        pass2_failure_reason=extraction.failure_reason,
+        pass2_raw=(
+            _raw_structured_observation(output) if output is not None else None
+        ),
+    )
+
+
+def _shadow_execution_observation(
+    shadow: ShadowExtractionEvidence,
+) -> ActualModelCognitionExecutionObservation:
+    return ActualModelCognitionExecutionObservation(
+        mode="shadow_two_pass",
+        shadow_status=shadow.status.value,
+        shadow_failure_reason=shadow.failure_reason,
+        shadow_raw=(
+            _raw_structured_observation(shadow.output)
+            if shadow.status is ShadowExtractionStatus.COMPLETED
+            and shadow.output is not None
+            else None
+        ),
+    )
+
+
 def _deterministic_observation(result: TurnResult) -> DeterministicRelayObservation:
     continuity_decisions: tuple[dict[str, object], ...] = ()
     resulting_continuity = None
@@ -612,6 +927,42 @@ def _deterministic_observation(result: TurnResult) -> DeterministicRelayObservat
         continuity_decisions=continuity_decisions,
         resulting_state=tuple(
             _serialize_state_record(item) for item in result.state.states
+        ),
+        resulting_continuity=resulting_continuity,
+    )
+
+
+def _deterministic_two_pass_observation(
+    extraction: TwoPassExtractionResult,
+    *,
+    continuity_runtime: ContinuityRuntime | None,
+) -> DeterministicRelayObservation:
+    continuity_decisions: tuple[dict[str, object], ...] = ()
+    resulting_continuity = None
+    if extraction.continuity is not None:
+        continuity_decisions = tuple(
+            {
+                "candidate": _serialize_continuity_candidate(item.candidate),
+                "status": item.status,
+                "action": item.action,
+                "reason": item.reason,
+            }
+            for item in extraction.continuity.decisions
+        )
+        resulting_continuity = _serialize_continuity_context(
+            extraction.continuity.context
+        )
+    elif continuity_runtime is not None:
+        resulting_continuity = _serialize_continuity_context(
+            continuity_runtime.context
+        )
+    return DeterministicRelayObservation(
+        state_decisions=tuple(
+            _serialize_state_decision(item) for item in extraction.decisions
+        ),
+        continuity_decisions=continuity_decisions,
+        resulting_state=tuple(
+            _serialize_state_record(item) for item in extraction.state.states
         ),
         resulting_continuity=resulting_continuity,
     )
