@@ -11,9 +11,9 @@ from relaylm.cognition_execution import (
 from relaylm.continuity import ContinuityCandidate, ContinuityContext
 from relaylm.state import CanonicalState, StateCandidate
 from relaylm.storage.filesystem import CharacterDirectory
-from relaylm.turn import (
+from relaylm.turn import ContinuityRuntime
+from relaylm.two_pass_turn import (
     CognitionExecutionRuntime,
-    ContinuityRuntime,
     TwoPassExtractionStatus,
     run_user_turn_two_pass,
     run_user_turn_two_pass_streaming,
