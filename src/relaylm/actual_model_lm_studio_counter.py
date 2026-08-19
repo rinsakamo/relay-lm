@@ -23,10 +23,11 @@ LM_STUDIO_GEMMA4_COUNTER_CAPABILITY = (
     "lmstudio.gemma4.loaded-sdk.serialized-input.v1"
 )
 LM_STUDIO_COUNTER_IMPLEMENTATION = "lmstudio-js-loaded-model-counter"
-LM_STUDIO_COUNTER_VERSION = "1"
+LM_STUDIO_COUNTER_VERSION = "2"
 LM_STUDIO_SDK_PACKAGE = "@lmstudio/sdk"
 LM_STUDIO_PROMPT_METHOD = "loaded-model.applyPromptTemplate->countTokens"
 LM_STUDIO_FRAMING_METHOD = "empty-user-message-baseline-v1"
+LM_STUDIO_ARTIFACT_LINK_METHOD = "lmstudio-model-index-cache-entrypoint-v1"
 LM_STUDIO_STRUCTURED_OUTPUT_EFFECT = "server-prompt-tokens-equal-sdk-messages-only"
 LM_STUDIO_CHAT_MAPPING = "request-messages-role-content-lossless-v1"
 LM_STUDIO_MODEL_BINDING_METHOD = "openai-request-model-to-loaded-instance-proof-v1"
@@ -66,7 +67,10 @@ class LMStudioCounterProof:
     deployment_identity: str
     model_key: str
     model_path: str
+    artifact_model_key: str
+    artifact_path: str
     quantization: str
+    loaded_size_bytes: int
     artifact_size_bytes: int
     artifact_sha256: str
     instance_reference_sha256: str
@@ -74,7 +78,12 @@ class LMStudioCounterProof:
     sdk_version: str
     probe_count: int
     structured_output_verdict: str
+    structured_output_with_schema_tokens: int
+    structured_output_without_schema_tokens: int
     framing_accounting_verdict: str
+    sdk_framing_tokens: int
+    server_framing_tokens: int
+    server_prompt_token_offset: int
 
 
 def build_lm_studio_counter_capabilities(
@@ -107,7 +116,12 @@ def build_lm_studio_counter_capabilities(
         )
 
     proof = load_lm_studio_counter_proof(proof_path)
-    _validate_proof_against_condition(proof=proof, condition=condition, target=target)
+    _validate_proof_against_condition(
+        proof=proof,
+        condition=condition,
+        target=target,
+        artifact_path=artifact_path,
+    )
 
     transport = _LMStudioSdkTransport(
         base_url=condition.base_url,
@@ -117,6 +131,7 @@ def build_lm_studio_counter_capabilities(
         expected_artifact_size=target.artifact_size_bytes,
         node_path=node_path,
         sdk_root=sdk_root,
+        server_prompt_token_offset=proof.server_prompt_token_offset,
     )
     loaded_identity = transport.attest()
     _validate_loaded_identity(
@@ -138,6 +153,7 @@ def build_lm_studio_counter_capabilities(
                     "chat_mapping": LM_STUDIO_CHAT_MAPPING,
                     "framing_method": LM_STUDIO_FRAMING_METHOD,
                     "prompt_method": LM_STUDIO_PROMPT_METHOD,
+                    "server_prompt_offset": proof.server_prompt_token_offset,
                     "sdk_package": proof.sdk_package,
                     "sdk_version": proof.sdk_version,
                     "structured_effect": LM_STUDIO_STRUCTURED_OUTPUT_EFFECT,
@@ -203,6 +219,7 @@ def load_lm_studio_counter_proof(path: str | Path) -> LMStudioCounterProof:
             "model_binding",
             "prompt_template_parity",
             "structured_output",
+            "artifact_linkage",
             "framing_accounting",
         },
         "LM Studio counter proof",
@@ -219,8 +236,11 @@ def load_lm_studio_counter_proof(path: str | Path) -> LMStudioCounterProof:
         {
             "model_key",
             "path",
+            "artifact_model_key",
+            "artifact_path",
             "quantization",
             "size_bytes",
+            "artifact_size_bytes",
             "sha256",
             "instance_reference_sha256",
         },
@@ -232,6 +252,48 @@ def load_lm_studio_counter_proof(path: str | Path) -> LMStudioCounterProof:
         {"package", "version", "prompt_template_method", "tokenizer_method"},
         "proof.sdk",
     )
+    framing = _require_mapping(mapping["framing_accounting"], "proof.framing_accounting")
+    _require_exact_keys(
+        framing,
+        {
+            "method",
+            "sdk_framing_tokens",
+            "server_framing_tokens",
+            "server_prompt_token_offset",
+            "verdict",
+        },
+        "proof.framing_accounting",
+    )
+    if _require_string(framing["method"], "proof.framing_accounting.method") != (
+        LM_STUDIO_FRAMING_METHOD
+    ):
+        raise LMStudioCounterError(
+            "LM Studio required-input framing accounting method is unsupported"
+        )
+    sdk_framing_tokens = _require_int(
+        framing["sdk_framing_tokens"],
+        "proof.framing_accounting.sdk_framing_tokens",
+    )
+    server_framing_tokens = _require_int(
+        framing["server_framing_tokens"],
+        "proof.framing_accounting.server_framing_tokens",
+    )
+    server_prompt_token_offset = _require_int(
+        framing["server_prompt_token_offset"],
+        "proof.framing_accounting.server_prompt_token_offset",
+    )
+    if (
+        sdk_framing_tokens < 0
+        or server_framing_tokens < 0
+        or server_prompt_token_offset < 0
+    ):
+        raise LMStudioCounterError(
+            "LM Studio framing token values must be non-negative"
+        )
+    if server_framing_tokens != sdk_framing_tokens + server_prompt_token_offset:
+        raise LMStudioCounterError(
+            "LM Studio framing baseline does not reproduce the server offset"
+        )
     probes = _require_list(mapping["probe_matrix"], "proof.probe_matrix")
     if len(probes) < 8:
         raise LMStudioCounterError(
@@ -247,6 +309,8 @@ def load_lm_studio_counter_proof(path: str | Path) -> LMStudioCounterProof:
                 "request_sha256",
                 "sdk_prompt_tokens",
                 "server_prompt_tokens",
+                "accounted_prompt_tokens",
+                "raw_equal",
                 "equal",
             },
             f"proof.probe_matrix[{index}]",
@@ -269,21 +333,51 @@ def load_lm_studio_counter_proof(path: str | Path) -> LMStudioCounterProof:
             probe_map["server_prompt_tokens"],
             f"proof.probe_matrix[{index}].server_prompt_tokens",
         )
-        if sdk_count < 0 or server_count < 0:
-            raise LMStudioCounterError("LM Studio counter proof token counts must be non-negative")
-        if probe_map["equal"] is not (sdk_count == server_count):
+        accounted_count = _require_int(
+            probe_map["accounted_prompt_tokens"],
+            f"proof.probe_matrix[{index}].accounted_prompt_tokens",
+        )
+        raw_equal = probe_map["raw_equal"]
+        equal = probe_map["equal"]
+        if not isinstance(raw_equal, bool) or not isinstance(equal, bool):
             raise LMStudioCounterError(
-                f"LM Studio counter proof equality flag is wrong for probe {probe_id}"
+                f"LM Studio counter proof equality fields must be boolean for probe {probe_id}"
             )
-        if sdk_count != server_count:
+        if sdk_count < 0 or server_count < 0 or accounted_count < 0:
+            raise LMStudioCounterError("LM Studio counter proof token counts must be non-negative")
+        if raw_equal is not (sdk_count == server_count):
             raise LMStudioCounterError(
-                f"LM Studio counter proof has a prompt-token mismatch for probe {probe_id}"
+                f"LM Studio counter proof raw equality flag is wrong for probe {probe_id}"
+            )
+        if accounted_count != sdk_count + server_prompt_token_offset:
+            raise LMStudioCounterError(
+                f"LM Studio counter proof accounted count is wrong for probe {probe_id}"
+            )
+        if equal is not (accounted_count == server_count):
+            raise LMStudioCounterError(
+                f"LM Studio counter proof accounted equality flag is wrong for probe {probe_id}"
             )
     missing_probe_ids = sorted(LM_STUDIO_REQUIRED_PROBE_IDS - probe_ids)
     if missing_probe_ids:
         raise LMStudioCounterError(
             "LM Studio counter proof is missing required probes: "
             + ", ".join(missing_probe_ids)
+        )
+    artifact_linkage = _require_mapping(
+        mapping["artifact_linkage"], "proof.artifact_linkage"
+    )
+    _require_exact_keys(
+        artifact_linkage,
+        {"method", "verdict"},
+        "proof.artifact_linkage",
+    )
+    if _require_string(
+        artifact_linkage["method"], "proof.artifact_linkage.method"
+    ) != LM_STUDIO_ARTIFACT_LINK_METHOD or _require_string(
+        artifact_linkage["verdict"], "proof.artifact_linkage.verdict"
+    ) != "same-frozen-entrypoint":
+        raise LMStudioCounterError(
+            "LM Studio loaded instance to frozen artifact linkage is not proven"
         )
     model_binding = _require_mapping(
         mapping["model_binding"], "proof.model_binding"
@@ -313,7 +407,7 @@ def load_lm_studio_counter_proof(path: str | Path) -> LMStudioCounterProof:
         prompt_template_parity["method"], "proof.prompt_template_parity.method"
     ) != LM_STUDIO_PROMPT_PARITY_METHOD or _require_string(
         prompt_template_parity["verdict"], "proof.prompt_template_parity.verdict"
-    ) != "all-required-probes-equal":
+    ) != "all-required-probes-accounted-equal":
         raise LMStudioCounterError(
             "LM Studio prompt-template parity is not proven"
         )
@@ -322,7 +416,13 @@ def load_lm_studio_counter_proof(path: str | Path) -> LMStudioCounterProof:
     )
     _require_exact_keys(
         structured,
-        {"comparison", "schema_token_delta", "verdict"},
+        {
+            "comparison",
+            "with_schema_prompt_tokens",
+            "without_schema_prompt_tokens",
+            "schema_token_delta",
+            "verdict",
+        },
         "proof.structured_output",
     )
     if _require_string(structured["comparison"], "proof.structured_output.comparison") != (
@@ -331,9 +431,26 @@ def load_lm_studio_counter_proof(path: str | Path) -> LMStudioCounterProof:
         raise LMStudioCounterError(
             "LM Studio structured-output comparison method is unsupported"
         )
-    if _require_int(
+    structured_with_schema = _require_int(
+        structured["with_schema_prompt_tokens"],
+        "proof.structured_output.with_schema_prompt_tokens",
+    )
+    structured_without_schema = _require_int(
+        structured["without_schema_prompt_tokens"],
+        "proof.structured_output.without_schema_prompt_tokens",
+    )
+    structured_delta = _require_int(
         structured["schema_token_delta"], "proof.structured_output.schema_token_delta"
-    ) != 0:
+    )
+    if (
+        structured_with_schema < 0
+        or structured_without_schema < 0
+        or structured_delta != structured_with_schema - structured_without_schema
+    ):
+        raise LMStudioCounterError(
+            "LM Studio structured-output proof has inconsistent prompt-token counts"
+        )
+    if structured_delta != 0:
         raise LMStudioCounterError(
             "LM Studio structured-output proof reports token-bearing schema framing"
         )
@@ -342,18 +459,6 @@ def load_lm_studio_counter_proof(path: str | Path) -> LMStudioCounterProof:
     ):
         raise LMStudioCounterError(
             "LM Studio structured-output behavior is not proven messages-only"
-        )
-    framing = _require_mapping(mapping["framing_accounting"], "proof.framing_accounting")
-    _require_exact_keys(
-        framing,
-        {"method", "verdict"},
-        "proof.framing_accounting",
-    )
-    if _require_string(framing["method"], "proof.framing_accounting.method") != (
-        LM_STUDIO_FRAMING_METHOD
-    ):
-        raise LMStudioCounterError(
-            "LM Studio required-input framing accounting method is unsupported"
         )
     if _require_string(framing["verdict"], "proof.framing_accounting.verdict") != (
         "reproducible"
@@ -388,11 +493,23 @@ def load_lm_studio_counter_proof(path: str | Path) -> LMStudioCounterProof:
             ),
             model_key=_require_string(loaded_model["model_key"], "proof.loaded_model.model_key"),
             model_path=_require_string(loaded_model["path"], "proof.loaded_model.path"),
+            artifact_model_key=_require_string(
+                loaded_model["artifact_model_key"],
+                "proof.loaded_model.artifact_model_key",
+            ),
+            artifact_path=_require_string(
+                loaded_model["artifact_path"],
+                "proof.loaded_model.artifact_path",
+            ),
             quantization=_require_string(
                 loaded_model["quantization"], "proof.loaded_model.quantization"
             ),
-            artifact_size_bytes=_require_int(
+            loaded_size_bytes=_require_int(
                 loaded_model["size_bytes"], "proof.loaded_model.size_bytes"
+            ),
+            artifact_size_bytes=_require_int(
+                loaded_model["artifact_size_bytes"],
+                "proof.loaded_model.artifact_size_bytes",
             ),
             artifact_sha256=_require_digest(
                 loaded_model["sha256"], "proof.loaded_model.sha256"
@@ -407,16 +524,21 @@ def load_lm_studio_counter_proof(path: str | Path) -> LMStudioCounterProof:
             structured_output_verdict=_require_string(
                 structured["verdict"], "proof.structured_output.verdict"
             ),
+            structured_output_with_schema_tokens=structured_with_schema,
+            structured_output_without_schema_tokens=structured_without_schema,
             framing_accounting_verdict=_require_string(
                 framing["verdict"], "proof.framing_accounting.verdict"
             ),
+            sdk_framing_tokens=sdk_framing_tokens,
+            server_framing_tokens=server_framing_tokens,
+            server_prompt_token_offset=server_prompt_token_offset,
         )
     except (TypeError, ValueError) as exc:
         if isinstance(exc, LMStudioCounterError):
             raise
         raise LMStudioCounterError(f"invalid LM Studio counter proof: {exc}") from exc
 
-    if proof.format_version != 1:
+    if proof.format_version != 2:
         raise LMStudioCounterError(
             f"unsupported LM Studio counter proof format_version: {proof.format_version}"
         )
@@ -454,16 +576,18 @@ def _validate_proof_against_condition(
     proof: LMStudioCounterProof,
     condition: Any,
     target: ActualModelArtifactTarget,
+    artifact_path: str | Path,
 ) -> None:
-    expected_model_key = f"{target.artifact_repository}/{target.artifact_filename}"
+    expected_artifact_model_key = f"{target.artifact_repository}/{target.artifact_filename}"
     checks = (
         (proof.relaylm_commit, condition.relaylm_commit, "RelayLM commit"),
         (proof.target_id, target.target_id, "target"),
         (proof.request_model, condition.request_model, "request model"),
+        (proof.model_key, proof.request_model, "loaded request model key"),
         (proof.lm_studio_version, condition.lm_studio_version, "LM Studio version"),
         (proof.lm_studio_build, condition.lm_studio_build, "LM Studio build"),
         (proof.deployment_identity, condition.deployment_identity, "deployment identity"),
-        (proof.model_key, expected_model_key, "loaded model key"),
+        (proof.artifact_model_key, expected_artifact_model_key, "artifact model key"),
         (proof.quantization, target.quantization, "quantization"),
         (proof.artifact_size_bytes, target.artifact_size_bytes, "artifact size"),
         (proof.artifact_sha256, target.artifact_sha256, "artifact SHA256"),
@@ -476,6 +600,10 @@ def _validate_proof_against_condition(
             )
     if proof.sdk_version.strip() == "":
         raise LMStudioCounterError("LM Studio counter proof SDK version is empty")
+    if not _paths_equivalent(proof.artifact_path, artifact_path):
+        raise LMStudioCounterError(
+            "LM Studio counter proof artifact path does not match the selected artifact"
+        )
 
 
 def _validate_loaded_identity(
@@ -488,23 +616,20 @@ def _validate_loaded_identity(
     expected = {
         "model_key": proof.model_key,
         "path": proof.model_path,
-        "size_bytes": target.artifact_size_bytes,
+        "size_bytes": proof.loaded_size_bytes,
         "quantization": target.quantization,
         "instance_reference_sha256": proof.instance_reference_sha256,
     }
     for name, expected_value in expected.items():
         observed = loaded_identity.get(name)
-        if name == "path":
-            if not _paths_equivalent(observed, artifact_path) or not _paths_equivalent(
-                observed, expected_value
-            ):
-                raise LMStudioCounterError(
-                    "loaded LM Studio model path does not link to the frozen artifact"
-                )
-        elif observed != expected_value:
+        if observed != expected_value:
             raise LMStudioCounterError(
                 f"loaded LM Studio model {name} does not match the frozen target"
             )
+    if not _paths_equivalent(proof.artifact_path, artifact_path):
+        raise LMStudioCounterError(
+            "loaded LMStudio proof artifact path does not match the selected artifact"
+        )
     sdk_version = loaded_identity.get("sdk_version")
     if sdk_version != proof.sdk_version:
         raise LMStudioCounterError("loaded LM Studio SDK version drifted from proof")
@@ -519,6 +644,7 @@ class _LMStudioSdkTransport:
     expected_artifact_size: int
     node_path: str | Path | None
     sdk_root: str | Path | None
+    server_prompt_token_offset: int
 
     def attest(self) -> Mapping[str, object]:
         return self._invoke({"operation": "attest"})
@@ -535,6 +661,8 @@ class _LMStudioSdkTransport:
             result.get("required_input_framing_tokens"),
             "counter.required_input_framing_tokens",
         )
+        total += self.server_prompt_token_offset
+        framing += self.server_prompt_token_offset
         if total < 0 or framing < 0:
             raise LMStudioCounterError("LM Studio SDK returned a negative token count")
         if result.get("mode") != TokenCountMode.EXACT.value:
