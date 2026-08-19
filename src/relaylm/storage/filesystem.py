@@ -116,17 +116,24 @@ class CharacterDirectory:
             raise CharacterDataError(f"cannot read events.jsonl: {exc}") from exc
 
         events: list[Event] = []
+        event_ids: set[str] = set()
         with handle:
             for line_number, line in enumerate(handle, start=1):
                 if not line.strip():
                     continue
                 try:
                     raw = json.loads(line)
-                    events.append(_event_from_mapping(raw))
+                    event = _event_from_mapping(raw)
                 except (json.JSONDecodeError, TypeError, ValueError, KeyError) as exc:
                     raise CharacterDataError(
                         f"events.jsonl line {line_number}: {exc}"
                     ) from exc
+                if event.id in event_ids:
+                    raise CharacterDataError(
+                        f"events.jsonl line {line_number}: duplicate event id {event.id!r}"
+                    )
+                event_ids.add(event.id)
+                events.append(event)
         return tuple(events)
 
     def _events_signature(self) -> tuple[int, int, int, int] | None:
