@@ -129,6 +129,33 @@ def test_duplicate_event_id_fails_closed_with_duplicate_line_number(tmp_path: Pa
         list(character.iter_events())
 
 
+def test_append_event_rejects_duplicate_id_without_mutating_journal(tmp_path: Path) -> None:
+    character = _make_character(tmp_path)
+    first = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": "first"},
+        event_id="evt-1",
+        timestamp="2026-08-16T12:00:00+00:00",
+    )
+    duplicate = Event.create(
+        type="message",
+        actor="assistant",
+        payload={"content": "second"},
+        event_id="evt-1",
+        timestamp="2026-08-16T12:00:01+00:00",
+    )
+
+    character.append_event(first)
+    before = character.events_path.read_text(encoding="utf-8")
+
+    with pytest.raises(CharacterDataError, match=r"duplicate event id 'evt-1'"):
+        character.append_event(duplicate)
+
+    assert character.events_path.read_text(encoding="utf-8") == before
+    assert list(character.iter_events()) == [first]
+
+
 @pytest.mark.parametrize(
     "payload",
     [
