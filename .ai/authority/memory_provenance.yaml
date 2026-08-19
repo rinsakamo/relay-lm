@@ -1,0 +1,13 @@
+schema_version: 1
+id: memory_provenance
+summary: MEMORY temporal provenance and its carriage into retrieval.
+references:
+- docs/contracts/crystallization.md
+implementation:
+- src/relaylm/memory_provenance.py
+- src/relaylm/memory_retrieval.py
+tests:
+- tests/unit/test_memory_provenance.py
+- tests/unit/test_memory_provenance_carriage.py
+depends_on:
+- persistence

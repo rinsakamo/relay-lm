@@ -1,0 +1,66 @@
+schema_version: 1
+id: actual_model_evaluation
+summary: Actual-model execution, host runners, and reproducible evaluation evidence.
+owner_issue: 1386
+canonical_surfaces:
+- docs/reference/actual-model-cognitive-budget-evidence.md
+- docs/reference/actual-model-crystallization-evidence.md
+- docs/reference/actual-model-crystallization-host-runner.md
+- docs/reference/actual-model-crystallization-quality-fixture.md
+- docs/reference/actual-model-host-runner.md
+- docs/reference/actual-model-lm-studio-binding.md
+implementation:
+- src/relaylm/actual_model_evaluation.py
+- src/relaylm/actual_model_artifacts.py
+- src/relaylm/actual_model_restart.py
+- src/relaylm/actual_model_comparison.py
+- src/relaylm/actual_model_quality.py
+- src/relaylm/actual_model_scenarios.py
+- src/relaylm/actual_model_execution.py
+- src/relaylm/actual_model_execution_artifacts.py
+- src/relaylm/actual_model_review.py
+- src/relaylm/actual_model_cohort.py
+- src/relaylm/actual_model_boundary.py
+- src/relaylm/actual_model_pressure.py
+- src/relaylm/actual_model_cognitive_budget.py
+- src/relaylm/actual_model_targets.py
+- src/relaylm/actual_model_lm_studio.py
+- src/relaylm/actual_model_lm_studio_counter.py
+- src/relaylm/actual_model_host_runner.py
+- src/relaylm/actual_model_crystallization.py
+- src/relaylm/actual_model_crystallization_host_runner.py
+- evaluation/actual_model/targets/gemma-4-12b-it-q4-k-m-v1.json
+- evaluation/actual_model/targets/gemma-4-12b-it-q4-k-m-lmstudio-community-v1.json
+- evaluation/actual_model/characters/crystallization-quality-v1.revision.txt
+- evaluation/actual_model/characters/crystallization-quality-v1/config.yaml
+- evaluation/actual_model/characters/crystallization-quality-v1/memory/events.jsonl
+- evaluation/actual_model/characters/crystallization-quality-v1/memory/state.json
+- evaluation/actual_model/characters/crystallization-quality-v1/memory/MEMORY.md
+tests:
+- tests/unit/test_actual_model_evaluation.py
+- tests/unit/test_actual_model_artifacts.py
+- tests/unit/test_actual_model_restart.py
+- tests/unit/test_actual_model_comparison.py
+- tests/unit/test_actual_model_quality.py
+- tests/unit/test_actual_model_continuity_runtime_identity.py
+- tests/unit/test_actual_model_scenarios.py
+- tests/unit/test_actual_model_execution.py
+- tests/unit/test_actual_model_execution_artifacts.py
+- tests/unit/test_actual_model_review.py
+- tests/unit/test_actual_model_cohort.py
+- tests/unit/test_actual_model_boundary.py
+- tests/unit/test_actual_model_pressure.py
+- tests/unit/test_actual_model_scenario_coverage.py
+- tests/unit/test_actual_model_cognitive_budget.py
+- tests/unit/test_actual_model_targets.py
+- tests/unit/test_actual_model_lm_studio.py
+- tests/unit/test_actual_model_lm_studio_counter.py
+- tests/unit/test_actual_model_host_runner.py
+- tests/unit/test_actual_model_crystallization.py
+- tests/unit/test_actual_model_crystallization_host_runner.py
+- tests/unit/test_actual_model_crystallization_quality_fixture.py
+depends_on:
+- cognitive_budget
+- cognitive_turn
+- crystallization
+- runtime_configuration

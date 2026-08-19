@@ -1,0 +1,17 @@
+schema_version: 1
+id: state_and_validation
+summary: Event/State separation, State candidate grammar, and validator acceptance.
+canonical_surfaces:
+- docs/architecture/events-and-state.md
+- docs/contracts/state-candidate.md
+- docs/contracts/validator.md
+implementation:
+- src/relaylm/state.py
+- src/relaylm/validation.py
+tests:
+- tests/unit/test_cognitive_turn.py
+- tests/unit/test_degree_hint.py
+depends_on:
+- core_architecture
+annotations:
+- docs/decisions/0002-event-state-separation.md

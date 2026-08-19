@@ -55,11 +55,19 @@ Open Issues should represent real unresolved work. Successful transactions recon
 
 An ADR records why a durable constraint exists; canonical current behavior must still be described in normal architecture/contracts/reference docs.
 
-## Authority map
+## Repository authority declarations
 
-`docs/authority-map.yaml` is a lightweight navigation index connecting major runtime owners to representative tests and current-authority docs.
+`.ai/` is the repository-local authority root. Each semantic owner writes exactly one declaration at `.ai/authority/<id>.yaml` naming its canonical surfaces, supporting implementation/test surfaces, dependencies, produced/referenced evidence, and non-normative annotations.
 
-It is deliberately non-enforcing at first. Update it when a major ownership boundary or its representative contract/docs move. If repository scale later makes drift common, a mechanical existence/coverage check may be added without turning the map into a second semantic authority.
+There is no central registry to edit. A lane registers itself by writing its own declaration, so disjoint lanes do not contend on a shared navigation aggregate.
+
+`tools/repository_authority.py` is the executable schema and is enforced by `tests/unit/test_repository_authority.py` under the required `v1 CI / pytest` check. It rejects duplicate canonical ownership, missing surfaces, unresolved dependencies or evidence references, dependency cycles, documents without an owner, and reintroduction of a hand-maintained authority aggregate.
+
+```bash
+python tools/repository_authority.py validate
+```
+
+Global authority, dependency, and navigation views are derived from these declarations rather than hand-maintained. Reverse dependencies are computed from consumers' `depends_on` and are never declared a second time.
 
 ## Dependency maintenance
 

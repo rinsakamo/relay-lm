@@ -45,7 +45,7 @@ Rules:
 - one canonical owner or semantic concept has at most one active writer;
 - each parallel transaction starts from fresh `v1`, declares its bounded responsibility, and inspects open competing work before writing;
 - transactions that share a canonical owner, semantic contract, or unavoidable write surface are serialized instead of being treated as independent;
-- when practical, shared aggregate surfaces such as evaluation registries, authority maps, scenario counts, and Issue current-status summaries are reconciled in a short serial integration transaction after the owning component transactions merge rather than becoming parallel-writer hotspots;
+- when practical, remaining shared aggregate surfaces such as evaluation registries, scenario counts, and Issue current-status summaries are reconciled in a short serial integration transaction after the owning component transactions merge rather than becoming parallel-writer hotspots; repository authority itself is owner-local under `.ai/authority/` and is therefore never such a surface;
 - merge and authority reconciliation remain serial: before each merge, re-read current `v1`, the transaction head, and relevant competing work, then perform the normal fresh-head review and exact-head required CI gate;
 - when an earlier merge moves `v1`, every still-open parallel transaction reconstructs authority and classifies overlap before merge; semantic or ownership overlap returns the work to a fresh bounded transaction instead of carrying stale assumptions forward;
 - parallelism never bypasses test-first semantics, exact-head CI, expected-head protected squash merge, documentation convergence, or Issue reconciliation.
@@ -160,7 +160,6 @@ Examples include:
 
 - evaluation registries;
 - aggregate scenario counts;
-- authority maps;
 - repository-wide status tables;
 - shared navigation indexes;
 - aggregate Issue status;

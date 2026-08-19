@@ -1,0 +1,22 @@
+schema_version: 1
+id: release_engineering
+summary: Release identity, distribution, and the release-candidate mechanical gate.
+canonical_surfaces:
+- docs/contracts/release-distribution.md
+- docs/contracts/release-identity.md
+- docs/contracts/release-candidate.md
+implementation:
+- pyproject.toml
+- src/relaylm/_version.py
+- tools/release_identity.py
+- tools/release_candidate.py
+- .github/workflows/v1-ci.yml
+- .github/workflows/v1-release-identity.yml
+- .github/workflows/v1-release-candidate.yml
+tests:
+- tests/unit/test_release_version.py
+- tests/unit/test_release_identity_policy.py
+- tests/unit/test_release_candidate.py
+depends_on:
+- evaluation
+- runtime_configuration

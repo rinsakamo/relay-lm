@@ -1,0 +1,24 @@
+schema_version: 1
+id: runtime_configuration
+summary: Runtime configuration, assembly, preflight, and operator semantics.
+canonical_surfaces:
+- docs/contracts/runtime-configuration.md
+- docs/contracts/runtime-assembly.md
+- docs/contracts/runtime-operator.md
+implementation:
+- src/relaylm/runtime_config.py
+- src/relaylm/runtime_config_loader.py
+- src/relaylm/runtime_assembly.py
+- src/relaylm/runtime_preflight.py
+- src/relaylm/cli.py
+- src/relaylm/api/openai.py
+- src/relaylm/server.py
+tests:
+- tests/unit/test_runtime_config_contract.py
+- tests/unit/test_runtime_config_loader.py
+- tests/unit/test_runtime_assembly.py
+- tests/unit/test_runtime_cli.py
+depends_on:
+- cognitive_turn
+- persistence
+- provider_and_api

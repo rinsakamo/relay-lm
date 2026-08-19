@@ -1,0 +1,30 @@
+schema_version: 1
+id: cognitive_budget
+summary: Cognitive budget accounting, protection tiers, degradation order, and enforcement.
+owner_issue: 1387
+references:
+- docs/architecture/cognitive-runtime.md
+- docs/architecture/core.md
+implementation:
+- src/relaylm/budget.py
+- src/relaylm/budget_controls.py
+- src/relaylm/budget_enforcement.py
+- src/relaylm/budget_runtime.py
+- src/relaylm/budget_diagnostics.py
+- src/relaylm/providers/openai_compatible.py
+- src/relaylm/providers/openai_compatible_budget.py
+- src/relaylm/turn.py
+tests:
+- tests/unit/test_cognitive_budget_accounting.py
+- tests/unit/test_cognitive_budget_plan.py
+- tests/unit/test_cognitive_budget_owner_controls.py
+- tests/unit/test_cognitive_budget_enforcement.py
+- tests/unit/test_cognitive_budget_enforcement_loop.py
+- tests/unit/test_cognitive_budget_protected_floor.py
+- tests/unit/test_cognitive_budget_turn_wiring.py
+- tests/unit/test_cognitive_budget_diagnostics.py
+- tests/unit/test_cognitive_budget_turn_diagnostics.py
+- tests/unit/test_openai_compatible_budget.py
+depends_on:
+- context_compiler
+- provider_and_api
