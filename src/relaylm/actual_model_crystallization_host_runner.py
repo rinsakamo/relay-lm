@@ -6,9 +6,12 @@ import hashlib
 import json
 import os
 import sys
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
+from urllib.parse import urlsplit, urlunsplit
 
 from relaylm.actual_model_artifacts import (
     ActualModelArtifactError,
@@ -18,6 +21,7 @@ from relaylm.actual_model_artifacts import (
 from relaylm.actual_model_crystallization import (
     ActualModelCrystallizationCase,
     ActualModelCrystallizationManifest,
+    ActualModelCrystallizationReasoningIdentity,
     run_actual_model_crystallization,
     write_actual_model_crystallization_evidence,
 )
@@ -29,6 +33,7 @@ from relaylm.actual_model_lm_studio import LMStudioExecutionEnvironment
 from relaylm.actual_model_lm_studio_counter import (
     LMStudioCounterError,
     build_lm_studio_counter_capabilities,
+    load_lm_studio_counter_proof,
 )
 from relaylm.actual_model_targets import (
     ActualModelArtifactTarget,
@@ -43,11 +48,14 @@ from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingConfig,
 )
 
-ACTUAL_MODEL_CRYSTALLIZATION_HOST_FORMAT_VERSION = 1
+ACTUAL_MODEL_CRYSTALLIZATION_HOST_FORMAT_VERSION = 2
 CRYSTALLIZATION_ADAPTER_IDENTITY = "relaylm.providers.OpenAICompatibleCrystallizer:v1"
 CRYSTALLIZATION_STRUCTURED_OUTPUT_SCHEMA_VERSION = "relaylm_crystallization_output:v1"
 CRYSTALLIZATION_EVALUATION_CONTRACT_VERSION = "actual-model-crystallization-v1"
 LM_STUDIO_SERVING_PROOF_IDENTITY_PREFIX = "lm-studio-serving-proof:sha256:"
+LM_STUDIO_REASONING_CONTROL_SOURCE = "lmstudio_model_default"
+LM_STUDIO_REASONING_CONTROL_MODE = "attested_default_without_per_request_override"
+LM_STUDIO_NATIVE_MODELS_PATH = "/api/v1/models"
 
 
 class ActualModelCrystallizationHostRunnerError(ValueError):
@@ -71,6 +79,7 @@ class ActualModelCrystallizationHostCondition:
     top_p: int | float | None
     seed: int | None
     supported_decoding_controls: tuple[str, ...]
+    reasoning_required_setting: str
     fixture_id: str
     fixture_path: Path
     fixture_revision: str
@@ -103,6 +112,7 @@ class ActualModelCrystallizationHostCondition:
             "fixture_revision",
             "condition_id",
             "replicate_id",
+            "reasoning_required_setting",
         ):
             value = getattr(self, name)
             if not isinstance(value, str) or not value.strip():
@@ -136,6 +146,10 @@ class ActualModelCrystallizationHostCondition:
         ):
             raise ActualModelCrystallizationHostRunnerError(
                 "decoding.seed must be an integer or null"
+            )
+        if not self.reasoning_required_setting.strip():
+            raise ActualModelCrystallizationHostRunnerError(
+                "reasoning.required_setting must be a non-empty string"
             )
         if not isinstance(self.fixture_path, Path):
             raise TypeError("fixture_path must be a pathlib.Path")
@@ -215,6 +229,9 @@ class ActualModelCrystallizationHostCondition:
                 "seed": self.seed,
             },
             "supported_decoding_controls": list(self.supported_decoding_controls),
+            "reasoning": {
+                "required_setting": self.reasoning_required_setting,
+            },
             "character_fixture": {
                 "id": self.fixture_id,
                 "path": self.fixture_path.as_posix(),
@@ -278,6 +295,7 @@ def load_actual_model_crystallization_host_condition(
             "effective_context_window",
             "decoding",
             "supported_decoding_controls",
+            "reasoning",
             "character_fixture",
             "case",
             "max_events",
@@ -309,6 +327,8 @@ def load_actual_model_crystallization_host_condition(
         mapping["supported_decoding_controls"],
         "supported_decoding_controls",
     )
+    reasoning = _require_mapping(mapping["reasoning"], "reasoning")
+    _require_exact_keys(reasoning, {"required_setting"}, "reasoning")
 
     try:
         return ActualModelCrystallizationHostCondition(
@@ -340,6 +360,10 @@ def load_actual_model_crystallization_host_condition(
             supported_decoding_controls=tuple(
                 _require_string(item, f"supported_decoding_controls[{index}]")
                 for index, item in enumerate(controls)
+            ),
+            reasoning_required_setting=_require_string(
+                reasoning["required_setting"],
+                "reasoning.required_setting",
             ),
             fixture_id=_require_string(fixture["id"], "character_fixture.id"),
             fixture_path=Path(
@@ -407,15 +431,6 @@ def prepare_actual_model_crystallization_host_run(
             f"expected {condition.fixture_revision}, observed {observed_fixture_revision}"
         )
 
-    serving_attestation_identity = _attest_lm_studio_serving_target(
-        condition=condition,
-        target=target,
-        artifact_path=model_artifact_path,
-        proof_path=serving_proof_path,
-        node_path=node_path,
-        sdk_root=sdk_root,
-    )
-
     api_key = None
     if condition.api_key_env is not None:
         api_key = os.environ.get(condition.api_key_env)
@@ -424,6 +439,21 @@ def prepare_actual_model_crystallization_host_run(
                 "required API key environment variable is not set: "
                 f"{condition.api_key_env}"
             )
+
+    serving_attestation_identity = _attest_lm_studio_serving_target(
+        condition=condition,
+        target=target,
+        artifact_path=model_artifact_path,
+        proof_path=serving_proof_path,
+        node_path=node_path,
+        sdk_root=sdk_root,
+    )
+    reasoning_identity = _attest_lm_studio_reasoning(
+        condition=condition,
+        target=target,
+        proof_path=serving_proof_path,
+        api_key=api_key,
+    )
 
     decoding_config = condition.decoding_config
     decoding_capabilities = condition.decoding_capabilities
@@ -441,6 +471,7 @@ def prepare_actual_model_crystallization_host_run(
         tokenizer_identity=target.tokenizer_identity,
         effective_context_window=condition.effective_context_window,
         decoding_configuration=tuple(sorted(decoding_config.to_mapping().items())),
+        reasoning_identity=reasoning_identity,
         seed=condition.seed,
         structured_output_schema_version=CRYSTALLIZATION_STRUCTURED_OUTPUT_SCHEMA_VERSION,
         evaluation_contract_version=CRYSTALLIZATION_EVALUATION_CONTRACT_VERSION,
@@ -542,6 +573,170 @@ def _attest_lm_studio_serving_target(
     return LM_STUDIO_SERVING_PROOF_IDENTITY_PREFIX + digest
 
 
+def _attest_lm_studio_reasoning(
+    *,
+    condition: ActualModelCrystallizationHostCondition,
+    target: ActualModelArtifactTarget,
+    proof_path: str | Path,
+    api_key: str | None,
+) -> ActualModelCrystallizationReasoningIdentity:
+    """Require live LM Studio reasoning metadata before any generation."""
+
+    try:
+        proof = load_lm_studio_counter_proof(proof_path)
+        if proof.request_model != condition.request_model or proof.model_key != condition.request_model:
+            raise ActualModelCrystallizationHostRunnerError(
+                "LM Studio reasoning model identity does not match the serving proof"
+            )
+        metadata = _fetch_lm_studio_native_models(
+            base_url=condition.base_url,
+            api_key=api_key,
+        )
+        models = _require_list(metadata.get("models"), "LM Studio native models")
+        if not all(isinstance(item, Mapping) for item in models):
+            raise ActualModelCrystallizationHostRunnerError(
+                "LM Studio native models response contains a non-object model"
+            )
+        matches = [
+            item for item in models
+            if item.get("key") == condition.request_model
+        ]
+        if len(matches) != 1:
+            raise ActualModelCrystallizationHostRunnerError(
+                "LM Studio native models response must contain exactly one matching request model"
+            )
+        model = matches[0]
+        if model.get("type") != "llm":
+            raise ActualModelCrystallizationHostRunnerError(
+                "LM Studio reasoning attestation requires an LLM model"
+            )
+        if model.get("size_bytes") != proof.loaded_size_bytes:
+            raise ActualModelCrystallizationHostRunnerError(
+                "LM Studio native model size does not match the serving proof"
+            )
+        quantization = _require_mapping(
+            model.get("quantization"),
+            "LM Studio native model quantization",
+        )
+        if quantization.get("name") != target.quantization:
+            raise ActualModelCrystallizationHostRunnerError(
+                "LM Studio native model quantization does not match the frozen target"
+            )
+        loaded_instances = _require_list(
+            model.get("loaded_instances"),
+            "LM Studio native model loaded_instances",
+        )
+        if len(loaded_instances) != 1 or not isinstance(loaded_instances[0], Mapping):
+            raise ActualModelCrystallizationHostRunnerError(
+                "LM Studio native model must have exactly one unambiguous loaded instance"
+            )
+        loaded_instance = loaded_instances[0]
+        if loaded_instance.get("id") != proof.model_key:
+            raise ActualModelCrystallizationHostRunnerError(
+                "LM Studio native loaded instance does not match the serving proof"
+            )
+        capabilities_value = model.get("capabilities")
+        if not isinstance(capabilities_value, Mapping):
+            raise ActualModelCrystallizationHostRunnerError(
+                "LM Studio native model reasoning capability is absent or malformed"
+            )
+        reasoning_value = capabilities_value.get("reasoning")
+        if not isinstance(reasoning_value, Mapping):
+            raise ActualModelCrystallizationHostRunnerError(
+                "LM Studio native model reasoning capability is absent or malformed"
+            )
+        reasoning = reasoning_value
+        _require_exact_keys(
+            reasoning,
+            {"allowed_options", "default"},
+            "LM Studio native model reasoning capability",
+        )
+        allowed_options = _require_list(
+            reasoning["allowed_options"],
+            "LM Studio native model reasoning.allowed_options",
+        )
+        if not allowed_options or not all(
+            isinstance(item, str) and item.strip() for item in allowed_options
+        ):
+            raise ActualModelCrystallizationHostRunnerError(
+                "LM Studio reasoning.allowed_options must contain non-empty strings"
+            )
+        if len(set(allowed_options)) != len(allowed_options):
+            raise ActualModelCrystallizationHostRunnerError(
+                "LM Studio reasoning.allowed_options must not contain duplicates"
+            )
+        live_default = _require_string(
+            reasoning["default"],
+            "LM Studio native model reasoning.default",
+        )
+        if condition.reasoning_required_setting not in allowed_options:
+            raise ActualModelCrystallizationHostRunnerError(
+                "required reasoning setting is not in LM Studio allowed_options"
+            )
+        if live_default != condition.reasoning_required_setting:
+            raise ActualModelCrystallizationHostRunnerError(
+                "LM Studio reasoning default does not match the required setting"
+            )
+        return ActualModelCrystallizationReasoningIdentity(
+            required_setting=condition.reasoning_required_setting,
+            effective_setting=live_default,
+            allowed_options=tuple(allowed_options),
+            live_default=live_default,
+            control_source=LM_STUDIO_REASONING_CONTROL_SOURCE,
+            control_mode=LM_STUDIO_REASONING_CONTROL_MODE,
+        )
+    except (
+        ActualModelCrystallizationHostRunnerError,
+        LMStudioCounterError,
+        OSError,
+        TypeError,
+        ValueError,
+    ) as exc:
+        if isinstance(exc, ActualModelCrystallizationHostRunnerError):
+            raise
+        raise ActualModelCrystallizationHostRunnerError(
+            f"LM Studio reasoning attestation failed: {exc}"
+        ) from exc
+
+
+def _fetch_lm_studio_native_models(
+    *,
+    base_url: str,
+    api_key: str | None,
+) -> Mapping[str, object]:
+    parsed = urlsplit(base_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ActualModelCrystallizationHostRunnerError(
+            "LM Studio base_url must be an HTTP(S) URL"
+        )
+    url = urlunsplit((parsed.scheme, parsed.netloc, LM_STUDIO_NATIVE_MODELS_PATH, "", ""))
+    headers = {"Accept": "application/json"}
+    if api_key is not None:
+        headers["Authorization"] = f"Bearer {api_key}"
+    request = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            if response.status != 200:
+                raise ActualModelCrystallizationHostRunnerError(
+                    f"LM Studio native models request returned HTTP {response.status}"
+                )
+            payload = json.loads(
+                response.read().decode("utf-8"),
+                object_pairs_hook=_unique_object,
+            )
+    except (
+        urllib.error.HTTPError,
+        urllib.error.URLError,
+        TimeoutError,
+        UnicodeError,
+        json.JSONDecodeError,
+    ) as exc:
+        raise ActualModelCrystallizationHostRunnerError(
+            f"LM Studio native models request failed: {exc}"
+        ) from exc
+    return _require_mapping(payload, "LM Studio native models response")
+
+
 def _resolve_fixture_root(*, root: Path, relative: Path) -> Path:
     candidate = (root / relative).resolve()
     try:
@@ -604,7 +799,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(
         json.dumps(
             {
-                "format_version": 1,
+                "format_version": ACTUAL_MODEL_CRYSTALLIZATION_HOST_FORMAT_VERSION,
                 "suite": "actual-model-crystallization-lm-studio-v1",
                 "relaylm_commit": condition.relaylm_commit,
                 "target_id": condition.target_id,

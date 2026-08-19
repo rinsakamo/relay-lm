@@ -46,6 +46,8 @@ The recording wrapper delegates to the supplied `Crystallizer` and does not rein
 - exact model artifact and tokenizer identity;
 - effective context window;
 - explicit decoding configuration and optional seed;
+- explicit reasoning identity, including the required/effective setting, live
+  allowed options, live default, control source, and control mode;
 - structured-output schema version;
 - crystallization evaluation-contract version;
 - condition ID;
@@ -54,7 +56,26 @@ The recording wrapper delegates to the supplied `Crystallizer` and does not rein
 
 The manifest declares `execution_kind = off_turn_crystallization`. It deliberately does not reuse ordinary-turn-only Continuity runtime or scenario-set fields.
 
-A run ID is a SHA-256 digest over canonical JSON containing the manifest, semantic case, and the **exact pre-pass `CrystallizationInput` observed by the recording wrapper**. Therefore a model/runtime/configuration change or a change in Identity, current State, bounded Events, or prior MEMORY produces a distinct run identity.
+A run ID is a SHA-256 digest over canonical JSON containing the manifest, semantic case, and the **exact pre-pass `CrystallizationInput` observed by the recording wrapper**. Therefore a model/runtime/configuration/reasoning-state change or a change in Identity, current State, bounded Events, or prior MEMORY produces a distinct run identity.
+
+The current crystallization evidence format is version `2`. The required
+manifest reasoning identity is serialized deterministically as:
+
+```json
+{
+  "format_version": 1,
+  "required_setting": "on",
+  "effective_setting": "on",
+  "allowed_options": ["off", "on"],
+  "live_default": "on",
+  "control_source": "lmstudio_model_default",
+  "control_mode": "attested_default_without_per_request_override"
+}
+```
+
+Historical format-v1 CRY4/CRY6/CRY8 artifacts remain immutable evidence. They
+do not acquire a retroactive reasoning identity and must not be used for
+causal attribution of Thinking ON versus OFF.
 
 ## Exact input evidence
 

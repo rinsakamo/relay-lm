@@ -6,6 +6,7 @@ This runner connects existing authority only:
 
 - frozen actual-model target metadata and local GGUF verification;
 - the LM Studio serving-instance attestation established by the actual-model host tooling;
+- the live LM Studio native reasoning capability/default attestation;
 - `OpenAICompatibleCrystallizer` from the crystallization contract;
 - `ActualModelCrystallizationManifest` and evidence artifacts from the actual-model crystallization evidence contract.
 
@@ -58,11 +59,11 @@ python -m relaylm.actual_model_crystallization_host_runner \
 
 ## Host condition
 
-The current condition format is version 1 and is specific to off-turn crystallization:
+The current condition format is version 2 and is specific to off-turn crystallization:
 
 ```json
 {
-  "format_version": 1,
+  "format_version": 2,
   "target_id": "gemma-4-12b-it-q4-k-m-lmstudio-community-v1",
   "relaylm_commit": "<exact-lowercase-40-character-git-sha>",
   "lm_studio": {
@@ -84,6 +85,9 @@ The current condition format is version 1 and is specific to off-turn crystalliz
     "top_p",
     "seed"
   ],
+  "reasoning": {
+    "required_setting": "on"
+  },
   "character_fixture": {
     "id": "<stable-fixture-id>",
     "path": "evaluation/actual_model/characters/<fixture>",
@@ -100,6 +104,10 @@ The current condition format is version 1 and is specific to off-turn crystalliz
 ```
 
 All fields are explicit. Unknown or missing fields fail closed.
+
+The host condition is format version `2`. It requires an explicit reasoning
+setting. The runner does not invent a `reasoning_effort` request parameter and
+does not change the OpenAI-compatible Chat Completions transport.
 
 The crystallization condition intentionally does **not** carry ordinary-turn-only fields such as:
 
@@ -123,7 +131,18 @@ Preparation fails before crystallizer generation unless all of these agree:
 4. the Character fixture matches the declared fixture revision;
 5. the existing LM Studio serving proof matches the same RelayLM commit, target, request-model key, LM Studio version/build/deployment identity, artifact path, quantization, size, and SHA-256;
 6. live LM Studio SDK attestation still resolves the loaded request-model instance to that frozen target artifact;
-7. the condition's decoding controls are supported and are the exact controls passed to `OpenAICompatibleCrystallizer`.
+7. live `GET /api/v1/models` returns exactly one matching request model and one
+   unambiguous loaded instance matching the existing serving proof;
+8. that live model exposes `capabilities.reasoning.allowed_options` and
+   `capabilities.reasoning.default`, the required setting is allowed, and the
+   live default equals the required setting;
+9. the condition's decoding controls are supported and are the exact controls passed to `OpenAICompatibleCrystallizer`.
+
+For the current Chat Completions crystallizer, LM Studio's attested model
+default is the effective reasoning control. RelayLM does not claim a
+per-request reasoning override on this surface. Missing, malformed, ambiguous,
+or mismatched reasoning metadata fails closed before workspace creation or
+generation.
 
 CRY3 reuses the existing #1508 serving proof machinery for **loaded-instance-to-frozen-artifact attestation**. The crystallization runner does not consume its token counts as a cognitive budget and does not claim a new token-counter semantic contract.
 
@@ -149,6 +168,11 @@ The host runner derives the CRY2 manifest from verified or actually applied valu
 
 The runner then verifies that the constructed crystallizer exposes the same request model and effective decoding controls before returning a prepared run.
 
+The resulting manifest includes the deterministic reasoning identity: required
+and effective setting, sorted live allowed options, live default, and the
+control source/mode. Changing that identity changes the content-addressed run
+ID.
+
 ## Fresh workspace and one-pass execution
 
 Execution always targets:
@@ -169,7 +193,7 @@ A successful invocation prints only a compact execution receipt:
 
 ```json
 {
-  "format_version": 1,
+  "format_version": 2,
   "suite": "actual-model-crystallization-lm-studio-v1",
   "relaylm_commit": "...",
   "target_id": "...",
@@ -189,5 +213,11 @@ This receipt is not a quality verdict. The citable semantic evidence is the CRY2
 ## Current limitation
 
 CRY3 makes real target-model crystallization execution reproducible from an attested host. It does **not** include a canonical crystallization-quality fixture, does not execute the user's local LM Studio from CI, and does not establish that the current prompt improves taxonomy/key drift, transient over-persistence, correction handling, temporal nuance, MEMORY organization, or semantic stability.
+
+CRY8 evidence predates this reasoning identity and therefore must not be used
+for causal attribution of Thinking ON versus OFF. CRY9B is the first planned
+canonical crystallization stability tranche with explicit Gemma reasoning
+attestation; it remains a fresh tranche, not a controlled ON/OFF comparison
+against CRY8.
 
 Those are subsequent actual-model evidence transactions. Any prompt/schema refinement remains evidence-driven and separately owned by the crystallization provider contract.
