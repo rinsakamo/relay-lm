@@ -112,6 +112,23 @@ def test_invalid_event_line_reports_line_number(tmp_path: Path) -> None:
         list(character.iter_events())
 
 
+def test_duplicate_event_id_fails_closed_with_duplicate_line_number(tmp_path: Path) -> None:
+    character = _make_character(tmp_path)
+    character.events_path.write_text(
+        '\n'.join(
+            [
+                '{"id":"evt-1","type":"message","actor":"user","timestamp":"t1","payload":{"content":"first"}}',
+                '{"id":"evt-1","type":"message","actor":"assistant","timestamp":"t2","payload":{"content":"second"}}',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(CharacterDataError, match=r"events\.jsonl line 2: duplicate event id 'evt-1'"):
+        list(character.iter_events())
+
+
 @pytest.mark.parametrize(
     "payload",
     [
