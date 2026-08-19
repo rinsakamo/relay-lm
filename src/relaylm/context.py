@@ -907,6 +907,31 @@ def _memory_chunk_is_shadowed(
                             ):
                                 return True
                             continue
+                    explicit_bodies = tuple(
+                        explicit_body
+                        for body_value in body_values
+                        if (
+                            explicit_body := _explicit_reserved_degree_claim(body_value)
+                        )
+                        is not None
+                    )
+                    if len(explicit_bodies) >= 2 and all(
+                        _lexical_terms(body_semantic)[0] != "not"
+                        for body_semantic, _ in explicit_bodies
+                    ):
+                        explicit_degrees = _explicit_degree_hint_assignments(
+                            chunk.content,
+                            key=record.key,
+                            heading_addresses_key=True,
+                        )
+                        if len(explicit_degrees) == len(explicit_bodies):
+                            current_semantic_terms = _lexical_terms(current_semantic)
+                            if any(
+                                _lexical_terms(body_semantic) != current_semantic_terms
+                                or body_degree != current_degree
+                                for body_semantic, body_degree in explicit_bodies
+                            ):
+                                return True
             if not _contains_lexical_value(chunk.content, current_semantic):
                 return True
             explicit_degrees = _explicit_degree_hint_assignments(
