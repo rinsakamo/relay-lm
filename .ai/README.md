@@ -14,6 +14,7 @@ hand-maintained global registry:
   README.md                         this file: the bootstrap entry point
   agent-contract.yaml               read order and freshness contract
   authority/<semantic_owner>.yaml   one writable authority unit per semantic owner
+  projections/<recipe>.yaml         recipes for reconstructing developer views
 ```
 
 ## Bootstrap
@@ -120,6 +121,25 @@ Field roles:
 - hand-maintained authority aggregates are prohibited; the previous
   `docs/authority-map.yaml` navigation index is replaced by these declarations.
 
+## Projections
+
+Developer-facing views are reconstructed on demand, never hand-maintained and
+never committed:
+
+```bash
+python -m tools.repository_projection list
+python -m tools.repository_projection render dependency-map
+```
+
+A recipe stores only what is needed to rebuild the view — inputs, freshness
+requirements, selection rules, prohibited inferences, and a preferred output
+shape. Rendering is deterministic and derives every fact from
+`.ai/authority/`. Facts that committed authority cannot supply are printed as
+live inputs the agent must fetch, so a rendered view never carries a
+remembered HEAD, PR list, or check result.
+
+> **Store canonical facts and projection recipes, not transient views.**
+
 ## Executable schema
 
 `tools/repository_authority.py` is the canonical schema. It is executable
@@ -127,10 +147,15 @@ rather than a separate schema document so the contract cannot drift from its
 validator, and its meaning is frozen by
 `tests/unit/test_repository_authority_contract.py`.
 
+`tools/repository_projection.py` is the canonical schema for recipes, frozen by
+`tests/unit/test_repository_projection_contract.py`.
+
 ```bash
 python tools/repository_authority.py validate
+python -m tools.repository_projection validate
 ```
 
-`tests/unit/test_repository_authority.py` applies the same rules to the current
+`tests/unit/test_repository_authority.py` and
+`tests/unit/test_repository_projection.py` applies the same rules to the current
 repository under the required `v1 CI / pytest` check, so authority drift fails
 the normal transaction gate rather than requiring a separate audit.

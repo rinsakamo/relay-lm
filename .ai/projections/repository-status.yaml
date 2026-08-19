@@ -1,0 +1,30 @@
+# Reconstruct current lane/repository status. Do not commit the output.
+schema_version: 1
+id: repository-status
+summary: Semantic owners and owning Issues, to be joined with live repository state.
+
+inputs:
+  - .ai/authority
+
+freshness_requirements:
+  - repository_head
+  - open_pull_requests
+  - ci_check_state
+  - issue_state
+  - issue_comments
+
+include:
+  - semantic_owners
+  - owner_issue
+
+prohibit:
+  - infer_current_status_from_historical_snapshot
+  - treat_stale_handoff_as_current_authority
+  - copy_live_state_into_authority
+
+output_hint:
+  preferred: table
+  note: >-
+    Committed authority supplies only the owner and Issue columns. Current
+    status comes from the live facts listed above and must be fetched, never
+    recalled from a handoff or a previous projection.

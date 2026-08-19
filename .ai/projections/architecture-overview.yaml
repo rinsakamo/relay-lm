@@ -1,0 +1,27 @@
+# Reconstruct the current architecture overview. Do not commit the output.
+schema_version: 1
+id: architecture-overview
+summary: Each semantic owner with its canonical authority surfaces and dependencies.
+
+inputs:
+  - .ai/authority
+  - docs
+
+freshness_requirements:
+  - repository_head
+
+include:
+  - semantic_owners
+  - summary
+  - canonical_surfaces
+  - dependencies
+
+prohibit:
+  - infer_current_status_from_historical_snapshot
+  - invent_unowned_surface
+
+output_hint:
+  preferred: markdown
+  note: >-
+    Canonical surfaces are the authority documents themselves. Read them rather
+    than summarising this view further.

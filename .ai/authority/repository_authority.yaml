@@ -2,16 +2,25 @@ schema_version: 1
 id: repository_authority
 summary: >-
   Owner-local repository authority declarations, the agent bootstrap read order,
-  and the repository freshness contract.
+  the repository freshness contract, and ephemeral projection recipes.
 owner_issue: 1525
 canonical_surfaces:
 - .ai/README.md
 - .ai/agent-contract.yaml
+- .ai/projections/architecture-overview.yaml
+- .ai/projections/consumer-map.yaml
+- .ai/projections/dependency-map.yaml
+- .ai/projections/evidence-map.yaml
+- .ai/projections/repository-status.yaml
+- .ai/projections/semantic-owner-map.yaml
 implementation:
 - tools/repository_authority.py
+- tools/repository_projection.py
 tests:
 - tests/unit/test_repository_authority_contract.py
 - tests/unit/test_repository_authority.py
 - tests/unit/test_repository_freshness_contract.py
+- tests/unit/test_repository_projection_contract.py
+- tests/unit/test_repository_projection.py
 depends_on:
 - development_workflow

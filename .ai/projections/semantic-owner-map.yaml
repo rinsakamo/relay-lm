@@ -1,0 +1,26 @@
+# Reconstruct the current semantic-owner map. Do not commit the output.
+schema_version: 1
+id: semantic-owner-map
+summary: Every semantic owner, its owning Issue, and what it is authoritative for.
+
+inputs:
+  - .ai/authority
+
+freshness_requirements:
+  - repository_head
+  - issue_state
+
+include:
+  - semantic_owners
+  - owner_issue
+  - summary
+
+prohibit:
+  - infer_current_status_from_historical_snapshot
+  - treat_stale_handoff_as_current_authority
+
+output_hint:
+  preferred: table
+  note: >-
+    Owning Issue numbers are stable references, not current Issue state. Fetch
+    Issue state live before describing whether work remains.
