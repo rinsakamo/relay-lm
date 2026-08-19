@@ -1,0 +1,25 @@
+schema_version: 1
+id: provider_and_api
+summary: OpenAI-compatible provider wire, decoding, identity, and public API boundary.
+canonical_surfaces:
+- docs/contracts/provider-wire.md
+- docs/contracts/provider-decoding.md
+- docs/contracts/provider-identity.md
+- docs/contracts/openai-api.md
+implementation:
+- src/relaylm/providers/openai_compatible.py
+- src/relaylm/providers/openai_compatible_budget.py
+- src/relaylm/providers/openai_compatible_decoding.py
+- src/relaylm/providers/openai_compatible_identity.py
+- src/relaylm/api/openai.py
+- src/relaylm/server.py
+tests:
+- tests/unit/test_openai_boundary.py
+- tests/unit/test_streaming_boundary.py
+- tests/unit/test_openai_compatible_budget.py
+- tests/unit/test_openai_compatible_streaming_parity.py
+- tests/unit/test_openai_compatible_decoding.py
+- tests/unit/test_openai_compatible_identity.py
+- tests/unit/test_event_evidence_projection.py
+depends_on:
+- core_architecture

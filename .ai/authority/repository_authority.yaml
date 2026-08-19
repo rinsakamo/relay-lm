@@ -1,0 +1,13 @@
+schema_version: 1
+id: repository_authority
+summary: Owner-local repository authority declarations and their single-writer validation.
+owner_issue: 1525
+canonical_surfaces:
+- .ai/README.md
+implementation:
+- tools/repository_authority.py
+tests:
+- tests/unit/test_repository_authority_contract.py
+- tests/unit/test_repository_authority.py
+depends_on:
+- development_workflow

@@ -20,4 +20,4 @@ This component does not define how Context/Turn semantic owners construct the pr
 
 ## Integration status
 
-This component is intentionally not registered in the native deterministic evaluation registry by this transaction. Shared scenario count, `src/relaylm/evaluation.py`, `docs/authority-map.yaml`, shared navigation, and aggregate Issue status remain for serial integration after component merge.
+This component is intentionally not registered in the native deterministic evaluation registry by this transaction. Shared scenario count, `src/relaylm/evaluation.py`, shared navigation, and aggregate Issue status remain for serial integration after component merge.

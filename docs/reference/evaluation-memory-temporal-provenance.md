@@ -21,4 +21,4 @@ This component does not implement or evaluate governed MEMORY Markdown metadata 
 
 ## Integration status
 
-This component is intentionally not registered in the native deterministic evaluation registry by this transaction. Shared scenario count, `src/relaylm/evaluation.py`, `docs/authority-map.yaml`, shared navigation, and aggregate Issue status remain for Serial Integration after component merge.
+This component is intentionally not registered in the native deterministic evaluation registry by this transaction. Shared scenario count, `src/relaylm/evaluation.py`, shared navigation, and aggregate Issue status remain for Serial Integration after component merge.

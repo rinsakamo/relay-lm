@@ -22,4 +22,4 @@ This component does not implement C5, parse years/dates/tense, infer aliases or 
 
 ## Integration status
 
-This isolated component does not modify the native deterministic evaluation registry, aggregate scenario count, `docs/authority-map.yaml`, shared navigation, or aggregate implementation status. Any shared registration/reconciliation remains Serial Integration work after the corrected component is merged.
+This isolated component does not modify the native deterministic evaluation registry, aggregate scenario count, shared navigation, or aggregate implementation status. Any shared registration/reconciliation remains Serial Integration work after the corrected component is merged.

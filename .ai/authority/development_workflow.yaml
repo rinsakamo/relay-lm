@@ -1,0 +1,9 @@
+schema_version: 1
+id: development_workflow
+summary: The v1 development workflow and repository-use practices.
+canonical_surfaces:
+- docs/reference/development-workflow.md
+- docs/reference/repository-practices.md
+- docs/decisions/README.md
+annotations:
+- docs/decisions/0003-direct-canonical-convergence.md

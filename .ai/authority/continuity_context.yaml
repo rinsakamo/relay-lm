@@ -1,0 +1,20 @@
+schema_version: 1
+id: continuity_context
+summary: Bounded short-term semantic continuity that is not yet durable character truth.
+owner_issue: 1371
+canonical_surfaces:
+- docs/architecture/continuity-context.md
+references:
+- docs/architecture/cognitive-runtime.md
+implementation:
+- src/relaylm/continuity.py
+- src/relaylm/continuity_validation.py
+- src/relaylm/cognitive.py
+- src/relaylm/turn.py
+tests:
+- tests/unit/test_continuity.py
+- tests/unit/test_continuity_validation.py
+- tests/unit/test_continuity_turn.py
+- tests/unit/test_evaluation_continuity_cognition_wiring.py
+depends_on:
+- state_and_validation

@@ -1,0 +1,16 @@
+schema_version: 1
+id: persistence
+summary: Character Package portability and the filesystem persistence boundary.
+canonical_surfaces:
+- docs/architecture/persistence.md
+- docs/reference/character-directory.md
+references:
+- docs/reference/event-retrieval-discovery.md
+implementation:
+- src/relaylm/storage/filesystem.py
+tests:
+- tests/unit/test_character_directory.py
+- tests/unit/test_event_snapshot_cache.py
+- tests/unit/test_event_discovery_index.py
+depends_on:
+- core_architecture

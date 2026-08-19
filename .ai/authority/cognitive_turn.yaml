@@ -1,0 +1,30 @@
+schema_version: 1
+id: cognitive_turn
+summary: One semantic cognitive generation per ordinary turn and its runtime assembly.
+owner_issue: 1259
+canonical_surfaces:
+- docs/contracts/cognitive-turn.md
+- docs/architecture/cognitive-runtime.md
+- docs/reference/turn-retrieval-diagnostics.md
+references:
+- docs/architecture/core.md
+implementation:
+- src/relaylm/cognitive.py
+- src/relaylm/turn.py
+tests:
+- tests/unit/test_cognitive_turn.py
+- tests/unit/test_continuity_turn.py
+- tests/unit/test_cognitive_budget_turn_wiring.py
+- tests/unit/test_cognitive_budget_turn_diagnostics.py
+- tests/unit/test_turn_memory_retrieval.py
+- tests/unit/test_turn_event_retrieval.py
+- tests/unit/test_turn_retrieval_diagnostics.py
+- tests/unit/test_event_evidence_projection.py
+depends_on:
+- cognitive_budget
+- context_compiler
+- continuity_context
+- provider_and_api
+- state_and_validation
+annotations:
+- docs/decisions/0001-one-cognitive-generation.md

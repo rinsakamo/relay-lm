@@ -1,0 +1,6 @@
+schema_version: 1
+id: core_architecture
+summary: RelayLM 1.0 core architecture thesis and persistent character identity.
+canonical_surfaces:
+- docs/architecture/core.md
+- docs/architecture/identity.md
