@@ -193,15 +193,6 @@ def test_additional_stale_section_degree_remains_c1_conflict() -> None:
     assert _compile(fallback).memory == ()
 
 
-def test_mixed_positive_and_negated_body_pairs_remain_deferred() -> None:
-    fallback = _chunk(
-        "likes; degree_hint: 0.85\n"
-        "not likes; degree_hint: 0.85"
-    )
-
-    _assert_retained(fallback)
-
-
 def test_single_negated_pair_with_prose_remains_c33() -> None:
     stale = _chunk(
         "not likes; degree_hint: 0.85\n"

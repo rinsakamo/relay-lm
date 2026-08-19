@@ -20,7 +20,7 @@ def _current_event() -> Event:
         actor="user",
         payload={"content": "What is current about tea?"},
         event_id="current-event",
-        timestamp="2026-08-19T13:45:00+09:00",
+        timestamp="2026-08-19T14:15:00+09:00",
     )
 
 
@@ -44,8 +44,8 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
     return MemoryTemporalAuthority(
         temporal_scope=scope,
         provenance=MemoryProvenance(
-            memory_id=f"memory-heading-multiline-all-negated-set-{scope.value}",
-            derivation_id=f"derivation-heading-multiline-all-negated-set-{scope.value}",
+            memory_id=f"memory-heading-multiline-mixed-set-{scope.value}",
+            derivation_id=f"derivation-heading-multiline-mixed-set-{scope.value}",
             sources=(
                 MemoryProvenanceSource(
                     kind=MemoryProvenanceSourceKind.EVENT,
@@ -65,7 +65,7 @@ def _chunk(
     return MemoryChunk(
         heading_path=("Memory", heading),
         location=(
-            "memory/MEMORY.md#memory/heading-multiline-all-negated-set-"
+            "memory/MEMORY.md#memory/heading-multiline-mixed-set-"
             f"{scope.value}"
         ),
         content=f"## {heading}\n\n{body}",
@@ -87,17 +87,65 @@ def _assert_retained(chunk: MemoryChunk) -> None:
     assert [item.location for item in compiled.memory] == [chunk.location]
 
 
-def test_active_pair_negation_member_suppresses() -> None:
+def test_matching_positive_and_different_negated_pair_are_compatible() -> None:
+    current = _chunk(
+        "likes; degree_hint: 0.85\n"
+        "not dislikes; degree_hint: 0.85"
+    )
+
+    _assert_retained(current)
+
+
+def test_exact_active_pair_negation_suppresses_mixed_set() -> None:
+    stale = _chunk(
+        "likes; degree_hint: 0.85\n"
+        "not likes; degree_hint: 0.85"
+    )
+
+    assert _compile(stale).memory == ()
+
+
+def test_exact_active_pair_negation_suppresses_when_first() -> None:
     stale = _chunk(
         "not likes; degree_hint: 0.85\n"
-        "not dislikes; degree_hint: 0.85"
+        "likes; degree_hint: 0.85"
     )
 
     assert _compile(stale).memory == ()
 
 
-def test_active_pair_negation_member_suppresses_in_later_position() -> None:
+def test_matching_positive_cannot_hide_later_positive_mismatch() -> None:
     stale = _chunk(
+        "likes; degree_hint: 0.85\n"
+        "dislikes; degree_hint: 0.85\n"
+        "not avoids; degree_hint: 0.85"
+    )
+
+    assert _compile(stale).memory == ()
+
+
+def test_positive_mismatch_cannot_hide_before_matching_positive() -> None:
+    stale = _chunk(
+        "dislikes; degree_hint: 0.85\n"
+        "likes; degree_hint: 0.85\n"
+        "not avoids; degree_hint: 0.85"
+    )
+
+    assert _compile(stale).memory == ()
+
+
+def test_different_degree_negation_is_compatible_in_mixed_set() -> None:
+    current = _chunk(
+        "likes; degree_hint: 0.85\n"
+        "not likes; degree_hint: 0.65"
+    )
+
+    _assert_retained(current)
+
+
+def test_three_member_mixed_set_checks_every_member() -> None:
+    stale = _chunk(
+        "likes; degree_hint: 0.85\n"
         "not dislikes; degree_hint: 0.85\n"
         "not likes; degree_hint: 0.85"
     )
@@ -105,37 +153,9 @@ def test_active_pair_negation_member_suppresses_in_later_position() -> None:
     assert _compile(stale).memory == ()
 
 
-def test_all_different_negated_semantic_pairs_are_compatible() -> None:
-    current = _chunk(
-        "not dislikes; degree_hint: 0.85\n"
-        "not avoids; degree_hint: 0.65"
-    )
-
-    _assert_retained(current)
-
-
-def test_different_degree_makes_negated_pair_compatible() -> None:
-    current = _chunk(
-        "not likes; degree_hint: 0.65\n"
-        "not dislikes; degree_hint: 0.85"
-    )
-
-    _assert_retained(current)
-
-
-def test_three_negated_pairs_are_conjunctively_checked_for_active_negation() -> None:
+def test_typed_current_uses_same_structural_mixed_set_rule() -> None:
     stale = _chunk(
-        "not dislikes; degree_hint: 0.85\n"
-        "not avoids; degree_hint: 0.65\n"
-        "not likes; degree_hint: 0.85"
-    )
-
-    assert _compile(stale).memory == ()
-
-
-def test_typed_current_uses_same_structural_all_negated_set_rule() -> None:
-    stale = _chunk(
-        "not dislikes; degree_hint: 0.85\n"
+        "likes; degree_hint: 0.85\n"
         "not likes; degree_hint: 0.85",
         scope=MemoryTemporalScope.CURRENT,
     )
@@ -143,21 +163,21 @@ def test_typed_current_uses_same_structural_all_negated_set_rule() -> None:
     assert _compile(stale).memory == ()
 
 
-def test_historical_all_negated_set_remains_exempt() -> None:
+def test_historical_mixed_set_remains_exempt() -> None:
     historical = _chunk(
-        "not likes; degree_hint: 0.85\n"
-        "not dislikes; degree_hint: 0.85",
+        "likes; degree_hint: 0.85\n"
+        "not likes; degree_hint: 0.85",
         scope=MemoryTemporalScope.HISTORICAL,
     )
 
     _assert_retained(historical)
 
 
-def test_degree_free_prose_does_not_become_an_extra_negated_claim() -> None:
+def test_degree_free_prose_does_not_become_a_mixed_member() -> None:
     current = _chunk(
-        "not dislikes; degree_hint: 0.85\n"
-        "A degree-free prose note says likes.\n"
-        "not avoids; degree_hint: 0.85"
+        "likes; degree_hint: 0.85\n"
+        "A degree-free prose note says dislikes.\n"
+        "not dislikes; degree_hint: 0.85"
     )
 
     _assert_retained(current)
@@ -165,35 +185,35 @@ def test_degree_free_prose_does_not_become_an_extra_negated_claim() -> None:
 
 def test_degree_free_prose_does_not_rescue_active_pair_negation() -> None:
     stale = _chunk(
-        "not likes; degree_hint: 0.85\n"
+        "likes; degree_hint: 0.85\n"
         "A degree-free prose note says likes.\n"
-        "not dislikes; degree_hint: 0.85"
+        "not likes; degree_hint: 0.85"
     )
 
     assert _compile(stale).memory == ()
 
 
-def test_additional_matching_section_degree_disables_c35_local_suppression() -> None:
+def test_additional_matching_section_degree_disables_c36_local_suppression() -> None:
     fallback = _chunk(
+        "likes; degree_hint: 0.85\n"
         "not likes; degree_hint: 0.85\n"
-        "not dislikes; degree_hint: 0.85\n"
         "A separate degree_hint: 0.85 note."
     )
 
     _assert_retained(fallback)
 
 
-def test_additional_stale_section_degree_disables_c35_compatibility() -> None:
+def test_additional_stale_section_degree_disables_c36_compatibility() -> None:
     fallback = _chunk(
+        "likes; degree_hint: 0.85\n"
         "not dislikes; degree_hint: 0.85\n"
-        "not avoids; degree_hint: 0.85\n"
         "A separate degree_hint: 0.65 note."
     )
 
     assert _compile(fallback).memory == ()
 
 
-def test_positive_pair_set_remains_c34_authority() -> None:
+def test_positive_only_set_remains_c34_authority() -> None:
     stale = _chunk(
         "likes; degree_hint: 0.85\n"
         "dislikes; degree_hint: 0.85"
@@ -202,39 +222,37 @@ def test_positive_pair_set_remains_c34_authority() -> None:
     assert _compile(stale).memory == ()
 
 
-def test_single_negated_pair_with_prose_remains_c33_authority() -> None:
+def test_all_negated_set_remains_c35_authority() -> None:
     stale = _chunk(
-        "not likes; degree_hint: 0.85\n"
-        "A degree-free prose note says likes."
+        "not dislikes; degree_hint: 0.85\n"
+        "not likes; degree_hint: 0.85"
     )
 
     assert _compile(stale).memory == ()
 
 
-def test_bare_not_pair_prevents_all_negated_set_activation() -> None:
+def test_bare_not_member_prevents_mixed_set_activation() -> None:
     fallback = _chunk(
-        "not; degree_hint: 0.85\n"
-        "A degree-free prose note says likes.\n"
-        "not dislikes; degree_hint: 0.85"
+        "likes; degree_hint: 0.85\n"
+        "not; degree_hint: 0.85"
     )
 
     _assert_retained(fallback)
 
 
-def test_double_negation_pair_prevents_all_negated_set_activation() -> None:
+def test_double_negation_member_prevents_mixed_set_activation() -> None:
     fallback = _chunk(
-        "not not dislikes; degree_hint: 0.85\n"
-        "A degree-free prose note says likes.\n"
-        "not avoids; degree_hint: 0.85"
+        "likes; degree_hint: 0.85\n"
+        "not not dislikes; degree_hint: 0.85"
     )
 
     _assert_retained(fallback)
 
 
-def test_nonexact_degree_bearing_body_text_disables_all_negated_set_activation() -> None:
+def test_nonexact_degree_bearing_body_text_disables_mixed_set_activation() -> None:
     fallback = _chunk(
+        "likes; degree_hint: 0.85\n"
         "not dislikes; degree_hint: 0.85\n"
-        "not avoids; degree_hint: 0.85\n"
         "not likes; degree_hint: 0.85; note: survey"
     )
 
