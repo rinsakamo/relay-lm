@@ -456,3 +456,21 @@ def test_a_reintroduced_central_authority_aggregate_is_rejected(tmp_path: Path) 
         "docs/authority-map.yaml: hand-maintained authority aggregates are prohibited;"
         " owner-local declarations under .ai/authority/ are the canonical writer",
     )
+
+
+def test_a_live_repository_fact_must_not_be_copied_into_persistent_authority(
+    tmp_path: Path,
+) -> None:
+    declaration = _minimal(tmp_path, "release_engineering")
+    declaration["summary"] = (
+        "Release identity frozen at 61113e759498208716d85b3aca6db57e9c455195."
+    )
+    _write(tmp_path, declaration)
+
+    errors = validate_repository(tmp_path)
+
+    assert errors == (
+        ".ai/authority/release_engineering.yaml: live repository state"
+        " '61113e759498208716d85b3aca6db57e9c455195' must not be copied into"
+        " persistent authority",
+    )

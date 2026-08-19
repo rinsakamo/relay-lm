@@ -69,6 +69,21 @@ python tools/repository_authority.py validate
 
 Global authority, dependency, and navigation views are derived from these declarations rather than hand-maintained. Reverse dependencies are computed from consumers' `depends_on` and are never declared a second time.
 
+## Bootstrap and freshness
+
+`.ai/agent-contract.yaml` declares the ordered read path into repository authority and the freshness class of every fact a transaction relies on.
+
+```text
+live         repository HEAD, open PRs, CI/check state, Issue state and comments,
+             branch protection, release tags
+repository   semantic ownership, canonical surfaces, dependency graph,
+             executable contracts, package version
+evidence     merged evidence artifacts, referenced by evidence id
+historical   handoff prompt state, projection output, merged PR bodies
+```
+
+A `live` fact is re-fetched at the start of a transaction and again immediately before merge. It is never stored as persistent authority: a 40-character commit id appearing anywhere in an owner declaration fails validation. A `historical` fact is never current authority, so the SHA, PR list, or status quoted in a handoff prompt is classified rather than argued about.
+
 ## Dependency maintenance
 
 `.github/dependabot.yml` defines weekly version-update checks for GitHub Actions targeting `v1`.
