@@ -1,10 +1,11 @@
 schema_version: 1
 id: cognitive_turn
-summary: Ordinary-turn cognition execution policy, per-pass execution intent, and response-first single/two-pass runtime assembly over unchanged deterministic State/Continuity authority.
+summary: Ordinary-turn cognition execution policy, per-pass intent, canonical single/two-pass runtime, and non-authoritative shadow evidence carriage over unchanged deterministic State/Continuity authority.
 owner_issue: 1533
 canonical_surfaces:
 - docs/contracts/cognition-execution-policy.md
 - docs/contracts/cognition-pass-execution.md
+- docs/contracts/cognition-execution-evidence.md
 - docs/contracts/cognitive-turn.md
 - docs/architecture/cognitive-runtime.md
 - docs/reference/turn-retrieval-diagnostics.md
@@ -13,12 +14,17 @@ references:
 implementation:
 - src/relaylm/cognitive.py
 - src/relaylm/cognition_execution.py
+- src/relaylm/cognition_execution_evidence.py
 - src/relaylm/turn.py
 - src/relaylm/two_pass_turn.py
+- src/relaylm/shadow_turn.py
 - src/relaylm/providers/openai_compatible_two_pass.py
 tests:
 - tests/unit/test_cognition_execution_policy.py
 - tests/unit/test_cognition_pass_execution.py
+- tests/unit/test_cognition_execution_evidence_identity.py
+- tests/unit/test_cognition_shadow_two_pass.py
+- tests/unit/test_openai_compatible_shadow_two_pass.py
 - tests/unit/test_cognition_two_pass_turn.py
 - tests/unit/test_cognition_two_pass_guards.py
 - tests/unit/test_cognition_two_pass_continuity_guard.py
