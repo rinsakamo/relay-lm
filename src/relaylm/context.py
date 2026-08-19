@@ -878,6 +878,35 @@ def _memory_chunk_is_shadowed(
                             ):
                                 return True
                             continue
+                body_values = _atx_heading_body_values(chunk.content)
+                if body_values is not None and len(body_values) >= 2:
+                    explicit_negated_bodies = tuple(
+                        explicit_body
+                        for body_value in body_values
+                        if (
+                            explicit_body := _explicit_reserved_degree_claim(body_value)
+                        )
+                        is not None
+                        and len(_lexical_terms(explicit_body[0])) > 1
+                        and _lexical_terms(explicit_body[0])[0] == "not"
+                        and _lexical_terms(explicit_body[0])[1] != "not"
+                    )
+                    if len(explicit_negated_bodies) == 1:
+                        explicit_degrees = _explicit_degree_hint_assignments(
+                            chunk.content,
+                            key=record.key,
+                            heading_addresses_key=True,
+                        )
+                        if len(explicit_degrees) == 1:
+                            body_semantic, body_degree = explicit_negated_bodies[0]
+                            body_semantic_terms = _lexical_terms(body_semantic)
+                            current_semantic_terms = _lexical_terms(current_semantic)
+                            if (
+                                body_semantic_terms[1:] == current_semantic_terms
+                                and body_degree == current_degree
+                            ):
+                                return True
+                            continue
             if not _contains_lexical_value(chunk.content, current_semantic):
                 return True
             explicit_degrees = _explicit_degree_hint_assignments(
@@ -996,7 +1025,7 @@ def _simple_scalar_state_value_text(value: Any) -> str | None:
     return None
 
 
-def _single_atx_heading_body_value(content: str) -> str | None:
+def _atx_heading_body_values(content: str) -> tuple[str, ...] | None:
     lines = content.splitlines()
     first_nonempty_index = next(
         (index for index, line in enumerate(lines) if line.strip()),
@@ -1006,12 +1035,16 @@ def _single_atx_heading_body_value(content: str) -> str | None:
         return None
     if re.fullmatch(r"\s{0,3}#{1,6}\s+\S.*", lines[first_nonempty_index]) is None:
         return None
-    body_lines = tuple(
+    return tuple(
         line.strip()
         for line in lines[first_nonempty_index + 1 :]
         if line.strip()
     )
-    if len(body_lines) != 1:
+
+
+def _single_atx_heading_body_value(content: str) -> str | None:
+    body_lines = _atx_heading_body_values(content)
+    if body_lines is None or len(body_lines) != 1:
         return None
     return body_lines[0]
 
