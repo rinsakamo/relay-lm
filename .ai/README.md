@@ -112,7 +112,8 @@ Field roles:
 - reverse dependencies (`consumed_by`) are derived from consumers'
   `depends_on` and are never declared a second time;
 - evidence is owned by its producer; consumers reference an evidence id and do
-  not copy the producer's results;
+  not copy the producer's results, and an evidence surface may not be declared
+  by any other owner or restated as the producer's own implementation;
 - live repository facts — current HEAD, open PRs, CI results, current Issue
   state — are never copied into a declaration;
 - every document under `docs/` is claimed by exactly one owner, as a canonical

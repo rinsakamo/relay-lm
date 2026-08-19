@@ -107,3 +107,50 @@ def test_evidence_is_referenced_rather_than_copied() -> None:
 
     assert contract.freshness_of("merged_evidence") == "evidence"
     assert contract.is_persistent_authority("merged_evidence") is True
+
+
+def test_evidence_is_owned_by_its_producer() -> None:
+    declarations = load_declarations(REPOSITORY_ROOT)
+    producers = {
+        record.id: declaration.id
+        for declaration in declarations
+        for record in declaration.evidence
+    }
+
+    assert producers, "no evidence record is declared"
+    for declaration in declarations:
+        for reference in declaration.evidence_refs:
+            assert producers[reference] != declaration.id
+
+
+def test_a_consumer_references_evidence_instead_of_copying_it() -> None:
+    declarations = {
+        declaration.id: declaration for declaration in load_declarations(REPOSITORY_ROOT)
+    }
+    calibration = declarations["calibration"]
+    producer = declarations["actual_model_evaluation"]
+    produced = {record.id for record in producer.evidence}
+
+    assert calibration.evidence == ()
+    assert set(calibration.evidence_refs) <= produced
+    assert "actual_model_evaluation" in calibration.depends_on
+
+
+def test_no_evidence_surface_is_claimed_outside_its_producer() -> None:
+    declarations = load_declarations(REPOSITORY_ROOT)
+    evidence_surfaces = {
+        surface: declaration.id
+        for declaration in declarations
+        for record in declaration.evidence
+        for surface in record.surfaces
+    }
+
+    for declaration in declarations:
+        declared = {
+            *declaration.canonical_surfaces,
+            *declaration.references,
+            *declaration.implementation,
+            *declaration.tests,
+            *declaration.annotations,
+        }
+        assert not (declared & set(evidence_surfaces))

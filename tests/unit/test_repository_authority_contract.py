@@ -474,3 +474,70 @@ def test_a_live_repository_fact_must_not_be_copied_into_persistent_authority(
         " '61113e759498208716d85b3aca6db57e9c455195' must not be copied into"
         " persistent authority",
     )
+
+
+def test_an_evidence_surface_is_not_also_declared_as_implementation(tmp_path: Path) -> None:
+    surface = _touch(tmp_path, "evaluation/actual_model/targets/gemma-v1.json")
+    declaration = _minimal(tmp_path, "actual_model_evaluation")
+    declaration["implementation"] = [surface]
+    declaration["evidence"] = [
+        {
+            "id": "gemma-target-v1",
+            "summary": "Frozen target identity.",
+            "surfaces": [surface],
+        }
+    ]
+    _write(tmp_path, declaration)
+
+    errors = validate_repository(tmp_path)
+
+    assert errors == (
+        ".ai/authority/actual_model_evaluation.yaml:"
+        " 'evaluation/actual_model/targets/gemma-v1.json' is an evidence surface and"
+        " must not also be declared as implementation",
+    )
+
+
+def test_an_evidence_surface_belongs_only_to_its_producer(tmp_path: Path) -> None:
+    surface = _touch(tmp_path, "evaluation/actual_model/targets/gemma-v1.json")
+    producer = _minimal(tmp_path, "actual_model_evaluation")
+    producer["evidence"] = [
+        {
+            "id": "gemma-target-v1",
+            "summary": "Frozen target identity.",
+            "surfaces": [surface],
+        }
+    ]
+    consumer = _minimal(tmp_path, "calibration")
+    consumer["implementation"] = [surface]
+    consumer["evidence_refs"] = ["gemma-target-v1"]
+    _write(tmp_path, producer)
+    _write(tmp_path, consumer)
+
+    errors = validate_repository(tmp_path)
+
+    assert errors == (
+        "evaluation/actual_model/targets/gemma-v1.json: evidence surface owned by"
+        " actual_model_evaluation must not be declared by calibration",
+    )
+
+
+def test_a_consumer_may_reference_producer_evidence_without_copying_it(
+    tmp_path: Path,
+) -> None:
+    surface = _touch(tmp_path, "evaluation/actual_model/targets/gemma-v1.json")
+    producer = _minimal(tmp_path, "actual_model_evaluation")
+    producer["evidence"] = [
+        {
+            "id": "gemma-target-v1",
+            "summary": "Frozen target identity.",
+            "surfaces": [surface],
+        }
+    ]
+    consumer = _minimal(tmp_path, "calibration")
+    consumer["depends_on"] = ["actual_model_evaluation"]
+    consumer["evidence_refs"] = ["gemma-target-v1"]
+    _write(tmp_path, producer)
+    _write(tmp_path, consumer)
+
+    assert validate_repository(tmp_path) == ()
