@@ -21,6 +21,7 @@ tests:
 - tests/unit/test_cognition_pass_execution.py
 - tests/unit/test_cognition_two_pass_turn.py
 - tests/unit/test_cognition_two_pass_guards.py
+- tests/unit/test_cognition_two_pass_continuity_guard.py
 - tests/unit/test_openai_compatible_two_pass.py
 - tests/unit/test_cognitive_turn.py
 - tests/unit/test_continuity_turn.py
