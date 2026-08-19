@@ -1,8 +1,9 @@
 schema_version: 1
 id: cognitive_turn
-summary: One semantic cognitive generation per ordinary turn and its runtime assembly.
-owner_issue: 1259
+summary: Ordinary-turn cognition execution policy and runtime assembly over unchanged deterministic State/Continuity authority.
+owner_issue: 1533
 canonical_surfaces:
+- docs/contracts/cognition-execution-policy.md
 - docs/contracts/cognitive-turn.md
 - docs/architecture/cognitive-runtime.md
 - docs/reference/turn-retrieval-diagnostics.md
@@ -12,6 +13,7 @@ implementation:
 - src/relaylm/cognitive.py
 - src/relaylm/turn.py
 tests:
+- tests/unit/test_cognition_execution_policy.py
 - tests/unit/test_cognitive_turn.py
 - tests/unit/test_continuity_turn.py
 - tests/unit/test_cognitive_budget_turn_wiring.py
