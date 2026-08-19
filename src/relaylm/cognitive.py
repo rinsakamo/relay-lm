@@ -1,12 +1,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import Mapping, Protocol
 
 from relaylm.continuity import ContinuityCandidate
 from relaylm.events import Event
 from relaylm.identity import Identity
 from relaylm.state import StateCandidate, StateRecord
+
+
+class CognitionExecutionMode(StrEnum):
+    """Closed RelayLM 1.0 ordinary-turn cognition execution-policy vocabulary."""
+
+    SINGLE_PASS = "single_pass"
+    TWO_PASS = "two_pass"
+    SHADOW_TWO_PASS = "shadow_two_pass"
+    AUTO = "auto"
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,5 +97,5 @@ class CognitiveOutput:
 
 class CognitiveProvider(Protocol):
     async def generate(self, cognitive_input: CognitiveInput) -> CognitiveOutput:
-        """Perform exactly one semantic cognitive generation."""
+        """Perform one provider generation for the supplied cognitive input."""
         ...
