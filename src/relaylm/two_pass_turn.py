@@ -81,6 +81,11 @@ class CognitionExecutionRuntime:
         init=False,
         repr=False,
     )
+    _authority_lock: asyncio.Lock = field(
+        default_factory=asyncio.Lock,
+        init=False,
+        repr=False,
+    )
     _pending_extractions: set[asyncio.Task[TwoPassExtractionResult]] = field(
         default_factory=set,
         init=False,
@@ -132,7 +137,8 @@ async def run_user_turn_two_pass(
         raise ValueError("user content must not be empty")
 
     async with execution_runtime._conversation_lock:
-        execution_revision = execution_runtime._reserve_turn()
+        async with execution_runtime._authority_lock:
+            execution_revision = execution_runtime._reserve_turn()
         user_event, state, cognitive_input = _prepare_two_pass_user_turn(
             character=character,
             content=content,
@@ -141,10 +147,11 @@ async def run_user_turn_two_pass(
             continuity_runtime=continuity_runtime,
             cognitive_budget=cognitive_budget,
         )
-        execution_runtime._bind_turn(
-            revision=execution_revision,
-            event_id=user_event.id,
-        )
+        async with execution_runtime._authority_lock:
+            execution_runtime._bind_turn(
+                revision=execution_revision,
+                event_id=user_event.id,
+            )
         origin_continuity = (
             continuity_runtime.context if continuity_runtime is not None else None
         )
@@ -197,7 +204,8 @@ async def run_user_turn_two_pass_streaming(
         raise ValueError("user content must not be empty")
 
     async with execution_runtime._conversation_lock:
-        execution_revision = execution_runtime._reserve_turn()
+        async with execution_runtime._authority_lock:
+            execution_revision = execution_runtime._reserve_turn()
         user_event, state, cognitive_input = _prepare_two_pass_user_turn(
             character=character,
             content=content,
@@ -206,10 +214,11 @@ async def run_user_turn_two_pass_streaming(
             continuity_runtime=continuity_runtime,
             cognitive_budget=cognitive_budget,
         )
-        execution_runtime._bind_turn(
-            revision=execution_revision,
-            event_id=user_event.id,
-        )
+        async with execution_runtime._authority_lock:
+            execution_runtime._bind_turn(
+                revision=execution_revision,
+                event_id=user_event.id,
+            )
         origin_continuity = (
             continuity_runtime.context if continuity_runtime is not None else None
         )
@@ -350,60 +359,64 @@ async def _complete_extraction(
                 failure_reason="continuity_runtime_required",
             )
 
-        if not execution_runtime._is_current(
-            revision=execution_revision,
-            event_id=event_id,
-        ):
-            return TwoPassExtractionResult(
-                status=TwoPassExtractionStatus.STALE,
-                originating_event_id=event_id,
-                state=character.load_state(),
-            )
+        async with execution_runtime._authority_lock:
+            if not execution_runtime._is_current(
+                revision=execution_revision,
+                event_id=event_id,
+            ):
+                return TwoPassExtractionResult(
+                    status=TwoPassExtractionStatus.STALE,
+                    originating_event_id=event_id,
+                    state=character.load_state(),
+                )
 
-        current_state = character.load_state()
-        if current_state != origin_state:
-            return TwoPassExtractionResult(
-                status=TwoPassExtractionStatus.STALE,
-                originating_event_id=event_id,
-                state=current_state,
-            )
-        if continuity_runtime is not None and continuity_runtime.context != origin_continuity:
-            return TwoPassExtractionResult(
-                status=TwoPassExtractionStatus.STALE,
-                originating_event_id=event_id,
-                state=current_state,
-            )
+            current_state = character.load_state()
+            if current_state != origin_state:
+                return TwoPassExtractionResult(
+                    status=TwoPassExtractionStatus.STALE,
+                    originating_event_id=event_id,
+                    state=current_state,
+                )
+            if (
+                continuity_runtime is not None
+                and continuity_runtime.context != origin_continuity
+            ):
+                return TwoPassExtractionResult(
+                    status=TwoPassExtractionStatus.STALE,
+                    originating_event_id=event_id,
+                    state=current_state,
+                )
 
-        event_by_id = {event.id: event for event in character.iter_events()}
-        state_validation = apply_state_candidates(
-            current_state=current_state,
-            candidates=output.state_candidates,
-            events=event_by_id,
-            required_source_ids=frozenset({event_id}),
-        )
-
-        continuity_validation = None
-        if continuity_runtime is not None:
-            continuity_validation = apply_continuity_candidates(
-                current_context=continuity_runtime.context,
-                candidates=output.continuity_candidates,
+            event_by_id = {event.id: event for event in character.iter_events()}
+            state_validation = apply_state_candidates(
+                current_state=current_state,
+                candidates=output.state_candidates,
                 events=event_by_id,
                 required_source_ids=frozenset({event_id}),
-                lifetime_revisions=continuity_runtime.lifetime_revisions,
             )
 
-        if state_validation.changed:
-            character.save_state(state_validation.state)
-        if continuity_validation is not None:
-            continuity_runtime.context = continuity_validation.context
+            continuity_validation = None
+            if continuity_runtime is not None:
+                continuity_validation = apply_continuity_candidates(
+                    current_context=continuity_runtime.context,
+                    candidates=output.continuity_candidates,
+                    events=event_by_id,
+                    required_source_ids=frozenset({event_id}),
+                    lifetime_revisions=continuity_runtime.lifetime_revisions,
+                )
 
-        return TwoPassExtractionResult(
-            status=TwoPassExtractionStatus.COMMITTED,
-            originating_event_id=event_id,
-            state=state_validation.state,
-            decisions=state_validation.decisions,
-            continuity=continuity_validation,
-        )
+            if state_validation.changed:
+                character.save_state(state_validation.state)
+            if continuity_validation is not None:
+                continuity_runtime.context = continuity_validation.context
+
+            return TwoPassExtractionResult(
+                status=TwoPassExtractionStatus.COMMITTED,
+                originating_event_id=event_id,
+                state=state_validation.state,
+                decisions=state_validation.decisions,
+                continuity=continuity_validation,
+            )
     except asyncio.CancelledError:
         raise
     except Exception:
