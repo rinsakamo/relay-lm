@@ -129,6 +129,179 @@ Comparison summaries add a content-free `bounded_budget_failure_count`. Pressure
 
 Scenario-bound pressure wrappers pass the explicit baseline and pressure `CognitiveBudgetRuntimeConfig` objects through to the ordinary-turn harness.
 
+## Replication and stopping rule
+
+Authority identity: `actual-model-replication-rule-v1`.
+
+This rule applies to a controlled actual-model comparison whose purpose is to
+attribute a product-quality difference to one explicit condition boundary,
+including a total cognitive-budget pressure comparison. It does not choose
+budget values, profiles, or defaults; define #1387 degradation semantics;
+change scenario labels or the #1386 review rubric; create a weighted score;
+estimate population-level statistical significance; or generalize one
+scenario/model result to another target.
+
+### Valid replicate pair
+
+A pair is a valid replicate only when the existing #1386 controlled
+comparison contract is satisfied. The following non-budget identity remains
+fixed, as applicable:
+
+- RelayLM freeze commit;
+- exact model artifact;
+- tokenizer;
+- provider/adapter;
+- provider capabilities;
+- effective context window;
+- decoding and seed policy;
+- scenario definition and revision;
+- Character fixture revision;
+- structured-output schema;
+- execution path;
+- Continuity Runtime identity; and
+- serialized-input counter identity and count mode.
+
+Only the declared comparison condition/budget and the required
+condition/replicate evidence identity may differ. An invalid pair contributes
+no evidence for directional stability and must not be reinterpreted as an
+adverse model result.
+
+### Unit of stability
+
+Evaluate stability independently for:
+
+```text
+scenario × exact comparison boundary × supported quality dimension
+```
+
+Do not collapse dimensions into a weighted score. Supported dimensions are
+limited to what the scenario, provider, and review actually cover, such as:
+
+- response correctness/coherence;
+- persona/self-identity;
+- required StateCandidate behavior;
+- required Continuity behavior;
+- unsupported recalled-detail behavior; and
+- scenario-owned no-op, stale, or unnecessary proposal behavior.
+
+Unsupported dimensions remain `not covered`. The deterministic RelayLM
+boundary PASS/FAIL remains separate from product-quality direction.
+
+### Pair-level directional classification
+
+For each supported quality dimension, classify each valid pair using the
+existing scenario-owned and review criteria:
+
+- `pressure_worse`;
+- `no_material_delta`; or
+- `pressure_better`.
+
+Do not invent a universal numeric epsilon. A difference is material only when
+the existing scenario/review semantics support that interpretation, such as a
+required categorical pass/fail outcome changing, a required labeled proposal
+being present versus absent, or a supported forbidden/unsupported behavior
+appearing versus not appearing. Raw precision, recall, and count differences
+remain descriptive unless existing scenario/review authority makes them
+materially meaningful.
+
+If the same product failure occurs on both sides of a pair, record it as a
+repeated model/scenario quality observation, not as a boundary-attributed
+budget delta.
+
+### Minimal sequential replication gate
+
+Use this fixed sequence for each scenario/boundary/dimension unit:
+
+```text
+valid pair 1  = initial observation
+valid pair 2  = independent replication check
+```
+
+If pair 1 and pair 2 disagree in directional classification, stop and classify
+the unit as `unstable_no_boundary_attribution`. Do not add replicates merely to
+manufacture a majority; disagreement is itself evidence of instability.
+
+If pair 1 and pair 2 agree, execute at most one additional valid pair when
+confirmation is required:
+
+```text
+valid pair 3  = confirmation
+```
+
+If all three valid pairs agree on the same material direction, classify the
+unit as `replicated_directional_signal`. If all three agree that there is no
+material delta, classify it as `no_material_delta_observed`. If pair 3
+disagrees with the first two, classify the unit as
+`unstable_no_boundary_attribution`.
+
+Three valid pairs are the maximum evidence tranche for this minimal v1
+reproducibility gate:
+
+- pair 1 is the observation;
+- pair 2 is the replication;
+- pair 3 is the confirmation; and
+- the protocol must not keep sampling until a preferred result appears.
+
+This is an engineering reproducibility gate, not a statistical significance or
+confidence-interval claim.
+
+### Claim scope and calibration consequence
+
+`replicated_directional_signal` means only that the observed directional effect
+reproduced under the exact frozen scenario, target, and comparison boundary
+represented by those runs. It does not establish a universal model property,
+cross-scenario or cross-model generality, a canonical profile, or a runtime
+default.
+
+`no_material_delta_observed` means only that no material delta was observed in
+the three valid paired executions under that exact freeze.
+
+`unstable_no_boundary_attribution` means that the evidence does not support
+attributing the observed product-quality difference to that exact comparison
+boundary.
+
+For #1388, an `unstable_no_boundary_attribution` boundary must not be used as
+evidence that one adjacent condition is the smallest sufficient region or as
+justification for selecting one side as a profile/default. Calibration may
+preserve the instability, investigate a different meaningfully separated
+evidence-derived region in a later explicitly governed transaction, or retain
+no-default/evidence-insufficient status. It must not repeat the same disputed
+adjacent pair until a preferred direction wins. A
+`replicated_directional_signal` is usable evidence for Calibration, but does
+not itself select a default.
+
+### Current CAL3-GAP-1 reconciliation
+
+Under `actual-model-replication-rule-v1`, the already-executed
+`cognitive-pressure-shared-semantics-v1` boundary is reconciled as follows:
+
+```text
+R_fit           = 6345
+R_first_pressure = 6346
+```
+
+The two existing valid pairs classify the supported correctness dimension as:
+
+```text
+pair 1: fit-side correctness pass;   pressure-side correctness fail
+         → pressure_worse
+
+pair 2: fit-side correctness fail;    pressure-side correctness fail
+         → no_material_delta
+```
+
+Their classifications disagree, so the stopping condition is already met
+after two valid pairs:
+
+```text
+unstable_no_boundary_attribution
+```
+
+No third pair is required for this exact boundary. The repeated unresolved
+Continuity loss on both sides remains a repeated product-quality observation,
+but is not attributable to the `6345 → 6346` boundary. No profile or default
+follows from this reconciliation, and no new evidence IDs are created.
+
 ## Canonical scenario execution
 
 `run_actual_model_scenario_definition()` accepts the same optional runtime and validates manifest/runtime identity before mutable workspace creation or provider generation.
