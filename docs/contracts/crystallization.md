@@ -30,6 +30,8 @@ CrystallizationOutput
 
 `memory/MEMORY.md` is portable readable synthesis. `memory/state.json` remains the accepted current machine understanding, and `memory/events.jsonl` remains occurrence/provenance history.
 
+The current OpenAI-compatible implementation of the `Crystallizer` protocol is `OpenAICompatibleCrystallizer`. It performs one non-streaming Chat Completions generation per explicit crystallization operation and returns one complete `CrystallizationOutput` or fails closed. It does not retry semantic generation automatically and does not create a second State authority path.
+
 ## CrystallizationInput
 
 The current input contains:
@@ -43,6 +45,15 @@ The current input contains:
 
 State records may refer to Event provenance older than the recent snapshot. Candidate validation therefore checks source IDs against the full persisted Event Journal, not only the bounded crystallizer Event window.
 
+The OpenAI-compatible adapter serializes only this existing input boundary. It carries:
+
+- Identity content;
+- current State records including State identity, class, key, value, sources, status, and validity fields;
+- bounded Events including Event identity, type, actor, timestamp, and payload;
+- prior MEMORY Markdown or `null`.
+
+The adapter does not reinterpret these fields into a second persistence model. Event actor/provenance remains visible to the crystallizer, and prior MEMORY remains synthesis input rather than Event evidence.
+
 ## CrystallizationOutput
 
 The current output shape is logically:
@@ -55,6 +66,62 @@ state_candidates: StateCandidate[]
 The Markdown body is the readable synthesis produced by the crystallizer. Provenance should be represented in the Markdown when the synthesis depends on specific Events or accepted State, but readable Markdown does not gain Canonical State authority merely by mentioning a source.
 
 `StateCandidate[]` uses the existing RelayLM StateCandidate contract. The crystallizer has no privileged mutation path.
+
+### OpenAI-compatible structured-output wire
+
+`OpenAICompatibleCrystallizer` requests strict JSON Schema output with schema name `relaylm_crystallization_output` and exactly these top-level fields:
+
+```json
+{
+  "memory_markdown": "# Memory\n...",
+  "state_candidates": [
+    {
+      "state_class": "user.preference",
+      "key": "tea",
+      "op": "set",
+      "value": "likes",
+      "sources": ["event-id"]
+    }
+  ]
+}
+```
+
+Rules:
+
+- `memory_markdown` is a non-empty string;
+- `state_candidates` is an array and there is no ContinuityCandidate channel;
+- each candidate contains exactly `state_class`, `key`, `op`, `value`, and `sources`;
+- `state_class` must be in the current State class registry;
+- `set.value` is either a string or the current exact `{semantic, degree_hint}` envelope with finite `degree_hint` in `0..1`;
+- `remove.value` is `null` on the wire and is normalized to semantic `remove` without a value;
+- candidate `sources` is non-empty and every source must be an Event ID present in the bounded `CrystallizationInput.events` supplied to that generation;
+- State IDs, Markdown headings/locations, and prior MEMORY prose cannot become StateCandidate Event sources;
+- unknown top-level/candidate fields, malformed values, invalid classes, invented Event sources, invalid Chat Completions envelopes, invalid JSON, and upstream HTTP failures fail closed with `ProviderProtocolError`;
+- a failed generation is not automatically retried semantically, so no partial crystallization output is returned to the existing orchestration for persistence.
+
+The adapter reuses the existing `OpenAICompatibleDecodingConfig` and `OpenAICompatibleDecodingCapabilities` contract. Explicit supported decoding controls are carried exactly; RelayLM does not invent hidden decoding defaults.
+
+## Long-horizon consolidation semantics
+
+The current OpenAI-compatible crystallization instruction treats the operation as **long-horizon semantic consolidation**, not merely chronological Markdown summarization.
+
+The executable provider instruction preserves these boundaries:
+
+- Identity is authoritative and immutable;
+- Canonical State is accepted current machine understanding, not irreversible truth;
+- Events remain occurrence/provenance evidence and preserve actor authority;
+- prior MEMORY is readable prior synthesis, not Event evidence or Canonical State;
+- corrections, supersession, uncertainty, comparative meaning, and current-versus-historical distinctions should be preserved rather than flattened;
+- assistant-authored Events do not certify user facts, preferences, goals, experiences, or external facts merely because the assistant said them;
+- short-lived referents, unresolved questions, and active tasks should not become durable memory merely because they appeared recently;
+- when Canonical State already represents the same durable concept, a corrective proposal should reuse its exact `state_class + key` rather than inventing an alias;
+- redundant durable concepts and duplicate aliases should be avoided when the evidence permits one coherent representation;
+- corrective StateCandidate output is reserved for a genuinely supported change to accepted current understanding; otherwise no State candidate is required;
+- Event IDs must never be invented and prior MEMORY prose must never be treated as Event evidence.
+
+The instruction may also ask the model to emit the governed `relaylm-memory:v1` metadata convention for MEMORY units whose temporal/provenance role is supported. MEMORY metadata provenance may refer to supplied Event or State authority roots according to the metadata contract below; this is separate from the stricter StateCandidate rule that candidate `sources` are supplied Event IDs only.
+
+This instruction is current executable provider behavior. It is **not** evidence that the prompt is already product-optimal or that a target model reliably performs all of these semantic tasks. Real-model crystallization-quality evidence and prompt/schema tuning remain separate work.
 
 ## Typed MEMORY temporal/provenance model
 
@@ -114,6 +181,8 @@ Candidate write-back follows the existing deterministic Validator/State engine:
 - equal accepted values remain noops;
 - accepted changes persist through the normal Canonical State writer.
 
+The OpenAI-compatible adapter adds an earlier source-grounding check: a crystallization StateCandidate may cite only Event IDs that were actually supplied in that bounded crystallization input. The existing Validator remains the final authority gate and may still reject a source-grounded candidate for provenance, class, key, value, scope, or transition reasons.
+
 Crystallization does not reinterpret Validator rejection as success and does not promote Markdown prose into State automatically.
 
 ## Markdown persistence
@@ -126,21 +195,21 @@ This stability rule avoids needless Markdown churn on unchanged crystallization 
 
 ## Ordinary-turn boundary
 
-Crystallization is explicitly off-turn. Adding a Crystallizer protocol does not change the ordinary-turn invariant:
+Crystallization is explicitly off-turn. The current OpenAI-compatible crystallizer may use an LLM, but that invocation is a separate explicit crystallization operation and not a hidden second call inside ordinary conversation.
+
+The ordinary-turn invariant remains:
 
 > one ordinary user turn targets exactly one cognitive LLM generation.
 
-A future crystallizer provider may itself use an LLM, but that invocation is a separate crystallization operation, not a hidden second call inside ordinary conversation.
-
 ## Deferred work
 
-Still owned by #1260:
+Still owned by #1260 or its explicitly delegated evaluation owner:
 
-- an actual OpenAI-compatible / local-model crystallizer adapter and prompt/schema contract;
+- real target-model crystallization-quality evidence and evidence-backed prompt/schema tuning, coordinated with #1386 after this provider contract exists;
 - richer provenance conventions for human/Obsidian presentation beyond the governed typed metadata contract;
 - `memory/notes/*.md` splitting, linking, and wiki organization;
 - autonomous scheduling or background crystallization policy;
 - manual/external Markdown import and governed write-back;
-- richer idempotence/semantic churn evaluation.
+- richer semantic idempotence/churn evaluation across differently worded but equivalent crystallizations.
 
-Retrieval of crystallized memory into ordinary cognitive Context remains owned by #1267. The canonical `MemoryChunk` retrieval representation now carries typed temporal/provenance metadata for that downstream consumer; Context Compiler authority behavior remains separately owned by #1267.
+Retrieval of crystallized memory into ordinary cognitive Context remains owned by #1267. The canonical `MemoryChunk` retrieval representation carries typed temporal/provenance metadata for that downstream consumer; Context Compiler authority behavior remains separately owned by #1267.
