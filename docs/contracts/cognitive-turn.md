@@ -1,5 +1,7 @@
 # Cognitive Turn Contract
 
+Ordinary-turn execution topology is owned by `docs/contracts/cognition-execution-policy.md`. This contract owns the semantic input/output/commit boundary shared by the supported execution policies.
+
 ## CognitiveInput
 
 Minimal semantic shape:
@@ -77,7 +79,11 @@ Context compilation is read/select/project only. `ContextItem` is not a memory m
 
 Turn does not inspect Continuity kinds or reproduce Context Compiler retention semantics. The compiler owns whether and how already-accepted Continuity enters `CognitiveInput.context`; current compiler authority includes accepted `referent`, `unresolved`, and `active_task` projection while preserving their accepted Event sources and epistemic role.
 
-The snapshot supplied to cognition is the pre-turn accepted context. The runtime revision is advanced only after the single provider generation completes and deterministic Continuity validation runs at the common commit boundary. Streaming deltas do not mutate accepted Continuity while generation is in progress.
+The snapshot supplied to cognition is the pre-turn accepted context.
+
+For `single_pass`, the Continuity runtime revision advances only after the one complete provider result reaches deterministic Continuity validation at the common commit boundary. Streaming deltas do not mutate accepted Continuity while generation is in progress.
+
+For `two_pass`, the same accepted pre-turn snapshot enters the originating `CognitiveInput`. Pass 1 never mutates Continuity. Pass 2 may apply the existing Continuity lifecycle only at its guarded extraction commit boundary. If accepted Continuity has advanced since the origin snapshot, the extraction is stale and does not mutate it.
 
 No runtime means no accepted Continuity Context is supplied to compilation. Runtime capacity and lifetime remain explicit caller-provided policy, and Continuity Context remains non-durable.
 
@@ -145,7 +151,7 @@ The current projection contract is:
 - supplied order is preserved;
 - the Current Event is excluded if accidentally supplied because it is already carried separately as protected `input`;
 - a selected Event without non-empty string `payload.content` fails explicitly rather than being silently rewritten or dropped;
-- projection does not mutate Events, State, MEMORY, or indexes and does not add an LLM call.
+- projection does not mutate Events, State, MEMORY, or indexes and does not itself add a model generation.
 
 Event evidence has different semantics from both Working Context and MEMORY:
 
@@ -159,9 +165,9 @@ Authority remains source-role-aware. A user-authored Event proves what the user 
 
 The OpenAI-compatible provider serializes Event evidence separately and permits its real Event IDs as StateCandidate `sources`. MEMORY `location` values remain ineligible as sources.
 
-The ordinary turn APIs now also accept an optional `EventRetrievalBudget(max_events, max_chars)`:
+The ordinary turn APIs also accept an optional `EventRetrievalBudget(max_events, max_chars)`:
 
-- `event_budget=None` preserves the previous behavior and supplies no targeted Event evidence;
+- `event_budget=None` supplies no targeted Event evidence;
 - with an explicit budget, the Current User Event text is the retrieval query and the Current User Event ID is excluded from evidence;
 - buffered and streamed turns use the same retrieval/compilation helper;
 - ordinary-turn Working Context reads `CharacterDirectory.iter_events()` while targeted retrieval consumes `CharacterDirectory.event_retrieval_source()`; both are tied to the same validated process-local Event Journal snapshot, so the turn layer does not create an independent Event authority or reparse the unchanged journal solely for targeted retrieval;
@@ -189,9 +195,9 @@ Material can leave Working Context under budget pressure while remaining durably
 
 The current implementation preserves normal prior `user → assistant` exchanges atomically so budget pressure cannot retain an assistant assertion while dropping the user Event that gave the exchange its conversational basis.
 
-## Ordinary turn ordering
+## Execution-policy ordering
 
-The current ordinary-turn runtime uses this semantic order:
+Both implemented execution paths share the same preparation owner:
 
 ```text
 load config / Identity / Canonical State
@@ -199,21 +205,20 @@ load config / Identity / Canonical State
 persist Current User Event
         ↓
 if explicit ContinuityRuntime exists:
-  snapshot its current accepted ContinuityContext
+  snapshot accepted ContinuityContext
         ↓
-if explicit MEMORY budget exists:
-  read MEMORY.md → bounded retrieval
+perform configured MEMORY / Event retrieval
+and/or total Cognitive Budget enforcement
         ↓
-obtain validated Event chronology for Working Context
-        ↓
-if explicit Event budget exists:
-  obtain the derived Event retrieval source tied to that validated snapshot
-  → bounded Event retrieval excluding Current User Event
-        ↓
-compile CognitiveInput
-  ├─ consume the accepted pre-turn ContinuityContext through compiler-owned projection
-  ├─ filter explicit State-shadowed MEMORY before projection
-  └─ project selected targeted Events into Event Evidence
+compile one originating CognitiveInput
+```
+
+Persisting the User Event before retrieval/provider execution is intentional: the Event Journal records that the user input occurred even if optional retrieval or cognition later fails.
+
+### `single_pass` ordering
+
+```text
+originating CognitiveInput
         ↓
 exactly one provider generation
         ↓
@@ -233,13 +238,44 @@ persist Canonical State only if validation changed it
 replace ContinuityRuntime.context with the validated immutable result
 ```
 
-Persisting the User Event before retrieval/provider execution is intentional: the Event Journal records that the user input occurred even if optional retrieval or cognition later fails.
+Buffered and streamed single-pass delivery share this semantic ordering. A streaming adapter may expose safely decoded response characters while the provider is still producing its structured wire object, but early display is not a semantic `CognitiveOutput` acceptance point. Assistant Event creation, StateCandidate validation, and Continuity validation wait for the complete valid result.
 
-Buffered and streamed delivery share this semantic ordering and the same optional-memory/Event/Continuity preparation owner. A streaming adapter may expose safely decoded response characters while the single provider generation is still producing its structured wire object, but this early display is not a semantic `CognitiveOutput` acceptance point. Assistant Event creation, StateCandidate validation, and Continuity validation wait for the complete valid cognitive result.
+### `two_pass` ordering
 
-The same occurrence may currently qualify for recent Working Context and targeted Event evidence when both selectors admit it. Cross-layer redundancy suppression is intentionally deferred rather than silently changing either selector's semantics.
+The explicit two-pass APIs use the same prepared origin but separate the visible-response and proposal phases:
 
-## CognitiveOutput
+```text
+reserve process-local execution revision
+        ↓
+prepare + bind originating User Event / CognitiveInput
+        ↓
+Pass 1 conversation generation
+        ↓
+accept complete non-empty response
+        ↓
+persist Assistant Event
+        ↓
+return response-first TwoPassTurnResult
+        └──────── background ────────┐
+                                     ↓
+                          Pass 2 structured extraction
+                                     ↓
+                         StateCandidate[] / ContinuityCandidate[]
+                                     ↓
+                  short guarded stale-check / validation boundary
+                                     ↓
+                     existing deterministic State / Continuity owners
+```
+
+The same provider object is reused sequentially. Pass 2 receives the originating `CognitiveInput` plus the Pass 1 response as interpretive context only. The assistant response is not a source Event and cannot self-certify user or external facts.
+
+Pass 2 inference does not hold the conversation lock. A later Pass 1 may therefore begin while prior extraction is pending. A new two-pass turn advances the process-local execution revision before its preparation; the final extraction commit checks that revision, originating Event identity, origin State snapshot, and origin Continuity snapshot under a short authority lock. A mismatch returns `stale` and performs no mutation.
+
+The same occurrence may currently qualify for recent Working Context and targeted Event evidence when both selectors admit it. Cross-layer redundancy suppression remains intentionally deferred rather than silently changing either selector's semantics.
+
+## Semantic outputs
+
+### Single-pass CognitiveOutput
 
 ```json
 {
@@ -251,48 +287,62 @@ The same occurrence may currently qualify for recent Working Context and targete
 
 `response` is user-visible natural language. `state_candidates` are non-authoritative proposals. `continuity_candidates` are proposals for bounded non-durable Continuity and require deterministic Continuity validation before becoming accepted temporary authority.
 
-The return path is deliberately symmetric with the input path:
+### Two-pass outputs
+
+Pass 1:
 
 ```text
-CognitiveOutput
-  ├─ response
-  │    ↓
-  │  Assistant Event
-  │    ↓
-  │  possible future Working Context
-  │
-  ├─ StateCandidate[]
-  │    ↓
-  │  Validator
-  │    ↓
-  │  Canonical State
-  │
-  └─ ContinuityCandidate[]
-       ↓
-     deterministic Continuity validation
-       ↓
-     process-local Continuity Context
-       ↓
-     later-turn Context Compiler consumption
+CognitionConversationOutput
+  response
+```
+
+Pass 2:
+
+```text
+CognitionExtractionOutput
+  state_candidates
+  continuity_candidates
+```
+
+The originating turn binds both pass outputs. `CognitionExtractionInput.originating_event_id` is derived from the RelayLM-owned current User Event; the model does not author that binding.
+
+Across both policies the semantic return graph remains:
+
+```text
+response
+  ↓
+Assistant Event
+  ↓
+possible future Working Context
+
+StateCandidate[]
+  ↓
+Validator
+  ↓
+Canonical State
+
+ContinuityCandidate[]
+  ↓
+deterministic Continuity validation
+  ↓
+process-local Continuity Context
+  ↓
+later-turn Context Compiler consumption
 ```
 
 An assistant response therefore remains useful for future conversational continuity without becoming self-certified factual authority. A Continuity proposal likewise does not become accepted temporary authority merely because the model emitted it.
 
-Streaming does not create a second semantic output form. Provider wire `utterance` deltas are delivery fragments only; the final complete structured provider result is normalized into the same `CognitiveOutput(response, state_candidates, continuity_candidates)` used by buffered turns.
+## Streaming semantics
+
+Single-pass streaming does not create a second semantic output form. Provider wire `utterance` deltas are delivery fragments only; the final complete structured result normalizes into one `CognitiveOutput`.
+
+Two-pass streaming exposes only Pass 1 conversation deltas. A complete valid `CognitionConversationOutput` is required before the Assistant Event is persisted and Pass 2 is scheduled. Pass 2 does not create a second visible response.
 
 ## Failure semantics
 
-If optional MEMORY retrieval fails after the Current User Event is persisted but before provider generation:
+### Preparation failure
 
-```text
-Current User Event    persisted
-Provider generation   not called
-Assistant Event       not created
-Canonical State       unchanged by that failed turn
-Continuity Context    unchanged by that failed turn
-```
-
-If the cognitive provider fails before producing a valid `CognitiveOutput`:
+If optional retrieval or budget enforcement fails after the Current User Event is persisted but before model generation:
 
 ```text
 Current User Event    persisted
@@ -301,14 +351,48 @@ Canonical State       unchanged by that failed turn
 Continuity Context    unchanged by that failed turn
 ```
 
-The persisted unmatched User Event may later participate in bounded Working Context, because it is real user-origin conversational evidence even though retrieval or the attempted assistant response failed.
+The persisted unmatched User Event may later participate in bounded Working Context because it is real user-origin conversational evidence even though cognition did not complete.
 
-For a streamed turn, the same provider-failure rule applies even if a safe prefix of the provider `utterance` was already delivered to the client. A truncated or malformed structured stream does not retroactively turn that visible prefix into an accepted Assistant Event, does not make incomplete candidates authoritative, and does not trigger semantic regeneration. Successful Assistant/State/Continuity commit occurs only after complete structured provider output.
+### Single-pass provider / output failure
 
-If a valid response is produced but one or more StateCandidates are rejected, the valid response still becomes an Assistant Event while rejected candidates do not mutate Canonical State. StateCandidate acceptance and ContinuityCandidate acceptance remain separate deterministic channels.
+If the single-pass provider fails before producing a valid `CognitiveOutput`:
 
-If a completed output contains non-empty ContinuityCandidates without an explicit Continuity runtime, the turn fails before Assistant Event, State, or Continuity commit instead of silently dropping those proposals.
+```text
+Current User Event    persisted
+Assistant Event       not created
+Canonical State       unchanged
+Continuity Context    unchanged
+```
 
-Adapter-level malformed provider output is fail-closed before a semantic `CognitiveOutput` is accepted.
+For a streamed single-pass turn, the same rule applies even if a safe prefix of `utterance` was already delivered. A truncated or malformed structured stream does not retroactively turn that visible prefix into an accepted Assistant Event, does not make incomplete candidates authoritative, and does not trigger semantic regeneration.
 
-An ordinary turn targets exactly one cognitive generation. Working Context selection, accepted Continuity projection, deterministic State-shadow filtering, deterministic State/Continuity validation, persistence, Context compilation, optional retrieved-memory selection/projection, optional targeted Event retrieval/projection, and streamed delivery do not add a second ordinary cognitive LLM call.
+If a valid single-pass response is produced but one or more StateCandidates are rejected, the valid response still becomes an Assistant Event while rejected candidates do not mutate Canonical State. StateCandidate acceptance and ContinuityCandidate acceptance remain separate deterministic channels.
+
+If a completed single-pass output contains non-empty ContinuityCandidates without an explicit Continuity runtime, the turn fails before Assistant Event, State, or Continuity commit rather than silently dropping those proposals.
+
+### Two-pass Pass 1 failure
+
+A two-pass Pass 1 failure follows the same response-acceptance rule as the corresponding buffered or streaming conversation path: the User Event may already exist, but no Assistant Event and no Pass 2 extraction is created unless the complete Pass 1 conversation output is valid.
+
+### Two-pass Pass 2 failure
+
+Once Pass 1 has succeeded:
+
+```text
+Current User Event    persisted
+Assistant Event       persisted
+visible response      valid
+Pass 2 failure        bounded extraction status
+Canonical State       unchanged by failed Pass 2
+Continuity Context    unchanged by failed Pass 2
+```
+
+A provider exception, malformed extraction output, or other Pass 2 execution failure becomes `failed` with bounded reason `pass2_failed`; semantic exception text is not returned as authority or diagnostics payload.
+
+If Pass 2 emits Continuity proposals without an explicit Continuity runtime, the extraction becomes `failed` with `continuity_runtime_required` before State mutation. The State and Continuity proposal channels therefore cannot partially commit across that failure.
+
+If a newer two-pass turn has arrived, or the origin State/Continuity snapshot has changed before commit, the old extraction becomes `stale` and performs no mutation.
+
+A successful Pass 2 still routes each proposal channel through its existing deterministic validator. Rejected candidates remain rejected model proposals rather than a failure of the already-valid response.
+
+Adapter-level malformed provider output remains fail-closed before the corresponding pass output is accepted.

@@ -3,8 +3,11 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Protocol
 
-from relaylm.cognitive import CognitionExecutionMode
+from relaylm.cognitive import CognitiveInput, CognitionExecutionMode
+from relaylm.continuity import ContinuityCandidate
+from relaylm.state import StateCandidate
 
 
 class CognitionPolicyUnresolvedError(ValueError):
@@ -37,6 +40,72 @@ class CognitionOptionStatus(StrEnum):
     APPLIED = "applied"
     OMITTED = "omitted"
     UNSUPPORTED = "unsupported"
+
+
+@dataclass(frozen=True, slots=True)
+class CognitionConversationOutput:
+    """Pass 1 semantic output: only the visible natural-language response."""
+
+    response: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.response, str) or not self.response.strip():
+            raise ValueError("conversation response must not be empty")
+
+
+@dataclass(frozen=True, slots=True)
+class CognitionExtractionInput:
+    """Pass 2 input with Pass 1 response as non-authoritative interpretive context."""
+
+    cognitive_input: CognitiveInput
+    assistant_response: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.cognitive_input, CognitiveInput):
+            raise TypeError("cognitive_input must be CognitiveInput")
+        if not isinstance(self.assistant_response, str) or not self.assistant_response.strip():
+            raise ValueError("assistant_response must not be empty")
+
+    @property
+    def originating_event_id(self) -> str:
+        """RelayLM-owned origin identity; the model does not author this binding."""
+
+        return self.cognitive_input.input.id
+
+
+@dataclass(frozen=True, slots=True)
+class CognitionExtractionOutput:
+    """Pass 2 semantic output: proposals only, with no second visible response."""
+
+    state_candidates: tuple[StateCandidate, ...] = field(default_factory=tuple)
+    continuity_candidates: tuple[ContinuityCandidate, ...] = field(default_factory=tuple)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.state_candidates, tuple) or not all(
+            isinstance(candidate, StateCandidate) for candidate in self.state_candidates
+        ):
+            raise TypeError("state_candidates must contain StateCandidate values")
+        if not isinstance(self.continuity_candidates, tuple) or not all(
+            isinstance(candidate, ContinuityCandidate)
+            for candidate in self.continuity_candidates
+        ):
+            raise TypeError(
+                "continuity_candidates must contain ContinuityCandidate values"
+            )
+
+
+class TwoPassCognitiveProvider(Protocol):
+    """One loaded provider/model reused sequentially for Pass 1 then Pass 2."""
+
+    async def generate_conversation(
+        self, cognitive_input: CognitiveInput
+    ) -> CognitionConversationOutput:
+        ...
+
+    async def generate_extraction(
+        self, extraction_input: CognitionExtractionInput
+    ) -> CognitionExtractionOutput:
+        ...
 
 
 @dataclass(frozen=True, slots=True)
