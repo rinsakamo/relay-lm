@@ -53,6 +53,12 @@ jobs:
           echo "RELAYLM_PACKAGE_VERSION=$RELAYLM_PACKAGE_VERSION" >> "$GITHUB_ENV"
           echo "CANDIDATE_COMMIT=$CANDIDATE_COMMIT" >> "$GITHUB_ENV"
 
+      - name: Verify persistent documentation projection for the frozen candidate
+        run: |
+          python -m tools.repository_authority validate
+          python -m tools.repository_projection validate
+          python -m tools.repository_docs --commit "$CANDIDATE_COMMIT" check
+
       - name: Install build frontend
         run: python -m pip install build
 

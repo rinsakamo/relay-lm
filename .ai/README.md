@@ -141,6 +141,20 @@ remembered HEAD, PR list, or check result.
 
 > **Store canonical facts and projection recipes, not transient views.**
 
+## Persistent projections
+
+`ARCHITECTURE.md` is generated, not written. It is materialized from these
+declarations at a version/release boundary and carries provenance naming the
+frozen input commit it describes.
+
+```bash
+python -m tools.repository_docs --commit <frozen-input> write
+python -m tools.repository_docs --commit <frozen-input> check
+```
+
+Normal semantic transactions never regenerate it; the release-candidate gate
+requires it to match generation from the exact frozen candidate commit.
+
 ## Executable schema
 
 `tools/repository_authority.py` is the canonical schema. It is executable

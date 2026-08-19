@@ -91,6 +91,35 @@ python -m tools.repository_projection render semantic-owner-map
 
 A recipe declares its inputs, the freshness requirements of the facts it relies on, selection rules, prohibited inferences, and a preferred output shape. Rendering is deterministic and derives every fact from `.ai/authority/`; facts the recipe cannot derive from committed authority are printed as live inputs the agent must fetch. A rendered view is therefore never a second authority, and a stale rendered view cannot be mistaken for current state.
 
+## Persistent human documentation
+
+Root human-facing documentation is classified rather than assumed:
+
+```text
+README.md         canonical prose. Product description and operator entry point.
+SECURITY.md       canonical prose.
+ARCHITECTURE.md   generated projection. Never hand-edited.
+```
+
+`ARCHITECTURE.md` is materialized from owner-local authority and the release-owned package version at a version/release boundary. It carries machine-readable provenance in HTML comments naming the generator, projection schema version, frozen input commit, and package version, so a reader can tell which repository state it describes without that provenance appearing in the rendered page.
+
+```bash
+python -m tools.repository_docs --commit <frozen-input> write
+python -m tools.repository_docs --commit <frozen-input> check
+```
+
+A normal semantic transaction does not regenerate it. Drift between release boundaries is expected and is made visible by the recorded input commit. The `v1 release candidate gate` workflow validates authority, validates projection recipes, and requires the committed projection to match generation from the exact frozen candidate commit, so the generated documentation is part of the release transaction rather than a commit added after the release.
+
+```text
+version/release transaction
+  freeze input commit
+  validate authority and recipes
+  regenerate persistent projections
+  verify deterministic output against the frozen input
+  merge with the generated documentation included
+  tag
+```
+
 ## Bootstrap and freshness
 
 `.ai/agent-contract.yaml` declares the ordered read path into repository authority and the freshness class of every fact a transaction relies on.

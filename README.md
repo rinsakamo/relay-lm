@@ -97,4 +97,6 @@ Semantic behavior changes are test-first; behavior-preserving and docs-only tran
 
 Repository-use conventions are in `docs/reference/repository-practices.md`. Durable architecture decisions are intentionally sparse under `docs/decisions/`, and `.ai/authority/` holds one owner-local, validated authority declaration per semantic owner.
 
+`ARCHITECTURE.md` is a generated projection of repository authority, materialized at version/release boundaries rather than hand-synchronized by every transaction; its provenance comment records the input commit it describes.
+
 See `docs/architecture/core.md`, `docs/contracts/openai-api.md`, `docs/contracts/release-distribution.md`, `docs/reference/development-workflow.md`, and issue #1259.
