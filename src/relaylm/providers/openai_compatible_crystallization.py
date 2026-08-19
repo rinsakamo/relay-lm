@@ -7,6 +7,12 @@ from typing import Any, Mapping
 import httpx
 
 from relaylm.crystallization import CrystallizationInput, CrystallizationOutput
+from relaylm.memory_provenance import (
+    MemoryProvenanceSource,
+    MemoryProvenanceSourceKind,
+    MemoryTemporalScope,
+    MemoryUnit,
+)
 from relaylm.providers.openai_compatible import ProviderProtocolError
 from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
@@ -38,16 +44,20 @@ When correcting an existing exact `state_class + key`, preserve the existing pla
 
 Never invent Event IDs. State-candidate `sources` may use only Event IDs present in the supplied `events` array. State IDs, Markdown headings, MEMORY locations, and prior MEMORY prose are not Event sources.
 
-MEMORY Markdown may use RelayLM's governed heading-scoped metadata convention for units whose temporal role is actually supported. A classified unit uses a first-body-line comment of the form `<!-- relaylm-memory:v1 {...} -->` with `memory_id`, `derivation_id`, `temporal_scope`, and typed `sources`. MEMORY metadata sources may reference supplied Event IDs or supplied State IDs. Use `temporal_scope` only as `current`, `historical`, or `unknown`; if current/historical classification is not supported, leave the unit unclassified rather than guessing from prose, dates, or tense. Reuse stable prior logical memory identity when the same unit is being reorganized or updated.
+MEMORY is proposed as structured semantic units, not as model-authored Markdown. Each unit contains only `heading`, human-readable `content`, `temporal_scope` (`current`, `historical`, or `unknown`), and typed `sources` whose references may name supplied Event IDs or State IDs. Do not emit `memory_id`, `derivation_id`, or `relaylm-memory` control comments. RelayLM derives stable metadata only from canonical supplied State/Event authority and renders the final portable MEMORY.md. If current/historical classification or canonical source identity is not supported, leave the unit unknown rather than guessing from prose, dates, tense, or Markdown layout.
 
-Organize MEMORY around stable semantic units rather than transient wording or arbitrary heading choices. When current and historical aspects of one concept are both durable, keep their semantic units and stable logical identities coherent across updates; do not split or merge them solely because of Markdown organization.
+Organize MEMORY around stable semantic units rather than transient wording or arbitrary heading choices. When current and historical aspects of one concept are both durable, keep their semantic units and stable logical identities coherent across updates; do not split or merge them solely because of Markdown organization. RelayLM, not the model, derives those identities from canonical typed sources. Propose only genuinely durable units; RelayLM evaluates each proposal independently and does not use a deterministic temporary-task classifier.
 
 Preserve user-provided names and proper-noun spelling. Keep Markdown readable to a human and useful in Obsidian-compatible files.
 
 Return only the required structured output."""
 
 PROVIDER_WIRE_INSTRUCTION = """Provider wire requirements:
-- `memory_markdown` is complete non-empty portable Markdown.
+- `memory_units` is a non-empty array of semantic MEMORY unit proposals.
+- Each MEMORY unit contains exactly `heading`, `content`, `temporal_scope`, and `sources`.
+- Do not emit `memory_id`, `derivation_id`, or `relaylm-memory` control comments; RelayLM owns metadata and Markdown projection.
+- `heading` and `content` are human-readable proposal text, not machine identity.
+- `sources` contains typed `event` or `state` references; do not invent IDs.
 - `state_candidates` is an array of optional corrective State proposals.
 - Every State wire candidate contains exactly `state_class`, `key`, `op`, `value`, and `sources`.
 - `state_class` uses the RelayLM State class registry described below.
@@ -114,12 +124,45 @@ STATE_CANDIDATE_WIRE_SCHEMA: dict[str, Any] = {
     ],
 }
 
+MEMORY_UNIT_WIRE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["heading", "content", "temporal_scope", "sources"],
+    "properties": {
+        "heading": {"type": "string", "minLength": 1},
+        "content": {"type": "string", "minLength": 1},
+        "temporal_scope": {
+            "type": "string",
+            "enum": [scope.value for scope in MemoryTemporalScope],
+        },
+        "sources": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["kind", "reference_id"],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [kind.value for kind in MemoryProvenanceSourceKind],
+                    },
+                    "reference_id": {"type": "string", "minLength": 1},
+                },
+            },
+        },
+    },
+}
+
 WIRE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["memory_markdown", "state_candidates"],
+    "required": ["memory_units", "state_candidates"],
     "properties": {
-        "memory_markdown": {"type": "string", "minLength": 1},
+        "memory_units": {
+            "type": "array",
+            "minItems": 1,
+            "items": MEMORY_UNIT_WIRE_SCHEMA,
+        },
         "state_candidates": {
             "type": "array",
             "items": STATE_CANDIDATE_WIRE_SCHEMA,
@@ -328,14 +371,18 @@ def parse_crystallization_wire_output(
     allowed_source_ids: frozenset[str],
 ) -> CrystallizationOutput:
     wire = _mapping(wire, "crystallization wire output")
-    if set(wire) != {"memory_markdown", "state_candidates"}:
+    if set(wire) != {"memory_units", "state_candidates"}:
         raise ProviderProtocolError(
-            "crystallization wire output must contain exactly memory_markdown and state_candidates"
+            "crystallization wire output must contain exactly memory_units and state_candidates"
         )
 
-    memory_markdown = wire.get("memory_markdown")
-    if not isinstance(memory_markdown, str) or not memory_markdown.strip():
-        raise ProviderProtocolError("wire memory_markdown must be a non-empty string")
+    raw_units = wire.get("memory_units")
+    if not isinstance(raw_units, list) or not raw_units:
+        raise ProviderProtocolError("wire memory_units must be a non-empty array")
+    memory_units = tuple(
+        _parse_memory_unit(raw, index=index)
+        for index, raw in enumerate(raw_units)
+    )
 
     raw_candidates = wire.get("state_candidates")
     if not isinstance(raw_candidates, list):
@@ -350,9 +397,64 @@ def parse_crystallization_wire_output(
         for index, raw in enumerate(raw_candidates)
     )
     return CrystallizationOutput(
-        memory_markdown=memory_markdown,
+        memory_units=memory_units,
         state_candidates=candidates,
     )
+
+
+def _parse_memory_unit(raw: Any, *, index: int) -> MemoryUnit:
+    unit = _mapping(raw, f"memory_units[{index}]")
+    expected_keys = {"heading", "content", "temporal_scope", "sources"}
+    if set(unit) != expected_keys:
+        raise ProviderProtocolError(
+            f"memory_units[{index}] must contain exactly heading, content, temporal_scope, and sources"
+        )
+    heading = unit.get("heading")
+    content = unit.get("content")
+    temporal_scope = unit.get("temporal_scope")
+    if not isinstance(heading, str) or not heading.strip():
+        raise ProviderProtocolError(f"memory_units[{index}].heading must be a non-empty string")
+    if not isinstance(content, str) or not content.strip():
+        raise ProviderProtocolError(f"memory_units[{index}].content must be a non-empty string")
+    try:
+        scope = MemoryTemporalScope(temporal_scope)
+    except (TypeError, ValueError) as exc:
+        raise ProviderProtocolError(
+            f"memory_units[{index}].temporal_scope must be current, historical, or unknown"
+        ) from exc
+    raw_sources = unit.get("sources")
+    if not isinstance(raw_sources, list):
+        raise ProviderProtocolError(f"memory_units[{index}].sources must be an array")
+    sources: list[MemoryProvenanceSource] = []
+    for source_index, raw_source in enumerate(raw_sources):
+        source = _mapping(raw_source, f"memory_units[{index}].sources[{source_index}]")
+        if set(source) != {"kind", "reference_id"}:
+            raise ProviderProtocolError(
+                f"memory_units[{index}].sources[{source_index}] must contain exactly kind and reference_id"
+            )
+        kind = source.get("kind")
+        reference_id = source.get("reference_id")
+        try:
+            typed_kind = MemoryProvenanceSourceKind(kind)
+            sources.append(
+                MemoryProvenanceSource(
+                    kind=typed_kind,
+                    reference_id=reference_id,
+                )
+            )
+        except (TypeError, ValueError) as exc:
+            raise ProviderProtocolError(
+                f"memory_units[{index}].sources[{source_index}] must contain a valid typed reference"
+            ) from exc
+    try:
+        return MemoryUnit(
+            heading=heading,
+            content=content,
+            temporal_scope=scope,
+            sources=tuple(sources),
+        )
+    except (TypeError, ValueError) as exc:
+        raise ProviderProtocolError(f"memory_units[{index}] is invalid: {exc}") from exc
 
 
 def _parse_state_candidate(

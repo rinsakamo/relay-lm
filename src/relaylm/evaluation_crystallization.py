@@ -10,6 +10,7 @@ from relaylm.crystallization import (
 )
 from relaylm.evaluation import EvaluationCheck, EvaluationScenarioResult
 from relaylm.events import Event
+from relaylm.memory_provenance import MemoryTemporalScope, MemoryUnit
 from relaylm.state import CanonicalState, StateCandidate
 from relaylm.storage.filesystem import CharacterDirectory
 
@@ -37,7 +38,18 @@ class _DeterministicCrystallizer:
         self.calls += 1
         self.inputs.append(crystallization_input)
         return CrystallizationOutput(
-            memory_markdown=_MEMORY,
+            memory_units=(
+                MemoryUnit(
+                    heading="Preferences",
+                    content="Rin likes tea.",
+                    temporal_scope=MemoryTemporalScope.UNKNOWN,
+                ),
+                MemoryUnit(
+                    heading="Unverified continuity",
+                    content="The assistant previously said Rin lives in Hokkaido.",
+                    temporal_scope=MemoryTemporalScope.UNKNOWN,
+                ),
+            ),
             state_candidates=(
                 StateCandidate.set(
                     state_class="user.preference",

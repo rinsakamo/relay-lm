@@ -48,10 +48,10 @@ from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingConfig,
 )
 
-ACTUAL_MODEL_CRYSTALLIZATION_HOST_FORMAT_VERSION = 2
-CRYSTALLIZATION_ADAPTER_IDENTITY = "relaylm.providers.OpenAICompatibleCrystallizer:v1"
-CRYSTALLIZATION_STRUCTURED_OUTPUT_SCHEMA_VERSION = "relaylm_crystallization_output:v1"
-CRYSTALLIZATION_EVALUATION_CONTRACT_VERSION = "actual-model-crystallization-v1"
+ACTUAL_MODEL_CRYSTALLIZATION_HOST_FORMAT_VERSION = 3
+CRYSTALLIZATION_ADAPTER_IDENTITY = "relaylm.providers.OpenAICompatibleCrystallizer:v2"
+CRYSTALLIZATION_STRUCTURED_OUTPUT_SCHEMA_VERSION = "relaylm_crystallization_output:v2"
+CRYSTALLIZATION_EVALUATION_CONTRACT_VERSION = "actual-model-crystallization-v2"
 LM_STUDIO_SERVING_PROOF_IDENTITY_PREFIX = "lm-studio-serving-proof:sha256:"
 LM_STUDIO_REASONING_CONTROL_SOURCE = "lmstudio_model_default"
 LM_STUDIO_REASONING_CONTROL_MODE = "attested_default_without_per_request_override"
