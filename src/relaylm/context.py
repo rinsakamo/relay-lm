@@ -953,6 +953,50 @@ def _memory_chunk_is_shadowed(
                             ):
                                 return True
                             continue
+                    if (
+                        len(explicit_bodies) >= 2
+                        and all(
+                            (
+                                _lexical_terms(body_semantic)[0] != "not"
+                                or (
+                                    len(_lexical_terms(body_semantic)) > 1
+                                    and _lexical_terms(body_semantic)[1] != "not"
+                                )
+                            )
+                            for body_semantic, _ in explicit_bodies
+                        )
+                        and any(
+                            _lexical_terms(body_semantic)[0] == "not"
+                            for body_semantic, _ in explicit_bodies
+                        )
+                        and any(
+                            _lexical_terms(body_semantic)[0] != "not"
+                            for body_semantic, _ in explicit_bodies
+                        )
+                    ):
+                        explicit_degrees = _explicit_degree_hint_assignments(
+                            chunk.content,
+                            key=record.key,
+                            heading_addresses_key=True,
+                        )
+                        if len(explicit_degrees) == len(explicit_bodies):
+                            current_semantic_terms = _lexical_terms(current_semantic)
+                            for body_semantic, body_degree in explicit_bodies:
+                                body_semantic_terms = _lexical_terms(body_semantic)
+                                if body_semantic_terms[0] == "not":
+                                    if (
+                                        body_semantic_terms[1:]
+                                        == current_semantic_terms
+                                        and body_degree == current_degree
+                                    ):
+                                        return True
+                                    continue
+                                if (
+                                    body_semantic_terms != current_semantic_terms
+                                    or body_degree != current_degree
+                                ):
+                                    return True
+                            continue
             if not _contains_lexical_value(chunk.content, current_semantic):
                 return True
             explicit_degrees = _explicit_degree_hint_assignments(
