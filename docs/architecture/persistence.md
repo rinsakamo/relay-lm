@@ -33,6 +33,7 @@ The current filesystem implementation intentionally keeps a small, strict contra
 - `config.yaml` explicitly contains integer `format_version: 1` and requires non-empty `character.id` and `character.name`; version values are not string-coerced or defaulted;
 - `SOUL.md` must exist and contain non-empty Identity content;
 - `events.jsonl` stores one Event object per non-empty line and is appended in Event order;
+- Event IDs are unique within one `events.jsonl`; a later record that repeats an earlier Event ID is malformed persisted authority and loading fails closed at that duplicate line;
 - a missing `events.jsonl` is treated as an empty Event Journal;
 - malformed Event JSON, malformed Event shape, malformed config, or malformed State fails closed rather than being silently repaired;
 - within one `CharacterDirectory` process, a successfully validated Event Journal snapshot may be reused while the authoritative file signature is unchanged;
