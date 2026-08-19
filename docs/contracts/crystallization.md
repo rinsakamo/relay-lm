@@ -91,6 +91,7 @@ Rules:
 - `memory_markdown` is a non-empty string;
 - `state_candidates` is an array and there is no ContinuityCandidate channel;
 - each candidate contains exactly `state_class`, `key`, `op`, `value`, and `sources`;
+- the strict JSON Schema structurally pairs operations and values: the `set` branch permits only `op: "set"` with a string or exact degree-hint object value, while the `remove` branch permits only `op: "remove"` with `value: null`; both branches retain the existing common-field rules and `additionalProperties: false`;
 - `state_class` must be in the current State class registry;
 - `set.value` is either a string or the current exact `{semantic, degree_hint}` envelope with finite `degree_hint` in `0..1`;
 - `remove.value` is `null` on the wire and is normalized to semantic `remove` without a value;
