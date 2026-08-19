@@ -24,6 +24,7 @@ class CharacterDirectory:
     def __init__(self, root: str | Path) -> None:
         self.root = Path(root)
         self._event_cache: tuple[Event, ...] = ()
+        self._event_id_cache: set[str] = set()
         self._event_cache_signature: tuple[int, int, int, int] | None = None
         self._event_cache_loaded = False
         self._event_discovery_index: EventDiscoveryIndex | None = None
@@ -104,6 +105,7 @@ class CharacterDirectory:
                 snapshot = self._read_events_snapshot()
                 signature_after_read = self._events_signature()
             self._event_cache = snapshot
+            self._event_id_cache = {event.id for event in snapshot}
             self._event_cache_signature = signature_after_read
             self._event_cache_loaded = True
 
@@ -147,7 +149,13 @@ class CharacterDirectory:
 
     def append_event(self, event: Event) -> None:
         self.memory_path.mkdir(parents=True, exist_ok=True)
+        self._ensure_event_cache()
         signature_before_append = self._events_signature()
+        if signature_before_append != self._event_cache_signature:
+            self._ensure_event_cache()
+            signature_before_append = self._events_signature()
+        if event.id in self._event_id_cache:
+            raise CharacterDataError(f"cannot append events.jsonl: duplicate event id {event.id!r}")
         can_extend_cache = (
             self._event_cache_loaded
             and self._event_cache_signature == signature_before_append
@@ -173,6 +181,7 @@ class CharacterDirectory:
 
         if can_extend_cache:
             self._event_cache = (*self._event_cache, event)
+            self._event_id_cache.add(event.id)
             signature_after_append = self._events_signature()
             self._event_cache_signature = signature_after_append
             if can_extend_discovery:
@@ -184,6 +193,7 @@ class CharacterDirectory:
                 self._event_discovery_signature = None
         else:
             self._event_cache = ()
+            self._event_id_cache = set()
             self._event_cache_signature = None
             self._event_cache_loaded = False
             self._event_discovery_index = None
