@@ -87,12 +87,19 @@ class CognitionExecutionRuntime:
         repr=False,
     )
 
-    def _begin_turn(self, event_id: str) -> int:
+    def _reserve_turn(self) -> int:
+        """Invalidate older extraction before preparing the newly arrived turn."""
+
+        self.revision += 1
+        self.latest_turn_event_id = None
+        return self.revision
+
+    def _bind_turn(self, *, revision: int, event_id: str) -> None:
+        if revision != self.revision:
+            raise RuntimeError("cannot bind a superseded cognition execution revision")
         if not isinstance(event_id, str) or not event_id.strip():
             raise ValueError("turn event_id must not be empty")
-        self.revision += 1
         self.latest_turn_event_id = event_id
-        return self.revision
 
     def _is_current(self, *, revision: int, event_id: str) -> bool:
         return self.revision == revision and self.latest_turn_event_id == event_id
@@ -119,10 +126,13 @@ async def run_user_turn_two_pass(
 ) -> TwoPassTurnResult:
     """Complete Pass 1, then background the turn-bound Pass 2 proposal path."""
 
-    _require_two_pass_provider(provider, streaming=False)
+    generate_conversation = _require_two_pass_provider(provider, streaming=False)
     _require_execution_runtime(execution_runtime)
+    if not content.strip():
+        raise ValueError("user content must not be empty")
 
     async with execution_runtime._conversation_lock:
+        execution_revision = execution_runtime._reserve_turn()
         user_event, state, cognitive_input = _prepare_two_pass_user_turn(
             character=character,
             content=content,
@@ -131,11 +141,14 @@ async def run_user_turn_two_pass(
             continuity_runtime=continuity_runtime,
             cognitive_budget=cognitive_budget,
         )
+        execution_runtime._bind_turn(
+            revision=execution_revision,
+            event_id=user_event.id,
+        )
         origin_continuity = (
             continuity_runtime.context if continuity_runtime is not None else None
         )
-        execution_revision = execution_runtime._begin_turn(user_event.id)
-        conversation = await provider.generate_conversation(cognitive_input)
+        conversation = await generate_conversation(cognitive_input)
         if not isinstance(conversation, CognitionConversationOutput):
             raise TypeError(
                 "two-pass provider generate_conversation must return CognitionConversationOutput"
@@ -180,8 +193,11 @@ async def run_user_turn_two_pass_streaming(
 
     stream_generate_conversation = _require_two_pass_provider(provider, streaming=True)
     _require_execution_runtime(execution_runtime)
+    if not content.strip():
+        raise ValueError("user content must not be empty")
 
     async with execution_runtime._conversation_lock:
+        execution_revision = execution_runtime._reserve_turn()
         user_event, state, cognitive_input = _prepare_two_pass_user_turn(
             character=character,
             content=content,
@@ -190,10 +206,13 @@ async def run_user_turn_two_pass_streaming(
             continuity_runtime=continuity_runtime,
             cognitive_budget=cognitive_budget,
         )
+        execution_runtime._bind_turn(
+            revision=execution_revision,
+            event_id=user_event.id,
+        )
         origin_continuity = (
             continuity_runtime.context if continuity_runtime is not None else None
         )
-        execution_revision = execution_runtime._begin_turn(user_event.id)
         conversation = await stream_generate_conversation(
             cognitive_input,
             emit_response_delta,
@@ -397,12 +416,13 @@ async def _complete_extraction(
 
 
 def _require_two_pass_provider(provider: object, *, streaming: bool):
-    if not callable(getattr(provider, "generate_conversation", None)):
-        raise TypeError("provider does not support two-pass conversation generation")
     if not callable(getattr(provider, "generate_extraction", None)):
         raise TypeError("provider does not support two-pass structured extraction")
     if not streaming:
-        return None
+        method = getattr(provider, "generate_conversation", None)
+        if not callable(method):
+            raise TypeError("provider does not support two-pass conversation generation")
+        return method
     stream_method = getattr(provider, "stream_generate_conversation", None)
     if not callable(stream_method):
         raise TypeError("provider does not support two-pass conversation streaming")
