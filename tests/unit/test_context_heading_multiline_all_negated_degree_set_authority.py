@@ -20,7 +20,7 @@ def _current_event() -> Event:
         actor="user",
         payload={"content": "What is current about tea?"},
         event_id="current-event",
-        timestamp="2026-08-19T13:10:00+09:00",
+        timestamp="2026-08-19T13:45:00+09:00",
     )
 
 
@@ -44,8 +44,8 @@ def _authority(scope: MemoryTemporalScope) -> MemoryTemporalAuthority:
     return MemoryTemporalAuthority(
         temporal_scope=scope,
         provenance=MemoryProvenance(
-            memory_id=f"memory-heading-multiline-positive-set-{scope.value}",
-            derivation_id=f"derivation-heading-multiline-positive-set-{scope.value}",
+            memory_id=f"memory-heading-multiline-all-negated-set-{scope.value}",
+            derivation_id=f"derivation-heading-multiline-all-negated-set-{scope.value}",
             sources=(
                 MemoryProvenanceSource(
                     kind=MemoryProvenanceSourceKind.EVENT,
@@ -65,7 +65,7 @@ def _chunk(
     return MemoryChunk(
         heading_path=("Memory", heading),
         location=(
-            "memory/MEMORY.md#memory/heading-multiline-positive-set-"
+            "memory/MEMORY.md#memory/heading-multiline-all-negated-set-"
             f"{scope.value}"
         ),
         content=f"## {heading}\n\n{body}",
@@ -87,106 +87,106 @@ def _assert_retained(chunk: MemoryChunk) -> None:
     assert [item.location for item in compiled.memory] == [chunk.location]
 
 
-def test_matching_pair_cannot_hide_later_positive_semantic_conflict() -> None:
+def test_active_pair_negation_member_suppresses() -> None:
     stale = _chunk(
-        "likes; degree_hint: 0.85\n"
-        "dislikes; degree_hint: 0.85"
+        "not likes; degree_hint: 0.85\n"
+        "not dislikes; degree_hint: 0.85"
     )
 
     assert _compile(stale).memory == ()
 
 
-def test_positive_semantic_conflict_cannot_hide_before_matching_pair() -> None:
+def test_active_pair_negation_member_suppresses_in_later_position() -> None:
     stale = _chunk(
-        "dislikes; degree_hint: 0.85\n"
-        "likes; degree_hint: 0.85"
+        "not dislikes; degree_hint: 0.85\n"
+        "not likes; degree_hint: 0.85"
     )
 
     assert _compile(stale).memory == ()
 
 
-def test_three_positive_pairs_are_conjunctive() -> None:
-    stale = _chunk(
-        "likes; degree_hint: 0.85\n"
-        "likes; degree_hint=0.85\n"
-        "dislikes; degree_hint: 0.85"
-    )
-
-    assert _compile(stale).memory == ()
-
-
-def test_all_matching_positive_pairs_remain_compatible() -> None:
+def test_all_different_negated_semantic_pairs_are_compatible() -> None:
     current = _chunk(
-        "likes; degree_hint: 0.85\n"
-        "likes; degree_hint=0.85"
+        "not dislikes; degree_hint: 0.85\n"
+        "not avoids; degree_hint: 0.65"
     )
 
     _assert_retained(current)
 
 
-def test_positive_degree_conflict_remains_suppressed() -> None:
+def test_different_degree_makes_negated_pair_compatible() -> None:
+    current = _chunk(
+        "not likes; degree_hint: 0.65\n"
+        "not dislikes; degree_hint: 0.85"
+    )
+
+    _assert_retained(current)
+
+
+def test_three_negated_pairs_are_conjunctively_checked_for_active_negation() -> None:
     stale = _chunk(
-        "likes; degree_hint: 0.85\n"
-        "likes; degree_hint: 0.65"
+        "not dislikes; degree_hint: 0.85\n"
+        "not avoids; degree_hint: 0.65\n"
+        "not likes; degree_hint: 0.85"
     )
 
     assert _compile(stale).memory == ()
 
 
-def test_typed_current_uses_same_structural_positive_set_rule() -> None:
+def test_typed_current_uses_same_structural_all_negated_set_rule() -> None:
     stale = _chunk(
-        "likes; degree_hint: 0.85\n"
-        "dislikes; degree_hint: 0.85",
+        "not dislikes; degree_hint: 0.85\n"
+        "not likes; degree_hint: 0.85",
         scope=MemoryTemporalScope.CURRENT,
     )
 
     assert _compile(stale).memory == ()
 
 
-def test_historical_positive_set_remains_exempt() -> None:
+def test_historical_all_negated_set_remains_exempt() -> None:
     historical = _chunk(
-        "likes; degree_hint: 0.85\n"
-        "dislikes; degree_hint: 0.85",
+        "not likes; degree_hint: 0.85\n"
+        "not dislikes; degree_hint: 0.85",
         scope=MemoryTemporalScope.HISTORICAL,
     )
 
     _assert_retained(historical)
 
 
-def test_degree_free_prose_does_not_rescue_positive_pair_conflict() -> None:
-    stale = _chunk(
-        "likes; degree_hint: 0.85\n"
-        "A degree-free prose note says likes.\n"
-        "dislikes; degree_hint: 0.85"
-    )
-
-    assert _compile(stale).memory == ()
-
-
-def test_degree_free_prose_does_not_become_an_extra_positive_claim() -> None:
+def test_degree_free_prose_does_not_become_an_extra_negated_claim() -> None:
     current = _chunk(
-        "likes; degree_hint: 0.85\n"
-        "A degree-free prose note says dislikes.\n"
-        "likes; degree_hint: 0.85"
+        "not dislikes; degree_hint: 0.85\n"
+        "A degree-free prose note says likes.\n"
+        "not avoids; degree_hint: 0.85"
     )
 
     _assert_retained(current)
 
 
-def test_additional_matching_section_degree_disables_c34_decision() -> None:
+def test_degree_free_prose_does_not_rescue_active_pair_negation() -> None:
+    stale = _chunk(
+        "not likes; degree_hint: 0.85\n"
+        "A degree-free prose note says likes.\n"
+        "not dislikes; degree_hint: 0.85"
+    )
+
+    assert _compile(stale).memory == ()
+
+
+def test_additional_matching_section_degree_disables_c35_local_suppression() -> None:
     fallback = _chunk(
-        "likes; degree_hint: 0.85\n"
-        "dislikes; degree_hint: 0.85\n"
+        "not likes; degree_hint: 0.85\n"
+        "not dislikes; degree_hint: 0.85\n"
         "A separate degree_hint: 0.85 note."
     )
 
     _assert_retained(fallback)
 
 
-def test_additional_stale_section_degree_remains_c1_conflict() -> None:
+def test_additional_stale_section_degree_disables_c35_compatibility() -> None:
     fallback = _chunk(
-        "likes; degree_hint: 0.85\n"
-        "dislikes; degree_hint: 0.85\n"
+        "not dislikes; degree_hint: 0.85\n"
+        "not avoids; degree_hint: 0.85\n"
         "A separate degree_hint: 0.65 note."
     )
 
@@ -202,7 +202,16 @@ def test_mixed_positive_and_negated_body_pairs_remain_deferred() -> None:
     _assert_retained(fallback)
 
 
-def test_single_negated_pair_with_prose_remains_c33() -> None:
+def test_positive_pair_set_remains_c34_authority() -> None:
+    stale = _chunk(
+        "likes; degree_hint: 0.85\n"
+        "dislikes; degree_hint: 0.85"
+    )
+
+    assert _compile(stale).memory == ()
+
+
+def test_single_negated_pair_with_prose_remains_c33_authority() -> None:
     stale = _chunk(
         "not likes; degree_hint: 0.85\n"
         "A degree-free prose note says likes."
@@ -211,28 +220,31 @@ def test_single_negated_pair_with_prose_remains_c33() -> None:
     assert _compile(stale).memory == ()
 
 
-def test_bare_not_pair_prevents_positive_set_activation() -> None:
+def test_bare_not_pair_prevents_all_negated_set_activation() -> None:
     fallback = _chunk(
-        "likes; degree_hint: 0.85\n"
-        "not; degree_hint: 0.85"
+        "not; degree_hint: 0.85\n"
+        "A degree-free prose note says likes.\n"
+        "not dislikes; degree_hint: 0.85"
     )
 
     _assert_retained(fallback)
 
 
-def test_double_negation_pair_prevents_positive_set_activation() -> None:
+def test_double_negation_pair_prevents_all_negated_set_activation() -> None:
     fallback = _chunk(
-        "likes; degree_hint: 0.85\n"
-        "not not dislikes; degree_hint: 0.85"
+        "not not dislikes; degree_hint: 0.85\n"
+        "A degree-free prose note says likes.\n"
+        "not avoids; degree_hint: 0.85"
     )
 
     _assert_retained(fallback)
 
 
-def test_nonexact_degree_bearing_body_text_disables_positive_set_activation() -> None:
+def test_nonexact_degree_bearing_body_text_disables_all_negated_set_activation() -> None:
     fallback = _chunk(
-        "likes; degree_hint: 0.85\n"
-        "dislikes; degree_hint: 0.85; note: survey"
+        "not dislikes; degree_hint: 0.85\n"
+        "not avoids; degree_hint: 0.85\n"
+        "not likes; degree_hint: 0.85; note: survey"
     )
 
     _assert_retained(fallback)
