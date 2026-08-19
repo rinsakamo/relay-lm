@@ -2,188 +2,124 @@
 
 Ordinary-turn cognition is governed by `docs/contracts/cognition-execution-policy.md`.
 
-RelayLM 1.0 recognizes:
+RelayLM 1.0 recognizes `single_pass`, `two_pass`, `shadow_two_pass`, and `auto`. Execution topology may vary, but model proposals gain authority only through existing deterministic State/Continuity owners.
 
-```text
-single_pass
-two_pass
-shadow_two_pass
-auto
-```
-
-Execution topology may vary, but semantic authority does not:
-
-```text
-model cognition
-      |
-      v
-response + proposal channels
-      |
-      v
-existing deterministic State / Continuity validation
-      |
-      v
-RelayLM authority
-```
-
-`response` is user-visible natural language. `state_candidates` and `continuity_candidates` remain non-authoritative proposals.
-
-## `single_pass` runtime
+## `single_pass`
 
 The existing ordinary-turn APIs retain the one-generation baseline:
 
 ```text
 CognitiveInput
-      |
-      v
-provider.generate / stream_generate
-      |
-      v
-CognitiveOutput
-  response
-  state_candidates
-  continuity_candidates
-      |
-      v
-common deterministic commit boundary
+  -> provider.generate / stream_generate
+  -> CognitiveOutput(response, StateCandidate[], ContinuityCandidate[])
+  -> existing deterministic commit boundary
 ```
 
-Buffered execution performs one `provider.generate()` call. Streaming performs one `stream_generate()` call. The complete valid output is required before the Assistant Event, State validation, and Continuity validation commit.
+A complete valid output is required before the Assistant Event, State validation, and Continuity validation commit.
 
-## `two_pass` runtime
+## `two_pass`
 
-COGP3 adds an explicit response-first runtime in `relaylm.two_pass_turn`:
+COGP3 implements an explicit response-first runtime in `relaylm.two_pass_turn`:
 
 ```text
-prepare one originating CognitiveInput
-          |
-          v
-Pass 1: conversation
-          |
-          +--> complete visible response
-          +--> Assistant Event
-          |
-          v
-return response-first turn result
-          |
-          +---- background ---->
-                            Pass 2: extraction
-                                  |
-                         StateCandidate[]
-                         ContinuityCandidate[]
-                                  |
-                    turn/revision + snapshot guards
-                                  |
-                                  v
-                       existing deterministic validators
-                                  |
-                                  v
-                         State / Continuity authority
+originating CognitiveInput
+  -> Pass 1 conversation
+  -> visible response + Assistant Event
+  -> return response-first result
+       |
+       +--> background Pass 2 extraction
+              -> StateCandidate[] / ContinuityCandidate[]
+              -> revision/Event + State/Continuity snapshot guards
+              -> existing deterministic validators
 ```
 
-The same provider object is used for Pass 1 and Pass 2. The initial OpenAI-compatible extension inherits the canonical adapter's client/model/endpoint/decoding configuration and therefore does not create a second resident online model requirement.
+The same supplied provider object is used sequentially. `CognitionConversationOutput` contains only the response. `CognitionExtractionInput` contains the originating `CognitiveInput` plus the Pass 1 response as lower-authority interpretive context. `CognitionExtractionOutput` contains only proposals.
 
-Pass 1 outputs only `CognitionConversationOutput(response)`. Pass 2 receives `CognitionExtractionInput`, which contains the originating `CognitiveInput` plus the Pass 1 response as lower-authority interpretive context, and outputs only `CognitionExtractionOutput` proposals.
+`run_user_turn_two_pass(...)` and `run_user_turn_two_pass_streaming(...)` require an explicit process-local `CognitionExecutionRuntime`. They do not silently replace the existing single-pass APIs or select a release default.
 
-The explicit two-pass APIs are:
+### Ordering
 
-```text
-run_user_turn_two_pass(...)
-run_user_turn_two_pass_streaming(...)
-```
+A conversation lock serializes two-pass preparation and Pass 1 generation for one execution runtime. Pass 2 inference runs after that lock is released, so pending extraction does not itself block the next Pass 1.
 
-They require an explicit process-local `CognitionExecutionRuntime`. COGP3 does not silently switch the existing single-pass APIs or choose a release default.
-
-## Response-first boundary
-
-After a valid Pass 1 completes, the Assistant Event is persisted and the caller receives a `TwoPassTurnResult` containing the response and a separately completing extraction task.
-
-Pass 2 provider failure does not retroactively remove the Assistant Event or invalidate the response. Its bounded result becomes `failed`; it commits no State/Continuity mutation.
-
-If Pass 2 produces Continuity proposals without an explicit `ContinuityRuntime`, the entire extraction commit fails before State mutation. Cross-channel partial mutation is not allowed for that failure.
-
-## Ordering / concurrency boundary
-
-`CognitionExecutionRuntime` separates long model work from short ordering/commit work.
-
-### Conversation lock
-
-A conversation lock serializes preparation and Pass 1 generation for turns sharing one execution runtime. This preserves deterministic ordinary Event ordering.
-
-The lock is released before Pass 2 inference completes. A pending Turn N Pass 2 therefore does not by itself prevent Turn N+1 Pass 1 from starting.
-
-### Authority lock
-
-A separate short authority lock is held only for:
-
-- reserving a newly arrived two-pass turn revision;
-- binding that revision to the newly persisted User Event;
-- the final Pass 2 stale-check / validation / mutation boundary.
-
-A new turn reservation advances the execution revision before the new turn is prepared, so older pending extraction becomes stale immediately when the newer two-pass turn enters this runtime.
-
-Pass 2 inference itself never holds the authority lock.
-
-At commit time the lock makes these checks and any resulting mutation one process-local ordering boundary:
+A separate short authority lock covers new-turn revision reservation/binding and the final stale-check/validation/application boundary. A newer turn advances the process-local revision before preparing its input. Final Pass 2 application requires:
 
 ```text
 origin revision is still latest
 origin User Event is still latest bound turn
 persisted State == origin State snapshot
-accepted Continuity == origin Continuity snapshot (when configured)
+accepted Continuity == origin Continuity snapshot, when configured
 ```
 
-Any mismatch returns `stale` with no mutation. The runtime thereby prevents a late old extraction from interleaving its save with a newer turn reservation inside the same process-local execution runtime.
+Any mismatch returns `stale` with no State/Continuity change. This guard is process-local and does not create a durable State revision or redefine cross-process storage concurrency.
 
-This does not invent a durable State revision or redefine cross-process persistence concurrency.
+### Failure
+
+A valid Pass 1 remains a valid conversation if Pass 2 later fails. Pass 2 status is `committed`, `stale`, or `failed`. Continuity proposals without an explicit Continuity runtime fail the extraction before State change, preventing a partial cross-channel result.
+
+## `shadow_two_pass`
+
+COGP4 implements non-authoritative shadow execution in `relaylm.shadow_turn`:
+
+```text
+canonical single-pass turn
+  -> normal response / State / Continuity result
+
+capture the same originating CognitiveInput
++ canonical response
+  -> shadow Pass 2 extraction task
+  -> raw ShadowExtractionEvidence
+  -> no State/Continuity acceptance or change
+```
+
+The explicit APIs are:
+
+```text
+run_user_turn_shadow_two_pass(...)
+run_user_turn_shadow_two_pass_streaming(...)
+```
+
+They call the existing `run_user_turn` / `run_user_turn_streaming` through a transparent input-capturing provider wrapper. Therefore canonical single-pass Context/Retrieval/Budget preparation and deterministic commit semantics remain owned by the existing Turn path rather than being copied into shadow runtime code.
+
+After canonical completion, shadow extraction uses the original pre-turn `CognitiveInput` plus the canonical response. Shadow output is raw proposal evidence only. It does not call State or Continuity validation for the purpose of changing accepted authority and does not advance Continuity lifecycle.
+
+A shadow provider failure becomes bounded `shadow_pass2_failed`; the already-completed canonical turn is unaffected.
+
+Shadow extraction may complete after later conversation activity because it has no canonical write path. Its evidence remains bound to the originating User Event ID.
+
+## Execution evidence identity
+
+`relaylm.cognition_execution_evidence` defines provider-neutral topology identity for `single_pass`, `two_pass`, and `shadow_two_pass` plus the RelayLM semantic output-contract identities used by each topology. `auto` is not an executed identity.
+
+The identity deliberately does not duplicate exact provider/model/reasoning/decoding/runtime identity. #1386 combines those separate owners when constructing citable actual-model evidence.
+
+See `docs/contracts/cognition-execution-evidence.md`.
 
 ## Context / Retrieval / Budget reuse
 
-The two-pass runtime reuses the existing ordinary-turn preparation owner. It consumes the same:
+Canonical `single_pass` and `two_pass` both consume the existing Character/Identity, State, Context Compiler, optional MEMORY/Event retrieval, accepted Continuity projection, and Cognitive Budget owners.
 
-- Character configuration and Identity;
-- Canonical State;
-- Context Compiler;
-- optional MEMORY retrieval;
-- optional Event Evidence retrieval;
-- accepted Continuity projection;
-- Cognitive Budget enforcement.
+`shadow_two_pass` uses the canonical single-pass Turn path directly and captures the exact `CognitiveInput` supplied to that canonical model call. No shadow-specific relevance or budget policy exists.
 
-COGP3 does not duplicate relevance, projection, token-budget, or lifecycle semantics. One prepared `CognitiveInput` is the authoritative origin for both passes.
+## Continuity
 
-## Continuity lifecycle
+`relaylm.continuity` and `relaylm.continuity_validation` remain the acceptance/lifecycle owners.
 
-`relaylm.continuity` and `relaylm.continuity_validation` remain the Continuity owners.
-
-In `single_pass`, Continuity validation runs at the existing common output commit boundary.
-
-In `two_pass`, the origin accepted Continuity snapshot is supplied to Pass 1 through the same Context Compiler path. Pass 2 proposals are validated only at the guarded extraction commit boundary. If the accepted Continuity snapshot has advanced meanwhile, that Pass 2 result is stale and cannot mutate it.
-
-A successful current Pass 2 validation still applies the existing lifecycle exactly once for that extraction result, including revision advancement with an empty candidate tuple when a Continuity runtime is configured.
+- `single_pass`: existing common commit boundary.
+- `two_pass`: guarded Pass 2 commit boundary.
+- `shadow_two_pass`: only canonical single-pass proposals may affect accepted Continuity; shadow proposals are evidence-only.
 
 ## Streaming
 
-Two-pass streaming exposes only Pass 1 `utterance` deltas. The complete conversation-only structured result must validate before Assistant Event creation and Pass 2 scheduling.
+Two-pass streaming exposes only Pass 1 response deltas and schedules Pass 2 after complete Pass 1 acceptance.
 
-Pass 2 is non-streaming in COGP3 and never creates a second visible response.
+Shadow streaming uses the existing canonical single-pass streaming path. Shadow extraction starts only after the complete canonical output has committed and never emits a second visible response.
 
 ## Provider boundary
 
-Provider-specific wire grammar remains an adapter concern. The COGP3 OpenAI-compatible extension uses two strict schemas over the same adapter resources:
+The OpenAI-compatible two-pass extension inherits the canonical adapter client/model/endpoint/decoding configuration. Its extraction schema reuses the canonical State/Continuity candidate schemas and parser, so no provider-specific candidate grammar is introduced.
 
-```text
-relaylm_conversation_output
-  utterance
-
-relaylm_structured_cognition_output
-  state_candidates
-  continuity_candidates
-```
-
-The candidate schemas and parser are reused from the canonical OpenAI-compatible provider; the extension does not create another State/Continuity candidate grammar.
-
-Provider reasoning/decoding capability truth remains provider-owned. COGP3 does not choose per-pass numeric defaults.
+That same object can perform canonical `relaylm_cognitive_output` followed by shadow `relaylm_structured_cognition_output`. This proves topology reuse; provider capability truth and exact applied request configuration remain provider-owned.
 
 ## Deferred
 
-`shadow_two_pass` evidence carriage is COGP4. Actual-model A/B/C execution, calibrated defaults, and release-config selection remain owned by #1386, #1388, and #1446 respectively.
+COGP5 owns #1386 actual-model execution-topology carriage and controlled A/B/C evidence. COGP6/#1388 owns calibrated selection, COGP7/#1446 owns release-config integration, and COGP8/#1449 owns final release reconciliation.
