@@ -13,7 +13,7 @@ from relaylm.cognition_execution import (
 )
 from relaylm.events import Event
 from relaylm.identity import Identity
-from relaylm.providers.openai_compatible import OpenAICompatibleProvider
+from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPassProvider
 from relaylm.state import STATE_CLASS_DEFINITIONS, StateRecord
 
 
@@ -74,7 +74,7 @@ def test_same_openai_provider_instance_runs_distinct_conversation_and_extraction
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            provider = OpenAICompatibleProvider(
+            provider = OpenAICompatibleTwoPassProvider(
                 base_url="http://lm.test/v1",
                 model="gemma",
                 http_client=client,
@@ -163,7 +163,7 @@ def test_conversation_pass_streams_only_visible_utterance_before_extraction_exis
             emitted.append(text)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            provider = OpenAICompatibleProvider(
+            provider = OpenAICompatibleTwoPassProvider(
                 base_url="http://lm.test/v1",
                 model="gemma",
                 http_client=client,
