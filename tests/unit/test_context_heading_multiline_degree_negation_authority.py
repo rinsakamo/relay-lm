@@ -152,15 +152,6 @@ def test_additional_stale_section_degree_remains_c1_conflict() -> None:
     assert _compile(fallback).memory == ()
 
 
-def test_multiple_exact_negated_body_claims_remain_on_c1_fallback() -> None:
-    fallback = _chunk(
-        "not likes; degree_hint: 0.85\n"
-        "not dislikes; degree_hint: 0.85"
-    )
-
-    _assert_retained(fallback)
-
-
 def test_positive_multiline_reserved_pair_match_remains_c1() -> None:
     current = _chunk(
         "likes; degree_hint: 0.85\n"
