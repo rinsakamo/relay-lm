@@ -1,0 +1,71 @@
+{
+  "format_version": 1,
+  "states": [
+    {
+      "state_id": "state-user-name",
+      "state_class": "user.identity",
+      "key": "name",
+      "value": "ユウ",
+      "status": "active",
+      "sources": [
+        "cry4-user-name-yuu"
+      ],
+      "valid_from": "2026-08-18T00:00:30+00:00"
+    },
+    {
+      "state_id": "state-pref-coffee",
+      "state_class": "user.preference",
+      "key": "coffee",
+      "value": "likes",
+      "status": "active",
+      "sources": [
+        "cry4-user-beverage-comparison"
+      ],
+      "valid_from": "2026-08-18T00:01:30+00:00"
+    },
+    {
+      "state_id": "state-pref-tea",
+      "state_class": "user.preference",
+      "key": "tea",
+      "value": "likes",
+      "status": "active",
+      "sources": [
+        "cry4-user-beverage-comparison"
+      ],
+      "valid_from": "2026-08-18T00:01:30+00:00"
+    },
+    {
+      "state_id": "state-preferred-beverage",
+      "state_class": "user.preference",
+      "key": "preferred_beverage",
+      "value": "coffee",
+      "status": "active",
+      "sources": [
+        "cry4-user-beverage-comparison"
+      ],
+      "valid_from": "2026-08-18T00:01:30+00:00"
+    },
+    {
+      "state_id": "state-residence-location",
+      "state_class": "user.fact",
+      "key": "residence_location",
+      "value": "京都",
+      "status": "active",
+      "sources": [
+        "cry4-user-residence-correction"
+      ],
+      "valid_from": "2026-08-18T00:05:30+00:00"
+    },
+    {
+      "state_id": "state-current-task",
+      "state_class": "user.goal",
+      "key": "current_task",
+      "value": "check_blue_box_contents",
+      "status": "active",
+      "sources": [
+        "cry4-user-blue-box-task"
+      ],
+      "valid_from": "2026-08-18T00:02:30+00:00"
+    }
+  ]
+}

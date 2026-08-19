@@ -1,0 +1,7 @@
+{"id":"cry4-user-name-yuu","type":"message","actor":"user","timestamp":"2026-08-18T00:00:00+00:00","payload":{"content":"私の名前はユウ。"}}
+{"id":"cry4-user-beverage-comparison","type":"message","actor":"user","timestamp":"2026-08-18T00:01:00+00:00","payload":{"content":"コーヒーも紅茶も好きだけど、どちらかなら紅茶のほうが好き。コーヒーが嫌いになったわけではない。"}}
+{"id":"cry4-user-blue-box-task","type":"message","actor":"user","timestamp":"2026-08-18T00:02:00+00:00","payload":{"content":"今だけ、青い箱の中身を確認するのを手伝って。"}}
+{"id":"cry4-assistant-hokkaido-claim","type":"message","actor":"assistant","timestamp":"2026-08-18T00:03:00+00:00","payload":{"content":"ユウは北海道に住んでいるんだね。"}}
+{"id":"cry4-user-name-correction","type":"message","actor":"user","timestamp":"2026-08-18T00:04:00+00:00","payload":{"content":"訂正。名前はユウト。ユウじゃなくてユウトと呼んで。"}}
+{"id":"cry4-user-residence-correction","type":"message","actor":"user","timestamp":"2026-08-18T00:05:00+00:00","payload":{"content":"以前は京都に住んでいたけど、今は大阪に住んでいる。"}}
+{"id":"cry4-user-blue-box-complete","type":"message","actor":"user","timestamp":"2026-08-18T00:06:00+00:00","payload":{"content":"青い箱の確認はもう終わった。この作業を今後の目標として覚えなくていい。"}}
