@@ -105,6 +105,91 @@ Each axis is rated `pass`, `fail`, or `not_rated`, with an optional note. A revi
 
 `semantic_stability` normally requires multiple evidence runs or a controlled repeated-pass protocol. CRY2 defines the review axis and citable evidence identity; it does not claim stability from a single pass.
 
+
+## Semantic-stability replication rule
+
+CRY2 `semantic_stability` is a product-quality axis for repeated actual-model crystallization evidence. Its authority identity is:
+
+```text
+actual-model-crystallization-stability-rule-v1
+```
+
+This rule is owned by Actual-model Evaluation (#1386). It evaluates whether independently generated semantic outputs materially churn when the same crystallization input, target, provider, and decoding condition are repeated. It is separate from:
+
+- output correctness by itself;
+- deterministic Validator correctness;
+- provider protocol reliability;
+- sequential re-crystallization of already-mutated MEMORY;
+- cognitive-budget boundary attribution;
+- population-level statistical stability.
+
+A model can therefore be stable-but-wrong: the other six CRY2 axes may fail while `semantic_stability` passes for the same repeatable failure.
+
+### Independent same-input replicate identity
+
+Every replicate in one crystallization-stability tranche must preserve:
+
+- the same exact RelayLM freeze commit;
+- the same Character fixture ID and revision;
+- the same case ID and version;
+- the same exact initial Canonical State;
+- the same exact Event snapshot;
+- the same exact prior MEMORY;
+- the same `max_events`;
+- the same target, model artifact, and tokenizer identity;
+- the same provider and adapter identity;
+- the same structured-output schema;
+- the same effective context window;
+- the same decoding controls and seed policy;
+- the same LM Studio runtime/deployment identity; and
+- the same `condition_id`.
+
+Only `replicate_id`, the resulting content-addressed run/review IDs, and the model-generated output may vary. Each replicate starts from a fresh workspace copied from the same immutable fixture. A preceding replicate's resulting State or MEMORY must never become the next replicate's input. This is independent same-input replication, not sequential repeated-pass crystallization.
+
+Within this rule, the exact RelayLM commit is part of the cohort identity. Runs from different commits, including docs-only commits, must not be combined into one canonical stability tranche. The existing CRY4 run remains historical first product-quality evidence and is not a member of a later CRY5 tranche created from a new exact freeze.
+
+### Material semantic comparison
+
+Exact string equality is not required. Non-material differences may include Markdown wording, heading wording, section ordering, candidate ordering, or harmless prose formatting.
+
+Review material meaning at the concept level, including:
+
+1. durable semantic units selected or omitted;
+2. transient information retained or discarded;
+3. unsupported assistant-only information promoted or rejected;
+4. current versus historical meaning;
+5. correction and supersession meaning;
+6. StateCandidate semantic identity: `state_class`, `key`, `op`, and semantic value;
+7. unnecessary alias or key proliferation; and
+8. MEMORY semantic organization.
+
+Exact candidate count/order and exact Markdown surface are not oracles. A CRY2 pass/fail result from another quality axis must not be copied into `semantic_stability`; the comparison must be made directly from the repeated raw and deterministic semantic evidence.
+
+### Minimal stopping rule
+
+Use at most three successful replicates for one exact-freeze crystallization-stability tranche:
+
+```text
+replicate 0 = initial observation
+replicate 1 = independent replication
+```
+
+If replicates 0 and 1 materially disagree, rate `semantic_stability = fail` and stop. Do not add a run to manufacture a majority.
+
+If replicates 0 and 1 are materially consistent, run replicate 2 as confirmation when confirmation is required. If all three are materially consistent, rate `semantic_stability = pass`. If replicate 2 materially disagrees, rate `semantic_stability = fail`.
+
+Three successful runs are the maximum tranche. This is an engineering reproducibility gate, not a statistical significance, confidence, probability, or population-level model-property claim.
+
+### Failed execution handling
+
+A provider, protocol, or bounded execution failure that produces no successful CRY2 `<run_id>.json` is not a semantic comparison run and does not count toward the successful-replicate limit. Preserve an immutable bounded-failure receipt, do not reinterpret the failure as semantic quality, and do not automatically continue with a replacement generation in the same transaction. The bounded transaction stops with `semantic_stability = not_rated`, and a later transaction begins from fresh authority.
+
+### Review and claim scope
+
+Use the existing `ActualModelCrystallizationReview.evidence_run_ids` capability to list every successful run in the tranche. Reviews retain the exact seven CRY2 axes and the `pass` / `fail` / `not_rated` outcomes. No weighted or composite score is introduced.
+
+This rule is separate from `actual-model-replication-rule-v1` in the total cognitive-budget evidence reference. CRY5 does not redefine budget pressure comparisons, directional boundary attribution, provider semantics, crystallization semantics, prompt/schema behavior, or calibration/default policy.
+
 ## Evidence artifacts
 
 `write_actual_model_crystallization_evidence(...)` writes one `<run_id>.json` artifact.
