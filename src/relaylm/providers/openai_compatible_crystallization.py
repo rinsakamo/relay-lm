@@ -66,27 +66,46 @@ DEGREE_HINT_VALUE_SCHEMA: dict[str, Any] = {
     },
 }
 
+
+def _state_candidate_wire_branch(
+    *,
+    op: str,
+    value_schema: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["state_class", "key", "op", "value", "sources"],
+        "properties": {
+            "state_class": {"type": "string", "enum": list(STATE_CLASS_DEFINITIONS)},
+            "key": {"type": "string", "minLength": 1},
+            "op": {"type": "string", "enum": [op]},
+            "value": value_schema,
+            "sources": {
+                "type": "array",
+                "minItems": 1,
+                "items": {"type": "string", "minLength": 1},
+            },
+        },
+    }
+
+
 STATE_CANDIDATE_WIRE_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["state_class", "key", "op", "value", "sources"],
-    "properties": {
-        "state_class": {"type": "string", "enum": list(STATE_CLASS_DEFINITIONS)},
-        "key": {"type": "string", "minLength": 1},
-        "op": {"type": "string", "enum": ["set", "remove"]},
-        "value": {
-            "anyOf": [
-                {"type": "string"},
-                DEGREE_HINT_VALUE_SCHEMA,
-                {"type": "null"},
-            ]
-        },
-        "sources": {
-            "type": "array",
-            "minItems": 1,
-            "items": {"type": "string", "minLength": 1},
-        },
-    },
+    "anyOf": [
+        _state_candidate_wire_branch(
+            op="set",
+            value_schema={
+                "anyOf": [
+                    {"type": "string"},
+                    DEGREE_HINT_VALUE_SCHEMA,
+                ]
+            },
+        ),
+        _state_candidate_wire_branch(
+            op="remove",
+            value_schema={"type": "null"},
+        ),
+    ],
 }
 
 WIRE_SCHEMA: dict[str, Any] = {

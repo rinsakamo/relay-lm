@@ -7,6 +7,9 @@ import httpx
 import pytest
 
 import relaylm.providers as providers
+from relaylm.providers.openai_compatible_crystallization import (
+    STATE_CANDIDATE_WIRE_SCHEMA,
+)
 from relaylm.crystallization import CrystallizationInput, CrystallizationOutput
 from relaylm.events import Event
 from relaylm.identity import Identity
@@ -15,7 +18,7 @@ from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
     OpenAICompatibleDecodingConfig,
 )
-from relaylm.state import CanonicalState, StateRecord
+from relaylm.state import CanonicalState, STATE_CLASS_DEFINITIONS, StateRecord
 
 
 def _provider_type():
@@ -66,6 +69,61 @@ def _all_capabilities() -> OpenAICompatibleDecodingCapabilities:
     return OpenAICompatibleDecodingCapabilities(
         supported_controls=frozenset({"temperature", "top_p", "seed"})
     )
+
+
+def test_state_candidate_wire_schema_pairs_operation_and_value() -> None:
+    schema = STATE_CANDIDATE_WIRE_SCHEMA
+
+    branches = schema["anyOf"]
+    assert len(branches) == 2
+
+    by_op = {
+        branch["properties"]["op"]["enum"][0]: branch
+        for branch in branches
+    }
+    assert set(by_op) == {"set", "remove"}
+
+    expected_required = ["state_class", "key", "op", "value", "sources"]
+    for branch in branches:
+        assert branch["type"] == "object"
+        assert branch["additionalProperties"] is False
+        assert branch["required"] == expected_required
+        assert branch["properties"]["state_class"] == {
+            "type": "string",
+            "enum": list(STATE_CLASS_DEFINITIONS),
+        }
+        assert branch["properties"]["key"] == {"type": "string", "minLength": 1}
+        assert branch["properties"]["sources"] == {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "minLength": 1},
+        }
+
+    set_value = by_op["set"]["properties"]["value"]
+    assert by_op["set"]["properties"]["op"] == {"type": "string", "enum": ["set"]}
+    assert by_op["remove"]["properties"]["op"] == {
+        "type": "string",
+        "enum": ["remove"],
+    }
+    assert set_value == {
+        "anyOf": [
+            {"type": "string"},
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["semantic", "degree_hint"],
+                "properties": {
+                    "semantic": {"type": "string", "minLength": 1},
+                    "degree_hint": {
+                        "type": "number",
+                        "minimum": 0.0,
+                        "maximum": 1.0,
+                    },
+                },
+            },
+        ]
+    }
+    assert by_op["remove"]["properties"]["value"] == {"type": "null"}
 
 
 def test_provider_makes_one_nonstreaming_strict_request_and_returns_crystallization_output() -> None:
