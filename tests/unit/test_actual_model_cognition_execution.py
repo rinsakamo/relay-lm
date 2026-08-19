@@ -105,6 +105,36 @@ class _TwoPassProvider:
         )
 
 
+class _SecondPassFailureProvider:
+    def __init__(self) -> None:
+        self.conversation_calls = 0
+        self.extraction_calls = 0
+
+    async def generate(self, _: CognitiveInput) -> CognitiveOutput:
+        raise AssertionError("single-pass must not run")
+
+    async def generate_conversation(self, _: CognitiveInput) -> CognitionConversationOutput:
+        self.conversation_calls += 1
+        return CognitionConversationOutput(response=f"reply-{self.conversation_calls}")
+
+    async def generate_extraction(
+        self, extraction_input: CognitionExtractionInput
+    ) -> CognitionExtractionOutput:
+        self.extraction_calls += 1
+        if self.extraction_calls == 2:
+            raise RuntimeError("second extraction failed")
+        return CognitionExtractionOutput(
+            state_candidates=(
+                StateCandidate.set(
+                    state_class="user.preference",
+                    key="drink",
+                    value="tea",
+                    sources=(extraction_input.originating_event_id,),
+                ),
+            )
+        )
+
+
 class _ShadowProvider:
     def __init__(self) -> None:
         self.single_calls = 0
@@ -199,6 +229,40 @@ def test_two_pass_actual_model_evidence_separates_pass1_and_pass2_and_commits_pa
     assert turn.cognition_execution.pass2_raw is not None
     assert turn.cognition_execution.pass2_raw.state_candidates[0]["value"] == "tea"
     assert turn.cognition_execution.shadow_status is None
+
+
+def test_failed_later_pass2_does_not_reuse_previous_turn_raw_output(tmp_path: Path) -> None:
+    provider = _SecondPassFailureProvider()
+    manifest = _manifest(
+        cognition_execution=CognitionExecutionEvidenceIdentity.two_pass(
+            execution_path=BUFFERED_EXECUTION_PATH
+        )
+    )
+    scenario = ActualModelScenario(
+        scenario_id="two-turn-pass2-failure-v1",
+        family="state_candidate_quality",
+        version="1",
+        turns=("first", "second"),
+    )
+
+    evidence = asyncio.run(
+        run_actual_model_scenario(
+            character=_make_character(tmp_path),
+            provider=provider,
+            manifest=manifest,
+            scenario=scenario,
+        )
+    )
+
+    assert evidence.turns[0].cognition_execution is not None
+    assert evidence.turns[0].cognition_execution.pass2_raw is not None
+    second = evidence.turns[1]
+    assert second.raw_model.response == "reply-2"
+    assert second.raw_model.state_candidates == ()
+    assert second.cognition_execution is not None
+    assert second.cognition_execution.pass2_status == "failed"
+    assert second.cognition_execution.pass2_failure_reason == "pass2_failed"
+    assert second.cognition_execution.pass2_raw is None
 
 
 def test_shadow_actual_model_evidence_keeps_canonical_raw_and_separate_shadow_raw(
