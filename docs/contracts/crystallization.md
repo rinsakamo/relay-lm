@@ -17,10 +17,13 @@ one off-turn Crystallizer.generate(...)
         |
         v
 CrystallizationOutput
-  ├─ memory_markdown
+  ├─ MemoryUnit[]
   └─ StateCandidate[]
         |
-        +--> memory/MEMORY.md
+        +--> RelayLM deterministic MEMORY.md renderer
+                    |
+                    v
+              memory/MEMORY.md
         |
         +--> existing Validator / State engine
                     |
@@ -59,11 +62,11 @@ The adapter does not reinterpret these fields into a second persistence model. E
 The current output shape is logically:
 
 ```text
-memory_markdown: non-empty Markdown
+memory_units: non-empty MemoryUnit[]
 state_candidates: StateCandidate[]
 ```
 
-The Markdown body is the readable synthesis produced by the crystallizer. Provenance should be represented in the Markdown when the synthesis depends on specific Events or accepted State, but readable Markdown does not gain Canonical State authority merely by mentioning a source.
+The model proposes semantic MEMORY units. Each unit contains human-readable `heading` and `content`, a closed `temporal_scope` (`current`, `historical`, or `unknown`), and typed `sources` (`event` or `state`). The model does not emit `memory_id`, `derivation_id`, or `relaylm-memory` control comments. RelayLM resolves supplied sources against canonical Event/State authority and deterministically projects the final portable Markdown. Model prose, headings, and Markdown layout are never machine identity.
 
 `StateCandidate[]` uses the existing RelayLM StateCandidate contract. The crystallizer has no privileged mutation path.
 
@@ -73,7 +76,14 @@ The Markdown body is the readable synthesis produced by the crystallizer. Proven
 
 ```json
 {
-  "memory_markdown": "# Memory\n...",
+  "memory_units": [
+    {
+      "heading": "Preferred beverage",
+      "content": "The user prefers tea.",
+      "temporal_scope": "current",
+      "sources": [{"kind": "state", "reference_id": "state-beverage"}]
+    }
+  ],
   "state_candidates": [
     {
       "state_class": "user.preference",
@@ -88,7 +98,8 @@ The Markdown body is the readable synthesis produced by the crystallizer. Proven
 
 Rules:
 
-- `memory_markdown` is a non-empty string;
+- `memory_units` is a non-empty array; each unit contains exactly `heading`, `content`, `temporal_scope`, and `sources`;
+- MEMORY unit source references are typed Event or State references. The model cannot supply persistent IDs or metadata comments;
 - `state_candidates` is an array and there is no ContinuityCandidate channel;
 - each candidate contains exactly `state_class`, `key`, `op`, `value`, and `sources`;
 - the strict JSON Schema structurally pairs operations and values: the `set` branch permits only `op: "set"` with a string or exact degree-hint object value, while the `remove` branch permits only `op: "remove"` with `value: null`; both branches retain the existing common-field rules and `additionalProperties: false`;
@@ -122,13 +133,13 @@ The executable provider instruction preserves these boundaries:
 - corrective StateCandidate output is reserved for a genuinely supported change to accepted current understanding; otherwise no State candidate is required;
 - Event IDs must never be invented and prior MEMORY prose must never be treated as Event evidence.
 
-The instruction may also ask the model to emit the governed `relaylm-memory:v1` metadata convention for MEMORY units whose temporal/provenance role is supported. MEMORY metadata provenance may refer to supplied Event or State authority roots according to the metadata contract below; this is separate from the stricter StateCandidate rule that candidate `sources` are supplied Event IDs only.
+The instruction asks the model to propose only durable structured MEMORY units. RelayLM, not the model, emits the governed `relaylm-memory:v1` metadata convention after resolving canonical Event/State references. This is separate from the stricter StateCandidate rule that candidate `sources` are supplied Event IDs only.
 
 This instruction is current executable provider behavior. It is **not** evidence that the prompt is already product-optimal or that a target model reliably performs all of these semantic tasks. Real-model crystallization-quality evidence and prompt/schema tuning remain separate work.
 
 ## Typed MEMORY temporal/provenance model
 
-RelayLM defines a #1260-owned typed authority model for the temporal role and lineage of a retrievable crystallized MEMORY semantic unit.
+RelayLM defines a #1260-owned typed authority model for the temporal role and lineage of a retrievable crystallized MEMORY semantic unit. The model-facing `MemoryUnit` is a semantic proposal; `MemoryProvenance` is RelayLM-owned projected authority.
 
 The closed temporal domain is:
 
@@ -146,13 +157,13 @@ Classified `current` or `historical` authority requires typed provenance. Proven
 
 MEMORY should be organized around stable semantic units rather than transient wording or arbitrary heading choices. When current and historical aspects of one durable concept are both represented, keep their semantic units and stable logical identities coherent across updates; do not split or merge them solely because of Markdown organization.
 
-The source vocabulary follows existing RelayLM authority roots: persisted Events are occurrence/provenance records and Canonical State is accepted current machine understanding. A Markdown path, heading, retrieval score, or fluent memory sentence is not itself a provenance source kind.
+The source vocabulary follows existing RelayLM authority roots: persisted Events are occurrence/provenance records and Canonical State is accepted current machine understanding. A Markdown path, heading, retrieval score, or fluent memory sentence is not itself a provenance source kind. A source that cannot be resolved in the supplied canonical authority fails closed to unclassified/unknown; RelayLM never guesses identity from prose similarity and does not introduce a second semantic authority.
 
 This model does not promote MEMORY into Canonical State and does not change retrieval relevance/ranking.
 
 ## Governed MEMORY metadata convention
 
-A heading-scoped MEMORY unit may carry its typed temporal/provenance authority in one reserved HTML comment placed as the **first nonblank, non-fenced body line immediately under that heading**:
+A heading-scoped MEMORY unit may carry its typed temporal/provenance authority in one reserved HTML comment placed as the **first nonblank, non-fenced body line immediately under that heading**. This comment is emitted only by the deterministic RelayLM renderer:
 
 ```markdown
 ## Preferred beverage
@@ -168,11 +179,11 @@ The `v1` payload is a JSON object with exactly these fields:
 - `temporal_scope`: exactly `current`, `historical`, or `unknown`;
 - `sources`: a non-empty array of objects containing exactly `kind` and `reference_id`, where `kind` is exactly `event` or `state` and `reference_id` is non-empty.
 
-The parser preserves these values exactly as typed provenance. It does not synthesize Event IDs, translate Markdown locations into provenance, resolve MEMORY into Canonical State, or infer missing metadata.
+The renderer derives `memory_id` and `derivation_id` from a canonical JSON basis containing only the unit temporal scope and sorted, resolved typed source references, using SHA-256 with deterministic compact JSON. Content, heading, Markdown order, and formatting are excluded from this identity basis. A duplicate or unresolved basis receives no typed metadata. The existing retrieval parser consumes the rendered comment; it remains the sole Markdown metadata parser and does not become a parallel authority.
 
 An ordinary unannotated section receives typed `unknown` with no provenance. A malformed payload, unsupported metadata version, unsupported temporal scope, unsupported source kind, duplicate JSON key, or unsupported payload shape also fails closed to typed `unknown` with no provenance.
 
-Reserved `relaylm-memory:` control comments outside the one valid metadata position are not authority. Reserved control comments are removed from the semantic MEMORY chunk so their IDs or control terms cannot affect lexical relevance or retrieved-content character accounting. The same text inside a Markdown code fence remains ordinary quoted/example content and never becomes metadata authority.
+Model-authored `relaylm-memory:` control comments are stripped by the renderer outside fenced code before persistence and therefore cannot become machine metadata authority. The same text inside a Markdown code fence remains ordinary quoted/example content and never becomes metadata authority. The existing parser preserves its fail-closed behavior for malformed persisted Markdown.
 
 Therefore no year, date literal, `previous`, `formerly`, tense, heading wording, or other free-form lexical cue can silently produce `current` or `historical` authority.
 

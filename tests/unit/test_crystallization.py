@@ -10,6 +10,7 @@ from relaylm.crystallization import (
 )
 from relaylm.events import Event
 from relaylm.state import CanonicalState, StateCandidate, StateRecord
+from relaylm.memory_provenance import MemoryTemporalScope, MemoryUnit
 from relaylm.storage.filesystem import CharacterDirectory
 
 
@@ -35,11 +36,12 @@ class RecordingCrystallizer:
         self.inputs.append(crystallization_input)
         source = crystallization_input.events[-1].id
         return CrystallizationOutput(
-            memory_markdown=(
-                "# Memory\n\n"
-                "## Preferences\n\n"
-                "Rin likes tea.\n\n"
-                f"<!-- relaylm-source: {source} -->\n"
+            memory_units=(
+                MemoryUnit(
+                    heading="Preferences",
+                    content="Rin likes tea.\n\n<!-- relaylm-source: current -->",
+                    temporal_scope=MemoryTemporalScope.UNKNOWN,
+                ),
             ),
             state_candidates=(
                 StateCandidate.set(
@@ -131,7 +133,13 @@ def test_crystallization_can_validate_state_provenance_outside_recent_snapshot(
         async def generate(self, crystallization_input: CrystallizationInput) -> CrystallizationOutput:
             assert [event.id for event in crystallization_input.events] == ["recent"]
             return CrystallizationOutput(
-                memory_markdown="# Memory\n\nRin likes tea.\n",
+                memory_units=(
+                    MemoryUnit(
+                        heading="Preferences",
+                        content="Rin likes tea.",
+                        temporal_scope=MemoryTemporalScope.UNKNOWN,
+                    ),
+                ),
                 state_candidates=(
                     StateCandidate.set(
                         state_class="user.preference",

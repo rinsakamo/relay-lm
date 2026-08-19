@@ -12,6 +12,7 @@ import pytest
 from relaylm.actual_model_artifacts import character_fixture_revision
 from relaylm.actual_model_targets import ActualModelArtifactVerification, load_actual_model_target
 from relaylm.crystallization import CrystallizationInput, CrystallizationOutput
+from relaylm.memory_provenance import MemoryTemporalScope, MemoryUnit
 
 
 MODULE = "relaylm.actual_model_crystallization_host_runner"
@@ -37,7 +38,7 @@ def _subject():
 
 def _condition_mapping() -> dict[str, object]:
     return {
-        "format_version": 2,
+        "format_version": 3,
         "target_id": TARGET_ID,
         "relaylm_commit": "9" * 40,
         "lm_studio": {
@@ -146,7 +147,13 @@ class _ScriptedCrystallizer:
     async def generate(self, crystallization_input: CrystallizationInput) -> CrystallizationOutput:
         self.calls.append(crystallization_input)
         return CrystallizationOutput(
-            memory_markdown="# Memory\n\nHost-run crystallization evidence.\n",
+            memory_units=(
+                MemoryUnit(
+                    heading="Evidence",
+                    content="Host-run crystallization evidence.",
+                    temporal_scope=MemoryTemporalScope.UNKNOWN,
+                ),
+            ),
             state_candidates=(),
         )
 
@@ -479,7 +486,7 @@ def test_prepare_binds_verified_target_fixture_attestation_and_applied_decoding(
             ("top_p", 1.0),
         )
         assert prepared.manifest.adapter_identity == (
-            "relaylm.providers.OpenAICompatibleCrystallizer:v1"
+            "relaylm.providers.OpenAICompatibleCrystallizer:v2"
         )
         assert "lm-studio-serving-proof:sha256:" in prepared.manifest.provider_identity
         assert prepared.crystallizer.model == condition.request_model
@@ -558,7 +565,7 @@ def test_execute_uses_fresh_workspace_one_pass_and_existing_cry2_writer(
     assert path.is_file()
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert payload["run_id"] == artifact.run_id
-    assert payload["raw_model"]["memory_markdown"].startswith("# Memory")
+    assert payload["raw_model"]["memory_units"][0]["content"].startswith("Host-run")
     assert payload["manifest"]["execution_kind"] == "off_turn_crystallization"
 
     workspace = (

@@ -5,6 +5,7 @@ from typing import Protocol
 
 from relaylm.events import Event
 from relaylm.identity import Identity
+from relaylm.memory_provenance import MemoryUnit, render_memory_units
 from relaylm.state import CanonicalState, StateCandidate
 from relaylm.storage.filesystem import CharacterDirectory
 from relaylm.validation import CandidateDecision, apply_state_candidates
@@ -20,12 +21,14 @@ class CrystallizationInput:
 
 @dataclass(frozen=True, slots=True)
 class CrystallizationOutput:
-    memory_markdown: str
+    memory_units: tuple[MemoryUnit, ...]
     state_candidates: tuple[StateCandidate, ...] = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
-        if not self.memory_markdown.strip():
-            raise ValueError("crystallized memory Markdown must not be empty")
+        if not self.memory_units:
+            raise ValueError("crystallized memory units must not be empty")
+        if not all(isinstance(unit, MemoryUnit) for unit in self.memory_units):
+            raise TypeError("memory_units must contain MemoryUnit values")
 
 
 class Crystallizer(Protocol):
@@ -77,7 +80,12 @@ async def run_crystallization(
         events=event_by_id,
     )
 
-    memory_changed = character.save_memory_markdown(output.memory_markdown)
+    memory_markdown = render_memory_units(
+        output.memory_units,
+        events=event_by_id,
+        state=validation.state,
+    )
+    memory_changed = character.save_memory_markdown(memory_markdown)
     if validation.changed:
         character.save_state(validation.state)
 

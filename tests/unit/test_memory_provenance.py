@@ -2,13 +2,18 @@ from __future__ import annotations
 
 import pytest
 
+from relaylm.events import Event
 from relaylm.memory_provenance import (
     MemoryProvenance,
     MemoryProvenanceSource,
     MemoryProvenanceSourceKind,
     MemoryTemporalAuthority,
     MemoryTemporalScope,
+    MemoryUnit,
+    render_memory_units,
 )
+from relaylm.state import CanonicalState, StateRecord
+from relaylm.memory_retrieval import select_memory_chunks
 
 
 def test_temporal_scope_is_closed_and_unknown_is_first_class() -> None:
@@ -145,3 +150,123 @@ def test_source_reference_ids_must_be_non_empty() -> None:
             kind=MemoryProvenanceSourceKind.EVENT,
             reference_id=" ",
         )
+
+
+def test_structured_current_and_historical_units_get_deterministic_typed_metadata() -> None:
+    event = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": "I moved to Osaka."},
+        event_id="event-osaka",
+        timestamp="2026-08-20T00:00:00+00:00",
+    )
+    state = CanonicalState(
+        states=(
+            StateRecord(
+                state_id="state-residence",
+                state_class="user.fact",
+                key="residence_location",
+                value="Osaka",
+            ),
+        )
+    )
+    units = (
+        MemoryUnit(
+            heading="Residence now",
+            content="The user currently lives in Osaka.",
+            temporal_scope=MemoryTemporalScope.CURRENT,
+            sources=(MemoryProvenanceSource(MemoryProvenanceSourceKind.STATE, "state-residence"),),
+        ),
+        MemoryUnit(
+            heading="Residence history",
+            content="The user previously lived elsewhere.",
+            temporal_scope=MemoryTemporalScope.HISTORICAL,
+            sources=(MemoryProvenanceSource(MemoryProvenanceSourceKind.EVENT, "event-osaka"),),
+        ),
+    )
+    rendered = render_memory_units(units, events={event.id: event}, state=state)
+
+    assert rendered.count("<!-- relaylm-memory:v1 ") == 2
+    assert '"temporal_scope":"current"' in rendered
+    assert '"temporal_scope":"historical"' in rendered
+    assert '"kind":"state"' in rendered
+    assert '"kind":"event"' in rendered
+
+
+def test_memory_identity_ignores_heading_and_order_but_projection_is_byte_stable() -> None:
+    event = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": "Tea is preferred."},
+        event_id="event-tea",
+        timestamp="2026-08-20T00:00:00+00:00",
+    )
+    source = MemoryProvenanceSource(MemoryProvenanceSourceKind.EVENT, event.id)
+    first = MemoryUnit(
+        heading="Preferences",
+        content="Tea is preferred.",
+        temporal_scope=MemoryTemporalScope.CURRENT,
+        sources=(source,),
+    )
+    changed_heading = MemoryUnit(
+        heading="Stable semantic unit",
+        content="Tea is preferred.",
+        temporal_scope=MemoryTemporalScope.CURRENT,
+        sources=(source,),
+    )
+    authority = {event.id: event}
+    state = CanonicalState()
+    left = render_memory_units((first,), events=authority, state=state)
+    right = render_memory_units((changed_heading,), events=authority, state=state)
+
+    def identity(markdown: str) -> str:
+        return next(line for line in markdown.splitlines() if "relaylm-memory:v1" in line)
+
+    assert render_memory_units((first,), events=authority, state=state) == left
+    assert identity(left).split('"memory_id":"', 1)[1].split('"', 1)[0] == identity(right).split('"memory_id":"', 1)[1].split('"', 1)[0]
+    assert left != right
+
+
+def test_unresolved_sources_and_model_metadata_controls_fail_closed() -> None:
+    unit = MemoryUnit(
+        heading="Unclassified",
+        content=(
+            "Readable proposal.\n\n"
+            '<!-- relaylm-memory:v1 {"memory_id":"model-invented"} -->'
+        ),
+        temporal_scope=MemoryTemporalScope.CURRENT,
+        sources=(MemoryProvenanceSource(MemoryProvenanceSourceKind.EVENT, "missing"),),
+    )
+    rendered = render_memory_units(unit and (unit,), events={}, state=CanonicalState())
+
+    assert "model-invented" not in rendered
+    assert "relaylm-memory" not in rendered
+    assert "Readable proposal." in rendered
+
+
+def test_existing_retrieval_parser_consumes_renderer_metadata() -> None:
+    event = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": "Tea is preferred."},
+        event_id="event-tea-retrieval",
+        timestamp="2026-08-20T00:00:00+00:00",
+    )
+    unit = MemoryUnit(
+        heading="Preferences",
+        content="Tea is preferred.",
+        temporal_scope=MemoryTemporalScope.CURRENT,
+        sources=(MemoryProvenanceSource(MemoryProvenanceSourceKind.EVENT, event.id),),
+    )
+    rendered = render_memory_units((unit,), events={event.id: event}, state=CanonicalState())
+    chunks = select_memory_chunks(
+        memory_markdown=rendered,
+        query="tea",
+        max_chunks=1,
+        max_chars=1000,
+    )
+
+    assert len(chunks) == 1
+    assert chunks[0].temporal_authority.temporal_scope is MemoryTemporalScope.CURRENT
+    assert chunks[0].temporal_authority.provenance is not None
+    assert chunks[0].temporal_authority.provenance.sources[0].reference_id == event.id

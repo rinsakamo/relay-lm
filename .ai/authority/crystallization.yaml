@@ -1,6 +1,6 @@
 schema_version: 1
 id: crystallization
-summary: Crystallization of accepted evidence into durable MEMORY authority.
+summary: Structured semantic crystallization proposals with deterministic durable MEMORY projection and accepted StateCandidate validation.
 canonical_surfaces:
 - docs/contracts/crystallization.md
 implementation:

@@ -10,10 +10,12 @@ import relaylm.providers as providers
 from relaylm.providers.openai_compatible_crystallization import (
     STATE_CANDIDATE_WIRE_SCHEMA,
     SYSTEM_INSTRUCTION,
+    parse_crystallization_wire_output,
 )
 from relaylm.crystallization import CrystallizationInput, CrystallizationOutput
 from relaylm.events import Event
 from relaylm.identity import Identity
+from relaylm.memory_provenance import MemoryTemporalScope
 from relaylm.providers.openai_compatible import ProviderProtocolError
 from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
@@ -70,6 +72,18 @@ def _all_capabilities() -> OpenAICompatibleDecodingCapabilities:
     return OpenAICompatibleDecodingCapabilities(
         supported_controls=frozenset({"temperature", "top_p", "seed"})
     )
+
+
+def _memory_wire(content: str = "Durable memory.") -> dict[str, object]:
+    return {
+        "memory_units": [{
+            "heading": "Memory",
+            "content": content,
+            "temporal_scope": "unknown",
+            "sources": [],
+        }],
+        "state_candidates": [],
+    }
 
 
 def test_state_candidate_wire_schema_pairs_operation_and_value() -> None:
@@ -168,16 +182,30 @@ def test_system_instruction_keeps_memory_units_stable_across_organization() -> N
     assert "do not split or merge them solely because of Markdown organization" in SYSTEM_INSTRUCTION
 
 
+@pytest.mark.parametrize("forbidden_key", ["memory_id", "derivation_id"])
+def test_model_cannot_supply_persistent_memory_identity(forbidden_key: str) -> None:
+    wire = _memory_wire()
+    wire["memory_units"][0][forbidden_key] = "model-invented"  # type: ignore[index]
+
+    with pytest.raises(ProviderProtocolError, match="exactly heading, content"):
+        parse_crystallization_wire_output(
+            wire,
+            allowed_source_ids=frozenset(),
+        )
+
+
 def test_provider_makes_one_nonstreaming_strict_request_and_returns_crystallization_output() -> None:
     seen: list[dict[str, object]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         seen.append(json.loads(request.content))
         wire = {
-            "memory_markdown": (
-                "# Memory\n\n## User identity\n\n"
-                "The user's current name is Yuto; an earlier Yuu form was corrected.\n"
-            ),
+            "memory_units": [{
+                "heading": "User identity",
+                "content": "The user's current name is Yuto; an earlier Yuu form was corrected.",
+                "temporal_scope": "current",
+                "sources": [{"kind": "event", "reference_id": "evt-user-name"}],
+            }],
             "state_candidates": [
                 {
                     "state_class": "user.identity",
@@ -219,7 +247,7 @@ def test_provider_makes_one_nonstreaming_strict_request_and_returns_crystallizat
     assert json_schema["strict"] is True  # type: ignore[index]
     schema = json_schema["schema"]  # type: ignore[index]
     assert schema["additionalProperties"] is False  # type: ignore[index]
-    assert schema["required"] == ["memory_markdown", "state_candidates"]  # type: ignore[index]
+    assert schema["required"] == ["memory_units", "state_candidates"]  # type: ignore[index]
     assert "continuity_candidates" not in schema["properties"]  # type: ignore[index]
 
     messages = body["messages"]
@@ -253,7 +281,9 @@ def test_provider_makes_one_nonstreaming_strict_request_and_returns_crystallizat
     }
     assert sent["prior_memory"].startswith("# Memory")
 
-    assert output.memory_markdown.startswith("# Memory")
+    assert output.memory_units[0].heading == "User identity"
+    assert output.memory_units[0].temporal_scope is MemoryTemporalScope.CURRENT
+    assert output.memory_units[0].sources[0].reference_id == "evt-user-name"
     assert output.state_candidates[0].state_class == "user.identity"
     assert output.state_candidates[0].key == "name"
     assert output.state_candidates[0].value == "Yuto"
@@ -263,7 +293,12 @@ def test_provider_makes_one_nonstreaming_strict_request_and_returns_crystallizat
 def test_remove_null_normalizes_to_semantic_remove_without_value() -> None:
     def handler(_: httpx.Request) -> httpx.Response:
         wire = {
-            "memory_markdown": "# Memory\n\nThe cancelled commitment is historical.\n",
+            "memory_units": [{
+                "heading": "History",
+                "content": "The cancelled commitment is historical.",
+                "temporal_scope": "historical",
+                "sources": [],
+            }],
             "state_candidates": [
                 {
                     "state_class": "relationship.commitment",
@@ -298,7 +333,12 @@ def test_remove_null_normalizes_to_semantic_remove_without_value() -> None:
 def test_degree_hint_value_is_preserved_exactly() -> None:
     def handler(_: httpx.Request) -> httpx.Response:
         wire = {
-            "memory_markdown": "# Memory\n\nCoffee is strongly preferred.\n",
+            "memory_units": [{
+                "heading": "Preferences",
+                "content": "Coffee is strongly preferred.",
+                "temporal_scope": "unknown",
+                "sources": [],
+            }],
             "state_candidates": [
                 {
                     "state_class": "user.preference",
@@ -334,11 +374,11 @@ def test_degree_hint_value_is_preserved_exactly() -> None:
 @pytest.mark.parametrize(
     "wire",
     [
-        {"memory_markdown": "", "state_candidates": []},
-        {"memory_markdown": "# Memory\n", "state_candidates": [], "unexpected": True},
-        {"memory_markdown": "# Memory\n", "continuity_candidates": []},
+        {"memory_units": [], "state_candidates": []},
+        {**_memory_wire(), "unexpected": True},
+        {"memory_units": [{"heading": "x", "content": "x", "temporal_scope": "unknown", "sources": []}], "continuity_candidates": []},
         {
-            "memory_markdown": "# Memory\n",
+            **_memory_wire(),
             "state_candidates": [
                 {
                     "state_class": "not.a.state.class",
@@ -350,7 +390,7 @@ def test_degree_hint_value_is_preserved_exactly() -> None:
             ],
         },
         {
-            "memory_markdown": "# Memory\n",
+            **_memory_wire(),
             "state_candidates": [
                 {
                     "state_class": "user.identity",
@@ -362,7 +402,7 @@ def test_degree_hint_value_is_preserved_exactly() -> None:
             ],
         },
         {
-            "memory_markdown": "# Memory\n",
+            **_memory_wire(),
             "state_candidates": [
                 {
                     "state_class": "user.preference",
@@ -374,7 +414,7 @@ def test_degree_hint_value_is_preserved_exactly() -> None:
             ],
         },
         {
-            "memory_markdown": "# Memory\n",
+            **_memory_wire(),
             "state_candidates": [
                 {
                     "state_class": "user.identity",
@@ -386,7 +426,7 @@ def test_degree_hint_value_is_preserved_exactly() -> None:
             ],
         },
         {
-            "memory_markdown": "# Memory\n",
+            **_memory_wire(),
             "state_candidates": [
                 {
                     "state_class": "user.identity",
@@ -461,7 +501,7 @@ def test_explicit_decoding_controls_are_carried_exactly() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         seen.append(json.loads(request.content))
-        wire = {"memory_markdown": "# Memory\n", "state_candidates": []}
+        wire = _memory_wire()
         return httpx.Response(
             200,
             json={"choices": [{"message": {"content": json.dumps(wire)}}]},

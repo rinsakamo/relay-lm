@@ -11,6 +11,7 @@ import pytest
 
 from relaylm.crystallization import CrystallizationInput, CrystallizationOutput
 from relaylm.events import Event
+from relaylm.memory_provenance import MemoryTemporalScope, MemoryUnit
 from relaylm.state import CanonicalState, StateCandidate
 from relaylm.storage.filesystem import CharacterDirectory
 
@@ -37,12 +38,17 @@ class _ScriptedCrystallizer:
             event.id for event in crystallization_input.events if event.actor == "assistant"
         )
         return CrystallizationOutput(
-            memory_markdown=(
-                "# Memory\n\n"
-                "## Preferences\n\n"
-                "Rin likes tea.\n\n"
-                "## Historical assistant claim\n\n"
-                "The assistant once said Rin lived in Hokkaido.\n"
+            memory_units=(
+                MemoryUnit(
+                    heading="Preferences",
+                    content="Rin likes tea.",
+                    temporal_scope=MemoryTemporalScope.UNKNOWN,
+                ),
+                MemoryUnit(
+                    heading="Historical assistant claim",
+                    content="The assistant once said Rin lived in Hokkaido.",
+                    temporal_scope=MemoryTemporalScope.UNKNOWN,
+                ),
             ),
             state_candidates=(
                 StateCandidate.set(
@@ -113,7 +119,7 @@ def _manifest(*, model_artifact: str = "google/gemma-4-12b@sha256:111", max_even
         character_fixture_id="fixture-crystallization-aoi",
         character_fixture_revision="sha256:fixture-v1",
         provider_identity="lm-studio-openai-compatible",
-        adapter_identity="relaylm.providers.OpenAICompatibleCrystallizer:v1",
+        adapter_identity="relaylm.providers.OpenAICompatibleCrystallizer:v2",
         model_artifact=model_artifact,
         tokenizer_identity="gemma-4-tokenizer-v1",
         effective_context_window=32768,
@@ -127,8 +133,8 @@ def _manifest(*, model_artifact: str = "google/gemma-4-12b@sha256:111", max_even
             control_mode="attested_default_without_per_request_override",
         ),
         seed=7,
-        structured_output_schema_version="relaylm_crystallization_output:v1",
-        evaluation_contract_version="actual-model-crystallization-v1",
+        structured_output_schema_version="relaylm_crystallization_output:v2",
+        evaluation_contract_version="actual-model-crystallization-v2",
         condition_id="baseline",
         max_events=max_events,
         replicate_id="0",
@@ -148,7 +154,7 @@ def test_manifest_is_exact_and_crystallization_specific() -> None:
     manifest = _manifest()
 
     assert manifest.max_events == 2
-    assert manifest.structured_output_schema_version == "relaylm_crystallization_output:v1"
+    assert manifest.structured_output_schema_version == "relaylm_crystallization_output:v2"
     assert manifest.reasoning_identity.to_mapping() == {
         "format_version": 1,
         "required_setting": "on",
@@ -169,7 +175,7 @@ def test_manifest_is_exact_and_crystallization_specific() -> None:
     with pytest.raises(ValueError, match="decoding_configuration keys must be unique"):
         replace(manifest, decoding_configuration=(("temperature", 0.0), ("temperature", 1.0)))
 
-    assert subject.ACTUAL_MODEL_CRYSTALLIZATION_EVIDENCE_FORMAT_VERSION == 2
+    assert subject.ACTUAL_MODEL_CRYSTALLIZATION_EVIDENCE_FORMAT_VERSION == 3
 
 
 def test_runner_records_exact_bounded_input_raw_output_and_deterministic_result(tmp_path: Path) -> None:
@@ -195,7 +201,7 @@ def test_runner_records_exact_bounded_input_raw_output_and_deterministic_result(
     assert evidence.input.prior_memory == "# Prior\n\nOld synthesis.\n"
     assert evidence.input.identity["content"].startswith("# Actual Model Crystallization Character")
 
-    assert "Rin likes tea" in evidence.raw_model.memory_markdown
+    assert evidence.raw_model.memory_units[0]["content"] == "Rin likes tea."
     assert [item["key"] for item in evidence.raw_model.state_candidates] == [
         "tea",
         "residence_location",
@@ -207,7 +213,8 @@ def test_runner_records_exact_bounded_input_raw_output_and_deterministic_result(
     assert evidence.deterministic.state_decisions[1]["reason"] == "user_state_requires_user_source"
     assert [item["key"] for item in evidence.deterministic.resulting_state] == ["tea"]
     assert evidence.deterministic.memory_changed is True
-    assert evidence.deterministic.resulting_memory == evidence.raw_model.memory_markdown
+    assert evidence.deterministic.resulting_memory is not None
+    assert "Rin likes tea" in evidence.deterministic.resulting_memory
     assert evidence.product_quality == ()
 
 
@@ -373,7 +380,10 @@ def test_evidence_artifact_is_idempotent_and_conflict_requires_distinct_identity
 
     conflicting = replace(
         evidence,
-        raw_model=replace(evidence.raw_model, memory_markdown="# Different\n"),
+        raw_model=replace(
+            evidence.raw_model,
+            memory_units=({"heading": "Different"},),
+        ),
     )
     with pytest.raises(subject.ActualModelCrystallizationArtifactError, match="run ID already exists"):
         subject.write_actual_model_crystallization_evidence(

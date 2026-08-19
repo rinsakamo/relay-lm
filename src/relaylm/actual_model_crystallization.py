@@ -16,11 +16,12 @@ from relaylm.crystallization import (
 )
 from relaylm.events import Event
 from relaylm.state import StateCandidate, StateRecord
+from relaylm.memory_provenance import MemoryUnit
 from relaylm.storage.filesystem import CharacterDirectory
 from relaylm.validation import CandidateDecision
 
 
-ACTUAL_MODEL_CRYSTALLIZATION_EVIDENCE_FORMAT_VERSION = 2
+ACTUAL_MODEL_CRYSTALLIZATION_EVIDENCE_FORMAT_VERSION = 3
 ACTUAL_MODEL_CRYSTALLIZATION_REVIEW_FORMAT_VERSION = 1
 CRYSTALLIZATION_QUALITY_RUBRIC_VERSION = "actual-model-crystallization-quality-v1"
 
@@ -247,12 +248,12 @@ class CrystallizationInputEvidence:
 class RawCrystallizationObservation:
     """Raw semantic output emitted by the crystallizer before validation."""
 
-    memory_markdown: str
+    memory_units: tuple[dict[str, object], ...]
     state_candidates: tuple[dict[str, object], ...]
 
     def to_mapping(self) -> dict[str, object]:
         return {
-            "memory_markdown": self.memory_markdown,
+            "memory_units": list(self.memory_units),
             "state_candidates": list(self.state_candidates),
         }
 
@@ -416,7 +417,10 @@ async def run_actual_model_crystallization(
 
     input_evidence = _serialize_input(recording.inputs[0])
     raw = RawCrystallizationObservation(
-        memory_markdown=recording.outputs[0].memory_markdown,
+        memory_units=tuple(
+            _serialize_memory_unit(item)
+            for item in recording.outputs[0].memory_units
+        ),
         state_candidates=tuple(
             _serialize_state_candidate(item)
             for item in recording.outputs[0].state_candidates
@@ -555,6 +559,18 @@ def _serialize_state_candidate(candidate: StateCandidate) -> dict[str, object]:
     if candidate.has_value:
         result["value"] = candidate.value
     return result
+
+
+def _serialize_memory_unit(unit: MemoryUnit) -> dict[str, object]:
+    return {
+        "heading": unit.heading,
+        "content": unit.content,
+        "temporal_scope": unit.temporal_scope.value,
+        "sources": [
+            {"kind": source.kind.value, "reference_id": source.reference_id}
+            for source in unit.sources
+        ],
+    }
 
 
 def _serialize_decision(decision: CandidateDecision) -> dict[str, object]:
