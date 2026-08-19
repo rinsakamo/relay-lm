@@ -346,7 +346,7 @@ Current retrieval behavior:
 - higher lexical overlap wins admission;
 - equal relevance prefers the newer occurrence by source order;
 - explicit `max_events` and `max_chars` bound admission;
-- Events are admitted whole; an oversized relevant Event is skipped rather than truncated, and a later fitting relevant Event may still fit;
+- Events are admitted whole; an oversized relevant Event is skipped rather than truncated, and a later fitting relevant Event may still be admitted;
 - selected Events are returned in original source chronology after ranking/admission;
 - the original `Event` objects are returned unchanged; retrieval does not mutate Events, State, MEMORY, indexes, or call an LLM.
 
