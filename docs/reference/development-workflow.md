@@ -2,11 +2,11 @@
 
 This is the current development-workflow authority for `v1`.
 
-> **Meaning → Example → Test → Code → Docs → Audit**
+> **Meaning → Example → Test → Code → Docs/Authority → Audit**
 
 For semantic changes:
 
-> **Meaning first. Tests freeze the meaning. Code realizes it. Docs preserve the authority.**
+> **Meaning first. Tests freeze the meaning. Code realizes it. Owner-local authority preserves it.**
 
 The workflow is intentionally lightweight. It preserves the quality properties worth carrying forward from 0.x without recreating the old governance system:
 
@@ -15,7 +15,7 @@ The workflow is intentionally lightweight. It preserves the quality properties w
 - direct canonical convergence;
 - fresh-head verification;
 - exact-head CI;
-- code / test / docs authority convergence.
+- code / test / owner-local authority convergence.
 
 ## Universal rules
 
@@ -33,6 +33,44 @@ Every transaction:
 - reconciles its owning Issue after a successful merge when an Issue exists.
 
 If `v1` moves during a transaction, reconstruct authority and classify overlap before merge. Do not silently rebase, merge, or assume the previous review/CI result is still sufficient.
+
+## Documentation and authority model
+
+Repository knowledge has three kinds, and only the first is maintained by every semantic transaction.
+
+```text
+canonical authority     owner-local, written continuously with the owning transaction
+ephemeral projection    reconstructed on demand from a stored recipe, never committed
+persistent projection   human-facing docs, materialized at a version/release boundary
+```
+
+A semantic transaction therefore ends at its own owner's authority:
+
+```text
+component implementation
+  → owner-local canonical authority update
+  → validation
+  → merge
+
+global developer view
+  → ephemeral projection on demand
+
+human/public docs
+  → persistent projection at version/release boundary
+```
+
+> **Own facts locally. Never hand-maintain aggregates. Store projection recipes, not transient views.**
+
+Consequences:
+
+- a lane registers itself by writing its own `.ai/authority/<id>.yaml`; there is no central registry to edit;
+- reverse dependencies, authority maps, dependency graphs, navigation indexes, and repository status are derived views, so they are never a write surface;
+- `ARCHITECTURE.md` is generated at a release boundary and is never hand-edited;
+- `README.md` and `SECURITY.md` remain canonical prose and are edited only when their own content changes.
+
+> **Serial integration is for genuine semantic integration, not routine documentation synchronization.**
+
+`.ai/README.md` holds the authority-declaration contract, `.ai/agent-contract.yaml` the bootstrap read order and freshness classes, and `docs/reference/repository-practices.md` the repository-use conventions.
 
 ## Parallel implementation rule
 
@@ -154,16 +192,23 @@ An unmet dependency never justifies:
 
 ### Shared integration surfaces
 
-Shared aggregate surfaces are not owned by component lanes unless they are themselves the bounded semantic owner.
+A genuine shared integration surface is one where a cross-component semantic decision must be made, not one where already-merged component facts merely need to be restated.
 
-Examples include:
+Genuine examples:
 
-- evaluation registries;
-- aggregate scenario counts;
+- the native deterministic evaluation registry in `src/relaylm/evaluation.py`;
+- aggregate scenario counts that are executable rather than documentary;
+- aggregate Issue status where a cross-owner decision is required.
+
+Not shared integration surfaces, because they are derived rather than written:
+
+- authority and dependency maps;
 - repository-wide status tables;
-- shared navigation indexes;
-- aggregate Issue status;
-- other cross-component registration surfaces.
+- navigation indexes;
+- reverse dependency views;
+- generated human-facing documentation.
+
+Registering a merged component fact in one of the derived views is not integration work. It does not exist.
 
 Component lanes stop at:
 
@@ -184,7 +229,7 @@ Lane C ─┤
 Lane D ─┘
 ```
 
-There is one writer for a shared integration surface at a time. Serial integration registers or aggregates merged component authority; it must not redefine component semantics.
+There is one writer for a shared integration surface at a time. Serial integration resolves a real cross-owner semantic question; it must not redefine component semantics, and it is never scheduled merely to synchronize documentation.
 
 ### Moving `v1`
 
@@ -236,8 +281,7 @@ A multi-lane work package is complete only after:
 
 ```text
 all required component lanes complete
-  → shared serial integration complete
-  → aggregate authority/docs converge
+  → any genuine cross-owner semantic integration complete
   → remaining Issues represent only real unresolved work
 ```
 
@@ -366,16 +410,20 @@ Do not solve a transition by adding a compatibility shim or a second authority p
 
 > **Implement the minimum machinery required to satisfy the contract.**
 
-### D. Authority docs sync
+### D. Authority convergence
 
-After behavior is GREEN, update affected current-authority docs in the same transaction.
+After behavior is GREEN, converge the owning semantic owner's authority in the same transaction.
 
-- Current implemented behavior is written in the present tense.
-- Unimplemented behavior is explicitly deferred/future.
-- Deferred behavior must never appear as current implementation.
-- Code, tests, and docs converge before merge.
+- update the affected current-authority documents this owner canonically writes;
+- update this owner's `.ai/authority/<id>.yaml` when its surfaces, dependencies, or evidence change;
+- current implemented behavior is written in the present tense;
+- unimplemented behavior is explicitly deferred/future;
+- deferred behavior must never appear as current implementation;
+- code, tests, and owner-local authority converge before merge.
 
-> **Documentation is part of the implementation.**
+Do not update another owner's authority, a derived global view, or generated human-facing documentation here. Derived views are reconstructed on demand; `ARCHITECTURE.md` is regenerated at the release boundary.
+
+> **Authority is part of the implementation. Aggregates are not.**
 
 ### E. Fresh-head semantic review
 
@@ -425,6 +473,8 @@ required checks:
 ```
 
 Each job explicitly checks out and verifies the PR head SHA before running its verification.
+
+Repository authority validation, projection recipe validation, and persistent-projection determinism run inside `v1 CI / pytest`, so authority drift fails the normal gate without adding a required check. Regenerating human-facing documentation is not part of this gate; the `v1 release candidate gate` workflow verifies it against the exact frozen candidate commit.
 
 Rules:
 
@@ -513,7 +563,7 @@ fresh authority
   → Issue reconciliation when an owning Issue exists
 ```
 
-Docs-only work must not invent new runtime semantics.
+Docs-only work must not invent new runtime semantics, and must not hand-edit a generated persistent projection.
 
 ## 5. Quality model
 
@@ -527,7 +577,7 @@ Implementation quality
   regression / structural coverage + relevant suite
 
 Repository quality
-  fresh authority + direct canonical convergence + fresh-head review + exact-head CI + docs convergence
+  fresh authority + direct canonical convergence + fresh-head review + exact-head CI + owner-local authority convergence
 ```
 
 The goal is not to reproduce heavy governance. The goal is to make the wrong semantic change, stale-head merge, compatibility accretion, or documentation drift difficult to ship.
@@ -539,6 +589,9 @@ Issue / bounded spec   intention + examples + remaining-work ledger
 Tests                  executable contract / regression evidence
 Code                   minimal implementation
 Authority docs         human-readable current semantics
+Authority declaration  owner-local ownership, surfaces, dependencies, evidence
+Projection recipe      how a derived view is reconstructed
+Generated docs         release-boundary snapshot of derived authority
 CI                     exact-head executable verification
 ```
 
@@ -582,9 +635,9 @@ These support the workflow; they are not new architecture concepts.
 
 ## Fixed principles
 
-1. **Meaning → Example → Test → Code → Docs → Audit.**
+1. **Meaning → Example → Test → Code → Docs/Authority → Audit.**
 2. **Semantic behavior changes are test-first.**
-3. **Documentation is part of the implementation.**
+3. **Owner-local authority is part of the implementation.**
 4. **Current authority never describes deferred behavior in the present tense.**
 5. **One transaction = one bounded responsibility.**
 6. **Implement the minimum machinery required to satisfy the contract.**
@@ -594,3 +647,7 @@ These support the workflow; they are not new architecture concepts.
 10. **A completed transaction reconciles its owning Issue.**
 11. **Parallel implementation is allowed only across disjoint canonical owners; integration and authority reconciliation remain serial.**
 12. **Semantic lanes follow ownership boundaries: lane-internal transactions are serial, disjoint lanes may run in parallel, and shared integration remains serial.**
+13. **Every authoritative fact has exactly one canonical writer.**
+14. **Own facts locally. Never hand-maintain aggregates. Store projection recipes, not transient views.**
+15. **Serial integration is for genuine semantic integration, not routine documentation synchronization.**
+16. **Human-facing documentation is materialized at version/release boundaries, never synchronized by every transaction.**

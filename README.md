@@ -91,9 +91,9 @@ The current `v1` development workflow is defined in `docs/reference/development-
 
 For semantic changes, the governing sequence is:
 
-> **Meaning → Example → Test → Code → Docs → Audit**
+> **Meaning → Example → Test → Code → Docs/Authority → Audit**
 
-Semantic behavior changes are test-first; behavior-preserving and docs-only transactions use lighter paths. One transaction owns one bounded responsibility, current-authority docs must not describe deferred behavior in the present tense, and merge is exact-head.
+Semantic behavior changes are test-first; behavior-preserving and docs-only transactions use lighter paths. One transaction owns one bounded responsibility, current-authority docs must not describe deferred behavior in the present tense, and merge is exact-head. A transaction converges its own semantic owner's authority; global views are derived on demand and are never hand-maintained.
 
 Repository-use conventions are in `docs/reference/repository-practices.md`. Durable architecture decisions are intentionally sparse under `docs/decisions/`, and `.ai/authority/` holds one owner-local, validated authority declaration per semantic owner.
 
