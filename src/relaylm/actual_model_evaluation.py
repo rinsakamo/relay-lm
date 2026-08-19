@@ -45,7 +45,6 @@ from relaylm.turn import (
 from relaylm.two_pass_turn import (
     CognitionExecutionRuntime,
     TwoPassExtractionResult,
-    TwoPassExtractionStatus,
     run_user_turn_two_pass,
     run_user_turn_two_pass_streaming,
 )
@@ -606,6 +605,7 @@ async def run_actual_model_scenario(
     for turn_index, content in enumerate(scenario.turns, start=1):
         budget_observation: ActualModelCognitiveBudgetDiagnostics | None = None
         execution_observation: ActualModelCognitionExecutionObservation | None = None
+        extraction_output_count = len(recording_provider.extraction_outputs)
         try:
             if execution_mode == "two_pass":
                 assert two_pass_runtime is not None
@@ -633,7 +633,7 @@ async def run_actual_model_scenario(
                 extraction = await two_pass.extraction
                 extraction_output = (
                     recording_provider.extraction_outputs[-1]
-                    if recording_provider.extraction_outputs
+                    if len(recording_provider.extraction_outputs) > extraction_output_count
                     else None
                 )
                 raw_model = _raw_two_pass_observation(
