@@ -1,6 +1,6 @@
 schema_version: 1
 id: actual_model_evaluation
-summary: Actual-model execution, host runners, resolved cognition request carriage, and reproducible evaluation evidence.
+summary: Actual-model execution, host runners, resolved cognition request carriage, vLLM/LM Studio execution binding, and reproducible evaluation evidence.
 owner_issue: 1386
 canonical_surfaces:
 - docs/reference/actual-model-cognition-execution-evidence.md
@@ -10,6 +10,7 @@ canonical_surfaces:
 - docs/reference/actual-model-crystallization-quality-fixture.md
 - docs/reference/actual-model-host-runner.md
 - docs/reference/actual-model-lm-studio-binding.md
+- docs/reference/actual-model-vllm-binding.md
 implementation:
 - src/relaylm/actual_model_evaluation.py
 - src/relaylm/actual_model_artifacts.py
@@ -27,6 +28,7 @@ implementation:
 - src/relaylm/actual_model_targets.py
 - src/relaylm/actual_model_lm_studio.py
 - src/relaylm/actual_model_lm_studio_counter.py
+- src/relaylm/actual_model_vllm.py
 - src/relaylm/actual_model_host_runner.py
 - src/relaylm/actual_model_reasoning.py
 - src/relaylm/actual_model_cognition_capability.py
@@ -57,6 +59,7 @@ tests:
 - tests/unit/test_actual_model_snapshot_targets.py
 - tests/unit/test_actual_model_lm_studio.py
 - tests/unit/test_actual_model_lm_studio_counter.py
+- tests/unit/test_actual_model_vllm.py
 - tests/unit/test_actual_model_host_runner.py
 - tests/unit/test_actual_model_crystallization.py
 - tests/unit/test_actual_model_crystallization_host_runner.py
