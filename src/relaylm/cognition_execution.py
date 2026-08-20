@@ -205,6 +205,57 @@ class CognitionExecutionCapabilities:
             )
 
 
+def normalize_cognition_execution_capabilities(
+    *,
+    structured_output: bool,
+    streaming: bool,
+    reasoning_modes: tuple[str, ...],
+    bounded_reasoning_budget: bool,
+    decoding_controls: tuple[str, ...],
+) -> CognitionExecutionCapabilities:
+    """Normalize primitive provider-owner facts into the closed COGP vocabulary.
+
+    This function performs no provider discovery and knows no provider-specific
+    types. Unknown values, `auto`, and duplicate facts fail closed rather than
+    being silently ignored or treated as equivalent capabilities.
+    """
+
+    if not isinstance(structured_output, bool):
+        raise TypeError("structured_output must be bool")
+    if not isinstance(streaming, bool):
+        raise TypeError("streaming must be bool")
+    if not isinstance(bounded_reasoning_budget, bool):
+        raise TypeError("bounded_reasoning_budget must be bool")
+    _validate_capability_fact_strings("reasoning_modes", reasoning_modes)
+    _validate_capability_fact_strings("decoding_controls", decoding_controls)
+
+    normalized_reasoning: set[CognitionReasoningMode] = set()
+    for value in reasoning_modes:
+        try:
+            mode = CognitionReasoningMode(value)
+        except ValueError as exc:
+            raise ValueError(f"unsupported cognition reasoning capability: {value}") from exc
+        if mode is CognitionReasoningMode.AUTO:
+            raise ValueError("auto is policy resolution, not a provider capability")
+        normalized_reasoning.add(mode)
+
+    normalized_decoding: set[CognitionDecodingControl] = set()
+    for value in decoding_controls:
+        try:
+            control = CognitionDecodingControl(value)
+        except ValueError as exc:
+            raise ValueError(f"unsupported cognition decoding capability: {value}") from exc
+        normalized_decoding.add(control)
+
+    return CognitionExecutionCapabilities(
+        structured_output=structured_output,
+        streaming=streaming,
+        reasoning_modes=frozenset(normalized_reasoning),
+        bounded_reasoning_budget=bounded_reasoning_budget,
+        decoding_controls=frozenset(normalized_decoding),
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class CognitionOptionResolution:
     """One content-free requested option and its application status."""
@@ -369,6 +420,15 @@ def _resolve_decoding_control(
         else CognitionOptionStatus.UNSUPPORTED
     )
     return CognitionOptionResolution(status, value)
+
+
+def _validate_capability_fact_strings(name: str, values: object) -> None:
+    if not isinstance(values, tuple):
+        raise TypeError(f"{name} must be a tuple")
+    if not all(isinstance(value, str) and value.strip() for value in values):
+        raise TypeError(f"{name} must contain non-empty strings")
+    if len(set(values)) != len(values):
+        raise ValueError(f"{name} must not contain duplicates")
 
 
 def _validate_optional_finite_number(name: str, value: object) -> None:
