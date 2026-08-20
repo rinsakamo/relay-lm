@@ -138,6 +138,25 @@ def test_snapshot_verification_requires_exact_required_files_and_derives_role_id
     )
     assert changed_tokenizer.tokenizer_identity != target.tokenizer_identity
 
+    changed_template = SnapshotTarget(
+        target_id=target.target_id,
+        model_family=target.model_family,
+        artifact_repository=target.artifact_repository,
+        artifact_repository_revision=target.artifact_repository_revision,
+        quantization=target.quantization,
+        files=tuple(
+            SnapshotFile(
+                path=item.path,
+                size_bytes=item.size_bytes,
+                sha256=("e" * 64 if item.path == "chat_template.jinja" else item.sha256),
+            )
+            for item in target.files
+        ),
+        serving_tokenizer_files=target.serving_tokenizer_files,
+        chat_template_file=target.chat_template_file,
+    )
+    assert changed_template.chat_template_identity != target.chat_template_identity
+
 
 @pytest.mark.parametrize(
     ("mutation", "message"),
@@ -235,6 +254,7 @@ def test_snapshot_loader_requires_declared_tokenizer_and_template_roles_to_be_fr
         load_snapshot(tokenizer_path)
 
     missing_template_role = _mapping(files=[tokenizer, template])
+    missing_template_role["serving_tokenizer_files"] = ["tokenizer.json"]
     missing_template_role["chat_template_file"] = "other-template.jinja"
     template_path = tmp_path / "missing-template-role.json"
     _write_target(template_path, missing_template_role)
