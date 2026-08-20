@@ -53,6 +53,7 @@ tests:
 - tests/unit/test_actual_model_scenario_coverage.py
 - tests/unit/test_actual_model_cognitive_budget.py
 - tests/unit/test_actual_model_targets.py
+- tests/unit/test_actual_model_snapshot_targets.py
 - tests/unit/test_actual_model_lm_studio.py
 - tests/unit/test_actual_model_lm_studio_counter.py
 - tests/unit/test_actual_model_host_runner.py
