@@ -66,6 +66,31 @@ supported per-pass decoding/output controls
 
 Provider adapters remain authoritative for how support is discovered, declared, attested, or mapped onto an external API. COGP must consume truthful provider facts rather than invent support from common OpenAI-compatible field names.
 
+## Provider-facts normalization boundary
+
+`normalize_cognition_execution_capabilities(...)` is the provider-neutral bridge from primitive, provider-owned capability facts into the typed COGP consumer view.
+
+The bridge performs **normalization only**. It does not import provider classes, inspect endpoints, discover support, infer aliases, or promote controls that merely look similar.
+
+Accepted provider-fact vocabulary is exactly the current COGP vocabulary:
+
+```text
+reasoning modes:
+  off
+  bounded
+
+per-pass decoding controls:
+  temperature
+  top_p
+  max_output_tokens
+```
+
+The normalizer preserves provider-supplied `structured_output`, `streaming`, and `bounded_reasoning_budget` booleans, converts only exact closed strings into the existing COGP enums, and rejects duplicate facts before constructing the frozenset view.
+
+Unknown values fail closed. `auto` also fails closed because it is policy resolution rather than provider capability. A provider-level control such as `seed` is rejected at this boundary unless COGP separately expands its owned per-pass vocabulary in a future transaction.
+
+This prevents evaluation/runtime consumers from each re-implementing provider-to-COGP interpretation. The provider owner states the facts; COGP owns the exact semantic normalization; downstream consumers use the resulting typed view.
+
 # Applied / omitted / unsupported identity
 
 `resolve_pass_request(...)` classifies every materially output-affecting pass option as exactly one of:
@@ -120,6 +145,7 @@ COGP / #1533 owns:
 - per-pass reasoning/decoding intent semantics;
 - the `auto` versus effective omission distinction;
 - the normalized execution-policy capability requirements;
+- provider-facts-to-COGP vocabulary normalization;
 - applied/omitted/unsupported classification;
 - fail-closed semantics for explicit unsupported pass requests.
 
