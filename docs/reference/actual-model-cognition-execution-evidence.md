@@ -202,23 +202,71 @@ Reasoning-attested runs use `ActualModelReasoningRunManifest`, a derived ordinar
 
 The provider request remains unchanged. V5 does not serialize `reasoning`, `reasoning_effort`, or another hidden control into Chat Completions.
 
+## Explicit unsupported condition evidence
+
+A requested cognition condition that the current provider cannot apply is represented as **capability evidence, not as a model run**.
+
+`ActualModelUnsupportedCognitionConditionEvidence` binds the exact content-free inputs needed to reproduce the capability decision:
+
+- exact RelayLM commit;
+- frozen target ID, target revision, and model-artifact identity;
+- stable P4 provider identity;
+- provider-owned machine-readable cognition capability facts;
+- the normalized COGP `CognitionExecutionCapabilities` view;
+- the exact pass name and `CognitionPassRequest`;
+- the existing `resolve_pass_request()` result and unsupported field list.
+
+For COGP5 condition C, #1386 requests only the semantic capability being tested:
+
+```text
+pass = pass2
+reasoning_mode = bounded
+reasoning_budget = omitted
+```
+
+No numeric bounded-reasoning budget is invented because no canonical numeric C boundary exists. Under the current provider facts, COGP normalization produces no supported reasoning modes and `bounded_reasoning_budget = false`; the existing resolver therefore classifies `reasoning_mode` as `unsupported` while the absent budget remains `omitted`.
+
+The artifact fixes:
+
+```text
+condition_status = unsupported
+generation_executed = false
+model_quality = null
+score = null
+```
+
+It deliberately contains no response, raw model proposals, or `run_id`. A run identity would falsely imply semantic generation. The builder refuses to construct this artifact if the supplied request has no unsupported fields.
+
+The evidence ID is a SHA-256 content address over the exact target/provider/facts/normalized-capability/request/resolution identity. The immutable writer is idempotent for identical bytes and rejects conflicting existing bytes under the same evidence ID.
+
+This path consumes provider facts from the provider owner and COGP normalization/resolution from #1533; #1386 does not reimplement provider capability truth or COGP option semantics.
+
 ## Current COGP5 boundary
 
 The following repository-side prerequisites are implemented:
 
 - provider-neutral topology evidence bridge;
 - canonical LM Studio host topology carriage;
-- ordinary-turn model-wide reasoning-environment attestation and run identity.
+- ordinary-turn model-wide reasoning-environment attestation and run identity;
+- provider-owned machine-readable cognition capability facts;
+- COGP-owned provider-facts normalization and existing option resolution;
+- explicit unsupported/not-executed evidence for condition C.
 
-This makes supported A/B conditions structurally executable and citable once a real host supplies the frozen model bytes, serving proof, and matching live LM Studio environment.
+This makes supported A/B conditions structurally executable and citable once a real host supplies the frozen model bytes, serving proof, and matching live LM Studio environment. Condition C is represented without fabricating a generation or numeric reasoning budget.
 
-Condition C remains unsupported for the current canonical provider capability class. It must be represented as unsupported/not executed rather than as a fabricated generation. That explicit unsupported evidence is a separate bounded #1386 transaction.
+Repository-side COGP5 evidence mechanics therefore distinguish:
 
-No #1388 calibration/default decision is made by these evidence mechanics.
+```text
+A = actual-model run required on host
+B = actual-model run required on host
+C = capability evidence; generation does not occur
+```
+
+Actual A/B evidence still requires the real host/model execution. These repository mechanics do not constitute those runs and do not change #1388 calibration/default authority.
 
 ## Ownership
 
-#1533 / COGP owns the meaning of execution topology and its provider-neutral topology identity.
+#1533 / COGP owns the meaning of execution topology, its provider-neutral topology identity, capability vocabulary normalization, and requested-option resolution.
 
 #1386 owns:
 
@@ -227,6 +275,7 @@ No #1388 calibration/default decision is made by these evidence mechanics.
 - scenario execution/review/cohort methodology;
 - ordinary-turn reasoning-environment attestation;
 - controlled supported-condition evidence;
-- host-side evidence binding and unsupported-condition evidence.
+- host-side evidence binding;
+- immutable unsupported/not-executed capability evidence.
 
 Provider owners retain actual request capability and applied configuration truth. #1388 remains the sole owner of profile/default selection.
