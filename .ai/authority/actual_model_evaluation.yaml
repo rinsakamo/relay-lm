@@ -36,6 +36,7 @@ tests:
 - tests/unit/test_actual_model_cognition_execution.py
 - tests/unit/test_actual_model_cognition_host_topology.py
 - tests/unit/test_actual_model_cognition_reasoning_environment.py
+- tests/unit/test_actual_model_cognition_capability.py
 - tests/unit/test_actual_model_artifacts.py
 - tests/unit/test_actual_model_restart.py
 - tests/unit/test_actual_model_comparison.py
