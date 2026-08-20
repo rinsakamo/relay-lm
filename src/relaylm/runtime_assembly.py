@@ -11,6 +11,7 @@ from relaylm.budget_enforcement import (
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.continuity import ContinuityContext
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
+from relaylm.providers.openai_compatible_backend import OpenAICompatibleBackendId
 from relaylm.runtime_config import (
     ProviderRuntimeConfig,
     RuntimeConfigErrorCode,
@@ -106,6 +107,16 @@ def assemble_runtime(
 
     config = resolved.config
     runtime = config.runtime
+
+    if config.provider.backend is not OpenAICompatibleBackendId.GENERIC:
+        raise RuntimeAssemblyError(
+            RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+            field="provider.backend",
+            message=(
+                "configured OpenAI-compatible backend dialect is not yet available "
+                "in runtime assembly"
+            ),
+        )
 
     if runtime.cognitive_budget is not None and (
         runtime.memory_retrieval is not None or runtime.event_retrieval is not None

@@ -1,8 +1,8 @@
 # Release Runtime Configuration Contract
 
-Status: RCFG1 contract + RCFG2 validated loader/resolver for RelayLM v1. Owning Issue: #1446.
+Status: RCFG1 contract + RCFG2 validated loader/resolver with provider backend selection follow-up for RelayLM v1. Owning Issue: #1446.
 
-This contract defines the release-facing configuration boundary only. It does not choose cognitive semantics, Retrieval relevance, Continuity lifecycle semantics, or calibrated cognitive numeric defaults.
+This contract defines the release-facing configuration boundary only. It does not choose cognitive semantics, Retrieval relevance, Continuity lifecycle semantics, provider-wire semantics, or calibrated cognitive numeric defaults.
 
 ## 1. Ownership boundary
 
@@ -31,9 +31,10 @@ The runtime configuration layer may only carry values into already-owned runtime
 Canonical implementation surfaces are:
 
 - `src/relaylm/runtime_config.py` — versioned non-secret configuration types, provenance vocabulary, secret-redacted process input boundary, and error taxonomy;
-- `src/relaylm/runtime_config_loader.py` — RCFG2 discovery, strict parse/validation, leaf resolution, process-local secret resolution, and content-free effective diagnostics.
+- `src/relaylm/runtime_config_loader.py` — discovery, strict parse/validation, leaf resolution, process-local secret resolution, and content-free effective diagnostics;
+- `src/relaylm/runtime_assembly.py` — assembly/preflight consumption of already-owned provider and runtime controls.
 
-Runtime assembly into provider/Character/Retrieval/Continuity/Cognitive Budget owners remains RCFG3 and is intentionally absent from the loader.
+Provider backend machine IDs and backend-specific wire meaning remain owned by `provider_and_api`. Runtime configuration only selects and carries those owner-defined IDs.
 
 ## 2. Runtime configuration format
 
@@ -49,7 +50,8 @@ character:
 
 provider:
   adapter: openai_compatible
-  base_url: http://127.0.0.1:1234/v1
+  backend: vllm            # generic | vllm | lm_studio
+  base_url: http://127.0.0.1:8000/v1
   model: model-id
   api_key:                 # optional secret reference, never a secret value
     env: OPENAI_API_KEY
@@ -109,6 +111,22 @@ runtime:                   # optional; children are explicit opt-in
       mode: exact          # exact | conservative_estimate
 ```
 
+`provider.adapter` and `provider.backend` are distinct:
+
+```text
+adapter = API protocol family
+backend = implementation/dialect serving that protocol
+```
+
+For the current adapter:
+
+```text
+adapter: openai_compatible
+backend: generic | vllm | lm_studio
+```
+
+The backend vocabulary comes from the provider-owned `OpenAICompatibleBackendId`. Human spellings such as `vLLM`, `VLLM`, `LM Studio`, and `lm-studio` may be accepted only through the provider owner's bounded alias table; the resolved runtime value and diagnostics always carry the canonical machine ID. There is no fuzzy matching or backend auto-detection in configuration resolution.
+
 Every Retrieval, Continuity, and Cognitive Budget number above is an **explicit schema example only**, not a RelayLM default. #1388 remains the sole owner of canonical cognitive numeric values and profile boundaries. #1371 remains the owner of Continuity lifecycle semantics and supplies no release default here.
 
 The serialized Cognitive Budget policy maps directly into existing #1387 types: `TotalBudgetConfig`, `BudgetPlan`, `CountEnvelope`, `CountCharacterEnvelope`, `BudgetDegradationStep`, `BudgetDegradationPolicy`, and `TokenCountMode`. The configuration layer does not invent parallel budget semantics.
@@ -117,7 +135,7 @@ The serialized Cognitive Budget policy maps directly into existing #1387 types: 
 
 A selected runtime file is validated before precedence resolution.
 
-RCFG2 requires:
+The loader requires:
 
 1. YAML root is a mapping;
 2. `format_version` exists and is exact integer `1`;
@@ -125,9 +143,10 @@ RCFG2 requires:
 4. unknown keys fail at every governed mapping level;
 5. configured scalar types are exact — boolean is not accepted as integer;
 6. configured strings that are required to be meaningful are non-empty;
-7. nested explicit owner-control objects contain exactly their required keys;
-8. owner-defined value invariants such as non-negative budgets, floors, tier order, and valid `TokenCountMode` are validated by the existing owner types;
-9. raw secret material is never a valid config-file field.
+7. `provider.backend` must resolve through the provider-owned backend vocabulary rather than a runtime-owned vendor table;
+8. nested explicit owner-control objects contain exactly their required keys;
+9. owner-defined value invariants such as non-negative budgets, floors, tier order, and valid `TokenCountMode` are validated by the existing owner types;
+10. raw secret material is never a valid config-file field.
 
 A malformed lower-precedence config file is not silently ignored merely because a higher-precedence override could replace the bad leaf. Selecting a file means the file itself must be a valid version-1 runtime configuration document.
 
@@ -145,7 +164,7 @@ explicit --config-equivalent path input
         > no runtime config file
 ```
 
-RCFG2 exposes the first input programmatically as `config_path`; RCFG4 will bind it to the CLI spelling.
+The resolver exposes the first input programmatically as `config_path`; the operator CLI binds it to its public spelling.
 
 If an explicitly selected path cannot be read, resolution fails with `read_error`. It does not fall through to `RELAYLM_CONFIG` or a guessed current-working-directory file.
 
@@ -156,7 +175,7 @@ If there is no file, the v1 runtime schema version remains `1` and required runt
 For every field with a named override binding:
 
 ```text
-explicit CLI override
+explicit CLI/programmatic override
     > explicit environment override
     > runtime config file
     > canonical default/profile value
@@ -168,11 +187,12 @@ There is no generic arbitrary `--set key=value` contract in version 1.
 
 Named scalar bindings are:
 
-| Runtime field | CLI shape reserved for RCFG4 | Environment |
+| Runtime field | Programmatic/CLI shape | Environment |
 |---|---|---|
 | config file | `--config` | `RELAYLM_CONFIG` |
 | `character.directory` | `--character` | `RELAYLM_CHARACTER_DIR` |
 | `provider.adapter` | `--provider-adapter` | `RELAYLM_PROVIDER_ADAPTER` |
+| `provider.backend` | `provider_backend` override; CLI exposure may follow | `RELAYLM_PROVIDER_BACKEND` |
 | `provider.base_url` | `--provider-base-url` | `RELAYLM_PROVIDER_BASE_URL` |
 | `provider.model` | `--provider-model` | `RELAYLM_PROVIDER_MODEL` |
 | provider secret reference | `--provider-api-key-env` | raw secret via `RELAYLM_PROVIDER_API_KEY` |
@@ -184,16 +204,19 @@ Complex Retrieval, Continuity, and explicit Cognitive Budget objects are file-on
 
 ## 6. Current non-cognitive release defaults
 
-RCFG2 currently supplies only defaults that already belonged to the release/startup boundary before calibration:
+The resolver currently supplies only release/startup defaults, not cognitive calibration values:
 
 ```text
 runtime format version = 1
 provider adapter        = openai_compatible
+provider backend        = generic
 server host             = 127.0.0.1
 server port             = 8090
 ```
 
-These values appear with `canonical_default` provenance because that is the common RCFG1 source category. They are **not #1388 cognitive defaults**.
+`provider.backend = generic` preserves the pre-backend-selection behavior: use the canonical OpenAI-compatible adapter without claiming any backend-specific dialect. It is not a guess about the upstream implementation.
+
+These values appear with `canonical_default` provenance because that is the common configuration source category. They are **not #1388 cognitive defaults**.
 
 There is currently no default for:
 
@@ -207,7 +230,7 @@ There is currently no default for:
 - token-counter capability;
 - cognitive runtime profile.
 
-Until #1388 publishes calibrated profile authority, any non-empty `runtime.profile` selected from CLI, environment, or file fails closed with `invalid_combination`. RCFG2 never guesses profile values from a model name or context-window folklore.
+Until #1388 publishes calibrated profile authority, any non-empty `runtime.profile` selected from CLI, environment, or file fails closed with `invalid_combination`. The resolver never guesses profile values from a model name or context-window folklore.
 
 ## 7. Secret boundary and precedence
 
@@ -246,7 +269,7 @@ Effective diagnostics report only:
 
 They never emit the secret value or the referenced environment variable name.
 
-## 8. RCFG2 resolved result
+## 8. Resolved result
 
 `resolve_runtime_config(...)` returns one `ResolvedRuntimeConfig` containing:
 
@@ -273,29 +296,20 @@ The resolver is deterministic for the same explicit inputs, file bytes, and envi
 
 `ResolvedRuntimeConfig.effective_diagnostics()` is a content-free/secret-free machine-readable view.
 
-Its shape is bounded to:
+Backend display spelling is never retained as effective identity. For example:
 
 ```json
 {
-  "format_version": 1,
-  "config_path": {
-    "value": "/selected/runtime.yaml",
-    "source": "cli"
-  },
   "values": {
-    "provider.model": {
-      "value": "model-id",
+    "provider.adapter": {
+      "value": "openai_compatible",
+      "source": "canonical_default"
+    },
+    "provider.backend": {
+      "value": "vllm",
       "source": "config_file"
     }
-  },
-  "secrets": {
-    "provider.api_key": {
-      "configured": true,
-      "source": "config_file",
-      "material_source": "env"
-    }
-  },
-  "validation_status": "valid"
+  }
 }
 ```
 
@@ -312,8 +326,9 @@ The flattened `values` map may contain runtime configuration metadata and explic
 
 ## 10. Existing owner controls carried by configuration
 
-RCFG2 parses explicit file controls into current owner types without changing their meaning:
+The loader parses explicit file controls into current owner types without changing their meaning:
 
+- `provider.backend` -> provider-owned `OpenAICompatibleBackendId`;
 - `runtime.memory_retrieval` -> release carriage for current MEMORY retrieval count/character controls;
 - `runtime.event_retrieval` -> release carriage for current Event Evidence retrieval count/character controls;
 - `runtime.continuity` -> explicit `ContinuityContext.max_items` / `ContinuityRuntime.lifetime_revisions` inputs;
@@ -322,9 +337,11 @@ RCFG2 parses explicit file controls into current owner types without changing th
 - `runtime.cognitive_budget.token_counter.mode` -> existing `TokenCountMode` unchanged;
 - `runtime.cognitive_budget.token_counter.capability` -> assembly capability identifier only.
 
-The token-counter capability name is not proof that such a capability exists. Capability availability and construction belong to RCFG3/doctor and must fail with `capability_unavailable` when unsupported.
+The token-counter capability name is not proof that such a capability exists. Capability availability and construction belong to assembly/doctor and must fail with `capability_unavailable` when unsupported.
 
-Presence of any config value is not permission to alter Retrieval ranking, Context authority, Continuity acceptance/lifecycle, or Cognitive Budget degradation semantics.
+Likewise, selecting a known backend ID is not proof that RelayLM currently has a realizer for that backend. Until a backend-specific assembly path merges, selecting `vllm` or `lm_studio` fails with `capability_unavailable` at `provider.backend` before generation instead of silently falling through to `generic` behavior.
+
+Presence of any config value is not permission to alter Retrieval ranking, Context authority, Continuity acceptance/lifecycle, Cognitive Budget degradation semantics, or provider wire semantics.
 
 ## 11. Error taxonomy
 
@@ -346,40 +363,43 @@ character_invalid
 provider_invalid
 ```
 
-RCFG2 produces discovery/read/parse/schema/value/missing/combination/secret failures. The later assembly/preflight layer owns machine capability, Character validation, and provider validation failures.
+Resolution produces discovery/read/parse/schema/value/missing/combination/secret failures. Assembly/preflight owns machine capability, Character validation, backend-realizer availability, and provider validation failures.
 
 Errors include a safe field path and actionable message where practical, without secret material or character semantic payload.
 
 ## 12. Assembly and operator dependency shape
 
-Current boundary after RCFG2:
+Current boundary:
 
 ```text
-RCFG2 loader/resolver
-  explicit file + env + named CLI inputs
+loader/resolver
+  explicit file + env + named programmatic inputs
         -> strict parse / validation
         -> leaf merge / provenance
+        -> canonical provider backend ID
         -> RuntimeConfig
         -> RuntimeSecretInputs
         -> redacted effective diagnostics
 
-RCFG3 assembly
+assembly
   RuntimeConfig + RuntimeSecretInputs
+        -> provider adapter + selected backend dialect capability
         -> CharacterDirectory
-        -> OpenAICompatibleProvider
         -> owner-defined Retrieval controls
         -> ContinuityRuntime
         -> CognitiveBudgetRuntimeConfig
         -> serialized-input counter capability
 
-RCFG4 operator CLI
+operator
   relaylm serve
   relaylm doctor
-        -> same RCFG2 resolution
-        -> same RCFG3 assembly/preflight boundary
+        -> same resolution
+        -> same assembly/preflight boundary
 ```
 
-`doctor` should remain non-generative and non-mutating with respect to character semantic state where practical.
+`doctor` remains non-generative and non-mutating with respect to character semantic state where practical.
+
+A later provider transaction may make `vllm` assembly-capable. That transaction must consume the canonical backend ID defined by `provider_and_api`; configuration must not duplicate the vLLM wire mapping.
 
 RCFG5 may add canonical cognitive profile/default consumption only from current #1388 authority. It must not alter the semantic owner types above.
 
@@ -387,7 +407,9 @@ RCFG5 may add canonical cognitive profile/default consumption only from current 
 
 Configuration loading and later assembly must preserve:
 
-- exactly one ordinary semantic generation;
+- adapter/protocol identity remains distinct from backend implementation identity;
+- backend machine IDs are canonicalized before effective diagnostics/evidence consumption;
+- unknown or unavailable backend selection fails closed rather than being guessed or silently ignored;
 - buffered/streaming semantic equivalence;
 - Character, State, MEMORY, Event, and Continuity authority separation;
 - deterministic cognitive-budget degradation;

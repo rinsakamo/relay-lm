@@ -6,6 +6,7 @@ from enum import Enum
 
 from relaylm.budget import BudgetDegradationPolicy, TotalBudgetConfig
 from relaylm.budget_enforcement import TokenCountMode
+from relaylm.providers.openai_compatible_backend import OpenAICompatibleBackendId
 
 
 RUNTIME_CONFIG_FORMAT_VERSION = 1
@@ -94,11 +95,16 @@ class ProviderRuntimeConfig:
     adapter: str
     base_url: str
     model: str
+    backend: OpenAICompatibleBackendId = OpenAICompatibleBackendId.GENERIC
     api_key: SecretEnvReference | None = None
 
     def __post_init__(self) -> None:
         if self.adapter != "openai_compatible":
             raise ValueError(f"unsupported provider adapter: {self.adapter}")
+        if not isinstance(self.backend, OpenAICompatibleBackendId):
+            raise TypeError(
+                "provider.backend must be OpenAICompatibleBackendId"
+            )
         _require_non_empty_string("provider.base_url", self.base_url)
         _require_non_empty_string("provider.model", self.model)
         if self.api_key is not None and not isinstance(
