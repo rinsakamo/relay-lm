@@ -20,6 +20,7 @@ tests:
 - tests/unit/test_openai_compatible_streaming_parity.py
 - tests/unit/test_openai_compatible_decoding.py
 - tests/unit/test_openai_compatible_identity.py
+- tests/unit/test_openai_compatible_cognition_capabilities.py
 - tests/unit/test_event_evidence_projection.py
 depends_on:
 - core_architecture
