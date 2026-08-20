@@ -1,16 +1,18 @@
 # Actual-model cognition execution evidence
 
-Status: #1386 COGP5 execution-topology evidence bridge for RelayLM v1.
+Status: #1386 COGP5 execution-topology and reasoning-environment evidence bridge for RelayLM v1.
 
 This reference extends the existing Actual-model Evaluation foundation so ordinary-turn cognition topology can participate in reproducible evidence without replacing historical evidence or creating another evaluation architecture.
 
 ## Historical evidence remains immutable
 
-`ActualModelRunManifest.cognition_execution` is optional.
+Historical `ActualModelRunManifest` serialization remains unchanged.
 
-When it is absent, the manifest serializes exactly the historical #1386 shape: no `cognition_execution` key is added. Because `stable_actual_model_run_id(...)` hashes that mapping plus the unchanged scenario definition, historical manifests preserve their existing run identity.
+When `cognition_execution` is absent, no cognition-execution key is emitted. Historical manifests therefore preserve their existing run identity.
 
-New cognition-policy evidence supplies an explicit COGP `CognitionExecutionEvidenceIdentity`. That identity then participates in the run hash, so a `single_pass`, `two_pass`, or `shadow_two_pass` execution cannot accidentally share a run identity solely because model/provider/scenario fields are otherwise equal.
+Reasoning-attested ordinary-turn runs use the derived `ActualModelReasoningRunManifest`. Only those new runs emit a `reasoning_environment` field. Historical manifests are not retroactively widened or reinterpreted.
+
+New cognition-policy evidence supplies an explicit COGP `CognitionExecutionEvidenceIdentity`. That identity participates in the run hash, so `single_pass`, `two_pass`, and `shadow_two_pass` cannot accidentally share a run identity solely because model/provider/scenario fields are otherwise equal.
 
 The COGP execution identity delivery path must equal the manifest `execution_path`. A buffered/streaming mismatch fails before model execution.
 
@@ -94,7 +96,7 @@ A Pass 2 provider failure with no valid structured output records empty raw prop
 
 The pre-existing #1386 single-pass total Cognitive Budget bridge returns `CognitiveBudgetDiagnostics` from the ordinary Turn runtime.
 
-The current topology-aware path does not fabricate equivalent diagnostics for the new two-pass/shadow paths. Therefore an evidence run that combines a non-single execution topology with an explicit `CognitiveBudgetRuntimeConfig` fails explicitly until a bounded follow-up bridge exists.
+The current topology-aware path does not fabricate equivalent diagnostics for two-pass/shadow paths. Therefore an evidence run that combines a non-single execution topology with an explicit `CognitiveBudgetRuntimeConfig` fails explicitly until a bounded follow-up bridge exists.
 
 This keeps missing measurements distinct from zero/normal measurements and avoids claiming that a two-generation execution satisfied the current one-generation total-budget evidence contract.
 
@@ -102,11 +104,11 @@ Legacy explicit MEMORY/Event budgets may still be carried through the already-ow
 
 ## Reasoning / Thinking capability boundary
 
-Topology observability does **not** make a requested reasoning configuration executable or citable by itself.
+Topology observability does **not** make a requested reasoning configuration executable by itself.
 
-The provider-owned contract now explicitly records that the current canonical OpenAI-compatible Chat Completions adapter carries `temperature`, `top_p`, and `seed`, but does not carry or attest a per-request reasoning/thinking mode, reasoning effort, or bounded reasoning budget.
+The provider-owned contract records that the current canonical OpenAI-compatible Chat Completions adapter carries `temperature`, `top_p`, and `seed`, but does not carry or attest a per-request reasoning/thinking mode, reasoning effort, or bounded reasoning budget.
 
-Accordingly, current COGP5 evidence must not:
+Accordingly, COGP5 evidence must not:
 
 - invent `reasoning_effort`;
 - assume a provider field exists because another OpenAI-compatible endpoint supports it;
@@ -122,25 +124,23 @@ bounded reasoning budget         = unsupported
 per-pass reasoning override      = unavailable
 ```
 
-A model-wide or host-wide LM Studio reasoning default may be separately observed and attested as execution-environment identity. Such an attestation may make A/B reproducible under the same effective environment, but it does not become a Pass-2-only request control.
+A model-wide LM Studio reasoning default is a separate execution-environment fact. It may be attested for reproducibility, but it is not a provider request control and cannot differ between Pass 1 and Pass 2 unless a future provider-owner contract actually implements such carriage.
 
 Therefore the supported comparison boundary is:
 
 ```text
 A = explicit single_pass
-B = explicit two_pass under the same actually attested provider/model reasoning environment as A
+B = explicit two_pass under the same attested model-wide reasoning environment as A
 C = unsupported for the current canonical provider: bounded Pass 2 reasoning is not executed
 ```
 
-If the environment itself truthfully attests reasoning OFF, B may be described as running under an OFF environment, but that must not be represented as though RelayLM applied a distinct Pass 2 override.
-
-The CRY reasoning identity work demonstrates the reproducibility principle but remains CRY-specific authority. Ordinary-turn evidence must consume an ordinary-turn host/evidence binding rather than copy CRY fields blindly.
+If the environment truthfully attests reasoning OFF, A/B may be described as running under an OFF model environment. They must not be represented as though RelayLM applied a distinct Pass 2 OFF override.
 
 ## Canonical LM Studio host topology binding
 
-The canonical #1386 LM Studio host runner has a strict topology-aware condition format dedicated to cognition execution evidence.
+The canonical #1386 LM Studio host runner has a strict topology-aware condition format.
 
-`format_version: 4` adds exactly one execution-policy declaration:
+`format_version: 4` adds one execution-policy declaration:
 
 ```json
 {
@@ -156,17 +156,65 @@ For explicit `single_pass`, host preparation retains the canonical `OpenAICompat
 
 The resolved execution identity is placed directly in `ActualModelRunManifest.cognition_execution`. Host metadata therefore cannot claim a two-pass condition while executing the legacy single-pass provider path.
 
-Format v4 retains the existing explicit MEMORY/Event budget shape and deliberately cannot carry the format-v3 total Cognitive Budget identity. That separation preserves the existing fail-closed rule for non-single topology plus total-budget evidence.
+Format v4 retains the existing explicit MEMORY/Event budget shape and deliberately cannot carry the format-v3 total Cognitive Budget identity.
 
-This host binding closes topology carriage only. It does not itself attest the current LM Studio model-wide reasoning default and does not create a synthetic run for unsupported bounded Pass 2 reasoning. Those are separate evidence responsibilities.
+## Ordinary-turn reasoning-environment attestation
+
+`format_version: 5` extends the v4 topology-aware host condition with an explicit required model environment:
+
+```json
+{
+  "cognition_execution": {
+    "mode": "single_pass | two_pass | shadow_two_pass"
+  },
+  "reasoning": {
+    "required_setting": "<explicit LM Studio model default>"
+  }
+}
+```
+
+Before provider construction or semantic generation, v5 requires an explicit LM Studio serving proof. The host validates that proof against the frozen target and loaded serving instance through the already-owned LM Studio SDK attestation path, then queries the live native `/api/v1/models` metadata.
+
+Reasoning attestation requires:
+
+- the serving proof request model and loaded model key to equal the host request model;
+- exactly one matching live LLM model;
+- live model size to equal the serving-proof loaded size;
+- live quantization to equal the frozen target quantization;
+- exactly one matching loaded instance;
+- a structured reasoning capability containing only `allowed_options` and `default`;
+- the required setting to be among `allowed_options`;
+- the live default to equal the required setting.
+
+The resulting `ActualModelReasoningEnvironmentIdentity` records only content-free reproducibility facts:
+
+- required setting;
+- effective setting;
+- canonicalized allowed options;
+- live default;
+- `control_source = lmstudio_model_default`;
+- `control_mode = attested_default_without_per_request_override`;
+- SHA-256 identity of the validated serving-proof bytes.
+
+No model output is inspected to infer reasoning state.
+
+Reasoning-attested runs use `ActualModelReasoningRunManifest`, a derived ordinary-turn manifest that adds `reasoning_environment` to the normal manifest mapping. This new field therefore participates in the stable run identity for v5 runs while historical/v2/v3/v4 manifests retain their existing shape and identity.
+
+The provider request remains unchanged. V5 does not serialize `reasoning`, `reasoning_effort`, or another hidden control into Chat Completions.
 
 ## Current COGP5 boundary
 
-The provider-neutral topology bridge and the canonical LM Studio host topology carriage are implemented.
+The following repository-side prerequisites are implemented:
 
-Actual target-model A/B evidence still requires a fresh ordinary-turn host reasoning-environment attestation so both runs can cite the same effective model/provider reasoning state. Condition C remains unsupported for the current canonical provider capability class and must be represented as unsupported/not executed rather than as a fabricated generation.
+- provider-neutral topology evidence bridge;
+- canonical LM Studio host topology carriage;
+- ordinary-turn model-wide reasoning-environment attestation and run identity.
 
-Therefore this stage does **not** change #1388 calibration/default authority.
+This makes supported A/B conditions structurally executable and citable once a real host supplies the frozen model bytes, serving proof, and matching live LM Studio environment.
+
+Condition C remains unsupported for the current canonical provider capability class. It must be represented as unsupported/not executed rather than as a fabricated generation. That explicit unsupported evidence is a separate bounded #1386 transaction.
+
+No #1388 calibration/default decision is made by these evidence mechanics.
 
 ## Ownership
 
@@ -177,6 +225,7 @@ Therefore this stage does **not** change #1388 calibration/default authority.
 - manifest/run identity composition;
 - raw/deterministic execution evidence;
 - scenario execution/review/cohort methodology;
+- ordinary-turn reasoning-environment attestation;
 - controlled supported-condition evidence;
 - host-side evidence binding and unsupported-condition evidence.
 
