@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -265,11 +266,9 @@ def test_vllm_binding_rejects_provider_capability_or_manifest_identity_drift() -
         )
 
     provider = _provider(capability)
-    drifted_manifest = ActualModelRunManifest(
-        **{
-            **manifest.__dict__,
-            "provider_identity": "wrong-provider-identity",
-        }
+    drifted_manifest = replace(
+        manifest,
+        provider_identity="wrong-provider-identity",
     )
     with pytest.raises(ActualModelVLLMBindingError, match="provider_identity"):
         bind_vllm_execution_condition(
