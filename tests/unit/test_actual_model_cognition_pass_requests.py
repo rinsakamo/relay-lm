@@ -19,6 +19,7 @@ from relaylm.actual_model_execution import (
     ActualModelScenarioExecutionError,
     plan_actual_model_scenario_execution,
 )
+from relaylm.actual_model_restart import ActualModelRestartRunManifest
 from relaylm.actual_model_scenarios import load_actual_model_scenario_set
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
 from relaylm.cognition_execution import (
@@ -332,4 +333,15 @@ def test_restart_scenario_rejects_pass_request_evidence_until_restart_bridge_exi
             scenario_id="restart-durable-vs-temporary-v1",
             fixture_root=_FIXTURE_ROOT,
             manifest=manifest,
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="restart evidence does not support cognition pass request evidence",
+    ):
+        ActualModelRestartRunManifest(
+            base=manifest,
+            restart_after_turn_count=1,
+            continuity_max_items=4,
+            continuity_lifetime_revisions=3,
         )
