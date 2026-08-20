@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-import relaylm.actual_model_host_runner as host_runner
+import relaylm.actual_model_host as host_runner
 
 
 def test_shared_host_runner_dispatches_one_vllm_condition_without_backend_script(
@@ -39,24 +39,9 @@ def test_shared_host_runner_dispatches_one_vllm_condition_without_backend_script
             ),
         )
 
-    monkeypatch.setattr(
-        host_runner,
-        "_prepare_vllm_screening_condition",
-        fake_prepare,
-        raising=False,
-    )
-    monkeypatch.setattr(
-        host_runner,
-        "_execute_vllm_host_run",
-        fake_execute,
-        raising=False,
-    )
-    monkeypatch.setattr(
-        host_runner,
-        "_current_repo_head",
-        lambda _: "a" * 40,
-        raising=False,
-    )
+    monkeypatch.setattr(host_runner, "_prepare_vllm_screening_condition", fake_prepare)
+    monkeypatch.setattr(host_runner, "_execute_vllm_host_run", fake_execute)
+    monkeypatch.setattr(host_runner, "_current_repo_head", lambda _: "a" * 40)
 
     result = host_runner.main(
         [
@@ -84,3 +69,46 @@ def test_shared_host_runner_dispatches_one_vllm_condition_without_backend_script
     output = capsys.readouterr().out
     assert '"suite": "cogp5-vllm-screening-v1"' in output
     assert '"condition": "A"' in output
+
+
+def test_shared_host_runner_delegates_lm_studio_without_reinterpreting_legacy_args(
+    monkeypatch,
+) -> None:
+    observed: dict[str, object] = {}
+
+    def fake_lm_studio_main(argv):
+        observed["argv"] = argv
+        return 7
+
+    monkeypatch.setattr(host_runner, "_lm_studio_main", fake_lm_studio_main)
+
+    result = host_runner.main(
+        [
+            "--backend",
+            "lm_studio",
+            "--condition",
+            "/tmp/condition.json",
+            "--repo-root",
+            "/repo",
+            "--model-artifact",
+            "/model.gguf",
+            "--workspace-root",
+            "/work",
+            "--artifact-root",
+            "/evidence",
+        ]
+    )
+
+    assert result == 7
+    assert observed["argv"] == [
+        "--condition",
+        "/tmp/condition.json",
+        "--repo-root",
+        "/repo",
+        "--model-artifact",
+        "/model.gguf",
+        "--workspace-root",
+        "/work",
+        "--artifact-root",
+        "/evidence",
+    ]
