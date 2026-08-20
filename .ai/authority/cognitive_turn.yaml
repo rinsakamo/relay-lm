@@ -22,6 +22,7 @@ implementation:
 tests:
 - tests/unit/test_cognition_execution_policy.py
 - tests/unit/test_cognition_pass_execution.py
+- tests/unit/test_cognition_capability_normalization.py
 - tests/unit/test_cognition_execution_evidence_identity.py
 - tests/unit/test_cognition_shadow_two_pass.py
 - tests/unit/test_openai_compatible_shadow_two_pass.py
