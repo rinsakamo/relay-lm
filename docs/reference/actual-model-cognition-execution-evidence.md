@@ -1,281 +1,189 @@
 # Actual-model cognition execution evidence
 
-Status: #1386 COGP5 execution-topology and reasoning-environment evidence bridge for RelayLM v1.
+Status: #1386 COGP5 execution-topology and resolved per-pass request evidence bridge for RelayLM v1.
 
-This reference extends the existing Actual-model Evaluation foundation so ordinary-turn cognition topology can participate in reproducible evidence without replacing historical evidence or creating another evaluation architecture.
+This reference extends the existing Actual-model Evaluation foundation so ordinary-turn cognition topology and fully resolved per-pass generation requests can participate in reproducible evidence without replacing historical evidence or creating another evaluation architecture.
 
 ## Historical evidence remains immutable
 
-Historical `ActualModelRunManifest` serialization remains unchanged.
+Historical `ActualModelRunManifest` serialization remains unchanged when the newer optional fields are absent.
 
-When `cognition_execution` is absent, no cognition-execution key is emitted. Historical manifests therefore preserve their existing run identity.
+When `cognition_execution` is absent, no cognition-execution key is emitted. When `cognition_pass_requests` is absent, no per-pass request key is emitted. Historical manifests therefore preserve their existing run identity.
 
-Reasoning-attested ordinary-turn runs use the derived `ActualModelReasoningRunManifest`. Only those new runs emit a `reasoning_environment` field. Historical manifests are not retroactively widened or reinterpreted.
+Reasoning-attested LM Studio ordinary-turn runs may additionally use the derived `ActualModelReasoningRunManifest`; only those runs emit the existing model-environment `reasoning_environment` identity.
 
-New cognition-policy evidence supplies an explicit COGP `CognitionExecutionEvidenceIdentity`. That identity participates in the run hash, so `single_pass`, `two_pass`, and `shadow_two_pass` cannot accidentally share a run identity solely because model/provider/scenario fields are otherwise equal.
+New cognition-policy evidence supplies an explicit COGP `CognitionExecutionEvidenceIdentity`. That topology identity participates in the run hash, so `single_pass`, `two_pass`, and `shadow_two_pass` cannot accidentally share a run identity solely because model/provider/scenario fields are otherwise equal.
 
-The COGP execution identity delivery path must equal the manifest `execution_path`. A buffered/streaming mismatch fails before model execution.
+The topology execution path must equal the manifest `execution_path`. A buffered/streaming mismatch fails before model execution.
+
+## Resolved per-pass request identity
+
+`ActualModelCognitionPassRequests` records the exact fully resolved `CognitionPassRequest` values supplied to an actual-model run. It is evidence identity, not policy resolution and not provider-wire authority.
+
+The supported shapes in this bounded bridge are:
+
+```text
+single_pass:
+  single_pass = CognitionPassRequest
+
+two_pass:
+  pass1 = CognitionPassRequest
+  pass2 = CognitionPassRequest
+```
+
+Each recorded request preserves the exact provider-neutral fields:
+
+```text
+reasoning_mode
+reasoning_budget
+temperature
+top_p
+max_output_tokens
+```
+
+The request has already passed the COGP policy-resolution boundary: unresolved `auto` is not legal in `CognitionPassRequest`.
+
+The request identity is optional for backward compatibility. When present it participates in `ActualModelRunManifest.to_mapping()` and therefore in `stable_actual_model_run_id(...)`. Changing Pass 2 from `off` to `bounded(64)`, for example, cannot alias to the same run ID.
+
+Topology and request shape must agree. A single-pass topology cannot carry Pass 1/Pass 2 requests, and a two-pass topology cannot carry a single-pass request. `shadow_two_pass` request evidence is not implemented by this transaction and fails closed.
+
+The current bridge intentionally supports only buffered execution. Streaming request evidence fails closed rather than claiming a request was carried through a Turn streaming path that is not part of the first COGP5 screening transaction.
 
 ## Execution-aware scenario harness
 
-`run_actual_model_scenario(...)` resolves execution topology from the manifest.
+`run_actual_model_scenario(...)` resolves execution topology from the manifest and forwards any recorded fully resolved request through the existing ordinary-turn runtime.
 
 ### Legacy or explicit `single_pass`
 
-The existing ordinary-turn harness remains unchanged:
+Without `cognition_pass_requests`, the existing ordinary-turn harness remains unchanged.
+
+With explicit request evidence, the buffered path is:
 
 ```text
-CognitiveOutput
-  response
-  StateCandidate[]
-  ContinuityCandidate[]
-        |
-        +--> raw_model evidence
-        |
-        +--> existing deterministic Turn decisions/result
+ActualModelRunManifest.cognition_pass_requests.single_pass
+  -> run_actual_model_scenario
+  -> run_user_turn(..., pass_request=...)
+  -> canonical provider
 ```
 
-An explicit single-pass COGP identity changes run identity because it is a new controlled execution condition. A historical manifest without the field remains historical authority.
+The recording wrapper forwards the keyword only when a request is actually present, preserving historical generic providers that implement only the old no-request signature.
 
 ### `two_pass`
 
-The harness executes the merged COGP3 response-first runtime:
+The harness executes the merged COGP3 response-first runtime and may carry independent resolved requests:
 
 ```text
-Pass 1 response
-        |
-        +--> raw_model.response
+pass1 request
+  -> run_user_turn_two_pass
+  -> generate_conversation
 
-Pass 2 raw proposals
-        |
-        +--> raw_model State/Continuity proposals
-        +--> cognition_execution.pass2_raw
-        |
-        +--> existing deterministic State/Continuity result
+pass2 request
+  -> originating-turn-bound extraction
+  -> generate_extraction
 ```
 
-The per-turn execution observation records:
+The per-turn execution observation still records Pass 2 terminal status (`committed`, `stale`, or `failed`), bounded failure reason, and raw valid Pass 2 proposals when produced.
 
-- `mode = two_pass`;
-- Pass 2 terminal status: `committed`, `stale`, or `failed`;
-- bounded Pass 2 failure reason when failed;
-- raw valid Pass 2 proposal output when one was actually produced.
+Pass 1 response becomes `raw_model.response`; proposal arrays come from the actual Pass 2 structured output. Deterministic State/Continuity fields remain owned solely by the existing validators.
 
-The recorder is turn-scoped: a later Pass 2 failure cannot reuse an earlier turn's recorded extraction as though it belonged to the failed turn.
-
-The harness awaits canonical Pass 2 before advancing the semantic scenario turn. This preserves the actual canonical State/Continuity result as the next turn's accepted input rather than evaluating later turns against intentionally stale canonical authority.
+The harness awaits canonical Pass 2 before advancing the semantic scenario turn so the next turn observes the accepted canonical State/Continuity result.
 
 ### `shadow_two_pass`
 
-The harness executes the merged COGP4 shadow path:
-
-```text
-canonical single_pass
-  -> raw_model + deterministic result
-
-shadow extraction
-  -> cognition_execution.shadow_raw only
-  -> no canonical mutation
-```
-
-A conflicting shadow proposal remains visible as model behavior without changing the canonical `raw_model` or deterministic result.
-
-Shadow failure is separately observable and cannot convert the successful canonical turn into a failed turn.
+The merged COGP4 shadow evidence path remains available for topology-only evidence, but this transaction does not attach resolved per-pass request evidence to it. A manifest attempting to combine shadow topology with `cognition_pass_requests` fails closed.
 
 ## Raw model versus deterministic authority
 
-The existing #1386 separation is preserved.
+The existing #1386 separation is unchanged.
 
-For canonical `two_pass`, `raw_model.response` comes from Pass 1 while `raw_model` proposal arrays come from the actual Pass 2 structured output. Deterministic State/Continuity fields come only from the existing validators and their resulting authority.
+Raw model evidence records what the model proposed. Deterministic evidence records only what RelayLM validators accepted or rejected. A Pass 2 provider failure with no valid structured output records no fabricated proposal output and never reuses a previous turn's extraction.
 
-For `shadow_two_pass`, canonical `raw_model` remains the single-pass output. Shadow proposals are stored only under the execution observation and are never represented as deterministic acceptance decisions.
-
-A Pass 2 provider failure with no valid structured output records empty raw proposal arrays for that turn and no `pass2_raw`. It never reuses a previous turn's raw extraction.
+Per-pass request identity contains no prompt, model response, State, Continuity, Event, or MEMORY content.
 
 ## Total Cognitive Budget boundary
 
 The pre-existing #1386 single-pass total Cognitive Budget bridge returns `CognitiveBudgetDiagnostics` from the ordinary Turn runtime.
 
-The current topology-aware path does not fabricate equivalent diagnostics for two-pass/shadow paths. Therefore an evidence run that combines a non-single execution topology with an explicit `CognitiveBudgetRuntimeConfig` fails explicitly until a bounded follow-up bridge exists.
+The current resolved-request bridge does not combine explicit `cognition_pass_requests` with total `CognitiveBudgetRuntimeConfig`. Such a manifest fails closed. Likewise, the topology-aware path does not fabricate equivalent total-budget diagnostics for two-pass/shadow execution.
 
-This keeps missing measurements distinct from zero/normal measurements and avoids claiming that a two-generation execution satisfied the current one-generation total-budget evidence contract.
+Legacy explicit MEMORY/Event budgets may still be carried through the already-owned Turn preparation path when used without total Cognitive Budget evidence.
 
-Legacy explicit MEMORY/Event budgets may still be carried through the already-owned COGP Turn preparation path when used without total Cognitive Budget evidence.
+## Restart boundary
 
-## Reasoning / Thinking capability boundary
+Restart evidence has a separate execution bridge. That bridge does not yet forward the new resolved per-pass request identity across its pre/post-restart ordinary-turn executions.
 
-Topology observability does **not** make a requested reasoning configuration executable by itself.
+Therefore a restart scenario combined with `cognition_pass_requests` fails during scenario planning before workspace mutation or model generation. The run must not retain the request in its manifest while silently executing without it.
 
-The provider-owned contract records that the current canonical OpenAI-compatible Chat Completions adapter carries `temperature`, `top_p`, and `seed`, but does not carry or attest a per-request reasoning/thinking mode, reasoning effort, or bounded reasoning budget.
+## Provider application remains separate authority
 
-Accordingly, COGP5 evidence must not:
+Recording a `CognitionPassRequest` proves only what RelayLM requested at the provider-neutral boundary. It does not by itself prove that a backend applied a wire control or that the control was semantically effective.
 
-- invent `reasoning_effort`;
-- assume a provider field exists because another OpenAI-compatible endpoint supports it;
-- treat a model-wide LM Studio default as a distinct Pass 2 override when no such override is applied;
-- infer Thinking OFF/ON from output style;
-- claim bounded reasoning when the provider cannot attest a bounded control.
-
-For the current canonical provider capability class:
+Provider owners remain authoritative for exact request serialization and applied configuration. In current v1 authority, the configured-vLLM reasoning path already has deterministic attested realization from #1545/#1558:
 
 ```text
-per-request reasoning modes      = unsupported
-bounded reasoning budget         = unsupported
-per-pass reasoning override      = unavailable
+RelayLM off
+  -> reasoning_effort = none
+
+RelayLM bounded(N)
+  -> thinking_token_budget = N
+  -> chat_template_kwargs.enable_thinking = true
 ```
 
-A model-wide LM Studio reasoning default is a separate execution-environment fact. It may be attested for reproducibility, but it is not a provider request control and cannot differ between Pass 1 and Pass 2 unless a future provider-owner contract actually implements such carriage.
+The canonical Turn/provider carriage merged in #1561 can carry those fully resolved requests to that realizer. Unsupported or ambiguous controls fail closed before generation; no low/medium/high effort label is substituted for a numeric bounded budget.
 
-Therefore the supported comparison boundary is:
+This #1386 transaction composes the same resolved request into run identity and the scenario harness. It does not duplicate provider capability discovery or backend serialization.
+
+## LM Studio environment evidence remains distinct
+
+Existing LM Studio host-runner formats and `ActualModelReasoningEnvironmentIdentity` remain historical/current evidence for the LM Studio model-wide environment where used.
+
+A model-wide LM Studio default is not equivalent to a per-pass RelayLM `bounded(N)` request. The exact LM Studio model previously demonstrated only binary native `off/on` behavior; it must not be treated as providing vLLM-style bounded reasoning merely because both backends serve a related model family.
+
+## Current vLLM COGP5 boundary
+
+The repository now contains these prerequisites:
+
+- frozen canonical vLLM repository-snapshot target identity;
+- configured-vLLM reasoning capability attestation;
+- provider-owned exact `off` and `bounded(N)` realization;
+- ordinary/two-pass Turn carriage for fully resolved requests;
+- #1386 execution-topology identity;
+- #1386 resolved per-pass request identity and buffered scenario-harness carriage.
+
+What is still missing is the host-side binding that validates the live vLLM server/model against the frozen repository-snapshot target and constructs the matching provider plus applied reasoning capability for an actual evidence run.
+
+Accordingly, this transaction does **not** constitute actual-model product evidence and does not freeze a numeric default.
+
+The intended first screening after that host binding is deliberately small:
 
 ```text
-A = explicit single_pass
-B = explicit two_pass under the same attested model-wide reasoning environment as A
-C = unsupported for the current canonical provider: bounded Pass 2 reasoning is not executed
+A: single_pass
+   request = off
+
+B: two_pass
+   Pass 1 = off
+   Pass 2 = off
+
+C: two_pass
+   Pass 1 = off
+   Pass 2 = bounded(small explicit budget)
 ```
 
-If the environment truthfully attests reasoning OFF, A/B may be described as running under an OFF model environment. They must not be represented as though RelayLM applied a distinct Pass 2 OFF override.
+Only if C demonstrates a meaningful product/budget difference should a larger bounded budget be added. Unsupported/ineffective parameter permutations are not part of this screening.
 
-## Canonical LM Studio host topology binding
-
-The canonical #1386 LM Studio host runner has a strict topology-aware condition format.
-
-`format_version: 4` adds one execution-policy declaration:
-
-```json
-{
-  "cognition_execution": {
-    "mode": "single_pass | two_pass | shadow_two_pass"
-  }
-}
-```
-
-The host runner resolves that mode through the already-owned `CognitionExecutionEvidenceIdentity` constructors using the same explicit buffered/streaming `execution_path`. `auto` is unresolved policy and is rejected as evidence identity.
-
-For explicit `single_pass`, host preparation retains the canonical `OpenAICompatibleProvider`. For `two_pass` and `shadow_two_pass`, it selects the already-implemented `OpenAICompatibleTwoPassProvider`, which uses the same OpenAI-compatible Chat Completions transport and the same provider-owned decoding configuration while exposing the conversation/extraction methods required by the COGP runtime.
-
-The resolved execution identity is placed directly in `ActualModelRunManifest.cognition_execution`. Host metadata therefore cannot claim a two-pass condition while executing the legacy single-pass provider path.
-
-Format v4 retains the existing explicit MEMORY/Event budget shape and deliberately cannot carry the format-v3 total Cognitive Budget identity.
-
-## Ordinary-turn reasoning-environment attestation
-
-`format_version: 5` extends the v4 topology-aware host condition with an explicit required model environment:
-
-```json
-{
-  "cognition_execution": {
-    "mode": "single_pass | two_pass | shadow_two_pass"
-  },
-  "reasoning": {
-    "required_setting": "<explicit LM Studio model default>"
-  }
-}
-```
-
-Before provider construction or semantic generation, v5 requires an explicit LM Studio serving proof. The host validates that proof against the frozen target and loaded serving instance through the already-owned LM Studio SDK attestation path, then queries the live native `/api/v1/models` metadata.
-
-Reasoning attestation requires:
-
-- the serving proof request model and loaded model key to equal the host request model;
-- exactly one matching live LLM model;
-- live model size to equal the serving-proof loaded size;
-- live quantization to equal the frozen target quantization;
-- exactly one matching loaded instance;
-- a structured reasoning capability containing only `allowed_options` and `default`;
-- the required setting to be among `allowed_options`;
-- the live default to equal the required setting.
-
-The resulting `ActualModelReasoningEnvironmentIdentity` records only content-free reproducibility facts:
-
-- required setting;
-- effective setting;
-- canonicalized allowed options;
-- live default;
-- `control_source = lmstudio_model_default`;
-- `control_mode = attested_default_without_per_request_override`;
-- SHA-256 identity of the validated serving-proof bytes.
-
-No model output is inspected to infer reasoning state.
-
-Reasoning-attested runs use `ActualModelReasoningRunManifest`, a derived ordinary-turn manifest that adds `reasoning_environment` to the normal manifest mapping. This new field therefore participates in the stable run identity for v5 runs while historical/v2/v3/v4 manifests retain their existing shape and identity.
-
-The provider request remains unchanged. V5 does not serialize `reasoning`, `reasoning_effort`, or another hidden control into Chat Completions.
-
-## Explicit unsupported condition evidence
-
-A requested cognition condition that the current provider cannot apply is represented as **capability evidence, not as a model run**.
-
-`ActualModelUnsupportedCognitionConditionEvidence` binds the exact content-free inputs needed to reproduce the capability decision:
-
-- exact RelayLM commit;
-- frozen target ID, target revision, and model-artifact identity;
-- stable P4 provider identity;
-- provider-owned machine-readable cognition capability facts;
-- the normalized COGP `CognitionExecutionCapabilities` view;
-- the exact pass name and `CognitionPassRequest`;
-- the existing `resolve_pass_request()` result and unsupported field list.
-
-For COGP5 condition C, #1386 requests only the semantic capability being tested:
-
-```text
-pass = pass2
-reasoning_mode = bounded
-reasoning_budget = omitted
-```
-
-No numeric bounded-reasoning budget is invented because no canonical numeric C boundary exists. Under the current provider facts, COGP normalization produces no supported reasoning modes and `bounded_reasoning_budget = false`; the existing resolver therefore classifies `reasoning_mode` as `unsupported` while the absent budget remains `omitted`.
-
-The artifact fixes:
-
-```text
-condition_status = unsupported
-generation_executed = false
-model_quality = null
-score = null
-```
-
-It deliberately contains no response, raw model proposals, or `run_id`. A run identity would falsely imply semantic generation. The builder refuses to construct this artifact if the supplied request has no unsupported fields.
-
-The evidence ID is a SHA-256 content address over the exact target/provider/facts/normalized-capability/request/resolution identity. The immutable writer is idempotent for identical bytes and rejects conflicting existing bytes under the same evidence ID.
-
-This path consumes provider facts from the provider owner and COGP normalization/resolution from #1533; #1386 does not reimplement provider capability truth or COGP option semantics.
-
-## Current COGP5 boundary
-
-The following repository-side prerequisites are implemented:
-
-- provider-neutral topology evidence bridge;
-- canonical LM Studio host topology carriage;
-- ordinary-turn model-wide reasoning-environment attestation and run identity;
-- provider-owned machine-readable cognition capability facts;
-- COGP-owned provider-facts normalization and existing option resolution;
-- explicit unsupported/not-executed evidence for condition C.
-
-This makes supported A/B conditions structurally executable and citable once a real host supplies the frozen model bytes, serving proof, and matching live LM Studio environment. Condition C is represented without fabricating a generation or numeric reasoning budget.
-
-Repository-side COGP5 evidence mechanics therefore distinguish:
-
-```text
-A = actual-model run required on host
-B = actual-model run required on host
-C = capability evidence; generation does not occur
-```
-
-Actual A/B evidence still requires the real host/model execution. These repository mechanics do not constitute those runs and do not change #1388 calibration/default authority.
+LM Studio and vLLM evidence runs remain serial backend executions; simultaneous backend availability is not required.
 
 ## Ownership
 
-#1533 / COGP owns the meaning of execution topology, its provider-neutral topology identity, capability vocabulary normalization, and requested-option resolution.
+#1533 / COGP owns execution-topology semantics, provider-neutral per-pass request semantics, capability vocabulary normalization, and request resolution.
 
 #1386 owns:
 
 - manifest/run identity composition;
 - raw/deterministic execution evidence;
 - scenario execution/review/cohort methodology;
-- ordinary-turn reasoning-environment attestation;
 - controlled supported-condition evidence;
 - host-side evidence binding;
-- immutable unsupported/not-executed capability evidence.
+- exact resolved-request evidence carriage into the actual-model harness.
 
-Provider owners retain actual request capability and applied configuration truth. #1388 remains the sole owner of profile/default selection.
+Provider owners retain actual request capability, backend serialization, and applied configuration truth. #1388 remains the sole owner of evidence-backed profile/default selection.

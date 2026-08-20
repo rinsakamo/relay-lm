@@ -19,6 +19,7 @@ from relaylm.cognition_execution import (
     CognitionConversationOutput,
     CognitionExtractionInput,
     CognitionExtractionOutput,
+    CognitionPassRequest,
 )
 from relaylm.cognition_execution_evidence import (
     CognitionExecutionEvidenceIdentity,
@@ -52,6 +53,7 @@ from relaylm.validation import CandidateDecision
 
 ACTUAL_MODEL_EVIDENCE_FORMAT_VERSION = 1
 ACTUAL_MODEL_SCENARIO_FORMAT_VERSION = 1
+ACTUAL_MODEL_COGNITION_PASS_REQUESTS_FORMAT_VERSION = 1
 ExecutionPath = Literal["buffered", "streaming"]
 RestartBoundary = Literal["none", "before_scenario"]
 ScenarioFamily = Literal[
@@ -114,6 +116,78 @@ class ExplicitContinuityRuntimeConfiguration:
 
 
 @dataclass(frozen=True, slots=True)
+class ActualModelCognitionPassRequests:
+    """Exact fully resolved per-pass requests participating in #1386 run identity."""
+
+    single_request: CognitionPassRequest | None = None
+    pass1: CognitionPassRequest | None = None
+    pass2: CognitionPassRequest | None = None
+    format_version: int = ACTUAL_MODEL_COGNITION_PASS_REQUESTS_FORMAT_VERSION
+
+    def __post_init__(self) -> None:
+        if self.format_version != ACTUAL_MODEL_COGNITION_PASS_REQUESTS_FORMAT_VERSION:
+            raise ValueError(
+                "unsupported actual-model cognition pass requests format_version: "
+                f"{self.format_version}"
+            )
+        for name in ("single_request", "pass1", "pass2"):
+            value = getattr(self, name)
+            if value is not None and not isinstance(value, CognitionPassRequest):
+                raise TypeError(f"{name} must be CognitionPassRequest or None")
+        single_shape = (
+            self.single_request is not None
+            and self.pass1 is None
+            and self.pass2 is None
+        )
+        two_pass_shape = (
+            self.single_request is None
+            and self.pass1 is not None
+            and self.pass2 is not None
+        )
+        if not (single_shape or two_pass_shape):
+            raise ValueError(
+                "cognition pass requests must contain exactly single_pass or both pass1 and pass2"
+            )
+
+    @classmethod
+    def single_pass(cls, request: CognitionPassRequest) -> "ActualModelCognitionPassRequests":
+        return cls(single_request=request)
+
+    @classmethod
+    def two_pass(
+        cls,
+        *,
+        pass1: CognitionPassRequest,
+        pass2: CognitionPassRequest,
+    ) -> "ActualModelCognitionPassRequests":
+        return cls(pass1=pass1, pass2=pass2)
+
+    @property
+    def mode(self) -> str:
+        return "single_pass" if self.single_request is not None else "two_pass"
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "format_version": self.format_version,
+            "single_pass": (
+                _cognition_pass_request_mapping(self.single_request)
+                if self.single_request is not None
+                else None
+            ),
+            "pass1": (
+                _cognition_pass_request_mapping(self.pass1)
+                if self.pass1 is not None
+                else None
+            ),
+            "pass2": (
+                _cognition_pass_request_mapping(self.pass2)
+                if self.pass2 is not None
+                else None
+            ),
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ActualModelRunManifest:
     """Reproducible identity for one actual-model scenario execution."""
 
@@ -138,6 +212,7 @@ class ActualModelRunManifest:
     provider_capabilities: tuple[str, ...] = field(default_factory=tuple)
     replicate_id: str = "0"
     cognition_execution: CognitionExecutionEvidenceIdentity | None = None
+    cognition_pass_requests: ActualModelCognitionPassRequests | None = None
     format_version: int = ACTUAL_MODEL_EVIDENCE_FORMAT_VERSION
 
     def __post_init__(self) -> None:
@@ -221,6 +296,40 @@ class ActualModelRunManifest:
                 raise ValueError(
                     "cognition execution path must match manifest execution_path"
                 )
+        if self.cognition_pass_requests is not None:
+            if not isinstance(
+                self.cognition_pass_requests,
+                ActualModelCognitionPassRequests,
+            ):
+                raise TypeError(
+                    "cognition_pass_requests must be ActualModelCognitionPassRequests or None"
+                )
+            if self.cognition_execution is None:
+                raise ValueError(
+                    "cognition pass requests require explicit cognition_execution identity"
+                )
+            if self.execution_path != "buffered":
+                raise ValueError(
+                    "cognition pass request evidence currently requires buffered execution"
+                )
+            if self.cognitive_budget is not None:
+                raise ValueError(
+                    "cognition pass requests cannot yet be combined with total cognitive_budget"
+                )
+            if self.cognition_execution.mode == "single_pass":
+                if self.cognition_pass_requests.mode != "single_pass":
+                    raise ValueError(
+                        "single_pass cognition pass requests must contain only single_pass"
+                    )
+            elif self.cognition_execution.mode == "two_pass":
+                if self.cognition_pass_requests.mode != "two_pass":
+                    raise ValueError(
+                        "two_pass cognition pass requests must contain pass1 and pass2"
+                    )
+            else:
+                raise ValueError(
+                    "shadow_two_pass cognition pass request evidence is not implemented"
+                )
 
     def to_mapping(self) -> dict[str, object]:
         mapping: dict[str, object] = {
@@ -260,6 +369,8 @@ class ActualModelRunManifest:
         }
         if self.cognition_execution is not None:
             mapping["cognition_execution"] = self.cognition_execution.to_mapping()
+        if self.cognition_pass_requests is not None:
+            mapping["cognition_pass_requests"] = self.cognition_pass_requests.to_mapping()
         return mapping
 
 
@@ -489,8 +600,19 @@ class _RecordingProvider:
         self.conversation_outputs: list[CognitionConversationOutput] = []
         self.extraction_outputs: list[CognitionExtractionOutput] = []
 
-    async def generate(self, cognitive_input: CognitiveInput) -> CognitiveOutput:
-        output = await self.delegate.generate(cognitive_input)
+    async def generate(
+        self,
+        cognitive_input: CognitiveInput,
+        *,
+        pass_request: CognitionPassRequest | None = None,
+    ) -> CognitiveOutput:
+        if pass_request is None:
+            output = await self.delegate.generate(cognitive_input)
+        else:
+            output = await self.delegate.generate(
+                cognitive_input,
+                pass_request=pass_request,
+            )
         if not isinstance(output, CognitiveOutput):
             raise TypeError("provider generate must return CognitiveOutput")
         self.outputs.append(output)
@@ -513,11 +635,19 @@ class _RecordingProvider:
     async def generate_conversation(
         self,
         cognitive_input: CognitiveInput,
+        *,
+        pass_request: CognitionPassRequest | None = None,
     ) -> CognitionConversationOutput:
         generate_conversation = getattr(self.delegate, "generate_conversation", None)
         if not callable(generate_conversation):
             raise TypeError("provider does not support two-pass conversation generation")
-        output = await generate_conversation(cognitive_input)
+        if pass_request is None:
+            output = await generate_conversation(cognitive_input)
+        else:
+            output = await generate_conversation(
+                cognitive_input,
+                pass_request=pass_request,
+            )
         if not isinstance(output, CognitionConversationOutput):
             raise TypeError(
                 "provider generate_conversation must return CognitionConversationOutput"
@@ -548,11 +678,19 @@ class _RecordingProvider:
     async def generate_extraction(
         self,
         extraction_input: CognitionExtractionInput,
+        *,
+        pass_request: CognitionPassRequest | None = None,
     ) -> CognitionExtractionOutput:
         generate_extraction = getattr(self.delegate, "generate_extraction", None)
         if not callable(generate_extraction):
             raise TypeError("provider does not support structured extraction")
-        output = await generate_extraction(extraction_input)
+        if pass_request is None:
+            output = await generate_extraction(extraction_input)
+        else:
+            output = await generate_extraction(
+                extraction_input,
+                pass_request=pass_request,
+            )
         if not isinstance(output, CognitionExtractionOutput):
             raise TypeError("provider generate_extraction must return CognitionExtractionOutput")
         self.extraction_outputs.append(output)
@@ -582,6 +720,7 @@ async def run_actual_model_scenario(
         effective_context_window=manifest.effective_context_window,
     )
     execution_mode = _execution_mode(manifest)
+    pass_requests = manifest.cognition_pass_requests
     if execution_mode in {"two_pass", "shadow_two_pass"} and cognitive_budget is not None:
         raise ValueError(
             "two-pass cognition execution does not yet expose #1386 total cognitive-budget "
@@ -609,6 +748,8 @@ async def run_actual_model_scenario(
         try:
             if execution_mode == "two_pass":
                 assert two_pass_runtime is not None
+                pass1_request = pass_requests.pass1 if pass_requests is not None else None
+                pass2_request = pass_requests.pass2 if pass_requests is not None else None
                 if manifest.execution_path == "buffered":
                     two_pass = await run_user_turn_two_pass(
                         character=character,
@@ -618,6 +759,8 @@ async def run_actual_model_scenario(
                         memory_budget=memory_budget,
                         event_budget=event_budget,
                         continuity_runtime=continuity_runtime,
+                        pass1_request=pass1_request,
+                        pass2_request=pass2_request,
                     )
                 else:
                     two_pass = await run_user_turn_two_pass_streaming(
@@ -674,6 +817,9 @@ async def run_actual_model_scenario(
                 deterministic = _deterministic_observation(shadow_turn.turn)
                 execution_observation = _shadow_execution_observation(shadow)
             else:
+                single_pass_request = (
+                    pass_requests.single_request if pass_requests is not None else None
+                )
                 if cognitive_budget is None:
                     if manifest.execution_path == "buffered":
                         result = await run_user_turn(
@@ -683,6 +829,7 @@ async def run_actual_model_scenario(
                             memory_budget=memory_budget,
                             event_budget=event_budget,
                             continuity_runtime=continuity_runtime,
+                            pass_request=single_pass_request,
                         )
                     else:
                         result = await run_user_turn_streaming(
@@ -1033,6 +1180,18 @@ def _serialize_continuity_item(item: ContinuityItem) -> dict[str, object]:
         "epistemic_role": item.epistemic_role,
         "accepted_revision": item.accepted_revision,
         "expires_revision": item.expires_revision,
+    }
+
+
+def _cognition_pass_request_mapping(request: CognitionPassRequest) -> dict[str, object]:
+    return {
+        "reasoning_mode": (
+            request.reasoning_mode.value if request.reasoning_mode is not None else None
+        ),
+        "reasoning_budget": request.reasoning_budget,
+        "temperature": request.temperature,
+        "top_p": request.top_p,
+        "max_output_tokens": request.max_output_tokens,
     }
 
 

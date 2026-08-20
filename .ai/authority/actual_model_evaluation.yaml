@@ -1,6 +1,6 @@
 schema_version: 1
 id: actual_model_evaluation
-summary: Actual-model execution, host runners, and reproducible evaluation evidence.
+summary: Actual-model execution, host runners, resolved cognition request carriage, and reproducible evaluation evidence.
 owner_issue: 1386
 canonical_surfaces:
 - docs/reference/actual-model-cognition-execution-evidence.md
@@ -35,6 +35,7 @@ implementation:
 tests:
 - tests/unit/test_actual_model_evaluation.py
 - tests/unit/test_actual_model_cognition_execution.py
+- tests/unit/test_actual_model_cognition_pass_requests.py
 - tests/unit/test_actual_model_cognition_host_topology.py
 - tests/unit/test_actual_model_cognition_reasoning_environment.py
 - tests/unit/test_actual_model_cognition_capability.py

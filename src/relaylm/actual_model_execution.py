@@ -181,6 +181,11 @@ def plan_actual_model_scenario_execution(
                 "restart scenarios do not support total cognitive-budget evidence "
                 "in the ordinary-turn evidence bridge"
             )
+        if manifest.cognition_pass_requests is not None:
+            raise ActualModelScenarioExecutionError(
+                "restart scenarios do not support cognition pass request evidence "
+                "until the restart evidence bridge carries the same resolved requests"
+            )
 
     plan_payload = {
         "scenario_set_version": scenario_set.scenario_set_version,
