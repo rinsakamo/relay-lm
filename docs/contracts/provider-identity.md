@@ -1,8 +1,8 @@
 # OpenAI-compatible provider capability and configuration identity
 
-Status: #1456 P4 stable provider-owned identity surface for RelayLM v1.
+Status: #1456 P4 stable provider-owned identity surface plus #1545 R3A OpenAI-compatible backend identity vocabulary for RelayLM v1.
 
-This contract exposes a stable, content-free description of the canonical OpenAI-compatible cognitive adapter so Actual-model Evaluation (#1386) and Release Runtime / Configuration (#1446) can consume provider capabilities and applied request configuration without private adapter inspection.
+This contract exposes stable, content-free provider identity so Actual-model Evaluation (#1386) and Release Runtime / Configuration (#1446) can consume provider capabilities and applied request configuration without private adapter inspection.
 
 It does not redefine evaluation identity methodology, release configuration precedence, provider wire semantics, Continuity, Cognitive Budget, or calibration defaults.
 
@@ -16,6 +16,8 @@ The canonical adapter identity is:
 openai_compatible
 ```
 
+The adapter identity names the API protocol family. It does **not** identify which backend implementation serves that protocol.
+
 The current strict structured-output schema name is:
 
 ```text
@@ -23,6 +25,36 @@ relaylm_cognitive_output
 ```
 
 These are stable machine-facing identifiers. They are not model aliases or provider deployment names.
+
+## Backend implementation identity
+
+#1545 separates the OpenAI-compatible adapter from the backend implementation/dialect that realizes backend-specific controls.
+
+The provider-owned canonical backend IDs currently are:
+
+```text
+generic
+vllm
+lm_studio
+```
+
+Their human-facing display names are:
+
+```text
+generic    -> Generic OpenAI-compatible
+vllm       -> vLLM
+lm_studio  -> LM Studio
+```
+
+`openai_compatible` is deliberately **not** a backend ID; it remains the adapter/protocol identity above.
+
+`generic` represents the existing unspecialized OpenAI-compatible path. `vllm` and `lm_studio` identify backend-specific dialect families without claiming that every backend-specific capability is already implemented or applicable to every configured model/runtime.
+
+Machine identity and display text are separate. `resolve_openai_compatible_backend(...)` accepts only an explicit bounded alias set, trims surrounding whitespace, and case-folds input. It never fuzzy-matches or auto-detects a backend. For example, `vLLM` resolves to canonical machine ID `vllm`, while unknown spellings and undeclared backends fail closed.
+
+The canonical registry lives in `src/relaylm/providers/openai_compatible_backend.py`. Downstream configuration/evidence must persist the canonical ID rather than the user-facing spelling.
+
+This R3A identity vocabulary does not itself add `provider.backend` to runtime configuration, change runtime assembly, attest a live backend, or serialize reasoning controls. Those are separate dependent transactions.
 
 ## Structured semantic channels
 
@@ -90,6 +122,8 @@ No numeric defaults or model-specific tuning values are created by this identity
 
 Changing the request model or effective decoding configuration changes this identity value. Changing a secret does not.
 
+The current P4 object predates the separate backend vocabulary and therefore does not yet claim an applied backend implementation identity. A later #1545/R4 consumer-convergence transaction may extend effective provider identity only when runtime backend selection/attestation is wired truthfully.
+
 The identity intentionally does **not** include `api_key`, Authorization material, semantic payload, prompt text, State, Continuity, MEMORY, Events, or user content.
 
 It also does not treat the connection endpoint (`base_url`) as part of this provider-owned request/config identity. Deployment/provider-instance identity remains a separate consumer concern: #1386 already carries a distinct `provider_identity`, while #1446 owns the machine/runtime configuration that selects `base_url`. This separation prevents connection strings from becoming implicit evidence identity or leaking embedded credentials through diagnostics. P4 does not hash excluded values and never treats an API key hash as identity.
@@ -108,13 +142,16 @@ identity.effective_decoding_configuration
 
 alongside #1386-owned provider/model/evidence identity fields. P4 does not mutate `ActualModelRunManifest` or decide how evidence artifacts are assembled.
 
-For #1446, the identity is an owner-defined provider surface that later runtime diagnostics or assembly may consume. P4 does not add YAML keys, environment variables, CLI flags, config discovery, precedence, or loader semantics.
+For #1446, the identity is an owner-defined provider surface that later runtime diagnostics or assembly may consume. Provider-owned backend IDs supply the canonical values; #1446 owns how a runtime-config field selects and carries one of those values.
 
 ## Privacy and authority invariants
 
 - no API key or secret reference value appears in identity or diagnostics;
 - no secret is hashed to manufacture identity;
 - no semantic payload is included;
+- adapter identity and backend identity remain distinct concepts;
+- human display spelling never becomes canonical machine identity;
+- unknown backend identity is never fuzzy-matched into support;
 - capability tokens describe declared adapter/provider support, not successful model behavior;
 - seed-field support is not a deterministic-model guarantee;
 - decoding configuration describes exactly carried explicit request fields, not evaluator metadata;
