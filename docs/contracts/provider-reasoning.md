@@ -1,6 +1,6 @@
 # OpenAI-compatible provider reasoning control contract
 
-Status: #1545 R1–R3B provider-owned reasoning contract, LM Studio capability attestation, vLLM exact wire vocabulary, and configured-runtime capability attestation for RelayLM v1.
+Status: #1545 R1–R3C provider-owned reasoning contract, LM Studio capability attestation, vLLM configured-runtime capability, exact realization, and single/two-pass carriage for RelayLM v1.
 
 This contract defines the deterministic provider boundary for explicit reasoning controls, backend-specific capability truth, and proven backend request spelling. It does not choose cognition policy, per-pass defaults, numeric reasoning budgets, or calibration values.
 
@@ -150,7 +150,7 @@ Crucially, existence of these fields does not establish that they are semantical
 - `thinking_token_budget` requires reasoning configuration/parser support and model/runtime compatibility;
 - backend identity alone does not prove either control is applicable.
 
-Accordingly, this R3A wire vocabulary does **not** set `OpenAICompatibleReasoningCapabilities` to supported, does not create an `applied` application record, and does not yet modify the canonical single-pass or two-pass request body.
+Accordingly, this low-level wire vocabulary still chooses no RelayLM semantic policy. The R3C realizer below is the only provider-owned path that may combine it with an attested configured runtime and construct an applied application record.
 
 ## Configured vLLM/model reasoning capability attestation
 
@@ -185,6 +185,37 @@ realizer rule that conflicting template kwargs must be rejected. Unsupported,
 unproven, or ambiguous observations never receive an effort-tier or generic
 fallback wire.
 
+## vLLM semantic realization and carriage
+
+`vllm_reasoning_realization.py` accepts only a fully resolved
+`OpenAICompatibleReasoningRequest` and the matching R3B capability attestation.
+It produces the requested, resolved, and applied identities from the same
+serializer that produces the request fields:
+
+```text
+RelayLM off
+  -> reasoning_effort: none
+  -> no template kwargs (conflicting enable_thinking kwargs fail closed)
+
+RelayLM bounded(N)
+  -> thinking_token_budget: N
+  -> chat_template_kwargs: { enable_thinking: true }
+```
+
+`bounded` never chooses `N`, and `low`/`medium`/`high` are never used as a
+substitute. If the corresponding capability status is not
+`semantically_attested`, the realizer constructs an unsupported application and
+refuses to produce request fields. An unresolved `auto`, missing bounded
+budget, mismatched target/model attestation, or conflicting template kwargs
+fails closed before network serialization.
+
+The canonical ordinary single-pass builder and both two-pass builders consume
+this same realizer. A caller may pass different fully resolved requests for
+Pass 1 and Pass 2; Pass 2 is not implicitly strengthened merely by being Pass
+2. When a vLLM capability is explicitly attached to the provider, provider
+cognition facts expose only the attested `off`/`bounded` modes and budget
+support.
+
 ## Fail-closed rules
 
 - an explicit mode fails preflight when mode control is not attested;
@@ -199,19 +230,15 @@ fallback wire.
 
 ## Relationship to current provider cognition facts
 
-`OpenAICompatibleCognitionCapabilityFacts` remains the current content-free provider-to-COGP bridge introduced before R1. Backend identity and exact vLLM wire vocabulary now exist, but the canonical provider request path still lacks a capability-attested semantic realization. Therefore current adapter cognition facts remain reasoning-empty/unsupported until exact semantic resolution and carriage exist on the same request path.
+`OpenAICompatibleCognitionCapabilityFacts` remains the current content-free provider-to-COGP bridge introduced before R1. Without an explicitly attached configured vLLM attestation, the generic adapter remains reasoning-empty/unsupported. With one attached attestation, only the modes whose R3B status is `semantically_attested` are exposed.
 
-R1–R3B do not rewrite historical provider identity or the existing #1386 unsupported/not-executed reasoning evidence. A later transaction may extend effective provider identity/cognition facts only when the same canonical request path can actually carry an attested reasoning control.
+R1–R3C do not rewrite historical provider identity or the existing #1386 unsupported/not-executed reasoning evidence. A later actual-model transaction may consume the applied identity only when the same canonical request path carries the attested control.
 
 ## Deferred work
 
 Current provider authority still does not implement:
 
-- semantic mapping from provider-neutral `off` / `bounded` into proven vLLM controls;
 - exact LM Studio Chat Completions reasoning wire;
-- distinct Pass 1 / Pass 2 reasoning request carriage;
-- an `applied` reasoning result on the canonical adapter;
-- backend-specific runtime assembly activation for reasoning;
 - runtime config or calibrated reasoning defaults;
 - actual-model COGP5 reasoning ON/OFF execution.
 

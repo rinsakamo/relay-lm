@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 
-ReasoningValue = str | int
+ReasoningValue = str | int | bool
 ReasoningMapping = tuple[tuple[str, ReasoningValue], ...]
 
 
@@ -247,8 +247,8 @@ def _validate_reasoning_mapping(name: str, values: object) -> None:
         key, value = item
         if not isinstance(key, str) or not key.strip():
             raise TypeError(f"{name} keys must be non-empty strings")
-        if isinstance(value, bool) or not isinstance(value, (str, int)):
-            raise TypeError(f"{name} values must be strings or integers")
+        if not isinstance(value, (str, int, bool)):
+            raise TypeError(f"{name} values must be strings, integers, or booleans")
         if isinstance(value, str) and not value.strip():
             raise ValueError(f"{name} string values must not be empty")
         keys.append(key)

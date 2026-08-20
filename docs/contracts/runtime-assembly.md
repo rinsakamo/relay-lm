@@ -50,14 +50,19 @@ Current assembly capability is intentionally narrower than the selection vocabul
 backend = generic
   -> existing OpenAICompatibleProvider(base_url, model, api_key)
 
-backend = vllm | lm_studio
+backend = vllm
+  -> requires an explicit provider-owned VLLMReasoningCapabilityAttestation
+     bound to the configured request model and frozen actual-model target
+  -> OpenAICompatibleProvider with the backend-specific vLLM realizer enabled
+
+backend = lm_studio
   -> capability_unavailable at provider.backend
   -> fail before provider construction/generation
 ```
 
-The `generic` backend preserves the historical unspecialized OpenAI-compatible path. A selected backend-specific ID must never silently fall through to `generic`; doing so would falsely report a backend-specific selection without applying its dialect.
+The `generic` backend preserves the historical unspecialized OpenAI-compatible path. A selected backend-specific ID must never silently fall through to `generic`; doing so would falsely report a backend-specific selection without applying its dialect. vLLM assembly fails closed when the explicit attestation is absent, malformed, or bound to a different configured request model.
 
-A later provider-owned transaction may make a backend-specific realizer available. Runtime assembly must consume that provider-owned capability; it must not invent backend wire mappings itself.
+Runtime assembly consumes the provider-owned capability; it does not discover the backend, invent wire mappings, or choose a reasoning mode/budget.
 
 Raw API-key material comes only from `RuntimeSecretInputs`; it is not copied into `RuntimeConfig`, effective-config diagnostics, or `RuntimeAssembly` representation.
 
@@ -172,6 +177,6 @@ Assembly preserves:
 
 ## 10. Remaining dependency
 
-Backend-specific runtime assembly depends on provider-owned backend realizers. In particular, `provider.backend = vllm` remains intentionally unavailable until #1545 provides the vLLM-specific attestation/wire realization needed to construct a truthful provider path.
+Backend-specific runtime assembly depends on provider-owned backend realizers. The vLLM path now requires the explicit #1545 attestation and realizer; other backend-specific dialects remain unavailable until their own provider-owned capability and wire contracts exist.
 
 This contract does not add vLLM reasoning wire, LM Studio reasoning wire, automatic backend detection, calibrated cognition defaults, or GUI behavior.
