@@ -10,6 +10,7 @@ from relaylm.cognition_execution import (
     CognitionConversationOutput,
     CognitionExtractionInput,
     CognitionExtractionOutput,
+    CognitionPassRequest,
     TwoPassCognitiveProvider,
 )
 from relaylm.continuity import ContinuityContext
@@ -128,11 +129,17 @@ async def run_user_turn_two_pass(
     event_budget: EventRetrievalBudget | None = None,
     continuity_runtime: ContinuityRuntime | None = None,
     cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
+    pass1_request: CognitionPassRequest | None = None,
+    pass2_request: CognitionPassRequest | None = None,
 ) -> TwoPassTurnResult:
     """Complete Pass 1, then background the turn-bound Pass 2 proposal path."""
 
     generate_conversation = _require_two_pass_provider(provider, streaming=False)
     _require_execution_runtime(execution_runtime)
+    if pass1_request is not None and not isinstance(pass1_request, CognitionPassRequest):
+        raise TypeError("pass1_request must be CognitionPassRequest or None")
+    if pass2_request is not None and not isinstance(pass2_request, CognitionPassRequest):
+        raise TypeError("pass2_request must be CognitionPassRequest or None")
     if not content.strip():
         raise ValueError("user content must not be empty")
 
@@ -155,7 +162,13 @@ async def run_user_turn_two_pass(
         origin_continuity = (
             continuity_runtime.context if continuity_runtime is not None else None
         )
-        conversation = await generate_conversation(cognitive_input)
+        if pass1_request is None:
+            conversation = await generate_conversation(cognitive_input)
+        else:
+            conversation = await generate_conversation(
+                cognitive_input,
+                pass_request=pass1_request,
+            )
         if not isinstance(conversation, CognitionConversationOutput):
             raise TypeError(
                 "two-pass provider generate_conversation must return CognitionConversationOutput"
@@ -174,6 +187,7 @@ async def run_user_turn_two_pass(
             continuity_runtime=continuity_runtime,
             execution_runtime=execution_runtime,
             execution_revision=execution_revision,
+            pass_request=pass2_request,
         )
 
     return TwoPassTurnResult(
@@ -312,6 +326,7 @@ def _schedule_extraction(
     continuity_runtime: ContinuityRuntime | None,
     execution_runtime: CognitionExecutionRuntime,
     execution_revision: int,
+    pass_request: CognitionPassRequest | None = None,
 ) -> asyncio.Task[TwoPassExtractionResult]:
     task = asyncio.create_task(
         _complete_extraction(
@@ -326,6 +341,7 @@ def _schedule_extraction(
             continuity_runtime=continuity_runtime,
             execution_runtime=execution_runtime,
             execution_revision=execution_revision,
+            pass_request=pass_request,
         )
     )
     execution_runtime._track(task)
@@ -342,10 +358,17 @@ async def _complete_extraction(
     continuity_runtime: ContinuityRuntime | None,
     execution_runtime: CognitionExecutionRuntime,
     execution_revision: int,
+    pass_request: CognitionPassRequest | None = None,
 ) -> TwoPassExtractionResult:
     event_id = extraction_input.originating_event_id
     try:
-        output = await provider.generate_extraction(extraction_input)
+        if pass_request is None:
+            output = await provider.generate_extraction(extraction_input)
+        else:
+            output = await provider.generate_extraction(
+                extraction_input,
+                pass_request=pass_request,
+            )
         if not isinstance(output, CognitionExtractionOutput):
             raise TypeError(
                 "two-pass provider generate_extraction must return CognitionExtractionOutput"
