@@ -1,6 +1,6 @@
 # OpenAI-compatible provider capability and configuration identity
 
-Status: #1456 P4 stable provider-owned identity surface plus #1545 R3A OpenAI-compatible backend identity vocabulary for RelayLM v1.
+Status: #1456 P4 stable provider-owned identity surface plus #1545 R3A backend vocabulary and vLLM backend attestation for RelayLM v1.
 
 This contract exposes stable, content-free provider identity so Actual-model Evaluation (#1386) and Release Runtime / Configuration (#1446) can consume provider capabilities and applied request configuration without private adapter inspection.
 
@@ -52,9 +52,38 @@ lm_studio  -> LM Studio
 
 Machine identity and display text are separate. `resolve_openai_compatible_backend(...)` accepts only an explicit bounded alias set, trims surrounding whitespace, and case-folds input. It never fuzzy-matches or auto-detects a backend. For example, `vLLM` resolves to canonical machine ID `vllm`, while unknown spellings and undeclared backends fail closed.
 
-The canonical registry lives in `src/relaylm/providers/openai_compatible_backend.py`. Downstream configuration/evidence must persist the canonical ID rather than the user-facing spelling.
+The canonical registry lives in `src/relaylm/providers/openai_compatible_backend.py`. Downstream configuration/evidence must persist the canonical ID rather than the user-facing spelling. #1552 now carries that provider-owned value through `provider.backend`; runtime configuration does not redefine backend meaning.
 
-This R3A identity vocabulary does not itself add `provider.backend` to runtime configuration, change runtime assembly, attest a live backend, or serialize reasoning controls. Those are separate dependent transactions.
+## vLLM backend identity attestation
+
+`src/relaylm/providers/vllm_backend.py` defines a provider-owned, content-free attestation for the `vllm` backend.
+
+The attestation consumes responses from two vLLM API surfaces:
+
+```text
+/version
+/v1/models
+```
+
+It binds:
+
+```text
+backend = vllm
+vLLM version
+configured request_model
+exact matching served model id
+reported model root, if present
+reported max_model_len, if present
+attestation source endpoints
+```
+
+`/v1/models` must contain exactly one model card whose public `id` equals the configured RelayLM request model. Missing or ambiguous matches fail closed. The matching card must identify itself as a model. Optional `root` and `max_model_len` metadata are validated when present.
+
+`model_root` and `max_model_len` are **reported serving metadata**, not immutable model-artifact identity. #1386 remains responsible for exact model/tokenizer/artifact evidence identity where required.
+
+The vLLM attestation deliberately does not infer reasoning capability, reasoning mode, token-budget applicability, structured-output support, or decoding capability merely because the backend is vLLM or because a model name appears in `/v1/models`. Those facts require their own provider-owned capability/wire proof.
+
+This module parses supplied API responses and creates a typed identity record. Repository CI does not pretend to contact the operator's live vLLM server; live response acquisition belongs to the later host/preflight integration that can actually reach the configured deployment.
 
 ## Structured semantic channels
 
@@ -122,7 +151,7 @@ No numeric defaults or model-specific tuning values are created by this identity
 
 Changing the request model or effective decoding configuration changes this identity value. Changing a secret does not.
 
-The current P4 object predates the separate backend vocabulary and therefore does not yet claim an applied backend implementation identity. A later #1545/R4 consumer-convergence transaction may extend effective provider identity only when runtime backend selection/attestation is wired truthfully.
+The current P4 object predates the separate backend vocabulary and therefore does not yet claim an applied backend implementation identity. The typed vLLM attestation is a separate provider-owned fact until a later #1545/R4 consumer-convergence transaction wires live backend attestation into effective provider/evidence identity truthfully.
 
 The identity intentionally does **not** include `api_key`, Authorization material, semantic payload, prompt text, State, Continuity, MEMORY, Events, or user content.
 
@@ -142,7 +171,9 @@ identity.effective_decoding_configuration
 
 alongside #1386-owned provider/model/evidence identity fields. P4 does not mutate `ActualModelRunManifest` or decide how evidence artifacts are assembled.
 
-For #1446, the identity is an owner-defined provider surface that later runtime diagnostics or assembly may consume. Provider-owned backend IDs supply the canonical values; #1446 owns how a runtime-config field selects and carries one of those values.
+For #1446, the identity is an owner-defined provider surface that runtime diagnostics or assembly may consume. Provider-owned backend IDs supply the canonical values; #1446 owns how runtime configuration selects and carries one of those values.
+
+`VLLMBackendAttestation.to_mapping()` is a separate content-free observed-backend record suitable for later host/preflight/evidence integration. A configured `backend: vllm` value by itself is requested identity; the attestation represents observed API identity.
 
 ## Privacy and authority invariants
 
@@ -150,8 +181,10 @@ For #1446, the identity is an owner-defined provider surface that later runtime 
 - no secret is hashed to manufacture identity;
 - no semantic payload is included;
 - adapter identity and backend identity remain distinct concepts;
+- configured backend selection and observed backend attestation remain distinguishable;
 - human display spelling never becomes canonical machine identity;
 - unknown backend identity is never fuzzy-matched into support;
+- vLLM family identity never implies model-specific reasoning capability;
 - capability tokens describe declared adapter/provider support, not successful model behavior;
 - seed-field support is not a deterministic-model guarantee;
 - decoding configuration describes exactly carried explicit request fields, not evaluator metadata;
