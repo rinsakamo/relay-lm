@@ -37,6 +37,11 @@ class ActualModelRestartRunManifest:
             raise ValueError(
                 "restart evidence does not support the ordinary-turn total cognitive-budget bridge"
             )
+        if self.base.cognition_pass_requests is not None:
+            raise ValueError(
+                "restart evidence does not support cognition pass request evidence "
+                "until the restart evidence bridge is explicitly extended"
+            )
         _require_positive_int(self.restart_after_turn_count, "restart_after_turn_count")
         _require_positive_int(self.continuity_max_items, "continuity_max_items")
         _require_positive_int(
