@@ -1,6 +1,6 @@
 schema_version: 1
 id: runtime_configuration
-summary: Runtime configuration, assembly, preflight, and operator semantics.
+summary: Runtime configuration, provider-backend selection, assembly, preflight, and operator semantics.
 canonical_surfaces:
 - docs/contracts/runtime-configuration.md
 - docs/contracts/runtime-assembly.md
@@ -17,6 +17,7 @@ tests:
 - tests/unit/test_runtime_config_contract.py
 - tests/unit/test_runtime_config_loader.py
 - tests/unit/test_runtime_assembly.py
+- tests/unit/test_runtime_provider_backend_selection.py
 - tests/unit/test_runtime_cli.py
 depends_on:
 - cognitive_turn
