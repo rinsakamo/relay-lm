@@ -3,6 +3,7 @@ id: actual_model_evaluation
 summary: Actual-model execution, host runners, and reproducible evaluation evidence.
 owner_issue: 1386
 canonical_surfaces:
+- docs/reference/actual-model-cognition-execution-evidence.md
 - docs/reference/actual-model-cognitive-budget-evidence.md
 - docs/reference/actual-model-crystallization-evidence.md
 - docs/reference/actual-model-crystallization-host-runner.md
@@ -31,6 +32,7 @@ implementation:
 - src/relaylm/actual_model_crystallization_host_runner.py
 tests:
 - tests/unit/test_actual_model_evaluation.py
+- tests/unit/test_actual_model_cognition_execution.py
 - tests/unit/test_actual_model_artifacts.py
 - tests/unit/test_actual_model_restart.py
 - tests/unit/test_actual_model_comparison.py
