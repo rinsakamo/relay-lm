@@ -5,14 +5,21 @@ from pathlib import Path
 
 import pytest
 
+from relaylm.actual_model_artifacts import character_fixture_revision
 from relaylm.actual_model_evaluation import (
     ActualModelCognitionPassRequests,
     ActualModelRunManifest,
     ActualModelScenario,
     ExplicitBudgetConfiguration,
+    ExplicitContinuityRuntimeConfiguration,
     run_actual_model_scenario,
     stable_actual_model_run_id,
 )
+from relaylm.actual_model_execution import (
+    ActualModelScenarioExecutionError,
+    plan_actual_model_scenario_execution,
+)
+from relaylm.actual_model_scenarios import load_actual_model_scenario_set
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
 from relaylm.cognition_execution import (
     CognitionConversationOutput,
@@ -27,6 +34,22 @@ from relaylm.cognition_execution_evidence import (
 )
 from relaylm.state import CanonicalState
 from relaylm.storage.filesystem import CharacterDirectory
+
+_REPO_ROOT = Path(__file__).parents[2]
+_SCENARIO_SET_PATH = (
+    _REPO_ROOT
+    / "evaluation"
+    / "actual_model"
+    / "scenario_sets"
+    / "foundation-v1.json"
+)
+_FIXTURE_ROOT = (
+    _REPO_ROOT
+    / "evaluation"
+    / "actual_model"
+    / "characters"
+    / "foundation-v1"
+)
 
 
 def _make_character(root: Path) -> CharacterDirectory:
@@ -271,3 +294,42 @@ def test_actual_model_two_pass_carries_distinct_resolved_requests(tmp_path: Path
     assert evidence.turns[0].raw_model.response == "conversation"
     assert evidence.turns[0].cognition_execution is not None
     assert evidence.turns[0].cognition_execution.pass2_status == "committed"
+
+
+def test_restart_scenario_rejects_pass_request_evidence_until_restart_bridge_exists() -> None:
+    scenario_set = load_actual_model_scenario_set(_SCENARIO_SET_PATH)
+    off = CognitionPassRequest(reasoning_mode=CognitionReasoningMode.OFF)
+    manifest = ActualModelRunManifest(
+        relaylm_commit="a" * 40,
+        character_fixture_id=scenario_set.character_fixture_id,
+        character_fixture_revision=character_fixture_revision(_FIXTURE_ROOT),
+        provider_identity="provider-v1",
+        adapter_identity="adapter-v1",
+        model_artifact="model@sha256:111",
+        tokenizer_identity="tokenizer-v1",
+        effective_context_window=1024,
+        decoding_configuration=(("temperature", 0.0),),
+        structured_output_schema_version="cognitive-output-v1",
+        scenario_set_version=scenario_set.scenario_set_version,
+        condition_id="cogp5-screening",
+        provider_capabilities=("state_candidates", "continuity_candidates"),
+        continuity_runtime=ExplicitContinuityRuntimeConfiguration(
+            max_items=4,
+            lifetime_revisions=3,
+        ),
+        cognition_execution=CognitionExecutionEvidenceIdentity.single_pass(
+            execution_path=BUFFERED_EXECUTION_PATH
+        ),
+        cognition_pass_requests=ActualModelCognitionPassRequests.single_pass(off),
+    )
+
+    with pytest.raises(
+        ActualModelScenarioExecutionError,
+        match="restart scenarios do not support cognition pass request evidence",
+    ):
+        plan_actual_model_scenario_execution(
+            scenario_set=scenario_set,
+            scenario_id="restart-durable-vs-temporary-v1",
+            fixture_root=_FIXTURE_ROOT,
+            manifest=manifest,
+        )
