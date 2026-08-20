@@ -1,8 +1,8 @@
 # OpenAI-compatible provider reasoning control contract
 
-Status: #1545 R1–R2 provider-owned reasoning capability/request contract and LM Studio capability attestation for RelayLM v1.
+Status: #1545 R1–R3A provider-owned reasoning contract, LM Studio capability attestation, and vLLM exact wire vocabulary for RelayLM v1.
 
-This contract defines the deterministic provider boundary for explicit reasoning controls and backend-specific capability truth before exact Chat Completions wire spelling is attached. It does not choose cognition policy, per-pass defaults, numeric reasoning budgets, or calibration values.
+This contract defines the deterministic provider boundary for explicit reasoning controls, backend-specific capability truth, and proven backend request spelling. It does not choose cognition policy, per-pass defaults, numeric reasoning budgets, or calibration values.
 
 ## Ownership
 
@@ -53,7 +53,7 @@ explicit token_budget
 
 Both are optional. The empty request means RelayLM does not add a reasoning control. No provider reasoning default is invented by R1.
 
-The request concepts are not backend wire names. Exact translation from fully resolved cognition semantics to supported backend field/value spelling belongs to the wire-realization transaction.
+The request concepts are not backend wire names. Exact translation from fully resolved cognition semantics to supported backend field/value spelling belongs to backend realization.
 
 ## Preflight versus application
 
@@ -115,6 +115,43 @@ The native `/api/v1/models` reasoning object attests public reasoning settings a
 
 This LM Studio-native attestation is backend-specific. The generic OpenAI-compatible adapter never assumes that another compatible backend exposes `/api/v1/models` or LM Studio's reasoning metadata shape.
 
+## vLLM exact reasoning wire vocabulary
+
+`src/relaylm/providers/vllm_reasoning.py` freezes the exact vLLM Chat Completions request field spelling that current upstream authority exposes:
+
+```text
+reasoning_effort
+thinking_token_budget
+```
+
+The current public `reasoning_effort` vocabulary frozen by this provider dialect is:
+
+```text
+none | minimal | low | medium | high | xhigh | max
+```
+
+`VLLMReasoningWireControls` is deliberately a **wire-level** type. It serializes only exact vLLM public request spelling and chooses no RelayLM semantic policy. Empty controls serialize to an empty mapping, so omission remains omission.
+
+RelayLM's provider-neutral mode spelling is not reused as vLLM wire spelling:
+
+```text
+RelayLM semantic: off | bounded
+vLLM wire:        none | minimal | low | medium | high | xhigh | max
+```
+
+Therefore `off` and `bounded` are rejected by the low-level vLLM wire type rather than silently rewritten. The semantic-to-wire mapping requires separate model/runtime capability proof.
+
+For `thinking_token_budget`, RelayLM's vLLM wire primitive accepts only a positive explicit integer. Current vLLM itself also has provider-specific meanings for zero and `-1`; RelayLM does not expose those through this primitive because its existing explicit provider reasoning budget is positive and omission already represents no explicit RelayLM budget. This is an intentional supported subset, not a claim about vLLM's entire public input domain.
+
+Crucially, existence of these fields does not establish that they are semantically effective for every configured model/runtime:
+
+- `reasoning_effort` may interact with model chat-template thinking controls;
+- some reasoning models/templates use different thinking switches;
+- `thinking_token_budget` requires reasoning configuration/parser support and model/runtime compatibility;
+- backend identity alone does not prove either control is applicable.
+
+Accordingly, this R3A wire vocabulary does **not** set `OpenAICompatibleReasoningCapabilities` to supported, does not create an `applied` application record, and does not yet modify the canonical single-pass or two-pass request body.
+
 ## Fail-closed rules
 
 - an explicit mode fails preflight when mode control is not attested;
@@ -123,23 +160,27 @@ This LM Studio-native attestation is backend-specific. The generic OpenAI-compat
 - an explicit token budget fails preflight unless token-budget support is attested;
 - omitted reasoning remains omitted;
 - preflight `ready` must never be reported as `applied` without exact serialized wire fields;
-- backend-native discovery that is missing, malformed, or ambiguous cannot be converted into optimistic support.
+- backend-native discovery that is missing, malformed, or ambiguous cannot be converted into optimistic support;
+- a known backend wire field does not by itself establish model-specific semantic applicability;
+- provider-neutral reasoning modes must not be silently treated as backend-public effort values.
 
 ## Relationship to current provider cognition facts
 
-`OpenAICompatibleCognitionCapabilityFacts` remains the current content-free provider-to-COGP bridge introduced before R1. R2 adds backend/model capability attestation but does not yet attach reasoning carriage to the canonical Chat Completions request path. Therefore the current adapter cognition facts remain reasoning-empty/unsupported until exact request realization exists.
+`OpenAICompatibleCognitionCapabilityFacts` remains the current content-free provider-to-COGP bridge introduced before R1. Backend identity and exact vLLM wire vocabulary now exist, but the canonical provider request path still lacks a capability-attested semantic realization. Therefore current adapter cognition facts remain reasoning-empty/unsupported until exact semantic resolution and carriage exist on the same request path.
 
-R1–R2 do not rewrite historical provider identity or the existing #1386 unsupported/not-executed evidence. A later transaction may extend effective provider identity/cognition facts only when the same canonical request path can actually carry the attested reasoning control.
+R1–R3A do not rewrite historical provider identity or the existing #1386 unsupported/not-executed reasoning evidence. A later transaction may extend effective provider identity/cognition facts only when the same canonical request path can actually carry an attested reasoning control.
 
 ## Deferred work
 
-R1–R2 do not implement:
+Current provider authority still does not implement:
 
-- exact `reasoning_effort`, `reasoning_tokens`, or any other Chat Completions wire field;
-- semantic mapping or fallback from provider-neutral `off` / `bounded` intent to backend values;
-- distinct Pass 1 / Pass 2 request carriage;
-- an `applied` reasoning result on the current adapter;
-- runtime config or calibrated defaults;
+- model/runtime-specific vLLM reasoning capability attestation;
+- semantic mapping from provider-neutral `off` / `bounded` into proven vLLM controls;
+- exact LM Studio Chat Completions reasoning wire;
+- distinct Pass 1 / Pass 2 reasoning request carriage;
+- an `applied` reasoning result on the canonical adapter;
+- backend-specific runtime assembly activation for reasoning;
+- runtime config or calibrated reasoning defaults;
 - actual-model COGP5 reasoning ON/OFF execution.
 
 Those remain later #1545 transactions and consumers.
