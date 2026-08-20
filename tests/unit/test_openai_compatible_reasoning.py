@@ -56,6 +56,11 @@ def test_reasoning_request_has_no_hidden_default_and_omitted_is_explicit() -> No
     assert preflight.unsupported_controls == ()
 
 
+def test_reasoning_request_rejects_unresolved_auto() -> None:
+    with pytest.raises(ValueError, match="auto must resolve"):
+        OpenAICompatibleReasoningRequest(mode="auto")
+
+
 def test_unknown_or_unsupported_explicit_reasoning_fails_closed_before_wire() -> None:
     request = OpenAICompatibleReasoningRequest(mode="off", token_budget=256)
 
