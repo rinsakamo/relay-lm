@@ -36,15 +36,6 @@ from relaylm.actual_model_targets import (
     load_actual_model_target,
     verify_actual_model_artifact,
 )
-from relaylm.providers.openai_compatible import OpenAICompatibleProvider
-from relaylm.providers.openai_compatible_budget import (
-    OpenAICompatibleSerializedInputCounter,
-    SerializedInputCounterIdentity,
-)
-from relaylm.providers.openai_compatible_decoding import (
-    OpenAICompatibleDecodingCapabilities,
-    OpenAICompatibleDecodingConfig,
-)
 from relaylm.budget import (
     BudgetDegradationPolicy,
     BudgetDegradationStep,
@@ -59,12 +50,24 @@ from relaylm.budget_enforcement import (
     TokenCountMode,
 )
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
+from relaylm.cognition_execution_evidence import CognitionExecutionEvidenceIdentity
+from relaylm.providers.openai_compatible import OpenAICompatibleProvider
+from relaylm.providers.openai_compatible_budget import (
+    OpenAICompatibleSerializedInputCounter,
+    SerializedInputCounterIdentity,
+)
+from relaylm.providers.openai_compatible_decoding import (
+    OpenAICompatibleDecodingCapabilities,
+    OpenAICompatibleDecodingConfig,
+)
 from relaylm.providers.openai_compatible_identity import (
     describe_openai_compatible_provider,
 )
+from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPassProvider
 
 ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION = 2
 ACTUAL_MODEL_HOST_TOTAL_BUDGET_FORMAT_VERSION = 3
+ACTUAL_MODEL_HOST_COGNITION_EXECUTION_FORMAT_VERSION = 4
 CANONICAL_TARGET_PATHS = {
     "gemma-4-12b-it-q4-k-m-v1": Path(
         "evaluation/actual_model/targets/gemma-4-12b-it-q4-k-m-v1.json"
@@ -163,12 +166,14 @@ class ActualModelHostCondition:
     replicate_id: str
     scenario_ids: tuple[str, ...]
     cognitive_budget: ExplicitCognitiveBudgetConfiguration | None = None
+    cognition_execution: CognitionExecutionEvidenceIdentity | None = None
     format_version: int = ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION
 
     def __post_init__(self) -> None:
         if self.format_version not in {
             ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION,
             ACTUAL_MODEL_HOST_TOTAL_BUDGET_FORMAT_VERSION,
+            ACTUAL_MODEL_HOST_COGNITION_EXECUTION_FORMAT_VERSION,
         }:
             raise ActualModelHostRunnerError(
                 f"unsupported host condition format_version: {self.format_version}"
@@ -180,7 +185,15 @@ class ActualModelHostCondition:
                 raise ActualModelHostRunnerError(
                     "format_version 2 cannot carry total cognitive-budget evidence"
                 )
-        else:
+            if self.cognition_execution is not None:
+                raise ActualModelHostRunnerError(
+                    "format_version 2 cannot carry cognition execution evidence"
+                )
+        elif self.format_version == ACTUAL_MODEL_HOST_TOTAL_BUDGET_FORMAT_VERSION:
+            if self.cognition_execution is not None:
+                raise ActualModelHostRunnerError(
+                    "format_version 3 cannot carry cognition execution evidence"
+                )
             if not isinstance(
                 self.cognitive_budget,
                 ExplicitCognitiveBudgetConfiguration,
@@ -198,6 +211,22 @@ class ActualModelHostCondition:
             ):
                 raise ActualModelHostRunnerError(
                     "cognitive budget model_context_window must match effective_context_window"
+                )
+        else:
+            if self.cognitive_budget is not None:
+                raise ActualModelHostRunnerError(
+                    "format_version 4 cannot carry total cognitive-budget evidence"
+                )
+            if not isinstance(
+                self.cognition_execution,
+                CognitionExecutionEvidenceIdentity,
+            ):
+                raise ActualModelHostRunnerError(
+                    "format_version 4 requires cognition_execution identity"
+                )
+            if self.cognition_execution.execution_path != self.execution_path:
+                raise ActualModelHostRunnerError(
+                    "cognition execution path must match host execution_path"
                 )
         if len(self.relaylm_commit) != 40 or any(
             char not in "0123456789abcdef" for char in self.relaylm_commit
@@ -350,6 +379,12 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
             common_keys | {"cognitive_budget"},
             "host condition",
         )
+    elif format_version == ACTUAL_MODEL_HOST_COGNITION_EXECUTION_FORMAT_VERSION:
+        _require_exact_keys(
+            mapping,
+            common_keys | {"budgets", "cognition_execution"},
+            "host condition",
+        )
     else:
         raise ActualModelHostRunnerError(
             f"unsupported host condition format_version: {format_version}"
@@ -376,7 +411,10 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
         event_max_chars=None,
     )
     cognitive_budget = None
-    if format_version == ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION:
+    if format_version in {
+        ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION,
+        ACTUAL_MODEL_HOST_COGNITION_EXECUTION_FORMAT_VERSION,
+    }:
         budgets = _require_mapping(mapping["budgets"], "budgets")
         _require_exact_keys(
             budgets,
@@ -420,6 +458,34 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
                 "continuity_runtime.lifetime_revisions",
             ),
         )
+    execution_path = _require_string(mapping["execution_path"], "execution_path")
+    cognition_execution = None
+    if format_version == ACTUAL_MODEL_HOST_COGNITION_EXECUTION_FORMAT_VERSION:
+        cognition_mapping = _require_mapping(
+            mapping["cognition_execution"],
+            "cognition_execution",
+        )
+        _require_exact_keys(cognition_mapping, {"mode"}, "cognition_execution")
+        mode = _require_string(cognition_mapping["mode"], "cognition_execution.mode")
+        try:
+            if mode == "single_pass":
+                cognition_execution = CognitionExecutionEvidenceIdentity.single_pass(
+                    execution_path=execution_path
+                )
+            elif mode == "two_pass":
+                cognition_execution = CognitionExecutionEvidenceIdentity.two_pass(
+                    execution_path=execution_path
+                )
+            elif mode == "shadow_two_pass":
+                cognition_execution = CognitionExecutionEvidenceIdentity.shadow_two_pass(
+                    execution_path=execution_path
+                )
+            else:
+                raise ActualModelHostRunnerError(
+                    f"unsupported cognition execution mode: {mode}"
+                )
+        except ValueError as exc:
+            raise ActualModelHostRunnerError(str(exc)) from exc
     scenario_ids = _require_list(mapping["scenario_ids"], "scenario_ids")
     controls = _require_list(
         mapping["supported_decoding_controls"],
@@ -450,7 +516,7 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
                 _require_string(item, f"supported_decoding_controls[{index}]")
                 for index, item in enumerate(controls, start=1)
             ),
-            execution_path=_require_string(mapping["execution_path"], "execution_path"),
+            execution_path=execution_path,
             continuity=continuity,
             budgets=legacy_budgets,
             condition_id=_require_string(mapping["condition_id"], "condition_id"),
@@ -460,6 +526,7 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
                 for index, item in enumerate(scenario_ids, start=1)
             ),
             cognitive_budget=cognitive_budget,
+            cognition_execution=cognition_execution,
         )
     except (TypeError, ValueError) as exc:
         if isinstance(exc, ActualModelHostRunnerError):
@@ -725,7 +792,13 @@ def prepare_actual_model_host_run(
             raise ActualModelHostRunnerError(
                 f"required API key environment variable is not set: {condition.api_key_env}"
             )
-    provider = OpenAICompatibleProvider(
+    provider_type = OpenAICompatibleProvider
+    if (
+        condition.cognition_execution is not None
+        and condition.cognition_execution.mode in {"two_pass", "shadow_two_pass"}
+    ):
+        provider_type = OpenAICompatibleTwoPassProvider
+    provider = provider_type(
         base_url=condition.base_url,
         model=condition.request_model,
         api_key=api_key,
@@ -774,6 +847,7 @@ def prepare_actual_model_host_run(
         seed=condition.seed,
         provider_capabilities=identity.provider_capabilities,
         replicate_id=condition.replicate_id,
+        cognition_execution=condition.cognition_execution,
     )
     return PreparedActualModelHostRun(
         condition=condition,
