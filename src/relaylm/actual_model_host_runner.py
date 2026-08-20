@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
+from urllib.parse import urlsplit, urlunsplit
 
 from relaylm.actual_model_artifacts import character_fixture_revision
 from relaylm.actual_model_boundary import (
@@ -25,6 +29,15 @@ from relaylm.actual_model_lm_studio import (
     LMStudioExecutionEnvironment,
     run_lm_studio_actual_model_scenario_definition,
     write_lm_studio_actual_model_execution_result,
+)
+from relaylm.actual_model_lm_studio_counter import (
+    LMStudioCounterError,
+    build_lm_studio_counter_capabilities,
+    load_lm_studio_counter_proof,
+)
+from relaylm.actual_model_reasoning import (
+    ActualModelReasoningEnvironmentIdentity,
+    ActualModelReasoningRunManifest,
 )
 from relaylm.actual_model_scenarios import (
     ActualModelScenarioSet,
@@ -68,6 +81,11 @@ from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPass
 ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION = 2
 ACTUAL_MODEL_HOST_TOTAL_BUDGET_FORMAT_VERSION = 3
 ACTUAL_MODEL_HOST_COGNITION_EXECUTION_FORMAT_VERSION = 4
+ACTUAL_MODEL_HOST_REASONING_ENVIRONMENT_FORMAT_VERSION = 5
+LM_STUDIO_NATIVE_MODELS_PATH = "/api/v1/models"
+LM_STUDIO_REASONING_CONTROL_SOURCE = "lmstudio_model_default"
+LM_STUDIO_REASONING_CONTROL_MODE = "attested_default_without_per_request_override"
+LM_STUDIO_SERVING_PROOF_IDENTITY_PREFIX = "lm-studio-serving-proof:sha256:"
 CANONICAL_TARGET_PATHS = {
     "gemma-4-12b-it-q4-k-m-v1": Path(
         "evaluation/actual_model/targets/gemma-4-12b-it-q4-k-m-v1.json"
@@ -167,6 +185,7 @@ class ActualModelHostCondition:
     scenario_ids: tuple[str, ...]
     cognitive_budget: ExplicitCognitiveBudgetConfiguration | None = None
     cognition_execution: CognitionExecutionEvidenceIdentity | None = None
+    reasoning_required_setting: str | None = None
     format_version: int = ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION
 
     def __post_init__(self) -> None:
@@ -174,6 +193,7 @@ class ActualModelHostCondition:
             ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION,
             ACTUAL_MODEL_HOST_TOTAL_BUDGET_FORMAT_VERSION,
             ACTUAL_MODEL_HOST_COGNITION_EXECUTION_FORMAT_VERSION,
+            ACTUAL_MODEL_HOST_REASONING_ENVIRONMENT_FORMAT_VERSION,
         }:
             raise ActualModelHostRunnerError(
                 f"unsupported host condition format_version: {self.format_version}"
@@ -189,10 +209,18 @@ class ActualModelHostCondition:
                 raise ActualModelHostRunnerError(
                     "format_version 2 cannot carry cognition execution evidence"
                 )
+            if self.reasoning_required_setting is not None:
+                raise ActualModelHostRunnerError(
+                    "format_version 2 cannot carry reasoning environment evidence"
+                )
         elif self.format_version == ACTUAL_MODEL_HOST_TOTAL_BUDGET_FORMAT_VERSION:
             if self.cognition_execution is not None:
                 raise ActualModelHostRunnerError(
                     "format_version 3 cannot carry cognition execution evidence"
+                )
+            if self.reasoning_required_setting is not None:
+                raise ActualModelHostRunnerError(
+                    "format_version 3 cannot carry reasoning environment evidence"
                 )
             if not isinstance(
                 self.cognitive_budget,
@@ -212,7 +240,7 @@ class ActualModelHostCondition:
                 raise ActualModelHostRunnerError(
                     "cognitive budget model_context_window must match effective_context_window"
                 )
-        else:
+        elif self.format_version == ACTUAL_MODEL_HOST_COGNITION_EXECUTION_FORMAT_VERSION:
             if self.cognitive_budget is not None:
                 raise ActualModelHostRunnerError(
                     "format_version 4 cannot carry total cognitive-budget evidence"
@@ -224,9 +252,36 @@ class ActualModelHostCondition:
                 raise ActualModelHostRunnerError(
                     "format_version 4 requires cognition_execution identity"
                 )
+            if self.reasoning_required_setting is not None:
+                raise ActualModelHostRunnerError(
+                    "format_version 4 cannot carry reasoning environment evidence"
+                )
             if self.cognition_execution.execution_path != self.execution_path:
                 raise ActualModelHostRunnerError(
                     "cognition execution path must match host execution_path"
+                )
+        else:
+            if self.cognitive_budget is not None:
+                raise ActualModelHostRunnerError(
+                    "format_version 5 cannot carry total cognitive-budget evidence"
+                )
+            if not isinstance(
+                self.cognition_execution,
+                CognitionExecutionEvidenceIdentity,
+            ):
+                raise ActualModelHostRunnerError(
+                    "format_version 5 requires cognition_execution identity"
+                )
+            if self.cognition_execution.execution_path != self.execution_path:
+                raise ActualModelHostRunnerError(
+                    "cognition execution path must match host execution_path"
+                )
+            if (
+                not isinstance(self.reasoning_required_setting, str)
+                or not self.reasoning_required_setting.strip()
+            ):
+                raise ActualModelHostRunnerError(
+                    "format_version 5 requires a non-empty reasoning required setting"
                 )
         if len(self.relaylm_commit) != 40 or any(
             char not in "0123456789abcdef" for char in self.relaylm_commit
@@ -385,6 +440,12 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
             common_keys | {"budgets", "cognition_execution"},
             "host condition",
         )
+    elif format_version == ACTUAL_MODEL_HOST_REASONING_ENVIRONMENT_FORMAT_VERSION:
+        _require_exact_keys(
+            mapping,
+            common_keys | {"budgets", "cognition_execution", "reasoning"},
+            "host condition",
+        )
     else:
         raise ActualModelHostRunnerError(
             f"unsupported host condition format_version: {format_version}"
@@ -414,6 +475,7 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
     if format_version in {
         ACTUAL_MODEL_HOST_CONDITION_FORMAT_VERSION,
         ACTUAL_MODEL_HOST_COGNITION_EXECUTION_FORMAT_VERSION,
+        ACTUAL_MODEL_HOST_REASONING_ENVIRONMENT_FORMAT_VERSION,
     }:
         budgets = _require_mapping(mapping["budgets"], "budgets")
         _require_exact_keys(
@@ -460,7 +522,10 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
         )
     execution_path = _require_string(mapping["execution_path"], "execution_path")
     cognition_execution = None
-    if format_version == ACTUAL_MODEL_HOST_COGNITION_EXECUTION_FORMAT_VERSION:
+    if format_version in {
+        ACTUAL_MODEL_HOST_COGNITION_EXECUTION_FORMAT_VERSION,
+        ACTUAL_MODEL_HOST_REASONING_ENVIRONMENT_FORMAT_VERSION,
+    }:
         cognition_mapping = _require_mapping(
             mapping["cognition_execution"],
             "cognition_execution",
@@ -486,6 +551,14 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
                 )
         except ValueError as exc:
             raise ActualModelHostRunnerError(str(exc)) from exc
+    reasoning_required_setting = None
+    if format_version == ACTUAL_MODEL_HOST_REASONING_ENVIRONMENT_FORMAT_VERSION:
+        reasoning_mapping = _require_mapping(mapping["reasoning"], "reasoning")
+        _require_exact_keys(reasoning_mapping, {"required_setting"}, "reasoning")
+        reasoning_required_setting = _require_string(
+            reasoning_mapping["required_setting"],
+            "reasoning.required_setting",
+        )
     scenario_ids = _require_list(mapping["scenario_ids"], "scenario_ids")
     controls = _require_list(
         mapping["supported_decoding_controls"],
@@ -527,6 +600,7 @@ def load_actual_model_host_condition(path: str | Path) -> ActualModelHostConditi
             ),
             cognitive_budget=cognitive_budget,
             cognition_execution=cognition_execution,
+            reasoning_required_setting=reasoning_required_setting,
         )
     except (TypeError, ValueError) as exc:
         if isinstance(exc, ActualModelHostRunnerError):
@@ -744,6 +818,9 @@ def prepare_actual_model_host_run(
     repo_root: str | Path,
     model_artifact_path: str | Path,
     token_counter_capabilities: Mapping[str, HostTokenCounterCapability] | None = None,
+    serving_proof_path: str | Path | None = None,
+    node_path: str | Path | None = None,
+    sdk_root: str | Path | None = None,
 ) -> PreparedActualModelHostRun:
     root = Path(repo_root).resolve()
     _verify_clean_exact_repo(root=root, expected_commit=condition.relaylm_commit)
@@ -792,6 +869,23 @@ def prepare_actual_model_host_run(
             raise ActualModelHostRunnerError(
                 f"required API key environment variable is not set: {condition.api_key_env}"
             )
+
+    reasoning_environment = None
+    if condition.format_version == ACTUAL_MODEL_HOST_REASONING_ENVIRONMENT_FORMAT_VERSION:
+        if serving_proof_path is None:
+            raise ActualModelHostRunnerError(
+                "format_version 5 requires an explicit LM Studio serving proof"
+            )
+        reasoning_environment = _attest_lm_studio_reasoning_environment(
+            condition=condition,
+            target=target,
+            artifact_path=model_artifact_path,
+            proof_path=serving_proof_path,
+            api_key=api_key,
+            node_path=node_path,
+            sdk_root=sdk_root,
+        )
+
     provider_type = OpenAICompatibleProvider
     if (
         condition.cognition_execution is not None
@@ -812,43 +906,50 @@ def prepare_actual_model_host_run(
         provider=provider,
         token_counter_capabilities=token_counter_capabilities,
     )
-    manifest = ActualModelRunManifest(
-        relaylm_commit=condition.relaylm_commit,
-        character_fixture_id=scenario_set.character_fixture_id,
-        character_fixture_revision=fixture_revision,
-        provider_identity=condition.environment.manifest_provider_identity,
-        adapter_identity=identity.adapter_identity,
-        model_artifact=target.model_artifact_identity,
-        tokenizer_identity=target.tokenizer_identity,
-        effective_context_window=condition.effective_context_window,
-        decoding_configuration=tuple(
+    manifest_kwargs = {
+        "relaylm_commit": condition.relaylm_commit,
+        "character_fixture_id": scenario_set.character_fixture_id,
+        "character_fixture_revision": fixture_revision,
+        "provider_identity": condition.environment.manifest_provider_identity,
+        "adapter_identity": identity.adapter_identity,
+        "model_artifact": target.model_artifact_identity,
+        "tokenizer_identity": target.tokenizer_identity,
+        "effective_context_window": condition.effective_context_window,
+        "decoding_configuration": tuple(
             sorted(identity.effective_decoding_configuration.items())
         ),
-        structured_output_schema_version=CANONICAL_STRUCTURED_OUTPUT_SCHEMA_VERSION,
-        scenario_set_version=scenario_set.scenario_set_version,
-        condition_id=condition.condition_id,
-        budgets=(
+        "structured_output_schema_version": CANONICAL_STRUCTURED_OUTPUT_SCHEMA_VERSION,
+        "scenario_set_version": scenario_set.scenario_set_version,
+        "condition_id": condition.condition_id,
+        "budgets": (
             condition.budgets.to_runtime()
             if cognitive_budget is None
             else ExplicitBudgetConfiguration()
         ),
-        cognitive_budget=(
+        "cognitive_budget": (
             ExplicitCognitiveBudgetConfiguration.from_runtime(cognitive_budget)
             if cognitive_budget is not None
             else None
         ),
-        continuity_runtime=(
+        "continuity_runtime": (
             condition.continuity.to_runtime_identity()
             if condition.continuity is not None
             else None
         ),
-        execution_path=condition.execution_path,  # type: ignore[arg-type]
-        restart_boundary="none",
-        seed=condition.seed,
-        provider_capabilities=identity.provider_capabilities,
-        replicate_id=condition.replicate_id,
-        cognition_execution=condition.cognition_execution,
-    )
+        "execution_path": condition.execution_path,
+        "restart_boundary": "none",
+        "seed": condition.seed,
+        "provider_capabilities": identity.provider_capabilities,
+        "replicate_id": condition.replicate_id,
+        "cognition_execution": condition.cognition_execution,
+    }
+    if reasoning_environment is None:
+        manifest = ActualModelRunManifest(**manifest_kwargs)  # type: ignore[arg-type]
+    else:
+        manifest = ActualModelReasoningRunManifest(
+            **manifest_kwargs,  # type: ignore[arg-type]
+            reasoning_environment=reasoning_environment,
+        )
     return PreparedActualModelHostRun(
         condition=condition,
         target=target,
@@ -859,6 +960,189 @@ def prepare_actual_model_host_run(
         manifest=manifest,
         cognitive_budget=cognitive_budget,
     )
+
+
+def _attest_lm_studio_reasoning_environment(
+    *,
+    condition: ActualModelHostCondition,
+    target: ActualModelArtifactTarget,
+    artifact_path: str | Path,
+    proof_path: str | Path,
+    api_key: str | None,
+    node_path: str | Path | None,
+    sdk_root: str | Path | None,
+) -> ActualModelReasoningEnvironmentIdentity:
+    """Attest model-wide LM Studio reasoning state without claiming a request override."""
+
+    if condition.reasoning_required_setting is None:
+        raise ActualModelHostRunnerError(
+            "reasoning attestation requires an explicit required setting"
+        )
+    proof_path_obj = Path(proof_path)
+    try:
+        build_lm_studio_counter_capabilities(
+            condition=condition,
+            target=target,
+            artifact_path=artifact_path,
+            proof_path=proof_path_obj,
+            node_path=node_path,
+            sdk_root=sdk_root,
+        )
+        proof = load_lm_studio_counter_proof(proof_path_obj)
+        if (
+            proof.request_model != condition.request_model
+            or proof.model_key != condition.request_model
+        ):
+            raise ActualModelHostRunnerError(
+                "LM Studio reasoning model identity does not match the serving proof"
+            )
+        metadata = _fetch_lm_studio_native_models(
+            base_url=condition.base_url,
+            api_key=api_key,
+        )
+        models = _require_list(metadata.get("models"), "LM Studio native models")
+        if not all(isinstance(item, Mapping) for item in models):
+            raise ActualModelHostRunnerError(
+                "LM Studio native models response contains a non-object model"
+            )
+        matches = [
+            item for item in models if item.get("key") == condition.request_model
+        ]
+        if len(matches) != 1:
+            raise ActualModelHostRunnerError(
+                "LM Studio native models response must contain exactly one matching request model"
+            )
+        model = matches[0]
+        if model.get("type") != "llm":
+            raise ActualModelHostRunnerError(
+                "LM Studio reasoning attestation requires an LLM model"
+            )
+        if model.get("size_bytes") != proof.loaded_size_bytes:
+            raise ActualModelHostRunnerError(
+                "LM Studio native model size does not match the serving proof"
+            )
+        quantization = _require_mapping(
+            model.get("quantization"),
+            "LM Studio native model quantization",
+        )
+        if quantization.get("name") != target.quantization:
+            raise ActualModelHostRunnerError(
+                "LM Studio native model quantization does not match the frozen target"
+            )
+        loaded_instances = _require_list(
+            model.get("loaded_instances"),
+            "LM Studio native model loaded_instances",
+        )
+        if len(loaded_instances) != 1 or not isinstance(loaded_instances[0], Mapping):
+            raise ActualModelHostRunnerError(
+                "LM Studio native model must have exactly one unambiguous loaded instance"
+            )
+        if loaded_instances[0].get("id") != proof.model_key:
+            raise ActualModelHostRunnerError(
+                "LM Studio native loaded instance does not match the serving proof"
+            )
+        capabilities = _require_mapping(
+            model.get("capabilities"),
+            "LM Studio native model capabilities",
+        )
+        reasoning = _require_mapping(
+            capabilities.get("reasoning"),
+            "LM Studio native model reasoning capability",
+        )
+        _require_exact_keys(
+            reasoning,
+            {"allowed_options", "default"},
+            "LM Studio native model reasoning capability",
+        )
+        allowed_options_raw = _require_list(
+            reasoning["allowed_options"],
+            "LM Studio native model reasoning.allowed_options",
+        )
+        if not allowed_options_raw or not all(
+            isinstance(item, str) and item.strip() for item in allowed_options_raw
+        ):
+            raise ActualModelHostRunnerError(
+                "LM Studio reasoning.allowed_options must contain non-empty strings"
+            )
+        if len(set(allowed_options_raw)) != len(allowed_options_raw):
+            raise ActualModelHostRunnerError(
+                "LM Studio reasoning.allowed_options must not contain duplicates"
+            )
+        allowed_options = tuple(str(item) for item in allowed_options_raw)
+        live_default = _require_string(
+            reasoning["default"],
+            "LM Studio native model reasoning.default",
+        )
+        if condition.reasoning_required_setting not in allowed_options:
+            raise ActualModelHostRunnerError(
+                "required reasoning setting is not in LM Studio allowed_options"
+            )
+        if live_default != condition.reasoning_required_setting:
+            raise ActualModelHostRunnerError(
+                "LM Studio reasoning default does not match the required setting"
+            )
+        digest = hashlib.sha256(proof_path_obj.read_bytes()).hexdigest()
+        return ActualModelReasoningEnvironmentIdentity(
+            required_setting=condition.reasoning_required_setting,
+            effective_setting=live_default,
+            allowed_options=allowed_options,
+            live_default=live_default,
+            control_source=LM_STUDIO_REASONING_CONTROL_SOURCE,
+            control_mode=LM_STUDIO_REASONING_CONTROL_MODE,
+            serving_attestation_identity=(
+                LM_STUDIO_SERVING_PROOF_IDENTITY_PREFIX + digest
+            ),
+        )
+    except (
+        ActualModelHostRunnerError,
+        LMStudioCounterError,
+        OSError,
+        TypeError,
+        ValueError,
+    ) as exc:
+        if isinstance(exc, ActualModelHostRunnerError):
+            raise
+        raise ActualModelHostRunnerError(
+            f"LM Studio reasoning attestation failed: {exc}"
+        ) from exc
+
+
+def _fetch_lm_studio_native_models(
+    *,
+    base_url: str,
+    api_key: str | None,
+) -> Mapping[str, object]:
+    parsed = urlsplit(base_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ActualModelHostRunnerError(
+            "LM Studio base_url must be an HTTP(S) URL"
+        )
+    url = urlunsplit((parsed.scheme, parsed.netloc, LM_STUDIO_NATIVE_MODELS_PATH, "", ""))
+    headers = {"Accept": "application/json"}
+    if api_key is not None:
+        headers["Authorization"] = f"Bearer {api_key}"
+    request = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            if response.status != 200:
+                raise ActualModelHostRunnerError(
+                    f"LM Studio native models request returned HTTP {response.status}"
+                )
+            payload = json.loads(
+                response.read().decode("utf-8"),
+                object_pairs_hook=_unique_object,
+            )
+    except (
+        urllib.error.HTTPError,
+        urllib.error.URLError,
+        TimeoutError,
+        UnicodeError,
+        json.JSONDecodeError,
+    ) as exc:
+        raise ActualModelHostRunnerError(
+            f"LM Studio native models request failed: {exc}"
+        ) from exc
+    return _require_mapping(payload, "LM Studio native models response")
 
 
 def _build_host_cognitive_budget(
@@ -1004,10 +1288,6 @@ def _resolve_canonical_host_token_counter_capabilities(
             "no canonical LM Studio counter target is registered for this condition"
         )
     try:
-        from relaylm.actual_model_lm_studio_counter import (
-            build_lm_studio_counter_capabilities,
-        )
-
         target = load_actual_model_target(Path(repo_root) / target_path)
         return build_lm_studio_counter_capabilities(
             condition=condition,
@@ -1017,7 +1297,7 @@ def _resolve_canonical_host_token_counter_capabilities(
             node_path=node_path,
             sdk_root=sdk_root,
         )
-    except (OSError, ValueError) as exc:
+    except (LMStudioCounterError, OSError, ValueError) as exc:
         raise ActualModelHostRunnerError(
             f"LM Studio counter capability is unavailable: {exc}"
         ) from exc
@@ -1036,6 +1316,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--workspace-root", required=True)
     parser.add_argument("--artifact-root", required=True)
     parser.add_argument("--counter-proof")
+    parser.add_argument("--serving-proof")
     parser.add_argument("--lmstudio-node")
     parser.add_argument("--lmstudio-sdk-root")
     args = parser.parse_args(argv)
@@ -1057,6 +1338,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             repo_root=args.repo_root,
             model_artifact_path=args.model_artifact,
             token_counter_capabilities=token_counter_capabilities,
+            serving_proof_path=args.serving_proof,
+            node_path=args.lmstudio_node,
+            sdk_root=args.lmstudio_sdk_root,
         )
     except ActualModelHostRunnerError as exc:
         print(f"error: {exc}", file=sys.stderr)
