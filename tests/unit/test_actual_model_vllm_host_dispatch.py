@@ -11,8 +11,9 @@ def test_shared_host_runner_dispatches_one_vllm_condition_without_backend_script
     monkeypatch,
     capsys,
 ) -> None:
+    plan = SimpleNamespace(screening_id="cogp5-vllm-screening-v1")
     prepared = SimpleNamespace(
-        plan=SimpleNamespace(screening_id="cogp5-vllm-screening-v1"),
+        plan=plan,
         screening_condition_id="A",
         manifest=SimpleNamespace(relaylm_commit="a" * 40, replicate_id="0"),
         target=SimpleNamespace(target_id="gemma-4-12b-it-qat-w4a16-vllm-v1"),
@@ -39,6 +40,7 @@ def test_shared_host_runner_dispatches_one_vllm_condition_without_backend_script
             ),
         )
 
+    monkeypatch.setattr(host_runner, "load_vllm_screening_plan", lambda _: plan)
     monkeypatch.setattr(host_runner, "_prepare_vllm_screening_condition", fake_prepare)
     monkeypatch.setattr(host_runner, "_execute_vllm_host_run", fake_execute)
     monkeypatch.setattr(host_runner, "_current_repo_head", lambda _: "a" * 40)
@@ -63,6 +65,7 @@ def test_shared_host_runner_dispatches_one_vllm_condition_without_backend_script
     )
 
     assert result == 0
+    assert observed["prepare"]["plan"] is plan
     assert observed["prepare"]["condition_id"] == "A"
     assert observed["prepare"]["base_url"] == "http://127.0.0.1:8000/v1"
     assert observed["execute"]["snapshot_root"] == "/tmp/relaylm-unsloth-w4a16-model"
