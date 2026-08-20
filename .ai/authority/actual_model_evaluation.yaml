@@ -28,6 +28,7 @@ implementation:
 - src/relaylm/actual_model_lm_studio.py
 - src/relaylm/actual_model_lm_studio_counter.py
 - src/relaylm/actual_model_host_runner.py
+- src/relaylm/actual_model_reasoning.py
 - src/relaylm/actual_model_crystallization.py
 - src/relaylm/actual_model_crystallization_host_runner.py
 tests:
