@@ -23,6 +23,10 @@ from relaylm.budget import (
     TotalBudgetConfig,
 )
 from relaylm.budget_enforcement import TokenCountMode
+from relaylm.providers.openai_compatible_backend import (
+    OpenAICompatibleBackendId,
+    resolve_openai_compatible_backend,
+)
 from relaylm.runtime_config import (
     DEFAULT_SERVER_HOST,
     DEFAULT_SERVER_PORT,
@@ -48,6 +52,7 @@ from relaylm.runtime_config import (
 
 
 DEFAULT_PROVIDER_ADAPTER = "openai_compatible"
+DEFAULT_PROVIDER_BACKEND = OpenAICompatibleBackendId.GENERIC
 _RAW_PROVIDER_API_KEY_ENV = "RELAYLM_PROVIDER_API_KEY"
 _INTEGER_TEXT_RE = re.compile(r"^[0-9]+$")
 _MISSING = object()
@@ -75,6 +80,7 @@ class RuntimeConfigOverrides:
 
     character_directory: str | None = None
     provider_adapter: str | None = None
+    provider_backend: str | None = None
     provider_base_url: str | None = None
     provider_model: str | None = None
     provider_api_key_env: str | None = field(default=None, repr=False)
@@ -230,6 +236,15 @@ def resolve_runtime_config(
     if provider_adapter != DEFAULT_PROVIDER_ADAPTER:
         _invalid_value("provider.adapter", "unsupported provider adapter")
 
+    provider_backend = _resolve_backend_leaf(
+        "provider.backend",
+        cli_value=active_overrides.provider_backend,
+        env_name="RELAYLM_PROVIDER_BACKEND",
+        environ=active_env,
+        file_value=_file_value(raw, "provider", "backend"),
+        provenance=provenance,
+        default=DEFAULT_PROVIDER_BACKEND,
+    )
     provider_base_url = _resolve_string_leaf(
         "provider.base_url",
         cli_value=active_overrides.provider_base_url,
@@ -298,6 +313,7 @@ def resolve_runtime_config(
         character=CharacterRuntimeConfig(directory=character_directory),
         provider=ProviderRuntimeConfig(
             adapter=provider_adapter,
+            backend=provider_backend,
             base_url=provider_base_url,
             model=provider_model,
             api_key=provider_api_key_ref,
@@ -414,12 +430,14 @@ def _validate_file_shape(raw: dict[str, Any]) -> None:
         _reject_unknown(
             provider,
             "provider",
-            {"adapter", "base_url", "model", "api_key"},
+            {"adapter", "backend", "base_url", "model", "api_key"},
         )
         if "adapter" in provider:
             adapter = _string(provider["adapter"], "provider.adapter")
             if adapter != DEFAULT_PROVIDER_ADAPTER:
                 _invalid_value("provider.adapter", "unsupported provider adapter")
+        if "backend" in provider:
+            _backend_value(provider["backend"], "provider.backend")
         for key in ("base_url", "model"):
             if key in provider:
                 _string(provider[key], f"provider.{key}")
@@ -764,6 +782,31 @@ def _referenced_secret(environ: Mapping[str, str], name: str) -> str:
     return value
 
 
+def _resolve_backend_leaf(
+    path: str,
+    *,
+    cli_value: object,
+    env_name: str,
+    environ: Mapping[str, str],
+    file_value: object,
+    provenance: dict[str, EffectiveConfigValue],
+    default: OpenAICompatibleBackendId,
+) -> OpenAICompatibleBackendId:
+    value, source = _choose_leaf(
+        cli_value=cli_value,
+        env_name=env_name,
+        environ=environ,
+        file_value=file_value,
+        default=default,
+    )
+    if isinstance(value, OpenAICompatibleBackendId):
+        resolved = value
+    else:
+        resolved = _backend_value(value, path)
+    _record(provenance, path, resolved, source)
+    return resolved
+
+
 def _resolve_string_leaf(
     path: str,
     *,
@@ -944,6 +987,14 @@ def _string(value: object, path: str) -> str:
     if not value.strip():
         _invalid_value(path, "must be a non-empty string")
     return value
+
+
+def _backend_value(value: object, path: str) -> OpenAICompatibleBackendId:
+    raw = _string(value, path)
+    try:
+        return resolve_openai_compatible_backend(raw).id
+    except ValueError as exc:
+        _invalid_value(path, str(exc))
 
 
 def _integer(value: object, path: str) -> int:
