@@ -17,6 +17,7 @@ from relaylm.budget_enforcement import (
 )
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveInput, CognitiveOutput, CognitiveProvider
+from relaylm.cognition_execution import CognitionPassRequest
 from relaylm.context import compile_cognitive_input
 from relaylm.continuity import ContinuityContext
 from relaylm.continuity_validation import (
@@ -155,9 +156,12 @@ async def run_user_turn(
     event_budget: EventRetrievalBudget | None = None,
     continuity_runtime: ContinuityRuntime | None = None,
     cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
+    pass_request: CognitionPassRequest | None = None,
 ) -> TurnResult:
     """Run one ordinary turn with one semantic cognitive generation."""
 
+    if pass_request is not None and not isinstance(pass_request, CognitionPassRequest):
+        raise TypeError("pass_request must be CognitionPassRequest or None")
     if cognitive_budget is None:
         user_event, state, cognitive_input, _diagnostics = _prepare_user_turn(
             character=character,
@@ -178,7 +182,10 @@ async def run_user_turn(
             continuity_runtime=continuity_runtime,
             cognitive_budget=cognitive_budget,
         )
-    output = await provider.generate(cognitive_input)
+    if pass_request is None:
+        output = await provider.generate(cognitive_input)
+    else:
+        output = await provider.generate(cognitive_input, pass_request=pass_request)
     return _commit_cognitive_output(
         character=character,
         state=state,
