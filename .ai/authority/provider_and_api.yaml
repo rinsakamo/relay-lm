@@ -11,6 +11,7 @@ implementation:
 - src/relaylm/providers/openai_compatible_budget.py
 - src/relaylm/providers/openai_compatible_decoding.py
 - src/relaylm/providers/openai_compatible_identity.py
+- src/relaylm/providers/openai_compatible_cognition.py
 - src/relaylm/api/openai.py
 - src/relaylm/server.py
 tests:
