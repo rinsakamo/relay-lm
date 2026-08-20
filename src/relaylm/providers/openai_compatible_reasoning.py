@@ -85,8 +85,9 @@ class OpenAICompatibleReasoningCapabilities:
 class OpenAICompatibleReasoningRequest:
     """Fully resolved reasoning request presented to provider realization.
 
-    Values are explicit caller intent. This type chooses no default and does not
-    interpret ``auto`` or decide which cognition pass deserves more reasoning.
+    Values are explicit caller intent. This type chooses no default, rejects the
+    upstream policy value ``auto``, and never decides which cognition pass deserves
+    more reasoning.
     """
 
     mode: str | None = None
@@ -97,6 +98,8 @@ class OpenAICompatibleReasoningRequest:
             not isinstance(self.mode, str) or not self.mode.strip()
         ):
             raise TypeError("mode must be a non-empty string or None")
+        if self.mode == "auto":
+            raise ValueError("reasoning mode auto must resolve before provider realization")
         if self.token_budget is not None:
             if isinstance(self.token_budget, bool) or not isinstance(
                 self.token_budget, int
