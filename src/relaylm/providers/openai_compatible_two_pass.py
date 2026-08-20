@@ -11,6 +11,7 @@ from relaylm.cognition_execution import (
     CognitionConversationOutput,
     CognitionExtractionInput,
     CognitionExtractionOutput,
+    CognitionPassRequest,
 )
 from relaylm.providers.openai_compatible import (
     WIRE_SCHEMA,
@@ -19,6 +20,7 @@ from relaylm.providers.openai_compatible import (
     _IncrementalUtteranceDecoder,
     _iter_sse_data,
     _parse_stream_event,
+    _resolve_cognition_pass_request,
     parse_wire_output,
     serialize_cognitive_input,
     _vllm_reasoning_fields,
@@ -83,19 +85,28 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
         self,
         cognitive_input: CognitiveInput,
         *,
+        pass_request: CognitionPassRequest | None = None,
         reasoning_request: OpenAICompatibleReasoningRequest | None = None,
         vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
     ) -> CognitionConversationOutput:
+        effective_capability = (
+            vllm_reasoning_capability or self.vllm_reasoning_capability
+        )
+        decoding_config, effective_reasoning = _resolve_cognition_pass_request(
+            pass_request=pass_request,
+            reasoning_request=reasoning_request,
+            decoding_config=self.decoding_config,
+            decoding_capabilities=self.decoding_capabilities,
+            vllm_reasoning_capability=effective_capability,
+        )
         envelope = await self._post_two_pass(
             body=_conversation_request_body(
                 model=self.model,
                 cognitive_input=cognitive_input,
                 stream=False,
-                decoding=self.decoding_config.to_mapping(),
-                reasoning_request=reasoning_request,
-                vllm_reasoning_capability=(
-                    vllm_reasoning_capability or self.vllm_reasoning_capability
-                ),
+                decoding=decoding_config.to_mapping(),
+                reasoning_request=effective_reasoning,
+                vllm_reasoning_capability=effective_capability,
             )
         )
         return _parse_conversation_completion(envelope)
@@ -105,9 +116,20 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
         cognitive_input: CognitiveInput,
         emit_response_delta: Callable[[str], Awaitable[None]],
         *,
+        pass_request: CognitionPassRequest | None = None,
         reasoning_request: OpenAICompatibleReasoningRequest | None = None,
         vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
     ) -> CognitionConversationOutput:
+        effective_capability = (
+            vllm_reasoning_capability or self.vllm_reasoning_capability
+        )
+        decoding_config, effective_reasoning = _resolve_cognition_pass_request(
+            pass_request=pass_request,
+            reasoning_request=reasoning_request,
+            decoding_config=self.decoding_config,
+            decoding_capabilities=self.decoding_capabilities,
+            vllm_reasoning_capability=effective_capability,
+        )
         structured_text = ""
         decoder = _IncrementalUtteranceDecoder()
         saw_done = False
@@ -122,11 +144,9 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                     model=self.model,
                     cognitive_input=cognitive_input,
                     stream=True,
-                    decoding=self.decoding_config.to_mapping(),
-                    reasoning_request=reasoning_request,
-                    vllm_reasoning_capability=(
-                        vllm_reasoning_capability or self.vllm_reasoning_capability
-                    ),
+                    decoding=decoding_config.to_mapping(),
+                    reasoning_request=effective_reasoning,
+                    vllm_reasoning_capability=effective_capability,
                 ),
             ) as response:
                 response.raise_for_status()
@@ -178,18 +198,27 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
         self,
         extraction_input: CognitionExtractionInput,
         *,
+        pass_request: CognitionPassRequest | None = None,
         reasoning_request: OpenAICompatibleReasoningRequest | None = None,
         vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
     ) -> CognitionExtractionOutput:
+        effective_capability = (
+            vllm_reasoning_capability or self.vllm_reasoning_capability
+        )
+        decoding_config, effective_reasoning = _resolve_cognition_pass_request(
+            pass_request=pass_request,
+            reasoning_request=reasoning_request,
+            decoding_config=self.decoding_config,
+            decoding_capabilities=self.decoding_capabilities,
+            vllm_reasoning_capability=effective_capability,
+        )
         envelope = await self._post_two_pass(
             body=_extraction_request_body(
                 model=self.model,
                 extraction_input=extraction_input,
-                decoding=self.decoding_config.to_mapping(),
-                reasoning_request=reasoning_request,
-                vllm_reasoning_capability=(
-                    vllm_reasoning_capability or self.vllm_reasoning_capability
-                ),
+                decoding=decoding_config.to_mapping(),
+                reasoning_request=effective_reasoning,
+                vllm_reasoning_capability=effective_capability,
             )
         )
         return _parse_extraction_completion(envelope)
