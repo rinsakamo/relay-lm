@@ -86,6 +86,12 @@ evidence:
     parity requirements.
   surfaces:
   - evaluation/actual_model/targets/gemma-4-12b-it-q4-k-m-lmstudio-community-v1.json
+- id: actual-model-gemma-vllm-snapshot-target-v1
+  summary: >-
+    Frozen vLLM-native Gemma 4 repository snapshot identity with exact
+    execution-file metadata, serving-tokenizer roles, and chat-template role.
+  surfaces:
+  - evaluation/actual_model/targets/gemma-4-12b-it-qat-w4a16-vllm-v1.json
 - id: actual-model-crystallization-quality-v1
   summary: >-
     Frozen Character fixture and revision identity for off-turn crystallization

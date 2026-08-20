@@ -9,6 +9,16 @@ import pytest
 import relaylm.actual_model_targets as targets
 
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+VLLM_TARGET = (
+    REPO_ROOT
+    / "evaluation"
+    / "actual_model"
+    / "targets"
+    / "gemma-4-12b-it-qat-w4a16-vllm-v1.json"
+)
+
+
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -260,3 +270,57 @@ def test_snapshot_loader_requires_declared_tokenizer_and_template_roles_to_be_fr
     _write_target(template_path, missing_template_role)
     with pytest.raises(targets.ActualModelTargetError, match="chat_template_file"):
         load_snapshot(template_path)
+
+
+def test_vllm_gemma_snapshot_target_freezes_exact_execution_manifest() -> None:
+    target = targets.load_actual_model_repository_snapshot_target(VLLM_TARGET)
+
+    assert target.format_version == 2
+    assert target.target_kind == "repository_snapshot"
+    assert target.target_id == "gemma-4-12b-it-qat-w4a16-vllm-v1"
+    assert target.model_family == "google/gemma-4-12B-it"
+    assert target.artifact_repository == "unsloth/gemma-4-12B-it-qat-w4a16"
+    assert (
+        target.artifact_repository_revision
+        == "626f3b2f8a3799cb2b64ca5fc09443c90fe2cbb2"
+    )
+    assert target.quantization == "W4A16 compressed-tensors"
+    assert target.serving_tokenizer_files == (
+        "tokenizer.json",
+        "tokenizer_config.json",
+    )
+    assert target.chat_template_file == "chat_template.jinja"
+
+    expected_files = {
+        "model.safetensors": (
+            10_264_229_896,
+            "60b6e3989502969d8ae04185d72ecbbc7db63978d5af747a493d53895aa6bfa3",
+        ),
+        "config.json": (
+            6_126,
+            "ba14713d084391532b285f7c252b954b7c6c0db97f427a9d8fb788edc2949168",
+        ),
+        "tokenizer.json": (
+            32_169_626,
+            "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f",
+        ),
+        "tokenizer_config.json": (
+            2_774,
+            "ee66825f1a587ca13bcb90d7e60f59bc99e84f3b8bc0cefdc3ea595cd5abf773",
+        ),
+        "chat_template.jinja": (
+            18_924,
+            "845f1ee48e39fc942fe190da9df6a1c5db229e17a96ea08966ad1c9274e73d1b",
+        ),
+        "processor_config.json": (
+            1_382,
+            "6b938e76555b3e9946890770e1abcd442a4718f34041a58e8139dc8ad34545c9",
+        ),
+        "generation_config.json": (
+            255,
+            "c70f87dc2995fc43406c0bcfb41b69c6d31c2d0c033fa09e536ffabc091ae24c",
+        ),
+    }
+    assert {
+        item.path: (item.size_bytes, item.sha256) for item in target.files
+    } == expected_files
