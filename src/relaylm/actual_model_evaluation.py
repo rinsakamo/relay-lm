@@ -119,7 +119,7 @@ class ExplicitContinuityRuntimeConfiguration:
 class ActualModelCognitionPassRequests:
     """Exact fully resolved per-pass requests participating in #1386 run identity."""
 
-    single_pass: CognitionPassRequest | None = None
+    single_request: CognitionPassRequest | None = None
     pass1: CognitionPassRequest | None = None
     pass2: CognitionPassRequest | None = None
     format_version: int = ACTUAL_MODEL_COGNITION_PASS_REQUESTS_FORMAT_VERSION
@@ -130,17 +130,17 @@ class ActualModelCognitionPassRequests:
                 "unsupported actual-model cognition pass requests format_version: "
                 f"{self.format_version}"
             )
-        for name in ("single_pass", "pass1", "pass2"):
+        for name in ("single_request", "pass1", "pass2"):
             value = getattr(self, name)
             if value is not None and not isinstance(value, CognitionPassRequest):
                 raise TypeError(f"{name} must be CognitionPassRequest or None")
         single_shape = (
-            self.single_pass is not None
+            self.single_request is not None
             and self.pass1 is None
             and self.pass2 is None
         )
         two_pass_shape = (
-            self.single_pass is None
+            self.single_request is None
             and self.pass1 is not None
             and self.pass2 is not None
         )
@@ -151,7 +151,7 @@ class ActualModelCognitionPassRequests:
 
     @classmethod
     def single_pass(cls, request: CognitionPassRequest) -> "ActualModelCognitionPassRequests":
-        return cls(single_pass=request)
+        return cls(single_request=request)
 
     @classmethod
     def two_pass(
@@ -164,14 +164,14 @@ class ActualModelCognitionPassRequests:
 
     @property
     def mode(self) -> str:
-        return "single_pass" if self.single_pass is not None else "two_pass"
+        return "single_pass" if self.single_request is not None else "two_pass"
 
     def to_mapping(self) -> dict[str, object]:
         return {
             "format_version": self.format_version,
             "single_pass": (
-                _cognition_pass_request_mapping(self.single_pass)
-                if self.single_pass is not None
+                _cognition_pass_request_mapping(self.single_request)
+                if self.single_request is not None
                 else None
             ),
             "pass1": (
@@ -386,7 +386,7 @@ class ActualModelScenario:
 
     def __post_init__(self) -> None:
         if self.format_version != ACTUAL_MODEL_SCENARIO_FORMAT_VERSION:
-            raise ValueError(f"unsupported actual-model format_version: {self.format_version}")
+            raise ValueError(f"unsupported scenario format_version: {self.format_version}")
         if not self.scenario_id.strip():
             raise ValueError("scenario_id must not be empty")
         if self.family not in {
@@ -818,7 +818,7 @@ async def run_actual_model_scenario(
                 execution_observation = _shadow_execution_observation(shadow)
             else:
                 single_pass_request = (
-                    pass_requests.single_pass if pass_requests is not None else None
+                    pass_requests.single_request if pass_requests is not None else None
                 )
                 if cognitive_budget is None:
                     if manifest.execution_path == "buffered":
