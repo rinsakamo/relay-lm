@@ -4,15 +4,24 @@ import json
 import math
 import re
 from collections.abc import AsyncIterator, Awaitable, Callable
+from types import SimpleNamespace
 from typing import Any, Mapping
 
 import httpx
 
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
+from relaylm.cognition_execution import (
+    CognitionPassRequest,
+    normalize_cognition_execution_capabilities,
+    resolve_pass_request,
+)
 from relaylm.continuity import (
     CONTINUITY_EPISTEMIC_ROLES,
     CONTINUITY_KINDS,
     ContinuityCandidate,
+)
+from relaylm.providers.openai_compatible_cognition import (
+    describe_openai_compatible_cognition_capabilities,
 )
 from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
@@ -233,9 +242,20 @@ class OpenAICompatibleProvider:
         self,
         cognitive_input: CognitiveInput,
         *,
+        pass_request: CognitionPassRequest | None = None,
         reasoning_request: OpenAICompatibleReasoningRequest | None = None,
         vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
     ) -> CognitiveOutput:
+        effective_capability = (
+            vllm_reasoning_capability or self.vllm_reasoning_capability
+        )
+        decoding_config, effective_reasoning = _resolve_cognition_pass_request(
+            pass_request=pass_request,
+            reasoning_request=reasoning_request,
+            decoding_config=self.decoding_config,
+            decoding_capabilities=self.decoding_capabilities,
+            vllm_reasoning_capability=effective_capability,
+        )
         try:
             response = await self._client.post(
                 f"{self.base_url}/chat/completions",
@@ -244,11 +264,9 @@ class OpenAICompatibleProvider:
                     model=self.model,
                     cognitive_input=cognitive_input,
                     stream=False,
-                    decoding_config=self.decoding_config,
-                    reasoning_request=reasoning_request,
-                    vllm_reasoning_capability=(
-                        vllm_reasoning_capability or self.vllm_reasoning_capability
-                    ),
+                    decoding_config=decoding_config,
+                    reasoning_request=effective_reasoning,
+                    vllm_reasoning_capability=effective_capability,
                 ),
             )
             response.raise_for_status()
@@ -263,9 +281,20 @@ class OpenAICompatibleProvider:
         cognitive_input: CognitiveInput,
         emit_response_delta: Callable[[str], Awaitable[None]],
         *,
+        pass_request: CognitionPassRequest | None = None,
         reasoning_request: OpenAICompatibleReasoningRequest | None = None,
         vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
     ) -> CognitiveOutput:
+        effective_capability = (
+            vllm_reasoning_capability or self.vllm_reasoning_capability
+        )
+        decoding_config, effective_reasoning = _resolve_cognition_pass_request(
+            pass_request=pass_request,
+            reasoning_request=reasoning_request,
+            decoding_config=self.decoding_config,
+            decoding_capabilities=self.decoding_capabilities,
+            vllm_reasoning_capability=effective_capability,
+        )
         structured_text = ""
         decoder = _IncrementalUtteranceDecoder()
         saw_done = False
@@ -280,11 +309,9 @@ class OpenAICompatibleProvider:
                     model=self.model,
                     cognitive_input=cognitive_input,
                     stream=True,
-                    decoding_config=self.decoding_config,
-                    reasoning_request=reasoning_request,
-                    vllm_reasoning_capability=(
-                        vllm_reasoning_capability or self.vllm_reasoning_capability
-                    ),
+                    decoding_config=decoding_config,
+                    reasoning_request=effective_reasoning,
+                    vllm_reasoning_capability=effective_capability,
                 ),
             ) as response:
                 response.raise_for_status()
@@ -327,6 +354,56 @@ class OpenAICompatibleProvider:
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         return headers
+
+
+def _resolve_cognition_pass_request(
+    *,
+    pass_request: CognitionPassRequest | None,
+    reasoning_request: OpenAICompatibleReasoningRequest | None,
+    decoding_config: OpenAICompatibleDecodingConfig,
+    decoding_capabilities: OpenAICompatibleDecodingCapabilities,
+    vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None,
+) -> tuple[OpenAICompatibleDecodingConfig, OpenAICompatibleReasoningRequest | None]:
+    if pass_request is None:
+        return decoding_config, reasoning_request
+    if not isinstance(pass_request, CognitionPassRequest):
+        raise TypeError("pass_request must be CognitionPassRequest or None")
+    if reasoning_request is not None:
+        raise ValueError(
+            "pass_request and provider reasoning_request cannot both be supplied"
+        )
+
+    facts = describe_openai_compatible_cognition_capabilities(
+        SimpleNamespace(
+            decoding_capabilities=decoding_capabilities,
+            vllm_reasoning_capability=vllm_reasoning_capability,
+        )
+    )
+    capabilities = normalize_cognition_execution_capabilities(
+        structured_output=facts.structured_output,
+        streaming=facts.streaming,
+        reasoning_modes=facts.reasoning_modes,
+        bounded_reasoning_budget=facts.bounded_reasoning_budget,
+        decoding_controls=facts.per_pass_decoding_controls,
+    )
+    resolve_pass_request(
+        request=pass_request,
+        capabilities=capabilities,
+    ).require_supported()
+
+    effective_decoding = OpenAICompatibleDecodingConfig(
+        temperature=pass_request.temperature,
+        top_p=pass_request.top_p,
+        seed=decoding_config.seed,
+    )
+    decoding_capabilities.require(effective_decoding)
+
+    if pass_request.reasoning_mode is None:
+        return effective_decoding, None
+    return effective_decoding, OpenAICompatibleReasoningRequest(
+        mode=pass_request.reasoning_mode.value,
+        token_budget=pass_request.reasoning_budget,
+    )
 
 
 def _request_body(
