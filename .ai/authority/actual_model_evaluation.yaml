@@ -29,6 +29,7 @@ implementation:
 - src/relaylm/actual_model_lm_studio_counter.py
 - src/relaylm/actual_model_host_runner.py
 - src/relaylm/actual_model_reasoning.py
+- src/relaylm/actual_model_cognition_capability.py
 - src/relaylm/actual_model_crystallization.py
 - src/relaylm/actual_model_crystallization_host_runner.py
 tests:
@@ -36,6 +37,7 @@ tests:
 - tests/unit/test_actual_model_cognition_execution.py
 - tests/unit/test_actual_model_cognition_host_topology.py
 - tests/unit/test_actual_model_cognition_reasoning_environment.py
+- tests/unit/test_actual_model_cognition_capability.py
 - tests/unit/test_actual_model_artifacts.py
 - tests/unit/test_actual_model_restart.py
 - tests/unit/test_actual_model_comparison.py
