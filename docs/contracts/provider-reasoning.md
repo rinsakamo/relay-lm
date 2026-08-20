@@ -1,6 +1,6 @@
 # OpenAI-compatible provider reasoning control contract
 
-Status: #1545 R1–R3A provider-owned reasoning contract, LM Studio capability attestation, and vLLM exact wire vocabulary for RelayLM v1.
+Status: #1545 R1–R3B provider-owned reasoning contract, LM Studio capability attestation, vLLM exact wire vocabulary, and configured-runtime capability attestation for RelayLM v1.
 
 This contract defines the deterministic provider boundary for explicit reasoning controls, backend-specific capability truth, and proven backend request spelling. It does not choose cognition policy, per-pass defaults, numeric reasoning budgets, or calibration values.
 
@@ -152,6 +152,39 @@ Crucially, existence of these fields does not establish that they are semantical
 
 Accordingly, this R3A wire vocabulary does **not** set `OpenAICompatibleReasoningCapabilities` to supported, does not create an `applied` application record, and does not yet modify the canonical single-pass or two-pass request body.
 
+## Configured vLLM/model reasoning capability attestation
+
+`src/relaylm/providers/vllm_reasoning_capability.py` records explicit probe
+results for one already-attested vLLM server/model runtime. The attestation
+requires an `ActualModelRepositorySnapshotTarget`, so the result carries the
+exact #1386 target ID, deterministic snapshot revision, artifact identity, and
+Hub artifact revision alongside the vLLM backend version and exact served model
+identity. It does not infer target identity from a model name.
+
+Each control is classified independently as:
+
+```text
+unsupported
+accepted_but_effect_unproven
+semantically_attested
+malformed_or_ambiguous
+```
+
+Protocol acceptance is not semantic proof. A control reaches
+`semantically_attested` only when the supplied evidence records an accepted
+exact wire, a repeatable observed effect, and the configured activation context
+required by that control. Positive bounded reasoning additionally requires the
+numeric `thinking_token_budget` field and an exact template activation kwarg;
+effort labels are not numeric budget substitutes. The exact probe wire and
+template kwargs remain separate from a later
+`OpenAICompatibleReasoningApplication`.
+
+For OFF, a probe that also activates the configured template thinking control
+is `malformed_or_ambiguous`. The attestation records the deterministic later
+realizer rule that conflicting template kwargs must be rejected. Unsupported,
+unproven, or ambiguous observations never receive an effort-tier or generic
+fallback wire.
+
 ## Fail-closed rules
 
 - an explicit mode fails preflight when mode control is not attested;
@@ -168,13 +201,12 @@ Accordingly, this R3A wire vocabulary does **not** set `OpenAICompatibleReasonin
 
 `OpenAICompatibleCognitionCapabilityFacts` remains the current content-free provider-to-COGP bridge introduced before R1. Backend identity and exact vLLM wire vocabulary now exist, but the canonical provider request path still lacks a capability-attested semantic realization. Therefore current adapter cognition facts remain reasoning-empty/unsupported until exact semantic resolution and carriage exist on the same request path.
 
-R1–R3A do not rewrite historical provider identity or the existing #1386 unsupported/not-executed reasoning evidence. A later transaction may extend effective provider identity/cognition facts only when the same canonical request path can actually carry an attested reasoning control.
+R1–R3B do not rewrite historical provider identity or the existing #1386 unsupported/not-executed reasoning evidence. A later transaction may extend effective provider identity/cognition facts only when the same canonical request path can actually carry an attested reasoning control.
 
 ## Deferred work
 
 Current provider authority still does not implement:
 
-- model/runtime-specific vLLM reasoning capability attestation;
 - semantic mapping from provider-neutral `off` / `bounded` into proven vLLM controls;
 - exact LM Studio Chat Completions reasoning wire;
 - distinct Pass 1 / Pass 2 reasoning request carriage;
