@@ -1,6 +1,6 @@
 # Actual-model cognition execution evidence
 
-Status: #1386 COGP5A execution-topology evidence bridge for RelayLM v1.
+Status: #1386 COGP5 execution-topology evidence bridge for RelayLM v1.
 
 This reference extends the existing Actual-model Evaluation foundation so ordinary-turn cognition topology can participate in reproducible evidence without replacing historical evidence or creating another evaluation architecture.
 
@@ -16,7 +16,7 @@ The COGP execution identity delivery path must equal the manifest `execution_pat
 
 ## Execution-aware scenario harness
 
-`run_actual_model_scenario(...)` now resolves execution topology from the manifest.
+`run_actual_model_scenario(...)` resolves execution topology from the manifest.
 
 ### Legacy or explicit `single_pass`
 
@@ -94,42 +94,79 @@ A Pass 2 provider failure with no valid structured output records empty raw prop
 
 The pre-existing #1386 single-pass total Cognitive Budget bridge returns `CognitiveBudgetDiagnostics` from the ordinary Turn runtime.
 
-COGP5A does not fabricate equivalent diagnostics for the new two-pass/shadow paths. Therefore an evidence run that combines a non-single execution topology with an explicit `CognitiveBudgetRuntimeConfig` fails explicitly until a bounded follow-up bridge exists.
+The current topology-aware path does not fabricate equivalent diagnostics for the new two-pass/shadow paths. Therefore an evidence run that combines a non-single execution topology with an explicit `CognitiveBudgetRuntimeConfig` fails explicitly until a bounded follow-up bridge exists.
 
 This keeps missing measurements distinct from zero/normal measurements and avoids claiming that a two-generation execution satisfied the current one-generation total-budget evidence contract.
 
 Legacy explicit MEMORY/Event budgets may still be carried through the already-owned COGP Turn preparation path when used without total Cognitive Budget evidence.
 
-## Reasoning / Thinking identity gate
+## Reasoning / Thinking capability boundary
 
-This bridge makes topology observable; it does **not** make the required A/B/C causal reasoning comparison executable by itself.
+Topology observability does **not** make a requested reasoning configuration executable or citable by itself.
 
-Before a citable comparison can claim:
+The provider-owned contract now explicitly records that the current canonical OpenAI-compatible Chat Completions adapter carries `temperature`, `top_p`, and `seed`, but does not carry or attest a per-request reasoning/thinking mode, reasoning effort, or bounded reasoning budget.
 
-```text
-B: Pass 2 reasoning/thinking OFF
-C: Pass 2 bounded reasoning/thinking ON
-```
-
-#1386 evidence must bind the actually applied/attested per-pass reasoning state and any bounded effort through truthful provider/host capability authority.
-
-Current COGP5A does not:
+Accordingly, current COGP5 evidence must not:
 
 - invent `reasoning_effort`;
-- assume a provider field exists because another OpenAI-compatible server supports it;
+- assume a provider field exists because another OpenAI-compatible endpoint supports it;
 - treat a model-wide LM Studio default as a distinct Pass 2 override when no such override is applied;
 - infer Thinking OFF/ON from output style;
 - claim bounded reasoning when the provider cannot attest a bounded control.
 
-The CRY reasoning identity work demonstrates the reproducibility principle but remains CRY-specific authority. Ordinary-turn evidence must consume an ordinary-turn provider/host binding rather than copy CRY fields blindly.
+For the current canonical provider capability class:
 
-## Host integration status
+```text
+per-request reasoning modes      = unsupported
+bounded reasoning budget         = unsupported
+per-pass reasoning override      = unavailable
+```
 
-COGP5A changes the provider-neutral #1386 scenario harness only.
+A model-wide or host-wide LM Studio reasoning default may be separately observed and attested as execution-environment identity. Such an attestation may make A/B reproducible under the same effective environment, but it does not become a Pass-2-only request control.
 
-The existing canonical LM Studio host runner still needs a separate bounded integration transaction before it may construct and execute the new topology-aware manifests against the real target deployment. That transaction must also classify the current reasoning-control capability honestly.
+Therefore the supported comparison boundary is:
 
-Therefore COGP5A is **not** actual A/B/C product evidence and does not change #1388 calibration/default authority.
+```text
+A = explicit single_pass
+B = explicit two_pass under the same actually attested provider/model reasoning environment as A
+C = unsupported for the current canonical provider: bounded Pass 2 reasoning is not executed
+```
+
+If the environment itself truthfully attests reasoning OFF, B may be described as running under an OFF environment, but that must not be represented as though RelayLM applied a distinct Pass 2 override.
+
+The CRY reasoning identity work demonstrates the reproducibility principle but remains CRY-specific authority. Ordinary-turn evidence must consume an ordinary-turn host/evidence binding rather than copy CRY fields blindly.
+
+## Canonical LM Studio host topology binding
+
+The canonical #1386 LM Studio host runner has a strict topology-aware condition format dedicated to cognition execution evidence.
+
+`format_version: 4` adds exactly one execution-policy declaration:
+
+```json
+{
+  "cognition_execution": {
+    "mode": "single_pass | two_pass | shadow_two_pass"
+  }
+}
+```
+
+The host runner resolves that mode through the already-owned `CognitionExecutionEvidenceIdentity` constructors using the same explicit buffered/streaming `execution_path`. `auto` is unresolved policy and is rejected as evidence identity.
+
+For explicit `single_pass`, host preparation retains the canonical `OpenAICompatibleProvider`. For `two_pass` and `shadow_two_pass`, it selects the already-implemented `OpenAICompatibleTwoPassProvider`, which uses the same OpenAI-compatible Chat Completions transport and the same provider-owned decoding configuration while exposing the conversation/extraction methods required by the COGP runtime.
+
+The resolved execution identity is placed directly in `ActualModelRunManifest.cognition_execution`. Host metadata therefore cannot claim a two-pass condition while executing the legacy single-pass provider path.
+
+Format v4 retains the existing explicit MEMORY/Event budget shape and deliberately cannot carry the format-v3 total Cognitive Budget identity. That separation preserves the existing fail-closed rule for non-single topology plus total-budget evidence.
+
+This host binding closes topology carriage only. It does not itself attest the current LM Studio model-wide reasoning default and does not create a synthetic run for unsupported bounded Pass 2 reasoning. Those are separate evidence responsibilities.
+
+## Current COGP5 boundary
+
+The provider-neutral topology bridge and the canonical LM Studio host topology carriage are implemented.
+
+Actual target-model A/B evidence still requires a fresh ordinary-turn host reasoning-environment attestation so both runs can cite the same effective model/provider reasoning state. Condition C remains unsupported for the current canonical provider capability class and must be represented as unsupported/not executed rather than as a fabricated generation.
+
+Therefore this stage does **not** change #1388 calibration/default authority.
 
 ## Ownership
 
@@ -140,7 +177,7 @@ Therefore COGP5A is **not** actual A/B/C product evidence and does not change #1
 - manifest/run identity composition;
 - raw/deterministic execution evidence;
 - scenario execution/review/cohort methodology;
-- later controlled A/B/C evidence;
-- host-side evidence binding for actual supported conditions.
+- controlled supported-condition evidence;
+- host-side evidence binding and unsupported-condition evidence.
 
 Provider owners retain actual request capability and applied configuration truth. #1388 remains the sole owner of profile/default selection.
