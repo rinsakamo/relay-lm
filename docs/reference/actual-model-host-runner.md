@@ -19,7 +19,7 @@ frozen Gemma GGUF bytes
 allowlisted target / fixture / foundation-v2 verification
         |
         v
-OpenAI-compatible provider construction
+topology-aware OpenAI-compatible provider construction
         |
         v
 #1484 LM Studio binding preflight
@@ -50,9 +50,10 @@ python -m relaylm.actual_model_host_runner \
 ```
 
 The last three options are used only by a strict `format_version: 3` condition. They
-are optional CLI paths because the LM Studio SDK is a host-local dependency; a v2
-legacy run never imports or resolves this counter. For v3, omitting the proof or an
-available SDK runtime fails before provider construction and before semantic generation.
+are optional CLI paths because the LM Studio SDK is a host-local dependency; v2 and
+v4 runs never resolve the total-budget counter through this path. For v3, omitting
+the proof or an available SDK runtime fails before provider construction and before
+semantic generation.
 
 There is intentionally no `relaylm-eval` registration. `relaylm-eval` remains the #1247 RelayLM-native deterministic suite.
 
@@ -90,9 +91,9 @@ The repository checkout must be at exactly the `relaylm_commit` declared by the 
 
 The condition is strict JSON. Unknown, missing, and duplicate fields are rejected.
 
-Target selection was made explicit before the first real canonical execution, so legacy host conditions remain strict `format_version: 2`. Version 1 conditions do not silently acquire a target default. Total cognitive-budget conditions use strict `format_version: 3`; a v2 condition is never reinterpreted as total-budget evidence.
+Target selection was made explicit before the first real canonical execution, so legacy host conditions remain strict `format_version: 2`. Version 1 conditions do not silently acquire a target default. Total cognitive-budget conditions use strict `format_version: 3`; a v2 condition is never reinterpreted as total-budget evidence. Cognition-execution topology conditions use strict `format_version: 4`; a v2/v3 condition never silently acquires a COGP topology identity.
 
-The shape is:
+The legacy v2 shape is:
 
 ```text
 {
@@ -188,6 +189,44 @@ The host must register a `HostTokenCounterCapability` for the declared capabilit
 
 `exact` is accepted only for a registered capability whose exact behavior has been demonstrated for the configured serving path. `conservative_estimate` is accepted only for a registered capability with a demonstrated safe upper-bound proof. The mode is recorded both in the counter identity and in existing #1467 per-turn diagnostics. A returned count whose mode differs from the declared identity is rejected.
 
+### Cognition-execution condition (`format_version: 4`)
+
+The cognition-execution mode keeps the legacy explicit MEMORY/Event budget shape and adds a required resolved topology declaration:
+
+```text
+{
+  "format_version": 4,
+  "target_id": "<one exact allowlisted target id>",
+  "relaylm_commit": "<exact 40-character v1 commit>",
+  "lm_studio": { "...": "the same strict v2 fields" },
+  "effective_context_window": <explicit host context integer>,
+  "decoding": { "temperature": <number or null>, "top_p": <number or null>, "seed": <integer or null> },
+  "supported_decoding_controls": ["<explicit controls>"],
+  "execution_path": "buffered | streaming",
+  "continuity_runtime": null,
+  "budgets": {
+    "memory_max_chunks": <integer or null>,
+    "memory_max_chars": <integer or null>,
+    "event_max_events": <integer or null>,
+    "event_max_chars": <integer or null>
+  },
+  "cognition_execution": {
+    "mode": "single_pass | two_pass | shadow_two_pass"
+  },
+  "condition_id": "<explicit evidence condition name>",
+  "replicate_id": "<explicit replicate identity>",
+  "scenario_ids": ["<one or more exact foundation-v2 scenario ids>"]
+}
+```
+
+`auto` is unresolved policy and is rejected as evidence identity. The runner constructs the existing `CognitionExecutionEvidenceIdentity` with the exact same `execution_path` carried by the host condition, then places that identity directly in `ActualModelRunManifest.cognition_execution`.
+
+Explicit `single_pass` uses the canonical `OpenAICompatibleProvider`. `two_pass` and `shadow_two_pass` use the already-implemented `OpenAICompatibleTwoPassProvider`, which keeps the same Chat Completions transport and provider-owned decoding configuration while exposing the conversation/extraction methods required by the merged COGP runtime.
+
+Format v4 deliberately cannot carry the v3 total Cognitive Budget identity. The current #1386 total-budget diagnostics contract is single-generation evidence; combining it with non-single topology remains fail-closed until a separately owned bridge exists.
+
+Format v4 also does not add or imply a per-request reasoning control. The current canonical provider has no per-request reasoning/thinking or bounded reasoning-budget carriage. A later ordinary-turn host attestation may establish the effective model-wide reasoning environment for reproducible A/B evidence, but that environment fact is not a Pass-2-only override.
+
 ### Frozen LM Studio Community capability
 
 The canonical host CLI resolves one bounded host-only capability for
@@ -266,7 +305,7 @@ The run manifest derives `model_artifact` and effective serving-tokenizer identi
 
 `supported_decoding_controls` is also explicit. The OpenAI-compatible provider rejects requested controls not declared supported. The #1484 binding then verifies that the manifest records exactly the decoding controls and seed actually carried by the constructed provider.
 
-This means a condition cannot claim `seed: 7`, for example, while sending no seed upstream.
+This means a condition cannot claim `seed: 7`, for example, while sending no seed upstream. The topology-aware provider subclass does not add hidden decoding or reasoning controls; it consumes the same validated decoding mapping as the base adapter.
 
 ## Secrets and endpoint identity
 
@@ -284,7 +323,8 @@ The runner derives it from:
 - explicitly selected frozen target and verification receipt;
 - canonical scenario-set and Character-fixture revisions;
 - the actual constructed provider P4 identity;
-- explicit host condition values.
+- explicit host condition values;
+- for v4, the resolved `CognitionExecutionEvidenceIdentity`.
 
 The #1484 binding rechecks target/provider/manifest agreement before scenario execution. This avoids metadata that merely looks reproducible but does not describe the provider request that actually ran.
 
@@ -323,10 +363,15 @@ The legacy v2 path continues to carry the already-existing explicit MEMORY/Event
 
 The v3 path carries the complete caller-supplied total condition through `CognitiveBudgetRuntimeConfig` and the existing #1467 evidence bridge. It preserves the content-free serialized count, count mode, effective capacity/output reserve, degradation observations, fit/degraded-fit, and bounded pre-generation failure evidence. It does not change #1387 degradation order or semantics.
 
+The v4 path carries explicit `single_pass`, `two_pass`, or `shadow_two_pass` topology into the existing #1540 execution evidence identity. Non-single modes use the already-merged two-pass-capable provider surface; explicit single-pass keeps the canonical base provider. V4 does not mix total Cognitive Budget and does not invent reasoning controls.
+
 Accordingly:
 
 - a v2 condition can produce the historical foundation-v2 real-model executions plus deterministic-boundary verdict sidecars;
 - a v3 condition can produce total-budget evidence only when its provider/model counter capability is explicitly registered and truthful;
+- a v4 condition can produce topology-aware execution evidence under an explicitly resolved COGP mode;
+- actual citable COGP A/B comparison still requires ordinary-turn reasoning-environment attestation so both conditions bind the same effective environment;
+- bounded Pass 2 reasoning remains unsupported for the current canonical provider and must not be represented as an applied C condition;
 - total-budget evidence is experimental calibration evidence and does not select #1388 numeric defaults or runtime profiles;
 - CAL2 candidates remain measurement inputs, not runtime defaults.
 
@@ -346,9 +391,11 @@ The command fails before semantic generation when, among other cases:
 - a v3 total-budget condition has malformed total/policy/envelope identity;
 - `model_context_window` differs from the effective host context;
 - the declared serialized-input counter is unavailable, unreproducible, mismatched, or lacks the required exact/conservative truthfulness basis;
+- a v4 cognition-execution condition is malformed, unresolved as `auto`, or uses a mode outside `single_pass`, `two_pass`, and `shadow_two_pass`;
+- a v4 cognition-execution path disagrees with the host `execution_path`;
 - a workspace path for the run already exists;
 - an immutable evidence id already exists with different bytes.
 
 After a model execution has completed, a filesystem/conflict failure while writing the boundary sidecar causes the command to fail rather than pretending the evidence chain is complete. The already-written execution artifact remains immutable evidence and no automatic semantic retry is introduced.
 
-No automatic retry is introduced by this runner. One RelayLM semantic turn remains one model generation.
+No automatic retry is introduced by this runner. V2/v3 preserve their existing single-generation semantics; v4 executes exactly the explicit topology recorded in its cognition-execution identity.
