@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
 from relaylm.providers.openai_compatible_cognition import (
     OpenAICompatibleCognitionCapabilityFacts,
@@ -21,9 +23,9 @@ def _provider(
         base_url="http://127.0.0.1:1234/v1",
         model="google/gemma-4-12b",
         decoding_config=OpenAICompatibleDecodingConfig(
-            temperature=0.2,
-            top_p=0.95,
-            seed=7,
+            temperature=0.2 if "temperature" in supported_controls else None,
+            top_p=0.95 if "top_p" in supported_controls else None,
+            seed=7 if "seed" in supported_controls else None,
         ),
         decoding_capabilities=OpenAICompatibleDecodingCapabilities(
             supported_controls=supported_controls
@@ -36,8 +38,6 @@ def test_provider_exposes_machine_readable_cognition_capability_facts() -> None:
     try:
         facts = describe_openai_compatible_cognition_capabilities(provider)
     finally:
-        import asyncio
-
         asyncio.run(provider.aclose())
 
     assert isinstance(facts, OpenAICompatibleCognitionCapabilityFacts)
@@ -61,8 +61,6 @@ def test_provider_cognition_facts_do_not_promote_seed_or_unsupported_controls() 
     try:
         facts = describe_openai_compatible_cognition_capabilities(provider)
     finally:
-        import asyncio
-
         asyncio.run(provider.aclose())
 
     assert facts.per_pass_decoding_controls == ("temperature",)
@@ -75,8 +73,6 @@ def test_two_pass_extension_reports_same_provider_owned_capability_facts() -> No
     try:
         facts = describe_openai_compatible_cognition_capabilities(provider)
     finally:
-        import asyncio
-
         asyncio.run(provider.aclose())
 
     assert facts.reasoning_modes == ()
