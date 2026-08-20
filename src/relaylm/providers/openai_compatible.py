@@ -18,7 +18,16 @@ from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
     OpenAICompatibleDecodingConfig,
 )
+from relaylm.providers.openai_compatible_reasoning import (
+    OpenAICompatibleReasoningRequest,
+)
 from relaylm.state import STATE_CLASS_DEFINITIONS, StateCandidate
+from relaylm.providers.vllm_reasoning_capability import (
+    VLLMReasoningCapabilityAttestation,
+)
+from relaylm.providers.vllm_reasoning_realization import (
+    realize_vllm_reasoning_request,
+)
 
 SYSTEM_INSTRUCTION = """You are the cognitive substrate of a persistent character managed by RelayLM.
 
@@ -165,6 +174,7 @@ class OpenAICompatibleProvider:
         timeout: float = 120.0,
         decoding_config: OpenAICompatibleDecodingConfig | None = None,
         decoding_capabilities: OpenAICompatibleDecodingCapabilities | None = None,
+        vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
         if not base_url.strip():
@@ -181,6 +191,19 @@ class OpenAICompatibleProvider:
             raise TypeError(
                 "decoding_capabilities must be OpenAICompatibleDecodingCapabilities or None"
             )
+        if vllm_reasoning_capability is not None and not isinstance(
+            vllm_reasoning_capability, VLLMReasoningCapabilityAttestation
+        ):
+            raise TypeError(
+                "vllm_reasoning_capability must be VLLMReasoningCapabilityAttestation or None"
+            )
+        if (
+            vllm_reasoning_capability is not None
+            and vllm_reasoning_capability.request_model != model
+        ):
+            raise ValueError(
+                "vLLM reasoning capability request_model must match provider model"
+            )
         effective_decoding = decoding_config or OpenAICompatibleDecodingConfig()
         effective_capabilities = (
             decoding_capabilities or OpenAICompatibleDecodingCapabilities()
@@ -192,6 +215,7 @@ class OpenAICompatibleProvider:
         self.api_key = api_key
         self.decoding_config = effective_decoding
         self.decoding_capabilities = effective_capabilities
+        self.vllm_reasoning_capability = vllm_reasoning_capability
         self._client = http_client or httpx.AsyncClient(timeout=timeout)
         self._owns_client = http_client is None
 
@@ -205,7 +229,13 @@ class OpenAICompatibleProvider:
         if self._owns_client:
             await self._client.aclose()
 
-    async def generate(self, cognitive_input: CognitiveInput) -> CognitiveOutput:
+    async def generate(
+        self,
+        cognitive_input: CognitiveInput,
+        *,
+        reasoning_request: OpenAICompatibleReasoningRequest | None = None,
+        vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
+    ) -> CognitiveOutput:
         try:
             response = await self._client.post(
                 f"{self.base_url}/chat/completions",
@@ -215,6 +245,10 @@ class OpenAICompatibleProvider:
                     cognitive_input=cognitive_input,
                     stream=False,
                     decoding_config=self.decoding_config,
+                    reasoning_request=reasoning_request,
+                    vllm_reasoning_capability=(
+                        vllm_reasoning_capability or self.vllm_reasoning_capability
+                    ),
                 ),
             )
             response.raise_for_status()
@@ -228,6 +262,9 @@ class OpenAICompatibleProvider:
         self,
         cognitive_input: CognitiveInput,
         emit_response_delta: Callable[[str], Awaitable[None]],
+        *,
+        reasoning_request: OpenAICompatibleReasoningRequest | None = None,
+        vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
     ) -> CognitiveOutput:
         structured_text = ""
         decoder = _IncrementalUtteranceDecoder()
@@ -244,6 +281,10 @@ class OpenAICompatibleProvider:
                     cognitive_input=cognitive_input,
                     stream=True,
                     decoding_config=self.decoding_config,
+                    reasoning_request=reasoning_request,
+                    vllm_reasoning_capability=(
+                        vllm_reasoning_capability or self.vllm_reasoning_capability
+                    ),
                 ),
             ) as response:
                 response.raise_for_status()
@@ -294,6 +335,8 @@ def _request_body(
     cognitive_input: CognitiveInput,
     stream: bool,
     decoding_config: OpenAICompatibleDecodingConfig | None = None,
+    reasoning_request: OpenAICompatibleReasoningRequest | None = None,
+    vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
 ) -> dict[str, Any]:
     if decoding_config is not None and not isinstance(
         decoding_config, OpenAICompatibleDecodingConfig
@@ -324,7 +367,36 @@ def _request_body(
     }
     if decoding_config is not None:
         body.update(decoding_config.to_mapping())
+    body.update(
+        _vllm_reasoning_fields(
+            model=model,
+            reasoning_request=reasoning_request,
+            capability=vllm_reasoning_capability,
+        )
+    )
     return body
+
+
+def _vllm_reasoning_fields(
+    *,
+    model: str,
+    reasoning_request: OpenAICompatibleReasoningRequest | None,
+    capability: VLLMReasoningCapabilityAttestation | None,
+) -> dict[str, object]:
+    if reasoning_request is None:
+        return {}
+    if capability is None:
+        raise ValueError(
+            "vLLM reasoning capability is required for an explicit reasoning request"
+        )
+    if capability.request_model != model:
+        raise ValueError(
+            "vLLM reasoning capability request_model must match serialized model"
+        )
+    return realize_vllm_reasoning_request(
+        request=reasoning_request,
+        capability=capability,
+    ).to_request_fields()
 
 
 async def _iter_sse_data(response: httpx.Response) -> AsyncIterator[str]:

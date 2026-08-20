@@ -13,6 +13,7 @@ implementation:
 - src/relaylm/providers/vllm_backend.py
 - src/relaylm/providers/vllm_reasoning.py
 - src/relaylm/providers/vllm_reasoning_capability.py
+- src/relaylm/providers/vllm_reasoning_realization.py
 - src/relaylm/providers/openai_compatible_budget.py
 - src/relaylm/providers/openai_compatible_decoding.py
 - src/relaylm/providers/openai_compatible_reasoning.py
@@ -28,6 +29,7 @@ tests:
 - tests/unit/test_vllm_backend_attestation.py
 - tests/unit/test_vllm_reasoning_wire.py
 - tests/unit/test_vllm_reasoning_capabilities.py
+- tests/unit/test_vllm_reasoning_realization.py
 - tests/unit/test_openai_compatible_budget.py
 - tests/unit/test_openai_compatible_streaming_parity.py
 - tests/unit/test_openai_compatible_decoding.py

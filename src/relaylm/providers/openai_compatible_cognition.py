@@ -6,6 +6,10 @@ from typing import Protocol
 from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
 )
+from relaylm.providers.vllm_reasoning_capability import (
+    VLLMReasoningCapabilityAttestation,
+    VLLMReasoningCapabilityStatus,
+)
 
 OPENAI_COMPATIBLE_COGNITION_CAPABILITY_FACTS_FORMAT_VERSION = 1
 _COGNITION_PER_PASS_DECODING_CONTROLS = frozenset({"temperature", "top_p"})
@@ -86,10 +90,33 @@ def describe_openai_compatible_cognition_capabilities(
             if control in _COGNITION_PER_PASS_DECODING_CONTROLS
         )
     )
+    vllm_reasoning = getattr(provider, "vllm_reasoning_capability", None)
+    if vllm_reasoning is not None and not isinstance(
+        vllm_reasoning, VLLMReasoningCapabilityAttestation
+    ):
+        raise TypeError(
+            "provider vLLM reasoning capability must be VLLMReasoningCapabilityAttestation"
+        )
+    reasoning_modes: tuple[str, ...] = ()
+    bounded_reasoning_budget = False
+    if vllm_reasoning is not None:
+        modes: list[str] = []
+        if (
+            vllm_reasoning.reasoning_off.status
+            is VLLMReasoningCapabilityStatus.SEMANTICALLY_ATTESTED
+        ):
+            modes.append("off")
+        if (
+            vllm_reasoning.reasoning_bounded.status
+            is VLLMReasoningCapabilityStatus.SEMANTICALLY_ATTESTED
+        ):
+            modes.append("bounded")
+            bounded_reasoning_budget = True
+        reasoning_modes = tuple(sorted(modes))
     return OpenAICompatibleCognitionCapabilityFacts(
         structured_output=True,
         streaming=True,
-        reasoning_modes=(),
-        bounded_reasoning_budget=False,
+        reasoning_modes=reasoning_modes,
+        bounded_reasoning_budget=bounded_reasoning_budget,
         per_pass_decoding_controls=per_pass_controls,
     )

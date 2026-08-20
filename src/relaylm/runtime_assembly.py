@@ -12,6 +12,9 @@ from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.continuity import ContinuityContext
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
 from relaylm.providers.openai_compatible_backend import OpenAICompatibleBackendId
+from relaylm.providers.vllm_reasoning_capability import (
+    VLLMReasoningCapabilityAttestation,
+)
 from relaylm.runtime_config import (
     ProviderRuntimeConfig,
     RuntimeConfigErrorCode,
@@ -95,6 +98,7 @@ def assemble_runtime(
     resolved: ResolvedRuntimeConfig,
     *,
     token_counter_capabilities: Mapping[str, TokenCounterCapability] | None = None,
+    vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
 ) -> RuntimeAssembly:
     """Construct current owner objects from one validated RCFG2 result.
 
@@ -104,11 +108,33 @@ def assemble_runtime(
 
     if not isinstance(resolved, ResolvedRuntimeConfig):
         raise TypeError("resolved must be ResolvedRuntimeConfig")
+    if vllm_reasoning_capability is not None and not isinstance(
+        vllm_reasoning_capability, VLLMReasoningCapabilityAttestation
+    ):
+        raise TypeError(
+            "vllm_reasoning_capability must be VLLMReasoningCapabilityAttestation or None"
+        )
 
     config = resolved.config
     runtime = config.runtime
 
-    if config.provider.backend is not OpenAICompatibleBackendId.GENERIC:
+    if config.provider.backend is OpenAICompatibleBackendId.VLLM:
+        if vllm_reasoning_capability is None:
+            raise RuntimeAssemblyError(
+                RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+                field="provider.backend",
+                message=(
+                    "vLLM backend requires an explicit configured-runtime reasoning "
+                    "capability attestation"
+                ),
+            )
+    elif vllm_reasoning_capability is not None:
+        raise RuntimeAssemblyError(
+            RuntimeConfigErrorCode.INVALID_COMBINATION,
+            field="provider.backend",
+            message="vLLM reasoning capability requires provider.backend=vllm",
+        )
+    elif config.provider.backend is not OpenAICompatibleBackendId.GENERIC:
         raise RuntimeAssemblyError(
             RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
             field="provider.backend",
@@ -162,6 +188,7 @@ def assemble_runtime(
             base_url=config.provider.base_url,
             model=config.provider.model,
             api_key=resolved.secrets.provider_api_key,
+            vllm_reasoning_capability=vllm_reasoning_capability,
         )
     except (TypeError, ValueError) as exc:
         raise RuntimeAssemblyError(

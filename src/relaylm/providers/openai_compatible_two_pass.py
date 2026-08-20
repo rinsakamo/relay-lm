@@ -21,6 +21,13 @@ from relaylm.providers.openai_compatible import (
     _parse_stream_event,
     parse_wire_output,
     serialize_cognitive_input,
+    _vllm_reasoning_fields,
+)
+from relaylm.providers.openai_compatible_reasoning import (
+    OpenAICompatibleReasoningRequest,
+)
+from relaylm.providers.vllm_reasoning_capability import (
+    VLLMReasoningCapabilityAttestation,
 )
 
 
@@ -73,7 +80,11 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
     """Two-pass capability extension of the canonical OpenAI-compatible adapter."""
 
     async def generate_conversation(
-        self, cognitive_input: CognitiveInput
+        self,
+        cognitive_input: CognitiveInput,
+        *,
+        reasoning_request: OpenAICompatibleReasoningRequest | None = None,
+        vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
     ) -> CognitionConversationOutput:
         envelope = await self._post_two_pass(
             body=_conversation_request_body(
@@ -81,6 +92,10 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                 cognitive_input=cognitive_input,
                 stream=False,
                 decoding=self.decoding_config.to_mapping(),
+                reasoning_request=reasoning_request,
+                vllm_reasoning_capability=(
+                    vllm_reasoning_capability or self.vllm_reasoning_capability
+                ),
             )
         )
         return _parse_conversation_completion(envelope)
@@ -89,6 +104,9 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
         self,
         cognitive_input: CognitiveInput,
         emit_response_delta: Callable[[str], Awaitable[None]],
+        *,
+        reasoning_request: OpenAICompatibleReasoningRequest | None = None,
+        vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
     ) -> CognitionConversationOutput:
         structured_text = ""
         decoder = _IncrementalUtteranceDecoder()
@@ -105,6 +123,10 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                     cognitive_input=cognitive_input,
                     stream=True,
                     decoding=self.decoding_config.to_mapping(),
+                    reasoning_request=reasoning_request,
+                    vllm_reasoning_capability=(
+                        vllm_reasoning_capability or self.vllm_reasoning_capability
+                    ),
                 ),
             ) as response:
                 response.raise_for_status()
@@ -153,13 +175,21 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
         return output
 
     async def generate_extraction(
-        self, extraction_input: CognitionExtractionInput
+        self,
+        extraction_input: CognitionExtractionInput,
+        *,
+        reasoning_request: OpenAICompatibleReasoningRequest | None = None,
+        vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
     ) -> CognitionExtractionOutput:
         envelope = await self._post_two_pass(
             body=_extraction_request_body(
                 model=self.model,
                 extraction_input=extraction_input,
                 decoding=self.decoding_config.to_mapping(),
+                reasoning_request=reasoning_request,
+                vllm_reasoning_capability=(
+                    vllm_reasoning_capability or self.vllm_reasoning_capability
+                ),
             )
         )
         return _parse_extraction_completion(envelope)
@@ -183,6 +213,8 @@ def _conversation_request_body(
     cognitive_input: CognitiveInput,
     stream: bool,
     decoding: dict[str, int | float],
+    reasoning_request: OpenAICompatibleReasoningRequest | None = None,
+    vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
 ) -> dict[str, Any]:
     body: dict[str, Any] = {
         "model": model,
@@ -208,6 +240,13 @@ def _conversation_request_body(
         "stream": stream,
     }
     body.update(decoding)
+    body.update(
+        _vllm_reasoning_fields(
+            model=model,
+            reasoning_request=reasoning_request,
+            capability=vllm_reasoning_capability,
+        )
+    )
     return body
 
 
@@ -216,6 +255,8 @@ def _extraction_request_body(
     model: str,
     extraction_input: CognitionExtractionInput,
     decoding: dict[str, int | float],
+    reasoning_request: OpenAICompatibleReasoningRequest | None = None,
+    vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
 ) -> dict[str, Any]:
     payload = {
         "cognitive_input": serialize_cognitive_input(extraction_input.cognitive_input),
@@ -245,6 +286,13 @@ def _extraction_request_body(
         "stream": False,
     }
     body.update(decoding)
+    body.update(
+        _vllm_reasoning_fields(
+            model=model,
+            reasoning_request=reasoning_request,
+            capability=vllm_reasoning_capability,
+        )
+    )
     return body
 
 

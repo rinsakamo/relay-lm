@@ -4,7 +4,14 @@ from pathlib import Path
 
 import pytest
 
+from relaylm.actual_model_targets import load_actual_model_repository_snapshot_target
 from relaylm.providers.openai_compatible_backend import OpenAICompatibleBackendId
+from relaylm.providers.vllm_backend import attest_vllm_backend
+from relaylm.providers.vllm_reasoning import VLLMReasoningWireControls
+from relaylm.providers.vllm_reasoning_capability import (
+    VLLMReasoningProbeEvidence,
+    attest_vllm_reasoning_capabilities,
+)
 from relaylm.runtime_assembly import RuntimeAssemblyError, assemble_runtime
 from relaylm.runtime_config import ConfigSource, ProviderRuntimeConfig, RuntimeConfigErrorCode
 from relaylm.runtime_config_loader import (
@@ -119,3 +126,59 @@ def test_selected_backend_without_runtime_realizer_fails_before_generation(
 
     assert caught.value.code is RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE
     assert caught.value.field == "provider.backend"
+
+
+def test_vllm_backend_requires_and_consumes_explicit_attested_realizer(
+    tmp_path: Path,
+) -> None:
+    resolved = resolve_runtime_config(
+        config_path=_write_config(tmp_path / "runtime.yaml", backend="vllm"),
+        environ={},
+    )
+    target = load_actual_model_repository_snapshot_target(
+        Path(__file__).resolve().parents[2]
+        / "evaluation/actual_model/targets/gemma-4-12b-it-qat-w4a16-vllm-v1.json"
+    )
+    backend = attest_vllm_backend(
+        request_model="model-id",
+        version_response={"version": "0.27.1"},
+        models_response={
+            "object": "list",
+            "data": [{"id": "model-id", "object": "model"}],
+        },
+    )
+
+    def probe(controls, *, activation=False, template=()):
+        return VLLMReasoningProbeEvidence(
+            wire_controls=controls,
+            http_status=200,
+            accepted=True,
+            effect_proven=True,
+            repeatable=True,
+            activation_applied=activation,
+            template_kwargs=template,
+        )
+
+    capability = attest_vllm_reasoning_capabilities(
+        backend_attestation=backend,
+        target=target,
+        reasoning_parser="gemma4",
+        template_thinking_control="enable_thinking",
+        off_probe=probe(VLLMReasoningWireControls(reasoning_effort="none")),
+        bounded_probe=probe(
+            VLLMReasoningWireControls(thinking_token_budget=64),
+            activation=True,
+            template=(("enable_thinking", True),),
+        ),
+    )
+
+    assembly = assemble_runtime(
+        resolved,
+        vllm_reasoning_capability=capability,
+    )
+    try:
+        assert assembly.provider.vllm_reasoning_capability is capability
+    finally:
+        import asyncio
+
+        asyncio.run(assembly.provider.aclose())
