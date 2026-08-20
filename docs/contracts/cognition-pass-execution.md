@@ -175,3 +175,45 @@ COGP2 does not implement:
 - Pass 1 / Pass 2 orchestration;
 - shadow evidence execution;
 - model-specific fallback tables.
+
+# Current resolved-request carriage
+
+Later merged provider work under #1545 supplies truthful configured-vLLM `off` / `bounded(N)` realization. The current COGP runtime now carries a fully resolved `CognitionPassRequest` through the canonical buffered Turn path without moving backend wire policy into Turn semantics.
+
+The ordinary path is:
+
+```text
+CognitionPassRequest
+  -> run_user_turn(..., pass_request=...)
+  -> OpenAICompatibleProvider.generate(..., pass_request=...)
+  -> provider-owned capability normalization + require_supported()
+  -> provider-owned exact vLLM realization
+  -> exact Chat Completions request
+```
+
+The two-pass path carries independently resolved requests:
+
+```text
+pass1_request
+  -> run_user_turn_two_pass
+  -> generate_conversation
+
+pass2_request
+  -> originating-turn-bound extraction task
+  -> generate_extraction
+```
+
+Neither Turn nor the provider chooses a reasoning budget or strengthens Pass 2 merely because it is Pass 2. The caller must supply the fully resolved request.
+
+When no pass request is supplied, existing Turn/provider behavior is preserved. Existing generic providers are not required to accept a new keyword merely to continue serving the historical no-request path.
+
+For the canonical OpenAI-compatible adapter:
+
+- explicit per-pass `temperature` / `top_p` replace provider-wide values for that request;
+- explicit omission leaves those per-pass fields omitted;
+- provider-wide `seed` remains held fixed because seed is not currently a COGP-owned per-pass control;
+- reasoning is translated only through the attested provider-owned `off` / `bounded(N)` realization;
+- an explicit `max_output_tokens` request remains unsupported under current capability facts and fails before network generation;
+- a `CognitionPassRequest` and a direct provider-owned reasoning request cannot both be supplied to the same call, avoiding ambiguous double authority.
+
+The provider entry points also use the same resolver for their streaming serializers. This bounded runtime transaction wires the canonical buffered Turn path needed for first COGP5 actual-model screening; it does not choose a streaming release profile or any numeric default.
