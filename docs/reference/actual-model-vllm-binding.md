@@ -83,8 +83,46 @@ C: two_pass
 
 `bounded(64)` is eligible only if the first bounded comparison shows a meaningful product/budget difference that justifies deeper screening. Do not add `low`/`medium`/`high`, invalid-wire probes, streaming permutations, parser permutations, or template-conflict permutations to the product-quality matrix; those are provider capability/conformance evidence rather than product conditions.
 
+The machine-readable first-stage plan is `evaluation/actual_model/screenings/cogp5-vllm-screening-v1.json`. It freezes only A/B/C and two representative existing foundation-v2 scenarios:
+
+- `response-persona-correction-v1` for visible-response/persona and durable State behavior;
+- `continuity-lifecycle-v1` for temporary Continuity lifecycle behavior.
+
+This produces two scenario executions per condition and six total scenario executions for the first screening. The plan's `continuity_runtime = {max_items: 8, lifetime_revisions: 4}` is an explicit evidence condition only. It is not a #1388 default and must not be promoted into release configuration by this lane.
+
+## Frozen R3B proof and live re-attestation
+
+The provider-owned R3B capability probe is not repeated as a product-quality prelude. Its effective facts are frozen in `evaluation/actual_model/attestations/gemma-4-12b-it-qat-w4a16-vllm-reasoning-v1.json`, with provenance back to #1545 comment `5357159619`.
+
+The proof retains only controls needed by the first screening:
+
+- OFF: `reasoning_effort = none`, semantically effective and repeatable;
+- bounded: `thinking_token_budget = 16` with `enable_thinking = true`, semantically effective and repeatable.
+
+It deliberately does not turn `low|medium|high`, invalid effort, budget-without-activation, or OFF/template conflict into product conditions. It also does not freeze `bounded(64)` into the first-stage plan.
+
+At each real host execution, `acquire_vllm_reasoning_capability(...)` reacquires only the live backend/model identity from `/version` and `/v1/models`, then combines that current identity with the frozen R3B probe facts through the existing provider-owned attestation constructor. A vLLM version mismatch, served-model ambiguity, target mismatch, snapshot mismatch, `model_root` mismatch, or `max_model_len` mismatch fails before generation. This is runtime identity re-attestation, not a new reasoning-parameter sweep.
+
+## Host orchestration and serial execution
+
+`src/relaylm/actual_model_vllm_host.py` owns the vLLM host preparation adapter. It loads the frozen screening plan/proof, verifies the exact repository snapshot, reacquires live backend identity, constructs the canonical single-pass or two-pass OpenAI-compatible provider with the same typed vLLM reasoning capability, creates the #1562 run manifest, and obtains the #1563 binding before any scenario generation.
+
+The public host entry point is the thin common facade `python -m relaylm.actual_model_host`. It only selects the backend adapter:
+
+```text
+actual_model_host
+  --backend lm_studio -> existing actual_model_host_runner unchanged
+  --backend vllm      -> actual_model_vllm_host preparation/execution
+```
+
+The facade does not reinterpret the historical LM Studio condition format. It strips only the backend selector and delegates the remaining LM Studio arguments to the existing runner.
+
+For vLLM, one invocation executes exactly one of `A | B | C` over the two frozen scenarios. A, B, and C must therefore be invoked serially. The facade does not accept an `all` condition and does not generate a parameter Cartesian product.
+
+A successful vLLM invocation reports the selected condition, exact RelayLM commit, target ID, replicate ID, and immutable result/boundary artifact paths. Raw provider API-key material is never emitted in the summary or evidence identity.
+
 ## Deliberate boundary
 
-This binding module consumes already-obtained live backend/reasoning attestations; it does not itself perform network discovery or re-run the R3B capability probe. Host orchestration may acquire those facts, but must feed the same typed attestation into both the provider and this binding.
+The host orchestration consumes already-obtained reasoning probe facts; it does not itself repeat the R3B parameter experiment. It reacquires current backend/model identity only so stale capability evidence cannot be cited against a different live vLLM runtime.
 
-No actual-model A/B/C execution, quality conclusion, calibration decision, or runtime default is created merely by this contract.
+No actual-model A/B/C execution, quality conclusion, calibration decision, or runtime default is created merely by this contract. Product evidence begins only when the common host facade is run against the exact live WSL vLLM server and verified snapshot.

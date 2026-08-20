@@ -1,0 +1,983 @@
+from __future__ import annotations
+
+import json
+import subprocess
+import urllib.error
+import urllib.request
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Callable, Mapping
+from urllib.parse import urlsplit, urlunsplit
+
+from relaylm.actual_model_artifacts import character_fixture_revision
+from relaylm.actual_model_boundary import (
+    evaluate_actual_model_deterministic_boundary,
+    write_actual_model_deterministic_boundary_verdict,
+)
+from relaylm.actual_model_evaluation import (
+    ActualModelCognitionPassRequests,
+    ActualModelRunManifest,
+    ExplicitBudgetConfiguration,
+    ExplicitContinuityRuntimeConfiguration,
+)
+from relaylm.actual_model_scenarios import (
+    ActualModelScenarioSet,
+    load_actual_model_scenario_set,
+)
+from relaylm.actual_model_targets import (
+    ActualModelRepositorySnapshotTarget,
+    ActualModelRepositorySnapshotVerification,
+    load_actual_model_repository_snapshot_target,
+    verify_actual_model_repository_snapshot,
+)
+from relaylm.actual_model_vllm import (
+    ActualModelVLLMExecutionBinding,
+    bind_vllm_execution_condition,
+    run_vllm_actual_model_scenario_definition,
+    vllm_manifest_provider_identity,
+    write_vllm_actual_model_execution_result,
+)
+from relaylm.cognition_execution import CognitionPassRequest, CognitionReasoningMode
+from relaylm.cognition_execution_evidence import CognitionExecutionEvidenceIdentity
+from relaylm.providers.openai_compatible import OpenAICompatibleProvider
+from relaylm.providers.openai_compatible_decoding import (
+    OpenAICompatibleDecodingCapabilities,
+    OpenAICompatibleDecodingConfig,
+)
+from relaylm.providers.openai_compatible_identity import describe_openai_compatible_provider
+from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPassProvider
+from relaylm.providers.vllm_backend import attest_vllm_backend
+from relaylm.providers.vllm_reasoning import VLLMReasoningWireControls
+from relaylm.providers.vllm_reasoning_capability import (
+    VLLMReasoningCapabilityAttestation,
+    VLLMReasoningProbeEvidence,
+    attest_vllm_reasoning_capabilities,
+)
+
+
+VLLM_SCREENING_PLAN_FORMAT_VERSION = 1
+VLLM_REASONING_PROBE_PROOF_FORMAT_VERSION = 1
+CANONICAL_VLLM_TARGET_PATH = Path(
+    "evaluation/actual_model/targets/gemma-4-12b-it-qat-w4a16-vllm-v1.json"
+)
+CANONICAL_VLLM_SCREENING_PLAN_PATH = Path(
+    "evaluation/actual_model/screenings/cogp5-vllm-screening-v1.json"
+)
+CANONICAL_VLLM_REASONING_PROOF_PATH = Path(
+    "evaluation/actual_model/attestations/"
+    "gemma-4-12b-it-qat-w4a16-vllm-reasoning-v1.json"
+)
+CANONICAL_SCENARIO_SET_PATH = Path(
+    "evaluation/actual_model/scenario_sets/foundation-v2.json"
+)
+CANONICAL_FIXTURE_PATH = Path("evaluation/actual_model/characters/foundation-v1")
+CANONICAL_STRUCTURED_OUTPUT_SCHEMA_VERSION = "relaylm-cognitive-output-v1"
+VLLM_SCREENING_CONDITION_IDS = ("A", "B", "C")
+VLLM_REASONING_PROOF_SOURCE_ISSUE = 1545
+VLLM_REASONING_PROOF_SOURCE_COMMENT = 5357159619
+
+FetchJSON = Callable[[str, str | None], object]
+
+
+class ActualModelVLLMHostError(ValueError):
+    """A canonical vLLM screening condition cannot be executed truthfully."""
+
+
+@dataclass(frozen=True, slots=True)
+class VLLMScreeningCondition:
+    condition_id: str
+    cognition_execution: CognitionExecutionEvidenceIdentity
+    pass_requests: ActualModelCognitionPassRequests
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.condition_id, str) or not self.condition_id.strip():
+            raise ActualModelVLLMHostError("condition_id must be a non-empty string")
+        if not isinstance(self.cognition_execution, CognitionExecutionEvidenceIdentity):
+            raise TypeError("cognition_execution must be CognitionExecutionEvidenceIdentity")
+        if not isinstance(self.pass_requests, ActualModelCognitionPassRequests):
+            raise TypeError("pass_requests must be ActualModelCognitionPassRequests")
+        if self.cognition_execution.mode != self.pass_requests.mode:
+            raise ActualModelVLLMHostError(
+                "screening cognition execution mode must match pass-request shape"
+            )
+        if self.cognition_execution.execution_path != "buffered":
+            raise ActualModelVLLMHostError(
+                "vLLM screening currently supports buffered execution only"
+            )
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "condition_id": self.condition_id,
+            "cognition_execution": self.cognition_execution.mode,
+            "pass_requests": self.pass_requests.to_mapping(),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class VLLMScreeningPlan:
+    screening_id: str
+    target_id: str
+    effective_context_window: int
+    temperature: int | float | None
+    top_p: int | float | None
+    seed: int | None
+    supported_decoding_controls: tuple[str, ...]
+    execution_path: str
+    continuity_runtime: ExplicitContinuityRuntimeConfiguration
+    scenario_ids: tuple[str, ...]
+    conditions: dict[str, VLLMScreeningCondition]
+    format_version: int = VLLM_SCREENING_PLAN_FORMAT_VERSION
+
+    def __post_init__(self) -> None:
+        if self.format_version != VLLM_SCREENING_PLAN_FORMAT_VERSION:
+            raise ActualModelVLLMHostError(
+                f"unsupported vLLM screening plan format_version: {self.format_version}"
+            )
+        for name in ("screening_id", "target_id"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.strip():
+                raise ActualModelVLLMHostError(f"{name} must be a non-empty string")
+        if isinstance(self.effective_context_window, bool) or not isinstance(
+            self.effective_context_window, int
+        ):
+            raise ActualModelVLLMHostError(
+                "effective_context_window must be an integer"
+            )
+        if self.effective_context_window <= 0:
+            raise ActualModelVLLMHostError(
+                "effective_context_window must be positive"
+            )
+        if self.execution_path != "buffered":
+            raise ActualModelVLLMHostError(
+                "canonical vLLM screening execution_path must be buffered"
+            )
+        if not isinstance(
+            self.continuity_runtime,
+            ExplicitContinuityRuntimeConfiguration,
+        ):
+            raise TypeError(
+                "continuity_runtime must be ExplicitContinuityRuntimeConfiguration"
+            )
+        if not self.scenario_ids or len(set(self.scenario_ids)) != len(self.scenario_ids):
+            raise ActualModelVLLMHostError(
+                "scenario_ids must be non-empty and unique"
+            )
+        if not all(isinstance(item, str) and item.strip() for item in self.scenario_ids):
+            raise ActualModelVLLMHostError(
+                "scenario_ids must contain non-empty strings"
+            )
+        if tuple(self.conditions) != VLLM_SCREENING_CONDITION_IDS:
+            raise ActualModelVLLMHostError(
+                "canonical vLLM screening conditions must be exactly A, B, C in order"
+            )
+        if len(set(self.supported_decoding_controls)) != len(
+            self.supported_decoding_controls
+        ):
+            raise ActualModelVLLMHostError(
+                "supported_decoding_controls must be unique"
+            )
+
+    @property
+    def decoding_config(self) -> OpenAICompatibleDecodingConfig:
+        return OpenAICompatibleDecodingConfig(
+            temperature=self.temperature,
+            top_p=self.top_p,
+            seed=self.seed,
+        )
+
+    @property
+    def decoding_capabilities(self) -> OpenAICompatibleDecodingCapabilities:
+        return OpenAICompatibleDecodingCapabilities(
+            supported_controls=frozenset(self.supported_decoding_controls)
+        )
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "format_version": self.format_version,
+            "screening_id": self.screening_id,
+            "target_id": self.target_id,
+            "effective_context_window": self.effective_context_window,
+            "decoding": self.decoding_config.to_mapping(),
+            "supported_decoding_controls": list(self.supported_decoding_controls),
+            "execution_path": self.execution_path,
+            "continuity_runtime": {
+                "max_items": self.continuity_runtime.max_items,
+                "lifetime_revisions": self.continuity_runtime.lifetime_revisions,
+            },
+            "scenario_ids": list(self.scenario_ids),
+            "conditions": {
+                key: condition.to_mapping()
+                for key, condition in self.conditions.items()
+            },
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class VLLMReasoningProbeProof:
+    proof_id: str
+    source_issue: int
+    source_comment_id: int
+    target_id: str
+    target_revision: str
+    backend_version: str
+    request_model: str
+    reasoning_parser: str
+    template_thinking_control: str
+    off_probe: VLLMReasoningProbeEvidence
+    bounded_probe: VLLMReasoningProbeEvidence
+    format_version: int = VLLM_REASONING_PROBE_PROOF_FORMAT_VERSION
+
+    def __post_init__(self) -> None:
+        if self.format_version != VLLM_REASONING_PROBE_PROOF_FORMAT_VERSION:
+            raise ActualModelVLLMHostError(
+                "unsupported vLLM reasoning probe proof format_version"
+            )
+        for name in (
+            "proof_id",
+            "target_id",
+            "target_revision",
+            "backend_version",
+            "request_model",
+            "reasoning_parser",
+            "template_thinking_control",
+        ):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.strip():
+                raise ActualModelVLLMHostError(f"{name} must be a non-empty string")
+        if self.source_issue != VLLM_REASONING_PROOF_SOURCE_ISSUE:
+            raise ActualModelVLLMHostError(
+                "vLLM reasoning proof source_issue is not the canonical provider owner"
+            )
+        if self.source_comment_id != VLLM_REASONING_PROOF_SOURCE_COMMENT:
+            raise ActualModelVLLMHostError(
+                "vLLM reasoning proof source_comment_id is not the frozen R3B evidence"
+            )
+        if not isinstance(self.off_probe, VLLMReasoningProbeEvidence):
+            raise TypeError("off_probe must be VLLMReasoningProbeEvidence")
+        if not isinstance(self.bounded_probe, VLLMReasoningProbeEvidence):
+            raise TypeError("bounded_probe must be VLLMReasoningProbeEvidence")
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedVLLMHostRun:
+    plan: VLLMScreeningPlan
+    screening_condition_id: str
+    condition: VLLMScreeningCondition
+    target: ActualModelRepositorySnapshotTarget
+    snapshot_verification: ActualModelRepositorySnapshotVerification
+    reasoning_capability: VLLMReasoningCapabilityAttestation
+    scenario_set: ActualModelScenarioSet
+    fixture_root: Path
+    provider: OpenAICompatibleProvider
+    manifest: ActualModelRunManifest
+    binding: ActualModelVLLMExecutionBinding
+    scenario_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class VLLMHostRunArtifact:
+    scenario_id: str
+    execution_id: str
+    run_id: str
+    artifact_path: str
+    boundary_verdict_id: str
+    boundary_outcome: str
+    boundary_artifact_path: str
+
+    def to_mapping(self) -> dict[str, str]:
+        return {
+            "scenario_id": self.scenario_id,
+            "execution_id": self.execution_id,
+            "run_id": self.run_id,
+            "artifact_path": self.artifact_path,
+            "boundary_verdict_id": self.boundary_verdict_id,
+            "boundary_outcome": self.boundary_outcome,
+            "boundary_artifact_path": self.boundary_artifact_path,
+        }
+
+
+def load_vllm_screening_plan(path: str | Path) -> VLLMScreeningPlan:
+    mapping = _load_json_mapping(path, label="vLLM screening plan")
+    _require_exact_keys(
+        mapping,
+        {
+            "format_version",
+            "screening_id",
+            "target_id",
+            "effective_context_window",
+            "decoding",
+            "supported_decoding_controls",
+            "execution_path",
+            "continuity_runtime",
+            "scenario_ids",
+            "conditions",
+        },
+        "vLLM screening plan",
+    )
+    decoding = _mapping(mapping["decoding"], "decoding")
+    _require_exact_keys(decoding, {"temperature", "top_p", "seed"}, "decoding")
+    continuity = _mapping(mapping["continuity_runtime"], "continuity_runtime")
+    _require_exact_keys(
+        continuity,
+        {"max_items", "lifetime_revisions"},
+        "continuity_runtime",
+    )
+    conditions_raw = _mapping(mapping["conditions"], "conditions")
+    if tuple(conditions_raw) != VLLM_SCREENING_CONDITION_IDS:
+        raise ActualModelVLLMHostError(
+            "canonical vLLM screening conditions must be exactly A, B, C in order"
+        )
+    execution_path = _string(mapping["execution_path"], "execution_path")
+    conditions: dict[str, VLLMScreeningCondition] = {}
+    for key, value in conditions_raw.items():
+        conditions[key] = _parse_screening_condition(
+            value,
+            label=f"conditions.{key}",
+            execution_path=execution_path,
+        )
+    controls = _list(mapping["supported_decoding_controls"], "supported_decoding_controls")
+    scenarios = _list(mapping["scenario_ids"], "scenario_ids")
+    try:
+        return VLLMScreeningPlan(
+            format_version=_integer(mapping["format_version"], "format_version"),
+            screening_id=_string(mapping["screening_id"], "screening_id"),
+            target_id=_string(mapping["target_id"], "target_id"),
+            effective_context_window=_integer(
+                mapping["effective_context_window"],
+                "effective_context_window",
+            ),
+            temperature=_optional_number(decoding["temperature"], "decoding.temperature"),
+            top_p=_optional_number(decoding["top_p"], "decoding.top_p"),
+            seed=_optional_integer(decoding["seed"], "decoding.seed"),
+            supported_decoding_controls=tuple(
+                _string(value, f"supported_decoding_controls[{index}]")
+                for index, value in enumerate(controls)
+            ),
+            execution_path=execution_path,
+            continuity_runtime=ExplicitContinuityRuntimeConfiguration(
+                max_items=_integer(
+                    continuity["max_items"],
+                    "continuity_runtime.max_items",
+                ),
+                lifetime_revisions=_integer(
+                    continuity["lifetime_revisions"],
+                    "continuity_runtime.lifetime_revisions",
+                ),
+            ),
+            scenario_ids=tuple(
+                _string(value, f"scenario_ids[{index}]")
+                for index, value in enumerate(scenarios)
+            ),
+            conditions=conditions,
+        )
+    except (TypeError, ValueError) as exc:
+        if isinstance(exc, ActualModelVLLMHostError):
+            raise
+        raise ActualModelVLLMHostError(f"invalid vLLM screening plan: {exc}") from exc
+
+
+def load_vllm_reasoning_probe_proof(path: str | Path) -> VLLMReasoningProbeProof:
+    mapping = _load_json_mapping(path, label="vLLM reasoning probe proof")
+    _require_exact_keys(
+        mapping,
+        {
+            "format_version",
+            "proof_id",
+            "source_issue",
+            "source_comment_id",
+            "target_id",
+            "target_revision",
+            "backend_version",
+            "request_model",
+            "reasoning_parser",
+            "template_thinking_control",
+            "off_probe",
+            "bounded_probe",
+        },
+        "vLLM reasoning probe proof",
+    )
+    try:
+        return VLLMReasoningProbeProof(
+            format_version=_integer(mapping["format_version"], "format_version"),
+            proof_id=_string(mapping["proof_id"], "proof_id"),
+            source_issue=_integer(mapping["source_issue"], "source_issue"),
+            source_comment_id=_integer(
+                mapping["source_comment_id"], "source_comment_id"
+            ),
+            target_id=_string(mapping["target_id"], "target_id"),
+            target_revision=_string(mapping["target_revision"], "target_revision"),
+            backend_version=_string(mapping["backend_version"], "backend_version"),
+            request_model=_string(mapping["request_model"], "request_model"),
+            reasoning_parser=_string(mapping["reasoning_parser"], "reasoning_parser"),
+            template_thinking_control=_string(
+                mapping["template_thinking_control"],
+                "template_thinking_control",
+            ),
+            off_probe=_parse_probe(mapping["off_probe"], "off_probe"),
+            bounded_probe=_parse_probe(mapping["bounded_probe"], "bounded_probe"),
+        )
+    except (TypeError, ValueError) as exc:
+        if isinstance(exc, ActualModelVLLMHostError):
+            raise
+        raise ActualModelVLLMHostError(
+            f"invalid vLLM reasoning probe proof: {exc}"
+        ) from exc
+
+
+def acquire_vllm_reasoning_capability(
+    *,
+    proof: VLLMReasoningProbeProof,
+    target: ActualModelRepositorySnapshotTarget,
+    base_url: str,
+    api_key: str | None,
+    fetch_json: FetchJSON | None = None,
+) -> VLLMReasoningCapabilityAttestation:
+    """Re-bind frozen R3B probe facts to the exact live backend/model identity."""
+
+    if not isinstance(proof, VLLMReasoningProbeProof):
+        raise TypeError("proof must be VLLMReasoningProbeProof")
+    if not isinstance(target, ActualModelRepositorySnapshotTarget):
+        raise TypeError("target must be ActualModelRepositorySnapshotTarget")
+    if proof.target_id != target.target_id or proof.target_revision != target.revision:
+        raise ActualModelVLLMHostError(
+            "vLLM reasoning proof does not match the frozen target"
+        )
+    version_url, models_url = _vllm_attestation_urls(base_url)
+    loader = fetch_json or _fetch_json
+    try:
+        version_response = loader(version_url, api_key)
+        models_response = loader(models_url, api_key)
+        backend = attest_vllm_backend(
+            request_model=proof.request_model,
+            version_response=version_response,
+            models_response=models_response,
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        if isinstance(exc, ActualModelVLLMHostError):
+            raise
+        raise ActualModelVLLMHostError(
+            f"cannot attest live vLLM backend identity: {exc}"
+        ) from exc
+    if backend.version != proof.backend_version:
+        raise ActualModelVLLMHostError(
+            "live vLLM version does not match the frozen reasoning probe proof"
+        )
+    try:
+        return attest_vllm_reasoning_capabilities(
+            backend_attestation=backend,
+            target=target,
+            reasoning_parser=proof.reasoning_parser,
+            template_thinking_control=proof.template_thinking_control,
+            off_probe=proof.off_probe,
+            bounded_probe=proof.bounded_probe,
+        )
+    except (TypeError, ValueError) as exc:
+        raise ActualModelVLLMHostError(
+            f"cannot reconstruct vLLM reasoning capability: {exc}"
+        ) from exc
+
+
+def prepare_vllm_screening_condition(
+    *,
+    plan: VLLMScreeningPlan,
+    condition_id: str,
+    proof_path: str | Path,
+    repo_root: str | Path,
+    snapshot_root: str | Path,
+    relaylm_commit: str,
+    base_url: str,
+    api_key: str | None,
+    replicate_id: str = "0",
+    fetch_json: FetchJSON | None = None,
+) -> PreparedVLLMHostRun:
+    root = Path(repo_root).resolve()
+    _verify_clean_exact_repo(root=root, expected_commit=relaylm_commit)
+    if condition_id not in plan.conditions:
+        raise ActualModelVLLMHostError(
+            f"unknown vLLM screening condition: {condition_id}"
+        )
+    condition = plan.conditions[condition_id]
+    target = load_actual_model_repository_snapshot_target(
+        root / CANONICAL_VLLM_TARGET_PATH
+    )
+    if target.target_id != plan.target_id:
+        raise ActualModelVLLMHostError(
+            "screening target_id does not match the canonical frozen target"
+        )
+    try:
+        snapshot_verification = verify_actual_model_repository_snapshot(
+            target=target,
+            snapshot_root=snapshot_root,
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        raise ActualModelVLLMHostError(
+            f"cannot verify vLLM repository snapshot: {exc}"
+        ) from exc
+    proof = load_vllm_reasoning_probe_proof(proof_path)
+    capability = acquire_vllm_reasoning_capability(
+        proof=proof,
+        target=target,
+        base_url=base_url,
+        api_key=api_key,
+        fetch_json=fetch_json,
+    )
+
+    scenario_set = load_actual_model_scenario_set(root / CANONICAL_SCENARIO_SET_PATH)
+    fixture_root = root / CANONICAL_FIXTURE_PATH
+    fixture_revision = character_fixture_revision(fixture_root)
+    _validate_scenarios(plan=plan, scenario_set=scenario_set)
+
+    provider_type: type[OpenAICompatibleProvider] = OpenAICompatibleProvider
+    if condition.cognition_execution.mode == "two_pass":
+        provider_type = OpenAICompatibleTwoPassProvider
+    provider = provider_type(
+        base_url=base_url,
+        model=proof.request_model,
+        api_key=api_key,
+        decoding_config=plan.decoding_config,
+        decoding_capabilities=plan.decoding_capabilities,
+        vllm_reasoning_capability=capability,
+    )
+    try:
+        identity = describe_openai_compatible_provider(provider)
+        manifest = ActualModelRunManifest(
+            relaylm_commit=relaylm_commit,
+            character_fixture_id=scenario_set.character_fixture_id,
+            character_fixture_revision=fixture_revision,
+            provider_identity=vllm_manifest_provider_identity(capability),
+            adapter_identity=identity.adapter_identity,
+            model_artifact=target.model_artifact_identity,
+            tokenizer_identity=target.tokenizer_identity,
+            effective_context_window=plan.effective_context_window,
+            decoding_configuration=tuple(
+                sorted(identity.effective_decoding_configuration.items())
+            ),
+            structured_output_schema_version=CANONICAL_STRUCTURED_OUTPUT_SCHEMA_VERSION,
+            scenario_set_version=scenario_set.scenario_set_version,
+            condition_id=condition.condition_id,
+            budgets=ExplicitBudgetConfiguration(),
+            continuity_runtime=plan.continuity_runtime,
+            execution_path=plan.execution_path,
+            restart_boundary="none",
+            seed=plan.seed,
+            provider_capabilities=identity.provider_capabilities,
+            replicate_id=replicate_id,
+            cognition_execution=condition.cognition_execution,
+            cognition_pass_requests=condition.pass_requests,
+        )
+        binding = bind_vllm_execution_condition(
+            target=target,
+            snapshot_verification=snapshot_verification,
+            snapshot_root=snapshot_root,
+            reasoning_capability=capability,
+            provider=provider,
+            manifest=manifest,
+            configured_context_window=plan.effective_context_window,
+        )
+    except Exception:
+        _close_provider_best_effort(provider)
+        raise
+    return PreparedVLLMHostRun(
+        plan=plan,
+        screening_condition_id=condition_id,
+        condition=condition,
+        target=target,
+        snapshot_verification=snapshot_verification,
+        reasoning_capability=capability,
+        scenario_set=scenario_set,
+        fixture_root=fixture_root,
+        provider=provider,
+        manifest=manifest,
+        binding=binding,
+        scenario_ids=plan.scenario_ids,
+    )
+
+
+async def execute_vllm_host_run(
+    *,
+    prepared: PreparedVLLMHostRun,
+    snapshot_root: str | Path,
+    workspace_root: str | Path,
+    artifact_root: str | Path,
+) -> tuple[VLLMHostRunArtifact, ...]:
+    workspace_base = Path(workspace_root)
+    artifact_base = Path(artifact_root)
+    results: list[VLLMHostRunArtifact] = []
+    try:
+        for scenario_id in prepared.scenario_ids:
+            result = await run_vllm_actual_model_scenario_definition(
+                target=prepared.target,
+                snapshot_verification=prepared.snapshot_verification,
+                snapshot_root=snapshot_root,
+                reasoning_capability=prepared.reasoning_capability,
+                configured_context_window=prepared.plan.effective_context_window,
+                scenario_set=prepared.scenario_set,
+                scenario_id=scenario_id,
+                fixture_root=prepared.fixture_root,
+                workspace_root=(
+                    workspace_base
+                    / prepared.plan.screening_id
+                    / prepared.screening_condition_id
+                    / prepared.manifest.replicate_id
+                    / scenario_id
+                ),
+                provider=prepared.provider,
+                manifest=prepared.manifest,
+            )
+            path = write_vllm_actual_model_execution_result(
+                result=result,
+                artifact_root=artifact_base,
+            )
+            verdict = evaluate_actual_model_deterministic_boundary(
+                result=result.execution,
+            )
+            boundary_path = write_actual_model_deterministic_boundary_verdict(
+                verdict=verdict,
+                artifact_root=artifact_base,
+            )
+            results.append(
+                VLLMHostRunArtifact(
+                    scenario_id=scenario_id,
+                    execution_id=result.execution_id,
+                    run_id=result.run_id,
+                    artifact_path=str(path),
+                    boundary_verdict_id=verdict.verdict_id,
+                    boundary_outcome=verdict.outcome,
+                    boundary_artifact_path=str(boundary_path),
+                )
+            )
+    finally:
+        await prepared.provider.aclose()
+    return tuple(results)
+
+
+def _parse_screening_condition(
+    value: object,
+    *,
+    label: str,
+    execution_path: str,
+) -> VLLMScreeningCondition:
+    mapping = _mapping(value, label)
+    _require_exact_keys(
+        mapping,
+        {"condition_id", "cognition_execution", "pass_requests"},
+        label,
+    )
+    mode = _string(mapping["cognition_execution"], f"{label}.cognition_execution")
+    if mode == "single_pass":
+        cognition_execution = CognitionExecutionEvidenceIdentity.single_pass(
+            execution_path=execution_path
+        )
+    elif mode == "two_pass":
+        cognition_execution = CognitionExecutionEvidenceIdentity.two_pass(
+            execution_path=execution_path
+        )
+    else:
+        raise ActualModelVLLMHostError(
+            f"{label}.cognition_execution must be single_pass or two_pass"
+        )
+    requests = _parse_pass_requests(mapping["pass_requests"], f"{label}.pass_requests")
+    return VLLMScreeningCondition(
+        condition_id=_string(mapping["condition_id"], f"{label}.condition_id"),
+        cognition_execution=cognition_execution,
+        pass_requests=requests,
+    )
+
+
+def _parse_pass_requests(value: object, label: str) -> ActualModelCognitionPassRequests:
+    mapping = _mapping(value, label)
+    _require_exact_keys(mapping, {"single_pass", "pass1", "pass2"}, label)
+    single_raw = mapping["single_pass"]
+    pass1_raw = mapping["pass1"]
+    pass2_raw = mapping["pass2"]
+    try:
+        if single_raw is not None:
+            if pass1_raw is not None or pass2_raw is not None:
+                raise ActualModelVLLMHostError(
+                    f"{label} single_pass cannot coexist with pass1/pass2"
+                )
+            return ActualModelCognitionPassRequests.single_pass(
+                _parse_pass_request(single_raw, f"{label}.single_pass")
+            )
+        if pass1_raw is None or pass2_raw is None:
+            raise ActualModelVLLMHostError(
+                f"{label} must contain single_pass or both pass1/pass2"
+            )
+        return ActualModelCognitionPassRequests.two_pass(
+            pass1=_parse_pass_request(pass1_raw, f"{label}.pass1"),
+            pass2=_parse_pass_request(pass2_raw, f"{label}.pass2"),
+        )
+    except (TypeError, ValueError) as exc:
+        if isinstance(exc, ActualModelVLLMHostError):
+            raise
+        raise ActualModelVLLMHostError(f"invalid {label}: {exc}") from exc
+
+
+def _parse_pass_request(value: object, label: str) -> CognitionPassRequest:
+    mapping = _mapping(value, label)
+    _require_exact_keys(
+        mapping,
+        {
+            "reasoning_mode",
+            "reasoning_budget",
+            "temperature",
+            "top_p",
+            "max_output_tokens",
+        },
+        label,
+    )
+    mode_raw = mapping["reasoning_mode"]
+    mode = None
+    if mode_raw is not None:
+        try:
+            mode = CognitionReasoningMode(_string(mode_raw, f"{label}.reasoning_mode"))
+        except ValueError as exc:
+            raise ActualModelVLLMHostError(
+                f"{label}.reasoning_mode is unsupported"
+            ) from exc
+    return CognitionPassRequest(
+        reasoning_mode=mode,
+        reasoning_budget=_optional_integer(
+            mapping["reasoning_budget"], f"{label}.reasoning_budget"
+        ),
+        temperature=_optional_number(mapping["temperature"], f"{label}.temperature"),
+        top_p=_optional_number(mapping["top_p"], f"{label}.top_p"),
+        max_output_tokens=_optional_integer(
+            mapping["max_output_tokens"], f"{label}.max_output_tokens"
+        ),
+    )
+
+
+def _parse_probe(value: object, label: str) -> VLLMReasoningProbeEvidence:
+    mapping = _mapping(value, label)
+    _require_exact_keys(
+        mapping,
+        {
+            "wire_controls",
+            "http_status",
+            "accepted",
+            "effect_proven",
+            "repeatable",
+            "activation_applied",
+            "template_kwargs",
+            "ambiguous",
+        },
+        label,
+    )
+    wire = _mapping(mapping["wire_controls"], f"{label}.wire_controls")
+    unknown_wire = set(wire) - {"reasoning_effort", "thinking_token_budget"}
+    if unknown_wire:
+        raise ActualModelVLLMHostError(
+            f"{label}.wire_controls has unknown fields: " + ", ".join(sorted(unknown_wire))
+        )
+    template = _mapping(mapping["template_kwargs"], f"{label}.template_kwargs")
+    template_mapping: list[tuple[str, str | int | bool]] = []
+    for key, raw in template.items():
+        if not isinstance(key, str) or not key.strip():
+            raise ActualModelVLLMHostError(
+                f"{label}.template_kwargs keys must be non-empty strings"
+            )
+        if not isinstance(raw, (str, int, bool)):
+            raise ActualModelVLLMHostError(
+                f"{label}.template_kwargs values must be strings, integers, or booleans"
+            )
+        template_mapping.append((key, raw))
+    controls = VLLMReasoningWireControls(
+        reasoning_effort=(
+            _string(wire["reasoning_effort"], f"{label}.wire_controls.reasoning_effort")
+            if "reasoning_effort" in wire
+            else None
+        ),
+        thinking_token_budget=(
+            _integer(
+                wire["thinking_token_budget"],
+                f"{label}.wire_controls.thinking_token_budget",
+            )
+            if "thinking_token_budget" in wire
+            else None
+        ),
+    )
+    return VLLMReasoningProbeEvidence(
+        wire_controls=controls,
+        http_status=_integer(mapping["http_status"], f"{label}.http_status"),
+        accepted=_boolean(mapping["accepted"], f"{label}.accepted"),
+        effect_proven=_boolean(
+            mapping["effect_proven"], f"{label}.effect_proven"
+        ),
+        repeatable=_boolean(mapping["repeatable"], f"{label}.repeatable"),
+        activation_applied=_boolean(
+            mapping["activation_applied"], f"{label}.activation_applied"
+        ),
+        template_kwargs=tuple(sorted(template_mapping)),
+        ambiguous=_boolean(mapping["ambiguous"], f"{label}.ambiguous"),
+    )
+
+
+def _validate_scenarios(
+    *, plan: VLLMScreeningPlan, scenario_set: ActualModelScenarioSet
+) -> None:
+    for scenario_id in plan.scenario_ids:
+        try:
+            definition = scenario_set.scenario(scenario_id)
+        except KeyError as exc:
+            raise ActualModelVLLMHostError(
+                f"screening scenario is not in canonical foundation-v2: {scenario_id}"
+            ) from exc
+        if definition.scenario.family == "restart_quality":
+            raise ActualModelVLLMHostError(
+                "vLLM COGP5 screening does not include restart scenarios"
+            )
+
+
+def _vllm_attestation_urls(base_url: str) -> tuple[str, str]:
+    parsed = urlsplit(base_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ActualModelVLLMHostError("vLLM base_url must be an HTTP(S) URL")
+    origin = urlunsplit((parsed.scheme, parsed.netloc, "", "", "")).rstrip("/")
+    return f"{origin}/version", f"{origin}/v1/models"
+
+
+def _fetch_json(url: str, api_key: str | None) -> object:
+    headers = {"Accept": "application/json"}
+    if api_key is not None:
+        headers["Authorization"] = f"Bearer {api_key}"
+    request = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            if response.status != 200:
+                raise ActualModelVLLMHostError(
+                    f"vLLM identity request returned HTTP {response.status}"
+                )
+            return json.loads(response.read().decode("utf-8"))
+    except (
+        urllib.error.HTTPError,
+        urllib.error.URLError,
+        TimeoutError,
+        UnicodeError,
+        json.JSONDecodeError,
+    ) as exc:
+        raise ActualModelVLLMHostError(
+            f"vLLM identity request failed: {exc}"
+        ) from exc
+
+
+def _verify_clean_exact_repo(*, root: Path, expected_commit: str) -> None:
+    if not root.is_dir():
+        raise ActualModelVLLMHostError("repo_root must be an existing directory")
+    try:
+        head = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        status = subprocess.run(
+            ["git", "-C", str(root), "status", "--porcelain"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise ActualModelVLLMHostError(
+            f"cannot verify host repository snapshot: {exc}"
+        ) from exc
+    if head != expected_commit:
+        raise ActualModelVLLMHostError(
+            f"host repository HEAD does not match relaylm_commit: {head}"
+        )
+    if status:
+        raise ActualModelVLLMHostError(
+            "host repository must be clean, including untracked files, before evidence execution"
+        )
+
+
+def _close_provider_best_effort(provider: OpenAICompatibleProvider) -> None:
+    client = getattr(provider, "_client", None)
+    close = getattr(client, "close", None)
+    if callable(close):
+        try:
+            close()
+        except Exception:
+            pass
+
+
+def _load_json_mapping(path: str | Path, *, label: str) -> Mapping[str, object]:
+    try:
+        raw = json.loads(
+            Path(path).read_text(encoding="utf-8"),
+            object_pairs_hook=_unique_object,
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ActualModelVLLMHostError(f"cannot load {label}: {exc}") from exc
+    return _mapping(raw, label)
+
+
+def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ActualModelVLLMHostError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def _mapping(value: object, label: str) -> Mapping[str, object]:
+    if not isinstance(value, Mapping):
+        raise ActualModelVLLMHostError(f"{label} must be a JSON object")
+    if not all(isinstance(key, str) for key in value):
+        raise ActualModelVLLMHostError(f"{label} keys must be strings")
+    return value
+
+
+def _list(value: object, label: str) -> list[object]:
+    if not isinstance(value, list):
+        raise ActualModelVLLMHostError(f"{label} must be a JSON array")
+    return value
+
+
+def _require_exact_keys(
+    mapping: Mapping[str, object], expected: set[str], label: str
+) -> None:
+    observed = set(mapping)
+    missing = sorted(expected - observed)
+    unknown = sorted(observed - expected)
+    if missing:
+        raise ActualModelVLLMHostError(
+            f"{label} is missing fields: " + ", ".join(missing)
+        )
+    if unknown:
+        raise ActualModelVLLMHostError(
+            f"{label} has unknown fields: " + ", ".join(unknown)
+        )
+
+
+def _string(value: object, label: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ActualModelVLLMHostError(f"{label} must be a non-empty string")
+    return value
+
+
+def _integer(value: object, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ActualModelVLLMHostError(f"{label} must be an integer")
+    return value
+
+
+def _optional_integer(value: object, label: str) -> int | None:
+    if value is None:
+        return None
+    return _integer(value, label)
+
+
+def _optional_number(value: object, label: str) -> int | float | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ActualModelVLLMHostError(f"{label} must be a number or null")
+    return value
+
+
+def _boolean(value: object, label: str) -> bool:
+    if not isinstance(value, bool):
+        raise ActualModelVLLMHostError(f"{label} must be boolean")
+    return value
