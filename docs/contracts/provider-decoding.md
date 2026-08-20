@@ -72,6 +72,29 @@ Reasoning state must not be inferred from output style, hidden model behavior, o
 
 This boundary is intentionally capability-conservative. Future reasoning carriage, if product requirements justify it, must be added as an explicit provider-owned extension rather than as evaluation-only metadata or an untyped passthrough field.
 
+## Machine-readable cognition capability facts
+
+`OpenAICompatibleCognitionCapabilityFacts` exposes the current adapter facts needed by the COGP consumer boundary without changing the stable P4 provider identity or its historical serialization.
+
+The facts are content-free and separate from provider request configuration. For the current canonical adapter they report:
+
+```text
+structured_output          = true
+streaming                  = true
+reasoning_modes            = []
+bounded_reasoning_budget   = false
+```
+
+The view also exposes the provider decoding controls that have an exact current COGP per-pass semantic match. At present those are `temperature` and `top_p` when they are declared supported by `OpenAICompatibleDecodingCapabilities`.
+
+`seed` remains provider-level reproducibility configuration and is deliberately not promoted into the current per-pass COGP vocabulary. `max_output_tokens` is not currently carried by this adapter and is therefore not reported as a supported per-pass control.
+
+The base OpenAI-compatible provider and the existing two-pass extension report the same provider-owned capability facts because the two-pass extension changes semantic orchestration methods, not the underlying Chat Completions request capability.
+
+This facts view is intentionally separate from `OpenAICompatibleProviderIdentity.to_mapping()`. Adding the consumer-facing bridge therefore does not retroactively change historical provider identity or actual-model run identity. Consumers may bind the facts separately when their own evidence contract requires capability-resolution provenance.
+
+The provider owner supplies these facts; COGP remains responsible for mapping them into its normalized `CognitionExecutionCapabilities` consumer view and for classifying a requested option as applied, omitted, or unsupported.
+
 ## Buffered / streaming parity
 
 The same validated decoding mapping is added to both buffered and streaming Chat Completions request bodies. Streaming does not alter decoding configuration and does not introduce a second semantic generation.
@@ -110,4 +133,5 @@ Calibration (#1388) remains the sole owner of any future canonical numeric decod
 - effective decoding evidence contains no secrets or semantic payload;
 - exactly one ordinary semantic model generation remains authoritative;
 - reasoning/thinking is unsupported unless the canonical adapter explicitly carries and attests it;
+- provider-owned cognition capability facts do not alter historical P4 provider identity;
 - provider decoding carriage does not become State, Continuity, Retrieval, Context Compiler, Cognitive Budget, evaluation, or calibration authority.
