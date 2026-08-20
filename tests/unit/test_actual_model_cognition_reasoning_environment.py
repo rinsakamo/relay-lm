@@ -9,7 +9,6 @@ import pytest
 
 import relaylm.actual_model_host_runner as host_runner
 from relaylm.actual_model_evaluation import (
-    ActualModelReasoningEnvironmentIdentity,
     ActualModelRunManifest,
     ActualModelScenario,
     ExplicitBudgetConfiguration,
@@ -19,6 +18,10 @@ from relaylm.actual_model_host_runner import (
     ActualModelHostRunnerError,
     load_actual_model_host_condition,
     prepare_actual_model_host_run,
+)
+from relaylm.actual_model_reasoning import (
+    ActualModelReasoningEnvironmentIdentity,
+    ActualModelReasoningRunManifest,
 )
 from relaylm.actual_model_targets import (
     ActualModelArtifactVerification,
@@ -49,26 +52,22 @@ def _identity(setting: str = "off") -> ActualModelReasoningEnvironmentIdentity:
     )
 
 
-def _manifest(
-    *,
-    reasoning_environment: ActualModelReasoningEnvironmentIdentity | None = None,
-) -> ActualModelRunManifest:
-    return ActualModelRunManifest(
-        relaylm_commit="a" * 40,
-        character_fixture_id="fixture",
-        character_fixture_revision="sha256:fixture",
-        provider_identity="provider",
-        adapter_identity="adapter",
-        model_artifact="model@sha256:111",
-        tokenizer_identity="tokenizer",
-        effective_context_window=8192,
-        decoding_configuration=(),
-        structured_output_schema_version="schema-v1",
-        scenario_set_version="scenario-set-v1",
-        condition_id="condition",
-        budgets=ExplicitBudgetConfiguration(),
-        reasoning_environment=reasoning_environment,
-    )
+def _manifest_kwargs() -> dict[str, object]:
+    return {
+        "relaylm_commit": "a" * 40,
+        "character_fixture_id": "fixture",
+        "character_fixture_revision": "sha256:fixture",
+        "provider_identity": "provider",
+        "adapter_identity": "adapter",
+        "model_artifact": "model@sha256:111",
+        "tokenizer_identity": "tokenizer",
+        "effective_context_window": 8192,
+        "decoding_configuration": (),
+        "structured_output_schema_version": "schema-v1",
+        "scenario_set_version": "scenario-set-v1",
+        "condition_id": "condition",
+        "budgets": ExplicitBudgetConfiguration(),
+    }
 
 
 def _scenario() -> ActualModelScenario:
@@ -130,11 +129,14 @@ def _verification() -> ActualModelArtifactVerification:
     )
 
 
-def test_reasoning_environment_is_optional_and_preserves_historical_run_identity() -> None:
-    historical = _manifest()
+def test_reasoning_manifest_extends_identity_without_changing_historical_manifest_shape() -> None:
+    historical = ActualModelRunManifest(**_manifest_kwargs())
     assert "reasoning_environment" not in historical.to_mapping()
 
-    explicit = _manifest(reasoning_environment=_identity())
+    explicit = ActualModelReasoningRunManifest(
+        **_manifest_kwargs(),
+        reasoning_environment=_identity(),
+    )
     assert explicit.to_mapping()["reasoning_environment"]["effective_setting"] == "off"
     assert stable_actual_model_run_id(
         manifest=historical,
@@ -185,6 +187,7 @@ def test_v5_preparation_attests_and_binds_reasoning_environment(
         serving_proof_path=tmp_path / "serving-proof.json",
     )
     try:
+        assert isinstance(prepared.manifest, ActualModelReasoningRunManifest)
         assert prepared.manifest.reasoning_environment == _identity()
         assert prepared.manifest.to_mapping()["reasoning_environment"]["live_default"] == "off"
     finally:
