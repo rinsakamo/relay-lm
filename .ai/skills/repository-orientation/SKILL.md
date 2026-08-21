@@ -14,6 +14,7 @@ required_authority:
   - .ai/README.md
   - .ai/agent-contract.yaml
   - docs/reference/development-workflow.md
+  - The semantic-owner declaration selected under .ai/authority/ for the requested work.
 required_live_facts:
   - repository_head
   - open_pull_requests
@@ -32,7 +33,7 @@ This skill is a repository-native procedure, not a semantic authority. Apply the
 3. Classify the requested work by semantic responsibility. Locate the matching declaration under `.ai/authority/` and confirm that no open transaction is already writing the same semantic owner or unavoidable shared write surface.
 4. Read that owner's current canonical surfaces. Load only dependencies, evidence, annotations, or external sources that can materially change the decision.
 5. When a decision depends on mutable behavior outside the repository, apply the `upstream` freshness class from `.ai/agent-contract.yaml`: verify the current primary upstream source at material use rather than relying on remembered behavior or a secondary summary.
-6. Classify the intended transaction before any write: semantic change, behavior-preserving implementation, documentation/repository-only change, evidence execution, or another class already defined by current workflow authority.
+6. Classify the intended transaction before any write by applying the current development workflow and pull-request contract. Do not invent or redefine a transaction class in this skill.
 7. Produce a concise orientation record for the next procedure or implementing agent. The record is working state only and becomes historical at the next transaction boundary.
 
 Recommended record shape:
