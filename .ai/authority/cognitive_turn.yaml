@@ -1,6 +1,6 @@
 schema_version: 1
 id: cognitive_turn
-summary: Ordinary-turn cognition execution policy, per-pass intent and resolved request carriage, canonical single/two-pass runtime, and non-authoritative shadow evidence carriage over unchanged deterministic State/Continuity authority.
+summary: Ordinary-turn cognition execution policy, per-pass intent and resolved request carriage, RelayLM-owned single-pass combined IR and two-pass proposal IR parsing/type construction, canonical single/two-pass runtime, and non-authoritative shadow evidence carriage over unchanged deterministic State/Continuity authority.
 owner_issue: 1533
 canonical_surfaces:
 - docs/contracts/cognition-execution-policy.md
@@ -18,6 +18,7 @@ implementation:
 - src/relaylm/turn.py
 - src/relaylm/two_pass_turn.py
 - src/relaylm/shadow_turn.py
+- src/relaylm/providers/openai_compatible.py
 - src/relaylm/providers/openai_compatible_two_pass.py
 tests:
 - tests/unit/test_cognition_execution_policy.py
@@ -26,6 +27,7 @@ tests:
 - tests/unit/test_cognition_capability_normalization.py
 - tests/unit/test_cognition_execution_evidence_identity.py
 - tests/unit/test_cognition_shadow_two_pass.py
+- tests/unit/test_openai_compatible_single_pass_structure_ownership.py
 - tests/unit/test_openai_compatible_shadow_two_pass.py
 - tests/unit/test_cognition_two_pass_turn.py
 - tests/unit/test_cognition_two_pass_guards.py
