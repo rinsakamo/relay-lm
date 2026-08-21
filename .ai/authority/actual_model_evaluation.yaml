@@ -1,6 +1,6 @@
 schema_version: 1
 id: actual_model_evaluation
-summary: Actual-model execution, shared/backend host orchestration, resolved cognition request carriage, real trajectory vLLM capacity acquisition, immutable exact-screening-coverage capacity-evidence-gated vLLM screening, staged topology-first/reasoning-escalation fast screening with provider timing observations and citable execution-bound timing sidecars, exact vLLM/LM Studio serving-tokenizer evidence, backend execution binding, and reproducible evaluation evidence.
+summary: Actual-model execution/evidence authority for Core 1.0 two-pass-reference qualification, Pass-2-only reasoning escalation on demonstrated semantic need, exact provider/model capability binding, capacity/timing evidence, and later optional single-pass optimization comparisons against a qualified reference.
 owner_issue: 1386
 canonical_surfaces:
 - docs/reference/actual-model-cognition-execution-evidence.md
@@ -117,18 +117,18 @@ evidence:
   - evaluation/actual_model/targets/gemma-4-12b-it-qat-w4a16-vllm-v1.json
 - id: actual-model-vllm-reasoning-proof-v1
   summary: >-
-    Machine-readable projection of the already-attested effective R3B OFF and
-    bounded(16) vLLM reasoning controls, rebound to fresh live backend identity
-    before each product-quality run without repeating parameter exploration.
+    Machine-readable projection of the already-attested effective OFF and
+    bounded vLLM reasoning controls, rebound to fresh live backend identity
+    before product-quality runs without repeating unsupported parameter search.
   surfaces:
   - evaluation/actual_model/attestations/gemma-4-12b-it-qat-w4a16-vllm-reasoning-v1.json
 - id: actual-model-cogp5-vllm-screening-v1
   summary: >-
-    Historical pre-capacity-calibration COGP5 plan containing A single-pass
-    OFF, B two-pass OFF/OFF, and C two-pass OFF/bounded(16), over two
-    representative foundation scenarios. Fast screening now executes A/B first
-    and exposes C only when structured semantic quality is insufficient. The
-    historical artifact remains loadable and is not rewritten.
+    Immutable historical plan containing A single-pass OFF, B two-pass OFF/OFF,
+    and C two-pass Pass-2 escalation. Current Core 1.0 fast screening uses B as
+    the two-pass reference baseline and exposes C only when Pass-2 semantic
+    quality is insufficient. A remains historical/optional optimization data and
+    is not a current first-stage condition merely because it exists in the file.
   surfaces:
   - evaluation/actual_model/screenings/cogp5-vllm-screening-v1.json
 - id: actual-model-crystallization-quality-v1
