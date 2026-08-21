@@ -24,6 +24,24 @@ def test_every_current_document_has_exactly_one_semantic_owner() -> None:
     assert documentation_coverage_errors(REPOSITORY_ROOT) == ()
 
 
+def test_every_production_python_module_has_a_semantic_owner() -> None:
+    declarations = load_declarations(REPOSITORY_ROOT)
+    declared = {
+        surface
+        for declaration in declarations
+        for surface in declaration.implementation
+    }
+    production_modules = sorted(
+        path.relative_to(REPOSITORY_ROOT).as_posix()
+        for path in (REPOSITORY_ROOT / "src" / "relaylm").rglob("*.py")
+        if path.name != "__init__.py"
+    )
+
+    ownerless = tuple(path for path in production_modules if path not in declared)
+
+    assert ownerless == ()
+
+
 def test_no_hand_maintained_authority_aggregate_remains() -> None:
     for aggregate in PROHIBITED_AGGREGATES:
         assert not (REPOSITORY_ROOT / aggregate).exists()
