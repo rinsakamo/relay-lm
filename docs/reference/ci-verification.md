@@ -10,6 +10,20 @@ The core rule is:
 
 A workflow or job may implement a guarantee defined here. The existence of executable YAML does not by itself redefine what RelayLM promises.
 
+## Relationship to existing workflow references
+
+This document is the single semantic writer for what a green CI result proves and does not prove.
+
+Other `development_workflow` surfaces may name CI jobs, commands, dependency floors, packaging steps, or required-check settings while describing transaction sequencing, repository mechanics, tooling policy, or host enforcement. Those descriptions are operational references to the executable workflow, not independent CI guarantee definitions.
+
+In particular:
+
+- `docs/reference/development-workflow.md` owns when exact-head CI is required and how merge sequencing consumes those results;
+- `docs/reference/repository-practices.md` owns dependency, tooling, packaging, repository-use, and live host-enforcement practices;
+- `.github/workflows/*.yml` execute the checks.
+
+If an operational reference and this contract disagree about CI guarantee semantics, this contract is authoritative and the reference must be reconciled in the owning development-workflow transaction.
+
 ## Verification subject
 
 Every CI result is scoped to the exact subject it tested.
@@ -140,7 +154,7 @@ A CI workflow implementing a guarantee should:
 - avoid hidden network or environment assumptions when a deterministic local check can provide the same guarantee;
 - make timeouts and cancellation behavior explicit enough to avoid indefinite merge ambiguity.
 
-The current workflows implement these rules directly. Mechanical self-validation of workflow policy is a separate future enforcement transaction; this document does not claim such a validator already exists.
+The current workflows visibly implement exact-head binding, least-privilege `contents: read`, full-SHA Action pins, job timeouts, and cancellation behavior. Mechanical self-validation of workflow policy is a separate future enforcement transaction; this document does not claim such a validator already exists.
 
 ## One named gate, one named guarantee
 
