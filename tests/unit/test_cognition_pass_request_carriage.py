@@ -189,13 +189,15 @@ def test_two_pass_provider_carries_distinct_pass1_and_pass2_requests() -> None:
         async def handler(request: httpx.Request) -> httpx.Response:
             body = json.loads(request.content)
             bodies.append(body)
-            if "response_format" not in body:
+            if len(bodies) == 1:
                 return httpx.Response(
                     200,
                     json={"choices": [{"message": {"content": "hello"}}]},
                 )
-            schema_name = body["response_format"]["json_schema"]["name"]
-            return httpx.Response(200, json=_completion(schema_name))
+            return httpx.Response(
+                200,
+                json=_completion("relaylm_structured_cognition_output"),
+            )
 
         client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         provider = OpenAICompatibleTwoPassProvider(
@@ -233,9 +235,7 @@ def test_two_pass_provider_carries_distinct_pass1_and_pass2_requests() -> None:
             await client.aclose()
 
         assert "response_format" not in bodies[0]
-        assert bodies[1]["response_format"]["json_schema"]["name"] == (
-            "relaylm_structured_cognition_output"
-        )
+        assert "response_format" not in bodies[1]
         assert bodies[0]["reasoning_effort"] == "none"
         assert "thinking_token_budget" not in bodies[0]
         assert bodies[1]["thinking_token_budget"] == 64

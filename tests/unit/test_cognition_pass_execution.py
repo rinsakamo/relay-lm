@@ -114,17 +114,28 @@ def test_bounded_reasoning_budget_requires_both_mode_and_budget_capability() -> 
         resolution.require_supported()
 
 
-def test_mode_capabilities_fail_closed_before_generation() -> None:
+def test_mode_capabilities_require_provider_structured_output_only_for_legacy_modes() -> None:
     no_structured = CognitionExecutionCapabilities(
         structured_output=False,
         streaming=True,
     )
-    with pytest.raises(CognitionExecutionCapabilityError, match="structured_output"):
-        require_mode_capabilities(
-            mode=CognitionExecutionMode.TWO_PASS,
-            capabilities=no_structured,
-            streaming=False,
-        )
+
+    require_mode_capabilities(
+        mode=CognitionExecutionMode.TWO_PASS,
+        capabilities=no_structured,
+        streaming=False,
+    )
+
+    for mode in (
+        CognitionExecutionMode.SINGLE_PASS,
+        CognitionExecutionMode.SHADOW_TWO_PASS,
+    ):
+        with pytest.raises(CognitionExecutionCapabilityError, match="structured_output"):
+            require_mode_capabilities(
+                mode=mode,
+                capabilities=no_structured,
+                streaming=False,
+            )
 
     no_streaming = CognitionExecutionCapabilities(
         structured_output=True,
