@@ -1,37 +1,55 @@
 # Actual-model cognition execution evidence
 
-Status: #1386 COGP5 execution-topology and resolved per-pass request evidence bridge for RelayLM v1.
+Status: current #1386 bridge from #1533 cognition execution into reproducible actual-model evidence.
 
-This reference extends the existing Actual-model Evaluation foundation so ordinary-turn cognition topology and fully resolved per-pass generation requests can participate in reproducible evidence without replacing historical evidence or creating another evaluation architecture.
+Current Core 1.0 authority is **two-pass reference qualification first**. Historical topology-comparison artifacts remain valid for their exact old question but do not define current execution order.
 
-## Historical evidence remains immutable
+## Purpose
 
-Historical `ActualModelRunManifest` serialization remains unchanged when the newer optional fields are absent.
+This bridge makes resolved cognition topology and per-pass requests part of actual-model run identity without duplicating provider or cognition authority.
 
-When `cognition_execution` is absent, no cognition-execution key is emitted. When `cognition_pass_requests` is absent, no per-pass request key is emitted. Historical manifests therefore preserve their existing run identity.
+A citable run may distinguish:
 
-Reasoning-attested LM Studio ordinary-turn runs may additionally use the derived `ActualModelReasoningRunManifest`; only those runs emit the existing model-environment `reasoning_environment` identity.
+```text
+two_pass
+  Pass 1 request
+  Pass 2 request
 
-New cognition-policy evidence supplies an explicit COGP `CognitionExecutionEvidenceIdentity`. That topology identity participates in the run hash, so `single_pass`, `two_pass`, and `shadow_two_pass` cannot accidentally share a run identity solely because model/provider/scenario fields are otherwise equal.
+single_pass
+  single request
 
-The topology execution path must equal the manifest `execution_path`. A buffered/streaming mismatch fails before model execution.
+shadow_two_pass
+  topology identity only where current request carriage supports it
+```
+
+For Core 1.0, #1386 qualifies `two_pass` first. `single_pass` is retained for compatibility/historical replay and later optional optimization evidence.
+
+## Historical manifest compatibility
+
+Existing `ActualModelRunManifest` serialization remains unchanged when optional cognition fields are absent.
+
+When `cognition_execution` is absent, no cognition-execution field is emitted. When `cognition_pass_requests` is absent, no per-pass request field is emitted. Historical run IDs therefore remain stable.
+
+New cognition-policy evidence uses an explicit `CognitionExecutionEvidenceIdentity`, so different topologies cannot alias merely because model/provider/scenario fields are otherwise equal.
+
+The topology execution path must equal the manifest `execution_path`; mismatches fail before model execution.
 
 ## Resolved per-pass request identity
 
-`ActualModelCognitionPassRequests` records the exact fully resolved `CognitionPassRequest` values supplied to an actual-model run. It is evidence identity, not policy resolution and not provider-wire authority.
+`ActualModelCognitionPassRequests` records already-resolved `CognitionPassRequest` values. It does not resolve policy and does not prove backend application by itself.
 
-The supported shapes in this bounded bridge are:
+Supported shapes are:
 
 ```text
-single_pass:
+single_pass
   single_pass = CognitionPassRequest
 
-two_pass:
+two_pass
   pass1 = CognitionPassRequest
   pass2 = CognitionPassRequest
 ```
 
-Each recorded request preserves the exact provider-neutral fields:
+Each request preserves:
 
 ```text
 reasoning_mode
@@ -41,149 +59,166 @@ top_p
 max_output_tokens
 ```
 
-The request has already passed the COGP policy-resolution boundary: unresolved `auto` is not legal in `CognitionPassRequest`.
+Unresolved `auto` is invalid at this boundary.
 
-The request identity is optional for backward compatibility. When present it participates in `ActualModelRunManifest.to_mapping()` and therefore in `stable_actual_model_run_id(...)`. Changing Pass 2 from `off` to `bounded(64)`, for example, cannot alias to the same run ID.
+Changing an output-affecting Pass 1 or Pass 2 request changes run identity.
 
-Topology and request shape must agree. A single-pass topology cannot carry Pass 1/Pass 2 requests, and a two-pass topology cannot carry a single-pass request. `shadow_two_pass` request evidence is not implemented by this transaction and fails closed.
+Topology and request shape must agree. Unsupported combinations fail closed rather than executing with silently omitted requests.
 
-The current bridge intentionally supports only buffered execution. Streaming request evidence fails closed rather than claiming a request was carried through a Turn streaming path that is not part of the first COGP5 screening transaction.
+## Core 1.0 two-pass execution evidence
 
-## Execution-aware scenario harness
-
-`run_actual_model_scenario(...)` resolves execution topology from the manifest and forwards any recorded fully resolved request through the existing ordinary-turn runtime.
-
-### Legacy or explicit `single_pass`
-
-Without `cognition_pass_requests`, the existing ordinary-turn harness remains unchanged.
-
-With explicit request evidence, the buffered path is:
+The current reference path is:
 
 ```text
-ActualModelRunManifest.cognition_pass_requests.single_pass
-  -> run_actual_model_scenario
-  -> run_user_turn(..., pass_request=...)
-  -> canonical provider
-```
-
-The recording wrapper forwards the keyword only when a request is actually present, preserving historical generic providers that implement only the old no-request signature.
-
-### `two_pass`
-
-The harness executes the merged COGP3 response-first runtime and may carry independent resolved requests:
-
-```text
-pass1 request
+Pass 1 request
   -> run_user_turn_two_pass
   -> generate_conversation
+  -> raw visible response
 
-pass2 request
+Pass 2 request
   -> originating-turn-bound extraction
   -> generate_extraction
+  -> RelayLM-owned proposal IR parse/type construction
+  -> raw typed proposals
+  -> deterministic State/Continuity validation
 ```
 
-The per-turn execution observation still records Pass 2 terminal status (`committed`, `stale`, or `failed`), bounded failure reason, and raw valid Pass 2 proposals when produced.
+Pass 1 response becomes `raw_model.response`. Proposal arrays come from the actual Pass 2 output. Deterministic acceptance remains separate evidence owned by the existing validators.
 
-Pass 1 response becomes `raw_model.response`; proposal arrays come from the actual Pass 2 structured output. Deterministic State/Continuity fields remain owned solely by the existing validators.
+The actual-model scenario harness may await canonical Pass 2 before advancing a multi-turn evaluation trajectory so the next evaluated turn observes the accepted State/Continuity result. This evaluation ordering does not change the product runtime's response-first semantics.
 
-The harness awaits canonical Pass 2 before advancing the semantic scenario turn so the next turn observes the accepted canonical State/Continuity result.
+## Reference-screening order
 
-### `shadow_two_pass`
+The historical frozen vLLM plan contains conditions named A/B/C. Current Core 1.0 screening interprets them only through the current #1386 screening contract:
 
-The merged COGP4 shadow evidence path remains available for topology-only evidence, but this transaction does not attach resolved per-pass request evidence to it. A manifest attempting to combine shadow topology with `cognition_pass_requests` fails closed.
+```text
+B
+  two_pass
+  Pass 1 = off
+  Pass 2 = off
+  -> first reference qualification condition where exact OFF is attested
 
-## Raw model versus deterministic authority
+C
+  two_pass
+  Pass 1 identical to B
+  Pass 2 = attested bounded condition
+  -> execute only if B shows Pass 1 sufficient but Pass 2 semantic quality insufficient
 
-The existing #1386 separation is unchanged.
+A
+  single_pass
+  -> historical/compatibility data or later optimization candidate
+  -> not a current first-stage release condition merely because it exists
+```
 
-Raw model evidence records what the model proposed. Deterministic evidence records only what RelayLM validators accepted or rejected. A Pass 2 provider failure with no valid structured output records no fabricated proposal output and never reuses a previous turn's extraction.
+Do not execute A as a prerequisite to qualifying B.
 
-Per-pass request identity contains no prompt, model response, State, Continuity, Event, or MEMORY content.
+Do not execute C unless the current #1386 quality decision demonstrates a Pass 2 semantic need and the exact backend/model bounded control is attested.
 
-## Total Cognitive Budget boundary
+Unsupported or ineffective parameter combinations are not screening conditions.
 
-The pre-existing #1386 single-pass total Cognitive Budget bridge returns `CognitiveBudgetDiagnostics` from the ordinary Turn runtime.
-
-The current resolved-request bridge does not combine explicit `cognition_pass_requests` with total `CognitiveBudgetRuntimeConfig`. Such a manifest fails closed. Likewise, the topology-aware path does not fabricate equivalent total-budget diagnostics for two-pass/shadow execution.
-
-Legacy explicit MEMORY/Event budgets may still be carried through the already-owned Turn preparation path when used without total Cognitive Budget evidence.
-
-## Restart boundary
-
-Restart evidence has a separate execution bridge. That bridge does not yet forward the new resolved per-pass request identity across its pre/post-restart ordinary-turn executions.
-
-Therefore a restart scenario combined with `cognition_pass_requests` fails during scenario planning before workspace mutation or model generation. The run must not retain the request in its manifest while silently executing without it.
+LM Studio and vLLM evidence runs remain serial backend executions.
 
 ## Provider application remains separate authority
 
-Recording a `CognitionPassRequest` proves only what RelayLM requested at the provider-neutral boundary. It does not by itself prove that a backend applied a wire control or that the control was semantically effective.
+Recording a `CognitionPassRequest` proves what RelayLM requested at the provider-neutral boundary. It does not prove that the backend applied the control or that the control had semantic effect.
 
-Provider owners remain authoritative for exact request serialization and applied configuration. In current v1 authority, the configured-vLLM reasoning path already has deterministic attested realization from #1545/#1558:
+Provider owners retain exact request serialization and capability truth.
 
-```text
-RelayLM off
-  -> reasoning_effort = none
+For vLLM, citable reasoning comparisons require the current provider-owned attestation/realization for the exact model/backend. No `low`/`medium`/`high` label is treated as equivalent to a numeric bounded budget without explicit owner authority.
 
-RelayLM bounded(N)
-  -> thinking_token_budget = N
-  -> chat_template_kwargs.enable_thinking = true
-```
+For LM Studio, model/backend-specific capability evidence remains separate; do not infer vLLM-style bounded semantics from a related model family.
 
-The canonical Turn/provider carriage merged in #1561 can carry those fully resolved requests to that realizer. Unsupported or ambiguous controls fail closed before generation; no low/medium/high effort label is substituted for a numeric bounded budget.
+## Raw model versus deterministic authority
 
-This #1386 transaction composes the same resolved request into run identity and the scenario harness. It does not duplicate provider capability discovery or backend serialization.
+Raw model evidence records what Pass 1 said and what Pass 2 proposed.
 
-## LM Studio environment evidence remains distinct
+Deterministic evidence records what RelayLM accepted or rejected.
 
-Existing LM Studio host-runner formats and `ActualModelReasoningEnvironmentIdentity` remain historical/current evidence for the LM Studio model-wide environment where used.
+A Pass 2 provider/protocol failure records no fabricated proposal output and cannot reuse a previous turn's extraction.
 
-A model-wide LM Studio default is not equivalent to a per-pass RelayLM `bounded(N)` request. The exact LM Studio model previously demonstrated only binary native `off/on` behavior; it must not be treated as providing vLLM-style bounded reasoning merely because both backends serve a related model family.
+Per-pass request identity contains no prompt, model response, State, Continuity, Event, MEMORY or secret content.
 
-## Current vLLM COGP5 boundary
+## Failure / stale evidence
 
-The repository now contains these prerequisites:
-
-- frozen canonical vLLM repository-snapshot target identity;
-- configured-vLLM reasoning capability attestation;
-- provider-owned exact `off` and `bounded(N)` realization;
-- ordinary/two-pass Turn carriage for fully resolved requests;
-- #1386 execution-topology identity;
-- #1386 resolved per-pass request identity and buffered scenario-harness carriage.
-
-What is still missing is the host-side binding that validates the live vLLM server/model against the frozen repository-snapshot target and constructs the matching provider plus applied reasoning capability for an actual evidence run.
-
-Accordingly, this transaction does **not** constitute actual-model product evidence and does not freeze a numeric default.
-
-The intended first screening after that host binding is deliberately small:
+Two-pass evidence must preserve terminal extraction status:
 
 ```text
-A: single_pass
-   request = off
-
-B: two_pass
-   Pass 1 = off
-   Pass 2 = off
-
-C: two_pass
-   Pass 1 = off
-   Pass 2 = bounded(small explicit budget)
+committed
+stale
+failed
 ```
 
-Only if C demonstrates a meaningful product/budget difference should a larger bounded budget be added. Unsupported/ineffective parameter permutations are not part of this screening.
+A valid Pass 1 response remains valid when Pass 2 is stale or failed. Such an extraction contributes no State/Continuity mutation.
 
-LM Studio and vLLM evidence runs remain serial backend executions; simultaneous backend availability is not required.
+Rapid-next-turn/pending extraction behavior is a required current #1386 product-quality dimension rather than a reason to force single-pass.
+
+## Streaming boundary
+
+Resolved per-pass evidence may only claim streaming carriage after the runtime path actually carries the same Pass 1/Pass 2 semantics.
+
+Until that implementation is complete, a streaming manifest must fail closed rather than claim requests were applied when Turn-level carriage omitted them.
+
+## Cognitive Budget boundary
+
+Actual-model evidence must not fabricate two-pass total-budget diagnostics that current runtime/evidence contracts do not produce.
+
+Where a combination of cognition-pass requests and total `CognitiveBudgetRuntimeConfig` is not implemented, the manifest/plan must fail explicitly instead of silently dropping one authority.
+
+Capacity acquisition remains a separate #1386 evidence path and #1388 remains the only owner that interprets those observations into numeric profile/default values.
+
+## Restart boundary
+
+Restart evidence must carry the same resolved cognition semantics if it claims to evaluate a cognition profile across restart.
+
+If current restart execution cannot preserve the resolved pass requests, that combination fails planning rather than executing under a different implicit policy.
+
+## Quality separation
+
+Reference qualification independently observes:
+
+- Pass 1 conversation/persona/language quality;
+- Pass 2 semantic precision/recall;
+- grounding/source attribution;
+- assistant-to-user contamination;
+- correction/negation/uncertainty;
+- transient/durable discipline;
+- no-op/churn behavior;
+- protocol validity;
+- failure/stale behavior;
+- timing/resource evidence where captured.
+
+JSON parse success alone is not semantic-quality sufficiency.
+
+## Later single-pass optimization
+
+Only after a two-pass reference has been qualified may #1386 compare a single-pass candidate against it for optimization.
+
+That comparison must preserve the same semantic fixture and explicitly report both:
+
+```text
+quality / grounding / authority regression
+and
+latency / token / resource benefit
+```
+
+A single-pass candidate that does not qualify is simply not adopted; it does not block Core 1.0.
 
 ## Ownership
 
-#1533 / COGP owns execution-topology semantics, provider-neutral per-pass request semantics, capability vocabulary normalization, and request resolution.
+#1533 owns topology/pass semantics and provider-neutral request semantics.
 
 #1386 owns:
 
 - manifest/run identity composition;
 - raw/deterministic execution evidence;
-- scenario execution/review/cohort methodology;
-- controlled supported-condition evidence;
-- host-side evidence binding;
-- exact resolved-request evidence carriage into the actual-model harness.
+- scenario/review/cohort/comparison methodology;
+- two-pass reference qualification;
+- justified Pass 2 escalation comparisons;
+- later optional single-pass optimization comparisons;
+- host-side evidence binding.
 
-Provider owners retain actual request capability, backend serialization, and applied configuration truth. #1388 remains the sole owner of evidence-backed profile/default selection.
+Provider owners retain backend capability and applied-wire truth. #1388 owns calibrated two-pass profile/default selection.
+
+## Principle
+
+> Evidence records the exact policy that ran; it never revives a superseded screening order from an old condition name.
