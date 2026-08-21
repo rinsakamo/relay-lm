@@ -48,6 +48,8 @@ def test_single_pass_timing_artifact_binds_each_turn_to_execution_identity() -> 
         ),
     )
 
+    assert artifact.timing_id.startswith("amt-")
+    assert len(artifact.timing_id) == 68
     assert artifact.run_id == RUN_ID
     assert artifact.execution_id == EXECUTION_ID
     assert artifact.scenario_elapsed_ms == 42.5
@@ -55,6 +57,7 @@ def test_single_pass_timing_artifact_binds_each_turn_to_execution_identity() -> 
     assert artifact.turns[0].response_provider_ms == 10.0
     assert artifact.turns[0].first_visible_provider_ms is None
     assert artifact.turns[0].extraction_provider_ms is None
+    assert artifact.to_mapping()["timing_id"] == artifact.timing_id
 
 
 def test_two_pass_timing_artifact_separates_visible_response_from_extraction() -> None:
