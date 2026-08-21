@@ -361,7 +361,14 @@ def require_mode_capabilities(
         raise CognitionPolicyUnresolvedError(
             "cognition mode auto must resolve before generation"
         )
-    if not capabilities.structured_output:
+    if (
+        mode
+        in (
+            CognitionExecutionMode.SINGLE_PASS,
+            CognitionExecutionMode.SHADOW_TWO_PASS,
+        )
+        and not capabilities.structured_output
+    ):
         raise CognitionExecutionCapabilityError(
             f"{mode.value} requires structured_output capability"
         )
