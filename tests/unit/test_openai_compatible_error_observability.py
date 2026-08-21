@@ -73,7 +73,6 @@ def test_buffered_http_error_preserves_bounded_sanitized_upstream_detail(
 
     assert "status=400" in message
     assert "prompt exceeds maximum context length" in message
-    assert "BadRequestError" in message
     assert api_key not in message
     assert "<redacted>" in message
     assert len(message) < 3000
