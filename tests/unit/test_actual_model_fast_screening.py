@@ -7,7 +7,7 @@ from relaylm.actual_model_fast_screening import (
     ScreeningTimingRecorder,
     instrument_screening_provider,
     reasoning_escalation_condition_ids,
-    topology_screening_condition_ids,
+    reference_screening_condition_ids,
 )
 from relaylm.actual_model_vllm_host import load_vllm_screening_plan
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
@@ -22,18 +22,25 @@ ROOT = Path(__file__).resolve().parents[2]
 PLAN = ROOT / "evaluation/actual_model/screenings/cogp5-vllm-screening-v1.json"
 
 
-def test_fast_screening_runs_topology_before_reasoning_escalation() -> None:
+def test_fast_screening_qualifies_two_pass_before_reasoning_escalation() -> None:
     plan = load_vllm_screening_plan(PLAN)
 
-    assert topology_screening_condition_ids(plan) == ("A", "B")
+    assert reference_screening_condition_ids(plan) == ("B",)
     assert reasoning_escalation_condition_ids(
         plan,
-        structured_semantic_quality_sufficient=True,
+        pass2_semantic_quality_sufficient=True,
     ) == ()
     assert reasoning_escalation_condition_ids(
         plan,
-        structured_semantic_quality_sufficient=False,
+        pass2_semantic_quality_sufficient=False,
     ) == ("C",)
+
+
+def test_reference_screening_does_not_return_historical_single_pass_condition() -> None:
+    plan = load_vllm_screening_plan(PLAN)
+
+    assert "A" in plan.conditions
+    assert "A" not in reference_screening_condition_ids(plan)
 
 
 class _FakeClock:
@@ -79,8 +86,6 @@ def test_timing_recorder_separates_visible_response_and_pass2_work() -> None:
         async def sink(_: str) -> None:
             return None
 
-        # Input values are not inspected by the fake provider; the timing wrapper
-        # must remain transport-only and not reinterpret RelayLM semantics.
         await provider.stream_generate(None, sink)  # type: ignore[arg-type]
         await provider.stream_generate_conversation(None, sink)  # type: ignore[arg-type]
         await provider.generate_extraction(None)  # type: ignore[arg-type]

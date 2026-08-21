@@ -22,7 +22,7 @@ ScreeningCallOutcome = Literal["completed", "failed"]
 
 
 class ActualModelFastScreeningError(ValueError):
-    """The frozen host plan cannot realize the staged fast-screening contract."""
+    """The frozen host plan cannot realize the current two-pass screening contract."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,49 +93,50 @@ class ScreeningTimingRecorder:
         }
 
 
-def topology_screening_condition_ids(plan: VLLMScreeningPlan) -> tuple[str, str]:
-    """Return only the no-reasoning A/B topology comparison for Stage 1."""
+def reference_screening_condition_ids(plan: VLLMScreeningPlan) -> tuple[str]:
+    """Return only the two-pass OFF/OFF baseline for Core 1.0 qualification."""
 
-    _require_plan(plan)
-    single = plan.conditions["A"]
-    two_pass = plan.conditions["B"]
-    if single.cognition_execution.mode != "single_pass":
-        raise ActualModelFastScreeningError("Stage 1 condition A must be single_pass")
-    if two_pass.cognition_execution.mode != "two_pass":
-        raise ActualModelFastScreeningError("Stage 1 condition B must be two_pass")
-    if single.pass_requests.single_request is None:
-        raise ActualModelFastScreeningError("Stage 1 condition A requires single_pass request")
-    if two_pass.pass_requests.pass1 is None or two_pass.pass_requests.pass2 is None:
-        raise ActualModelFastScreeningError("Stage 1 condition B requires pass1 and pass2")
-    _require_reasoning_off(single.pass_requests.single_request, "A.single_pass")
-    _require_reasoning_off(two_pass.pass_requests.pass1, "B.pass1")
-    _require_reasoning_off(two_pass.pass_requests.pass2, "B.pass2")
-    return ("A", "B")
+    _require_reference_plan(plan)
+    baseline = plan.conditions["B"]
+    if baseline.cognition_execution.mode != "two_pass":
+        raise ActualModelFastScreeningError(
+            "reference condition B must be two_pass"
+        )
+    if baseline.pass_requests.pass1 is None or baseline.pass_requests.pass2 is None:
+        raise ActualModelFastScreeningError(
+            "reference condition B requires pass1 and pass2 requests"
+        )
+    _require_reasoning_off(baseline.pass_requests.pass1, "B.pass1")
+    _require_reasoning_off(baseline.pass_requests.pass2, "B.pass2")
+    return ("B",)
 
 
 def reasoning_escalation_condition_ids(
     plan: VLLMScreeningPlan,
     *,
-    structured_semantic_quality_sufficient: bool,
+    pass2_semantic_quality_sufficient: bool,
 ) -> tuple[str, ...]:
-    """Expose Pass 2 reasoning only after Stage 1 demonstrates semantic need."""
+    """Expose only Pass 2 escalation after the two-pass baseline shows semantic need."""
 
-    if not isinstance(structured_semantic_quality_sufficient, bool):
-        raise TypeError("structured_semantic_quality_sufficient must be bool")
-    topology_screening_condition_ids(plan)
-    if structured_semantic_quality_sufficient:
+    if not isinstance(pass2_semantic_quality_sufficient, bool):
+        raise TypeError("pass2_semantic_quality_sufficient must be bool")
+    reference_screening_condition_ids(plan)
+    if pass2_semantic_quality_sufficient:
         return ()
 
     baseline = plan.conditions["B"]
     escalation = plan.conditions["C"]
     if escalation.cognition_execution.mode != "two_pass":
-        raise ActualModelFastScreeningError("reasoning escalation condition C must be two_pass")
+        raise ActualModelFastScreeningError(
+            "reasoning escalation condition C must be two_pass"
+        )
     if escalation.pass_requests.pass1 is None or escalation.pass_requests.pass2 is None:
         raise ActualModelFastScreeningError("condition C requires pass1 and pass2")
     if baseline.pass_requests.pass1 != escalation.pass_requests.pass1:
         raise ActualModelFastScreeningError(
             "reasoning escalation must keep Pass 1 identical to the two-pass baseline"
         )
+
     baseline_pass2 = baseline.pass_requests.pass2
     escalation_pass2 = escalation.pass_requests.pass2
     assert baseline_pass2 is not None
@@ -298,13 +299,14 @@ class _TimedScreeningProvider:
             )
 
 
-def _require_plan(plan: VLLMScreeningPlan) -> None:
+def _require_reference_plan(plan: VLLMScreeningPlan) -> None:
     if not isinstance(plan, VLLMScreeningPlan):
         raise TypeError("plan must be VLLMScreeningPlan")
-    missing = tuple(key for key in ("A", "B", "C") if key not in plan.conditions)
+    missing = tuple(key for key in ("B", "C") if key not in plan.conditions)
     if missing:
         raise ActualModelFastScreeningError(
-            "fast screening requires frozen A/B/C conditions: " + ", ".join(missing)
+            "two-pass reference screening requires conditions: "
+            + ", ".join(missing)
         )
 
 
@@ -312,7 +314,9 @@ def _require_reasoning_off(request: CognitionPassRequest, label: str) -> None:
     if request.reasoning_mode is not CognitionReasoningMode.OFF:
         raise ActualModelFastScreeningError(f"{label} must use reasoning=off")
     if request.reasoning_budget is not None:
-        raise ActualModelFastScreeningError(f"{label} reasoning=off cannot carry a budget")
+        raise ActualModelFastScreeningError(
+            f"{label} reasoning=off cannot carry a budget"
+        )
 
 
 def _validate_non_negative_finite(value: float, label: str) -> None:

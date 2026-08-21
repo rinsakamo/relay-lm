@@ -2,26 +2,13 @@
 
 Ordinary-turn cognition is governed by `docs/contracts/cognition-execution-policy.md`.
 
-RelayLM 1.0 recognizes `single_pass`, `two_pass`, `shadow_two_pass`, and `auto`. Execution topology may vary, but model proposals gain authority only through existing deterministic State/Continuity owners.
+RelayLM 1.0 is **two-pass first**. The runtime may still expose `single_pass`, `two_pass`, `shadow_two_pass`, and `auto`, but the Core 1.0 release/reference path is `two_pass`.
 
-## `single_pass`
+Model output gains authority only through existing deterministic State/Continuity owners.
 
-The existing ordinary-turn APIs retain the one-generation baseline:
+## Core 1.0 `two_pass` path
 
-```text
-CognitiveInput
-  -> provider.generate / stream_generate
-  -> plain combined cognitive IR content
-  -> RelayLM JSON parse + exact shape/type construction
-  -> CognitiveOutput(response, StateCandidate[], ContinuityCandidate[])
-  -> existing deterministic commit boundary
-```
-
-A complete valid output is required before the Assistant Event, State validation, and Continuity validation commit. The OpenAI-compatible realization no longer requires provider-native `response_format`, JSON-schema grammar, or equivalent structured-output enforcement. The provider transports ordinary message content containing the RelayLM-owned combined cognitive IR; RelayLM owns exact top-level/candidate shape checks, typed candidate construction, and fail-closed behavior.
-
-## `two_pass`
-
-COGP implements an explicit response-first runtime in `relaylm.two_pass_turn`:
+`relaylm.two_pass_turn` implements response-first execution:
 
 ```text
 originating CognitiveInput
@@ -29,7 +16,7 @@ originating CognitiveInput
   -> visible response + Assistant Event
   -> return response-first result
        |
-       +--> background Pass 2 extraction
+       +--> Pass 2 semantic extraction
               -> ordinary provider message containing compact proposal IR
               -> RelayLM JSON parse + typed candidate construction
               -> StateCandidate[] / ContinuityCandidate[]
@@ -37,118 +24,223 @@ originating CognitiveInput
               -> existing deterministic validators
 ```
 
-The same supplied provider object is used sequentially. `CognitionConversationOutput` contains only the response. `CognitionExtractionInput` contains the originating `CognitiveInput` plus the Pass 1 response as lower-authority interpretive context. `CognitionExtractionOutput` contains only typed proposals after RelayLM has parsed the compact proposal IR.
+The same supplied provider/model object is reused sequentially. Core 1.0 does not require two simultaneously resident online model artifacts.
 
-Canonical Pass 2 does not require provider-native `response_format`, JSON-schema grammar, or equivalent structured-output support. The provider transports plain message content. RelayLM owns the proposal-IR grammar, exact top-level shape, JSON parsing, candidate type construction, and fail-closed behavior before deterministic State/Continuity validation.
+`CognitionConversationOutput` contains only the visible response.
 
-`run_user_turn_two_pass(...)` and `run_user_turn_two_pass_streaming(...)` require an explicit process-local `CognitionExecutionRuntime`. They do not silently replace the existing single-pass APIs or select a release default.
+`CognitionExtractionInput` contains the originating `CognitiveInput` plus the Pass 1 response as lower-authority interpretive context.
 
-### Ordering
+`CognitionExtractionOutput` contains only typed proposals after RelayLM parses the compact proposal IR.
 
-A conversation lock serializes two-pass preparation and Pass 1 generation for one execution runtime. Pass 2 inference runs after that lock is released, so pending extraction does not itself block the next Pass 1.
+Provider-native `response_format`, JSON Schema, grammar or equivalent constrained-output support is not required. The provider transports ordinary message content; RelayLM owns proposal-IR grammar, parsing, exact shape checks, type construction and fail-closed behavior.
 
-A separate short authority lock covers new-turn revision reservation/binding and the final stale-check/validation/application boundary. A newer turn advances the process-local revision before preparing its input. Final Pass 2 application requires:
+## Pass 1
+
+Pass 1 owns user-visible conversation quality and latency-sensitive tempo.
+
+It emits plain natural-language response content with no State/Continuity proposal wrapper.
+
+The response can be delivered independently of Pass 2 completion.
+
+## Pass 2
+
+Pass 2 owns language-dependent semantic extraction for immediate State/Continuity proposals.
+
+The Pass 1 response is interpretive context only. Authority ordering remains:
 
 ```text
-origin revision is still latest
-origin User Event is still latest bound turn
+user / source evidence
+  > accepted typed RelayLM State / Context / Continuity
+  > assistant response interpretation
+```
+
+The assistant response cannot self-certify a user/external fact or become a provenance source.
+
+RelayLM owns deterministic JSON/materialization mechanics after model semantic judgment.
+
+## Ordering
+
+A conversation lock serializes two-pass preparation and Pass 1 generation for one process-local execution runtime.
+
+Pass 2 inference runs without holding the conversation lock, so pending extraction does not itself block the next Pass 1.
+
+A short authority lock covers revision reservation/binding and final stale-check/application.
+
+Final Pass 2 application requires:
+
+```text
+origin execution revision is still current
+origin User Event is still the latest bound turn
 persisted State == origin State snapshot
 accepted Continuity == origin Continuity snapshot, when configured
 ```
 
-Any mismatch returns `stale` with no State/Continuity change. This guard is process-local and does not create a durable State revision or redefine cross-process storage concurrency.
+A mismatch returns `stale` with no State/Continuity change.
 
-### Failure
+This guard is process-local and does not create a durable State revision or redefine cross-process persistence rules.
 
-A valid Pass 1 remains a valid conversation if Pass 2 later fails. Pass 2 status is `committed`, `stale`, or `failed`. Continuity proposals without an explicit Continuity runtime fail the extraction before State change, preventing a partial cross-channel result.
+Rapid-next-turn and pending-extraction behavior are product-quality/evidence cases owned by #1386.
 
-Malformed JSON, extra top-level proposal-IR fields, or invalid candidate values fail closed inside RelayLM. Such a failure changes neither State nor Continuity and does not invalidate the already-delivered Pass 1 response.
+## Failure
+
+A valid Pass 1 remains a valid conversation if Pass 2 fails.
+
+Pass 2 terminal status is `committed`, `stale`, or `failed`.
+
+Malformed JSON, extra/missing proposal-IR keys, invalid candidate values, provider errors or stale guards cannot partially mutate State/Continuity.
+
+Continuity proposals without the required Continuity runtime fail the extraction before State mutation, preserving cross-channel atomicity at the current boundary.
+
+## Per-pass execution requests
+
+`run_user_turn_two_pass(...)` supports independently resolved Pass 1 and Pass 2 requests.
+
+Core 1.0 requires buffered and streaming two-pass paths to preserve equivalent resolved per-pass semantics. A streaming path that silently drops Pass 1/Pass 2 reasoning or decoding controls is an implementation defect, not a separate policy.
+
+Numeric/default resolution belongs to #1388; exact provider carriage belongs to provider owners.
+
+## `single_pass` compatibility / optimization path
+
+`single_pass` remains implemented but is not the Core 1.0 quality reference.
+
+```text
+CognitiveInput
+  -> provider.generate / stream_generate
+  -> ordinary message containing RelayLM combined cognitive IR
+  -> RelayLM JSON parse + exact shape/type construction
+  -> CognitiveOutput(response, StateCandidate[], ContinuityCandidate[])
+  -> existing deterministic commit boundary
+```
+
+The combined IR is:
+
+```text
+utterance
+state_candidates
+continuity_candidates
+```
+
+Provider-native structured output is not required here either.
+
+Core 1.0 does not require single-pass prompt tuning to match two-pass quality. A later optimization may compare a single-pass candidate against the qualified two-pass reference when explicit latency/token/resource benefit is being evaluated.
 
 ## `shadow_two_pass`
 
-COGP implements non-authoritative shadow execution in `relaylm.shadow_turn`:
+`relaylm.shadow_turn` provides non-authoritative evidence support:
 
 ```text
 canonical single-pass turn
-  -> plain combined cognitive IR
-  -> RelayLM parse/type construction
+  -> RelayLM combined-IR parse/type construction
   -> normal response / State / Continuity result
 
-capture the same originating CognitiveInput
+same originating CognitiveInput
 + canonical response
-  -> shadow Pass 2 plain extraction message
-  -> RelayLM proposal-IR parse/type construction
+  -> shadow Pass 2 proposal IR
+  -> RelayLM parse/type construction
   -> raw ShadowExtractionEvidence
-  -> no State/Continuity acceptance or change
+  -> no second State/Continuity mutation
 ```
 
-The explicit APIs are:
+Shadow failure cannot invalidate the canonical turn.
 
-```text
-run_user_turn_shadow_two_pass(...)
-run_user_turn_shadow_two_pass_streaming(...)
-```
+Shadow mode is not the Core 1.0 release architecture and must not be mistaken for canonical two-pass execution.
 
-They call the existing `run_user_turn` / `run_user_turn_streaming` through a transparent input-capturing provider wrapper. Therefore canonical single-pass Context/Retrieval/Budget preparation and deterministic commit semantics remain owned by the existing Turn path rather than being copied into shadow runtime code.
+## `auto`
 
-After canonical completion, shadow extraction uses the original pre-turn `CognitiveInput` plus the canonical response. Shadow output is raw proposal evidence only. It does not call State or Continuity validation for the purpose of changing accepted authority and does not advance Continuity lifecycle.
+`auto` is unresolved profile policy, not an execution topology identity.
 
-The canonical side of `shadow_two_pass` uses the same RelayLM-owned combined-IR parsing boundary as ordinary `single_pass`; shadow extraction uses the RelayLM-owned proposal-IR parser shared with canonical `two_pass`.
+#1388 resolves an evidence-backed profile. #1446 carries that profile through release configuration.
 
-A shadow provider or RelayLM proposal-IR parsing failure becomes bounded `shadow_pass2_failed`; the already-completed canonical turn is unaffected.
+A completed evidence record records the actual resolved mode.
 
-Shadow extraction may complete after later conversation activity because it has no canonical write path. Its evidence remains bound to the originating User Event ID.
+For Core 1.0, `auto` must not silently select an unqualified single-pass optimization.
 
 ## Execution evidence identity
 
-`relaylm.cognition_execution_evidence` defines provider-neutral topology identity for `single_pass`, `two_pass`, and `shadow_two_pass` plus the RelayLM semantic output-contract identities used by each topology. `auto` is not an executed identity.
+`relaylm.cognition_execution_evidence` distinguishes the current RelayLM semantic output contracts:
 
-`relaylm_cognitive_output:v1` identifies the RelayLM-owned combined cognitive IR and parse/type-construction boundary. `relaylm_structured_cognition_output:v1` identifies the RelayLM-owned Pass 2 proposal IR and parse/type-construction boundary. Neither identity requires a provider-native JSON-schema request field.
+```text
+single_pass
+  relaylm_cognitive_output:v1
 
-The identity deliberately does not duplicate exact provider/model/reasoning/decoding/runtime identity. #1386 combines those separate owners when constructing citable actual-model evidence.
+two_pass Pass 1
+  relaylm_conversation_output:v1
 
-See `docs/contracts/cognition-execution-evidence.md`.
+two_pass / shadow Pass 2
+  relaylm_structured_cognition_output:v1
+```
+
+These are RelayLM contract identities and do not imply provider-native response schemas.
+
+#1386 combines them with exact provider/model/reasoning/decoding/runtime identity when producing citable evidence.
 
 ## Context / Retrieval / Budget reuse
 
-Canonical `single_pass` and `two_pass` both consume the existing Character/Identity, State, Context Compiler, optional MEMORY/Event retrieval, accepted Continuity projection, and Cognitive Budget owners.
+Canonical two-pass and single-pass consume the existing Identity, State, Context Compiler, optional MEMORY/Event retrieval, accepted Continuity projection and Cognitive Budget owners.
 
-`shadow_two_pass` uses the canonical single-pass Turn path directly and captures the exact `CognitiveInput` supplied to that canonical model call. No shadow-specific relevance or budget policy exists.
+Execution topology does not create alternate relevance or budget semantics.
 
 ## Continuity
 
-`relaylm.continuity` and `relaylm.continuity_validation` remain the acceptance/lifecycle owners.
+`relaylm.continuity` and `relaylm.continuity_validation` remain acceptance/lifecycle owners.
 
-- `single_pass`: existing common commit boundary after RelayLM combined-IR parsing/type construction.
-- `two_pass`: guarded Pass 2 commit boundary after RelayLM proposal-IR parsing/type construction.
-- `shadow_two_pass`: only canonical single-pass proposals may affect accepted Continuity; shadow proposals are evidence-only.
+- `two_pass` — guarded Pass 2 commit boundary after RelayLM proposal-IR parse/type construction;
+- `single_pass` — combined-IR commit boundary after full parse/type construction;
+- `shadow_two_pass` — shadow proposals are evidence-only.
 
 ## Streaming
 
-Two-pass streaming exposes only Pass 1 response deltas and schedules Pass 2 after complete Pass 1 acceptance.
+Two-pass streaming exposes only Pass 1 response deltas and starts Pass 2 after complete Pass 1 acceptance.
 
-Single-pass streaming incrementally decodes the visible `utterance` from the plain combined IR stream, then RelayLM parses and validates the complete IR before commit. Shadow streaming uses that canonical single-pass streaming path. Shadow extraction starts only after the complete canonical output has committed and never emits a second visible response.
+Single-pass streaming remains a compatibility path that exposes only safely decoded `utterance` text and withholds candidate commit until the complete combined IR validates.
 
 ## Provider boundary
 
-The OpenAI-compatible adapter inherits model/endpoint/decoding and provider-owned reasoning configuration across cognition modes. Structure ownership is topology-specific but RelayLM-owned in both canonical forms:
+Current OpenAI-compatible structure transport is ordinary message content:
 
 ```text
-canonical single_pass
-  -> ordinary provider message containing combined cognitive IR
-  -> RelayLM relaylm_cognitive_output:v1 parse/type construction
+two-pass Pass 1
+  plain natural language
 
-canonical or shadow Pass 2
-  -> ordinary provider message containing proposal IR
-  -> RelayLM relaylm_structured_cognition_output:v1 parse/type construction
+two-pass Pass 2
+  compact RelayLM proposal IR
+  -> RelayLM parse/type construction
+
+single-pass
+  RelayLM combined cognitive IR
+  -> RelayLM parse/type construction
 ```
 
-Provider-native JSON-schema/grammar support may exist as a backend capability, but it is not the owner or prerequisite of either RelayLM cognition contract. Provider capability truth and exact applied reasoning/decoding request configuration remain provider-owned.
+Provider-native JSON-schema/grammar support may exist as capability truth but is not a mode-level prerequisite for these current cognition paths.
 
-## Capacity / evidence consequence
+## Capacity / performance
 
-Both model-facing structure wires have changed from the earlier provider-native single-pass / Pass-2 schema-carriage implementations. Prior exact serialized-input footprints remain historical evidence for their exact old wires. #1386 must reacquire current fixed prompt/wire footprint evidence before revised topology screening cites capacity assumptions. This runtime change itself selects no context window, output reserve, reasoning budget, profile, or default.
+Pass 1 and Pass 2 have separate prompt/output/runtime footprints and must be measured separately.
+
+#1386 owns actual-model quality/capacity/performance evidence. #1388 owns calibrated profile/default selection.
+
+If two-pass performance is problematic, first evaluate two-pass-preserving execution improvements such as streaming, prefix/KV reuse, scheduler/cache tuning, bounded Pass 2 output, lowest sufficient Pass 2 reasoning effort and backend execution-engine tuning.
+
+Do not collapse semantic responsibilities into single-pass solely because it is faster before reference-quality regression is measured.
+
+## Current implementation obligations
+
+Before Core 1.0 release:
+
+1. remove stale provider-native structured-output mode gates;
+2. preserve equivalent per-pass request carriage for buffered and streaming two-pass execution;
+3. share candidate parsing/type-construction mechanics cleanly between combined and proposal IR paths;
+4. test rapid-turn / stale / pending-extraction behavior;
+5. let #1386 qualify the two-pass reference before #1388 calibration;
+6. wire the qualified two-pass path through #1446 release runtime assembly.
 
 ## Deferred
 
-#1386 owns fresh actual-model execution-topology/capacity evidence against these exact wires. #1388 owns calibrated selection, #1446 owns release-config integration, and #1449 owns final release reconciliation.
+- post-1.0 single-pass optimization against the qualified reference;
+- learned/selective extraction routing;
+- two concurrently resident online models;
+- execution-engine optimizations not yet exposed by current owner contracts.
+
+## Principle
+
+> Two passes are the quality architecture; runtime tuning is the first response to performance cost.

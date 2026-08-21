@@ -1,16 +1,14 @@
 # Cognition Pass Execution Contract
 
-Status: COGP provider-neutral per-pass execution-option contract for RelayLM v1, including the RelayLM-owned canonical two-pass extraction boundary.
+Status: current provider-neutral per-pass execution-option contract for RelayLM 1.0.
 
-This contract is owned by #1533 under the existing `cognitive_turn` owner. It defines the semantic intent and pre-generation capability-resolution boundary for Pass 1 and Pass 2 without choosing any numeric default or moving provider wire ownership into COGP.
+Owner: #1533 / `cognitive_turn`.
 
-# Policy intent versus generation request
+This contract defines per-pass reasoning/decoding intent and pre-generation capability resolution. It chooses no numeric defaults. Core 1.0 is two-pass first; #1388 later resolves the calibrated two-pass profile and #1446 carries it through release configuration.
 
-COGP distinguishes two stages.
+## Policy intent versus effective request
 
-## Policy intent
-
-`CognitionPassPolicy` describes a per-pass policy before Calibration/profile resolution.
+`CognitionPassPolicy` represents unresolved policy intent.
 
 Reasoning mode is closed to:
 
@@ -20,9 +18,7 @@ off
 bounded
 ```
 
-For scalar controls, `None` in the typed policy means **profile-owned `auto`**, not a hidden provider default. COGP defines intent only; #1388 later resolves canonical `auto` values from evidence-backed profiles, while #1446 carries direct operator overrides and precedence.
-
-The initial per-pass scalar controls are:
+The current scalar controls are:
 
 ```text
 temperature
@@ -30,72 +26,89 @@ top_p
 max_output_tokens
 ```
 
-A bounded reasoning policy may also carry an explicit positive integer reasoning budget. A missing budget under `bounded` means the budget remains profile-owned `auto`; it is not permission to silently inherit an unknown upstream setting at generation time.
+A bounded reasoning policy may also carry a positive reasoning budget.
 
-COGP chooses no temperature, top-p, output-token, or reasoning-budget value.
+`auto` means profile-owned resolution. It never means “silently inherit an unknown provider default”.
 
-## Fully resolved generation request
-
-`CognitionPassRequest` is the pre-generation form after all policy-owned `auto` values have been resolved by an authorized caller/profile decision.
-
-In this type:
+`CognitionPassRequest` is the fully resolved pre-generation form. In that form:
 
 - `reasoning_mode` may be `off`, `bounded`, or explicit omission;
-- `reasoning_mode=auto` is invalid and fails before generation;
-- an explicit reasoning budget requires `bounded` mode;
-- scalar `None` means explicit omission from the effective provider request, not unresolved `auto`;
-- explicit numeric controls are validated only for provider-neutral shape (finite numeric values, positive integer output/budget values). Provider-specific narrower ranges remain provider-owner validation.
+- `reasoning_mode=auto` is invalid;
+- a reasoning budget requires `bounded`;
+- scalar `None` means explicit omission from the effective provider request;
+- provider-neutral validation checks only shape/finiteness/positivity; provider-specific range rules remain provider-owned.
 
-This separation ensures `auto` and `omitted` are not conflated.
+## Core 1.0 pass roles
 
-# Normalized capability view
+The qualified release/reference path is `two_pass`:
 
-`CognitionExecutionCapabilities` is a COGP-owned normalized **consumer view** over capability facts supplied by the actual provider/model owner. It is not a second provider authority and does not discover or infer provider support itself.
+```text
+Pass 1
+  visible conversation
+  latency-sensitive
 
-The view can express:
+Pass 2
+  semantic State/Continuity proposal extraction
+  no second visible response
+```
+
+Pass 1 and Pass 2 may use independently resolved requests.
+
+Pass 2 reasoning is an escalation mechanism, not an assumed default. Begin from the lowest effective explicit condition proven by the exact backend/model. Increase Pass 2 effort only when #1386 shows semantic need while Pass 1 remains controlled.
+
+Single-pass remains a compatibility/future-optimization surface and is not a Core 1.0 quality-tuning prerequisite.
+
+## Normalized capability view
+
+`CognitionExecutionCapabilities` is a COGP-owned consumer view over facts supplied by the provider/model owner. It does not discover or infer support.
+
+It can represent:
 
 ```text
 structured_output
 streaming
-supported explicit reasoning modes: off / bounded
+reasoning modes: off / bounded
 bounded reasoning-budget control
-supported per-pass decoding/output controls
+per-pass decoding/output controls
 ```
 
-`structured_output` remains a truthful provider capability because the legacy combined `single_pass` and therefore the current canonical side of `shadow_two_pass` still use it. It is **not** a prerequisite for canonical `two_pass`: Pass 2 returns ordinary message content containing the RelayLM-owned compact proposal IR, which RelayLM parses and validates itself.
+`structured_output` remains a truthful provider capability fact because a backend may expose native JSON-schema/grammar features for other purposes. **Current RelayLM cognition modes do not require that capability merely to carry RelayLM-owned cognition IR.**
 
-`auto` is never a provider capability. It is a RelayLM policy-resolution state.
+Current OpenAI-compatible cognition uses ordinary provider message content and RelayLM-owned parsing/type construction for both:
 
-Provider adapters remain authoritative for how support is discovered, declared, attested, or mapped onto an external API. COGP must consume truthful provider facts rather than invent support from common OpenAI-compatible field names.
+- single-pass combined cognitive IR; and
+- two-pass Pass 2 proposal IR.
 
-## Provider-facts normalization boundary
+Therefore `structured_output=false` is not by itself a mode-level failure for `single_pass`, `two_pass`, or `shadow_two_pass` under the current cognition contracts.
 
-`normalize_cognition_execution_capabilities(...)` is the provider-neutral bridge from primitive, provider-owned capability facts into the typed COGP consumer view.
+`streaming=true` is still required when the selected execution path actually requests streaming.
 
-The bridge performs **normalization only**. It does not import provider classes, inspect endpoints, discover support, infer aliases, or promote controls that merely look similar.
+## Provider-facts normalization
 
-Accepted provider-fact vocabulary is exactly the current COGP vocabulary:
+`normalize_cognition_execution_capabilities(...)` performs closed-vocabulary normalization only.
+
+Accepted reasoning capability strings are:
 
 ```text
-reasoning modes:
-  off
-  bounded
-
-per-pass decoding controls:
-  temperature
-  top_p
-  max_output_tokens
+off
+bounded
 ```
 
-The normalizer preserves provider-supplied `structured_output`, `streaming`, and `bounded_reasoning_budget` booleans, converts only exact closed strings into the existing COGP enums, and rejects duplicate facts before constructing the frozenset view.
+Accepted COGP decoding-control strings are:
 
-Unknown values fail closed. `auto` also fails closed because it is policy resolution rather than provider capability. A provider-level control such as `seed` is rejected at this boundary unless COGP separately expands its owned per-pass vocabulary in a future transaction.
+```text
+temperature
+top_p
+max_output_tokens
+```
 
-This prevents evaluation/runtime consumers from each re-implementing provider-to-COGP interpretation. The provider owner states the facts; COGP owns the exact semantic normalization; downstream consumers use the resulting typed view.
+Unknown values, duplicates and `auto` fail closed. Provider-level controls that COGP does not own are not promoted by spelling similarity.
 
-# Applied / omitted / unsupported identity
+The provider remains authoritative for discovery, attestation and external wire realization.
 
-`resolve_pass_request(...)` classifies every materially output-affecting pass option as exactly one of:
+## Applied / omitted / unsupported
+
+`resolve_pass_request(...)` classifies every requested option as exactly one of:
 
 ```text
 applied
@@ -103,129 +116,88 @@ omitted
 unsupported
 ```
 
-The resolution is content-free and records the requested value alongside its status. It is suitable for later runtime/evidence identity without containing prompts, Identity, State, Continuity, Events, MEMORY, API keys, or other semantic payload.
-
-Meaning:
-
-- `applied` — the requested explicit control is present in the supplied capability view and may be carried by the provider owner;
-- `omitted` — the resolved request intentionally carries no explicit value for that option;
-- `unsupported` — an explicit request was made but the supplied provider/model capability view does not declare support.
+- `applied` — the supplied provider/model capability view declares the requested explicit control;
+- `omitted` — the resolved request intentionally carries no explicit value;
+- `unsupported` — an explicit value was requested but capability truth does not declare support.
 
 Unsupported is never silently rewritten to omitted.
 
-`CognitionPassResolution.require_supported()` fails closed before generation if any explicit option is `unsupported`. A future calibrated profile may deliberately resolve a policy to an omitted or alternate supported request, but that fallback decision belongs to the profile/default owner and must remain auditable.
+`CognitionPassResolution.require_supported()` fails before generation when an explicit request is unsupported.
 
-# Mode-level capability gate
+A future profile-owned fallback must be explicit and auditable; it cannot be invented by the adapter or Turn layer.
 
-`require_mode_capabilities(...)` is the provider-neutral pre-generation mode gate.
+## Mode-level capability gate
+
+`require_mode_capabilities(...)` checks only actual mode-level prerequisites.
+
+Current rules:
 
 - `auto` must already be resolved before generation;
-- `single_pass` requires provider `structured_output` because its current legacy wire combines visible response and proposals in one structured result;
-- `shadow_two_pass` currently requires provider `structured_output` because its canonical result remains that legacy `single_pass` path, even though its shadow extraction uses the RelayLM-owned proposal IR parser;
-- canonical `two_pass` does **not** require provider `structured_output`; Pass 1 is plain natural language and Pass 2 is plain provider message content parsed into the RelayLM-owned proposal IR;
-- a streaming execution request requires declared streaming support;
-- unsupported requirements fail before generation rather than being silently ignored.
+- provider-native `structured_output` is **not** required by the current RelayLM-owned cognition IR paths;
+- a streaming request requires declared streaming support;
+- explicit unsupported pass options are handled by `resolve_pass_request(...).require_supported()`.
 
-This gate does not claim that capability declaration proves product quality. #1386 actual-model evidence remains responsible for observed model behavior.
+Capability declaration proves only that a request can be represented. It does not prove product quality; #1386 owns observed actual-model quality.
 
-# RelayLM-owned Pass 2 structure
+## RelayLM-owned Pass 2 proposal IR
 
-Canonical `two_pass` separates semantic extraction from provider structured-output features:
+Canonical Pass 2 is:
 
 ```text
-Pass 2 model request
-  -> ordinary provider chat/message generation
-  -> plain text content containing compact proposal IR
+ordinary provider chat/message generation
+  -> plain content containing compact proposal IR
   -> RelayLM JSON parse
-  -> exact IR key/shape checks
+  -> exact key/shape checks
   -> typed StateCandidate / ContinuityCandidate construction
   -> existing deterministic validation/lifecycle
 ```
 
-The compact proposal IR contains only:
+The compact top-level IR contains exactly:
 
 ```text
 state_candidates
 continuity_candidates
 ```
 
-The provider does not receive RelayLM's canonical Pass 2 schema through `response_format`, JSON-schema grammar, or an equivalent provider-owned structured-output field. The model is instructed in the RelayLM-owned Pass 2 prompt about the exact proposal-IR shape; the provider transports ordinary content. Malformed JSON, extra top-level keys, invalid candidate shape, or invalid typed values fail closed in RelayLM and produce no candidate commit.
+Provider-native `response_format`, JSON Schema, grammar or constrained decoding is not required to define or enforce this semantic boundary.
 
-This keeps multilingual semantic interpretation in the model while keeping structure, parsing, normalization, and authority in RelayLM. No language-specific parser is introduced.
+Malformed JSON, extra/missing keys, invalid candidate shapes or invalid typed values fail closed in RelayLM and produce no proposal commit.
 
-# Relationship to existing OpenAI-compatible provider controls
+## RelayLM-owned single-pass combined IR
 
-The canonical OpenAI-compatible provider already owns explicit `temperature` and `top_p` carriage plus support declarations. COGP deliberately uses the same semantic control names rather than creating provider-specific aliases.
+The optional/compatibility single-pass path uses ordinary provider content containing exactly:
 
-`max_output_tokens` and reasoning/thinking controls are provider-neutral COGP intent; COGP does not claim support until the provider owner supplies truthful capability/carriage. An explicit unsupported request must fail closed.
+```text
+utterance
+state_candidates
+continuity_candidates
+```
 
-Existing provider `seed` remains provider-owned decoding configuration and is not promoted into the initial per-pass COGP control set. Controlled evaluation may continue holding provider-level seed/config identity fixed independently of per-pass policy.
+RelayLM owns parsing and typed construction here as well. The existence of a combined JSON object does not make provider-native structured output a semantic prerequisite.
 
-Provider-native structured-output capability is similarly retained as provider truth for paths that actually use it, but it is not a hidden requirement for canonical `two_pass`.
+## Semantic/mechanical split
 
-# Reproducibility principle
+The model owns language-dependent semantic judgment. RelayLM owns deterministic structure and authority mechanics.
 
-Materially output-affecting pass configuration must remain distinguishable as applied, omitted, or unsupported. Reasoning/thinking state therefore cannot be treated as unrecorded ambient behavior when causal A/B/C evidence is claimed.
+Do not move correction, negation, uncertainty, transient/durable interpretation, source attribution or other free-form multilingual semantics into language-specific deterministic parsers.
 
-For canonical Pass 2, reproducibility also requires the RelayLM proposal-IR prompt/parser contract to be frozen by repository revision. A backend grammar mode is not part of the semantic authority because canonical Pass 2 does not depend on one.
+Do not ask the model to author mechanical metadata that RelayLM can construct deterministically.
 
-This reuses the existing repository principle established by actual-model crystallization reasoning identity without copying CRY-specific LM Studio attestation semantics into ordinary-turn COGP authority.
-
-# Ownership boundaries
-
-COGP / #1533 owns:
-
-- per-pass reasoning/decoding intent semantics;
-- the `auto` versus effective omission distinction;
-- the normalized execution-policy capability requirements;
-- provider-facts-to-COGP vocabulary normalization;
-- applied/omitted/unsupported classification;
-- fail-closed semantics for explicit unsupported pass requests;
-- the canonical Pass 2 compact proposal-IR contract and RelayLM-side parse/type-construction boundary.
+## Relationship to provider controls
 
 Provider owners own:
 
-- actual external request fields/endpoints;
-- provider/model capability discovery and truthful declarations;
+- external request fields/endpoints;
+- capability discovery/attestation;
 - provider-specific value/range validation;
-- exact applied reasoning/decoding wire configuration;
-- transport of ordinary Pass 2 message content.
+- exact applied reasoning/decoding carriage;
+- transport of ordinary cognition message content.
 
-Provider owners do not own canonical Pass 2 proposal structure merely because a backend offers JSON-schema/grammar features.
+COGP uses provider-neutral intent only.
 
-#1388 owns evidence-backed canonical profile/default resolution.
+Existing provider-level controls such as `seed` remain provider-owned unless COGP separately promotes them into its vocabulary.
 
-#1446 owns config schema carriage, precedence, direct operator overrides, and effective-config provenance.
-
-#1386 owns actual-model evidence identity/methodology consuming the resulting applied configuration and must remeasure exact Pass 1/Pass 2 footprints after this contract change before revised screening.
-
-# Non-goals
-
-This contract does not implement or select:
-
-- numeric defaults;
-- profile selection;
-- runtime-config keys;
-- a reasoning endpoint switch;
-- provider-specific fallback tables;
-- language-specific extraction parsers;
-- direct model mutation of State/Continuity;
-- a provider-native structured-output requirement for canonical `two_pass`.
-
-# Current resolved-request carriage
-
-Merged provider work under #1545 supplies truthful configured-vLLM `off` / `bounded(N)` realization. The current COGP runtime carries a fully resolved `CognitionPassRequest` without moving backend wire policy into Turn semantics.
-
-The ordinary legacy path is:
-
-```text
-CognitionPassRequest
-  -> run_user_turn(..., pass_request=...)
-  -> OpenAICompatibleProvider.generate(..., pass_request=...)
-  -> provider-owned capability normalization + require_supported()
-  -> provider-owned exact vLLM realization
-  -> exact Chat Completions request
-```
+## Resolved-request carriage
 
 The two-pass path carries independently resolved requests:
 
@@ -233,27 +205,48 @@ The two-pass path carries independently resolved requests:
 pass1_request
   -> run_user_turn_two_pass
   -> generate_conversation
-  -> plain visible response
+  -> visible response
 
 pass2_request
-  -> originating-turn-bound extraction task
+  -> originating-turn-bound extraction
   -> generate_extraction
-  -> ordinary provider message content
   -> RelayLM proposal-IR parse/type construction
 ```
 
-Neither Turn nor the provider chooses a reasoning budget or strengthens Pass 2 merely because it is Pass 2. The caller must supply the fully resolved request.
+Buffered and streaming two-pass paths must carry equivalent resolved pass semantics. A streaming implementation that silently drops Pass 1 or Pass 2 controls is not compliant.
 
-When no pass request is supplied, existing Turn/provider behavior is preserved. Existing generic providers are not required to accept a new keyword merely to continue serving the historical no-request path.
+When no pass request is supplied, no layer may strengthen reasoning merely because the call is Pass 2.
 
-For the canonical OpenAI-compatible adapter:
+## Reproducibility
 
-- explicit per-pass `temperature` / `top_p` replace provider-wide values for that request;
-- explicit omission leaves those per-pass fields omitted;
-- provider-wide `seed` remains held fixed because seed is not currently a COGP-owned per-pass control;
-- reasoning is translated only through the attested provider-owned `off` / `bounded(N)` realization;
-- an explicit `max_output_tokens` request remains unsupported under current capability facts and fails before network generation;
-- a `CognitionPassRequest` and a direct provider-owned reasoning request cannot both be supplied to the same call, avoiding ambiguous double authority;
-- Pass 2 does not send provider-native `response_format`/JSON-schema structure; RelayLM parses the returned content itself.
+Materially output-affecting configuration must remain distinguishable in evidence as applied, omitted or unsupported.
 
-The provider entry points use the same resolver for their streaming serializers. No release profile or numeric default is chosen here.
+A citable two-pass run requires the exact Pass 1/Pass 2 request identity plus the current RelayLM prompt/IR/parser contract revision and exact provider/model capability evidence.
+
+## Ownership
+
+#1533 owns:
+
+- per-pass provider-neutral reasoning/decoding intent;
+- `auto` versus effective omission semantics;
+- normalized capability vocabulary;
+- applied/omitted/unsupported classification;
+- fail-closed explicit unsupported behavior;
+- current mode-level capability requirements;
+- the RelayLM Pass 2 proposal-IR ownership boundary.
+
+#1386 owns actual-model evidence. #1388 owns calibrated profile/default selection. #1446 owns release config and operator provenance. Provider owners retain external wire and truthful capability authority.
+
+## Non-goals
+
+- numeric defaults;
+- profile selection;
+- provider-specific fallback tables;
+- language-specific semantic parsers;
+- direct model mutation of State/Continuity;
+- provider-native structured-output requirements for current cognition modes;
+- single-pass prompt optimization as a Core 1.0 gate.
+
+## Principle
+
+> Resolve only real capability requirements. Do not mistake JSON inside RelayLM-owned ordinary message content for a provider-native structured-output dependency.
