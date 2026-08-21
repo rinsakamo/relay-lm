@@ -9,11 +9,13 @@ from tools.repository_authority import (
     AGENT_CONTRACT_PATH,
     REQUIRED_FRESHNESS_CLASSES,
     REQUIRED_LIVE_FACTS,
-    REQUIRED_UPSTREAM_FACTS,
     AuthorityError,
     agent_contract_errors,
     read_agent_contract,
 )
+
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def _classes() -> dict[str, object]:
@@ -119,6 +121,13 @@ def test_freshness_of_a_fact_resolves_to_its_declared_class(tmp_path: Path) -> N
     assert contract.is_persistent_authority("external_upstream_claim") is False
 
 
+def test_current_repository_contract_classifies_external_upstream_claims() -> None:
+    contract = read_agent_contract(ROOT)
+
+    assert contract.freshness_of("external_upstream_claim") == "upstream"
+    assert contract.is_persistent_authority("external_upstream_claim") is False
+
+
 def test_an_unclassified_fact_is_refused_rather_than_guessed(tmp_path: Path) -> None:
     _write(tmp_path, _contract(tmp_path))
 
@@ -150,31 +159,6 @@ def test_a_required_live_fact_must_not_be_persistent_authority(tmp_path: Path) -
     assert agent_contract_errors(tmp_path) == (
         ".ai/agent-contract.yaml: freshness fact 'repository_head' must be classified"
         " as a non-persistent class that is re-fetched live",
-    )
-
-
-def test_every_required_upstream_fact_must_be_classified(tmp_path: Path) -> None:
-    contract = _contract(tmp_path)
-    facts = dict(_facts())
-    del facts["external_upstream_claim"]
-    contract["freshness"]["facts"] = facts  # type: ignore[index]
-    _write(tmp_path, contract)
-
-    assert agent_contract_errors(tmp_path) == (
-        ".ai/agent-contract.yaml: freshness.facts must classify 'external_upstream_claim'",
-    )
-
-
-def test_a_required_upstream_fact_must_use_the_upstream_class(tmp_path: Path) -> None:
-    contract = _contract(tmp_path)
-    facts = dict(_facts())
-    facts["external_upstream_claim"] = "live"
-    contract["freshness"]["facts"] = facts  # type: ignore[index]
-    _write(tmp_path, contract)
-
-    assert agent_contract_errors(tmp_path) == (
-        ".ai/agent-contract.yaml: freshness fact 'external_upstream_claim' must be"
-        " classified as 'upstream'",
     )
 
 
@@ -262,20 +246,13 @@ def test_unknown_agent_contract_fields_are_rejected(tmp_path: Path) -> None:
 
 
 def test_the_required_contract_constants_are_frozen() -> None:
-    assert REQUIRED_FRESHNESS_CLASSES == (
-        "evidence",
-        "historical",
-        "live",
-        "repository",
-        "upstream",
-    )
+    assert REQUIRED_FRESHNESS_CLASSES == ("evidence", "historical", "live", "repository")
     assert REQUIRED_LIVE_FACTS == (
         "ci_check_state",
         "issue_state",
         "open_pull_requests",
         "repository_head",
     )
-    assert REQUIRED_UPSTREAM_FACTS == ("external_upstream_claim",)
 
 
 def test_reading_an_invalid_agent_contract_is_refused(tmp_path: Path) -> None:
