@@ -4,3 +4,5 @@ summary: RelayLM 1.0 core architecture thesis, persistent character identity, an
 canonical_surfaces:
 - docs/architecture/core.md
 - docs/architecture/identity.md
+implementation:
+- src/relaylm/identity.py
