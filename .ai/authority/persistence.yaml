@@ -7,6 +7,7 @@ canonical_surfaces:
 references:
 - docs/reference/event-retrieval-discovery.md
 implementation:
+- src/relaylm/character.py
 - src/relaylm/storage/filesystem.py
 tests:
 - tests/unit/test_character_directory.py
