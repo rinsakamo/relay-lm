@@ -77,4 +77,5 @@ def test_shadow_two_pass_reuses_one_openai_adapter_with_relaylm_owned_extraction
     assert "response_format" not in seen[0]
     assert "response_format" not in seen[1]
     assert "RelayLM combined cognitive IR contract" in seen[0]["messages"][0]["content"]
-    assert "RelayLM structured proposal IR contract" in seen[1]["messages"][0]["content"]
+    assert "immediate structured-cognition pass" in seen[1]["messages"][0]["content"]
+    assert "RelayLM, not the provider, owns parsing" in seen[1]["messages"][0]["content"]
