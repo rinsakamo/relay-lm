@@ -1,8 +1,8 @@
 # Provider Wire Contract
 
-Provider wire grammar is adapter detail and must not redefine RelayLM semantic contracts.
+Provider wire grammar is adapter detail and must not redefine RelayLM semantic contracts. For ordinary single-pass cognition, the combined JSON IR grammar itself is RelayLM-owned; the OpenAI-compatible backend transports it as ordinary message content and does not need provider-native JSON-schema/grammar enforcement.
 
-Gate B (#1258) validated V6 / Framing D against the target local OpenAI-compatible provider. The current adapter implements both buffered and safe streaming delivery forms of that same wire.
+Gate B (#1258) validated V6 / Framing D against the target local OpenAI-compatible provider. The current adapter implements both buffered and safe streaming delivery forms of that same semantic wire, with exact shape enforcement performed by RelayLM.
 
 ## Complete provider response
 
@@ -31,17 +31,19 @@ Gate B (#1258) validated V6 / Framing D against the target local OpenAI-compatib
 }
 ```
 
-Both proposal channels are explicit top-level fields. A supported provider that produced no proposal for a channel returns an explicit empty array. A missing `continuity_candidates` field is a provider protocol error and is not normalized into an empty semantic result.
+The model returns exactly one JSON object with exactly these three top-level fields. Both proposal channels are explicit. A model that produced no proposal for a channel returns an explicit empty array. Missing or additional top-level fields are RelayLM protocol errors and are not normalized away.
 
-Every provider-facing State candidate is total: `state_class`, `key`, `op`, `value`, and `sources` are present.
+Every model-facing State candidate is total and exact: `state_class`, `key`, `op`, `value`, and `sources` are present and no additional candidate fields are accepted.
 
-Every provider-facing Continuity candidate is also total: `kind`, `key`, `op`, `value`, `sources`, and `epistemic_role` are present.
+Every model-facing Continuity candidate is also total and exact: `kind`, `key`, `op`, `value`, `sources`, and `epistemic_role` are present and no additional candidate fields are accepted.
 
-The semantic StateCandidate and ContinuityCandidate contracts still treat `value` as an operation-specific semantic field. The provider wire carries a total `value` field so strict structured-output schemas remain reliable.
+The semantic StateCandidate and ContinuityCandidate contracts still treat `value` as an operation-specific semantic field. The combined IR carries a total `value` field so RelayLM can parse one closed deterministic grammar before constructing typed semantic candidates.
+
+Provider-native `response_format`, JSON Schema, grammar, or constrained-decoding features may exist, but they are not required to define or enforce this RelayLM contract.
 
 ## State wire value forms
 
-For State `set`, provider `value` may be either:
+For State `set`, model-facing `value` may be either:
 
 ```json
 "likes"
@@ -62,9 +64,9 @@ The structured form is exact and closed:
 - `degree_hint` is a finite number in inclusive range `0.0..1.0`;
 - no additional properties are allowed.
 
-For State `remove`, provider `value` is always `null`.
+For State `remove`, model-facing `value` is always `null`.
 
-The strict provider schema therefore accepts:
+The RelayLM combined-IR grammar therefore accepts:
 
 ```text
 string | {semantic, degree_hint} | null
@@ -77,7 +79,7 @@ set     -> string or degree-hint object
 remove  -> null
 ```
 
-The adapter fails closed on invalid combinations.
+RelayLM fails closed on invalid combinations.
 
 ## ContinuityCandidate wire
 
@@ -106,13 +108,13 @@ assistant_inference
 assistant_commitment
 ```
 
-For Continuity `set`, `value` is the proposed JSON semantic value. Nested arrays/objects and JSON scalars are preserved without adapter reinterpretation. Non-finite numbers or otherwise non-JSON values fail closed during provider-side normalization.
+For Continuity `set`, `value` is the proposed JSON semantic value. Nested arrays/objects and JSON scalars are preserved without adapter reinterpretation. Non-finite numbers or otherwise non-JSON values fail closed during RelayLM parsing/normalization.
 
 For Continuity `resolve`, wire `value` is `null` and is normalized to the semantic resolve form where the value field is absent.
 
 Candidate `sources` remain Event IDs. The provider adapter does not promote Memory document locations into provenance and does not decide whether a proposal is accepted.
 
-The strict structured-output schema closes the Continuity candidate object itself: unknown candidate fields, unsupported kinds/operations/epistemic roles, missing required fields, and malformed source arrays fail closed. The semantic `value` remains the JSON payload owned by Continuity rather than being narrowed into a provider-specific value vocabulary.
+RelayLM closes the Continuity candidate object itself: unknown candidate fields, unsupported kinds/operations/epistemic roles, missing required fields, and malformed source arrays fail closed. The semantic `value` remains the JSON payload owned by Continuity rather than being narrowed into a provider-specific value vocabulary.
 
 ## Degree-hint semantics
 
@@ -125,26 +127,26 @@ Provider wire support for the degree-hint object does not change source authorit
 ## Adapter normalization
 
 ```text
-provider `utterance`
+provider message JSON `utterance`
     -> semantic `response`
 
-provider State set with string value
+provider message State set with string value
     -> semantic State set with string value
 
-provider State set with {semantic, degree_hint}
+provider message State set with {semantic, degree_hint}
     -> semantic State set with the same bounded JSON object
 
-provider State remove with value:null
+provider message State remove with value:null
     -> semantic State remove with value absent
 
-provider Continuity set with JSON value
+provider message Continuity set with JSON value
     -> semantic Continuity set with the same JSON value
 
-provider Continuity resolve with value:null
+provider message Continuity resolve with value:null
     -> semantic Continuity resolve with value absent
 ```
 
-No semantic acceptance, lifecycle interpretation, or calibration is performed by the adapter. State validation and Continuity validation remain downstream deterministic RelayLM authority.
+Before this normalization, RelayLM verifies the exact combined-IR top-level and candidate shapes. No semantic acceptance, lifecycle interpretation, or calibration is performed by the adapter. State validation and Continuity validation remain downstream deterministic RelayLM authority.
 
 ## CognitiveInput context provenance
 
@@ -216,14 +218,14 @@ The adapter only serializes already-projected Event evidence. It does not widen 
 
 ## Response framing
 
-The provider-facing instruction defines `utterance` as the complete non-empty natural-language reply shown to the user. This is a wire/model reliability constraint established by the V6 Gate B evidence, not a new semantic field.
+The model-facing instruction defines `utterance` as the complete non-empty natural-language reply shown to the user. This is a RelayLM wire/model reliability constraint established by the V6 Gate B evidence, not a new semantic field.
 
-For buffered generation, RelayLM waits for the complete provider response and then normalizes the structured object into `CognitiveOutput`.
+For buffered generation, RelayLM waits for the complete ordinary provider message, parses its content as the exact combined IR, constructs typed `CognitiveOutput`, and only then allows the existing deterministic commit path to proceed.
 
-For streaming generation, the provider still generates the same single structured object. The adapter accumulates the complete structured text while incrementally decoding only characters that can be proven to belong to the leading top-level `utterance` JSON string. Those safe characters may be delivered to the client before the candidate tail completes.
+For streaming generation, the provider still generates the same single JSON object as ordinary content. The adapter accumulates the complete text while incrementally decoding only characters that can be proven to belong to the leading top-level `utterance` JSON string. Those safe characters may be delivered to the client before the candidate tail completes.
 
-`state_candidates` and `continuity_candidates` are never parsed or made commit-eligible incrementally. Only after the provider stream reaches completion does RelayLM parse the complete JSON object, normalize it through the same wire rules, and return the semantic `CognitiveOutput(response, state_candidates, continuity_candidates)`. If the stream is truncated or malformed, no semantic `CognitiveOutput` is accepted and no candidate becomes eligible for deterministic State or Continuity processing.
+`state_candidates` and `continuity_candidates` are never parsed or made commit-eligible incrementally. Only after the provider stream reaches completion does RelayLM parse the complete JSON object, enforce exact shape, normalize it through the same wire rules, and return the semantic `CognitiveOutput(response, state_candidates, continuity_candidates)`. If the stream is truncated or malformed, no semantic `CognitiveOutput` is accepted and no candidate becomes eligible for deterministic State or Continuity processing.
 
 If the adapter cannot safely identify an incremental `utterance` prefix, it may buffer visible text until the complete object is validated; safety takes precedence over early display. Streaming does not introduce a second semantic generation or change the semantic output contract.
 
-Provider/model-specific prompt wording and schema constraints may change without reopening semantic architecture unless evidence reveals a semantic defect.
+Provider/model-specific prompt wording and external transport details may change without reopening semantic architecture unless evidence reveals a semantic defect. The exact RelayLM IR grammar and fail-closed parse/type-construction boundary remain RelayLM-owned.
