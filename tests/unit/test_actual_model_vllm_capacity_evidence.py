@@ -75,17 +75,42 @@ def _evidence():
     )
 
 
-def test_capacity_evidence_is_content_addressed_and_contains_no_prompt_text() -> None:
+def test_capacity_evidence_is_content_addressed_and_contains_no_semantic_payload() -> None:
     evidence = _evidence()
 
     assert evidence.evidence_id.startswith("amcap-")
     assert evidence.maximum_observed_input_tokens == 1310
     mapping = evidence.to_mapping()
-    serialized = json.dumps(mapping, sort_keys=True)
     assert mapping["evidence_id"] == evidence.evidence_id
-    assert "prompt" not in serialized.casefold()
-    assert "message" not in serialized.casefold()
-    assert "content" not in serialized.casefold()
+    assert set(mapping) == {
+        "format_version",
+        "evidence_id",
+        "relaylm_commit",
+        "target_id",
+        "target_revision",
+        "tokenizer_identity",
+        "chat_template_identity",
+        "backend_version",
+        "request_model",
+        "observed_max_model_len",
+        "counter_identity",
+        "footprints",
+        "failed_capacity",
+    }
+    for footprint in mapping["footprints"]:
+        assert set(footprint) == {
+            "topology",
+            "pass_id",
+            "scenario_id",
+            "turn_index",
+            "total_input_tokens",
+            "required_input_framing_tokens",
+            "count_mode",
+        }
+    serialized_keys = json.dumps(sorted(mapping), sort_keys=True).casefold()
+    assert "prompt" not in serialized_keys
+    assert "message" not in serialized_keys
+    assert "content" not in serialized_keys
 
 
 def test_capacity_evidence_writer_is_immutable_and_loader_recomputes_identity(
@@ -108,7 +133,7 @@ def test_capacity_evidence_writer_is_immutable_and_loader_recomputes_identity(
     assert loaded == evidence
 
     raw = json.loads(path.read_text(encoding="utf-8"))
-    raw["observed_max_model_len"] = 4096
+    raw["relaylm_commit"] = "c" * 40
     path.write_text(json.dumps(raw, indent=2) + "\n", encoding="utf-8")
     with pytest.raises(capacity.VLLMRuntimeCapacityEvidenceError, match="evidence_id"):
         capacity.load_vllm_runtime_capacity_evidence(path)
