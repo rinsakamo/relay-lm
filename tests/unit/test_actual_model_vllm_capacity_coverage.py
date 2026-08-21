@@ -4,10 +4,12 @@ import importlib
 
 import pytest
 
+from relaylm.budget_enforcement import TokenCountMode
 from relaylm.cognition_execution import (
     CognitionPassRequest,
     CognitionReasoningMode,
 )
+from relaylm.providers.openai_compatible_budget import SerializedInputCounterIdentity
 
 
 def _capacity_module():
@@ -22,6 +24,26 @@ def _request(*, bounded: bool = False) -> CognitionPassRequest:
         reasoning_budget=16 if bounded else None,
         temperature=0,
         top_p=1,
+    )
+
+
+def _counter_identity() -> SerializedInputCounterIdentity:
+    return SerializedInputCounterIdentity(
+        capability="vllm.serving-tokenizer.serialized-input.v1",
+        implementation="vllm-tokenize-endpoint-counter",
+        version="1",
+        mode=TokenCountMode.EXACT,
+        tokenizer_identity="hf-snapshot-tokenizer:sha256:" + "1" * 64,
+        parameters=(
+            ("backend", "vllm"),
+            ("backend_version", "0.27.1"),
+            ("chat_template_identity", "hf-snapshot-chat-template:sha256:" + "2" * 64),
+            ("context_limit", 2048),
+            ("framing_method", "same-message-shape-empty-content-v1"),
+            ("renderer_method", "chat-completion-effective-template-kwargs-v1"),
+            ("request_model", "gemma-4-12B-it-qat-w4a16"),
+            ("target_id", "gemma-4-12b-it-qat-w4a16-vllm-v1"),
+        ),
     )
 
 
@@ -77,32 +99,52 @@ def test_coverage_validator_requires_exact_scenario_revision_and_full_required_m
             pass_request_id=pass2_id,
         ),
     )
+    observations = tuple(
+        capacity.VLLMCapacityFootprintObservation(
+            condition_id=item.condition_id,
+            topology=item.topology,
+            pass_id=item.pass_id,
+            scenario_id=item.scenario_id,
+            turn_index=item.turn_index,
+            pass_request_id=item.pass_request_id,
+            total_input_tokens=900 + index,
+            required_input_framing_tokens=100,
+            count_mode=TokenCountMode.EXACT,
+        )
+        for index, item in enumerate(required)
+    )
 
-    class Evidence:
-        scenario_set_revision = scenario_revision
-        footprints = (
-            type("Observation", (), {"coverage": required[0]})(),
+    def evidence(footprints):
+        return capacity.VLLMRuntimeCapacityEvidence(
+            relaylm_commit="b" * 40,
+            target_id="gemma-4-12b-it-qat-w4a16-vllm-v1",
+            target_revision="sha256:" + "c" * 64,
+            tokenizer_identity="hf-snapshot-tokenizer:sha256:" + "1" * 64,
+            chat_template_identity="hf-snapshot-chat-template:sha256:" + "2" * 64,
+            backend_version="0.27.1",
+            request_model="gemma-4-12B-it-qat-w4a16",
+            observed_max_model_len=2048,
+            scenario_set_revision=scenario_revision,
+            counter_identity=_counter_identity(),
+            footprints=tuple(footprints),
         )
 
     with pytest.raises(capacity.VLLMRuntimeCapacityEvidenceError, match="coverage"):
         validate(
-            evidence=Evidence(),
+            evidence=evidence(observations[:1]),
             scenario_set_revision=scenario_revision,
             required_coverage=required,
         )
 
-    Evidence.footprints = tuple(
-        type("Observation", (), {"coverage": item})() for item in required
-    )
     validate(
-        evidence=Evidence(),
+        evidence=evidence(observations),
         scenario_set_revision=scenario_revision,
         required_coverage=required,
     )
 
     with pytest.raises(capacity.VLLMRuntimeCapacityEvidenceError, match="scenario"):
         validate(
-            evidence=Evidence(),
-            scenario_set_revision="sha256:" + "b" * 64,
+            evidence=evidence(observations),
+            scenario_set_revision="sha256:" + "d" * 64,
             required_coverage=required,
         )
