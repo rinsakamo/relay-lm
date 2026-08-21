@@ -72,6 +72,79 @@ def test_shared_host_runner_dispatches_one_vllm_condition_without_backend_script
     output = capsys.readouterr().out
     assert '"suite": "cogp5-vllm-screening-v1"' in output
     assert '"condition": "A"' in output
+    assert '"operation": "screening"' in output
+
+
+def test_shared_host_runner_dispatches_vllm_capacity_acquisition_separately(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    plan = SimpleNamespace(screening_id="cogp5-vllm-screening-v1")
+    prepared = SimpleNamespace(
+        plan=plan,
+        screening_condition_id="A",
+        manifest=SimpleNamespace(relaylm_commit="a" * 40, replicate_id="0"),
+        target=SimpleNamespace(target_id="gemma-4-12b-it-qat-w4a16-vllm-v1"),
+        reasoning_capability=SimpleNamespace(
+            backend_attestation=SimpleNamespace(max_model_len=1536)
+        ),
+    )
+    artifact = SimpleNamespace(
+        to_mapping=lambda: {
+            "evidence_id": "amcap-1",
+            "artifact_path": "/tmp/amcap-1.json",
+            "footprint_count": 6,
+            "maximum_observed_input_tokens": 1200,
+            "complete": True,
+        }
+    )
+    observed: dict[str, object] = {}
+
+    def fake_prepare(**kwargs):
+        observed["prepare"] = kwargs
+        return prepared
+
+    async def fake_execute(**kwargs):
+        observed["execute"] = kwargs
+        return artifact
+
+    monkeypatch.setattr(host_runner, "load_vllm_screening_plan", lambda _: plan)
+    monkeypatch.setattr(host_runner, "_prepare_vllm_capacity_acquisition", fake_prepare)
+    monkeypatch.setattr(host_runner, "_execute_vllm_capacity_acquisition", fake_execute)
+    monkeypatch.setattr(host_runner, "_current_repo_head", lambda _: "a" * 40)
+
+    result = host_runner.main(
+        [
+            "--backend",
+            "vllm",
+            "--operation",
+            "capacity",
+            "--condition",
+            "A",
+            "--repo-root",
+            str(tmp_path),
+            "--snapshot-root",
+            "/tmp/relaylm-unsloth-w4a16-model",
+            "--provider-base-url",
+            "http://127.0.0.1:8000/v1",
+            "--workspace-root",
+            "/tmp/relaylm-vllm-work",
+            "--artifact-root",
+            "/tmp/relaylm-vllm-evidence",
+        ]
+    )
+
+    assert result == 0
+    assert observed["prepare"]["plan"] is plan
+    assert observed["prepare"]["condition_id"] == "A"
+    assert "capacity_evidence_root" not in observed["prepare"]
+    assert "snapshot_root" not in observed["execute"]
+    output = capsys.readouterr().out
+    assert '"operation": "capacity"' in output
+    assert '"observed_max_model_len": 1536' in output
+    assert '"evidence_id": "amcap-1"' in output
+    assert '"score"' not in output
 
 
 def test_shared_host_runner_delegates_lm_studio_without_reinterpreting_legacy_args(

@@ -1,6 +1,6 @@
 schema_version: 1
 id: actual_model_evaluation
-summary: Actual-model execution, shared/backend host orchestration, resolved cognition request carriage, immutable exact-screening-coverage capacity-evidence-gated vLLM screening, exact vLLM/LM Studio serving-tokenizer evidence, backend execution binding, and reproducible evaluation evidence.
+summary: Actual-model execution, shared/backend host orchestration, resolved cognition request carriage, real trajectory vLLM capacity acquisition, immutable exact-screening-coverage capacity-evidence-gated vLLM screening, exact vLLM/LM Studio serving-tokenizer evidence, backend execution binding, and reproducible evaluation evidence.
 owner_issue: 1386
 canonical_surfaces:
 - docs/reference/actual-model-cognition-execution-evidence.md
@@ -11,6 +11,7 @@ canonical_surfaces:
 - docs/reference/actual-model-host-runner.md
 - docs/reference/actual-model-lm-studio-binding.md
 - docs/reference/actual-model-vllm-binding.md
+- docs/reference/actual-model-vllm-capacity-acquisition.md
 implementation:
 - src/relaylm/actual_model_evaluation.py
 - src/relaylm/actual_model_artifacts.py
@@ -32,6 +33,7 @@ implementation:
 - src/relaylm/actual_model_vllm_host.py
 - src/relaylm/actual_model_vllm_counter.py
 - src/relaylm/actual_model_vllm_capacity.py
+- src/relaylm/actual_model_vllm_capacity_acquisition.py
 - src/relaylm/actual_model_host.py
 - src/relaylm/actual_model_host_runner.py
 - src/relaylm/actual_model_reasoning.py
@@ -69,6 +71,8 @@ tests:
 - tests/unit/test_actual_model_vllm_capacity_evidence.py
 - tests/unit/test_actual_model_vllm_capacity_coverage.py
 - tests/unit/test_actual_model_vllm_counter.py
+- tests/unit/test_actual_model_vllm_capacity_acquisition.py
+- tests/unit/test_actual_model_vllm_capacity_producer.py
 - tests/unit/test_actual_model_vllm_host_dispatch.py
 - tests/unit/test_actual_model_host_runner.py
 - tests/unit/test_actual_model_crystallization.py

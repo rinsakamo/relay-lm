@@ -121,17 +121,15 @@ def _count_model_input(
 
 @dataclass(frozen=True, slots=True)
 class OpenAICompatibleSerializedInputCounter:
-    """Count the model-input shape produced by the OpenAI-compatible adapter.
+    """Count the exact model-input shape produced by the single-pass adapter.
 
-    The caller supplies the configured provider/model-specific tokenizer or
-    conservative bounded estimator. RelayLM defines no generic token heuristic.
-
-    The adapter's existing `_request_body` is the serialization authority. The
-    transport-only `stream` flag is removed before the model-input mapping is
-    passed to the counter, so buffered and streaming generation share the same
-    token-accounting input. Explicit provider decoding controls are carried into
-    the counted request shape unchanged; the supplied counter decides whether
-    they affect its provider/model-specific accounting.
+    Production `_resolve_cognition_pass_request` and `_request_body` remain the
+    authorities for per-pass decoding/reasoning realization and serialization.
+    Historical direct serialized-input counting remains valid without a decoding
+    capability declaration; an explicit `CognitionPassRequest` requires the same
+    capability facts used by production generation and fails closed if absent.
+    The transport-only `stream` field is removed before the caller-supplied
+    model/tokenizer-specific counter receives the input mapping.
     """
 
     model: str
@@ -139,6 +137,8 @@ class OpenAICompatibleSerializedInputCounter:
     decoding_config: OpenAICompatibleDecodingConfig = field(
         default_factory=OpenAICompatibleDecodingConfig
     )
+    decoding_capabilities: OpenAICompatibleDecodingCapabilities | None = None
+    vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None
     evidence_identity: SerializedInputCounterIdentity | None = None
 
     def __post_init__(self) -> None:
@@ -148,6 +148,29 @@ class OpenAICompatibleSerializedInputCounter:
             raise TypeError("count_input must be callable")
         if not isinstance(self.decoding_config, OpenAICompatibleDecodingConfig):
             raise TypeError("decoding_config must be OpenAICompatibleDecodingConfig")
+        if self.decoding_capabilities is not None and not isinstance(
+            self.decoding_capabilities,
+            OpenAICompatibleDecodingCapabilities,
+        ):
+            raise TypeError(
+                "decoding_capabilities must be OpenAICompatibleDecodingCapabilities or None"
+            )
+        if self.decoding_capabilities is not None:
+            self.decoding_capabilities.require(self.decoding_config)
+        if self.vllm_reasoning_capability is not None and not isinstance(
+            self.vllm_reasoning_capability,
+            VLLMReasoningCapabilityAttestation,
+        ):
+            raise TypeError(
+                "vllm_reasoning_capability must be VLLMReasoningCapabilityAttestation or None"
+            )
+        if (
+            self.vllm_reasoning_capability is not None
+            and self.vllm_reasoning_capability.request_model != self.model
+        ):
+            raise ValueError(
+                "vLLM reasoning capability request_model must match counter model"
+            )
         if self.evidence_identity is not None and not isinstance(
             self.evidence_identity,
             SerializedInputCounterIdentity,
@@ -159,12 +182,34 @@ class OpenAICompatibleSerializedInputCounter:
     def count_serialized_input(
         self,
         cognitive_input: CognitiveInput,
+        *,
+        pass_request: CognitionPassRequest | None = None,
+        reasoning_request: OpenAICompatibleReasoningRequest | None = None,
+        vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
     ) -> SerializedInputTokenCount:
+        capability = vllm_reasoning_capability or self.vllm_reasoning_capability
+        if pass_request is None:
+            decoding_config = self.decoding_config
+            effective_reasoning = reasoning_request
+        else:
+            if self.decoding_capabilities is None:
+                raise ValueError(
+                    "pass-aware serialized-input counting requires decoding_capabilities"
+                )
+            decoding_config, effective_reasoning = _resolve_cognition_pass_request(
+                pass_request=pass_request,
+                reasoning_request=reasoning_request,
+                decoding_config=self.decoding_config,
+                decoding_capabilities=self.decoding_capabilities,
+                vllm_reasoning_capability=capability,
+            )
         request_body = _request_body(
             model=self.model,
             cognitive_input=cognitive_input,
             stream=False,
-            decoding_config=self.decoding_config,
+            decoding_config=decoding_config,
+            reasoning_request=effective_reasoning,
+            vllm_reasoning_capability=capability,
         )
         return _count_model_input(
             request_body=request_body,
