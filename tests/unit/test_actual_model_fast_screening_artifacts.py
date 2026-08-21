@@ -13,6 +13,10 @@ from relaylm.actual_model_fast_screening_artifacts import (
 )
 
 
+EXECUTION_ID = "amx-" + "a" * 64
+RUN_ID = "amr-" + "b" * 64
+
+
 def _call(
     phase: str,
     *,
@@ -33,8 +37,8 @@ def test_single_pass_timing_artifact_binds_each_turn_to_execution_identity() -> 
         condition_id="single-pass-off",
         replicate_id="r1",
         scenario_id="scenario-v1",
-        execution_id="ame-1",
-        run_id="amr-1",
+        execution_id=EXECUTION_ID,
+        run_id=RUN_ID,
         execution_mode="single_pass",
         turn_count=2,
         scenario_elapsed_ms=42.5,
@@ -44,8 +48,8 @@ def test_single_pass_timing_artifact_binds_each_turn_to_execution_identity() -> 
         ),
     )
 
-    assert artifact.run_id == "amr-1"
-    assert artifact.execution_id == "ame-1"
+    assert artifact.run_id == RUN_ID
+    assert artifact.execution_id == EXECUTION_ID
     assert artifact.scenario_elapsed_ms == 42.5
     assert tuple(turn.turn_index for turn in artifact.turns) == (1, 2)
     assert artifact.turns[0].response_provider_ms == 10.0
@@ -59,8 +63,8 @@ def test_two_pass_timing_artifact_separates_visible_response_from_extraction() -
         condition_id="two-pass-off-off",
         replicate_id="r1",
         scenario_id="scenario-v1",
-        execution_id="ame-2",
-        run_id="amr-2",
+        execution_id=EXECUTION_ID,
+        run_id=RUN_ID,
         execution_mode="two_pass",
         turn_count=2,
         scenario_elapsed_ms=60.0,
@@ -86,8 +90,8 @@ def test_timing_artifact_rejects_phase_sequence_drift() -> None:
             condition_id="two-pass-off-off",
             replicate_id="r1",
             scenario_id="scenario-v1",
-            execution_id="ame-2",
-            run_id="amr-2",
+            execution_id=EXECUTION_ID,
+            run_id=RUN_ID,
             execution_mode="two_pass",
             turn_count=1,
             scenario_elapsed_ms=20.0,
@@ -98,14 +102,52 @@ def test_timing_artifact_rejects_phase_sequence_drift() -> None:
         )
 
 
+def test_timing_artifact_rejects_noncanonical_run_identity() -> None:
+    with pytest.raises(ValueError, match="run_id must be canonical"):
+        bind_fast_screening_timing_artifact(
+            screening_id="screening-v1",
+            condition_id="single-pass-off",
+            replicate_id="r1",
+            scenario_id="scenario-v1",
+            execution_id=EXECUTION_ID,
+            run_id="../escape",
+            execution_mode="single_pass",
+            turn_count=1,
+            scenario_elapsed_ms=20.0,
+            calls=(_call("single_pass", duration_ms=10.0),),
+        )
+
+
+def test_timing_artifact_rejects_scenario_elapsed_below_provider_total() -> None:
+    with pytest.raises(
+        ActualModelFastScreeningArtifactError,
+        match="scenario elapsed time cannot be below provider call total",
+    ):
+        bind_fast_screening_timing_artifact(
+            screening_id="screening-v1",
+            condition_id="two-pass-off-off",
+            replicate_id="r1",
+            scenario_id="scenario-v1",
+            execution_id=EXECUTION_ID,
+            run_id=RUN_ID,
+            execution_mode="two_pass",
+            turn_count=1,
+            scenario_elapsed_ms=12.0,
+            calls=(
+                _call("pass1", duration_ms=8.0),
+                _call("pass2", duration_ms=5.0),
+            ),
+        )
+
+
 def test_timing_artifact_write_is_idempotent_and_conflict_safe(tmp_path: Path) -> None:
     artifact = bind_fast_screening_timing_artifact(
         screening_id="screening-v1",
         condition_id="single-pass-off",
         replicate_id="r1",
         scenario_id="scenario-v1",
-        execution_id="ame-1",
-        run_id="amr-1",
+        execution_id=EXECUTION_ID,
+        run_id=RUN_ID,
         execution_mode="single_pass",
         turn_count=1,
         scenario_elapsed_ms=20.0,
@@ -113,7 +155,7 @@ def test_timing_artifact_write_is_idempotent_and_conflict_safe(tmp_path: Path) -
     )
 
     path = write_fast_screening_timing_artifact(artifact=artifact, artifact_root=tmp_path)
-    assert path == tmp_path / "screening_timing" / "amr-1.json"
+    assert path == tmp_path / "screening_timing" / f"{RUN_ID}.json"
     assert write_fast_screening_timing_artifact(
         artifact=artifact,
         artifact_root=tmp_path,
