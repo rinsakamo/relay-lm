@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -156,7 +157,10 @@ def test_prepare_screening_condition_uses_common_provider_and_binding_identity(
     provider_type: type[OpenAICompatibleProvider],
     mode: str,
 ) -> None:
-    plan = vllm_host.load_vllm_screening_plan(PLAN_PATH)
+    plan = replace(
+        vllm_host.load_vllm_screening_plan(PLAN_PATH),
+        capacity_evidence_id="test-capacity-evidence",
+    )
     target = vllm_host.load_actual_model_repository_snapshot_target(TARGET_PATH)
     monkeypatch.setattr(vllm_host, "_verify_clean_exact_repo", lambda **_: None)
     monkeypatch.setattr(
