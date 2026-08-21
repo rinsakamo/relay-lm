@@ -57,8 +57,8 @@ A proposal has no authority merely because this pass emitted it; RelayLM validat
 
 RelayLM proposal IR contract:
 - Return exactly one JSON object with exactly `state_candidates` and `continuity_candidates`.
-- `state_candidates` is an array. Every item has exactly `state_class`, `key`, `op`, `value`, and `sources`. `op` is `set` or `remove`. A `set` value is a string or exactly {`semantic`, `degree_hint`}; a `remove` value is null. `sources` is a non-empty array of Event IDs.
-- `continuity_candidates` is an array. Every item has exactly `kind`, `key`, `op`, `value`, `sources`, and `epistemic_role`. `kind` is `referent`, `unresolved`, or `active_task`. `op` is `set` or `resolve`. A `resolve` value is null. `epistemic_role` is `user_assertion`, `assistant_inference`, or `assistant_commitment`.
+- `state_candidates` is an array. Every item has exactly `state_class`, `key`, `op`, `value`, and `sources`. `state_class` must be one of the classes supplied in `cognitive_input.state_classes`. `op` is `set` or `remove`. A `set` value is a string or exactly {`semantic`, `degree_hint`}, where `semantic` is a non-empty string and `degree_hint` is a finite number from 0.0 through 1.0. A `remove` value is null. `sources` is a non-empty array of Event IDs.
+- `continuity_candidates` is an array. Every item has exactly `kind`, `key`, `op`, `value`, `sources`, and `epistemic_role`. `kind` is `referent`, `unresolved`, or `active_task`. `op` is `set` or `resolve`. A `set` value is the JSON semantic value being proposed; a `resolve` value is null. `epistemic_role` is `user_assertion`, `assistant_inference`, or `assistant_commitment`.
 - Do not add an `utterance`, metadata, execution IDs, or explanatory fields.
 - Do not use Markdown or code fences. Return only the JSON object.
 
@@ -315,6 +315,7 @@ def _parse_extraction_completion(envelope: Any) -> CognitionExtractionOutput:
             "extraction wire output must contain exactly state_candidates and "
             "continuity_candidates"
         )
+    _require_exact_extraction_state_candidate_shapes(wire["state_candidates"])
 
     normalized = parse_wire_output(
         {
@@ -327,6 +328,18 @@ def _parse_extraction_completion(envelope: Any) -> CognitionExtractionOutput:
         state_candidates=normalized.state_candidates,
         continuity_candidates=normalized.continuity_candidates,
     )
+
+
+def _require_exact_extraction_state_candidate_shapes(raw_candidates: Any) -> None:
+    if not isinstance(raw_candidates, list):
+        raise ProviderProtocolError("wire state_candidates must be an array")
+    expected_keys = {"state_class", "key", "op", "value", "sources"}
+    for index, raw in enumerate(raw_candidates):
+        if not isinstance(raw, dict) or set(raw) != expected_keys:
+            raise ProviderProtocolError(
+                f"state_candidates[{index}] must contain exactly "
+                "state_class, key, op, value, and sources"
+            )
 
 
 def _completion_content(envelope: Any) -> str:
