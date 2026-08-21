@@ -171,6 +171,35 @@ class ProviderProtocolError(RuntimeError):
     """Upstream provider failed to return a valid RelayLM cognitive result."""
 
 
+_UPSTREAM_ERROR_DETAIL_LIMIT = 2048
+
+
+def _provider_http_error(
+    response: httpx.Response,
+    *,
+    prefix: str,
+    api_key: str | None,
+) -> ProviderProtocolError:
+    try:
+        detail = json.dumps(
+            response.json(),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    except (json.JSONDecodeError, ValueError):
+        detail = response.text.strip()
+    if api_key:
+        detail = detail.replace(api_key, "<redacted>")
+    if not detail:
+        detail = "<empty>"
+    if len(detail) > _UPSTREAM_ERROR_DETAIL_LIMIT:
+        detail = detail[:_UPSTREAM_ERROR_DETAIL_LIMIT] + "…"
+    return ProviderProtocolError(
+        f"{prefix}: status={response.status_code} detail={detail}"
+    )
+
+
 class OpenAICompatibleProvider:
     """OpenAI Chat Completions adapter for a complete structured cognitive turn."""
 
@@ -269,8 +298,15 @@ class OpenAICompatibleProvider:
                     vllm_reasoning_capability=effective_capability,
                 ),
             )
-            response.raise_for_status()
+            if not response.is_success:
+                raise _provider_http_error(
+                    response,
+                    prefix="upstream request failed",
+                    api_key=self.api_key,
+                )
             envelope = response.json()
+        except ProviderProtocolError:
+            raise
         except (httpx.HTTPError, ValueError) as exc:
             raise ProviderProtocolError(f"upstream request failed: {exc}") from exc
 
@@ -314,7 +350,13 @@ class OpenAICompatibleProvider:
                     vllm_reasoning_capability=effective_capability,
                 ),
             ) as response:
-                response.raise_for_status()
+                if not response.is_success:
+                    await response.aread()
+                    raise _provider_http_error(
+                        response,
+                        prefix="upstream streaming request failed",
+                        api_key=self.api_key,
+                    )
                 async for data in _iter_sse_data(response):
                     if data == "[DONE]":
                         saw_done = True
@@ -327,6 +369,8 @@ class OpenAICompatibleProvider:
                             await emit_response_delta(visible)
                     if finish_reason is not None:
                         saw_finish = True
+        except ProviderProtocolError:
+            raise
         except (httpx.HTTPError, UnicodeDecodeError, ValueError) as exc:
             raise ProviderProtocolError(f"upstream streaming request failed: {exc}") from exc
 
