@@ -361,17 +361,9 @@ def require_mode_capabilities(
         raise CognitionPolicyUnresolvedError(
             "cognition mode auto must resolve before generation"
         )
-    if (
-        mode
-        in (
-            CognitionExecutionMode.SINGLE_PASS,
-            CognitionExecutionMode.SHADOW_TWO_PASS,
-        )
-        and not capabilities.structured_output
-    ):
-        raise CognitionExecutionCapabilityError(
-            f"{mode.value} requires structured_output capability"
-        )
+    # Current RelayLM cognition modes transport RelayLM-owned IR as ordinary
+    # provider message content. Provider-native structured output remains a
+    # truthful capability fact, but is not a mode-level prerequisite here.
     if streaming and not capabilities.streaming:
         raise CognitionExecutionCapabilityError(
             f"{mode.value} streaming requires streaming capability"
