@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import math
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -115,7 +117,18 @@ class FastScreeningTimingArtifact:
                 "scenario elapsed time cannot be below provider call total"
             )
 
-    def to_mapping(self) -> dict[str, object]:
+    @property
+    def timing_id(self) -> str:
+        payload = json.dumps(
+            self._identity_mapping(),
+            ensure_ascii=False,
+            allow_nan=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        return f"amt-{hashlib.sha256(payload).hexdigest()}"
+
+    def _identity_mapping(self) -> dict[str, object]:
         return {
             "format_version": self.format_version,
             "screening_id": self.screening_id,
@@ -129,6 +142,9 @@ class FastScreeningTimingArtifact:
             "scenario_elapsed_ms": self.scenario_elapsed_ms,
             "turns": [turn.to_mapping() for turn in self.turns],
         }
+
+    def to_mapping(self) -> dict[str, object]:
+        return {"timing_id": self.timing_id, **self._identity_mapping()}
 
     def to_json(self) -> str:
         return json.dumps(
@@ -218,29 +234,53 @@ def write_fast_screening_timing_artifact(
 ) -> Path:
     if not isinstance(artifact, FastScreeningTimingArtifact):
         raise TypeError("artifact must be FastScreeningTimingArtifact")
-    path = Path(artifact_root) / "screening_timing" / f"{artifact.run_id}.json"
+    directory = Path(artifact_root) / "screening_timing"
+    path = directory / f"{artifact.run_id}.json"
     payload = artifact.to_json()
-    if path.exists():
-        try:
-            existing = path.read_text(encoding="utf-8")
-        except OSError as exc:
-            raise ActualModelFastScreeningArtifactError(
-                f"cannot read existing timing evidence: {exc}"
-            ) from exc
-        if existing == payload:
-            return path
-        raise ActualModelFastScreeningArtifactError(
-            "conflicting timing evidence already exists for this run_id; "
-            "use a distinct replicate_id"
-        )
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(payload, encoding="utf-8")
+        directory.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise ActualModelFastScreeningArtifactError(
+            f"cannot create timing evidence directory: {exc}"
+        ) from exc
+    if path.exists():
+        return _resolve_existing(path=path, payload=payload)
+
+    temporary = directory / f".{artifact.run_id}.{artifact.timing_id}.{os.getpid()}.tmp"
+    try:
+        with temporary.open("x", encoding="utf-8", newline="\n") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            os.link(temporary, path)
+        except FileExistsError:
+            return _resolve_existing(path=path, payload=payload)
     except OSError as exc:
         raise ActualModelFastScreeningArtifactError(
             f"cannot write timing evidence: {exc}"
         ) from exc
+    finally:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
     return path
+
+
+def _resolve_existing(*, path: Path, payload: str) -> Path:
+    try:
+        existing = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ActualModelFastScreeningArtifactError(
+            f"cannot read existing timing evidence: {exc}"
+        ) from exc
+    if existing == payload:
+        return path
+    raise ActualModelFastScreeningArtifactError(
+        "conflicting timing evidence already exists for this run_id; "
+        "use a distinct replicate_id"
+    )
 
 
 def _expected_phase_sequence(
