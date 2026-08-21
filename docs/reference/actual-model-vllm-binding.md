@@ -91,9 +91,44 @@ The historical plan's `continuity_runtime = {max_items: 8, lifetime_revisions: 4
 
 ## Capacity-evidence gate
 
-`VLLMScreeningPlan.capacity_evidence_id` is optional for loading historical evidence but mandatory for canonical preparation. `prepare_vllm_screening_condition(...)` rejects a plan without that reference before repository verification, snapshot verification, live backend/model acquisition, provider construction, or generation.
+`VLLMScreeningPlan.capacity_evidence_id` is optional for loading historical evidence but mandatory for canonical preparation. A non-empty string alone is not sufficient. The ID must resolve to a strict immutable `VLLMRuntimeCapacityEvidence` artifact before repository verification, snapshot verification, live backend/model acquisition, provider construction, or generation can proceed.
 
-The reference itself does not select or validate a numeric capacity. #1386 must first produce citable evidence for the exact target/runtime class, and #1388 remains responsible for interpreting that evidence and selecting any later calibrated value or default.
+Reviewed repository capacity artifacts use the convention:
+
+```text
+evaluation/actual_model/capacity/<amcap-evidence-id>.json
+```
+
+Host tests or acquisition tooling may supply another explicit artifact root, but the evidence file still uses the same content-addressed identity and strict loader.
+
+A capacity evidence record contains only content-free facts:
+
+- RelayLM measurement commit as provenance;
+- exact target ID/revision;
+- frozen serving-tokenizer and chat-template identities;
+- vLLM backend version and request-model identity;
+- observed live `max_model_len`;
+- the exact `SerializedInputCounterIdentity` used for measurement;
+- one or more footprint observations identified by topology, pass, scenario, and turn index;
+- total serialized-input tokens, framing tokens, and count mode for each footprint;
+- optionally, an independently observed input-context-overflow condition with configured capacity, observed input tokens, HTTP status, and failure classification.
+
+It does not persist prompt text, message content, State/Continuity values, MEMORY/Event text, API keys, provider URLs, or model output.
+
+The evidence ID is `amcap-<sha256>` over canonical artifact contents excluding the ID field itself. The writer is immutable: identical re-writes are idempotent, while same-ID/different-bytes replacement is rejected. The loader reconstructs the typed record and recomputes the ID before the artifact can be cited.
+
+Before screening preparation proceeds, the cited artifact must additionally satisfy all of these checks:
+
+1. the plan's `capacity_evidence_id` exactly equals the artifact's recomputed ID;
+2. the selected `effective_context_window` is strictly greater than the largest cited serialized-input footprint;
+3. that window does not exceed the evidence's attested runtime capacity;
+4. target ID/revision, tokenizer identity, and chat-template identity match the current frozen repository target;
+5. backend version, request model, and observed runtime capacity match fresh live vLLM re-attestation;
+6. reconstructing the current `VLLMServingTokenizerCounter` from the fresh target/runtime produces the exact counter identity cited by the artifact.
+
+The measurement commit is retained as provenance, not required to equal the later screening commit. A reviewed evidence artifact may therefore be committed and referenced by a later screening plan without pretending the measurement occurred at that later commit. Semantic staleness is instead rejected through the frozen target, serving-tokenizer/chat-template, backend/model, runtime-capacity, and counter-identity checks above.
+
+The capacity artifact does not select a numeric value. `validate_capacity_window(...)` only proves whether a caller-selected window resolves the cited serialized-input floor and remains inside the attested live capacity. #1388 remains the owner of choosing any evidence-resolving candidate/profile/default.
 
 The historical 1024 value is therefore neither deleted nor promoted: it remains the identity of the failed diagnostic condition that motivated capacity-first calibration.
 
@@ -112,7 +147,7 @@ current production Pass request
   -> exact SerializedInputTokenCount
 ```
 
-The counter accepts only the current plain role/content message shape and the current provider fields needed for the frozen product path. Generation-only controls such as `temperature`, `top_p`, `seed`, structured-output `response_format`, and `thinking_token_budget` are validated when relevant but are not copied into the `/tokenize` request because they do not define the rendered chat prompt.
+The counter accepts only the current plain role/content message shape and the current provider fields needed for the frozen product path. Generation-only controls such as `temperature`, `top_p`, `seed`, structured-output `response_format`, and `thinking_token_budget` are recognized as production request controls but are not copied into the `/tokenize` request because they do not define the rendered chat prompt.
 
 Chat-template controls are preserved according to the live vLLM chat-serving semantics used by the frozen path:
 
@@ -142,7 +177,7 @@ At each real host execution, `acquire_vllm_reasoning_capability(...)` reacquires
 
 ## Host orchestration and serial execution
 
-`src/relaylm/actual_model_vllm_host.py` owns the vLLM host preparation adapter. It loads the screening plan/proof, verifies the exact repository snapshot, reacquires live backend identity, constructs the canonical single-pass or two-pass OpenAI-compatible provider with the same typed vLLM reasoning capability, creates the #1562 run manifest, and obtains the #1563 binding before any scenario generation.
+`src/relaylm/actual_model_vllm_host.py` owns the vLLM host preparation adapter. It first resolves and validates the cited capacity artifact, then verifies the exact repository snapshot, reacquires live backend identity, reconstructs the current serving-tokenizer counter identity, constructs the canonical single-pass or two-pass OpenAI-compatible provider with the same typed vLLM reasoning capability, creates the #1562 run manifest, and obtains the #1563 binding before any scenario generation.
 
 The public host entry point is the thin common facade `python -m relaylm.actual_model_host`. It only selects the backend adapter:
 
@@ -162,4 +197,4 @@ A successful vLLM invocation reports the selected condition, exact RelayLM commi
 
 The host orchestration consumes already-obtained reasoning probe facts; it does not itself repeat the R3B parameter experiment. It reacquires current backend/model identity only so stale capability evidence cannot be cited against a different live vLLM runtime.
 
-The serving-tokenizer counter likewise performs no generation and selects no runtime capacity. No actual-model A/B/C execution, quality conclusion, calibration decision, or runtime default is created merely by these contracts. Product evidence begins only after capacity evidence exists and a revised plan is explicitly authorized for the exact live vLLM server and verified snapshot.
+The serving-tokenizer counter and capacity artifact contract likewise perform no generation and select no runtime capacity. No actual-model A/B/C execution, quality conclusion, calibration decision, or runtime default is created merely by these contracts. Product evidence begins only after real current-footprint evidence exists, #1388 selects an evidence-resolving runtime condition, and a revised plan is explicitly authorized for the exact live vLLM server and verified snapshot.
