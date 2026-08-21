@@ -33,9 +33,8 @@ def test_shadow_two_pass_reuses_one_openai_adapter_with_relaylm_owned_extraction
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         seen.append(body)
-        if "response_format" in body:
-            schema_name = body["response_format"]["json_schema"]["name"]
-            assert schema_name == "relaylm_cognitive_output"
+        system_prompt = body["messages"][0]["content"]
+        if "RelayLM combined cognitive IR contract" in system_prompt:
             wire = {
                 "utterance": "canonical",
                 "state_candidates": [],
@@ -75,7 +74,7 @@ def test_shadow_two_pass_reuses_one_openai_adapter_with_relaylm_owned_extraction
 
     assert len(seen) == 2
     assert [body["model"] for body in seen] == ["gemma", "gemma"]
-    assert seen[0]["response_format"]["json_schema"]["name"] == (
-        "relaylm_cognitive_output"
-    )
+    assert "response_format" not in seen[0]
     assert "response_format" not in seen[1]
+    assert "RelayLM combined cognitive IR contract" in seen[0]["messages"][0]["content"]
+    assert "RelayLM structured proposal IR contract" in seen[1]["messages"][0]["content"]
