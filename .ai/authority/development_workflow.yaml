@@ -1,8 +1,8 @@
 schema_version: 1
 id: development_workflow
-summary: The v1 development workflow, engineering principles, and repository-use practices.
+summary: The v1 development workflow, AI-development procedures, and repository-use practices.
 canonical_surfaces:
-- docs/reference/development-principles.md
+- docs/reference/ai-development.md
 - docs/reference/development-workflow.md
 - docs/reference/repository-practices.md
 - docs/reference/document-lifecycle.md
