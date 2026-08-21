@@ -20,10 +20,10 @@ Off-turn crystallization remained a separate explicitly governed workflow. Strea
 
 ## Supersession
 
-Actual-model evidence later demonstrated that visible conversational quality and structured proposal quality can diverge materially while RelayLM's deterministic authority boundary remains correct. #1533 therefore makes ordinary-turn cognition topology an explicit execution policy rather than an immutable one-generation architecture rule.
+Actual-model evidence later demonstrated that visible conversational quality and structured proposal quality can diverge materially while RelayLM's deterministic authority boundary remains correct. #1533 therefore made ordinary-turn cognition topology an explicit execution policy rather than an immutable one-generation architecture rule.
 
-Current authority is `docs/contracts/cognition-execution-policy.md` under the existing `cognitive_turn` owner. RelayLM 1.0 recognizes `single_pass`, `two_pass`, `shadow_two_pass`, and `auto` as the closed execution-policy vocabulary.
+The supersession established `docs/contracts/cognition-execution-policy.md` under the `cognitive_turn` owner as the execution-policy contract. At that point RelayLM recognized `single_pass`, `two_pass`, `shadow_two_pass`, and `auto` as the closed execution-policy vocabulary.
 
-The former decision is not removed from history: `single_pass` remains the current implemented behavior and a supported measured baseline. What is superseded is only the claim that one generation is the sole valid ordinary-turn topology.
+At the time of supersession, `single_pass` remained the implemented behavior and a supported measured baseline. What was superseded was the claim that one generation was the sole valid ordinary-turn topology.
 
-State/Continuity authority is unchanged. Any multi-pass execution still produces proposals that must pass existing deterministic RelayLM validation/lifecycle before becoming authority.
+The supersession did not change State/Continuity authority. Any multi-pass execution still produced proposals that had to pass the existing deterministic RelayLM validation/lifecycle before becoming authority.
