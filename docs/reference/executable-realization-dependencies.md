@@ -108,17 +108,32 @@ Properties:
 - establishes traceability from code to semantic authority;
 - does not make the code itself semantic authority.
 
-### Realization dependency
+### Runtime realization dependency
 
 ```text
-Realization M --imports/calls/uses--> Realization N
+Realization M --imports/calls/uses at runtime--> Realization N
 ```
 
-Meaning: one executable realization mechanically depends on another.
+Meaning: one executable realization mechanically depends on another while executing product, build, verification, or tooling behavior.
 
 This relation is derived from code when useful. It is **not persisted as semantic authority by default**.
 
-A Python import is evidence of a realization dependency, not evidence of a semantic dependency.
+A runtime Python import is evidence of a realization dependency, not evidence of a semantic dependency.
+
+### Type/interface dependency
+
+A realization may reference another realization only to describe a type or static interface without loading or invoking it at runtime.
+
+Python code should make this distinction explicit with native language/tooling mechanisms when practical. In particular, an import contained under `if TYPE_CHECKING:` is an explicit **type-only dependency** and is not a runtime realization edge.
+
+Type/interface dependencies:
+
+- do not create semantic `depends_on` automatically;
+- do not require shared implementation ownership merely because a type is referenced;
+- may be audited separately if recurring interface coupling becomes useful to inspect;
+- should not be mixed into the first runtime-realization dependency gate.
+
+When an import is genuinely type-only but written as an unconditional runtime import, prefer making the type-only boundary explicit when that can be done without changing runtime semantics. Do not add repository dependency metadata merely to compensate for an imprecise source-level boundary.
 
 ### Artifact production and consumption
 
@@ -131,9 +146,9 @@ Artifact flow is a runtime, build, verification, or evidence relationship. It do
 
 Evidence production and evidence references continue to use their dedicated repository-authority fields. Runtime data flow remains owned by the relevant product contract.
 
-## Explaining realization dependencies
+## Explaining runtime realization dependencies
 
-A derived internal realization edge is structurally explainable when at least one of these conditions holds:
+A derived internal runtime realization edge is structurally explainable when at least one of these conditions holds:
 
 1. the importing and imported realization surfaces share at least one semantic owner; or
 2. at least one semantic owner of the importing surface can reach at least one semantic owner of the imported surface through the declared semantic dependency graph.
@@ -150,14 +165,16 @@ cognitive_turn --depends_on--> state_and_validation
       | realizes                     | realizes
       v                              v
 openai_compatible.py -----------> state.py
-             derived import edge
+          derived runtime edge
 ```
 
 If `openai_compatible.py` is shared by `cognitive_turn` and another owner, the owner set is considered as a set rather than forcing one arbitrary file owner.
 
-## Unexplained realization edges
+## Unexplained runtime realization edges
 
-A statically resolvable RelayLM-internal realization dependency is **unexplained** when the two realization surfaces have disjoint owner sets and no importing owner can reach an imported owner through semantic `depends_on`.
+A statically resolvable RelayLM-internal **runtime** realization dependency is unexplained when the two realization surfaces have disjoint owner sets and no importing owner can reach an imported owner through semantic `depends_on`.
+
+Explicit type-only imports such as imports under `TYPE_CHECKING` are outside this finding set.
 
 An unexplained edge is an architecture-review signal. It must not be repaired automatically by adding dependency declarations.
 
@@ -166,20 +183,22 @@ The owning transaction must determine which current-state explanation is correct
 1. **missing semantic dependency** — the consumer semantics genuinely require the imported owner's semantics, so the consumer updates its `depends_on`;
 2. **shared integration realization** — the importing surface genuinely realizes more than one owner and its implementation ownership is incomplete;
 3. **missing boundary** — an interface, adapter, composition seam, or owner-local realization should be extracted or moved;
-4. **accidental coupling** — the import or call should be removed.
+4. **accidental coupling** — the import or call should be removed;
+5. **type-only boundary** — the dependency is not needed at runtime and should be made explicit with the language/tooling mechanism rather than authority metadata.
 
 Do not introduce a new dependency kind merely to silence a finding. Add repository metadata only when repeated real cases prove that the existing authority and ownership model cannot explain the relationship.
 
 ## Candidate deterministic validation
 
-A future deterministic validator may audit realization dependencies with the following bounded responsibility:
+A deterministic runtime-realization validator may audit dependencies with the following bounded responsibility:
 
 1. parse statically resolvable imports within `src/relaylm/**`;
-2. map each production module to its semantic owner set using existing `implementation` declarations;
-3. derive internal realization edges;
-4. treat owner overlap as explained;
-5. otherwise test semantic reachability through existing `depends_on` edges;
-6. report only the remaining unexplained edges.
+2. exclude imports explicitly contained under `TYPE_CHECKING` from runtime edges;
+3. map each production module to its semantic owner set using existing `implementation` declarations;
+4. derive internal runtime realization edges;
+5. treat owner overlap as explained;
+6. otherwise test semantic reachability through existing `depends_on` edges;
+7. report only the remaining unexplained runtime edges.
 
 The validator must not:
 
@@ -188,6 +207,7 @@ The validator must not:
 - reject legitimate shared implementation;
 - infer product semantics from code layout;
 - treat external-library imports as semantic-owner dependencies;
+- treat explicit type-only imports as runtime realization coupling;
 - require dynamic or reflective runtime behavior to be statically reconstructed in the first implementation;
 - turn artifact flow into semantic dependency metadata.
 
@@ -199,7 +219,7 @@ The durable invariant is not "every import has a matching dependency declaration
 
 It is:
 
-> **Every executable realization is attached to semantic authority, and cross-realization coupling remains explainable from that authority or an explicit shared integration boundary.**
+> **Every executable realization is attached to semantic authority, and runtime cross-realization coupling remains explainable from that authority or an explicit shared integration boundary.**
 
 This preserves the direction of RelayLM's architecture:
 
