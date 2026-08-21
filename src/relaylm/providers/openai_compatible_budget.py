@@ -125,6 +125,9 @@ class OpenAICompatibleSerializedInputCounter:
 
     Production `_resolve_cognition_pass_request` and `_request_body` remain the
     authorities for per-pass decoding/reasoning realization and serialization.
+    Historical direct serialized-input counting remains valid without a decoding
+    capability declaration; an explicit `CognitionPassRequest` requires the same
+    capability facts used by production generation and fails closed if absent.
     The transport-only `stream` field is removed before the caller-supplied
     model/tokenizer-specific counter receives the input mapping.
     """
@@ -134,9 +137,7 @@ class OpenAICompatibleSerializedInputCounter:
     decoding_config: OpenAICompatibleDecodingConfig = field(
         default_factory=OpenAICompatibleDecodingConfig
     )
-    decoding_capabilities: OpenAICompatibleDecodingCapabilities = field(
-        default_factory=OpenAICompatibleDecodingCapabilities
-    )
+    decoding_capabilities: OpenAICompatibleDecodingCapabilities | None = None
     vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None
     evidence_identity: SerializedInputCounterIdentity | None = None
 
@@ -147,14 +148,15 @@ class OpenAICompatibleSerializedInputCounter:
             raise TypeError("count_input must be callable")
         if not isinstance(self.decoding_config, OpenAICompatibleDecodingConfig):
             raise TypeError("decoding_config must be OpenAICompatibleDecodingConfig")
-        if not isinstance(
+        if self.decoding_capabilities is not None and not isinstance(
             self.decoding_capabilities,
             OpenAICompatibleDecodingCapabilities,
         ):
             raise TypeError(
-                "decoding_capabilities must be OpenAICompatibleDecodingCapabilities"
+                "decoding_capabilities must be OpenAICompatibleDecodingCapabilities or None"
             )
-        self.decoding_capabilities.require(self.decoding_config)
+        if self.decoding_capabilities is not None:
+            self.decoding_capabilities.require(self.decoding_config)
         if self.vllm_reasoning_capability is not None and not isinstance(
             self.vllm_reasoning_capability,
             VLLMReasoningCapabilityAttestation,
@@ -186,13 +188,21 @@ class OpenAICompatibleSerializedInputCounter:
         vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
     ) -> SerializedInputTokenCount:
         capability = vllm_reasoning_capability or self.vllm_reasoning_capability
-        decoding_config, effective_reasoning = _resolve_cognition_pass_request(
-            pass_request=pass_request,
-            reasoning_request=reasoning_request,
-            decoding_config=self.decoding_config,
-            decoding_capabilities=self.decoding_capabilities,
-            vllm_reasoning_capability=capability,
-        )
+        if pass_request is None:
+            decoding_config = self.decoding_config
+            effective_reasoning = reasoning_request
+        else:
+            if self.decoding_capabilities is None:
+                raise ValueError(
+                    "pass-aware serialized-input counting requires decoding_capabilities"
+                )
+            decoding_config, effective_reasoning = _resolve_cognition_pass_request(
+                pass_request=pass_request,
+                reasoning_request=reasoning_request,
+                decoding_config=self.decoding_config,
+                decoding_capabilities=self.decoding_capabilities,
+                vllm_reasoning_capability=capability,
+            )
         request_body = _request_body(
             model=self.model,
             cognitive_input=cognitive_input,
