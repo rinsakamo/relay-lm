@@ -17,6 +17,8 @@ def _cognitive_input() -> CognitiveInput:
     return CognitiveInput(
         identity=Identity("# Eval\nBe grounded."),
         state_classes=STATE_CLASS_DEFINITIONS,
+        state=(),
+        context=(),
         input=Event.create(
             type="message",
             actor="user",
