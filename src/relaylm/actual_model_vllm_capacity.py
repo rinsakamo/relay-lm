@@ -333,9 +333,15 @@ def load_vllm_runtime_capacity_evidence(path: str | Path) -> VLLMRuntimeCapacity
 
 def capacity_evidence_path(*, artifact_root: str | Path, evidence_id: str) -> Path:
     _non_empty_string("evidence_id", evidence_id)
-    if not evidence_id.startswith(f"{VLLM_RUNTIME_CAPACITY_EVIDENCE_PREFIX}-"):
+    prefix = f"{VLLM_RUNTIME_CAPACITY_EVIDENCE_PREFIX}-"
+    if not evidence_id.startswith(prefix):
         raise VLLMRuntimeCapacityEvidenceError(
-            "vLLM capacity evidence ID must use the amcap prefix"
+            "vLLM capacity evidence ID must be a content-addressed amcap SHA-256 ID"
+        )
+    digest = evidence_id[len(prefix) :]
+    if len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest):
+        raise VLLMRuntimeCapacityEvidenceError(
+            "vLLM capacity evidence ID must be a content-addressed amcap SHA-256 ID"
         )
     return Path(artifact_root) / f"{evidence_id}.json"
 
