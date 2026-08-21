@@ -2,9 +2,10 @@
 #
 # Canonical writer: the repository_authority semantic owner (#1525).
 #
-# This file answers two questions before an agent writes anything:
+# This file answers three questions before an agent writes anything:
 #   1. in what order is repository authority read;
-#   2. which facts must be re-fetched live rather than remembered.
+#   2. which repository/host facts must be re-fetched live rather than remembered;
+#   3. which mutable external claims must be verified from current upstream authority.
 #
 # It exists so freshness is a repository contract rather than a prompt
 # convention. An agent does not need bootstrap prose telling it to distrust the
@@ -62,6 +63,16 @@ freshness:
         what was asked for.
       persistent_authority: false
 
+    upstream:
+      summary: >-
+        A mutable claim whose current authority lives outside this repository.
+        Verify it from the current primary upstream documentation, source,
+        schema, release information, or other authoritative upstream surface
+        when the claim materially affects a decision. Remembered behavior and
+        secondary summaries are not current authority. This class is checked
+        at material use rather than blindly fetched at every transaction start.
+      persistent_authority: false
+
   facts:
     repository_head: live
     open_pull_requests: live
@@ -83,3 +94,5 @@ freshness:
     handoff_prompt_state: historical
     projection_output: historical
     merged_pull_request_body: historical
+
+    external_upstream_claim: upstream
