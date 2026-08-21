@@ -15,6 +15,9 @@ from tools.repository_authority import (
 )
 
 
+ROOT = Path(__file__).resolve().parents[2]
+
+
 def _classes() -> dict[str, object]:
     return {
         "live": {
@@ -33,6 +36,10 @@ def _classes() -> dict[str, object]:
             "summary": "A past snapshot, never current authority.",
             "persistent_authority": False,
         },
+        "upstream": {
+            "summary": "Verify mutable external claims from their current authoritative source.",
+            "persistent_authority": False,
+        },
     }
 
 
@@ -45,6 +52,7 @@ def _facts() -> dict[str, str]:
         "semantic_ownership": "repository",
         "merged_evidence": "evidence",
         "handoff_prompt_state": "historical",
+        "external_upstream_claim": "upstream",
     }
 
 
@@ -107,8 +115,17 @@ def test_freshness_of_a_fact_resolves_to_its_declared_class(tmp_path: Path) -> N
 
     assert contract.freshness_of("repository_head") == "live"
     assert contract.freshness_of("semantic_ownership") == "repository"
+    assert contract.freshness_of("external_upstream_claim") == "upstream"
     assert contract.is_persistent_authority("semantic_ownership") is True
     assert contract.is_persistent_authority("repository_head") is False
+    assert contract.is_persistent_authority("external_upstream_claim") is False
+
+
+def test_current_repository_contract_classifies_external_upstream_claims() -> None:
+    contract = read_agent_contract(ROOT)
+
+    assert contract.freshness_of("external_upstream_claim") == "upstream"
+    assert contract.is_persistent_authority("external_upstream_claim") is False
 
 
 def test_an_unclassified_fact_is_refused_rather_than_guessed(tmp_path: Path) -> None:

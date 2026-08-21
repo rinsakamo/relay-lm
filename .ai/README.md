@@ -30,6 +30,10 @@ entry point
   -> that owner's canonical surfaces
 ```
 
+A root tool adapter such as `AGENTS.md` may route an agent here, but it must stay
+thin and must not copy the workflow, product semantics, or current repository
+state into a second instruction surface.
+
 ## Freshness
 
 The same contract classifies every fact a transaction relies on. Freshness is
@@ -39,6 +43,7 @@ repository authority, not prompt convention:
 repository HEAD / open PRs / CI state / Issue state   live
 semantic ownership / canonical surfaces               repository
 merged evidence                                       evidence
+mutable external/upstream claims                       upstream
 handoff prompt state / projection output              historical
 ```
 
@@ -47,6 +52,16 @@ before merge; it is never written into a declaration. A `historical` fact —
 including the SHA, PR, and status quoted in a handoff prompt — is never current
 authority. Because those classes are declared, an agent does not need bootstrap
 prose telling it which parts of a handoff to distrust.
+
+An `upstream` fact is different from repository/host `live` state. Its current
+authority lives outside RelayLM, so it is verified from the current primary
+upstream documentation, source, schema, release information, or other
+appropriate authoritative surface when the claim materially affects a
+decision. It is not fetched merely because every transaction started. Remembered
+behavior and secondary summaries are not current authority. If RelayLM records
+an owner-approved contract or immutable evidence result for a specific claim,
+consumers use the resulting `repository` or `evidence` authority instead of
+silently treating the original external claim as persistent truth.
 
 Declarations are checked for copied live state: a 40-character commit id
 appearing anywhere in a declaration fails validation.
