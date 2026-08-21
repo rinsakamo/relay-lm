@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from relaylm.budget_enforcement import TokenCountMode
+from relaylm.cognition_execution import CognitionPassRequest, CognitionReasoningMode
 from relaylm.providers.openai_compatible_budget import SerializedInputCounterIdentity
 
 
@@ -34,6 +35,22 @@ def _counter_identity() -> SerializedInputCounterIdentity:
     )
 
 
+def _pass_request_id(*, bounded: bool = False) -> str:
+    capacity = _capacity_module()
+    return capacity.vllm_capacity_pass_request_id(
+        CognitionPassRequest(
+            reasoning_mode=(
+                CognitionReasoningMode.BOUNDED
+                if bounded
+                else CognitionReasoningMode.OFF
+            ),
+            reasoning_budget=16 if bounded else None,
+            temperature=0,
+            top_p=1,
+        )
+    )
+
+
 def _evidence():
     capacity = _capacity_module()
     return capacity.VLLMRuntimeCapacityEvidence(
@@ -45,22 +62,27 @@ def _evidence():
         backend_version="0.27.1",
         request_model="gemma-4-12B-it-qat-w4a16",
         observed_max_model_len=2048,
+        scenario_set_revision="sha256:" + "c" * 64,
         counter_identity=_counter_identity(),
         footprints=(
             capacity.VLLMCapacityFootprintObservation(
+                condition_id="C",
                 topology="two_pass",
                 pass_id="pass1",
                 scenario_id="response-persona-correction-v1",
                 turn_index=1,
+                pass_request_id=_pass_request_id(),
                 total_input_tokens=1180,
                 required_input_framing_tokens=96,
                 count_mode=TokenCountMode.EXACT,
             ),
             capacity.VLLMCapacityFootprintObservation(
+                condition_id="C",
                 topology="two_pass",
                 pass_id="pass2",
                 scenario_id="response-persona-correction-v1",
                 turn_index=1,
+                pass_request_id=_pass_request_id(bounded=True),
                 total_input_tokens=1310,
                 required_input_framing_tokens=104,
                 count_mode=TokenCountMode.EXACT,
@@ -93,16 +115,19 @@ def test_capacity_evidence_is_content_addressed_and_contains_no_semantic_payload
         "backend_version",
         "request_model",
         "observed_max_model_len",
+        "scenario_set_revision",
         "counter_identity",
         "footprints",
         "failed_capacity",
     }
     for footprint in mapping["footprints"]:
         assert set(footprint) == {
+            "condition_id",
             "topology",
             "pass_id",
             "scenario_id",
             "turn_index",
+            "pass_request_id",
             "total_input_tokens",
             "required_input_framing_tokens",
             "count_mode",
@@ -133,7 +158,7 @@ def test_capacity_evidence_writer_is_immutable_and_loader_recomputes_identity(
     assert loaded == evidence
 
     raw = json.loads(path.read_text(encoding="utf-8"))
-    raw["relaylm_commit"] = "c" * 40
+    raw["relaylm_commit"] = "d" * 40
     path.write_text(json.dumps(raw, indent=2) + "\n", encoding="utf-8")
     with pytest.raises(capacity.VLLMRuntimeCapacityEvidenceError, match="evidence_id"):
         capacity.load_vllm_runtime_capacity_evidence(path)
