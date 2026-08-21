@@ -1,6 +1,6 @@
 # Cognition Execution Evidence Contract
 
-Status: COGP4 provider-neutral execution-topology and shadow-observation contract for RelayLM v1.
+Status: COGP provider-neutral execution-topology and shadow-observation contract for RelayLM v1, including RelayLM-owned extraction structure.
 
 This contract is owned by #1533 under `cognitive_turn`. It defines what ordinary-turn execution topology occurred and how `shadow_two_pass` raw extraction is carried without becoming semantic authority. It does not replace #1386 Actual-model Evaluation identity, artifacts, reviews, cohorts, or comparison methodology.
 
@@ -13,7 +13,7 @@ single_pass
 
 two_pass
   Pass 1 conversation
-  Pass 2 canonical structured extraction
+  Pass 2 canonical extraction into RelayLM-owned proposal IR
 
 shadow_two_pass
   canonical single_pass
@@ -42,11 +42,11 @@ single-pass output:
 conversation-only output:
   relaylm_conversation_output:v1
 
-structured extraction output:
+RelayLM proposal-IR extraction output:
   relaylm_structured_cognition_output:v1
 ```
 
-These are RelayLM execution-contract identities. They are not claims about an exact model artifact, provider deployment, reasoning setting, decoding configuration, tokenizer, or context window.
+These are **RelayLM execution-contract identities**. In particular, `relaylm_structured_cognition_output:v1` identifies the RelayLM-owned compact proposal IR and parser/type-construction boundary; it does not require or identify a provider-native `response_format`, JSON-schema grammar, or equivalent structured-output feature. The names are not claims about an exact model artifact, provider deployment, reasoning setting, decoding configuration, tokenizer, or context window.
 
 ### `single_pass`
 
@@ -59,6 +59,8 @@ shadow_output              omitted
 canonical_mutation_source  single_pass
 ```
 
+The current legacy single-pass OpenAI-compatible wire may still realize `relaylm_cognitive_output:v1` using provider-native structured output. That provider realization is separate from the provider-neutral contract identity.
+
 ### `two_pass`
 
 ```text
@@ -70,6 +72,8 @@ shadow_output              omitted
 canonical_mutation_source  pass2
 ```
 
+For canonical `two_pass`, the extraction contract is realized as plain provider message content that RelayLM parses into the compact proposal IR. Provider-native structured-output support is not part of the topology requirement.
+
 ### `shadow_two_pass`
 
 ```text
@@ -80,6 +84,8 @@ extraction_output          relaylm_structured_cognition_output:v1
 shadow_output              relaylm_structured_cognition_output:v1
 canonical_mutation_source  single_pass
 ```
+
+The current canonical side remains the legacy single-pass path and may therefore still require provider structured output. The shadow extraction side uses plain provider content plus the same RelayLM-owned proposal-IR parser as canonical `two_pass`.
 
 `auto` is unresolved policy, not an execution that happened, and therefore cannot be persisted as this evidence identity. A citable run must record the resolved execution mode.
 
@@ -101,7 +107,7 @@ shadow_pass2_failed
 
 Raw exception text is not part of the execution evidence contract.
 
-A completed shadow observation preserves the model's raw StateCandidate and ContinuityCandidate proposals. It does **not** contain deterministic acceptance decisions because shadow proposals are deliberately not submitted to State or Continuity validators.
+A completed shadow observation preserves the model's raw StateCandidate and ContinuityCandidate proposals after the RelayLM-owned proposal IR has been parsed and converted to typed values. It does **not** contain deterministic acceptance decisions because shadow proposals are deliberately not submitted to State or Continuity validators for mutation.
 
 ## Non-authoritative invariant
 
@@ -114,7 +120,8 @@ canonical single-pass CognitiveOutput
 
 same originating CognitiveInput
 + canonical response
-  -> shadow extraction
+  -> shadow extraction plain content
+  -> RelayLM proposal-IR parse/type construction
   -> raw evidence only
   -> NO State validation for mutation
   -> NO Continuity validation for mutation
@@ -138,25 +145,26 @@ accepted Continuity         remains exactly canonical single-pass result
 shadow raw proposal output  absent on failure
 ```
 
-A shadow failure cannot turn a successful canonical turn into a failed turn.
+A shadow failure cannot turn a successful canonical turn into a failed turn. Invalid or incomplete plain Pass 2 proposal IR is one bounded cause of shadow failure; provider-native structured-output failure is not required for this extraction path.
 
 ## Same-model boundary
 
 `run_user_turn_shadow_two_pass(...)` and its streaming counterpart use one supplied provider object that supports both the canonical single-pass generation and extraction generation.
 
-The OpenAI-compatible COGP3 provider extension inherits the canonical adapter and therefore can run:
+The OpenAI-compatible COGP provider extension inherits the canonical adapter and therefore can run:
 
 ```text
 same adapter object / client / request model
-  canonical relaylm_cognitive_output
-    -> shadow relaylm_structured_cognition_output
+  canonical legacy relaylm_cognitive_output
+    -> plain shadow extraction message
+    -> RelayLM relaylm_structured_cognition_output:v1 parse/type construction
 ```
 
-This is an execution-topology capability. It does not claim that multiple concurrent provider requests are resident as separate model artifacts.
+The two contract identities do not imply two provider-native response schemas. This is an execution-topology capability, not a claim that multiple concurrent provider requests are resident as separate model artifacts.
 
 ## Relationship to #1386
 
-COGP4 intentionally does not modify `ActualModelRunManifest` or the existing actual-model evidence artifact format.
+COGP intentionally does not modify `ActualModelRunManifest` or the existing actual-model evidence artifact format in this contract.
 
 #1386 remains the owner that must later combine, at minimum:
 
@@ -173,6 +181,8 @@ COGP execution evidence identity
 
 before an A/B/C result is citable.
 
+Because the canonical Pass 2 request wire changed from provider-native structured schema carriage to plain content with a RelayLM-owned IR contract, prior Pass 2 serialized-input footprint evidence is historical for its exact old wire. #1386 must reacquire exact Pass 2 footprint evidence before a revised two-pass screening result is cited.
+
 In particular, COGP topology identity alone is insufficient to claim that reasoning was actually OFF or ON. #1532/CRY reasoning attestation is design precedent only; CRY-specific LM Studio evidence fields are not copied here.
 
 ## Ownership boundaries
@@ -182,6 +192,7 @@ COGP / #1533 owns:
 - resolved execution-topology identity;
 - RelayLM pass/output contract identity;
 - canonical-mutation-source identity;
+- the RelayLM-owned proposal-IR identity for canonical/shadow extraction;
 - non-authoritative shadow runtime semantics;
 - raw shadow extraction observation and bounded failure status.
 
@@ -193,11 +204,11 @@ COGP / #1533 owns:
 - review/cohort/comparison artifacts;
 - latency/token/resource observations used as product evidence.
 
-Provider owners retain capability truth and exact applied external request configuration. #1388 retains profile/default selection. #1446 retains operator config carriage.
+Provider owners retain capability truth and exact applied external request configuration. Provider-native structured-output support is not the owner of `relaylm_structured_cognition_output:v1`. #1388 retains profile/default selection. #1446 retains operator config carriage.
 
-## COGP4 non-goals
+## Non-goals
 
-COGP4 does not:
+This contract does not:
 
 - select a release default;
 - change canonical `single_pass` behavior;
@@ -205,4 +216,5 @@ COGP4 does not:
 - modify #1386 manifests or scenario evidence;
 - claim reasoning-on/off causality;
 - choose numeric decoding or reasoning settings;
-- create a second resident model requirement.
+- create a second resident model requirement;
+- make backend JSON-schema/grammar support a semantic prerequisite for canonical Pass 2.
