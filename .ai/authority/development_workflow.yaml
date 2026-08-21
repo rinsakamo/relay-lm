@@ -8,5 +8,9 @@ canonical_surfaces:
 - docs/reference/repository-practices.md
 - docs/reference/document-lifecycle.md
 - docs/decisions/README.md
+implementation:
+- .ai/skills/repository-orientation/SKILL.md
+tests:
+- tests/unit/test_repository_native_skills.py
 annotations:
 - docs/decisions/0003-direct-canonical-convergence.md

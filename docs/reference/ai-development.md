@@ -225,14 +225,20 @@ These artifacts are transaction working state unless explicitly promoted through
 
 They may describe intended future work, but they must not be mistaken for current implementation or durable authority. Once the working purpose ends, remove them rather than keeping an informal repository archive.
 
-## Planned minimal repository-native skill set
+## Minimal repository-native skill set
 
-RelayLM does not currently maintain a repository-native skill library. If one is materialized, begin with a deliberately small set of distinct procedures:
+RelayLM intentionally keeps the repository-native skill library small. The first materialized procedure is:
 
 ```text
 repository-orientation
-  resolve fresh repository state, semantic owner, required authority, and competing work
+  path: .ai/skills/repository-orientation/SKILL.md
+  mode: read-only
+  responsibility: resolve fresh repository state, semantic owner, required authority, and competing work
+```
 
+The following responsibilities are reserved but not yet materialized:
+
+```text
 bounded-implementation
   execute one classified transaction with minimal implementation and owner-local convergence
 
@@ -246,7 +252,7 @@ systematic-debugging
   reproduce, localize, reduce, fix minimally, and add the appropriate regression guard
 ```
 
-These names reserve procedure responsibilities, not file locations or tool-specific formats. Creating the actual skill files is a separate implementation transaction so current authority does not imply that a repository-native skill system already exists.
+These names reserve procedure responsibilities, not tool-specific formats. A materialized skill is a supporting implementation surface of `development_workflow`, not a second authority document. Add another skill only in its own bounded transaction when its distinct procedure is justified.
 
 Do not create multiple overlapping skills for the same procedure merely because different agent tools use different discovery formats.
 
