@@ -14,7 +14,6 @@ from relaylm.cognition_execution import (
     CognitionPassRequest,
 )
 from relaylm.providers.openai_compatible import (
-    WIRE_SCHEMA,
     OpenAICompatibleProvider,
     ProviderProtocolError,
     _iter_sse_data,
@@ -56,17 +55,14 @@ Use the exact existing State class/key vocabulary when the supplied accepted Sta
 Never invent source Event IDs. Candidate sources must come from Event IDs present in the supplied `cognitive_input`; the assistant response itself is not a source Event.
 A proposal has no authority merely because this pass emitted it; RelayLM validates all proposals deterministically.
 
-Return only the required structured output."""
+RelayLM proposal IR contract:
+- Return exactly one JSON object with exactly `state_candidates` and `continuity_candidates`.
+- `state_candidates` is an array. Every item has exactly `state_class`, `key`, `op`, `value`, and `sources`. `op` is `set` or `remove`. A `set` value is a string or exactly {`semantic`, `degree_hint`}; a `remove` value is null. `sources` is a non-empty array of Event IDs.
+- `continuity_candidates` is an array. Every item has exactly `kind`, `key`, `op`, `value`, `sources`, and `epistemic_role`. `kind` is `referent`, `unresolved`, or `active_task`. `op` is `set` or `resolve`. A `resolve` value is null. `epistemic_role` is `user_assertion`, `assistant_inference`, or `assistant_commitment`.
+- Do not add an `utterance`, metadata, execution IDs, or explanatory fields.
+- Do not use Markdown or code fences. Return only the JSON object.
 
-EXTRACTION_WIRE_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["state_candidates", "continuity_candidates"],
-    "properties": {
-        "state_candidates": WIRE_SCHEMA["properties"]["state_candidates"],
-        "continuity_candidates": WIRE_SCHEMA["properties"]["continuity_candidates"],
-    },
-}
+RelayLM, not the provider, owns parsing, type construction, validation, and commit authority for this proposal IR."""
 
 
 class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
@@ -283,14 +279,6 @@ def _extraction_request_body(
                 ),
             },
         ],
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "relaylm_structured_cognition_output",
-                "strict": True,
-                "schema": EXTRACTION_WIRE_SCHEMA,
-            },
-        },
         "stream": False,
     }
     body.update(decoding)
