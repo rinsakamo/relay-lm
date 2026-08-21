@@ -5,6 +5,7 @@ import json
 from typing import AsyncIterator
 
 import httpx
+import pytest
 
 from relaylm.cognitive import CognitiveInput, ContextItem
 from relaylm.cognition_execution import (
@@ -13,6 +14,7 @@ from relaylm.cognition_execution import (
 )
 from relaylm.events import Event
 from relaylm.identity import Identity
+from relaylm.providers.openai_compatible import ProviderProtocolError
 from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPassProvider
 from relaylm.state import STATE_CLASS_DEFINITIONS, StateRecord
 
@@ -47,7 +49,7 @@ def _cognitive_input() -> CognitiveInput:
     )
 
 
-def test_same_openai_provider_instance_uses_plain_conversation_and_structured_extraction() -> None:
+def test_same_openai_provider_instance_uses_plain_conversation_and_relaylm_owned_extraction() -> None:
     seen: list[dict[str, object]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -110,20 +112,44 @@ def test_same_openai_provider_instance_uses_plain_conversation_and_structured_ex
     assert "StateCandidate" in conversation_prompt
     assert "does not produce" in conversation_prompt
 
-    assert seen[1]["response_format"]["json_schema"]["schema"]["required"] == [
-        "state_candidates",
-        "continuity_candidates",
-    ]
-    assert "utterance" not in seen[1]["response_format"]["json_schema"]["schema"][
-        "properties"
-    ]
-
+    assert "response_format" not in seen[1]
     extraction_prompt = seen[1]["messages"][0]["content"]
     assert "interpretive context" in extraction_prompt
     assert "must never self-certify" in extraction_prompt
+    assert "RelayLM proposal IR contract" in extraction_prompt
+    assert "state_candidates" in extraction_prompt
+    assert "continuity_candidates" in extraction_prompt
+    assert "Do not use Markdown" in extraction_prompt
     extraction_payload = json.loads(seen[1]["messages"][1]["content"])
     assert extraction_payload["assistant_response"] == "最近はコーヒーを飲んでるんだね。"
     assert extraction_payload["cognitive_input"]["input"]["event_id"] == "evt-now"
+
+
+def test_extraction_without_provider_structured_output_still_fails_closed_on_invalid_ir() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        assert "response_format" not in body
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": "not-json"}}]},
+        )
+
+    async def run() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = OpenAICompatibleTwoPassProvider(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            await provider.generate_extraction(
+                CognitionExtractionInput(
+                    cognitive_input=_cognitive_input(),
+                    assistant_response="了解。",
+                )
+            )
+
+    with pytest.raises(ProviderProtocolError, match="extraction content is not valid JSON"):
+        asyncio.run(run())
 
 
 class _ChunkedSSEStream(httpx.AsyncByteStream):
