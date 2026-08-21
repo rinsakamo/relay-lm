@@ -18,13 +18,10 @@ from relaylm.providers.openai_compatible import (
     OpenAICompatibleProvider,
     ProviderProtocolError,
     _iter_sse_data,
-    _mapping,
-    _parse_continuity_candidate,
-    _parse_set_value,
     _parse_stream_event,
-    _required_string,
     _resolve_cognition_pass_request,
     _vllm_reasoning_fields,
+    parse_wire_output,
     serialize_cognitive_input,
 )
 from relaylm.providers.openai_compatible_reasoning import (
@@ -33,7 +30,6 @@ from relaylm.providers.openai_compatible_reasoning import (
 from relaylm.providers.vllm_reasoning_capability import (
     VLLMReasoningCapabilityAttestation,
 )
-from relaylm.state import StateCandidate
 
 
 CONVERSATION_SYSTEM_INSTRUCTION = """You are the conversation pass of a persistent character managed by RelayLM.
@@ -307,72 +303,25 @@ def _parse_extraction_completion(envelope: Any) -> CognitionExtractionOutput:
         raise ProviderProtocolError(
             "provider extraction content is not valid JSON"
         ) from exc
-    return _assemble_extraction_proposal_ir(wire)
-
-
-def _assemble_extraction_proposal_ir(wire: Any) -> CognitionExtractionOutput:
-    wire = _mapping(wire, "extraction proposal IR")
-    if set(wire) != {"state_candidates", "continuity_candidates"}:
+    if not isinstance(wire, dict) or set(wire) != {
+        "state_candidates",
+        "continuity_candidates",
+    }:
         raise ProviderProtocolError(
-            "extraction proposal IR must contain exactly state_candidates and "
+            "extraction wire output must contain exactly state_candidates and "
             "continuity_candidates"
         )
 
-    raw_state_candidates = wire.get("state_candidates")
-    if not isinstance(raw_state_candidates, list):
-        raise ProviderProtocolError("wire state_candidates must be an array")
-    raw_continuity_candidates = wire.get("continuity_candidates")
-    if not isinstance(raw_continuity_candidates, list):
-        raise ProviderProtocolError("wire continuity_candidates must be an array")
-
-    state_candidates: list[StateCandidate] = []
-    for index, raw in enumerate(raw_state_candidates):
-        candidate = _mapping(raw, f"state_candidates[{index}]")
-        state_class = _required_string(candidate, "state_class", index)
-        key = _required_string(candidate, "key", index)
-        op = _required_string(candidate, "op", index)
-        sources = candidate.get("sources")
-        if not isinstance(sources, list) or not sources or not all(
-            isinstance(source, str) and source.strip() for source in sources
-        ):
-            raise ProviderProtocolError(
-                f"state_candidates[{index}].sources must be non-empty strings"
-            )
-        if "value" not in candidate:
-            raise ProviderProtocolError(f"state_candidates[{index}] missing value")
-        if op == "set":
-            state_candidates.append(
-                StateCandidate.set(
-                    state_class=state_class,
-                    key=key,
-                    value=_parse_set_value(candidate["value"], index),
-                    sources=tuple(sources),
-                )
-            )
-        elif op == "remove":
-            if candidate["value"] is not None:
-                raise ProviderProtocolError(
-                    f"state_candidates[{index}] remove value must be null"
-                )
-            state_candidates.append(
-                StateCandidate.remove(
-                    state_class=state_class,
-                    key=key,
-                    sources=tuple(sources),
-                )
-            )
-        else:
-            raise ProviderProtocolError(
-                f"state_candidates[{index}] unsupported op: {op}"
-            )
-
-    continuity_candidates = tuple(
-        _parse_continuity_candidate(raw, index)
-        for index, raw in enumerate(raw_continuity_candidates)
+    normalized = parse_wire_output(
+        {
+            "utterance": "internal extraction",
+            "state_candidates": wire["state_candidates"],
+            "continuity_candidates": wire["continuity_candidates"],
+        }
     )
     return CognitionExtractionOutput(
-        state_candidates=tuple(state_candidates),
-        continuity_candidates=continuity_candidates,
+        state_candidates=normalized.state_candidates,
+        continuity_candidates=normalized.continuity_candidates,
     )
 
 
