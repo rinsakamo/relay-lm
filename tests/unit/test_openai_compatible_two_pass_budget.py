@@ -155,7 +155,7 @@ def test_two_pass_counter_matches_production_pass_requests_exactly() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         sent.append(body)
-        if "response_format" not in body:
+        if len(sent) == 1:
             return httpx.Response(
                 200,
                 json={"choices": [{"message": {"content": "hello back"}}]},
@@ -213,9 +213,7 @@ def test_two_pass_counter_matches_production_pass_requests_exactly() -> None:
     assert "response_format" not in counted[0]
     assert counted[1]["thinking_token_budget"] == 16
     assert counted[1]["chat_template_kwargs"] == {"enable_thinking": True}
-    assert counted[1]["response_format"]["json_schema"]["name"] == (
-        "relaylm_structured_cognition_output"
-    )
+    assert "response_format" not in counted[1]
 
 
 def test_two_pass_counter_makes_no_network_request_and_rejects_untyped_count() -> None:
