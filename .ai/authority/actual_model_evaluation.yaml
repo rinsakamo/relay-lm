@@ -1,6 +1,6 @@
 schema_version: 1
 id: actual_model_evaluation
-summary: Actual-model execution, shared/backend host orchestration, resolved cognition request carriage, real trajectory vLLM capacity acquisition, immutable exact-screening-coverage capacity-evidence-gated vLLM screening, exact vLLM/LM Studio serving-tokenizer evidence, backend execution binding, and reproducible evaluation evidence.
+summary: Actual-model execution, shared/backend host orchestration, resolved cognition request carriage, real trajectory vLLM capacity acquisition, immutable exact-screening-coverage capacity-evidence-gated vLLM screening, staged topology-first/reasoning-escalation fast screening with provider timing observations, exact vLLM/LM Studio serving-tokenizer evidence, backend execution binding, and reproducible evaluation evidence.
 owner_issue: 1386
 canonical_surfaces:
 - docs/reference/actual-model-cognition-execution-evidence.md
@@ -8,6 +8,7 @@ canonical_surfaces:
 - docs/reference/actual-model-crystallization-evidence.md
 - docs/reference/actual-model-crystallization-host-runner.md
 - docs/reference/actual-model-crystallization-quality-fixture.md
+- docs/reference/actual-model-fast-screening.md
 - docs/reference/actual-model-host-runner.md
 - docs/reference/actual-model-lm-studio-binding.md
 - docs/reference/actual-model-vllm-binding.md
@@ -38,6 +39,7 @@ implementation:
 - src/relaylm/actual_model_host_runner.py
 - src/relaylm/actual_model_reasoning.py
 - src/relaylm/actual_model_cognition_capability.py
+- src/relaylm/actual_model_fast_screening.py
 - src/relaylm/actual_model_crystallization.py
 - src/relaylm/actual_model_crystallization_host_runner.py
 tests:
@@ -47,6 +49,7 @@ tests:
 - tests/unit/test_actual_model_cognition_host_topology.py
 - tests/unit/test_actual_model_cognition_reasoning_environment.py
 - tests/unit/test_actual_model_cognition_capability.py
+- tests/unit/test_actual_model_fast_screening.py
 - tests/unit/test_actual_model_artifacts.py
 - tests/unit/test_actual_model_restart.py
 - tests/unit/test_actual_model_comparison.py
@@ -119,11 +122,11 @@ evidence:
   - evaluation/actual_model/attestations/gemma-4-12b-it-qat-w4a16-vllm-reasoning-v1.json
 - id: actual-model-cogp5-vllm-screening-v1
   summary: >-
-    Historical pre-capacity-calibration COGP5 first-stage plan: A single-pass
+    Historical pre-capacity-calibration COGP5 plan containing A single-pass
     OFF, B two-pass OFF/OFF, and C two-pass OFF/bounded(16), over two
-    representative foundation scenarios. It remains loadable evidence, but
-    canonical host preparation fails closed until a revised plan cites a valid
-    immutable capacity evidence artifact explicitly.
+    representative foundation scenarios. Fast screening now executes A/B first
+    and exposes C only when structured semantic quality is insufficient. The
+    historical artifact remains loadable and is not rewritten.
   surfaces:
   - evaluation/actual_model/screenings/cogp5-vllm-screening-v1.json
 - id: actual-model-crystallization-quality-v1
