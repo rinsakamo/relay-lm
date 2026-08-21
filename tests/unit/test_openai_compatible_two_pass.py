@@ -47,30 +47,36 @@ def _cognitive_input() -> CognitiveInput:
     )
 
 
-def test_same_openai_provider_instance_runs_distinct_conversation_and_extraction_schemas() -> None:
+def test_same_openai_provider_instance_uses_plain_conversation_and_structured_extraction() -> None:
     seen: list[dict[str, object]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         seen.append(body)
-        schema_name = body["response_format"]["json_schema"]["name"]
-        if schema_name == "relaylm_conversation_output":
-            wire = {"utterance": "最近はコーヒーを飲んでるんだね。"}
-        elif schema_name == "relaylm_structured_cognition_output":
+        system_prompt = body["messages"][0]["content"]
+        if "conversation pass" in system_prompt:
+            return httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {"message": {"content": "最近はコーヒーを飲んでるんだね。"}}
+                    ]
+                },
+            )
+        if "structured-cognition pass" in system_prompt:
             wire = {
                 "state_candidates": [],
                 "continuity_candidates": [],
             }
-        else:
-            raise AssertionError(schema_name)
-        return httpx.Response(
-            200,
-            json={
-                "choices": [
-                    {"message": {"content": json.dumps(wire, ensure_ascii=False)}}
-                ]
-            },
-        )
+            return httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {"message": {"content": json.dumps(wire, ensure_ascii=False)}}
+                    ]
+                },
+            )
+        raise AssertionError(system_prompt)
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -97,9 +103,13 @@ def test_same_openai_provider_instance_runs_distinct_conversation_and_extraction
     assert extraction.continuity_candidates == ()
     assert len(seen) == 2
     assert [body["model"] for body in seen] == ["gemma", "gemma"]
-    assert seen[0]["response_format"]["json_schema"]["schema"]["required"] == [
-        "utterance"
-    ]
+
+    assert "response_format" not in seen[0]
+    conversation_prompt = seen[0]["messages"][0]["content"]
+    assert "structured output" not in conversation_prompt
+    assert "StateCandidate" in conversation_prompt
+    assert "does not produce" in conversation_prompt
+
     assert seen[1]["response_format"]["json_schema"]["schema"]["required"] == [
         "state_candidates",
         "continuity_candidates",
@@ -140,11 +150,11 @@ def _sse_chunk(*, content: str | None = None, finish_reason: str | None = None) 
     return f"data: {json.dumps(envelope, ensure_ascii=False)}\n\n".encode("utf-8")
 
 
-def test_conversation_pass_streams_only_visible_utterance_before_extraction_exists() -> None:
+def test_conversation_pass_streams_plain_visible_text_before_extraction_exists() -> None:
     seen: list[dict[str, object]] = []
     chunks = [
-        _sse_chunk(content='{"utterance":"こん'),
-        _sse_chunk(content='にちは"}', finish_reason="stop"),
+        _sse_chunk(content="こん"),
+        _sse_chunk(content="にちは", finish_reason="stop"),
         b"data: [DONE]\n\n",
     ]
 
@@ -174,6 +184,6 @@ def test_conversation_pass_streams_only_visible_utterance_before_extraction_exis
     emitted, output = asyncio.run(run())
 
     assert seen[0]["stream"] is True
-    assert seen[0]["response_format"]["json_schema"]["name"] == "relaylm_conversation_output"
+    assert "response_format" not in seen[0]
     assert "".join(emitted) == "こんにちは"
     assert output == CognitionConversationOutput(response="こんにちは")
