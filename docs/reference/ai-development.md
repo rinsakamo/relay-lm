@@ -72,7 +72,7 @@ Typical examples include:
 
 Prefer primary upstream documentation, source, schema, or release information over remembered behavior, secondary summaries, or examples copied from another project.
 
-This rule does not add a new repository freshness class. Classification of external/upstream facts in `.ai/agent-contract.yaml` is a separate `repository_authority` transaction.
+Mutable external claims are classified `upstream` by `.ai/agent-contract.yaml`. Verify the current authoritative upstream source when the claim materially affects a decision. This differs from repository/host `live` state, which is re-fetched at transaction boundaries.
 
 ## AI edits still follow semantic ownership
 
