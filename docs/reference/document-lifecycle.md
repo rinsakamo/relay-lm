@@ -80,19 +80,21 @@ Evidence is a distinct authority class: an owned evidence artifact may be author
 
 ## Examples illustrate; contracts define
 
-Examples demonstrate an intended or valid case. They do not independently define semantics, defaults, limits, compatibility guarantees, or requirements unless the owning canonical contract explicitly designates that example or value as normative.
+Examples demonstrate an intended or valid case. They do not independently define semantics, defaults, limits, compatibility guarantees, or requirements unless the owning canonical or executable contract explicitly gives them normative scope.
 
-An Issue or bounded specification may use examples to state transaction intent before merge. Those examples guide tests and implementation, but they do not become repository authority merely by appearing in the Issue, PR, test fixture, or documentation example.
+An Issue or bounded specification may use examples to state transaction intent before merge. Those examples guide contract tests and implementation, but they do not become repository authority merely by appearing in an Issue, PR, or explanatory document.
 
-This rule prevents incidental sample values from becoming accidental defaults or limits.
+Contract tests remain executable contracts as defined by the development workflow. Their normative scope is the behavior they intentionally assert; incidental fixture or sample values do not become broader defaults, limits, or semantics merely because they appear in a test.
+
+This rule prevents incidental sample values from becoming accidental defaults or limits without weakening the authority of intentional contract assertions.
 
 ## Document retirement
 
 Deletion is a first-class documentation maintenance operation.
 
-A document that no longer has a current role as canonical authority, a necessary reference, a defined projection, or an explicit historical artifact is deleted rather than retained as an informal archive.
+A document that no longer has a current role as canonical authority, owned evidence, a declared reference or annotation, a defined projection, or an explicit historical artifact is deleted rather than retained as an informal archive.
 
-Do not create archive directories merely to avoid deletion. Preserve material outside current authority only when its historical role is explicit and useful.
+Do not create archive directories merely to avoid deletion. Preserve material outside current authority only when its non-canonical role is explicit and useful.
 
 Removing a document does not erase its ordinary history; the removed content remains available through Git history.
 
@@ -103,6 +105,7 @@ Documentation roles are intentionally distinct:
 ```text
 Canonical Authority   current valid semantics and repository contracts
 Evidence              owned observations or measurements within their evidence claim
+Reference / Annotation explanatory non-normative material with an explicit current role
 Git History           prior repository states and the sequence of changes
 Historical Artifact   intentionally preserved rationale, migration, or historical record
 Projection            derived view of canonical inputs, never an independent writer
@@ -119,7 +122,8 @@ A documentation change is canonically converged only when:
 3. any history worth preserving is either already available through Git or stored in an explicitly historical artifact for a concrete reason;
 4. active deprecations remain in current canonical authority while historical rationale is separated when needed;
 5. non-authoritative artifacts and examples do not introduce independent normative semantics;
-6. documents with no remaining current or explicit historical role are deleted; and
-7. no reader must compare old and new prose inside the canonical document to determine the current rule.
+6. executable contract assertions retain their intended normative scope without promoting incidental fixture values;
+7. documents with no remaining declared current or explicit historical role are deleted; and
+8. no reader must compare old and new prose inside the canonical document to determine the current rule.
 
 These rules apply to ordinary semantic and repository-documentation transactions unless an artifact has a separately declared authority role.
