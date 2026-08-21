@@ -117,7 +117,7 @@ def _write_capacity_evidence(
                 assert request is not None
                 footprints.append(
                     VLLMCapacityFootprintObservation(
-                        condition_id=condition_id,
+                        condition_id=condition.condition_id,
                         topology=topology,
                         pass_id=pass_id,
                         scenario_id=scenario_id,
