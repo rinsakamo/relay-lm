@@ -21,3 +21,12 @@ def test_root_agent_bootstrap_is_a_thin_authority_router() -> None:
 
     repository_paths = set(re.findall(r"`([^`]*[/][^`]*)`", content))
     assert repository_paths == {".ai/README.md", ".ai/agent-contract.yaml"}
+
+
+def test_authority_root_discovers_repository_native_procedures() -> None:
+    content = (ROOT / ".ai" / "README.md").read_text(encoding="utf-8")
+
+    assert "## Repository-native procedures" in content
+    assert ".ai/skills/" in content
+    assert "loaded only when" in content
+    assert "not semantic authority" in content
