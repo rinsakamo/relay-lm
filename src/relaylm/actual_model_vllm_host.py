@@ -126,6 +126,7 @@ class VLLMScreeningPlan:
     continuity_runtime: ExplicitContinuityRuntimeConfiguration
     scenario_ids: tuple[str, ...]
     conditions: dict[str, VLLMScreeningCondition]
+    capacity_evidence_id: str | None = None
     format_version: int = VLLM_SCREENING_PLAN_FORMAT_VERSION
 
     def __post_init__(self) -> None:
@@ -137,6 +138,13 @@ class VLLMScreeningPlan:
             value = getattr(self, name)
             if not isinstance(value, str) or not value.strip():
                 raise ActualModelVLLMHostError(f"{name} must be a non-empty string")
+        if self.capacity_evidence_id is not None and (
+            not isinstance(self.capacity_evidence_id, str)
+            or not self.capacity_evidence_id.strip()
+        ):
+            raise ActualModelVLLMHostError(
+                "capacity_evidence_id must be a non-empty string or null"
+            )
         if isinstance(self.effective_context_window, bool) or not isinstance(
             self.effective_context_window, int
         ):
@@ -192,7 +200,7 @@ class VLLMScreeningPlan:
         )
 
     def to_mapping(self) -> dict[str, object]:
-        return {
+        mapping: dict[str, object] = {
             "format_version": self.format_version,
             "screening_id": self.screening_id,
             "target_id": self.target_id,
@@ -210,6 +218,9 @@ class VLLMScreeningPlan:
                 for key, condition in self.conditions.items()
             },
         }
+        if self.capacity_evidence_id is not None:
+            mapping["capacity_evidence_id"] = self.capacity_evidence_id
+        return mapping
 
 
 @dataclass(frozen=True, slots=True)
@@ -298,22 +309,31 @@ class VLLMHostRunArtifact:
 
 def load_vllm_screening_plan(path: str | Path) -> VLLMScreeningPlan:
     mapping = _load_json_mapping(path, label="vLLM screening plan")
-    _require_exact_keys(
-        mapping,
-        {
-            "format_version",
-            "screening_id",
-            "target_id",
-            "effective_context_window",
-            "decoding",
-            "supported_decoding_controls",
-            "execution_path",
-            "continuity_runtime",
-            "scenario_ids",
-            "conditions",
-        },
-        "vLLM screening plan",
+    required_keys = {
+        "format_version",
+        "screening_id",
+        "target_id",
+        "effective_context_window",
+        "decoding",
+        "supported_decoding_controls",
+        "execution_path",
+        "continuity_runtime",
+        "scenario_ids",
+        "conditions",
+    }
+    observed_keys = set(mapping)
+    missing_keys = sorted(required_keys - observed_keys)
+    unknown_keys = sorted(
+        observed_keys - required_keys - {"capacity_evidence_id"}
     )
+    if missing_keys:
+        raise ActualModelVLLMHostError(
+            "vLLM screening plan is missing fields: " + ", ".join(missing_keys)
+        )
+    if unknown_keys:
+        raise ActualModelVLLMHostError(
+            "vLLM screening plan has unknown fields: " + ", ".join(unknown_keys)
+        )
     decoding = _mapping(mapping["decoding"], "decoding")
     _require_exact_keys(decoding, {"temperature", "top_p", "seed"}, "decoding")
     continuity = _mapping(mapping["continuity_runtime"], "continuity_runtime")
@@ -369,6 +389,11 @@ def load_vllm_screening_plan(path: str | Path) -> VLLMScreeningPlan:
                 for index, value in enumerate(scenarios)
             ),
             conditions=conditions,
+            capacity_evidence_id=(
+                _string(mapping["capacity_evidence_id"], "capacity_evidence_id")
+                if "capacity_evidence_id" in mapping
+                else None
+            ),
         )
     except (TypeError, ValueError) as exc:
         if isinstance(exc, ActualModelVLLMHostError):
@@ -490,12 +515,16 @@ def prepare_vllm_screening_condition(
     replicate_id: str = "0",
     fetch_json: FetchJSON | None = None,
 ) -> PreparedVLLMHostRun:
-    root = Path(repo_root).resolve()
-    _verify_clean_exact_repo(root=root, expected_commit=relaylm_commit)
     if condition_id not in plan.conditions:
         raise ActualModelVLLMHostError(
             f"unknown vLLM screening condition: {condition_id}"
         )
+    if plan.capacity_evidence_id is None:
+        raise ActualModelVLLMHostError(
+            "vLLM screening execution requires citable capacity evidence"
+        )
+    root = Path(repo_root).resolve()
+    _verify_clean_exact_repo(root=root, expected_commit=relaylm_commit)
     condition = plan.conditions[condition_id]
     target = load_actual_model_repository_snapshot_target(
         root / CANONICAL_VLLM_TARGET_PATH
