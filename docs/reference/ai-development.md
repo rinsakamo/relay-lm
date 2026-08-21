@@ -80,7 +80,7 @@ An AI agent does not obtain architectural freedom merely because it can modify m
 
 Before changing production behavior, the agent must resolve the semantic owner or owners responsible for that behavior. An unresolved semantic owner is a stop condition for semantic work.
 
-Implementation paths are supporting surfaces, not semantic authorities. The current repository authority schema does not yet require every production file to be declared by path; mechanical code-owner coverage is a separate enforcement improvement.
+Implementation paths are supporting surfaces, not semantic authorities. Production-module ownership coverage is mechanically enforced by repository authority, so AI changes must keep production implementation attached to at least one semantic owner. Shared implementation remains allowed under the integration-boundary rules below.
 
 ### One semantic rule, one implementation home
 
