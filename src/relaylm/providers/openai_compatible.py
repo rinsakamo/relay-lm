@@ -66,20 +66,23 @@ Never invent source Event IDs.
 Preserve user-provided names and proper-noun spelling.
 Normally use the user's language.
 
-Return only the required structured output."""
+Return only the exact RelayLM combined cognitive IR object described below."""
 
-PROVIDER_WIRE_INSTRUCTION = """Provider wire requirements:
+PROVIDER_WIRE_INSTRUCTION = """RelayLM combined cognitive IR contract:
+- Return exactly one JSON object with exactly `utterance`, `state_candidates`, and `continuity_candidates`. Do not use Markdown, code fences, metadata, or explanatory fields.
 - `utterance` is the complete non-empty natural-language reply shown to the user. Do not put JSON framing text in `utterance`.
 - `state_candidates` is an array of internal State proposals.
-- Every State wire candidate includes `state_class`, `key`, `op`, `value`, and `sources`.
+- Every State wire candidate has exactly `state_class`, `key`, `op`, `value`, and `sources`.
 - For State `set`, `value` is either a non-null string or exactly {`semantic`: non-empty string, `degree_hint`: finite number from 0.0 through 1.0}.
-- For State `remove`, `value` is null and is normalized away by the adapter.
+- For State `remove`, `value` is null and is normalized away by RelayLM.
 - `continuity_candidates` is an array of bounded, non-durable Continuity proposals.
-- Every Continuity wire candidate includes `kind`, `key`, `op`, `value`, `sources`, and `epistemic_role`.
+- Every Continuity wire candidate has exactly `kind`, `key`, `op`, `value`, `sources`, and `epistemic_role`.
 - Continuity `kind` is one of `referent`, `unresolved`, or `active_task`.
 - Continuity `epistemic_role` is one of `user_assertion`, `assistant_inference`, or `assistant_commitment`.
-- For Continuity `set`, `value` is the JSON semantic value being proposed. For Continuity `resolve`, `value` is null and is normalized away by the adapter.
-- Use only Event IDs present in State, Context, Event Evidence, or Input as candidate `sources`. Memory `location` values are document locators, not Event IDs, and must never be used as `sources`."""
+- For Continuity `set`, `value` is the JSON semantic value being proposed. For Continuity `resolve`, `value` is null and is normalized away by RelayLM.
+- Use only Event IDs present in State, Context, Event Evidence, or Input as candidate `sources`. Memory `location` values are document locators, not Event IDs, and must never be used as `sources`.
+
+RelayLM, not the provider, owns parsing, exact IR shape checks, typed candidate construction, deterministic validation, and commit authority."""
 
 DEGREE_HINT_VALUE_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -201,7 +204,7 @@ def _provider_http_error(
 
 
 class OpenAICompatibleProvider:
-    """OpenAI Chat Completions adapter for a complete structured cognitive turn."""
+    """OpenAI Chat Completions adapter for a complete RelayLM-owned cognitive IR turn."""
 
     def __init__(
         self,
@@ -476,14 +479,6 @@ def _request_body(
                 ),
             },
         ],
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "relaylm_cognitive_output",
-                "strict": True,
-                "schema": WIRE_SCHEMA,
-            },
-        },
         "stream": stream,
     }
     if decoding_config is not None:
@@ -727,6 +722,12 @@ def parse_chat_completion(envelope: Any) -> CognitiveOutput:
 
 def parse_wire_output(wire: Any) -> CognitiveOutput:
     wire = _mapping(wire, "cognitive wire output")
+    expected_top_level = {"utterance", "state_candidates", "continuity_candidates"}
+    if set(wire) != expected_top_level:
+        raise ProviderProtocolError(
+            "cognitive wire output must contain exactly utterance, state_candidates, "
+            "and continuity_candidates"
+        )
     utterance = wire.get("utterance")
     if not isinstance(utterance, str) or not utterance.strip():
         raise ProviderProtocolError("wire utterance must be a non-empty string")
@@ -738,8 +739,14 @@ def parse_wire_output(wire: Any) -> CognitiveOutput:
         raise ProviderProtocolError("wire continuity_candidates must be an array")
 
     candidates: list[StateCandidate] = []
+    expected_state_keys = {"state_class", "key", "op", "value", "sources"}
     for index, raw in enumerate(raw_candidates):
         candidate = _mapping(raw, f"state_candidates[{index}]")
+        if set(candidate) != expected_state_keys:
+            raise ProviderProtocolError(
+                f"state_candidates[{index}] must contain exactly "
+                "state_class, key, op, value, and sources"
+            )
         state_class = _required_string(candidate, "state_class", index)
         key = _required_string(candidate, "key", index)
         op = _required_string(candidate, "op", index)
@@ -750,8 +757,6 @@ def parse_wire_output(wire: Any) -> CognitiveOutput:
             raise ProviderProtocolError(
                 f"state_candidates[{index}].sources must be non-empty strings"
             )
-        if "value" not in candidate:
-            raise ProviderProtocolError(f"state_candidates[{index}] missing value")
         if op == "set":
             value = _parse_set_value(candidate["value"], index)
             candidates.append(

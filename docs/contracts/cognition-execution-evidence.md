@@ -1,6 +1,6 @@
 # Cognition Execution Evidence Contract
 
-Status: COGP provider-neutral execution-topology and shadow-observation contract for RelayLM v1, including RelayLM-owned extraction structure.
+Status: COGP provider-neutral execution-topology and shadow-observation contract for RelayLM v1, including RelayLM-owned single-pass combined IR and Pass 2 proposal IR structure.
 
 This contract is owned by #1533 under `cognitive_turn`. It defines what ordinary-turn execution topology occurred and how `shadow_two_pass` raw extraction is carried without becoming semantic authority. It does not replace #1386 Actual-model Evaluation identity, artifacts, reviews, cohorts, or comparison methodology.
 
@@ -10,6 +10,7 @@ Actual-model evidence must be able to distinguish:
 
 ```text
 single_pass
+  combined response/proposal IR parsed by RelayLM
 
 two_pass
   Pass 1 conversation
@@ -36,7 +37,7 @@ The execution identity is provider-neutral. Provider/model/reasoning/decoding/ru
 Current contract identities are:
 
 ```text
-single-pass output:
+single-pass combined output:
   relaylm_cognitive_output:v1
 
 conversation-only output:
@@ -46,7 +47,7 @@ RelayLM proposal-IR extraction output:
   relaylm_structured_cognition_output:v1
 ```
 
-These are **RelayLM execution-contract identities**. In particular, `relaylm_structured_cognition_output:v1` identifies the RelayLM-owned compact proposal IR and parser/type-construction boundary; it does not require or identify a provider-native `response_format`, JSON-schema grammar, or equivalent structured-output feature. The names are not claims about an exact model artifact, provider deployment, reasoning setting, decoding configuration, tokenizer, or context window.
+These are **RelayLM execution-contract identities**. `relaylm_cognitive_output:v1` identifies the RelayLM-owned combined response/proposal IR and parser/type-construction boundary. `relaylm_structured_cognition_output:v1` identifies the RelayLM-owned compact proposal IR and parser/type-construction boundary. Neither requires or identifies a provider-native `response_format`, JSON-schema grammar, or equivalent structured-output feature. The names are not claims about an exact model artifact, provider deployment, reasoning setting, decoding configuration, tokenizer, or context window.
 
 ### `single_pass`
 
@@ -59,7 +60,7 @@ shadow_output              omitted
 canonical_mutation_source  single_pass
 ```
 
-The current legacy single-pass OpenAI-compatible wire may still realize `relaylm_cognitive_output:v1` using provider-native structured output. That provider realization is separate from the provider-neutral contract identity.
+For canonical `single_pass`, the OpenAI-compatible realization is ordinary provider message content containing the combined RelayLM cognitive IR. RelayLM performs JSON parsing, exact top-level/candidate shape checks, typed `CognitiveOutput` construction, and fail-closed validation before the existing deterministic commit boundary. Provider-native structured-output support is not part of the topology requirement.
 
 ### `two_pass`
 
@@ -85,7 +86,7 @@ shadow_output              relaylm_structured_cognition_output:v1
 canonical_mutation_source  single_pass
 ```
 
-The current canonical side remains the legacy single-pass path and may therefore still require provider structured output. The shadow extraction side uses plain provider content plus the same RelayLM-owned proposal-IR parser as canonical `two_pass`.
+The canonical side uses the same RelayLM-owned combined-IR boundary as ordinary `single_pass`; the shadow extraction side uses plain provider content plus the same RelayLM-owned proposal-IR parser as canonical `two_pass`. Neither side requires provider-native structured-output enforcement.
 
 `auto` is unresolved policy, not an execution that happened, and therefore cannot be persisted as this evidence identity. A citable run must record the resolved execution mode.
 
@@ -114,7 +115,8 @@ A completed shadow observation preserves the model's raw StateCandidate and Cont
 `shadow_two_pass` means:
 
 ```text
-canonical single-pass CognitiveOutput
+canonical single-pass plain combined IR
+  -> RelayLM parse/type construction
   -> existing State / Continuity validation
   -> canonical mutation as normal
 
@@ -155,18 +157,19 @@ The OpenAI-compatible COGP provider extension inherits the canonical adapter and
 
 ```text
 same adapter object / client / request model
-  canonical legacy relaylm_cognitive_output
+  plain canonical relaylm_cognitive_output content
+    -> RelayLM combined-IR parse/type construction
     -> plain shadow extraction message
     -> RelayLM relaylm_structured_cognition_output:v1 parse/type construction
 ```
 
-The two contract identities do not imply two provider-native response schemas. This is an execution-topology capability, not a claim that multiple concurrent provider requests are resident as separate model artifacts.
+The two contract identities do not imply provider-native response schemas. This is an execution-topology capability, not a claim that multiple concurrent provider requests are resident as separate model artifacts.
 
 ## Relationship to #1386
 
-COGP intentionally does not modify `ActualModelRunManifest` or the existing actual-model evidence artifact format in this contract.
+COGP intentionally does not replace `ActualModelRunManifest` or the existing actual-model evidence artifact system.
 
-#1386 remains the owner that must later combine, at minimum:
+#1386 remains the owner that combines, at minimum:
 
 ```text
 COGP execution evidence identity
@@ -181,9 +184,9 @@ COGP execution evidence identity
 
 before an A/B/C result is citable.
 
-Because the canonical Pass 2 request wire changed from provider-native structured schema carriage to plain content with a RelayLM-owned IR contract, prior Pass 2 serialized-input footprint evidence is historical for its exact old wire. #1386 must reacquire exact Pass 2 footprint evidence before a revised two-pass screening result is cited.
+Both current model-facing structure prompts differ materially from their historical provider-native schema-carriage realizations. Prior exact single-pass and Pass-2 serialized-input footprints remain historical for those exact old wires. #1386 must reacquire current fixed prompt/wire footprint evidence before revised topology screening cites capacity assumptions.
 
-In particular, COGP topology identity alone is insufficient to claim that reasoning was actually OFF or ON. #1532/CRY reasoning attestation is design precedent only; CRY-specific LM Studio evidence fields are not copied here.
+In particular, COGP topology identity alone is insufficient to claim that reasoning was actually OFF or ON. Provider/reasoning capability evidence must establish the exact applied control before causal comparison.
 
 ## Ownership boundaries
 
@@ -192,6 +195,7 @@ COGP / #1533 owns:
 - resolved execution-topology identity;
 - RelayLM pass/output contract identity;
 - canonical-mutation-source identity;
+- the RelayLM-owned combined cognitive IR identity for `single_pass`;
 - the RelayLM-owned proposal-IR identity for canonical/shadow extraction;
 - non-authoritative shadow runtime semantics;
 - raw shadow extraction observation and bounded failure status.
@@ -204,17 +208,17 @@ COGP / #1533 owns:
 - review/cohort/comparison artifacts;
 - latency/token/resource observations used as product evidence.
 
-Provider owners retain capability truth and exact applied external request configuration. Provider-native structured-output support is not the owner of `relaylm_structured_cognition_output:v1`. #1388 retains profile/default selection. #1446 retains operator config carriage.
+Provider owners retain capability truth and exact applied external request configuration. Provider-native structured-output support is not the owner of either RelayLM cognition IR. #1388 retains profile/default selection. #1446 retains operator config carriage.
 
 ## Non-goals
 
 This contract does not:
 
 - select a release default;
-- change canonical `single_pass` behavior;
+- change single-pass semantic meaning or deterministic commit ownership;
 - validate or commit shadow proposals;
-- modify #1386 manifests or scenario evidence;
+- replace #1386 manifests or scenario evidence;
 - claim reasoning-on/off causality;
 - choose numeric decoding or reasoning settings;
 - create a second resident model requirement;
-- make backend JSON-schema/grammar support a semantic prerequisite for canonical Pass 2.
+- make backend JSON-schema/grammar support a semantic prerequisite for canonical cognition.

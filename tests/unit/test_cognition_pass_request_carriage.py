@@ -140,8 +140,7 @@ def test_openai_provider_carries_resolved_pass_request_to_exact_vllm_wire() -> N
         async def handler(request: httpx.Request) -> httpx.Response:
             body = json.loads(request.content)
             bodies.append(body)
-            schema_name = body["response_format"]["json_schema"]["name"]
-            return httpx.Response(200, json=_completion(schema_name))
+            return httpx.Response(200, json=_completion("relaylm_cognitive_output"))
 
         client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         provider = OpenAICompatibleProvider(
@@ -172,6 +171,8 @@ def test_openai_provider_carries_resolved_pass_request_to_exact_vllm_wire() -> N
 
         assert len(bodies) == 1
         body = bodies[0]
+        assert "response_format" not in body
+        assert "RelayLM combined cognitive IR contract" in body["messages"][0]["content"]
         assert body["reasoning_effort"] == "none"
         assert "chat_template_kwargs" not in body
         assert "thinking_token_budget" not in body

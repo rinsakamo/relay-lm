@@ -117,33 +117,13 @@ def test_provider_makes_one_request_and_normalizes_state_and_continuity_set() ->
 
     assert len(seen) == 1
     assert seen[0]["stream"] is False
-    schema = seen[0]["response_format"]["json_schema"]["schema"]
-    assert schema["required"] == [
-        "utterance",
-        "state_candidates",
-        "continuity_candidates",
-    ]
-    continuity_schema = schema["properties"]["continuity_candidates"]["items"]
-    assert continuity_schema["additionalProperties"] is False
-    assert continuity_schema["required"] == [
-        "kind",
-        "key",
-        "op",
-        "value",
-        "sources",
-        "epistemic_role",
-    ]
-    assert continuity_schema["properties"]["kind"]["enum"] == [
-        "active_task",
-        "referent",
-        "unresolved",
-    ]
-    assert continuity_schema["properties"]["epistemic_role"]["enum"] == [
-        "assistant_commitment",
-        "assistant_inference",
-        "user_assertion",
-    ]
+    assert "response_format" not in seen[0]
     system_prompt = seen[0]["messages"][0]["content"]
+    assert "RelayLM combined cognitive IR contract" in system_prompt
+    assert "Return exactly one JSON object" in system_prompt
+    assert "Every State wire candidate has exactly" in system_prompt
+    assert "Every Continuity wire candidate has exactly" in system_prompt
+    assert "RelayLM, not the provider, owns parsing" in system_prompt
     assert "complete non-empty natural-language reply" in system_prompt
     assert "`continuity_candidates`" in system_prompt
     assert "Assistant-authored Context supports conversational continuity only" in system_prompt
@@ -225,7 +205,7 @@ def test_continuity_resolve_null_normalizes_to_semantic_resolve() -> None:
 
 def test_missing_continuity_channel_fails_closed() -> None:
     with pytest.raises(
-        ProviderProtocolError, match="wire continuity_candidates must be an array"
+        ProviderProtocolError, match="must contain exactly utterance"
     ):
         parse_wire_output(
             {
