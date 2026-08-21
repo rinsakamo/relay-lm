@@ -14,6 +14,7 @@ hand-maintained global registry:
   README.md                         this file: the bootstrap entry point
   agent-contract.yaml               read order and freshness contract
   authority/<semantic_owner>.yaml   one writable authority unit per semantic owner
+  skills/<procedure>/SKILL.md        task-selected procedure implementations
   projections/<recipe>.yaml         recipes for reconstructing developer views
 ```
 
@@ -33,6 +34,18 @@ entry point
 A root tool adapter such as `AGENTS.md` may route an agent here, but it must stay
 thin and must not copy the workflow, product semantics, or current repository
 state into a second instruction surface.
+
+## Repository-native procedures
+
+Reusable procedures live under `.ai/skills/<procedure>/SKILL.md`. A materialized
+skill is a supporting implementation surface declared by its semantic owner; it
+may apply current authority, but it is not semantic authority itself.
+
+Skills are loaded only when their responsibility matches the current task. Do
+not place the entire skill library into the bootstrap context. Discover
+materialized procedures from `.ai/skills/` and the owning declarations rather
+than maintaining a second global skill registry or copying their contents into
+tool-specific adapters.
 
 ## Freshness
 
