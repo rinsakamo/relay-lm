@@ -9,6 +9,13 @@ import pytest
 
 import relaylm.actual_model_vllm_host as vllm_host
 from relaylm.actual_model_evaluation import ActualModelCognitionPassRequests
+from relaylm.actual_model_vllm_capacity import (
+    VLLMCapacityFootprintObservation,
+    VLLMRuntimeCapacityEvidence,
+    write_vllm_runtime_capacity_evidence,
+)
+from relaylm.actual_model_vllm_counter import VLLMServingTokenizerCounter
+from relaylm.budget_enforcement import TokenCountMode
 from relaylm.cognition_execution import CognitionReasoningMode
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
 from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPassProvider
@@ -64,6 +71,58 @@ def _verification(target):
         target_revision=target.revision,
         verified_file_count=len(target.files),
     )
+
+
+def _write_capacity_evidence(tmp_path: Path, target, capability) -> VLLMRuntimeCapacityEvidence:
+    counter = VLLMServingTokenizerCounter(
+        base_url="http://127.0.0.1:8000/v1",
+        target=target,
+        reasoning_capability=capability,
+        expected_max_model_len=1024,
+        post_json=lambda *_: {"count": 1, "max_model_len": 1024},
+    )
+    evidence = VLLMRuntimeCapacityEvidence(
+        relaylm_commit="a" * 40,
+        target_id=target.target_id,
+        target_revision=target.revision,
+        tokenizer_identity=target.tokenizer_identity,
+        chat_template_identity=target.chat_template_identity,
+        backend_version=capability.backend_version,
+        request_model=capability.request_model,
+        observed_max_model_len=1024,
+        counter_identity=counter.evidence_identity,
+        footprints=(
+            VLLMCapacityFootprintObservation(
+                topology="single_pass",
+                pass_id="single_pass",
+                scenario_id="response-persona-correction-v1",
+                turn_index=1,
+                total_input_tokens=900,
+                required_input_framing_tokens=100,
+                count_mode=TokenCountMode.EXACT,
+            ),
+            VLLMCapacityFootprintObservation(
+                topology="two_pass",
+                pass_id="pass1",
+                scenario_id="response-persona-correction-v1",
+                turn_index=1,
+                total_input_tokens=850,
+                required_input_framing_tokens=100,
+                count_mode=TokenCountMode.EXACT,
+            ),
+            VLLMCapacityFootprintObservation(
+                topology="two_pass",
+                pass_id="pass2",
+                scenario_id="response-persona-correction-v1",
+                turn_index=1,
+                total_input_tokens=920,
+                required_input_framing_tokens=100,
+                count_mode=TokenCountMode.EXACT,
+            ),
+        ),
+    )
+    write_vllm_runtime_capacity_evidence(evidence=evidence, artifact_root=tmp_path)
+    return evidence
 
 
 def test_screening_plan_freezes_only_three_serial_product_conditions() -> None:
@@ -157,11 +216,20 @@ def test_prepare_screening_condition_uses_common_provider_and_binding_identity(
     provider_type: type[OpenAICompatibleProvider],
     mode: str,
 ) -> None:
+    target = vllm_host.load_actual_model_repository_snapshot_target(TARGET_PATH)
+    proof = vllm_host.load_vllm_reasoning_probe_proof(PROOF_PATH)
+    capability = vllm_host.acquire_vllm_reasoning_capability(
+        proof=proof,
+        target=target,
+        base_url="http://127.0.0.1:8000/v1",
+        api_key=None,
+        fetch_json=_live_fetch,
+    )
+    evidence = _write_capacity_evidence(tmp_path, target, capability)
     plan = replace(
         vllm_host.load_vllm_screening_plan(PLAN_PATH),
-        capacity_evidence_id="test-capacity-evidence",
+        capacity_evidence_id=evidence.evidence_id,
     )
-    target = vllm_host.load_actual_model_repository_snapshot_target(TARGET_PATH)
     monkeypatch.setattr(vllm_host, "_verify_clean_exact_repo", lambda **_: None)
     monkeypatch.setattr(
         vllm_host,
@@ -179,10 +247,12 @@ def test_prepare_screening_condition_uses_common_provider_and_binding_identity(
         base_url="http://127.0.0.1:8000/v1",
         api_key=None,
         fetch_json=_live_fetch,
+        capacity_evidence_root=tmp_path,
     )
     try:
         assert isinstance(prepared.provider, provider_type)
         assert prepared.condition.cognition_execution.mode == mode
+        assert prepared.capacity_evidence == evidence
         assert isinstance(
             prepared.manifest.cognition_pass_requests,
             ActualModelCognitionPassRequests,

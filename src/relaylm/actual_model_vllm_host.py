@@ -37,6 +37,14 @@ from relaylm.actual_model_vllm import (
     vllm_manifest_provider_identity,
     write_vllm_actual_model_execution_result,
 )
+from relaylm.actual_model_vllm_capacity import (
+    VLLMRuntimeCapacityEvidence,
+    VLLMRuntimeCapacityEvidenceError,
+    capacity_evidence_path,
+    load_vllm_runtime_capacity_evidence,
+    validate_capacity_window,
+)
+from relaylm.actual_model_vllm_counter import VLLMServingTokenizerCounter
 from relaylm.cognition_execution import CognitionPassRequest, CognitionReasoningMode
 from relaylm.cognition_execution_evidence import CognitionExecutionEvidenceIdentity
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
@@ -67,6 +75,7 @@ CANONICAL_VLLM_REASONING_PROOF_PATH = Path(
     "evaluation/actual_model/attestations/"
     "gemma-4-12b-it-qat-w4a16-vllm-reasoning-v1.json"
 )
+CANONICAL_VLLM_CAPACITY_EVIDENCE_ROOT = Path("evaluation/actual_model/capacity")
 CANONICAL_SCENARIO_SET_PATH = Path(
     "evaluation/actual_model/scenario_sets/foundation-v2.json"
 )
@@ -274,6 +283,7 @@ class PreparedVLLMHostRun:
     plan: VLLMScreeningPlan
     screening_condition_id: str
     condition: VLLMScreeningCondition
+    capacity_evidence: VLLMRuntimeCapacityEvidence
     target: ActualModelRepositorySnapshotTarget
     snapshot_verification: ActualModelRepositorySnapshotVerification
     reasoning_capability: VLLMReasoningCapabilityAttestation
@@ -514,6 +524,7 @@ def prepare_vllm_screening_condition(
     api_key: str | None,
     replicate_id: str = "0",
     fetch_json: FetchJSON | None = None,
+    capacity_evidence_root: str | Path | None = None,
 ) -> PreparedVLLMHostRun:
     if condition_id not in plan.conditions:
         raise ActualModelVLLMHostError(
@@ -524,6 +535,28 @@ def prepare_vllm_screening_condition(
             "vLLM screening execution requires citable capacity evidence"
         )
     root = Path(repo_root).resolve()
+    capacity_root = (
+        Path(capacity_evidence_root)
+        if capacity_evidence_root is not None
+        else root / CANONICAL_VLLM_CAPACITY_EVIDENCE_ROOT
+    )
+    try:
+        capacity_evidence = load_vllm_runtime_capacity_evidence(
+            capacity_evidence_path(
+                artifact_root=capacity_root,
+                evidence_id=plan.capacity_evidence_id,
+            )
+        )
+        validate_capacity_window(
+            evidence=capacity_evidence,
+            capacity_evidence_id=plan.capacity_evidence_id,
+            effective_context_window=plan.effective_context_window,
+        )
+    except (OSError, TypeError, ValueError, VLLMRuntimeCapacityEvidenceError) as exc:
+        raise ActualModelVLLMHostError(
+            f"cannot validate cited vLLM capacity evidence: {exc}"
+        ) from exc
+
     _verify_clean_exact_repo(root=root, expected_commit=relaylm_commit)
     condition = plan.conditions[condition_id]
     target = load_actual_model_repository_snapshot_target(
@@ -532,6 +565,15 @@ def prepare_vllm_screening_condition(
     if target.target_id != plan.target_id:
         raise ActualModelVLLMHostError(
             "screening target_id does not match the canonical frozen target"
+        )
+    if (
+        capacity_evidence.target_id != target.target_id
+        or capacity_evidence.target_revision != target.revision
+        or capacity_evidence.tokenizer_identity != target.tokenizer_identity
+        or capacity_evidence.chat_template_identity != target.chat_template_identity
+    ):
+        raise ActualModelVLLMHostError(
+            "cited capacity evidence does not match the canonical frozen target"
         )
     try:
         snapshot_verification = verify_actual_model_repository_snapshot(
@@ -550,6 +592,31 @@ def prepare_vllm_screening_condition(
         api_key=api_key,
         fetch_json=fetch_json,
     )
+    if (
+        capacity_evidence.backend_version != capability.backend_version
+        or capacity_evidence.request_model != capability.request_model
+        or capacity_evidence.observed_max_model_len
+        != capability.backend_attestation.max_model_len
+    ):
+        raise ActualModelVLLMHostError(
+            "cited capacity evidence does not match the live vLLM runtime"
+        )
+    try:
+        live_counter_identity = VLLMServingTokenizerCounter(
+            base_url=base_url,
+            target=target,
+            reasoning_capability=capability,
+            expected_max_model_len=capacity_evidence.observed_max_model_len,
+            api_key=api_key,
+        ).evidence_identity
+    except (TypeError, ValueError) as exc:
+        raise ActualModelVLLMHostError(
+            f"cannot reconstruct vLLM capacity counter identity: {exc}"
+        ) from exc
+    if capacity_evidence.counter_identity != live_counter_identity:
+        raise ActualModelVLLMHostError(
+            "cited capacity evidence counter identity does not match current vLLM counting semantics"
+        )
 
     scenario_set = load_actual_model_scenario_set(root / CANONICAL_SCENARIO_SET_PATH)
     fixture_root = root / CANONICAL_FIXTURE_PATH
@@ -610,6 +677,7 @@ def prepare_vllm_screening_condition(
         plan=plan,
         screening_condition_id=condition_id,
         condition=condition,
+        capacity_evidence=capacity_evidence,
         target=target,
         snapshot_verification=snapshot_verification,
         reasoning_capability=capability,
