@@ -28,9 +28,17 @@ canonical_surfaces:
 - docs/reference/evaluation-memory-temporal-provenance.md
 implementation:
 - src/relaylm/evaluation.py
+- src/relaylm/evaluation_restart.py
+- src/relaylm/evaluation_authority.py
+- src/relaylm/evaluation_preference.py
+- src/relaylm/evaluation_degree.py
+- src/relaylm/evaluation_context.py
 - src/relaylm/evaluation_cross_layer.py
 - src/relaylm/evaluation_working_context.py
 - src/relaylm/evaluation_persistence.py
+- src/relaylm/evaluation_correction.py
+- src/relaylm/evaluation_crystallization.py
+- src/relaylm/evaluation_streaming.py
 - src/relaylm/evaluation_memory.py
 - src/relaylm/evaluation_event_evidence.py
 - src/relaylm/evaluation_retrieval_diagnostics.py
@@ -44,6 +52,7 @@ implementation:
 - src/relaylm/evaluation_continuity_cognition_wiring.py
 - src/relaylm/evaluation_freeform_current_state_shadow.py
 - src/relaylm/evaluation_total_budget_accounting.py
+- src/relaylm/evaluation_total_budget_diagnostics.py
 - src/relaylm/evaluation_budget_degradation_plan.py
 - src/relaylm/evaluation_budget_owner_controls.py
 - src/relaylm/evaluation_serialized_input_fit.py
