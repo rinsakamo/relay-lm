@@ -38,11 +38,14 @@ from relaylm.actual_model_vllm import (
     write_vllm_actual_model_execution_result,
 )
 from relaylm.actual_model_vllm_capacity import (
+    VLLMCapacityFootprintCoverage,
     VLLMRuntimeCapacityEvidence,
     VLLMRuntimeCapacityEvidenceError,
     capacity_evidence_path,
     load_vllm_runtime_capacity_evidence,
+    validate_capacity_coverage,
     validate_capacity_window,
+    vllm_capacity_pass_request_id,
 )
 from relaylm.actual_model_vllm_counter import VLLMServingTokenizerCounter
 from relaylm.cognition_execution import CognitionPassRequest, CognitionReasoningMode
@@ -622,6 +625,20 @@ def prepare_vllm_screening_condition(
     fixture_root = root / CANONICAL_FIXTURE_PATH
     fixture_revision = character_fixture_revision(fixture_root)
     _validate_scenarios(plan=plan, scenario_set=scenario_set)
+    try:
+        validate_capacity_coverage(
+            evidence=capacity_evidence,
+            scenario_set_revision=scenario_set.revision,
+            required_coverage=_required_capacity_coverage(
+                condition=condition,
+                scenario_set=scenario_set,
+                scenario_ids=plan.scenario_ids,
+            ),
+        )
+    except (TypeError, ValueError, VLLMRuntimeCapacityEvidenceError) as exc:
+        raise ActualModelVLLMHostError(
+            f"cannot validate cited vLLM capacity coverage: {exc}"
+        ) from exc
 
     provider_type: type[OpenAICompatibleProvider] = OpenAICompatibleProvider
     if condition.cognition_execution.mode == "two_pass":
@@ -746,6 +763,58 @@ async def execute_vllm_host_run(
     finally:
         await prepared.provider.aclose()
     return tuple(results)
+
+
+def _required_capacity_coverage(
+    *,
+    condition: VLLMScreeningCondition,
+    scenario_set: ActualModelScenarioSet,
+    scenario_ids: tuple[str, ...],
+) -> tuple[VLLMCapacityFootprintCoverage, ...]:
+    if condition.pass_requests.mode == "single_pass":
+        request = condition.pass_requests.single_request
+        if request is None:
+            raise ActualModelVLLMHostError(
+                "single-pass screening condition is missing its pass request"
+            )
+        topology = "single_pass"
+        requests = (("single_pass", request),)
+    elif condition.pass_requests.mode == "two_pass":
+        if condition.pass_requests.pass1 is None or condition.pass_requests.pass2 is None:
+            raise ActualModelVLLMHostError(
+                "two-pass screening condition is missing pass1/pass2 requests"
+            )
+        topology = "two_pass"
+        requests = (
+            ("pass1", condition.pass_requests.pass1),
+            ("pass2", condition.pass_requests.pass2),
+        )
+    else:
+        raise ActualModelVLLMHostError(
+            "unsupported screening cognition pass-request mode"
+        )
+
+    required: list[VLLMCapacityFootprintCoverage] = []
+    for scenario_id in scenario_ids:
+        try:
+            definition = scenario_set.scenario(scenario_id)
+        except KeyError as exc:
+            raise ActualModelVLLMHostError(
+                f"screening scenario is not in canonical foundation-v2: {scenario_id}"
+            ) from exc
+        for turn_index in range(1, len(definition.scenario.turns) + 1):
+            for pass_id, request in requests:
+                required.append(
+                    VLLMCapacityFootprintCoverage(
+                        condition_id=condition.condition_id,
+                        topology=topology,
+                        pass_id=pass_id,
+                        scenario_id=scenario_id,
+                        turn_index=turn_index,
+                        pass_request_id=vllm_capacity_pass_request_id(request),
+                    )
+                )
+    return tuple(required)
 
 
 def _parse_screening_condition(

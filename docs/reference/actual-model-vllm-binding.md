@@ -108,14 +108,17 @@ A capacity evidence record contains only content-free facts:
 - frozen serving-tokenizer and chat-template identities;
 - vLLM backend version and request-model identity;
 - observed live `max_model_len`;
+- exact scenario-set revision used for measurement;
 - the exact `SerializedInputCounterIdentity` used for measurement;
-- one or more footprint observations identified by topology, pass, scenario, and turn index;
+- one or more footprint observations identified by canonical screening-condition ID, topology, pass, scenario, turn index, and content-free exact pass-request identity;
 - total serialized-input tokens, framing tokens, and count mode for each footprint;
 - optionally, an independently observed input-context-overflow condition with configured capacity, observed input tokens, HTTP status, and failure classification.
 
+The exact pass-request identity is `amcpr-<sha256>` over the canonical resolved `CognitionPassRequest` fields (`reasoning_mode`, `reasoning_budget`, `temperature`, `top_p`, and `max_output_tokens`). It contains no prompt or message text. This keeps otherwise similar footprints distinct when their actual per-pass request semantics differ, including B Pass 2 OFF versus C Pass 2 bounded(16).
+
 It does not persist prompt text, message content, State/Continuity values, MEMORY/Event text, API keys, provider URLs, or model output.
 
-The evidence ID is `amcap-<sha256>` over canonical artifact contents excluding the ID field itself. The writer is immutable: identical re-writes are idempotent, while same-ID/different-bytes replacement is rejected. The loader reconstructs the typed record and recomputes the ID before the artifact can be cited.
+The evidence ID is `amcap-<sha256>` over canonical artifact contents excluding the ID field itself. The writer is immutable: identical re-writes are idempotent, while same-ID/different-bytes replacement is rejected. The loader reconstructs the typed record and recomputes the ID before the artifact can be cited. Duplicate footprint coverage identities are rejected rather than collapsed.
 
 Before screening preparation proceeds, the cited artifact must additionally satisfy all of these checks:
 
@@ -124,9 +127,13 @@ Before screening preparation proceeds, the cited artifact must additionally sati
 3. that window does not exceed the evidence's attested runtime capacity;
 4. target ID/revision, tokenizer identity, and chat-template identity match the current frozen repository target;
 5. backend version, request model, and observed runtime capacity match fresh live vLLM re-attestation;
-6. reconstructing the current `VLLMServingTokenizerCounter` from the fresh target/runtime produces the exact counter identity cited by the artifact.
+6. reconstructing the current `VLLMServingTokenizerCounter` from the fresh target/runtime produces the exact counter identity cited by the artifact;
+7. the artifact's scenario-set revision exactly matches the canonical scenario set used by the selected screening plan;
+8. the artifact contains every required scenario/turn/pass footprint for the selected condition, with the exact canonical condition ID and exact resolved pass-request identity.
 
-The measurement commit is retained as provenance, not required to equal the later screening commit. A reviewed evidence artifact may therefore be committed and referenced by a later screening plan without pretending the measurement occurred at that later commit. Semantic staleness is instead rejected through the frozen target, serving-tokenizer/chat-template, backend/model, runtime-capacity, and counter-identity checks above.
+Coverage is reconstructed deterministically from the selected `VLLMScreeningCondition` and the frozen scenario set. A, B Pass 1, B Pass 2, C Pass 1, and C Pass 2 remain distinct coverage coordinates even when two resolved requests are otherwise equal. Missing, stale, duplicate, or mismatched coverage fails before provider construction and therefore before generation.
+
+The measurement commit is retained as provenance, not required to equal the later screening commit. A reviewed evidence artifact may therefore be committed and referenced by a later screening plan without pretending the measurement occurred at that later commit. Semantic staleness is instead rejected through the frozen target, serving-tokenizer/chat-template, backend/model, runtime-capacity, counter-identity, scenario-set revision, and exact pass-request coverage checks above.
 
 The capacity artifact does not select a numeric value. `validate_capacity_window(...)` only proves whether a caller-selected window resolves the cited serialized-input floor and remains inside the attested live capacity. #1388 remains the owner of choosing any evidence-resolving candidate/profile/default.
 
@@ -177,7 +184,7 @@ At each real host execution, `acquire_vllm_reasoning_capability(...)` reacquires
 
 ## Host orchestration and serial execution
 
-`src/relaylm/actual_model_vllm_host.py` owns the vLLM host preparation adapter. It first resolves and validates the cited capacity artifact, then verifies the exact repository snapshot, reacquires live backend identity, reconstructs the current serving-tokenizer counter identity, constructs the canonical single-pass or two-pass OpenAI-compatible provider with the same typed vLLM reasoning capability, creates the #1562 run manifest, and obtains the #1563 binding before any scenario generation.
+`src/relaylm/actual_model_vllm_host.py` owns the vLLM host preparation adapter. It first resolves and validates the cited capacity artifact, then verifies the exact repository snapshot, reacquires live backend identity, reconstructs the current serving-tokenizer counter identity, validates exact scenario/pass-request coverage for the selected condition, constructs the canonical single-pass or two-pass OpenAI-compatible provider with the same typed vLLM reasoning capability, creates the #1562 run manifest, and obtains the #1563 binding before any scenario generation.
 
 The public host entry point is the thin common facade `python -m relaylm.actual_model_host`. It only selects the backend adapter:
 
