@@ -137,6 +137,8 @@ Field roles:
 - one canonical surface has exactly one owner;
 - implementation and test surfaces may be shared, because code and tests are
   write surfaces rather than authority claims;
+- every Python module under `src/relaylm/`, except `__init__.py` package markers,
+  is declared by at least one semantic owner as an `implementation` surface;
 - reverse dependencies (`consumed_by`) are derived from consumers'
   `depends_on` and are never declared a second time;
 - evidence is owned by its producer; consumers reference an evidence id and do
@@ -149,6 +151,11 @@ Field roles:
 - the dependency graph is acyclic;
 - hand-maintained authority aggregates are prohibited; the previous
   `docs/authority-map.yaml` navigation index is replaced by these declarations.
+
+Production implementation coverage proves that code is attached to at least one
+semantic owner. It does not make implementation exclusive: legitimate shared
+integration surfaces remain allowed and are reviewed under the owning semantic
+contracts.
 
 ## Projections
 
@@ -185,20 +192,27 @@ requires it to match generation from the exact frozen candidate commit.
 
 ## Executable schema
 
-`tools/repository_authority.py` is the canonical schema. It is executable
-rather than a separate schema document so the contract cannot drift from its
-validator, and its meaning is frozen by
+`tools/repository_authority.py` is the canonical declaration schema. It is
+executable rather than a separate schema document so the declaration contract
+cannot drift from its validator, and its meaning is frozen by
 `tests/unit/test_repository_authority_contract.py`.
+
+`tools/repository_code_ownership.py` deterministically enforces production
+implementation coverage against those declarations. Its boundary is frozen by
+`tests/unit/test_repository_code_ownership_contract.py`.
 
 `tools/repository_projection.py` is the canonical schema for recipes, frozen by
 `tests/unit/test_repository_projection_contract.py`.
 
 ```bash
 python tools/repository_authority.py validate
+python -m tools.repository_code_ownership
 python -m tools.repository_projection validate
 ```
 
-`tests/unit/test_repository_authority.py` and
-`tests/unit/test_repository_projection.py` applies the same rules to the current
-repository under the required `v1 CI / pytest` check, so authority drift fails
-the normal transaction gate rather than requiring a separate audit.
+`tests/unit/test_repository_authority.py`,
+`tests/unit/test_repository_code_ownership.py`, and
+`tests/unit/test_repository_projection.py` apply the same rules to the current
+repository under the required `v1 CI / pytest` check, so authority or production
+ownership drift fails the normal transaction gate rather than requiring a
+separate audit.
