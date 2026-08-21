@@ -1,6 +1,6 @@
 schema_version: 1
 id: actual_model_evaluation
-summary: Actual-model execution, shared/backend host orchestration, resolved cognition request carriage, real trajectory vLLM capacity acquisition, immutable exact-screening-coverage capacity-evidence-gated vLLM screening, staged topology-first/reasoning-escalation fast screening with provider timing observations, exact vLLM/LM Studio serving-tokenizer evidence, backend execution binding, and reproducible evaluation evidence.
+summary: Actual-model execution, shared/backend host orchestration, resolved cognition request carriage, real trajectory vLLM capacity acquisition, immutable exact-screening-coverage capacity-evidence-gated vLLM screening, staged topology-first/reasoning-escalation fast screening with provider timing observations and citable execution-bound timing sidecars, exact vLLM/LM Studio serving-tokenizer evidence, backend execution binding, and reproducible evaluation evidence.
 owner_issue: 1386
 canonical_surfaces:
 - docs/reference/actual-model-cognition-execution-evidence.md
@@ -40,6 +40,7 @@ implementation:
 - src/relaylm/actual_model_reasoning.py
 - src/relaylm/actual_model_cognition_capability.py
 - src/relaylm/actual_model_fast_screening.py
+- src/relaylm/actual_model_fast_screening_artifacts.py
 - src/relaylm/actual_model_crystallization.py
 - src/relaylm/actual_model_crystallization_host_runner.py
 tests:
@@ -50,6 +51,7 @@ tests:
 - tests/unit/test_actual_model_cognition_reasoning_environment.py
 - tests/unit/test_actual_model_cognition_capability.py
 - tests/unit/test_actual_model_fast_screening.py
+- tests/unit/test_actual_model_fast_screening_artifacts.py
 - tests/unit/test_actual_model_artifacts.py
 - tests/unit/test_actual_model_restart.py
 - tests/unit/test_actual_model_comparison.py
