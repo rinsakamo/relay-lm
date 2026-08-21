@@ -1,6 +1,6 @@
 # Cognition Execution Policy Contract
 
-Status: current ordinary-turn cognition execution-policy contract for RelayLM v1 through COGP4.
+Status: current ordinary-turn cognition execution-policy contract for RelayLM v1 through the lean two-pass responsibility refinement.
 
 This contract is owned by #1533 under `cognitive_turn`. Execution topology may vary, while RelayLM's authority rule remains constant:
 
@@ -25,11 +25,38 @@ auto
 
 One model generation produces the visible response plus StateCandidate and ContinuityCandidate proposals. Existing ordinary-turn APIs retain this supported baseline.
 
+The legacy single-pass provider wire may therefore remain larger because conversation and proposal generation share one generation. It is a supported baseline, not the target shape that Pass 1 should imitate in `two_pass` mode.
+
 ### `two_pass`
 
 Pass 1 produces only the visible response. Pass 2 produces only immediate State/Continuity proposals. COGP3 implements an explicit response-first path using the same supplied provider object/model resources sequentially.
 
 A valid Pass 1 creates the Assistant Event before Pass 2 completes. Pass 2 receives the originating `CognitiveInput` plus the Pass 1 response as lower-authority interpretive context. It can affect State/Continuity only through the existing deterministic validators and current stale-result guards.
+
+The two passes intentionally have different wire responsibilities:
+
+```text
+Pass 1 — conversation
+  input: governed conversational context
+  output: plain natural-language response content
+  no State/Continuity proposal schema
+  no JSON wrapper required by RelayLM
+
+Pass 2 — immediate extraction
+  input: originating governed turn + Pass 1 response as lower-authority context
+  output: compact proposal IR only
+    state_candidates
+    continuity_candidates
+
+RelayLM
+  parses/validates proposal IR shape
+  assembles typed CognitionExtractionOutput deterministically
+  runs existing State/Continuity validators and lifecycle authority
+```
+
+The model does not author execution IDs, turn binding, provider identity, evidence metadata, commit status, or canonical RelayLM envelopes. Those remain RelayLM-owned deterministic structure.
+
+This responsibility split is semantic rather than provider-specific. A provider adapter may use a structured-output mechanism for Pass 2 where supported, but Pass 1 must not be forced through a structured-output wrapper merely to recreate a natural-language response.
 
 ### `shadow_two_pass`
 
@@ -60,13 +87,31 @@ Provider-neutral execution identity and shadow-observation semantics are frozen 
 
 ## Pass responsibilities
 
-Pass 1 owns visible conversation quality, persona/identity continuity, current-context coherence, and latency-sensitive tempo.
+Pass 1 owns visible conversation quality, persona/identity continuity, current-context coherence, and latency-sensitive tempo. Its provider result is natural-language response content, not a RelayLM state/proposal envelope.
 
-Pass 2 owns immediate structured proposal extraction, including correction/negation interpretation, canonical class/key reuse, transient-vs-durable discipline, and source preservation.
+Pass 2 owns immediate semantic proposal extraction, including correction/negation interpretation, canonical class/key reuse, transient-vs-durable discipline, and source preservation. Its model-facing structured result is intentionally limited to proposal meaning needed for deterministic RelayLM construction.
 
 In canonical `two_pass`, Pass 2 proposals may reach existing deterministic validators after the execution guards succeed. In `shadow_two_pass`, the same proposal shape is evidence-only.
 
 Per-pass reasoning/decoding intent remains defined by `docs/contracts/cognition-pass-execution.md`. COGP chooses no numeric defaults.
+
+## Deterministic assembly boundary
+
+RelayLM owns mechanical structure that does not require language understanding.
+
+The model is responsible for semantic interpretation needed to propose candidate meaning. RelayLM is responsible for deterministic parsing, type construction, origin/turn binding, validation, normalization already owned by State/Continuity contracts, and evidence/runtime envelopes.
+
+Do not move multilingual semantic interpretation into language-specific RelayLM parsers merely to reduce model work. Conversely, do not ask the model to reproduce metadata or envelope structure RelayLM can construct without semantic judgment.
+
+In short:
+
+```text
+natural language
+  -> model semantic interpretation
+  -> compact proposal IR
+  -> deterministic RelayLM assembly/validation
+  -> canonical State/Continuity authority
+```
 
 ## Authority ordering
 
@@ -101,15 +146,23 @@ Shadow extraction does not advance Continuity lifecycle and does not run proposa
 
 ## Streaming
 
-Canonical `two_pass` streaming exposes only Pass 1 response deltas and starts Pass 2 after complete Pass 1 acceptance.
+Canonical `two_pass` streaming exposes Pass 1 provider content deltas directly as visible response deltas and starts Pass 2 after complete Pass 1 acceptance. It does not buffer a JSON `utterance` envelope merely to recover the same visible text.
 
 `shadow_two_pass` streaming uses the existing canonical single-pass streaming path. Shadow extraction starts only after the complete canonical result has committed and never produces another visible response.
+
+## Capacity relationship
+
+Execution capacity and semantic reasoning effort are separate controls.
+
+`effective_context_window` is calibrated by #1388 from exact model/provider/runtime evidence and is not a reasoning budget. Fixed Pass 1 and Pass 2 prompt/wire overhead should be measured separately so #1267 can consume derived per-pass input budgets rather than inventing its own context capacity.
+
+The lean two-pass wire reduces fixed Pass 1 overhead, but it does not itself choose an effective context window, Context Compiler budget, output reserve, or reasoning budget.
 
 ## Current implementation status
 
 ```text
 single_pass       implemented baseline
-two_pass          implemented response-first path
+two_pass          implemented response-first path with plain-text Pass 1
 shadow_two_pass   implemented non-authoritative evidence path
 auto              contract frozen; selected profile/default deferred to #1388/#1446
 ```
@@ -118,16 +171,17 @@ None of these facts selects the release default.
 
 ## Ownership
 
-COGP / #1533 owns execution topology, pass responsibilities, response-first/failure/stale rules, per-pass execution intent, execution-topology identity, and shadow semantics.
+COGP / #1533 owns execution topology, pass responsibilities, response-first/failure/stale rules, per-pass execution intent, execution-topology identity, shadow semantics, and the semantic boundary between model proposal IR and RelayLM deterministic assembly.
 
-Provider owners retain external wire behavior, capability truth, provider-specific validation, and exact applied request configuration. #1386 owns actual-model evidence methodology/artifacts. #1388 owns profile/default selection. #1446 owns release-config carriage. State, Continuity, Context Compiler, Retrieval, Cognitive Budget, and crystallization retain their existing owners.
+Provider owners retain external wire behavior, capability truth, provider-specific validation, and exact applied request configuration. #1386 owns actual-model evidence methodology/artifacts. #1388 owns effective-context and profile/default calibration. #1446 owns release-config carriage. State, Continuity, Context Compiler, Retrieval, Cognitive Budget, and crystallization retain their existing owners.
 
-## Deferred after COGP4
+## Deferred
 
-- #1386 execution-topology carriage and controlled A/B/C evidence (COGP5);
+- exact fixed prompt/token footprint measurement under #1386 evidence;
+- #1388 effective-context and per-pass reserve/input-budget calibration;
+- revised #1386 controlled topology/reasoning evidence after capacity prerequisites are citable;
 - #1388 calibrated profile/default selection (COGP6);
 - #1446 runtime configuration integration (COGP7);
 - #1449 release reconciliation (COGP8);
-- provider-specific reasoning controls not already supported;
 - two simultaneously resident online models;
-- StateCandidate/ContinuityCandidate grammar redesign.
+- semantic StateCandidate/ContinuityCandidate grammar redesign.
