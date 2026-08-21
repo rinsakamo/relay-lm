@@ -19,6 +19,7 @@ from relaylm.providers.openai_compatible import (
     ProviderProtocolError,
     _iter_sse_data,
     _parse_stream_event,
+    _provider_http_error,
     _resolve_cognition_pass_request,
     _vllm_reasoning_fields,
     parse_wire_output,
@@ -138,7 +139,13 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                     vllm_reasoning_capability=effective_capability,
                 ),
             ) as response:
-                response.raise_for_status()
+                if not response.is_success:
+                    await response.aread()
+                    raise _provider_http_error(
+                        response,
+                        prefix="upstream conversation streaming request failed",
+                        api_key=self.api_key,
+                    )
                 async for data in _iter_sse_data(response):
                     if data == "[DONE]":
                         saw_done = True
@@ -150,6 +157,8 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                             await emit_response_delta(content)
                     if finish_reason is not None:
                         saw_finish = True
+        except ProviderProtocolError:
+            raise
         except (httpx.HTTPError, UnicodeDecodeError, ValueError) as exc:
             raise ProviderProtocolError(
                 f"upstream conversation streaming request failed: {exc}"
@@ -201,8 +210,15 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                 headers=self._headers(),
                 json=body,
             )
-            response.raise_for_status()
+            if not response.is_success:
+                raise _provider_http_error(
+                    response,
+                    prefix="upstream request failed",
+                    api_key=self.api_key,
+                )
             return response.json()
+        except ProviderProtocolError:
+            raise
         except (httpx.HTTPError, ValueError) as exc:
             raise ProviderProtocolError(f"upstream request failed: {exc}") from exc
 
