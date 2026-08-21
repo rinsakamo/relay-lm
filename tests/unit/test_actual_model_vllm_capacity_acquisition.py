@@ -10,7 +10,7 @@ from relaylm.actual_model_vllm_capacity_acquisition import (
 )
 from relaylm.actual_model_vllm_host import load_vllm_screening_plan
 from relaylm.budget_enforcement import SerializedInputTokenCount, TokenCountMode
-from relaylm.cognitive import CognitiveInput, CognitiveOutput
+from relaylm.cognitive import CognitiveInput
 from relaylm.cognition_execution import (
     CognitionConversationOutput,
     CognitionExtractionInput,
