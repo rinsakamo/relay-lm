@@ -25,7 +25,7 @@ def _make_character(root: Path) -> CharacterDirectory:
     return character
 
 
-def test_shadow_two_pass_reuses_one_openai_adapter_object_and_distinct_schemas(
+def test_shadow_two_pass_reuses_one_openai_adapter_with_relaylm_owned_extraction(
     tmp_path: Path,
 ) -> None:
     seen: list[dict[str, object]] = []
@@ -33,20 +33,19 @@ def test_shadow_two_pass_reuses_one_openai_adapter_object_and_distinct_schemas(
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         seen.append(body)
-        schema_name = body["response_format"]["json_schema"]["name"]
-        if schema_name == "relaylm_cognitive_output":
+        if "response_format" in body:
+            schema_name = body["response_format"]["json_schema"]["name"]
+            assert schema_name == "relaylm_cognitive_output"
             wire = {
                 "utterance": "canonical",
                 "state_candidates": [],
                 "continuity_candidates": [],
             }
-        elif schema_name == "relaylm_structured_cognition_output":
+        else:
             wire = {
                 "state_candidates": [],
                 "continuity_candidates": [],
             }
-        else:
-            raise AssertionError(schema_name)
         return httpx.Response(
             200,
             json={
@@ -76,9 +75,7 @@ def test_shadow_two_pass_reuses_one_openai_adapter_object_and_distinct_schemas(
 
     assert len(seen) == 2
     assert [body["model"] for body in seen] == ["gemma", "gemma"]
-    assert [
-        body["response_format"]["json_schema"]["name"] for body in seen
-    ] == [
-        "relaylm_cognitive_output",
-        "relaylm_structured_cognition_output",
-    ]
+    assert seen[0]["response_format"]["json_schema"]["name"] == (
+        "relaylm_cognitive_output"
+    )
+    assert "response_format" not in seen[1]
