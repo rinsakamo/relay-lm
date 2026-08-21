@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit RelayLM-internal realization dependencies against semantic authority."""
+"""Audit RelayLM-internal runtime realization dependencies against semantic authority."""
 
 from __future__ import annotations
 
@@ -16,15 +16,17 @@ PACKAGE_ROOT = "relaylm"
 
 
 def realization_dependency_errors(root: Path) -> tuple[str, ...]:
-    """Return unexplained static RelayLM-internal realization dependency edges.
+    """Return unexplained static RelayLM-internal runtime realization edges.
 
     Production module ownership is read from existing ``implementation``
-    declarations. A static internal import is structurally explained when the
-    importing and imported modules share an owner or when any importing owner
-    can reach any imported owner through semantic ``depends_on`` edges.
+    declarations. Imports explicitly contained under ``TYPE_CHECKING`` are
+    type/interface dependencies and are excluded from runtime edges. A static
+    internal runtime import is structurally explained when the importing and
+    imported modules share an owner or when any importing owner can reach any
+    imported owner through semantic ``depends_on`` edges.
 
-    This audit derives realization edges from code. It never mutates or infers
-    semantic authority.
+    This audit derives runtime realization edges from code. It never mutates or
+    infers semantic authority.
     """
 
     declarations = load_declarations(root)
@@ -35,7 +37,11 @@ def realization_dependency_errors(root: Path) -> tuple[str, ...]:
     errors: set[str] = set()
     for importer_module, importer_path in sorted(module_paths.items()):
         importer_owners = owners_by_path.get(importer_path, frozenset())
-        for imported_module in _internal_imports(root / importer_path, importer_module, module_paths):
+        for imported_module in _internal_imports(
+            root / importer_path,
+            importer_module,
+            module_paths,
+        ):
             imported_path = module_paths[imported_module]
             imported_owners = owners_by_path.get(imported_path, frozenset())
             if _edge_is_explained(
@@ -89,25 +95,45 @@ def _internal_imports(
     module_paths: Mapping[str, str],
 ) -> tuple[str, ...]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=path.as_posix())
-    imports: set[str] = set()
+    collector = _RuntimeImportCollector(importer_module, module_paths)
+    collector.visit(tree)
+    return tuple(sorted(collector.imports))
 
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name in module_paths:
-                    imports.add(alias.name)
-            continue
 
-        if not isinstance(node, ast.ImportFrom):
-            continue
+class _RuntimeImportCollector(ast.NodeVisitor):
+    """Collect static internal imports that execute outside type-checking guards."""
 
-        base = _resolve_from_base(importer_module, node.level, node.module)
+    def __init__(
+        self,
+        importer_module: str,
+        module_paths: Mapping[str, str],
+    ) -> None:
+        self.importer_module = importer_module
+        self.module_paths = module_paths
+        self.imports: set[str] = set()
+
+    def visit_If(self, node: ast.If) -> None:
+        if _is_type_checking_guard(node.test):
+            # TYPE_CHECKING is false at runtime. The body contains static typing
+            # dependencies; an ``else`` branch, if present, remains runtime code.
+            for entry in node.orelse:
+                self.visit(entry)
+            return
+        self.generic_visit(node)
+
+    def visit_Import(self, node: ast.Import) -> None:
+        for alias in node.names:
+            if alias.name in self.module_paths:
+                self.imports.add(alias.name)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        base = _resolve_from_base(self.importer_module, node.level, node.module)
         if base is None or not base.startswith(PACKAGE_ROOT):
-            continue
+            return
 
-        if base in module_paths:
-            imports.add(base)
-            continue
+        if base in self.module_paths:
+            self.imports.add(base)
+            return
 
         # ``from relaylm import module`` or ``from . import module`` names a
         # package plus an imported symbol. Resolve the symbol as a submodule
@@ -115,10 +141,19 @@ def _internal_imports(
         # outside this audit's production-module surface.
         for alias in node.names:
             candidate = f"{base}.{alias.name}"
-            if candidate in module_paths:
-                imports.add(candidate)
+            if candidate in self.module_paths:
+                self.imports.add(candidate)
 
-    return tuple(sorted(imports))
+
+def _is_type_checking_guard(test: ast.expr) -> bool:
+    if isinstance(test, ast.Name):
+        return test.id == "TYPE_CHECKING"
+    return (
+        isinstance(test, ast.Attribute)
+        and test.attr == "TYPE_CHECKING"
+        and isinstance(test.value, ast.Name)
+        and test.value.id == "typing"
+    )
 
 
 def _resolve_from_base(importer_module: str, level: int, module: str | None) -> str | None:
@@ -190,7 +225,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if errors:
         return 1
 
-    print("realization dependencies explained")
+    print("runtime realization dependencies explained")
     return 0
 
 

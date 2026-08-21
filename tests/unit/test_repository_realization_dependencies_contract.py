@@ -120,3 +120,35 @@ def test_any_shared_importer_owner_may_explain_the_edge(tmp_path: Path) -> None:
     _declare(tmp_path, "state", implementation=(target,))
 
     assert realization_dependency_errors(tmp_path) == ()
+
+
+def test_type_checking_import_is_not_a_runtime_realization_edge(tmp_path: Path) -> None:
+    importer = _module(
+        tmp_path,
+        "relaylm.importer",
+        "from typing import TYPE_CHECKING\n"
+        "if TYPE_CHECKING:\n"
+        "    from relaylm.target import Target\n",
+    )
+    target = _module(tmp_path, "relaylm.target", "class Target:\n    pass\n")
+    _declare(tmp_path, "provider", implementation=(importer,))
+    _declare(tmp_path, "state", implementation=(target,))
+
+    assert realization_dependency_errors(tmp_path) == ()
+
+
+def test_qualified_type_checking_import_is_not_a_runtime_realization_edge(
+    tmp_path: Path,
+) -> None:
+    importer = _module(
+        tmp_path,
+        "relaylm.importer",
+        "import typing\n"
+        "if typing.TYPE_CHECKING:\n"
+        "    import relaylm.target\n",
+    )
+    target = _module(tmp_path, "relaylm.target", "VALUE = 1\n")
+    _declare(tmp_path, "provider", implementation=(importer,))
+    _declare(tmp_path, "state", implementation=(target,))
+
+    assert realization_dependency_errors(tmp_path) == ()
