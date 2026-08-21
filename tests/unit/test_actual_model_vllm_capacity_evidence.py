@@ -139,6 +139,34 @@ def test_capacity_evidence_writer_is_immutable_and_loader_recomputes_identity(
         capacity.load_vllm_runtime_capacity_evidence(path)
 
 
+def test_capacity_evidence_path_requires_exact_content_addressed_id(
+    tmp_path: Path,
+) -> None:
+    capacity = _capacity_module()
+    evidence = _evidence()
+
+    path = capacity.capacity_evidence_path(
+        artifact_root=tmp_path,
+        evidence_id=evidence.evidence_id,
+    )
+    assert path == tmp_path / f"{evidence.evidence_id}.json"
+
+    for invalid in (
+        "amcap-missing-evidence",
+        "amcap-" + "A" * 64,
+        "amcap-" + "a" * 63,
+        "other-" + "a" * 64,
+    ):
+        with pytest.raises(
+            capacity.VLLMRuntimeCapacityEvidenceError,
+            match="content-addressed",
+        ):
+            capacity.capacity_evidence_path(
+                artifact_root=tmp_path,
+                evidence_id=invalid,
+            )
+
+
 def test_capacity_evidence_rejects_non_resolving_window() -> None:
     capacity = _capacity_module()
     evidence = _evidence()
