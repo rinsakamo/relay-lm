@@ -50,19 +50,20 @@ These values are independent evidence axes. They are not a weighted score and ca
 
 `FastScreeningTimingArtifact` binds performance observations to the exact screening condition and the existing actual-model execution identity:
 
+- stable `amt-<sha256>` timing evidence ID;
 - screening ID and condition ID;
 - replicate ID;
 - scenario ID;
-- execution ID and run ID;
+- canonical `amx-<sha256>` execution ID and `amr-<sha256>` run ID;
 - resolved execution mode;
 - scenario end-to-end elapsed time;
 - per-turn response-provider time;
 - per-turn first-visible provider latency when observed;
 - per-turn Pass 2 extraction-provider time for `two_pass`.
 
-The sidecar keeps provider-phase timing separate from scenario end-to-end elapsed time. Provider durations are not misrepresented as total RelayLM turn latency.
+The sidecar keeps provider-phase timing separate from scenario end-to-end elapsed time. Provider durations are not misrepresented as total RelayLM turn latency, and a completed scenario cannot claim elapsed time below the sum of its sequential provider calls.
 
-Artifacts are written under `screening_timing/<run_id>.json`. Rewriting identical bytes is idempotent. Different timing evidence for the same run ID is rejected; a genuine rerun must use a distinct replicate identity.
+Artifacts are atomically published under `screening_timing/<run_id>.json`. Rewriting identical bytes is idempotent. Different timing evidence for the same run ID is rejected; a genuine rerun must use a distinct replicate identity. Canonical run-ID validation prevents arbitrary filesystem path material from becoming an artifact filename.
 
 Timing sidecars do not change the immutable raw execution evidence, deterministic-boundary verdict, or product-quality review sidecars.
 
