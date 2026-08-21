@@ -82,12 +82,16 @@ class FastScreeningTimingArtifact:
             "condition_id",
             "replicate_id",
             "scenario_id",
-            "execution_id",
-            "run_id",
         ):
             value = getattr(self, name)
             if not isinstance(value, str) or not value.strip():
                 raise ValueError(f"{name} must be a non-empty string")
+        _validate_canonical_stable_id(
+            self.execution_id,
+            prefix="amx",
+            label="execution_id",
+        )
+        _validate_canonical_stable_id(self.run_id, prefix="amr", label="run_id")
         if self.execution_mode not in {"single_pass", "two_pass"}:
             raise ValueError(f"unsupported execution_mode: {self.execution_mode}")
         _validate_non_negative_finite(self.scenario_elapsed_ms, "scenario_elapsed_ms")
@@ -105,6 +109,11 @@ class FastScreeningTimingArtifact:
             turn.extraction_provider_ms is None for turn in self.turns
         ):
             raise ValueError("two_pass timing requires extraction timing for every turn")
+        provider_total_ms = sum(turn.provider_total_ms for turn in self.turns)
+        if self.scenario_elapsed_ms + 1e-6 < provider_total_ms:
+            raise ActualModelFastScreeningArtifactError(
+                "scenario elapsed time cannot be below provider call total"
+            )
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -243,6 +252,21 @@ def _expected_phase_sequence(
     if execution_mode == "two_pass":
         return ("pass1", "pass2") * turn_count
     raise ValueError(f"unsupported execution_mode: {execution_mode}")
+
+
+def _validate_canonical_stable_id(value: str, *, prefix: str, label: str) -> None:
+    if not isinstance(value, str):
+        raise TypeError(f"{label} must be a string")
+    expected_prefix = f"{prefix}-"
+    digest = value.removeprefix(expected_prefix)
+    if (
+        not value.startswith(expected_prefix)
+        or len(digest) != 64
+        or any(char not in "0123456789abcdef" for char in digest)
+    ):
+        raise ValueError(
+            f"{label} must be canonical {prefix}-<64 lowercase hex> identity"
+        )
 
 
 def _validate_non_negative_finite(value: float, label: str) -> None:
