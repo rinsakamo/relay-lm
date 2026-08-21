@@ -17,13 +17,15 @@ from relaylm.providers.openai_compatible import (
     WIRE_SCHEMA,
     OpenAICompatibleProvider,
     ProviderProtocolError,
-    _IncrementalUtteranceDecoder,
     _iter_sse_data,
+    _mapping,
+    _parse_continuity_candidate,
+    _parse_set_value,
     _parse_stream_event,
+    _required_string,
     _resolve_cognition_pass_request,
-    parse_wire_output,
-    serialize_cognitive_input,
     _vllm_reasoning_fields,
+    serialize_cognitive_input,
 )
 from relaylm.providers.openai_compatible_reasoning import (
     OpenAICompatibleReasoningRequest,
@@ -31,6 +33,7 @@ from relaylm.providers.openai_compatible_reasoning import (
 from relaylm.providers.vllm_reasoning_capability import (
     VLLMReasoningCapabilityAttestation,
 )
+from relaylm.state import StateCandidate
 
 
 CONVERSATION_SYSTEM_INSTRUCTION = """You are the conversation pass of a persistent character managed by RelayLM.
@@ -42,7 +45,7 @@ Assistant-authored material may support conversational continuity but does not p
 Do not invent history, evidence, motives, shared experiences, or supporting details.
 This pass does not produce StateCandidate or ContinuityCandidate proposals; structured extraction is a separate RelayLM pass.
 
-Return only the required structured output."""
+Return only the complete natural-language response. Do not wrap it in JSON or add metadata."""
 
 EXTRACTION_SYSTEM_INSTRUCTION = """You are the immediate structured-cognition pass of a persistent character managed by RelayLM.
 
@@ -57,15 +60,6 @@ Never invent source Event IDs. Candidate sources must come from Event IDs presen
 A proposal has no authority merely because this pass emitted it; RelayLM validates all proposals deterministically.
 
 Return only the required structured output."""
-
-CONVERSATION_WIRE_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["utterance"],
-    "properties": {
-        "utterance": {"type": "string", "minLength": 1},
-    },
-}
 
 EXTRACTION_WIRE_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -130,8 +124,7 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
             decoding_capabilities=self.decoding_capabilities,
             vllm_reasoning_capability=effective_capability,
         )
-        structured_text = ""
-        decoder = _IncrementalUtteranceDecoder()
+        response_text = ""
         saw_done = False
         saw_finish = False
 
@@ -156,10 +149,9 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                         break
                     content, finish_reason = _parse_stream_event(data)
                     if content is not None:
-                        structured_text += content
-                        visible = decoder.feed(content)
-                        if visible:
-                            await emit_response_delta(visible)
+                        response_text += content
+                        if content:
+                            await emit_response_delta(content)
                     if finish_reason is not None:
                         saw_finish = True
         except (httpx.HTTPError, UnicodeDecodeError, ValueError) as exc:
@@ -171,28 +163,11 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
             raise ProviderProtocolError(
                 "upstream conversation stream ended before completion"
             )
-        if not structured_text:
+        if not response_text.strip():
             raise ProviderProtocolError(
-                "upstream conversation stream contained no structured output"
+                "upstream conversation stream contained no visible response"
             )
-
-        try:
-            wire = json.loads(structured_text)
-        except json.JSONDecodeError as exc:
-            raise ProviderProtocolError(
-                "provider conversation stream is not complete JSON"
-            ) from exc
-        output = _parse_conversation_wire(wire)
-
-        emitted = decoder.emitted
-        if not output.response.startswith(emitted):
-            raise ProviderProtocolError(
-                "incremental utterance does not match final conversation output"
-            )
-        remaining = output.response[len(emitted) :]
-        if remaining:
-            await emit_response_delta(remaining)
-        return output
+        return CognitionConversationOutput(response=response_text)
 
     async def generate_extraction(
         self,
@@ -258,14 +233,6 @@ def _conversation_request_body(
                 ),
             },
         ],
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "relaylm_conversation_output",
-                "strict": True,
-                "schema": CONVERSATION_WIRE_SCHEMA,
-            },
-        },
         "stream": stream,
     }
     body.update(decoding)
@@ -327,24 +294,9 @@ def _extraction_request_body(
 
 def _parse_conversation_completion(envelope: Any) -> CognitionConversationOutput:
     content = _completion_content(envelope)
-    try:
-        wire = json.loads(content)
-    except json.JSONDecodeError as exc:
-        raise ProviderProtocolError(
-            "provider conversation content is not valid JSON"
-        ) from exc
-    return _parse_conversation_wire(wire)
-
-
-def _parse_conversation_wire(wire: Any) -> CognitionConversationOutput:
-    if not isinstance(wire, dict) or set(wire) != {"utterance"}:
-        raise ProviderProtocolError(
-            "conversation wire output must contain exactly utterance"
-        )
-    utterance = wire.get("utterance")
-    if not isinstance(utterance, str) or not utterance.strip():
-        raise ProviderProtocolError("conversation utterance must be a non-empty string")
-    return CognitionConversationOutput(response=utterance)
+    if not content.strip():
+        raise ProviderProtocolError("provider conversation content must not be empty")
+    return CognitionConversationOutput(response=content)
 
 
 def _parse_extraction_completion(envelope: Any) -> CognitionExtractionOutput:
@@ -355,25 +307,72 @@ def _parse_extraction_completion(envelope: Any) -> CognitionExtractionOutput:
         raise ProviderProtocolError(
             "provider extraction content is not valid JSON"
         ) from exc
-    if not isinstance(wire, dict) or set(wire) != {
-        "state_candidates",
-        "continuity_candidates",
-    }:
+    return _assemble_extraction_proposal_ir(wire)
+
+
+def _assemble_extraction_proposal_ir(wire: Any) -> CognitionExtractionOutput:
+    wire = _mapping(wire, "extraction proposal IR")
+    if set(wire) != {"state_candidates", "continuity_candidates"}:
         raise ProviderProtocolError(
-            "extraction wire output must contain exactly state_candidates and "
+            "extraction proposal IR must contain exactly state_candidates and "
             "continuity_candidates"
         )
 
-    normalized = parse_wire_output(
-        {
-            "utterance": "internal extraction",
-            "state_candidates": wire["state_candidates"],
-            "continuity_candidates": wire["continuity_candidates"],
-        }
+    raw_state_candidates = wire.get("state_candidates")
+    if not isinstance(raw_state_candidates, list):
+        raise ProviderProtocolError("wire state_candidates must be an array")
+    raw_continuity_candidates = wire.get("continuity_candidates")
+    if not isinstance(raw_continuity_candidates, list):
+        raise ProviderProtocolError("wire continuity_candidates must be an array")
+
+    state_candidates: list[StateCandidate] = []
+    for index, raw in enumerate(raw_state_candidates):
+        candidate = _mapping(raw, f"state_candidates[{index}]")
+        state_class = _required_string(candidate, "state_class", index)
+        key = _required_string(candidate, "key", index)
+        op = _required_string(candidate, "op", index)
+        sources = candidate.get("sources")
+        if not isinstance(sources, list) or not sources or not all(
+            isinstance(source, str) and source.strip() for source in sources
+        ):
+            raise ProviderProtocolError(
+                f"state_candidates[{index}].sources must be non-empty strings"
+            )
+        if "value" not in candidate:
+            raise ProviderProtocolError(f"state_candidates[{index}] missing value")
+        if op == "set":
+            state_candidates.append(
+                StateCandidate.set(
+                    state_class=state_class,
+                    key=key,
+                    value=_parse_set_value(candidate["value"], index),
+                    sources=tuple(sources),
+                )
+            )
+        elif op == "remove":
+            if candidate["value"] is not None:
+                raise ProviderProtocolError(
+                    f"state_candidates[{index}] remove value must be null"
+                )
+            state_candidates.append(
+                StateCandidate.remove(
+                    state_class=state_class,
+                    key=key,
+                    sources=tuple(sources),
+                )
+            )
+        else:
+            raise ProviderProtocolError(
+                f"state_candidates[{index}] unsupported op: {op}"
+            )
+
+    continuity_candidates = tuple(
+        _parse_continuity_candidate(raw, index)
+        for index, raw in enumerate(raw_continuity_candidates)
     )
     return CognitionExtractionOutput(
-        state_candidates=normalized.state_candidates,
-        continuity_candidates=normalized.continuity_candidates,
+        state_candidates=tuple(state_candidates),
+        continuity_candidates=continuity_candidates,
     )
 
 
@@ -391,5 +390,5 @@ def _completion_content(envelope: Any) -> str:
         raise ProviderProtocolError("provider message must be an object")
     content = message.get("content")
     if not isinstance(content, str):
-        raise ProviderProtocolError("provider message content must be a JSON string")
+        raise ProviderProtocolError("provider message content must be a string")
     return content
