@@ -90,6 +90,20 @@ The machine-readable first-stage plan is `evaluation/actual_model/screenings/cog
 
 This produces two scenario executions per condition and six total scenario executions for the first screening. The plan's `continuity_runtime = {max_items: 8, lifetime_revisions: 4}` is an explicit evidence condition only. It is not a #1388 default and must not be promoted into release configuration by this lane.
 
+The plan's `effective_context_window` is currently `1536` tokens. This is an
+actual-model execution capacity, not a reasoning budget, output default, or
+calibration value. The previous `1024` setting was disproved by the unchanged
+Condition-A request: the exact vLLM `/tokenize` result was `1324` prompt
+tokens, so the canonical request could not fit. For a bounded sizing floor,
+the same tokenizer counted `77` tokens for a minimal valid structured result
+containing the fixture's required `user.identity/name` State proposal, and the
+first-stage C condition carries an attested numeric reasoning budget of `16`.
+Adding one further `16`-token safety quantum gives `1433`; the plan rounds that
+single runtime capacity up to `1536`. This arithmetic does not claim that B or
+C has executed, does not select a reasoning/default value, and does not
+replace the preflight requirement that the live vLLM `max_model_len` equal the
+plan value.
+
 ## Frozen R3B proof and live re-attestation
 
 The provider-owned R3B capability probe is not repeated as a product-quality prelude. Its effective facts are frozen in `evaluation/actual_model/attestations/gemma-4-12b-it-qat-w4a16-vllm-reasoning-v1.json`, with provenance back to #1545 comment `5357159619`.

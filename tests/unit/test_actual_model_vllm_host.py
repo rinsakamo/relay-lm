@@ -50,7 +50,7 @@ def _live_fetch(url: str, _: str | None) -> object:
                     "id": "gemma-4-12B-it-qat-w4a16",
                     "object": "model",
                     "root": str(SNAPSHOT_ROOT),
-                    "max_model_len": 1024,
+                    "max_model_len": 1536,
                 }
             ],
         }
@@ -70,7 +70,7 @@ def test_screening_plan_freezes_only_three_serial_product_conditions() -> None:
 
     assert plan.screening_id == "cogp5-vllm-screening-v1"
     assert plan.target_id == "gemma-4-12b-it-qat-w4a16-vllm-v1"
-    assert plan.effective_context_window == 1024
+    assert plan.effective_context_window == 1536
     assert plan.scenario_ids == (
         "response-persona-correction-v1",
         "continuity-lifecycle-v1",
@@ -113,7 +113,7 @@ def test_reasoning_probe_proof_reconstructs_capability_against_live_backend() ->
     assert capability.backend_version == "0.27.1"
     assert capability.request_model == "gemma-4-12B-it-qat-w4a16"
     assert capability.backend_attestation.model_root == str(SNAPSHOT_ROOT)
-    assert capability.backend_attestation.max_model_len == 1024
+    assert capability.backend_attestation.max_model_len == 1536
     assert capability.reasoning_parser == "gemma4"
     assert capability.template_thinking_control == "enable_thinking"
     assert capability.reasoning_off.status is VLLMReasoningCapabilityStatus.SEMANTICALLY_ATTESTED

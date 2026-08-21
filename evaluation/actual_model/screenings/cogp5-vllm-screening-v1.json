@@ -2,7 +2,7 @@
   "format_version": 1,
   "screening_id": "cogp5-vllm-screening-v1",
   "target_id": "gemma-4-12b-it-qat-w4a16-vllm-v1",
-  "effective_context_window": 1024,
+  "effective_context_window": 1536,
   "decoding": {
     "temperature": 0,
     "top_p": 1,
