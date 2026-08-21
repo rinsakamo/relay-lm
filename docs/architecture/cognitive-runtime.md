@@ -11,11 +11,13 @@ The existing ordinary-turn APIs retain the one-generation baseline:
 ```text
 CognitiveInput
   -> provider.generate / stream_generate
+  -> plain combined cognitive IR content
+  -> RelayLM JSON parse + exact shape/type construction
   -> CognitiveOutput(response, StateCandidate[], ContinuityCandidate[])
   -> existing deterministic commit boundary
 ```
 
-A complete valid output is required before the Assistant Event, State validation, and Continuity validation commit. The current legacy OpenAI-compatible realization still uses provider structured output for this combined response/proposal wire.
+A complete valid output is required before the Assistant Event, State validation, and Continuity validation commit. The OpenAI-compatible realization no longer requires provider-native `response_format`, JSON-schema grammar, or equivalent structured-output enforcement. The provider transports ordinary message content containing the RelayLM-owned combined cognitive IR; RelayLM owns exact top-level/candidate shape checks, typed candidate construction, and fail-closed behavior.
 
 ## `two_pass`
 
@@ -68,6 +70,8 @@ COGP implements non-authoritative shadow execution in `relaylm.shadow_turn`:
 
 ```text
 canonical single-pass turn
+  -> plain combined cognitive IR
+  -> RelayLM parse/type construction
   -> normal response / State / Continuity result
 
 capture the same originating CognitiveInput
@@ -89,7 +93,7 @@ They call the existing `run_user_turn` / `run_user_turn_streaming` through a tra
 
 After canonical completion, shadow extraction uses the original pre-turn `CognitiveInput` plus the canonical response. Shadow output is raw proposal evidence only. It does not call State or Continuity validation for the purpose of changing accepted authority and does not advance Continuity lifecycle.
 
-The canonical side of `shadow_two_pass` remains the legacy structured single-pass path; the shadow extraction itself uses the same RelayLM-owned plain-content proposal-IR parser as canonical `two_pass`.
+The canonical side of `shadow_two_pass` uses the same RelayLM-owned combined-IR parsing boundary as ordinary `single_pass`; shadow extraction uses the RelayLM-owned proposal-IR parser shared with canonical `two_pass`.
 
 A shadow provider or RelayLM proposal-IR parsing failure becomes bounded `shadow_pass2_failed`; the already-completed canonical turn is unaffected.
 
@@ -99,7 +103,7 @@ Shadow extraction may complete after later conversation activity because it has 
 
 `relaylm.cognition_execution_evidence` defines provider-neutral topology identity for `single_pass`, `two_pass`, and `shadow_two_pass` plus the RelayLM semantic output-contract identities used by each topology. `auto` is not an executed identity.
 
-`relaylm_structured_cognition_output:v1` remains the RelayLM extraction contract identity. It names the compact proposal IR and parse/type-construction boundary, not a provider-native JSON-schema request field.
+`relaylm_cognitive_output:v1` identifies the RelayLM-owned combined cognitive IR and parse/type-construction boundary. `relaylm_structured_cognition_output:v1` identifies the RelayLM-owned Pass 2 proposal IR and parse/type-construction boundary. Neither identity requires a provider-native JSON-schema request field.
 
 The identity deliberately does not duplicate exact provider/model/reasoning/decoding/runtime identity. #1386 combines those separate owners when constructing citable actual-model evidence.
 
@@ -115,7 +119,7 @@ Canonical `single_pass` and `two_pass` both consume the existing Character/Ident
 
 `relaylm.continuity` and `relaylm.continuity_validation` remain the acceptance/lifecycle owners.
 
-- `single_pass`: existing common commit boundary.
+- `single_pass`: existing common commit boundary after RelayLM combined-IR parsing/type construction.
 - `two_pass`: guarded Pass 2 commit boundary after RelayLM proposal-IR parsing/type construction.
 - `shadow_two_pass`: only canonical single-pass proposals may affect accepted Continuity; shadow proposals are evidence-only.
 
@@ -123,29 +127,28 @@ Canonical `single_pass` and `two_pass` both consume the existing Character/Ident
 
 Two-pass streaming exposes only Pass 1 response deltas and schedules Pass 2 after complete Pass 1 acceptance.
 
-Shadow streaming uses the existing canonical single-pass streaming path. Shadow extraction starts only after the complete canonical output has committed and never emits a second visible response.
+Single-pass streaming incrementally decodes the visible `utterance` from the plain combined IR stream, then RelayLM parses and validates the complete IR before commit. Shadow streaming uses that canonical single-pass streaming path. Shadow extraction starts only after the complete canonical output has committed and never emits a second visible response.
 
 ## Provider boundary
 
-The OpenAI-compatible two-pass extension inherits the canonical adapter client/model/endpoint/decoding and provider-owned reasoning configuration. Its Pass 2 request is an ordinary chat-completions message request with no provider-native structured-output schema. The system instruction carries the RelayLM-owned compact proposal-IR contract; RelayLM then reuses its canonical State/Continuity candidate parser/type construction after JSON parsing.
-
-The same adapter object can therefore perform:
+The OpenAI-compatible adapter inherits model/endpoint/decoding and provider-owned reasoning configuration across cognition modes. Structure ownership is topology-specific but RelayLM-owned in both canonical forms:
 
 ```text
-canonical legacy single_pass
-  -> provider-native combined relaylm_cognitive_output wire
+canonical single_pass
+  -> ordinary provider message containing combined cognitive IR
+  -> RelayLM relaylm_cognitive_output:v1 parse/type construction
 
 canonical or shadow Pass 2
-  -> plain provider content
+  -> ordinary provider message containing proposal IR
   -> RelayLM relaylm_structured_cognition_output:v1 parse/type construction
 ```
 
-This proves topology reuse without making provider structured-output capability the owner of Pass 2 semantics. Provider capability truth and exact applied reasoning/decoding request configuration remain provider-owned.
+Provider-native JSON-schema/grammar support may exist as a backend capability, but it is not the owner or prerequisite of either RelayLM cognition contract. Provider capability truth and exact applied reasoning/decoding request configuration remain provider-owned.
 
 ## Capacity / evidence consequence
 
-The Pass 2 wire has changed materially: provider-native response-schema carriage is removed and the RelayLM-owned compact proposal-IR instruction is now part of the plain request content. Prior exact Pass 2 serialized-input footprints remain historical evidence for their exact old wire. #1386 must reacquire current Pass 2 footprint evidence before a revised two-pass screening is citable. This runtime change itself selects no context window, output reserve, reasoning budget, profile, or default.
+Both model-facing structure wires have changed from the earlier provider-native single-pass / Pass-2 schema-carriage implementations. Prior exact serialized-input footprints remain historical evidence for their exact old wires. #1386 must reacquire current fixed prompt/wire footprint evidence before revised topology screening cites capacity assumptions. This runtime change itself selects no context window, output reserve, reasoning budget, profile, or default.
 
 ## Deferred
 
-#1386 owns fresh actual-model execution-topology/capacity evidence against this exact wire. #1388 owns calibrated selection, #1446 owns release-config integration, and #1449 owns final release reconciliation.
+#1386 owns fresh actual-model execution-topology/capacity evidence against these exact wires. #1388 owns calibrated selection, #1446 owns release-config integration, and #1449 owns final release reconciliation.
