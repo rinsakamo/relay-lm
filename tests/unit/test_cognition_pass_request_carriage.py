@@ -126,8 +126,6 @@ def _completion(schema_name: str) -> dict[str, object]:
             "state_candidates": [],
             "continuity_candidates": [],
         }
-    elif schema_name == "relaylm_conversation_output":
-        content = {"utterance": "hello"}
     elif schema_name == "relaylm_structured_cognition_output":
         content = {"state_candidates": [], "continuity_candidates": []}
     else:
@@ -191,6 +189,11 @@ def test_two_pass_provider_carries_distinct_pass1_and_pass2_requests() -> None:
         async def handler(request: httpx.Request) -> httpx.Response:
             body = json.loads(request.content)
             bodies.append(body)
+            if "response_format" not in body:
+                return httpx.Response(
+                    200,
+                    json={"choices": [{"message": {"content": "hello"}}]},
+                )
             schema_name = body["response_format"]["json_schema"]["name"]
             return httpx.Response(200, json=_completion(schema_name))
 
@@ -229,9 +232,10 @@ def test_two_pass_provider_carries_distinct_pass1_and_pass2_requests() -> None:
         finally:
             await client.aclose()
 
-        assert [
-            body["response_format"]["json_schema"]["name"] for body in bodies
-        ] == ["relaylm_conversation_output", "relaylm_structured_cognition_output"]
+        assert "response_format" not in bodies[0]
+        assert bodies[1]["response_format"]["json_schema"]["name"] == (
+            "relaylm_structured_cognition_output"
+        )
         assert bodies[0]["reasoning_effort"] == "none"
         assert "thinking_token_budget" not in bodies[0]
         assert bodies[1]["thinking_token_budget"] == 64
