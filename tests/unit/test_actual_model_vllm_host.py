@@ -12,6 +12,7 @@ from relaylm.actual_model_evaluation import ActualModelCognitionPassRequests
 from relaylm.actual_model_vllm_capacity import (
     VLLMCapacityFootprintObservation,
     VLLMRuntimeCapacityEvidence,
+    vllm_capacity_pass_request_id,
     write_vllm_runtime_capacity_evidence,
 )
 from relaylm.actual_model_vllm_counter import VLLMServingTokenizerCounter
@@ -44,6 +45,13 @@ TARGET_PATH = (
     / "targets"
     / "gemma-4-12b-it-qat-w4a16-vllm-v1.json"
 )
+SCENARIO_PATH = (
+    REPO_ROOT
+    / "evaluation"
+    / "actual_model"
+    / "scenario_sets"
+    / "foundation-v2.json"
+)
 SNAPSHOT_ROOT = Path("/tmp/relaylm-unsloth-w4a16-model")
 
 
@@ -73,7 +81,14 @@ def _verification(target):
     )
 
 
-def _write_capacity_evidence(tmp_path: Path, target, capability) -> VLLMRuntimeCapacityEvidence:
+def _write_capacity_evidence(
+    tmp_path: Path,
+    target,
+    capability,
+    *,
+    condition_id: str,
+    drop_last: bool = False,
+) -> VLLMRuntimeCapacityEvidence:
     counter = VLLMServingTokenizerCounter(
         base_url="http://127.0.0.1:8000/v1",
         target=target,
@@ -81,6 +96,41 @@ def _write_capacity_evidence(tmp_path: Path, target, capability) -> VLLMRuntimeC
         expected_max_model_len=1024,
         post_json=lambda *_: {"count": 1, "max_model_len": 1024},
     )
+    plan = vllm_host.load_vllm_screening_plan(PLAN_PATH)
+    scenario_set = vllm_host.load_actual_model_scenario_set(SCENARIO_PATH)
+    condition = plan.conditions[condition_id]
+    if condition.pass_requests.mode == "single_pass":
+        requests = (("single_pass", condition.pass_requests.single_request),)
+        topology = "single_pass"
+    else:
+        requests = (
+            ("pass1", condition.pass_requests.pass1),
+            ("pass2", condition.pass_requests.pass2),
+        )
+        topology = "two_pass"
+
+    footprints = []
+    for scenario_id in plan.scenario_ids:
+        definition = scenario_set.scenario(scenario_id)
+        for turn_index in range(1, len(definition.scenario.turns) + 1):
+            for pass_id, request in requests:
+                assert request is not None
+                footprints.append(
+                    VLLMCapacityFootprintObservation(
+                        condition_id=condition_id,
+                        topology=topology,
+                        pass_id=pass_id,
+                        scenario_id=scenario_id,
+                        turn_index=turn_index,
+                        pass_request_id=vllm_capacity_pass_request_id(request),
+                        total_input_tokens=900,
+                        required_input_framing_tokens=100,
+                        count_mode=TokenCountMode.EXACT,
+                    )
+                )
+    if drop_last:
+        footprints.pop()
+
     evidence = VLLMRuntimeCapacityEvidence(
         relaylm_commit="a" * 40,
         target_id=target.target_id,
@@ -90,36 +140,9 @@ def _write_capacity_evidence(tmp_path: Path, target, capability) -> VLLMRuntimeC
         backend_version=capability.backend_version,
         request_model=capability.request_model,
         observed_max_model_len=1024,
+        scenario_set_revision=scenario_set.revision,
         counter_identity=counter.evidence_identity,
-        footprints=(
-            VLLMCapacityFootprintObservation(
-                topology="single_pass",
-                pass_id="single_pass",
-                scenario_id="response-persona-correction-v1",
-                turn_index=1,
-                total_input_tokens=900,
-                required_input_framing_tokens=100,
-                count_mode=TokenCountMode.EXACT,
-            ),
-            VLLMCapacityFootprintObservation(
-                topology="two_pass",
-                pass_id="pass1",
-                scenario_id="response-persona-correction-v1",
-                turn_index=1,
-                total_input_tokens=850,
-                required_input_framing_tokens=100,
-                count_mode=TokenCountMode.EXACT,
-            ),
-            VLLMCapacityFootprintObservation(
-                topology="two_pass",
-                pass_id="pass2",
-                scenario_id="response-persona-correction-v1",
-                turn_index=1,
-                total_input_tokens=920,
-                required_input_framing_tokens=100,
-                count_mode=TokenCountMode.EXACT,
-            ),
-        ),
+        footprints=tuple(footprints),
     )
     write_vllm_runtime_capacity_evidence(evidence=evidence, artifact_root=tmp_path)
     return evidence
@@ -225,7 +248,12 @@ def test_prepare_screening_condition_uses_common_provider_and_binding_identity(
         api_key=None,
         fetch_json=_live_fetch,
     )
-    evidence = _write_capacity_evidence(tmp_path, target, capability)
+    evidence = _write_capacity_evidence(
+        tmp_path,
+        target,
+        capability,
+        condition_id=condition_id,
+    )
     plan = replace(
         vllm_host.load_vllm_screening_plan(PLAN_PATH),
         capacity_evidence_id=evidence.evidence_id,
@@ -266,6 +294,57 @@ def test_prepare_screening_condition_uses_common_provider_and_binding_identity(
         assert prepared.scenario_ids == plan.scenario_ids
     finally:
         asyncio.run(prepared.provider.aclose())
+
+
+def test_prepare_rejects_incomplete_capacity_coverage_before_provider_construction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = vllm_host.load_actual_model_repository_snapshot_target(TARGET_PATH)
+    proof = vllm_host.load_vllm_reasoning_probe_proof(PROOF_PATH)
+    capability = vllm_host.acquire_vllm_reasoning_capability(
+        proof=proof,
+        target=target,
+        base_url="http://127.0.0.1:8000/v1",
+        api_key=None,
+        fetch_json=_live_fetch,
+    )
+    evidence = _write_capacity_evidence(
+        tmp_path,
+        target,
+        capability,
+        condition_id="C",
+        drop_last=True,
+    )
+    plan = replace(
+        vllm_host.load_vllm_screening_plan(PLAN_PATH),
+        capacity_evidence_id=evidence.evidence_id,
+    )
+    monkeypatch.setattr(vllm_host, "_verify_clean_exact_repo", lambda **_: None)
+    monkeypatch.setattr(
+        vllm_host,
+        "verify_actual_model_repository_snapshot",
+        lambda **_: _verification(target),
+    )
+
+    def forbidden_provider(*args, **kwargs):
+        raise AssertionError("incomplete capacity coverage reached provider construction")
+
+    monkeypatch.setattr(vllm_host, "OpenAICompatibleTwoPassProvider", forbidden_provider)
+
+    with pytest.raises(vllm_host.ActualModelVLLMHostError, match="coverage"):
+        vllm_host.prepare_vllm_screening_condition(
+            plan=plan,
+            condition_id="C",
+            proof_path=PROOF_PATH,
+            repo_root=REPO_ROOT,
+            snapshot_root=SNAPSHOT_ROOT,
+            relaylm_commit="b" * 40,
+            base_url="http://127.0.0.1:8000/v1",
+            api_key=None,
+            fetch_json=_live_fetch,
+            capacity_evidence_root=tmp_path,
+        )
 
 
 def test_prepare_condition_rejects_unknown_screening_condition_before_generation(
