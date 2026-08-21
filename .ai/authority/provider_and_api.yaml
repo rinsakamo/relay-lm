@@ -1,6 +1,6 @@
 schema_version: 1
 id: provider_and_api
-summary: OpenAI-compatible provider protocol, backend identity/dialects, wire, decoding, reasoning control, cognition pass request carriage, backend capability attestation, identity, and public API boundary.
+summary: OpenAI-compatible provider protocol, backend identity/dialects, wire, decoding, reasoning control, cognition pass request carriage, bounded upstream HTTP error observability, backend capability attestation, identity, and public API boundary.
 canonical_surfaces:
 - docs/contracts/provider-wire.md
 - docs/contracts/provider-decoding.md
@@ -35,6 +35,7 @@ tests:
 - tests/unit/test_openai_compatible_streaming_parity.py
 - tests/unit/test_openai_compatible_decoding.py
 - tests/unit/test_openai_compatible_reasoning.py
+- tests/unit/test_openai_compatible_error_observability.py
 - tests/unit/test_lm_studio_reasoning_capabilities.py
 - tests/unit/test_openai_compatible_identity.py
 - tests/unit/test_openai_compatible_cognition_capabilities.py
