@@ -114,39 +114,41 @@ def test_bounded_reasoning_budget_requires_both_mode_and_budget_capability() -> 
         resolution.require_supported()
 
 
-def test_mode_capabilities_require_provider_structured_output_only_for_legacy_modes() -> None:
+def test_mode_capabilities_do_not_require_provider_native_structured_output() -> None:
     no_structured = CognitionExecutionCapabilities(
         structured_output=False,
         streaming=True,
     )
 
-    require_mode_capabilities(
-        mode=CognitionExecutionMode.TWO_PASS,
-        capabilities=no_structured,
+    for mode in (
+        CognitionExecutionMode.SINGLE_PASS,
+        CognitionExecutionMode.TWO_PASS,
+        CognitionExecutionMode.SHADOW_TWO_PASS,
+    ):
+        require_mode_capabilities(
+            mode=mode,
+            capabilities=no_structured,
+            streaming=False,
+        )
+
+
+def test_mode_capabilities_still_require_streaming_and_resolved_auto() -> None:
+    no_streaming = CognitionExecutionCapabilities(
+        structured_output=False,
         streaming=False,
     )
 
     for mode in (
         CognitionExecutionMode.SINGLE_PASS,
+        CognitionExecutionMode.TWO_PASS,
         CognitionExecutionMode.SHADOW_TWO_PASS,
     ):
-        with pytest.raises(CognitionExecutionCapabilityError, match="structured_output"):
+        with pytest.raises(CognitionExecutionCapabilityError, match="streaming"):
             require_mode_capabilities(
                 mode=mode,
-                capabilities=no_structured,
-                streaming=False,
+                capabilities=no_streaming,
+                streaming=True,
             )
-
-    no_streaming = CognitionExecutionCapabilities(
-        structured_output=True,
-        streaming=False,
-    )
-    with pytest.raises(CognitionExecutionCapabilityError, match="streaming"):
-        require_mode_capabilities(
-            mode=CognitionExecutionMode.SINGLE_PASS,
-            capabilities=no_streaming,
-            streaming=True,
-        )
 
     with pytest.raises(CognitionPolicyUnresolvedError, match="auto"):
         require_mode_capabilities(
