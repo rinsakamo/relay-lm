@@ -13,6 +13,8 @@ canonical_surfaces:
 - docs/reference/actual-model-lm-studio-binding.md
 - docs/reference/actual-model-vllm-binding.md
 - docs/reference/actual-model-vllm-capacity-acquisition.md
+- docs/reference/actual-model-stage-r-coverage.md
+- evaluation/actual_model/screenings/stage-r0-vllm-reference-v1.json
 implementation:
 - src/relaylm/actual_model_evaluation.py
 - src/relaylm/actual_model_artifacts.py
