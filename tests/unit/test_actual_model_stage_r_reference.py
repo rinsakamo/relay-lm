@@ -8,6 +8,9 @@ from relaylm.actual_model_vllm_host import load_vllm_screening_plan
 
 _ROOT = Path(__file__).parents[2]
 _SCREENING_ROOT = _ROOT / "evaluation" / "actual_model" / "screenings"
+_CANONICAL_B_CAPACITY_EVIDENCE_ID = (
+    "amcap-7bcbbb3b1c0432c8cf3707670b99f373ab0fad05da93645aec023f43a6e5959b"
+)
 
 
 def test_stage_r_reference_plan_is_separate_from_immutable_historical_plan() -> None:
@@ -24,7 +27,7 @@ def test_stage_r_reference_plan_is_separate_from_immutable_historical_plan() -> 
     assert current.screening_id == "stage-r0-vllm-reference-v1"
     assert current.target_id == "gemma-4-12b-it-qat-w4a16-google-vllm-v1"
     assert current.effective_context_window == 1616
-    assert current.capacity_evidence_id is None
+    assert current.capacity_evidence_id == _CANONICAL_B_CAPACITY_EVIDENCE_ID
     assert current.scenario_ids == (
         "response-persona-correction-v1",
         "continuity-lifecycle-v1",

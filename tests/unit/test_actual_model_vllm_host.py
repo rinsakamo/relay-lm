@@ -75,6 +75,16 @@ SCENARIO_PATH = (
 )
 SNAPSHOT_ROOT = Path("/tmp/relaylm-unsloth-w4a16-model")
 GOOGLE_SNAPSHOT_ROOT = Path("/tmp/relaylm-google-gemma4-official-attest.CKxAGh")
+CANONICAL_B_CAPACITY_EVIDENCE_ID = (
+    "amcap-7bcbbb3b1c0432c8cf3707670b99f373ab0fad05da93645aec023f43a6e5959b"
+)
+CANONICAL_B_CAPACITY_PATH = (
+    REPO_ROOT
+    / "evaluation"
+    / "actual_model"
+    / "capacity"
+    / f"{CANONICAL_B_CAPACITY_EVIDENCE_ID}.json"
+)
 
 
 def _live_fetch(url: str, _: str | None) -> object:
@@ -244,7 +254,7 @@ def test_current_stage_r0_canonical_binding_uses_google_target_and_proof() -> No
     assert current_plan.target_id == google_target.target_id
     assert google_proof.target_id == google_target.target_id
     assert google_proof.target_revision == google_target.revision
-    assert current_plan.capacity_evidence_id is None
+    assert current_plan.capacity_evidence_id == CANONICAL_B_CAPACITY_EVIDENCE_ID
     assert old_target.target_id == "gemma-4-12b-it-qat-w4a16-vllm-v1"
     assert old_proof.target_id == old_target.target_id
     assert TARGET_PATH.is_file()
@@ -278,7 +288,10 @@ def test_google_target_rejects_old_reasoning_proof_fail_closed() -> None:
 def test_current_stage_r0_without_capacity_fails_before_external_work(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    current_plan = vllm_host.load_vllm_screening_plan(CURRENT_PLAN_PATH)
+    current_plan = replace(
+        vllm_host.load_vllm_screening_plan(CURRENT_PLAN_PATH),
+        capacity_evidence_id=None,
+    )
     touched = False
 
     def forbidden(*args, **kwargs):
@@ -306,6 +319,148 @@ def test_current_stage_r0_without_capacity_fails_before_external_work(
         )
 
     assert touched is False
+
+
+def test_current_stage_r0_complete_google_b_capacity_is_bound_and_validated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current_plan = vllm_host.load_vllm_screening_plan(CURRENT_PLAN_PATH)
+    target = vllm_host.load_actual_model_repository_snapshot_target(GOOGLE_TARGET_PATH)
+
+    monkeypatch.setattr(vllm_host, "_verify_clean_exact_repo", lambda **_: None)
+    monkeypatch.setattr(
+        vllm_host,
+        "verify_actual_model_repository_snapshot",
+        lambda **_: _verification(target),
+    )
+
+    prepared = vllm_host.prepare_vllm_screening_condition(
+        plan=current_plan,
+        condition_id="B",
+        proof_path=GOOGLE_PROOF_PATH,
+        repo_root=REPO_ROOT,
+        snapshot_root=GOOGLE_SNAPSHOT_ROOT,
+        relaylm_commit="b" * 40,
+        base_url="http://127.0.0.1:8000/v1",
+        api_key=None,
+        fetch_json=_google_live_fetch,
+    )
+    try:
+        assert prepared.screening_condition_id == "B"
+        assert prepared.capacity_evidence.evidence_id == (
+            CANONICAL_B_CAPACITY_EVIDENCE_ID
+        )
+        assert prepared.capacity_evidence.failed_capacity is None
+        assert prepared.capacity_evidence.maximum_observed_input_tokens == 1560
+        assert prepared.capacity_evidence.observed_max_model_len == 1616
+        assert prepared.condition.cognition_execution.mode == "two_pass"
+        assert prepared.condition.pass_requests.pass1.reasoning_mode is CognitionReasoningMode.OFF
+        assert prepared.condition.pass_requests.pass2.reasoning_mode is CognitionReasoningMode.OFF
+    finally:
+        asyncio.run(prepared.provider.aclose())
+
+
+def test_current_stage_r0_rejects_artifact_identity_mismatch_before_external_work(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    raw = json.loads(CANONICAL_B_CAPACITY_PATH.read_text(encoding="utf-8"))
+    raw["evidence_id"] = "amcap-" + "0" * 64
+    artifact_path = tmp_path / f"{CANONICAL_B_CAPACITY_EVIDENCE_ID}.json"
+    artifact_path.write_text(json.dumps(raw, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    current_plan = replace(
+        vllm_host.load_vllm_screening_plan(CURRENT_PLAN_PATH),
+        capacity_evidence_id=CANONICAL_B_CAPACITY_EVIDENCE_ID,
+    )
+    touched = False
+
+    def forbidden(*args, **kwargs):
+        nonlocal touched
+        touched = True
+        raise AssertionError("artifact identity failure must precede external work")
+
+    monkeypatch.setattr(vllm_host, "_verify_clean_exact_repo", forbidden)
+    monkeypatch.setattr(vllm_host, "verify_actual_model_repository_snapshot", forbidden)
+    monkeypatch.setattr(vllm_host, "acquire_vllm_reasoning_capability", forbidden)
+
+    with pytest.raises(
+        vllm_host.ActualModelVLLMHostError,
+        match="evidence_id",
+    ):
+        vllm_host.prepare_vllm_screening_condition(
+            plan=current_plan,
+            condition_id="B",
+            proof_path=GOOGLE_PROOF_PATH,
+            repo_root=REPO_ROOT,
+            snapshot_root="/tmp/unused",
+            relaylm_commit="b" * 40,
+            base_url="http://127.0.0.1:8000/v1",
+            api_key=None,
+            capacity_evidence_root=tmp_path,
+        )
+
+    assert touched is False
+
+
+@pytest.mark.parametrize("mismatch", ("target_id", "target_revision"))
+def test_current_stage_r0_rejects_mismatched_capacity_target_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mismatch: str,
+) -> None:
+    target = vllm_host.load_actual_model_repository_snapshot_target(GOOGLE_TARGET_PATH)
+    proof = vllm_host.load_vllm_reasoning_probe_proof(GOOGLE_PROOF_PATH)
+    capability = vllm_host.acquire_vllm_reasoning_capability(
+        proof=proof,
+        target=target,
+        base_url="http://127.0.0.1:8000/v1",
+        api_key=None,
+        fetch_json=_google_live_fetch,
+    )
+    evidence = _write_capacity_evidence(
+        tmp_path,
+        target,
+        capability,
+        condition_id="B",
+        plan_path=CURRENT_PLAN_PATH,
+    )
+    if mismatch == "target_id":
+        old_target = vllm_host.load_actual_model_repository_snapshot_target(TARGET_PATH)
+        parameters = dict(evidence.counter_identity.parameters)
+        parameters["target_id"] = old_target.target_id
+        evidence = replace(
+            evidence,
+            target_id=old_target.target_id,
+            counter_identity=replace(
+                evidence.counter_identity,
+                parameters=tuple(sorted(parameters.items())),
+            ),
+        )
+    else:
+        evidence = replace(evidence, target_revision="sha256:" + "f" * 64)
+    write_vllm_runtime_capacity_evidence(evidence=evidence, artifact_root=tmp_path)
+    plan = replace(
+        vllm_host.load_vllm_screening_plan(CURRENT_PLAN_PATH),
+        capacity_evidence_id=evidence.evidence_id,
+    )
+    monkeypatch.setattr(vllm_host, "_verify_clean_exact_repo", lambda **_: None)
+
+    with pytest.raises(
+        vllm_host.ActualModelVLLMHostError,
+        match="canonical frozen target",
+    ):
+        vllm_host.prepare_vllm_screening_condition(
+            plan=plan,
+            condition_id="B",
+            proof_path=GOOGLE_PROOF_PATH,
+            repo_root=REPO_ROOT,
+            snapshot_root=GOOGLE_SNAPSHOT_ROOT,
+            relaylm_commit="b" * 40,
+            base_url="http://127.0.0.1:8000/v1",
+            api_key=None,
+            fetch_json=_google_live_fetch,
+            capacity_evidence_root=tmp_path,
+        )
 
 
 def test_reasoning_probe_proof_reconstructs_capability_against_live_backend() -> None:
@@ -518,7 +673,7 @@ def test_prepare_rejects_incomplete_capacity_coverage_before_provider_constructi
         tmp_path,
         target,
         capability,
-        condition_id="C",
+        condition_id="B",
         plan_path=CURRENT_PLAN_PATH,
         drop_last=True,
     )
@@ -541,7 +696,7 @@ def test_prepare_rejects_incomplete_capacity_coverage_before_provider_constructi
     with pytest.raises(vllm_host.ActualModelVLLMHostError, match="coverage"):
         vllm_host.prepare_vllm_screening_condition(
             plan=plan,
-            condition_id="C",
+            condition_id="B",
             proof_path=GOOGLE_PROOF_PATH,
             repo_root=REPO_ROOT,
             snapshot_root=GOOGLE_SNAPSHOT_ROOT,
