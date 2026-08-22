@@ -17,6 +17,13 @@ VLLM_TARGET = (
     / "targets"
     / "gemma-4-12b-it-qat-w4a16-vllm-v1.json"
 )
+GOOGLE_VLLM_TARGET = (
+    REPO_ROOT
+    / "evaluation"
+    / "actual_model"
+    / "targets"
+    / "gemma-4-12b-it-qat-w4a16-google-vllm-v1.json"
+)
 
 
 def _sha256(data: bytes) -> str:
@@ -324,3 +331,71 @@ def test_vllm_gemma_snapshot_target_freezes_exact_execution_manifest() -> None:
     assert {
         item.path: (item.size_bytes, item.sha256) for item in target.files
     } == expected_files
+
+
+def test_google_official_gemma_snapshot_target_freezes_exact_execution_manifest() -> None:
+    target = targets.load_actual_model_repository_snapshot_target(GOOGLE_VLLM_TARGET)
+
+    assert target.format_version == 2
+    assert target.target_kind == "repository_snapshot"
+    assert target.target_id == "gemma-4-12b-it-qat-w4a16-google-vllm-v1"
+    assert target.model_family == "google/gemma-4-12B-it"
+    assert target.artifact_repository == "google/gemma-4-12b-it-qat-w4a16-ct"
+    assert (
+        target.artifact_repository_revision
+        == "9c79b5e652ae36f02bb07d3ca29124a9d1b009bd"
+    )
+    assert target.quantization == "W4A16 compressed-tensors"
+    assert target.serving_tokenizer_files == (
+        "tokenizer.json",
+        "tokenizer_config.json",
+    )
+    assert target.chat_template_file == "chat_template.jinja"
+
+    expected_files = {
+        "model.safetensors": (
+            10_264_229_896,
+            "60b6e3989502969d8ae04185d72ecbbc7db63978d5af747a493d53895aa6bfa3",
+        ),
+        "config.json": (
+            6_183,
+            "aa3ba82096a857e8b9a157df21a50df15a67e889a84b7580a4eb4f2b86c28d78",
+        ),
+        "tokenizer.json": (
+            32_169_626,
+            "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f",
+        ),
+        "tokenizer_config.json": (
+            2_774,
+            "ee66825f1a587ca13bcb90d7e60f59bc99e84f3b8bc0cefdc3ea595cd5abf773",
+        ),
+        "chat_template.jinja": (
+            17_466,
+            "36e3a42e5cf14cd0020e72d92e1fdd9970f59b82170e421f0cbe1bb42bead3f0",
+        ),
+        "processor_config.json": (
+            1_382,
+            "6b938e76555b3e9946890770e1abcd442a4718f34041a58e8139dc8ad34545c9",
+        ),
+        "generation_config.json": (
+            255,
+            "c70f87dc2995fc43406c0bcfb41b69c6d31c2d0c033fa09e536ffabc091ae24c",
+        ),
+    }
+    assert {
+        item.path: (item.size_bytes, item.sha256) for item in target.files
+    } == expected_files
+    assert target.revision == (
+        "sha256:19a47b8e917bf6d0b0c6b39e2f91161805c8f0855e9ced4233a65a6f92aa4c62"
+    )
+
+    unsloth = targets.load_actual_model_repository_snapshot_target(VLLM_TARGET)
+    unsloth_files = {item.path: item for item in unsloth.files}
+    google_files = {item.path: item for item in target.files}
+    assert google_files["model.safetensors"].sha256 == unsloth_files[
+        "model.safetensors"
+    ].sha256
+    assert target.target_id != unsloth.target_id
+    assert target.artifact_repository != unsloth.artifact_repository
+    assert target.model_artifact_identity != unsloth.model_artifact_identity
+    assert target.revision != unsloth.revision
