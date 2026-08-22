@@ -19,6 +19,8 @@ configured cognitive provider
 
 The client-facing `model` field is a compatibility field. It does not select or override RelayLM's configured cognitive provider/model.
 
+The supported top-level request fields are exactly `model`, `messages`, and `stream`. Other OpenAI Chat Completions controls such as `temperature`, `max_tokens`, `tools`, or `response_format` are not silently accepted as no-ops: unsupported top-level fields fail request validation before generation. Provider/model/cognition controls are carried only through RelayLM's explicit owner-defined runtime surfaces when supported.
+
 ## Request authority
 
 RelayLM selects only the last non-empty `user` message as the current governed input.
