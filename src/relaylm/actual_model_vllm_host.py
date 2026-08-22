@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -71,8 +72,11 @@ VLLM_REASONING_PROBE_PROOF_FORMAT_VERSION = 1
 CANONICAL_VLLM_TARGET_PATH = Path(
     "evaluation/actual_model/targets/gemma-4-12b-it-qat-w4a16-vllm-v1.json"
 )
-CANONICAL_VLLM_SCREENING_PLAN_PATH = Path(
+CANONICAL_VLLM_HISTORICAL_SCREENING_PLAN_PATH = Path(
     "evaluation/actual_model/screenings/cogp5-vllm-screening-v1.json"
+)
+CANONICAL_VLLM_SCREENING_PLAN_PATH = Path(
+    "evaluation/actual_model/screenings/stage-r0-vllm-reference-v1.json"
 )
 CANONICAL_VLLM_REASONING_PROOF_PATH = Path(
     "evaluation/actual_model/attestations/"
@@ -307,6 +311,8 @@ class VLLMHostRunArtifact:
     boundary_verdict_id: str
     boundary_outcome: str
     boundary_artifact_path: str
+    timing_id: str
+    timing_artifact_path: str
 
     def to_mapping(self) -> dict[str, str]:
         return {
@@ -317,6 +323,8 @@ class VLLMHostRunArtifact:
             "boundary_verdict_id": self.boundary_verdict_id,
             "boundary_outcome": self.boundary_outcome,
             "boundary_artifact_path": self.boundary_artifact_path,
+            "timing_id": self.timing_id,
+            "timing_artifact_path": self.timing_artifact_path,
         }
 
 
@@ -714,11 +722,29 @@ async def execute_vllm_host_run(
     workspace_root: str | Path,
     artifact_root: str | Path,
 ) -> tuple[VLLMHostRunArtifact, ...]:
+    # Import locally because the timing module type-checks VLLMScreeningPlan.
+    # Keeping this edge local avoids a module-import cycle while preserving the
+    # existing timing and execution-boundary ownership.
+    from relaylm.actual_model_fast_screening import (
+        ScreeningTimingRecorder,
+        instrument_screening_provider,
+    )
+    from relaylm.actual_model_fast_screening_artifacts import (
+        bind_fast_screening_timing_artifact,
+        write_fast_screening_timing_artifact,
+    )
+
     workspace_base = Path(workspace_root)
     artifact_base = Path(artifact_root)
     results: list[VLLMHostRunArtifact] = []
     try:
         for scenario_id in prepared.scenario_ids:
+            timing_recorder = ScreeningTimingRecorder()
+            scenario_started_ns = timing_recorder.clock_ns()
+            timed_provider = instrument_screening_provider(
+                prepared.provider,
+                recorder=timing_recorder,
+            )
             result = await run_vllm_actual_model_scenario_definition(
                 target=prepared.target,
                 snapshot_verification=prepared.snapshot_verification,
@@ -735,8 +761,29 @@ async def execute_vllm_host_run(
                     / prepared.manifest.replicate_id
                     / scenario_id
                 ),
-                provider=prepared.provider,
+                provider=timed_provider,
                 manifest=prepared.manifest,
+            )
+            scenario_elapsed_ms = (
+                timing_recorder.clock_ns() - scenario_started_ns
+            ) / 1_000_000
+            definition = prepared.scenario_set.scenario(scenario_id)
+            execution_id = result.execution.execution_id
+            timing = bind_fast_screening_timing_artifact(
+                screening_id=prepared.plan.screening_id,
+                condition_id=prepared.screening_condition_id,
+                replicate_id=prepared.manifest.replicate_id,
+                scenario_id=scenario_id,
+                execution_id=execution_id,
+                run_id=result.run_id,
+                execution_mode=prepared.condition.cognition_execution.mode,
+                turn_count=len(definition.scenario.turns),
+                scenario_elapsed_ms=scenario_elapsed_ms,
+                calls=tuple(timing_recorder.calls),
+            )
+            timing_path = write_fast_screening_timing_artifact(
+                artifact=timing,
+                artifact_root=artifact_base,
             )
             path = write_vllm_actual_model_execution_result(
                 result=result,
@@ -758,6 +805,8 @@ async def execute_vllm_host_run(
                     boundary_verdict_id=verdict.verdict_id,
                     boundary_outcome=verdict.outcome,
                     boundary_artifact_path=str(boundary_path),
+                    timing_id=timing.timing_id,
+                    timing_artifact_path=str(timing_path),
                 )
             )
     finally:
