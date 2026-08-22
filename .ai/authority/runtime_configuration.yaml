@@ -20,6 +20,7 @@ tests:
 - tests/unit/test_runtime_provider_backend_selection.py
 - tests/unit/test_runtime_cli.py
 depends_on:
+- cognitive_budget
 - cognitive_turn
 - persistence
 - provider_and_api
