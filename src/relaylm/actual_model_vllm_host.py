@@ -69,7 +69,8 @@ from relaylm.providers.vllm_reasoning_capability import (
 VLLM_SCREENING_PLAN_FORMAT_VERSION = 1
 VLLM_REASONING_PROBE_PROOF_FORMAT_VERSION = 1
 CANONICAL_VLLM_TARGET_PATH = Path(
-    "evaluation/actual_model/targets/gemma-4-12b-it-qat-w4a16-vllm-v1.json"
+    "evaluation/actual_model/targets/"
+    "gemma-4-12b-it-qat-w4a16-google-vllm-v1.json"
 )
 CANONICAL_VLLM_HISTORICAL_SCREENING_PLAN_PATH = Path(
     "evaluation/actual_model/screenings/cogp5-vllm-screening-v1.json"
@@ -79,7 +80,7 @@ CANONICAL_VLLM_SCREENING_PLAN_PATH = Path(
 )
 CANONICAL_VLLM_REASONING_PROOF_PATH = Path(
     "evaluation/actual_model/attestations/"
-    "gemma-4-12b-it-qat-w4a16-vllm-reasoning-v1.json"
+    "gemma-4-12b-it-qat-w4a16-google-vllm-reasoning-v1.json"
 )
 CANONICAL_VLLM_CAPACITY_EVIDENCE_ROOT = Path("evaluation/actual_model/capacity")
 CANONICAL_SCENARIO_SET_PATH = Path(

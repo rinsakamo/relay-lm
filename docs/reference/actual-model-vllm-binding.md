@@ -8,8 +8,8 @@ This reference does not choose cognition semantics or runtime defaults. #1533 de
 
 The current frozen vLLM execution target is:
 
-- target: `gemma-4-12b-it-qat-w4a16-vllm-v1`;
-- repository artifact: `unsloth/gemma-4-12B-it-qat-w4a16@626f3b2f8a3799cb2b64ca5fc09443c90fe2cbb2`;
+- target: `gemma-4-12b-it-qat-w4a16-google-vllm-v1`;
+- repository artifact: `google/gemma-4-12b-it-qat-w4a16-ct@9c79b5e652ae36f02bb07d3ca29124a9d1b009bd`;
 - target format: repository snapshot with exact required file sizes/SHA-256 values;
 - serving tokenizer and chat-template roles participate in frozen target identity.
 

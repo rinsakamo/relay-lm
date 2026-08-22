@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "screening_id": "stage-r0-vllm-reference-v1",
-  "target_id": "gemma-4-12b-it-qat-w4a16-vllm-v1",
+  "target_id": "gemma-4-12b-it-qat-w4a16-google-vllm-v1",
   "effective_context_window": 1616,
   "decoding": {
     "temperature": 0,
