@@ -90,6 +90,12 @@ CANONICAL_STRUCTURED_OUTPUT_SCHEMA_VERSION = "relaylm-cognitive-output-v1"
 VLLM_SCREENING_CONDITION_IDS = ("A", "B", "C")
 VLLM_REASONING_PROOF_SOURCE_ISSUE = 1545
 VLLM_REASONING_PROOF_SOURCE_COMMENT = 5357159619
+VLLM_REASONING_PROOF_SOURCE_COMMENTS = frozenset(
+    {
+        VLLM_REASONING_PROOF_SOURCE_COMMENT,
+        5357427205,
+    }
+)
 
 FetchJSON = Callable[[str, str | None], object]
 
@@ -274,9 +280,10 @@ class VLLMReasoningProbeProof:
             raise ActualModelVLLMHostError(
                 "vLLM reasoning proof source_issue is not the canonical provider owner"
             )
-        if self.source_comment_id != VLLM_REASONING_PROOF_SOURCE_COMMENT:
+        if self.source_comment_id not in VLLM_REASONING_PROOF_SOURCE_COMMENTS:
             raise ActualModelVLLMHostError(
-                "vLLM reasoning proof source_comment_id is not the frozen R3B evidence"
+                "vLLM reasoning proof source_comment_id is not a frozen provider "
+                "reasoning evidence comment"
             )
         if not isinstance(self.off_probe, VLLMReasoningProbeEvidence):
             raise TypeError("off_probe must be VLLMReasoningProbeEvidence")
