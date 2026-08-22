@@ -17,11 +17,11 @@ from relaylm.providers.openai_compatible import (
     OpenAICompatibleProvider,
     ProviderProtocolError,
     _iter_sse_data,
+    _parse_candidate_collections,
     _parse_stream_event,
     _provider_http_error,
     _resolve_cognition_pass_request,
     _vllm_reasoning_fields,
-    parse_wire_output,
     serialize_cognitive_input,
 )
 from relaylm.providers.openai_compatible_reasoning import (
@@ -315,31 +315,14 @@ def _parse_extraction_completion(envelope: Any) -> CognitionExtractionOutput:
             "extraction wire output must contain exactly state_candidates and "
             "continuity_candidates"
         )
-    _require_exact_extraction_state_candidate_shapes(wire["state_candidates"])
-
-    normalized = parse_wire_output(
-        {
-            "utterance": "internal extraction",
-            "state_candidates": wire["state_candidates"],
-            "continuity_candidates": wire["continuity_candidates"],
-        }
+    state_candidates, continuity_candidates = _parse_candidate_collections(
+        raw_candidates=wire["state_candidates"],
+        raw_continuity_candidates=wire["continuity_candidates"],
     )
     return CognitionExtractionOutput(
-        state_candidates=normalized.state_candidates,
-        continuity_candidates=normalized.continuity_candidates,
+        state_candidates=state_candidates,
+        continuity_candidates=continuity_candidates,
     )
-
-
-def _require_exact_extraction_state_candidate_shapes(raw_candidates: Any) -> None:
-    if not isinstance(raw_candidates, list):
-        raise ProviderProtocolError("wire state_candidates must be an array")
-    expected_keys = {"state_class", "key", "op", "value", "sources"}
-    for index, raw in enumerate(raw_candidates):
-        if not isinstance(raw, dict) or set(raw) != expected_keys:
-            raise ProviderProtocolError(
-                f"state_candidates[{index}] must contain exactly "
-                "state_class, key, op, value, and sources"
-            )
 
 
 def _completion_content(envelope: Any) -> str:
