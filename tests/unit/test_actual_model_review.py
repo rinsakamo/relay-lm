@@ -13,11 +13,19 @@ from relaylm.actual_model_evaluation import (
 )
 from relaylm.actual_model_execution import run_actual_model_scenario_definition
 from relaylm.actual_model_quality import (
+    LabeledProposalMetrics,
+    ProposalChannelMetrics,
     TurnQualityRating,
     required_quality_axes,
 )
 from relaylm.actual_model_review import (
+    ACTUAL_MODEL_REVIEW_FORMAT_VERSION,
+    STAGE_R_REVIEW_PROTOCOL_VERSION,
+    ActualModelExecutionReview,
+    StageRReviewObservation,
     load_actual_model_execution_review_mapping,
+    normalize_stage_r_review_observations,
+    required_stage_r_review_dimensions,
     review_actual_model_execution,
     write_actual_model_execution_review,
 )
@@ -141,7 +149,13 @@ def test_review_binds_human_rubric_and_fixture_proposal_metrics_without_mutating
     assert review.proposal_metrics.state.false_negative_count == 2
     assert review.proposal_metrics.state.precision is None
     assert review.proposal_metrics.state.recall == 0.0
-    assert review.to_mapping()["score"] is None
+    mapping = review.to_mapping()
+    assert mapping["score"] is None
+    assert mapping["stage_r_review"]["protocol_version"] == STAGE_R_REVIEW_PROTOCOL_VERSION
+    assert all(
+        observation["outcome"] == "not_rated"
+        for observation in mapping["stage_r_review"]["observations"]
+    )
 
 
 def test_review_requires_exact_family_rubric_coverage(tmp_path: Path) -> None:
@@ -238,4 +252,101 @@ def test_review_sidecar_is_immutable_idempotent_and_machine_loadable(tmp_path: P
     assert loaded["review_id"] == review.review_id
     assert loaded["execution_id"] == result.execution_id
     assert loaded["quality_rubric_version"] == "actual-model-quality-v1"
+    assert loaded["stage_r_review"]["protocol_version"] == STAGE_R_REVIEW_PROTOCOL_VERSION
     assert loaded["score"] is None
+
+
+def test_stage_r_review_protocol_exposes_required_material_dimensions() -> None:
+    assert STAGE_R_REVIEW_PROTOCOL_VERSION == "actual-model-stage-r-review-v1"
+    assert required_stage_r_review_dimensions() == (
+        "relevance_correctness",
+        "naturalness",
+        "persona_style_consistency",
+        "coherence",
+        "governed_context_continuity",
+        "verbosity_fit",
+        "language_preservation",
+        "multilingual_code_switch_robustness",
+        "unsupported_recall",
+        "protocol_schema_validity",
+        "semantic_precision_recall",
+        "grounding",
+        "source_subject_attribution",
+        "assistant_to_user_contamination",
+        "correction_supersession",
+        "negation_polarity",
+        "uncertainty_preservation",
+        "comparative_degree_preservation",
+        "transient_durable_classification",
+        "canonical_class_key_reuse",
+        "noop_correctness",
+        "proposal_churn",
+        "hallucinated_proposals",
+        "source_event_validity",
+    )
+
+
+def test_stage_r_review_requires_exact_independent_dimension_coverage() -> None:
+    observations = tuple(
+        StageRReviewObservation(
+            dimension=dimension,
+            outcome="pass",
+            note=f"reviewed: {dimension}",
+        )
+        for dimension in required_stage_r_review_dimensions()
+    )
+
+    normalized = normalize_stage_r_review_observations(observations)
+    assert tuple(item.dimension for item in normalized) == required_stage_r_review_dimensions()
+
+    with pytest.raises(ValueError, match="cover every required Stage R review dimension"):
+        normalize_stage_r_review_observations(observations[:-1])
+
+    duplicate = observations + (observations[0],)
+    with pytest.raises(ValueError, match="must not duplicate dimensions"):
+        normalize_stage_r_review_observations(duplicate)
+
+
+def test_stage_r_review_dimensions_are_citable_without_a_composite_score() -> None:
+    observations = tuple(
+        StageRReviewObservation(
+            dimension=dimension,
+            outcome="fail" if dimension == "grounding" else "pass",
+        )
+        for dimension in required_stage_r_review_dimensions()
+    )
+    empty_channel = ProposalChannelMetrics(
+        expected_count=0,
+        observed_count=0,
+        true_positive_count=0,
+        false_positive_count=0,
+        false_negative_count=0,
+        precision=None,
+        recall=None,
+    )
+    review = ActualModelExecutionReview(
+        review_id="amv-stage-r-test",
+        execution_id="ame-stage-r-test",
+        run_id="amr-stage-r-test",
+        scenario_set_revision="sha256:scenario-set",
+        scenario_id="stage-r-test",
+        scenario_family="state_candidate_quality",
+        reviewer_identity="test-reviewer",
+        turn_ratings=(),
+        proposal_metrics=LabeledProposalMetrics(
+            state=empty_channel,
+            continuity=empty_channel,
+        ),
+        stage_r_observations=normalize_stage_r_review_observations(observations),
+    )
+
+    mapping = review.to_mapping()
+    assert ACTUAL_MODEL_REVIEW_FORMAT_VERSION == 2
+    assert mapping["score"] is None
+    assert mapping["stage_r_review"]["protocol_version"] == STAGE_R_REVIEW_PROTOCOL_VERSION
+    by_dimension = {
+        item["dimension"]: item["outcome"]
+        for item in mapping["stage_r_review"]["observations"]
+    }
+    assert by_dimension["grounding"] == "fail"
+    assert len(by_dimension) == len(required_stage_r_review_dimensions())
