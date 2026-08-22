@@ -220,6 +220,8 @@ The adapter only serializes already-projected Event evidence. It does not widen 
 
 The model-facing instruction defines `utterance` as the complete non-empty natural-language reply shown to the user. This is a RelayLM wire/model reliability constraint established by the V6 Gate B evidence, not a new semantic field.
 
+At the current OpenAI-compatible transport boundary, each buffered response envelope and each non-`[DONE]` streaming data envelope must contain exactly one provider choice. Empty or multiple `choices` are protocol errors; RelayLM does not rank or select among upstream completions.
+
 For buffered generation, RelayLM waits for the complete ordinary provider message, parses its content as the exact combined IR, constructs typed `CognitiveOutput`, and only then allows the existing deterministic commit path to proceed.
 
 For streaming generation, the provider still generates the same single JSON object as ordinary content. The adapter accumulates the complete text while incrementally decoding only characters that can be proven to belong to the leading top-level `utterance` JSON string. Those safe characters may be delivered to the client before the candidate tail completes.
