@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 
 import httpx
 import pytest
@@ -76,6 +77,47 @@ def test_buffered_http_error_preserves_bounded_sanitized_upstream_detail(
     assert api_key not in message
     assert "<redacted>" in message
     assert len(message) < 3000
+
+
+@pytest.mark.parametrize("two_pass", [False, True])
+def test_buffered_http_error_redacts_json_escaped_api_key(two_pass: bool) -> None:
+    api_key = 'secret"quote\\slash\nline'
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            400,
+            json={
+                "error": {
+                    "message": "request rejected",
+                    "echoed_secret": api_key,
+                }
+            },
+        )
+
+    async def run() -> str:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider_cls = (
+                OpenAICompatibleTwoPassProvider if two_pass else OpenAICompatibleProvider
+            )
+            provider = provider_cls(
+                base_url="http://provider.test/v1",
+                model="gemma",
+                api_key=api_key,
+                http_client=client,
+            )
+            with pytest.raises(ProviderProtocolError) as caught:
+                if two_pass:
+                    await provider.generate_conversation(_cognitive_input())
+                else:
+                    await provider.generate(_cognitive_input())
+            return str(caught.value)
+
+    message = asyncio.run(run())
+    serialized_api_key = json.dumps(api_key, ensure_ascii=False)[1:-1]
+
+    assert api_key not in message
+    assert serialized_api_key not in message
+    assert "<redacted>" in message
 
 
 @pytest.mark.parametrize("two_pass", [False, True])
