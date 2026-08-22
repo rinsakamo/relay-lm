@@ -80,9 +80,10 @@ async def run_crystallization(
         events=event_by_id,
     )
 
+    input_event_by_id = {event.id: event for event in recent_events}
     memory_markdown = render_memory_units(
         output.memory_units,
-        events=event_by_id,
+        events=input_event_by_id,
         state=validation.state,
     )
     memory_changed = character.save_memory_markdown(memory_markdown)
