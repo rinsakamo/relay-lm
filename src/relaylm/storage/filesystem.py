@@ -323,8 +323,14 @@ def _state_record_from_mapping(raw: Any) -> StateRecord:
     if "sources" not in raw:
         raise CharacterDataError("state.sources is required")
     sources = raw["sources"]
-    if not isinstance(sources, list) or not all(isinstance(item, str) for item in sources):
-        raise CharacterDataError("state record sources must be an array of strings")
+    if (
+        not isinstance(sources, list)
+        or not sources
+        or not all(isinstance(item, str) and item.strip() for item in sources)
+    ):
+        raise CharacterDataError(
+            "state record sources must be a non-empty array of non-empty strings"
+        )
     status = _required_string(raw, "status", "state.status")
     return StateRecord(
         state_id=_required_string(raw, "state_id", "state.state_id"),
