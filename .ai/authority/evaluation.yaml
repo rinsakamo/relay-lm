@@ -100,4 +100,5 @@ depends_on:
 - crystallization
 - memory_provenance
 - persistence
+- provider_and_api
 - state_and_validation
