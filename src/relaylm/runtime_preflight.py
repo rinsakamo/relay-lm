@@ -99,6 +99,12 @@ def _validate_provider_configuration(resolved: ResolvedRuntimeConfig) -> None:
             field="provider.base_url",
             message="provider base URL must use http or https and include a host",
         )
+    if "?" in provider.base_url or "#" in provider.base_url:
+        raise RuntimePreflightError(
+            RuntimeConfigErrorCode.PROVIDER_INVALID,
+            field="provider.base_url",
+            message="provider base URL must not include a query or fragment",
+        )
 
 
 def _validate_character_readability(character: CharacterDirectory) -> None:
