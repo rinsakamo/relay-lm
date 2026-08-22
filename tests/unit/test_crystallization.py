@@ -10,7 +10,12 @@ from relaylm.crystallization import (
 )
 from relaylm.events import Event
 from relaylm.state import CanonicalState, StateCandidate, StateRecord
-from relaylm.memory_provenance import MemoryTemporalScope, MemoryUnit
+from relaylm.memory_provenance import (
+    MemoryProvenanceSource,
+    MemoryProvenanceSourceKind,
+    MemoryTemporalScope,
+    MemoryUnit,
+)
 from relaylm.storage.filesystem import CharacterDirectory
 
 
@@ -93,6 +98,63 @@ def test_crystallization_writes_portable_memory_and_governs_state(tmp_path: Path
         (record.state_class, record.key, record.value)
         for record in character.load_state().states
     ] == [("user.preference", "tea", "likes")]
+
+
+def test_memory_event_provenance_is_bounded_to_crystallization_input(
+    tmp_path: Path,
+) -> None:
+    character = _make_character(tmp_path)
+    old_event = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": "昔の出来事"},
+        event_id="old",
+        timestamp="2026-08-01T00:00:00+00:00",
+    )
+    recent_event = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": "最近の出来事"},
+        event_id="recent",
+        timestamp="2026-08-17T00:00:00+00:00",
+    )
+    character.append_event(old_event)
+    character.append_event(recent_event)
+
+    class OutOfWindowMemorySourceCrystallizer:
+        async def generate(
+            self,
+            crystallization_input: CrystallizationInput,
+        ) -> CrystallizationOutput:
+            assert [event.id for event in crystallization_input.events] == ["recent"]
+            return CrystallizationOutput(
+                memory_units=(
+                    MemoryUnit(
+                        heading="History",
+                        content="An older durable event remains readable.",
+                        temporal_scope=MemoryTemporalScope.HISTORICAL,
+                        sources=(
+                            MemoryProvenanceSource(
+                                kind=MemoryProvenanceSourceKind.EVENT,
+                                reference_id="old",
+                            ),
+                        ),
+                    ),
+                ),
+            )
+
+    asyncio.run(
+        run_crystallization(
+            character=character,
+            crystallizer=OutOfWindowMemorySourceCrystallizer(),
+            max_events=1,
+        )
+    )
+
+    memory = character.load_memory_markdown()
+    assert memory is not None
+    assert "An older durable event remains readable." in memory
+    assert "relaylm-memory:v1" not in memory
 
 
 def test_crystallization_can_validate_state_provenance_outside_recent_snapshot(
