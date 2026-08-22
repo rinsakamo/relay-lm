@@ -195,6 +195,8 @@ def test_doctor_rejects_provider_url_with_invalid_host_or_port(
     [
         "http://127.0.0.1:1234/v1?api-version=test",
         "http://127.0.0.1:1234/v1#fragment",
+        "http://127.0.0.1:1234/v1?",
+        "http://127.0.0.1:1234/v1#",
     ],
 )
 def test_doctor_rejects_provider_url_that_is_not_a_base_endpoint(
