@@ -144,6 +144,7 @@ evidence:
 depends_on:
 - cognitive_budget
 - cognitive_turn
+- continuity_context
 - crystallization
 - provider_and_api
 - runtime_configuration
