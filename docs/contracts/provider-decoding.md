@@ -50,46 +50,21 @@ This is deliberately conservative: RelayLM does not silently send a control mere
 
 P3 does not yet define the broader stable provider capability/config identity required by #1456 P4. It only creates the typed support boundary necessary to prevent unsupported requested decoding values from being recorded as though they were applied.
 
-## Reasoning / thinking capability boundary
+## Reasoning boundary
 
-The current canonical OpenAI-compatible cognitive adapter is a Chat Completions adapter. Its typed request-control contract contains `temperature`, `top_p`, and `seed` only. It does **not** currently expose or serialize a per-request reasoning/thinking mode, reasoning effort, or bounded reasoning budget.
+Reasoning controls are outside this decoding contract. Current provider reasoning capability, backend-specific attestation, exact realization, and request carriage are defined by `docs/contracts/provider-reasoning.md`.
 
-Therefore reasoning is not an implied capability of this adapter merely because a particular upstream product, model, or another endpoint can expose reasoning controls. Support available through a different protocol or endpoint does not flow into the canonical Chat Completions adapter without a provider-owner contract change that adds exact typed carriage, capability declaration, request serialization, identity, and tests.
-
-For consumers such as cognition execution policy and Actual-model Evaluation, the current provider facts are therefore:
-
-```text
-per-request reasoning modes      = unsupported
-bounded reasoning budget         = unsupported
-per-request reasoning override   = unavailable
-```
-
-A caller must not label a condition `reasoning off`, `reasoning on`, or `bounded reasoning` merely because that condition was requested in higher-level policy. If the provider cannot carry and attest the request, the requested option remains unsupported and must fail closed or be recorded as unsupported before generation according to the consuming contract.
-
-A model-wide or host-wide reasoning default may be separately observed or attested by an evidence owner when reproducibility requires it. Such an attestation describes the execution environment; it is not a distinct per-pass provider override and must not be represented as though Pass 1 and Pass 2 received different request controls.
-
-Reasoning state must not be inferred from output style, hidden model behavior, or the presence/absence of visible reasoning text.
-
-This boundary is intentionally capability-conservative. Future reasoning carriage, if product requirements justify it, must be added as an explicit provider-owned extension rather than as evaluation-only metadata or an untyped passthrough field.
+`OpenAICompatibleDecodingConfig` therefore remains limited to decoding controls; the absence of reasoning fields from that type neither implies reasoning support nor reasoning unavailability for the canonical provider request path.
 
 ## Machine-readable cognition capability facts
 
 `OpenAICompatibleCognitionCapabilityFacts` exposes the current adapter facts needed by the COGP consumer boundary without changing the stable P4 provider identity or its historical serialization.
 
-The facts are content-free and separate from provider request configuration. For the current canonical adapter they report:
+This decoding contract owns only the decoding-control projection in that facts view. The provider decoding controls with an exact current COGP per-pass semantic match are `temperature` and `top_p` when they are declared supported by `OpenAICompatibleDecodingCapabilities`.
 
-```text
-structured_output          = true
-streaming                  = true
-reasoning_modes            = []
-bounded_reasoning_budget   = false
-```
+`seed` remains provider-level reproducibility configuration and is deliberately not promoted into the current per-pass COGP vocabulary. `max_output_tokens` is not currently carried by this decoding adapter and is therefore not reported as a supported per-pass decoding control.
 
-The view also exposes the provider decoding controls that have an exact current COGP per-pass semantic match. At present those are `temperature` and `top_p` when they are declared supported by `OpenAICompatibleDecodingCapabilities`.
-
-`seed` remains provider-level reproducibility configuration and is deliberately not promoted into the current per-pass COGP vocabulary. `max_output_tokens` is not currently carried by this adapter and is therefore not reported as a supported per-pass control.
-
-The base OpenAI-compatible provider and the existing two-pass extension report the same provider-owned capability facts because the two-pass extension changes semantic orchestration methods, not the underlying Chat Completions request capability.
+Reasoning-related fields in `OpenAICompatibleCognitionCapabilityFacts` are governed by `docs/contracts/provider-reasoning.md`, not by this decoding contract.
 
 This facts view is intentionally separate from `OpenAICompatibleProviderIdentity.to_mapping()`. Adding the consumer-facing bridge therefore does not retroactively change historical provider identity or actual-model run identity. Consumers may bind the facts separately when their own evidence contract requires capability-resolution provenance.
 
@@ -131,7 +106,7 @@ Calibration (#1388) remains the sole owner of any future canonical numeric decod
 - unsupported requested controls fail before network use;
 - buffered and streaming requests carry identical explicit decoding controls;
 - effective decoding evidence contains no secrets or semantic payload;
-- exactly one ordinary semantic model generation remains authoritative;
-- reasoning/thinking is unsupported unless the canonical adapter explicitly carries and attests it;
+- cognition execution topology remains owned by `cognitive_turn`, not this decoding contract;
+- reasoning capability and carriage remain owned by `docs/contracts/provider-reasoning.md`, not this decoding contract;
 - provider-owned cognition capability facts do not alter historical P4 provider identity;
 - provider decoding carriage does not become State, Continuity, Retrieval, Context Compiler, Cognitive Budget, evaluation, or calibration authority.
