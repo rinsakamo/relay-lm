@@ -179,10 +179,16 @@ class CharacterDirectory:
         except (OSError, TypeError, ValueError) as exc:
             raise CharacterDataError(f"cannot append events.jsonl: {exc}") from exc
 
+        signature_after_append = None
+        if can_extend_cache:
+            try:
+                signature_after_append = self._events_signature()
+            except CharacterDataError:
+                can_extend_cache = False
+
         if can_extend_cache:
             self._event_cache = (*self._event_cache, event)
             self._event_id_cache.add(event.id)
-            signature_after_append = self._events_signature()
             self._event_cache_signature = signature_after_append
             if can_extend_discovery:
                 assert self._event_discovery_index is not None
