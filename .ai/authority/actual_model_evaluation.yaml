@@ -146,6 +146,7 @@ depends_on:
 - cognitive_turn
 - continuity_context
 - crystallization
+- memory_provenance
 - provider_and_api
 - runtime_configuration
 - state_and_validation
