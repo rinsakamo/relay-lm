@@ -126,6 +126,15 @@ def _split_after_utterance(wire: dict[str, object]) -> tuple[str, str]:
     return serialized[:split_at], serialized[split_at:]
 
 
+def _wire_with_duplicate_state_key() -> str:
+    return (
+        '{"utterance":"次もこの話を続けよう。","state_candidates":['
+        '{"state_class":"user.preference","key":"tea","key":"coffee",'
+        '"op":"set","value":"likes","sources":["evt-now"]}],'
+        '"continuity_candidates":[]}'
+    )
+
+
 def test_buffered_rejects_multiple_upstream_choices() -> None:
     content = json.dumps(_wire(), ensure_ascii=False, separators=(",", ":"))
 
@@ -179,6 +188,58 @@ def test_streaming_rejects_multiple_upstream_choices_before_visible_selection() 
         return emitted
 
     assert asyncio.run(run()) == []
+
+
+def test_buffered_rejects_duplicate_cognitive_json_member() -> None:
+    content = _wire_with_duplicate_state_key()
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"choices": [{"message": {"content": content}}]})
+
+    async def run() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = OpenAICompatibleProvider(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            with pytest.raises(ProviderProtocolError, match="duplicate object member"):
+                await provider.generate(_cognitive_input())
+
+    asyncio.run(run())
+
+
+def test_streaming_rejects_duplicate_cognitive_json_member_after_visible_utterance() -> None:
+    content = _wire_with_duplicate_state_key()
+    chunks = [
+        _sse_chunk(content=content, finish_reason="stop"),
+        b"data: [DONE]\n\n",
+    ]
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            stream=_StaticSSEStream(chunks),
+        )
+
+    async def run() -> list[str]:
+        emitted: list[str] = []
+
+        async def emit(text: str) -> None:
+            emitted.append(text)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = OpenAICompatibleProvider(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            with pytest.raises(ProviderProtocolError, match="duplicate object member"):
+                await provider.stream_generate(_cognitive_input(), emit)
+        return emitted
+
+    assert "".join(asyncio.run(run())) == "次もこの話を続けよう。"
 
 
 def test_buffered_and_streaming_return_identical_semantic_output() -> None:
