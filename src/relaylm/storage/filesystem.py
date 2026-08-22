@@ -235,10 +235,13 @@ class CharacterDirectory:
 
     def load_state(self) -> CanonicalState:
         try:
-            raw = json.loads(self.state_path.read_text(encoding="utf-8"))
+            raw = json.loads(
+                self.state_path.read_text(encoding="utf-8"),
+                parse_constant=_reject_non_finite_json_number,
+            )
         except FileNotFoundError:
             return CanonicalState()
-        except (OSError, json.JSONDecodeError) as exc:
+        except (OSError, ValueError) as exc:
             raise CharacterDataError(f"cannot read state.json: {exc}") from exc
 
         if not isinstance(raw, dict):
@@ -268,7 +271,7 @@ class CharacterDirectory:
         temporary = self.state_path.with_name(f".{self.state_path.name}.tmp")
         try:
             temporary.write_text(
-                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
                 encoding="utf-8",
             )
             os.replace(temporary, self.state_path)
@@ -288,6 +291,10 @@ class CharacterDirectory:
         if not isinstance(raw, dict):
             raise CharacterDataError("config.yaml must contain a mapping")
         return raw
+
+
+def _reject_non_finite_json_number(value: str) -> None:
+    raise ValueError(f"non-finite JSON number is not allowed: {value}")
 
 
 def _required_int(mapping: dict[str, Any], key: str, label: str) -> int:
