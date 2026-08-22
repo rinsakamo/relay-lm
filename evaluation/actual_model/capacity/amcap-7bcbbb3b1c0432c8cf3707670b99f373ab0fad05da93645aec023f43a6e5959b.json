@@ -1,0 +1,166 @@
+{
+  "format_version": 2,
+  "relaylm_commit": "25ce7ca15961187fb734cda61e88a117b8d991af",
+  "target_id": "gemma-4-12b-it-qat-w4a16-google-vllm-v1",
+  "target_revision": "sha256:19a47b8e917bf6d0b0c6b39e2f91161805c8f0855e9ced4233a65a6f92aa4c62",
+  "tokenizer_identity": "hf-snapshot-tokenizer:sha256:188e0c69bea07e43e6d415330c7a9065bc83fb06380e9dbc63d498e202837ab7",
+  "chat_template_identity": "hf-snapshot-chat-template:sha256:36e3a42e5cf14cd0020e72d92e1fdd9970f59b82170e421f0cbe1bb42bead3f0",
+  "backend_version": "0.26.1rc1.dev549+g70b84f0bc",
+  "request_model": "gemma-4-12B-it-qat-w4a16",
+  "observed_max_model_len": 1616,
+  "scenario_set_revision": "sha256:cdc24dca487470247ae22121bea7f7f91c1e44165d8ff38e50fd680012b95dba",
+  "counter_identity": {
+    "format_version": 1,
+    "capability": "vllm.serving-tokenizer.serialized-input.v1",
+    "implementation": "vllm-tokenize-endpoint-counter",
+    "version": "1",
+    "mode": "exact",
+    "tokenizer_identity": "hf-snapshot-tokenizer:sha256:188e0c69bea07e43e6d415330c7a9065bc83fb06380e9dbc63d498e202837ab7",
+    "parameters": {
+      "backend": "vllm",
+      "backend_version": "0.26.1rc1.dev549+g70b84f0bc",
+      "chat_template_identity": "hf-snapshot-chat-template:sha256:36e3a42e5cf14cd0020e72d92e1fdd9970f59b82170e421f0cbe1bb42bead3f0",
+      "context_limit": 1616,
+      "framing_method": "same-message-shape-empty-content-v1",
+      "renderer_method": "chat-completion-effective-template-kwargs-v1",
+      "request_model": "gemma-4-12B-it-qat-w4a16",
+      "target_id": "gemma-4-12b-it-qat-w4a16-google-vllm-v1"
+    }
+  },
+  "footprints": [
+    {
+      "condition_id": "stage-r0-vllm-b-two-pass-off-off",
+      "topology": "two_pass",
+      "pass_id": "pass1",
+      "scenario_id": "response-persona-correction-v1",
+      "turn_index": 1,
+      "pass_request_id": "amcpr-4775be83f4cbc02e4b706b4804c727a2753a49c81239d303a6b2d84dc61743b4",
+      "total_input_tokens": 568,
+      "required_input_framing_tokens": 19,
+      "count_mode": "exact"
+    },
+    {
+      "condition_id": "stage-r0-vllm-b-two-pass-off-off",
+      "topology": "two_pass",
+      "pass_id": "pass2",
+      "scenario_id": "response-persona-correction-v1",
+      "turn_index": 1,
+      "pass_request_id": "amcpr-4775be83f4cbc02e4b706b4804c727a2753a49c81239d303a6b2d84dc61743b4",
+      "total_input_tokens": 1008,
+      "required_input_framing_tokens": 19,
+      "count_mode": "exact"
+    },
+    {
+      "condition_id": "stage-r0-vllm-b-two-pass-off-off",
+      "topology": "two_pass",
+      "pass_id": "pass1",
+      "scenario_id": "response-persona-correction-v1",
+      "turn_index": 2,
+      "pass_request_id": "amcpr-4775be83f4cbc02e4b706b4804c727a2753a49c81239d303a6b2d84dc61743b4",
+      "total_input_tokens": 830,
+      "required_input_framing_tokens": 19,
+      "count_mode": "exact"
+    },
+    {
+      "condition_id": "stage-r0-vllm-b-two-pass-off-off",
+      "topology": "two_pass",
+      "pass_id": "pass2",
+      "scenario_id": "response-persona-correction-v1",
+      "turn_index": 2,
+      "pass_request_id": "amcpr-4775be83f4cbc02e4b706b4804c727a2753a49c81239d303a6b2d84dc61743b4",
+      "total_input_tokens": 1292,
+      "required_input_framing_tokens": 19,
+      "count_mode": "exact"
+    },
+    {
+      "condition_id": "stage-r0-vllm-b-two-pass-off-off",
+      "topology": "two_pass",
+      "pass_id": "pass1",
+      "scenario_id": "response-persona-correction-v1",
+      "turn_index": 3,
+      "pass_request_id": "amcpr-4775be83f4cbc02e4b706b4804c727a2753a49c81239d303a6b2d84dc61743b4",
+      "total_input_tokens": 987,
+      "required_input_framing_tokens": 19,
+      "count_mode": "exact"
+    },
+    {
+      "condition_id": "stage-r0-vllm-b-two-pass-off-off",
+      "topology": "two_pass",
+      "pass_id": "pass2",
+      "scenario_id": "response-persona-correction-v1",
+      "turn_index": 3,
+      "pass_request_id": "amcpr-4775be83f4cbc02e4b706b4804c727a2753a49c81239d303a6b2d84dc61743b4",
+      "total_input_tokens": 1459,
+      "required_input_framing_tokens": 19,
+      "count_mode": "exact"
+    },
+    {
+      "condition_id": "stage-r0-vllm-b-two-pass-off-off",
+      "topology": "two_pass",
+      "pass_id": "pass1",
+      "scenario_id": "continuity-lifecycle-v1",
+      "turn_index": 1,
+      "pass_request_id": "amcpr-4775be83f4cbc02e4b706b4804c727a2753a49c81239d303a6b2d84dc61743b4",
+      "total_input_tokens": 581,
+      "required_input_framing_tokens": 19,
+      "count_mode": "exact"
+    },
+    {
+      "condition_id": "stage-r0-vllm-b-two-pass-off-off",
+      "topology": "two_pass",
+      "pass_id": "pass2",
+      "scenario_id": "continuity-lifecycle-v1",
+      "turn_index": 1,
+      "pass_request_id": "amcpr-4775be83f4cbc02e4b706b4804c727a2753a49c81239d303a6b2d84dc61743b4",
+      "total_input_tokens": 1051,
+      "required_input_framing_tokens": 19,
+      "count_mode": "exact"
+    },
+    {
+      "condition_id": "stage-r0-vllm-b-two-pass-off-off",
+      "topology": "two_pass",
+      "pass_id": "pass1",
+      "scenario_id": "continuity-lifecycle-v1",
+      "turn_index": 2,
+      "pass_request_id": "amcpr-4775be83f4cbc02e4b706b4804c727a2753a49c81239d303a6b2d84dc61743b4",
+      "total_input_tokens": 954,
+      "required_input_framing_tokens": 19,
+      "count_mode": "exact"
+    },
+    {
+      "condition_id": "stage-r0-vllm-b-two-pass-off-off",
+      "topology": "two_pass",
+      "pass_id": "pass2",
+      "scenario_id": "continuity-lifecycle-v1",
+      "turn_index": 2,
+      "pass_request_id": "amcpr-4775be83f4cbc02e4b706b4804c727a2753a49c81239d303a6b2d84dc61743b4",
+      "total_input_tokens": 1407,
+      "required_input_framing_tokens": 19,
+      "count_mode": "exact"
+    },
+    {
+      "condition_id": "stage-r0-vllm-b-two-pass-off-off",
+      "topology": "two_pass",
+      "pass_id": "pass1",
+      "scenario_id": "continuity-lifecycle-v1",
+      "turn_index": 3,
+      "pass_request_id": "amcpr-4775be83f4cbc02e4b706b4804c727a2753a49c81239d303a6b2d84dc61743b4",
+      "total_input_tokens": 1092,
+      "required_input_framing_tokens": 19,
+      "count_mode": "exact"
+    },
+    {
+      "condition_id": "stage-r0-vllm-b-two-pass-off-off",
+      "topology": "two_pass",
+      "pass_id": "pass2",
+      "scenario_id": "continuity-lifecycle-v1",
+      "turn_index": 3,
+      "pass_request_id": "amcpr-4775be83f4cbc02e4b706b4804c727a2753a49c81239d303a6b2d84dc61743b4",
+      "total_input_tokens": 1560,
+      "required_input_framing_tokens": 19,
+      "count_mode": "exact"
+    }
+  ],
+  "failed_capacity": null,
+  "evidence_id": "amcap-7bcbbb3b1c0432c8cf3707670b99f373ab0fad05da93645aec023f43a6e5959b"
+}
