@@ -274,6 +274,8 @@ A transitive-only finding is review data, not authority and not an automatic fai
 
 Do not repair a transitive-only finding by adding a direct semantic dependency unless the consumer's canonical semantics genuinely require that direct dependency.
 
+Raw transitive-only edges remain available as the exact derived review data. Normal agent/CLI review should present them first as counts grouped by the exact importing owner set and imported owner set, then expand raw edges only for a selected cluster that needs inspection. Aggregation is presentation only: it does not merge semantic owners, create a waiver or baseline, change edge classification, or make a cluster acceptable by repetition.
+
 ## Unexplained runtime realization edges
 
 A statically resolvable RelayLM-internal **runtime** realization dependency is unexplained when the two realization surfaces have disjoint owner sets and no importing owner can reach an imported owner through semantic `depends_on`.
