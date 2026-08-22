@@ -22,5 +22,6 @@ tests:
 depends_on:
 - cognitive_budget
 - cognitive_turn
+- continuity_context
 - persistence
 - provider_and_api
