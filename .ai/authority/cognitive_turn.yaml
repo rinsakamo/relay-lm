@@ -51,6 +51,7 @@ depends_on:
 - cognitive_budget
 - context_compiler
 - continuity_context
+- core_architecture
 - provider_and_api
 - state_and_validation
 annotations:
