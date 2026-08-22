@@ -329,8 +329,10 @@ def _completion_content(envelope: Any) -> str:
     if not isinstance(envelope, dict):
         raise ProviderProtocolError("provider response must be an object")
     choices = envelope.get("choices")
-    if not isinstance(choices, list) or not choices:
-        raise ProviderProtocolError("provider response choices must be a non-empty array")
+    if not isinstance(choices, list) or len(choices) != 1:
+        raise ProviderProtocolError(
+            "provider response choices must contain exactly one choice"
+        )
     choice = choices[0]
     if not isinstance(choice, dict):
         raise ProviderProtocolError("provider choice must be an object")
