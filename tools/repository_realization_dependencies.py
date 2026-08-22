@@ -19,24 +19,27 @@ PACKAGE_ROOT = "relaylm"
 def realization_dependency_errors(root: Path) -> tuple[str, ...]:
     """Return unexplained static RelayLM-internal runtime realization edges."""
 
-    errors, _ = _audit_realization_dependencies(root)
+    errors, _, _ = _audit_realization_dependencies(root)
     return errors
 
 
 def realization_dependency_review_signals(root: Path) -> tuple[str, ...]:
     """Return raw transitive-only runtime edges that merit architecture review."""
 
-    _, review_signals = _audit_realization_dependencies(root)
+    _, review_signals, _ = _audit_realization_dependencies(root)
     return review_signals
 
 
 def realization_dependency_review_summary(root: Path) -> tuple[str, ...]:
     """Return transitive-only review signals grouped by exact owner sets."""
 
-    return _summarize_review_signals(realization_dependency_review_signals(root))
+    _, _, review_summary = _audit_realization_dependencies(root)
+    return review_summary
 
 
-def _audit_realization_dependencies(root: Path) -> tuple[tuple[str, ...], tuple[str, ...]]:
+def _audit_realization_dependencies(
+    root: Path,
+) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
     """Classify static RelayLM-internal runtime realization edges.
 
     Production module ownership is read from existing ``implementation``
@@ -58,6 +61,7 @@ def _audit_realization_dependencies(root: Path) -> tuple[tuple[str, ...], tuple[
 
     errors: set[str] = set()
     review_signals: set[str] = set()
+    review_clusters: Counter[tuple[tuple[str, ...], tuple[str, ...]]] = Counter()
     for importer_module, importer_path in sorted(module_paths.items()):
         importer_owners = owners_by_path.get(importer_path, frozenset())
         for imported_module in _internal_imports(
@@ -78,6 +82,9 @@ def _audit_realization_dependencies(root: Path) -> tuple[tuple[str, ...], tuple[
                     f"transitive-only (importer owners: {_format_owners(importer_owners)}; "
                     f"imported owners: {_format_owners(imported_owners)})"
                 )
+                review_clusters[
+                    (tuple(sorted(importer_owners)), tuple(sorted(imported_owners)))
+                ] += 1
                 continue
 
             errors.add(
@@ -86,7 +93,15 @@ def _audit_realization_dependencies(root: Path) -> tuple[tuple[str, ...], tuple[
                 f"imported owners: {_format_owners(imported_owners)})"
             )
 
-    return tuple(sorted(errors)), tuple(sorted(review_signals))
+    review_summary = tuple(
+        f"{count} edge(s): {_format_owners(importer_owners)} -> "
+        f"{_format_owners(imported_owners)}"
+        for (importer_owners, imported_owners), count in sorted(
+            review_clusters.items(),
+            key=lambda item: (-item[1], item[0][0], item[0][1]),
+        )
+    )
+    return tuple(sorted(errors)), tuple(sorted(review_signals)), review_summary
 
 
 def _production_module_paths(root: Path) -> dict[str, str]:
@@ -248,24 +263,6 @@ def _format_owners(owners: Iterable[str]) -> str:
     return ", ".join(values) if values else "<none>"
 
 
-def _summarize_review_signals(review_signals: Sequence[str]) -> tuple[str, ...]:
-    clusters = Counter(_review_signal_owner_pair(message) for message in review_signals)
-    return tuple(
-        f"{count} edge(s): {importer_owners} -> {imported_owners}"
-        for (importer_owners, imported_owners), count in sorted(
-            clusters.items(),
-            key=lambda item: (-item[1], item[0][0], item[0][1]),
-        )
-    )
-
-
-def _review_signal_owner_pair(message: str) -> tuple[str, str]:
-    marker = "(importer owners: "
-    owner_text = message.rsplit(marker, 1)[1].removesuffix(")")
-    importer_owners, imported_owners = owner_text.split("; imported owners: ", 1)
-    return importer_owners, imported_owners
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -279,12 +276,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
 
     try:
-        errors, review_signals = _audit_realization_dependencies(arguments.root)
+        errors, review_signals, review_summary = _audit_realization_dependencies(
+            arguments.root
+        )
     except (AuthorityError, SyntaxError) as error:
         print(str(error), file=sys.stderr)
         return 1
 
-    review_summary = _summarize_review_signals(review_signals)
     review_messages = review_signals if arguments.review_edges else review_summary
     for message in review_messages:
         print(f"review: {message}")
