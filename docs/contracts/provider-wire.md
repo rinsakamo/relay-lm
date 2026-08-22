@@ -33,6 +33,8 @@ Gate B (#1258) validated V6 / Framing D against the target local OpenAI-compatib
 
 The model returns exactly one JSON object with exactly these three top-level fields. Both proposal channels are explicit. A model that produced no proposal for a channel returns an explicit empty array. Missing or additional top-level fields are RelayLM protocol errors and are not normalized away.
 
+Duplicate JSON object member names anywhere in the combined IR are protocol errors and are not normalized by last-wins decoding.
+
 Every model-facing State candidate is total and exact: `state_class`, `key`, `op`, `value`, and `sources` are present and no additional candidate fields are accepted.
 
 Every model-facing Continuity candidate is also total and exact: `kind`, `key`, `op`, `value`, `sources`, and `epistemic_role` are present and no additional candidate fields are accepted.
