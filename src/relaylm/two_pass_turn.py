@@ -209,11 +209,17 @@ async def run_user_turn_two_pass_streaming(
     event_budget: EventRetrievalBudget | None = None,
     continuity_runtime: ContinuityRuntime | None = None,
     cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
+    pass1_request: CognitionPassRequest | None = None,
+    pass2_request: CognitionPassRequest | None = None,
 ) -> TwoPassTurnResult:
     """Stream Pass 1, then background Pass 2 after the complete response is valid."""
 
     stream_generate_conversation = _require_two_pass_provider(provider, streaming=True)
     _require_execution_runtime(execution_runtime)
+    if pass1_request is not None and not isinstance(pass1_request, CognitionPassRequest):
+        raise TypeError("pass1_request must be CognitionPassRequest or None")
+    if pass2_request is not None and not isinstance(pass2_request, CognitionPassRequest):
+        raise TypeError("pass2_request must be CognitionPassRequest or None")
     if not content.strip():
         raise ValueError("user content must not be empty")
 
@@ -236,10 +242,17 @@ async def run_user_turn_two_pass_streaming(
         origin_continuity = (
             continuity_runtime.context if continuity_runtime is not None else None
         )
-        conversation = await stream_generate_conversation(
-            cognitive_input,
-            emit_response_delta,
-        )
+        if pass1_request is None:
+            conversation = await stream_generate_conversation(
+                cognitive_input,
+                emit_response_delta,
+            )
+        else:
+            conversation = await stream_generate_conversation(
+                cognitive_input,
+                emit_response_delta,
+                pass_request=pass1_request,
+            )
         if not isinstance(conversation, CognitionConversationOutput):
             raise TypeError(
                 "two-pass provider stream_generate_conversation must return "
@@ -259,6 +272,7 @@ async def run_user_turn_two_pass_streaming(
             continuity_runtime=continuity_runtime,
             execution_runtime=execution_runtime,
             execution_revision=execution_revision,
+            pass_request=pass2_request,
         )
 
     return TwoPassTurnResult(

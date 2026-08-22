@@ -34,7 +34,11 @@ from relaylm.actual_model_targets import load_actual_model_repository_snapshot_t
 from relaylm.state import CanonicalState, STATE_CLASS_DEFINITIONS
 from relaylm.storage.filesystem import CharacterDirectory
 from relaylm.turn import run_user_turn
-from relaylm.two_pass_turn import CognitionExecutionRuntime, run_user_turn_two_pass
+from relaylm.two_pass_turn import (
+    CognitionExecutionRuntime,
+    run_user_turn_two_pass,
+    run_user_turn_two_pass_streaming,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -296,6 +300,17 @@ class _TwoPassSpyProvider:
         self.pass1_requests.append(pass_request)
         return CognitionConversationOutput(response="visible")
 
+    async def stream_generate_conversation(
+        self,
+        _,
+        emit_response_delta,
+        *,
+        pass_request=None,
+    ):
+        self.pass1_requests.append(pass_request)
+        await emit_response_delta("visible")
+        return CognitionConversationOutput(response="visible")
+
     async def generate_extraction(self, _, *, pass_request=None):
         self.pass2_requests.append(pass_request)
         return CognitionExtractionOutput()
@@ -335,5 +350,28 @@ def test_turn_runtime_passes_resolved_requests_to_single_and_two_pass_providers(
         assert extraction.status.value == "committed"
         assert two_provider.pass1_requests == [off]
         assert two_provider.pass2_requests == [bounded]
+
+        streaming_character = _make_character(tmp_path / "streaming")
+        streaming_provider = _TwoPassSpyProvider()
+        deltas: list[str] = []
+
+        async def emit_response_delta(delta: str) -> None:
+            deltas.append(delta)
+
+        streaming = await run_user_turn_two_pass_streaming(
+            character=streaming_character,
+            provider=streaming_provider,
+            content="hello",
+            emit_response_delta=emit_response_delta,
+            execution_runtime=CognitionExecutionRuntime(),
+            pass1_request=off,
+            pass2_request=bounded,
+        )
+        streaming_extraction = await streaming.extraction
+        assert streaming.response == "visible"
+        assert deltas == ["visible"]
+        assert streaming_extraction.status.value == "committed"
+        assert streaming_provider.pass1_requests == [off]
+        assert streaming_provider.pass2_requests == [bounded]
 
     asyncio.run(run())
