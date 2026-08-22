@@ -133,6 +133,30 @@ def test_doctor_rejects_non_http_provider_url_before_network_use(tmp_path: Path)
     assert "http or https" in stderr.getvalue()
 
 
+def test_doctor_maps_malformed_provider_url_to_typed_preflight_failure(
+    tmp_path: Path,
+) -> None:
+    character = _character(tmp_path / "character")
+    config = _runtime_config(tmp_path / "runtime.yaml", character)
+    text = config.read_text(encoding="utf-8").replace(
+        "http://127.0.0.1:1234/v1", "http://[::1"
+    )
+    config.write_text(text, encoding="utf-8")
+    stdout = StringIO()
+    stderr = StringIO()
+
+    code = run_cli(
+        ["doctor", "--config", str(config)],
+        environ={},
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert code == 2
+    assert stdout.getvalue() == ""
+    assert "provider_invalid: provider.base_url" in stderr.getvalue()
+
+
 def test_named_cli_overrides_win_and_serve_uses_preflighted_runtime(tmp_path: Path) -> None:
     character = _character(tmp_path / "character")
     config = _runtime_config(tmp_path / "runtime.yaml", character)
