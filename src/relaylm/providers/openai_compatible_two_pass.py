@@ -21,6 +21,7 @@ from relaylm.providers.openai_compatible import (
     _parse_candidate_collections,
     _parse_stream_event,
     _provider_http_error,
+    _require_candidate_sources_in_cognitive_input,
     _resolve_cognition_pass_request,
     _vllm_reasoning_fields,
     serialize_cognitive_input,
@@ -198,7 +199,12 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                 vllm_reasoning_capability=effective_capability,
             )
         )
-        return _parse_extraction_completion(envelope)
+        output = _parse_extraction_completion(envelope)
+        _require_candidate_sources_in_cognitive_input(
+            output,
+            extraction_input.cognitive_input,
+        )
+        return output
 
     async def _post_two_pass(self, *, body: dict[str, Any]) -> Any:
         try:
