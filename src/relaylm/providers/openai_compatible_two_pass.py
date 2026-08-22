@@ -21,6 +21,7 @@ from relaylm.providers.openai_compatible import (
     _parse_candidate_collections,
     _parse_stream_event,
     _provider_http_error,
+    _require_successful_finish_reason,
     _resolve_cognition_pass_request,
     _vllm_reasoning_fields,
     serialize_cognitive_input,
@@ -335,6 +336,7 @@ def _completion_content(envelope: Any) -> str:
     choice = choices[0]
     if not isinstance(choice, dict):
         raise ProviderProtocolError("provider choice must be an object")
+    _require_successful_finish_reason(choice, label="provider response")
     message = choice.get("message")
     if not isinstance(message, dict):
         raise ProviderProtocolError("provider message must be an object")
