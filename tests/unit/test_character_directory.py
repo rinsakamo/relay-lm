@@ -220,3 +220,23 @@ def test_persisted_state_record_requires_non_empty_provenance_sources(
 
     with pytest.raises(CharacterDataError, match="sources"):
         character.load_state()
+
+
+def test_persisted_state_record_rejects_unknown_fields(tmp_path: Path) -> None:
+    character = _make_character(tmp_path)
+    record = {
+        "state_id": "state-1",
+        "state_class": "user.preference",
+        "key": "tea",
+        "value": "likes",
+        "status": "active",
+        "sources": ["evt-1"],
+        "confidence": 0.9,
+    }
+    character.state_path.write_text(
+        json.dumps({"format_version": 1, "states": [record]}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(CharacterDataError):
+        character.load_state()

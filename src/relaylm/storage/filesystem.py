@@ -318,6 +318,22 @@ def _event_from_mapping(raw: Any) -> Event:
 def _state_record_from_mapping(raw: Any) -> StateRecord:
     if not isinstance(raw, dict):
         raise CharacterDataError("state record must be an object")
+    allowed_fields = {
+        "state_id",
+        "state_class",
+        "key",
+        "value",
+        "status",
+        "sources",
+        "valid_from",
+        "valid_to",
+    }
+    unexpected_fields = set(raw) - allowed_fields
+    if unexpected_fields:
+        raise CharacterDataError(
+            "state record contains unsupported fields: "
+            + ", ".join(sorted(unexpected_fields))
+        )
     if "value" not in raw:
         raise CharacterDataError("state.value is required")
     if "sources" not in raw:
