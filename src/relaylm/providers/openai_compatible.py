@@ -193,7 +193,10 @@ def _provider_http_error(
     except (json.JSONDecodeError, ValueError):
         detail = response.text.strip()
     if api_key:
-        detail = detail.replace(api_key, "<redacted>")
+        encoded_api_key = json.dumps(api_key, ensure_ascii=False)[1:-1]
+        detail = detail.replace(encoded_api_key, "<redacted>").replace(
+            api_key, "<redacted>"
+        )
     if not detail:
         detail = "<empty>"
     if len(detail) > _UPSTREAM_ERROR_DETAIL_LIMIT:
