@@ -17,6 +17,7 @@ from relaylm.providers.openai_compatible import (
     OpenAICompatibleProvider,
     ProviderProtocolError,
     _iter_sse_data,
+    _load_cognitive_wire_json,
     _parse_candidate_collections,
     _parse_stream_event,
     _provider_http_error,
@@ -301,12 +302,10 @@ def _parse_conversation_completion(envelope: Any) -> CognitionConversationOutput
 
 def _parse_extraction_completion(envelope: Any) -> CognitionExtractionOutput:
     content = _completion_content(envelope)
-    try:
-        wire = json.loads(content)
-    except json.JSONDecodeError as exc:
-        raise ProviderProtocolError(
-            "provider extraction content is not valid JSON"
-        ) from exc
+    wire = _load_cognitive_wire_json(
+        content,
+        invalid_message="provider extraction content is not valid JSON",
+    )
     if not isinstance(wire, dict) or set(wire) != {
         "state_candidates",
         "continuity_candidates",

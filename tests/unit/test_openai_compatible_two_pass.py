@@ -198,6 +198,37 @@ def test_extraction_without_provider_structured_output_still_fails_closed_on_inv
         asyncio.run(run())
 
 
+def test_extraction_rejects_duplicate_state_candidate_members() -> None:
+    content = (
+        '{"state_candidates":[{"state_class":"user.preference",'
+        '"key":"tea","key":"coffee","op":"set","value":"likes",'
+        '"sources":["evt-now"]}],"continuity_candidates":[]}'
+    )
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": content}}]},
+        )
+
+    async def run() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = OpenAICompatibleTwoPassProvider(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            await provider.generate_extraction(
+                CognitionExtractionInput(
+                    cognitive_input=_cognitive_input(),
+                    assistant_response="了解。",
+                )
+            )
+
+    with pytest.raises(ProviderProtocolError, match="duplicate object member"):
+        asyncio.run(run())
+
+
 def test_extraction_rejects_extra_state_candidate_fields_inside_relaylm() -> None:
     wire = {
         "state_candidates": [
