@@ -5,8 +5,10 @@ from pathlib import Path
 import yaml
 
 from tools.repository_realization_dependencies import (
+    main,
     realization_dependency_errors,
     realization_dependency_review_signals,
+    realization_dependency_review_summary,
 )
 
 
@@ -45,6 +47,22 @@ def _module(root: Path, name: str, content: str) -> str:
     return _touch(root, relative, content)
 
 
+def _declare_two_transitive_edges(root: Path) -> None:
+    importer_one = _module(root, "relaylm.importer_one", "import relaylm.target_one\n")
+    importer_two = _module(root, "relaylm.importer_two", "import relaylm.target_two\n")
+    target_one = _module(root, "relaylm.target_one", "VALUE = 1\n")
+    target_two = _module(root, "relaylm.target_two", "VALUE = 2\n")
+    middle = _module(root, "relaylm.middle", "VALUE = 3\n")
+    _declare(
+        root,
+        "runtime",
+        implementation=(importer_one, importer_two),
+        depends_on=("turn",),
+    )
+    _declare(root, "turn", implementation=(middle,), depends_on=("budget",))
+    _declare(root, "budget", implementation=(target_one, target_two))
+
+
 def test_shared_owner_explains_internal_import(tmp_path: Path) -> None:
     importer = _module(tmp_path, "relaylm.importer", "from relaylm.target import VALUE\n")
     target = _module(tmp_path, "relaylm.target", "VALUE = 1\n")
@@ -77,6 +95,32 @@ def test_transitive_semantic_reachability_is_review_signal_not_error(tmp_path: P
         "src/relaylm/importer.py -> src/relaylm/target.py: runtime realization "
         "dependency is transitive-only (importer owners: runtime; imported owners: budget)",
     )
+
+
+def test_review_summary_groups_exact_owner_sets(tmp_path: Path) -> None:
+    _declare_two_transitive_edges(tmp_path)
+
+    assert realization_dependency_review_summary(tmp_path) == (
+        "2 edge(s): runtime -> budget",
+    )
+
+
+def test_cli_groups_review_signals_by_default_and_expands_on_request(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    _declare_two_transitive_edges(tmp_path)
+
+    assert main(["--root", str(tmp_path)]) == 0
+    default_output = capsys.readouterr().out
+    assert "review: 2 edge(s): runtime -> budget" in default_output
+    assert "src/relaylm/importer_one.py" not in default_output
+    assert "2 review signal(s) across 1 owner-pair cluster(s)" in default_output
+
+    assert main(["--root", str(tmp_path), "--review-edges"]) == 0
+    detailed_output = capsys.readouterr().out
+    assert "src/relaylm/importer_one.py -> src/relaylm/target_one.py" in detailed_output
+    assert "src/relaylm/importer_two.py -> src/relaylm/target_two.py" in detailed_output
 
 
 def test_unexplained_disjoint_import_is_reported(tmp_path: Path) -> None:
