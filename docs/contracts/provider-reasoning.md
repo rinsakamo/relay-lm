@@ -156,10 +156,21 @@ Accordingly, this low-level wire vocabulary still chooses no RelayLM semantic po
 
 `src/relaylm/providers/vllm_reasoning_capability.py` records explicit probe
 results for one already-attested vLLM server/model runtime. The attestation
-requires an `ActualModelRepositorySnapshotTarget`, so the result carries the
-exact #1386 target ID, deterministic snapshot revision, artifact identity, and
-Hub artifact revision alongside the vLLM backend version and exact served model
-identity. It does not infer target identity from a model name.
+requires only a structural frozen target identity view carrying these four
+non-empty strings:
+
+```text
+target_id
+revision
+model_artifact_identity
+artifact_repository_revision
+```
+
+The caller owns loading, verifying, and selecting the target representation.
+The provider does not import or require an actual-model evaluation target type.
+The resulting capability evidence carries the supplied target identity alongside
+the vLLM backend version and exact served model identity; it does not infer target
+identity from a model name.
 
 Each control is classified independently as:
 
