@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import ast
 import sys
+from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path, PurePosixPath
 
@@ -23,10 +24,16 @@ def realization_dependency_errors(root: Path) -> tuple[str, ...]:
 
 
 def realization_dependency_review_signals(root: Path) -> tuple[str, ...]:
-    """Return transitive-only runtime edges that merit architecture review."""
+    """Return raw transitive-only runtime edges that merit architecture review."""
 
     _, review_signals = _audit_realization_dependencies(root)
     return review_signals
+
+
+def realization_dependency_review_summary(root: Path) -> tuple[str, ...]:
+    """Return transitive-only review signals grouped by exact owner sets."""
+
+    return _summarize_review_signals(realization_dependency_review_signals(root))
 
 
 def _audit_realization_dependencies(root: Path) -> tuple[tuple[str, ...], tuple[str, ...]]:
@@ -241,10 +248,33 @@ def _format_owners(owners: Iterable[str]) -> str:
     return ", ".join(values) if values else "<none>"
 
 
+def _summarize_review_signals(review_signals: Sequence[str]) -> tuple[str, ...]:
+    clusters = Counter(_review_signal_owner_pair(message) for message in review_signals)
+    return tuple(
+        f"{count} edge(s): {importer_owners} -> {imported_owners}"
+        for (importer_owners, imported_owners), count in sorted(
+            clusters.items(),
+            key=lambda item: (-item[1], item[0][0], item[0][1]),
+        )
+    )
+
+
+def _review_signal_owner_pair(message: str) -> tuple[str, str]:
+    marker = "(importer owners: "
+    owner_text = message.rsplit(marker, 1)[1].removesuffix(")")
+    importer_owners, imported_owners = owner_text.split("; imported owners: ", 1)
+    return importer_owners, imported_owners
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--root", type=Path, default=Path.cwd(), help="repository root to audit"
+    )
+    parser.add_argument(
+        "--review-edges",
+        action="store_true",
+        help="print every raw transitive-only review edge instead of owner-pair clusters",
     )
     arguments = parser.parse_args(argv)
 
@@ -254,7 +284,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(str(error), file=sys.stderr)
         return 1
 
-    for message in review_signals:
+    review_summary = _summarize_review_signals(review_signals)
+    review_messages = review_signals if arguments.review_edges else review_summary
+    for message in review_messages:
         print(f"review: {message}")
     for message in errors:
         print(message, file=sys.stderr)
@@ -264,7 +296,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if review_signals:
         print(
             "runtime realization dependencies explained with "
-            f"{len(review_signals)} review signal(s)"
+            f"{len(review_signals)} review signal(s) across "
+            f"{len(review_summary)} owner-pair cluster(s)"
         )
     else:
         print("runtime realization dependencies explained")
