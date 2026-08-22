@@ -16,7 +16,7 @@ Executable Realization
 Execution Artifact / Effect
 ```
 
-This document defines the repository-level traceability and dependency rules for that model. It does not redefine product semantics owned by component contracts, repository-authority schema mechanics, or CI guarantees.
+This document defines the repository-level realization quality, traceability, and dependency rules for that model. It does not redefine product semantics owned by component contracts, repository-authority schema mechanics, or CI guarantees.
 
 ## Semantic authority
 
@@ -44,6 +44,92 @@ A realization may legitimately serve more than one semantic owner. Shared realiz
 > **Shared realization means shared implementation responsibility, not shared semantic authorship.**
 
 Shared realization is not an audit escape hatch. Add another owner to an implementation surface only when that surface genuinely realizes semantics owned by that owner independent of any dependency-audit finding. Never add shared ownership merely to make an otherwise unexplained edge pass structural validation.
+
+## Minimal sufficient realization
+
+> **Code is a minimal sufficient executable realization of authority.**
+
+Correctness is judged first by semantic fidelity: the code must realize the owning authority without inventing, weakening, or silently replacing its meaning.
+
+Simplicity and sufficient shortness are structural constraints, not independent goals. A realization must be no more complex than required to execute its current authority faithfully. Line count by itself is not a correctness or quality invariant.
+
+Prefer the simplest deterministic realization that fully satisfies the contract. Additional semantic decisions, abstraction layers, branching, mutable state, dependencies, configuration, compatibility paths, or fallback behavior require a current semantic reason.
+
+The constraint is:
+
+1. **no unnecessary semantics** — do not add decisions that the current authority does not require;
+2. **no unnecessary mechanism** — when multiple implementations faithfully realize the same semantics, prefer the mechanically simpler deterministic one;
+3. **no unnecessary surface** — do not add modules, classes, interfaces, configuration, compatibility layers, or extension points without a current responsibility.
+
+Speculative extensibility is not a current responsibility. "This may be useful later" does not justify an abstraction by itself.
+
+Physical size measures such as lines per function, lines per module, function count, or class count may be review hints. They must not become hard limits that reward artificial splitting. Evaluate semantic coupling, state transitions, side effects, branches, special cases, and dependency fan-in before line count.
+
+If the authority is insufficient to determine required behavior, the realization must not fill the gap with an implementation-local semantic guess. Stop the semantic change, reconcile authority, then realize the clarified contract.
+
+## Realization quality boundaries
+
+### Side effects
+
+Keep deterministic semantic decisions separate from externally observable effects when practical.
+
+```text
+deterministic decision
+       -> explicit owned effect boundary
+       -> filesystem / persistence / network / provider / clock / external system
+```
+
+A side effect must be attributable to an owning contract. Hidden mutation, I/O, provider calls, clock dependence, or external state access inside otherwise semantic/pure logic is a coupling signal and requires a current reason.
+
+This does not require artificial interfaces around every operation. Extract a boundary when it makes ownership, failure behavior, verification, or replacement materially clearer.
+
+### State mutation ownership
+
+A realization may read or observe semantics owned elsewhere when its contract permits that dependency, but it mutates only state whose mutation authority is explicitly assigned by the governing contract.
+
+Read, select, rank, validate, project, and observe operations must not become hidden write paths. Cross-owner state mutation is a strong decomposition signal.
+
+### Failure semantics
+
+Failure behavior is semantic behavior.
+
+Reject, skip, retry, repair, default, degrade, and fallback are not interchangeable implementation conveniences. The governing authority determines which behavior is valid at a boundary.
+
+> **Fallback is semantics, not error-handling convenience.**
+
+Do not add silent repair, coercion, compatibility defaults, retries, or fallback paths merely to make a caller succeed. When the contract requires fail-closed or explicit failure behavior, realize that behavior directly and test it.
+
+### Abstraction
+
+Extract an abstraction when current semantics or repeated mechanics justify one, not merely because reuse appears possible.
+
+Mechanical duplication may be acceptable when extracting it would create semantic coupling. Duplicated semantic decisions are not: one semantic rule should have one normative implementation home.
+
+Interfaces, generic layers, plugin seams, factories, and base classes require the same current-need justification as any other mechanism.
+
+### External dependencies
+
+Mutable external/provider/library behavior stays behind the realization boundary that translates it into RelayLM semantics.
+
+```text
+RelayLM semantic vocabulary
+       -> adapter / boundary realization
+       -> provider or library specific API
+```
+
+Do not leak provider-specific shapes, defaults, parameter names, or compatibility behavior into unrelated core semantic owners when an owned adapter can contain them.
+
+### Replacement and deletion
+
+When a realization is superseded, remove the obsolete path in the same owning convergence unless current authority explicitly requires coexistence or compatibility.
+
+Do not preserve dead helpers, aliases, duplicate read/write paths, temporary bridges, or deprecated behavior by habit. Git preserves the previous realization; current source describes the current executable system.
+
+### Verifiability and local comprehensibility
+
+Tests freeze the meaning that the code must realize, including material failure and boundary cases. A realization that cannot be verified without depending on unrelated mutable context is a design signal even when it currently works.
+
+A bounded code change should normally be understandable from its semantic owner, materially required dependency contracts, its realization, and its tests. Requiring broad unrelated repository or historical context merely to reason about one local change is a coupling signal.
 
 ## Execution artifacts and effects
 
