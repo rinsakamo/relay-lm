@@ -39,7 +39,7 @@ Default paths are convention-based. Future versions may permit explicit path map
 - `memory/events.jsonl` contains RelayLM-owned persisted Events. Missing Event storage is read as an empty journal; malformed non-empty Event lines fail closed. Event IDs must be unique within the journal; a later duplicate ID fails closed with that record's line context.
 - a missing `memory/state.json` file is read as an empty version-1 State;
 - an existing `memory/state.json` must explicitly contain integer `format_version: 1` and a `states` array; RelayLM does not infer either field for an existing file;
-- each persisted State record explicitly contains `state_id`, `state_class`, `key`, `value`, `status`, and `sources`; `valid_from` and `valid_to` are optional;
+- each persisted State record explicitly contains `state_id`, `state_class`, `key`, `value`, `status`, and `sources`; `sources` is a non-empty array of non-empty provenance source IDs, while `valid_from` and `valid_to` are optional;
 - malformed State, missing required persisted fields, or version type coercion fails closed rather than receiving compatibility defaults;
 - `memory/MEMORY.md` is optional readable crystallized synthesis. Missing readable memory is treated as absent rather than as an empty truth source. It does not replace Canonical State or Event provenance.
 - State and `MEMORY.md` writes use temporary-file replacement so the visible target is replaced atomically at the filesystem boundary rather than rewritten in place.

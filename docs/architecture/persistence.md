@@ -41,7 +41,7 @@ The current filesystem implementation intentionally keeps a small, strict contra
 - the Event snapshot is derived, non-persistent, and never replaces `events.jsonl` as occurrence/provenance authority; malformed external edits remain fail-closed rather than being masked by stale cached Events;
 - a missing `state.json` file is treated as an empty `CanonicalState(format_version=1)`;
 - an existing `state.json` must explicitly contain integer `format_version: 1` and a `states` array; missing fields and version type coercion are rejected rather than interpreted as an older/looser format;
-- every persisted State record explicitly contains `state_id`, `state_class`, `key`, `value`, `status`, and `sources`; only `valid_from` and `valid_to` are optional in the current record representation;
+- every persisted State record explicitly contains `state_id`, `state_class`, `key`, `value`, `status`, and `sources`; `sources` is a non-empty array of non-empty provenance source IDs, and only `valid_from` and `valid_to` are optional in the current record representation;
 - `state.json` writes use a temporary file followed by atomic filesystem replacement, and a failed write attempts to remove the temporary file;
 - State persistence preserves JSON-serializable State values and provenance source IDs;
 - a missing `MEMORY.md` means no prior crystallized readable memory and does not block ordinary character operation;
