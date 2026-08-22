@@ -120,6 +120,19 @@ def test_provider_config_accepts_only_current_adapter_and_secret_reference() -> 
         SecretEnvReference(env="not valid")
 
 
+def test_provider_config_rejects_credentials_embedded_in_base_url() -> None:
+    credential = "provider-password"
+
+    with pytest.raises(ValueError, match="base_url must not contain credentials") as caught:
+        ProviderRuntimeConfig(
+            adapter="openai_compatible",
+            base_url=f"https://user:{credential}@provider.example/v1",
+            model="example-model",
+        )
+
+    assert credential not in str(caught.value)
+
+
 def test_runtime_policy_has_no_uncalibrated_profile_or_cognitive_defaults() -> None:
     policy = RuntimePolicyConfig()
 
