@@ -731,10 +731,24 @@ def parse_wire_output(wire: Any) -> CognitiveOutput:
     utterance = wire.get("utterance")
     if not isinstance(utterance, str) or not utterance.strip():
         raise ProviderProtocolError("wire utterance must be a non-empty string")
-    raw_candidates = wire.get("state_candidates")
+    state_candidates, continuity_candidates = _parse_candidate_collections(
+        raw_candidates=wire.get("state_candidates"),
+        raw_continuity_candidates=wire.get("continuity_candidates"),
+    )
+    return CognitiveOutput(
+        response=utterance,
+        state_candidates=state_candidates,
+        continuity_candidates=continuity_candidates,
+    )
+
+
+def _parse_candidate_collections(
+    *,
+    raw_candidates: Any,
+    raw_continuity_candidates: Any,
+) -> tuple[tuple[StateCandidate, ...], tuple[ContinuityCandidate, ...]]:
     if not isinstance(raw_candidates, list):
         raise ProviderProtocolError("wire state_candidates must be an array")
-    raw_continuity_candidates = wire.get("continuity_candidates")
     if not isinstance(raw_continuity_candidates, list):
         raise ProviderProtocolError("wire continuity_candidates must be an array")
 
@@ -786,11 +800,7 @@ def parse_wire_output(wire: Any) -> CognitiveOutput:
         _parse_continuity_candidate(raw, index)
         for index, raw in enumerate(raw_continuity_candidates)
     )
-    return CognitiveOutput(
-        response=utterance,
-        state_candidates=tuple(candidates),
-        continuity_candidates=continuity_candidates,
-    )
+    return tuple(candidates), continuity_candidates
 
 
 def _parse_continuity_candidate(raw: Any, index: int) -> ContinuityCandidate:
