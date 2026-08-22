@@ -43,6 +43,7 @@ The current filesystem implementation intentionally keeps a small, strict contra
 - a missing `state.json` file is treated as an empty `CanonicalState(format_version=1)`;
 - an existing `state.json` must explicitly contain integer `format_version: 1` and a `states` array; missing fields and version type coercion are rejected rather than interpreted as an older/looser format;
 - every persisted State record explicitly contains `state_id`, `state_class`, `key`, `value`, `status`, and `sources`; `sources` is a non-empty array of non-empty provenance source IDs, and only `valid_from` and `valid_to` are optional in the current record representation;
+- `state.json` load and save use strict JSON numeric semantics: non-finite numbers such as `NaN` and positive or negative infinity are rejected rather than rehydrated or emitted;
 - `state.json` writes use a temporary file followed by atomic filesystem replacement, and a failed write attempts to remove the temporary file;
 - State persistence preserves JSON-serializable State values and provenance source IDs;
 - a missing `MEMORY.md` means no prior crystallized readable memory and does not block ordinary character operation;
