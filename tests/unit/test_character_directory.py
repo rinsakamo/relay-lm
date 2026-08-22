@@ -240,3 +240,47 @@ def test_persisted_state_record_rejects_unknown_fields(tmp_path: Path) -> None:
 
     with pytest.raises(CharacterDataError):
         character.load_state()
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_persisted_state_rejects_non_finite_json_numbers(
+    tmp_path: Path,
+    constant: str,
+) -> None:
+    character = _make_character(tmp_path)
+    state_json = (
+        '{"format_version":1,"states":[{'
+        '"state_id":"state-1","state_class":"user.fact","key":"score",'
+        f'"value":{constant},"status":"active","sources":["evt-1"]'
+        "}]}"
+    )
+    character.state_path.write_text(state_json, encoding="utf-8")
+
+    with pytest.raises(CharacterDataError):
+        character.load_state()
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_save_state_rejects_non_finite_numbers_without_replacing_authority(
+    tmp_path: Path,
+    value: float,
+) -> None:
+    character = _make_character(tmp_path)
+    before = character.state_path.read_text(encoding="utf-8")
+    state = CanonicalState(
+        states=(
+            StateRecord(
+                state_id="state-1",
+                state_class="user.fact",
+                key="score",
+                value=value,
+                sources=("evt-1",),
+            ),
+        )
+    )
+
+    with pytest.raises(CharacterDataError):
+        character.save_state(state)
+
+    assert character.state_path.read_text(encoding="utf-8") == before
+    assert not (tmp_path / "memory" / ".state.json.tmp").exists()
