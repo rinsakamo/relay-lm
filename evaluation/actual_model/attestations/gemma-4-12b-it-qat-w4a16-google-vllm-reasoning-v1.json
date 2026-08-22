@@ -1,0 +1,38 @@
+{
+  "format_version": 1,
+  "proof_id": "gemma-4-12b-it-qat-w4a16-google-vllm-reasoning-v1",
+  "source_issue": 1545,
+  "source_comment_id": 5357427205,
+  "target_id": "gemma-4-12b-it-qat-w4a16-google-vllm-v1",
+  "target_revision": "sha256:19a47b8e917bf6d0b0c6b39e2f91161805c8f0855e9ced4233a65a6f92aa4c62",
+  "backend_version": "0.26.1rc1.dev549+g70b84f0bc",
+  "request_model": "gemma-4-12B-it-qat-w4a16",
+  "reasoning_parser": "gemma4",
+  "template_thinking_control": "enable_thinking",
+  "off_probe": {
+    "wire_controls": {
+      "reasoning_effort": "none"
+    },
+    "http_status": 200,
+    "accepted": true,
+    "effect_proven": true,
+    "repeatable": true,
+    "activation_applied": false,
+    "template_kwargs": {},
+    "ambiguous": false
+  },
+  "bounded_probe": {
+    "wire_controls": {
+      "thinking_token_budget": 16
+    },
+    "http_status": 200,
+    "accepted": true,
+    "effect_proven": true,
+    "repeatable": true,
+    "activation_applied": true,
+    "template_kwargs": {
+      "enable_thinking": true
+    },
+    "ambiguous": false
+  }
+}

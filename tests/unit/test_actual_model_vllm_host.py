@@ -38,6 +38,20 @@ PROOF_PATH = (
     / "attestations"
     / "gemma-4-12b-it-qat-w4a16-vllm-reasoning-v1.json"
 )
+GOOGLE_TARGET_PATH = (
+    REPO_ROOT
+    / "evaluation"
+    / "actual_model"
+    / "targets"
+    / "gemma-4-12b-it-qat-w4a16-google-vllm-v1.json"
+)
+GOOGLE_PROOF_PATH = (
+    REPO_ROOT
+    / "evaluation"
+    / "actual_model"
+    / "attestations"
+    / "gemma-4-12b-it-qat-w4a16-google-vllm-reasoning-v1.json"
+)
 TARGET_PATH = (
     REPO_ROOT
     / "evaluation"
@@ -202,6 +216,83 @@ def test_reasoning_probe_proof_reconstructs_capability_against_live_backend() ->
     assert capability.reasoning_off.status is VLLMReasoningCapabilityStatus.SEMANTICALLY_ATTESTED
     assert capability.reasoning_bounded.status is VLLMReasoningCapabilityStatus.SEMANTICALLY_ATTESTED
     assert dict(capability.reasoning_bounded.probe_wire) == {"thinking_token_budget": 16}
+
+
+def test_google_reasoning_probe_proof_is_distinct_and_binds_the_google_target() -> None:
+    old_proof = vllm_host.load_vllm_reasoning_probe_proof(PROOF_PATH)
+    google_target = vllm_host.load_actual_model_repository_snapshot_target(
+        GOOGLE_TARGET_PATH
+    )
+    google_proof = vllm_host.load_vllm_reasoning_probe_proof(GOOGLE_PROOF_PATH)
+
+    assert old_proof.proof_id == "gemma-4-12b-it-qat-w4a16-vllm-reasoning-v1"
+    assert google_proof.proof_id == (
+        "gemma-4-12b-it-qat-w4a16-google-vllm-reasoning-v1"
+    )
+    assert google_proof.proof_id != old_proof.proof_id
+    assert google_proof.source_issue == 1545
+    assert google_proof.source_comment_id == 5357427205
+    assert google_proof.target_id == google_target.target_id
+    assert google_proof.target_revision == google_target.revision
+    assert google_proof.backend_version == "0.26.1rc1.dev549+g70b84f0bc"
+    assert google_proof.request_model == "gemma-4-12B-it-qat-w4a16"
+    assert google_proof.reasoning_parser == "gemma4"
+    assert google_proof.template_thinking_control == "enable_thinking"
+    assert dict(google_proof.off_probe.wire_controls.to_mapping()) == {
+        "reasoning_effort": "none"
+    }
+    assert google_proof.off_probe.accepted is True
+    assert google_proof.off_probe.effect_proven is True
+    assert google_proof.off_probe.repeatable is True
+    assert google_proof.off_probe.activation_applied is False
+    assert google_proof.off_probe.template_kwargs == ()
+    assert google_proof.off_probe.ambiguous is False
+    assert dict(google_proof.bounded_probe.wire_controls.to_mapping()) == {
+        "thinking_token_budget": 16
+    }
+    assert google_proof.bounded_probe.accepted is True
+    assert google_proof.bounded_probe.effect_proven is True
+    assert google_proof.bounded_probe.repeatable is True
+    assert google_proof.bounded_probe.activation_applied is True
+    assert google_proof.bounded_probe.template_kwargs == (("enable_thinking", True),)
+    assert google_proof.bounded_probe.ambiguous is False
+
+    def fetch_json(url: str, _: str | None) -> object:
+        if url.endswith("/version"):
+            return {"version": google_proof.backend_version}
+        if url.endswith("/v1/models"):
+            return {
+                "object": "list",
+                "data": [
+                    {
+                        "id": google_proof.request_model,
+                        "object": "model",
+                        "root": "/tmp/relaylm-google-gemma4-official-attest.CKxAGh",
+                        "max_model_len": 1616,
+                    }
+                ],
+            }
+        raise AssertionError(f"unexpected Google attestation URL: {url}")
+
+    capability = vllm_host.acquire_vllm_reasoning_capability(
+        proof=google_proof,
+        target=google_target,
+        base_url="http://127.0.0.1:8000/v1",
+        api_key=None,
+        fetch_json=fetch_json,
+    )
+    assert capability.backend_version == google_proof.backend_version
+    assert capability.request_model == google_proof.request_model
+    assert capability.target_id == google_target.target_id
+    assert capability.target_revision == google_target.revision
+    assert (
+        capability.reasoning_off.status
+        is VLLMReasoningCapabilityStatus.SEMANTICALLY_ATTESTED
+    )
+    assert (
+        capability.reasoning_bounded.status
+        is VLLMReasoningCapabilityStatus.SEMANTICALLY_ATTESTED
+    )
 
 
 def test_reasoning_probe_proof_fails_closed_on_live_version_drift() -> None:
