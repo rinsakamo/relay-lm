@@ -22,6 +22,7 @@ def test_stage_r_reference_plan_is_separate_from_immutable_historical_plan() -> 
     assert historical.effective_context_window == 1024
     assert historical.capacity_evidence_id is None
     assert current.screening_id == "stage-r0-vllm-reference-v1"
+    assert current.target_id == "gemma-4-12b-it-qat-w4a16-google-vllm-v1"
     assert current.effective_context_window == 1616
     assert current.capacity_evidence_id is None
     assert current.scenario_ids == (
@@ -29,6 +30,9 @@ def test_stage_r_reference_plan_is_separate_from_immutable_historical_plan() -> 
         "continuity-lifecycle-v1",
     )
     assert reference_screening_condition_ids(current) == ("B",)
+    assert current.conditions["B"].cognition_execution.mode == "two_pass"
+    assert current.conditions["B"].pass_requests.pass1.reasoning_mode.value == "off"
+    assert current.conditions["B"].pass_requests.pass2.reasoning_mode.value == "off"
 
 
 def test_stage_r_coverage_ledger_keeps_pilot_and_follow_up_explicit() -> None:

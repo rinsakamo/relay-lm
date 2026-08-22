@@ -25,29 +25,29 @@ PLAN_PATH = (
     / "evaluation"
     / "actual_model"
     / "screenings"
-    / "cogp5-vllm-screening-v1.json"
+    / "stage-r0-vllm-reference-v1.json"
 )
 PROOF_PATH = (
     REPO_ROOT
     / "evaluation"
     / "actual_model"
     / "attestations"
-    / "gemma-4-12b-it-qat-w4a16-vllm-reasoning-v1.json"
+    / "gemma-4-12b-it-qat-w4a16-google-vllm-reasoning-v1.json"
 )
 TARGET_PATH = (
     REPO_ROOT
     / "evaluation"
     / "actual_model"
     / "targets"
-    / "gemma-4-12b-it-qat-w4a16-vllm-v1.json"
+    / "gemma-4-12b-it-qat-w4a16-google-vllm-v1.json"
 )
-SNAPSHOT_ROOT = Path("/tmp/relaylm-unsloth-w4a16-model")
+SNAPSHOT_ROOT = Path("/tmp/relaylm-google-gemma4-official-attest.CKxAGh")
 LIVE_MAX_MODEL_LEN = 1536
 
 
 def _live_fetch(url: str, _: str | None) -> object:
     if url.endswith("/version"):
-        return {"version": "0.27.1"}
+        return {"version": "0.26.1rc1.dev549+g70b84f0bc"}
     if url.endswith("/v1/models"):
         return {
             "object": "list",
