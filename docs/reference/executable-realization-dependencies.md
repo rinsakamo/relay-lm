@@ -43,6 +43,8 @@ A realization may legitimately serve more than one semantic owner. Shared realiz
 
 > **Shared realization means shared implementation responsibility, not shared semantic authorship.**
 
+Shared realization is not an audit escape hatch. Add another owner to an implementation surface only when that surface genuinely realizes semantics owned by that owner independent of any dependency-audit finding. Never add shared ownership merely to make an otherwise unexplained edge pass structural validation.
+
 ## Execution artifacts and effects
 
 Executing a realization may produce an artifact or an effect.
@@ -148,14 +150,18 @@ Evidence production and evidence references continue to use their dedicated repo
 
 ## Explaining runtime realization dependencies
 
-A derived internal runtime realization edge is structurally explainable when at least one of these conditions holds:
+A derived internal runtime realization edge is classified from existing authority rather than converted into new dependency metadata.
 
-1. the importing and imported realization surfaces share at least one semantic owner; or
-2. at least one semantic owner of the importing surface can reach at least one semantic owner of the imported surface through the declared semantic dependency graph.
+1. **shared realization** — the importing and imported surfaces share at least one semantic owner;
+2. **direct semantic explanation** — an importing owner directly `depends_on` an imported owner;
+3. **transitive semantic explanation** — no shared owner or direct dependency explains the edge, but an importing owner can reach an imported owner through a longer semantic dependency chain;
+4. **unexplained** — none of the conditions above holds.
 
-The second condition may be direct or transitive. Reachability is an explanation that the implementation dependency sits beneath an existing semantic dependency chain; it is not a claim that every intermediate owner is directly invoked by the code.
+Shared realization and a direct semantic dependency structurally explain the runtime edge.
 
-This rule gives shared integration surfaces a natural representation without adding a second hand-maintained dependency registry.
+Transitive semantic reachability is weaker. It demonstrates that the edge lies beneath an existing semantic dependency chain, but it may also reveal a realization that skips an intended intermediate boundary. A **transitive-only** edge is therefore not an unexplained dependency error, but it remains an architecture-review signal until the direct runtime coupling is understood.
+
+This distinction avoids both extremes: RelayLM does not require every Python import to have a matching direct `depends_on`, and it does not silently treat every reachable semantic path as equivalent to a direct implementation boundary.
 
 Example:
 
@@ -168,7 +174,19 @@ openai_compatible.py -----------> state.py
           derived runtime edge
 ```
 
-If `openai_compatible.py` is shared by `cognitive_turn` and another owner, the owner set is considered as a set rather than forcing one arbitrary file owner.
+If `openai_compatible.py` is shared by `cognitive_turn` and another owner, the owner set is considered as a set rather than forcing one arbitrary file owner. That shared ownership must still be independently justified by the semantics the file actually realizes.
+
+## Transitive-only runtime realization edges
+
+A statically resolvable RelayLM-internal runtime edge is **transitive-only** when:
+
+- the two realization surfaces do not share an owner;
+- no importing owner directly depends on an imported owner; and
+- at least one importing owner can reach an imported owner only through two or more semantic dependency edges.
+
+A transitive-only finding is review data, not authority and not an automatic failure condition. The review asks whether the direct implementation coupling is appropriate or whether the realization should instead use an existing intermediate boundary.
+
+Do not repair a transitive-only finding by adding a direct semantic dependency unless the consumer's canonical semantics genuinely require that direct dependency.
 
 ## Unexplained runtime realization edges
 
@@ -186,9 +204,11 @@ The owning transaction must determine which current-state explanation is correct
 4. **accidental coupling** — the import or call should be removed;
 5. **type-only boundary** — the dependency is not needed at runtime and should be made explicit with the language/tooling mechanism rather than authority metadata.
 
+Shared integration realization is valid only when the implementation already has real semantic responsibility for the additional owner. It must not be chosen solely because it makes the audit green.
+
 Do not introduce a new dependency kind merely to silence a finding. Add repository metadata only when repeated real cases prove that the existing authority and ownership model cannot explain the relationship.
 
-## Candidate deterministic validation
+## Deterministic validation
 
 A deterministic runtime-realization validator may audit dependencies with the following bounded responsibility:
 
@@ -196,22 +216,24 @@ A deterministic runtime-realization validator may audit dependencies with the fo
 2. exclude imports explicitly contained under `TYPE_CHECKING` from runtime edges;
 3. map each production module to its semantic owner set using existing `implementation` declarations;
 4. derive internal runtime realization edges;
-5. treat owner overlap as explained;
-6. otherwise test semantic reachability through existing `depends_on` edges;
-7. report only the remaining unexplained runtime edges.
+5. classify owner overlap as shared realization;
+6. classify a one-edge semantic relationship as directly explained;
+7. classify longer semantic reachability as a transitive-only review signal;
+8. report only unreachable edges as unexplained dependency errors.
 
 The validator must not:
 
 - equate the Python import graph with the semantic dependency graph;
 - add or mutate `depends_on` automatically;
 - reject legitimate shared implementation;
+- infer that shared ownership is legitimate merely because it removes a finding;
 - infer product semantics from code layout;
 - treat external-library imports as semantic-owner dependencies;
 - treat explicit type-only imports as runtime realization coupling;
 - require dynamic or reflective runtime behavior to be statically reconstructed in the first implementation;
 - turn artifact flow into semantic dependency metadata.
 
-Before such a validator becomes a required gate, its current-repository findings must be audited and reconciled owner-locally, as was done for production ownership coverage.
+Before unexplained runtime edges become a required zero-finding gate, current-repository findings must be audited and reconciled owner-locally, as was done for production ownership coverage. Transitive-only findings may remain non-gating review signals unless repeated evidence justifies a stronger rule.
 
 ## Traceability invariant
 
