@@ -280,7 +280,7 @@ A statically resolvable RelayLM-internal **runtime** realization dependency is u
 
 Explicit type-only imports such as imports under `TYPE_CHECKING` are outside this finding set.
 
-An unexplained edge is an architecture-review signal. It must not be repaired automatically by adding dependency declarations.
+An unexplained edge is a required repository-invariant failure and an architecture-review signal. The current repository must have zero unexplained runtime realization edges. A finding must not be repaired automatically by adding dependency declarations.
 
 The owning transaction must determine which current-state explanation is correct:
 
@@ -296,7 +296,7 @@ Do not introduce a new dependency kind merely to silence a finding. Add reposito
 
 ## Deterministic validation
 
-A deterministic runtime-realization validator may audit dependencies with the following bounded responsibility:
+A deterministic runtime-realization validator audits dependencies with the following bounded responsibility:
 
 1. parse statically resolvable imports within `src/relaylm/**`;
 2. exclude imports explicitly contained under `TYPE_CHECKING` from runtime edges;
@@ -319,7 +319,7 @@ The validator must not:
 - require dynamic or reflective runtime behavior to be statically reconstructed in the first implementation;
 - turn artifact flow into semantic dependency metadata.
 
-Before unexplained runtime edges become a required zero-finding gate, current-repository findings must be audited and reconciled owner-locally, as was done for production ownership coverage. Transitive-only findings may remain non-gating review signals unless repeated evidence justifies a stronger rule.
+Repository CI requires zero unexplained runtime realization dependency errors against the current repository. Transitive-only findings remain non-gating architecture-review signals; their existence or count does not by itself fail this invariant.
 
 ## Traceability invariant
 
