@@ -64,6 +64,7 @@ tests:
 - tests/unit/test_event_retrieval.py
 - tests/unit/test_event_evidence_projection.py
 depends_on:
+- continuity_context
 - memory_provenance
 - persistence
 - state_and_validation
