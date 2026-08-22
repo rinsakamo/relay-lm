@@ -197,3 +197,26 @@ def test_persisted_state_record_does_not_receive_compatibility_defaults(
 
     with pytest.raises(CharacterDataError):
         character.load_state()
+
+
+@pytest.mark.parametrize("sources", [[], [""], ["   "]])
+def test_persisted_state_record_requires_non_empty_provenance_sources(
+    tmp_path: Path,
+    sources: list[str],
+) -> None:
+    character = _make_character(tmp_path)
+    record = {
+        "state_id": "state-1",
+        "state_class": "user.preference",
+        "key": "tea",
+        "value": "likes",
+        "status": "active",
+        "sources": sources,
+    }
+    character.state_path.write_text(
+        json.dumps({"format_version": 1, "states": [record]}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(CharacterDataError, match="sources"):
+        character.load_state()
