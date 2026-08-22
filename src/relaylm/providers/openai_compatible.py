@@ -174,6 +174,24 @@ class ProviderProtocolError(RuntimeError):
     """Upstream provider failed to return a valid RelayLM cognitive result."""
 
 
+def _reject_duplicate_json_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ProviderProtocolError(
+                "cognitive wire JSON contains duplicate object member"
+            )
+        result[key] = value
+    return result
+
+
+def _load_cognitive_wire_json(text: str, *, invalid_message: str) -> Any:
+    try:
+        return json.loads(text, object_pairs_hook=_reject_duplicate_json_members)
+    except json.JSONDecodeError as exc:
+        raise ProviderProtocolError(invalid_message) from exc
+
+
 _UPSTREAM_ERROR_DETAIL_LIMIT = 2048
 
 
@@ -387,10 +405,10 @@ class OpenAICompatibleProvider:
         if not structured_text:
             raise ProviderProtocolError("upstream structured stream contained no cognitive output")
 
-        try:
-            wire = json.loads(structured_text)
-        except json.JSONDecodeError as exc:
-            raise ProviderProtocolError("provider streamed content is not complete JSON") from exc
+        wire = _load_cognitive_wire_json(
+            structured_text,
+            invalid_message="provider streamed content is not complete JSON",
+        )
         output = parse_wire_output(wire)
         _require_candidate_sources_in_cognitive_input(output, cognitive_input)
 
@@ -747,10 +765,10 @@ def parse_chat_completion(envelope: Any) -> CognitiveOutput:
 
     if not isinstance(content, str):
         raise ProviderProtocolError("provider message content must be a JSON string")
-    try:
-        wire = json.loads(content)
-    except json.JSONDecodeError as exc:
-        raise ProviderProtocolError("provider message content is not valid JSON") from exc
+    wire = _load_cognitive_wire_json(
+        content,
+        invalid_message="provider message content is not valid JSON",
+    )
     return parse_wire_output(wire)
 
 
