@@ -16,14 +16,29 @@ PACKAGE_ROOT = "relaylm"
 
 
 def realization_dependency_errors(root: Path) -> tuple[str, ...]:
-    """Return unexplained static RelayLM-internal runtime realization edges.
+    """Return unexplained static RelayLM-internal runtime realization edges."""
+
+    errors, _ = _audit_realization_dependencies(root)
+    return errors
+
+
+def realization_dependency_review_signals(root: Path) -> tuple[str, ...]:
+    """Return transitive-only runtime edges that merit architecture review."""
+
+    _, review_signals = _audit_realization_dependencies(root)
+    return review_signals
+
+
+def _audit_realization_dependencies(root: Path) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Classify static RelayLM-internal runtime realization edges.
 
     Production module ownership is read from existing ``implementation``
     declarations. Imports explicitly contained under ``TYPE_CHECKING`` are
-    type/interface dependencies and are excluded from runtime edges. A static
-    internal runtime import is structurally explained when the importing and
-    imported modules share an owner or when any importing owner can reach any
-    imported owner through semantic ``depends_on`` edges.
+    type/interface dependencies and are excluded from runtime edges.
+
+    Shared owner overlap and direct semantic dependencies explain an edge.
+    Transitive-only semantic reachability is reported separately as a non-gating
+    review signal. Unreachable edges remain unexplained dependency errors.
 
     This audit derives runtime realization edges from code. It never mutates or
     infers semantic authority.
@@ -35,6 +50,7 @@ def realization_dependency_errors(root: Path) -> tuple[str, ...]:
     dependencies = {item.id: frozenset(item.depends_on) for item in declarations}
 
     errors: set[str] = set()
+    review_signals: set[str] = set()
     for importer_module, importer_path in sorted(module_paths.items()):
         importer_owners = owners_by_path.get(importer_path, frozenset())
         for imported_module in _internal_imports(
@@ -44,18 +60,26 @@ def realization_dependency_errors(root: Path) -> tuple[str, ...]:
         ):
             imported_path = module_paths[imported_module]
             imported_owners = owners_by_path.get(imported_path, frozenset())
-            if _edge_is_explained(
-                importer_owners,
-                imported_owners,
-                dependencies,
-            ):
+
+            if importer_owners & imported_owners:
                 continue
+            if _has_direct_dependency(importer_owners, imported_owners, dependencies):
+                continue
+            if _has_reachable_dependency(importer_owners, imported_owners, dependencies):
+                review_signals.add(
+                    f"{importer_path} -> {imported_path}: runtime realization dependency is "
+                    f"transitive-only (importer owners: {_format_owners(importer_owners)}; "
+                    f"imported owners: {_format_owners(imported_owners)})"
+                )
+                continue
+
             errors.add(
                 f"{importer_path} -> {imported_path}: realization dependency is unexplained "
                 f"(importer owners: {_format_owners(importer_owners)}; "
                 f"imported owners: {_format_owners(imported_owners)})"
             )
-    return tuple(sorted(errors))
+
+    return tuple(sorted(errors)), tuple(sorted(review_signals))
 
 
 def _production_module_paths(root: Path) -> dict[str, str]:
@@ -170,13 +194,23 @@ def _resolve_from_base(importer_module: str, level: int, module: str | None) -> 
     return ".".join(base_parts)
 
 
-def _edge_is_explained(
+def _has_direct_dependency(
     importer_owners: frozenset[str],
     imported_owners: frozenset[str],
     dependencies: Mapping[str, frozenset[str]],
 ) -> bool:
-    if importer_owners & imported_owners:
-        return True
+    return any(
+        imported in dependencies.get(importer, ())
+        for importer in importer_owners
+        for imported in imported_owners
+    )
+
+
+def _has_reachable_dependency(
+    importer_owners: frozenset[str],
+    imported_owners: frozenset[str],
+    dependencies: Mapping[str, frozenset[str]],
+) -> bool:
     return any(
         _is_reachable(importer, imported, dependencies)
         for importer in importer_owners
@@ -215,17 +249,25 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
 
     try:
-        errors = realization_dependency_errors(arguments.root)
+        errors, review_signals = _audit_realization_dependencies(arguments.root)
     except (AuthorityError, SyntaxError) as error:
         print(str(error), file=sys.stderr)
         return 1
 
+    for message in review_signals:
+        print(f"review: {message}")
     for message in errors:
         print(message, file=sys.stderr)
     if errors:
         return 1
 
-    print("runtime realization dependencies explained")
+    if review_signals:
+        print(
+            "runtime realization dependencies explained with "
+            f"{len(review_signals)} review signal(s)"
+        )
+    else:
+        print("runtime realization dependencies explained")
     return 0
 
 

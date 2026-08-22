@@ -4,7 +4,10 @@ from pathlib import Path
 
 import yaml
 
-from tools.repository_realization_dependencies import realization_dependency_errors
+from tools.repository_realization_dependencies import (
+    realization_dependency_errors,
+    realization_dependency_review_signals,
+)
 
 
 def _touch(root: Path, relative: str, content: str = "surface\n") -> str:
@@ -48,6 +51,7 @@ def test_shared_owner_explains_internal_import(tmp_path: Path) -> None:
     _declare(tmp_path, "integration", implementation=(importer, target))
 
     assert realization_dependency_errors(tmp_path) == ()
+    assert realization_dependency_review_signals(tmp_path) == ()
 
 
 def test_direct_semantic_dependency_explains_internal_import(tmp_path: Path) -> None:
@@ -57,9 +61,10 @@ def test_direct_semantic_dependency_explains_internal_import(tmp_path: Path) -> 
     _declare(tmp_path, "state", implementation=(target,))
 
     assert realization_dependency_errors(tmp_path) == ()
+    assert realization_dependency_review_signals(tmp_path) == ()
 
 
-def test_transitive_semantic_reachability_explains_internal_import(tmp_path: Path) -> None:
+def test_transitive_semantic_reachability_is_review_signal_not_error(tmp_path: Path) -> None:
     importer = _module(tmp_path, "relaylm.importer", "import relaylm.target\n")
     target = _module(tmp_path, "relaylm.target", "VALUE = 1\n")
     middle = _module(tmp_path, "relaylm.middle", "VALUE = 2\n")
@@ -68,6 +73,10 @@ def test_transitive_semantic_reachability_explains_internal_import(tmp_path: Pat
     _declare(tmp_path, "budget", implementation=(target,))
 
     assert realization_dependency_errors(tmp_path) == ()
+    assert realization_dependency_review_signals(tmp_path) == (
+        "src/relaylm/importer.py -> src/relaylm/target.py: runtime realization "
+        "dependency is transitive-only (importer owners: runtime; imported owners: budget)",
+    )
 
 
 def test_unexplained_disjoint_import_is_reported(tmp_path: Path) -> None:
@@ -80,6 +89,7 @@ def test_unexplained_disjoint_import_is_reported(tmp_path: Path) -> None:
         "src/relaylm/importer.py -> src/relaylm/target.py: realization dependency is "
         "unexplained (importer owners: provider; imported owners: state)",
     )
+    assert realization_dependency_review_signals(tmp_path) == ()
 
 
 def test_external_imports_are_not_semantic_owner_edges(tmp_path: Path) -> None:
