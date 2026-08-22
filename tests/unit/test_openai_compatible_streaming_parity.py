@@ -126,6 +126,61 @@ def _split_after_utterance(wire: dict[str, object]) -> tuple[str, str]:
     return serialized[:split_at], serialized[split_at:]
 
 
+def test_buffered_rejects_multiple_upstream_choices() -> None:
+    content = json.dumps(_wire(), ensure_ascii=False, separators=(",", ":"))
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        choice = {"message": {"content": content}}
+        return httpx.Response(200, json={"choices": [choice, choice]})
+
+    async def run() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = OpenAICompatibleProvider(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            with pytest.raises(ProviderProtocolError, match="exactly one"):
+                await provider.generate(_cognitive_input())
+
+    asyncio.run(run())
+
+
+def test_streaming_rejects_multiple_upstream_choices_before_visible_selection() -> None:
+    content = json.dumps(_wire(), ensure_ascii=False, separators=(",", ":"))
+    choice = {"delta": {"content": content}, "finish_reason": "stop"}
+    envelope = {"choices": [choice, choice]}
+    chunks = [
+        f"data: {json.dumps(envelope, ensure_ascii=False)}\n\n".encode("utf-8"),
+        b"data: [DONE]\n\n",
+    ]
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            stream=_StaticSSEStream(chunks),
+        )
+
+    async def run() -> list[str]:
+        emitted: list[str] = []
+
+        async def emit(text: str) -> None:
+            emitted.append(text)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = OpenAICompatibleProvider(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            with pytest.raises(ProviderProtocolError, match="exactly one"):
+                await provider.stream_generate(_cognitive_input(), emit)
+        return emitted
+
+    assert asyncio.run(run()) == []
+
+
 def test_buffered_and_streaming_return_identical_semantic_output() -> None:
     wire = _wire()
     first, tail = _split_after_utterance(wire)

@@ -557,8 +557,10 @@ def _parse_stream_event(data: str) -> tuple[str | None, Any]:
         raise ProviderProtocolError("upstream SSE data is not valid JSON") from exc
     try:
         choices = _mapping(envelope, "provider stream response")["choices"]
-        if not isinstance(choices, list) or not choices:
-            raise ProviderProtocolError("provider stream choices must be a non-empty array")
+        if not isinstance(choices, list) or len(choices) != 1:
+            raise ProviderProtocolError(
+                "provider stream choices must contain exactly one choice"
+            )
         choice = _mapping(choices[0], "provider stream choice")
         delta = _mapping(choice.get("delta", {}), "provider stream delta")
     except KeyError as exc:
@@ -734,8 +736,10 @@ def _require_candidate_sources_in_cognitive_input(
 def parse_chat_completion(envelope: Any) -> CognitiveOutput:
     try:
         choices = _mapping(envelope, "provider response")["choices"]
-        if not isinstance(choices, list) or not choices:
-            raise ProviderProtocolError("provider response choices must be a non-empty array")
+        if not isinstance(choices, list) or len(choices) != 1:
+            raise ProviderProtocolError(
+                "provider response choices must contain exactly one choice"
+            )
         message = _mapping(choices[0], "provider choice")["message"]
         content = _mapping(message, "provider message")["content"]
     except KeyError as exc:
