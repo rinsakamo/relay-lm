@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from enum import Enum
+from urllib.parse import urlsplit
 
 from relaylm.budget import BudgetDegradationPolicy, TotalBudgetConfig
 from relaylm.budget_enforcement import TokenCountMode
@@ -106,6 +107,14 @@ class ProviderRuntimeConfig:
                 "provider.backend must be OpenAICompatibleBackendId"
             )
         _require_non_empty_string("provider.base_url", self.base_url)
+        try:
+            parsed_base_url = urlsplit(self.base_url)
+        except ValueError:
+            parsed_base_url = None
+        if parsed_base_url is not None and (
+            parsed_base_url.username is not None or parsed_base_url.password is not None
+        ):
+            raise ValueError("provider.base_url must not contain credentials")
         _require_non_empty_string("provider.model", self.model)
         if self.api_key is not None and not isinstance(
             self.api_key, SecretEnvReference
