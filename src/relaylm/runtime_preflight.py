@@ -84,7 +84,14 @@ def prepare_runtime(
 
 def _validate_provider_configuration(resolved: ResolvedRuntimeConfig) -> None:
     provider = resolved.config.provider
-    parsed = urlsplit(provider.base_url)
+    try:
+        parsed = urlsplit(provider.base_url)
+    except ValueError as exc:
+        raise RuntimePreflightError(
+            RuntimeConfigErrorCode.PROVIDER_INVALID,
+            field="provider.base_url",
+            message="provider base URL is malformed",
+        ) from exc
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise RuntimePreflightError(
             RuntimeConfigErrorCode.PROVIDER_INVALID,
