@@ -308,16 +308,21 @@ def resolve_runtime_config(
     )
     runtime_policy = _parse_runtime_policy(raw.get("runtime", {}))
 
-    config = RuntimeConfig(
-        format_version=format_version,
-        character=CharacterRuntimeConfig(directory=character_directory),
-        provider=ProviderRuntimeConfig(
+    try:
+        provider_config = ProviderRuntimeConfig(
             adapter=provider_adapter,
             backend=provider_backend,
             base_url=provider_base_url,
             model=provider_model,
             api_key=provider_api_key_ref,
-        ),
+        )
+    except ValueError as exc:
+        _invalid_value("provider.base_url", str(exc))
+
+    config = RuntimeConfig(
+        format_version=format_version,
+        character=CharacterRuntimeConfig(directory=character_directory),
+        provider=provider_config,
         server=ServerRuntimeConfig(host=server_host, port=server_port),
         runtime=runtime_policy,
     )
