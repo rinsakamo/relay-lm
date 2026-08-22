@@ -174,6 +174,20 @@ class ProviderProtocolError(RuntimeError):
     """Upstream provider failed to return a valid RelayLM cognitive result."""
 
 
+def _require_successful_finish_reason(
+    choice: Mapping[str, Any],
+    *,
+    label: str,
+) -> None:
+    finish_reason = choice.get("finish_reason")
+    if finish_reason is None:
+        return
+    if not isinstance(finish_reason, str) or finish_reason != "stop":
+        raise ProviderProtocolError(
+            f"{label} finish_reason must be 'stop' when present"
+        )
+
+
 def _reject_duplicate_json_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -580,6 +594,7 @@ def _parse_stream_event(data: str) -> tuple[str | None, Any]:
                 "provider stream choices must contain exactly one choice"
             )
         choice = _mapping(choices[0], "provider stream choice")
+        _require_successful_finish_reason(choice, label="provider stream response")
         delta = _mapping(choice.get("delta", {}), "provider stream delta")
     except KeyError as exc:
         raise ProviderProtocolError(f"provider stream missing field: {exc.args[0]}") from exc
@@ -758,7 +773,9 @@ def parse_chat_completion(envelope: Any) -> CognitiveOutput:
             raise ProviderProtocolError(
                 "provider response choices must contain exactly one choice"
             )
-        message = _mapping(choices[0], "provider choice")["message"]
+        choice = _mapping(choices[0], "provider choice")
+        _require_successful_finish_reason(choice, label="provider response")
+        message = choice["message"]
         content = _mapping(message, "provider message")["content"]
     except KeyError as exc:
         raise ProviderProtocolError(f"provider response missing field: {exc.args[0]}") from exc
