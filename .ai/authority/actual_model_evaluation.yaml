@@ -117,6 +117,14 @@ evidence:
     execution-file metadata, serving-tokenizer roles, and chat-template role.
   surfaces:
   - evaluation/actual_model/targets/gemma-4-12b-it-qat-w4a16-vllm-v1.json
+- id: actual-model-gemma-google-vllm-snapshot-target-v1
+  summary: >-
+    Frozen Google official vLLM-native Gemma 4 W4A16 repository snapshot
+    identity with exact execution-file metadata, serving-tokenizer roles, and
+    chat-template role. This is a separate provenance target from the existing
+    Unsloth snapshot, even where model bytes are identical.
+  surfaces:
+  - evaluation/actual_model/targets/gemma-4-12b-it-qat-w4a16-google-vllm-v1.json
 - id: actual-model-vllm-reasoning-proof-v1
   summary: >-
     Machine-readable projection of the already-attested effective OFF and
