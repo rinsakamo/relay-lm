@@ -14,6 +14,7 @@ implementation:
 - src/relaylm/memory_retrieval.py
 - src/relaylm/event_retrieval.py
 - src/relaylm/retrieval_lexical.py
+- src/relaylm/storage/filesystem.py
 tests:
 - tests/unit/test_context_state_selection.py
 - tests/unit/test_context_state_diagnostics.py
