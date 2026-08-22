@@ -243,3 +243,82 @@ def test_cli_maps_typed_preflight_failure_to_exit_two(monkeypatch: pytest.Monkey
     assert code == 2
     assert stdout.getvalue() == ""
     assert "capability_unavailable" in stderr.getvalue()
+
+
+def test_cli_carries_explicit_vllm_reasoning_capability_to_preflight(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import relaylm.cli as cli
+
+    capability = object()
+    captured: dict[str, object | None] = {}
+
+    def fail(
+        *args: object,
+        token_counter_capabilities: object = None,
+        vllm_reasoning_capability: object = None,
+        **kwargs: object,
+    ) -> object:
+        captured["capability"] = vllm_reasoning_capability
+        raise RuntimePreflightError(
+            RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+            field="runtime.cognitive_budget.token_counter.capability",
+            message="stop after carriage observation",
+        )
+
+    monkeypatch.setattr(cli, "prepare_runtime", fail)
+    stdout = StringIO()
+    stderr = StringIO()
+
+    code = run_cli(
+        [
+            "doctor",
+            "--character",
+            "/tmp/character",
+            "--provider-base-url",
+            "http://127.0.0.1:1234/v1",
+            "--provider-model",
+            "model",
+        ],
+        environ={},
+        stdout=stdout,
+        stderr=stderr,
+        vllm_reasoning_capability=capability,
+    )
+
+    assert code == 2
+    assert captured["capability"] is capability
+
+
+def test_preflight_carries_explicit_vllm_reasoning_capability_to_assembly(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import relaylm.runtime_preflight as preflight
+    from relaylm.runtime_config_loader import resolve_runtime_config
+
+    character = _character(tmp_path / "character")
+    config = _runtime_config(tmp_path / "runtime.yaml", character)
+    resolved = resolve_runtime_config(config_path=config, environ={})
+    capability = object()
+    assembly = object()
+    captured: dict[str, object | None] = {}
+
+    def assemble(
+        *args: object,
+        token_counter_capabilities: object = None,
+        vllm_reasoning_capability: object = None,
+        **kwargs: object,
+    ) -> object:
+        captured["capability"] = vllm_reasoning_capability
+        return assembly
+
+    monkeypatch.setattr(preflight, "assemble_runtime", assemble)
+
+    prepared = preflight.prepare_runtime(
+        resolved,
+        vllm_reasoning_capability=capability,
+    )
+
+    assert prepared.assembly is assembly
+    assert captured["capability"] is capability
