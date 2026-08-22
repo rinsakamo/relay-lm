@@ -33,6 +33,10 @@ from relaylm.runtime_config import (
     ServerRuntimeConfig,
     TokenCounterCapabilityConfig,
 )
+from relaylm.runtime_config_loader import (
+    RuntimeConfigResolutionError,
+    resolve_runtime_config,
+)
 
 
 def _empty_policy() -> BudgetDegradationPolicy:
@@ -130,6 +134,25 @@ def test_provider_config_rejects_credentials_embedded_in_base_url() -> None:
             model="example-model",
         )
 
+    assert credential not in str(caught.value)
+
+
+def test_runtime_resolution_types_provider_base_url_credential_failure() -> None:
+    credential = "provider-password"
+
+    with pytest.raises(RuntimeConfigResolutionError) as caught:
+        resolve_runtime_config(
+            environ={
+                "RELAYLM_CHARACTER_DIR": "/characters/relm",
+                "RELAYLM_PROVIDER_BASE_URL": (
+                    f"https://user:{credential}@provider.example/v1"
+                ),
+                "RELAYLM_PROVIDER_MODEL": "example-model",
+            }
+        )
+
+    assert caught.value.code is RuntimeConfigErrorCode.INVALID_VALUE
+    assert caught.value.field == "provider.base_url"
     assert credential not in str(caught.value)
 
 
