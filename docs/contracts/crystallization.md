@@ -48,6 +48,8 @@ The current input contains:
 
 State records may refer to Event provenance older than the recent snapshot. Candidate validation therefore checks source IDs against the full persisted Event Journal, not only the bounded crystallizer Event window.
 
+MEMORY Event provenance uses the bounded generation boundary instead: a returned `MemoryUnit` Event source resolves only against `CrystallizationInput.events` supplied to that generation. An Event ID that exists elsewhere in the persisted Journal but was not supplied remains unresolved and receives no typed MEMORY metadata. This does not narrow the full-Journal Validator lookup used for StateCandidate provenance.
+
 The OpenAI-compatible adapter serializes only this existing input boundary. It carries:
 
 - Identity content;
