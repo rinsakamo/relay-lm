@@ -190,6 +190,38 @@ def test_doctor_rejects_provider_url_with_invalid_host_or_port(
     assert "provider_invalid: provider.base_url" in stderr.getvalue()
 
 
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "http://127.0.0.1:1234/v1?api-version=test",
+        "http://127.0.0.1:1234/v1#fragment",
+    ],
+)
+def test_doctor_rejects_provider_url_that_is_not_a_base_endpoint(
+    tmp_path: Path,
+    base_url: str,
+) -> None:
+    character = _character(tmp_path / "character")
+    config = _runtime_config(tmp_path / "runtime.yaml", character)
+    text = config.read_text(encoding="utf-8").replace(
+        "http://127.0.0.1:1234/v1", base_url
+    )
+    config.write_text(text, encoding="utf-8")
+    stdout = StringIO()
+    stderr = StringIO()
+
+    code = run_cli(
+        ["doctor", "--config", str(config)],
+        environ={},
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert code == 2
+    assert stdout.getvalue() == ""
+    assert "provider_invalid: provider.base_url" in stderr.getvalue()
+
+
 def test_named_cli_overrides_win_and_serve_uses_preflighted_runtime(tmp_path: Path) -> None:
     character = _character(tmp_path / "character")
     config = _runtime_config(tmp_path / "runtime.yaml", character)
