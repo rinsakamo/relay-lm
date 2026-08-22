@@ -54,6 +54,17 @@ class RuntimeConfigErrorCode(str, Enum):
     PROVIDER_INVALID = "provider_invalid"
 
 
+def validate_provider_base_url_secret_boundary(base_url: str) -> None:
+    """Reject provider endpoint credentials without taking URL-shape ownership."""
+
+    try:
+        parsed_base_url = urlsplit(base_url)
+    except ValueError:
+        return
+    if parsed_base_url.username is not None or parsed_base_url.password is not None:
+        raise ValueError("provider.base_url must not contain credentials")
+
+
 @dataclass(frozen=True, slots=True)
 class SecretEnvReference:
     """Persistable reference to a secret, never the secret value itself."""
@@ -107,14 +118,7 @@ class ProviderRuntimeConfig:
                 "provider.backend must be OpenAICompatibleBackendId"
             )
         _require_non_empty_string("provider.base_url", self.base_url)
-        try:
-            parsed_base_url = urlsplit(self.base_url)
-        except ValueError:
-            parsed_base_url = None
-        if parsed_base_url is not None and (
-            parsed_base_url.username is not None or parsed_base_url.password is not None
-        ):
-            raise ValueError("provider.base_url must not contain credentials")
+        validate_provider_base_url_secret_boundary(self.base_url)
         _require_non_empty_string("provider.model", self.model)
         if self.api_key is not None and not isinstance(
             self.api_key, SecretEnvReference

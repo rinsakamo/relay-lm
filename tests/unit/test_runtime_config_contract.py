@@ -34,6 +34,7 @@ from relaylm.runtime_config import (
     TokenCounterCapabilityConfig,
 )
 from relaylm.runtime_config_loader import (
+    RuntimeConfigOverrides,
     RuntimeConfigResolutionError,
     resolve_runtime_config,
 )
@@ -149,6 +150,41 @@ def test_runtime_resolution_types_provider_base_url_credential_failure() -> None
                 ),
                 "RELAYLM_PROVIDER_MODEL": "example-model",
             }
+        )
+
+    assert caught.value.code is RuntimeConfigErrorCode.INVALID_VALUE
+    assert caught.value.field == "provider.base_url"
+    assert credential not in str(caught.value)
+
+
+def test_selected_file_rejects_provider_base_url_credentials_before_override(
+    tmp_path,
+) -> None:
+    credential = "file-provider-password"
+    config_path = tmp_path / "runtime.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "format_version: 1",
+                "character:",
+                "  directory: /config/character",
+                "provider:",
+                "  adapter: openai_compatible",
+                f"  base_url: https://user:{credential}@provider.example/v1",
+                "  model: config-model",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeConfigResolutionError) as caught:
+        resolve_runtime_config(
+            config_path=config_path,
+            overrides=RuntimeConfigOverrides(
+                provider_base_url="https://clean.example/v1",
+            ),
+            environ={},
         )
 
     assert caught.value.code is RuntimeConfigErrorCode.INVALID_VALUE

@@ -48,6 +48,7 @@ from relaylm.runtime_config import (
     SecretEnvReference,
     ServerRuntimeConfig,
     TokenCounterCapabilityConfig,
+    validate_provider_base_url_secret_boundary,
 )
 
 
@@ -443,9 +444,14 @@ def _validate_file_shape(raw: dict[str, Any]) -> None:
                 _invalid_value("provider.adapter", "unsupported provider adapter")
         if "backend" in provider:
             _backend_value(provider["backend"], "provider.backend")
-        for key in ("base_url", "model"):
-            if key in provider:
-                _string(provider[key], f"provider.{key}")
+        if "base_url" in provider:
+            base_url = _string(provider["base_url"], "provider.base_url")
+            try:
+                validate_provider_base_url_secret_boundary(base_url)
+            except ValueError as exc:
+                _invalid_value("provider.base_url", str(exc))
+        if "model" in provider:
+            _string(provider["model"], "provider.model")
         if "api_key" in provider:
             secret = _mapping(provider["api_key"], "provider.api_key")
             _require_exact_keys(secret, "provider.api_key", {"env"})
