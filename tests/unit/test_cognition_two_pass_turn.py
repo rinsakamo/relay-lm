@@ -160,6 +160,7 @@ def test_next_pass1_does_not_wait_for_prior_pending_pass2_and_old_result_is_stal
         character = _make_character(tmp_path)
         provider = _ControlledTwoPassProvider()
         execution_runtime = CognitionExecutionRuntime()
+        assert execution_runtime.pending_extraction_count == 0
 
         first = await run_user_turn_two_pass(
             character=character,
@@ -170,6 +171,7 @@ def test_next_pass1_does_not_wait_for_prior_pending_pass2_and_old_result_is_stal
         await provider.extraction_started[0].wait()
 
         assert first.response == "reply-1"
+        assert execution_runtime.pending_extraction_count == 1
         assert CharacterDirectory(tmp_path).load_state().states == ()
         assert [event.actor for event in CharacterDirectory(tmp_path).iter_events()] == [
             "user",
@@ -187,15 +189,20 @@ def test_next_pass1_does_not_wait_for_prior_pending_pass2_and_old_result_is_stal
         assert second.response == "reply-2"
         assert len(provider.conversation_inputs) == 2
         assert first.extraction.done() is False
+        assert execution_runtime.pending_extraction_count == 2
 
         provider.extraction_release[0].set()
         first_extraction = await first.extraction
+        await asyncio.sleep(0)
         assert first_extraction.status is TwoPassExtractionStatus.STALE
+        assert execution_runtime.pending_extraction_count == 1
         assert CharacterDirectory(tmp_path).load_state().states == ()
 
         provider.extraction_release[1].set()
         second_extraction = await second.extraction
+        await asyncio.sleep(0)
         assert second_extraction.status is TwoPassExtractionStatus.COMMITTED
+        assert execution_runtime.pending_extraction_count == 0
         persisted = CharacterDirectory(tmp_path).load_state()
         assert [(item.key, item.value) for item in persisted.states] == [
             ("latest_turn", "turn two")
