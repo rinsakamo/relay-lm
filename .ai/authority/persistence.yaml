@@ -15,3 +15,4 @@ tests:
 - tests/unit/test_event_discovery_index.py
 depends_on:
 - core_architecture
+- state_and_validation
