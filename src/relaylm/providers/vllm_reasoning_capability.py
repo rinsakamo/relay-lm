@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Protocol
 
-from relaylm.actual_model_targets import ActualModelRepositorySnapshotTarget
 from relaylm.providers.openai_compatible_reasoning import ReasoningMapping
 from relaylm.providers.vllm_backend import VLLMBackendAttestation
 from relaylm.providers.vllm_reasoning import VLLMReasoningWireControls
@@ -12,6 +12,15 @@ from relaylm.providers.vllm_reasoning import VLLMReasoningWireControls
 VLLM_REASONING_CAPABILITY_ATTESTATION_FORMAT_VERSION = 1
 TemplateValue = str | int | bool
 TemplateMapping = tuple[tuple[str, TemplateValue], ...]
+
+
+class VLLMReasoningTargetIdentity(Protocol):
+    """Minimal frozen target identity required by reasoning attestation."""
+
+    target_id: str
+    revision: str
+    model_artifact_identity: str
+    artifact_repository_revision: str
 
 
 class VLLMReasoningCapabilityStatus(StrEnum):
@@ -130,8 +139,8 @@ class VLLMReasoningControlAttestation:
 class VLLMReasoningCapabilityAttestation:
     """Configured vLLM/model reasoning facts from explicit runtime probes.
 
-    The frozen repository-snapshot target is part of this identity. The record
-    is capability evidence, not an applied provider request and not a cognition
+    The supplied frozen target identity is part of this identity. The record is
+    capability evidence, not an applied provider request and not a cognition
     policy default.
     """
 
@@ -203,7 +212,7 @@ class VLLMReasoningCapabilityAttestation:
 def attest_vllm_reasoning_capabilities(
     *,
     backend_attestation: VLLMBackendAttestation,
-    target: ActualModelRepositorySnapshotTarget,
+    target: VLLMReasoningTargetIdentity,
     reasoning_parser: str | None,
     template_thinking_control: str | None,
     off_probe: VLLMReasoningProbeEvidence,
@@ -219,8 +228,15 @@ def attest_vllm_reasoning_capabilities(
 
     if not isinstance(backend_attestation, VLLMBackendAttestation):
         raise TypeError("backend_attestation must be VLLMBackendAttestation")
-    if not isinstance(target, ActualModelRepositorySnapshotTarget):
-        raise TypeError("target must be ActualModelRepositorySnapshotTarget")
+    for name in (
+        "target_id",
+        "revision",
+        "model_artifact_identity",
+        "artifact_repository_revision",
+    ):
+        value = getattr(target, name, None)
+        if not isinstance(value, str) or not value.strip():
+            raise TypeError(f"target.{name} must be a non-empty string")
     for name, value in (
         ("reasoning_parser", reasoning_parser),
         ("template_thinking_control", template_thinking_control),
