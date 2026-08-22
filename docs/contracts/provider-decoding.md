@@ -106,7 +106,7 @@ Calibration (#1388) remains the sole owner of any future canonical numeric decod
 - unsupported requested controls fail before network use;
 - buffered and streaming requests carry identical explicit decoding controls;
 - effective decoding evidence contains no secrets or semantic payload;
-- exactly one ordinary semantic model generation remains authoritative;
+- cognition execution topology remains owned by `cognitive_turn`, not this decoding contract;
 - reasoning capability and carriage remain owned by `docs/contracts/provider-reasoning.md`, not this decoding contract;
 - provider-owned cognition capability facts do not alter historical P4 provider identity;
 - provider decoding carriage does not become State, Continuity, Retrieval, Context Compiler, Cognitive Budget, evaluation, or calibration authority.
