@@ -1,6 +1,6 @@
 schema_version: 1
 id: provider_and_api
-summary: OpenAI-compatible provider protocol, backend identity/dialects, RelayLM-owned plain combined cognition IR transport and fail-closed parsing, decoding, reasoning control, cognition pass request carriage, exact serialized-input counting including two-pass carriage, bounded upstream HTTP error observability, backend capability attestation, identity, and public API boundary.
+summary: OpenAI-compatible provider protocol, backend identity/dialects, RelayLM-owned plain combined cognition IR transport and fail-closed parsing, decoding, reasoning control, cognition pass request carriage, exact serialized-input counting including two-pass carriage, bounded upstream HTTP error observability that excludes any configured provider API-key echo from JSON or text error detail, backend capability attestation, identity, and public API boundary.
 canonical_surfaces:
 - docs/contracts/provider-wire.md
 - docs/contracts/provider-decoding.md
