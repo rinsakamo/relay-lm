@@ -25,6 +25,7 @@ implementation:
 - src/relaylm/shadow_turn.py
 - src/relaylm/providers/openai_compatible.py
 - src/relaylm/providers/openai_compatible_two_pass.py
+- src/relaylm/providers/openai_compatible_budget.py
 tests:
 - tests/unit/test_cognition_execution_policy.py
 - tests/unit/test_cognition_pass_execution.py
