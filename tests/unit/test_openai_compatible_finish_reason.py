@@ -111,6 +111,38 @@ def test_buffered_combined_cognition_rejects_explicit_non_stop_finish_reason(
     asyncio.run(run())
 
 
+@pytest.mark.parametrize("finish_reason", ["stop", None])
+def test_buffered_combined_cognition_accepts_supported_finish_reason_compatibility(
+    finish_reason: str | None,
+) -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {"content": _combined_wire()},
+                        "finish_reason": finish_reason,
+                    }
+                ]
+            },
+        )
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = OpenAICompatibleProvider(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            return await provider.generate(_cognitive_input())
+
+    output = asyncio.run(run())
+    assert output.response == "こんにちは。"
+    assert output.state_candidates == ()
+    assert output.continuity_candidates == ()
+
+
 def test_streaming_combined_cognition_rejects_explicit_length_finish_reason() -> None:
     chunks = [
         _sse_chunk(content=_combined_wire(), finish_reason="length"),
