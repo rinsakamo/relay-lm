@@ -30,6 +30,7 @@ tests:
 - tests/unit/test_repository_code_ownership_contract.py
 - tests/unit/test_repository_code_ownership.py
 - tests/unit/test_repository_realization_dependencies_contract.py
+- tests/unit/test_repository_realization_dependencies.py
 - tests/unit/test_repository_freshness_contract.py
 - tests/unit/test_root_agent_bootstrap.py
 - tests/unit/test_repository_projection_contract.py
