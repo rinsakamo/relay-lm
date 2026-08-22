@@ -80,19 +80,25 @@ def test_buffered_http_error_preserves_bounded_sanitized_upstream_detail(
 
 
 @pytest.mark.parametrize("two_pass", [False, True])
-def test_buffered_http_error_redacts_json_escaped_api_key(two_pass: bool) -> None:
+@pytest.mark.parametrize("detail_format", ["json", "text"])
+def test_buffered_http_error_redacts_special_character_api_key(
+    two_pass: bool,
+    detail_format: str,
+) -> None:
     api_key = 'secret"quote\\slash\nline'
 
     def handler(_: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            400,
-            json={
-                "error": {
-                    "message": "request rejected",
-                    "echoed_secret": api_key,
-                }
-            },
-        )
+        if detail_format == "json":
+            return httpx.Response(
+                400,
+                json={
+                    "error": {
+                        "message": "request rejected",
+                        "echoed_secret": api_key,
+                    }
+                },
+            )
+        return httpx.Response(400, text=f"request rejected: {api_key}")
 
     async def run() -> str:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
