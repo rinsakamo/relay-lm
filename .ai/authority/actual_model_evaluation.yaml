@@ -147,6 +147,7 @@ depends_on:
 - continuity_context
 - crystallization
 - memory_provenance
+- persistence
 - provider_and_api
 - runtime_configuration
 - state_and_validation
