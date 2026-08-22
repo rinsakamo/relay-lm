@@ -82,7 +82,7 @@ The previous `server.create_app_from_env()` helper may remain as an internal com
 
 ## Provider and capability checks
 
-The current provider adapter requires an HTTP or HTTPS base URL with a host. RCFG4 does not issue network requests during `doctor`; provider reachability is intentionally not inferred from an adapter-specific discovery endpoint.
+The current provider adapter requires an HTTP or HTTPS base endpoint with a host and no query or fragment delimiter. RCFG4 does not issue network requests during `doctor`; provider reachability is intentionally not inferred from an adapter-specific discovery endpoint.
 
 If explicit Cognitive Budget is configured, its token-counter capability must already be registered with RCFG3 and match the configured existing `TokenCountMode`. RCFG4 supplies no generic tokenizer heuristic and no implicit capability fallback.
 
