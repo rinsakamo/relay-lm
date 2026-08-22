@@ -13,3 +13,4 @@ tests:
 depends_on:
 - memory_provenance
 - provider_and_api
+- state_and_validation
