@@ -126,7 +126,10 @@ def _prepare(
         "verify_actual_model_repository_snapshot",
         lambda **_: _verification(target),
     )
-    plan = vllm_host.load_vllm_screening_plan(PLAN_PATH)
+    plan = replace(
+        vllm_host.load_vllm_screening_plan(PLAN_PATH),
+        capacity_evidence_id=None,
+    )
     assert plan.capacity_evidence_id is None
     return acquisition.prepare_vllm_capacity_acquisition(
         plan=plan,

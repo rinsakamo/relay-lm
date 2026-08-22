@@ -21,6 +21,7 @@
     "response-persona-correction-v1",
     "continuity-lifecycle-v1"
   ],
+  "capacity_evidence_id": "amcap-7bcbbb3b1c0432c8cf3707670b99f373ab0fad05da93645aec023f43a6e5959b",
   "conditions": {
     "A": {
       "condition_id": "stage-r0-vllm-a-single-pass-off",
