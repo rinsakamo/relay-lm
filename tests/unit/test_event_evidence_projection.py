@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import asyncio
+import json
+from typing import AsyncIterator
+
+import httpx
 import pytest
 
 from relaylm.cognitive import EventEvidenceItem
@@ -7,7 +12,9 @@ from relaylm.context import compile_cognitive_input
 from relaylm.events import Event
 from relaylm.identity import Identity
 from relaylm.providers.openai_compatible import (
+    OpenAICompatibleProvider,
     PROVIDER_WIRE_INSTRUCTION,
+    ProviderProtocolError,
     SYSTEM_INSTRUCTION,
     serialize_cognitive_input,
 )
@@ -122,6 +129,120 @@ def test_provider_contract_allows_real_event_evidence_ids_but_not_memory_locatio
     assert "Event Evidence" in SYSTEM_INSTRUCTION
     assert "State, Context, Event Evidence, or Input" in PROVIDER_WIRE_INSTRUCTION
     assert "Memory `location` values" in PROVIDER_WIRE_INSTRUCTION
+
+
+class _ChunkedSSEStream(httpx.AsyncByteStream):
+    def __init__(self, chunks: list[bytes]) -> None:
+        self.chunks = chunks
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        for chunk in self.chunks:
+            yield chunk
+
+    async def aclose(self) -> None:
+        return None
+
+
+def _sse_chunk(*, content: str | None = None, finish_reason: str | None = None) -> bytes:
+    envelope = {
+        "choices": [
+            {
+                "delta": {} if content is None else {"content": content},
+                "finish_reason": finish_reason,
+            }
+        ]
+    }
+    return f"data: {json.dumps(envelope, ensure_ascii=False)}\n\n".encode("utf-8")
+
+
+@pytest.mark.parametrize("delivery", ["buffered", "streaming"])
+@pytest.mark.parametrize("candidate_channel", ["state", "continuity"])
+def test_provider_rejects_candidate_sources_absent_from_serialized_cognitive_input(
+    delivery: str,
+    candidate_channel: str,
+) -> None:
+    evidence = _event(
+        "evidence-event",
+        actor="user",
+        content="I preferred tea then.",
+        second=7,
+    )
+    current = _event(
+        "current-event",
+        actor="user",
+        content="What do I prefer now?",
+        second=8,
+    )
+    compiled = compile_cognitive_input(
+        identity=Identity("# ReLM\nBe grounded."),
+        state=CanonicalState(),
+        current_event=current,
+        event_evidence=(evidence,),
+    )
+    sources = [current.id, evidence.id, "persisted-but-not-supplied"]
+    wire: dict[str, object] = {
+        "utterance": "I can answer from the supplied evidence.",
+        "state_candidates": [],
+        "continuity_candidates": [],
+    }
+    if candidate_channel == "state":
+        wire["state_candidates"] = [
+            {
+                "state_class": "user.preference",
+                "key": "tea",
+                "op": "set",
+                "value": "likes",
+                "sources": sources,
+            }
+        ]
+    else:
+        wire["continuity_candidates"] = [
+            {
+                "kind": "referent",
+                "key": "referent.current",
+                "op": "set",
+                "value": "the supplied evidence",
+                "sources": sources,
+                "epistemic_role": "user_assertion",
+            }
+        ]
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        if delivery == "buffered":
+            return httpx.Response(
+                200,
+                json={"choices": [{"message": {"content": json.dumps(wire)}}]},
+            )
+        structured = json.dumps(wire, ensure_ascii=False, separators=(",", ":"))
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            stream=_ChunkedSSEStream(
+                [
+                    _sse_chunk(content=structured, finish_reason="stop"),
+                    b"data: [DONE]\n\n",
+                ]
+            ),
+        )
+
+    async def run() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = OpenAICompatibleProvider(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            if delivery == "buffered":
+                await provider.generate(compiled)
+                return
+
+            async def emit(_: str) -> None:
+                return None
+
+            await provider.stream_generate(compiled, emit)
+
+    with pytest.raises(ProviderProtocolError, match="absent from CognitiveInput"):
+        asyncio.run(run())
 
 
 def test_event_evidence_item_requires_nonempty_occurrence_fields() -> None:

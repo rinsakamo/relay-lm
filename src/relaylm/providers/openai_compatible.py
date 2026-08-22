@@ -313,7 +313,9 @@ class OpenAICompatibleProvider:
         except (httpx.HTTPError, ValueError) as exc:
             raise ProviderProtocolError(f"upstream request failed: {exc}") from exc
 
-        return parse_chat_completion(envelope)
+        output = parse_chat_completion(envelope)
+        _require_candidate_sources_in_cognitive_input(output, cognitive_input)
+        return output
 
     async def stream_generate(
         self,
@@ -387,6 +389,7 @@ class OpenAICompatibleProvider:
         except json.JSONDecodeError as exc:
             raise ProviderProtocolError("provider streamed content is not complete JSON") from exc
         output = parse_wire_output(wire)
+        _require_candidate_sources_in_cognitive_input(output, cognitive_input)
 
         emitted = decoder.emitted
         if not output.response.startswith(emitted):
@@ -699,6 +702,30 @@ def serialize_cognitive_input(cognitive_input: CognitiveInput) -> dict[str, Any]
             "content": content,
         },
     }
+
+
+def _require_candidate_sources_in_cognitive_input(
+    output: CognitiveOutput,
+    cognitive_input: CognitiveInput,
+) -> None:
+    allowed_source_ids = {cognitive_input.input.id}
+    for record in cognitive_input.state:
+        allowed_source_ids.update(record.sources)
+    for item in cognitive_input.context:
+        allowed_source_ids.update(item.sources)
+    allowed_source_ids.update(item.event_id for item in cognitive_input.event_evidence)
+
+    for label, candidates in (
+        ("state_candidates", output.state_candidates),
+        ("continuity_candidates", output.continuity_candidates),
+    ):
+        for index, candidate in enumerate(candidates):
+            unknown_sources = sorted(set(candidate.sources) - allowed_source_ids)
+            if unknown_sources:
+                raise ProviderProtocolError(
+                    f"{label}[{index}].sources contain Event IDs absent from CognitiveInput: "
+                    + ", ".join(unknown_sources)
+                )
 
 
 def parse_chat_completion(envelope: Any) -> CognitiveOutput:
