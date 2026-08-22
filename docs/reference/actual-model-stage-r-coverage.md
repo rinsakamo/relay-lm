@@ -47,9 +47,16 @@ it needs its own bounded scenario/capacity transaction and independent review.
 
 ## Independent rubric dimensions
 
-The current `actual-model-quality-v1` axes remain the machine-readable baseline.
-Stage R review must additionally record the following dimensions separately,
-without a weighted aggregate: relevance/correctness, naturalness, persona and
+The historical `actual-model-quality-v1` family axes remain the coarse
+machine-readable baseline and keep their existing identity. Current citable
+Stage R reviews additionally use the independent
+`actual-model-stage-r-review-v1` protocol in actual-model review format v2.
+Every Stage R review sidecar carries each required dimension exactly once in
+canonical order with `pass`, `fail`, or `not_rated`; omission and duplicate
+dimensions are invalid. `not_rated` explicitly means that dimension was not
+reviewed and is not evidence of a pass. No weighted aggregate score is added.
+
+The required dimensions are relevance/correctness, naturalness, persona and
 style consistency, coherence, governed-context continuity, verbosity fit,
 language preservation, multilingual/code-switch robustness, unsupported recall,
 protocol/schema validity, semantic precision and recall, grounding,

@@ -5,6 +5,7 @@ import json
 import os
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Literal
 
 from relaylm.actual_model_evaluation import ActualModelEvidence
 from relaylm.actual_model_execution import ActualModelScenarioExecutionResult
@@ -17,11 +18,117 @@ from relaylm.actual_model_quality import (
 )
 from relaylm.actual_model_restart import ActualModelRestartEvidence
 
-ACTUAL_MODEL_REVIEW_FORMAT_VERSION = 1
+ACTUAL_MODEL_REVIEW_FORMAT_VERSION = 2
+STAGE_R_REVIEW_PROTOCOL_VERSION = "actual-model-stage-r-review-v1"
+StageRReviewDimension = Literal[
+    "relevance_correctness",
+    "naturalness",
+    "persona_style_consistency",
+    "coherence",
+    "governed_context_continuity",
+    "verbosity_fit",
+    "language_preservation",
+    "multilingual_code_switch_robustness",
+    "unsupported_recall",
+    "protocol_schema_validity",
+    "semantic_precision_recall",
+    "grounding",
+    "source_subject_attribution",
+    "assistant_to_user_contamination",
+    "correction_supersession",
+    "negation_polarity",
+    "uncertainty_preservation",
+    "comparative_degree_preservation",
+    "transient_durable_classification",
+    "canonical_class_key_reuse",
+    "noop_correctness",
+    "proposal_churn",
+    "hallucinated_proposals",
+    "source_event_validity",
+]
+StageRReviewOutcome = Literal["pass", "fail", "not_rated"]
+
+_STAGE_R_REVIEW_DIMENSIONS: tuple[StageRReviewDimension, ...] = (
+    "relevance_correctness",
+    "naturalness",
+    "persona_style_consistency",
+    "coherence",
+    "governed_context_continuity",
+    "verbosity_fit",
+    "language_preservation",
+    "multilingual_code_switch_robustness",
+    "unsupported_recall",
+    "protocol_schema_validity",
+    "semantic_precision_recall",
+    "grounding",
+    "source_subject_attribution",
+    "assistant_to_user_contamination",
+    "correction_supersession",
+    "negation_polarity",
+    "uncertainty_preservation",
+    "comparative_degree_preservation",
+    "transient_durable_classification",
+    "canonical_class_key_reuse",
+    "noop_correctness",
+    "proposal_churn",
+    "hallucinated_proposals",
+    "source_event_validity",
+)
 
 
 class ActualModelExecutionReviewError(RuntimeError):
     """A product-quality review or review artifact is malformed or conflicting."""
+
+
+@dataclass(frozen=True, slots=True)
+class StageRReviewObservation:
+    """One independent Stage R product-quality observation."""
+
+    dimension: StageRReviewDimension
+    outcome: StageRReviewOutcome
+    note: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.dimension not in _STAGE_R_REVIEW_DIMENSIONS:
+            raise ValueError(f"unsupported Stage R review dimension: {self.dimension}")
+        if self.outcome not in {"pass", "fail", "not_rated"}:
+            raise ValueError(f"unsupported Stage R review outcome: {self.outcome}")
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "dimension": self.dimension,
+            "outcome": self.outcome,
+            "note": self.note,
+        }
+
+
+def required_stage_r_review_dimensions() -> tuple[StageRReviewDimension, ...]:
+    """Return the independent Stage R dimensions required by current #1386 authority."""
+
+    return _STAGE_R_REVIEW_DIMENSIONS
+
+
+def normalize_stage_r_review_observations(
+    observations: tuple[StageRReviewObservation, ...],
+) -> tuple[StageRReviewObservation, ...]:
+    """Require exact Stage R dimension coverage and return canonical ordering."""
+
+    if not all(isinstance(item, StageRReviewObservation) for item in observations):
+        raise TypeError("Stage R review observations must be StageRReviewObservation values")
+    dimensions = tuple(item.dimension for item in observations)
+    if len(set(dimensions)) != len(dimensions):
+        raise ValueError("Stage R review observations must not duplicate dimensions")
+    if set(dimensions) != set(_STAGE_R_REVIEW_DIMENSIONS):
+        raise ValueError("Stage R review observations must cover every required Stage R review dimension")
+    by_dimension = {item.dimension: item for item in observations}
+    return tuple(by_dimension[dimension] for dimension in _STAGE_R_REVIEW_DIMENSIONS)
+
+
+def _unrated_stage_r_review_observations() -> tuple[StageRReviewObservation, ...]:
+    return tuple(
+        StageRReviewObservation(dimension=dimension, outcome="not_rated")
+        for dimension in _STAGE_R_REVIEW_DIMENSIONS
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,7 +144,9 @@ class ActualModelExecutionReview:
     reviewer_identity: str
     turn_ratings: tuple[TurnQualityRating, ...]
     proposal_metrics: LabeledProposalMetrics
+    stage_r_observations: tuple[StageRReviewObservation, ...]
     quality_rubric_version: str = QUALITY_RUBRIC_VERSION
+    stage_r_review_protocol_version: str = STAGE_R_REVIEW_PROTOCOL_VERSION
     format_version: int = ACTUAL_MODEL_REVIEW_FORMAT_VERSION
 
     def __post_init__(self) -> None:
@@ -47,6 +156,11 @@ class ActualModelExecutionReview:
             )
         if self.quality_rubric_version != QUALITY_RUBRIC_VERSION:
             raise ValueError("review must pin the current actual-model quality rubric")
+        if self.stage_r_review_protocol_version != STAGE_R_REVIEW_PROTOCOL_VERSION:
+            raise ValueError("review must pin the current Stage R review protocol")
+        normalized = normalize_stage_r_review_observations(self.stage_r_observations)
+        if normalized != self.stage_r_observations:
+            raise ValueError("Stage R review observations must use canonical dimension order")
         for name in (
             "review_id",
             "execution_id",
@@ -81,6 +195,13 @@ class ActualModelExecutionReview:
                 for rating in self.turn_ratings
             ],
             "proposal_metrics": self.proposal_metrics.to_mapping(),
+            "stage_r_review": {
+                "protocol_version": self.stage_r_review_protocol_version,
+                "observations": [
+                    observation.to_mapping()
+                    for observation in self.stage_r_observations
+                ],
+            },
             "score": None,
         }
 
@@ -98,6 +219,7 @@ def review_actual_model_execution(
     result: ActualModelScenarioExecutionResult,
     reviewer_identity: str,
     ratings: tuple[TurnQualityRating, ...],
+    stage_r_observations: tuple[StageRReviewObservation, ...] | None = None,
 ) -> ActualModelExecutionReview:
     """Validate bounded human ratings and fixture-owned proposal metrics together."""
 
@@ -116,6 +238,11 @@ def review_actual_model_execution(
     proposal_metrics = evaluate_labeled_proposals(
         evidence=evidence,
         labels=result.plan.definition.proposal_labels,
+    )
+    normalized_stage_r = normalize_stage_r_review_observations(
+        _unrated_stage_r_review_observations()
+        if stage_r_observations is None
+        else stage_r_observations
     )
     identity = {
         "format_version": ACTUAL_MODEL_REVIEW_FORMAT_VERSION,
@@ -137,6 +264,13 @@ def review_actual_model_execution(
             for rating in normalized_ratings
         ],
         "proposal_metrics": proposal_metrics.to_mapping(),
+        "stage_r_review": {
+            "protocol_version": STAGE_R_REVIEW_PROTOCOL_VERSION,
+            "observations": [
+                observation.to_mapping()
+                for observation in normalized_stage_r
+            ],
+        },
     }
     review_id = _stable_review_id(identity)
     return ActualModelExecutionReview(
@@ -149,6 +283,7 @@ def review_actual_model_execution(
         reviewer_identity=reviewer_identity,
         turn_ratings=normalized_ratings,
         proposal_metrics=proposal_metrics,
+        stage_r_observations=normalized_stage_r,
     )
 
 
