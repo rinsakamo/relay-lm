@@ -125,6 +125,52 @@ def test_same_openai_provider_instance_uses_plain_conversation_and_relaylm_owned
     assert extraction_payload["cognitive_input"]["input"]["event_id"] == "evt-now"
 
 
+def test_buffered_conversation_rejects_multiple_upstream_choices() -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        choice = {"message": {"content": "こんにちは"}}
+        return httpx.Response(200, json={"choices": [choice, choice]})
+
+    async def run() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = OpenAICompatibleTwoPassProvider(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            with pytest.raises(ProviderProtocolError, match="exactly one"):
+                await provider.generate_conversation(_cognitive_input())
+
+    asyncio.run(run())
+
+
+def test_buffered_extraction_rejects_multiple_upstream_choices() -> None:
+    wire = json.dumps(
+        {"state_candidates": [], "continuity_candidates": []},
+        ensure_ascii=False,
+    )
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        choice = {"message": {"content": wire}}
+        return httpx.Response(200, json={"choices": [choice, choice]})
+
+    async def run() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = OpenAICompatibleTwoPassProvider(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            with pytest.raises(ProviderProtocolError, match="exactly one"):
+                await provider.generate_extraction(
+                    CognitionExtractionInput(
+                        cognitive_input=_cognitive_input(),
+                        assistant_response="了解。",
+                    )
+                )
+
+    asyncio.run(run())
+
+
 def test_extraction_without_provider_structured_output_still_fails_closed_on_invalid_ir() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
