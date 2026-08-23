@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from relaylm.evaluation import evaluate_ordinary_turn_event_retrieval
+from relaylm.evaluation_event_evidence import evaluate_ordinary_turn_event_retrieval
 
 
 def test_ordinary_turn_event_retrieval_evaluation_is_registered() -> None:
