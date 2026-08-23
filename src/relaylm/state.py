@@ -130,3 +130,15 @@ class CanonicalState:
     def __post_init__(self) -> None:
         if self.format_version != 1:
             raise ValueError(f"unsupported state format_version: {self.format_version}")
+
+        active_slots: set[tuple[str, str]] = set()
+        for record in self.states:
+            if record.status != "active" or record.valid_to is not None:
+                continue
+            slot = (record.state_class, record.key)
+            if slot in active_slots:
+                raise ValueError(
+                    "duplicate active state slot: "
+                    f"{record.state_class}/{record.key}"
+                )
+            active_slots.add(slot)
