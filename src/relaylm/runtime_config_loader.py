@@ -379,6 +379,12 @@ def _discover_config_path(
 def _load_config_mapping(path: Path) -> dict[str, Any]:
     try:
         text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise RuntimeConfigResolutionError(
+            RuntimeConfigErrorCode.PARSE_ERROR,
+            field="config_path",
+            message="runtime configuration must be UTF-8",
+        ) from exc
     except OSError as exc:
         raise RuntimeConfigResolutionError(
             RuntimeConfigErrorCode.READ_ERROR,
