@@ -44,14 +44,7 @@ def apply_state_candidates(
 ) -> ValidationResult:
     """Validate proposals deterministically and derive current-State transitions."""
 
-    ordered_keys: list[tuple[str, str]] = []
-    current: dict[tuple[str, str], StateRecord] = {}
-    for record in current_state.states:
-        key = (record.state_class, record.key)
-        if key not in current:
-            ordered_keys.append(key)
-        current[key] = record
-
+    records = list(current_state.states)
     decisions: list[CandidateDecision] = []
     changed = False
 
@@ -64,14 +57,14 @@ def apply_state_candidates(
             continue
 
         key = (candidate.state_class, candidate.key)
-        existing = current.get(key)
+        existing_index = _current_record_index(records, key)
+        existing = records[existing_index] if existing_index is not None else None
 
         if candidate.op == "remove":
-            if existing is None:
+            if existing_index is None:
                 decisions.append(CandidateDecision(candidate=candidate, status="noop"))
                 continue
-            del current[key]
-            ordered_keys = [item for item in ordered_keys if item != key]
+            records.pop(existing_index)
             changed = True
             decisions.append(
                 CandidateDecision(candidate=candidate, status="accepted", action="remove")
@@ -91,9 +84,10 @@ def apply_state_candidates(
             sources=tuple(dict.fromkeys(candidate.sources)),
             valid_from=now,
         )
-        current[key] = replacement
-        if key not in ordered_keys:
-            ordered_keys.append(key)
+        if existing_index is None:
+            records.append(replacement)
+        else:
+            records[existing_index] = replacement
         changed = True
         decisions.append(
             CandidateDecision(
@@ -105,13 +99,25 @@ def apply_state_candidates(
 
     next_state = CanonicalState(
         format_version=current_state.format_version,
-        states=tuple(current[key] for key in ordered_keys if key in current),
+        states=tuple(records),
     )
     return ValidationResult(
         state=next_state,
         decisions=tuple(decisions),
         changed=changed,
     )
+
+
+def _current_record_index(
+    records: list[StateRecord],
+    key: tuple[str, str],
+) -> int | None:
+    for index, record in enumerate(records):
+        if record.status != "active" or record.valid_to is not None:
+            continue
+        if (record.state_class, record.key) == key:
+            return index
+    return None
 
 
 def _rejection_reason(
