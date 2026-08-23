@@ -9,6 +9,7 @@ from pathlib import Path
 from relaylm.actual_model_evaluation import ActualModelRunManifest
 from relaylm.actual_model_execution import (
     ActualModelScenarioExecutionResult,
+    _stable_execution_id,
     run_actual_model_scenario_definition,
 )
 from relaylm.actual_model_scenarios import ActualModelScenarioSet
@@ -235,20 +236,18 @@ def bind_vllm_execution_condition(
             "manifest seed does not match the seed carried by the provider"
         )
 
-    payload = {
-        "runtime": reasoning_capability.to_mapping(),
-        "target": {
-            "id": target.target_id,
-            "revision": target.revision,
-            "snapshot_root": str(root),
-        },
-        "snapshot_verification": snapshot_verification.to_mapping(),
-        "provider_identity": provider_identity.to_mapping(),
-        "configured_context_window": configured_context_window,
-        "manifest": manifest.to_mapping(),
-    }
+    binding_id = _stable_vllm_binding_id(
+        target_id=target.target_id,
+        target_revision=target.revision,
+        snapshot_verification=snapshot_verification,
+        snapshot_root=str(root),
+        reasoning_capability=reasoning_capability,
+        provider_identity=provider_identity,
+        configured_context_window=configured_context_window,
+        manifest=manifest,
+    )
     return ActualModelVLLMExecutionBinding(
-        binding_id=_stable_id(prefix="amvb", payload=payload),
+        binding_id=binding_id,
         target_id=target.target_id,
         target_revision=target.revision,
         snapshot_verification=snapshot_verification,
@@ -295,15 +294,11 @@ async def run_vllm_actual_model_scenario_definition(
         manifest=manifest,
         cognitive_budget=cognitive_budget,
     )
-    execution_id = _stable_id(
-        prefix="amvx",
-        payload={
-            "binding_id": binding.binding_id,
-            "scenario_execution_id": execution.execution_id,
-        },
-    )
     return ActualModelVLLMExecutionResult(
-        execution_id=execution_id,
+        execution_id=_stable_vllm_execution_id(
+            binding_id=binding.binding_id,
+            scenario_execution_id=execution.execution_id,
+        ),
         binding=binding,
         execution=execution,
     )
@@ -318,6 +313,40 @@ def write_vllm_actual_model_execution_result(
 
     if not isinstance(result, ActualModelVLLMExecutionResult):
         raise TypeError("result must be ActualModelVLLMExecutionResult")
+
+    expected_binding_id = _stable_vllm_binding_id(
+        target_id=result.binding.target_id,
+        target_revision=result.binding.target_revision,
+        snapshot_verification=result.binding.snapshot_verification,
+        snapshot_root=result.binding.snapshot_root,
+        reasoning_capability=result.binding.reasoning_capability,
+        provider_identity=result.binding.provider_identity,
+        configured_context_window=result.binding.configured_context_window,
+        manifest=result.binding.manifest,
+    )
+    if result.binding.binding_id != expected_binding_id:
+        raise ActualModelVLLMBindingError(
+            "binding_id does not match vLLM binding evidence"
+        )
+
+    expected_scenario_execution_id = _stable_execution_id(
+        plan=result.execution.plan,
+        run_id=result.execution.run_id,
+    )
+    if result.execution.execution_id != expected_scenario_execution_id:
+        raise ActualModelVLLMBindingError(
+            "scenario execution_id does not match execution evidence"
+        )
+
+    expected_execution_id = _stable_vllm_execution_id(
+        binding_id=result.binding.binding_id,
+        scenario_execution_id=result.execution.execution_id,
+    )
+    if result.execution_id != expected_execution_id:
+        raise ActualModelVLLMBindingError(
+            "execution_id does not match vLLM execution evidence"
+        )
+
     root = Path(artifact_root)
     root.mkdir(parents=True, exist_ok=True)
     path = root / f"{result.execution_id}.vllm.json"
@@ -345,6 +374,48 @@ def write_vllm_actual_model_execution_result(
         except OSError:
             pass
     return path
+
+
+def _stable_vllm_binding_id(
+    *,
+    target_id: str,
+    target_revision: str,
+    snapshot_verification: ActualModelRepositorySnapshotVerification,
+    snapshot_root: str,
+    reasoning_capability: VLLMReasoningCapabilityAttestation,
+    provider_identity: OpenAICompatibleProviderIdentity,
+    configured_context_window: int,
+    manifest: ActualModelRunManifest,
+) -> str:
+    return _stable_id(
+        prefix="amvb",
+        payload={
+            "runtime": reasoning_capability.to_mapping(),
+            "target": {
+                "id": target_id,
+                "revision": target_revision,
+                "snapshot_root": snapshot_root,
+            },
+            "snapshot_verification": snapshot_verification.to_mapping(),
+            "provider_identity": provider_identity.to_mapping(),
+            "configured_context_window": configured_context_window,
+            "manifest": manifest.to_mapping(),
+        },
+    )
+
+
+def _stable_vllm_execution_id(
+    *,
+    binding_id: str,
+    scenario_execution_id: str,
+) -> str:
+    return _stable_id(
+        prefix="amvx",
+        payload={
+            "binding_id": binding_id,
+            "scenario_execution_id": scenario_execution_id,
+        },
+    )
 
 
 def _validate_snapshot_verification(
