@@ -126,6 +126,7 @@ class CharacterDirectory:
                 try:
                     raw = json.loads(
                         line,
+                        object_pairs_hook=_reject_duplicate_json_object_members,
                         parse_constant=_reject_non_finite_json_number,
                     )
                     event = _event_from_mapping(raw)
@@ -304,6 +305,17 @@ class CharacterDirectory:
 
 def _reject_non_finite_json_number(value: str) -> None:
     raise ValueError(f"non-finite JSON number is not allowed: {value}")
+
+
+def _reject_duplicate_json_object_members(
+    pairs: list[tuple[str, Any]],
+) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON object member: {key}")
+        result[key] = value
+    return result
 
 
 def _required_int(mapping: dict[str, Any], key: str, label: str) -> int:
