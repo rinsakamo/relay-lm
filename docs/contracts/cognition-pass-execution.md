@@ -217,6 +217,28 @@ Buffered and streaming two-pass paths must carry equivalent resolved pass semant
 
 When no pass request is supplied, no layer may strengthen reasoning merely because the call is Pass 2.
 
+## Content-free completion observation
+
+A successful cognition pass may carry provider-supplied completion facts separately from semantic model content through `CognitionCompletionMetadata`.
+
+The provider-neutral observation can retain only facts that the actual provider response supplied and RelayLM observed for that exact pass:
+
+```text
+finish_reason
+prompt_tokens
+completion_tokens
+total_tokens
+reasoning_tokens
+```
+
+These fields are optional observations, not request controls and not semantic authority. Missing provider data remains missing. RelayLM must not reconstruct a missing value from response text length, tokenizer re-tokenization, context remainder, configured output/reasoning budgets, another pass, or a later request.
+
+For buffered OpenAI-compatible Pass 1 and Pass 2, valid response-envelope usage may be copied into the typed pass output. For the current streaming Pass 1 contract, `finish_reason` may be retained when present in an admitted SSE choice; token usage is left missing unless the supported stream protocol actually exposes and admits it. No usage value is invented from the stream body.
+
+`TwoPassTurnResult` carries the admitted Pass 1 completion observation, and `TwoPassExtractionResult` carries the Pass 2 observation once a typed Pass 2 output exists, including stale or later deterministic-failure dispositions. A failure before a valid provider Pass 2 output has no completion observation.
+
+Completion observation does not change request serialization, generation, retries, response-first ordering, State/Continuity validation, stale-result semantics, or commit authority. #1386 may bind these content-free facts into immutable actual-model evidence in a separate owner transaction.
+
 ## Reproducibility
 
 Materially output-affecting configuration must remain distinguishable in evidence as applied, omitted or unsupported.
@@ -233,7 +255,8 @@ A citable two-pass run requires the exact Pass 1/Pass 2 request identity plus th
 - applied/omitted/unsupported classification;
 - fail-closed explicit unsupported behavior;
 - current mode-level capability requirements;
-- the RelayLM Pass 2 proposal-IR ownership boundary.
+- the RelayLM Pass 2 proposal-IR ownership boundary;
+- content-free per-pass completion-observation carriage through canonical two-pass outputs and diagnostics.
 
 #1386 owns actual-model evidence. #1388 owns calibrated profile/default selection. #1446 owns release config and operator provenance. Provider owners retain external wire and truthful capability authority.
 
