@@ -14,6 +14,7 @@ from relaylm.actual_model_boundary import (
     evaluate_actual_model_deterministic_boundary,
     write_actual_model_deterministic_boundary_verdict,
 )
+from relaylm.actual_model_cognitive_budget import ExplicitCognitiveBudgetConfiguration
 from relaylm.actual_model_evaluation import (
     ActualModelCognitionPassRequests,
     ActualModelRunManifest,
@@ -49,9 +50,14 @@ from relaylm.actual_model_vllm_capacity import (
     vllm_capacity_pass_request_id,
 )
 from relaylm.actual_model_vllm_counter import VLLMServingTokenizerCounter
+from relaylm.budget_runtime import TwoPassCognitiveBudgetRuntimeConfig
 from relaylm.cognition_execution import CognitionPassRequest, CognitionReasoningMode
 from relaylm.cognition_execution_evidence import CognitionExecutionEvidenceIdentity
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
+from relaylm.providers.openai_compatible_budget import (
+    OpenAICompatibleTwoPassSerializedInputCounter,
+    SerializedInputCounterIdentity,
+)
 from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
     OpenAICompatibleDecodingConfig,
@@ -305,6 +311,7 @@ class PreparedVLLMHostRun:
     scenario_set: ActualModelScenarioSet
     fixture_root: Path
     provider: OpenAICompatibleProvider
+    cognitive_budget: TwoPassCognitiveBudgetRuntimeConfig | None
     manifest: ActualModelRunManifest
     binding: ActualModelVLLMExecutionBinding
     scenario_ids: tuple[str, ...]
@@ -545,11 +552,31 @@ def prepare_vllm_screening_condition(
     replicate_id: str = "0",
     fetch_json: FetchJSON | None = None,
     capacity_evidence_root: str | Path | None = None,
+    cognitive_budget: TwoPassCognitiveBudgetRuntimeConfig | None = None,
 ) -> PreparedVLLMHostRun:
     if condition_id not in plan.conditions:
         raise ActualModelVLLMHostError(
             f"unknown vLLM screening condition: {condition_id}"
         )
+    condition = plan.conditions[condition_id]
+    if cognitive_budget is not None:
+        if not isinstance(cognitive_budget, TwoPassCognitiveBudgetRuntimeConfig):
+            raise TypeError(
+                "cognitive_budget must be TwoPassCognitiveBudgetRuntimeConfig or None"
+            )
+        if condition.cognition_execution.mode != "two_pass":
+            raise ActualModelVLLMHostError(
+                "explicit two-pass cognitive budget requires a two_pass screening condition"
+            )
+        if (
+            cognitive_budget.pass1_total.model_context_window
+            != plan.effective_context_window
+            or cognitive_budget.pass2_total.model_context_window
+            != plan.effective_context_window
+        ):
+            raise ActualModelVLLMHostError(
+                "two-pass cognitive budget context windows must match the screening effective_context_window"
+            )
     if plan.capacity_evidence_id is None:
         raise ActualModelVLLMHostError(
             "vLLM screening execution requires citable capacity evidence"
@@ -598,7 +625,6 @@ def prepare_vllm_screening_condition(
         )
 
     _verify_clean_exact_repo(root=root, expected_commit=relaylm_commit)
-    condition = plan.conditions[condition_id]
     target = load_actual_model_repository_snapshot_target(
         root / CANONICAL_VLLM_TARGET_PATH
     )
@@ -642,13 +668,14 @@ def prepare_vllm_screening_condition(
             "cited capacity evidence does not match the live vLLM runtime"
         )
     try:
-        live_counter_identity = VLLMServingTokenizerCounter(
+        live_serving_counter = VLLMServingTokenizerCounter(
             base_url=base_url,
             target=target,
             reasoning_capability=capability,
             expected_max_model_len=capacity_evidence.observed_max_model_len,
             api_key=api_key,
-        ).evidence_identity
+        )
+        live_counter_identity = live_serving_counter.evidence_identity
     except (TypeError, ValueError) as exc:
         raise ActualModelVLLMHostError(
             f"cannot reconstruct vLLM capacity counter identity: {exc}"
@@ -656,6 +683,15 @@ def prepare_vllm_screening_condition(
     if capacity_evidence.counter_identity != live_counter_identity:
         raise ActualModelVLLMHostError(
             "cited capacity evidence counter identity does not match current vLLM counting semantics"
+        )
+    bound_cognitive_budget = None
+    if cognitive_budget is not None:
+        bound_cognitive_budget = _bind_vllm_two_pass_cognitive_budget(
+            runtime=cognitive_budget,
+            plan=plan,
+            capability=capability,
+            live_serving_counter=live_serving_counter,
+            live_counter_identity=live_counter_identity,
         )
 
     scenario_set = load_actual_model_scenario_set(root / CANONICAL_SCENARIO_SET_PATH)
@@ -706,6 +742,11 @@ def prepare_vllm_screening_condition(
             scenario_set_version=scenario_set.scenario_set_version,
             condition_id=condition.condition_id,
             budgets=ExplicitBudgetConfiguration(),
+            cognitive_budget=(
+                ExplicitCognitiveBudgetConfiguration.from_runtime(bound_cognitive_budget)
+                if bound_cognitive_budget is not None
+                else None
+            ),
             continuity_runtime=plan.continuity_runtime,
             execution_path=plan.execution_path,
             restart_boundary="none",
@@ -738,6 +779,7 @@ def prepare_vllm_screening_condition(
         scenario_set=scenario_set,
         fixture_root=fixture_root,
         provider=provider,
+        cognitive_budget=bound_cognitive_budget,
         manifest=manifest,
         binding=binding,
         scenario_ids=plan.scenario_ids,
@@ -792,6 +834,7 @@ async def execute_vllm_host_run(
                 ),
                 provider=timed_provider,
                 manifest=prepared.manifest,
+                cognitive_budget=prepared.cognitive_budget,
             )
             scenario_elapsed_ms = (
                 timing_recorder.clock_ns() - scenario_started_ns
@@ -841,6 +884,56 @@ async def execute_vllm_host_run(
     finally:
         await prepared.provider.aclose()
     return tuple(results)
+
+
+def _bind_vllm_two_pass_cognitive_budget(
+    *,
+    runtime: TwoPassCognitiveBudgetRuntimeConfig,
+    plan: VLLMScreeningPlan,
+    capability: VLLMReasoningCapabilityAttestation,
+    live_serving_counter: VLLMServingTokenizerCounter,
+    live_counter_identity: SerializedInputCounterIdentity,
+) -> TwoPassCognitiveBudgetRuntimeConfig:
+    declared_counter = runtime.token_counter
+    if not isinstance(declared_counter, OpenAICompatibleTwoPassSerializedInputCounter):
+        raise ActualModelVLLMHostError(
+            "vLLM two-pass cognitive budget requires the production OpenAI-compatible two-pass counter"
+        )
+    if declared_counter.model != capability.request_model:
+        raise ActualModelVLLMHostError(
+            "vLLM two-pass cognitive-budget counter model does not match live runtime"
+        )
+    if declared_counter.decoding_config != plan.decoding_config:
+        raise ActualModelVLLMHostError(
+            "vLLM two-pass cognitive-budget counter decoding config does not match screening plan"
+        )
+    if declared_counter.decoding_capabilities != plan.decoding_capabilities:
+        raise ActualModelVLLMHostError(
+            "vLLM two-pass cognitive-budget counter capabilities do not match screening plan"
+        )
+    if declared_counter.vllm_reasoning_capability != capability:
+        raise ActualModelVLLMHostError(
+            "vLLM two-pass cognitive-budget counter reasoning capability does not match live runtime"
+        )
+    if declared_counter.evidence_identity != live_counter_identity:
+        raise ActualModelVLLMHostError(
+            "vLLM two-pass cognitive-budget counter identity does not match cited capacity semantics"
+        )
+
+    bound_counter = OpenAICompatibleTwoPassSerializedInputCounter(
+        model=capability.request_model,
+        count_input=live_serving_counter.count_input,
+        decoding_config=plan.decoding_config,
+        decoding_capabilities=plan.decoding_capabilities,
+        vllm_reasoning_capability=capability,
+        evidence_identity=live_counter_identity,
+    )
+    return TwoPassCognitiveBudgetRuntimeConfig(
+        pass1_total=runtime.pass1_total,
+        pass2_total=runtime.pass2_total,
+        policy=runtime.policy,
+        token_counter=bound_counter,
+    )
 
 
 def _required_capacity_coverage(
