@@ -1,9 +1,10 @@
 schema_version: 1
 id: context_compiler
-summary: Context authority, selection, retrieval discovery, and lexical relevance semantics.
+summary: Context authority, selection, retrieval discovery, lexical relevance semantics, and the C37 freeze boundary that keeps proactive deterministic semantic-grammar expansion evidence-triggered only.
 owner_issue: 1267
 canonical_surfaces:
 - docs/architecture/context-compiler.md
+- docs/reference/context-compiler-semantic-boundary.md
 - docs/reference/memory-retrieval-diagnostics.md
 - docs/reference/event-retrieval-diagnostics.md
 - docs/reference/event-retrieval-discovery.md
@@ -66,6 +67,7 @@ tests:
 - tests/unit/test_event_retrieval.py
 - tests/unit/test_event_evidence_projection.py
 - tests/unit/test_context_compiler_authority_docs.py
+- tests/unit/test_context_compiler_semantic_expansion_boundary.py
 depends_on:
 - continuity_context
 - core_architecture
