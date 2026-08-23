@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -11,7 +12,10 @@ from relaylm.actual_model_evaluation import (
     ExplicitContinuityRuntimeConfiguration,
     ProductQualityObservation,
 )
-from relaylm.actual_model_execution import run_actual_model_scenario_definition
+from relaylm.actual_model_execution import (
+    _stable_execution_id,
+    run_actual_model_scenario_definition,
+)
 from relaylm.actual_model_quality import (
     LabeledProposalMetrics,
     ProposalChannelMetrics,
@@ -22,6 +26,7 @@ from relaylm.actual_model_review import (
     ACTUAL_MODEL_REVIEW_FORMAT_VERSION,
     STAGE_R_REVIEW_PROTOCOL_VERSION,
     ActualModelExecutionReview,
+    ActualModelExecutionReviewError,
     StageRReviewObservation,
     load_actual_model_execution_review_mapping,
     normalize_stage_r_review_observations,
@@ -58,7 +63,11 @@ class _Provider:
         return CognitiveOutput(response=f"response-{self.calls}")
 
 
-def _manifest(*, restart: bool = False) -> ActualModelRunManifest:
+def _manifest(
+    *,
+    restart: bool = False,
+    replicate_id: str = "0",
+) -> ActualModelRunManifest:
     capabilities = ("state_candidates",)
     continuity = None
     if restart:
@@ -82,6 +91,7 @@ def _manifest(*, restart: bool = False) -> ActualModelRunManifest:
         condition_id="baseline",
         continuity_runtime=continuity,
         provider_capabilities=capabilities,
+        replicate_id=replicate_id,
     )
 
 
@@ -108,6 +118,7 @@ async def _run(
     workspace_root: Path,
     scenario_id: str,
     restart: bool = False,
+    replicate_id: str = "0",
 ):
     return await run_actual_model_scenario_definition(
         scenario_set=load_actual_model_scenario_set(_SCENARIO_SET_PATH),
@@ -115,7 +126,7 @@ async def _run(
         fixture_root=_FIXTURE_ROOT,
         workspace_root=workspace_root,
         provider=_Provider(),
-        manifest=_manifest(restart=restart),
+        manifest=_manifest(restart=restart, replicate_id=replicate_id),
     )
 
 
@@ -156,6 +167,44 @@ def test_review_binds_human_rubric_and_fixture_proposal_metrics_without_mutating
         observation["outcome"] == "not_rated"
         for observation in mapping["stage_r_review"]["observations"]
     )
+
+
+def test_review_rejects_source_execution_that_cannot_be_cited(tmp_path: Path) -> None:
+    first = asyncio.run(
+        _run(
+            workspace_root=tmp_path / "run-0",
+            scenario_id="response-persona-correction-v1",
+            replicate_id="0",
+        )
+    )
+    second = asyncio.run(
+        _run(
+            workspace_root=tmp_path / "run-1",
+            scenario_id="response-persona-correction-v1",
+            replicate_id="1",
+        )
+    )
+    mixed = replace(
+        first,
+        evidence=second.evidence,
+        execution_id=_stable_execution_id(
+            plan=first.plan,
+            run_id=second.run_id,
+        ),
+    )
+
+    with pytest.raises(
+        ActualModelExecutionReviewError,
+        match="source execution is not citable",
+    ):
+        review_actual_model_execution(
+            result=mixed,
+            reviewer_identity="rater-a",
+            ratings=_ratings(
+                family="response_persona_continuity",
+                turn_count=3,
+            ),
+        )
 
 
 def test_review_requires_exact_family_rubric_coverage(tmp_path: Path) -> None:
