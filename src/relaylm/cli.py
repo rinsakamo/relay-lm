@@ -100,7 +100,7 @@ def run_cli(
             token_counter_capabilities=token_counter_capabilities,
         )
     except (RuntimeConfigResolutionError, RuntimeAssemblyError, RuntimePreflightError) as exc:
-        stderr.write(f"error: {exc}\n")
+        stderr.write(f"error: {_summary_value(str(exc))}\n")
         return 2
 
     if args.command == "doctor":
