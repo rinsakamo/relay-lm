@@ -115,6 +115,12 @@ def _validate_provider_configuration(resolved: ResolvedRuntimeConfig) -> None:
             field="provider.base_url",
             message="provider base URL must use http or https and include a host",
         )
+    if any(character.isspace() for character in parsed.hostname) or "\\" in parsed.hostname:
+        raise RuntimePreflightError(
+            RuntimeConfigErrorCode.PROVIDER_INVALID,
+            field="provider.base_url",
+            message="provider base URL host is malformed",
+        )
     if "?" in provider.base_url or "#" in provider.base_url:
         raise RuntimePreflightError(
             RuntimeConfigErrorCode.PROVIDER_INVALID,
