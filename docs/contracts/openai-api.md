@@ -39,11 +39,13 @@ With `stream=false`, the endpoint returns an OpenAI-style `chat.completion` cont
 
 With `stream=true`, the current OpenAI-compatible provider path returns `text/event-stream` using OpenAI-style `chat.completion.chunk` frames.
 
+RelayLM starts the governed streaming turn far enough to determine its first observable outcome before committing the successful HTTP streaming response. If the configured cognitive provider fails with `ProviderProtocolError` before any SSE frame is emitted, the endpoint returns the same HTTP 502 public error boundary as buffered cognition. If Character loading or validation fails with `CharacterDataError` before any SSE frame is emitted, the endpoint returns the same HTTP 500 public error boundary as buffered cognition. A pre-emission failure is therefore not represented as an empty HTTP 200 stream.
+
 RelayLM may expose safely decoded characters from the provider wire `utterance` before the complete structured provider object has arrived. This early visible text is delivery only: `state_candidates` remain non-authoritative, and RelayLM creates the Assistant Event and applies State mutation only after the provider stream completes as a valid structured result and the existing Validator accepts the candidates.
 
 A successful stream ends with a final chunk carrying `finish_reason: "stop"` followed by `data: [DONE]`.
 
-If the structured provider stream truncates or becomes invalid after some safe utterance text was already emitted, that visible prefix is not semantically regenerated. The current User Event remains persisted, but RelayLM creates no Assistant Event and performs no State mutation for the failed turn. The incomplete stream does not emit the normal successful `stop` / `[DONE]` terminator.
+Once RelayLM has emitted the first normal SSE frame, the HTTP response status is already committed. If the structured provider stream then truncates or becomes invalid, that visible prefix is not semantically regenerated and RelayLM does not attempt a retroactive status rewrite or emit a new in-band error protocol. The current User Event remains persisted, but RelayLM creates no Assistant Event and performs no State mutation for the failed turn. The incomplete stream does not emit the normal successful `stop` / `[DONE]` terminator.
 
 A configured provider that does not implement RelayLM's streaming provider contract rejects `stream=true` rather than silently falling back to a second generation or a different semantic path.
 
