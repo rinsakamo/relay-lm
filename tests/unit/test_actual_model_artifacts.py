@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -210,3 +211,28 @@ def test_replicate_id_produces_distinct_citable_artifact_identity(tmp_path: Path
     )
 
     assert first.run_id != second.run_id
+
+
+def test_evidence_writer_rejects_non_content_derived_run_id(tmp_path: Path) -> None:
+    fixture = tmp_path / "fixture"
+    _make_fixture(fixture)
+    revision = character_fixture_revision(fixture)
+    evidence = asyncio.run(
+        run_actual_model_fixture(
+            fixture_root=fixture,
+            workspace_root=tmp_path / "run",
+            provider=_FixtureProvider("response"),
+            manifest=_manifest(revision),
+            scenario=_scenario(),
+        )
+    )
+    forged = replace(evidence, run_id="amr-" + "f" * 64)
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(
+        ActualModelArtifactError,
+        match="run_id does not match actual-model evidence",
+    ):
+        write_actual_model_evidence(evidence=forged, artifact_root=artifact_root)
+
+    assert not artifact_root.exists()
