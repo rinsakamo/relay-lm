@@ -132,6 +132,17 @@ It contains no prompt/message/State/Continuity/MEMORY content, API keys or model
 
 The artifact ID is content-addressed and recomputed on load. Conflicting replacement is rejected.
 
+For a **current citable screening run**, the capacity artifact's `relaylm_commit` must equal the exact clean RelayLM checkout used by screening. An older measurement remains valid historical evidence for its original code/wire question, but matching target, tokenizer, backend, counter and scenario identities do not promote that older serialized-input footprint into current-wire authority.
+
+Fresh capacity evidence therefore does not need to be committed back into the repository before it can be consumed. Committing an artifact that embeds its own measurement commit would move repository HEAD and create a self-referential authority problem. Instead, acquire capacity into an external immutable evidence root on the exact clean checkout, keep that checkout unchanged, then cite that freshly produced evidence in the screening invocation:
+
+```text
+python -m relaylm.actual_model_host --backend vllm --operation capacity --condition B ... --artifact-root "$EVIDENCE_ROOT"
+python -m relaylm.actual_model_host --backend vllm --operation screening --condition B ... --capacity-evidence-id "$CAPACITY_EVIDENCE_ID" --capacity-evidence-root "$EVIDENCE_ROOT"
+```
+
+`--capacity-evidence-id` and `--capacity-evidence-root` are screening-only and must be supplied together. The override replaces only the capacity citation in the in-memory screening plan; it does not rewrite the committed Stage R plan or change target, condition, scenarios, context window, decoding, reasoning or runtime authority.
+
 ## Selected-condition coverage
 
 Canonical preparation validates the **selected current condition** against exact capacity coverage.
@@ -188,7 +199,7 @@ This is fresh identity re-attestation, not permission to repeat an unconstrained
 
 `src/relaylm/actual_model_vllm_host.py` owns vLLM host preparation/execution binding.
 
-It validates capacity evidence as required, verifies the exact repository snapshot, reacquires live backend/model identity, reconstructs the serving-tokenizer counter identity, validates exact selected-condition coverage, constructs the canonical provider and pass requests, creates the run manifest, and obtains the binding before scenario generation.
+It validates capacity evidence as required, binds its measurement commit to the exact clean screening checkout, verifies the exact repository snapshot, reacquires live backend/model identity, reconstructs the serving-tokenizer counter identity, validates exact selected-condition coverage, constructs the canonical provider and pass requests, creates the run manifest, and obtains the binding before scenario generation.
 
 The common facade remains:
 
