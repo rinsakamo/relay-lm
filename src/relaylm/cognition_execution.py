@@ -43,14 +43,42 @@ class CognitionOptionStatus(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class CognitionCompletionMetadata:
+    """Provider-supplied content-free completion observation for one cognition pass."""
+
+    finish_reason: str | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+    reasoning_tokens: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.finish_reason is not None and (
+            not isinstance(self.finish_reason, str) or not self.finish_reason.strip()
+        ):
+            raise TypeError("finish_reason must be a non-empty string or None")
+        _validate_optional_nonnegative_integer("prompt_tokens", self.prompt_tokens)
+        _validate_optional_nonnegative_integer(
+            "completion_tokens", self.completion_tokens
+        )
+        _validate_optional_nonnegative_integer("total_tokens", self.total_tokens)
+        _validate_optional_nonnegative_integer("reasoning_tokens", self.reasoning_tokens)
+
+
+@dataclass(frozen=True, slots=True)
 class CognitionConversationOutput:
-    """Pass 1 semantic output: only the visible natural-language response."""
+    """Pass 1 semantic output plus optional content-free provider completion facts."""
 
     response: str
+    completion: CognitionCompletionMetadata = field(
+        default_factory=CognitionCompletionMetadata
+    )
 
     def __post_init__(self) -> None:
         if not isinstance(self.response, str) or not self.response.strip():
             raise ValueError("conversation response must not be empty")
+        if not isinstance(self.completion, CognitionCompletionMetadata):
+            raise TypeError("completion must be CognitionCompletionMetadata")
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,10 +103,13 @@ class CognitionExtractionInput:
 
 @dataclass(frozen=True, slots=True)
 class CognitionExtractionOutput:
-    """Pass 2 semantic output: proposals only, with no second visible response."""
+    """Pass 2 semantic proposals plus optional content-free provider completion facts."""
 
     state_candidates: tuple[StateCandidate, ...] = field(default_factory=tuple)
     continuity_candidates: tuple[ContinuityCandidate, ...] = field(default_factory=tuple)
+    completion: CognitionCompletionMetadata = field(
+        default_factory=CognitionCompletionMetadata
+    )
 
     def __post_init__(self) -> None:
         if not isinstance(self.state_candidates, tuple) or not all(
@@ -92,6 +123,8 @@ class CognitionExtractionOutput:
             raise TypeError(
                 "continuity_candidates must contain ContinuityCandidate values"
             )
+        if not isinstance(self.completion, CognitionCompletionMetadata):
+            raise TypeError("completion must be CognitionCompletionMetadata")
 
 
 class TwoPassCognitiveProvider(Protocol):
@@ -444,3 +477,12 @@ def _validate_positive_integer(name: str, value: object) -> None:
         raise TypeError(f"{name} must be an integer")
     if value <= 0:
         raise ValueError(f"{name} must be positive")
+
+
+def _validate_optional_nonnegative_integer(name: str, value: object) -> None:
+    if value is None:
+        return
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"{name} must be an integer when provided")
+    if value < 0:
+        raise ValueError(f"{name} must be non-negative when provided")

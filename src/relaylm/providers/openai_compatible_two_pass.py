@@ -8,6 +8,7 @@ import httpx
 
 from relaylm.cognitive import CognitiveInput
 from relaylm.cognition_execution import (
+    CognitionCompletionMetadata,
     CognitionConversationOutput,
     CognitionExtractionInput,
     CognitionExtractionOutput,
@@ -124,6 +125,7 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
         response_text = ""
         saw_done = False
         saw_finish = False
+        terminal_finish_reason: str | None = None
 
         try:
             async with self._client.stream(
@@ -161,6 +163,7 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                             await emit_response_delta(content)
                     if finish_reason is not None:
                         saw_finish = True
+                        terminal_finish_reason = finish_reason
         except ProviderProtocolError:
             raise
         except (httpx.HTTPError, UnicodeDecodeError, ValueError) as exc:
@@ -176,7 +179,12 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
             raise ProviderProtocolError(
                 "upstream conversation stream contained no visible response"
             )
-        return CognitionConversationOutput(response=response_text)
+        return CognitionConversationOutput(
+            response=response_text,
+            completion=CognitionCompletionMetadata(
+                finish_reason=terminal_finish_reason,
+            ),
+        )
 
     async def generate_extraction(
         self,
@@ -306,14 +314,14 @@ def _extraction_request_body(
 
 
 def _parse_conversation_completion(envelope: Any) -> CognitionConversationOutput:
-    content = _completion_content(envelope)
+    content, completion = _completion_content_and_metadata(envelope)
     if not content.strip():
         raise ProviderProtocolError("provider conversation content must not be empty")
-    return CognitionConversationOutput(response=content)
+    return CognitionConversationOutput(response=content, completion=completion)
 
 
 def _parse_extraction_completion(envelope: Any) -> CognitionExtractionOutput:
-    content = _completion_content(envelope)
+    content, completion = _completion_content_and_metadata(envelope)
     wire = _load_cognitive_wire_json(
         content,
         invalid_message="provider extraction content is not valid JSON",
@@ -333,10 +341,13 @@ def _parse_extraction_completion(envelope: Any) -> CognitionExtractionOutput:
     return CognitionExtractionOutput(
         state_candidates=state_candidates,
         continuity_candidates=continuity_candidates,
+        completion=completion,
     )
 
 
-def _completion_content(envelope: Any) -> str:
+def _completion_content_and_metadata(
+    envelope: Any,
+) -> tuple[str, CognitionCompletionMetadata]:
     if not isinstance(envelope, dict):
         raise ProviderProtocolError("provider response must be an object")
     choices = envelope.get("choices")
@@ -354,4 +365,36 @@ def _completion_content(envelope: Any) -> str:
     content = message.get("content")
     if not isinstance(content, str):
         raise ProviderProtocolError("provider message content must be a string")
-    return content
+    return content, _completion_metadata(envelope=envelope, choice=choice)
+
+
+def _completion_metadata(
+    *,
+    envelope: dict[str, Any],
+    choice: dict[str, Any],
+) -> CognitionCompletionMetadata:
+    usage = envelope.get("usage")
+    usage_mapping = usage if isinstance(usage, dict) else {}
+    details = usage_mapping.get("completion_tokens_details")
+    details_mapping = details if isinstance(details, dict) else {}
+    return CognitionCompletionMetadata(
+        finish_reason=(
+            choice["finish_reason"]
+            if isinstance(choice.get("finish_reason"), str)
+            else None
+        ),
+        prompt_tokens=_optional_nonnegative_int(usage_mapping.get("prompt_tokens")),
+        completion_tokens=_optional_nonnegative_int(
+            usage_mapping.get("completion_tokens")
+        ),
+        total_tokens=_optional_nonnegative_int(usage_mapping.get("total_tokens")),
+        reasoning_tokens=_optional_nonnegative_int(
+            details_mapping.get("reasoning_tokens")
+        ),
+    )
+
+
+def _optional_nonnegative_int(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
