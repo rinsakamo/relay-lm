@@ -189,7 +189,7 @@ def _validate_character_readability(character: CharacterDirectory) -> None:
         character.load_state()
         tuple(character.iter_events())
         character.load_memory_markdown()
-    except CharacterDataError as exc:
+    except (CharacterDataError, UnicodeDecodeError) as exc:
         raise RuntimePreflightError(
             RuntimeConfigErrorCode.CHARACTER_INVALID,
             field="character.directory",

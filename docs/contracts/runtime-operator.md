@@ -104,6 +104,8 @@ If a selected `--config` or `RELAYLM_CONFIG` path uses `~` / `~user` syntax whos
 
 Selected runtime configuration files are decoded strictly as UTF-8. A selected file that cannot be decoded as UTF-8 fails as `parse_error: config_path` before assembly or startup; decoder exception text and file bytes are not emitted.
 
+Character Package text read during release preflight is likewise decoded as UTF-8. A Character text file that cannot be decoded fails as `character_invalid: character.directory` before `doctor` or `serve` can report success; decoder exception text, Character file paths, and invalid bytes are not emitted.
+
 Argument-parser failures also exit with status `2`. If an argparse diagnostic carries non-printable characters from an operator-supplied argv token, those characters use the same visible escape form before stderr output; normal usage text, option admission, and parser semantics are unchanged.
 
 Successful `--version` output is emitted only after the complete argv has passed argument parsing and only when no subcommand is selected. An unsupported trailing argv token or a recognized `doctor` / `serve` subcommand combined with `--version` therefore fails through the argument-parser boundary with status `2` and no version stdout instead of being ignored after a successful version report.
