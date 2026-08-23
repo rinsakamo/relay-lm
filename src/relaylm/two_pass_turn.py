@@ -404,14 +404,6 @@ async def _complete_extraction(
                 "two-pass provider generate_extraction must return CognitionExtractionOutput"
             )
 
-        if output.continuity_candidates and continuity_runtime is None:
-            return TwoPassExtractionResult(
-                status=TwoPassExtractionStatus.FAILED,
-                originating_event_id=event_id,
-                state=origin_state,
-                failure_reason="continuity_runtime_required",
-            )
-
         async with execution_runtime._authority_lock:
             if not execution_runtime._is_current(
                 revision=execution_revision,
@@ -438,6 +430,14 @@ async def _complete_extraction(
                     status=TwoPassExtractionStatus.STALE,
                     originating_event_id=event_id,
                     state=current_state,
+                )
+
+            if output.continuity_candidates and continuity_runtime is None:
+                return TwoPassExtractionResult(
+                    status=TwoPassExtractionStatus.FAILED,
+                    originating_event_id=event_id,
+                    state=origin_state,
+                    failure_reason="continuity_runtime_required",
                 )
 
             event_by_id = {event.id: event for event in character.iter_events()}
