@@ -97,6 +97,7 @@ def test_vllm_host_carries_two_pass_timing_as_separate_sidecar(
         snapshot_verification=SimpleNamespace(),
         reasoning_capability=SimpleNamespace(),
         provider=_Provider(),
+        cognitive_budget=None,
     )
 
     results = asyncio.run(
@@ -190,6 +191,7 @@ def test_vllm_host_summary_surfaces_absorbed_pass2_provider_failure(
         snapshot_verification=SimpleNamespace(),
         reasoning_capability=SimpleNamespace(),
         provider=_FailingExtractionProvider(),
+        cognitive_budget=None,
     )
 
     results = asyncio.run(
