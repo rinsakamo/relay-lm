@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
@@ -110,6 +111,8 @@ class ContinuityItem:
         _validate_revision(self.expires_revision, label="expires_revision")
         if self.expires_revision <= self.accepted_revision:
             raise ValueError("item lifetime must advance beyond acceptance")
+        if not is_continuity_json_value(self.value):
+            raise ValueError("continuity item value must be a JSON semantic value")
         object.__setattr__(self, "value", freeze_continuity_value(self.value))
 
 
@@ -142,6 +145,27 @@ class ContinuityContext:
             raise ValueError("continuity item cannot be accepted after context revision")
         if any(item.expires_revision <= self.revision for item in self.items):
             raise ValueError("continuity context must not contain expired items")
+
+
+def is_continuity_json_value(value: Any) -> bool:
+    """Return whether a value has stable JSON semantics for accepted continuity."""
+
+    try:
+        json.dumps(value, ensure_ascii=False, allow_nan=False)
+    except (TypeError, ValueError):
+        return False
+    return _mapping_keys_are_strings(value)
+
+
+def _mapping_keys_are_strings(value: Any) -> bool:
+    if isinstance(value, Mapping):
+        return all(
+            isinstance(key, str) and _mapping_keys_are_strings(nested)
+            for key, nested in value.items()
+        )
+    if isinstance(value, (list, tuple)):
+        return all(_mapping_keys_are_strings(nested) for nested in value)
+    return True
 
 
 def freeze_continuity_value(value: Any) -> Any:
