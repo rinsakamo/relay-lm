@@ -192,9 +192,7 @@ def _reject_duplicate_json_members(pairs: list[tuple[str, Any]]) -> dict[str, An
     result: dict[str, Any] = {}
     for key, value in pairs:
         if key in result:
-            raise ProviderProtocolError(
-                "cognitive wire JSON contains duplicate object member"
-            )
+            raise ProviderProtocolError("JSON contains duplicate object member")
         result[key] = value
     return result
 
@@ -342,7 +340,10 @@ class OpenAICompatibleProvider:
                     prefix="upstream request failed",
                     api_key=self.api_key,
                 )
-            envelope = response.json()
+            envelope = _load_cognitive_wire_json(
+                response.text,
+                invalid_message="provider response is not valid JSON",
+            )
         except ProviderProtocolError:
             raise
         except (httpx.HTTPError, ValueError) as exc:
@@ -587,10 +588,10 @@ async def _iter_sse_data(response: httpx.Response) -> AsyncIterator[str]:
 
 
 def _parse_stream_event(data: str) -> tuple[str | None, Any]:
-    try:
-        envelope = json.loads(data)
-    except json.JSONDecodeError as exc:
-        raise ProviderProtocolError("upstream SSE data is not valid JSON") from exc
+    envelope = _load_cognitive_wire_json(
+        data,
+        invalid_message="upstream SSE data is not valid JSON",
+    )
     try:
         choices = _mapping(envelope, "provider stream response")["choices"]
         if not isinstance(choices, list) or len(choices) != 1:
