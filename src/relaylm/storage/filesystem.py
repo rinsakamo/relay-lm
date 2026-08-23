@@ -374,6 +374,13 @@ def _state_record_from_mapping(raw: Any) -> StateRecord:
 
 
 def _state_record_to_mapping(record: StateRecord) -> dict[str, Any]:
+    if (
+        not record.sources
+        or not all(isinstance(item, str) and item.strip() for item in record.sources)
+    ):
+        raise CharacterDataError(
+            "state record sources must be a non-empty array of non-empty strings"
+        )
     payload: dict[str, Any] = {
         "state_id": record.state_id,
         "state_class": record.state_class,
