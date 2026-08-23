@@ -141,6 +141,15 @@ RCFG4/RCFG6 do not own or alter:
 
 ## Remaining release-runtime work
 
-- RCFG5: consume evidence-backed #1388 canonical profiles/defaults after that authority exists.
+The current installed `relaylm serve` path still drives the historical single-pass ordinary-turn API path. It is therefore not yet the #1533 qualified two-pass Core 1.0 release/reference runtime.
+
+Current #1446 authority still requires the operator layer to:
+
+- carry the owner-defined #1533 cognition mode/profile and independent Pass 1 / Pass 2 controls through release configuration and deterministic resolution;
+- assemble the qualified two-pass ordinary runtime instead of the historical single-pass API path;
+- preserve equivalent resolved per-pass semantics across buffered and streaming execution;
+- expose safe cognition capability/profile state and provenance through effective configuration and `doctor` diagnostics;
+- RCFG5: consume evidence-backed #1388 canonical profiles/defaults after that authority exists;
+- consume the exact release-candidate operator smoke owned mechanically by #1447 when an authorized candidate exists.
 
 RCFG6 installed-artifact execution smoke is satisfied by the current #1447 REL1/REL2A package-smoke authority and remains continuously rechecked by `v1` CI on relevant transaction heads.
