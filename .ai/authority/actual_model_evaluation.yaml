@@ -86,6 +86,7 @@ tests:
 - tests/unit/test_actual_model_vllm_host_dispatch.py
 - tests/unit/test_actual_model_host_runner.py
 - tests/unit/test_actual_model_crystallization.py
+- tests/unit/test_actual_model_crystallization_reference.py
 - tests/unit/test_actual_model_crystallization_host_runner.py
 - tests/unit/test_actual_model_crystallization_quality_fixture.py
 evidence:
