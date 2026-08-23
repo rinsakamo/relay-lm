@@ -294,6 +294,14 @@ def write_actual_model_execution_review(
 ) -> Path:
     """Persist one immutable review sidecar without mutating raw execution evidence."""
 
+    identity = review.to_mapping()
+    identity.pop("review_id")
+    identity.pop("score")
+    if review.review_id != _stable_review_id(identity):
+        raise ActualModelExecutionReviewError(
+            "review_id does not match review evidence"
+        )
+
     root = Path(artifact_root)
     root.mkdir(parents=True, exist_ok=True)
     path = root / f"{review.review_id}.review.json"

@@ -64,6 +64,7 @@ tests:
 - tests/unit/test_actual_model_execution.py
 - tests/unit/test_actual_model_execution_artifacts.py
 - tests/unit/test_actual_model_review.py
+- tests/unit/test_actual_model_review_identity.py
 - tests/unit/test_actual_model_cohort.py
 - tests/unit/test_actual_model_boundary.py
 - tests/unit/test_actual_model_pressure.py

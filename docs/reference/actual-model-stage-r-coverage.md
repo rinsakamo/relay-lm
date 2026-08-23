@@ -66,6 +66,12 @@ canonical order with `pass`, `fail`, or `not_rated`; omission and duplicate
 dimensions are invalid. `not_rated` explicitly means that dimension was not
 reviewed and is not evidence of a pass. No weighted aggregate score is added.
 
+A persisted review sidecar is citable only when its `review_id` matches the
+content-derived identity of that exact review evidence. The persistence boundary
+recomputes the identity and rejects a mismatched caller-supplied ID before any
+review artifact is written; a filename or manually constructed review object is
+not independent review authority.
+
 The required dimensions are relevance/correctness, naturalness, persona and
 style consistency, coherence, governed-context continuity, verbosity fit,
 language preservation, multilingual/code-switch robustness, unsupported recall,
