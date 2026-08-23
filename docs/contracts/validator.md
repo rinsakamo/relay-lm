@@ -29,7 +29,7 @@ M2 applies precision-first checks before current-State mutation:
 - every candidate must cite persisted Event IDs;
 - ordinary-turn candidates must cite the current user Event as current evidence;
 - `user.*` candidates require a cited user-authored Event;
-- `set` values must be JSON-serializable with non-finite JSON numbers rejected;
+- `set` values must belong to the stable JSON semantic domain: string, finite JSON number, boolean, null, array/list, or recursively string-keyed object; Python-only shapes that JSON encoding would coerce, such as tuples or non-string object keys, are rejected rather than normalized during persistence;
 - exact `state_class + key` controls create/no-op/replace/remove transitions.
 
 The key-policy check does not infer semantic aliases or merge alternate spellings. Specific preference subjects/dimensions remain model-chosen grammar under the registry guidance.
@@ -55,7 +55,7 @@ When a mapping uses either reserved key (`semantic` or `degree_hint`), the Valid
 
 Malformed reserved envelopes fail deterministically with `invalid_degree_hint_value`. The Validator does not infer what the degree should be, compare unrelated axes, calibrate values, or use degree as confidence, authority, relevance, salience, or a removal threshold.
 
-The semantic Validator remains slightly broader than the current OpenAI-compatible provider wire: arbitrary non-reserved State values may pass when they are JSON-serializable and satisfy other authority checks, while the provider adapter deliberately exposes only its stricter documented wire grammar.
+The semantic Validator remains slightly broader than the current OpenAI-compatible provider wire: arbitrary non-reserved State values may pass when they are stable JSON semantic values and satisfy other authority checks, while the provider adapter deliberately exposes only its stricter documented wire grammar.
 
 ## Current transition semantics
 
