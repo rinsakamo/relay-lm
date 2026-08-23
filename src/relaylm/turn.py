@@ -147,6 +147,25 @@ class TurnResultWithCognitiveBudgetDiagnostics:
     cognitive_budget: CognitiveBudgetDiagnostics
 
 
+@dataclass(slots=True)
+class _StreamingResponseDelivery:
+    emit_response_delta: Callable[[str], Awaitable[None]]
+    delivered: str = ""
+
+    async def emit(self, text: str) -> None:
+        self.delivered += text
+        await self.emit_response_delta(text)
+
+    async def reconcile(self, final_response: str) -> None:
+        if not final_response.startswith(self.delivered):
+            raise RuntimeError(
+                "streamed response does not match final cognitive response"
+            )
+        remaining = final_response[len(self.delivered) :]
+        if remaining:
+            await self.emit(remaining)
+
+
 async def run_user_turn(
     *,
     character: CharacterDirectory,
@@ -309,7 +328,10 @@ async def run_user_turn_streaming(
             continuity_runtime=continuity_runtime,
             cognitive_budget=cognitive_budget,
         )
-    output = await stream_generate(cognitive_input, emit_response_delta)
+    delivery = _StreamingResponseDelivery(emit_response_delta)
+    output = await stream_generate(cognitive_input, delivery.emit)
+    if isinstance(output, CognitiveOutput):
+        await delivery.reconcile(output.response)
     return _commit_cognitive_output(
         character=character,
         state=state,
@@ -346,7 +368,10 @@ async def run_user_turn_streaming_with_retrieval_diagnostics(
         continuity_runtime=continuity_runtime,
         include_retrieval_diagnostics=True,
     )
-    output = await stream_generate(cognitive_input, emit_response_delta)
+    delivery = _StreamingResponseDelivery(emit_response_delta)
+    output = await stream_generate(cognitive_input, delivery.emit)
+    if isinstance(output, CognitiveOutput):
+        await delivery.reconcile(output.response)
     turn = _commit_cognitive_output(
         character=character,
         state=state,
@@ -395,7 +420,10 @@ async def run_user_turn_streaming_with_cognitive_budget_diagnostics(
         policy=cognitive_budget.policy,
         result=enforcement,
     )
-    output = await stream_generate(enforcement.cognitive_input, emit_response_delta)
+    delivery = _StreamingResponseDelivery(emit_response_delta)
+    output = await stream_generate(enforcement.cognitive_input, delivery.emit)
+    if isinstance(output, CognitiveOutput):
+        await delivery.reconcile(output.response)
     turn = _commit_cognitive_output(
         character=character,
         state=state,

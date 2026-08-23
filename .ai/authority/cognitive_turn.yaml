@@ -44,6 +44,7 @@ tests:
 - tests/unit/test_two_pass_source_binding.py
 - tests/unit/test_cognitive_turn.py
 - tests/unit/test_single_pass_provider_result_type.py
+- tests/unit/test_streaming_delivery_reconciliation.py
 - tests/unit/test_continuity_turn.py
 - tests/unit/test_cognitive_budget_turn_wiring.py
 - tests/unit/test_cognitive_budget_turn_diagnostics.py

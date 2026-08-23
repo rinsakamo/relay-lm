@@ -35,6 +35,7 @@ from relaylm.turn import (
     _prepare_budgeted_user_turn,
     _prepare_user_turn,
     _reject_overlapping_budget_configuration,
+    _StreamingResponseDelivery,
 )
 from relaylm.validation import CandidateDecision, apply_state_candidates
 
@@ -266,15 +267,16 @@ async def run_user_turn_two_pass_streaming(
                 revision=execution_revision,
                 event_id=user_event.id,
             )
+        delivery = _StreamingResponseDelivery(emit_response_delta)
         if pass1_request is None:
             conversation = await stream_generate_conversation(
                 cognitive_input,
-                emit_response_delta,
+                delivery.emit,
             )
         else:
             conversation = await stream_generate_conversation(
                 cognitive_input,
-                emit_response_delta,
+                delivery.emit,
                 pass_request=pass1_request,
             )
         if not isinstance(conversation, CognitionConversationOutput):
@@ -282,6 +284,7 @@ async def run_user_turn_two_pass_streaming(
                 "two-pass provider stream_generate_conversation must return "
                 "CognitionConversationOutput"
             )
+        await delivery.reconcile(conversation.response)
         assistant_event = _commit_conversation_response(
             character=character,
             response=conversation.response,
