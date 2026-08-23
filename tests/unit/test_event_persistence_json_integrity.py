@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -104,6 +105,40 @@ def test_append_event_rejects_non_finite_payload_without_mutating_journal_or_sna
     )
 
     with pytest.raises(CharacterDataError, match="cannot append events.jsonl"):
+        character.append_event(rejected)
+
+    assert character.events_path.read_text(encoding="utf-8") == journal_before
+    assert tuple(character.iter_events()) == snapshot_before
+    assert character.event_retrieval_source() is discovery_before
+
+
+@pytest.mark.parametrize("payload", [[], "not-an-object", 7])
+def test_append_event_rejects_non_object_payload_without_mutating_journal_or_snapshot(
+    tmp_path: Path,
+    payload: Any,
+) -> None:
+    character = CharacterDirectory(tmp_path)
+    original = Event(
+        id="event-1",
+        type="message",
+        actor="user",
+        timestamp=_EVENT_TIMESTAMP,
+        payload={"content": "hello"},
+    )
+    character.append_event(original)
+    snapshot_before = tuple(character.iter_events())
+    discovery_before = character.event_retrieval_source()
+    journal_before = character.events_path.read_text(encoding="utf-8")
+
+    rejected = Event(
+        id="event-2",
+        type="message",
+        actor="user",
+        timestamp=_EVENT_TIMESTAMP,
+        payload=payload,
+    )
+
+    with pytest.raises(CharacterDataError, match="event payload must be an object"):
         character.append_event(rejected)
 
     assert character.events_path.read_text(encoding="utf-8") == journal_before
