@@ -12,6 +12,7 @@ from relaylm.actual_model_evaluation import (
     ExplicitBudgetConfiguration,
     ExplicitContinuityRuntimeConfiguration,
 )
+from relaylm.actual_model_execution import _stable_plan_id
 from relaylm.actual_model_pressure import (
     ActualModelPressureArtifactError,
     _pressure_comparison_identity,
@@ -101,6 +102,17 @@ def _stable_pressure_id_for(result) -> str:
     )
 
 
+def _stable_plan_id_for(plan) -> str:
+    return _stable_plan_id(
+        scenario_set_version=plan.scenario_set_version,
+        scenario_set_revision=plan.scenario_set_revision,
+        character_fixture_id=plan.character_fixture_id,
+        character_fixture_revision=plan.character_fixture_revision,
+        definition=plan.definition,
+        manifest=plan.manifest,
+    )
+
+
 @pytest.mark.parametrize(
     ("field", "forged_value"),
     (
@@ -136,6 +148,65 @@ def test_pressure_writer_rejects_scenario_set_envelope_drift(
     with pytest.raises(
         ActualModelPressureArtifactError,
         match="pressure scenario-set envelope does not match embedded plans",
+    ):
+        write_actual_model_scenario_pressure_comparison(
+            comparison=forged,
+            artifact_root=artifact_root,
+        )
+
+    assert not artifact_root.exists()
+
+
+@pytest.mark.parametrize(
+    ("field", "forged_value"),
+    (
+        ("scenario_set_version", "forged-scenario-set-v1"),
+        ("character_fixture_id", "forged-character"),
+        ("character_fixture_revision", "forged-character-revision"),
+    ),
+)
+def test_pressure_writer_rejects_plan_metadata_drift_from_manifest(
+    tmp_path: Path,
+    field: str,
+    forged_value: str,
+) -> None:
+    result = asyncio.run(
+        run_actual_model_scenario_pressure_comparison(
+            scenario_set=load_actual_model_scenario_set(_SCENARIO_SET_PATH),
+            scenario_id="cognitive-pressure-shared-semantics-v1",
+            fixture_root=_FIXTURE_ROOT,
+            workspace_root=tmp_path / "comparison",
+            baseline_provider=_Provider("baseline"),
+            pressure_provider=_Provider("pressure"),
+            baseline_manifest=_manifest(condition_id="baseline", pressure=False),
+            pressure_manifest=_manifest(condition_id="pressure", pressure=True),
+        )
+    )
+    plans = []
+    for plan in (result.baseline_plan, result.pressure_plan):
+        forged_plan = replace(plan, **{field: forged_value})
+        plans.append(replace(forged_plan, plan_id=_stable_plan_id_for(forged_plan)))
+    envelope = (
+        {"scenario_set_version": forged_value}
+        if field == "scenario_set_version"
+        else {}
+    )
+    forged = replace(
+        result,
+        baseline_plan=plans[0],
+        pressure_plan=plans[1],
+        **envelope,
+    )
+    forged = replace(forged, pressure_comparison_id=_stable_pressure_id_for(forged))
+    assert forged.pressure_comparison_id != result.pressure_comparison_id
+    assert forged.baseline_plan.manifest == result.baseline_plan.manifest
+    assert forged.pressure_plan.manifest == result.pressure_plan.manifest
+    assert forged.comparison == result.comparison
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(
+        ActualModelPressureArtifactError,
+        match="pressure plan metadata does not match run manifest",
     ):
         write_actual_model_scenario_pressure_comparison(
             comparison=forged,

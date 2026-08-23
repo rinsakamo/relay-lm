@@ -21,6 +21,10 @@ from relaylm.actual_model_execution import (
     _stable_plan_id,
     plan_actual_model_scenario_execution,
 )
+from relaylm.actual_model_execution_artifacts import (
+    ActualModelExecutionArtifactError,
+    validate_actual_model_execution_plan,
+)
 from relaylm.actual_model_scenarios import (
     ActualModelScenarioDefinition,
     ActualModelScenarioSet,
@@ -178,6 +182,7 @@ def write_actual_model_scenario_pressure_comparison(
 
     _validate_pressure_scenario_set_envelope(comparison)
     _validate_pressure_plan_ids(comparison)
+    _validate_pressure_plan_metadata(comparison)
     _validate_condition_comparison_binding(comparison)
     _validate_derived_observations(comparison.comparison)
     identity = _pressure_comparison_identity(
@@ -266,6 +271,18 @@ def _validate_pressure_plan_ids(
             raise ActualModelPressureArtifactError(
                 "plan_id does not match pressure plan evidence"
             )
+
+
+def _validate_pressure_plan_metadata(
+    pressure: ActualModelScenarioPressureComparison,
+) -> None:
+    for plan in (pressure.baseline_plan, pressure.pressure_plan):
+        try:
+            validate_actual_model_execution_plan(plan)
+        except ActualModelExecutionArtifactError as exc:
+            raise ActualModelPressureArtifactError(
+                "pressure plan metadata does not match run manifest"
+            ) from exc
 
 
 def _validate_condition_comparison_binding(
