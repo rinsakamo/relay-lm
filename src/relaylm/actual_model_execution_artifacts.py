@@ -62,6 +62,8 @@ def write_actual_model_execution_result(
             "run_id does not match execution evidence"
         )
 
+    _validate_execution_plan_evidence_binding(result)
+
     expected_execution_id = _stable_execution_id(
         plan=result.plan,
         run_id=result.run_id,
@@ -115,6 +117,48 @@ def load_actual_model_execution_mapping(path: str | Path) -> dict[str, object]:
             "actual-model execution artifact root must be a JSON object"
         )
     return raw
+
+
+def _validate_execution_plan_evidence_binding(
+    result: ActualModelScenarioExecutionResult,
+) -> None:
+    plan = result.plan
+    evidence = result.evidence
+    scenario = plan.definition.scenario
+
+    if isinstance(evidence, ActualModelEvidence):
+        if (
+            scenario.family == "restart_quality"
+            or evidence.manifest != plan.manifest
+            or evidence.scenario != scenario
+        ):
+            raise ActualModelExecutionArtifactError(
+                "execution evidence does not match execution plan"
+            )
+        return
+
+    if isinstance(evidence, ActualModelRestartEvidence):
+        continuity = plan.manifest.continuity_runtime
+        restart_after_turn_count = plan.definition.restart_after_turn_count
+        if (
+            scenario.family != "restart_quality"
+            or continuity is None
+            or restart_after_turn_count is None
+            or evidence.scenario != scenario
+            or evidence.manifest.base != plan.manifest
+            or evidence.manifest.restart_after_turn_count != restart_after_turn_count
+            or evidence.manifest.continuity_max_items != continuity.max_items
+            or evidence.manifest.continuity_lifetime_revisions
+            != continuity.lifetime_revisions
+        ):
+            raise ActualModelExecutionArtifactError(
+                "execution evidence does not match execution plan"
+            )
+        return
+
+    raise TypeError(
+        "execution evidence must be ActualModelEvidence or ActualModelRestartEvidence"
+    )
 
 
 def _resolve_existing_execution(*, path: Path, payload: str) -> Path:

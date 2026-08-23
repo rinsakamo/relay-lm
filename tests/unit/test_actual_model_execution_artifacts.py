@@ -84,7 +84,7 @@ async def _run(
     )
 
 
-async def _run_restart(*, workspace_root: Path):
+async def _run_restart(*, workspace_root: Path, replicate_id: str = "0"):
     return await run_actual_model_scenario_definition(
         scenario_set=load_actual_model_scenario_set(_SCENARIO_SET_PATH),
         scenario_id="restart-durable-vs-temporary-v1",
@@ -92,7 +92,7 @@ async def _run_restart(*, workspace_root: Path):
         workspace_root=workspace_root,
         provider=_ResponseProvider("restart response"),
         manifest=replace(
-            _manifest(),
+            _manifest(replicate_id=replicate_id),
             provider_capabilities=("state_candidates", "continuity_candidates"),
             continuity_runtime=ExplicitContinuityRuntimeConfiguration(
                 max_items=4,
@@ -292,6 +292,74 @@ def test_execution_writer_rejects_forged_restart_run_id_with_recomputed_outer_id
         match="run_id does not match execution evidence",
     ):
         write_actual_model_execution_result(result=forged, artifact_root=artifact_root)
+
+    assert not artifact_root.exists()
+
+
+def test_execution_writer_rejects_ordinary_evidence_from_another_valid_plan_run(
+    tmp_path: Path,
+) -> None:
+    first = asyncio.run(
+        _run(
+            workspace_root=tmp_path / "run-0",
+            response="model response",
+            replicate_id="0",
+        )
+    )
+    second = asyncio.run(
+        _run(
+            workspace_root=tmp_path / "run-1",
+            response="model response",
+            replicate_id="1",
+        )
+    )
+    assert isinstance(first.evidence, ActualModelEvidence)
+    assert isinstance(second.evidence, ActualModelEvidence)
+    mixed = replace(
+        first,
+        evidence=second.evidence,
+        execution_id=_stable_execution_id(
+            plan=first.plan,
+            run_id=second.run_id,
+        ),
+    )
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(
+        ActualModelExecutionArtifactError,
+        match="execution evidence does not match execution plan",
+    ):
+        write_actual_model_execution_result(result=mixed, artifact_root=artifact_root)
+
+    assert not artifact_root.exists()
+
+
+def test_execution_writer_rejects_restart_evidence_from_another_valid_plan_run(
+    tmp_path: Path,
+) -> None:
+    first = asyncio.run(
+        _run_restart(workspace_root=tmp_path / "run-0", replicate_id="0")
+    )
+    second = asyncio.run(
+        _run_restart(workspace_root=tmp_path / "run-1", replicate_id="1")
+    )
+    assert isinstance(first.evidence, ActualModelRestartEvidence)
+    assert isinstance(second.evidence, ActualModelRestartEvidence)
+    mixed = replace(
+        first,
+        evidence=second.evidence,
+        execution_id=_stable_execution_id(
+            plan=first.plan,
+            run_id=second.run_id,
+        ),
+    )
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(
+        ActualModelExecutionArtifactError,
+        match="execution evidence does not match execution plan",
+    ):
+        write_actual_model_execution_result(result=mixed, artifact_root=artifact_root)
 
     assert not artifact_root.exists()
 
