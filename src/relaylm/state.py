@@ -37,6 +37,39 @@ USER_PREFERENCE_GENERIC_KEYS = frozenset({"likes", "dislikes", "preference"})
 _MISSING = object()
 
 
+def is_state_json_value(value: Any) -> bool:
+    """Return whether a State value belongs to the stable JSON semantic domain."""
+
+    return _is_state_json_shape(value, require_finite_numbers=True)
+
+
+def _has_stable_state_json_shape(value: Any) -> bool:
+    """Reject Python-only shapes that JSON persistence would silently coerce."""
+
+    return _is_state_json_shape(value, require_finite_numbers=False)
+
+
+def _is_state_json_shape(value: Any, *, require_finite_numbers: bool) -> bool:
+    if value is None or isinstance(value, (str, bool)):
+        return True
+    if isinstance(value, int):
+        return True
+    if isinstance(value, float):
+        return not require_finite_numbers or math.isfinite(value)
+    if isinstance(value, list):
+        return all(
+            _is_state_json_shape(item, require_finite_numbers=require_finite_numbers)
+            for item in value
+        )
+    if isinstance(value, dict):
+        return all(
+            isinstance(key, str)
+            and _is_state_json_shape(item, require_finite_numbers=require_finite_numbers)
+            for key, item in value.items()
+        )
+    return False
+
+
 def _degree_hint_rejection(value: object) -> str | None:
     """Validate the reserved optional semantic degree-hint envelope without inferring meaning."""
 
@@ -148,6 +181,8 @@ class StateRecord:
             raise ValueError(f"generic preference key: {self.key}")
         if _degree_hint_rejection(self.value) is not None:
             raise ValueError("invalid degree hint value")
+        if not _has_stable_state_json_shape(self.value):
+            raise ValueError("state value must have stable JSON persistence shape")
         if not self.status.strip():
             raise ValueError("state status must not be empty")
 

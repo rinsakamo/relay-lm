@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable, Literal, Mapping
@@ -14,6 +13,7 @@ from relaylm.state import (
     StateCandidate,
     StateRecord,
     _degree_hint_rejection,
+    is_state_json_value,
 )
 
 DecisionStatus = Literal["accepted", "noop", "rejected"]
@@ -170,8 +170,6 @@ def _rejection_reason(
         degree_rejection = _degree_hint_rejection(candidate.value)
         if degree_rejection is not None:
             return degree_rejection
-        try:
-            json.dumps(candidate.value, ensure_ascii=False, allow_nan=False)
-        except (TypeError, ValueError):
+        if not is_state_json_value(candidate.value):
             return "non_json_value"
     return None
