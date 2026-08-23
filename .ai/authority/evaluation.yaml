@@ -5,7 +5,6 @@ owner_issue: 1247
 canonical_surfaces:
 - docs/reference/evaluation.md
 - docs/reference/evaluation-check-verdict.md
-references:
 - docs/reference/evaluation-working-context-diagnostics.md
 - docs/reference/evaluation-retrieval-stage-diagnostics.md
 - docs/reference/evaluation-retrieval-refinements.md
