@@ -12,21 +12,30 @@ from relaylm.budget import (
     TotalBudgetConfig,
 )
 from relaylm.budget_diagnostics import CognitiveBudgetDiagnostics
-from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
+from relaylm.budget_runtime import (
+    CognitiveBudgetRuntimeConfig,
+    TwoPassCognitiveBudgetRuntimeConfig,
+)
 from relaylm.providers.openai_compatible_budget import SerializedInputCounterIdentity
 
 
 @dataclass(frozen=True, slots=True)
 class ExplicitCognitiveBudgetConfiguration:
-    """#1386 evidence identity for one explicit #1387 total-budget policy."""
+    """#1386 evidence identity for one explicit #1387 total-budget policy.
 
-    total: TotalBudgetConfig
+    Historical single-pass identity keeps the original ``total`` shape. Canonical
+    two-pass identity carries both real per-pass total-capacity equations while
+    sharing the same deterministic degradation policy and serialized-input
+    counter identity used by the runtime.
+    """
+
+    total: TotalBudgetConfig | None
     policy: BudgetDegradationPolicy
     token_counter_identity: SerializedInputCounterIdentity | None = None
+    pass1_total: TotalBudgetConfig | None = None
+    pass2_total: TotalBudgetConfig | None = None
 
     def __post_init__(self) -> None:
-        if not isinstance(self.total, TotalBudgetConfig):
-            raise TypeError("total must be TotalBudgetConfig")
         if not isinstance(self.policy, BudgetDegradationPolicy):
             raise TypeError("policy must be BudgetDegradationPolicy")
         if self.token_counter_identity is not None and not isinstance(
@@ -37,33 +46,96 @@ class ExplicitCognitiveBudgetConfiguration:
                 "token_counter_identity must be SerializedInputCounterIdentity or None"
             )
 
+        single_pass = self.total is not None
+        two_pass = (
+            self.total is None
+            and self.pass1_total is not None
+            and self.pass2_total is not None
+        )
+        if single_pass:
+            if not isinstance(self.total, TotalBudgetConfig):
+                raise TypeError("total must be TotalBudgetConfig")
+            if self.pass1_total is not None or self.pass2_total is not None:
+                raise ValueError(
+                    "single-pass cognitive budget must not carry pass1_total/pass2_total"
+                )
+            return
+        if not two_pass:
+            raise ValueError(
+                "cognitive budget identity must carry total or both pass1_total/pass2_total"
+            )
+        if not isinstance(self.pass1_total, TotalBudgetConfig):
+            raise TypeError("pass1_total must be TotalBudgetConfig")
+        if not isinstance(self.pass2_total, TotalBudgetConfig):
+            raise TypeError("pass2_total must be TotalBudgetConfig")
+
+    @property
+    def mode(self) -> str:
+        return "single_pass" if self.total is not None else "two_pass"
+
     @classmethod
     def from_runtime(
         cls,
-        runtime: CognitiveBudgetRuntimeConfig,
+        runtime: CognitiveBudgetRuntimeConfig | TwoPassCognitiveBudgetRuntimeConfig,
     ) -> "ExplicitCognitiveBudgetConfiguration":
-        if not isinstance(runtime, CognitiveBudgetRuntimeConfig):
-            raise TypeError("runtime must be CognitiveBudgetRuntimeConfig")
+        if isinstance(runtime, CognitiveBudgetRuntimeConfig):
+            total = runtime.total
+            pass1_total = None
+            pass2_total = None
+        elif isinstance(runtime, TwoPassCognitiveBudgetRuntimeConfig):
+            total = None
+            pass1_total = runtime.pass1_total
+            pass2_total = runtime.pass2_total
+        else:
+            raise TypeError(
+                "runtime must be CognitiveBudgetRuntimeConfig or "
+                "TwoPassCognitiveBudgetRuntimeConfig"
+            )
         identity = getattr(runtime.token_counter, "evidence_identity", None)
         if identity is not None and not isinstance(identity, SerializedInputCounterIdentity):
             raise TypeError(
                 "runtime token counter evidence_identity must be SerializedInputCounterIdentity"
             )
         return cls(
-            total=runtime.total,
+            total=total,
             policy=runtime.policy,
             token_counter_identity=identity,
+            pass1_total=pass1_total,
+            pass2_total=pass2_total,
+        )
+
+    def uses_context_window(self, effective_context_window: int) -> bool:
+        if self.total is not None:
+            return self.total.model_context_window == effective_context_window
+        assert self.pass1_total is not None
+        assert self.pass2_total is not None
+        return (
+            self.pass1_total.model_context_window == effective_context_window
+            and self.pass2_total.model_context_window == effective_context_window
         )
 
     def to_mapping(self) -> dict[str, object]:
-        mapping: dict[str, object] = {
-            "model_context_window": self.total.model_context_window,
-            "reserved_output_tokens": self.total.reserved_output_tokens,
-            "initial_plan": _serialize_budget_plan(self.policy.initial_plan),
-            "degradation_steps": [
-                _serialize_degradation_step(step) for step in self.policy.steps
-            ],
-        }
+        if self.total is not None:
+            mapping: dict[str, object] = {
+                "model_context_window": self.total.model_context_window,
+                "reserved_output_tokens": self.total.reserved_output_tokens,
+                "initial_plan": _serialize_budget_plan(self.policy.initial_plan),
+                "degradation_steps": [
+                    _serialize_degradation_step(step) for step in self.policy.steps
+                ],
+            }
+        else:
+            assert self.pass1_total is not None
+            assert self.pass2_total is not None
+            mapping = {
+                "mode": "two_pass",
+                "pass1": _serialize_total_budget(self.pass1_total),
+                "pass2": _serialize_total_budget(self.pass2_total),
+                "initial_plan": _serialize_budget_plan(self.policy.initial_plan),
+                "degradation_steps": [
+                    _serialize_degradation_step(step) for step in self.policy.steps
+                ],
+            }
         if self.token_counter_identity is not None:
             mapping["token_counter"] = self.token_counter_identity.to_mapping()
         return mapping
@@ -193,7 +265,7 @@ class ActualModelBoundedBudgetFailureEvidence:
 def validate_cognitive_budget_runtime_identity(
     *,
     declared: ExplicitCognitiveBudgetConfiguration | None,
-    runtime: CognitiveBudgetRuntimeConfig | None,
+    runtime: CognitiveBudgetRuntimeConfig | TwoPassCognitiveBudgetRuntimeConfig | None,
     effective_context_window: int,
 ) -> None:
     """Fail before model generation when manifest and supplied #1387 runtime drift."""
@@ -208,7 +280,7 @@ def validate_cognitive_budget_runtime_identity(
         raise ValueError(
             "declared cognitive budget requires supplied CognitiveBudgetRuntimeConfig"
         )
-    if declared.total.model_context_window != effective_context_window:
+    if not declared.uses_context_window(effective_context_window):
         raise ValueError(
             "cognitive budget model_context_window does not match effective_context_window"
         )
@@ -217,6 +289,13 @@ def validate_cognitive_budget_runtime_identity(
         raise ValueError(
             "supplied CognitiveBudgetRuntimeConfig does not match the run manifest"
         )
+
+
+def _serialize_total_budget(total: TotalBudgetConfig) -> dict[str, int]:
+    return {
+        "model_context_window": total.model_context_window,
+        "reserved_output_tokens": total.reserved_output_tokens,
+    }
 
 
 def _serialize_budget_plan(plan: BudgetPlan) -> dict[str, object]:

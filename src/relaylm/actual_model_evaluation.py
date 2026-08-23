@@ -13,7 +13,10 @@ from relaylm.actual_model_cognitive_budget import (
     validate_cognitive_budget_runtime_identity,
 )
 from relaylm.budget_diagnostics import CognitiveBudgetExceededWithDiagnostics
-from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
+from relaylm.budget_runtime import (
+    CognitiveBudgetRuntimeConfig,
+    TwoPassCognitiveBudgetRuntimeConfig,
+)
 from relaylm.cognitive import CognitiveInput, CognitiveOutput, CognitiveProvider
 from relaylm.cognition_execution import (
     CognitionConversationOutput,
@@ -265,6 +268,13 @@ class ActualModelRunManifest:
             raise ValueError("provider_capabilities must not contain duplicates")
         if not all(item.strip() for item in self.provider_capabilities):
             raise ValueError("provider_capabilities must contain non-empty strings")
+        if self.cognition_execution is not None and not isinstance(
+            self.cognition_execution,
+            CognitionExecutionEvidenceIdentity,
+        ):
+            raise TypeError(
+                "cognition_execution must be CognitionExecutionEvidenceIdentity or None"
+            )
         if self.cognitive_budget is not None:
             if not isinstance(
                 self.cognitive_budget,
@@ -277,21 +287,28 @@ class ActualModelRunManifest:
                 raise ValueError(
                     "cognitive_budget cannot be combined with legacy explicit MEMORY/Event budgets"
                 )
-            if (
-                self.cognitive_budget.total.model_context_window
-                != self.effective_context_window
+            if not self.cognitive_budget.uses_context_window(
+                self.effective_context_window
             ):
                 raise ValueError(
                     "cognitive budget model_context_window must match effective_context_window"
                 )
-        if self.cognition_execution is not None:
-            if not isinstance(
-                self.cognition_execution,
-                CognitionExecutionEvidenceIdentity,
+            if self.cognitive_budget.mode == "two_pass":
+                if (
+                    self.cognition_execution is None
+                    or self.cognition_execution.mode != "two_pass"
+                ):
+                    raise ValueError(
+                        "two-pass cognitive budget requires two_pass cognition execution"
+                    )
+            elif (
+                self.cognition_execution is not None
+                and self.cognition_execution.mode == "two_pass"
             ):
-                raise TypeError(
-                    "cognition_execution must be CognitionExecutionEvidenceIdentity or None"
+                raise ValueError(
+                    "two_pass cognition execution requires two-pass cognitive budget identity"
                 )
+        if self.cognition_execution is not None:
             if self.cognition_execution.execution_path != self.execution_path:
                 raise ValueError(
                     "cognition execution path must match manifest execution_path"
@@ -308,13 +325,12 @@ class ActualModelRunManifest:
                 raise ValueError(
                     "cognition pass requests require explicit cognition_execution identity"
                 )
-            if self.execution_path != "buffered":
+            if (
+                self.execution_path != "buffered"
+                and self.cognition_execution.mode != "two_pass"
+            ):
                 raise ValueError(
-                    "cognition pass request evidence currently requires buffered execution"
-                )
-            if self.cognitive_budget is not None:
-                raise ValueError(
-                    "cognition pass requests cannot yet be combined with total cognitive_budget"
+                    "single-pass cognition pass request evidence currently requires buffered execution"
                 )
             if self.cognition_execution.mode == "single_pass":
                 if self.cognition_pass_requests.mode != "single_pass":
@@ -386,7 +402,7 @@ class ActualModelScenario:
 
     def __post_init__(self) -> None:
         if self.format_version != ACTUAL_MODEL_SCENARIO_FORMAT_VERSION:
-            raise ValueError(f"unsupported scenario format_version: {self.format_version}")
+            raise ValueError(f"unsupported actual-model format_version: {self.format_version}")
         if not self.scenario_id.strip():
             raise ValueError("scenario_id must not be empty")
         if self.family not in {
@@ -659,6 +675,8 @@ class _RecordingProvider:
         self,
         cognitive_input: CognitiveInput,
         emit_response_delta: Callable[[str], Awaitable[None]],
+        *,
+        pass_request: CognitionPassRequest | None = None,
     ) -> CognitionConversationOutput:
         stream_generate_conversation = getattr(
             self.delegate,
@@ -667,7 +685,17 @@ class _RecordingProvider:
         )
         if not callable(stream_generate_conversation):
             raise TypeError("provider does not support two-pass conversation streaming")
-        output = await stream_generate_conversation(cognitive_input, emit_response_delta)
+        if pass_request is None:
+            output = await stream_generate_conversation(
+                cognitive_input,
+                emit_response_delta,
+            )
+        else:
+            output = await stream_generate_conversation(
+                cognitive_input,
+                emit_response_delta,
+                pass_request=pass_request,
+            )
         if not isinstance(output, CognitionConversationOutput):
             raise TypeError(
                 "provider stream_generate_conversation must return CognitionConversationOutput"
@@ -704,7 +732,7 @@ async def run_actual_model_scenario(
     manifest: ActualModelRunManifest,
     scenario: ActualModelScenario,
     continuity_runtime: ContinuityRuntime | None = None,
-    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
+    cognitive_budget: CognitiveBudgetRuntimeConfig | TwoPassCognitiveBudgetRuntimeConfig | None = None,
 ) -> ActualModelEvidence:
     """Execute a semantic fixture through the resolved real ordinary-turn path.
 
@@ -721,10 +749,10 @@ async def run_actual_model_scenario(
     )
     execution_mode = _execution_mode(manifest)
     pass_requests = manifest.cognition_pass_requests
-    if execution_mode in {"two_pass", "shadow_two_pass"} and cognitive_budget is not None:
+    if execution_mode == "shadow_two_pass" and cognitive_budget is not None:
         raise ValueError(
-            "two-pass cognition execution does not yet expose #1386 total cognitive-budget "
-            "diagnostics; use a separately implemented evidence bridge before declaring it"
+            "shadow two-pass cognition execution does not expose #1386 total "
+            "cognitive-budget diagnostics"
         )
 
     recording_provider = _RecordingProvider(provider)
@@ -750,6 +778,11 @@ async def run_actual_model_scenario(
                 assert two_pass_runtime is not None
                 pass1_request = pass_requests.pass1 if pass_requests is not None else None
                 pass2_request = pass_requests.pass2 if pass_requests is not None else None
+                two_pass_budget = (
+                    cognitive_budget
+                    if isinstance(cognitive_budget, TwoPassCognitiveBudgetRuntimeConfig)
+                    else None
+                )
                 if manifest.execution_path == "buffered":
                     two_pass = await run_user_turn_two_pass(
                         character=character,
@@ -759,6 +792,7 @@ async def run_actual_model_scenario(
                         memory_budget=memory_budget,
                         event_budget=event_budget,
                         continuity_runtime=continuity_runtime,
+                        cognitive_budget=two_pass_budget,
                         pass1_request=pass1_request,
                         pass2_request=pass2_request,
                     )
@@ -772,6 +806,9 @@ async def run_actual_model_scenario(
                         memory_budget=memory_budget,
                         event_budget=event_budget,
                         continuity_runtime=continuity_runtime,
+                        cognitive_budget=two_pass_budget,
+                        pass1_request=pass1_request,
+                        pass2_request=pass2_request,
                     )
                 extraction = await two_pass.extraction
                 extraction_output = (
@@ -842,6 +879,11 @@ async def run_actual_model_scenario(
                             continuity_runtime=continuity_runtime,
                         )
                 else:
+                    if not isinstance(cognitive_budget, CognitiveBudgetRuntimeConfig):
+                        raise TypeError(
+                            "single-pass actual-model execution requires "
+                            "CognitiveBudgetRuntimeConfig"
+                        )
                     if manifest.execution_path == "buffered":
                         budgeted = await run_user_turn_with_cognitive_budget_diagnostics(
                             character=character,
