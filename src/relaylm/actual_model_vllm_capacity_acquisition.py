@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +25,7 @@ from relaylm.actual_model_vllm import (
 )
 from relaylm.actual_model_vllm_capacity import (
     VLLMCapacityFootprintObservation,
+    VLLMCapacitySelectedLayerOccupancy,
     VLLMRuntimeCapacityEvidence,
     VLLMRuntimeCapacityEvidenceError,
     validate_capacity_coverage,
@@ -206,6 +207,7 @@ class VLLMCapacityMeasurementProvider:
             pass_id="single_pass",
             turn_index=turn_index,
             pass_request=expected,
+            cognitive_input=cognitive_input,
             total_input_tokens=count.total_input_tokens,
             required_input_framing_tokens=count.required_input_framing_tokens,
             count_mode=count.mode,
@@ -247,6 +249,7 @@ class VLLMCapacityMeasurementProvider:
             pass_id="pass1",
             turn_index=turn_index,
             pass_request=expected,
+            cognitive_input=cognitive_input,
             total_input_tokens=count.total_input_tokens,
             required_input_framing_tokens=count.required_input_framing_tokens,
             count_mode=count.mode,
@@ -260,6 +263,7 @@ class VLLMCapacityMeasurementProvider:
             raise TypeError(
                 "provider generate_conversation must return CognitionConversationOutput"
             )
+        self._attach_completion_observation(output.completion)
         return output
 
     async def generate_extraction(
@@ -290,6 +294,7 @@ class VLLMCapacityMeasurementProvider:
             pass_id="pass2",
             turn_index=turn_index,
             pass_request=expected,
+            cognitive_input=extraction_input.cognitive_input,
             total_input_tokens=count.total_input_tokens,
             required_input_framing_tokens=count.required_input_framing_tokens,
             count_mode=count.mode,
@@ -303,6 +308,7 @@ class VLLMCapacityMeasurementProvider:
             raise TypeError(
                 "provider generate_extraction must return CognitionExtractionOutput"
             )
+        self._attach_completion_observation(output.completion)
         return output
 
     async def aclose(self) -> None:
@@ -317,6 +323,7 @@ class VLLMCapacityMeasurementProvider:
         pass_id: str,
         turn_index: int,
         pass_request: CognitionPassRequest,
+        cognitive_input: CognitiveInput,
         total_input_tokens: int,
         required_input_framing_tokens: int,
         count_mode: TokenCountMode,
@@ -332,7 +339,20 @@ class VLLMCapacityMeasurementProvider:
                 total_input_tokens=total_input_tokens,
                 required_input_framing_tokens=required_input_framing_tokens,
                 count_mode=count_mode,
+                selected_layer_occupancy=_observe_selected_layer_occupancy(
+                    cognitive_input
+                ),
             )
+        )
+
+    def _attach_completion_observation(self, completion: object) -> None:
+        if not self._observations:
+            raise VLLMCapacityAcquisitionError(
+                "completion observation cannot be attached before a footprint"
+            )
+        self._observations[-1] = replace(
+            self._observations[-1],
+            completion_observation=completion,
         )
 
 
@@ -659,6 +679,43 @@ def _write_capacity_artifact(
         footprint_count=len(evidence.footprints),
         maximum_observed_input_tokens=evidence.maximum_observed_input_tokens,
         complete=complete,
+    )
+
+
+def _observe_selected_layer_occupancy(
+    cognitive_input: CognitiveInput,
+) -> VLLMCapacitySelectedLayerOccupancy:
+    """Observe owner-selected layers without rerunning any selection logic.
+
+    ``compile_cognitive_input`` emits accepted continuity before working
+    context, and marks working-context items with their user/assistant actor.
+    The actor marker is therefore used only to classify the already-built
+    projection; no candidate, memory, event, or context selector is rerun.
+    Character occupancy follows the owner character-budget unit: ``len`` of
+    each selected item content string.
+    """
+
+    if not isinstance(cognitive_input, CognitiveInput):
+        raise TypeError("cognitive_input must be CognitiveInput")
+    working_context = tuple(
+        item
+        for item in cognitive_input.context
+        if item.actor in {"user", "assistant"}
+    )
+    return VLLMCapacitySelectedLayerOccupancy(
+        canonical_state_item_count=len(cognitive_input.state),
+        working_context_item_count=len(working_context),
+        working_context_character_occupancy=sum(
+            len(item.content) for item in working_context
+        ),
+        retrieved_memory_item_count=len(cognitive_input.memory),
+        retrieved_memory_character_occupancy=sum(
+            len(item.content) for item in cognitive_input.memory
+        ),
+        event_evidence_item_count=len(cognitive_input.event_evidence),
+        event_evidence_character_occupancy=sum(
+            len(item.content) for item in cognitive_input.event_evidence
+        ),
     )
 
 

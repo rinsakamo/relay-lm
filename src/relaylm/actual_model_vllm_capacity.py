@@ -8,7 +8,10 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from relaylm.budget_enforcement import TokenCountMode
-from relaylm.cognition_execution import CognitionPassRequest
+from relaylm.cognition_execution import (
+    CognitionCompletionMetadata,
+    CognitionPassRequest,
+)
 from relaylm.providers.openai_compatible_budget import SerializedInputCounterIdentity
 
 
@@ -87,6 +90,50 @@ class VLLMCapacityFootprintCoverage:
 
 
 @dataclass(frozen=True, slots=True)
+class VLLMCapacitySelectedLayerOccupancy:
+    """Content-free occupancy observed from one already-built CognitiveInput."""
+
+    canonical_state_item_count: int
+    working_context_item_count: int
+    working_context_character_occupancy: int
+    retrieved_memory_item_count: int
+    retrieved_memory_character_occupancy: int
+    event_evidence_item_count: int
+    event_evidence_character_occupancy: int
+
+    def __post_init__(self) -> None:
+        for name in (
+            "canonical_state_item_count",
+            "working_context_item_count",
+            "working_context_character_occupancy",
+            "retrieved_memory_item_count",
+            "retrieved_memory_character_occupancy",
+            "event_evidence_item_count",
+            "event_evidence_character_occupancy",
+        ):
+            _non_negative_int(name, getattr(self, name))
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "canonical_state": {
+                "item_count": self.canonical_state_item_count,
+            },
+            "working_context": {
+                "item_count": self.working_context_item_count,
+                "character_occupancy": self.working_context_character_occupancy,
+            },
+            "retrieved_memory": {
+                "item_count": self.retrieved_memory_item_count,
+                "character_occupancy": self.retrieved_memory_character_occupancy,
+            },
+            "event_evidence": {
+                "item_count": self.event_evidence_item_count,
+                "character_occupancy": self.event_evidence_character_occupancy,
+            },
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class VLLMCapacityFootprintObservation:
     """Content-free exact/conservative footprint for one production pass input."""
 
@@ -99,6 +146,8 @@ class VLLMCapacityFootprintObservation:
     total_input_tokens: int
     required_input_framing_tokens: int
     count_mode: TokenCountMode
+    selected_layer_occupancy: VLLMCapacitySelectedLayerOccupancy | None = None
+    completion_observation: CognitionCompletionMetadata | None = None
 
     def __post_init__(self) -> None:
         self.coverage
@@ -112,6 +161,25 @@ class VLLMCapacityFootprintObservation:
             )
         if not isinstance(self.count_mode, TokenCountMode):
             raise TypeError("count_mode must be TokenCountMode")
+        if self.selected_layer_occupancy is not None and not isinstance(
+            self.selected_layer_occupancy, VLLMCapacitySelectedLayerOccupancy
+        ):
+            raise TypeError(
+                "selected_layer_occupancy must be VLLMCapacitySelectedLayerOccupancy"
+            )
+        if self.completion_observation is not None and not isinstance(
+            self.completion_observation, CognitionCompletionMetadata
+        ):
+            raise TypeError(
+                "completion_observation must be CognitionCompletionMetadata"
+            )
+        if (
+            self.completion_observation is not None
+            and self.selected_layer_occupancy is None
+        ):
+            raise VLLMRuntimeCapacityEvidenceError(
+                "completion_observation requires selected_layer_occupancy"
+            )
 
     @property
     def coverage(self) -> VLLMCapacityFootprintCoverage:
@@ -125,12 +193,20 @@ class VLLMCapacityFootprintObservation:
         )
 
     def to_mapping(self) -> dict[str, object]:
-        return {
+        mapping: dict[str, object] = {
             **self.coverage.to_mapping(),
             "total_input_tokens": self.total_input_tokens,
             "required_input_framing_tokens": self.required_input_framing_tokens,
             "count_mode": self.count_mode.value,
         }
+        if self.selected_layer_occupancy is not None:
+            mapping["selected_layer_occupancy"] = (
+                self.selected_layer_occupancy.to_mapping()
+            )
+            mapping["completion_observation"] = (
+                _completion_observation_mapping(self.completion_observation)
+            )
+        return mapping
 
 
 @dataclass(frozen=True, slots=True)
@@ -557,6 +633,12 @@ def _parse_counter_identity(value: object) -> SerializedInputCounterIdentity:
 def _parse_footprint(value: object, *, index: int) -> VLLMCapacityFootprintObservation:
     label = f"footprints[{index}]"
     mapping = _mapping(value, label)
+    extension_keys = {"selected_layer_occupancy", "completion_observation"}
+    present_extension_keys = set(mapping) & extension_keys
+    if present_extension_keys and present_extension_keys != extension_keys:
+        raise VLLMRuntimeCapacityEvidenceError(
+            f"{label} must include selected_layer_occupancy and completion_observation together"
+        )
     _require_exact_keys(
         mapping,
         {
@@ -569,7 +651,8 @@ def _parse_footprint(value: object, *, index: int) -> VLLMCapacityFootprintObser
             "total_input_tokens",
             "required_input_framing_tokens",
             "count_mode",
-        },
+        }
+        | present_extension_keys,
         label,
     )
     try:
@@ -592,6 +675,22 @@ def _parse_footprint(value: object, *, index: int) -> VLLMCapacityFootprintObser
             count_mode=TokenCountMode(
                 _string(mapping["count_mode"], f"{label}.count_mode")
             ),
+            selected_layer_occupancy=(
+                _parse_selected_layer_occupancy(
+                    mapping["selected_layer_occupancy"],
+                    label=f"{label}.selected_layer_occupancy",
+                )
+                if present_extension_keys
+                else None
+            ),
+            completion_observation=(
+                _parse_completion_observation(
+                    mapping["completion_observation"],
+                    label=f"{label}.completion_observation",
+                )
+                if present_extension_keys
+                else None
+            ),
         )
     except (TypeError, ValueError) as exc:
         if isinstance(exc, VLLMRuntimeCapacityEvidenceError):
@@ -599,6 +698,136 @@ def _parse_footprint(value: object, *, index: int) -> VLLMCapacityFootprintObser
         raise VLLMRuntimeCapacityEvidenceError(
             f"invalid {label}: {exc}"
         ) from exc
+
+
+def _parse_selected_layer_occupancy(
+    value: object,
+    *,
+    label: str,
+) -> VLLMCapacitySelectedLayerOccupancy:
+    mapping = _mapping(value, label)
+    _require_exact_keys(
+        mapping,
+        {"canonical_state", "working_context", "retrieved_memory", "event_evidence"},
+        label,
+    )
+    try:
+        canonical_state = _parse_occupancy_layer(
+            mapping["canonical_state"],
+            label=f"{label}.canonical_state",
+            with_characters=False,
+        )
+        working_context = _parse_occupancy_layer(
+            mapping["working_context"],
+            label=f"{label}.working_context",
+            with_characters=True,
+        )
+        retrieved_memory = _parse_occupancy_layer(
+            mapping["retrieved_memory"],
+            label=f"{label}.retrieved_memory",
+            with_characters=True,
+        )
+        event_evidence = _parse_occupancy_layer(
+            mapping["event_evidence"],
+            label=f"{label}.event_evidence",
+            with_characters=True,
+        )
+        return VLLMCapacitySelectedLayerOccupancy(
+            canonical_state_item_count=canonical_state[0],
+            working_context_item_count=working_context[0],
+            working_context_character_occupancy=working_context[1],
+            retrieved_memory_item_count=retrieved_memory[0],
+            retrieved_memory_character_occupancy=retrieved_memory[1],
+            event_evidence_item_count=event_evidence[0],
+            event_evidence_character_occupancy=event_evidence[1],
+        )
+    except (TypeError, ValueError) as exc:
+        if isinstance(exc, VLLMRuntimeCapacityEvidenceError):
+            raise
+        raise VLLMRuntimeCapacityEvidenceError(f"invalid {label}: {exc}") from exc
+
+
+def _parse_occupancy_layer(
+    value: object,
+    *,
+    label: str,
+    with_characters: bool,
+) -> tuple[int, int]:
+    mapping = _mapping(value, label)
+    expected = {"item_count"}
+    if with_characters:
+        expected.add("character_occupancy")
+    _require_exact_keys(mapping, expected, label)
+    item_count = _integer(mapping["item_count"], f"{label}.item_count")
+    character_occupancy = (
+        _integer(
+            mapping["character_occupancy"],
+            f"{label}.character_occupancy",
+        )
+        if with_characters
+        else 0
+    )
+    if item_count < 0 or character_occupancy < 0:
+        raise VLLMRuntimeCapacityEvidenceError(
+            f"{label} occupancy values must be non-negative"
+        )
+    return item_count, character_occupancy
+
+
+def _parse_completion_observation(
+    value: object,
+    *,
+    label: str,
+) -> CognitionCompletionMetadata | None:
+    if value is None:
+        return None
+    mapping = _mapping(value, label)
+    _require_exact_keys(
+        mapping,
+        {
+            "finish_reason",
+            "prompt_tokens",
+            "completion_tokens",
+            "total_tokens",
+            "reasoning_tokens",
+        },
+        label,
+    )
+    finish_reason_value = mapping["finish_reason"]
+    finish_reason = (
+        None
+        if finish_reason_value is None
+        else _string(finish_reason_value, f"{label}.finish_reason")
+    )
+    try:
+        return CognitionCompletionMetadata(
+            finish_reason=finish_reason,
+            prompt_tokens=_optional_nonnegative_int(
+                mapping["prompt_tokens"], f"{label}.prompt_tokens"
+            ),
+            completion_tokens=_optional_nonnegative_int(
+                mapping["completion_tokens"], f"{label}.completion_tokens"
+            ),
+            total_tokens=_optional_nonnegative_int(
+                mapping["total_tokens"], f"{label}.total_tokens"
+            ),
+            reasoning_tokens=_optional_nonnegative_int(
+                mapping["reasoning_tokens"], f"{label}.reasoning_tokens"
+            ),
+        )
+    except (TypeError, ValueError) as exc:
+        if isinstance(exc, VLLMRuntimeCapacityEvidenceError):
+            raise
+        raise VLLMRuntimeCapacityEvidenceError(f"invalid {label}: {exc}") from exc
+
+
+def _optional_nonnegative_int(value: object, label: str) -> int | None:
+    if value is None:
+        return None
+    parsed = _integer(value, label)
+    if parsed < 0:
+        raise VLLMRuntimeCapacityEvidenceError(f"{label} must be non-negative")
+    return parsed
 
 
 def _parse_failure(value: object) -> VLLMCapacityFailureObservation | None:
@@ -678,6 +907,20 @@ def _canonical_json_bytes(value: object) -> bytes:
         sort_keys=True,
         separators=(",", ":"),
     ).encode("utf-8")
+
+
+def _completion_observation_mapping(
+    value: CognitionCompletionMetadata | None,
+) -> dict[str, object] | None:
+    if value is None:
+        return None
+    return {
+        "finish_reason": value.finish_reason,
+        "prompt_tokens": value.prompt_tokens,
+        "completion_tokens": value.completion_tokens,
+        "total_tokens": value.total_tokens,
+        "reasoning_tokens": value.reasoning_tokens,
+    }
 
 
 def _resolve_existing(*, path: Path, payload: str) -> Path:

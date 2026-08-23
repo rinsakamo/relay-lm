@@ -8,7 +8,11 @@ from pathlib import Path
 import pytest
 
 from relaylm.budget_enforcement import TokenCountMode
-from relaylm.cognition_execution import CognitionPassRequest, CognitionReasoningMode
+from relaylm.cognition_execution import (
+    CognitionCompletionMetadata,
+    CognitionPassRequest,
+    CognitionReasoningMode,
+)
 from relaylm.providers.openai_compatible_budget import SerializedInputCounterIdentity
 
 
@@ -18,6 +22,13 @@ CANONICAL_B_CAPACITY_PATH = (
     / "actual_model"
     / "capacity"
     / "amcap-7bcbbb3b1c0432c8cf3707670b99f373ab0fad05da93645aec023f43a6e5959b.json"
+)
+CANONICAL_CURRENT_CAPACITY_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "evaluation"
+    / "actual_model"
+    / "capacity"
+    / "amcap-2e39f7fd7bf8d32b2bc2be4263d5a3ce08f079319e76e59b104f236cce2464be.json"
 )
 
 
@@ -85,6 +96,22 @@ def _evidence():
                 total_input_tokens=1180,
                 required_input_framing_tokens=96,
                 count_mode=TokenCountMode.EXACT,
+                selected_layer_occupancy=capacity.VLLMCapacitySelectedLayerOccupancy(
+                    canonical_state_item_count=1,
+                    working_context_item_count=2,
+                    working_context_character_occupancy=20,
+                    retrieved_memory_item_count=1,
+                    retrieved_memory_character_occupancy=10,
+                    event_evidence_item_count=1,
+                    event_evidence_character_occupancy=8,
+                ),
+                completion_observation=CognitionCompletionMetadata(
+                    finish_reason="stop",
+                    prompt_tokens=1180,
+                    completion_tokens=18,
+                    total_tokens=1198,
+                    reasoning_tokens=0,
+                ),
             ),
             capacity.VLLMCapacityFootprintObservation(
                 condition_id="C",
@@ -96,6 +123,22 @@ def _evidence():
                 total_input_tokens=1310,
                 required_input_framing_tokens=104,
                 count_mode=TokenCountMode.EXACT,
+                selected_layer_occupancy=capacity.VLLMCapacitySelectedLayerOccupancy(
+                    canonical_state_item_count=1,
+                    working_context_item_count=2,
+                    working_context_character_occupancy=20,
+                    retrieved_memory_item_count=1,
+                    retrieved_memory_character_occupancy=10,
+                    event_evidence_item_count=1,
+                    event_evidence_character_occupancy=8,
+                ),
+                completion_observation=CognitionCompletionMetadata(
+                    finish_reason="stop",
+                    prompt_tokens=1310,
+                    completion_tokens=27,
+                    total_tokens=1337,
+                    reasoning_tokens=0,
+                ),
             ),
         ),
         failed_capacity=capacity.VLLMCapacityFailureObservation(
@@ -143,6 +186,8 @@ def test_capacity_evidence_is_content_addressed_and_contains_no_semantic_payload
             "total_input_tokens",
             "required_input_framing_tokens",
             "count_mode",
+            "selected_layer_occupancy",
+            "completion_observation",
         }
     serialized_keys = json.dumps(sorted(mapping), sort_keys=True).casefold()
     assert "prompt" not in serialized_keys
@@ -160,6 +205,19 @@ def test_historical_v2_capacity_artifact_remains_loadable_without_runner_identit
     assert evidence.evidence_id == (
         "amcap-7bcbbb3b1c0432c8cf3707670b99f373ab0fad05da93645aec023f43a6e5959b"
     )
+
+
+def test_historical_current_v3_capacity_artifact_remains_loadable() -> None:
+    capacity = _capacity_module()
+
+    evidence = capacity.load_vllm_runtime_capacity_evidence(
+        CANONICAL_CURRENT_CAPACITY_PATH
+    )
+
+    assert evidence.format_version == 3
+    assert evidence.model_runner == "v2"
+    assert all(item.selected_layer_occupancy is None for item in evidence.footprints)
+    assert all(item.completion_observation is None for item in evidence.footprints)
 
 
 def test_current_capacity_format_requires_runner_identity() -> None:

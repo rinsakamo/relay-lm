@@ -128,6 +128,20 @@ Historical plans may load without a current capacity artifact for historical ins
 - total serialized-input/framing counts and count mode;
 - independently proved overflow evidence when available.
 
+Current capacity acquisition may additionally carry two optional content-free
+observations on each reached footprint. `selected_layer_occupancy` records the
+already-built `CognitiveInput` projection as canonical-State item count,
+working-context item/character occupancy, retrieved-memory item/character
+occupancy and event-evidence item/character occupancy. Working-context
+classification follows the owner projection's user/assistant actor markers;
+the measurement proxy does not rerun any selector or serialize content.
+`completion_observation` carries only the provider-supplied
+`CognitionCompletionMetadata` fields (`finish_reason`, `prompt_tokens`,
+`completion_tokens`, `total_tokens`, `reasoning_tokens`) for that exact pass.
+Provider failure leaves the observation null, and missing provider usage stays
+missing. Historical artifacts without these optional fields remain loadable and
+retain their original content-addressed identity.
+
 It contains no prompt/message/State/Continuity/MEMORY content, API keys or model output.
 
 The artifact ID is content-addressed and recomputed on load. Conflicting replacement is rejected.
