@@ -226,6 +226,8 @@ At the current OpenAI-compatible transport boundary, each buffered response enve
 
 If that single choice carries a non-null `finish_reason`, only the string `stop` is accepted as successful ordinary cognition completion. Explicit `length`, `content_filter`, `tool_calls`, `function_call`, unknown values, or invalid non-string values are protocol errors even when the accumulated message content is otherwise non-empty or syntactically valid. An omitted or null `finish_reason` remains tolerated on otherwise-supported transports; this rule does not add a new presence requirement.
 
+For streaming, an explicit `finish_reason: "stop"` is terminal for provider data envelopes. After it, RelayLM permits only the optional `[DONE]` transport sentinel or stream EOF. Any later non-`[DONE]` data envelope is a protocol error and is rejected before its content can be parsed, emitted, or appended to the successful cognitive result.
+
 For buffered generation, RelayLM waits for the complete ordinary provider message, parses its content as the exact combined IR, constructs typed `CognitiveOutput`, and only then allows the existing deterministic commit path to proceed.
 
 For streaming generation, the provider still generates the same single JSON object as ordinary content. The adapter accumulates the complete text while incrementally decoding only characters that can be proven to belong to the leading top-level `utterance` JSON string. Those safe characters may be delivered to the client before the candidate tail completes.
