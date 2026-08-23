@@ -129,6 +129,8 @@ Comparison summaries add a content-free `bounded_budget_failure_count`. Pressure
 
 Scenario-bound pressure wrappers pass the explicit baseline and pressure `CognitiveBudgetRuntimeConfig` objects through to the ordinary-turn harness.
 
+A persisted scenario-bound pressure comparison is citable only when its `pressure_comparison_id` matches the content-derived identity of the exact scenario-set version/revision and definition, baseline and pressure plan IDs, and underlying condition-comparison ID. The persistence boundary recomputes that identity and rejects a caller-supplied mismatch before writing the artifact.
+
 ## Replication and stopping rule
 
 Authority identity: `actual-model-replication-rule-v1`.
