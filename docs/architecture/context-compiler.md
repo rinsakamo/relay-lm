@@ -135,7 +135,7 @@ Current behavior is deliberately conservative:
 
 The current lexical selector is candidate selection, not authority. It does not mutate State, call an LLM, resolve contradictions, or infer truth from similarity.
 
-The ordinary runtime does **not** yet impose a default State cap, so existing turns continue to receive all eligible active State unless a caller explicitly requests bounded State selection. Runtime budget policy and stronger semantic/multilingual discovery remain #1267 work.
+The ordinary runtime does **not** impose a numeric default State cap unless a caller or calibrated runtime profile supplies one, so existing turns otherwise continue to receive all eligible active State. #1267 owns stronger semantic/multilingual State selection within any assigned envelope. The already-realized total-budget, protection, and degradation mechanics are #1387 authority; evidence-backed numeric/default calibration remains #1388 authority.
 
 ### Content-free selection diagnostics
 
@@ -156,7 +156,7 @@ Working Context reason attribution follows the existing selector order without c
 
 Diagnostics deliberately exclude State IDs, keys, values, Event IDs, MEMORY locations/content, Current Event content/ID, and other semantic payload. The Event-overlap counter compares real Event IDs internally but emits only an aggregate count and is computed from supplied Event-evidence candidates before exact overlap residency suppression. Diagnostics are observations about selection/projection mechanics, not a new truth source, persistence layer, ranking authority, or telemetry requirement.
 
-For MEMORY and Event Evidence, `budget_limit=None` and `budget_pressure=False` mean only that the Context Compiler itself did not own the upstream retrieval budget. The compiler does **not** infer MEMORY/Event candidate populations, retrieval-stage ranking pressure, or token costs that were never provided to it. Retrieval-stage diagnostics, total cross-layer token cost, degradation/fallback reporting, and runtime default-budget evidence remain later #1267 work.
+For MEMORY and Event Evidence, `budget_limit=None` and `budget_pressure=False` mean only that the Context Compiler itself did not own the upstream retrieval budget. The compiler does **not** infer MEMORY/Event candidate populations, retrieval-stage ranking pressure, or token costs that were never provided to it. MEMORY/Event retrieval-stage diagnostics are already realized by their retrieval owners, while total serialized-budget accounting, deterministic degradation, and aggregate cross-layer budget diagnostics are #1387 authority. Evidence-backed numeric runtime/default profiles remain #1388 calibration authority.
 
 ## Current MEMORY.md retrieval and projection primitives
 
@@ -439,14 +439,15 @@ Budgets should use floors/caps/residual allocation rather than fixed percentages
 
 #1267 remains the authority for later Context selection and retrieval work, including:
 
-- evidence-backed runtime default State/MEMORY/Event budgeting and stronger semantic/multilingual relevance beyond the current explicit lexical primitives;
+- stronger semantic/multilingual State/MEMORY/Event relevance beyond the current explicit lexical primitives;
 - any later Continuity-specific selection/degradation policy beyond the current projection of all accepted initial Continuity kinds;
 - State-vs-memory authority beyond the current deterministic structural addressing forms and typed-current positive-scalar/exact-scalar-negation/exact-positive-or-negated-boolean/positive-or-C32-negated explicit-reserved-degree grammar, including omitted-key aliases/synonyms, reserved-degree heading-body forms beyond C33's single exact negated-pair + exactly-one-section-degree boundary, C37's single exact positive-pair + exactly-one-section-degree boundary, C34's multiple exact positive-pair + exact-section-degree-count boundary, C35's multiple exact all-negated-pair + exact-section-degree-count boundary, and C36's multiple exact mixed-pair + exact-section-degree-count boundary, reserved-degree negation outside the C25 inline-only single, C26 heading+single-inline, C27 heading-only single-body, C28 inline-only multiple all-negated, C29 heading-addressed multiple all-negated, C30 inline-only multiple mixed exact-pair, C31 heading-addressed multiple mixed exact-pair, C32 typed-current free-form exact single-leading-`not` pair, C33 heading-only multi-line single exact-negated-pair, C37 heading-only multi-line single exact-positive-pair, C34 heading-only multi-line multiple exact positive-pair, C35 heading-only multi-line multiple exact all-negated-pair, and C36 heading-only multi-line mixed exact-pair boundaries, any recognized structural set carrying an additional heading-owned explicit degree beyond its bounded guard, typed-current free-form reserved-degree negation beyond C32's exact one-leading-`not` pair grammar, non-exact or partially recognized reserved-degree sets beyond current fallback, non-exact boolean negation, contractions and broader negation NLP, natural-language degree/intensity interpretation, degree ordering/tolerance or cross-axis comparison, and other non-lexically-comparable values;
 - richer durable logical memory identity/provenance behavior beyond the current governed `MemoryChunk.temporal_authority` carriage when #1260 work justifies it;
 - persistent/segmented Event Journal indexing and retrieval-scaled targeted discovery beyond the current process-local validated snapshot reuse;
 - redundancy reduction across State / Working Context / Continuity / Memory / Events beyond the current exact Working Context/Event Evidence Event-ID residency rule;
-- retrieval-stage MEMORY/Event diagnostics, total token-aware tier budgeting, and explicit cross-layer degradation/fallback evidence;
 - embedding/index acceleration only after authority eligibility is preserved.
+
+The realized #1387 total-budget/degradation mechanics are not deferred #1267 work. Evidence-backed numeric runtime/default profiles are separately owned by #1388.
 
 The governing principle is:
 

@@ -86,6 +86,12 @@ def prepare_runtime(
 
 def _validate_server_configuration(resolved: ResolvedRuntimeConfig) -> None:
     host = resolved.config.server.host
+    if any(ord(character) < 0x20 or ord(character) == 0x7F for character in host):
+        raise RuntimePreflightError(
+            RuntimeConfigErrorCode.INVALID_VALUE,
+            field="server.host",
+            message="server bind host must not contain ASCII control characters",
+        )
     if any(character.isspace() for character in host) or any(
         delimiter in host for delimiter in ("/", "?", "#")
     ):
