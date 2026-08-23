@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from relaylm.evaluation import evaluate_crystallization_integrity
+from relaylm.evaluation_crystallization import evaluate_crystallization_integrity
 
 
 def test_crystallization_evaluation_keeps_markdown_and_state_authority_distinct() -> None:
