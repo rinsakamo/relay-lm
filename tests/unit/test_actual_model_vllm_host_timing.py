@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import relaylm.actual_model_fast_screening_artifacts as timing_artifacts_module
+import relaylm.actual_model_host as host_facade
 import relaylm.actual_model_vllm_host as host
 
 
@@ -139,6 +140,13 @@ def test_vllm_host_summary_surfaces_absorbed_pass2_provider_failure(
             execution=SimpleNamespace(execution_id=EXECUTION_ID),
         )
 
+    def capture_timing(*, artifact, artifact_root):
+        timing_artifacts.append(artifact)
+        path = tmp_path / "screening_timing" / f"{artifact.run_id}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(artifact.to_json(), encoding="utf-8")
+        return path
+
     monkeypatch.setattr(host, "run_vllm_actual_model_scenario_definition", fake_run)
     monkeypatch.setattr(
         host,
@@ -158,8 +166,7 @@ def test_vllm_host_summary_surfaces_absorbed_pass2_provider_failure(
     monkeypatch.setattr(
         timing_artifacts_module,
         "write_fast_screening_timing_artifact",
-        lambda *, artifact, artifact_root: timing_artifacts.append(artifact)
-        or tmp_path / "screening_timing" / f"{artifact.run_id}.json",
+        capture_timing,
     )
 
     prepared = SimpleNamespace(
@@ -198,5 +205,5 @@ def test_vllm_host_summary_surfaces_absorbed_pass2_provider_failure(
     assert len(timing_artifacts) == 1
     assert timing_artifacts[0].turns[0].extraction_outcome == "failed"
     assert results[0].boundary_outcome == "pass"
-    assert results[0].failed_provider_call_count == 1
-    assert results[0].to_mapping()["failed_provider_call_count"] == 1
+    summary = host_facade._screening_result_mapping(results[0])
+    assert summary["failed_provider_call_count"] == 1
