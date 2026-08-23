@@ -5,6 +5,7 @@ import json
 import sys
 import tempfile
 from dataclasses import dataclass, field
+from importlib import import_module
 from pathlib import Path
 from typing import Mapping
 
@@ -102,6 +103,22 @@ class EvaluationReport:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class NativeEvaluationScenario:
+    group: str
+    scenario_id: str
+    module: str | None
+    evaluator: str | None
+
+    def __post_init__(self) -> None:
+        if not self.group.strip():
+            raise ValueError("native evaluation group must not be empty")
+        if not self.scenario_id.strip():
+            raise ValueError("native evaluation scenario_id must not be empty")
+        if (self.module is None) != (self.evaluator is None):
+            raise ValueError("native evaluation module/evaluator must be provided together")
+
+
 class _FailingEvaluationProvider:
     def __init__(self) -> None:
         self.calls = 0
@@ -179,363 +196,78 @@ async def evaluate_provider_failure_safety() -> EvaluationScenarioResult:
         },
     )
 
-
-async def evaluate_restart_continuity() -> EvaluationScenarioResult:
-    from relaylm.evaluation_restart import evaluate_restart_continuity as evaluate
-
-    return await evaluate()
-
-
-async def evaluate_assistant_self_certification_prevention() -> EvaluationScenarioResult:
-    from relaylm.evaluation_authority import (
-        evaluate_assistant_self_certification_prevention as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_comparative_preference_preservation() -> EvaluationScenarioResult:
-    from relaylm.evaluation_preference import (
-        evaluate_comparative_preference_preservation as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_degree_hint_integrity() -> EvaluationScenarioResult:
-    from relaylm.evaluation_degree import evaluate_degree_hint_integrity as evaluate
-
-    return await evaluate()
-
-
-async def evaluate_working_context_budget_atomicity() -> EvaluationScenarioResult:
-    from relaylm.evaluation_context import (
-        evaluate_working_context_budget_atomicity as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_state_selection_diagnostics() -> EvaluationScenarioResult:
-    from relaylm.evaluation_context import evaluate_state_selection_diagnostics as evaluate
-
-    return await evaluate()
-
-
-async def evaluate_cross_layer_context_diagnostics() -> EvaluationScenarioResult:
-    from relaylm.evaluation_cross_layer import (
-        evaluate_cross_layer_context_diagnostics as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_working_context_budget_diagnostics() -> EvaluationScenarioResult:
-    from relaylm.evaluation_working_context import (
-        evaluate_working_context_budget_diagnostics as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_persistence_integrity() -> EvaluationScenarioResult:
-    from relaylm.evaluation_persistence import evaluate_persistence_integrity as evaluate
-
-    return await evaluate()
-
-
-async def evaluate_event_snapshot_reuse() -> EvaluationScenarioResult:
-    from relaylm.evaluation_persistence import evaluate_event_snapshot_reuse as evaluate
-
-    return await evaluate()
-
-
-async def evaluate_correction_remove_semantics() -> EvaluationScenarioResult:
-    from relaylm.evaluation_correction import evaluate_correction_remove_semantics as evaluate
-
-    return await evaluate()
-
-
-async def evaluate_crystallization_integrity() -> EvaluationScenarioResult:
-    from relaylm.evaluation_crystallization import evaluate_crystallization_integrity as evaluate
-
-    return await evaluate()
-
-
-async def evaluate_streaming_safety() -> EvaluationScenarioResult:
-    from relaylm.evaluation_streaming import evaluate_streaming_safety as evaluate
-
-    return await evaluate()
-
-
-async def evaluate_memory_heading_retrieval() -> EvaluationScenarioResult:
-    from relaylm.evaluation_memory import evaluate_memory_heading_retrieval as evaluate
-
-    return await evaluate()
-
-
-async def evaluate_memory_cognitive_projection() -> EvaluationScenarioResult:
-    from relaylm.evaluation_memory import evaluate_memory_cognitive_projection as evaluate
-
-    return await evaluate()
-
-
-async def evaluate_ordinary_turn_memory_retrieval() -> EvaluationScenarioResult:
-    from relaylm.evaluation_memory import evaluate_ordinary_turn_memory_retrieval as evaluate
-
-    return await evaluate()
-
-
-async def evaluate_state_memory_authority_filter() -> EvaluationScenarioResult:
-    from relaylm.evaluation_memory import evaluate_state_memory_authority_filter as evaluate
-
-    return await evaluate()
-
-
-async def evaluate_targeted_event_retrieval() -> EvaluationScenarioResult:
-    from relaylm.evaluation_context import evaluate_targeted_event_retrieval as evaluate
-
-    return await evaluate()
-
-
-async def evaluate_event_evidence_cognitive_projection() -> EvaluationScenarioResult:
-    from relaylm.evaluation_event_evidence import (
-        evaluate_event_evidence_cognitive_projection as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_ordinary_turn_event_retrieval() -> EvaluationScenarioResult:
-    from relaylm.evaluation_event_evidence import (
-        evaluate_ordinary_turn_event_retrieval as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_retrieval_stage_diagnostics() -> EvaluationScenarioResult:
-    from relaylm.evaluation_retrieval_diagnostics import (
-        evaluate_retrieval_stage_diagnostics as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_boolean_state_memory_authority() -> EvaluationScenarioResult:
-    from relaylm.evaluation_retrieval_refinements import (
-        evaluate_boolean_state_memory_authority as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_retrieval_aggregate_diagnostics() -> EvaluationScenarioResult:
-    from relaylm.evaluation_retrieval_refinements import (
-        evaluate_retrieval_aggregate_diagnostics as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_cjk_retrieval_relevance() -> EvaluationScenarioResult:
-    from relaylm.evaluation_retrieval_refinements import (
-        evaluate_cjk_retrieval_relevance as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_degree_state_memory_authority() -> EvaluationScenarioResult:
-    from relaylm.evaluation_degree_state_memory_authority import (
-        evaluate_degree_state_memory_authority as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_retrieval_query_features() -> EvaluationScenarioResult:
-    from relaylm.evaluation_retrieval_query_features import (
-        evaluate_retrieval_query_features as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_continuity_lifecycle() -> EvaluationScenarioResult:
-    from relaylm.evaluation_continuity_lifecycle import (
-        evaluate_continuity_lifecycle as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_continuity_turn() -> EvaluationScenarioResult:
-    from relaylm.evaluation_continuity_turn import evaluate_continuity_turn as evaluate
-
-    return await evaluate()
-
-
-async def evaluate_continuity_context_retention() -> EvaluationScenarioResult:
-    from relaylm.evaluation_continuity_context_retention import (
-        evaluate_continuity_context_retention as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_continuity_active_task_retention() -> EvaluationScenarioResult:
-    from relaylm.evaluation_continuity_active_task import (
-        evaluate_continuity_active_task_retention as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_continuity_cognition_wiring() -> EvaluationScenarioResult:
-    from relaylm.evaluation_continuity_cognition_wiring import (
-        evaluate_continuity_cognition_wiring as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_freeform_current_state_shadow() -> EvaluationScenarioResult:
-    from relaylm.evaluation_freeform_current_state_shadow import (
-        evaluate_freeform_current_state_shadow as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_total_budget_accounting() -> EvaluationScenarioResult:
-    from relaylm.evaluation_total_budget_accounting import (
-        evaluate_total_budget_accounting as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_budget_degradation_plan() -> EvaluationScenarioResult:
-    from relaylm.evaluation_budget_degradation_plan import (
-        evaluate_budget_degradation_plan as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_budget_owner_controls() -> EvaluationScenarioResult:
-    from relaylm.evaluation_budget_owner_controls import (
-        evaluate_budget_owner_controls as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_serialized_input_fit() -> EvaluationScenarioResult:
-    from relaylm.evaluation_serialized_input_fit import (
-        evaluate_serialized_input_fit_component as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_openai_serialized_counter() -> EvaluationScenarioResult:
-    from relaylm.evaluation_openai_serialized_counter import (
-        evaluate_openai_serialized_counter as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_serialized_fit_enforcement() -> EvaluationScenarioResult:
-    from relaylm.evaluation_serialized_fit_enforcement import (
-        evaluate_serialized_fit_enforcement as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_protected_serialized_floor() -> EvaluationScenarioResult:
-    from relaylm.evaluation_protected_serialized_floor import (
-        evaluate_protected_serialized_floor as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_cognitive_budget_turn_wiring() -> EvaluationScenarioResult:
-    from relaylm.evaluation_cognitive_budget_turn_wiring import (
-        evaluate_cognitive_budget_turn_wiring as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_cognitive_budget_turn_diagnostics() -> EvaluationScenarioResult:
-    from relaylm.evaluation_cognitive_budget_turn_diagnostics import (
-        evaluate_cognitive_budget_turn_diagnostics as evaluate,
-    )
-
-    return await evaluate()
-
-
-async def evaluate_memory_temporal_provenance() -> EvaluationScenarioResult:
-    from relaylm.evaluation_memory_temporal_provenance import (
-        evaluate_memory_temporal_provenance as evaluate,
-    )
-
-    return await evaluate()
+NATIVE_EVALUATION_SCENARIOS: tuple[NativeEvaluationScenario, ...] = (
+    NativeEvaluationScenario("runtime_safety", "provider_failure_safety", None, None),
+    NativeEvaluationScenario("runtime_safety", "restart_continuity", 'relaylm.evaluation_restart', 'evaluate_restart_continuity'),
+    NativeEvaluationScenario("authority_state", "assistant_self_certification_prevention", 'relaylm.evaluation_authority', 'evaluate_assistant_self_certification_prevention'),
+    NativeEvaluationScenario("authority_state", "comparative_preference_preservation", 'relaylm.evaluation_preference', 'evaluate_comparative_preference_preservation'),
+    NativeEvaluationScenario("authority_state", "degree_hint_integrity", 'relaylm.evaluation_degree', 'evaluate_degree_hint_integrity'),
+    NativeEvaluationScenario("context_retrieval", "working_context_budget_atomicity", 'relaylm.evaluation_context', 'evaluate_working_context_budget_atomicity'),
+    NativeEvaluationScenario("persistence", "persistence_integrity", 'relaylm.evaluation_persistence', 'evaluate_persistence_integrity'),
+    NativeEvaluationScenario("persistence", "event_snapshot_reuse", 'relaylm.evaluation_persistence', 'evaluate_event_snapshot_reuse'),
+    NativeEvaluationScenario("authority_state", "correction_remove_semantics", 'relaylm.evaluation_correction', 'evaluate_correction_remove_semantics'),
+    NativeEvaluationScenario("persistence", "crystallization_integrity", 'relaylm.evaluation_crystallization', 'evaluate_crystallization_integrity'),
+    NativeEvaluationScenario("runtime_safety", "streaming_safety", 'relaylm.evaluation_streaming', 'evaluate_streaming_safety'),
+    NativeEvaluationScenario("context_retrieval", "state_selection_diagnostics", 'relaylm.evaluation_context', 'evaluate_state_selection_diagnostics'),
+    NativeEvaluationScenario("context_retrieval", "cross_layer_context_diagnostics", 'relaylm.evaluation_cross_layer', 'evaluate_cross_layer_context_diagnostics'),
+    NativeEvaluationScenario("context_retrieval", "working_context_budget_diagnostics", 'relaylm.evaluation_working_context', 'evaluate_working_context_budget_diagnostics'),
+    NativeEvaluationScenario("context_retrieval", "memory_heading_retrieval", 'relaylm.evaluation_memory', 'evaluate_memory_heading_retrieval'),
+    NativeEvaluationScenario("context_retrieval", "memory_cognitive_projection", 'relaylm.evaluation_memory', 'evaluate_memory_cognitive_projection'),
+    NativeEvaluationScenario("context_retrieval", "ordinary_turn_memory_retrieval", 'relaylm.evaluation_memory', 'evaluate_ordinary_turn_memory_retrieval'),
+    NativeEvaluationScenario("context_retrieval", "state_memory_authority_filter", 'relaylm.evaluation_memory', 'evaluate_state_memory_authority_filter'),
+    NativeEvaluationScenario("context_retrieval", "targeted_event_retrieval", 'relaylm.evaluation_context', 'evaluate_targeted_event_retrieval'),
+    NativeEvaluationScenario("context_retrieval", "event_evidence_cognitive_projection", 'relaylm.evaluation_event_evidence', 'evaluate_event_evidence_cognitive_projection'),
+    NativeEvaluationScenario("context_retrieval", "ordinary_turn_event_retrieval", 'relaylm.evaluation_event_evidence', 'evaluate_ordinary_turn_event_retrieval'),
+    NativeEvaluationScenario("context_retrieval", "retrieval_stage_diagnostics", 'relaylm.evaluation_retrieval_diagnostics', 'evaluate_retrieval_stage_diagnostics'),
+    NativeEvaluationScenario("context_retrieval", "boolean_state_memory_authority", 'relaylm.evaluation_retrieval_refinements', 'evaluate_boolean_state_memory_authority'),
+    NativeEvaluationScenario("context_retrieval", "retrieval_aggregate_diagnostics", 'relaylm.evaluation_retrieval_refinements', 'evaluate_retrieval_aggregate_diagnostics'),
+    NativeEvaluationScenario("context_retrieval", "cjk_retrieval_relevance", 'relaylm.evaluation_retrieval_refinements', 'evaluate_cjk_retrieval_relevance'),
+    NativeEvaluationScenario("context_retrieval", "degree_state_memory_authority", 'relaylm.evaluation_degree_state_memory_authority', 'evaluate_degree_state_memory_authority'),
+    NativeEvaluationScenario("context_retrieval", "retrieval_query_features", 'relaylm.evaluation_retrieval_query_features', 'evaluate_retrieval_query_features'),
+    NativeEvaluationScenario("continuity", "continuity_lifecycle", 'relaylm.evaluation_continuity_lifecycle', 'evaluate_continuity_lifecycle'),
+    NativeEvaluationScenario("continuity", "continuity_turn", 'relaylm.evaluation_continuity_turn', 'evaluate_continuity_turn'),
+    NativeEvaluationScenario("continuity", "continuity_context_retention", 'relaylm.evaluation_continuity_context_retention', 'evaluate_continuity_context_retention'),
+    NativeEvaluationScenario("continuity", "continuity_active_task_retention", 'relaylm.evaluation_continuity_active_task', 'evaluate_continuity_active_task_retention'),
+    NativeEvaluationScenario("continuity", "continuity_cognition_wiring", 'relaylm.evaluation_continuity_cognition_wiring', 'evaluate_continuity_cognition_wiring'),
+    NativeEvaluationScenario("context_retrieval", "freeform_current_state_shadow", 'relaylm.evaluation_freeform_current_state_shadow', 'evaluate_freeform_current_state_shadow'),
+    NativeEvaluationScenario("budget_provider", "total_budget_accounting", 'relaylm.evaluation_total_budget_accounting', 'evaluate_total_budget_accounting'),
+    NativeEvaluationScenario("budget_provider", "budget_degradation_plan", 'relaylm.evaluation_budget_degradation_plan', 'evaluate_budget_degradation_plan'),
+    NativeEvaluationScenario("budget_provider", "budget_owner_controls", 'relaylm.evaluation_budget_owner_controls', 'evaluate_budget_owner_controls'),
+    NativeEvaluationScenario("budget_provider", "serialized_input_fit", 'relaylm.evaluation_serialized_input_fit', 'evaluate_serialized_input_fit_component'),
+    NativeEvaluationScenario("budget_provider", "openai_serialized_counter", 'relaylm.evaluation_openai_serialized_counter', 'evaluate_openai_serialized_counter'),
+    NativeEvaluationScenario("budget_provider", "serialized_fit_enforcement", 'relaylm.evaluation_serialized_fit_enforcement', 'evaluate_serialized_fit_enforcement'),
+    NativeEvaluationScenario("budget_provider", "protected_serialized_floor", 'relaylm.evaluation_protected_serialized_floor', 'evaluate_protected_serialized_floor'),
+    NativeEvaluationScenario("budget_provider", "cognitive_budget_turn_wiring", 'relaylm.evaluation_cognitive_budget_turn_wiring', 'evaluate_cognitive_budget_turn_wiring'),
+    NativeEvaluationScenario("budget_provider", "cognitive_budget_turn_diagnostics", 'relaylm.evaluation_cognitive_budget_turn_diagnostics', 'evaluate_cognitive_budget_turn_diagnostics'),
+    NativeEvaluationScenario("persistence", "memory_temporal_provenance", 'relaylm.evaluation_memory_temporal_provenance', 'evaluate_memory_temporal_provenance'),
+)
+
+async def _run_native_scenario(spec: NativeEvaluationScenario) -> EvaluationScenarioResult:
+    if spec.module is None:
+        result = await evaluate_provider_failure_safety()
+    else:
+        module = import_module(spec.module)
+        evaluator = getattr(module, spec.evaluator or "")
+        result = await evaluator()
+
+    if not isinstance(result, EvaluationScenarioResult):
+        raise TypeError(
+            f"native evaluation {spec.scenario_id} returned "
+            f"{type(result).__name__}, expected EvaluationScenarioResult"
+        )
+    if result.scenario_id != spec.scenario_id:
+        raise ValueError(
+            f"native evaluation registry mismatch: expected {spec.scenario_id}, "
+            f"observed {result.scenario_id}"
+        )
+    return result
 
 
 async def run_native_evaluation() -> EvaluationReport:
-    return EvaluationReport(
-        scenarios=(
-            await evaluate_provider_failure_safety(),
-            await evaluate_restart_continuity(),
-            await evaluate_assistant_self_certification_prevention(),
-            await evaluate_comparative_preference_preservation(),
-            await evaluate_degree_hint_integrity(),
-            await evaluate_working_context_budget_atomicity(),
-            await evaluate_persistence_integrity(),
-            await evaluate_event_snapshot_reuse(),
-            await evaluate_correction_remove_semantics(),
-            await evaluate_crystallization_integrity(),
-            await evaluate_streaming_safety(),
-            await evaluate_state_selection_diagnostics(),
-            await evaluate_cross_layer_context_diagnostics(),
-            await evaluate_working_context_budget_diagnostics(),
-            await evaluate_memory_heading_retrieval(),
-            await evaluate_memory_cognitive_projection(),
-            await evaluate_ordinary_turn_memory_retrieval(),
-            await evaluate_state_memory_authority_filter(),
-            await evaluate_targeted_event_retrieval(),
-            await evaluate_event_evidence_cognitive_projection(),
-            await evaluate_ordinary_turn_event_retrieval(),
-            await evaluate_retrieval_stage_diagnostics(),
-            await evaluate_boolean_state_memory_authority(),
-            await evaluate_retrieval_aggregate_diagnostics(),
-            await evaluate_cjk_retrieval_relevance(),
-            await evaluate_degree_state_memory_authority(),
-            await evaluate_retrieval_query_features(),
-            await evaluate_continuity_lifecycle(),
-            await evaluate_continuity_turn(),
-            await evaluate_continuity_context_retention(),
-            await evaluate_continuity_active_task_retention(),
-            await evaluate_continuity_cognition_wiring(),
-            await evaluate_freeform_current_state_shadow(),
-            await evaluate_total_budget_accounting(),
-            await evaluate_budget_degradation_plan(),
-            await evaluate_budget_owner_controls(),
-            await evaluate_serialized_input_fit(),
-            await evaluate_openai_serialized_counter(),
-            await evaluate_serialized_fit_enforcement(),
-            await evaluate_protected_serialized_floor(),
-            await evaluate_cognitive_budget_turn_wiring(),
-            await evaluate_cognitive_budget_turn_diagnostics(),
-            await evaluate_memory_temporal_provenance(),
-        ),
-    )
+    scenarios = []
+    for spec in NATIVE_EVALUATION_SCENARIOS:
+        scenarios.append(await _run_native_scenario(spec))
+    return EvaluationReport(scenarios=tuple(scenarios))
 
 
 def main() -> int:
