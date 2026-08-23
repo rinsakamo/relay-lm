@@ -113,7 +113,7 @@ The current bounded projection covers all three accepted initial Continuity kind
 
 The compiler does not resolve references from raw language, synthesize unresolved questions, infer active tasks from dialogue, accept Continuity candidates, create a second Continuity lifecycle owner, or infer semantic redundancy with recent dialogue or Event Evidence.
 
-The ordinary-turn runtime now owns process-local Continuity acceptance/lifecycle orchestration, but the current runtime compilation call does not yet supply its `ContinuityRuntime.context` to this compiler input. That cross-lane orchestration wiring remains outside the Context Compiler semantic owner and must consume this capability only after it exists on `v1`.
+On ordinary turns, Turn supplies the accepted pre-generation Continuity Context from `ContinuityRuntime.context` to this compiler input before provider generation. Continuity lifecycle acceptance remains upstream: Turn/Continuity runtime own candidate acceptance, replacement/resolution, revision advancement, expiry, and capacity; Context Compiler only consumes and projects the accepted snapshot. This realization is process-local and does not imply durable or cross-restart Continuity.
 
 ## Current active-State selection primitive
 
