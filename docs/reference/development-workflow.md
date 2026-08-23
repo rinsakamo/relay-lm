@@ -8,646 +8,312 @@ For semantic changes:
 
 > **Meaning first. Tests freeze the meaning. Code realizes it. Owner-local authority preserves it.**
 
-The workflow is intentionally lightweight. It preserves the quality properties worth carrying forward from 0.x without recreating the old governance system:
+The workflow is intentionally small. It protects fresh repository authority, bounded semantic ownership, direct canonical convergence, exact-head verification, and honest completion claims without turning implementation history into permanent ceremony.
 
-- fresh authority;
-- one bounded responsibility;
-- direct canonical convergence;
-- fresh-head verification;
-- exact-head CI;
-- code / test / owner-local authority convergence.
+## 1. Universal transaction rules
 
-## Universal rules
+Every repository transaction:
 
-Every transaction:
+1. re-fetches current `v1` and open PRs targeting `v1`;
+2. resolves the semantic owner and reads its current canonical authority;
+3. owns one bounded responsibility and names material non-goals;
+4. uses the verification discipline appropriate to the change class;
+5. converges code, tests, and owner-local authority directly on the current contract;
+6. re-fetches and reviews the exact final PR head;
+7. requires the required `v1` CI results for that exact reviewed head;
+8. re-checks current `v1`, competing work, and the unchanged PR head immediately before merge;
+9. merges only the exact reviewed/tested head with expected-head protection;
+10. reconciles the owning Issue after the merge when an Issue exists.
 
-- starts from fresh `v1` authority;
-- checks open `v1` PRs / competing work;
-- owns one bounded responsibility;
-- avoids adjacent scope expansion;
-- converges directly on the current canonical owner instead of preserving superseded semantics through compatibility machinery;
-- leaves frozen 0.x `main` untouched;
-- performs a fresh verification pass over the exact current PR head before merge;
-- requires the exact current PR head to pass the required `v1` CI checks;
-- merges only the exact reviewed and tested head;
-- reconciles its owning Issue after a successful merge when an Issue exists.
+Handoffs, old comments, previously recorded SHAs, earlier CI results, Issues, and projections are historical evidence. They do not replace fresh repository facts.
 
-If `v1` moves during a transaction, reconstruct authority and classify overlap before merge. Do not silently rebase, merge, or assume the previous review/CI result is still sufficient.
+If `v1` moves during a transaction, reconstruct relevant authority before continuing. Do not silently carry assumptions, reviews, or CI evidence across a moved base.
 
-## Documentation and authority model
+Frozen 0.x `main` is outside the `v1` workflow and must not be modified by `v1` transactions.
 
-Repository knowledge has three kinds, and only the first is maintained by every semantic transaction.
-
-```text
-canonical authority     owner-local, written continuously with the owning transaction
-ephemeral projection    reconstructed on demand from a stored recipe, never committed
-persistent projection   human-facing docs, materialized at a version/release boundary
-```
-
-A semantic transaction therefore ends at its own owner's authority:
-
-```text
-component implementation
-  → owner-local canonical authority update
-  → validation
-  → merge
-
-global developer view
-  → ephemeral projection on demand
-
-human/public docs
-  → persistent projection at version/release boundary
-```
-
-> **Own facts locally. Never hand-maintain aggregates. Store projection recipes, not transient views.**
-
-Consequences:
-
-- a lane registers itself by writing its own `.ai/authority/<id>.yaml`; there is no central registry to edit;
-- reverse dependencies, authority maps, dependency graphs, navigation indexes, and repository status are derived views, so they are never a write surface;
-- `ARCHITECTURE.md` is generated at a release boundary and is never hand-edited;
-- `README.md` and `SECURITY.md` remain canonical prose and are edited only when their own content changes.
-
-> **Serial integration is for genuine semantic integration, not routine documentation synchronization.**
-
-`.ai/README.md` holds the authority-declaration contract, `.ai/agent-contract.yaml` the bootstrap read order and freshness classes, and `docs/reference/repository-practices.md` the repository-use conventions.
-
-## Parallel implementation rule
-
-Parallel implementation is allowed across disjoint canonical owners. This relaxes a repository-wide single-writer assumption; it does not relax authority ownership.
-
-> **Single writer per concept, not single writer for the entire repository. Parallel implementation; serial integration.**
-
-Rules:
-
-- one canonical owner or semantic concept has at most one active writer;
-- each parallel transaction starts from fresh `v1`, declares its bounded responsibility, and inspects open competing work before writing;
-- transactions that share a canonical owner, semantic contract, or unavoidable write surface are serialized instead of being treated as independent;
-- when practical, remaining shared aggregate surfaces such as evaluation registries, scenario counts, and Issue current-status summaries are reconciled in a short serial integration transaction after the owning component transactions merge rather than becoming parallel-writer hotspots; repository authority itself is owner-local under `.ai/authority/` and is therefore never such a surface;
-- merge and authority reconciliation remain serial: before each merge, re-read current `v1`, the transaction head, and relevant competing work, then perform the normal fresh-head review and exact-head required CI gate;
-- when an earlier merge moves `v1`, every still-open parallel transaction reconstructs authority and classifies overlap before merge; semantic or ownership overlap returns the work to a fresh bounded transaction instead of carrying stale assumptions forward;
-- parallelism never bypasses test-first semantics, exact-head CI, expected-head protected squash merge, documentation convergence, or Issue reconciliation.
-
-This means independent runtime owners, provider/storage boundaries, isolated evaluation work, or non-overlapping documentation can be developed concurrently. Two transactions must not concurrently redefine the same Context, State, Validator, retrieval, persistence, provider, or other canonical semantic owner.
-
-## Semantic lane execution rule
-
-A body of work that contains multiple disjoint semantic segments may be organized into **semantic lanes**.
-
-A semantic lane is a temporary execution boundary for an ordered sequence of related bounded transactions. It is defined by semantic ownership, not by file, package, Issue, PR, or implementation convenience.
-
-> **One lane = one coherent semantic ownership boundary. Parallel across disjoint lanes; serial within each lane; serial at shared integration surfaces.**
-
-Before a lane starts, declare:
-
-```text
-lane:
-semantic owner:
-canonical surfaces:
-non-goals:
-cross-lane dependencies:
-shared integration surfaces:
-ordered transactions:
-```
-
-### Lane ownership
-
-The semantic owner is authoritative. File paths are supporting write surfaces only.
-
-Multiple files that implement one semantic rule belong to the same lane when separating them would create competing or divergent semantic authorities. File-level disjointness is not sufficient evidence of semantic independence.
-
-For example, if MEMORY retrieval and Event retrieval must share one lexical relevance contract, their corresponding implementations belong to the same retrieval lane even when they live in different modules.
-
-Conversely, two responsibilities must not be placed in the same lane merely because they happen to touch the same subsystem or Issue.
-
-The existing single-writer rule therefore applies at lane level:
-
-> **One semantic concept has at most one active writer.**
-
-No two active lanes may independently redefine:
-
-- the same canonical semantic owner;
-- the same semantic contract;
-- derived implementations whose correctness requires one shared rule;
-- an unavoidable shared write surface whose concurrent modification would create ambiguous authority.
-
-If ownership cannot be cleanly separated, serialize the work.
-
-### Serial execution inside a lane
-
-Transactions inside one lane execute in declared dependency order:
-
-```text
-L1
-  → merge
-  → fresh authority reconstruction
-  → L2
-  → merge
-  → fresh authority reconstruction
-  → L3
-```
-
-Completion of one transaction does not by itself require the lane to stop.
-
-After every successful merge, the lane:
-
-1. re-fetches current `v1`;
-2. re-checks open PRs and competing semantic writers;
-3. reconstructs its authority against the new head;
-4. verifies that the next transaction is still owned by the lane;
-5. continues with the next bounded transaction.
-
-Each transaction remains independently subject to the full development workflow. A lane never weakens **one transaction = one bounded responsibility**.
-
-### Parallel execution across lanes
-
-Different lanes may execute concurrently only when their semantic ownership is disjoint.
-
-Typical valid separation may include retrieval semantics, Context Compiler semantics, turn/runtime orchestration, isolated evaluation components, or provider/storage boundaries, provided the concrete responsibilities do not share a semantic contract or canonical owner.
-
-A lane must not consume an unmerged assumption from another lane as though it were current authority.
-
-### Cross-lane dependencies
-
-Cross-lane dependencies must be explicit. A dependent transaction may consume another lane's capability only after the required authority exists on current `v1`.
-
-For example:
-
-```text
-R3 retrieval diagnostics
-  ├─> T2 aggregate runtime diagnostics
-  └─> E1 retrieval diagnostics evaluation
-```
-
-If the dependency is not yet merged, the dependent transaction waits at that boundary while unrelated lanes may continue.
-
-An unmet dependency never justifies:
-
-- a temporary bridge;
-- a compatibility layer;
-- speculative duplicate implementation;
-- fallback semantics;
-- a temporary alternate owner;
-- code intended to be replaced immediately after another lane merges.
-
-### Shared integration surfaces
-
-A genuine shared integration surface is one where a cross-component semantic decision must be made, not one where already-merged component facts merely need to be restated.
-
-Genuine examples:
-
-- the native deterministic evaluation registry in `src/relaylm/evaluation.py`;
-- aggregate scenario counts that are executable rather than documentary;
-- aggregate Issue status where a cross-owner decision is required.
-
-Not shared integration surfaces, because they are derived rather than written:
-
-- authority and dependency maps;
-- repository-wide status tables;
-- navigation indexes;
-- reverse dependency views;
-- generated human-facing documentation.
-
-Registering a merged component fact in one of the derived views is not integration work. It does not exist.
-
-Component lanes stop at:
-
-```text
-component implemented
-component tested
-component documented
-component merged
-integration pending
-```
-
-Shared integration is then performed in a short serial integration transaction after the required component authorities exist on current `v1`:
-
-```text
-Lane A ─┐
-Lane B ─┼─> serial integration
-Lane C ─┤
-Lane D ─┘
-```
-
-There is one writer for a shared integration surface at a time. Serial integration resolves a real cross-owner semantic question; it must not redefine component semantics, and it is never scheduled merely to synchronize documentation.
-
-### Moving `v1`
-
-Every lane is based on live repository authority, not on its initial bootstrap SHA.
-
-When another lane moves `v1`, an active lane must reconstruct authority before its next merge and classify the result:
-
-```text
-no relevant overlap
-  → continue normal verification
-
-compatible dependency now available
-  → consume only after it exists on current v1
-
-semantic or ownership overlap
-  → stop the stale transaction
-  → reconstruct a fresh bounded transaction
-
-canonical owner conflict
-  → stop lane execution until ownership is resolved
-```
-
-Do not silently rebase, merge, rewrite history, or carry stale semantic assumptions forward.
-
-### Lane stop conditions
-
-A lane continues through its declared ordered transactions unless one of these conditions occurs:
-
-- canonical-owner conflict;
-- semantic ownership ambiguity;
-- newly discovered cross-lane overlap;
-- required dependency not yet merged;
-- architecture or authority ambiguity;
-- required permission is unavailable;
-- irreversible scope expansion would be required;
-- fresh-head semantic review fails;
-- exact-head required CI fails or is unavailable;
-- the next declared transaction is no longer necessary against current `v1`.
-
-Routine successful transaction completion is not a stop condition.
-
-### Lane and work-package completion
-
-A lane is complete when all currently valid lane-owned transactions are merged, their owning Issues are reconciled, no lane-owned semantic work remains, and any remaining shared integration work is explicitly identified.
-
-Lane completion does not imply shared integration completion.
-
-A multi-lane work package is complete only after:
-
-```text
-all required component lanes complete
-  → any genuine cross-owner semantic integration complete
-  → remaining Issues represent only real unresolved work
-```
-
-### Prohibited decomposition
-
-Do not use lanes to create artificial concurrency.
-
-Invalid decomposition includes separating files that encode one semantic contract, for example:
-
-```text
-Lane A = memory_retrieval.py
-Lane B = event_retrieval.py
-```
-
-when both implement one retrieval relevance rule.
-
-Likewise, do not split one semantic change into separate implementation, test, and documentation lanes. Tests, code, and authority documentation remain part of the same bounded transaction.
-
-Semantic lanes are an execution optimization, not a new authority layer. Issues remain planning and remaining-work ledgers; tests remain executable contracts; code remains implementation; authority documents remain current semantic authority; `v1` remains repository authority.
-
-## Canonical convergence rule
-
-`v1` is a greenfield product line. Internal compatibility machinery for superseded RelayLM semantics is prohibited by default.
-
-Do not introduce or retain:
-
-- compatibility patches or shims;
-- old-path aliases or forwarding modules;
-- temporary bridges intended to be removed later;
-- monkey patches that preserve an obsolete contract;
-- dual-read or dual-write migration paths;
-- simultaneous old/new semantic authorities;
-- fallbacks to deprecated RelayLM behavior;
-- wrappers whose purpose is to keep a superseded owner alive.
-
-Instead:
-
-```text
-change the canonical owner / contract
-  → migrate all affected internal consumers in the same bounded transaction
-  → remove the superseded path
-```
-
-> **One concept = one current owner.**
-
-Intentional permanent adapters remain allowed at genuine architecture boundaries, such as an external protocol/provider/storage boundary, when they translate between the current RelayLM contract and an external contract. Current package exports, facades, and registries are also allowed when they are the canonical public boundary rather than a preservation path for obsolete internal semantics.
-
-If post-release compatibility with an external/public RelayLM contract is ever required, it must be designed explicitly as a versioned compatibility contract. It must not enter the repository as an unnamed temporary bridge.
-
-## 1. Classify the change
-
-Choose one path before writing.
+## 2. Classify the change before writing
 
 ### Semantic change
 
-Behavior or meaning changes: authority, persistence, State grammar, Context semantics, provider wire, API behavior, lifecycle, or another RelayLM guarantee.
+Use this class when behavior or meaning changes: authority, State, Context, Continuity, persistence, provider wire, public API, lifecycle, validation, or another RelayLM guarantee.
 
-Use the test-first workflow below.
+Before implementation, establish:
 
-### Behavior-preserving change
-
-Refactor, rename, extraction, relocation, cleanup, or performance work intended to preserve existing semantics.
-
-Do not manufacture a RED test. Existing contract/regression tests are the baseline.
-
-### Docs-only change
-
-Documentation correction or clarification with no runtime behavior change.
-
-Do not add test-first ceremony that provides no evidence.
-
-## 2. Semantic change
-
-### A. Meaning + examples
-
-Before implementation, the Issue or bounded spec states:
-
-- expected behavior;
-- non-goals;
+- the intended meaning;
+- concrete examples or Given / When / Then cases;
 - affected authority boundaries;
-- concrete Given / When / Then examples.
+- explicit non-goals.
 
-Example:
-
-```text
-Given: tea = likes
-When:  "Recently I prefer coffee to tea."
-Then:
-  tea remains positive
-  coffee becomes positive
-  comparative strength may be retained
-  tea is not removed without explicit revocation
-```
-
-### B. Contract test first
-
-Before implementing:
+Then establish a meaningful RED contract or regression test.
 
 ```text
 existing relevant suite = GREEN
 new contract test       = RED
 ```
 
-RED must mean "the requested behavior is not implemented", not a broken fixture, syntax error, missing dependency, or unrelated failure.
+RED must mean that the requested behavior is missing. A syntax error, broken fixture, unavailable dependency, or unrelated failure is not semantic evidence.
 
-Use readable tests according to the guarantee:
+Implement only enough machinery to make the intended contract GREEN while keeping the relevant suite GREEN.
 
-```text
-contract    expected behavior
-regression  a previously broken edge case
-structural  ownership / authority boundary
-```
+### Behavior-preserving change
 
-### C. Minimal implementation
+Use this class for refactors, extractions, renames, relocation, simplification, and performance work intended to preserve current semantics.
 
-Implement only what the contract requires:
+Do **not** manufacture a RED test.
 
-```text
-new contract test = GREEN
-relevant suite     = GREEN
-```
+Use existing regressions or a bounded characterization surface to establish the before/after contract. For risky simplification, overlap old and new representations until equivalence is demonstrated before deleting the old one.
 
-Prefer existing Event / State / Context / Validator / provider / persistence machinery over creating a new subsystem.
+If the work reveals an intentional semantic change, reclassify it as a semantic transaction.
 
-Do not solve a transition by adding a compatibility shim or a second authority path. Change the canonical owner directly and migrate affected internal consumers together.
+### Docs-only change
 
-> **Implement the minimum machinery required to satisfy the contract.**
+Use this class for correcting or simplifying documentation without changing runtime behavior.
 
-### D. Authority convergence
+Do not add fake test-first ceremony. Ground the edit in current implementation and authority, then rely on repository structural tests plus exact-head CI.
 
-After behavior is GREEN, converge the owning semantic owner's authority in the same transaction.
+Docs-only work must not introduce new product semantics or hand-edit generated persistent projections.
 
-- update the affected current-authority documents this owner canonically writes;
-- update this owner's `.ai/authority/<id>.yaml` when its surfaces, dependencies, or evidence change;
-- current implemented behavior is written in the present tense;
-- unimplemented behavior is explicitly deferred/future;
-- deferred behavior must never appear as current implementation;
-- code, tests, and owner-local authority converge before merge.
+## 3. One concept, one current owner
 
-Do not update another owner's authority, a derived global view, or generated human-facing documentation here. Derived views are reconstructed on demand; `ARCHITECTURE.md` is regenerated at the release boundary.
+Semantic ownership is the primary decomposition rule.
 
-> **Authority is part of the implementation. Aggregates are not.**
+> **One semantic concept has one current canonical writer.**
 
-### E. Fresh-head semantic review
+File boundaries, Issue boundaries, PR boundaries, and implementation convenience do not create independent semantic owners.
 
-After implementation and documentation are complete, re-fetch the exact current PR head from GitHub and review the cumulative diff as a fresh verification pass.
+Before writing:
 
-This review is independent verification, not necessarily a second human reviewer. It must inspect the actual head/diff/tests/docs rather than trust the implementation summary or earlier local state.
+- locate the responsible `.ai/authority/<id>.yaml` declaration;
+- read its canonical surfaces;
+- load only dependencies or evidence that can materially change the decision;
+- check whether another open transaction is writing the same semantic owner or unavoidable shared semantic boundary.
 
-Answer five questions:
+If ownership is ambiguous, resolve that ambiguity before semantic mutation. Do not invent a temporary owner, bridge, fallback, or duplicate implementation.
 
-1. Does the test express the intended meaning/examples?
-2. Did the code add more semantics or machinery than required?
-3. Are failure cases, edge cases, or authority-boundary regressions materially under-tested?
-4. Do current-authority docs match the implementation and keep deferred behavior explicitly deferred?
-5. Does the diff introduce or preserve a compatibility bridge, shim, dual-authority path, old-path forwarder, or deprecated-behavior fallback instead of direct canonical convergence?
+## 4. Direct canonical convergence
 
-Also verify that the cumulative changed-path set still matches the bounded responsibility.
+`v1` is a greenfield product line. Internal compatibility machinery for superseded RelayLM semantics is prohibited by default.
 
-Any wrong or ambiguous answer means the transaction is incomplete.
+Do not retain:
 
-### F. Exact-head CI gate
+- old-path aliases or forwarding modules whose only purpose is compatibility;
+- temporary bridges intended for later removal;
+- dual-read or dual-write paths for superseded internal semantics;
+- fallbacks to deprecated RelayLM behavior;
+- monkey patches or shims preserving an obsolete owner;
+- simultaneous old/new semantic authorities.
 
-All required `v1` CI results must belong to the exact PR head that was just reviewed.
-
-Current required baseline:
+Instead:
 
 ```text
-workflow: .github/workflows/v1-ci.yml
-python:   3.12
-
-required checks:
-  v1 CI / pytest
-    python -m pytest -q
-
-  v1 CI / minimum-supported
-    install declared direct dependency floors
-    python -m pip check
-    python -m pytest -q
-
-  v1 CI / package-smoke
-    build RelayLM wheel
-    install into a clean virtual environment
-    python -m pip check
-    verify package import, version, and console entry points
-
-  v1 CI / lint
-    ruff check .
+change the canonical owner / contract
+  → migrate affected internal consumers
+  → remove the superseded path
 ```
 
-Each job explicitly checks out and verifies the PR head SHA before running its verification.
+Permanent adapters remain valid at genuine external protocol, provider, storage, package, or public-contract boundaries when they translate the current RelayLM contract rather than preserve obsolete internal semantics.
 
-Repository authority validation, projection recipe validation, and persistent-projection determinism run inside `v1 CI / pytest`, so authority drift fails the normal gate without adding a required check. Regenerating human-facing documentation is not part of this gate; the `v1 release candidate gate` workflow verifies it against the exact frozen candidate commit.
+## 5. Owner-local authority convergence
+
+Authority is part of the implementation.
+
+After behavior is correct:
+
+- update the affected current-authority documents owned by the same semantic owner;
+- update `.ai/authority/<id>.yaml` when its current surfaces, dependencies, or evidence change;
+- describe implemented behavior in the present tense;
+- mark deferred behavior explicitly as deferred/future;
+- do not change another owner's authority merely to restate a local fact.
+
+Repository-wide maps, reverse dependencies, navigation views, and status tables are derived projections, not routine transaction write surfaces.
+
+```text
+component implementation
+  → owner-local authority
+  → validation
+  → merge
+
+derived developer view
+  → reconstruct from projection recipe when needed
+
+human-facing aggregate documentation
+  → materialize at the owned version/release boundary
+```
+
+> **Own facts locally. Do not hand-maintain aggregates.**
+
+## 6. Parallel work
+
+Parallel implementation is allowed only when semantic ownership is genuinely disjoint.
+
+> **Single writer per concept, not single writer for the repository.**
+
+Two transactions may proceed concurrently when they do not redefine the same semantic owner, shared contract, or unavoidable integration decision.
+
+When another transaction moves `v1`:
+
+```text
+no relevant overlap
+  → reconstruct authority and continue
+
+new compatible dependency is now merged
+  → consume it only from current v1
+
+semantic / ownership overlap
+  → stop the stale mutation and reconstruct a bounded transaction
+```
+
+A cross-owner integration transaction is justified only when a real shared semantic decision remains after component work merges. Merely registering already-known facts in a derived view is not integration work.
+
+No special `lane`, `work package`, or serial-integration lifecycle is required to express these rules. Temporary plans may organize work, but they are working state rather than an additional authority layer.
+
+## 7. Fresh-head review
+
+After the cumulative implementation, tests, and authority edits are complete, re-fetch the exact current PR head and review that actual diff.
+
+Do not review from an earlier checkout, implementation summary, or remembered patch.
+
+Ask:
+
+1. Does the change express the intended contract or preservation goal?
+2. Did it add more semantics or machinery than required?
+3. Are material failure modes or authority boundaries under-tested?
+4. Do current-authority docs match the code and distinguish current from deferred behavior?
+5. Does the diff preserve an obsolete bridge, wrapper, dual authority, or implementation-history artifact instead of converging directly?
+6. Does the cumulative changed-path set still fit the bounded responsibility?
+
+Any material mismatch means the transaction is incomplete.
+
+High-risk changes may additionally use an isolated adversarial review under `docs/reference/ai-development.md`; that does not replace this fresh-head review.
+
+## 8. Exact-head CI
+
+All required merge CI must belong to the exact PR head just reviewed.
+
+The source-controlled merge baseline is implemented by `.github/workflows/v1-ci.yml`. The meaning of each green job is owned by `docs/reference/ci-verification.md`; do not duplicate or reinterpret those guarantees here.
+
+Current required jobs are:
+
+- `v1 CI / pytest`;
+- `v1 CI / minimum-supported`;
+- `v1 CI / package-smoke`;
+- `v1 CI / lint`.
 
 Rules:
 
-- all required exact-head CI checks must be GREEN before merge;
-- a GREEN result from an older PR head is stale and does not count;
-- local/manual test output is useful evidence but does not replace the required CI results;
-- if any required CI check is unavailable, cancelled, or not attached to the exact reviewed head, do not claim `CI GREEN` and do not merge;
-- after any new push, repeat fresh-head review and wait for the new exact-head required CI results.
+- all required jobs must be GREEN for the exact reviewed head;
+- an older-head result is stale;
+- local/manual output is useful evidence but does not replace required CI;
+- cancelled, unavailable, or detached checks are not GREEN evidence;
+- any new push invalidates the previous fresh-head review and exact-head CI claim.
 
-### G. Exact-head merge
+`v1 release identity` and release-candidate verification have separate guarantees owned by release engineering and `docs/reference/ci-verification.md` / release contracts. Their existence does not change the normal four-job source merge baseline unless current authority explicitly says so.
+
+## 9. Merge gate
 
 Immediately before merge:
 
-1. re-read current `v1`;
-2. re-read the PR head;
-3. confirm the head is the reviewed SHA;
-4. confirm all required exact-head CI checks are GREEN;
-5. confirm the bounded diff is unchanged;
-6. merge only with expected-head protection.
+1. re-fetch current `v1`;
+2. re-fetch open competing PRs relevant to the owner;
+3. re-fetch the PR head;
+4. confirm the head is exactly the reviewed SHA;
+5. confirm its required exact-head CI is GREEN;
+6. confirm the bounded cumulative diff is unchanged;
+7. merge with expected-head protection.
 
-### H. Issue reconciliation
+If the base moved, classify overlap before merge. A moved base is not automatically a reason to rebase, and it is never permission to reuse stale semantic assumptions.
 
-After the merge succeeds, reconcile the owning Issue against the merged reality. Use exactly one of these outcomes:
+## 10. Issue reconciliation
+
+After a successful merge, reconcile the owning Issue against merged reality.
+
+Use one of these outcomes:
 
 ```text
 implemented completely
-  -> close completed
+  → close completed
 
 implemented partially
-  -> narrow the Issue to true remaining work
-     OR move remaining work to a successor Issue and close the original
+  → narrow the Issue to true remaining work
+     or move that work to a successor and close the original
 
-accepted design promoted to canonical docs
-  -> link the canonical authority / successor work and close or supersede the design Issue
+accepted design promoted
+  → point to current authority / successor work and close or supersede
 
 not adopted
-  -> close not planned
+  → close not planned
 
 real work remains
-  -> keep open, but update Current / Remaining scope so the Issue does not describe stale authority
+  → keep open with current scope rewritten to describe only that work
 ```
 
-Issue closure happens after merge so the Issue never claims completion before the repository does. Record the merged PR and resulting authority where useful.
+Open Issues are planning and remaining-work ledgers, not current semantic authority or historical archives.
 
-A completed semantic transaction is therefore:
+## 11. Stop conditions
+
+Stop the current mutation and report/reconstruct the boundary when:
+
+- semantic ownership is ambiguous or contested;
+- competing work writes the same semantic contract;
+- a required dependency is not yet merged;
+- fresh repository facts cannot be obtained;
+- the bounded transaction would require material unrelated scope expansion;
+- fresh-head review finds a semantic or authority mismatch;
+- required exact-head CI fails or is unavailable;
+- current `v1` makes the planned change no longer necessary.
+
+A stop condition does not authorize temporary compatibility machinery or duplicate ownership. Unrelated disjoint work may continue independently.
+
+## 12. Completion shapes
+
+Semantic change:
 
 ```text
 fresh authority
-  → meaning/examples
-  → existing GREEN + new RED
-  → minimal code GREEN
-  → authority docs
-  → fresh-head semantic review
+  → meaning + examples
+  → existing GREEN + meaningful RED
+  → minimal implementation GREEN
+  → owner-local authority convergence
+  → fresh-head review
   → exact-head required CI GREEN
-  → exact-head merge
+  → expected-head merge
   → Issue reconciliation
 ```
 
-## 3. Behavior-preserving change
+Behavior-preserving change:
 
 ```text
 fresh authority
-  → existing relevant tests GREEN
-  → bounded change
-  → same tests GREEN
-  → documentation impact: updated or explicitly none
-  → fresh-head cumulative-diff review
+  → regression / characterization baseline
+  → bounded simplification
+  → equivalence GREEN
+  → owner-local authority impact
+  → fresh-head review
   → exact-head required CI GREEN
-  → exact-head merge
-  → Issue reconciliation when an owning Issue exists
+  → expected-head merge
+  → Issue reconciliation
 ```
 
-A behavior-preserving refactor must still converge consumers directly on the canonical owner; it must not leave an old-path compatibility alias or forwarder behind.
-
-If semantics changed, reclassify the work as a semantic transaction.
-
-## 4. Docs-only change
+Docs-only change:
 
 ```text
 fresh authority
-  → inspect current implementation / accepted authority
-  → bounded docs correction
-  → fresh-head semantic-contradiction review
+  → bounded grounded correction
+  → contradiction / ownership review
   → exact-head required CI GREEN
-  → exact-head merge
-  → Issue reconciliation when an owning Issue exists
+  → expected-head merge
+  → Issue reconciliation
 ```
-
-Docs-only work must not invent new runtime semantics, and must not hand-edit a generated persistent projection.
-
-## 5. Quality model
-
-The workflow protects three distinct layers:
-
-```text
-Semantic quality
-  Meaning → Example → contract RED/GREEN
-
-Implementation quality
-  regression / structural coverage + relevant suite
-
-Repository quality
-  fresh authority + direct canonical convergence + fresh-head review + exact-head CI + owner-local authority convergence
-```
-
-The goal is not to reproduce heavy governance. The goal is to make the wrong semantic change, stale-head merge, compatibility accretion, or documentation drift difficult to ship.
-
-## 6. Artifact roles
-
-```text
-Issue / bounded spec   intention + examples + remaining-work ledger
-Tests                  executable contract / regression evidence
-Code                   minimal implementation
-Authority docs         human-readable current semantics
-Authority declaration  owner-local ownership, surfaces, dependencies, evidence
-Projection recipe      how a derived view is reconstructed
-Generated docs         release-boundary snapshot of derived authority
-CI                     exact-head executable verification
-```
-
-A semantic transaction is not complete while these materially disagree. Issues are planning and traceability artifacts, not current semantic authority; completed or superseded Issues must not remain open in a way that implies stale design is still pending.
-
-## 7. Current vs deferred
-
-Mandatory rule:
-
-> **Current authority never describes deferred behavior in the present tense.**
-
-When both are needed, separate them explicitly:
-
-```text
-Current implementation
-Deferred / future work
-Owner: #issue
-```
-
-## 8. Issue reconciliation rule
-
-Issue hygiene is part of transaction completion, not a separate governance project.
-
-> **A completed transaction reconciles its Issue: close it, narrow it to true remaining work, or explicitly supersede it.**
-
-Do not keep an Issue open merely as historical documentation. Git history, merged PRs, and canonical docs preserve history; open Issues should represent real unresolved work.
-
-## 9. Supporting automation
-
-The current mandatory baseline is the four exact-head `v1 CI` checks: `pytest`, `minimum-supported`, `package-smoke`, and `lint`.
-
-Additional small automation may be added when useful, such as:
-
-- PR documentation-impact declarations;
-- runtime-owner → tests → authority-doc mapping;
-- lightweight checks for mechanically derivable constants or schemas;
-- structural checks that detect prohibited compatibility paths when they can be identified without false positives;
-- post-merge reminders for owning-Issue reconciliation.
-
-These support the workflow; they are not new architecture concepts.
 
 ## Fixed principles
 
 1. **Meaning → Example → Test → Code → Docs/Authority → Audit.**
-2. **Semantic behavior changes are test-first.**
-3. **Owner-local authority is part of the implementation.**
-4. **Current authority never describes deferred behavior in the present tense.**
-5. **One transaction = one bounded responsibility.**
-6. **Implement the minimum machinery required to satisfy the contract.**
-7. **No bridges, no shims, no dual authority: converge directly on the canonical owner.**
-8. **Fresh-head review verifies the repository, not the implementation narrative.**
-9. **Only the exact reviewed head may satisfy the required CI gate.**
+2. **One transaction = one bounded responsibility.**
+3. **Semantic changes are test-first; preservation work uses characterization rather than manufactured RED.**
+4. **One concept = one current owner.**
+5. **Converge directly; do not preserve superseded internal semantics through compatibility machinery.**
+6. **Owner-local authority is part of the implementation; derived aggregates are not routine write surfaces.**
+7. **Review and CI evidence belong to the exact current head.**
+8. **Parallel work requires disjoint semantic ownership.**
+9. **Current authority never presents deferred behavior as implemented.**
 10. **A completed transaction reconciles its owning Issue.**
-11. **Parallel implementation is allowed only across disjoint canonical owners; integration and authority reconciliation remain serial.**
-12. **Semantic lanes follow ownership boundaries: lane-internal transactions are serial, disjoint lanes may run in parallel, and shared integration remains serial.**
-13. **Every authoritative fact has exactly one canonical writer.**
-14. **Own facts locally. Never hand-maintain aggregates. Store projection recipes, not transient views.**
-15. **Serial integration is for genuine semantic integration, not routine documentation synchronization.**
-16. **Human-facing documentation is materialized at version/release boundaries, never synchronized by every transaction.**
