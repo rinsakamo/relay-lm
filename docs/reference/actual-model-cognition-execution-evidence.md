@@ -91,6 +91,8 @@ A persisted execution artifact is citable only when its `plan_id` matches the co
 
 For restart evidence, the top-level restart run identity alone is also insufficient because it is derived from the restart manifest and whole scenario rather than from the nested phase evidence objects. Before persistence, `before_restart` and `after_restart` must each carry the restart envelope's exact base manifest, the canonical phase scenario partition for the declared restart boundary, and their own canonical ordinary `run_id`. A valid phase artifact from another replicate is not citable inside the current restart envelope.
 
+A citable product-quality review must be derived only from an execution result that passes the same canonical execution admission. Review construction validates the source plan/run/execution identities and plan-to-evidence binding before applying ratings or projecting proposal metrics; a self-consistent review ID cannot make a non-citable source execution valid review evidence.
+
 ## Reference-screening order
 
 The historical frozen vLLM plan contains conditions named A/B/C. Current Core 1.0 screening interprets them only through the current #1386 screening contract:
