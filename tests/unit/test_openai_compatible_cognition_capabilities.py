@@ -41,14 +41,14 @@ def test_provider_exposes_machine_readable_cognition_capability_facts() -> None:
         asyncio.run(provider.aclose())
 
     assert isinstance(facts, OpenAICompatibleCognitionCapabilityFacts)
-    assert facts.structured_output is True
+    assert facts.structured_output is False
     assert facts.streaming is True
     assert facts.reasoning_modes == ()
     assert facts.bounded_reasoning_budget is False
     assert facts.per_pass_decoding_controls == ("temperature", "top_p")
     assert facts.to_mapping() == {
         "format_version": 1,
-        "structured_output": True,
+        "structured_output": False,
         "streaming": True,
         "reasoning_modes": [],
         "bounded_reasoning_budget": False,
@@ -77,6 +77,6 @@ def test_two_pass_extension_reports_same_provider_owned_capability_facts() -> No
 
     assert facts.reasoning_modes == ()
     assert facts.bounded_reasoning_budget is False
-    assert facts.structured_output is True
+    assert facts.structured_output is False
     assert facts.streaming is True
     assert facts.per_pass_decoding_controls == ("temperature", "top_p")
