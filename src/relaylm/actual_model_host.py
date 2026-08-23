@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Sequence
 
@@ -79,6 +80,8 @@ def _main_vllm(argv: Sequence[str]) -> int:
     parser.add_argument("--replicate-id", default="0")
     parser.add_argument("--provider-api-key-env")
     parser.add_argument("--cognitive-budget")
+    parser.add_argument("--capacity-evidence-id")
+    parser.add_argument("--capacity-evidence-root")
     args = parser.parse_args(argv)
 
     repo_root = Path(args.repo_root).resolve()
@@ -88,10 +91,18 @@ def _main_vllm(argv: Sequence[str]) -> int:
         plan = load_vllm_screening_plan(
             repo_root / CANONICAL_VLLM_SCREENING_PLAN_PATH
         )
+        capacity_override = (
+            args.capacity_evidence_id is not None
+            or args.capacity_evidence_root is not None
+        )
         if args.operation == "capacity":
             if args.cognitive_budget is not None:
                 raise ActualModelHostFacadeError(
                     "--cognitive-budget is valid only for screening"
+                )
+            if capacity_override:
+                raise ActualModelHostFacadeError(
+                    "capacity evidence override is valid only for screening"
                 )
             prepared = _prepare_vllm_capacity_acquisition(
                 plan=plan,
@@ -139,6 +150,15 @@ def _main_vllm(argv: Sequence[str]) -> int:
             )
             return 0
 
+        if (args.capacity_evidence_id is None) != (
+            args.capacity_evidence_root is None
+        ):
+            raise ActualModelHostFacadeError(
+                "--capacity-evidence-id and --capacity-evidence-root must be supplied together"
+            )
+        if args.capacity_evidence_id is not None:
+            plan = replace(plan, capacity_evidence_id=args.capacity_evidence_id)
+
         cognitive_budget = (
             load_vllm_two_pass_cognitive_budget_declaration(args.cognitive_budget)
             if args.cognitive_budget is not None
@@ -155,6 +175,7 @@ def _main_vllm(argv: Sequence[str]) -> int:
             api_key=api_key,
             model_runner=args.model_runner,
             replicate_id=args.replicate_id,
+            capacity_evidence_root=args.capacity_evidence_root,
             cognitive_budget=cognitive_budget,
         )
         results = asyncio.run(

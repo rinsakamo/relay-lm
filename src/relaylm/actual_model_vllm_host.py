@@ -624,7 +624,11 @@ def prepare_vllm_screening_condition(
             f"model_runner {expected_model_runner}"
         )
 
-    _verify_clean_exact_repo(root=root, expected_commit=relaylm_commit)
+    _verify_clean_exact_repo(
+        root=root,
+        expected_commit=relaylm_commit,
+        capacity_evidence_commit=capacity_evidence.relaylm_commit,
+    )
     target = load_actual_model_repository_snapshot_target(
         root / CANONICAL_VLLM_TARGET_PATH
     )
@@ -1198,7 +1202,12 @@ def _fetch_json(url: str, api_key: str | None) -> object:
         ) from exc
 
 
-def _verify_clean_exact_repo(*, root: Path, expected_commit: str) -> None:
+def _verify_clean_exact_repo(
+    *,
+    root: Path,
+    expected_commit: str,
+    capacity_evidence_commit: str,
+) -> None:
     if not root.is_dir():
         raise ActualModelVLLMHostError("repo_root must be an existing directory")
     try:
@@ -1221,6 +1230,10 @@ def _verify_clean_exact_repo(*, root: Path, expected_commit: str) -> None:
     if head != expected_commit:
         raise ActualModelVLLMHostError(
             f"host repository HEAD does not match relaylm_commit: {head}"
+        )
+    if head != capacity_evidence_commit:
+        raise ActualModelVLLMHostError(
+            "capacity evidence RelayLM commit does not match the exact screening checkout"
         )
     if status:
         raise ActualModelVLLMHostError(
