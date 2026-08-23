@@ -474,6 +474,16 @@ def write_actual_model_crystallization_evidence(
 ) -> Path:
     """Persist one immutable run-id-addressed crystallization evidence artifact."""
 
+    expected_run_id = stable_actual_model_crystallization_run_id(
+        manifest=evidence.manifest,
+        case=evidence.case,
+        input=evidence.input,
+    )
+    if evidence.run_id != expected_run_id:
+        raise ActualModelCrystallizationArtifactError(
+            "run_id does not match crystallization evidence"
+        )
+
     root = Path(artifact_root)
     root.mkdir(parents=True, exist_ok=True)
     path = root / f"{evidence.run_id}.json"
