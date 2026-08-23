@@ -106,7 +106,7 @@ Selected runtime configuration files are decoded strictly as UTF-8. A selected f
 
 Argument-parser failures also exit with status `2`. If an argparse diagnostic carries non-printable characters from an operator-supplied argv token, those characters use the same visible escape form before stderr output; normal usage text, option admission, and parser semantics are unchanged.
 
-Successful `--version` output is emitted only after the complete argv has passed argument parsing. An unsupported trailing argv token therefore fails through the argument-parser boundary with status `2` and no version stdout instead of being ignored after a successful version report.
+Successful `--version` output is emitted only after the complete argv has passed argument parsing and only when no subcommand is selected. An unsupported trailing argv token or a recognized `doctor` / `serve` subcommand combined with `--version` therefore fails through the argument-parser boundary with status `2` and no version stdout instead of being ignored after a successful version report.
 
 Examples relevant to RCFG4:
 

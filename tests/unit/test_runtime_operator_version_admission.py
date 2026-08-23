@@ -42,3 +42,23 @@ def test_version_rejects_trailing_unsupported_argv_before_success() -> None:
     assert "\x1b" not in error
     assert error.count("\n") == 2
     assert "\\x1b" in error
+
+
+def test_version_rejects_recognized_command_before_success() -> None:
+    for command in ("doctor", "serve"):
+        stdout = StringIO()
+        stderr = StringIO()
+
+        code = run_cli(
+            ["--version", command],
+            environ={},
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert code == 2
+        assert stdout.getvalue() == ""
+        error = stderr.getvalue()
+        assert "relaylm: error:" in error
+        assert "--version" in error
+        assert "cannot be combined with a command" in error
