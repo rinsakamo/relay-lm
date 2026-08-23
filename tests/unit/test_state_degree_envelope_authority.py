@@ -40,7 +40,10 @@ class _RecordingProvider:
     "value",
     [
         {"semantic": "likes"},
+        {"semantic": "likes", "degree_hint": 0.85, "extra": True},
+        {"semantic": "", "degree_hint": 0.85},
         {"semantic": "likes", "degree_hint": True},
+        {"semantic": "likes", "degree_hint": float("inf")},
         {"semantic": "likes", "degree_hint": 1.1},
     ],
 )
