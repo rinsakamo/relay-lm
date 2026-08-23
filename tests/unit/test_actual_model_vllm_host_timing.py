@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 from types import SimpleNamespace
+
+import pytest
 
 import relaylm.actual_model_fast_screening_artifacts as timing_artifacts_module
 import relaylm.actual_model_host as host_facade
 import relaylm.actual_model_vllm_host as host
+from relaylm.actual_model_fast_screening import ScreeningCallTiming
 
 
 EXECUTION_ID = "amx-" + "a" * 64
@@ -33,6 +37,53 @@ class _FailingExtractionProvider:
 
     async def aclose(self):
         return None
+
+
+def _timing_artifact(
+    *,
+    run_id: str = RUN_ID,
+    scenario_id: str = "scenario-v1",
+    extraction_outcome: str = "completed",
+):
+    return timing_artifacts_module.bind_fast_screening_timing_artifact(
+        screening_id="stage-r0-vllm-reference-v1",
+        condition_id="B",
+        replicate_id="r0",
+        scenario_id=scenario_id,
+        execution_id=EXECUTION_ID,
+        run_id=run_id,
+        execution_mode="two_pass",
+        turn_count=1,
+        scenario_elapsed_ms=20.0,
+        calls=(
+            ScreeningCallTiming(
+                phase="pass1",
+                duration_ms=8.0,
+                first_visible_ms=None,
+                outcome="completed",
+            ),
+            ScreeningCallTiming(
+                phase="pass2",
+                duration_ms=5.0,
+                first_visible_ms=None,
+                outcome=extraction_outcome,
+            ),
+        ),
+    )
+
+
+def _host_result(*, timing_id: str, timing_path: Path) -> host.VLLMHostRunArtifact:
+    return host.VLLMHostRunArtifact(
+        scenario_id="scenario-v1",
+        execution_id="amvx-" + "d" * 64,
+        run_id=RUN_ID,
+        artifact_path="/evidence/execution.vllm.json",
+        boundary_verdict_id="ambv-" + "c" * 64,
+        boundary_outcome="pass",
+        boundary_artifact_path="/evidence/boundary.json",
+        timing_id=timing_id,
+        timing_artifact_path=str(timing_path),
+    )
 
 
 def test_vllm_host_carries_two_pass_timing_as_separate_sidecar(
@@ -209,3 +260,37 @@ def test_vllm_host_summary_surfaces_absorbed_pass2_provider_failure(
     assert results[0].boundary_outcome == "pass"
     summary = host_facade._screening_result_mapping(results[0])
     assert summary["failed_provider_call_count"] == 1
+
+
+def test_vllm_host_summary_rejects_foreign_valid_timing_sidecar(
+    tmp_path: Path,
+) -> None:
+    expected = _timing_artifact()
+    foreign = _timing_artifact(
+        run_id="amr-" + "c" * 64,
+        scenario_id="other-scenario-v1",
+        extraction_outcome="failed",
+    )
+    timing_path = tmp_path / "foreign-timing.json"
+    timing_path.write_text(foreign.to_json(), encoding="utf-8")
+    result = _host_result(timing_id=expected.timing_id, timing_path=timing_path)
+
+    with pytest.raises(host_facade.ActualModelHostFacadeError, match="timing"):
+        host_facade._screening_result_mapping(result)
+
+
+def test_vllm_host_summary_rejects_timing_content_with_stale_timing_id(
+    tmp_path: Path,
+) -> None:
+    timing = _timing_artifact()
+    raw = timing.to_mapping()
+    raw["turns"][0]["extraction_outcome"] = "failed"  # type: ignore[index]
+    timing_path = tmp_path / "tampered-timing.json"
+    timing_path.write_text(
+        json.dumps(raw, ensure_ascii=False, allow_nan=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    result = _host_result(timing_id=timing.timing_id, timing_path=timing_path)
+
+    with pytest.raises(host_facade.ActualModelHostFacadeError, match="timing"):
+        host_facade._screening_result_mapping(result)
