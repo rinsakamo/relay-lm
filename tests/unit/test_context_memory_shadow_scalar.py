@@ -4,7 +4,7 @@ import pytest
 
 from relaylm.memory_provenance import MemoryTemporalScope
 
-from .context_memory_shadow_support import memory_is_retained
+from context_memory_shadow_support import memory_is_retained
 
 
 @pytest.mark.parametrize(
