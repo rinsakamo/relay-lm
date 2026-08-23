@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from typing import Iterable, Literal, Mapping
 
@@ -9,6 +8,7 @@ from relaylm.continuity import (
     ContinuityContext,
     ContinuityItem,
     freeze_continuity_value,
+    is_continuity_json_value,
 )
 from relaylm.events import Event
 
@@ -249,11 +249,8 @@ def _rejection_reason(
         events[source].actor == "user" for source in candidate.sources
     ):
         return "user_assertion_requires_user_source"
-    if candidate.op == "set":
-        try:
-            json.dumps(candidate.value, ensure_ascii=False, allow_nan=False)
-        except (TypeError, ValueError):
-            return "non_json_value"
+    if candidate.op == "set" and not is_continuity_json_value(candidate.value):
+        return "non_json_value"
     return None
 
 
