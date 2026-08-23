@@ -364,6 +364,36 @@ def test_execution_writer_rejects_restart_evidence_from_another_valid_plan_run(
     assert not artifact_root.exists()
 
 
+@pytest.mark.parametrize("phase", ("before_restart", "after_restart"))
+def test_execution_writer_rejects_foreign_restart_phase_evidence(
+    tmp_path: Path,
+    phase: str,
+) -> None:
+    first = asyncio.run(
+        _run_restart(workspace_root=tmp_path / "run-0", replicate_id="0")
+    )
+    second = asyncio.run(
+        _run_restart(workspace_root=tmp_path / "run-1", replicate_id="1")
+    )
+    assert isinstance(first.evidence, ActualModelRestartEvidence)
+    assert isinstance(second.evidence, ActualModelRestartEvidence)
+    first_phase = getattr(first.evidence, phase)
+    second_phase = getattr(second.evidence, phase)
+    assert first_phase.run_id != second_phase.run_id
+
+    mixed_restart = replace(first.evidence, **{phase: second_phase})
+    mixed = replace(first, evidence=mixed_restart)
+    artifact_root = tmp_path / phase
+
+    with pytest.raises(
+        ActualModelExecutionArtifactError,
+        match="restart phase evidence does not match restart envelope",
+    ):
+        write_actual_model_execution_result(result=mixed, artifact_root=artifact_root)
+
+    assert not artifact_root.exists()
+
+
 def test_loader_rejects_non_object_root(tmp_path: Path) -> None:
     path = tmp_path / "not-an-execution.json"
     path.write_text("[]\n", encoding="utf-8")
