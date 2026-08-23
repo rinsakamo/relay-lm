@@ -9,6 +9,10 @@ from typing import Literal
 
 from relaylm.actual_model_evaluation import ActualModelEvidence
 from relaylm.actual_model_execution import ActualModelScenarioExecutionResult
+from relaylm.actual_model_execution_artifacts import (
+    ActualModelExecutionArtifactError,
+    validate_actual_model_execution_result,
+)
 from relaylm.actual_model_quality import (
     QUALITY_RUBRIC_VERSION,
     LabeledProposalMetrics,
@@ -225,6 +229,12 @@ def review_actual_model_execution(
 
     if not reviewer_identity.strip():
         raise ValueError("reviewer_identity must not be empty")
+    try:
+        validate_actual_model_execution_result(result)
+    except (ActualModelExecutionArtifactError, TypeError) as exc:
+        raise ActualModelExecutionReviewError(
+            f"source execution is not citable: {exc}"
+        ) from exc
 
     evidence = _review_evidence_view(result)
     rated = apply_product_quality_ratings(evidence=evidence, ratings=ratings)
