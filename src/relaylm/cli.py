@@ -85,6 +85,10 @@ def run_cli(
     except _CLIExit as exc:
         return exc.status
 
+    if args.version:
+        stdout.write(f"relaylm {RELAYLM_VERSION}\n")
+        return 0
+
     if args.command is None:
         parser.print_help(stdout)
         return 0
@@ -144,8 +148,7 @@ def _build_parser(*, stdout: TextIO, stderr: TextIO) -> _ArgumentParser:
     )
     parser.add_argument(
         "--version",
-        action="version",
-        version=f"relaylm {RELAYLM_VERSION}",
+        action="store_true",
     )
     subcommands = parser.add_subparsers(
         dest="command",
