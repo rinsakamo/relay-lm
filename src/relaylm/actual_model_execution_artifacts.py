@@ -4,7 +4,10 @@ import json
 import os
 from pathlib import Path
 
-from relaylm.actual_model_execution import ActualModelScenarioExecutionResult
+from relaylm.actual_model_execution import (
+    ActualModelScenarioExecutionResult,
+    _stable_execution_id,
+)
 
 
 class ActualModelExecutionArtifactError(RuntimeError):
@@ -17,6 +20,15 @@ def write_actual_model_execution_result(
     artifact_root: str | Path,
 ) -> Path:
     """Persist one complete execution result as an immutable citable JSON artifact."""
+
+    expected_execution_id = _stable_execution_id(
+        plan=result.plan,
+        run_id=result.run_id,
+    )
+    if result.execution_id != expected_execution_id:
+        raise ActualModelExecutionArtifactError(
+            "execution_id does not match execution evidence"
+        )
 
     root = Path(artifact_root)
     root.mkdir(parents=True, exist_ok=True)
