@@ -65,6 +65,39 @@ def test_clean_exact_repo_rejects_capacity_provenance_from_different_commit(
         )
 
 
+def test_clean_exact_repo_allows_capacity_acquisition_without_prior_capacity_provenance(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.email", "relaylm-test@example.invalid"],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.name", "RelayLM Test"],
+        check=True,
+    )
+    (repo / "tracked.txt").write_text("tracked\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "tracked.txt"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "-q", "-m", "fixture"],
+        check=True,
+    )
+    head = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    vllm_host._verify_clean_exact_repo(
+        root=repo,
+        expected_commit=head,
+    )
+
+
 def test_screening_preparation_carries_capacity_commit_into_exact_repo_gate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
