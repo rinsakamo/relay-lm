@@ -8,6 +8,7 @@ from relaylm.actual_model_quality import LabeledProposalMetrics, ProposalChannel
 from relaylm.actual_model_review import (
     ActualModelExecutionReview,
     ActualModelExecutionReviewError,
+    CharacterRealizationObservation,
     StageRReviewObservation,
     required_stage_r_review_dimensions,
     write_actual_model_execution_review,
@@ -40,6 +41,9 @@ def test_review_writer_rejects_non_content_derived_review_id(tmp_path: Path) -> 
         stage_r_observations=tuple(
             StageRReviewObservation(dimension=dimension, outcome="not_rated")
             for dimension in required_stage_r_review_dimensions()
+        ),
+        character_realization_observations=(
+            CharacterRealizationObservation(turn_index=1, outcome="normal"),
         ),
     )
 

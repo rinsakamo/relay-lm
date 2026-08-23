@@ -27,6 +27,7 @@ from relaylm.actual_model_review import (
     STAGE_R_REVIEW_PROTOCOL_VERSION,
     ActualModelExecutionReview,
     ActualModelExecutionReviewError,
+    CharacterRealizationObservation,
     StageRReviewObservation,
     load_actual_model_execution_review_mapping,
     normalize_stage_r_review_observations,
@@ -113,6 +114,20 @@ def _ratings(*, family: str, turn_count: int) -> tuple[TurnQualityRating, ...]:
     )
 
 
+def _character_realization(
+    turn_count: int,
+    *,
+    outcome: str = "normal",
+) -> tuple[CharacterRealizationObservation, ...]:
+    return tuple(
+        CharacterRealizationObservation(
+            turn_index=turn_index,
+            outcome=outcome,
+        )
+        for turn_index in range(1, turn_count + 1)
+    )
+
+
 async def _run(
     *,
     workspace_root: Path,
@@ -147,6 +162,7 @@ def test_review_binds_human_rubric_and_fixture_proposal_metrics_without_mutating
             family="response_persona_continuity",
             turn_count=3,
         ),
+        character_realization_observations=_character_realization(3),
     )
 
     assert result.to_json() == before
@@ -167,6 +183,10 @@ def test_review_binds_human_rubric_and_fixture_proposal_metrics_without_mutating
         observation["outcome"] == "not_rated"
         for observation in mapping["stage_r_review"]["observations"]
     )
+    assert [
+        observation["outcome"]
+        for observation in mapping["character_realization"]["observations"]
+    ] == ["normal", "normal", "normal"]
 
 
 def test_review_rejects_source_execution_that_cannot_be_cited(tmp_path: Path) -> None:
@@ -204,6 +224,7 @@ def test_review_rejects_source_execution_that_cannot_be_cited(tmp_path: Path) ->
                 family="response_persona_continuity",
                 turn_count=3,
             ),
+            character_realization_observations=_character_realization(3),
         )
 
 
@@ -221,6 +242,7 @@ def test_review_requires_exact_family_rubric_coverage(tmp_path: Path) -> None:
             result=result,
             reviewer_identity="rater-a",
             ratings=incomplete,
+            character_realization_observations=_character_realization(3),
         )
 
 
@@ -238,9 +260,14 @@ def test_restart_review_uses_original_global_turn_indexes_and_fixture_labels(
         result=result,
         reviewer_identity="rater-a",
         ratings=_ratings(family="restart_quality", turn_count=3),
+        character_realization_observations=_character_realization(3),
     )
 
     assert tuple(rating.turn_index for rating in review.turn_ratings) == (1, 2, 3)
+    assert tuple(
+        observation.turn_index
+        for observation in review.character_realization_observations
+    ) == (1, 2, 3)
     assert review.scenario_id == "restart-durable-vs-temporary-v1"
     assert review.proposal_metrics.state.expected_count == 1
     assert review.proposal_metrics.state.false_negative_count == 1
@@ -256,16 +283,19 @@ def test_reviewer_identity_is_part_of_review_identity(tmp_path: Path) -> None:
         )
     )
     ratings = _ratings(family="response_persona_continuity", turn_count=3)
+    realization = _character_realization(3)
 
     first = review_actual_model_execution(
         result=result,
         reviewer_identity="rater-a",
         ratings=ratings,
+        character_realization_observations=realization,
     )
     second = review_actual_model_execution(
         result=result,
         reviewer_identity="rater-b",
         ratings=ratings,
+        character_realization_observations=realization,
     )
 
     assert first.execution_id == second.execution_id
@@ -283,6 +313,7 @@ def test_review_sidecar_is_immutable_idempotent_and_machine_loadable(tmp_path: P
         result=result,
         reviewer_identity="rater-a",
         ratings=_ratings(family="response_persona_continuity", turn_count=3),
+        character_realization_observations=_character_realization(3),
     )
     artifact_root = tmp_path / "reviews"
 
@@ -302,11 +333,12 @@ def test_review_sidecar_is_immutable_idempotent_and_machine_loadable(tmp_path: P
     assert loaded["execution_id"] == result.execution_id
     assert loaded["quality_rubric_version"] == "actual-model-quality-v1"
     assert loaded["stage_r_review"]["protocol_version"] == STAGE_R_REVIEW_PROTOCOL_VERSION
+    assert loaded["character_realization"]["observations"][0]["outcome"] == "normal"
     assert loaded["score"] is None
 
 
 def test_stage_r_review_protocol_exposes_required_material_dimensions() -> None:
-    assert STAGE_R_REVIEW_PROTOCOL_VERSION == "actual-model-stage-r-review-v1"
+    assert STAGE_R_REVIEW_PROTOCOL_VERSION == "actual-model-stage-r-review-v2"
     assert required_stage_r_review_dimensions() == (
         "relevance_correctness",
         "naturalness",
@@ -387,10 +419,13 @@ def test_stage_r_review_dimensions_are_citable_without_a_composite_score() -> No
             continuity=empty_channel,
         ),
         stage_r_observations=normalize_stage_r_review_observations(observations),
+        character_realization_observations=(
+            CharacterRealizationObservation(turn_index=1, outcome="system_defect"),
+        ),
     )
 
     mapping = review.to_mapping()
-    assert ACTUAL_MODEL_REVIEW_FORMAT_VERSION == 2
+    assert ACTUAL_MODEL_REVIEW_FORMAT_VERSION == 3
     assert mapping["score"] is None
     assert mapping["stage_r_review"]["protocol_version"] == STAGE_R_REVIEW_PROTOCOL_VERSION
     by_dimension = {
@@ -399,3 +434,4 @@ def test_stage_r_review_dimensions_are_citable_without_a_composite_score() -> No
     }
     assert by_dimension["grounding"] == "fail"
     assert len(by_dimension) == len(required_stage_r_review_dimensions())
+    assert mapping["character_realization"]["observations"][0]["outcome"] == "system_defect"

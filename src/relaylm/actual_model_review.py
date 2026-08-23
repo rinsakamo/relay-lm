@@ -22,8 +22,10 @@ from relaylm.actual_model_quality import (
 )
 from relaylm.actual_model_restart import ActualModelRestartEvidence
 
-ACTUAL_MODEL_REVIEW_FORMAT_VERSION = 2
-STAGE_R_REVIEW_PROTOCOL_VERSION = "actual-model-stage-r-review-v1"
+LEGACY_ACTUAL_MODEL_REVIEW_FORMAT_VERSION = 2
+LEGACY_STAGE_R_REVIEW_PROTOCOL_VERSION = "actual-model-stage-r-review-v1"
+ACTUAL_MODEL_REVIEW_FORMAT_VERSION = 3
+STAGE_R_REVIEW_PROTOCOL_VERSION = "actual-model-stage-r-review-v2"
 StageRReviewDimension = Literal[
     "relevance_correctness",
     "naturalness",
@@ -51,6 +53,12 @@ StageRReviewDimension = Literal[
     "source_event_validity",
 ]
 StageRReviewOutcome = Literal["pass", "fail", "not_rated"]
+CharacterRealizationOutcome = Literal[
+    "normal",
+    "odd_but_character_plausible",
+    "out_of_character",
+    "system_defect",
+]
 
 _STAGE_R_REVIEW_DIMENSIONS: tuple[StageRReviewDimension, ...] = (
     "relevance_correctness",
@@ -77,6 +85,12 @@ _STAGE_R_REVIEW_DIMENSIONS: tuple[StageRReviewDimension, ...] = (
     "proposal_churn",
     "hallucinated_proposals",
     "source_event_validity",
+)
+_CHARACTER_REALIZATION_OUTCOMES: tuple[CharacterRealizationOutcome, ...] = (
+    "normal",
+    "odd_but_character_plausible",
+    "out_of_character",
+    "system_defect",
 )
 
 
@@ -106,6 +120,32 @@ class StageRReviewObservation:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class CharacterRealizationObservation:
+    """One turn-local Character-realization classification for Stage R review."""
+
+    turn_index: int
+    outcome: CharacterRealizationOutcome
+    note: str | None = None
+
+    def __post_init__(self) -> None:
+        if isinstance(self.turn_index, bool) or not isinstance(self.turn_index, int):
+            raise TypeError("Character realization turn_index must be int")
+        if self.turn_index <= 0:
+            raise ValueError("Character realization turn_index must be positive")
+        if self.outcome not in _CHARACTER_REALIZATION_OUTCOMES:
+            raise ValueError(
+                f"unsupported Character realization outcome: {self.outcome}"
+            )
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "turn_index": self.turn_index,
+            "outcome": self.outcome,
+            "note": self.note,
+        }
+
+
 def required_stage_r_review_dimensions() -> tuple[StageRReviewDimension, ...]:
     """Return the independent Stage R dimensions required by current #1386 authority."""
 
@@ -126,6 +166,33 @@ def normalize_stage_r_review_observations(
         raise ValueError("Stage R review observations must cover every required Stage R review dimension")
     by_dimension = {item.dimension: item for item in observations}
     return tuple(by_dimension[dimension] for dimension in _STAGE_R_REVIEW_DIMENSIONS)
+
+
+def normalize_character_realization_observations(
+    observations: tuple[CharacterRealizationObservation, ...],
+    *,
+    turn_count: int,
+) -> tuple[CharacterRealizationObservation, ...]:
+    """Require exactly one Character-realization classification per evidence turn."""
+
+    if isinstance(turn_count, bool) or not isinstance(turn_count, int):
+        raise TypeError("Character realization turn_count must be int")
+    if turn_count <= 0:
+        raise ValueError("Character realization turn_count must be positive")
+    if not all(isinstance(item, CharacterRealizationObservation) for item in observations):
+        raise TypeError(
+            "Character realization observations must be CharacterRealizationObservation values"
+        )
+    turns = tuple(item.turn_index for item in observations)
+    if len(set(turns)) != len(turns):
+        raise ValueError("Character realization observations must not duplicate turns")
+    expected_turns = set(range(1, turn_count + 1))
+    if set(turns) != expected_turns:
+        raise ValueError(
+            "Character realization observations must cover every evidence turn exactly once"
+        )
+    by_turn = {item.turn_index: item for item in observations}
+    return tuple(by_turn[turn_index] for turn_index in range(1, turn_count + 1))
 
 
 def _unrated_stage_r_review_observations() -> tuple[StageRReviewObservation, ...]:
@@ -149,6 +216,7 @@ class ActualModelExecutionReview:
     turn_ratings: tuple[TurnQualityRating, ...]
     proposal_metrics: LabeledProposalMetrics
     stage_r_observations: tuple[StageRReviewObservation, ...]
+    character_realization_observations: tuple[CharacterRealizationObservation, ...]
     quality_rubric_version: str = QUALITY_RUBRIC_VERSION
     stage_r_review_protocol_version: str = STAGE_R_REVIEW_PROTOCOL_VERSION
     format_version: int = ACTUAL_MODEL_REVIEW_FORMAT_VERSION
@@ -165,6 +233,27 @@ class ActualModelExecutionReview:
         normalized = normalize_stage_r_review_observations(self.stage_r_observations)
         if normalized != self.stage_r_observations:
             raise ValueError("Stage R review observations must use canonical dimension order")
+        if not self.character_realization_observations:
+            raise ValueError("current review requires Character realization observations")
+        normalized_character = normalize_character_realization_observations(
+            self.character_realization_observations,
+            turn_count=max(
+                item.turn_index for item in self.character_realization_observations
+            ),
+        )
+        if normalized_character != self.character_realization_observations:
+            raise ValueError(
+                "Character realization observations must use canonical turn order"
+            )
+        if self.turn_ratings:
+            rating_turns = tuple(rating.turn_index for rating in self.turn_ratings)
+            realization_turns = tuple(
+                item.turn_index for item in self.character_realization_observations
+            )
+            if rating_turns != realization_turns:
+                raise ValueError(
+                    "Character realization observations must match reviewed turn indexes"
+                )
         for name in (
             "review_id",
             "execution_id",
@@ -206,6 +295,12 @@ class ActualModelExecutionReview:
                     for observation in self.stage_r_observations
                 ],
             },
+            "character_realization": {
+                "observations": [
+                    observation.to_mapping()
+                    for observation in self.character_realization_observations
+                ],
+            },
             "score": None,
         }
 
@@ -223,6 +318,7 @@ def review_actual_model_execution(
     result: ActualModelScenarioExecutionResult,
     reviewer_identity: str,
     ratings: tuple[TurnQualityRating, ...],
+    character_realization_observations: tuple[CharacterRealizationObservation, ...],
     stage_r_observations: tuple[StageRReviewObservation, ...] | None = None,
 ) -> ActualModelExecutionReview:
     """Validate bounded human ratings and fixture-owned proposal metrics together."""
@@ -254,6 +350,10 @@ def review_actual_model_execution(
         if stage_r_observations is None
         else stage_r_observations
     )
+    normalized_character_realization = normalize_character_realization_observations(
+        character_realization_observations,
+        turn_count=len(evidence.turns),
+    )
     identity = {
         "format_version": ACTUAL_MODEL_REVIEW_FORMAT_VERSION,
         "execution_id": result.execution_id,
@@ -281,6 +381,12 @@ def review_actual_model_execution(
                 for observation in normalized_stage_r
             ],
         },
+        "character_realization": {
+            "observations": [
+                observation.to_mapping()
+                for observation in normalized_character_realization
+            ],
+        },
     }
     review_id = _stable_review_id(identity)
     return ActualModelExecutionReview(
@@ -294,6 +400,7 @@ def review_actual_model_execution(
         turn_ratings=normalized_ratings,
         proposal_metrics=proposal_metrics,
         stage_r_observations=normalized_stage_r,
+        character_realization_observations=normalized_character_realization,
     )
 
 
