@@ -97,6 +97,8 @@ Ordinary turns may append the Event journal and save State, and crystallization 
 
 Configuration, assembly, and preflight failures use the existing RCFG1 taxonomy and exit with status `2`. Messages contain safe field/configuration metadata only. Before a typed runtime failure is written to the human operator stderr stream, non-printable characters in the rendered message are converted to the same visible escape form used by successful human-readable summaries. This is presentation-only: the typed exception, field, taxonomy, and underlying runtime/config value are unchanged.
 
+Argument-parser failures also exit with status `2`. If an argparse diagnostic carries non-printable characters from an operator-supplied argv token, those characters use the same visible escape form before stderr output; normal usage text, option admission, and parser semantics are unchanged.
+
 Examples relevant to RCFG4:
 
 ```text
