@@ -8,10 +8,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from relaylm.actual_model_fast_screening import ScreeningCallTiming
+from relaylm.actual_model_fast_screening import (
+    ScreeningCallOutcome,
+    ScreeningCallTiming,
+)
 
 
-FAST_SCREENING_TIMING_FORMAT_VERSION = 1
+FAST_SCREENING_TIMING_FORMAT_VERSION = 2
 FastScreeningExecutionMode = Literal["single_pass", "two_pass"]
 
 
@@ -23,8 +26,10 @@ class ActualModelFastScreeningArtifactError(ValueError):
 class FastScreeningTurnTiming:
     turn_index: int
     response_provider_ms: float
+    response_outcome: ScreeningCallOutcome
     first_visible_provider_ms: float | None
     extraction_provider_ms: float | None
+    extraction_outcome: ScreeningCallOutcome | None
 
     def __post_init__(self) -> None:
         if isinstance(self.turn_index, bool) or not isinstance(self.turn_index, int):
@@ -32,6 +37,7 @@ class FastScreeningTurnTiming:
         if self.turn_index <= 0:
             raise ValueError("turn_index must be positive")
         _validate_non_negative_finite(self.response_provider_ms, "response_provider_ms")
+        _validate_call_outcome(self.response_outcome, "response_outcome")
         if self.first_visible_provider_ms is not None:
             _validate_non_negative_finite(
                 self.first_visible_provider_ms,
@@ -41,11 +47,21 @@ class FastScreeningTurnTiming:
                 raise ValueError(
                     "first_visible_provider_ms cannot exceed response_provider_ms"
                 )
-        if self.extraction_provider_ms is not None:
+        if self.extraction_provider_ms is None:
+            if self.extraction_outcome is not None:
+                raise ValueError(
+                    "extraction_outcome requires extraction_provider_ms"
+                )
+        else:
             _validate_non_negative_finite(
                 self.extraction_provider_ms,
                 "extraction_provider_ms",
             )
+            if self.extraction_outcome is None:
+                raise ValueError(
+                    "extraction_provider_ms requires extraction_outcome"
+                )
+            _validate_call_outcome(self.extraction_outcome, "extraction_outcome")
 
     @property
     def provider_total_ms(self) -> float:
@@ -55,8 +71,10 @@ class FastScreeningTurnTiming:
         return {
             "turn_index": self.turn_index,
             "response_provider_ms": self.response_provider_ms,
+            "response_outcome": self.response_outcome,
             "first_visible_provider_ms": self.first_visible_provider_ms,
             "extraction_provider_ms": self.extraction_provider_ms,
+            "extraction_outcome": self.extraction_outcome,
             "provider_total_ms": self.provider_total_ms,
         }
 
@@ -103,12 +121,20 @@ class FastScreeningTimingArtifact:
         observed = tuple(turn.turn_index for turn in self.turns)
         if observed != expected:
             raise ValueError("timing artifact turn indexes must be contiguous from 1")
+        if any(turn.response_outcome != "completed" for turn in self.turns):
+            raise ValueError(
+                "citable completed execution timing requires completed response calls"
+            )
         if self.execution_mode == "single_pass" and any(
-            turn.extraction_provider_ms is not None for turn in self.turns
+            turn.extraction_provider_ms is not None
+            or turn.extraction_outcome is not None
+            for turn in self.turns
         ):
             raise ValueError("single_pass timing must not carry extraction timing")
         if self.execution_mode == "two_pass" and any(
-            turn.extraction_provider_ms is None for turn in self.turns
+            turn.extraction_provider_ms is None
+            or turn.extraction_outcome is None
+            for turn in self.turns
         ):
             raise ValueError("two_pass timing requires extraction timing for every turn")
         provider_total_ms = sum(turn.provider_total_ms for turn in self.turns)
@@ -198,18 +224,18 @@ def bind_fast_screening_timing_artifact(
             offset += 1
         else:
             extraction = calls[offset + 1]
-            if extraction.outcome != "completed":
-                raise ActualModelFastScreeningArtifactError(
-                    "completed scenario timing cannot contain a failed extraction call"
-                )
             offset += 2
         turns.append(
             FastScreeningTurnTiming(
                 turn_index=turn_index,
                 response_provider_ms=response.duration_ms,
+                response_outcome=response.outcome,
                 first_visible_provider_ms=response.first_visible_ms,
                 extraction_provider_ms=(
                     extraction.duration_ms if extraction is not None else None
+                ),
+                extraction_outcome=(
+                    extraction.outcome if extraction is not None else None
                 ),
             )
         )
@@ -292,6 +318,11 @@ def _expected_phase_sequence(
     if execution_mode == "two_pass":
         return ("pass1", "pass2") * turn_count
     raise ValueError(f"unsupported execution_mode: {execution_mode}")
+
+
+def _validate_call_outcome(value: str, label: str) -> None:
+    if value not in {"completed", "failed"}:
+        raise ValueError(f"{label} must be completed or failed")
 
 
 def _validate_canonical_stable_id(value: str, *, prefix: str, label: str) -> None:
