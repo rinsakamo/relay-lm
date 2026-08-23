@@ -121,13 +121,19 @@ def _validate_provider_configuration(resolved: ResolvedRuntimeConfig) -> None:
     provider = resolved.config.provider
     try:
         parsed = urlsplit(provider.base_url)
-        _ = parsed.port
+        port = parsed.port
     except ValueError as exc:
         raise RuntimePreflightError(
             RuntimeConfigErrorCode.PROVIDER_INVALID,
             field="provider.base_url",
             message="provider base URL is malformed",
         ) from exc
+    if port == 0:
+        raise RuntimePreflightError(
+            RuntimeConfigErrorCode.PROVIDER_INVALID,
+            field="provider.base_url",
+            message="provider base URL port must be between 1 and 65535",
+        )
     if parsed.scheme not in {"http", "https"} or parsed.hostname is None:
         raise RuntimePreflightError(
             RuntimeConfigErrorCode.PROVIDER_INVALID,
