@@ -140,6 +140,7 @@ def _prepare(
         relaylm_commit="c" * 40,
         base_url="http://127.0.0.1:8000/v1",
         api_key=None,
+        model_runner="v2",
         fetch_json=_live_fetch,
         tokenize_post_json=_tokenize,
     )
@@ -151,6 +152,7 @@ def test_prepare_capacity_acquisition_uses_live_runtime_without_cited_capacity(
     prepared = _prepare(monkeypatch)
     try:
         assert prepared.plan.capacity_evidence_id is None
+        assert prepared.model_runner == "v2"
         assert prepared.manifest.effective_context_window == LIVE_MAX_MODEL_LEN
         assert prepared.reasoning_capability.backend_attestation.max_model_len == (
             LIVE_MAX_MODEL_LEN
@@ -162,6 +164,28 @@ def test_prepare_capacity_acquisition_uses_live_runtime_without_cited_capacity(
         assert prepared.two_pass_counter is None
     finally:
         asyncio.run(prepared.provider.aclose())
+
+
+def test_prepare_capacity_acquisition_requires_explicit_runner() -> None:
+    plan = replace(
+        vllm_host.load_vllm_screening_plan(PLAN_PATH),
+        capacity_evidence_id=None,
+    )
+
+    with pytest.raises(
+        acquisition.VLLMCapacityAcquisitionError,
+        match="model_runner",
+    ):
+        acquisition.prepare_vllm_capacity_acquisition(
+            plan=plan,
+            condition_id="A",
+            proof_path=PROOF_PATH,
+            repo_root=REPO_ROOT,
+            snapshot_root=SNAPSHOT_ROOT,
+            relaylm_commit="c" * 40,
+            base_url="http://127.0.0.1:8000/v1",
+            api_key=None,
+        )
 
 
 def test_partial_acquisition_persists_only_reached_footprint(
@@ -197,6 +221,7 @@ def test_partial_acquisition_persists_only_reached_footprint(
     assert failure.artifact is not None
     assert failure.artifact.complete is False
     evidence = load_vllm_runtime_capacity_evidence(failure.artifact.artifact_path)
+    assert evidence.model_runner == "v2"
     assert len(evidence.footprints) == 1
     assert evidence.footprints[0].scenario_id == prepared.scenario_ids[0]
     assert evidence.footprints[0].turn_index == 1
@@ -247,6 +272,7 @@ def test_complete_acquisition_passes_exact_selected_condition_coverage(
 
     assert artifact.complete is True
     evidence = load_vllm_runtime_capacity_evidence(artifact.artifact_path)
+    assert evidence.model_runner == "v2"
     assert len(evidence.footprints) == 6
     validate_capacity_coverage(
         evidence=evidence,

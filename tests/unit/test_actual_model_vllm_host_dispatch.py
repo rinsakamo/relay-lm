@@ -51,6 +51,8 @@ def test_shared_host_runner_dispatches_one_vllm_condition_without_backend_script
             "vllm",
             "--condition",
             "A",
+            "--model-runner",
+            "v2",
             "--repo-root",
             str(tmp_path),
             "--snapshot-root",
@@ -67,6 +69,7 @@ def test_shared_host_runner_dispatches_one_vllm_condition_without_backend_script
     assert result == 0
     assert observed["prepare"]["plan"] is plan
     assert observed["prepare"]["condition_id"] == "A"
+    assert observed["prepare"]["model_runner"] == "v2"
     assert observed["prepare"]["base_url"] == "http://127.0.0.1:8000/v1"
     assert observed["execute"]["snapshot_root"] == "/tmp/relaylm-unsloth-w4a16-model"
     output = capsys.readouterr().out
@@ -122,6 +125,8 @@ def test_shared_host_runner_dispatches_vllm_capacity_acquisition_separately(
             "capacity",
             "--condition",
             "A",
+            "--model-runner",
+            "v2",
             "--repo-root",
             str(tmp_path),
             "--snapshot-root",
@@ -138,6 +143,7 @@ def test_shared_host_runner_dispatches_vllm_capacity_acquisition_separately(
     assert result == 0
     assert observed["prepare"]["plan"] is plan
     assert observed["prepare"]["condition_id"] == "A"
+    assert observed["prepare"]["model_runner"] == "v2"
     assert "capacity_evidence_root" not in observed["prepare"]
     assert "snapshot_root" not in observed["execute"]
     output = capsys.readouterr().out

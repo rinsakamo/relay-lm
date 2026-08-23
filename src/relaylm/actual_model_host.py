@@ -11,6 +11,7 @@ from typing import Sequence
 
 from relaylm.actual_model_host_runner import main as _lm_studio_main
 from relaylm.actual_model_vllm import ActualModelVLLMBindingError
+from relaylm.actual_model_vllm_capacity import VLLM_MODEL_RUNNER_IDS
 from relaylm.actual_model_vllm_capacity_acquisition import (
     VLLMCapacityAcquisitionError,
     VLLMCapacityAcquisitionFailure,
@@ -66,6 +67,7 @@ def _main_vllm(argv: Sequence[str]) -> int:
     parser.add_argument("--provider-base-url", required=True)
     parser.add_argument("--workspace-root", required=True)
     parser.add_argument("--artifact-root", required=True)
+    parser.add_argument("--model-runner", required=True, choices=VLLM_MODEL_RUNNER_IDS)
     parser.add_argument("--replicate-id", default="0")
     parser.add_argument("--provider-api-key-env")
     args = parser.parse_args(argv)
@@ -87,6 +89,7 @@ def _main_vllm(argv: Sequence[str]) -> int:
                 relaylm_commit=relaylm_commit,
                 base_url=args.provider_base_url,
                 api_key=api_key,
+                model_runner=args.model_runner,
                 replicate_id=args.replicate_id,
             )
             try:
@@ -132,6 +135,7 @@ def _main_vllm(argv: Sequence[str]) -> int:
             relaylm_commit=relaylm_commit,
             base_url=args.provider_base_url,
             api_key=api_key,
+            model_runner=args.model_runner,
             replicate_id=args.replicate_id,
         )
         results = asyncio.run(

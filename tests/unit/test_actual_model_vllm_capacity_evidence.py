@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,15 @@ import pytest
 from relaylm.budget_enforcement import TokenCountMode
 from relaylm.cognition_execution import CognitionPassRequest, CognitionReasoningMode
 from relaylm.providers.openai_compatible_budget import SerializedInputCounterIdentity
+
+
+CANONICAL_B_CAPACITY_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "evaluation"
+    / "actual_model"
+    / "capacity"
+    / "amcap-7bcbbb3b1c0432c8cf3707670b99f373ab0fad05da93645aec023f43a6e5959b.json"
+)
 
 
 def _capacity_module():
@@ -94,6 +104,7 @@ def _evidence():
             http_status=400,
             failure_kind="input_context_overflow",
         ),
+        model_runner="v2",
     )
 
 
@@ -118,6 +129,7 @@ def test_capacity_evidence_is_content_addressed_and_contains_no_semantic_payload
         "scenario_set_revision",
         "counter_identity",
         "footprints",
+        "model_runner",
         "failed_capacity",
     }
     for footprint in mapping["footprints"]:
@@ -136,6 +148,26 @@ def test_capacity_evidence_is_content_addressed_and_contains_no_semantic_payload
     assert "prompt" not in serialized_keys
     assert "message" not in serialized_keys
     assert "content" not in serialized_keys
+
+
+def test_historical_v2_capacity_artifact_remains_loadable_without_runner_identity() -> None:
+    capacity = _capacity_module()
+
+    evidence = capacity.load_vllm_runtime_capacity_evidence(CANONICAL_B_CAPACITY_PATH)
+
+    assert evidence.format_version == 2
+    assert evidence.model_runner is None
+    assert evidence.evidence_id == (
+        "amcap-7bcbbb3b1c0432c8cf3707670b99f373ab0fad05da93645aec023f43a6e5959b"
+    )
+
+
+def test_current_capacity_format_requires_runner_identity() -> None:
+    capacity = _capacity_module()
+    evidence = _evidence()
+
+    with pytest.raises(capacity.VLLMRuntimeCapacityEvidenceError, match="model_runner"):
+        replace(evidence, model_runner=None)
 
 
 def test_capacity_evidence_writer_is_immutable_and_loader_recomputes_identity(

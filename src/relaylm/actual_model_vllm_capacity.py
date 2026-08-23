@@ -12,7 +12,9 @@ from relaylm.cognition_execution import CognitionPassRequest
 from relaylm.providers.openai_compatible_budget import SerializedInputCounterIdentity
 
 
-VLLM_RUNTIME_CAPACITY_EVIDENCE_FORMAT_VERSION = 2
+VLLM_RUNTIME_CAPACITY_EVIDENCE_FORMAT_VERSION = 3
+VLLM_LEGACY_RUNTIME_CAPACITY_EVIDENCE_FORMAT_VERSION = 2
+VLLM_MODEL_RUNNER_IDS = ("v1", "v2")
 VLLM_RUNTIME_CAPACITY_EVIDENCE_PREFIX = "amcap"
 VLLM_CAPACITY_PASS_REQUEST_ID_PREFIX = "amcpr"
 VLLM_CAPACITY_FAILURE_KIND = "input_context_overflow"
@@ -20,6 +22,17 @@ VLLM_CAPACITY_FAILURE_KIND = "input_context_overflow"
 
 class VLLMRuntimeCapacityEvidenceError(ValueError):
     """A vLLM runtime-capacity artifact is not valid citable #1386 evidence."""
+
+
+def validate_vllm_model_runner(value: object, *, label: str = "model_runner") -> str:
+    """Validate an explicitly resolved vLLM model-runner trajectory identity."""
+
+    if not isinstance(value, str) or value not in VLLM_MODEL_RUNNER_IDS:
+        choices = ", ".join(VLLM_MODEL_RUNNER_IDS)
+        raise VLLMRuntimeCapacityEvidenceError(
+            f"{label} must be one of: {choices}"
+        )
+    return value
 
 
 def vllm_capacity_pass_request_id(request: CognitionPassRequest) -> str:
@@ -171,13 +184,23 @@ class VLLMRuntimeCapacityEvidence:
     scenario_set_revision: str
     counter_identity: SerializedInputCounterIdentity
     footprints: tuple[VLLMCapacityFootprintObservation, ...]
+    model_runner: str | None = None
     failed_capacity: VLLMCapacityFailureObservation | None = None
     format_version: int = VLLM_RUNTIME_CAPACITY_EVIDENCE_FORMAT_VERSION
 
     def __post_init__(self) -> None:
-        if self.format_version != VLLM_RUNTIME_CAPACITY_EVIDENCE_FORMAT_VERSION:
+        if self.format_version not in (
+            VLLM_LEGACY_RUNTIME_CAPACITY_EVIDENCE_FORMAT_VERSION,
+            VLLM_RUNTIME_CAPACITY_EVIDENCE_FORMAT_VERSION,
+        ):
             raise VLLMRuntimeCapacityEvidenceError(
                 "unsupported vLLM runtime-capacity evidence format_version"
+            )
+        if self.format_version == VLLM_RUNTIME_CAPACITY_EVIDENCE_FORMAT_VERSION:
+            validate_vllm_model_runner(self.model_runner)
+        elif self.model_runner is not None:
+            raise VLLMRuntimeCapacityEvidenceError(
+                "legacy vLLM runtime-capacity evidence must omit model_runner"
             )
         _hex_string("relaylm_commit", self.relaylm_commit, 40)
         for name in (
@@ -227,7 +250,7 @@ class VLLMRuntimeCapacityEvidence:
         return f"{VLLM_RUNTIME_CAPACITY_EVIDENCE_PREFIX}-{digest}"
 
     def _identity_mapping(self) -> dict[str, object]:
-        return {
+        mapping: dict[str, object] = {
             "format_version": self.format_version,
             "relaylm_commit": self.relaylm_commit,
             "target_id": self.target_id,
@@ -246,6 +269,9 @@ class VLLMRuntimeCapacityEvidence:
                 else None
             ),
         }
+        if self.format_version == VLLM_RUNTIME_CAPACITY_EVIDENCE_FORMAT_VERSION:
+            mapping["model_runner"] = self.model_runner
+        return mapping
 
     def to_mapping(self) -> dict[str, object]:
         mapping = self._identity_mapping()
@@ -377,28 +403,42 @@ def load_vllm_runtime_capacity_evidence(path: str | Path) -> VLLMRuntimeCapacity
             f"cannot load vLLM runtime-capacity evidence: {exc}"
         ) from exc
     mapping = _mapping(raw, "vLLM runtime-capacity evidence")
+    if "format_version" not in mapping:
+        raise VLLMRuntimeCapacityEvidenceError(
+            "vLLM runtime-capacity evidence is missing fields: format_version"
+        )
+    format_version = _integer(mapping["format_version"], "format_version")
+    legacy_keys = {
+        "format_version",
+        "evidence_id",
+        "relaylm_commit",
+        "target_id",
+        "target_revision",
+        "tokenizer_identity",
+        "chat_template_identity",
+        "backend_version",
+        "request_model",
+        "observed_max_model_len",
+        "scenario_set_revision",
+        "counter_identity",
+        "footprints",
+        "failed_capacity",
+    }
+    if format_version == VLLM_RUNTIME_CAPACITY_EVIDENCE_FORMAT_VERSION:
+        expected_keys = legacy_keys | {"model_runner"}
+    elif format_version == VLLM_LEGACY_RUNTIME_CAPACITY_EVIDENCE_FORMAT_VERSION:
+        expected_keys = legacy_keys
+    else:
+        raise VLLMRuntimeCapacityEvidenceError(
+            "unsupported vLLM runtime-capacity evidence format_version"
+        )
     _require_exact_keys(
         mapping,
-        {
-            "format_version",
-            "evidence_id",
-            "relaylm_commit",
-            "target_id",
-            "target_revision",
-            "tokenizer_identity",
-            "chat_template_identity",
-            "backend_version",
-            "request_model",
-            "observed_max_model_len",
-            "scenario_set_revision",
-            "counter_identity",
-            "footprints",
-            "failed_capacity",
-        },
+        expected_keys,
         "vLLM runtime-capacity evidence",
     )
     evidence = VLLMRuntimeCapacityEvidence(
-        format_version=_integer(mapping["format_version"], "format_version"),
+        format_version=format_version,
         relaylm_commit=_string(mapping["relaylm_commit"], "relaylm_commit"),
         target_id=_string(mapping["target_id"], "target_id"),
         target_revision=_string(mapping["target_revision"], "target_revision"),
@@ -418,6 +458,11 @@ def load_vllm_runtime_capacity_evidence(path: str | Path) -> VLLMRuntimeCapacity
         footprints=tuple(
             _parse_footprint(item, index=index)
             for index, item in enumerate(_list(mapping["footprints"], "footprints"))
+        ),
+        model_runner=(
+            _string(mapping["model_runner"], "model_runner")
+            if format_version == VLLM_RUNTIME_CAPACITY_EVIDENCE_FORMAT_VERSION
+            else None
         ),
         failed_capacity=_parse_failure(mapping["failed_capacity"]),
     )

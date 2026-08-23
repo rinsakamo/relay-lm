@@ -28,6 +28,7 @@ from relaylm.actual_model_vllm_capacity import (
     VLLMRuntimeCapacityEvidence,
     VLLMRuntimeCapacityEvidenceError,
     validate_capacity_coverage,
+    validate_vllm_model_runner,
     vllm_capacity_pass_request_id,
     write_vllm_runtime_capacity_evidence,
 )
@@ -113,6 +114,7 @@ class PreparedVLLMCapacityAcquisition:
     fixture_root: Path
     provider: OpenAICompatibleProvider
     manifest: ActualModelRunManifest
+    model_runner: str
     serving_counter: VLLMServingTokenizerCounter
     single_pass_counter: OpenAICompatibleSerializedInputCounter | None
     two_pass_counter: OpenAICompatibleTwoPassSerializedInputCounter | None
@@ -344,6 +346,7 @@ def prepare_vllm_capacity_acquisition(
     relaylm_commit: str,
     base_url: str,
     api_key: str | None,
+    model_runner: str | None = None,
     replicate_id: str = "0",
     fetch_json: FetchJSON | None = None,
     tokenize_post_json: PostJSON | None = None,
@@ -363,6 +366,15 @@ def prepare_vllm_capacity_acquisition(
         raise VLLMCapacityAcquisitionError(
             f"unknown vLLM screening condition: {condition_id}"
         )
+    try:
+        resolved_model_runner = validate_vllm_model_runner(
+            model_runner,
+            label="capacity acquisition model_runner",
+        )
+    except (TypeError, ValueError, VLLMRuntimeCapacityEvidenceError) as exc:
+        raise VLLMCapacityAcquisitionError(
+            f"capacity acquisition requires an explicit model_runner identity: {exc}"
+        ) from exc
     root = Path(repo_root).resolve()
     _verify_clean_exact_repo(root=root, expected_commit=relaylm_commit)
     condition = plan.conditions[condition_id]
@@ -494,6 +506,7 @@ def prepare_vllm_capacity_acquisition(
         fixture_root=fixture_root,
         provider=provider,
         manifest=manifest,
+        model_runner=resolved_model_runner,
         serving_counter=serving_counter,
         single_pass_counter=single_counter,
         two_pass_counter=two_counter,
@@ -608,6 +621,7 @@ def _capacity_evidence(
         scenario_set_revision=prepared.scenario_set.revision,
         counter_identity=prepared.serving_counter.evidence_identity,
         footprints=observations,
+        model_runner=prepared.model_runner,
         failed_capacity=None,
     )
 
