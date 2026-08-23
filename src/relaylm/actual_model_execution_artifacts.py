@@ -23,12 +23,10 @@ class ActualModelExecutionArtifactError(RuntimeError):
     """An execution artifact violated immutable actual-model evidence rules."""
 
 
-def write_actual_model_execution_result(
-    *,
+def validate_actual_model_execution_result(
     result: ActualModelScenarioExecutionResult,
-    artifact_root: str | Path,
-) -> Path:
-    """Persist one complete execution result as an immutable citable JSON artifact."""
+) -> None:
+    """Admit one generic scenario execution as internally citable evidence."""
 
     expected_plan_id = _stable_plan_id(
         scenario_set_version=result.plan.scenario_set_version,
@@ -72,6 +70,16 @@ def write_actual_model_execution_result(
         raise ActualModelExecutionArtifactError(
             "execution_id does not match execution evidence"
         )
+
+
+def write_actual_model_execution_result(
+    *,
+    result: ActualModelScenarioExecutionResult,
+    artifact_root: str | Path,
+) -> Path:
+    """Persist one complete execution result as an immutable citable JSON artifact."""
+
+    validate_actual_model_execution_result(result)
 
     root = Path(artifact_root)
     root.mkdir(parents=True, exist_ok=True)
