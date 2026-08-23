@@ -25,7 +25,7 @@ def test_character_realization_contract_is_registered_and_preserves_aoi() -> Non
     assert "Aoi" in contract
     assert "ReLM" in contract
     assert "Rin" in contract
-    assert "do not require a rebuilt SOUL Lab UI" in coverage
+    assert "Core 1.0 does not require a rebuilt SOUL Lab UI" in coverage
     assert "Aoi, ReLM, and Rin are separate valid Character spaces" in coverage
     assert "docs/reference/actual-model-character-realization.md" in authority
 
