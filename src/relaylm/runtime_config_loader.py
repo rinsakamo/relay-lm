@@ -411,7 +411,7 @@ def _load_config_mapping(path: Path) -> dict[str, Any]:
         raise RuntimeConfigResolutionError(
             RuntimeConfigErrorCode.PARSE_ERROR,
             field="config_path",
-            message=f"duplicate YAML key is not allowed: {exc.key}",
+            message="duplicate YAML key is not allowed",
         ) from exc
     except yaml.YAMLError as exc:
         raise RuntimeConfigResolutionError(
