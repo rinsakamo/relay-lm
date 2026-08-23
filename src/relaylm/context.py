@@ -1299,26 +1299,38 @@ def _state_lexical_score(record: StateRecord, query: str) -> int:
         return 0
 
     score = 0
-    key = _normalize_lexical_text(record.key)
-    key_phrase = key.replace("_", " ")
-    if (key and key in query) or (key_phrase and key_phrase in query):
+    if _query_contains_state_lexical_text(query, record.key):
         score += 8
     for term in _lexical_terms(record.key):
-        if len(term) >= 2 and term in query:
+        if len(term) >= 2 and _query_contains_state_lexical_text(query, term):
             score += 4
 
     for value_text in _value_lexical_strings(record.value):
-        normalized_value = _normalize_lexical_text(value_text)
-        if normalized_value and normalized_value in query:
+        if _query_contains_state_lexical_text(query, value_text):
             score += 3
         for term in _lexical_terms(value_text):
-            if len(term) >= 2 and term in query:
+            if len(term) >= 2 and _query_contains_state_lexical_text(query, term):
                 score += 2
 
     class_tail = record.state_class.rsplit(".", 1)[-1]
-    if _normalize_lexical_text(class_tail) in query:
+    if _query_contains_state_lexical_text(query, class_tail):
         score += 1
     return score
+
+
+def _query_contains_state_lexical_text(query: str, text: str) -> bool:
+    if _contains_lexical_value(query, text):
+        return True
+
+    normalized_text = _normalize_lexical_text(text)
+    if not normalized_text or normalized_text.isascii():
+        return False
+
+    normalized_query = _normalize_lexical_text(query)
+    return (
+        normalized_text in normalized_query
+        or normalized_text.replace("_", " ") in normalized_query
+    )
 
 
 def _value_lexical_strings(value: Any) -> tuple[str, ...]:
