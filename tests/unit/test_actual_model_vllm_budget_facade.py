@@ -53,7 +53,7 @@ def _screening_args(tmp_path: Path, budget_path: Path) -> list[str]:
         "--backend",
         "vllm",
         "--condition",
-        "B",
+        "reference_baseline",
         "--model-runner",
         "v2",
         "--repo-root",
@@ -69,6 +69,18 @@ def _screening_args(tmp_path: Path, budget_path: Path) -> list[str]:
         "--cognitive-budget",
         str(budget_path),
     ]
+
+
+def _bind_reference_role(monkeypatch, plan) -> None:
+    monkeypatch.setattr(
+        host_runner,
+        "screening_condition_key_for_role",
+        lambda plan_arg, role: (
+            "B"
+            if plan_arg is plan and role == "reference_baseline"
+            else (_ for _ in ()).throw(AssertionError("unexpected screening role"))
+        ),
+    )
 
 
 def test_vllm_screening_facade_carries_strict_two_pass_budget_declaration(
@@ -107,6 +119,7 @@ def test_vllm_screening_facade_carries_strict_two_pass_budget_declaration(
         )
 
     monkeypatch.setattr(host_runner, "load_vllm_screening_plan", lambda _: plan)
+    _bind_reference_role(monkeypatch, plan)
     monkeypatch.setattr(host_runner, "_prepare_vllm_screening_condition", fake_prepare)
     monkeypatch.setattr(host_runner, "_execute_vllm_host_run", fake_execute)
     monkeypatch.setattr(host_runner, "_current_repo_head", lambda _: "a" * 40)
@@ -114,6 +127,7 @@ def test_vllm_screening_facade_carries_strict_two_pass_budget_declaration(
     result = host_runner.main(_screening_args(tmp_path, budget_path))
 
     assert result == 0
+    assert observed["condition_id"] == "B"
     declaration = observed["cognitive_budget"]
     assert type(declaration).__name__ == "VLLMTwoPassCognitiveBudgetDeclaration"
     assert declaration.pass1_total.model_context_window == 1616
@@ -122,7 +136,7 @@ def test_vllm_screening_facade_carries_strict_two_pass_budget_declaration(
     assert declaration.pass2_total.reserved_output_tokens == 64
     assert declaration.policy.steps == ()
     assert not hasattr(declaration, "token_counter")
-    assert '"condition": "B"' in capsys.readouterr().out
+    assert '"condition": "reference_baseline"' in capsys.readouterr().out
 
 
 def test_vllm_budget_declaration_rejects_caller_owned_counter_identity(
@@ -141,6 +155,7 @@ def test_vllm_budget_declaration_rejects_caller_owned_counter_identity(
         raise AssertionError("prepare must not run for an invalid declaration")
 
     monkeypatch.setattr(host_runner, "load_vllm_screening_plan", lambda _: plan)
+    _bind_reference_role(monkeypatch, plan)
     monkeypatch.setattr(host_runner, "_prepare_vllm_screening_condition", fake_prepare)
     monkeypatch.setattr(host_runner, "_current_repo_head", lambda _: "a" * 40)
 
@@ -168,6 +183,7 @@ def test_vllm_capacity_operation_rejects_screening_budget_declaration(
         raise AssertionError("capacity preparation must not consume screening budget policy")
 
     monkeypatch.setattr(host_runner, "load_vllm_screening_plan", lambda _: plan)
+    _bind_reference_role(monkeypatch, plan)
     monkeypatch.setattr(host_runner, "_prepare_vllm_capacity_acquisition", fake_capacity_prepare)
     monkeypatch.setattr(host_runner, "_current_repo_head", lambda _: "a" * 40)
 
