@@ -93,6 +93,8 @@ For restart evidence, the top-level restart run identity alone is also insuffici
 
 A citable product-quality review must be derived only from an execution result that passes the same canonical execution admission. Review construction validates the source plan/run/execution identities and plan-to-evidence binding before applying ratings or projecting proposal metrics; a self-consistent review ID cannot make a non-citable source execution valid review evidence.
 
+A citable deterministic-boundary verdict must likewise be derived only after the source execution passes canonical execution admission. That admission proves source identity and ownership only; the boundary evaluator still independently checks fixture alignment, raw-proposal-to-decision coverage, and restart boundary observations, and may correctly return `fail` when those protocol invariants are violated.
+
 ## Reference-screening order
 
 The historical frozen vLLM plan contains conditions named A/B/C. Current Core 1.0 screening interprets them only through the current #1386 screening contract:
