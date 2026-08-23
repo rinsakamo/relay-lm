@@ -600,7 +600,7 @@ async def _iter_sse_data(response: httpx.Response) -> AsyncIterator[str]:
     if buffer:
         raise ProviderProtocolError("upstream SSE ended with a truncated line")
     if data_lines:
-        yield "\n".join(data_lines)
+        raise ProviderProtocolError("upstream SSE ended with an unterminated SSE event")
 
 
 def _parse_stream_event(data: str) -> tuple[str | None, Any]:
