@@ -119,17 +119,23 @@ Assistant-to-user factual contamination is a model/product-quality failure even 
 
 A valid Pass 1 response is independent of Pass 2 success.
 
-If Pass 2 fails, times out, returns malformed IR, or is rejected:
+Successful ordinary-turn completion remains allowed to trigger deterministic owner-defined lifecycle mechanics that are not Pass 2 proposals. In particular, when a Continuity runtime is configured, the completed Pass 1 conversation consumes exactly one #1371 Continuity lifecycle revision after the Assistant Event is committed. Due expiry at that revision is turn-clock behavior, not semantic authority granted by Pass 2.
+
+If Pass 2 fails, times out, returns malformed IR, is rejected, or later becomes stale:
 
 ```text
 visible Pass 1 response remains valid
 Pass 2 proposals do not commit
-State / Continuity mutation from failed Pass 2 = none
+State mutation from failed/stale Pass 2 = none
+Pass 2 proposal-driven Continuity mutation = none
+successful-turn Continuity lifecycle revision/expiry remains
 original Events/evidence remain preserved
-failure remains observable in content-free diagnostics/evidence
+failure/staleness remains observable in content-free diagnostics/evidence
 ```
 
-Do not turn post-response extraction failure into a false failure of the already-valid conversation.
+A successful, still-current Pass 2 may apply its Continuity candidates at the lifecycle revision already reserved by that completed conversation; it must not advance the Continuity clock a second time.
+
+Do not turn post-response extraction failure into a false failure of the already-valid conversation, and do not let extraction failure freeze an owner-defined ordinary-turn lifecycle clock.
 
 ## Ordering / stale results
 
@@ -137,7 +143,9 @@ Every Pass 2 result is bound to its originating Event and process-local executio
 
 Pass 2 inference does not hold the conversation or authority lock. A newer turn may advance the execution revision while an older extraction is still pending. Final application requires the originating revision/Event plus the origin State/Continuity snapshots still to match current authority under the short deterministic commit boundary.
 
-A mismatch is `stale` and changes nothing.
+For Continuity, the origin snapshot used by the Pass 2 stale guard is the post-conversation lifecycle snapshot for that turn. A newer completed conversation may advance Continuity again and thereby make the older extraction stale. The stale extraction applies no candidates and performs no second lifecycle advance.
+
+A mismatch is `stale` and changes no proposal-owned authority.
 
 Pass 1 for turn N+1 should not ordinarily wait for Pass 2 from turn N merely to preserve visible conversation tempo. Rapid-next-turn and pending-extraction behavior must be evaluated under #1386.
 

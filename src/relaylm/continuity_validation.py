@@ -28,7 +28,7 @@ class ContinuityDecision:
 
 @dataclass(frozen=True, slots=True)
 class ContinuityValidationResult:
-    """One revision transition of temporary Continuity Context."""
+    """One deterministic transition of temporary Continuity Context."""
 
     context: ContinuityContext
     decisions: tuple[ContinuityDecision, ...]
@@ -37,7 +37,39 @@ class ContinuityValidationResult:
     changed: bool
 
 
-def apply_continuity_candidates(
+def advance_continuity_lifecycle(
+    *,
+    current_context: ContinuityContext,
+    lifetime_revisions: int,
+) -> ContinuityValidationResult:
+    """Advance the ordinary-turn Continuity clock exactly once and expire due items."""
+
+    _validate_lifetime_revisions(lifetime_revisions)
+    next_revision = current_context.revision + 1
+    expired_item_ids = tuple(
+        item.item_id
+        for item in current_context.items
+        if item.expires_revision <= next_revision
+    )
+    context = ContinuityContext(
+        max_items=current_context.max_items,
+        revision=next_revision,
+        items=tuple(
+            item
+            for item in current_context.items
+            if item.expires_revision > next_revision
+        ),
+    )
+    return ContinuityValidationResult(
+        context=context,
+        decisions=(),
+        expired_item_ids=expired_item_ids,
+        evicted_item_ids=(),
+        changed=bool(expired_item_ids),
+    )
+
+
+def apply_continuity_candidates_at_current_revision(
     *,
     current_context: ContinuityContext,
     candidates: Iterable[ContinuityCandidate],
@@ -45,31 +77,13 @@ def apply_continuity_candidates(
     lifetime_revisions: int,
     required_source_ids: frozenset[str] = frozenset(),
 ) -> ContinuityValidationResult:
-    """Advance one deterministic Continuity Context revision.
+    """Apply candidates at an already-advanced turn revision without advancing again."""
 
-    Lifetime and capacity are explicit inputs/attributes rather than hidden runtime
-    policy. Expiry happens at the new revision before candidates are evaluated.
-    """
-
-    if isinstance(lifetime_revisions, bool) or not isinstance(lifetime_revisions, int):
-        raise TypeError("lifetime_revisions must be an integer")
-    if lifetime_revisions <= 0:
-        raise ValueError("lifetime_revisions must be positive")
-
-    next_revision = current_context.revision + 1
-    expired_item_ids = tuple(
-        item.item_id
-        for item in current_context.items
-        if item.expires_revision <= next_revision
-    )
-    items = [
-        item
-        for item in current_context.items
-        if item.expires_revision > next_revision
-    ]
-
+    _validate_lifetime_revisions(lifetime_revisions)
+    revision = current_context.revision
+    items = list(current_context.items)
     decisions: list[ContinuityDecision] = []
-    changed = bool(expired_item_ids)
+    changed = False
 
     for candidate_index, candidate in enumerate(candidates, start=1):
         rejection = _rejection_reason(candidate, events, required_source_ids)
@@ -129,14 +143,14 @@ def apply_continuity_candidates(
             continue
 
         replacement = ContinuityItem(
-            item_id=f"continuity:{next_revision}:{candidate_index}",
+            item_id=f"continuity:{revision}:{candidate_index}",
             kind=candidate.kind,
             key=candidate.key,
             value=candidate.value,
             sources=sources,
             epistemic_role=candidate.epistemic_role,
-            accepted_revision=next_revision,
-            expires_revision=next_revision + lifetime_revisions,
+            accepted_revision=revision,
+            expires_revision=revision + lifetime_revisions,
         )
         action: ContinuityDecisionAction
         if existing_index is None:
@@ -166,16 +180,60 @@ def apply_continuity_candidates(
 
     context = ContinuityContext(
         max_items=current_context.max_items,
-        revision=next_revision,
+        revision=revision,
         items=tuple(items),
     )
     return ContinuityValidationResult(
         context=context,
         decisions=tuple(decisions),
-        expired_item_ids=expired_item_ids,
+        expired_item_ids=(),
         evicted_item_ids=tuple(evicted_item_ids),
         changed=changed,
     )
+
+
+def apply_continuity_candidates(
+    *,
+    current_context: ContinuityContext,
+    candidates: Iterable[ContinuityCandidate],
+    events: Mapping[str, Event],
+    lifetime_revisions: int,
+    required_source_ids: frozenset[str] = frozenset(),
+) -> ContinuityValidationResult:
+    """Advance one ordinary-turn revision, then apply candidates at that revision.
+
+    Lifetime and capacity are explicit inputs/attributes rather than hidden runtime
+    policy. Expiry happens at the new revision before candidates are evaluated.
+    This composed operation preserves the original K2 single-pass semantics while
+    allowing response-first two-pass execution to reserve the turn revision before
+    its later candidate result arrives.
+    """
+
+    lifecycle = advance_continuity_lifecycle(
+        current_context=current_context,
+        lifetime_revisions=lifetime_revisions,
+    )
+    candidate_result = apply_continuity_candidates_at_current_revision(
+        current_context=lifecycle.context,
+        candidates=candidates,
+        events=events,
+        lifetime_revisions=lifetime_revisions,
+        required_source_ids=required_source_ids,
+    )
+    return ContinuityValidationResult(
+        context=candidate_result.context,
+        decisions=candidate_result.decisions,
+        expired_item_ids=lifecycle.expired_item_ids,
+        evicted_item_ids=candidate_result.evicted_item_ids,
+        changed=lifecycle.changed or candidate_result.changed,
+    )
+
+
+def _validate_lifetime_revisions(lifetime_revisions: int) -> None:
+    if isinstance(lifetime_revisions, bool) or not isinstance(lifetime_revisions, int):
+        raise TypeError("lifetime_revisions must be an integer")
+    if lifetime_revisions <= 0:
+        raise ValueError("lifetime_revisions must be positive")
 
 
 def _rejection_reason(
