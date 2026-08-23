@@ -9,6 +9,7 @@ from relaylm.actual_model_evaluation import (
     stable_actual_model_run_id,
 )
 from relaylm.actual_model_execution import (
+    ActualModelScenarioExecutionPlan,
     ActualModelScenarioExecutionResult,
     _stable_execution_id,
     _stable_plan_id,
@@ -24,23 +25,40 @@ class ActualModelExecutionArtifactError(RuntimeError):
     """An execution artifact violated immutable actual-model evidence rules."""
 
 
+def validate_actual_model_execution_plan(
+    plan: ActualModelScenarioExecutionPlan,
+) -> None:
+    """Admit one execution plan as internally citable run metadata."""
+
+    expected_plan_id = _stable_plan_id(
+        scenario_set_version=plan.scenario_set_version,
+        scenario_set_revision=plan.scenario_set_revision,
+        character_fixture_id=plan.character_fixture_id,
+        character_fixture_revision=plan.character_fixture_revision,
+        definition=plan.definition,
+        manifest=plan.manifest,
+    )
+    if plan.plan_id != expected_plan_id:
+        raise ActualModelExecutionArtifactError(
+            "plan_id does not match execution plan"
+        )
+
+    if (
+        plan.scenario_set_version != plan.manifest.scenario_set_version
+        or plan.character_fixture_id != plan.manifest.character_fixture_id
+        or plan.character_fixture_revision != plan.manifest.character_fixture_revision
+    ):
+        raise ActualModelExecutionArtifactError(
+            "execution plan metadata does not match run manifest"
+        )
+
+
 def validate_actual_model_execution_result(
     result: ActualModelScenarioExecutionResult,
 ) -> None:
     """Admit one generic scenario execution as internally citable evidence."""
 
-    expected_plan_id = _stable_plan_id(
-        scenario_set_version=result.plan.scenario_set_version,
-        scenario_set_revision=result.plan.scenario_set_revision,
-        character_fixture_id=result.plan.character_fixture_id,
-        character_fixture_revision=result.plan.character_fixture_revision,
-        definition=result.plan.definition,
-        manifest=result.plan.manifest,
-    )
-    if result.plan.plan_id != expected_plan_id:
-        raise ActualModelExecutionArtifactError(
-            "plan_id does not match execution plan"
-        )
+    validate_actual_model_execution_plan(result.plan)
 
     if isinstance(result.evidence, ActualModelEvidence):
         expected_run_id = stable_actual_model_run_id(
