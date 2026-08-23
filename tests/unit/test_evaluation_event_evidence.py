@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from relaylm.evaluation import evaluate_event_evidence_cognitive_projection
+from relaylm.evaluation_event_evidence import evaluate_event_evidence_cognitive_projection
 
 
 def test_event_evidence_cognitive_projection_evaluation_is_registered() -> None:
