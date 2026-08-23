@@ -36,6 +36,7 @@ tests:
 - tests/unit/test_openai_compatible_budget.py
 - tests/unit/test_openai_compatible_two_pass_budget.py
 - tests/unit/test_openai_compatible_streaming_parity.py
+- tests/unit/test_openai_compatible_buffered_utf8.py
 - tests/unit/test_openai_compatible_decoding.py
 - tests/unit/test_openai_compatible_reasoning.py
 - tests/unit/test_openai_compatible_error_observability.py

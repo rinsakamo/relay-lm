@@ -224,6 +224,8 @@ The model-facing instruction defines `utterance` as the complete non-empty natur
 
 At the current OpenAI-compatible transport boundary, each buffered response envelope and each non-`[DONE]` streaming data envelope must contain exactly one provider choice. Empty or multiple `choices` are protocol errors; RelayLM does not rank or select among upstream completions.
 
+Successful buffered provider response bodies are decoded from their raw bytes as strict UTF-8 before JSON parsing. Invalid UTF-8 is a provider protocol error; RelayLM does not replacement-decode, transcode, or repair malformed response bytes into different semantic content. Streaming SSE `data:` payload bytes are likewise decoded as strict UTF-8 before envelope parsing.
+
 Before RelayLM interprets any buffered response envelope or non-`[DONE]` streaming data envelope, it decodes that upstream JSON with recursive duplicate-object-member rejection. Duplicate `choices`, `message`, `delta`, `content`, `finish_reason`, or any other object member is a provider protocol error and is never normalized by last-wins decoding. This provider-envelope rule is separate from the duplicate-member rejection applied later to RelayLM-owned combined/proposal IR content.
 
 The same parse boundary admits only standard JSON numeric syntax. Python-specific `NaN`, `Infinity`, and `-Infinity` constants are provider protocol errors anywhere in an upstream envelope, including fields RelayLM would otherwise ignore; malformed non-standard JSON is never allowed to become semantic success.
