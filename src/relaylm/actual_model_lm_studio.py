@@ -12,6 +12,10 @@ from relaylm.actual_model_execution import (
     _stable_execution_id,
     run_actual_model_scenario_definition,
 )
+from relaylm.actual_model_execution_artifacts import (
+    ActualModelExecutionArtifactError,
+    validate_actual_model_execution_result,
+)
 from relaylm.actual_model_evaluation import ActualModelRunManifest
 from relaylm.actual_model_scenarios import ActualModelScenarioSet
 from relaylm.actual_model_targets import (
@@ -337,6 +341,17 @@ def write_lm_studio_actual_model_execution_result(
     if result.execution.execution_id != expected_scenario_execution_id:
         raise ActualModelLMStudioBindingError(
             "scenario execution_id does not match execution evidence"
+        )
+
+    try:
+        validate_actual_model_execution_result(result.execution)
+    except (ActualModelExecutionArtifactError, TypeError) as exc:
+        raise ActualModelLMStudioBindingError(
+            f"scenario execution is not citable: {exc}"
+        ) from exc
+    if result.binding.manifest != result.execution.plan.manifest:
+        raise ActualModelLMStudioBindingError(
+            "binding manifest does not match scenario execution plan"
         )
 
     expected_execution_id = _stable_lm_studio_execution_id(
