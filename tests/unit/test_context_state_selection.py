@@ -77,6 +77,49 @@ def test_explicit_state_cap_prefers_lexically_relevant_active_records() -> None:
     assert all(record.status == "active" and record.valid_to is None for record in compiled.state)
 
 
+def test_state_cap_does_not_treat_substrings_as_specific_lexical_matches() -> None:
+    state = CanonicalState(
+        states=(
+            _record("tea", "user.preference", "tea", "likes"),
+            _record("dinner", "user.preference", "dinner_choice", "steak"),
+        )
+    )
+
+    compiled = compile_cognitive_input(
+        identity=Identity("# ReLM\nBe grounded."),
+        state=state,
+        current_event=_current("Let's have steak tonight"),
+        max_state_records=1,
+    )
+
+    assert [(record.key, record.value) for record in compiled.state] == [
+        ("dinner_choice", "steak")
+    ]
+
+
+def test_state_cap_preserves_exact_multi_token_key_phrase_matching() -> None:
+    state = CanonicalState(
+        states=(
+            _record("tea", "user.preference", "tea", "likes"),
+            _record(
+                "preferred",
+                "user.preference",
+                "preferred_beverage",
+                "unknown",
+            ),
+        )
+    )
+
+    compiled = compile_cognitive_input(
+        identity=Identity("# ReLM\nBe grounded."),
+        state=state,
+        current_event=_current("What is my preferred beverage?"),
+        max_state_records=1,
+    )
+
+    assert [record.key for record in compiled.state] == ["preferred_beverage"]
+
+
 def test_state_selection_preserves_existing_behavior_without_cap() -> None:
     compiled = compile_cognitive_input(
         identity=Identity("# ReLM\nBe grounded."),
