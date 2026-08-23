@@ -57,6 +57,39 @@ def test_doctor_rejects_obviously_malformed_bind_host_before_startup(
     assert "bind" in stderr.getvalue().lower()
 
 
+@pytest.mark.parametrize("host", ["local\x1bhost", "local\x7fhost"])
+def test_doctor_rejects_bind_host_with_ascii_control_before_startup(
+    tmp_path: Path,
+    host: str,
+) -> None:
+    character = _character(tmp_path / "character")
+    stdout = StringIO()
+    stderr = StringIO()
+
+    code = run_cli(
+        [
+            "doctor",
+            "--character",
+            str(character),
+            "--provider-base-url",
+            "http://127.0.0.1:1234/v1",
+            "--provider-model",
+            "test-model",
+            "--host",
+            host,
+            "--json",
+        ],
+        environ={},
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert code == 2
+    assert stdout.getvalue() == ""
+    assert "invalid_value: server.host" in stderr.getvalue()
+    assert "control" in stderr.getvalue().lower()
+
+
 @pytest.mark.parametrize("host", ["127.0.0.1:8090", "localhost:8090"])
 def test_doctor_rejects_bind_host_with_embedded_port_before_startup(
     tmp_path: Path,
