@@ -81,20 +81,33 @@ def create_openai_router(
                 )
             completion_id = f"chatcmpl-{uuid4().hex}"
             created = int(time.time())
+            stream = _stream_chat_completion(
+                character=character,
+                provider=provider,
+                turn_lock=turn_lock,
+                content=content,
+                completion_id=completion_id,
+                created=created,
+                model=request.model,
+                memory_budget=memory_budget,
+                event_budget=event_budget,
+                continuity_runtime=continuity_runtime,
+                cognitive_budget=cognitive_budget,
+            )
+            try:
+                first_chunk = await anext(stream)
+            except ProviderProtocolError as exc:
+                raise HTTPException(
+                    status_code=502,
+                    detail="upstream cognitive provider failed",
+                ) from exc
+            except CharacterDataError as exc:
+                raise HTTPException(
+                    status_code=500,
+                    detail="character package is invalid",
+                ) from exc
             return StreamingResponse(
-                _stream_chat_completion(
-                    character=character,
-                    provider=provider,
-                    turn_lock=turn_lock,
-                    content=content,
-                    completion_id=completion_id,
-                    created=created,
-                    model=request.model,
-                    memory_budget=memory_budget,
-                    event_budget=event_budget,
-                    continuity_runtime=continuity_runtime,
-                    cognitive_budget=cognitive_budget,
-                ),
+                _prepend_stream_chunk(first_chunk, stream),
                 media_type="text/event-stream",
             )
 
@@ -126,6 +139,15 @@ def create_openai_router(
         )
 
     return router
+
+
+async def _prepend_stream_chunk(first_chunk: bytes, stream):
+    try:
+        yield first_chunk
+        async for chunk in stream:
+            yield chunk
+    finally:
+        await stream.aclose()
 
 
 async def _stream_chat_completion(
@@ -213,9 +235,11 @@ async def _stream_chat_completion(
                 yield b"data: [DONE]\n\n"
                 return
             if kind == "error":
-                if not isinstance(payload, (ProviderProtocolError, CharacterDataError)):
-                    raise payload  # type: ignore[misc]
-                return
+                if isinstance(payload, (ProviderProtocolError, CharacterDataError)):
+                    if first_delta:
+                        raise payload
+                    return
+                raise payload  # type: ignore[misc]
     finally:
         if not task.done():
             task.cancel()
