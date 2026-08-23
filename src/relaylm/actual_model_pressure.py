@@ -9,9 +9,13 @@ from pathlib import Path
 from relaylm.actual_model_comparison import (
     ActualModelConditionComparisonEvidence,
     run_actual_model_condition_comparison,
+    stable_condition_comparison_id,
     summarize_proposal_observations,
 )
-from relaylm.actual_model_evaluation import ActualModelRunManifest
+from relaylm.actual_model_evaluation import (
+    ActualModelRunManifest,
+    stable_actual_model_run_id,
+)
 from relaylm.actual_model_execution import (
     ActualModelScenarioExecutionPlan,
     plan_actual_model_scenario_execution,
@@ -171,6 +175,7 @@ def write_actual_model_scenario_pressure_comparison(
 ) -> Path:
     """Persist one immutable scenario-bound pressure comparison artifact."""
 
+    _validate_condition_comparison_binding(comparison)
     _validate_derived_observations(comparison.comparison)
     identity = _pressure_comparison_identity(
         format_version=comparison.format_version,
@@ -227,6 +232,35 @@ def load_actual_model_scenario_pressure_mapping(path: str | Path) -> dict[str, o
             "actual-model pressure comparison root must be a JSON object"
         )
     return raw
+
+
+def _validate_condition_comparison_binding(
+    pressure: ActualModelScenarioPressureComparison,
+) -> None:
+    comparison = pressure.comparison
+    scenario = pressure.definition.scenario
+    baseline_manifest = pressure.baseline_plan.manifest
+    pressure_manifest = pressure.pressure_plan.manifest
+    expected_comparison_id = stable_condition_comparison_id(
+        baseline_manifest=baseline_manifest,
+        pressure_manifest=pressure_manifest,
+        scenario=scenario,
+    )
+    if (
+        comparison.scenario != scenario
+        or comparison.baseline.manifest != baseline_manifest
+        or comparison.pressure.manifest != pressure_manifest
+        or comparison.baseline.scenario != scenario
+        or comparison.pressure.scenario != scenario
+        or comparison.comparison_id != expected_comparison_id
+        or comparison.baseline.run_id
+        != stable_actual_model_run_id(manifest=baseline_manifest, scenario=scenario)
+        or comparison.pressure.run_id
+        != stable_actual_model_run_id(manifest=pressure_manifest, scenario=scenario)
+    ):
+        raise ActualModelPressureArtifactError(
+            "condition comparison does not match pressure plans"
+        )
 
 
 def _validate_derived_observations(
