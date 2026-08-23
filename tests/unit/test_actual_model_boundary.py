@@ -4,8 +4,11 @@ import asyncio
 from dataclasses import replace
 from pathlib import Path
 
+import pytest
+
 from relaylm.actual_model_artifacts import character_fixture_revision
 from relaylm.actual_model_boundary import (
+    ActualModelBoundaryArtifactError,
     evaluate_actual_model_deterministic_boundary,
     load_actual_model_deterministic_boundary_mapping,
     write_actual_model_deterministic_boundary_verdict,
@@ -255,3 +258,26 @@ def test_boundary_verdict_sidecar_is_immutable_idempotent_and_loadable(
     assert loaded["outcome"] == "pass"
     assert loaded["model_quality"] is None
     assert loaded["score"] is None
+
+
+def test_boundary_writer_rejects_non_content_derived_verdict_id(tmp_path: Path) -> None:
+    result = asyncio.run(
+        _run(
+            workspace_root=tmp_path / "run",
+            scenario_id="response-persona-correction-v1",
+        )
+    )
+    verdict = evaluate_actual_model_deterministic_boundary(result=result)
+    forged = replace(verdict, verdict_id="amb-" + "f" * 64)
+    artifact_root = tmp_path / "boundary-artifacts"
+
+    with pytest.raises(
+        ActualModelBoundaryArtifactError,
+        match="verdict_id does not match boundary evidence",
+    ):
+        write_actual_model_deterministic_boundary_verdict(
+            verdict=forged,
+            artifact_root=artifact_root,
+        )
+
+    assert not artifact_root.exists()
