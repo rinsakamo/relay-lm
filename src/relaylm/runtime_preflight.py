@@ -119,6 +119,15 @@ def _validate_server_configuration(resolved: ResolvedRuntimeConfig) -> None:
 
 def _validate_provider_configuration(resolved: ResolvedRuntimeConfig) -> None:
     provider = resolved.config.provider
+    if any(
+        ord(character) < 0x20 or ord(character) == 0x7F
+        for character in provider.model
+    ):
+        raise RuntimePreflightError(
+            RuntimeConfigErrorCode.PROVIDER_INVALID,
+            field="provider.model",
+            message="provider model must not contain ASCII control characters",
+        )
     try:
         parsed = urlsplit(provider.base_url)
         port = parsed.port
