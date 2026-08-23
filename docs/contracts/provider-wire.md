@@ -224,6 +224,8 @@ The model-facing instruction defines `utterance` as the complete non-empty natur
 
 At the current OpenAI-compatible transport boundary, each buffered response envelope and each non-`[DONE]` streaming data envelope must contain exactly one provider choice. Empty or multiple `choices` are protocol errors; RelayLM does not rank or select among upstream completions.
 
+Before RelayLM interprets any buffered response envelope or non-`[DONE]` streaming data envelope, it decodes that upstream JSON with recursive duplicate-object-member rejection. Duplicate `choices`, `message`, `delta`, `content`, `finish_reason`, or any other object member is a provider protocol error and is never normalized by last-wins decoding. This provider-envelope rule is separate from the duplicate-member rejection applied later to RelayLM-owned combined/proposal IR content.
+
 If that single choice carries a non-null `finish_reason`, only the string `stop` is accepted as successful ordinary cognition completion. Explicit `length`, `content_filter`, `tool_calls`, `function_call`, unknown values, or invalid non-string values are protocol errors even when the accumulated message content is otherwise non-empty or syntactically valid. An omitted or null `finish_reason` remains tolerated on otherwise-supported transports; this rule does not add a new presence requirement.
 
 For streaming, an explicit `finish_reason: "stop"` is terminal for provider data envelopes. After it, RelayLM permits only the optional `[DONE]` transport sentinel or stream EOF. Any later non-`[DONE]` data envelope is a protocol error and is rejected before its content can be parsed, emitted, or appended to the successful cognitive result.
