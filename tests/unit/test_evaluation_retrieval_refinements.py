@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from relaylm.evaluation import (
+from relaylm.evaluation_retrieval_refinements import (
     evaluate_boolean_state_memory_authority,
     evaluate_cjk_retrieval_relevance,
     evaluate_retrieval_aggregate_diagnostics,
