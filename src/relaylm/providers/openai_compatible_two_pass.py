@@ -224,7 +224,10 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                     prefix="upstream request failed",
                     api_key=self.api_key,
                 )
-            return response.json()
+            return _load_cognitive_wire_json(
+                response.text,
+                invalid_message="provider response is not valid JSON",
+            )
         except ProviderProtocolError:
             raise
         except (httpx.HTTPError, ValueError) as exc:
