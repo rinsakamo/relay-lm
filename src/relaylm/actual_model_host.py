@@ -9,6 +9,10 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from relaylm.actual_model_fast_screening_artifacts import (
+    FastScreeningTimingArtifact,
+    FastScreeningTurnTiming,
+)
 from relaylm.actual_model_host_runner import main as _lm_studio_main
 from relaylm.actual_model_vllm import ActualModelVLLMBindingError
 from relaylm.actual_model_vllm_capacity import VLLM_MODEL_RUNNER_IDS
@@ -189,9 +193,38 @@ def _screening_result_mapping(result) -> dict[str, object]:
         raise ActualModelHostFacadeError(
             "screening result timing_artifact_path must be a non-empty string"
         )
-    timing_path = Path(timing_path_value)
+
+    timing = _load_screening_timing_summary_evidence(Path(timing_path_value))
+    expected_timing_id = mapping.get("timing_id")
+    if timing.timing_id != expected_timing_id:
+        raise ActualModelHostFacadeError(
+            "screening timing_id does not match the screening result"
+        )
+    expected_run_id = mapping.get("run_id")
+    if timing.run_id != expected_run_id:
+        raise ActualModelHostFacadeError(
+            "screening timing run_id does not match the screening result"
+        )
+    expected_scenario_id = mapping.get("scenario_id")
+    if timing.scenario_id != expected_scenario_id:
+        raise ActualModelHostFacadeError(
+            "screening timing scenario_id does not match the screening result"
+        )
+
+    failed_provider_call_count = sum(
+        outcome == "failed"
+        for turn in timing.turns
+        for outcome in (turn.response_outcome, turn.extraction_outcome)
+    )
+    mapping["failed_provider_call_count"] = failed_provider_call_count
+    return mapping
+
+
+def _load_screening_timing_summary_evidence(
+    path: Path,
+) -> FastScreeningTimingArtifact:
     try:
-        raw = json.loads(timing_path.read_text(encoding="utf-8"))
+        raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ActualModelHostFacadeError(
             f"cannot read screening timing summary evidence: {exc}"
@@ -200,29 +233,49 @@ def _screening_result_mapping(result) -> dict[str, object]:
         raise ActualModelHostFacadeError(
             "screening timing summary evidence must be a JSON object"
         )
-    turns = raw.get("turns")
-    if not isinstance(turns, list):
+    turns_raw = raw.get("turns")
+    if not isinstance(turns_raw, list):
         raise ActualModelHostFacadeError(
             "screening timing summary evidence must contain turns"
         )
 
-    failed_provider_call_count = 0
-    for turn_index, turn in enumerate(turns, start=1):
-        if not isinstance(turn, dict):
-            raise ActualModelHostFacadeError(
-                f"screening timing turn {turn_index} must be a JSON object"
-            )
-        for field in ("response_outcome", "extraction_outcome"):
-            outcome = turn.get(field)
-            if outcome == "failed":
-                failed_provider_call_count += 1
-            elif outcome not in {"completed", None}:
-                raise ActualModelHostFacadeError(
-                    f"screening timing turn {turn_index} has unsupported {field}"
+    turns: list[FastScreeningTurnTiming] = []
+    try:
+        for turn_index, turn_raw in enumerate(turns_raw, start=1):
+            if not isinstance(turn_raw, dict):
+                raise TypeError(f"turn {turn_index} must be a JSON object")
+            turns.append(
+                FastScreeningTurnTiming(
+                    turn_index=turn_raw["turn_index"],
+                    response_provider_ms=turn_raw["response_provider_ms"],
+                    response_outcome=turn_raw["response_outcome"],
+                    first_visible_provider_ms=turn_raw["first_visible_provider_ms"],
+                    extraction_provider_ms=turn_raw["extraction_provider_ms"],
+                    extraction_outcome=turn_raw["extraction_outcome"],
                 )
+            )
+        artifact = FastScreeningTimingArtifact(
+            format_version=raw["format_version"],
+            screening_id=raw["screening_id"],
+            condition_id=raw["condition_id"],
+            replicate_id=raw["replicate_id"],
+            scenario_id=raw["scenario_id"],
+            execution_id=raw["execution_id"],
+            run_id=raw["run_id"],
+            execution_mode=raw["execution_mode"],
+            scenario_elapsed_ms=raw["scenario_elapsed_ms"],
+            turns=tuple(turns),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ActualModelHostFacadeError(
+            f"invalid screening timing summary evidence: {exc}"
+        ) from exc
 
-    mapping["failed_provider_call_count"] = failed_provider_call_count
-    return mapping
+    if raw != artifact.to_mapping():
+        raise ActualModelHostFacadeError(
+            "screening timing summary evidence does not match its canonical timing identity"
+        )
+    return artifact
 
 
 def _print_capacity_failure(*, prepared, failure: VLLMCapacityAcquisitionFailure) -> None:
