@@ -206,6 +206,8 @@ Provider-call timing and scenario/turn-settle timing may be bound to the same ex
 
 For two-pass reference evidence, distinguish Pass 1 response time from Pass 2 extraction time and total settle time. Timing cannot override semantic grounding or deterministic-authority requirements.
 
+The shared vLLM screening summary projects `failed_provider_call_count` for each completed scenario result from that result's citable timing sidecar. A deterministic-boundary `pass` therefore does not erase an absorbed provider-call failure such as a failed Pass 2 extraction. The count is an operational observation only: zero failed calls is not a product-quality qualification, and a nonzero count does not retroactively invalidate an already-valid Pass 1 response.
+
 If the qualified two-pass path is slow, use this evidence to inform execution-engine tuning before treating single-pass as an optimization candidate.
 
 ## Historical evidence handling
