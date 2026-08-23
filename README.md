@@ -65,6 +65,8 @@ export RELAYLM_PROVIDER_MODEL='<provider-model-id>'
 .relaylm-runtime/bin/relaylm serve
 ```
 
+Equivalent machine/runtime settings can also be supplied through the versioned runtime YAML selected with `--config PATH` or `RELAYLM_CONFIG`. See `docs/contracts/runtime-configuration.md` for the complete schema, discovery/precedence, and secret-reference rules, and `docs/contracts/runtime-operator.md` for the supported `doctor` / `serve` CLI behavior.
+
 Optional provider authentication uses `RELAYLM_PROVIDER_API_KEY`. The server binds to `127.0.0.1:8090` by default; `RELAYLM_HOST` and `RELAYLM_PORT` can override this runtime setting. `examples/starter` is a source-checkout example, not an installed-artifact runtime dependency.
 
 The client endpoint is:
