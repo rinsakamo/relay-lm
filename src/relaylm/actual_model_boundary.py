@@ -157,21 +157,22 @@ def evaluate_actual_model_deterministic_boundary(
     else:
         raise TypeError("unsupported actual-model execution evidence type")
 
-    identity = {
-        "format_version": ACTUAL_MODEL_BOUNDARY_FORMAT_VERSION,
-        "execution_id": result.execution_id,
-        "run_id": result.run_id,
-        "scenario_set_revision": result.plan.scenario_set_revision,
-        "scenario_id": scenario.scenario_id,
-        "checks": [check.to_mapping() for check in checks],
-    }
+    checks_tuple = tuple(checks)
+    identity = _boundary_verdict_identity(
+        format_version=ACTUAL_MODEL_BOUNDARY_FORMAT_VERSION,
+        execution_id=result.execution_id,
+        run_id=result.run_id,
+        scenario_set_revision=result.plan.scenario_set_revision,
+        scenario_id=scenario.scenario_id,
+        checks=checks_tuple,
+    )
     return ActualModelDeterministicBoundaryVerdict(
         verdict_id=_stable_verdict_id(identity),
         execution_id=result.execution_id,
         run_id=result.run_id,
         scenario_set_revision=result.plan.scenario_set_revision,
         scenario_id=scenario.scenario_id,
-        checks=tuple(checks),
+        checks=checks_tuple,
     )
 
 
@@ -181,6 +182,19 @@ def write_actual_model_deterministic_boundary_verdict(
     artifact_root: str | Path,
 ) -> Path:
     """Persist an immutable boundary-verdict sidecar separate from human review."""
+
+    identity = _boundary_verdict_identity(
+        format_version=verdict.format_version,
+        execution_id=verdict.execution_id,
+        run_id=verdict.run_id,
+        scenario_set_revision=verdict.scenario_set_revision,
+        scenario_id=verdict.scenario_id,
+        checks=verdict.checks,
+    )
+    if verdict.verdict_id != _stable_verdict_id(identity):
+        raise ActualModelBoundaryArtifactError(
+            "verdict_id does not match boundary evidence"
+        )
 
     root = Path(artifact_root)
     root.mkdir(parents=True, exist_ok=True)
@@ -380,6 +394,25 @@ def _alignment_at(
     if 0 < index <= len(alignment):
         return alignment[index - 1]
     return None
+
+
+def _boundary_verdict_identity(
+    *,
+    format_version: int,
+    execution_id: str,
+    run_id: str,
+    scenario_set_revision: str,
+    scenario_id: str,
+    checks: tuple[DeterministicBoundaryCheck, ...],
+) -> dict[str, object]:
+    return {
+        "format_version": format_version,
+        "execution_id": execution_id,
+        "run_id": run_id,
+        "scenario_set_revision": scenario_set_revision,
+        "scenario_id": scenario_id,
+        "checks": [check.to_mapping() for check in checks],
+    }
 
 
 def _canonical_json(value: object) -> str:
