@@ -6,19 +6,24 @@ from types import SimpleNamespace
 import relaylm.actual_model_host as host_runner
 
 
-def test_shared_host_runner_dispatches_one_vllm_condition_without_backend_script(
+def test_shared_host_runner_dispatches_current_vllm_reference_by_semantic_role(
     tmp_path: Path,
     monkeypatch,
     capsys,
 ) -> None:
-    plan = SimpleNamespace(screening_id="cogp5-vllm-screening-v1")
+    plan = SimpleNamespace(screening_id="stage-r0-vllm-reference-v1")
     prepared = SimpleNamespace(
         plan=plan,
-        screening_condition_id="A",
+        screening_condition_id="B",
         manifest=SimpleNamespace(relaylm_commit="a" * 40, replicate_id="0"),
-        target=SimpleNamespace(target_id="gemma-4-12b-it-qat-w4a16-vllm-v1"),
+        target=SimpleNamespace(target_id="gemma-4-12b-it-qat-w4a16-google-vllm-v1"),
     )
     observed: dict[str, object] = {}
+
+    def fake_resolve(plan_arg, role):
+        observed["role"] = role
+        assert plan_arg is plan
+        return "B"
 
     def fake_prepare(**kwargs):
         observed["prepare"] = kwargs
@@ -41,6 +46,7 @@ def test_shared_host_runner_dispatches_one_vllm_condition_without_backend_script
         )
 
     monkeypatch.setattr(host_runner, "load_vllm_screening_plan", lambda _: plan)
+    monkeypatch.setattr(host_runner, "screening_condition_key_for_role", fake_resolve)
     monkeypatch.setattr(host_runner, "_prepare_vllm_screening_condition", fake_prepare)
     monkeypatch.setattr(host_runner, "_execute_vllm_host_run", fake_execute)
     monkeypatch.setattr(host_runner, "_current_repo_head", lambda _: "a" * 40)
@@ -50,13 +56,13 @@ def test_shared_host_runner_dispatches_one_vllm_condition_without_backend_script
             "--backend",
             "vllm",
             "--condition",
-            "A",
+            "reference_baseline",
             "--model-runner",
             "v2",
             "--repo-root",
             str(tmp_path),
             "--snapshot-root",
-            "/tmp/relaylm-unsloth-w4a16-model",
+            "/tmp/relaylm-google-gemma4-official-attest.CKxAGh",
             "--provider-base-url",
             "http://127.0.0.1:8000/v1",
             "--workspace-root",
@@ -67,28 +73,31 @@ def test_shared_host_runner_dispatches_one_vllm_condition_without_backend_script
     )
 
     assert result == 0
+    assert observed["role"] == "reference_baseline"
     assert observed["prepare"]["plan"] is plan
-    assert observed["prepare"]["condition_id"] == "A"
+    assert observed["prepare"]["condition_id"] == "B"
     assert observed["prepare"]["model_runner"] == "v2"
     assert observed["prepare"]["base_url"] == "http://127.0.0.1:8000/v1"
-    assert observed["execute"]["snapshot_root"] == "/tmp/relaylm-unsloth-w4a16-model"
+    assert observed["execute"]["snapshot_root"] == (
+        "/tmp/relaylm-google-gemma4-official-attest.CKxAGh"
+    )
     output = capsys.readouterr().out
-    assert '"suite": "cogp5-vllm-screening-v1"' in output
-    assert '"condition": "A"' in output
+    assert '"suite": "stage-r0-vllm-reference-v1"' in output
+    assert '"condition": "reference_baseline"' in output
     assert '"operation": "screening"' in output
 
 
-def test_shared_host_runner_dispatches_vllm_capacity_acquisition_separately(
+def test_shared_host_runner_dispatches_vllm_capacity_by_semantic_role(
     tmp_path: Path,
     monkeypatch,
     capsys,
 ) -> None:
-    plan = SimpleNamespace(screening_id="cogp5-vllm-screening-v1")
+    plan = SimpleNamespace(screening_id="stage-r0-vllm-reference-v1")
     prepared = SimpleNamespace(
         plan=plan,
-        screening_condition_id="A",
+        screening_condition_id="B",
         manifest=SimpleNamespace(relaylm_commit="a" * 40, replicate_id="0"),
-        target=SimpleNamespace(target_id="gemma-4-12b-it-qat-w4a16-vllm-v1"),
+        target=SimpleNamespace(target_id="gemma-4-12b-it-qat-w4a16-google-vllm-v1"),
         reasoning_capability=SimpleNamespace(
             backend_attestation=SimpleNamespace(max_model_len=1536)
         ),
@@ -104,6 +113,11 @@ def test_shared_host_runner_dispatches_vllm_capacity_acquisition_separately(
     )
     observed: dict[str, object] = {}
 
+    def fake_resolve(plan_arg, role):
+        observed["role"] = role
+        assert plan_arg is plan
+        return "B"
+
     def fake_prepare(**kwargs):
         observed["prepare"] = kwargs
         return prepared
@@ -113,6 +127,7 @@ def test_shared_host_runner_dispatches_vllm_capacity_acquisition_separately(
         return artifact
 
     monkeypatch.setattr(host_runner, "load_vllm_screening_plan", lambda _: plan)
+    monkeypatch.setattr(host_runner, "screening_condition_key_for_role", fake_resolve)
     monkeypatch.setattr(host_runner, "_prepare_vllm_capacity_acquisition", fake_prepare)
     monkeypatch.setattr(host_runner, "_execute_vllm_capacity_acquisition", fake_execute)
     monkeypatch.setattr(host_runner, "_current_repo_head", lambda _: "a" * 40)
@@ -124,13 +139,13 @@ def test_shared_host_runner_dispatches_vllm_capacity_acquisition_separately(
             "--operation",
             "capacity",
             "--condition",
-            "A",
+            "reference_baseline",
             "--model-runner",
             "v2",
             "--repo-root",
             str(tmp_path),
             "--snapshot-root",
-            "/tmp/relaylm-unsloth-w4a16-model",
+            "/tmp/relaylm-google-gemma4-official-attest.CKxAGh",
             "--provider-base-url",
             "http://127.0.0.1:8000/v1",
             "--workspace-root",
@@ -141,13 +156,15 @@ def test_shared_host_runner_dispatches_vllm_capacity_acquisition_separately(
     )
 
     assert result == 0
+    assert observed["role"] == "reference_baseline"
     assert observed["prepare"]["plan"] is plan
-    assert observed["prepare"]["condition_id"] == "A"
+    assert observed["prepare"]["condition_id"] == "B"
     assert observed["prepare"]["model_runner"] == "v2"
     assert "capacity_evidence_root" not in observed["prepare"]
     assert "snapshot_root" not in observed["execute"]
     output = capsys.readouterr().out
     assert '"operation": "capacity"' in output
+    assert '"condition": "reference_baseline"' in output
     assert '"observed_max_model_len": 1536' in output
     assert '"evidence_id": "amcap-1"' in output
     assert '"score"' not in output
