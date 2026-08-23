@@ -160,6 +160,105 @@ def test_exact_duplicate_is_noop_without_refresh_and_changed_value_supersedes() 
     assert superseded.changed is True
 
 
+@pytest.mark.parametrize(
+    ("existing_value", "candidate_value", "path"),
+    (
+        (True, 1, ()),
+        (False, 0, ()),
+        ([True], [1], (0,)),
+        ({"nested": [False]}, {"nested": [0]}, ("nested", 0)),
+    ),
+)
+def test_boolean_number_type_changes_are_not_exact_continuity_duplicates(
+    existing_value: object,
+    candidate_value: object,
+    path: tuple[object, ...],
+) -> None:
+    user_event = _event("event-user-1", "user")
+    events = {user_event.id: user_event}
+    admitted = apply_continuity_candidates(
+        current_context=ContinuityContext(max_items=2),
+        candidates=(
+            ContinuityCandidate.set(
+                kind="referent",
+                key="referent.typed",
+                value=existing_value,
+                sources=(user_event.id,),
+                epistemic_role="assistant_inference",
+            ),
+        ),
+        events=events,
+        lifetime_revisions=4,
+    )
+
+    superseded = apply_continuity_candidates(
+        current_context=admitted.context,
+        candidates=(
+            ContinuityCandidate.set(
+                kind="referent",
+                key="referent.typed",
+                value=candidate_value,
+                sources=(user_event.id,),
+                epistemic_role="assistant_inference",
+            ),
+        ),
+        events=events,
+        lifetime_revisions=4,
+    )
+
+    assert superseded.changed is True
+    assert superseded.decisions[0].status == "accepted"
+    assert superseded.decisions[0].action == "supersede"
+    replacement = superseded.context.items[0]
+    assert replacement.item_id == "continuity:2:1"
+    assert replacement.accepted_revision == 2
+    assert replacement.expires_revision == 6
+    leaf = replacement.value
+    for component in path:
+        leaf = leaf[component]
+    assert type(leaf) is int
+
+
+def test_numeric_int_float_values_remain_exact_continuity_duplicates() -> None:
+    user_event = _event("event-user-1", "user")
+    events = {user_event.id: user_event}
+    admitted = apply_continuity_candidates(
+        current_context=ContinuityContext(max_items=2),
+        candidates=(
+            ContinuityCandidate.set(
+                kind="referent",
+                key="referent.numeric",
+                value=1,
+                sources=(user_event.id,),
+                epistemic_role="assistant_inference",
+            ),
+        ),
+        events=events,
+        lifetime_revisions=4,
+    )
+    original = admitted.context.items[0]
+
+    duplicate = apply_continuity_candidates(
+        current_context=admitted.context,
+        candidates=(
+            ContinuityCandidate.set(
+                kind="referent",
+                key="referent.numeric",
+                value=1.0,
+                sources=(user_event.id,),
+                epistemic_role="assistant_inference",
+            ),
+        ),
+        events=events,
+        lifetime_revisions=4,
+    )
+
+    assert duplicate.changed is False
+    assert duplicate.context.items == (original,)
+    assert duplicate.decisions[0].status == "noop"
+    assert duplicate.decisions[0].reason == "duplicate"
+
+
 def test_resolve_requires_matching_kind_and_removes_only_the_keyed_item() -> None:
     user_event = _event("event-user-1", "user")
     events = {user_event.id: user_event}
