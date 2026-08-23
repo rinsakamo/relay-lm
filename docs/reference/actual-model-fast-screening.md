@@ -108,6 +108,8 @@ Buffered execution must not invent TTFT.
 
 When timing sidecars are produced, they must bind to the exact screening condition and existing actual-model execution identity, including run/execution IDs, replicate identity, scenario identity, resolved execution mode and per-turn phase timing.
 
+A consumer that projects timing-derived observations into a citable host summary must reconstruct the canonical timing artifact, recompute its content-derived `timing_id`, and require that identity plus the sidecar `run_id` and `scenario_id` to match the timing identity retained by the host result before deriving provider-failure counts. A parseable timing JSON object or canonical-looking run ID alone is not sufficient summary evidence.
+
 Timing sidecars do not alter raw execution evidence, deterministic-boundary verdicts or product-quality reviews.
 
 ## Historical plan handling
