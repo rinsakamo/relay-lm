@@ -13,6 +13,7 @@ from relaylm.actual_model_evaluation import (
     ExplicitBudgetConfiguration,
     ExplicitContinuityRuntimeConfiguration,
 )
+from relaylm.actual_model_execution import _stable_execution_id
 from relaylm.actual_model_scenarios import load_actual_model_scenario_set
 from relaylm.actual_model_targets import (
     ActualModelRepositorySnapshotVerification,
@@ -135,7 +136,11 @@ def _verification() -> ActualModelRepositorySnapshotVerification:
     )
 
 
-def _manifest(provider: OpenAICompatibleProvider) -> ActualModelRunManifest:
+def _manifest(
+    provider: OpenAICompatibleProvider,
+    *,
+    replicate_id: str = "0",
+) -> ActualModelRunManifest:
     target = _target()
     capability = provider.vllm_reasoning_capability
     assert capability is not None
@@ -171,10 +176,16 @@ def _manifest(provider: OpenAICompatibleProvider) -> ActualModelRunManifest:
             execution_path=BUFFERED_EXECUTION_PATH
         ),
         cognition_pass_requests=ActualModelCognitionPassRequests.single_pass(request),
+        replicate_id=replicate_id,
     )
 
 
-def _production_result(tmp_path: Path, monkeypatch):
+def _production_result(
+    tmp_path: Path,
+    monkeypatch,
+    *,
+    replicate_id: str = "0",
+):
     async def fake_generate(
         self,
         cognitive_input: CognitiveInput,
@@ -187,7 +198,7 @@ def _production_result(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(OpenAICompatibleProvider, "generate", fake_generate)
     capability = _capability()
     provider = _provider(capability)
-    manifest = _manifest(provider)
+    manifest = _manifest(provider, replicate_id=replicate_id)
     return asyncio.run(
         run_vllm_actual_model_scenario_definition(
             target=_target(),
@@ -288,6 +299,78 @@ def test_vllm_writer_rejects_forged_outer_execution_id(
     ):
         write_vllm_actual_model_execution_result(
             result=forged,
+            artifact_root=artifact_root,
+        )
+
+    assert not artifact_root.exists()
+
+
+def test_vllm_writer_rejects_forged_nested_plan_with_recomputed_ids(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    result = _production_result(tmp_path, monkeypatch)
+    forged_plan = replace(result.execution.plan, plan_id="amp-" + "f" * 64)
+    forged_execution = replace(
+        result.execution,
+        plan=forged_plan,
+        execution_id=_stable_execution_id(
+            plan=forged_plan,
+            run_id=result.execution.run_id,
+        ),
+    )
+    forged = replace(
+        result,
+        execution=forged_execution,
+        execution_id=_outer_id(
+            binding_id=result.binding.binding_id,
+            scenario_execution_id=forged_execution.execution_id,
+        ),
+    )
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(
+        ActualModelVLLMBindingError,
+        match="scenario execution is not citable",
+    ):
+        write_vllm_actual_model_execution_result(
+            result=forged,
+            artifact_root=artifact_root,
+        )
+
+    assert not artifact_root.exists()
+
+
+def test_vllm_writer_rejects_execution_from_another_valid_binding_manifest(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    first = _production_result(
+        tmp_path / "first",
+        monkeypatch,
+        replicate_id="0",
+    )
+    second = _production_result(
+        tmp_path / "second",
+        monkeypatch,
+        replicate_id="1",
+    )
+    mixed = replace(
+        first,
+        execution=second.execution,
+        execution_id=_outer_id(
+            binding_id=first.binding.binding_id,
+            scenario_execution_id=second.execution.execution_id,
+        ),
+    )
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(
+        ActualModelVLLMBindingError,
+        match="binding manifest does not match scenario execution plan",
+    ):
+        write_vllm_actual_model_execution_result(
+            result=mixed,
             artifact_root=artifact_root,
         )
 
