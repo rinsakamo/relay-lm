@@ -14,6 +14,7 @@ implementation:
 tests:
 - tests/unit/test_continuity.py
 - tests/unit/test_continuity_validation.py
+- tests/unit/test_continuity_json_value_domain.py
 - tests/unit/test_continuity_turn.py
 - tests/unit/test_two_pass_continuity_turn_clock.py
 - tests/unit/test_evaluation_continuity_cognition_wiring.py
