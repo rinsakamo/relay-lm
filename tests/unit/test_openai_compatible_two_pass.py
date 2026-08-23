@@ -337,4 +337,9 @@ def test_conversation_pass_streams_plain_visible_text_before_extraction_exists()
     assert seen[0]["stream"] is True
     assert "response_format" not in seen[0]
     assert "".join(emitted) == "こんにちは"
-    assert output == CognitionConversationOutput(response="こんにちは")
+    assert output.response == "こんにちは"
+    assert output.completion.finish_reason == "stop"
+    assert output.completion.prompt_tokens is None
+    assert output.completion.completion_tokens is None
+    assert output.completion.total_tokens is None
+    assert output.completion.reasoning_tokens is None
