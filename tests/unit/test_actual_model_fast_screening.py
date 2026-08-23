@@ -4,10 +4,13 @@ import asyncio
 from pathlib import Path
 
 from relaylm.actual_model_fast_screening import (
+    PASS2_REASONING_ESCALATION_ROLE,
+    REFERENCE_BASELINE_ROLE,
     ScreeningTimingRecorder,
     instrument_screening_provider,
-    reasoning_escalation_condition_ids,
-    reference_screening_condition_ids,
+    reasoning_escalation_condition_roles,
+    reference_screening_condition_roles,
+    screening_condition_key_for_role,
 )
 from relaylm.actual_model_vllm_host import load_vllm_screening_plan
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
@@ -25,22 +28,26 @@ PLAN = ROOT / "evaluation/actual_model/screenings/cogp5-vllm-screening-v1.json"
 def test_fast_screening_qualifies_two_pass_before_reasoning_escalation() -> None:
     plan = load_vllm_screening_plan(PLAN)
 
-    assert reference_screening_condition_ids(plan) == ("B",)
-    assert reasoning_escalation_condition_ids(
+    assert reference_screening_condition_roles(plan) == (REFERENCE_BASELINE_ROLE,)
+    assert reasoning_escalation_condition_roles(
         plan,
         pass2_semantic_quality_sufficient=True,
     ) == ()
-    assert reasoning_escalation_condition_ids(
+    assert reasoning_escalation_condition_roles(
         plan,
         pass2_semantic_quality_sufficient=False,
-    ) == ("C",)
+    ) == (PASS2_REASONING_ESCALATION_ROLE,)
 
 
-def test_reference_screening_does_not_return_historical_single_pass_condition() -> None:
+def test_semantic_roles_resolve_to_immutable_historical_transport_coordinates() -> None:
     plan = load_vllm_screening_plan(PLAN)
 
+    assert screening_condition_key_for_role(plan, REFERENCE_BASELINE_ROLE) == "B"
+    assert (
+        screening_condition_key_for_role(plan, PASS2_REASONING_ESCALATION_ROLE)
+        == "C"
+    )
     assert "A" in plan.conditions
-    assert "A" not in reference_screening_condition_ids(plan)
 
 
 class _FakeClock:
