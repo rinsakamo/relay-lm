@@ -286,7 +286,7 @@ async def run_user_turn_streaming(
         raise ValueError("user content must not be empty")
 
     stream_generate = getattr(provider, "stream_generate", None)
-    if stream_generate is None:
+    if not callable(stream_generate):
         raise TypeError("provider does not support cognitive streaming")
 
     if cognitive_budget is None:
@@ -335,7 +335,7 @@ async def run_user_turn_streaming_with_retrieval_diagnostics(
         raise ValueError("user content must not be empty")
 
     stream_generate = getattr(provider, "stream_generate", None)
-    if stream_generate is None:
+    if not callable(stream_generate):
         raise TypeError("provider does not support cognitive streaming")
 
     user_event, state, cognitive_input, diagnostics = _prepare_user_turn(
@@ -373,7 +373,7 @@ async def run_user_turn_streaming_with_cognitive_budget_diagnostics(
         raise ValueError("user content must not be empty")
 
     stream_generate = getattr(provider, "stream_generate", None)
-    if stream_generate is None:
+    if not callable(stream_generate):
         raise TypeError("provider does not support cognitive streaming")
 
     try:
