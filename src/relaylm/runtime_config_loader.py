@@ -357,6 +357,12 @@ def _discover_config_path(
                 field="config_path",
                 message="explicit config path must be a path-like value",
             ) from exc
+        except RuntimeError as exc:
+            raise RuntimeConfigResolutionError(
+                RuntimeConfigErrorCode.DISCOVERY_ERROR,
+                field="config_path",
+                message="selected runtime config home directory cannot be resolved",
+            ) from exc
 
     if RUNTIME_CONFIG_PATH_ENV not in environ:
         return None, None
@@ -373,7 +379,14 @@ def _discover_config_path(
             field="config_path",
             message=f"{RUNTIME_CONFIG_PATH_ENV} must not be empty",
         )
-    return Path(raw_path).expanduser(), ConfigSource.ENV
+    try:
+        return Path(raw_path).expanduser(), ConfigSource.ENV
+    except RuntimeError as exc:
+        raise RuntimeConfigResolutionError(
+            RuntimeConfigErrorCode.DISCOVERY_ERROR,
+            field="config_path",
+            message="selected runtime config home directory cannot be resolved",
+        ) from exc
 
 
 def _load_config_mapping(path: Path) -> dict[str, Any]:
