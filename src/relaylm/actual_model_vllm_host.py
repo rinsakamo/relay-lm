@@ -34,7 +34,7 @@ from relaylm.actual_model_targets import (
 from relaylm.actual_model_vllm import (
     ActualModelVLLMExecutionBinding,
     bind_vllm_execution_condition,
-    run_vllm_actual_model_scenario_definition,
+    run_bound_vllm_actual_model_scenario_definition,
     vllm_manifest_provider_identity,
     write_vllm_actual_model_execution_result,
 )
@@ -820,12 +820,8 @@ async def execute_vllm_host_run(
                 prepared.provider,
                 recorder=timing_recorder,
             )
-            result = await run_vllm_actual_model_scenario_definition(
-                target=prepared.target,
-                snapshot_verification=prepared.snapshot_verification,
-                snapshot_root=snapshot_root,
-                reasoning_capability=prepared.reasoning_capability,
-                configured_context_window=prepared.plan.effective_context_window,
+            result = await run_bound_vllm_actual_model_scenario_definition(
+                binding=prepared.binding,
                 scenario_set=prepared.scenario_set,
                 scenario_id=scenario_id,
                 fixture_root=prepared.fixture_root,
@@ -837,7 +833,6 @@ async def execute_vllm_host_run(
                     / scenario_id
                 ),
                 provider=timed_provider,
-                manifest=prepared.manifest,
                 cognitive_budget=prepared.cognitive_budget,
             )
             scenario_elapsed_ms = (

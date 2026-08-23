@@ -104,7 +104,7 @@ def test_vllm_host_carries_two_pass_timing_as_separate_sidecar(
             execution=SimpleNamespace(execution_id=EXECUTION_ID),
         )
 
-    monkeypatch.setattr(host, "run_vllm_actual_model_scenario_definition", fake_run)
+    monkeypatch.setattr(host, "run_bound_vllm_actual_model_scenario_definition", fake_run)
     monkeypatch.setattr(
         host,
         "write_vllm_actual_model_execution_result",
@@ -149,6 +149,7 @@ def test_vllm_host_carries_two_pass_timing_as_separate_sidecar(
         reasoning_capability=SimpleNamespace(),
         provider=_Provider(),
         cognitive_budget=None,
+        binding=SimpleNamespace(),
     )
 
     results = asyncio.run(
@@ -199,7 +200,7 @@ def test_vllm_host_summary_surfaces_absorbed_pass2_provider_failure(
         path.write_text(artifact.to_json(), encoding="utf-8")
         return path
 
-    monkeypatch.setattr(host, "run_vllm_actual_model_scenario_definition", fake_run)
+    monkeypatch.setattr(host, "run_bound_vllm_actual_model_scenario_definition", fake_run)
     monkeypatch.setattr(
         host,
         "write_vllm_actual_model_execution_result",
@@ -243,6 +244,7 @@ def test_vllm_host_summary_surfaces_absorbed_pass2_provider_failure(
         reasoning_capability=SimpleNamespace(),
         provider=_FailingExtractionProvider(),
         cognitive_budget=None,
+        binding=SimpleNamespace(),
     )
 
     results = asyncio.run(

@@ -236,7 +236,7 @@ def test_execute_vllm_host_run_forwards_host_bound_two_pass_runtime(
 
     monkeypatch.setattr(
         vllm_host,
-        "run_vllm_actual_model_scenario_definition",
+        "run_bound_vllm_actual_model_scenario_definition",
         fake_run,
     )
     monkeypatch.setattr(
