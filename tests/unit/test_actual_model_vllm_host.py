@@ -76,6 +76,9 @@ SCENARIO_PATH = (
 SNAPSHOT_ROOT = Path("/tmp/relaylm-unsloth-w4a16-model")
 GOOGLE_SNAPSHOT_ROOT = Path("/tmp/relaylm-google-gemma4-official-attest.CKxAGh")
 CANONICAL_B_CAPACITY_EVIDENCE_ID = (
+    "amcap-2e39f7fd7bf8d32b2bc2be4263d5a3ce08f079319e76e59b104f236cce2464be"
+)
+LEGACY_B_CAPACITY_EVIDENCE_ID = (
     "amcap-7bcbbb3b1c0432c8cf3707670b99f373ab0fad05da93645aec023f43a6e5959b"
 )
 CANONICAL_B_CAPACITY_PATH = (
@@ -381,10 +384,108 @@ def test_current_stage_r0_complete_google_b_capacity_is_bound_and_validated(
         asyncio.run(prepared.provider.aclose())
 
 
-def test_current_stage_r0_rejects_legacy_capacity_for_v2_runtime(
+def test_current_stage_r0_canonical_v3_v2_capacity_passes_preparation_gate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     current_plan = vllm_host.load_vllm_screening_plan(CURRENT_PLAN_PATH)
+    target = vllm_host.load_actual_model_repository_snapshot_target(GOOGLE_TARGET_PATH)
+
+    monkeypatch.setattr(vllm_host, "_verify_clean_exact_repo", lambda **_: None)
+    monkeypatch.setattr(
+        vllm_host,
+        "verify_actual_model_repository_snapshot",
+        lambda **_: _verification(target),
+    )
+
+    prepared = vllm_host.prepare_vllm_screening_condition(
+        plan=current_plan,
+        condition_id="B",
+        proof_path=GOOGLE_PROOF_PATH,
+        repo_root=REPO_ROOT,
+        snapshot_root=GOOGLE_SNAPSHOT_ROOT,
+        relaylm_commit="b" * 40,
+        base_url="http://127.0.0.1:8000/v1",
+        api_key=None,
+        model_runner="v2",
+        fetch_json=_google_live_fetch,
+    )
+    try:
+        assert prepared.capacity_evidence.evidence_id == current_plan.capacity_evidence_id
+        assert prepared.capacity_evidence.format_version == 3
+        assert prepared.capacity_evidence.model_runner == "v2"
+        assert prepared.condition.cognition_execution.mode == "two_pass"
+        assert prepared.condition.pass_requests.pass1.reasoning_mode is CognitionReasoningMode.OFF
+        assert prepared.condition.pass_requests.pass2.reasoning_mode is CognitionReasoningMode.OFF
+    finally:
+        asyncio.run(prepared.provider.aclose())
+
+
+def test_current_stage_r0_canonical_v3_rejects_expected_v1_before_external_work(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current_plan = vllm_host.load_vllm_screening_plan(CURRENT_PLAN_PATH)
+
+    monkeypatch.setattr(
+        vllm_host,
+        "_verify_clean_exact_repo",
+        lambda **_: pytest.fail("runner mismatch must fail before repository work"),
+    )
+
+    with pytest.raises(
+        vllm_host.ActualModelVLLMHostError,
+        match="model_runner",
+    ):
+        vllm_host.prepare_vllm_screening_condition(
+            plan=current_plan,
+            condition_id="B",
+            proof_path=GOOGLE_PROOF_PATH,
+            repo_root=REPO_ROOT,
+            snapshot_root=GOOGLE_SNAPSHOT_ROOT,
+            relaylm_commit="b" * 40,
+            base_url="http://127.0.0.1:8000/v1",
+            api_key=None,
+            model_runner="v1",
+        )
+
+
+def test_current_stage_r0_rejects_unknown_capacity_id_before_external_work(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current_plan = replace(
+        vllm_host.load_vllm_screening_plan(CURRENT_PLAN_PATH),
+        capacity_evidence_id="amcap-" + "f" * 64,
+    )
+
+    monkeypatch.setattr(
+        vllm_host,
+        "_verify_clean_exact_repo",
+        lambda **_: pytest.fail("unknown capacity ID must fail before repository work"),
+    )
+
+    with pytest.raises(
+        vllm_host.ActualModelVLLMHostError,
+        match="capacity.*evidence",
+    ):
+        vllm_host.prepare_vllm_screening_condition(
+            plan=current_plan,
+            condition_id="B",
+            proof_path=GOOGLE_PROOF_PATH,
+            repo_root=REPO_ROOT,
+            snapshot_root=GOOGLE_SNAPSHOT_ROOT,
+            relaylm_commit="b" * 40,
+            base_url="http://127.0.0.1:8000/v1",
+            api_key=None,
+            model_runner="v2",
+        )
+
+
+def test_current_stage_r0_rejects_legacy_capacity_for_v2_runtime(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current_plan = replace(
+        vllm_host.load_vllm_screening_plan(CURRENT_PLAN_PATH),
+        capacity_evidence_id=LEGACY_B_CAPACITY_EVIDENCE_ID,
+    )
 
     monkeypatch.setattr(
         vllm_host,
