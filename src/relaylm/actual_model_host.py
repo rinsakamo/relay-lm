@@ -146,6 +146,7 @@ def _main_vllm(argv: Sequence[str]) -> int:
                 artifact_root=args.artifact_root,
             )
         )
+        result_mappings = [_screening_result_mapping(item) for item in results]
     except (
         ActualModelHostFacadeError,
         ActualModelVLLMHostError,
@@ -168,7 +169,7 @@ def _main_vllm(argv: Sequence[str]) -> int:
                 "relaylm_commit": prepared.manifest.relaylm_commit,
                 "target_id": prepared.target.target_id,
                 "replicate_id": prepared.manifest.replicate_id,
-                "results": [item.to_mapping() for item in results],
+                "results": result_mappings,
                 "score": None,
             },
             ensure_ascii=False,
@@ -177,6 +178,51 @@ def _main_vllm(argv: Sequence[str]) -> int:
         )
     )
     return 0
+
+
+def _screening_result_mapping(result) -> dict[str, object]:
+    mapping = dict(result.to_mapping())
+    timing_path_value = mapping.get("timing_artifact_path")
+    if timing_path_value is None:
+        return mapping
+    if not isinstance(timing_path_value, str) or not timing_path_value.strip():
+        raise ActualModelHostFacadeError(
+            "screening result timing_artifact_path must be a non-empty string"
+        )
+    timing_path = Path(timing_path_value)
+    try:
+        raw = json.loads(timing_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ActualModelHostFacadeError(
+            f"cannot read screening timing summary evidence: {exc}"
+        ) from exc
+    if not isinstance(raw, dict):
+        raise ActualModelHostFacadeError(
+            "screening timing summary evidence must be a JSON object"
+        )
+    turns = raw.get("turns")
+    if not isinstance(turns, list):
+        raise ActualModelHostFacadeError(
+            "screening timing summary evidence must contain turns"
+        )
+
+    failed_provider_call_count = 0
+    for turn_index, turn in enumerate(turns, start=1):
+        if not isinstance(turn, dict):
+            raise ActualModelHostFacadeError(
+                f"screening timing turn {turn_index} must be a JSON object"
+            )
+        for field in ("response_outcome", "extraction_outcome"):
+            outcome = turn.get(field)
+            if outcome == "failed":
+                failed_provider_call_count += 1
+            elif outcome not in {"completed", None}:
+                raise ActualModelHostFacadeError(
+                    f"screening timing turn {turn_index} has unsupported {field}"
+                )
+
+    mapping["failed_provider_call_count"] = failed_provider_call_count
+    return mapping
 
 
 def _print_capacity_failure(*, prepared, failure: VLLMCapacityAcquisitionFailure) -> None:
