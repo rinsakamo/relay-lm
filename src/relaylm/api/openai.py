@@ -74,7 +74,7 @@ def create_openai_router(
     async def chat_completions(request: ChatCompletionRequest):
         content = _last_user_content(request.messages)
         if request.stream:
-            if getattr(provider, "stream_generate", None) is None:
+            if not callable(getattr(provider, "stream_generate", None)):
                 raise HTTPException(
                     status_code=400,
                     detail="streaming is not available for the configured cognitive provider",

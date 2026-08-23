@@ -28,6 +28,7 @@ tests:
 - tests/unit/test_streaming_boundary.py
 - tests/unit/test_openai_stream_preflight_errors.py
 - tests/unit/test_openai_compatible_sse_framing.py
+- tests/unit/test_streaming_provider_callable_admission.py
 - tests/unit/test_provider_backend_dialect.py
 - tests/unit/test_vllm_backend_attestation.py
 - tests/unit/test_vllm_reasoning_wire.py

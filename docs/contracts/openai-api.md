@@ -47,7 +47,7 @@ A successful stream ends with a final chunk carrying `finish_reason: "stop"` fol
 
 Once RelayLM has emitted the first normal SSE frame, the HTTP response status is already committed. If the structured provider stream then truncates or becomes invalid, that visible prefix is not semantically regenerated and RelayLM does not attempt a retroactive status rewrite or emit a new in-band error protocol. The current User Event remains persisted, but RelayLM creates no Assistant Event and performs no State mutation for the failed turn. The incomplete stream does not emit the normal successful `stop` / `[DONE]` terminator.
 
-A configured provider that does not implement RelayLM's streaming provider contract rejects `stream=true` rather than silently falling back to a second generation or a different semantic path.
+A configured provider implements RelayLM's streaming provider contract only when its `stream_generate` entrypoint is callable. A missing, null, or non-callable entrypoint rejects `stream=true` at the public boundary before turn preparation, so unsupported streaming cannot append a User Event or silently fall back to a second generation or a different semantic path.
 
 ## Concurrency
 
