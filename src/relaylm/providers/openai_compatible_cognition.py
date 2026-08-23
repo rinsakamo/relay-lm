@@ -114,7 +114,10 @@ def describe_openai_compatible_cognition_capabilities(
             bounded_reasoning_budget = True
         reasoning_modes = tuple(sorted(modes))
     return OpenAICompatibleCognitionCapabilityFacts(
-        structured_output=True,
+        # Canonical cognition uses ordinary message content plus RelayLM-owned IR.
+        # The generic adapter has no native structured-output attestation source,
+        # so absence of capability evidence must not become an affirmative fact.
+        structured_output=False,
         streaming=True,
         reasoning_modes=reasoning_modes,
         bounded_reasoning_budget=bounded_reasoning_budget,
