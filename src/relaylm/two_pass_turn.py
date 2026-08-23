@@ -13,6 +13,7 @@ from relaylm.budget_runtime import (
 )
 from relaylm.cognitive import CognitiveInput
 from relaylm.cognition_execution import (
+    CognitionCompletionMetadata,
     CognitionConversationOutput,
     CognitionExtractionInput,
     CognitionExtractionOutput,
@@ -58,6 +59,7 @@ class TwoPassExtractionResult:
     decisions: tuple[CandidateDecision, ...] = ()
     continuity: ContinuityValidationResult | None = None
     failure_reason: str | None = None
+    completion: CognitionCompletionMetadata | None = None
 
     def __post_init__(self) -> None:
         if not self.originating_event_id.strip():
@@ -67,6 +69,10 @@ class TwoPassExtractionResult:
                 raise ValueError("failed extraction requires failure_reason")
         elif self.failure_reason is not None:
             raise ValueError("non-failed extraction must not carry failure_reason")
+        if self.completion is not None and not isinstance(
+            self.completion, CognitionCompletionMetadata
+        ):
+            raise TypeError("completion must be CognitionCompletionMetadata or None")
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +83,9 @@ class TwoPassTurnResult:
     user_event: Event
     assistant_event: Event
     extraction: asyncio.Task[TwoPassExtractionResult]
+    conversation_completion: CognitionCompletionMetadata = field(
+        default_factory=CognitionCompletionMetadata
+    )
 
 
 @dataclass(slots=True)
@@ -221,6 +230,7 @@ async def run_user_turn_two_pass(
         user_event=user_event,
         assistant_event=assistant_event,
         extraction=extraction,
+        conversation_completion=conversation.completion,
     )
 
 
@@ -312,6 +322,7 @@ async def run_user_turn_two_pass_streaming(
         user_event=user_event,
         assistant_event=assistant_event,
         extraction=extraction,
+        conversation_completion=conversation.completion,
     )
 
 
@@ -432,6 +443,7 @@ async def _complete_extraction(
     pass_request: CognitionPassRequest | None = None,
 ) -> TwoPassExtractionResult:
     event_id = extraction_input.originating_event_id
+    completion: CognitionCompletionMetadata | None = None
     try:
         if cognitive_budget is not None:
             count = cognitive_budget.token_counter.count_extraction_input(
@@ -461,6 +473,7 @@ async def _complete_extraction(
             raise TypeError(
                 "two-pass provider generate_extraction must return CognitionExtractionOutput"
             )
+        completion = output.completion
 
         async with execution_runtime._authority_lock:
             if not execution_runtime._is_current(
@@ -471,6 +484,7 @@ async def _complete_extraction(
                     status=TwoPassExtractionStatus.STALE,
                     originating_event_id=event_id,
                     state=character.load_state(),
+                    completion=completion,
                 )
 
             current_state = character.load_state()
@@ -479,6 +493,7 @@ async def _complete_extraction(
                     status=TwoPassExtractionStatus.STALE,
                     originating_event_id=event_id,
                     state=current_state,
+                    completion=completion,
                 )
             if (
                 continuity_runtime is not None
@@ -488,6 +503,7 @@ async def _complete_extraction(
                     status=TwoPassExtractionStatus.STALE,
                     originating_event_id=event_id,
                     state=current_state,
+                    completion=completion,
                 )
 
             if output.continuity_candidates and continuity_runtime is None:
@@ -496,6 +512,7 @@ async def _complete_extraction(
                     originating_event_id=event_id,
                     state=origin_state,
                     failure_reason="continuity_runtime_required",
+                    completion=completion,
                 )
 
             event_by_id = {event.id: event for event in character.iter_events()}
@@ -527,6 +544,7 @@ async def _complete_extraction(
                 state=state_validation.state,
                 decisions=state_validation.decisions,
                 continuity=continuity_validation,
+                completion=completion,
             )
     except asyncio.CancelledError:
         raise
@@ -536,6 +554,7 @@ async def _complete_extraction(
             originating_event_id=event_id,
             state=origin_state,
             failure_reason="pass2_failed",
+            completion=completion,
         )
 
 
