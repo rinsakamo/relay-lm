@@ -13,7 +13,10 @@ into the universal correctness target.
 ## Current R0 pilot
 
 The first bounded vLLM transaction uses the two existing foundation scenarios
-below, with condition B only: Pass 1 reasoning off and Pass 2 reasoning off.
+below with the current `reference_baseline` role: Pass 1 reasoning off and Pass
+2 reasoning off. The role resolves to the immutable underlying screening
+coordinate only at the host/evidence boundary; the historical coordinate name
+is not current Stage R policy.
 
 | Scenario | Current R0 role | Main review dimensions |
 | --- | --- | --- |
