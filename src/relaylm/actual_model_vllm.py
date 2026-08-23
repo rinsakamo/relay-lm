@@ -22,6 +22,7 @@ from relaylm.actual_model_targets import (
     ActualModelRepositorySnapshotVerification,
 )
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
+from relaylm.cognitive import CognitiveProvider
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
 from relaylm.providers.openai_compatible_identity import (
     OpenAICompatibleProviderIdentity,
@@ -289,13 +290,52 @@ async def run_vllm_actual_model_scenario_definition(
         manifest=manifest,
         configured_context_window=configured_context_window,
     )
+    return await run_bound_vllm_actual_model_scenario_definition(
+        binding=binding,
+        scenario_set=scenario_set,
+        scenario_id=scenario_id,
+        fixture_root=fixture_root,
+        workspace_root=workspace_root,
+        provider=provider,
+        cognitive_budget=cognitive_budget,
+    )
+
+
+async def run_bound_vllm_actual_model_scenario_definition(
+    *,
+    binding: ActualModelVLLMExecutionBinding,
+    scenario_set: ActualModelScenarioSet,
+    scenario_id: str,
+    fixture_root: str | Path,
+    workspace_root: str | Path,
+    provider: CognitiveProvider,
+    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
+) -> ActualModelVLLMExecutionResult:
+    """Run one scenario with a vLLM binding that was completed before instrumentation."""
+
+    if not isinstance(binding, ActualModelVLLMExecutionBinding):
+        raise TypeError("binding must be ActualModelVLLMExecutionBinding")
+    expected_binding_id = _stable_vllm_binding_id(
+        target_id=binding.target_id,
+        target_revision=binding.target_revision,
+        snapshot_verification=binding.snapshot_verification,
+        snapshot_root=binding.snapshot_root,
+        reasoning_capability=binding.reasoning_capability,
+        provider_identity=binding.provider_identity,
+        configured_context_window=binding.configured_context_window,
+        manifest=binding.manifest,
+    )
+    if binding.binding_id != expected_binding_id:
+        raise ActualModelVLLMBindingError(
+            "binding_id does not match vLLM binding evidence"
+        )
     execution = await run_actual_model_scenario_definition(
         scenario_set=scenario_set,
         scenario_id=scenario_id,
         fixture_root=fixture_root,
         workspace_root=workspace_root,
         provider=provider,
-        manifest=manifest,
+        manifest=binding.manifest,
         cognitive_budget=cognitive_budget,
     )
     return ActualModelVLLMExecutionResult(

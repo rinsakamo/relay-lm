@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+from dataclasses import replace
 from pathlib import Path
+
+import pytest
 
 from relaylm.actual_model_artifacts import character_fixture_revision
 from relaylm.actual_model_evaluation import (
@@ -17,7 +20,16 @@ from relaylm.actual_model_targets import (
     load_actual_model_repository_snapshot_target,
 )
 from relaylm.actual_model_vllm import bind_vllm_execution_condition
+from relaylm.actual_model_vllm import (
+    ActualModelVLLMBindingError,
+    run_bound_vllm_actual_model_scenario_definition,
+    run_vllm_actual_model_scenario_definition,
+)
 import relaylm.actual_model_vllm_host as vllm_host
+from relaylm.actual_model_fast_screening import (
+    ScreeningTimingRecorder,
+    instrument_screening_provider,
+)
 from relaylm.cognition_execution import (
     CognitionConversationOutput,
     CognitionExtractionOutput,
@@ -269,3 +281,136 @@ def test_host_timing_wrapper_uses_precomputed_vllm_binding(
     )
     assert all(turn["response_outcome"] == "completed" for turn in timing["turns"])
     assert all(turn["extraction_outcome"] == "completed" for turn in timing["turns"])
+
+
+def test_timing_wrapper_remains_rejected_by_binding_gate() -> None:
+    prepared, _ = _prepared()
+    recorder = ScreeningTimingRecorder()
+    wrapped = instrument_screening_provider(prepared.provider, recorder=recorder)
+
+    with pytest.raises(TypeError, match="provider must be OpenAICompatibleProvider"):
+        bind_vllm_execution_condition(
+            target=prepared.target,
+            snapshot_verification=prepared.snapshot_verification,
+            snapshot_root=SNAPSHOT_ROOT,
+            reasoning_capability=prepared.reasoning_capability,
+            provider=wrapped,  # type: ignore[arg-type]
+            manifest=prepared.manifest,
+            configured_context_window=1024,
+        )
+
+    asyncio.run(prepared.provider.aclose())
+
+
+def test_direct_vllm_execution_still_binds_original_provider(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    prepared, binding = _prepared()
+    monkeypatch.setattr(
+        OpenAICompatibleTwoPassProvider,
+        "generate_conversation",
+        _stub_conversation,
+    )
+    monkeypatch.setattr(
+        OpenAICompatibleTwoPassProvider,
+        "generate_extraction",
+        _stub_extraction,
+    )
+
+    result = asyncio.run(
+        run_vllm_actual_model_scenario_definition(
+            target=prepared.target,
+            snapshot_verification=prepared.snapshot_verification,
+            snapshot_root=SNAPSHOT_ROOT,
+            reasoning_capability=prepared.reasoning_capability,
+            configured_context_window=1024,
+            scenario_set=prepared.scenario_set,
+            scenario_id="response-persona-correction-v1",
+            fixture_root=prepared.fixture_root,
+            workspace_root=tmp_path / "workspace",
+            provider=prepared.provider,
+            manifest=prepared.manifest,
+        )
+    )
+
+    assert result.binding == binding
+    asyncio.run(prepared.provider.aclose())
+
+
+def test_prebound_execution_preserves_binding_and_records_both_passes(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    prepared, binding = _prepared()
+    recorder = ScreeningTimingRecorder()
+    wrapped = instrument_screening_provider(prepared.provider, recorder=recorder)
+    monkeypatch.setattr(
+        OpenAICompatibleTwoPassProvider,
+        "generate_conversation",
+        _stub_conversation,
+    )
+    monkeypatch.setattr(
+        OpenAICompatibleTwoPassProvider,
+        "generate_extraction",
+        _stub_extraction,
+    )
+
+    result = asyncio.run(
+        run_bound_vllm_actual_model_scenario_definition(
+            binding=binding,
+            scenario_set=prepared.scenario_set,
+            scenario_id="response-persona-correction-v1",
+            fixture_root=prepared.fixture_root,
+            workspace_root=tmp_path / "workspace",
+            provider=wrapped,  # type: ignore[arg-type]
+        )
+    )
+
+    assert result.binding is binding
+    assert tuple(call.phase for call in recorder.calls) == (
+        "pass1",
+        "pass2",
+        "pass1",
+        "pass2",
+        "pass1",
+        "pass2",
+    )
+    asyncio.run(prepared.provider.aclose())
+
+
+def test_invalid_prebound_binding_fails_without_rebinding_or_generation(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    prepared, binding = _prepared()
+    invalid = replace(binding, binding_id="amvb-" + "f" * 64)
+    calls = []
+
+    async def should_not_generate(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise AssertionError("invalid prebound evidence reached provider generation")
+
+    monkeypatch.setattr(
+        OpenAICompatibleTwoPassProvider,
+        "generate_conversation",
+        should_not_generate,
+    )
+
+    with pytest.raises(
+        ActualModelVLLMBindingError,
+        match="binding_id does not match vLLM binding evidence",
+    ):
+        asyncio.run(
+            run_bound_vllm_actual_model_scenario_definition(
+                binding=invalid,
+                scenario_set=prepared.scenario_set,
+                scenario_id="response-persona-correction-v1",
+                fixture_root=prepared.fixture_root,
+                workspace_root=tmp_path / "workspace",
+                provider=prepared.provider,
+            )
+        )
+
+    assert calls == []
+    asyncio.run(prepared.provider.aclose())
