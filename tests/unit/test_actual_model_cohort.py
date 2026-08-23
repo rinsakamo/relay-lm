@@ -8,6 +8,7 @@ import pytest
 
 from relaylm.actual_model_artifacts import character_fixture_revision
 from relaylm.actual_model_cohort import (
+    ActualModelCohortError,
     ActualModelExecutionTarget,
     load_actual_model_model_cohort_mapping,
     run_actual_model_model_cohort,
@@ -270,3 +271,28 @@ def test_cohort_artifact_is_citable_and_idempotent(tmp_path: Path) -> None:
     assert len(loaded["members"]) == 2
     assert loaded["ranking"] is None
     assert loaded["score"] is None
+
+
+def test_cohort_writer_rejects_non_content_derived_cohort_id(tmp_path: Path) -> None:
+    cohort = asyncio.run(
+        run_actual_model_model_cohort(
+            scenario_set=load_actual_model_scenario_set(_SCENARIO_SET_PATH),
+            scenario_id="response-persona-correction-v1",
+            fixture_root=_FIXTURE_ROOT,
+            workspace_root=tmp_path / "cohort",
+            targets=_targets(),
+        )
+    )
+    forged = replace(cohort, cohort_id="amm-not-content-derived")
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(
+        ActualModelCohortError,
+        match="cohort_id does not match cohort evidence",
+    ):
+        write_actual_model_model_cohort(
+            cohort=forged,
+            artifact_root=artifact_root,
+        )
+
+    assert not artifact_root.exists()
