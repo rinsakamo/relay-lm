@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable, Literal, Mapping
@@ -14,6 +13,7 @@ from relaylm.state import (
     USER_PREFERENCE_GENERIC_KEYS,
     StateCandidate,
     StateRecord,
+    _degree_hint_rejection,
 )
 
 DecisionStatus = Literal["accepted", "noop", "rejected"]
@@ -150,25 +150,4 @@ def _rejection_reason(
             json.dumps(candidate.value, ensure_ascii=False, allow_nan=False)
         except (TypeError, ValueError):
             return "non_json_value"
-    return None
-
-
-def _degree_hint_rejection(value: object) -> str | None:
-    """Validate the reserved optional semantic degree-hint envelope without inferring meaning."""
-
-    if not isinstance(value, Mapping):
-        return None
-    if "semantic" not in value and "degree_hint" not in value:
-        return None
-    if set(value) != {"semantic", "degree_hint"}:
-        return "invalid_degree_hint_value"
-
-    semantic = value.get("semantic")
-    degree = value.get("degree_hint")
-    if not isinstance(semantic, str) or not semantic.strip():
-        return "invalid_degree_hint_value"
-    if isinstance(degree, bool) or not isinstance(degree, (int, float)):
-        return "invalid_degree_hint_value"
-    if not math.isfinite(float(degree)) or not 0.0 <= float(degree) <= 1.0:
-        return "invalid_degree_hint_value"
     return None

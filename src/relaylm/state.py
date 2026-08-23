@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, Literal
@@ -33,6 +35,27 @@ STATE_CLASS_DEFINITIONS = MappingProxyType(
 USER_PREFERENCE_GENERIC_KEYS = frozenset({"likes", "dislikes", "preference"})
 
 _MISSING = object()
+
+
+def _degree_hint_rejection(value: object) -> str | None:
+    """Validate the reserved optional semantic degree-hint envelope without inferring meaning."""
+
+    if not isinstance(value, Mapping):
+        return None
+    if "semantic" not in value and "degree_hint" not in value:
+        return None
+    if set(value) != {"semantic", "degree_hint"}:
+        return "invalid_degree_hint_value"
+
+    semantic = value.get("semantic")
+    degree = value.get("degree_hint")
+    if not isinstance(semantic, str) or not semantic.strip():
+        return "invalid_degree_hint_value"
+    if isinstance(degree, bool) or not isinstance(degree, (int, float)):
+        return "invalid_degree_hint_value"
+    if not math.isfinite(float(degree)) or not 0.0 <= float(degree) <= 1.0:
+        return "invalid_degree_hint_value"
+    return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,6 +146,8 @@ class StateRecord:
             and self.key.strip().casefold() in USER_PREFERENCE_GENERIC_KEYS
         ):
             raise ValueError(f"generic preference key: {self.key}")
+        if _degree_hint_rejection(self.value) is not None:
+            raise ValueError("invalid degree hint value")
         if not self.status.strip():
             raise ValueError("state status must not be empty")
 
