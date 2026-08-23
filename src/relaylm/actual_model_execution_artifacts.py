@@ -15,6 +15,7 @@ from relaylm.actual_model_execution import (
 )
 from relaylm.actual_model_restart import (
     ActualModelRestartEvidence,
+    _phase_scenario,
     stable_actual_model_restart_run_id,
 )
 
@@ -162,11 +163,47 @@ def _validate_execution_plan_evidence_binding(
             raise ActualModelExecutionArtifactError(
                 "execution evidence does not match execution plan"
             )
+        _validate_restart_phase_evidence(evidence)
         return
 
     raise TypeError(
         "execution evidence must be ActualModelEvidence or ActualModelRestartEvidence"
     )
+
+
+def _validate_restart_phase_evidence(evidence: ActualModelRestartEvidence) -> None:
+    split = evidence.manifest.restart_after_turn_count
+    expected_phases = (
+        (
+            evidence.before_restart,
+            _phase_scenario(
+                scenario=evidence.scenario,
+                phase="before_restart",
+                turns=evidence.scenario.turns[:split],
+            ),
+        ),
+        (
+            evidence.after_restart,
+            _phase_scenario(
+                scenario=evidence.scenario,
+                phase="after_restart",
+                turns=evidence.scenario.turns[split:],
+            ),
+        ),
+    )
+    for phase, expected_scenario in expected_phases:
+        expected_run_id = stable_actual_model_run_id(
+            manifest=phase.manifest,
+            scenario=phase.scenario,
+        )
+        if (
+            phase.manifest != evidence.manifest.base
+            or phase.scenario != expected_scenario
+            or phase.run_id != expected_run_id
+        ):
+            raise ActualModelExecutionArtifactError(
+                "restart phase evidence does not match restart envelope"
+            )
 
 
 def _resolve_existing_execution(*, path: Path, payload: str) -> Path:

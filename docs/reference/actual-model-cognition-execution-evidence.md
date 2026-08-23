@@ -89,6 +89,8 @@ The actual-model scenario harness may await canonical Pass 2 before advancing a 
 
 A persisted execution artifact is citable only when its `plan_id` matches the content-derived execution-plan identity, its ordinary or restart evidence `run_id` matches that evidence's canonical run identity, and its outer `execution_id` matches the exact plan plus validated run ID. Those individually valid identities are not sufficient: ordinary evidence must carry the plan's exact manifest and scenario, while restart evidence must carry the plan manifest as its base plus the exact scenario, restart boundary, and Continuity Runtime identity. The execution persistence boundary validates this plan/evidence binding and recomputes all three identity layers before writing an artifact.
 
+For restart evidence, the top-level restart run identity alone is also insufficient because it is derived from the restart manifest and whole scenario rather than from the nested phase evidence objects. Before persistence, `before_restart` and `after_restart` must each carry the restart envelope's exact base manifest, the canonical phase scenario partition for the declared restart boundary, and their own canonical ordinary `run_id`. A valid phase artifact from another replicate is not citable inside the current restart envelope.
+
 ## Reference-screening order
 
 The historical frozen vLLM plan contains conditions named A/B/C. Current Core 1.0 screening interprets them only through the current #1386 screening contract:
