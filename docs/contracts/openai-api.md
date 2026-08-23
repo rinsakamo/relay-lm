@@ -21,6 +21,8 @@ The client-facing `model` field is a compatibility field. It does not select or 
 
 The supported top-level request fields are exactly `model`, `messages`, and `stream`. Other OpenAI Chat Completions controls such as `temperature`, `max_tokens`, `tools`, or `response_format` are not silently accepted as no-ops: unsupported top-level fields fail request validation before generation. Provider/model/cognition controls are carried only through RelayLM's explicit owner-defined runtime surfaces when supported.
 
+When supplied, `stream` must be an actual JSON boolean. String or numeric truthy/falsy alternatives are request-validation errors rather than being coerced into buffered or streaming execution. Omitting `stream` preserves the current buffered default (`false`).
+
 ## Request authority
 
 RelayLM selects only the last non-empty `user` message as the current governed input.
