@@ -61,7 +61,7 @@ The returned envelope contains:
 - the existing scenario execution result and run ID;
 - `score: null`.
 
-`write_lm_studio_actual_model_execution_result(...)` persists this envelope immutably. Before filesystem mutation it recomputes the LM Studio `binding_id`, the nested scenario `execution_id`, and the outer LM Studio `execution_id` from their canonical existing identity inputs and rejects any mismatch. Identical same-ID bytes are idempotent. Different evidence under the same ID is rejected and requires a distinct `replicate_id` through the existing run identity contract.
+`write_lm_studio_actual_model_execution_result(...)` persists this envelope immutably. Before filesystem mutation it recomputes the LM Studio `binding_id`, preserves the backend-specific nested and outer execution-ID checks, requires the nested scenario execution to pass the same generic citable admission used by `write_actual_model_execution_result(...)`, and requires the LM Studio binding manifest to equal the nested execution plan manifest. The generic admission covers the content-derived plan ID, canonical ordinary/restart run ID, plan/evidence binding, and generic execution ID. Identical same-ID bytes are idempotent. Different evidence under the same ID is rejected and requires a distinct `replicate_id` through the existing run identity contract.
 
 ## Remaining external facts
 
