@@ -3,13 +3,24 @@ from __future__ import annotations
 from pathlib import Path
 
 from relaylm.actual_model_fast_screening import reference_screening_condition_ids
-from relaylm.actual_model_vllm_host import load_vllm_screening_plan
+from relaylm.actual_model_scenarios import load_actual_model_scenario_set
+from relaylm.actual_model_vllm_capacity import (
+    load_vllm_runtime_capacity_evidence,
+    validate_capacity_coverage,
+    validate_capacity_window,
+)
+from relaylm.actual_model_vllm_host import (
+    CANONICAL_SCENARIO_SET_PATH,
+    _required_capacity_coverage,
+    load_actual_model_repository_snapshot_target,
+    load_vllm_screening_plan,
+)
 
 
 _ROOT = Path(__file__).parents[2]
 _SCREENING_ROOT = _ROOT / "evaluation" / "actual_model" / "screenings"
 _CANONICAL_B_CAPACITY_EVIDENCE_ID = (
-    "amcap-7bcbbb3b1c0432c8cf3707670b99f373ab0fad05da93645aec023f43a6e5959b"
+    "amcap-2e39f7fd7bf8d32b2bc2be4263d5a3ce08f079319e76e59b104f236cce2464be"
 )
 
 
@@ -36,6 +47,59 @@ def test_stage_r_reference_plan_is_separate_from_immutable_historical_plan() -> 
     assert current.conditions["B"].cognition_execution.mode == "two_pass"
     assert current.conditions["B"].pass_requests.pass1.reasoning_mode.value == "off"
     assert current.conditions["B"].pass_requests.pass2.reasoning_mode.value == "off"
+
+
+def test_stage_r_reference_cites_complete_v3_v2_capacity_artifact() -> None:
+    current = load_vllm_screening_plan(
+        _SCREENING_ROOT / "stage-r0-vllm-reference-v1.json"
+    )
+    artifact = load_vllm_runtime_capacity_evidence(
+        _ROOT
+        / "evaluation"
+        / "actual_model"
+        / "capacity"
+        / f"{_CANONICAL_B_CAPACITY_EVIDENCE_ID}.json"
+    )
+    target = load_actual_model_repository_snapshot_target(
+        _ROOT
+        / "evaluation"
+        / "actual_model"
+        / "targets"
+        / "gemma-4-12b-it-qat-w4a16-google-vllm-v1.json"
+    )
+    scenario_set = load_actual_model_scenario_set(
+        _ROOT / CANONICAL_SCENARIO_SET_PATH
+    )
+    required_coverage = _required_capacity_coverage(
+        condition=current.conditions["B"],
+        scenario_set=scenario_set,
+        scenario_ids=current.scenario_ids,
+    )
+
+    assert current.capacity_evidence_id == _CANONICAL_B_CAPACITY_EVIDENCE_ID
+    assert artifact.format_version == 3
+    assert artifact.model_runner == "v2"
+    assert artifact.failed_capacity is None
+    assert artifact.target_id == current.target_id == target.target_id
+    assert artifact.target_revision == target.revision
+    assert artifact.tokenizer_identity == target.tokenizer_identity
+    assert artifact.chat_template_identity == target.chat_template_identity
+    assert artifact.scenario_set_revision == scenario_set.revision
+    assert len(artifact.footprints) == len(required_coverage) == 12
+    validate_capacity_coverage(
+        evidence=artifact,
+        scenario_set_revision=scenario_set.revision,
+        required_coverage=required_coverage,
+    )
+    validate_capacity_window(
+        evidence=artifact,
+        capacity_evidence_id=current.capacity_evidence_id,
+        effective_context_window=current.effective_context_window,
+    )
+    assert artifact.maximum_observed_input_tokens == 1533
+    assert current.effective_context_window == 1616
+    assert artifact.observed_max_model_len == 1616
+    assert reference_screening_condition_ids(current) == ("B",)
 
 
 def test_stage_r_coverage_ledger_keeps_pilot_and_follow_up_explicit() -> None:
