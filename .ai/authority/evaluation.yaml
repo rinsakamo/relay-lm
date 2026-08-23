@@ -4,6 +4,7 @@ summary: Deterministic RelayLM-native evaluation registry and boundary invariant
 owner_issue: 1247
 canonical_surfaces:
 - docs/reference/evaluation.md
+- docs/reference/evaluation-check-verdict.md
 - docs/reference/evaluation-working-context-diagnostics.md
 - docs/reference/evaluation-retrieval-stage-diagnostics.md
 - docs/reference/evaluation-retrieval-refinements.md
@@ -64,6 +65,7 @@ implementation:
 - src/relaylm/evaluation_memory_temporal_provenance.py
 tests:
 - tests/unit/test_evaluation.py
+- tests/unit/test_evaluation_check_verdict_contract.py
 - tests/unit/test_evaluation_cross_layer_diagnostics.py
 - tests/unit/test_evaluation_working_context_diagnostics.py
 - tests/unit/test_evaluation_event_snapshot.py
