@@ -7,13 +7,21 @@ from pathlib import Path
 import pytest
 
 from relaylm.actual_model_artifacts import character_fixture_revision
-from relaylm.actual_model_evaluation import ActualModelRunManifest
-from relaylm.actual_model_execution import run_actual_model_scenario_definition
+from relaylm.actual_model_evaluation import (
+    ActualModelEvidence,
+    ActualModelRunManifest,
+    ExplicitContinuityRuntimeConfiguration,
+)
+from relaylm.actual_model_execution import (
+    _stable_execution_id,
+    run_actual_model_scenario_definition,
+)
 from relaylm.actual_model_execution_artifacts import (
     ActualModelExecutionArtifactError,
     load_actual_model_execution_mapping,
     write_actual_model_execution_result,
 )
+from relaylm.actual_model_restart import ActualModelRestartEvidence
 from relaylm.actual_model_scenarios import load_actual_model_scenario_set
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
 
@@ -73,6 +81,24 @@ async def _run(
         workspace_root=workspace_root,
         provider=_ResponseProvider(response),
         manifest=_manifest(replicate_id=replicate_id),
+    )
+
+
+async def _run_restart(*, workspace_root: Path):
+    return await run_actual_model_scenario_definition(
+        scenario_set=load_actual_model_scenario_set(_SCENARIO_SET_PATH),
+        scenario_id="restart-durable-vs-temporary-v1",
+        fixture_root=_FIXTURE_ROOT,
+        workspace_root=workspace_root,
+        provider=_ResponseProvider("restart response"),
+        manifest=replace(
+            _manifest(),
+            provider_capabilities=("state_candidates", "continuity_candidates"),
+            continuity_runtime=ExplicitContinuityRuntimeConfiguration(
+                max_items=4,
+                lifetime_revisions=3,
+            ),
+        ),
     )
 
 
@@ -191,6 +217,81 @@ def test_execution_writer_rejects_non_content_derived_execution_id(
             result=forged,
             artifact_root=artifact_root,
         )
+
+    assert not artifact_root.exists()
+
+
+def test_execution_writer_rejects_forged_plan_id_with_recomputed_outer_id(
+    tmp_path: Path,
+) -> None:
+    result = asyncio.run(
+        _run(workspace_root=tmp_path / "run", response="grounded response")
+    )
+    forged_plan = replace(result.plan, plan_id="amp-" + "f" * 64)
+    forged = replace(
+        result,
+        plan=forged_plan,
+        execution_id=_stable_execution_id(plan=forged_plan, run_id=result.run_id),
+    )
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(
+        ActualModelExecutionArtifactError,
+        match="plan_id does not match execution plan",
+    ):
+        write_actual_model_execution_result(result=forged, artifact_root=artifact_root)
+
+    assert not artifact_root.exists()
+
+
+def test_execution_writer_rejects_forged_ordinary_run_id_with_recomputed_outer_id(
+    tmp_path: Path,
+) -> None:
+    result = asyncio.run(
+        _run(workspace_root=tmp_path / "run", response="grounded response")
+    )
+    assert isinstance(result.evidence, ActualModelEvidence)
+    forged_evidence = replace(result.evidence, run_id="amr-" + "f" * 64)
+    forged = replace(
+        result,
+        evidence=forged_evidence,
+        execution_id=_stable_execution_id(
+            plan=result.plan,
+            run_id=forged_evidence.run_id,
+        ),
+    )
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(
+        ActualModelExecutionArtifactError,
+        match="run_id does not match execution evidence",
+    ):
+        write_actual_model_execution_result(result=forged, artifact_root=artifact_root)
+
+    assert not artifact_root.exists()
+
+
+def test_execution_writer_rejects_forged_restart_run_id_with_recomputed_outer_id(
+    tmp_path: Path,
+) -> None:
+    result = asyncio.run(_run_restart(workspace_root=tmp_path / "run"))
+    assert isinstance(result.evidence, ActualModelRestartEvidence)
+    forged_evidence = replace(result.evidence, run_id="amrr-" + "f" * 64)
+    forged = replace(
+        result,
+        evidence=forged_evidence,
+        execution_id=_stable_execution_id(
+            plan=result.plan,
+            run_id=forged_evidence.run_id,
+        ),
+    )
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(
+        ActualModelExecutionArtifactError,
+        match="run_id does not match execution evidence",
+    ):
+        write_actual_model_execution_result(result=forged, artifact_root=artifact_root)
 
     assert not artifact_root.exists()
 

@@ -4,9 +4,18 @@ import json
 import os
 from pathlib import Path
 
+from relaylm.actual_model_evaluation import (
+    ActualModelEvidence,
+    stable_actual_model_run_id,
+)
 from relaylm.actual_model_execution import (
     ActualModelScenarioExecutionResult,
     _stable_execution_id,
+    _stable_plan_id,
+)
+from relaylm.actual_model_restart import (
+    ActualModelRestartEvidence,
+    stable_actual_model_restart_run_id,
 )
 
 
@@ -20,6 +29,38 @@ def write_actual_model_execution_result(
     artifact_root: str | Path,
 ) -> Path:
     """Persist one complete execution result as an immutable citable JSON artifact."""
+
+    expected_plan_id = _stable_plan_id(
+        scenario_set_version=result.plan.scenario_set_version,
+        scenario_set_revision=result.plan.scenario_set_revision,
+        character_fixture_id=result.plan.character_fixture_id,
+        character_fixture_revision=result.plan.character_fixture_revision,
+        definition=result.plan.definition,
+        manifest=result.plan.manifest,
+    )
+    if result.plan.plan_id != expected_plan_id:
+        raise ActualModelExecutionArtifactError(
+            "plan_id does not match execution plan"
+        )
+
+    if isinstance(result.evidence, ActualModelEvidence):
+        expected_run_id = stable_actual_model_run_id(
+            manifest=result.evidence.manifest,
+            scenario=result.evidence.scenario,
+        )
+    elif isinstance(result.evidence, ActualModelRestartEvidence):
+        expected_run_id = stable_actual_model_restart_run_id(
+            manifest=result.evidence.manifest,
+            scenario=result.evidence.scenario,
+        )
+    else:
+        raise TypeError(
+            "execution evidence must be ActualModelEvidence or ActualModelRestartEvidence"
+        )
+    if result.run_id != expected_run_id:
+        raise ActualModelExecutionArtifactError(
+            "run_id does not match execution evidence"
+        )
 
     expected_execution_id = _stable_execution_id(
         plan=result.plan,

@@ -87,7 +87,7 @@ Pass 1 response becomes `raw_model.response`. Proposal arrays come from the actu
 
 The actual-model scenario harness may await canonical Pass 2 before advancing a multi-turn evaluation trajectory so the next evaluated turn observes the accepted State/Continuity result. This evaluation ordering does not change the product runtime's response-first semantics.
 
-A persisted execution artifact is citable only when its `execution_id` matches the content-derived identity of the exact execution plan plus evidence `run_id`. The execution persistence boundary recomputes that identity and rejects a caller-supplied mismatch before writing an artifact.
+A persisted execution artifact is citable only when its `plan_id` matches the content-derived execution-plan identity, its ordinary or restart evidence `run_id` matches that evidence's canonical run identity, and its outer `execution_id` matches the exact plan plus validated run ID. The execution persistence boundary recomputes all three identity layers and rejects a caller-supplied mismatch before writing an artifact.
 
 ## Reference-screening order
 

@@ -187,15 +187,14 @@ def plan_actual_model_scenario_execution(
                 "until the restart evidence bridge carries the same resolved requests"
             )
 
-    plan_payload = {
-        "scenario_set_version": scenario_set.scenario_set_version,
-        "scenario_set_revision": scenario_set.revision,
-        "character_fixture_id": scenario_set.character_fixture_id,
-        "character_fixture_revision": observed_revision,
-        "scenario_definition": definition.to_mapping(),
-        "manifest": manifest.to_mapping(),
-    }
-    plan_id = _stable_id(prefix="amp", payload=plan_payload)
+    plan_id = _stable_plan_id(
+        scenario_set_version=scenario_set.scenario_set_version,
+        scenario_set_revision=scenario_set.revision,
+        character_fixture_id=scenario_set.character_fixture_id,
+        character_fixture_revision=observed_revision,
+        definition=definition,
+        manifest=manifest,
+    )
     return ActualModelScenarioExecutionPlan(
         plan_id=plan_id,
         scenario_set_version=scenario_set.scenario_set_version,
@@ -273,6 +272,28 @@ async def run_actual_model_scenario_definition(
         execution_id=_stable_execution_id(plan=plan, run_id=evidence.run_id),
         plan=plan,
         evidence=evidence,
+    )
+
+
+def _stable_plan_id(
+    *,
+    scenario_set_version: str,
+    scenario_set_revision: str,
+    character_fixture_id: str,
+    character_fixture_revision: str,
+    definition: ActualModelScenarioDefinition,
+    manifest: ActualModelRunManifest,
+) -> str:
+    return _stable_id(
+        prefix="amp",
+        payload={
+            "scenario_set_version": scenario_set_version,
+            "scenario_set_revision": scenario_set_revision,
+            "character_fixture_id": character_fixture_id,
+            "character_fixture_revision": character_fixture_revision,
+            "scenario_definition": definition.to_mapping(),
+            "manifest": manifest.to_mapping(),
+        },
     )
 
 
