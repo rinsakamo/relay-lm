@@ -58,7 +58,7 @@ The manifest declares `execution_kind = off_turn_crystallization`. It deliberate
 
 A run ID is a SHA-256 digest over canonical JSON containing the manifest, semantic case, and the **exact pre-pass `CrystallizationInput` observed by the recording wrapper**. Therefore a model/runtime/configuration/reasoning-state change or a change in Identity, current State, bounded Events, or prior MEMORY produces a distinct run identity.
 
-The current crystallization evidence format is version `2`. The required
+The current crystallization evidence format is version `3`. The required
 manifest reasoning identity is serialized deterministically as:
 
 ```json
@@ -77,6 +77,11 @@ Historical format-v1 CRY4/CRY6/CRY8 artifacts remain immutable evidence. They
 do not acquire a retroactive reasoning identity and must not be used for
 causal attribution of Thinking ON versus OFF.
 
+Historical format-v2 artifacts also remain immutable. They carry the reasoning
+identity introduced for that format, but their raw crystallization channel is
+model-authored `memory_markdown`. They must not be reinterpreted as format-v3
+structured `memory_units` evidence.
+
 ## Exact input evidence
 
 The evidence records exactly what the existing crystallization core supplied to the crystallizer:
@@ -94,7 +99,7 @@ Raw model behavior and RelayLM acceptance are separate evidence channels.
 
 `raw_model` records:
 
-- complete generated `memory_markdown`;
+- every generated structured `MemoryUnit`, serialized under `memory_units` with its heading, content, temporal scope, and typed sources;
 - every generated `StateCandidate` before deterministic validation.
 
 `deterministic_relay` records:
@@ -102,7 +107,7 @@ Raw model behavior and RelayLM acceptance are separate evidence channels.
 - each existing Validator decision and its status/action/reason;
 - resulting Canonical State;
 - whether MEMORY changed;
-- resulting persisted MEMORY Markdown.
+- resulting persisted MEMORY Markdown rendered by RelayLM from the structured memory units.
 
 A rejected candidate remains visible as raw model behavior. The evaluation layer never converts rejection into success and has no privileged State mutation path.
 
