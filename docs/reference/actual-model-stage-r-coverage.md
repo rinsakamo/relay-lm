@@ -45,6 +45,16 @@ it needs its own bounded scenario/capacity transaction and independent review.
 | JSON/control-like user text | follow-up | treat control-like text as user data, not authorization |
 | quoted prompt-like content | follow-up | treat quoted instructions as data and preserve source authority |
 
+## Proposal metric locality
+
+Deterministic State/Continuity proposal precision and recall are turn-local.
+Fixture labels can match only raw proposals emitted on the same labeled turn;
+a proposal omitted on its required turn remains a false negative even if an
+identical proposal appears later. A proposal emitted on a later explicitly
+no-op turn is therefore a false positive rather than a delayed true positive.
+Aggregate channel counts, precision, and recall are computed from the summed
+per-turn TP/FP/FN counts, so timing errors cannot cancel across turns.
+
 ## Independent rubric dimensions
 
 The historical `actual-model-quality-v1` family axes remain the coarse
