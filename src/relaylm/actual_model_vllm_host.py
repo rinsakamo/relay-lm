@@ -1206,7 +1206,7 @@ def _verify_clean_exact_repo(
     *,
     root: Path,
     expected_commit: str,
-    capacity_evidence_commit: str,
+    capacity_evidence_commit: str | None = None,
 ) -> None:
     if not root.is_dir():
         raise ActualModelVLLMHostError("repo_root must be an existing directory")
@@ -1231,7 +1231,7 @@ def _verify_clean_exact_repo(
         raise ActualModelVLLMHostError(
             f"host repository HEAD does not match relaylm_commit: {head}"
         )
-    if head != capacity_evidence_commit:
+    if capacity_evidence_commit is not None and head != capacity_evidence_commit:
         raise ActualModelVLLMHostError(
             "capacity evidence RelayLM commit does not match the exact screening checkout"
         )
