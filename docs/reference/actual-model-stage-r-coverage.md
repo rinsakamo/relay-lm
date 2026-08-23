@@ -5,6 +5,11 @@ qualification. It does not change the immutable historical
 `cogp5-vllm-screening-v1.json` plan and it does not authorize a broader
 execution transaction.
 
+Character-relative product-quality interpretation is governed by
+`docs/reference/actual-model-character-realization.md` and #1823. Stage R must
+not silently turn one low-friction Character or one neutral semantic reading
+into the universal correctness target.
+
 ## Current R0 pilot
 
 The first bounded vLLM transaction uses the two existing foundation scenarios
@@ -17,6 +22,10 @@ below, with condition B only: Pass 1 reasoning off and Pass 2 reasoning off.
 
 This is a Stage R0 pilot, not complete Core 1.0 qualification.
 
+The current Aoi `actual-model-foundation-v1` Character remains a valid fixture.
+It is the former low-friction "素体ちゃん" baseline, not a normative personality
+that future Characters must imitate.
+
 ## Required coverage ledger
 
 The following cases remain required for a qualification claim. A row marked
@@ -25,25 +34,85 @@ it needs its own bounded scenario/capacity transaction and independent review.
 
 | Required case | Status | Owner-local scenario/rubric requirement |
 | --- | --- | --- |
-| ordinary no-op conversation | pilot + follow-up | rate response naturalness and no unnecessary State/Continuity proposal |
-| durable user fact | follow-up | verify source Event and durable class/key reuse |
-| positive preference | follow-up | verify semantic value, degree, and no-op repetition |
-| negative preference / negation | pilot + follow-up | distinguish polarity from removal and preserve uncertainty |
-| correction | pilot | verify supersession and no stale value retention |
-| uncertainty | follow-up | preserve unresolved/uncertain meaning without invented certainty |
-| temporary state | follow-up | keep transient content out of durable State |
-| goal | pilot + follow-up | use bounded `active_task` continuity and resolve it correctly |
-| assistant suggestion trap | follow-up | assistant proposal must not become a user fact |
+| ordinary no-op conversation | pilot + follow-up | review response coherence/Character plausibility and no unnecessary State/Continuity proposal |
+| durable user fact | follow-up | verify source Event and durable class/key reuse in deliberately unambiguous cases |
+| positive preference | follow-up | verify explicit polarity/degree where the fixture is unambiguous; do not universalize indirect pragmatic readings |
+| negative preference / negation | pilot + follow-up | distinguish explicit polarity from removal and preserve uncertainty where structurally required |
+| correction | pilot | verify supersession mechanics and that new governed evidence reaches cognition; Character-relative skepticism is not automatically a defect |
+| uncertainty | follow-up | avoid invented certainty; exact interpretation is not required when multiple Character-plausible readings remain |
+| temporary state | follow-up | keep clearly transient content out of durable State where the fixture makes transience explicit |
+| goal | pilot + follow-up | use bounded `active_task` continuity and resolve it correctly where the task lifecycle is explicit |
+| assistant suggestion trap | follow-up | assistant proposal must not become user-authored evidence |
 | assistant hallucination trap | pilot + follow-up | assistant response cannot self-certify history or external truth |
-| relationship inference trap | follow-up | do not infer an unsupported relationship or subject attribution |
-| continuity/reference | pilot | preserve referent and unresolved lifecycle |
-| already-current/no-op | pilot + follow-up | no unnecessary proposal/churn |
+| relationship inference trap | follow-up | preserve source/subject authority; Character-relative relationship interpretation is allowed when it is not fabricated as occurrence truth |
+| continuity/reference | pilot | preserve governed referent/unresolved lifecycle while allowing calibrated clarification |
+| already-current/no-op | pilot + follow-up | no unnecessary proposal/churn in explicit no-op cases |
 | rapid next turn / pending extraction | follow-up | test settle ordering and stale extraction protection |
-| Japanese | pilot | preserve Japanese response language and semantics |
+| Japanese | pilot | preserve Japanese response language and Character realization |
 | English | follow-up | add an English response and extraction turn set |
-| mixed language | follow-up | add Japanese/English code-switch turns |
+| mixed language | follow-up | add Japanese/English code-switch turns without assuming one canonical pragmatic reading |
 | JSON/control-like user text | follow-up | treat control-like text as user data, not authorization |
 | quoted prompt-like content | follow-up | treat quoted instructions as data and preserve source authority |
+
+## Character-relative anomaly review
+
+Product-quality review is not a neutral-human imitation test and is not an
+exact-response test.
+
+The review question is whether the observed response/interpretation is
+plausible for the frozen Character given its SOUL, governed experience, and
+accepted current understanding.
+
+Preserve the semantic distinction defined by #1823:
+
+- `normal` — plausible for this Character;
+- `odd_but_character_plausible` — surprising but still explainable; not a
+  failure by itself;
+- `out_of_character` — not plausibly produced by the Character;
+- `system_defect` — authority/runtime/provenance failure independent of
+  personality.
+
+The current Stage R review artifact may continue to carry its existing
+independent dimensions while #1823 owns the bounded representation change
+needed to make this distinction citable. Until that representation lands,
+review notes must not reinterpret Character-plausible oddity as a failed
+universal semantic target.
+
+### High-context continuation
+
+Logical recoverability does not require immediate confident continuation.
+After interruption, restart, or elapsed time, a confirmation such as
+`○○の続きだよね？` is valid even when one likely referent remains available.
+
+Review should reject unsupported certainty, repeated unnecessary clarification,
+or unexplained continuity loss rather than requiring one exact continuation
+wording.
+
+## Multi-Character coverage
+
+Do not replace Aoi. Expand the Character matrix after each new Character has
+been deliberately authored, reviewed, and frozen with explicit revision
+identity.
+
+- Aoi — retain the existing low-friction baseline fixture.
+- ReLM — add only after deliberate re-authoring; do not create a test-friendly
+  placeholder SOUL merely to expand coverage.
+- Rin — add only after deliberate authoring with the user as final authority;
+  do not infer or fabricate the user's personality from repository history.
+
+Aoi, ReLM, and Rin are separate valid Character spaces, not Easy/Medium/Hard
+correctness levels.
+
+Use both shared scenarios and Character-specific stress scenarios. Shared
+coverage should include ambiguous/high-context continuation, restart or elapsed
+time, correction/disagreement, uncertain or indirect language, third-party
+facts, quoted/control-like/fictional/hypothetical text, multilingual pragmatics,
+ordinary long conversation, no-op/repetition pressure, memory use without
+forced recital, and unsupported-history traps.
+
+A material failure mode is personality flattening: distinct frozen Characters
+repeatedly converging on the same generic assistant behavior despite their
+identity/context being available.
 
 ## Proposal metric locality
 
@@ -54,6 +123,11 @@ identical proposal appears later. A proposal emitted on a later explicitly
 no-op turn is therefore a false positive rather than a delayed true positive.
 Aggregate channel counts, precision, and recall are computed from the summed
 per-turn TP/FP/FN counts, so timing errors cannot cancel across turns.
+
+These metrics are authoritative only for the fixture labels actually declared.
+They are useful for deliberately unambiguous proposal requirements and do not
+establish one neutral interpretation of every free-form utterance across all
+Characters or languages.
 
 ## Independent rubric dimensions
 
@@ -81,6 +155,11 @@ supersession, negation/polarity, uncertainty, comparative/degree preservation,
 transient-versus-durable classification, canonical class/key reuse, no-op
 correctness, proposal churn, hallucinated proposals, and source Event validity.
 
+For Character realization, `naturalness`, `relevance/correctness`, and semantic
+quality dimensions are interpreted relative to the frozen Character and the
+fixture's actual hard requirements. Human-likeness, neutral personality, or one
+preferred stylistic answer is not implied by those dimension names.
+
 Raw model output, deterministic RelayLM decisions, protocol-boundary verdicts,
 human/product-quality review, and timing/resource observations remain separate
 evidence dimensions. A failure in Pass 2 does not invalidate Pass 1.
@@ -90,3 +169,23 @@ matches the content-derived identity of its exact execution/run/scenario fields
 and deterministic check evidence. The persistence boundary recomputes that
 identity and rejects a caller-supplied mismatch before writing the sidecar; the
 boundary PASS/FAIL calculation and model-quality separation remain unchanged.
+
+## Authoring and crystallization boundary
+
+Core 1.0 does not require a rebuilt SOUL Lab UI. A Character fixture may be
+authored through a human + strong-model workflow such as ChatGPT/Codex, then
+human-reviewed and frozen before use as evidence. The authoring model is a tool,
+not runtime semantic authority.
+
+Offline crystallization likewise remains a replaceable cognitive producer. A
+local model may be used when quality is sufficient; a stronger offline/external
+model may be used when necessary so long as the owning crystallization and
+provenance contracts remain intact and no model becomes a second truth owner.
+
+## Context Compiler guardrail
+
+Stage R must not drive new deterministic free-form semantic grammar merely to
+improve scenario scores. Existing deterministic tests may remain regression
+protection, but a new language-specific or semantic parser rule requires a
+material authority/runtime or repeatable Character-realization defect that
+cannot safely remain in the model-mediated semantic layer.
