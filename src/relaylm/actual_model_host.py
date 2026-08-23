@@ -15,6 +15,11 @@ from relaylm.actual_model_fast_screening_artifacts import (
 )
 from relaylm.actual_model_host_runner import main as _lm_studio_main
 from relaylm.actual_model_vllm import ActualModelVLLMBindingError
+from relaylm.actual_model_vllm_budget import (
+    VLLMCognitiveBudgetDeclarationError,
+    load_vllm_two_pass_cognitive_budget_declaration,
+    prepare_vllm_screening_condition_with_budget_declaration as _prepare_vllm_screening_condition,
+)
 from relaylm.actual_model_vllm_capacity import VLLM_MODEL_RUNNER_IDS
 from relaylm.actual_model_vllm_capacity_acquisition import (
     VLLMCapacityAcquisitionError,
@@ -28,7 +33,6 @@ from relaylm.actual_model_vllm_host import (
     ActualModelVLLMHostError,
     execute_vllm_host_run as _execute_vllm_host_run,
     load_vllm_screening_plan,
-    prepare_vllm_screening_condition as _prepare_vllm_screening_condition,
 )
 
 
@@ -74,6 +78,7 @@ def _main_vllm(argv: Sequence[str]) -> int:
     parser.add_argument("--model-runner", required=True, choices=VLLM_MODEL_RUNNER_IDS)
     parser.add_argument("--replicate-id", default="0")
     parser.add_argument("--provider-api-key-env")
+    parser.add_argument("--cognitive-budget")
     args = parser.parse_args(argv)
 
     repo_root = Path(args.repo_root).resolve()
@@ -84,6 +89,10 @@ def _main_vllm(argv: Sequence[str]) -> int:
             repo_root / CANONICAL_VLLM_SCREENING_PLAN_PATH
         )
         if args.operation == "capacity":
+            if args.cognitive_budget is not None:
+                raise ActualModelHostFacadeError(
+                    "--cognitive-budget is valid only for screening"
+                )
             prepared = _prepare_vllm_capacity_acquisition(
                 plan=plan,
                 condition_id=args.condition,
@@ -130,6 +139,11 @@ def _main_vllm(argv: Sequence[str]) -> int:
             )
             return 0
 
+        cognitive_budget = (
+            load_vllm_two_pass_cognitive_budget_declaration(args.cognitive_budget)
+            if args.cognitive_budget is not None
+            else None
+        )
         prepared = _prepare_vllm_screening_condition(
             plan=plan,
             condition_id=args.condition,
@@ -141,6 +155,7 @@ def _main_vllm(argv: Sequence[str]) -> int:
             api_key=api_key,
             model_runner=args.model_runner,
             replicate_id=args.replicate_id,
+            cognitive_budget=cognitive_budget,
         )
         results = asyncio.run(
             _execute_vllm_host_run(
@@ -155,6 +170,7 @@ def _main_vllm(argv: Sequence[str]) -> int:
         ActualModelHostFacadeError,
         ActualModelVLLMHostError,
         ActualModelVLLMBindingError,
+        VLLMCognitiveBudgetDeclarationError,
         VLLMCapacityAcquisitionError,
         OSError,
         subprocess.CalledProcessError,

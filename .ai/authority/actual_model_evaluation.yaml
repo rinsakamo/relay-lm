@@ -12,6 +12,7 @@ canonical_surfaces:
 - docs/reference/actual-model-host-runner.md
 - docs/reference/actual-model-lm-studio-binding.md
 - docs/reference/actual-model-vllm-binding.md
+- docs/reference/actual-model-vllm-budget-facade.md
 - docs/reference/actual-model-vllm-capacity-acquisition.md
 - docs/reference/actual-model-stage-r-coverage.md
 - evaluation/actual_model/screenings/stage-r0-vllm-reference-v1.json
@@ -34,6 +35,7 @@ implementation:
 - src/relaylm/actual_model_lm_studio_counter.py
 - src/relaylm/actual_model_vllm.py
 - src/relaylm/actual_model_vllm_host.py
+- src/relaylm/actual_model_vllm_budget.py
 - src/relaylm/actual_model_vllm_counter.py
 - src/relaylm/actual_model_vllm_capacity.py
 - src/relaylm/actual_model_vllm_capacity_acquisition.py
@@ -87,6 +89,7 @@ tests:
 - tests/unit/test_actual_model_vllm_capacity_acquisition.py
 - tests/unit/test_actual_model_vllm_capacity_producer.py
 - tests/unit/test_actual_model_vllm_host_dispatch.py
+- tests/unit/test_actual_model_vllm_budget_facade.py
 - tests/unit/test_actual_model_host_runner.py
 - tests/unit/test_actual_model_crystallization.py
 - tests/unit/test_actual_model_crystallization_reference.py
