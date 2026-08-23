@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from relaylm.evaluation import evaluate_working_context_budget_diagnostics
+from relaylm.evaluation_working_context import evaluate_working_context_budget_diagnostics
 
 
 def test_working_context_budget_diagnostics_evaluation_is_registered() -> None:
