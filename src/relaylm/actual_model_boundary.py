@@ -10,6 +10,10 @@ from typing import Literal
 
 from relaylm.actual_model_evaluation import ActualModelEvidence, ActualModelTurnEvidence
 from relaylm.actual_model_execution import ActualModelScenarioExecutionResult
+from relaylm.actual_model_execution_artifacts import (
+    ActualModelExecutionArtifactError,
+    validate_actual_model_execution_result,
+)
 from relaylm.actual_model_restart import ActualModelRestartEvidence
 
 ACTUAL_MODEL_BOUNDARY_FORMAT_VERSION = 1
@@ -116,6 +120,13 @@ def evaluate_actual_model_deterministic_boundary(
     survived while process-local Continuity reset. They do not infer whether a model
     should have emitted a proposal and do not reinterpret validator acceptance rules.
     """
+
+    try:
+        validate_actual_model_execution_result(result)
+    except (ActualModelExecutionArtifactError, TypeError) as exc:
+        raise ActualModelBoundaryArtifactError(
+            f"source execution is not citable: {exc}"
+        ) from exc
 
     definition = result.plan.definition
     scenario = definition.scenario
