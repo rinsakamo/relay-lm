@@ -203,6 +203,8 @@ latency / token / resource benefit
 
 A single-pass candidate that does not qualify is simply not adopted; it does not block Core 1.0.
 
+A persisted multi-model cohort is citable only when its `cohort_id` matches the content-derived identity of its exact scenario-set/scenario identity, ordered member labels and manifests, and member execution IDs. The cohort persistence boundary recomputes that identity and rejects a caller-supplied mismatch before writing an artifact.
+
 ## Ownership
 
 #1533 owns topology/pass semantics and provider-neutral request semantics.
