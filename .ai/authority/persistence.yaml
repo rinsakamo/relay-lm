@@ -13,6 +13,7 @@ tests:
 - tests/unit/test_character_directory.py
 - tests/unit/test_event_snapshot_cache.py
 - tests/unit/test_event_discovery_index.py
+- tests/unit/test_state_persistence_source_integrity.py
 depends_on:
 - core_architecture
 - state_and_validation
