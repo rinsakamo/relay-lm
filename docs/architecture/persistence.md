@@ -36,6 +36,7 @@ The current filesystem implementation intentionally keeps a small, strict contra
 - Event IDs are unique within one `events.jsonl`; a later record that repeats an earlier Event ID is malformed persisted authority and loading fails closed at that duplicate line;
 - a missing `events.jsonl` is treated as an empty Event Journal;
 - malformed Event JSON, malformed Event shape, malformed config, or malformed State fails closed rather than being silently repaired;
+- duplicate JSON object member names anywhere within one Event line are malformed persisted authority and loading fails closed at that line rather than choosing one duplicate value;
 - Event Journal load and RelayLM-owned append use strict standard-JSON numeric semantics: non-finite constants such as `NaN` and positive or negative infinity are rejected rather than rehydrated or emitted;
 - within one `CharacterDirectory` process, a successfully validated Event Journal snapshot may be reused while the authoritative file signature is unchanged;
 - RelayLM-owned successful `append_event` calls incrementally extend an already-valid process-local snapshot when the post-append authoritative file signature can be refreshed, while detected external file changes invalidate the snapshot and force authoritative JSONL revalidation;
