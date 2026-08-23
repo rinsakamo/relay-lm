@@ -64,7 +64,7 @@ Requested reasoning is never promoted to applied capability merely because it wa
   -> exact vLLM request
 ```
 
-A completed condition-bound result can be written as immutable execution evidence. Same-ID/different-evidence replacement is rejected; a genuine rerun uses a distinct replicate identity.
+A completed condition-bound result can be written as immutable execution evidence. Persistence recomputes the content-derived vLLM `binding_id`, nested generic scenario `execution_id`, and outer vLLM `execution_id`, and rejects any mismatch before writing. Same-ID/different-evidence replacement is rejected; a genuine rerun uses a distinct replicate identity.
 
 ## Current Core 1.0 screening order
 
