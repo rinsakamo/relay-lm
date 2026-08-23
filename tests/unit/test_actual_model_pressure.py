@@ -56,6 +56,7 @@ def _manifest(
         "state_candidates",
         "continuity_candidates",
     ),
+    replicate_id: str = "0",
 ) -> ActualModelRunManifest:
     return ActualModelRunManifest(
         relaylm_commit="7f442ad203b74bb0bcac29258a02a425a6cf6e29",
@@ -76,11 +77,11 @@ def _manifest(
             lifetime_revisions=3,
         ),
         provider_capabilities=capabilities,
-        replicate_id="0",
+        replicate_id=replicate_id,
     )
 
 
-def _baseline_manifest() -> ActualModelRunManifest:
+def _baseline_manifest(*, replicate_id: str = "0") -> ActualModelRunManifest:
     return _manifest(
         condition_id="baseline",
         budgets=ExplicitBudgetConfiguration(
@@ -89,10 +90,11 @@ def _baseline_manifest() -> ActualModelRunManifest:
             event_max_events=8,
             event_max_chars=4000,
         ),
+        replicate_id=replicate_id,
     )
 
 
-def _pressure_manifest() -> ActualModelRunManifest:
+def _pressure_manifest(*, replicate_id: str = "0") -> ActualModelRunManifest:
     return _manifest(
         condition_id="pressure",
         budgets=ExplicitBudgetConfiguration(
@@ -101,6 +103,7 @@ def _pressure_manifest() -> ActualModelRunManifest:
             event_max_events=1,
             event_max_chars=500,
         ),
+        replicate_id=replicate_id,
     )
 
 
@@ -344,6 +347,56 @@ def test_pressure_writer_rejects_tampered_derived_observations(
     with pytest.raises(
         ActualModelPressureArtifactError,
         match="derived observations do not match embedded evidence",
+    ):
+        write_actual_model_scenario_pressure_comparison(
+            comparison=forged,
+            artifact_root=artifact_root,
+        )
+
+    assert not artifact_root.exists()
+
+
+def test_pressure_writer_rejects_condition_evidence_from_another_valid_replicate(
+    tmp_path: Path,
+) -> None:
+    scenario_set = load_actual_model_scenario_set(_SCENARIO_SET_PATH)
+    first = asyncio.run(
+        run_actual_model_scenario_pressure_comparison(
+            scenario_set=scenario_set,
+            scenario_id="cognitive-pressure-shared-semantics-v1",
+            fixture_root=_FIXTURE_ROOT,
+            workspace_root=tmp_path / "replicate-0",
+            baseline_provider=_Provider("baseline-0"),
+            pressure_provider=_Provider("pressure-0"),
+            baseline_manifest=_baseline_manifest(replicate_id="0"),
+            pressure_manifest=_pressure_manifest(replicate_id="0"),
+        )
+    )
+    second = asyncio.run(
+        run_actual_model_scenario_pressure_comparison(
+            scenario_set=scenario_set,
+            scenario_id="cognitive-pressure-shared-semantics-v1",
+            fixture_root=_FIXTURE_ROOT,
+            workspace_root=tmp_path / "replicate-1",
+            baseline_provider=_Provider("baseline-1"),
+            pressure_provider=_Provider("pressure-1"),
+            baseline_manifest=_baseline_manifest(replicate_id="1"),
+            pressure_manifest=_pressure_manifest(replicate_id="1"),
+        )
+    )
+    foreign_comparison = replace(
+        second.comparison,
+        comparison_id=first.comparison.comparison_id,
+    )
+    forged = replace(first, comparison=foreign_comparison)
+    assert forged.pressure_comparison_id == first.pressure_comparison_id
+    assert forged.comparison.baseline.manifest != forged.baseline_plan.manifest
+    assert forged.comparison.pressure.manifest != forged.pressure_plan.manifest
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(
+        ActualModelPressureArtifactError,
+        match="condition comparison does not match pressure plans",
     ):
         write_actual_model_scenario_pressure_comparison(
             comparison=forged,
