@@ -133,6 +133,11 @@ class ContinuityContext:
             raise TypeError("continuity items must contain ContinuityItem values")
         if len(self.items) > self.max_items:
             raise ValueError("continuity item count exceeds max_items")
+        lifecycle_keys: set[str] = set()
+        for item in self.items:
+            if item.key in lifecycle_keys:
+                raise ValueError(f"duplicate continuity lifecycle key: {item.key}")
+            lifecycle_keys.add(item.key)
         if any(item.accepted_revision > self.revision for item in self.items):
             raise ValueError("continuity item cannot be accepted after context revision")
         if any(item.expires_revision <= self.revision for item in self.items):
