@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
+from ipaddress import IPv6Address
 from types import MappingProxyType
 from urllib.parse import urlsplit
 
@@ -96,6 +97,18 @@ def _validate_server_configuration(resolved: ResolvedRuntimeConfig) -> None:
                 "whitespace or URL path/query/fragment syntax"
             ),
         )
+    if ":" in host:
+        try:
+            IPv6Address(host)
+        except ValueError as exc:
+            raise RuntimePreflightError(
+                RuntimeConfigErrorCode.INVALID_VALUE,
+                field="server.host",
+                message=(
+                    "server bind host must not include a port; colon-bearing values "
+                    "must be valid IPv6 address literals"
+                ),
+            ) from exc
 
 
 def _validate_provider_configuration(resolved: ResolvedRuntimeConfig) -> None:
