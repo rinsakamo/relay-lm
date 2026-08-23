@@ -36,6 +36,7 @@ tests:
 - tests/unit/test_openai_compatible_single_pass_structure_ownership.py
 - tests/unit/test_openai_compatible_shadow_two_pass.py
 - tests/unit/test_cognition_two_pass_turn.py
+- tests/unit/test_two_pass_stale_disposition.py
 - tests/unit/test_cognition_two_pass_guards.py
 - tests/unit/test_cognition_two_pass_continuity_guard.py
 - tests/unit/test_two_pass_continuity_turn_clock.py
