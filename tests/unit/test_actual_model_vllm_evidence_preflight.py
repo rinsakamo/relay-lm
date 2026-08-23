@@ -187,7 +187,7 @@ def test_screening_facade_can_bind_fresh_external_capacity_without_rewriting_pla
             "--operation",
             "screening",
             "--condition",
-            "B",
+            "reference_baseline",
             "--model-runner",
             "v2",
             "--repo-root",
@@ -209,6 +209,7 @@ def test_screening_facade_can_bind_fresh_external_capacity_without_rewriting_pla
 
     assert result == 0
     prepared = observed["prepare"]
+    assert prepared["condition_id"] == "B"
     assert prepared["plan"].capacity_evidence_id == fresh_capacity_id
     assert prepared["capacity_evidence_root"] == str(capacity_root)
     assert canonical_plan.capacity_evidence_id == canonical_capacity_id

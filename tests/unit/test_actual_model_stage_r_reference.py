@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from relaylm.actual_model_fast_screening import reference_screening_condition_ids
+from relaylm.actual_model_fast_screening import (
+    REFERENCE_BASELINE_ROLE,
+    reference_screening_condition_roles,
+    screening_condition_key_for_role,
+)
 from relaylm.actual_model_scenarios import load_actual_model_scenario_set
 from relaylm.actual_model_vllm_capacity import (
     load_vllm_runtime_capacity_evidence,
@@ -35,6 +39,7 @@ def test_stage_r_reference_plan_is_separate_from_immutable_historical_plan() -> 
     assert historical.screening_id == "cogp5-vllm-screening-v1"
     assert historical.effective_context_window == 1024
     assert historical.capacity_evidence_id is None
+    assert tuple(historical.conditions) == ("A", "B", "C")
     assert current.screening_id == "stage-r0-vllm-reference-v1"
     assert current.target_id == "gemma-4-12b-it-qat-w4a16-google-vllm-v1"
     assert current.effective_context_window == 1616
@@ -43,10 +48,18 @@ def test_stage_r_reference_plan_is_separate_from_immutable_historical_plan() -> 
         "response-persona-correction-v1",
         "continuity-lifecycle-v1",
     )
-    assert reference_screening_condition_ids(current) == ("B",)
-    assert current.conditions["B"].cognition_execution.mode == "two_pass"
-    assert current.conditions["B"].pass_requests.pass1.reasoning_mode.value == "off"
-    assert current.conditions["B"].pass_requests.pass2.reasoning_mode.value == "off"
+    assert reference_screening_condition_roles(current) == (REFERENCE_BASELINE_ROLE,)
+    reference_key = screening_condition_key_for_role(current, REFERENCE_BASELINE_ROLE)
+    assert reference_key == "B"
+    assert current.conditions[reference_key].cognition_execution.mode == "two_pass"
+    assert (
+        current.conditions[reference_key].pass_requests.pass1.reasoning_mode.value
+        == "off"
+    )
+    assert (
+        current.conditions[reference_key].pass_requests.pass2.reasoning_mode.value
+        == "off"
+    )
 
 
 def test_stage_r_reference_cites_complete_v3_v2_capacity_artifact() -> None:
@@ -70,8 +83,9 @@ def test_stage_r_reference_cites_complete_v3_v2_capacity_artifact() -> None:
     scenario_set = load_actual_model_scenario_set(
         _ROOT / CANONICAL_SCENARIO_SET_PATH
     )
+    reference_key = screening_condition_key_for_role(current, REFERENCE_BASELINE_ROLE)
     required_coverage = _required_capacity_coverage(
-        condition=current.conditions["B"],
+        condition=current.conditions[reference_key],
         scenario_set=scenario_set,
         scenario_ids=current.scenario_ids,
     )
@@ -99,7 +113,8 @@ def test_stage_r_reference_cites_complete_v3_v2_capacity_artifact() -> None:
     assert artifact.maximum_observed_input_tokens == 1533
     assert current.effective_context_window == 1616
     assert artifact.observed_max_model_len == 1616
-    assert reference_screening_condition_ids(current) == ("B",)
+    assert reference_screening_condition_roles(current) == (REFERENCE_BASELINE_ROLE,)
+    assert artifact.footprints[0].condition_id == current.conditions[reference_key].condition_id
 
 
 def test_stage_r_coverage_ledger_keeps_pilot_and_follow_up_explicit() -> None:

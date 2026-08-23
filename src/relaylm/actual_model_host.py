@@ -10,6 +10,10 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Sequence
 
+from relaylm.actual_model_fast_screening import (
+    SCREENING_CONDITION_ROLES,
+    screening_condition_key_for_role,
+)
 from relaylm.actual_model_fast_screening_artifacts import (
     FastScreeningTimingArtifact,
     FastScreeningTurnTiming,
@@ -61,8 +65,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _main_vllm(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Run one canonical serial COGP5 vLLM condition either as capacity "
-            "acquisition or as capacity-gated product screening."
+            "Run one current Stage R vLLM role either as capacity acquisition "
+            "or as capacity-gated product screening."
         )
     )
     parser.add_argument(
@@ -70,7 +74,12 @@ def _main_vllm(argv: Sequence[str]) -> int:
         choices=("screening", "capacity"),
         default="screening",
     )
-    parser.add_argument("--condition", required=True, choices=("A", "B", "C"))
+    parser.add_argument(
+        "--condition",
+        required=True,
+        choices=SCREENING_CONDITION_ROLES,
+        help="Current Stage R semantic role; historical A/B/C coordinates are internal.",
+    )
     parser.add_argument("--repo-root", required=True)
     parser.add_argument("--snapshot-root", required=True)
     parser.add_argument("--provider-base-url", required=True)
@@ -85,12 +94,14 @@ def _main_vllm(argv: Sequence[str]) -> int:
     args = parser.parse_args(argv)
 
     repo_root = Path(args.repo_root).resolve()
+    condition_role = args.condition
     try:
         relaylm_commit = _current_repo_head(repo_root)
         api_key = _resolve_api_key(args.provider_api_key_env)
         plan = load_vllm_screening_plan(
             repo_root / CANONICAL_VLLM_SCREENING_PLAN_PATH
         )
+        condition_key = screening_condition_key_for_role(plan, condition_role)
         capacity_override = (
             args.capacity_evidence_id is not None
             or args.capacity_evidence_root is not None
@@ -106,7 +117,7 @@ def _main_vllm(argv: Sequence[str]) -> int:
                 )
             prepared = _prepare_vllm_capacity_acquisition(
                 plan=plan,
-                condition_id=args.condition,
+                condition_id=condition_key,
                 proof_path=repo_root / CANONICAL_VLLM_REASONING_PROOF_PATH,
                 repo_root=repo_root,
                 snapshot_root=args.snapshot_root,
@@ -125,7 +136,11 @@ def _main_vllm(argv: Sequence[str]) -> int:
                     )
                 )
             except VLLMCapacityAcquisitionFailure as exc:
-                _print_capacity_failure(prepared=prepared, failure=exc)
+                _print_capacity_failure(
+                    prepared=prepared,
+                    failure=exc,
+                    condition_role=condition_role,
+                )
                 return 2
             print(
                 json.dumps(
@@ -134,7 +149,7 @@ def _main_vllm(argv: Sequence[str]) -> int:
                         "suite": prepared.plan.screening_id,
                         "backend": "vllm",
                         "operation": "capacity",
-                        "condition": prepared.screening_condition_id,
+                        "condition": condition_role,
                         "relaylm_commit": prepared.manifest.relaylm_commit,
                         "target_id": prepared.target.target_id,
                         "replicate_id": prepared.manifest.replicate_id,
@@ -166,7 +181,7 @@ def _main_vllm(argv: Sequence[str]) -> int:
         )
         prepared = _prepare_vllm_screening_condition(
             plan=plan,
-            condition_id=args.condition,
+            condition_id=condition_key,
             proof_path=repo_root / CANONICAL_VLLM_REASONING_PROOF_PATH,
             repo_root=repo_root,
             snapshot_root=args.snapshot_root,
@@ -206,7 +221,7 @@ def _main_vllm(argv: Sequence[str]) -> int:
                 "suite": prepared.plan.screening_id,
                 "backend": "vllm",
                 "operation": "screening",
-                "condition": prepared.screening_condition_id,
+                "condition": condition_role,
                 "relaylm_commit": prepared.manifest.relaylm_commit,
                 "target_id": prepared.target.target_id,
                 "replicate_id": prepared.manifest.replicate_id,
@@ -315,13 +330,18 @@ def _load_screening_timing_summary_evidence(
     return artifact
 
 
-def _print_capacity_failure(*, prepared, failure: VLLMCapacityAcquisitionFailure) -> None:
+def _print_capacity_failure(
+    *,
+    prepared,
+    failure: VLLMCapacityAcquisitionFailure,
+    condition_role: str,
+) -> None:
     mapping: dict[str, object] = {
         "format_version": 1,
         "suite": prepared.plan.screening_id,
         "backend": "vllm",
         "operation": "capacity",
-        "condition": prepared.screening_condition_id,
+        "condition": condition_role,
         "relaylm_commit": prepared.manifest.relaylm_commit,
         "target_id": prepared.target.target_id,
         "replicate_id": prepared.manifest.replicate_id,

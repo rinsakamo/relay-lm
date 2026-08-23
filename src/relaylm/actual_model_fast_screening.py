@@ -19,6 +19,17 @@ from relaylm.cognition_execution import (
 
 ScreeningPhase = Literal["single_pass", "pass1", "pass2"]
 ScreeningCallOutcome = Literal["completed", "failed"]
+ScreeningConditionRole = Literal[
+    "reference_baseline",
+    "pass2_reasoning_escalation",
+]
+
+REFERENCE_BASELINE_ROLE: ScreeningConditionRole = "reference_baseline"
+PASS2_REASONING_ESCALATION_ROLE: ScreeningConditionRole = "pass2_reasoning_escalation"
+SCREENING_CONDITION_ROLES: tuple[ScreeningConditionRole, ...] = (
+    REFERENCE_BASELINE_ROLE,
+    PASS2_REASONING_ESCALATION_ROLE,
+)
 
 
 class ActualModelFastScreeningError(ValueError):
@@ -93,67 +104,48 @@ class ScreeningTimingRecorder:
         }
 
 
-def reference_screening_condition_ids(plan: VLLMScreeningPlan) -> tuple[str]:
-    """Return only the two-pass OFF/OFF baseline for Core 1.0 qualification."""
+def screening_condition_key_for_role(
+    plan: VLLMScreeningPlan,
+    role: ScreeningConditionRole,
+) -> str:
+    """Resolve one current Stage R role to an immutable plan coordinate."""
 
-    _require_reference_plan(plan)
-    baseline = plan.conditions["B"]
-    if baseline.cognition_execution.mode != "two_pass":
+    if not isinstance(plan, VLLMScreeningPlan):
+        raise TypeError("plan must be VLLMScreeningPlan")
+    if role not in SCREENING_CONDITION_ROLES:
         raise ActualModelFastScreeningError(
-            "reference condition B must be two_pass"
+            f"unsupported Stage R screening role: {role}"
         )
-    if baseline.pass_requests.pass1 is None or baseline.pass_requests.pass2 is None:
-        raise ActualModelFastScreeningError(
-            "reference condition B requires pass1 and pass2 requests"
-        )
-    _require_reasoning_off(baseline.pass_requests.pass1, "B.pass1")
-    _require_reasoning_off(baseline.pass_requests.pass2, "B.pass2")
-    return ("B",)
+
+    baseline_key = _reference_baseline_key(plan)
+    if role == REFERENCE_BASELINE_ROLE:
+        return baseline_key
+    return _pass2_reasoning_escalation_key(plan, baseline_key=baseline_key)
 
 
-def reasoning_escalation_condition_ids(
+def reference_screening_condition_roles(
+    plan: VLLMScreeningPlan,
+) -> tuple[ScreeningConditionRole]:
+    """Expose the two-pass OFF/OFF reference without historical plan labels."""
+
+    screening_condition_key_for_role(plan, REFERENCE_BASELINE_ROLE)
+    return (REFERENCE_BASELINE_ROLE,)
+
+
+def reasoning_escalation_condition_roles(
     plan: VLLMScreeningPlan,
     *,
     pass2_semantic_quality_sufficient: bool,
-) -> tuple[str, ...]:
-    """Expose only Pass 2 escalation after the two-pass baseline shows semantic need."""
+) -> tuple[ScreeningConditionRole, ...]:
+    """Expose Pass 2 escalation only after the reference shows semantic need."""
 
     if not isinstance(pass2_semantic_quality_sufficient, bool):
         raise TypeError("pass2_semantic_quality_sufficient must be bool")
-    reference_screening_condition_ids(plan)
+    screening_condition_key_for_role(plan, REFERENCE_BASELINE_ROLE)
     if pass2_semantic_quality_sufficient:
         return ()
-
-    baseline = plan.conditions["B"]
-    escalation = plan.conditions["C"]
-    if escalation.cognition_execution.mode != "two_pass":
-        raise ActualModelFastScreeningError(
-            "reasoning escalation condition C must be two_pass"
-        )
-    if escalation.pass_requests.pass1 is None or escalation.pass_requests.pass2 is None:
-        raise ActualModelFastScreeningError("condition C requires pass1 and pass2")
-    if baseline.pass_requests.pass1 != escalation.pass_requests.pass1:
-        raise ActualModelFastScreeningError(
-            "reasoning escalation must keep Pass 1 identical to the two-pass baseline"
-        )
-
-    baseline_pass2 = baseline.pass_requests.pass2
-    escalation_pass2 = escalation.pass_requests.pass2
-    assert baseline_pass2 is not None
-    _require_reasoning_off(baseline_pass2, "B.pass2")
-    if escalation_pass2.reasoning_mode in {None, CognitionReasoningMode.OFF}:
-        raise ActualModelFastScreeningError(
-            "condition C must add an explicit non-off Pass 2 reasoning condition"
-        )
-    if (
-        baseline_pass2.temperature != escalation_pass2.temperature
-        or baseline_pass2.top_p != escalation_pass2.top_p
-        or baseline_pass2.max_output_tokens != escalation_pass2.max_output_tokens
-    ):
-        raise ActualModelFastScreeningError(
-            "reasoning escalation may not drift unrelated Pass 2 decoding controls"
-        )
-    return ("C",)
+    screening_condition_key_for_role(plan, PASS2_REASONING_ESCALATION_ROLE)
+    return (PASS2_REASONING_ESCALATION_ROLE,)
 
 
 def instrument_screening_provider(
@@ -299,15 +291,68 @@ class _TimedScreeningProvider:
             )
 
 
-def _require_reference_plan(plan: VLLMScreeningPlan) -> None:
-    if not isinstance(plan, VLLMScreeningPlan):
-        raise TypeError("plan must be VLLMScreeningPlan")
-    missing = tuple(key for key in ("B", "C") if key not in plan.conditions)
-    if missing:
+def _reference_baseline_key(plan: VLLMScreeningPlan) -> str:
+    candidates: list[str] = []
+    for key, condition in plan.conditions.items():
+        if condition.cognition_execution.mode != "two_pass":
+            continue
+        pass1 = condition.pass_requests.pass1
+        pass2 = condition.pass_requests.pass2
+        if pass1 is None or pass2 is None:
+            continue
+        if _is_reasoning_off(pass1) and _is_reasoning_off(pass2):
+            candidates.append(key)
+    if len(candidates) != 1:
         raise ActualModelFastScreeningError(
-            "two-pass reference screening requires conditions: "
-            + ", ".join(missing)
+            "Stage R requires exactly one two-pass reasoning-off reference baseline"
         )
+    return candidates[0]
+
+
+def _pass2_reasoning_escalation_key(
+    plan: VLLMScreeningPlan,
+    *,
+    baseline_key: str,
+) -> str:
+    baseline = plan.conditions[baseline_key]
+    baseline_pass1 = baseline.pass_requests.pass1
+    baseline_pass2 = baseline.pass_requests.pass2
+    assert baseline_pass1 is not None
+    assert baseline_pass2 is not None
+    _require_reasoning_off(baseline_pass1, f"{baseline_key}.pass1")
+    _require_reasoning_off(baseline_pass2, f"{baseline_key}.pass2")
+
+    candidates: list[str] = []
+    for key, condition in plan.conditions.items():
+        if key == baseline_key or condition.cognition_execution.mode != "two_pass":
+            continue
+        pass1 = condition.pass_requests.pass1
+        pass2 = condition.pass_requests.pass2
+        if pass1 is None or pass2 is None:
+            continue
+        if pass1 != baseline_pass1:
+            continue
+        if pass2.reasoning_mode in {None, CognitionReasoningMode.OFF}:
+            continue
+        if (
+            baseline_pass2.temperature != pass2.temperature
+            or baseline_pass2.top_p != pass2.top_p
+            or baseline_pass2.max_output_tokens != pass2.max_output_tokens
+        ):
+            continue
+        candidates.append(key)
+    if len(candidates) != 1:
+        raise ActualModelFastScreeningError(
+            "Stage R requires exactly one Pass 2-only reasoning escalation condition"
+        )
+    return candidates[0]
+
+
+def _is_reasoning_off(request: CognitionPassRequest) -> bool:
+    return (
+        request.reasoning_mode is CognitionReasoningMode.OFF
+        and request.reasoning_budget is None
+    )
 
 
 def _require_reasoning_off(request: CognitionPassRequest, label: str) -> None:
