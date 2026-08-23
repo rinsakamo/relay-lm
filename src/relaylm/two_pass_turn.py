@@ -5,7 +5,13 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
+from relaylm.budget_enforcement import evaluate_serialized_input_fit
+from relaylm.budget_runtime import (
+    CognitiveBudgetRuntimeConfig,
+    TwoPassCognitiveBudgetRuntimeConfig,
+    TwoPassSerializedInputTokenCounter,
+)
+from relaylm.cognitive import CognitiveInput
 from relaylm.cognition_execution import (
     CognitionConversationOutput,
     CognitionExtractionInput,
@@ -120,6 +126,20 @@ class CognitionExecutionRuntime:
         return len(self._pending_extractions)
 
 
+@dataclass(frozen=True, slots=True)
+class _ConversationBudgetTokenCounter:
+    """Adapt the exact Pass 1 serializer to the existing #1387 enforcement loop."""
+
+    token_counter: TwoPassSerializedInputTokenCounter
+    pass_request: CognitionPassRequest | None
+
+    def count_serialized_input(self, cognitive_input: CognitiveInput):
+        return self.token_counter.count_conversation_input(
+            cognitive_input,
+            pass_request=self.pass_request,
+        )
+
+
 async def run_user_turn_two_pass(
     *,
     character: CharacterDirectory,
@@ -129,7 +149,7 @@ async def run_user_turn_two_pass(
     memory_budget: MemoryRetrievalBudget | None = None,
     event_budget: EventRetrievalBudget | None = None,
     continuity_runtime: ContinuityRuntime | None = None,
-    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
+    cognitive_budget: TwoPassCognitiveBudgetRuntimeConfig | None = None,
     pass1_request: CognitionPassRequest | None = None,
     pass2_request: CognitionPassRequest | None = None,
 ) -> TwoPassTurnResult:
@@ -137,6 +157,7 @@ async def run_user_turn_two_pass(
 
     generate_conversation = _require_two_pass_provider(provider, streaming=False)
     _require_execution_runtime(execution_runtime)
+    _require_two_pass_budget(cognitive_budget)
     if pass1_request is not None and not isinstance(pass1_request, CognitionPassRequest):
         raise TypeError("pass1_request must be CognitionPassRequest or None")
     if pass2_request is not None and not isinstance(pass2_request, CognitionPassRequest):
@@ -154,6 +175,7 @@ async def run_user_turn_two_pass(
             event_budget=event_budget,
             continuity_runtime=continuity_runtime,
             cognitive_budget=cognitive_budget,
+            pass1_request=pass1_request,
         )
         async with execution_runtime._authority_lock:
             execution_runtime._bind_turn(
@@ -189,6 +211,7 @@ async def run_user_turn_two_pass(
             continuity_runtime=continuity_runtime,
             execution_runtime=execution_runtime,
             execution_revision=execution_revision,
+            cognitive_budget=cognitive_budget,
             pass_request=pass2_request,
         )
 
@@ -210,7 +233,7 @@ async def run_user_turn_two_pass_streaming(
     memory_budget: MemoryRetrievalBudget | None = None,
     event_budget: EventRetrievalBudget | None = None,
     continuity_runtime: ContinuityRuntime | None = None,
-    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
+    cognitive_budget: TwoPassCognitiveBudgetRuntimeConfig | None = None,
     pass1_request: CognitionPassRequest | None = None,
     pass2_request: CognitionPassRequest | None = None,
 ) -> TwoPassTurnResult:
@@ -218,6 +241,7 @@ async def run_user_turn_two_pass_streaming(
 
     stream_generate_conversation = _require_two_pass_provider(provider, streaming=True)
     _require_execution_runtime(execution_runtime)
+    _require_two_pass_budget(cognitive_budget)
     if pass1_request is not None and not isinstance(pass1_request, CognitionPassRequest):
         raise TypeError("pass1_request must be CognitionPassRequest or None")
     if pass2_request is not None and not isinstance(pass2_request, CognitionPassRequest):
@@ -235,6 +259,7 @@ async def run_user_turn_two_pass_streaming(
             event_budget=event_budget,
             continuity_runtime=continuity_runtime,
             cognitive_budget=cognitive_budget,
+            pass1_request=pass1_request,
         )
         async with execution_runtime._authority_lock:
             execution_runtime._bind_turn(
@@ -275,6 +300,7 @@ async def run_user_turn_two_pass_streaming(
             continuity_runtime=continuity_runtime,
             execution_runtime=execution_runtime,
             execution_revision=execution_revision,
+            cognitive_budget=cognitive_budget,
             pass_request=pass2_request,
         )
 
@@ -293,7 +319,8 @@ def _prepare_two_pass_user_turn(
     memory_budget: MemoryRetrievalBudget | None,
     event_budget: EventRetrievalBudget | None,
     continuity_runtime: ContinuityRuntime | None,
-    cognitive_budget: CognitiveBudgetRuntimeConfig | None,
+    cognitive_budget: TwoPassCognitiveBudgetRuntimeConfig | None,
+    pass1_request: CognitionPassRequest | None,
 ):
     if cognitive_budget is None:
         user_event, state, cognitive_input, _ = _prepare_user_turn(
@@ -310,11 +337,19 @@ def _prepare_two_pass_user_turn(
         memory_budget=memory_budget,
         event_budget=event_budget,
     )
+    pass1_budget = CognitiveBudgetRuntimeConfig(
+        total=cognitive_budget.pass1_total,
+        policy=cognitive_budget.policy,
+        token_counter=_ConversationBudgetTokenCounter(
+            token_counter=cognitive_budget.token_counter,
+            pass_request=pass1_request,
+        ),
+    )
     return _prepare_budgeted_user_turn(
         character=character,
         content=content,
         continuity_runtime=continuity_runtime,
-        cognitive_budget=cognitive_budget,
+        cognitive_budget=pass1_budget,
     )
 
 
@@ -349,13 +384,14 @@ def _schedule_extraction(
     *,
     character: CharacterDirectory,
     provider: TwoPassCognitiveProvider,
-    cognitive_input,
+    cognitive_input: CognitiveInput,
     assistant_response: str,
     origin_state: CanonicalState,
     origin_continuity: ContinuityContext | None,
     continuity_runtime: ContinuityRuntime | None,
     execution_runtime: CognitionExecutionRuntime,
     execution_revision: int,
+    cognitive_budget: TwoPassCognitiveBudgetRuntimeConfig | None,
     pass_request: CognitionPassRequest | None = None,
 ) -> asyncio.Task[TwoPassExtractionResult]:
     task = asyncio.create_task(
@@ -371,6 +407,7 @@ def _schedule_extraction(
             continuity_runtime=continuity_runtime,
             execution_runtime=execution_runtime,
             execution_revision=execution_revision,
+            cognitive_budget=cognitive_budget,
             pass_request=pass_request,
         )
     )
@@ -388,10 +425,28 @@ async def _complete_extraction(
     continuity_runtime: ContinuityRuntime | None,
     execution_runtime: CognitionExecutionRuntime,
     execution_revision: int,
+    cognitive_budget: TwoPassCognitiveBudgetRuntimeConfig | None,
     pass_request: CognitionPassRequest | None = None,
 ) -> TwoPassExtractionResult:
     event_id = extraction_input.originating_event_id
     try:
+        if cognitive_budget is not None:
+            count = cognitive_budget.token_counter.count_extraction_input(
+                extraction_input,
+                pass_request=pass_request,
+            )
+            fit = evaluate_serialized_input_fit(
+                config=cognitive_budget.pass2_total,
+                count=count,
+            )
+            if not fit.fits:
+                return TwoPassExtractionResult(
+                    status=TwoPassExtractionStatus.FAILED,
+                    originating_event_id=event_id,
+                    state=origin_state,
+                    failure_reason="pass2_budget_exceeded",
+                )
+
         if pass_request is None:
             output = await provider.generate_extraction(extraction_input)
         else:
@@ -498,3 +553,12 @@ def _require_two_pass_provider(provider: object, *, streaming: bool):
 def _require_execution_runtime(runtime: object) -> None:
     if not isinstance(runtime, CognitionExecutionRuntime):
         raise TypeError("execution_runtime must be CognitionExecutionRuntime")
+
+
+def _require_two_pass_budget(
+    budget: TwoPassCognitiveBudgetRuntimeConfig | None,
+) -> None:
+    if budget is not None and not isinstance(budget, TwoPassCognitiveBudgetRuntimeConfig):
+        raise TypeError(
+            "cognitive_budget must be TwoPassCognitiveBudgetRuntimeConfig or None"
+        )

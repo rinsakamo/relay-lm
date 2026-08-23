@@ -249,6 +249,10 @@ reserve process-local execution revision
         ↓
 prepare + bind originating User Event / CognitiveInput
         ↓
+if explicit two-pass cognitive budget exists:
+  count exact Pass 1 conversation serialization with resolved Pass 1 request
+  apply existing deterministic #1387 degradation until fit or bounded failure
+        ↓
 Pass 1 conversation generation
         ↓
 accept complete non-empty response
@@ -261,6 +265,12 @@ if ContinuityRuntime exists:
 return response-first TwoPassTurnResult
         └──────── background ────────┐
                                      ↓
+                          construct exact CognitionExtractionInput
+                                     ↓
+                     if explicit two-pass cognitive budget exists:
+                       count exact Pass 2 extraction serialization
+                       with resolved Pass 2 request before provider delegation
+                                     ↓
                           Pass 2 structured extraction
                                      ↓
                          StateCandidate[] / ContinuityCandidate[]
@@ -270,6 +280,10 @@ return response-first TwoPassTurnResult
                   State validation + Continuity candidate application
                   at the already-advanced revision; no second lifecycle advance
 ```
+
+When two-pass cognitive budget enforcement is configured, RelayLM must count the exact Pass 1 conversation serialization with the same resolved Pass 1 request that is supplied to conversation generation. Pass 1 retains the existing #1387 deterministic degradation and fail-before-generation semantics; it does not substitute the historical combined single-pass serialization.
+
+After the accepted Pass 1 response exists, RelayLM constructs the real `CognitionExtractionInput` and must count the exact Pass 2 extraction serialization with the same resolved Pass 2 request before provider delegation. Pass 2 does not run a second degradation policy or silently rewrite the originating cognitive input. If the exact extraction request does not fit its explicit total-context/output-reserve equation, the extraction ends locally as `failed` with bounded reason `pass2_budget_exceeded` and the extraction provider is not called.
 
 The same provider object is reused sequentially. Pass 2 receives the originating `CognitiveInput` plus the Pass 1 response as interpretive context only. The assistant response is not a source Event and cannot self-certify user or external facts.
 
@@ -340,7 +354,7 @@ An assistant response therefore remains useful for future conversational continu
 
 Single-pass streaming does not create a second semantic output form. Provider wire `utterance` deltas are delivery fragments only; the final complete structured result normalizes into one `CognitiveOutput`.
 
-Two-pass streaming exposes only Pass 1 conversation deltas. A complete valid `CognitionConversationOutput` is required before the Assistant Event is persisted, the configured Continuity lifecycle advances once, and Pass 2 is scheduled. Pass 2 does not create a second visible response.
+Two-pass streaming exposes only Pass 1 conversation deltas. A complete valid `CognitionConversationOutput` is required before the Assistant Event is persisted, the configured Continuity lifecycle advances once, and Pass 2 is scheduled. Pass 2 does not create a second visible response. When a two-pass cognitive budget is configured, buffered and streaming paths use the same resolved Pass 1 / Pass 2 requests for both exact counting and provider delegation.
 
 ## Failure semantics
 
@@ -376,7 +390,7 @@ If a completed single-pass output contains non-empty ContinuityCandidates withou
 
 ### Two-pass Pass 1 failure
 
-A two-pass Pass 1 failure follows the same response-acceptance rule as the corresponding buffered or streaming conversation path: the User Event may already exist, but no Assistant Event, no successful-turn Continuity lifecycle advance, and no Pass 2 extraction is created unless the complete Pass 1 conversation output is valid.
+A two-pass Pass 1 failure follows the same response-acceptance rule as the corresponding buffered or streaming conversation path: the User Event may already exist, but no Assistant Event, no successful-turn Continuity lifecycle advance, and no Pass 2 extraction is created unless the complete Pass 1 conversation output is valid. A Pass 1 cognitive-budget overflow follows #1387 fail-before-generation semantics, so the conversation provider is not called.
 
 ### Two-pass Pass 2 failure
 
@@ -392,7 +406,7 @@ Pass 2 Continuity proposals             not applied
 successful-turn Continuity lifecycle revision / expiry remains
 ```
 
-A failed or stale Pass 2 applies no proposal-driven Continuity mutation. A provider exception, malformed extraction output, or other Pass 2 execution failure becomes `failed` with bounded reason `pass2_failed`; semantic exception text is not returned as authority or diagnostics payload. The successfully completed conversation's already-owned Continuity lifecycle revision and any due expiry are not rolled back by that extraction failure.
+A failed or stale Pass 2 applies no proposal-driven Continuity mutation. A provider exception, malformed extraction output, or other Pass 2 execution failure becomes `failed` with bounded reason `pass2_failed`; semantic exception text is not returned as authority or diagnostics payload. A local exact-capacity failure before Pass 2 provider delegation becomes `failed` with bounded reason `pass2_budget_exceeded`. In either failure case, the successfully completed conversation's already-owned Continuity lifecycle revision and any due expiry are not rolled back.
 
 If Pass 2 emits Continuity proposals without an explicit Continuity runtime, the extraction becomes `failed` with `continuity_runtime_required` before State mutation. The State and Continuity proposal channels therefore cannot partially commit across that failure.
 

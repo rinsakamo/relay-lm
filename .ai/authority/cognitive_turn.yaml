@@ -46,6 +46,8 @@ tests:
 - tests/unit/test_continuity_turn.py
 - tests/unit/test_cognitive_budget_turn_wiring.py
 - tests/unit/test_cognitive_budget_turn_diagnostics.py
+- tests/unit/test_two_pass_cognitive_budget.py
+- tests/unit/test_two_pass_cognitive_budget_authority.py
 - tests/unit/test_turn_memory_retrieval.py
 - tests/unit/test_turn_event_retrieval.py
 - tests/unit/test_turn_retrieval_diagnostics.py
