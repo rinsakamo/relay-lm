@@ -37,6 +37,46 @@ def test_event_journal_load_rejects_non_standard_numeric_constants(
         tuple(character.iter_events())
 
 
+@pytest.mark.parametrize(
+    "event_json",
+    [
+        (
+            "{"
+            '"id":"event-1",'
+            '"type":"message",'
+            '"actor":"assistant",'
+            '"actor":"user",'
+            f'"timestamp":"{_EVENT_TIMESTAMP}",'
+            '"payload":{"content":"hello"}'
+            "}\n"
+        ),
+        (
+            "{"
+            '"id":"event-1",'
+            '"type":"message",'
+            '"actor":"user",'
+            f'"timestamp":"{_EVENT_TIMESTAMP}",'
+            '"payload":{"content":"first","content":"second"}'
+            "}\n"
+        ),
+    ],
+)
+def test_event_journal_load_rejects_duplicate_json_object_members(
+    tmp_path: Path,
+    event_json: str,
+) -> None:
+    memory = tmp_path / "memory"
+    memory.mkdir(parents=True)
+    (memory / "events.jsonl").write_text(event_json, encoding="utf-8")
+    character = CharacterDirectory(tmp_path)
+
+    with pytest.raises(
+        CharacterDataError,
+        match=r"events\.jsonl line 1: duplicate JSON object member",
+    ):
+        tuple(character.iter_events())
+
+
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
 def test_append_event_rejects_non_finite_payload_without_mutating_journal_or_snapshot(
     tmp_path: Path,
