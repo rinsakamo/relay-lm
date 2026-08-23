@@ -9,6 +9,7 @@ from pathlib import Path
 from relaylm.actual_model_comparison import (
     ActualModelConditionComparisonEvidence,
     run_actual_model_condition_comparison,
+    summarize_proposal_observations,
 )
 from relaylm.actual_model_evaluation import ActualModelRunManifest
 from relaylm.actual_model_execution import (
@@ -170,6 +171,7 @@ def write_actual_model_scenario_pressure_comparison(
 ) -> Path:
     """Persist one immutable scenario-bound pressure comparison artifact."""
 
+    _validate_derived_observations(comparison.comparison)
     identity = _pressure_comparison_identity(
         format_version=comparison.format_version,
         scenario_set_version=comparison.scenario_set_version,
@@ -225,6 +227,46 @@ def load_actual_model_scenario_pressure_mapping(path: str | Path) -> dict[str, o
             "actual-model pressure comparison root must be a JSON object"
         )
     return raw
+
+
+def _validate_derived_observations(
+    comparison: ActualModelConditionComparisonEvidence,
+) -> None:
+    baseline_summary = summarize_proposal_observations(comparison.baseline)
+    pressure_summary = summarize_proposal_observations(comparison.pressure)
+    expected_delta = {
+        "response_character_count": (
+            pressure_summary.response_character_count
+            - baseline_summary.response_character_count
+        ),
+        "state_candidate_count": (
+            pressure_summary.state_candidate_count - baseline_summary.state_candidate_count
+        ),
+        "rejected_state_candidate_count": (
+            pressure_summary.rejected_state_candidate_count
+            - baseline_summary.rejected_state_candidate_count
+        ),
+        "continuity_candidate_count": (
+            pressure_summary.continuity_candidate_count
+            - baseline_summary.continuity_candidate_count
+        ),
+        "rejected_continuity_candidate_count": (
+            pressure_summary.rejected_continuity_candidate_count
+            - baseline_summary.rejected_continuity_candidate_count
+        ),
+        "bounded_budget_failure_count": (
+            pressure_summary.bounded_budget_failure_count
+            - baseline_summary.bounded_budget_failure_count
+        ),
+    }
+    if (
+        comparison.baseline_summary != baseline_summary
+        or comparison.pressure_summary != pressure_summary
+        or comparison.pressure_minus_baseline.to_mapping() != expected_delta
+    ):
+        raise ActualModelPressureArtifactError(
+            "derived observations do not match embedded evidence"
+        )
 
 
 def _pressure_comparison_identity(
