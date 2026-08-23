@@ -121,6 +121,18 @@ def _validate_provider_configuration(resolved: ResolvedRuntimeConfig) -> None:
             field="provider.base_url",
             message="provider base URL host is malformed",
         )
+    if any(
+        character.isspace() or ord(character) < 0x20 or ord(character) == 0x7F
+        for character in provider.base_url
+    ):
+        raise RuntimePreflightError(
+            RuntimeConfigErrorCode.PROVIDER_INVALID,
+            field="provider.base_url",
+            message=(
+                "provider base URL must not contain literal whitespace or control "
+                "characters"
+            ),
+        )
     if "?" in provider.base_url or "#" in provider.base_url:
         raise RuntimePreflightError(
             RuntimeConfigErrorCode.PROVIDER_INVALID,
