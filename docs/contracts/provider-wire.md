@@ -226,6 +226,8 @@ At the current OpenAI-compatible transport boundary, each buffered response enve
 
 Before RelayLM interprets any buffered response envelope or non-`[DONE]` streaming data envelope, it decodes that upstream JSON with recursive duplicate-object-member rejection. Duplicate `choices`, `message`, `delta`, `content`, `finish_reason`, or any other object member is a provider protocol error and is never normalized by last-wins decoding. This provider-envelope rule is separate from the duplicate-member rejection applied later to RelayLM-owned combined/proposal IR content.
 
+The same parse boundary admits only standard JSON numeric syntax. Python-specific `NaN`, `Infinity`, and `-Infinity` constants are provider protocol errors anywhere in an upstream envelope, including fields RelayLM would otherwise ignore; malformed non-standard JSON is never allowed to become semantic success.
+
 If that single choice carries a non-null `finish_reason`, only the string `stop` is accepted as successful ordinary cognition completion. Explicit `length`, `content_filter`, `tool_calls`, `function_call`, unknown values, or invalid non-string values are protocol errors even when the accumulated message content is otherwise non-empty or syntactically valid. An omitted or null `finish_reason` remains tolerated on otherwise-supported transports; this rule does not add a new presence requirement.
 
 For streaming, an explicit `finish_reason: "stop"` is terminal for provider data envelopes. After it, RelayLM permits only the optional `[DONE]` transport sentinel or stream EOF. Any later non-`[DONE]` data envelope is a protocol error and is rejected before its content can be parsed, emitted, or appended to the successful cognitive result.
