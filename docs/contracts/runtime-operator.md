@@ -54,7 +54,7 @@ CLI > environment > runtime config file > canonical default/profile
 5. non-mutating persistence writability checks using filesystem permissions only;
 6. RCFG3 assembly, including explicit token-counter capability availability when Cognitive Budget is configured.
 
-Server bind-target validation rejects obvious malformed values such as whitespace or URL path/query/fragment syntax. It does not perform DNS reachability checks, reserve a socket, or prove that the address is currently bindable; those environment-dependent conditions remain server-startup concerns.
+Server bind-target validation rejects obvious malformed values such as whitespace or URL path/query/fragment syntax. Because `server.host` and `server.port` are separate runtime fields, a colon-bearing host is accepted only when it is a valid IPv6 address literal; embedded `host:port` values fail closed. It does not perform DNS reachability checks, reserve a socket, or prove that the address is currently bindable; those environment-dependent conditions remain server-startup concerns.
 
 `doctor` does not call the provider, generate model output, append Events, save State, rewrite MEMORY, or create persistence directories/files.
 
