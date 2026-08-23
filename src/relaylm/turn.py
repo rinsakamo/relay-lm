@@ -707,6 +707,8 @@ def _commit_cognitive_output(
     output: CognitiveOutput,
     continuity_runtime: ContinuityRuntime | None,
 ) -> TurnResult:
+    if not isinstance(output, CognitiveOutput):
+        raise TypeError("provider generation must return CognitiveOutput")
     if output.continuity_candidates and continuity_runtime is None:
         raise RuntimeError("continuity candidates require an explicit runtime")
 
