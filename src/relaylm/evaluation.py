@@ -28,6 +28,8 @@ class EvaluationCheck:
             raise ValueError("evaluation check_id must not be empty")
         if not self.boundary.strip():
             raise ValueError("evaluation boundary must not be empty")
+        if not isinstance(self.passed, bool):
+            raise TypeError("evaluation passed must be a bool")
 
     def to_mapping(self) -> dict[str, MetricValue]:
         return {
