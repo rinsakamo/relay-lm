@@ -11,7 +11,7 @@ from relaylm.cli import run_cli
 def _character(root: Path) -> Path:
     root.mkdir()
     (root / "config.yaml").write_text(
-        "format_version: 1\ncharacter:\n  id: summary-safety\n  name: Summary Safety\n",
+        "format_version: 1\ncharacter:\n  id: model-admission\n  name: Model Admission\n",
         encoding="utf-8",
     )
     (root / "SOUL.md").write_text("A valid test identity.\n", encoding="utf-8")
@@ -19,11 +19,20 @@ def _character(root: Path) -> Path:
 
 
 @pytest.mark.parametrize("command", ["doctor", "serve"])
-def test_human_operator_summary_escapes_control_characters_in_metadata(
+@pytest.mark.parametrize(
+    "model",
+    [
+        "model\nforged-status: ok",
+        "model\x1b[2J",
+        "model\x7fforged-status-ok",
+    ],
+)
+def test_operator_rejects_provider_model_with_ascii_control_before_success(
     tmp_path: Path,
     command: str,
+    model: str,
 ) -> None:
-    character = _character(tmp_path / "character\nforged-status: ok\x1b[2J")
+    character = _character(tmp_path / "character")
     stdout = StringIO()
     stderr = StringIO()
 
@@ -35,7 +44,7 @@ def test_human_operator_summary_escapes_control_characters_in_metadata(
             "--provider-base-url",
             "http://127.0.0.1:1234/v1",
             "--provider-model",
-            "model-safe",
+            model,
         ],
         environ={},
         stdout=stdout,
@@ -43,9 +52,9 @@ def test_human_operator_summary_escapes_control_characters_in_metadata(
         serve_runner=lambda app, *, host, port: None,
     )
 
-    assert code == 0
-    summary = stdout.getvalue()
-    assert "\x1b" not in summary
-    assert "\nforged-status: ok" not in summary
-    assert r"character\x0aforged-status: ok\x1b[2J" in summary
-    assert stderr.getvalue() == ""
+    assert code == 2
+    assert stdout.getvalue() == ""
+    error = stderr.getvalue()
+    assert "provider_invalid: provider.model" in error
+    assert "control" in error.lower()
+    assert model not in error
