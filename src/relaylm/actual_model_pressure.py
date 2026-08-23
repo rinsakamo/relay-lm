@@ -176,6 +176,7 @@ def write_actual_model_scenario_pressure_comparison(
 ) -> Path:
     """Persist one immutable scenario-bound pressure comparison artifact."""
 
+    _validate_pressure_scenario_set_envelope(comparison)
     _validate_pressure_plan_ids(comparison)
     _validate_condition_comparison_binding(comparison)
     _validate_derived_observations(comparison.comparison)
@@ -234,6 +235,19 @@ def load_actual_model_scenario_pressure_mapping(path: str | Path) -> dict[str, o
             "actual-model pressure comparison root must be a JSON object"
         )
     return raw
+
+
+def _validate_pressure_scenario_set_envelope(
+    pressure: ActualModelScenarioPressureComparison,
+) -> None:
+    for plan in (pressure.baseline_plan, pressure.pressure_plan):
+        if (
+            plan.scenario_set_version != pressure.scenario_set_version
+            or plan.scenario_set_revision != pressure.scenario_set_revision
+        ):
+            raise ActualModelPressureArtifactError(
+                "pressure scenario-set envelope does not match embedded plans"
+            )
 
 
 def _validate_pressure_plan_ids(

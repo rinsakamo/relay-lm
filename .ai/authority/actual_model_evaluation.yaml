@@ -71,6 +71,7 @@ tests:
 - tests/unit/test_actual_model_cohort.py
 - tests/unit/test_actual_model_boundary.py
 - tests/unit/test_actual_model_pressure.py
+- tests/unit/test_actual_model_pressure_scenario_envelope.py
 - tests/unit/test_actual_model_scenario_coverage.py
 - tests/unit/test_actual_model_cognitive_budget.py
 - tests/unit/test_actual_model_two_pass_cognitive_budget.py
