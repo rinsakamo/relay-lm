@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -171,6 +172,27 @@ def test_replicate_id_produces_distinct_citable_execution_artifact(tmp_path: Pat
         artifact_root=artifact_root,
     )
     assert first_path != second_path
+
+
+def test_execution_writer_rejects_non_content_derived_execution_id(
+    tmp_path: Path,
+) -> None:
+    result = asyncio.run(
+        _run(workspace_root=tmp_path / "run", response="grounded response")
+    )
+    forged = replace(result, execution_id="amx-" + "f" * 64)
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(
+        ActualModelExecutionArtifactError,
+        match="execution_id does not match execution evidence",
+    ):
+        write_actual_model_execution_result(
+            result=forged,
+            artifact_root=artifact_root,
+        )
+
+    assert not artifact_root.exists()
 
 
 def test_loader_rejects_non_object_root(tmp_path: Path) -> None:

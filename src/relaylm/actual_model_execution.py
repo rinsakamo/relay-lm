@@ -269,17 +269,24 @@ async def run_actual_model_scenario_definition(
             cognitive_budget=cognitive_budget,
         )
 
-    execution_id = _stable_id(
+    return ActualModelScenarioExecutionResult(
+        execution_id=_stable_execution_id(plan=plan, run_id=evidence.run_id),
+        plan=plan,
+        evidence=evidence,
+    )
+
+
+def _stable_execution_id(
+    *,
+    plan: ActualModelScenarioExecutionPlan,
+    run_id: str,
+) -> str:
+    return _stable_id(
         prefix="amx",
         payload={
             "plan": plan.to_mapping(),
-            "run_id": evidence.run_id,
+            "run_id": run_id,
         },
-    )
-    return ActualModelScenarioExecutionResult(
-        execution_id=execution_id,
-        plan=plan,
-        evidence=evidence,
     )
 
 
