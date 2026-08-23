@@ -194,6 +194,40 @@ def test_doctor_rejects_obviously_malformed_provider_host_before_startup(
 
 @pytest.mark.parametrize(
     "base_url",
+    ["http://127.0.0.1:0/v1", "http://[::1]:0/v1"],
+)
+def test_doctor_rejects_provider_url_port_zero_before_startup(
+    tmp_path: Path,
+    base_url: str,
+) -> None:
+    character = _character(tmp_path / "character")
+    stdout = StringIO()
+    stderr = StringIO()
+
+    code = run_cli(
+        [
+            "doctor",
+            "--character",
+            str(character),
+            "--provider-base-url",
+            base_url,
+            "--provider-model",
+            "test-model",
+            "--json",
+        ],
+        environ={},
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert code == 2
+    assert stdout.getvalue() == ""
+    assert "provider_invalid: provider.base_url" in stderr.getvalue()
+    assert "port" in stderr.getvalue().lower()
+
+
+@pytest.mark.parametrize(
+    "base_url",
     [
         " http://127.0.0.1:1234/v1",
         "http://127.0.0.1:1234/v1 ",
