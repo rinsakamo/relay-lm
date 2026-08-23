@@ -75,11 +75,16 @@ Preserve the semantic distinction defined by #1823:
 - `system_defect` — authority/runtime/provenance failure independent of
   personality.
 
-The current Stage R review artifact may continue to carry its existing
-independent dimensions while #1823 owns the bounded representation change
-needed to make this distinction citable. Until that representation lands,
-review notes must not reinterpret Character-plausible oddity as a failed
-universal semantic target.
+Current citable review format v3 records exactly one of those outcomes for each
+evidence turn. The Character-realization outcome is independent from the
+existing Stage R dimension outcomes: `odd_but_character_plausible` is not an
+alias for `fail`, and a system defect is not softened by Character personality.
+The turn-local Character-realization observations participate in the
+content-derived `review_id`.
+
+Historical review format v2 / `actual-model-stage-r-review-v1` artifacts keep
+their original semantics and are not reinterpreted as if they contained this
+classification.
 
 ### High-context continuation
 
@@ -136,18 +141,23 @@ Characters or languages.
 
 The historical `actual-model-quality-v1` family axes remain the coarse
 machine-readable baseline and keep their existing identity. Current citable
-Stage R reviews additionally use the independent
-`actual-model-stage-r-review-v1` protocol in actual-model review format v2.
-Every Stage R review sidecar carries each required dimension exactly once in
-canonical order with `pass`, `fail`, or `not_rated`; omission and duplicate
-dimensions are invalid. `not_rated` explicitly means that dimension was not
-reviewed and is not evidence of a pass. No weighted aggregate score is added.
+Stage R reviews use `actual-model-stage-r-review-v2` in actual-model review
+format v3. The previous format v2 / protocol v1 identity remains historical and
+is not silently upgraded.
+
+Every current Stage R review sidecar carries each required independent
+dimension exactly once in canonical order with `pass`, `fail`, or `not_rated`;
+omission and duplicate dimensions are invalid. `not_rated` explicitly means
+that dimension was not reviewed and is not evidence of a pass. In addition,
+each evidence turn carries exactly one Character-realization outcome from the
+four-value taxonomy above. No weighted aggregate score is added.
 
 A persisted review sidecar is citable only when its `review_id` matches the
-content-derived identity of that exact review evidence. The persistence boundary
-recomputes the identity and rejects a mismatched caller-supplied ID before any
-review artifact is written; a filename or manually constructed review object is
-not independent review authority.
+content-derived identity of that exact review evidence, including the turn-local
+Character-realization observations. The persistence boundary recomputes the
+identity and rejects a mismatched caller-supplied ID before any review artifact
+is written; a filename or manually constructed review object is not independent
+review authority.
 
 The required dimensions are relevance/correctness, naturalness, persona and
 style consistency, coherence, governed-context continuity, verbosity fit,
