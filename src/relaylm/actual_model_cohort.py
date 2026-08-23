@@ -139,20 +139,20 @@ async def run_actual_model_model_cohort(
             )
         )
 
-    identity = {
-        "format_version": ACTUAL_MODEL_COHORT_FORMAT_VERSION,
-        "scenario_set_version": scenario_set.scenario_set_version,
-        "scenario_set_revision": scenario_set.revision,
-        "scenario_id": scenario_id,
-        "targets": [target.to_mapping() for target in targets],
-        "execution_ids": [member.execution.execution_id for member in members],
-    }
+    members_tuple = tuple(members)
+    identity = _cohort_identity(
+        format_version=ACTUAL_MODEL_COHORT_FORMAT_VERSION,
+        scenario_set_version=scenario_set.scenario_set_version,
+        scenario_set_revision=scenario_set.revision,
+        scenario_id=scenario_id,
+        members=members_tuple,
+    )
     return ActualModelModelCohortEvidence(
         cohort_id=_stable_cohort_id(identity),
         scenario_set_version=scenario_set.scenario_set_version,
         scenario_set_revision=scenario_set.revision,
         scenario_id=scenario_id,
-        members=tuple(members),
+        members=members_tuple,
     )
 
 
@@ -162,6 +162,18 @@ def write_actual_model_model_cohort(
     artifact_root: str | Path,
 ) -> Path:
     """Persist one immutable cohort artifact that cites every member execution."""
+
+    identity = _cohort_identity(
+        format_version=cohort.format_version,
+        scenario_set_version=cohort.scenario_set_version,
+        scenario_set_revision=cohort.scenario_set_revision,
+        scenario_id=cohort.scenario_id,
+        members=cohort.members,
+    )
+    if cohort.cohort_id != _stable_cohort_id(identity):
+        raise ActualModelCohortError(
+            "cohort_id does not match cohort evidence"
+        )
 
     root = Path(artifact_root)
     root.mkdir(parents=True, exist_ok=True)
@@ -238,6 +250,30 @@ def _matched_runtime_identity(manifest: ActualModelRunManifest) -> dict[str, obj
     mapping.pop("decoding_configuration")
     mapping.pop("seed")
     return mapping
+
+
+def _cohort_identity(
+    *,
+    format_version: int,
+    scenario_set_version: str,
+    scenario_set_revision: str,
+    scenario_id: str,
+    members: tuple[ActualModelCohortMember, ...],
+) -> dict[str, object]:
+    return {
+        "format_version": format_version,
+        "scenario_set_version": scenario_set_version,
+        "scenario_set_revision": scenario_set_revision,
+        "scenario_id": scenario_id,
+        "targets": [
+            {
+                "label": member.label,
+                "manifest": member.execution.plan.manifest.to_mapping(),
+            }
+            for member in members
+        ],
+        "execution_ids": [member.execution.execution_id for member in members],
+    }
 
 
 def _stable_cohort_id(identity: dict[str, object]) -> str:
