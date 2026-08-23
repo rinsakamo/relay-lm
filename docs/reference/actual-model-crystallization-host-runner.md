@@ -59,11 +59,11 @@ python -m relaylm.actual_model_crystallization_host_runner \
 
 ## Host condition
 
-The current condition format is version 2 and is specific to off-turn crystallization:
+The current condition format is version 3 and is specific to off-turn crystallization:
 
 ```json
 {
-  "format_version": 2,
+  "format_version": 3,
   "target_id": "gemma-4-12b-it-q4-k-m-lmstudio-community-v1",
   "relaylm_commit": "<exact-lowercase-40-character-git-sha>",
   "lm_studio": {
@@ -105,7 +105,7 @@ The current condition format is version 2 and is specific to off-turn crystalliz
 
 All fields are explicit. Unknown or missing fields fail closed.
 
-The host condition is format version `2`. It requires an explicit reasoning
+The host condition is format version `3`. It requires an explicit reasoning
 setting. The runner does not invent a `reasoning_effort` request parameter and
 does not change the OpenAI-compatible Chat Completions transport.
 
@@ -157,13 +157,13 @@ The host runner derives the CRY2 manifest from verified or actually applied valu
 - exact RelayLM commit from the condition/repository check;
 - exact fixture ID and verified revision;
 - secret-free LM Studio environment identity plus validated serving-proof digest;
-- crystallizer adapter identity `relaylm.providers.OpenAICompatibleCrystallizer:v1`;
+- crystallizer adapter identity `relaylm.providers.OpenAICompatibleCrystallizer:v2`;
 - frozen model-artifact identity and embedded-tokenizer identity from canonical target metadata;
 - declared effective context window;
 - the exact decoding controls supplied to the crystallizer;
 - seed from those controls;
-- structured-output schema version `relaylm_crystallization_output:v1`;
-- evaluation contract `actual-model-crystallization-v1`;
+- structured-output schema version `relaylm_crystallization_output:v2`;
+- evaluation contract `actual-model-crystallization-v2`;
 - condition ID, `max_events`, and replicate ID.
 
 The runner then verifies that the constructed crystallizer exposes the same request model and effective decoding controls before returning a prepared run.
@@ -193,7 +193,7 @@ A successful invocation prints only a compact execution receipt:
 
 ```json
 {
-  "format_version": 2,
+  "format_version": 3,
   "suite": "actual-model-crystallization-lm-studio-v1",
   "relaylm_commit": "...",
   "target_id": "...",
