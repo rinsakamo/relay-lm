@@ -50,7 +50,7 @@ def _counter_identity() -> SerializedInputCounterIdentity:
 def test_capacity_format_converges_before_any_real_artifact_exists() -> None:
     capacity = _capacity_module()
 
-    assert capacity.VLLM_RUNTIME_CAPACITY_EVIDENCE_FORMAT_VERSION == 2
+    assert capacity.VLLM_RUNTIME_CAPACITY_EVIDENCE_FORMAT_VERSION == 3
 
 
 def test_pass_request_identity_distinguishes_off_from_bounded_without_payload_text() -> None:
@@ -127,6 +127,7 @@ def test_coverage_validator_requires_exact_scenario_revision_and_full_required_m
             scenario_set_revision=scenario_revision,
             counter_identity=_counter_identity(),
             footprints=tuple(footprints),
+            model_runner="v2",
         )
 
     with pytest.raises(capacity.VLLMRuntimeCapacityEvidenceError, match="coverage"):

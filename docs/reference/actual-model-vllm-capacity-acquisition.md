@@ -58,6 +58,21 @@ Placeholder Pass 1 responses, synthetic State, reconstructed later context or la
 
 If a later explicit single-pass optimization is measured, each turn is counted from its exact single-pass `CognitiveInput` and current production combined-IR request.
 
+## Model-runner trajectory identity
+
+Current capacity artifacts use format version 3 and include an explicit
+`model_runner` identity, currently `v1` or `v2`. The acquisition producer
+requires this resolved identity from the exact runtime path; it does not infer
+it from an unset `VLLM_USE_V2_MODEL_RUNNER` environment variable. The host
+preparation gate compares the expected execution runner with the cited
+artifact runner and rejects mismatches or omitted identities before repository,
+snapshot, or provider preparation.
+
+Format-version-2 artifacts remain strictly loadable for historical inspection,
+but their omitted runner identity cannot authorize current Stage R0 screening.
+The WSL pinned-memory setting remains a runtime prerequisite for a supported
+V2 environment and is not promoted to model-output identity by this contract.
+
 ## Count-before-delegate ordering
 
 For every reached provider call:
@@ -141,6 +156,9 @@ A capacity invocation accepts one explicitly selected condition; there is no `al
 For Core 1.0 current authority, the planner should select B first and C only if justified. A may remain technically replayable but is not automatically executed.
 
 A capacity receipt identifies operation/condition/RelayLM commit/target/replicate/live capacity and the resulting capacity-evidence receipt without emitting semantic payload or a product-quality score.
+
+The vLLM facade requires an explicit `--model-runner v1|v2` for both capacity
+acquisition and screening preparation.
 
 LM Studio and vLLM runs remain serial rather than simultaneous.
 

@@ -43,6 +43,7 @@ from relaylm.actual_model_vllm_capacity import (
     VLLMRuntimeCapacityEvidenceError,
     capacity_evidence_path,
     load_vllm_runtime_capacity_evidence,
+    validate_vllm_model_runner,
     validate_capacity_coverage,
     validate_capacity_window,
     vllm_capacity_pass_request_id,
@@ -540,6 +541,7 @@ def prepare_vllm_screening_condition(
     relaylm_commit: str,
     base_url: str,
     api_key: str | None,
+    model_runner: str | None = None,
     replicate_id: str = "0",
     fetch_json: FetchJSON | None = None,
     capacity_evidence_root: str | Path | None = None,
@@ -574,6 +576,26 @@ def prepare_vllm_screening_condition(
         raise ActualModelVLLMHostError(
             f"cannot validate cited vLLM capacity evidence: {exc}"
         ) from exc
+    try:
+        expected_model_runner = validate_vllm_model_runner(
+            model_runner,
+            label="expected runtime model_runner",
+        )
+    except (TypeError, ValueError, VLLMRuntimeCapacityEvidenceError) as exc:
+        raise ActualModelVLLMHostError(
+            f"current vLLM screening requires an explicit model_runner identity: {exc}"
+        ) from exc
+    if capacity_evidence.model_runner is None:
+        raise ActualModelVLLMHostError(
+            "cited capacity evidence has no model_runner identity and cannot "
+            "authorize current vLLM screening"
+        )
+    if capacity_evidence.model_runner != expected_model_runner:
+        raise ActualModelVLLMHostError(
+            "cited capacity evidence model_runner "
+            f"{capacity_evidence.model_runner} does not match expected runtime "
+            f"model_runner {expected_model_runner}"
+        )
 
     _verify_clean_exact_repo(root=root, expected_commit=relaylm_commit)
     condition = plan.conditions[condition_id]
