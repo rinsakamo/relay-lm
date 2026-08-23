@@ -14,6 +14,7 @@ implementation:
 - src/relaylm/providers/openai_compatible.py
 - src/relaylm/providers/openai_compatible_budget.py
 - src/relaylm/turn.py
+- src/relaylm/two_pass_turn.py
 tests:
 - tests/unit/test_cognitive_budget_accounting.py
 - tests/unit/test_cognitive_budget_plan.py
@@ -25,6 +26,8 @@ tests:
 - tests/unit/test_cognitive_budget_diagnostics.py
 - tests/unit/test_cognitive_budget_turn_diagnostics.py
 - tests/unit/test_openai_compatible_budget.py
+- tests/unit/test_two_pass_cognitive_budget.py
+- tests/unit/test_two_pass_cognitive_budget_authority.py
 depends_on:
 - context_compiler
 - provider_and_api
