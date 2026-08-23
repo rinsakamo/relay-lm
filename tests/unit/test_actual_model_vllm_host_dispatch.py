@@ -6,6 +6,9 @@ from types import SimpleNamespace
 import relaylm.actual_model_host as host_runner
 
 
+_REPO_ROOT = Path(__file__).parents[2]
+
+
 def test_shared_host_runner_dispatches_one_vllm_condition_without_backend_script(
     tmp_path: Path,
     monkeypatch,
@@ -76,6 +79,59 @@ def test_shared_host_runner_dispatches_one_vllm_condition_without_backend_script
     assert '"suite": "cogp5-vllm-screening-v1"' in output
     assert '"condition": "A"' in output
     assert '"operation": "screening"' in output
+
+
+def test_current_stage_r_screening_rejects_non_reference_conditions(
+    monkeypatch,
+    capsys,
+) -> None:
+    prepared_conditions: list[str] = []
+
+    def fake_prepare(**kwargs):
+        prepared_conditions.append(kwargs["condition_id"])
+        return SimpleNamespace(
+            plan=kwargs["plan"],
+            screening_condition_id=kwargs["condition_id"],
+            manifest=SimpleNamespace(relaylm_commit="a" * 40, replicate_id="0"),
+            target=SimpleNamespace(
+                target_id="gemma-4-12b-it-qat-w4a16-google-vllm-v1"
+            ),
+        )
+
+    async def fake_execute(**_kwargs):
+        return ()
+
+    monkeypatch.setattr(host_runner, "_prepare_vllm_screening_condition", fake_prepare)
+    monkeypatch.setattr(host_runner, "_execute_vllm_host_run", fake_execute)
+    monkeypatch.setattr(host_runner, "_current_repo_head", lambda _: "a" * 40)
+
+    for condition in ("A", "C"):
+        result = host_runner.main(
+            [
+                "--backend",
+                "vllm",
+                "--operation",
+                "screening",
+                "--condition",
+                condition,
+                "--model-runner",
+                "v2",
+                "--repo-root",
+                str(_REPO_ROOT),
+                "--snapshot-root",
+                "/tmp/relaylm-google-w4a16-model",
+                "--provider-base-url",
+                "http://127.0.0.1:8000/v1",
+                "--workspace-root",
+                "/tmp/relaylm-vllm-work",
+                "--artifact-root",
+                "/tmp/relaylm-vllm-evidence",
+            ]
+        )
+        assert result == 2
+        assert condition in capsys.readouterr().err
+
+    assert prepared_conditions == []
 
 
 def test_shared_host_runner_dispatches_vllm_capacity_acquisition_separately(
