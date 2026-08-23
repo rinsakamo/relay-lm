@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from relaylm.evaluation import evaluate_cross_layer_context_diagnostics
+from relaylm.evaluation_cross_layer import evaluate_cross_layer_context_diagnostics
 
 
 def test_cross_layer_context_diagnostics_evaluation_is_registered() -> None:
