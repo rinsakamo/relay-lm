@@ -401,6 +401,10 @@ class OpenAICompatibleProvider:
                     if data == "[DONE]":
                         saw_done = True
                         break
+                    if saw_finish:
+                        raise ProviderProtocolError(
+                            "upstream stream sent data after finish_reason"
+                        )
                     content, finish_reason = _parse_stream_event(data)
                     if content is not None:
                         structured_text += content

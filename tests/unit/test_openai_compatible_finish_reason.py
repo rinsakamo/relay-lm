@@ -172,6 +172,76 @@ def test_streaming_combined_cognition_rejects_explicit_length_finish_reason() ->
     asyncio.run(run())
 
 
+def test_streaming_combined_cognition_rejects_data_after_explicit_stop() -> None:
+    chunks = [
+        _sse_chunk(content=_combined_wire(), finish_reason="stop"),
+        _sse_chunk(content=" ", finish_reason=None),
+        b"data: [DONE]\n\n",
+    ]
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            stream=_StaticSSEStream(chunks),
+        )
+
+    async def run() -> None:
+        async def emit(_: str) -> None:
+            return None
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = OpenAICompatibleProvider(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            with pytest.raises(ProviderProtocolError, match="after finish_reason"):
+                await provider.stream_generate(_cognitive_input(), emit)
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    "chunks",
+    [
+        [
+            _sse_chunk(content=_combined_wire(), finish_reason="stop"),
+            b"data: [DONE]\n\n",
+        ],
+        [_sse_chunk(content=_combined_wire(), finish_reason="stop")],
+        [
+            _sse_chunk(content=_combined_wire(), finish_reason=None),
+            b"data: [DONE]\n\n",
+        ],
+    ],
+)
+def test_streaming_combined_cognition_preserves_completion_signal_compatibility(
+    chunks: list[bytes],
+) -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            stream=_StaticSSEStream(chunks),
+        )
+
+    async def run():
+        async def emit(_: str) -> None:
+            return None
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = OpenAICompatibleProvider(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            return await provider.stream_generate(_cognitive_input(), emit)
+
+    output = asyncio.run(run())
+    assert output.response == "こんにちは。"
+
+
 def test_buffered_two_pass_conversation_rejects_explicit_length_finish_reason() -> None:
     def handler(_: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -258,3 +328,64 @@ def test_streaming_two_pass_conversation_rejects_explicit_length_finish_reason()
                 await provider.stream_generate_conversation(_cognitive_input(), emit)
 
     asyncio.run(run())
+
+
+def test_streaming_two_pass_conversation_rejects_data_after_explicit_stop() -> None:
+    chunks = [
+        _sse_chunk(content="完了した応答", finish_reason="stop"),
+        _sse_chunk(content=" 余分な応答", finish_reason=None),
+        b"data: [DONE]\n\n",
+    ]
+    emitted: list[str] = []
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            stream=_StaticSSEStream(chunks),
+        )
+
+    async def run() -> None:
+        async def emit(text: str) -> None:
+            emitted.append(text)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = OpenAICompatibleTwoPassProvider(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            with pytest.raises(ProviderProtocolError, match="after finish_reason"):
+                await provider.stream_generate_conversation(_cognitive_input(), emit)
+
+    asyncio.run(run())
+    assert emitted == ["完了した応答"]
+
+
+def test_streaming_two_pass_conversation_accepts_stop_followed_by_done() -> None:
+    chunks = [
+        _sse_chunk(content="完了した応答", finish_reason="stop"),
+        b"data: [DONE]\n\n",
+    ]
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            stream=_StaticSSEStream(chunks),
+        )
+
+    async def run():
+        async def emit(_: str) -> None:
+            return None
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = OpenAICompatibleTwoPassProvider(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            return await provider.stream_generate_conversation(_cognitive_input(), emit)
+
+    output = asyncio.run(run())
+    assert output.response == "完了した応答"
