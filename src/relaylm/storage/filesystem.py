@@ -124,7 +124,10 @@ class CharacterDirectory:
                 if not line.strip():
                     continue
                 try:
-                    raw = json.loads(line)
+                    raw = json.loads(
+                        line,
+                        parse_constant=_reject_non_finite_json_number,
+                    )
                     event = _event_from_mapping(raw)
                 except (json.JSONDecodeError, TypeError, ValueError, KeyError) as exc:
                     raise CharacterDataError(
@@ -173,8 +176,14 @@ class CharacterDirectory:
             "payload": event.payload,
         }
         try:
+            serialized = json.dumps(
+                payload,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                allow_nan=False,
+            )
             with self.events_path.open("a", encoding="utf-8", newline="\n") as handle:
-                handle.write(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
+                handle.write(serialized)
                 handle.write("\n")
         except (OSError, TypeError, ValueError) as exc:
             raise CharacterDataError(f"cannot append events.jsonl: {exc}") from exc
