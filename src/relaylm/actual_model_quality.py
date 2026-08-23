@@ -195,7 +195,7 @@ def evaluate_labeled_proposals(
     evidence: ActualModelEvidence,
     labels: tuple[TurnProposalLabels, ...],
 ) -> LabeledProposalMetrics:
-    """Compute raw-proposal precision/recall where the semantic fixture is labeled."""
+    """Compute raw-proposal precision/recall with matching confined to each labeled turn."""
 
     by_turn = {item.turn_index: item for item in labels}
     if len(by_turn) != len(labels):
@@ -204,30 +204,59 @@ def evaluate_labeled_proposals(
     if not set(by_turn).issubset(evidence_turns):
         raise ValueError("proposal labels reference a turn that is absent from evidence")
 
-    expected_state: list[StateProposalLabel] = []
-    observed_state: list[dict[str, object]] = []
-    expected_continuity: list[ContinuityProposalLabel] = []
-    observed_continuity: list[dict[str, object]] = []
+    state_turn_metrics: list[ProposalChannelMetrics] = []
+    continuity_turn_metrics: list[ProposalChannelMetrics] = []
     for turn in evidence.turns:
         turn_labels = by_turn.get(turn.turn_index)
         if turn_labels is None:
             continue
-        expected_state.extend(turn_labels.state)
-        observed_state.extend(turn.raw_model.state_candidates)
-        expected_continuity.extend(turn_labels.continuity)
-        observed_continuity.extend(turn.raw_model.continuity_candidates)
+        state_turn_metrics.append(
+            _match_channel(
+                expected=list(turn_labels.state),
+                observed=list(turn.raw_model.state_candidates),
+                matcher=_state_matches,
+            )
+        )
+        continuity_turn_metrics.append(
+            _match_channel(
+                expected=list(turn_labels.continuity),
+                observed=list(turn.raw_model.continuity_candidates),
+                matcher=_continuity_matches,
+            )
+        )
 
     return LabeledProposalMetrics(
-        state=_match_channel(
-            expected=expected_state,
-            observed=observed_state,
-            matcher=_state_matches,
-        ),
-        continuity=_match_channel(
-            expected=expected_continuity,
-            observed=observed_continuity,
-            matcher=_continuity_matches,
-        ),
+        state=_aggregate_channel_metrics(state_turn_metrics),
+        continuity=_aggregate_channel_metrics(continuity_turn_metrics),
+    )
+
+
+def _aggregate_channel_metrics(
+    metrics: list[ProposalChannelMetrics],
+) -> ProposalChannelMetrics:
+    expected_count = sum(item.expected_count for item in metrics)
+    observed_count = sum(item.observed_count for item in metrics)
+    true_positive_count = sum(item.true_positive_count for item in metrics)
+    false_positive_count = sum(item.false_positive_count for item in metrics)
+    false_negative_count = sum(item.false_negative_count for item in metrics)
+    precision = (
+        true_positive_count / observed_count
+        if observed_count
+        else None
+    )
+    recall = (
+        true_positive_count / expected_count
+        if expected_count
+        else None
+    )
+    return ProposalChannelMetrics(
+        expected_count=expected_count,
+        observed_count=observed_count,
+        true_positive_count=true_positive_count,
+        false_positive_count=false_positive_count,
+        false_negative_count=false_negative_count,
+        precision=precision,
+        recall=recall,
     )
 
 

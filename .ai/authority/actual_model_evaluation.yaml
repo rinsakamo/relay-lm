@@ -58,6 +58,7 @@ tests:
 - tests/unit/test_actual_model_restart.py
 - tests/unit/test_actual_model_comparison.py
 - tests/unit/test_actual_model_quality.py
+- tests/unit/test_actual_model_proposal_turn_locality.py
 - tests/unit/test_actual_model_continuity_runtime_identity.py
 - tests/unit/test_actual_model_scenarios.py
 - tests/unit/test_actual_model_execution.py
