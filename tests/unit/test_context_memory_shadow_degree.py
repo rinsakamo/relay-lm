@@ -4,7 +4,7 @@ import pytest
 
 from relaylm.memory_provenance import MemoryTemporalScope
 
-from .context_memory_shadow_support import memory_is_retained
+from context_memory_shadow_support import memory_is_retained
 
 
 _DEGREE_STATE = {"semantic": "likes", "degree_hint": 0.85}
@@ -30,6 +30,11 @@ _DEGREE_STATE = {"semantic": "likes", "degree_hint": 0.85}
         ("not dislikes; degree_hint: 0.85", "Tea", MemoryTemporalScope.UNKNOWN, True),
         ("likes; degree_hint: 0.65\ncontext note", "Tea", MemoryTemporalScope.UNKNOWN, False),
         ("likes; degree_hint: 0.85\ncontext note", "Tea", MemoryTemporalScope.UNKNOWN, True),
+        ("Rin likes tea.\ndegree_hint: 0.65", "Tea", MemoryTemporalScope.UNKNOWN, False),
+        ("Rin likes tea.\ndegree_hint: 0.85", "Tea", MemoryTemporalScope.UNKNOWN, True),
+        ("Rin likes tea.", "Tea", MemoryTemporalScope.UNKNOWN, True),
+        ("Rin dislikes tea.\ndegree_hint: 0.85", "Tea", MemoryTemporalScope.UNKNOWN, False),
+        ("tea: likes\ncoffee: likes; degree_hint: 0.65", "Profile Notes", MemoryTemporalScope.UNKNOWN, True),
         ("Current tea is likes; degree_hint: 0.65.", "Profile Notes", MemoryTemporalScope.CURRENT, False),
         ("Current tea is not likes; degree_hint: 0.85.", "Profile Notes", MemoryTemporalScope.CURRENT, False),
         ("Current tea is not dislikes; degree_hint: 0.85.", "Profile Notes", MemoryTemporalScope.CURRENT, True),
@@ -54,6 +59,11 @@ _DEGREE_STATE = {"semantic": "likes", "degree_hint": 0.85}
         "heading-negates-other-pair",
         "heading-multiline-local-degree-mismatch",
         "heading-multiline-local-pair-match",
+        "heading-fallback-degree-mismatch",
+        "heading-fallback-degree-match",
+        "heading-fallback-missing-degree",
+        "heading-fallback-semantic-mismatch",
+        "inline-does-not-borrow-unrelated-degree",
         "typed-current-freeform-degree-mismatch",
         "typed-current-freeform-negates-active-pair",
         "typed-current-freeform-negates-other-pair",
