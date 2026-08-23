@@ -108,3 +108,33 @@ def test_continuity_item_and_context_are_immutable_explicitly_bounded_boundaries
             accepted_revision=4,
             expires_revision=4,
         )
+
+
+def test_continuity_context_rejects_duplicate_lifecycle_keys_across_kinds() -> None:
+    first = ContinuityItem(
+        item_id="continuity-1",
+        kind="referent",
+        key="thread.current",
+        value="the first draft",
+        sources=("event-user-1",),
+        epistemic_role="user_assertion",
+        accepted_revision=1,
+        expires_revision=4,
+    )
+    duplicate_key = ContinuityItem(
+        item_id="continuity-2",
+        kind="active_task",
+        key="thread.current",
+        value="revise the draft",
+        sources=("event-user-2",),
+        epistemic_role="assistant_commitment",
+        accepted_revision=2,
+        expires_revision=5,
+    )
+
+    with pytest.raises(ValueError, match="duplicate continuity lifecycle key"):
+        ContinuityContext(
+            max_items=2,
+            revision=2,
+            items=(first, duplicate_key),
+        )
