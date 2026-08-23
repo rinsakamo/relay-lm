@@ -22,12 +22,17 @@ def test_character_realization_contract_is_registered_and_preserves_aoi() -> Non
     assert "odd_but_character_plausible" in contract
     assert "out_of_character" in contract
     assert "system_defect" in contract
+    assert "actual-model-stage-r-review-v2" in contract
+    assert "Historical actual-model review format v2" in contract
     assert "Aoi" in contract
     assert "ReLM" in contract
     assert "Rin" in contract
     assert "Core 1.0 does not require a rebuilt SOUL Lab UI" in coverage
     assert "Aoi, ReLM, and Rin are separate valid Character spaces" in coverage
+    assert "review format v3" in coverage
+    assert "actual-model-stage-r-review-v2" in coverage
     assert "docs/reference/actual-model-character-realization.md" in authority
+    assert "tests/unit/test_actual_model_character_realization_review.py" in authority
 
 
 def test_character_realization_contract_does_not_make_exact_semantics_universal() -> None:
@@ -37,3 +42,4 @@ def test_character_realization_contract_does_not_make_exact_semantics_universal(
     assert "not a universal\nmeasure of Character cognition" in contract
     assert "do not\nestablish one neutral interpretation" in coverage
     assert "must not drive new deterministic free-form semantic grammar" in coverage
+    assert "does not silently become `fail`" in contract
