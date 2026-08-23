@@ -83,7 +83,7 @@ The snapshot supplied to cognition is the pre-turn accepted context.
 
 For `single_pass`, the Continuity runtime revision advances only after the one complete provider result reaches deterministic Continuity validation at the common commit boundary. Streaming deltas do not mutate accepted Continuity while generation is in progress.
 
-For `two_pass`, the same accepted pre-turn snapshot enters the originating `CognitiveInput`. Pass 1 never mutates Continuity. Pass 2 may apply the existing Continuity lifecycle only at its guarded extraction commit boundary. If accepted Continuity has advanced since the origin snapshot, the extraction is stale and does not mutate it.
+For `two_pass`, successful ordinary-turn completion is the complete accepted Pass 1 response after its Assistant Event is committed. The same accepted pre-turn snapshot still enters the originating `CognitiveInput`; after that response commit, an explicitly configured Continuity runtime advances its lifecycle exactly once and performs due expiry in conversation order. Pass 2 may apply Continuity candidates at that already-advanced revision without advancing the lifecycle a second time. A failed or stale Pass 2 applies no proposal-driven Continuity mutation, while the successful turn's already-completed lifecycle advance remains. The post-conversation Continuity lifecycle snapshot is the origin snapshot used by the Pass 2 stale guard; if Continuity advances again before that extraction commits, the extraction is stale and applies no candidates.
 
 No runtime means no accepted Continuity Context is supplied to compilation. Runtime capacity and lifetime remain explicit caller-provided policy, and Continuity Context remains non-durable.
 
@@ -255,6 +255,9 @@ accept complete non-empty response
         ↓
 persist Assistant Event
         ↓
+if ContinuityRuntime exists:
+  advance Continuity lifecycle exactly once / expire due items
+        ↓
 return response-first TwoPassTurnResult
         └──────── background ────────┐
                                      ↓
@@ -264,12 +267,13 @@ return response-first TwoPassTurnResult
                                      ↓
                   short guarded stale-check / validation boundary
                                      ↓
-                     existing deterministic State / Continuity owners
+                  State validation + Continuity candidate application
+                  at the already-advanced revision; no second lifecycle advance
 ```
 
 The same provider object is reused sequentially. Pass 2 receives the originating `CognitiveInput` plus the Pass 1 response as interpretive context only. The assistant response is not a source Event and cannot self-certify user or external facts.
 
-Pass 2 inference does not hold the conversation lock. A later Pass 1 may therefore begin while prior extraction is pending. A new two-pass turn advances the process-local execution revision before its preparation; the final extraction commit checks that revision, originating Event identity, origin State snapshot, and origin Continuity snapshot under a short authority lock. A mismatch returns `stale` and performs no mutation.
+Pass 2 inference does not hold the conversation lock. A later Pass 1 may therefore begin while prior extraction is pending. A new two-pass turn advances the process-local execution revision before its preparation; the final extraction commit checks that revision, originating Event identity, origin State snapshot, and the post-conversation Continuity lifecycle snapshot under a short authority lock. A mismatch returns `stale` and performs no proposal-driven mutation or second lifecycle advance.
 
 The same occurrence may currently qualify for recent Working Context and targeted Event evidence when both selectors admit it. Cross-layer redundancy suppression remains intentionally deferred rather than silently changing either selector's semantics.
 
@@ -336,7 +340,7 @@ An assistant response therefore remains useful for future conversational continu
 
 Single-pass streaming does not create a second semantic output form. Provider wire `utterance` deltas are delivery fragments only; the final complete structured result normalizes into one `CognitiveOutput`.
 
-Two-pass streaming exposes only Pass 1 conversation deltas. A complete valid `CognitionConversationOutput` is required before the Assistant Event is persisted and Pass 2 is scheduled. Pass 2 does not create a second visible response.
+Two-pass streaming exposes only Pass 1 conversation deltas. A complete valid `CognitionConversationOutput` is required before the Assistant Event is persisted, the configured Continuity lifecycle advances once, and Pass 2 is scheduled. Pass 2 does not create a second visible response.
 
 ## Failure semantics
 
@@ -372,7 +376,7 @@ If a completed single-pass output contains non-empty ContinuityCandidates withou
 
 ### Two-pass Pass 1 failure
 
-A two-pass Pass 1 failure follows the same response-acceptance rule as the corresponding buffered or streaming conversation path: the User Event may already exist, but no Assistant Event and no Pass 2 extraction is created unless the complete Pass 1 conversation output is valid.
+A two-pass Pass 1 failure follows the same response-acceptance rule as the corresponding buffered or streaming conversation path: the User Event may already exist, but no Assistant Event, no successful-turn Continuity lifecycle advance, and no Pass 2 extraction is created unless the complete Pass 1 conversation output is valid.
 
 ### Two-pass Pass 2 failure
 
@@ -384,14 +388,15 @@ Assistant Event       persisted
 visible response      valid
 Pass 2 failure        bounded extraction status
 Canonical State       unchanged by failed Pass 2
-Continuity Context    unchanged by failed Pass 2
+Pass 2 Continuity proposals             not applied
+successful-turn Continuity lifecycle revision / expiry remains
 ```
 
-A provider exception, malformed extraction output, or other Pass 2 execution failure becomes `failed` with bounded reason `pass2_failed`; semantic exception text is not returned as authority or diagnostics payload.
+A failed or stale Pass 2 applies no proposal-driven Continuity mutation. A provider exception, malformed extraction output, or other Pass 2 execution failure becomes `failed` with bounded reason `pass2_failed`; semantic exception text is not returned as authority or diagnostics payload. The successfully completed conversation's already-owned Continuity lifecycle revision and any due expiry are not rolled back by that extraction failure.
 
 If Pass 2 emits Continuity proposals without an explicit Continuity runtime, the extraction becomes `failed` with `continuity_runtime_required` before State mutation. The State and Continuity proposal channels therefore cannot partially commit across that failure.
 
-If a newer two-pass turn has arrived, or the origin State/Continuity snapshot has changed before commit, the old extraction becomes `stale` and performs no mutation.
+If a newer two-pass turn has arrived, or the origin State / post-conversation Continuity snapshot has changed before commit, the old extraction becomes `stale`; it applies no proposals and does not advance the Continuity lifecycle again.
 
 A successful Pass 2 still routes each proposal channel through its existing deterministic validator. Rejected candidates remain rejected model proposals rather than a failure of the already-valid response.
 
