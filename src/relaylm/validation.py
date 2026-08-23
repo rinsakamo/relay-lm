@@ -71,7 +71,7 @@ def apply_state_candidates(
             )
             continue
 
-        if existing is not None and existing.value == candidate.value:
+        if existing is not None and _state_values_equal(existing.value, candidate.value):
             decisions.append(CandidateDecision(candidate=candidate, status="noop"))
             continue
 
@@ -106,6 +106,30 @@ def apply_state_candidates(
         decisions=tuple(decisions),
         changed=changed,
     )
+
+
+def _state_values_equal(left: object, right: object) -> bool:
+    if isinstance(left, bool) or isinstance(right, bool):
+        return isinstance(left, bool) and isinstance(right, bool) and left is right
+
+    if isinstance(left, Mapping) and isinstance(right, Mapping):
+        if left.keys() != right.keys():
+            return False
+        return all(_state_values_equal(left[key], right[key]) for key in left)
+
+    if isinstance(left, list) and isinstance(right, list):
+        return len(left) == len(right) and all(
+            _state_values_equal(left_item, right_item)
+            for left_item, right_item in zip(left, right)
+        )
+
+    if isinstance(left, tuple) and isinstance(right, tuple):
+        return len(left) == len(right) and all(
+            _state_values_equal(left_item, right_item)
+            for left_item, right_item in zip(left, right)
+        )
+
+    return left == right
 
 
 def _current_record_index(
