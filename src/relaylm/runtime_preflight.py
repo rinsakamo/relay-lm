@@ -61,6 +61,7 @@ def prepare_runtime(
     if not isinstance(resolved, ResolvedRuntimeConfig):
         raise TypeError("resolved must be ResolvedRuntimeConfig")
 
+    _validate_server_configuration(resolved)
     _validate_provider_configuration(resolved)
     character = CharacterDirectory(resolved.config.character.directory)
     _validate_character_readability(character)
@@ -82,6 +83,21 @@ def prepare_runtime(
     )
 
 
+def _validate_server_configuration(resolved: ResolvedRuntimeConfig) -> None:
+    host = resolved.config.server.host
+    if any(character.isspace() for character in host) or any(
+        delimiter in host for delimiter in ("/", "?", "#")
+    ):
+        raise RuntimePreflightError(
+            RuntimeConfigErrorCode.INVALID_VALUE,
+            field="server.host",
+            message=(
+                "server bind host must be a bare hostname or IP address without "
+                "whitespace or URL path/query/fragment syntax"
+            ),
+        )
+
+
 def _validate_provider_configuration(resolved: ResolvedRuntimeConfig) -> None:
     provider = resolved.config.provider
     try:
@@ -98,6 +114,12 @@ def _validate_provider_configuration(resolved: ResolvedRuntimeConfig) -> None:
             RuntimeConfigErrorCode.PROVIDER_INVALID,
             field="provider.base_url",
             message="provider base URL must use http or https and include a host",
+        )
+    if any(character.isspace() for character in parsed.hostname) or "\\" in parsed.hostname:
+        raise RuntimePreflightError(
+            RuntimeConfigErrorCode.PROVIDER_INVALID,
+            field="provider.base_url",
+            message="provider base URL host is malformed",
         )
     if "?" in provider.base_url or "#" in provider.base_url:
         raise RuntimePreflightError(

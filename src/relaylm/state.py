@@ -114,8 +114,15 @@ class StateRecord:
             raise ValueError("state_id must not be empty")
         if not self.state_class.strip():
             raise ValueError("state_class must not be empty")
+        if self.state_class not in STATE_CLASS_DEFINITIONS:
+            raise ValueError(f"unsupported state_class: {self.state_class}")
         if not self.key.strip():
             raise ValueError("state key must not be empty")
+        if (
+            self.state_class == "user.preference"
+            and self.key.strip().casefold() in USER_PREFERENCE_GENERIC_KEYS
+        ):
+            raise ValueError(f"generic preference key: {self.key}")
         if not self.status.strip():
             raise ValueError("state status must not be empty")
 

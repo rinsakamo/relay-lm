@@ -45,10 +45,13 @@ CLI > environment > runtime config file > canonical default/profile
 `doctor` is non-generative and does not persist semantic Character state. It performs, in order:
 
 1. RCFG2 discovery, strict parsing, precedence, secret-reference resolution, and validation;
-2. provider configuration validation sufficient for the current HTTP OpenAI-compatible adapter;
-3. Character Package readability/structural validation by reading current config, Identity, State, Event journal, and optional MEMORY markdown through `CharacterDirectory`;
-4. non-mutating persistence writability checks using filesystem permissions only;
-5. RCFG3 assembly, including explicit token-counter capability availability when Cognitive Budget is configured.
+2. deterministic server bind-target syntax validation for an obvious bare hostname/IP shape before server startup;
+3. provider configuration validation sufficient for the current HTTP OpenAI-compatible adapter;
+4. Character Package readability/structural validation by reading current config, Identity, State, Event journal, and optional MEMORY markdown through `CharacterDirectory`;
+5. non-mutating persistence writability checks using filesystem permissions only;
+6. RCFG3 assembly, including explicit token-counter capability availability when Cognitive Budget is configured.
+
+Server bind-target validation rejects obvious malformed values such as whitespace or URL path/query/fragment syntax. It does not perform DNS reachability checks, reserve a socket, or prove that the address is currently bindable; those environment-dependent conditions remain server-startup concerns.
 
 `doctor` does not call the provider, generate model output, append Events, save State, rewrite MEMORY, or create persistence directories/files.
 
@@ -82,7 +85,7 @@ The previous `server.create_app_from_env()` helper may remain as an internal com
 
 ## Provider and capability checks
 
-The current provider adapter requires an HTTP or HTTPS base endpoint with a host and no query or fragment delimiter. RCFG4 does not issue network requests during `doctor`; provider reachability is intentionally not inferred from an adapter-specific discovery endpoint.
+The current provider adapter requires an HTTP or HTTPS base endpoint with a host and no query or fragment delimiter. Preflight also rejects obvious malformed provider hostname syntax containing whitespace or a backslash. RCFG4 does not issue network requests during `doctor`; hostname resolution and provider reachability are intentionally not inferred from an adapter-specific discovery endpoint.
 
 If explicit Cognitive Budget is configured, its token-counter capability must already be registered with RCFG3 and match the configured existing `TokenCountMode`. RCFG4 supplies no generic tokenizer heuristic and no implicit capability fallback.
 
@@ -97,6 +100,7 @@ Configuration, assembly, and preflight failures use the existing RCFG1 taxonomy 
 Examples relevant to RCFG4:
 
 ```text
+invalid_value
 character_invalid
 provider_invalid
 capability_unavailable

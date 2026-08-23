@@ -14,6 +14,8 @@ tests:
 - tests/unit/test_degree_hint.py
 - tests/unit/test_state_singular_authority.py
 - tests/unit/test_state_current_view_transitions.py
+- tests/unit/test_state_class_registry_authority.py
+- tests/unit/test_state_preference_key_authority.py
 depends_on:
 - core_architecture
 annotations:
