@@ -204,25 +204,47 @@ def _overrides_from_args(args: argparse.Namespace) -> RuntimeConfigOverrides:
 def _print_doctor_summary(prepared: PreparedRuntime, stdout: TextIO) -> None:
     config = prepared.resolved.config
     stdout.write(f"RelayLM {RELAYLM_VERSION} doctor: ok\n")
-    stdout.write(f"character: {config.character.directory}\n")
+    stdout.write(f"character: {_summary_value(config.character.directory)}\n")
     stdout.write(
-        f"provider: {config.provider.adapter} model={config.provider.model} "
-        f"base_url={config.provider.base_url}\n"
+        f"provider: {_summary_value(config.provider.adapter)} "
+        f"model={_summary_value(config.provider.model)} "
+        f"base_url={_summary_value(config.provider.base_url)}\n"
     )
-    stdout.write(f"server: {config.server.host}:{config.server.port}\n")
+    stdout.write(
+        f"server: {_summary_value(config.server.host)}:{config.server.port}\n"
+    )
     stdout.write(_runtime_layers_summary(prepared) + "\n")
 
 
 def _print_serve_summary(prepared: PreparedRuntime, stdout: TextIO) -> None:
     config = prepared.resolved.config
     stdout.write(f"RelayLM {RELAYLM_VERSION} preflight: ok\n")
-    stdout.write(f"character: {config.character.directory}\n")
+    stdout.write(f"character: {_summary_value(config.character.directory)}\n")
     stdout.write(
-        f"provider: {config.provider.adapter} model={config.provider.model} "
-        f"base_url={config.provider.base_url}\n"
+        f"provider: {_summary_value(config.provider.adapter)} "
+        f"model={_summary_value(config.provider.model)} "
+        f"base_url={_summary_value(config.provider.base_url)}\n"
     )
-    stdout.write(f"listen: {config.server.host}:{config.server.port}\n")
+    stdout.write(
+        f"listen: {_summary_value(config.server.host)}:{config.server.port}\n"
+    )
     stdout.write(_runtime_layers_summary(prepared) + "\n")
+
+
+def _summary_value(value: str) -> str:
+    pieces: list[str] = []
+    for character in value:
+        if character.isprintable():
+            pieces.append(character)
+            continue
+        codepoint = ord(character)
+        if codepoint <= 0xFF:
+            pieces.append(f"\\x{codepoint:02x}")
+        elif codepoint <= 0xFFFF:
+            pieces.append(f"\\u{codepoint:04x}")
+        else:
+            pieces.append(f"\\U{codepoint:08x}")
+    return "".join(pieces)
 
 
 def _runtime_layers_summary(prepared: PreparedRuntime) -> str:

@@ -55,7 +55,7 @@ Server bind-target validation rejects obvious malformed values such as whitespac
 
 `doctor` does not call the provider, generate model output, append Events, save State, rewrite MEMORY, or create persistence directories/files.
 
-A successful human-readable run prints only runtime metadata: selected Character path, provider adapter/model/base URL, server bind, and enabled runtime-layer flags. It never prints API-key material or Character semantic payload.
+A successful human-readable run prints only runtime metadata: selected Character path, provider adapter/model/base URL, server bind, and enabled runtime-layer flags. Before metadata is inserted into this line-oriented output, non-printable characters are rendered as visible `\x..`, `\u....`, or `\U........` escapes so resolved values cannot inject new diagnostic lines or terminal controls. This escaping is presentation-only and does not normalize or mutate the resolved runtime/provider value. Human-readable output never prints API-key material or Character semantic payload.
 
 `doctor --json` returns a bounded object:
 
