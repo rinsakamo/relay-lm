@@ -9,6 +9,7 @@ from typing import Protocol
 
 from relaylm.actual_model_execution import (
     ActualModelScenarioExecutionResult,
+    _stable_execution_id,
     run_actual_model_scenario_definition,
 )
 from relaylm.actual_model_evaluation import ActualModelRunManifest
@@ -241,18 +242,15 @@ def bind_lm_studio_execution_condition(
             "manifest seed does not match the seed actually carried by the provider"
         )
 
-    payload = {
-        "environment": environment.to_mapping(),
-        "target": {
-            "id": target.target_id,
-            "revision": target.revision,
-        },
-        "artifact_verification": artifact_verification.to_mapping(),
-        "provider_identity": provider_identity.to_mapping(),
-        "configured_context_window": configured_context_window,
-        "manifest": manifest.to_mapping(),
-    }
-    binding_id = _stable_id(prefix="amlsb", payload=payload)
+    binding_id = _stable_lm_studio_binding_id(
+        environment=environment,
+        target_id=target.target_id,
+        target_revision=target.revision,
+        artifact_verification=artifact_verification,
+        provider_identity=provider_identity,
+        configured_context_window=configured_context_window,
+        manifest=manifest,
+    )
     return ActualModelLMStudioExecutionBinding(
         binding_id=binding_id,
         environment=environment,
@@ -298,15 +296,11 @@ async def run_lm_studio_actual_model_scenario_definition(
         manifest=manifest,
         cognitive_budget=cognitive_budget,
     )
-    execution_id = _stable_id(
-        prefix="amlsx",
-        payload={
-            "binding_id": binding.binding_id,
-            "scenario_execution_id": execution.execution_id,
-        },
-    )
     return ActualModelLMStudioExecutionResult(
-        execution_id=execution_id,
+        execution_id=_stable_lm_studio_execution_id(
+            binding_id=binding.binding_id,
+            scenario_execution_id=execution.execution_id,
+        ),
         binding=binding,
         execution=execution,
     )
@@ -321,6 +315,39 @@ def write_lm_studio_actual_model_execution_result(
 
     if not isinstance(result, ActualModelLMStudioExecutionResult):
         raise TypeError("result must be ActualModelLMStudioExecutionResult")
+
+    expected_binding_id = _stable_lm_studio_binding_id(
+        environment=result.binding.environment,
+        target_id=result.binding.target_id,
+        target_revision=result.binding.target_revision,
+        artifact_verification=result.binding.artifact_verification,
+        provider_identity=result.binding.provider_identity,
+        configured_context_window=result.binding.configured_context_window,
+        manifest=result.binding.manifest,
+    )
+    if result.binding.binding_id != expected_binding_id:
+        raise ActualModelLMStudioBindingError(
+            "binding_id does not match LM Studio binding evidence"
+        )
+
+    expected_scenario_execution_id = _stable_execution_id(
+        plan=result.execution.plan,
+        run_id=result.execution.run_id,
+    )
+    if result.execution.execution_id != expected_scenario_execution_id:
+        raise ActualModelLMStudioBindingError(
+            "scenario execution_id does not match execution evidence"
+        )
+
+    expected_execution_id = _stable_lm_studio_execution_id(
+        binding_id=result.binding.binding_id,
+        scenario_execution_id=result.execution.execution_id,
+    )
+    if result.execution_id != expected_execution_id:
+        raise ActualModelLMStudioBindingError(
+            "execution_id does not match LM Studio execution evidence"
+        )
+
     root = Path(artifact_root)
     root.mkdir(parents=True, exist_ok=True)
     path = root / f"{result.execution_id}.lm-studio.json"
@@ -349,6 +376,46 @@ def write_lm_studio_actual_model_execution_result(
         except OSError:
             pass
     return path
+
+
+def _stable_lm_studio_binding_id(
+    *,
+    environment: LMStudioExecutionEnvironment,
+    target_id: str,
+    target_revision: str,
+    artifact_verification: ActualModelArtifactVerification,
+    provider_identity: OpenAICompatibleProviderIdentity,
+    configured_context_window: int,
+    manifest: ActualModelRunManifest,
+) -> str:
+    return _stable_id(
+        prefix="amlsb",
+        payload={
+            "environment": environment.to_mapping(),
+            "target": {
+                "id": target_id,
+                "revision": target_revision,
+            },
+            "artifact_verification": artifact_verification.to_mapping(),
+            "provider_identity": provider_identity.to_mapping(),
+            "configured_context_window": configured_context_window,
+            "manifest": manifest.to_mapping(),
+        },
+    )
+
+
+def _stable_lm_studio_execution_id(
+    *,
+    binding_id: str,
+    scenario_execution_id: str,
+) -> str:
+    return _stable_id(
+        prefix="amlsx",
+        payload={
+            "binding_id": binding_id,
+            "scenario_execution_id": scenario_execution_id,
+        },
+    )
 
 
 def _validate_artifact_verification(
