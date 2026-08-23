@@ -14,6 +14,7 @@ from relaylm.actual_model_evaluation import (
     ActualModelRunManifest,
     ActualModelScenario,
     run_actual_model_scenario,
+    stable_actual_model_run_id,
 )
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveProvider
@@ -125,6 +126,13 @@ def write_actual_model_evidence(
     *, evidence: ActualModelEvidence, artifact_root: str | Path
 ) -> Path:
     """Persist one run as an immutable, run-id-addressed JSON evidence artifact."""
+
+    expected_run_id = stable_actual_model_run_id(
+        manifest=evidence.manifest,
+        scenario=evidence.scenario,
+    )
+    if evidence.run_id != expected_run_id:
+        raise ActualModelArtifactError("run_id does not match actual-model evidence")
 
     root = Path(artifact_root)
     root.mkdir(parents=True, exist_ok=True)
