@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from relaylm.evaluation import evaluate_persistence_integrity
+from relaylm.evaluation_persistence import evaluate_persistence_integrity
 
 
 def test_persistence_integrity_evaluation_round_trips_and_fails_closed() -> None:

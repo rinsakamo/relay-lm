@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from relaylm.evaluation import evaluate_streaming_safety
+from relaylm.evaluation_streaming import evaluate_streaming_safety
 
 
 def test_streaming_safety_evaluation_covers_complete_truncated_and_cancelled_turns() -> None:

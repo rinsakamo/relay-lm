@@ -1,6 +1,6 @@
 schema_version: 1
 id: evaluation
-summary: Deterministic RelayLM-native evaluation registry and boundary invariants.
+summary: Deterministic RelayLM-native evaluation registry, report contract, and boundary invariants.
 owner_issue: 1247
 canonical_surfaces:
 - docs/reference/evaluation.md
@@ -80,7 +80,6 @@ tests:
 - tests/unit/test_evaluation_continuity_turn.py
 - tests/unit/test_evaluation_continuity_context_retention.py
 - tests/unit/test_evaluation_continuity_active_task.py
-- tests/unit/test_evaluation_continuity_registration.py
 - tests/unit/test_evaluation_continuity_cognition_wiring.py
 - tests/unit/test_evaluation_freeform_current_state_shadow.py
 - tests/unit/test_evaluation_total_budget_accounting.py
@@ -93,7 +92,6 @@ tests:
 - tests/unit/test_evaluation_cognitive_budget_turn_wiring.py
 - tests/unit/test_evaluation_cognitive_budget_turn_diagnostics.py
 - tests/unit/test_evaluation_memory_temporal_provenance.py
-- tests/unit/test_evaluation_post_continuity_registration.py
 depends_on:
 - cognitive_budget
 - cognitive_turn

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from relaylm.evaluation import evaluate_correction_remove_semantics
+from relaylm.evaluation_correction import evaluate_correction_remove_semantics
 
 
 def test_correction_remove_evaluation_closes_current_state_but_preserves_history() -> None:

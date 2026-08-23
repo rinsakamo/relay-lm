@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from relaylm.evaluation import (
+from relaylm.evaluation_memory import (
     evaluate_memory_cognitive_projection,
     evaluate_memory_heading_retrieval,
     evaluate_ordinary_turn_memory_retrieval,

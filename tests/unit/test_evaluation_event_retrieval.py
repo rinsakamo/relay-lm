@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from relaylm.evaluation import evaluate_targeted_event_retrieval
+from relaylm.evaluation_context import evaluate_targeted_event_retrieval
 
 
 def test_targeted_event_retrieval_evaluation_is_registered() -> None:

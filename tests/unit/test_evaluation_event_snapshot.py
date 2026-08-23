@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from relaylm.evaluation import evaluate_event_snapshot_reuse
+from relaylm.evaluation_persistence import evaluate_event_snapshot_reuse
 
 
 def test_event_snapshot_reuse_evaluation_is_registered() -> None:
