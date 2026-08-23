@@ -1,6 +1,6 @@
 # Continuity Context
 
-> **Status:** accepted semantic architecture tracked by #1371. K1 typed boundaries are implemented in `relaylm.continuity`; K2 deterministic acceptance/lifecycle is implemented in `relaylm.continuity_validation`; K3 ordinary-turn return-path wiring is implemented in `relaylm.cognitive`, `relaylm.turn`, and the explicit app/router runtime carriage.
+> **Status:** accepted semantic architecture tracked by #1371. K1 typed boundaries are implemented in `relaylm.continuity`; K2 deterministic acceptance/lifecycle is implemented in `relaylm.continuity_validation`; K3 ordinary-turn orchestration is implemented across `relaylm.cognitive`, `relaylm.turn`, `relaylm.two_pass_turn`, and the explicit app/router runtime carriage.
 
 ## Purpose
 
@@ -35,41 +35,35 @@ Continuity Context != Event Journal
 Continuity Context != crystallized MEMORY
 ```
 
-A later Context Compiler transaction may select accepted Continuity Context into current cognition, but current residency does not own production or acceptance of continuity semantics.
+The Context Compiler consumes already-accepted Continuity Context when assembling current cognition. Current residency does not own production or acceptance of continuity semantics.
 
 ## Ordinary-turn return path
 
-The ordinary cognitive model remains one semantic generation:
+Continuity semantics are independent of cognition topology. Current Core 1.0 cognition is two-pass first, while single-pass remains a compatibility/optimization surface:
 
 ```text
-CognitiveInput
-      |
-      v
-LM x 1
-      |
-      v
-CognitiveOutput
-  response
-  state_candidates
-  continuity_candidates
-        |
-        v
- deterministic continuity validation
-        |
-        v
- Continuity Context
-        |
-        v
- later-turn Context Compiler input
+single_pass
+  CognitiveInput
+    -> combined response + ContinuityCandidate[]
+
+two_pass
+  CognitiveInput
+    -> Pass 1 visible response
+    -> Pass 2 ContinuityCandidate[]
+
+both
+  -> RelayLM deterministic continuity validation/lifecycle
+  -> Continuity Context
+  -> later-turn Context Compiler input
 ```
 
 `ContinuityCandidate` is a proposal only. Model output is never accepted continuity merely because the model emitted it.
 
 This mirrors the authority shape of `StateCandidate -> deterministic validation -> Canonical State` without making continuity into Canonical State.
 
-K3 exposes `CognitiveOutput.continuity_candidates` on the provider-independent cognitive boundary. Buffered turns consume proposals from the same single `provider.generate()` call. Streamed turns consume them only after the same single `stream_generate()` call completes successfully. K3 introduces no second semantic generation.
+The provider-independent cognitive boundary may carry continuity proposals through the currently selected cognition topology. Single-pass consumes proposals from its completed combined cognitive output. Two-pass consumes proposals only from a successful, current Pass 2 extraction after the visible Pass 1 response has already completed. Cognition topology does not move continuity acceptance semantics into a provider adapter.
 
-Provider-specific structured-output grammar is a separate adapter concern. K3 does not require every adapter to emit the new proposal channel immediately and does not move continuity semantics into an adapter.
+Provider-specific structured-output grammar is a separate adapter concern. Continuity semantics do not require every adapter to share one wire representation.
 
 ## Canonical names
 
@@ -110,12 +104,19 @@ A `ContinuityItem` preserves kind, key, detached deeply immutable semantic value
 
 `src/relaylm/continuity_validation.py` is the deterministic acceptance/lifecycle owner.
 
-One call to `apply_continuity_candidates` advances the context revision exactly once. Its order is fixed:
+One successfully completed ordinary turn consumes exactly one Continuity revision. The semantic order for that turn is fixed:
 
 1. advance to the next revision;
 2. expire items whose `expires_revision` has been reached;
-3. validate and apply candidates in input order;
+3. validate and apply any candidates belonging to that same turn revision;
 4. if capacity is exceeded, evict oldest accepted items deterministically.
+
+`apply_continuity_candidates(...)` remains the composed K2 operation for paths where turn completion and candidate availability coincide. It performs the lifecycle advance and then candidate application at the resulting revision.
+
+Response-first two-pass execution may realize the same K2 semantics in two deterministic steps without creating a second continuity policy:
+
+- `advance_continuity_lifecycle(...)` reserves the completed turn revision and performs expiry;
+- `apply_continuity_candidates_at_current_revision(...)` applies a later, still-current Pass 2 candidate set at that already-reserved revision without advancing again.
 
 The caller must provide a positive `lifetime_revisions` value. K2 does not choose a default TTL or runtime budget. Accepted items expire at `accepted_revision + lifetime_revisions` unless superseded, resolved, or evicted earlier.
 
@@ -130,7 +131,7 @@ For each lifecycle `key`, transition semantics are:
 - valid `resolve` + existing same-kind key -> `resolve`, removing the item;
 - valid `resolve` + existing different-kind key -> reject `kind_mismatch`.
 
-Accepted item IDs are deterministic from the new context revision and candidate order. Superseded items are newly accepted for lifecycle age. Capacity eviction chooses the oldest `accepted_revision`, using existing tuple order as deterministic tie-breaker.
+Accepted item IDs are deterministic from the owning turn revision and candidate order. Superseded items are newly accepted for lifecycle age. Capacity eviction chooses the oldest `accepted_revision`, using existing tuple order as deterministic tie-breaker.
 
 The validation result exposes candidate decisions plus expired and evicted item IDs. Its `changed` flag means accepted-item membership/payload changed; revision-only advancement after duplicates, rejections, or no candidates does not make `changed` true.
 
@@ -143,13 +144,19 @@ The validation result exposes candidate decisions plus expired and evicted item 
 
 It defines no default capacity, TTL, persistence, session identity, or Context Compiler policy.
 
-When a runtime is configured, every successfully completed ordinary buffered or streamed turn invokes K2 exactly once, even when `continuity_candidates` is empty. This advances the deterministic revision clock and therefore allows expiry to occur without requiring a new candidate.
+When a runtime is configured, every successfully completed ordinary buffered or streamed turn consumes exactly one K2 lifecycle revision, even when no continuity candidate is produced. This advances the deterministic revision clock and therefore allows expiry to occur without requiring a new candidate.
 
-The current user Event is required as current evidence for ordinary-turn continuity candidates. Candidate validation is computed before the runtime holder is updated. A streamed turn does not update Continuity Context while response deltas are still being emitted; provider failure or cancellation therefore does not commit continuity.
+For single-pass, the completed cognitive output and K2 candidate application remain one composed return-path transition.
 
-If a cognitive output contains continuity candidates but no explicit runtime is configured, Turn rejects the output before Assistant Event, State, or Continuity commit rather than silently discarding semantic proposals.
+For canonical two-pass, successful ordinary-turn completion is the complete accepted Pass 1 response after its Assistant Event is committed. At that point RelayLM advances the Continuity lifecycle exactly once in conversation order and performs any due expiry. Pass 2, if it later succeeds and is still current, applies candidates at that already-advanced revision without a second lifecycle advance.
 
-`TurnResult.continuity` exposes the deterministic K2 validation receipt when a runtime is configured. Turn/Runtime only orchestrates already-owned semantics and does not redefine `referent`, `unresolved`, `active_task`, provenance, duplicate, supersession, resolution, expiry, or eviction meaning.
+A failed or stale Pass 2 applies no proposal-driven Continuity mutation, but it does not undo the lifecycle revision/expiry already caused by the successfully completed ordinary conversation. A newer successful Pass 1 may therefore advance the clock again and make an older pending extraction stale without letting that older extraction double-advance the clock.
+
+The current user Event is required as current evidence for ordinary-turn continuity candidates. Candidate validation is computed before the candidate result replaces the runtime holder. A streamed two-pass turn does not advance Continuity while response deltas are still being emitted; the advance occurs only after the complete Pass 1 response is accepted and its Assistant Event is committed. Pass 1 provider failure, cancellation, or failure to commit the Assistant Event does not advance Continuity.
+
+If a cognitive output contains continuity candidates but no explicit runtime is configured, the owning turn/extraction boundary fails rather than silently discarding semantic proposals. Two-pass Pass 1 remains independently valid under its cognition-owner response-first rules; a missing Continuity runtime prevents the Pass 2 proposal set from committing.
+
+`TurnResult.continuity` exposes the composed deterministic K2 validation receipt on the single-pass return path when a runtime is configured. Two-pass extraction exposes its candidate-validation receipt when Pass 2 commits; the process-local `ContinuityRuntime.context` already contains the turn-ordered lifecycle revision before that later extraction completes. Turn/Runtime only orchestrates already-owned semantics and does not redefine `referent`, `unresolved`, `active_task`, provenance, duplicate, supersession, resolution, expiry, or eviction meaning.
 
 The OpenAI API/server wiring can carry an explicitly supplied runtime through buffered and streamed requests. `create_app_from_env()` does not invent one, preserving the prohibition on new runtime/default budgeting policy in this lane.
 
@@ -157,9 +164,9 @@ The OpenAI API/server wiring can carry an explicitly supplied runtime through bu
 
 ### Proposal producer
 
-The existing cognitive generation may produce `continuity_candidates` alongside `response` and `state_candidates` in the same semantic generation.
+The selected cognitive execution may produce `continuity_candidates` through its owner-defined output path.
 
-No separate semantic producer subsystem and no mandatory second LLM call are introduced.
+No separate semantic producer subsystem is introduced by Continuity Context.
 
 ### Acceptance owner
 
@@ -173,11 +180,11 @@ Continuity Context owns only accepted temporary continuity. It does not gain dur
 
 ### Turn / Runtime
 
-Turn / Runtime carries proposal output through deterministic validation and updates the process-local holder after successful ordinary-turn completion. It is orchestration only.
+Turn / Runtime carries proposal output through deterministic validation and updates the process-local holder at the owner-defined ordinary-turn boundaries. It is orchestration only. Response-first two-pass timing may separate lifecycle advance from later candidate application, but both operations remain K2-owned Continuity semantics.
 
 ### Context Compiler
 
-The Context Compiler is a consumer. It may later select, retain, or project already-accepted `ContinuityItem` values into the current cognitive working set.
+The Context Compiler is a consumer. It selects/retains already-accepted `ContinuityItem` values for current cognition under its own bounded residency rules.
 
 It must not inspect raw language and invent missing `referent`, `unresolved`, or `active_task` semantics merely to satisfy retention policy.
 
@@ -215,11 +222,11 @@ It does not require:
 - durable Working Memory;
 - synchronous memory formation.
 
-K1 exposes typed boundaries, K2 supplies deterministic lifecycle semantics, and K3 supplies provider-independent ordinary-turn return-path orchestration with an explicit process-local holder.
+K1 exposes typed boundaries, K2 supplies deterministic lifecycle semantics, and K3 supplies provider-independent ordinary-turn orchestration with an explicit process-local holder.
 
 ## Context Compiler dependency
 
-The implementation dependency is:
+The implemented dependency is:
 
 ```text
 #1371 K1 typed continuity model
@@ -231,14 +238,15 @@ The implementation dependency is:
 #1371 K3 ordinary-turn continuity return path
       |
       v
-#1267 Context Compiler C2
-accepted referent / unresolved retention
+#1267 Context Compiler C2/C3
+accepted referent / unresolved / active_task retention
       |
       v
-#1267 C3 active_task retention
+#1383 ordinary-turn cognition wiring
+accepted pre-generation ContinuityRuntime.context
 ```
 
-With K1-K3 present on current `v1`, the Continuity foundation dependency for #1267 C2 is satisfied. C2 remains a separate Context Compiler transaction and must consume accepted `ContinuityItem` values rather than introduce raw-language inference, temporary fields, duplicate semantic owners, compatibility bridges, or speculative retention classification.
+Current Context Compiler/Turn wiring consumes accepted `ContinuityItem` values. It does not introduce raw-language inference, temporary duplicate fields, a second semantic owner, compatibility bridges, or speculative retention classification.
 
 ## Non-goals
 
@@ -246,7 +254,6 @@ This architecture does not introduce:
 
 - legacy `RelayINT` or `RelayCTX` subsystems;
 - a generalized intent engine;
-- a second mandatory semantic model call;
 - durable continuity persistence in the first slice;
 - long-term memory formation;
 - retrieval semantics;

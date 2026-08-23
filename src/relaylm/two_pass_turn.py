@@ -16,7 +16,8 @@ from relaylm.cognition_execution import (
 from relaylm.continuity import ContinuityContext
 from relaylm.continuity_validation import (
     ContinuityValidationResult,
-    apply_continuity_candidates,
+    advance_continuity_lifecycle,
+    apply_continuity_candidates_at_current_revision,
 )
 from relaylm.events import Event
 from relaylm.state import CanonicalState
@@ -159,9 +160,6 @@ async def run_user_turn_two_pass(
                 revision=execution_revision,
                 event_id=user_event.id,
             )
-        origin_continuity = (
-            continuity_runtime.context if continuity_runtime is not None else None
-        )
         if pass1_request is None:
             conversation = await generate_conversation(cognitive_input)
         else:
@@ -177,6 +175,10 @@ async def run_user_turn_two_pass(
             character=character,
             response=conversation.response,
         )
+        async with execution_runtime._authority_lock:
+            origin_continuity = _advance_continuity_after_conversation(
+                continuity_runtime
+            )
         extraction = _schedule_extraction(
             character=character,
             provider=provider,
@@ -239,9 +241,6 @@ async def run_user_turn_two_pass_streaming(
                 revision=execution_revision,
                 event_id=user_event.id,
             )
-        origin_continuity = (
-            continuity_runtime.context if continuity_runtime is not None else None
-        )
         if pass1_request is None:
             conversation = await stream_generate_conversation(
                 cognitive_input,
@@ -262,6 +261,10 @@ async def run_user_turn_two_pass_streaming(
             character=character,
             response=conversation.response,
         )
+        async with execution_runtime._authority_lock:
+            origin_continuity = _advance_continuity_after_conversation(
+                continuity_runtime
+            )
         extraction = _schedule_extraction(
             character=character,
             provider=provider,
@@ -327,6 +330,19 @@ def _commit_conversation_response(
     )
     character.append_event(assistant_event)
     return assistant_event
+
+
+def _advance_continuity_after_conversation(
+    continuity_runtime: ContinuityRuntime | None,
+) -> ContinuityContext | None:
+    if continuity_runtime is None:
+        return None
+    lifecycle = advance_continuity_lifecycle(
+        current_context=continuity_runtime.context,
+        lifetime_revisions=continuity_runtime.lifetime_revisions,
+    )
+    continuity_runtime.context = lifecycle.context
+    return lifecycle.context
 
 
 def _schedule_extraction(
@@ -434,7 +450,7 @@ async def _complete_extraction(
 
             continuity_validation = None
             if continuity_runtime is not None:
-                continuity_validation = apply_continuity_candidates(
+                continuity_validation = apply_continuity_candidates_at_current_revision(
                     current_context=continuity_runtime.context,
                     candidates=output.continuity_candidates,
                     events=event_by_id,
