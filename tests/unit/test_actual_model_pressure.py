@@ -14,6 +14,8 @@ from relaylm.actual_model_evaluation import (
 )
 from relaylm.actual_model_pressure import (
     ActualModelPressureArtifactError,
+    _pressure_comparison_identity,
+    _stable_pressure_id,
     load_actual_model_scenario_pressure_mapping,
     run_actual_model_scenario_pressure_comparison,
     write_actual_model_scenario_pressure_comparison,
@@ -397,6 +399,57 @@ def test_pressure_writer_rejects_condition_evidence_from_another_valid_replicate
     with pytest.raises(
         ActualModelPressureArtifactError,
         match="condition comparison does not match pressure plans",
+    ):
+        write_actual_model_scenario_pressure_comparison(
+            comparison=forged,
+            artifact_root=artifact_root,
+        )
+
+    assert not artifact_root.exists()
+
+
+@pytest.mark.parametrize("plan_name", ("baseline_plan", "pressure_plan"))
+def test_pressure_writer_rejects_non_content_derived_plan_id(
+    tmp_path: Path,
+    plan_name: str,
+) -> None:
+    result = asyncio.run(
+        run_actual_model_scenario_pressure_comparison(
+            scenario_set=load_actual_model_scenario_set(_SCENARIO_SET_PATH),
+            scenario_id="cognitive-pressure-shared-semantics-v1",
+            fixture_root=_FIXTURE_ROOT,
+            workspace_root=tmp_path / "comparison",
+            baseline_provider=_Provider("baseline"),
+            pressure_provider=_Provider("pressure"),
+            baseline_manifest=_baseline_manifest(),
+            pressure_manifest=_pressure_manifest(),
+        )
+    )
+    forged_plan = replace(
+        getattr(result, plan_name),
+        plan_id="amp-" + "f" * 64,
+    )
+    forged = replace(result, **{plan_name: forged_plan})
+    forged = replace(
+        forged,
+        pressure_comparison_id=_stable_pressure_id(
+            _pressure_comparison_identity(
+                format_version=forged.format_version,
+                scenario_set_version=forged.scenario_set_version,
+                scenario_set_revision=forged.scenario_set_revision,
+                definition=forged.definition,
+                baseline_plan=forged.baseline_plan,
+                pressure_plan=forged.pressure_plan,
+                comparison=forged.comparison,
+            )
+        ),
+    )
+    assert forged.pressure_comparison_id != result.pressure_comparison_id
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(
+        ActualModelPressureArtifactError,
+        match="plan_id does not match pressure plan evidence",
     ):
         write_actual_model_scenario_pressure_comparison(
             comparison=forged,
