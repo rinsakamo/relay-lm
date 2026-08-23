@@ -43,7 +43,6 @@ class _RecordingProvider:
         {"semantic": "likes", "degree_hint": 0.85, "extra": True},
         {"semantic": "", "degree_hint": 0.85},
         {"semantic": "likes", "degree_hint": True},
-        {"semantic": "likes", "degree_hint": float("inf")},
         {"semantic": "likes", "degree_hint": 1.1},
     ],
 )
@@ -84,6 +83,17 @@ def test_malformed_persisted_degree_envelope_fails_before_provider_generation(
     assert provider.calls == 0
     assert provider.inputs == []
     assert list(character.iter_events()) == []
+
+
+def test_non_finite_degree_envelope_fails_at_accepted_state_boundary() -> None:
+    with pytest.raises(ValueError, match="invalid degree hint value"):
+        StateRecord(
+            state_id="state-degree",
+            state_class="user.preference",
+            key="tea",
+            value={"semantic": "likes", "degree_hint": float("inf")},
+            sources=("evt-old",),
+        )
 
 
 def test_valid_degree_envelope_and_non_reserved_mapping_remain_valid() -> None:
