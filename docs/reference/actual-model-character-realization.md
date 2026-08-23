@@ -78,9 +78,9 @@ continuity loss where the governed context remains sufficient.
 
 ## Character realization outcomes
 
-Product review should preserve at least the following semantic distinction,
-whether represented directly in the current review artifact or in a bounded
-sidecar owned by #1386:
+Current citable Stage R review format v3 / `actual-model-stage-r-review-v2`
+records exactly one turn-local Character-realization outcome for every evidence
+turn:
 
 - `normal` — plausible for the frozen Character;
 - `odd_but_character_plausible` — surprising but explainable by Character
@@ -89,6 +89,19 @@ sidecar owned by #1386:
   governed experience, and accepted current understanding;
 - `system_defect` — authority/runtime/provenance failure independent of
   personality.
+
+These outcomes are classifications, not aliases for the independent Stage R
+`pass | fail | not_rated` dimensions. In particular,
+`odd_but_character_plausible` does not silently become `fail`, while
+`system_defect` cannot be softened into an acceptable personality quirk.
+
+The turn-local classifications participate in the content-derived review
+identity. A persisted review whose Character-realization observations are
+changed without recomputing its `review_id` is invalid evidence.
+
+Historical actual-model review format v2 / `actual-model-stage-r-review-v1`
+keeps its original semantics. It is not reinterpreted as though the four-value
+Character-realization taxonomy had been present in those artifacts.
 
 No weighted universal Character score is introduced.
 
