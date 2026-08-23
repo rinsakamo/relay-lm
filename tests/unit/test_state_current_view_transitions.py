@@ -103,3 +103,74 @@ def test_remove_only_removes_current_view_record_and_preserves_non_current_same_
     assert result.decisions[0].status == "accepted"
     assert result.decisions[0].action == "remove"
     assert result.state.states == (historical,)
+
+
+@pytest.mark.parametrize(
+    ("existing_value", "candidate_value"),
+    (
+        (True, 1),
+        (False, 0),
+        ([True], [1]),
+        ({"nested": [False]}, {"nested": [0]}),
+    ),
+)
+def test_json_boolean_number_type_changes_replace_current_state(
+    existing_value: object,
+    candidate_value: object,
+) -> None:
+    current = StateRecord(
+        state_id="state-current",
+        state_class="user.fact",
+        key="typed_value",
+        value=existing_value,
+        sources=("evt-old",),
+    )
+    event = _current_event()
+    candidate = StateCandidate.set(
+        state_class="user.fact",
+        key="typed_value",
+        value=candidate_value,
+        sources=(event.id,),
+    )
+
+    result = apply_state_candidates(
+        current_state=CanonicalState(states=(current,)),
+        candidates=(candidate,),
+        events={event.id: event},
+        required_source_ids=frozenset({event.id}),
+    )
+
+    assert result.changed is True
+    assert result.decisions[0].status == "accepted"
+    assert result.decisions[0].action == "replace"
+    assert result.state.states[0].value == candidate_value
+    assert type(result.state.states[0].value) is type(candidate_value)
+    assert result.state.states[0].sources == (event.id,)
+
+
+def test_json_numeric_values_remain_equal_across_int_and_float_representation() -> None:
+    current = StateRecord(
+        state_id="state-current",
+        state_class="user.fact",
+        key="numeric_value",
+        value=1,
+        sources=("evt-old",),
+    )
+    event = _current_event()
+    candidate = StateCandidate.set(
+        state_class="user.fact",
+        key="numeric_value",
+        value=1.0,
+        sources=(event.id,),
+    )
+
+    result = apply_state_candidates(
+        current_state=CanonicalState(states=(current,)),
+        candidates=(candidate,),
+        events={event.id: event},
+        required_source_ids=frozenset({event.id}),
+    )
+
+    assert result.changed is False
+    assert result.decisions[0].status == "noop"
+    assert result.state.states == (current,)
