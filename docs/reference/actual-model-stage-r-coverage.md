@@ -84,3 +84,9 @@ correctness, proposal churn, hallucinated proposals, and source Event validity.
 Raw model output, deterministic RelayLM decisions, protocol-boundary verdicts,
 human/product-quality review, and timing/resource observations remain separate
 evidence dimensions. A failure in Pass 2 does not invalidate Pass 1.
+
+A persisted deterministic-boundary verdict is citable only when its `verdict_id`
+matches the content-derived identity of its exact execution/run/scenario fields
+and deterministic check evidence. The persistence boundary recomputes that
+identity and rejects a caller-supplied mismatch before writing the sidecar; the
+boundary PASS/FAIL calculation and model-quality separation remain unchanged.
