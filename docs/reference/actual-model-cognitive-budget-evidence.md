@@ -1,8 +1,8 @@
 # Actual-model total cognitive-budget evidence bridge
 
-Status: #1386 actual-model evidence carriage for the already-owned #1387 total cognitive-budget runtime.
+Status: #1386 actual-model evidence carriage for the already-owned #1387 total cognitive-budget runtime and the #1718/#1533 Core 1.0 two-pass per-generation budget boundary.
 
-This reference defines how actual-model runs exercise and preserve evidence from `CognitiveBudgetRuntimeConfig`. It does not define budget semantics, choose numeric defaults, alter provider behavior, or perform calibration.
+This reference defines how actual-model runs exercise and preserve evidence from `CognitiveBudgetRuntimeConfig` and `TwoPassCognitiveBudgetRuntimeConfig`. It does not define budget semantics, choose numeric defaults, alter provider behavior, or perform calibration.
 
 ## Purpose
 
@@ -17,13 +17,15 @@ The #1387 runtime already enforces:
 - bounded fail-before-generation behavior;
 - aggregate content-free diagnostics.
 
-Before this bridge, #1386 actual-model runs recorded only legacy explicit MEMORY/Event retrieval limits and therefore could not produce calibration evidence for the real total-budget path.
+For Core 1.0 two-pass execution, #1718 additionally requires each real model generation to be admitted against its own exact serialized request and explicit output reserve. Pass 1 keeps the #1387 degradation loop; Pass 2 checks the exact extraction request after the visible response exists and does not run a second semantic degradation policy.
 
-The bridge makes the existing runtime observable without reimplementing it.
+Before this bridge, #1386 actual-model runs could cite the historical single-pass total-budget path but could not bind the same per-pass capacity identity used by the real two-pass runtime. The bridge makes the existing runtime observable without reimplementing it.
 
 ## Manifest identity
 
-`ActualModelRunManifest.cognitive_budget` is optional. When present it is an `ExplicitCognitiveBudgetConfiguration` containing the existing #1387 owner values:
+`ActualModelRunManifest.cognitive_budget` is optional. When present it is an `ExplicitCognitiveBudgetConfiguration` that freezes caller-supplied #1387 runtime identity.
+
+Historical single-pass evidence retains its existing mapping exactly:
 
 ```text
 TotalBudgetConfig
@@ -32,39 +34,66 @@ TotalBudgetConfig
 
 BudgetDegradationPolicy
   complete initial BudgetPlan
-    Canonical State max/floor items
-    Working Context max/floor items + chars
-    Retrieved MEMORY max/floor items + chars
-    Event Evidence max/floor items + chars
   ordered BudgetDegradationStep list
-    layer
-    tier
-    target envelope/floor
+
+optional serialized-input counter identity
 ```
 
-No numeric value is invented by #1386. The manifest merely freezes caller-supplied #1387 policy identity for the evidence run.
+Core 1.0 two-pass evidence uses the same field with an explicit two-pass shape:
 
-`manifest.effective_context_window` must equal `cognitive_budget.model_context_window`.
+```text
+mode: two_pass
+pass1
+  model_context_window
+  reserved_output_tokens
+pass2
+  model_context_window
+  reserved_output_tokens
+BudgetDegradationPolicy
+  complete initial BudgetPlan
+  ordered BudgetDegradationStep list
+optional serialized-input counter identity
+```
 
-The total cognitive-budget path and the older `ExplicitBudgetConfiguration` MEMORY/Event-only path are mutually exclusive. A run cannot combine them and ambiguously claim which controls were authoritative.
+The two-pass shape records the two real total-capacity equations. It does not collapse them into one synthetic reserve and does not invent a Pass 2 degradation policy.
+
+No numeric value is invented by #1386. In particular, #1388 owns calibration and selection of release-profile Pass 1 / Pass 2 reserves. This bridge only makes explicit caller-supplied values citable.
+
+`manifest.effective_context_window` must equal the model context window used by every total-capacity equation in the declared configuration. A two-pass identity therefore requires both Pass 1 and Pass 2 totals to bind the same effective model context window while allowing different output reserves.
+
+The total cognitive-budget path and the older `ExplicitBudgetConfiguration` MEMORY/Event-only path remain mutually exclusive. A run cannot combine them and ambiguously claim which controls were authoritative.
+
+A declared two-pass cognitive-budget identity requires `cognition_execution.mode == two_pass`. Conversely, a two-pass execution that declares cognitive-budget evidence cannot masquerade a historical single-pass total-budget identity as its capacity contract.
 
 ## Runtime binding
 
 A manifest declaration does not reconstruct a runtime token counter.
 
-The caller must supply a real `CognitiveBudgetRuntimeConfig` containing:
+The caller must supply the matching real runtime object:
 
-- the same `TotalBudgetConfig`;
-- the same `BudgetDegradationPolicy`;
-- the configured provider/model-specific `SerializedCognitiveInputTokenCounter`.
+```text
+single_pass
+  CognitiveBudgetRuntimeConfig
+
+two_pass
+  TwoPassCognitiveBudgetRuntimeConfig
+    pass1_total
+    pass2_total
+    shared #1387 degradation policy
+    exact/conservative pass-aware serialized-input counter
+```
 
 Declaration/runtime mismatch fails before semantic provider generation. Supplying an undeclared runtime also fails closed.
 
-Tokenizer/provider identity remains represented by existing #1386 manifest fields. The actual exact-versus-conservative count mode is observed from runtime diagnostics rather than guessed from metadata.
+For two-pass execution, the runtime object supplied to #1386 is the same runtime type consumed by `run_user_turn_two_pass` / `run_user_turn_two_pass_streaming`; the evaluation harness does not translate it into a separate evaluation-only budget mechanism.
+
+The fully resolved `CognitionPassRequest` used for Pass 1 counting is the same request passed to Pass 1 generation. The same identity rule holds for Pass 2 counting and extraction generation. This keeps reasoning/decoding/output controls inside both request serialization and provider execution rather than counting a proxy request.
+
+Tokenizer/provider identity remains represented by existing #1386 manifest fields and, when supplied by the runtime counter, the content-free serialized-input counter identity. Exact-versus-conservative semantics remain counter-owned rather than guessed from unrelated metadata.
 
 ## Real ordinary-turn execution
 
-For a declared total cognitive-budget condition, #1386 uses the real ordinary-turn functions:
+Historical single-pass declared total-budget conditions continue to use the existing diagnostic-returning ordinary-turn functions:
 
 ```text
 buffered
@@ -74,13 +103,31 @@ streaming
   run_user_turn_streaming_with_cognitive_budget_diagnostics
 ```
 
-These functions already own the #1387 execution boundary. The actual-model harness does not duplicate enforcement, compilation, degradation, or token-accounting logic.
+Core 1.0 two-pass declared conditions use the real #1533/#1718 functions:
 
-Exactly one semantic generation remains possible after a successful fit. No evaluation-only provider call or second model call is introduced.
+```text
+buffered
+  run_user_turn_two_pass
+
+streaming
+  run_user_turn_two_pass_streaming
+```
+
+The actual-model harness does not duplicate enforcement, compilation, degradation, or token-accounting logic.
+
+For two-pass execution:
+
+1. Pass 1 counts the exact conversation request with the resolved Pass 1 request, applies the existing deterministic #1387 degradation/fail-before-generation semantics, then delegates at most once;
+2. after a valid visible response exists, Pass 2 constructs the real `CognitionExtractionInput`, counts the exact extraction request with the resolved Pass 2 request, and checks its own total-capacity equation before delegation;
+3. Pass 2 does not silently rewrite the originating governed cognitive input or run a second degradation loop;
+4. Pass 2 overflow is represented by the existing content-free `pass2_budget_exceeded` extraction failure, with no extraction-provider call and no Pass 2 State/Continuity proposals;
+5. buffered and streaming paths carry the same per-pass requests and budget identity.
+
+The historical single-pass path remains one semantic generation. Core 1.0 two-pass intentionally contains the two sequential generations owned by #1533; this bridge does not add any evaluation-only model call beyond that topology.
 
 ## Successful turn evidence
 
-Every successfully generated turn may carry `cognitive_budget` diagnostics copied from the runtime's aggregate content-free diagnostics:
+Historical single-pass successfully generated turns may carry `cognitive_budget` diagnostics copied from the runtime's aggregate content-free diagnostics:
 
 - model context window;
 - effective serialized-input capacity;
@@ -96,15 +143,23 @@ Every successfully generated turn may carry `cognitive_budget` diagnostics copie
 - outcome: `fit` or `degraded_fit`;
 - count mode: `exact` or `conservative_estimate`.
 
-The evidence copy contains no Identity text, State keys/values, Continuity values, MEMORY text/locations, Event content, prompt text, or secrets.
+For Core 1.0 two-pass evidence, the citable per-pass capacity configuration lives in `manifest.cognitive_budget`, while the turn's existing `cognition_execution` observation records the Pass 2 terminal disposition. A local Pass 2 capacity rejection is therefore observable as:
 
-Raw model output and deterministic State/Continuity decisions remain separate from these budget diagnostics exactly as before.
+```text
+cognition_execution.mode = two_pass
+cognition_execution.pass2_status = failed
+cognition_execution.pass2_failure_reason = pass2_budget_exceeded
+```
+
+No fake Pass 2 raw output is created when the provider was not called. A successful Pass 2 continues to expose its normal committed/stale/failed execution observation and raw proposal evidence according to the existing cognition-execution contract.
+
+Raw model output and deterministic State/Continuity decisions remain separate from budget identity exactly as before.
 
 ## Bounded pre-generation failure evidence
 
-A protected-floor overflow or degradation-exhaustion condition is valid calibration evidence even though no model response exists.
+For the historical single-pass diagnostic path, a protected-floor overflow or degradation-exhaustion condition remains valid calibration evidence even though no model response exists.
 
-The harness therefore preserves a top-level `bounded_failure` observation containing:
+The harness preserves a top-level `bounded_failure` observation containing:
 
 - failed turn index and already-known semantic fixture input;
 - `provider_generation_occurred: false`;
@@ -115,6 +170,8 @@ The harness therefore preserves a top-level `bounded_failure` observation contai
 - applied degradation count.
 
 The failed turn does **not** receive fabricated `RawModelObservation` or deterministic candidate decisions. Prior successfully completed turns, if any, remain in `turns`.
+
+For two-pass execution, Pass 2 overflow occurs after the valid visible response and is therefore not a top-level pre-generation failure for the whole turn. It is preserved through the cognition-execution failure observation described above. The visible response remains evidence; no extraction output is fabricated.
 
 ## Controlled pressure comparisons
 
@@ -314,9 +371,10 @@ Current restart-quality evidence is intentionally **not** extended by this ordin
 
 `ActualModelEvidence.to_mapping()` / immutable artifact persistence include:
 
-- manifest total-budget identity;
-- per-successful-turn aggregate budget diagnostics;
-- optional bounded failure evidence.
+- manifest total-budget identity, including explicit Pass 1 / Pass 2 totals when the run uses the Core 1.0 two-pass budget shape;
+- historical single-pass per-successful-turn aggregate budget diagnostics;
+- two-pass cognition-execution disposition, including bounded `pass2_budget_exceeded` when applicable;
+- optional historical single-pass top-level bounded failure evidence.
 
 Existing content-addressed run/execution/pressure identity naturally includes the declared cognitive-budget configuration through `manifest.to_mapping()`.
 
@@ -325,6 +383,7 @@ Existing content-addressed run/execution/pressure identity naturally includes th
 This bridge does not own or modify:
 
 - total-budget arithmetic, protection tiers, degradation order, token-count semantics, or failure reasons — #1387;
+- Pass 1 / Pass 2 cognition responsibilities, response-first ordering, or stale semantics — #1533;
 - Retrieval or Context Compiler selection semantics — #1267;
 - Continuity acceptance/lifecycle semantics — #1371;
 - provider wire or decoding semantics — #1456 provider authority;
@@ -333,6 +392,6 @@ This bridge does not own or modify:
 
 ## Calibration gate consequence
 
-After this bridge is merged, #1386 can produce machine-auditable total-budget evidence required by #1388 CAL2 **when a real target provider/model, exact manifest, explicit runtime configuration, and provider/model token counter are supplied**.
+After this bridge is merged, #1386 can represent and execute machine-auditable per-pass total-budget evidence using the same Core 1.0 two-pass runtime mechanics **when an actual-model host supplies an explicit matching `TwoPassCognitiveBudgetRuntimeConfig` and provider/model pass-aware token counter**.
 
-The bridge alone does not create real target-model executions or justify any numeric default. Canonical calibration remains blocked until reproducible real-model evidence is actually produced and the relevant moving semantic baselines are freshly frozen.
+This generic bridge does not itself choose Pass 1 / Pass 2 reserves and does not make the current vLLM Stage R0 plan budget-calibrated. The citable host/screening layer must still carry an explicit per-pass runtime identity before #1718 can close. #1388 remains the owner of evidence-backed numeric profile/default selection.
