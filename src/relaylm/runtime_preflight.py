@@ -173,6 +173,15 @@ def _validate_provider_configuration(resolved: ResolvedRuntimeConfig) -> None:
             field="provider.base_url",
             message="provider base URL must not include a query or fragment",
         )
+    if parsed.path.rstrip("/").endswith("/chat/completions"):
+        raise RuntimePreflightError(
+            RuntimeConfigErrorCode.PROVIDER_INVALID,
+            field="provider.base_url",
+            message=(
+                "provider base URL must be a base endpoint, not a "
+                "/chat/completions route"
+            ),
+        )
 
 
 def _validate_character_readability(character: CharacterDirectory) -> None:

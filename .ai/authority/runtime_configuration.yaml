@@ -18,6 +18,7 @@ tests:
 - tests/unit/test_runtime_config_loader.py
 - tests/unit/test_runtime_assembly.py
 - tests/unit/test_runtime_provider_backend_selection.py
+- tests/unit/test_runtime_provider_base_endpoint_admission.py
 - tests/unit/test_runtime_cli.py
 depends_on:
 - cognitive_budget
