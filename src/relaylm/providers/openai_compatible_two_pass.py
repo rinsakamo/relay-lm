@@ -18,6 +18,7 @@ from relaylm.providers.openai_compatible import (
     ProviderProtocolError,
     _iter_sse_data,
     _load_cognitive_wire_json,
+    _load_provider_response_json,
     _parse_candidate_collections,
     _parse_stream_event,
     _provider_http_error,
@@ -224,10 +225,7 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                     prefix="upstream request failed",
                     api_key=self.api_key,
                 )
-            return _load_cognitive_wire_json(
-                response.text,
-                invalid_message="provider response is not valid JSON",
-            )
+            return _load_provider_response_json(response)
         except ProviderProtocolError:
             raise
         except (httpx.HTTPError, ValueError) as exc:

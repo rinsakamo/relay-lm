@@ -212,6 +212,17 @@ def _load_cognitive_wire_json(text: str, *, invalid_message: str) -> Any:
         raise ProviderProtocolError(invalid_message) from exc
 
 
+def _load_provider_response_json(response: httpx.Response) -> Any:
+    try:
+        text = response.content.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ProviderProtocolError("provider response is not valid UTF-8") from exc
+    return _load_cognitive_wire_json(
+        text,
+        invalid_message="provider response is not valid JSON",
+    )
+
+
 _UPSTREAM_ERROR_DETAIL_LIMIT = 2048
 
 
@@ -348,10 +359,7 @@ class OpenAICompatibleProvider:
                     prefix="upstream request failed",
                     api_key=self.api_key,
                 )
-            envelope = _load_cognitive_wire_json(
-                response.text,
-                invalid_message="provider response is not valid JSON",
-            )
+            envelope = _load_provider_response_json(response)
         except ProviderProtocolError:
             raise
         except (httpx.HTTPError, ValueError) as exc:
