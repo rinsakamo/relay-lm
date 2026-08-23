@@ -58,7 +58,7 @@ class _ArgumentParser(argparse.ArgumentParser):
 
     def error(self, message: str) -> None:
         self.print_usage(self._stderr)
-        self.exit(2, f"relaylm: error: {message}\n")
+        self.exit(2, f"relaylm: error: {_summary_value(message)}\n")
 
 
 def main() -> None:
