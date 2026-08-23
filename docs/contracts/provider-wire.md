@@ -234,6 +234,8 @@ If that single choice carries a non-null `finish_reason`, only the string `stop`
 
 For streaming, an explicit `finish_reason: "stop"` is terminal for provider data envelopes. After it, RelayLM permits only the optional `[DONE]` transport sentinel or stream EOF. Any later non-`[DONE]` data envelope is a protocol error and is rejected before its content can be parsed, emitted, or appended to the successful cognitive result.
 
+A streaming `data:` payload becomes a provider data envelope only when its SSE event is terminated by the blank-line event delimiter. EOF may immediately follow an already-delimited `finish_reason: "stop"` event, but EOF does not itself dispatch pending event data. If EOF arrives with an unterminated pending SSE event, RelayLM treats the stream as truncated and raises a provider protocol error rather than accepting that pending envelope as completion.
+
 For buffered generation, RelayLM waits for the complete ordinary provider message, parses its content as the exact combined IR, constructs typed `CognitiveOutput`, and only then allows the existing deterministic commit path to proceed.
 
 For streaming generation, the provider still generates the same single JSON object as ordinary content. The adapter accumulates the complete text while incrementally decoding only characters that can be proven to belong to the leading top-level `utterance` JSON string. Those safe characters may be delivered to the client before the candidate tail completes.
