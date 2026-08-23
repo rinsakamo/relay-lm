@@ -390,3 +390,28 @@ def test_evidence_artifact_is_idempotent_and_conflict_requires_distinct_identity
             evidence=conflicting,
             artifact_root=artifact_root,
         )
+
+
+def test_crystallization_writer_rejects_non_content_derived_run_id(tmp_path: Path) -> None:
+    subject = _subject()
+    evidence = asyncio.run(
+        subject.run_actual_model_crystallization(
+            character=_make_character(tmp_path / "character"),
+            crystallizer=_ScriptedCrystallizer(),
+            manifest=_manifest(),
+            case=_case(),
+        )
+    )
+    forged = replace(evidence, run_id="f" * 64)
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(
+        subject.ActualModelCrystallizationArtifactError,
+        match="run_id does not match crystallization evidence",
+    ):
+        subject.write_actual_model_crystallization_evidence(
+            evidence=forged,
+            artifact_root=artifact_root,
+        )
+
+    assert not artifact_root.exists()
