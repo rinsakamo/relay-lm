@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveProvider
@@ -36,7 +36,7 @@ class ChatCompletionRequest(BaseModel):
 
     model: str
     messages: list[ChatMessage] = Field(min_length=1)
-    stream: bool = False
+    stream: StrictBool = False
 
 
 class AssistantMessage(BaseModel):
