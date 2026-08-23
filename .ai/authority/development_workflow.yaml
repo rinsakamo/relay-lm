@@ -1,11 +1,12 @@
 schema_version: 1
 id: development_workflow
-summary: The v1 development workflow, AI-development procedures, executable-realization dependency model, CI verification guarantees, and repository-use practices.
+summary: The v1 development workflow, AI-development procedures, executable-realization dependency model, Realization Quality Audit admission/exit gates, CI verification guarantees, and repository-use practices.
 canonical_surfaces:
 - docs/reference/ai-development.md
 - docs/reference/executable-realization-dependencies.md
 - docs/reference/ci-verification.md
 - docs/reference/development-workflow.md
+- docs/reference/realization-quality-audit.md
 - docs/reference/repository-practices.md
 - docs/reference/document-lifecycle.md
 - docs/decisions/README.md
