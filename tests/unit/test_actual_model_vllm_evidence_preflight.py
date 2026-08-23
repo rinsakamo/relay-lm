@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -26,24 +27,66 @@ GOOGLE_PROOF_PATH = (
 )
 
 
-def test_screening_rejects_capacity_from_different_relaylm_commit_before_snapshot_work(
-    monkeypatch: pytest.MonkeyPatch,
+def test_clean_exact_repo_rejects_capacity_provenance_from_different_commit(
+    tmp_path: Path,
 ) -> None:
-    plan = vllm_host.load_vllm_screening_plan(CURRENT_PLAN_PATH)
-    touched = False
-
-    def forbidden(*args, **kwargs):
-        nonlocal touched
-        touched = True
-        raise AssertionError("stale capacity provenance reached snapshot/provider work")
-
-    monkeypatch.setattr(vllm_host, "_verify_clean_exact_repo", lambda **_: None)
-    monkeypatch.setattr(vllm_host, "verify_actual_model_repository_snapshot", forbidden)
-    monkeypatch.setattr(vllm_host, "acquire_vllm_reasoning_capability", forbidden)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.email", "relaylm-test@example.invalid"],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.name", "RelayLM Test"],
+        check=True,
+    )
+    (repo / "tracked.txt").write_text("tracked\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "tracked.txt"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "-q", "-m", "fixture"],
+        check=True,
+    )
+    head = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
 
     with pytest.raises(
         vllm_host.ActualModelVLLMHostError,
         match="capacity evidence RelayLM commit",
+    ):
+        vllm_host._verify_clean_exact_repo(
+            root=repo,
+            expected_commit=head,
+            capacity_evidence_commit="b" * 40,
+        )
+
+
+def test_screening_preparation_carries_capacity_commit_into_exact_repo_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plan = vllm_host.load_vllm_screening_plan(CURRENT_PLAN_PATH)
+    assert plan.capacity_evidence_id is not None
+    capacity = vllm_host.load_vllm_runtime_capacity_evidence(
+        vllm_host.capacity_evidence_path(
+            artifact_root=REPO_ROOT / vllm_host.CANONICAL_VLLM_CAPACITY_EVIDENCE_ROOT,
+            evidence_id=plan.capacity_evidence_id,
+        )
+    )
+    observed: dict[str, object] = {}
+
+    def stop_after_repo_gate(**kwargs):
+        observed.update(kwargs)
+        raise vllm_host.ActualModelVLLMHostError("stop after exact repo gate")
+
+    monkeypatch.setattr(vllm_host, "_verify_clean_exact_repo", stop_after_repo_gate)
+
+    with pytest.raises(
+        vllm_host.ActualModelVLLMHostError,
+        match="stop after exact repo gate",
     ):
         vllm_host.prepare_vllm_screening_condition(
             plan=plan,
@@ -51,13 +94,14 @@ def test_screening_rejects_capacity_from_different_relaylm_commit_before_snapsho
             proof_path=GOOGLE_PROOF_PATH,
             repo_root=REPO_ROOT,
             snapshot_root="/tmp/unused",
-            relaylm_commit="b" * 40,
+            relaylm_commit="a" * 40,
             base_url="http://127.0.0.1:8000/v1",
             api_key=None,
             model_runner="v2",
         )
 
-    assert touched is False
+    assert observed["expected_commit"] == "a" * 40
+    assert observed["capacity_evidence_commit"] == capacity.relaylm_commit
 
 
 def test_screening_facade_can_bind_fresh_external_capacity_without_rewriting_plan(
