@@ -312,3 +312,21 @@ def test_boolean_general_historical_prose_without_key_addressing_is_retained() -
     compiled = _compile(state=state, chunks=(history,))
 
     assert [item.location for item in compiled.memory] == [history.location]
+
+
+def test_single_character_state_key_heading_suppresses_conflicting_memory() -> None:
+    state = CanonicalState(
+        states=(
+            _record(
+                state_id="tea-preference",
+                state_class="user.preference",
+                key="茶",
+                value="likes",
+            ),
+        )
+    )
+    stale = _chunk(heading="茶", content="Rin dislikes tea.")
+
+    compiled = _compile(state=state, chunks=(stale,))
+
+    assert compiled.memory == ()

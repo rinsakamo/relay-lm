@@ -21,6 +21,7 @@ tests:
 - tests/unit/test_context_working_diagnostics.py
 - tests/unit/test_context_cross_layer_diagnostics.py
 - tests/unit/test_context_degree_memory_authority.py
+- tests/unit/test_memory_state_authority_filter.py
 - tests/unit/test_context_continuity_retention.py
 - tests/unit/test_context_active_task_retention.py
 - tests/unit/test_context_freeform_current_memory_authority.py

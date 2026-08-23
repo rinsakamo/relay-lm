@@ -498,7 +498,7 @@ def _memory_chunk_is_shadowed(
     heading_terms = frozenset(_lexical_terms(" ".join(chunk.heading_path)))
 
     for record in active_state:
-        key_terms = tuple(term for term in _lexical_terms(record.key) if len(term) >= 2)
+        key_terms = _lexical_terms(record.key)
         heading_addresses_key = bool(key_terms) and all(
             term in heading_terms for term in key_terms
         )
