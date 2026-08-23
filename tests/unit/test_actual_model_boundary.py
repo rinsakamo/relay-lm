@@ -17,7 +17,10 @@ from relaylm.actual_model_evaluation import (
     ActualModelRunManifest,
     ExplicitContinuityRuntimeConfiguration,
 )
-from relaylm.actual_model_execution import run_actual_model_scenario_definition
+from relaylm.actual_model_execution import (
+    _stable_execution_id,
+    run_actual_model_scenario_definition,
+)
 from relaylm.actual_model_restart import RestartBoundaryObservation
 from relaylm.actual_model_scenarios import load_actual_model_scenario_set
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
@@ -63,7 +66,11 @@ class _Provider:
         )
 
 
-def _manifest(*, restart: bool = False) -> ActualModelRunManifest:
+def _manifest(
+    *,
+    restart: bool = False,
+    replicate_id: str = "0",
+) -> ActualModelRunManifest:
     capabilities = ("state_candidates",)
     continuity = None
     if restart:
@@ -87,6 +94,7 @@ def _manifest(*, restart: bool = False) -> ActualModelRunManifest:
         condition_id="baseline",
         continuity_runtime=continuity,
         provider_capabilities=capabilities,
+        replicate_id=replicate_id,
     )
 
 
@@ -96,6 +104,7 @@ async def _run(
     scenario_id: str,
     restart: bool = False,
     propose_state: bool = False,
+    replicate_id: str = "0",
 ):
     return await run_actual_model_scenario_definition(
         scenario_set=load_actual_model_scenario_set(_SCENARIO_SET_PATH),
@@ -103,7 +112,7 @@ async def _run(
         fixture_root=_FIXTURE_ROOT,
         workspace_root=workspace_root,
         provider=_Provider(propose_state=propose_state),
-        manifest=_manifest(restart=restart),
+        manifest=_manifest(restart=restart, replicate_id=replicate_id),
     )
 
 
@@ -132,6 +141,37 @@ def test_ordinary_boundary_verdict_is_separate_pass_fail_evidence(tmp_path: Path
     mapping = verdict.to_mapping()
     assert mapping["model_quality"] is None
     assert mapping["score"] is None
+
+
+def test_boundary_rejects_source_execution_that_cannot_be_cited(tmp_path: Path) -> None:
+    first = asyncio.run(
+        _run(
+            workspace_root=tmp_path / "run-0",
+            scenario_id="response-persona-correction-v1",
+            replicate_id="0",
+        )
+    )
+    second = asyncio.run(
+        _run(
+            workspace_root=tmp_path / "run-1",
+            scenario_id="response-persona-correction-v1",
+            replicate_id="1",
+        )
+    )
+    mixed = replace(
+        first,
+        evidence=second.evidence,
+        execution_id=_stable_execution_id(
+            plan=first.plan,
+            run_id=second.run_id,
+        ),
+    )
+
+    with pytest.raises(
+        ActualModelBoundaryArtifactError,
+        match="source execution is not citable",
+    ):
+        evaluate_actual_model_deterministic_boundary(result=mixed)
 
 
 def test_boundary_verdict_detects_raw_to_decision_coverage_break_without_rescoring_model(
