@@ -6,13 +6,26 @@ from pathlib import Path
 
 import pytest
 
-from relaylm.actual_model_evaluation import ActualModelRunManifest
+import relaylm.actual_model_lm_studio as lm_studio_subject
+from relaylm.actual_model_evaluation import (
+    ActualModelEvidence,
+    ActualModelRunManifest,
+    ActualModelScenario,
+)
+from relaylm.actual_model_execution import (
+    ActualModelScenarioExecutionPlan,
+    ActualModelScenarioExecutionResult,
+    _stable_execution_id,
+)
 from relaylm.actual_model_lm_studio import (
     ActualModelLMStudioBindingError,
+    ActualModelLMStudioExecutionResult,
     LMStudioExecutionEnvironment,
     bind_lm_studio_execution_condition,
     run_lm_studio_actual_model_scenario_definition,
+    write_lm_studio_actual_model_execution_result,
 )
+from relaylm.actual_model_scenarios import ActualModelScenarioDefinition
 from relaylm.actual_model_targets import (
     ActualModelArtifactVerification,
     load_actual_model_target,
@@ -95,6 +108,62 @@ def _manifest(provider: _Provider) -> ActualModelRunManifest:
         condition_id="canonical-baseline",
         seed=7,
         provider_capabilities=identity.provider_capabilities,
+    )
+
+
+def _execution_result() -> ActualModelLMStudioExecutionResult:
+    provider = _Provider()
+    target = load_actual_model_target(TARGET_PATH)
+    manifest = _manifest(provider)
+    binding = bind_lm_studio_execution_condition(
+        environment=_environment(),
+        target=target,
+        artifact_verification=_verification(),
+        provider=provider,
+        manifest=manifest,
+        configured_context_window=32768,
+    )
+    scenario = ActualModelScenario(
+        scenario_id="lm-studio-persistence-identity",
+        family="response_persona_continuity",
+        turns=("hello",),
+        version="1",
+    )
+    definition = ActualModelScenarioDefinition(
+        scenario=scenario,
+        proposal_labels=(),
+        required_provider_capabilities=(),
+    )
+    plan = ActualModelScenarioExecutionPlan(
+        plan_id="amp-" + "a" * 64,
+        scenario_set_version=manifest.scenario_set_version,
+        scenario_set_revision="sha256:" + "b" * 64,
+        character_fixture_id=manifest.character_fixture_id,
+        character_fixture_revision=manifest.character_fixture_revision,
+        definition=definition,
+        manifest=manifest,
+    )
+    evidence = ActualModelEvidence(
+        run_id="amr-" + "c" * 64,
+        manifest=manifest,
+        scenario=scenario,
+        turns=(),
+    )
+    execution = ActualModelScenarioExecutionResult(
+        execution_id=_stable_execution_id(plan=plan, run_id=evidence.run_id),
+        plan=plan,
+        evidence=evidence,
+    )
+    return ActualModelLMStudioExecutionResult(
+        execution_id=lm_studio_subject._stable_id(
+            prefix="amlsx",
+            payload={
+                "binding_id": binding.binding_id,
+                "scenario_execution_id": execution.execution_id,
+            },
+        ),
+        binding=binding,
+        execution=execution,
     )
 
 
@@ -215,10 +284,54 @@ def test_canonical_wrapper_fails_before_generation_or_fixture_access_on_binding_
                 scenario_set=None,  # type: ignore[arg-type]
                 scenario_id="not-reached",
                 fixture_root="/does/not/exist",
-                workspace_root="/must/not/be-created",
+                workspace_root="/must/not-be-created",
                 provider=provider,
                 manifest=manifest,
             )
         )
 
     assert provider.calls == 0
+
+
+@pytest.mark.parametrize(
+    ("identity_layer", "forge", "message"),
+    (
+        (
+            "binding",
+            lambda result: replace(
+                result,
+                binding=replace(result.binding, binding_id="amlsb-" + "f" * 64),
+            ),
+            "binding_id does not match LM Studio binding evidence",
+        ),
+        (
+            "scenario_execution",
+            lambda result: replace(
+                result,
+                execution=replace(result.execution, execution_id="amx-" + "f" * 64),
+            ),
+            "scenario execution_id does not match execution evidence",
+        ),
+        (
+            "lm_studio_execution",
+            lambda result: replace(result, execution_id="amlsx-" + "f" * 64),
+            "execution_id does not match LM Studio execution evidence",
+        ),
+    ),
+)
+def test_lm_studio_writer_rejects_forged_identity_chain_before_writing(
+    tmp_path: Path,
+    identity_layer: str,
+    forge,
+    message: str,
+) -> None:
+    forged = forge(_execution_result())
+    artifact_root = tmp_path / identity_layer
+
+    with pytest.raises(ActualModelLMStudioBindingError, match=message):
+        write_lm_studio_actual_model_execution_result(
+            result=forged,
+            artifact_root=artifact_root,
+        )
+
+    assert not artifact_root.exists()
