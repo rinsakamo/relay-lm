@@ -152,6 +152,8 @@ class CharacterDirectory:
         return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
 
     def append_event(self, event: Event) -> None:
+        if not isinstance(event.payload, dict):
+            raise CharacterDataError("event payload must be an object")
         self.memory_path.mkdir(parents=True, exist_ok=True)
         self._ensure_event_cache()
         signature_before_append = self._events_signature()
