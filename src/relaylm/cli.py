@@ -82,6 +82,8 @@ def run_cli(
     parser = _build_parser(stdout=stdout, stderr=stderr)
     try:
         args = parser.parse_args(list(argv))
+        if args.version and args.command is not None:
+            parser.error("--version cannot be combined with a command")
     except _CLIExit as exc:
         return exc.status
 
