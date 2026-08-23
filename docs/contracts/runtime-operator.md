@@ -10,7 +10,10 @@ RCFG4 exposes the RCFG1 configuration contract, RCFG2 resolver, and RCFG3 assemb
 relaylm --version
 relaylm doctor [runtime options] [--json]
 relaylm serve [runtime options]
+relaylm-eval
 ```
+
+The installed `relaylm-eval` auxiliary entrypoint currently accepts no command arguments. Supplying any argv token fails with status `2` before the native evaluation suite runs, and non-printable token content is rendered safely in the diagnostic rather than emitted as terminal controls. Native scenario/check/report semantics remain owned by #1247; this contract owns only the installed operator admission boundary.
 
 `init` is intentionally deferred because a bounded release need has not been demonstrated. RCFG4 does not fabricate Character memory, Identity, or secrets.
 

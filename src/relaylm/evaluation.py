@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -538,6 +539,15 @@ async def run_native_evaluation() -> EvaluationReport:
 
 
 def main() -> int:
+    executable = Path(sys.argv[0]).name.removesuffix(".exe")
+    arguments = sys.argv[1:] if executable == "relaylm-eval" else []
+    if arguments:
+        rendered = " ".join(repr(argument) for argument in arguments)
+        print(
+            f"relaylm-eval: error: unsupported arguments: {rendered}",
+            file=sys.stderr,
+        )
+        return 2
     report = asyncio.run(run_native_evaluation())
     print(report.to_json())
     return 0 if report.status == "pass" else 1
