@@ -18,6 +18,7 @@ from relaylm.actual_model_evaluation import (
 )
 from relaylm.actual_model_execution import (
     ActualModelScenarioExecutionPlan,
+    _stable_plan_id,
     plan_actual_model_scenario_execution,
 )
 from relaylm.actual_model_scenarios import (
@@ -175,6 +176,7 @@ def write_actual_model_scenario_pressure_comparison(
 ) -> Path:
     """Persist one immutable scenario-bound pressure comparison artifact."""
 
+    _validate_pressure_plan_ids(comparison)
     _validate_condition_comparison_binding(comparison)
     _validate_derived_observations(comparison.comparison)
     identity = _pressure_comparison_identity(
@@ -232,6 +234,24 @@ def load_actual_model_scenario_pressure_mapping(path: str | Path) -> dict[str, o
             "actual-model pressure comparison root must be a JSON object"
         )
     return raw
+
+
+def _validate_pressure_plan_ids(
+    pressure: ActualModelScenarioPressureComparison,
+) -> None:
+    for plan in (pressure.baseline_plan, pressure.pressure_plan):
+        expected_plan_id = _stable_plan_id(
+            scenario_set_version=plan.scenario_set_version,
+            scenario_set_revision=plan.scenario_set_revision,
+            character_fixture_id=plan.character_fixture_id,
+            character_fixture_revision=plan.character_fixture_revision,
+            definition=plan.definition,
+            manifest=plan.manifest,
+        )
+        if plan.plan_id != expected_plan_id:
+            raise ActualModelPressureArtifactError(
+                "plan_id does not match pressure plan evidence"
+            )
 
 
 def _validate_condition_comparison_binding(
