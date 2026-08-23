@@ -264,6 +264,24 @@ def _find_key_index(items: list[ContinuityItem], key: str) -> int | None:
     return None
 
 
+def _continuity_values_equal(left: object, right: object) -> bool:
+    if isinstance(left, bool) or isinstance(right, bool):
+        return isinstance(left, bool) and isinstance(right, bool) and left is right
+
+    if isinstance(left, Mapping) and isinstance(right, Mapping):
+        if left.keys() != right.keys():
+            return False
+        return all(_continuity_values_equal(left[key], right[key]) for key in left)
+
+    if isinstance(left, tuple) and isinstance(right, tuple):
+        return len(left) == len(right) and all(
+            _continuity_values_equal(left_item, right_item)
+            for left_item, right_item in zip(left, right)
+        )
+
+    return left == right
+
+
 def _is_exact_duplicate(
     existing: ContinuityItem,
     candidate: ContinuityCandidate,
@@ -271,7 +289,10 @@ def _is_exact_duplicate(
 ) -> bool:
     return (
         existing.kind == candidate.kind
-        and existing.value == freeze_continuity_value(candidate.value)
+        and _continuity_values_equal(
+            existing.value,
+            freeze_continuity_value(candidate.value),
+        )
         and existing.sources == sources
         and existing.epistemic_role == candidate.epistemic_role
     )
