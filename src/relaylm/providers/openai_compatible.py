@@ -197,10 +197,18 @@ def _reject_duplicate_json_members(pairs: list[tuple[str, Any]]) -> dict[str, An
     return result
 
 
+def _reject_non_standard_json_constant(value: str) -> None:
+    raise ValueError(f"non-standard JSON numeric constant is not allowed: {value}")
+
+
 def _load_cognitive_wire_json(text: str, *, invalid_message: str) -> Any:
     try:
-        return json.loads(text, object_pairs_hook=_reject_duplicate_json_members)
-    except json.JSONDecodeError as exc:
+        return json.loads(
+            text,
+            object_pairs_hook=_reject_duplicate_json_members,
+            parse_constant=_reject_non_standard_json_constant,
+        )
+    except (json.JSONDecodeError, ValueError) as exc:
         raise ProviderProtocolError(invalid_message) from exc
 
 
