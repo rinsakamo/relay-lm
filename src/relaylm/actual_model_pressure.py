@@ -143,15 +143,15 @@ async def run_actual_model_scenario_pressure_comparison(
         baseline_cognitive_budget=baseline_cognitive_budget,
         pressure_cognitive_budget=pressure_cognitive_budget,
     )
-    identity = {
-        "format_version": ACTUAL_MODEL_PRESSURE_FORMAT_VERSION,
-        "scenario_set_version": scenario_set.scenario_set_version,
-        "scenario_set_revision": scenario_set.revision,
-        "scenario_definition": definition.to_mapping(),
-        "baseline_plan_id": baseline_plan.plan_id,
-        "pressure_plan_id": pressure_plan.plan_id,
-        "comparison_id": comparison.comparison_id,
-    }
+    identity = _pressure_comparison_identity(
+        format_version=ACTUAL_MODEL_PRESSURE_FORMAT_VERSION,
+        scenario_set_version=scenario_set.scenario_set_version,
+        scenario_set_revision=scenario_set.revision,
+        definition=definition,
+        baseline_plan=baseline_plan,
+        pressure_plan=pressure_plan,
+        comparison=comparison,
+    )
     return ActualModelScenarioPressureComparison(
         pressure_comparison_id=_stable_pressure_id(identity),
         scenario_set_version=scenario_set.scenario_set_version,
@@ -169,6 +169,20 @@ def write_actual_model_scenario_pressure_comparison(
     artifact_root: str | Path,
 ) -> Path:
     """Persist one immutable scenario-bound pressure comparison artifact."""
+
+    identity = _pressure_comparison_identity(
+        format_version=comparison.format_version,
+        scenario_set_version=comparison.scenario_set_version,
+        scenario_set_revision=comparison.scenario_set_revision,
+        definition=comparison.definition,
+        baseline_plan=comparison.baseline_plan,
+        pressure_plan=comparison.pressure_plan,
+        comparison=comparison.comparison,
+    )
+    if comparison.pressure_comparison_id != _stable_pressure_id(identity):
+        raise ActualModelPressureArtifactError(
+            "pressure_comparison_id does not match pressure evidence"
+        )
 
     root = Path(artifact_root)
     root.mkdir(parents=True, exist_ok=True)
@@ -211,6 +225,27 @@ def load_actual_model_scenario_pressure_mapping(path: str | Path) -> dict[str, o
             "actual-model pressure comparison root must be a JSON object"
         )
     return raw
+
+
+def _pressure_comparison_identity(
+    *,
+    format_version: int,
+    scenario_set_version: str,
+    scenario_set_revision: str,
+    definition: ActualModelScenarioDefinition,
+    baseline_plan: ActualModelScenarioExecutionPlan,
+    pressure_plan: ActualModelScenarioExecutionPlan,
+    comparison: ActualModelConditionComparisonEvidence,
+) -> dict[str, object]:
+    return {
+        "format_version": format_version,
+        "scenario_set_version": scenario_set_version,
+        "scenario_set_revision": scenario_set_revision,
+        "scenario_definition": definition.to_mapping(),
+        "baseline_plan_id": baseline_plan.plan_id,
+        "pressure_plan_id": pressure_plan.plan_id,
+        "comparison_id": comparison.comparison_id,
+    }
 
 
 def _stable_pressure_id(identity: dict[str, object]) -> str:

@@ -13,6 +13,7 @@ from relaylm.actual_model_evaluation import (
     ExplicitContinuityRuntimeConfiguration,
 )
 from relaylm.actual_model_pressure import (
+    ActualModelPressureArtifactError,
     load_actual_model_scenario_pressure_mapping,
     run_actual_model_scenario_pressure_comparison,
     write_actual_model_scenario_pressure_comparison,
@@ -267,3 +268,33 @@ def test_pressure_comparison_artifact_is_citable_idempotent_and_loadable(
         "cognitive-pressure-shared-semantics-v1"
     )
     assert loaded["score"] is None
+
+
+def test_pressure_writer_rejects_non_content_derived_comparison_id(
+    tmp_path: Path,
+) -> None:
+    result = asyncio.run(
+        run_actual_model_scenario_pressure_comparison(
+            scenario_set=load_actual_model_scenario_set(_SCENARIO_SET_PATH),
+            scenario_id="cognitive-pressure-shared-semantics-v1",
+            fixture_root=_FIXTURE_ROOT,
+            workspace_root=tmp_path / "comparison",
+            baseline_provider=_Provider("baseline"),
+            pressure_provider=_Provider("pressure"),
+            baseline_manifest=_baseline_manifest(),
+            pressure_manifest=_pressure_manifest(),
+        )
+    )
+    forged = replace(result, pressure_comparison_id="ampc-" + "f" * 64)
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(
+        ActualModelPressureArtifactError,
+        match="pressure_comparison_id does not match pressure evidence",
+    ):
+        write_actual_model_scenario_pressure_comparison(
+            comparison=forged,
+            artifact_root=artifact_root,
+        )
+
+    assert not artifact_root.exists()
