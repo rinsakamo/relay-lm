@@ -75,17 +75,28 @@ def test_two_pass_requests_share_exact_common_prefix_before_pass_suffix() -> Non
     assert conversation_prefix == extraction_prefix
     assert conversation_suffix == "CONVERSATION\n\nRespond as this character."
     assert extraction_suffix.startswith("EXTRACTION\n")
-    for field in (
-        "turn_interpretation",
-        "user_meaning",
-        "change_signals",
-        "self_meaning",
-        "assistant_effects",
-        "unresolved",
-        "continuity_signals",
-    ):
-        assert field in extraction_suffix
-    assert "Return exactly one JSON object matching the supplied schema." in extraction_suffix
+
+    ordered_markers = (
+        "`user_meaning`",
+        "`change_signals`",
+        "`self_meaning`",
+        "`assistant_effects`",
+        "`unresolved`",
+        "`continuity_signals`",
+        "`state_candidates`",
+        "`continuity_candidates`",
+    )
+    positions = [extraction_suffix.index(marker) for marker in ordered_markers]
+    assert positions == sorted(positions)
+
+    assert "State wire: `{state_class,key,op,value,sources}`" in extraction_suffix
+    assert (
+        "Continuity wire: `{kind,key,op,value,sources,epistemic_role}`"
+        in extraction_suffix
+    )
+    assert "<OUTPUT_SCHEMA>" not in extraction_suffix
+    assert '"additionalProperties"' not in extraction_suffix
+    assert "Return exactly one JSON object with no extra keys." in extraction_suffix
     assert "response_format" not in conversation
     assert "response_format" not in extraction
 
