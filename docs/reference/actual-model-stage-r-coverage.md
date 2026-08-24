@@ -10,20 +10,43 @@ Character-relative product-quality interpretation is governed by
 not silently turn one low-friction Character or one neutral semantic reading
 into the universal correctness target.
 
-## Current R0 pilot
+## Stage R priority
 
-The first bounded vLLM transaction uses the two existing foundation scenarios
-below with the current `reference_baseline` role: Pass 1 reasoning off and Pass
-2 reasoning off. The role resolves to the immutable underlying screening
-coordinate only at the host/evidence boundary; the historical coordinate name
-is not current Stage R policy.
+Stage R is a **functional/product acceptance lane first**. Its primary question
+is whether the exact current two-pass RelayLM path works end-to-end with a real
+model: Pass 1 conversation, Pass 2 subjective semantic extraction,
+deterministic State/Continuity materialization, provenance discipline, and the
+resulting cross-turn behavior.
+
+Capacity, token usage, timing, KV-cache observations and numeric profile values
+may be collected from the same execution, but they do not replace functional
+acceptance and they are not the reason to run Stage R. Fine-grained capacity,
+output-reserve and runtime-default selection is downstream #1388 work after the
+product path is functionally qualified.
+
+A roomy execution window is therefore allowed for the first functional run when
+a smaller historical pilot window truncates generation. Capacity preflight in
+that run proves only that the test can execute completely; it does not qualify
+product behavior and does not select a release/default context value.
+
+## Current R0 functional acceptance pilot
+
+The first bounded vLLM functional transaction uses the two existing foundation
+scenarios below with the current `reference_baseline` role: Pass 1 reasoning off
+and Pass 2 reasoning off. Use the repository-owned roomy functional-acceptance
+plan when needed to avoid generation truncation. The role resolves to the
+immutable underlying screening coordinate only at the host/evidence boundary;
+the historical coordinate name is not current Stage R policy.
 
 | Scenario | Current R0 role | Main review dimensions |
 | --- | --- | --- |
 | `response-persona-correction-v1` | pilot | Japanese response quality, identity correction, negation/no-op, unsupported recall |
 | `continuity-lifecycle-v1` | pilot | referent, unresolved-to-resolved transition, active-task continuity |
 
-This is a Stage R0 pilot, not complete Core 1.0 qualification.
+This is a Stage R0 functional-acceptance pilot, not complete Core 1.0
+qualification. Its first success condition is that the current two-pass path can
+complete and be meaningfully reviewed; minimizing its context window is not part
+of this gate.
 
 The current Aoi `actual-model-foundation-v1` Character remains a valid fixture.
 It is the former low-friction "素体ちゃん" baseline, not a normative personality
@@ -32,8 +55,9 @@ that future Characters must imitate.
 ## Required coverage ledger
 
 The following cases remain required for a qualification claim. A row marked
-`follow-up` is intentionally not folded into the first capacity-gated pilot;
-it needs its own bounded scenario/capacity transaction and independent review.
+`follow-up` is intentionally not folded into the first functional-acceptance
+pilot; it needs its own bounded scenario/evidence transaction and independent
+review.
 
 | Required case | Status | Owner-local scenario/rubric requirement |
 | --- | --- | --- |
