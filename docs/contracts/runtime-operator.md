@@ -102,7 +102,9 @@ At this boundary:
 
 - generic OpenAI-compatible serving is available;
 - vLLM specialized assembly requires its explicit provider-owned capability attestation;
-- LM Studio specialized assembly is a separate pending repository transaction and currently fails capability admission rather than masquerading as generic.
+- LM Studio is assembly-capable through the common OpenAI-compatible transport when no LM Studio-specific reasoning override is requested. Its resolved backend identity and diagnostics remain `lm_studio`.
+
+Exact LM Studio Chat Completions reasoning realization is still #1545 provider work. Until that wire is proven and implemented, an explicit LM Studio Pass 1/Pass 2 reasoning mode or reasoning budget fails during assembly/preflight before serving. The operator layer does not guess or silently drop the requested control.
 
 ## Installed-artifact gate
 
@@ -130,11 +132,11 @@ The operator layer does not own:
 
 ## Remaining release-runtime work
 
-After ordinary two-pass serving is wired, the remaining repository-side operator work is bounded:
+After ordinary two-pass serving and non-reasoning LM Studio assembly are wired, the remaining repository-side operator work is bounded:
 
-1. connect additional provider backend-specific assembly such as LM Studio through provider-owned capability contracts;
-2. add only named operator cognition overrides that are justified beyond the version-1 file contract;
-3. consume #1388 calibrated two-pass profiles/defaults once that authority exists;
+1. add only named operator cognition overrides that are justified beyond the version-1 file contract;
+2. consume #1388 calibrated two-pass profiles/defaults once that authority exists;
+3. consume exact LM Studio reasoning capability only after #1545 proves and implements that provider wire;
 4. re-run installed release-candidate smoke when an authorized candidate exists.
 
 Actual-model Stage R qualification is deliberately outside this operator transaction.

@@ -51,7 +51,7 @@ runtime:
   cognition:
     mode: two_pass          # two_pass | single_pass | shadow_two_pass | auto
     pass1:                  # optional; omitted values stay omitted
-      reasoning_mode: off   # off | bounded; no hidden default
+      reasoning_mode: "off" # off | bounded; quote "off" because YAML treats bare off as bool
       temperature: 0
       top_p: 1
       max_output_tokens: 512
@@ -175,7 +175,7 @@ backend = selected implementation/dialect
 
 The backend vocabulary is provider-owned. Runtime configuration resolves only the canonical machine IDs `generic`, `vllm`, and `lm_studio`; it does not perform backend detection or duplicate provider wire mappings.
 
-A known backend name does not by itself prove that its specialized runtime capability is available. Assembly/preflight owns that check and must fail rather than silently masquerading as `generic`.
+A known backend name does not by itself prove that every specialized capability is available. Assembly/preflight may reuse the common OpenAI-compatible transport while preserving the selected backend identity, but any requested backend-specific control still requires a proven provider-owned realizer and otherwise fails closed.
 
 ## Secrets
 
