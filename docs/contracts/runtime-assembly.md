@@ -43,7 +43,7 @@ OpenAICompatibleTwoPassProvider
 
 The same loaded provider/model is reused sequentially. No second simultaneously resident online model is introduced.
 
-The OpenAI-compatible API then dispatches buffered and streaming turns to the existing response-first two-pass Turn owner. Pass 1 may complete visibly while Pass 2 continues under the existing stale-result, failure, and pending-extraction lifecycle.
+The OpenAI-compatible API dispatches buffered and streaming turns to the existing response-first two-pass Turn owner. Pass 1 may complete visibly while Pass 2 continues under the existing stale-result, failure, and pending-extraction lifecycle.
 
 ### `single_pass`
 
@@ -68,13 +68,15 @@ provider.adapter = openai_compatible
 provider.backend = generic | vllm | lm_studio
 ```
 
-Current specialized capability:
+Current assembly behavior:
 
 - `generic` — ordinary OpenAI-compatible transport without claiming a backend-specific dialect;
 - `vllm` — assembly-capable only with the explicit provider-owned reasoning capability attestation required by the current vLLM realizer;
-- `lm_studio` — still fails `capability_unavailable` in this contract until the separate LM Studio runtime-assembly transaction connects the existing provider capability surface.
+- `lm_studio` — ordinary OpenAI-compatible buffered/two-pass transport is assembly-capable when LM Studio-specific reasoning controls are omitted. The resolved backend identity remains `lm_studio`; assembly does not rewrite it to `generic`.
 
-A backend-specific selection never silently falls through to `generic`.
+LM Studio capability metadata and exact Chat Completions reasoning realization are separate concerns. #1545 already owns LM Studio capability attestation, but exact LM Studio Chat Completions reasoning wire is still unimplemented. Therefore an explicit `runtime.cognition.pass1|pass2.reasoning_mode` or `reasoning_budget` under `provider.backend=lm_studio` fails `capability_unavailable` before serving rather than being silently omitted or guessed onto a vendor field.
+
+Reusing the common OpenAI-compatible transport for requests that require no LM Studio-specific wire is not a backend-identity fallback. A backend-specific selection is preserved in resolved configuration and diagnostics, and any requested specialized capability still requires its provider-owned realizer.
 
 Raw API-key material comes only from `RuntimeSecretInputs` and is not copied into effective diagnostics or assembly representation.
 
@@ -129,7 +131,7 @@ Direct Python callers of `create_app` may still explicitly/use its compatibility
 Assembly uses the existing release-facing error taxonomy. Typical failures include:
 
 - `invalid_combination` — unresolved/evidence-only cognition mode or owner-control overlap;
-- `capability_unavailable` — unavailable selected backend realizer or token-count capability;
+- `capability_unavailable` — unavailable selected backend-specific capability or token-count capability;
 - `provider_invalid` — configured provider cannot be constructed safely.
 
 Messages contain configuration/capability metadata only, not Character semantic content or secrets.
@@ -141,7 +143,8 @@ Assembly preserves:
 - #1533 cognition ownership;
 - #1388 numeric/profile ownership;
 - provider capability/wire ownership;
-- no backend-specific silent generic fallback;
+- backend identity even when a shared transport implementation is used;
+- no unproven backend-specific control silently reaches the wire;
 - buffered/streaming two-pass policy equivalence;
 - response-first Pass 2 failure semantics;
 - Retrieval/Continuity/State authority;
