@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+
+import pytest
 
 from relaylm.actual_model_fast_screening import (
     PASS2_REASONING_ESCALATION_ROLE,
@@ -17,6 +20,7 @@ from relaylm.actual_model_vllm_capacity import (
 from relaylm.actual_model_vllm_host import (
     CANONICAL_SCENARIO_SET_PATH,
     CANONICAL_VLLM_SCREENING_PLAN_PATH,
+    ActualModelVLLMHostError,
     _required_capacity_coverage,
     load_actual_model_repository_snapshot_target,
     load_vllm_screening_plan,
@@ -73,6 +77,44 @@ def test_current_stage_r_plan_uses_semantic_roles_without_historical_coordinates
     assert reference.condition_id == "stage-r0-vllm-b-two-pass-off-off"
     assert reference.pass_requests.pass1.reasoning_mode.value == "off"
     assert reference.pass_requests.pass2.reasoning_mode.value == "off"
+
+
+def test_current_semantic_plan_rejects_reference_role_semantic_drift(
+    tmp_path: Path,
+) -> None:
+    raw = json.loads(
+        (_ROOT / CANONICAL_VLLM_SCREENING_PLAN_PATH).read_text(encoding="utf-8")
+    )
+    pass2 = raw["conditions"][REFERENCE_BASELINE_ROLE]["pass_requests"]["pass2"]
+    pass2["reasoning_mode"] = "bounded"
+    pass2["reasoning_budget"] = 16
+    path = tmp_path / "bad-reference.json"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    with pytest.raises(ActualModelVLLMHostError, match=REFERENCE_BASELINE_ROLE):
+        load_vllm_screening_plan(path)
+
+
+def test_current_semantic_plan_rejects_escalation_role_without_reasoning_escalation(
+    tmp_path: Path,
+) -> None:
+    raw = json.loads(
+        (_ROOT / CANONICAL_VLLM_SCREENING_PLAN_PATH).read_text(encoding="utf-8")
+    )
+    reference_pass2 = raw["conditions"][REFERENCE_BASELINE_ROLE]["pass_requests"][
+        "pass2"
+    ]
+    raw["conditions"][PASS2_REASONING_ESCALATION_ROLE]["pass_requests"]["pass2"] = dict(
+        reference_pass2
+    )
+    path = tmp_path / "bad-escalation.json"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    with pytest.raises(
+        ActualModelVLLMHostError,
+        match=PASS2_REASONING_ESCALATION_ROLE,
+    ):
+        load_vllm_screening_plan(path)
 
 
 def test_stage_r_reference_reuses_complete_v3_v2_capacity_artifact() -> None:
