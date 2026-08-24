@@ -12,6 +12,7 @@ _REMOVED_FIXED_PLAN = Path(
     "evaluation/actual_model/screenings/stage-r0-vllm-functional-acceptance-v1.json"
 )
 _REFERENCE_BASELINE = "reference_baseline"
+_LIVE_CAPACITY_ID = "amcap-" + "f" * 64
 
 
 @dataclass(frozen=True)
@@ -90,7 +91,7 @@ def test_shared_host_binds_screening_window_to_live_capacity_evidence(
             _REFERENCE_BASELINE,
             "--context-window-from-capacity-evidence",
             "--capacity-evidence-id",
-            "amcap-live",
+            _LIVE_CAPACITY_ID,
             "--capacity-evidence-root",
             "/tmp/relaylm-vllm-evidence",
             "--model-runner",
@@ -114,4 +115,4 @@ def test_shared_host_binds_screening_window_to_live_capacity_evidence(
     prepared_plan = prepare["plan"]
     assert isinstance(prepared_plan, _Plan)
     assert prepared_plan.effective_context_window == 6144
-    assert prepared_plan.capacity_evidence_id == "amcap-live"
+    assert prepared_plan.capacity_evidence_id == _LIVE_CAPACITY_ID
