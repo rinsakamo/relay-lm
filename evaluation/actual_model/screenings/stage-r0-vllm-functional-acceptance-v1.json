@@ -1,0 +1,68 @@
+{
+  "format_version": 2,
+  "screening_id": "stage-r0-vllm-functional-acceptance-v1",
+  "target_id": "gemma-4-12b-it-qat-w4a16-google-vllm-v1",
+  "effective_context_window": 4096,
+  "decoding": {
+    "temperature": 0,
+    "top_p": 1,
+    "seed": null
+  },
+  "supported_decoding_controls": [
+    "temperature",
+    "top_p"
+  ],
+  "execution_path": "buffered",
+  "continuity_runtime": {
+    "max_items": 8,
+    "lifetime_revisions": 4
+  },
+  "scenario_ids": [
+    "response-persona-correction-v1",
+    "continuity-lifecycle-v1"
+  ],
+  "conditions": {
+    "reference_baseline": {
+      "condition_id": "stage-r0-vllm-b-two-pass-off-off",
+      "cognition_execution": "two_pass",
+      "pass_requests": {
+        "single_pass": null,
+        "pass1": {
+          "reasoning_mode": "off",
+          "reasoning_budget": null,
+          "temperature": 0,
+          "top_p": 1,
+          "max_output_tokens": null
+        },
+        "pass2": {
+          "reasoning_mode": "off",
+          "reasoning_budget": null,
+          "temperature": 0,
+          "top_p": 1,
+          "max_output_tokens": null
+        }
+      }
+    },
+    "pass2_reasoning_escalation": {
+      "condition_id": "stage-r0-vllm-c-two-pass-off-bounded16",
+      "cognition_execution": "two_pass",
+      "pass_requests": {
+        "single_pass": null,
+        "pass1": {
+          "reasoning_mode": "off",
+          "reasoning_budget": null,
+          "temperature": 0,
+          "top_p": 1,
+          "max_output_tokens": null
+        },
+        "pass2": {
+          "reasoning_mode": "bounded",
+          "reasoning_budget": 16,
+          "temperature": 0,
+          "top_p": 1,
+          "max_output_tokens": null
+        }
+      }
+    }
+  }
+}
