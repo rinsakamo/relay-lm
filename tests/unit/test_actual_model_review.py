@@ -158,6 +158,7 @@ def test_review_binds_human_rubric_and_fixture_proposal_metrics_without_mutating
     review = review_actual_model_execution(
         result=result,
         reviewer_identity="rater-a",
+        claim_scope="regression",
         ratings=_ratings(
             family="response_persona_continuity",
             turn_count=3,
@@ -177,6 +178,7 @@ def test_review_binds_human_rubric_and_fixture_proposal_metrics_without_mutating
     assert review.proposal_metrics.state.precision is None
     assert review.proposal_metrics.state.recall == 0.0
     mapping = review.to_mapping()
+    assert mapping["claim_scope"] == "regression"
     assert mapping["score"] is None
     assert mapping["stage_r_review"]["protocol_version"] == STAGE_R_REVIEW_PROTOCOL_VERSION
     assert all(
@@ -220,6 +222,7 @@ def test_review_rejects_source_execution_that_cannot_be_cited(tmp_path: Path) ->
         review_actual_model_execution(
             result=mixed,
             reviewer_identity="rater-a",
+            claim_scope="regression",
             ratings=_ratings(
                 family="response_persona_continuity",
                 turn_count=3,
@@ -241,6 +244,7 @@ def test_review_requires_exact_family_rubric_coverage(tmp_path: Path) -> None:
         review_actual_model_execution(
             result=result,
             reviewer_identity="rater-a",
+            claim_scope="regression",
             ratings=incomplete,
             character_realization_observations=_character_realization(3),
         )
@@ -259,6 +263,7 @@ def test_restart_review_uses_original_global_turn_indexes_and_fixture_labels(
     review = review_actual_model_execution(
         result=result,
         reviewer_identity="rater-a",
+        claim_scope="regression",
         ratings=_ratings(family="restart_quality", turn_count=3),
         character_realization_observations=_character_realization(3),
     )
@@ -288,12 +293,14 @@ def test_reviewer_identity_is_part_of_review_identity(tmp_path: Path) -> None:
     first = review_actual_model_execution(
         result=result,
         reviewer_identity="rater-a",
+        claim_scope="regression",
         ratings=ratings,
         character_realization_observations=realization,
     )
     second = review_actual_model_execution(
         result=result,
         reviewer_identity="rater-b",
+        claim_scope="regression",
         ratings=ratings,
         character_realization_observations=realization,
     )
@@ -312,6 +319,7 @@ def test_review_sidecar_is_immutable_idempotent_and_machine_loadable(tmp_path: P
     review = review_actual_model_execution(
         result=result,
         reviewer_identity="rater-a",
+        claim_scope="regression",
         ratings=_ratings(family="response_persona_continuity", turn_count=3),
         character_realization_observations=_character_realization(3),
     )
@@ -331,6 +339,7 @@ def test_review_sidecar_is_immutable_idempotent_and_machine_loadable(tmp_path: P
     assert first.name == f"{review.review_id}.review.json"
     assert loaded["review_id"] == review.review_id
     assert loaded["execution_id"] == result.execution_id
+    assert loaded["claim_scope"] == "regression"
     assert loaded["quality_rubric_version"] == "actual-model-quality-v1"
     assert loaded["stage_r_review"]["protocol_version"] == STAGE_R_REVIEW_PROTOCOL_VERSION
     assert loaded["character_realization"]["observations"][0]["outcome"] == "normal"
@@ -338,7 +347,7 @@ def test_review_sidecar_is_immutable_idempotent_and_machine_loadable(tmp_path: P
 
 
 def test_stage_r_review_protocol_exposes_required_material_dimensions() -> None:
-    assert STAGE_R_REVIEW_PROTOCOL_VERSION == "actual-model-stage-r-review-v2"
+    assert STAGE_R_REVIEW_PROTOCOL_VERSION == "actual-model-stage-r-review-v3"
     assert required_stage_r_review_dimensions() == (
         "relevance_correctness",
         "naturalness",
@@ -422,10 +431,12 @@ def test_stage_r_review_dimensions_are_citable_without_a_composite_score() -> No
         character_realization_observations=(
             CharacterRealizationObservation(turn_index=1, outcome="system_defect"),
         ),
+        claim_scope="regression",
     )
 
     mapping = review.to_mapping()
-    assert ACTUAL_MODEL_REVIEW_FORMAT_VERSION == 3
+    assert ACTUAL_MODEL_REVIEW_FORMAT_VERSION == 4
+    assert mapping["claim_scope"] == "regression"
     assert mapping["score"] is None
     assert mapping["stage_r_review"]["protocol_version"] == STAGE_R_REVIEW_PROTOCOL_VERSION
     by_dimension = {

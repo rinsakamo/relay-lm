@@ -10,6 +10,8 @@ from relaylm.actual_model_review import (
     ACTUAL_MODEL_REVIEW_FORMAT_VERSION,
     LEGACY_ACTUAL_MODEL_REVIEW_FORMAT_VERSION,
     LEGACY_STAGE_R_REVIEW_PROTOCOL_VERSION,
+    PRE_CLAIM_SCOPE_ACTUAL_MODEL_REVIEW_FORMAT_VERSION,
+    PRE_CLAIM_SCOPE_STAGE_R_REVIEW_PROTOCOL_VERSION,
     STAGE_R_REVIEW_PROTOCOL_VERSION,
     ActualModelExecutionReview,
     ActualModelExecutionReviewError,
@@ -41,11 +43,16 @@ def _stage_r_passes() -> tuple[StageRReviewObservation, ...]:
     )
 
 
-def test_current_review_versions_do_not_redefine_legacy_v2_v1_identity() -> None:
+def test_current_review_versions_preserve_both_historical_identity_generations() -> None:
     assert LEGACY_ACTUAL_MODEL_REVIEW_FORMAT_VERSION == 2
     assert LEGACY_STAGE_R_REVIEW_PROTOCOL_VERSION == "actual-model-stage-r-review-v1"
-    assert ACTUAL_MODEL_REVIEW_FORMAT_VERSION == 3
-    assert STAGE_R_REVIEW_PROTOCOL_VERSION == "actual-model-stage-r-review-v2"
+    assert PRE_CLAIM_SCOPE_ACTUAL_MODEL_REVIEW_FORMAT_VERSION == 3
+    assert (
+        PRE_CLAIM_SCOPE_STAGE_R_REVIEW_PROTOCOL_VERSION
+        == "actual-model-stage-r-review-v2"
+    )
+    assert ACTUAL_MODEL_REVIEW_FORMAT_VERSION == 4
+    assert STAGE_R_REVIEW_PROTOCOL_VERSION == "actual-model-stage-r-review-v3"
 
 
 def test_character_realization_outcomes_are_not_pass_fail_aliases() -> None:
@@ -127,9 +134,11 @@ def test_review_serializes_character_realization_separately_from_stage_r_dimensi
                 outcome="odd_but_character_plausible",
             ),
         ),
+        claim_scope="regression",
     )
 
     mapping = review.to_mapping()
+    assert mapping["claim_scope"] == "regression"
     assert mapping["score"] is None
     assert mapping["stage_r_review"]["observations"][0]["outcome"] == "pass"
     assert mapping["character_realization"]["observations"] == [
@@ -158,6 +167,7 @@ def test_character_realization_is_part_of_content_derived_review_identity(
         character_realization_observations=(
             CharacterRealizationObservation(turn_index=1, outcome="normal"),
         ),
+        claim_scope="regression",
     )
 
     with pytest.raises(

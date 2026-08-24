@@ -24,8 +24,11 @@ from relaylm.actual_model_restart import ActualModelRestartEvidence
 
 LEGACY_ACTUAL_MODEL_REVIEW_FORMAT_VERSION = 2
 LEGACY_STAGE_R_REVIEW_PROTOCOL_VERSION = "actual-model-stage-r-review-v1"
-ACTUAL_MODEL_REVIEW_FORMAT_VERSION = 3
-STAGE_R_REVIEW_PROTOCOL_VERSION = "actual-model-stage-r-review-v2"
+PRE_CLAIM_SCOPE_ACTUAL_MODEL_REVIEW_FORMAT_VERSION = 3
+PRE_CLAIM_SCOPE_STAGE_R_REVIEW_PROTOCOL_VERSION = "actual-model-stage-r-review-v2"
+ACTUAL_MODEL_REVIEW_FORMAT_VERSION = 4
+STAGE_R_REVIEW_PROTOCOL_VERSION = "actual-model-stage-r-review-v3"
+ReviewClaimScope = Literal["qualification", "regression", "smoke"]
 StageRReviewDimension = Literal[
     "relevance_correctness",
     "naturalness",
@@ -60,6 +63,11 @@ CharacterRealizationOutcome = Literal[
     "system_defect",
 ]
 
+_REVIEW_CLAIM_SCOPES: tuple[ReviewClaimScope, ...] = (
+    "qualification",
+    "regression",
+    "smoke",
+)
 _STAGE_R_REVIEW_DIMENSIONS: tuple[StageRReviewDimension, ...] = (
     "relevance_correctness",
     "naturalness",
@@ -163,7 +171,9 @@ def normalize_stage_r_review_observations(
     if len(set(dimensions)) != len(dimensions):
         raise ValueError("Stage R review observations must not duplicate dimensions")
     if set(dimensions) != set(_STAGE_R_REVIEW_DIMENSIONS):
-        raise ValueError("Stage R review observations must cover every required Stage R review dimension")
+        raise ValueError(
+            "Stage R review observations must cover every required Stage R review dimension"
+        )
     by_dimension = {item.dimension: item for item in observations}
     return tuple(by_dimension[dimension] for dimension in _STAGE_R_REVIEW_DIMENSIONS)
 
@@ -202,6 +212,24 @@ def _unrated_stage_r_review_observations() -> tuple[StageRReviewObservation, ...
     )
 
 
+def _validate_review_claim_scope(
+    claim_scope: object,
+    observations: tuple[StageRReviewObservation, ...],
+) -> ReviewClaimScope:
+    if claim_scope not in _REVIEW_CLAIM_SCOPES:
+        raise ValueError(f"unsupported review claim scope: {claim_scope}")
+    rated = any(item.outcome != "not_rated" for item in observations)
+    if claim_scope == "qualification" and not rated:
+        raise ValueError(
+            "qualification review requires at least one rated Stage R dimension"
+        )
+    if claim_scope == "smoke" and rated:
+        raise ValueError(
+            "smoke review requires every Stage R dimension to remain not_rated"
+        )
+    return claim_scope
+
+
 @dataclass(frozen=True, slots=True)
 class ActualModelExecutionReview:
     """Citable human/product-quality sidecar for one immutable execution result."""
@@ -217,6 +245,7 @@ class ActualModelExecutionReview:
     proposal_metrics: LabeledProposalMetrics
     stage_r_observations: tuple[StageRReviewObservation, ...]
     character_realization_observations: tuple[CharacterRealizationObservation, ...]
+    claim_scope: ReviewClaimScope = "regression"
     quality_rubric_version: str = QUALITY_RUBRIC_VERSION
     stage_r_review_protocol_version: str = STAGE_R_REVIEW_PROTOCOL_VERSION
     format_version: int = ACTUAL_MODEL_REVIEW_FORMAT_VERSION
@@ -233,6 +262,7 @@ class ActualModelExecutionReview:
         normalized = normalize_stage_r_review_observations(self.stage_r_observations)
         if normalized != self.stage_r_observations:
             raise ValueError("Stage R review observations must use canonical dimension order")
+        _validate_review_claim_scope(self.claim_scope, normalized)
         if not self.character_realization_observations:
             raise ValueError("current review requires Character realization observations")
         normalized_character = normalize_character_realization_observations(
@@ -276,6 +306,7 @@ class ActualModelExecutionReview:
             "scenario_id": self.scenario_id,
             "scenario_family": self.scenario_family,
             "reviewer_identity": self.reviewer_identity,
+            "claim_scope": self.claim_scope,
             "quality_rubric_version": self.quality_rubric_version,
             "turn_ratings": [
                 {
@@ -317,6 +348,7 @@ def review_actual_model_execution(
     *,
     result: ActualModelScenarioExecutionResult,
     reviewer_identity: str,
+    claim_scope: ReviewClaimScope,
     ratings: tuple[TurnQualityRating, ...],
     character_realization_observations: tuple[CharacterRealizationObservation, ...],
     stage_r_observations: tuple[StageRReviewObservation, ...] | None = None,
@@ -350,6 +382,10 @@ def review_actual_model_execution(
         if stage_r_observations is None
         else stage_r_observations
     )
+    normalized_claim_scope = _validate_review_claim_scope(
+        claim_scope,
+        normalized_stage_r,
+    )
     normalized_character_realization = normalize_character_realization_observations(
         character_realization_observations,
         turn_count=len(evidence.turns),
@@ -362,6 +398,7 @@ def review_actual_model_execution(
         "scenario_id": result.plan.definition.scenario.scenario_id,
         "scenario_family": result.plan.definition.scenario.family,
         "reviewer_identity": reviewer_identity,
+        "claim_scope": normalized_claim_scope,
         "quality_rubric_version": QUALITY_RUBRIC_VERSION,
         "turn_ratings": [
             {
@@ -401,6 +438,7 @@ def review_actual_model_execution(
         proposal_metrics=proposal_metrics,
         stage_r_observations=normalized_stage_r,
         character_realization_observations=normalized_character_realization,
+        claim_scope=normalized_claim_scope,
     )
 
 
