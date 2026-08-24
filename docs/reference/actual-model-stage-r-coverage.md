@@ -75,16 +75,23 @@ Preserve the semantic distinction defined by #1823:
 - `system_defect` — authority/runtime/provenance failure independent of
   personality.
 
-Current citable review format v3 records exactly one of those outcomes for each
+Current citable review format v4 records exactly one of those outcomes for each
 evidence turn. The Character-realization outcome is independent from the
 existing Stage R dimension outcomes: `odd_but_character_plausible` is not an
 alias for `fail`, and a system defect is not softened by Character personality.
 The turn-local Character-realization observations participate in the
 content-derived `review_id`.
 
-Historical review format v2 / `actual-model-stage-r-review-v1` artifacts keep
-their original semantics and are not reinterpreted as if they contained this
-classification.
+Historical review format v3 / `actual-model-stage-r-review-v2` retains the
+Character-realization taxonomy but has no explicit claim scope and is not
+silently reinterpreted as current qualification/regression/smoke evidence.
+Historical format v2 / `actual-model-stage-r-review-v1` remains valid only for
+its original pre-Character-realization semantics.
+
+Further taxonomy expansion is evidence-driven: do not add categories merely for
+rubric completeness. Extend the representation only if actual Stage R evidence
+exposes a material distinction that the current independent dimensions plus four
+Character-realization outcomes cannot cite correctly.
 
 ### High-context continuation
 
@@ -95,6 +102,26 @@ After interruption, restart, or elapsed time, a confirmation such as
 Review should reject unsupported certainty, repeated unnecessary clarification,
 or unexplained continuity loss rather than requiring one exact continuation
 wording.
+
+## Review claim scope
+
+Current review format v4 / `actual-model-stage-r-review-v3` carries one
+content-derived `claim_scope`:
+
+- `qualification` — eligible to contribute to #1386 qualification and requires
+  at least one explicitly rated Stage R dimension;
+- `regression` — bounded review evidence that may contain rated dimensions or
+  all `not_rated`, but is not qualification-strength merely because it exists;
+- `smoke` — non-qualification sanity evidence; every Stage R dimension must
+  remain `not_rated`.
+
+Claim scope does not replace this coverage ledger. A `qualification` sidecar
+for one scenario is only one citable contribution; complete Core 1.0
+qualification still requires the applicable ledger rows and current #1386
+acceptance boundary.
+
+Likewise, `regression` and `smoke` artifacts must never be counted as completed
+qualification rows by file presence, review format version, or review ID alone.
 
 ## Multi-Character coverage
 
@@ -141,9 +168,9 @@ Characters or languages.
 
 The historical `actual-model-quality-v1` family axes remain the coarse
 machine-readable baseline and keep their existing identity. Current citable
-Stage R reviews use `actual-model-stage-r-review-v2` in actual-model review
-format v3. The previous format v2 / protocol v1 identity remains historical and
-is not silently upgraded.
+Stage R reviews use `actual-model-stage-r-review-v3` in actual-model review
+format v4. Pre-claim-scope format v3 / protocol v2 and the older format v2 /
+protocol v1 identities remain historical and are not silently upgraded.
 
 Every current Stage R review sidecar carries each required independent
 dimension exactly once in canonical order with `pass`, `fail`, or `not_rated`;
@@ -153,11 +180,11 @@ each evidence turn carries exactly one Character-realization outcome from the
 four-value taxonomy above. No weighted aggregate score is added.
 
 A persisted review sidecar is citable only when its `review_id` matches the
-content-derived identity of that exact review evidence, including the turn-local
-Character-realization observations. The persistence boundary recomputes the
-identity and rejects a mismatched caller-supplied ID before any review artifact
-is written; a filename or manually constructed review object is not independent
-review authority.
+content-derived identity of that exact review evidence, including claim scope
+and the turn-local Character-realization observations. The persistence boundary
+recomputes the identity and rejects a mismatched caller-supplied ID before any
+review artifact is written; a filename or manually constructed review object is
+not independent review authority.
 
 The required dimensions are relevance/correctness, naturalness, persona and
 style consistency, coherence, governed-context continuity, verbosity fit,
