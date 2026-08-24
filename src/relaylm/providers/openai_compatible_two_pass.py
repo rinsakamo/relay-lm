@@ -340,7 +340,7 @@ Projection rules:
 - Interpretation is not authority or State. Propose State only for grounded, sufficiently resolved, meaningful durable change; preserve existing class/key vocabulary.
 - State wire: `{{state_class,key,op,value,sources}}`. `state_class` must be a key in CognitiveInput.state_classes. `op` is `set` or `remove`. For `set`, value is a string or `{{"semantic":string,"degree_hint":0..1}}`; degree_hint is intensity, not confidence. For `remove`, value is null; remove only for explicit revocation, cancellation, denial, correction, or termination.
 - Continuity wire: `{{kind,key,op,value,sources,epistemic_role}}`. `kind` is `referent`, `unresolved`, or `active_task`; `op` is `set` or `resolve`; set value is finite JSON and resolve value is null; epistemic_role is `user_assertion`, `assistant_inference`, or `assistant_commitment`. Carry only when useful for upcoming coherence.
-- `sources` are non-empty Event IDs present in CognitiveInput; never invent IDs. Pass 1 response cannot establish user facts, external truth, or source provenance.
+- `sources` are non-empty Event IDs present in CognitiveInput; never invent IDs. Pass 1 response is interpretive context only; it cannot establish user facts, external truth, or source provenance.
 
 Exact top-level shape:
 `{{"turn_interpretation":{{"user_meaning":[],"change_signals":[],"self_meaning":[],"assistant_effects":[],"unresolved":[],"continuity_signals":[]}},"state_candidates":[],"continuity_candidates":[]}}`
