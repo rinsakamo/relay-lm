@@ -7,6 +7,8 @@ from urllib.parse import urlsplit
 
 from relaylm.budget import BudgetDegradationPolicy, TotalBudgetConfig
 from relaylm.budget_enforcement import TokenCountMode
+from relaylm.cognitive import CognitionExecutionMode
+from relaylm.cognition_execution import CognitionPassRequest
 from relaylm.providers.openai_compatible_backend import OpenAICompatibleBackendId
 
 
@@ -114,9 +116,7 @@ class ProviderRuntimeConfig:
         if self.adapter != "openai_compatible":
             raise ValueError(f"unsupported provider adapter: {self.adapter}")
         if not isinstance(self.backend, OpenAICompatibleBackendId):
-            raise TypeError(
-                "provider.backend must be OpenAICompatibleBackendId"
-            )
+            raise TypeError("provider.backend must be OpenAICompatibleBackendId")
         _require_non_empty_string("provider.base_url", self.base_url)
         validate_provider_base_url_secret_boundary(self.base_url)
         _require_non_empty_string("provider.model", self.model)
@@ -213,9 +213,7 @@ class ExplicitCognitiveBudgetConfig:
         if not isinstance(self.total, TotalBudgetConfig):
             raise TypeError("cognitive_budget.total must be TotalBudgetConfig")
         if not isinstance(self.policy, BudgetDegradationPolicy):
-            raise TypeError(
-                "cognitive_budget.policy must be BudgetDegradationPolicy"
-            )
+            raise TypeError("cognitive_budget.policy must be BudgetDegradationPolicy")
         if not isinstance(self.token_counter, TokenCounterCapabilityConfig):
             raise TypeError(
                 "cognitive_budget.token_counter must be TokenCounterCapabilityConfig"
@@ -223,15 +221,38 @@ class ExplicitCognitiveBudgetConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class CognitionRuntimeSettings:
+    """Release carriage of #1533 topology and already-resolved per-pass intent.
+
+    `two_pass` is the Core 1.0 release/reference topology. The empty pass requests
+    deliberately carry no calibrated reasoning, decoding, or output defaults;
+    #1388 remains the owner of those values.
+    """
+
+    mode: CognitionExecutionMode = CognitionExecutionMode.TWO_PASS
+    pass1: CognitionPassRequest = field(default_factory=CognitionPassRequest)
+    pass2: CognitionPassRequest = field(default_factory=CognitionPassRequest)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.mode, CognitionExecutionMode):
+            raise TypeError("cognition.mode must be CognitionExecutionMode")
+        if not isinstance(self.pass1, CognitionPassRequest):
+            raise TypeError("cognition.pass1 must be CognitionPassRequest")
+        if not isinstance(self.pass2, CognitionPassRequest):
+            raise TypeError("cognition.pass2 must be CognitionPassRequest")
+
+
+@dataclass(frozen=True, slots=True)
 class RuntimePolicyConfig:
     """Release configuration for existing runtime controls.
 
-    Absence means no explicit value at this layer. It does not authorize this
-    module to manufacture a semantic default. ``profile`` is only a selector
-    placeholder until #1388 publishes canonical profile authority.
+    Absence means no explicit numeric value at this layer. `cognition.mode` has
+    the #1533 Core 1.0 topology default, while pass controls remain omitted until
+    selected explicitly or supplied by later #1388 profile authority.
     """
 
     profile: str | None = None
+    cognition: CognitionRuntimeSettings = field(default_factory=CognitionRuntimeSettings)
     memory_retrieval: MemoryRetrievalRuntimeConfig | None = None
     event_retrieval: EventRetrievalRuntimeConfig | None = None
     continuity: ContinuityRuntimeSettings | None = None
@@ -240,6 +261,8 @@ class RuntimePolicyConfig:
     def __post_init__(self) -> None:
         if self.profile is not None:
             _require_non_empty_string("runtime.profile", self.profile)
+        if not isinstance(self.cognition, CognitionRuntimeSettings):
+            raise TypeError("runtime.cognition must be CognitionRuntimeSettings")
         _require_optional_type(
             "runtime.memory_retrieval",
             self.memory_retrieval,
