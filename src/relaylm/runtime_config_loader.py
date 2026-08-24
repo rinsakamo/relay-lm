@@ -23,6 +23,8 @@ from relaylm.budget import (
     TotalBudgetConfig,
 )
 from relaylm.budget_enforcement import TokenCountMode
+from relaylm.cognitive import CognitionExecutionMode
+from relaylm.cognition_execution import CognitionPassRequest, CognitionReasoningMode
 from relaylm.providers.openai_compatible_backend import (
     OpenAICompatibleBackendId,
     resolve_openai_compatible_backend,
@@ -33,6 +35,7 @@ from relaylm.runtime_config import (
     RUNTIME_CONFIG_FORMAT_VERSION,
     RUNTIME_CONFIG_PATH_ENV,
     CharacterRuntimeConfig,
+    CognitionRuntimeSettings,
     ConfigSource,
     ContinuityRuntimeSettings,
     EffectiveConfigSecret,
@@ -308,6 +311,17 @@ def resolve_runtime_config(
         raw=raw,
     )
     runtime_policy = _parse_runtime_policy(raw.get("runtime", {}))
+    cognition_mode_source = (
+        ConfigSource.CONFIG_FILE
+        if _file_value(raw, "runtime", "cognition", "mode") is not _MISSING
+        else ConfigSource.CANONICAL_DEFAULT
+    )
+    _record(
+        provenance,
+        "runtime.cognition.mode",
+        runtime_policy.cognition.mode,
+        cognition_mode_source,
+    )
 
     try:
         provider_config = ProviderRuntimeConfig(
@@ -492,6 +506,7 @@ def _validate_file_shape(raw: dict[str, Any]) -> None:
             "runtime",
             {
                 "profile",
+                "cognition",
                 "memory_retrieval",
                 "event_retrieval",
                 "continuity",
@@ -505,6 +520,11 @@ def _validate_file_shape(raw: dict[str, Any]) -> None:
 
 def _parse_runtime_policy(raw: object) -> RuntimePolicyConfig:
     runtime = _mapping(raw, "runtime")
+    cognition = (
+        _parse_cognition(runtime["cognition"])
+        if "cognition" in runtime
+        else CognitionRuntimeSettings()
+    )
     memory = (
         _parse_memory_retrieval(runtime["memory_retrieval"])
         if "memory_retrieval" in runtime
@@ -527,11 +547,82 @@ def _parse_runtime_policy(raw: object) -> RuntimePolicyConfig:
     )
     return RuntimePolicyConfig(
         profile=None,
+        cognition=cognition,
         memory_retrieval=memory,
         event_retrieval=event,
         continuity=continuity,
         cognitive_budget=cognitive_budget,
     )
+
+
+def _parse_cognition(raw: object) -> CognitionRuntimeSettings:
+    path = "runtime.cognition"
+    mapping = _mapping(raw, path)
+    _reject_unknown(mapping, path, {"mode", "pass1", "pass2"})
+    mode_raw = mapping.get("mode", CognitionExecutionMode.TWO_PASS.value)
+    mode_text = _string(mode_raw, f"{path}.mode")
+    try:
+        mode = CognitionExecutionMode(mode_text)
+    except ValueError:
+        _invalid_value(f"{path}.mode", "unsupported cognition execution mode")
+    pass1 = _parse_cognition_pass(mapping.get("pass1", {}), f"{path}.pass1")
+    pass2 = _parse_cognition_pass(mapping.get("pass2", {}), f"{path}.pass2")
+    return CognitionRuntimeSettings(mode=mode, pass1=pass1, pass2=pass2)
+
+
+def _parse_cognition_pass(raw: object, path: str) -> CognitionPassRequest:
+    mapping = _mapping(raw, path)
+    _reject_unknown(
+        mapping,
+        path,
+        {
+            "reasoning_mode",
+            "reasoning_budget",
+            "temperature",
+            "top_p",
+            "max_output_tokens",
+        },
+    )
+    reasoning_mode = None
+    if "reasoning_mode" in mapping:
+        raw_mode = _string(mapping["reasoning_mode"], f"{path}.reasoning_mode")
+        try:
+            reasoning_mode = CognitionReasoningMode(raw_mode)
+        except ValueError:
+            _invalid_value(
+                f"{path}.reasoning_mode",
+                "unsupported cognition reasoning mode",
+            )
+    reasoning_budget = (
+        _integer(mapping["reasoning_budget"], f"{path}.reasoning_budget")
+        if "reasoning_budget" in mapping
+        else None
+    )
+    temperature = (
+        _number(mapping["temperature"], f"{path}.temperature")
+        if "temperature" in mapping
+        else None
+    )
+    top_p = (
+        _number(mapping["top_p"], f"{path}.top_p")
+        if "top_p" in mapping
+        else None
+    )
+    max_output_tokens = (
+        _integer(mapping["max_output_tokens"], f"{path}.max_output_tokens")
+        if "max_output_tokens" in mapping
+        else None
+    )
+    try:
+        return CognitionPassRequest(
+            reasoning_mode=reasoning_mode,
+            reasoning_budget=reasoning_budget,
+            temperature=temperature,
+            top_p=top_p,
+            max_output_tokens=max_output_tokens,
+        )
+    except (TypeError, ValueError) as exc:
+        _invalid_value(path, str(exc))
 
 
 def _parse_memory_retrieval(raw: object) -> MemoryRetrievalRuntimeConfig:
@@ -1030,6 +1121,12 @@ def _backend_value(value: object, path: str) -> OpenAICompatibleBackendId:
 def _integer(value: object, path: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         _invalid_type(path, "must be an integer")
+    return value
+
+
+def _number(value: object, path: str) -> int | float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        _invalid_type(path, "must be a number")
     return value
 
 
