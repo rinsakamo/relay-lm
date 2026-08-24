@@ -48,6 +48,7 @@ implementation:
 - src/relaylm/actual_model_fast_screening.py
 - src/relaylm/actual_model_fast_screening_artifacts.py
 - src/relaylm/actual_model_pass2_protocol_diagnostics.py
+- src/relaylm/actual_model_pass2_protocol_diagnostic_runner.py
 - src/relaylm/actual_model_crystallization.py
 - src/relaylm/actual_model_crystallization_host_runner.py
 tests:
