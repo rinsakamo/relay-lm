@@ -91,6 +91,13 @@ def _main_vllm(argv: Sequence[str]) -> int:
     parser.add_argument("--cognitive-budget")
     parser.add_argument("--capacity-evidence-id")
     parser.add_argument("--capacity-evidence-root")
+    parser.add_argument(
+        "--screening-plan",
+        help=(
+            "Repository-relative vLLM screening plan path. "
+            "Defaults to the canonical current Stage R reference plan."
+        ),
+    )
     args = parser.parse_args(argv)
 
     repo_root = Path(args.repo_root).resolve()
@@ -98,9 +105,11 @@ def _main_vllm(argv: Sequence[str]) -> int:
     try:
         relaylm_commit = _current_repo_head(repo_root)
         api_key = _resolve_api_key(args.provider_api_key_env)
-        plan = load_vllm_screening_plan(
-            repo_root / CANONICAL_VLLM_SCREENING_PLAN_PATH
+        plan_path = _resolve_vllm_screening_plan_path(
+            repo_root=repo_root,
+            value=args.screening_plan,
         )
+        plan = load_vllm_screening_plan(plan_path)
         condition_key = screening_condition_key_for_role(plan, condition_role)
         capacity_override = (
             args.capacity_evidence_id is not None
@@ -363,6 +372,32 @@ def _print_capacity_failure(
         ),
         file=sys.stderr,
     )
+
+
+def _resolve_vllm_screening_plan_path(
+    *,
+    repo_root: Path,
+    value: str | None,
+) -> Path:
+    if value is None:
+        return repo_root / CANONICAL_VLLM_SCREENING_PLAN_PATH
+    if not isinstance(value, str) or not value.strip():
+        raise ActualModelHostFacadeError(
+            "screening plan path must be a non-empty repository-relative path"
+        )
+    candidate = Path(value)
+    if candidate.is_absolute():
+        raise ActualModelHostFacadeError(
+            "screening plan path must be repository-relative"
+        )
+    resolved = (repo_root / candidate).resolve()
+    try:
+        resolved.relative_to(repo_root)
+    except ValueError as exc:
+        raise ActualModelHostFacadeError(
+            "screening plan path must remain inside repo_root"
+        ) from exc
+    return resolved
 
 
 def _current_repo_head(root: Path) -> str:
