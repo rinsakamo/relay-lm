@@ -78,7 +78,7 @@ continuity loss where the governed context remains sufficient.
 
 ## Character realization outcomes
 
-Current citable Stage R review format v3 / `actual-model-stage-r-review-v2`
+Current citable Stage R review format v4 / `actual-model-stage-r-review-v3`
 records exactly one turn-local Character-realization outcome for every evidence
 turn:
 
@@ -99,9 +99,57 @@ The turn-local classifications participate in the content-derived review
 identity. A persisted review whose Character-realization observations are
 changed without recomputing its `review_id` is invalid evidence.
 
+## Review claim scope
+
+Current format v4 adds one closed, content-derived `claim_scope` to every review:
+
+```text
+qualification
+regression
+smoke
+```
+
+The scope states what the review artifact is allowed to claim; it does not
+change the independent dimensions or Character-relative interpretation.
+
+### `qualification`
+
+A qualification review is intended to contribute to the current #1386 Stage R
+qualification ledger. It must carry explicit Stage R review observations and
+cannot have every Stage R dimension marked `not_rated`.
+
+This is only an admission boundary for one review artifact. A single
+`qualification` review does not by itself prove complete Core 1.0 qualification;
+scenario/coverage requirements still come from current #1386 and the Stage R
+coverage ledger.
+
+### `regression`
+
+A regression review is bounded evidence about a specific scenario or behavior.
+It may contain rated Stage R dimensions or may leave all Stage R dimensions
+`not_rated`, but its identity remains `regression` and therefore cannot be
+silently counted as qualification-strength evidence merely because the sidecar
+uses the current review format.
+
+### `smoke`
+
+A smoke review is non-qualification sanity evidence. Its Stage R dimensions must
+all remain `not_rated`. It may prove that the review/evidence path can be
+constructed and persisted, but it cannot carry Stage R qualification ratings or
+be promoted to qualification by downstream convention.
+
+Claim scope participates in `review_id`, so otherwise identical reviews with
+different claim scopes are distinct artifacts.
+
+Historical actual-model review format v3 / `actual-model-stage-r-review-v2`
+contains Character-realization outcomes but no explicit claim scope. It retains
+its original semantics and is not silently reinterpreted as
+`qualification`, `regression`, or `smoke`.
+
 Historical actual-model review format v2 / `actual-model-stage-r-review-v1`
-keeps its original semantics. It is not reinterpreted as though the four-value
-Character-realization taxonomy had been present in those artifacts.
+keeps its original pre-Character-realization semantics. It is not reinterpreted
+as though the four-value Character-realization taxonomy or claim scope had been
+present in those artifacts.
 
 No weighted universal Character score is introduced.
 
