@@ -23,28 +23,24 @@ Keep fixed:
 - scenarios: existing `response-persona-correction-v1` and `continuity-lifecycle-v1` only;
 - current prompt/wire and State/Continuity/Event semantics.
 
-The execution window is instead bound from fresh external capacity evidence whose `observed_max_model_len` is the exact live vLLM value for the same checkout/runtime.
+The execution window is bound from fresh external capacity evidence whose `observed_max_model_len` is the exact live vLLM value for the same checkout/runtime.
 
 ## Hardware capability discovery
 
-Before functional screening, start the exact attested vLLM/model trajectory with vLLM's auto-fit model-length mode:
+Do not treat a guessed `gpu_memory_utilization` fraction or a repository-chosen context size as hardware capability.
 
-```text
---max-model-len auto
-```
+Use the exact installed vLLM build's own memory profiler in two bounded steps:
 
-The purpose is to let the serving backend profile the GPU/KV-cache budget and choose the largest model context that fits the actual runtime rather than having RelayLM invent a fixed value such as 4096 or an arbitrary GPU-memory percentage.
+1. **Probe.** Start the exact target once with normal profiling enabled and `--max-model-len auto`. This probe exists only to obtain the runtime memory facts; its configured `gpu_memory_utilization` is not the capability result.
+2. **Resolve KV capacity from free VRAM.** Retain the profiler output for startup free GPU memory, weights/model memory, peak activation memory, non-Torch memory and CUDA-graph memory. When the installed build emits its recommended `--kv-cache-memory=<bytes>` value for fully utilizing GPU memory, use that exact recommendation. That recommendation is derived from the observed startup free memory minus profiled non-KV consumption and vLLM's own redundancy buffer, rather than from a RelayLM-owned percentage.
+3. **Final capability run.** Restart the exact same target with that explicit `--kv-cache-memory=<bytes>` and `--max-model-len auto`. The explicit KV byte budget makes `gpu_memory_utilization` irrelevant to KV-cache sizing; auto-fit then resolves the maximum model length supported by that profiled KV capacity.
+4. Attest the final live `/v1/models` `max_model_len` and retain the final GPU KV-cache token capacity/startup log. That resolved `max_model_len` is the functional-test execution capability.
 
-Retain the startup evidence needed to explain the result when the running vLLM build exposes it, especially:
+Do not invent a fallback fraction such as 0.9 or 0.92. If the exact installed vLLM build does not expose enough memory-profile evidence to derive or report the full-GPU KV byte budget, stop and report the backend-capability gap instead of substituting a guessed fixed context window.
 
-- the auto-fit `max_model_len` decision;
-- GPU KV-cache token capacity;
-- available KV-cache memory / relevant memory-profile lines;
-- the actual vLLM launch arguments, including any explicitly supplied GPU-memory or KV-cache-memory controls.
+If unrelated GPU processes or display load materially change between probe and final launch, repeat the probe rather than reusing a stale byte recommendation.
 
-RelayLM does not prescribe `gpu_memory_utilization=0.9` or another guessed fraction for this transaction. If the operator explicitly changes vLLM memory policy, record that as part of the runtime identity. Do not silently tune it merely to make a scenario pass.
-
-The live `/v1/models` `max_model_len` remains the execution fact consumed by RelayLM capacity acquisition. If the exact installed vLLM build does not support the expected auto-fit behavior, stop and report that backend-capability mismatch instead of substituting a guessed fixed window.
+The discovered maximum is a hardware/backend capability fact for this exact machine/runtime state. It is not a release/default recommendation.
 
 ## Primary acceptance question
 
@@ -62,9 +58,9 @@ A provider-capacity failure can prevent these questions from being observed, but
 
 ## Execution
 
-Use one clean exact RelayLM checkout throughout capability discovery, capacity acquisition and functional screening.
+Use one clean exact RelayLM checkout throughout final capability attestation, capacity acquisition and functional screening.
 
-First acquire fresh external capacity evidence with the canonical Stage R plan. Capacity acquisition already binds to the live attested `max_model_len`; the canonical plan's historical pilot window does not select the acquisition runtime.
+After the final capability run is serving, acquire fresh external capacity evidence with the canonical Stage R plan. Capacity acquisition already binds to the live attested `max_model_len`; the canonical plan's historical pilot window does not select the acquisition runtime.
 
 ```text
 python -m relaylm.actual_model_host \
@@ -77,7 +73,7 @@ python -m relaylm.actual_model_host \
 
 The resulting capacity artifact records the exact live `observed_max_model_len`.
 
-Without changing the checkout or vLLM runtime, run functional screening and explicitly bind the screening context window to that same external evidence:
+Without changing the checkout or final vLLM runtime, run functional screening and explicitly bind the screening context window to that same external evidence:
 
 ```text
 python -m relaylm.actual_model_host \
@@ -111,12 +107,14 @@ Pass 2 reasoning escalation remains conditional on completed OFF/OFF semantic ev
 
 During the same run, retain token/timing observations when already available:
 
+- startup free GPU memory and profiled non-KV memory components;
+- the resolved explicit KV-cache byte budget used for the final capability run;
+- final GPU KV-cache token capacity and live `max_model_len`;
 - production serialized-input token count;
 - provider `prompt_tokens`, `completion_tokens`, `total_tokens` and `finish_reason`;
 - counter/provider delta;
 - explicit reasoning-token metadata when provided;
-- Pass 1 / Pass 2 / settle timing;
-- exact live `max_model_len`, KV-cache capacity evidence when available, and model-runner identity.
+- Pass 1 / Pass 2 / settle timing.
 
 These measurements are useful inputs to #1388 after the product path is functionally acceptable. They are not the reason to run Stage R.
 
@@ -124,7 +122,7 @@ These measurements are useful inputs to #1388 after the product path is function
 
 Only after functional qualification should #1388 decide the release capacity/output reserve, reasoning policy and other numeric defaults from successful evidence.
 
-A large auto-fit capability does not imply a large release default. Conversely, Stage R should not repeatedly squeeze the prompt into the historical 1616 pilot window merely to perform calibration before product behavior is known.
+A large discovered hardware capability does not imply a large release default. Conversely, Stage R should not repeatedly squeeze the prompt into the historical 1616 pilot window merely to perform calibration before product behavior is known.
 
 ## Deliberate boundaries
 
@@ -138,8 +136,8 @@ This correction does not change:
 - reasoning escalation policy;
 - release/runtime defaults.
 
-It changes only how the functional-test execution window is selected: **discover the actual hardware/backend capability first, use that live capacity for functional acceptance, then calibrate later**.
+It changes only how the functional-test execution window is selected: **profile the actual free VRAM and non-KV footprint, let vLLM resolve an explicit KV byte budget and maximum model length, use that live capacity for functional acceptance, then calibrate later**.
 
 ## Principle
 
-> First discover the machine's usable vLLM capacity, then prove RelayLM works there. Calibrate the product profile only after that.
+> First discover the machine's usable vLLM capacity from its actual memory profile, then prove RelayLM works there. Calibrate the product profile only after that.
