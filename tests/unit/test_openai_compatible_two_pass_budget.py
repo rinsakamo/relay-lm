@@ -104,6 +104,17 @@ def _cognitive_input() -> CognitiveInput:
     )
 
 
+def _empty_turn_interpretation() -> dict[str, list[str]]:
+    return {
+        "user_meaning": [],
+        "change_signals": [],
+        "self_meaning": [],
+        "assistant_effects": [],
+        "unresolved": [],
+        "continuity_signals": [],
+    }
+
+
 def test_two_pass_counter_matches_production_pass_requests_exactly() -> None:
     counted: list[dict[str, Any]] = []
     sent: list[dict[str, Any]] = []
@@ -168,6 +179,7 @@ def test_two_pass_counter_matches_production_pass_requests_exactly() -> None:
                         "message": {
                             "content": json.dumps(
                                 {
+                                    "turn_interpretation": _empty_turn_interpretation(),
                                     "state_candidates": [],
                                     "continuity_candidates": [],
                                 }
