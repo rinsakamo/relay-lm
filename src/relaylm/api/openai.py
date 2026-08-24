@@ -12,7 +12,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
-from relaylm.cognitive import CognitiveProvider
+from relaylm.cognitive import CognitiveProvider, CognitionExecutionMode
+from relaylm.cognition_execution import CognitionPassRequest
 from relaylm.providers.openai_compatible import ProviderProtocolError
 from relaylm.storage.filesystem import CharacterDataError, CharacterDirectory
 from relaylm.turn import (
@@ -21,6 +22,11 @@ from relaylm.turn import (
     MemoryRetrievalBudget,
     run_user_turn,
     run_user_turn_streaming,
+)
+from relaylm.two_pass_turn import (
+    CognitionExecutionRuntime,
+    run_user_turn_two_pass,
+    run_user_turn_two_pass_streaming,
 )
 
 
@@ -62,11 +68,23 @@ def create_openai_router(
     *,
     character: CharacterDirectory,
     provider: CognitiveProvider,
+    cognition_mode: CognitionExecutionMode = CognitionExecutionMode.SINGLE_PASS,
+    cognition_execution_runtime: CognitionExecutionRuntime | None = None,
+    pass1_request: CognitionPassRequest | None = None,
+    pass2_request: CognitionPassRequest | None = None,
     memory_budget: MemoryRetrievalBudget | None = None,
     event_budget: EventRetrievalBudget | None = None,
     continuity_runtime: ContinuityRuntime | None = None,
     cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
 ) -> APIRouter:
+    if not isinstance(cognition_mode, CognitionExecutionMode):
+        raise TypeError("cognition_mode must be CognitionExecutionMode")
+    if cognition_mode is CognitionExecutionMode.TWO_PASS:
+        if not isinstance(cognition_execution_runtime, CognitionExecutionRuntime):
+            raise TypeError("two_pass requires CognitionExecutionRuntime")
+    elif cognition_execution_runtime is not None:
+        raise TypeError("CognitionExecutionRuntime is only valid for two_pass")
+
     router = APIRouter()
     turn_lock = asyncio.Lock()
 
@@ -74,7 +92,12 @@ def create_openai_router(
     async def chat_completions(request: ChatCompletionRequest):
         content = _last_user_content(request.messages)
         if request.stream:
-            if not callable(getattr(provider, "stream_generate", None)):
+            streaming_method = (
+                "stream_generate_conversation"
+                if cognition_mode is CognitionExecutionMode.TWO_PASS
+                else "stream_generate"
+            )
+            if not callable(getattr(provider, streaming_method, None)):
                 raise HTTPException(
                     status_code=400,
                     detail="streaming is not available for the configured cognitive provider",
@@ -84,6 +107,10 @@ def create_openai_router(
             stream = _stream_chat_completion(
                 character=character,
                 provider=provider,
+                cognition_mode=cognition_mode,
+                cognition_execution_runtime=cognition_execution_runtime,
+                pass1_request=pass1_request,
+                pass2_request=pass2_request,
                 turn_lock=turn_lock,
                 content=content,
                 completion_id=completion_id,
@@ -113,19 +140,40 @@ def create_openai_router(
 
         async with turn_lock:
             try:
-                result = await run_user_turn(
-                    character=character,
-                    provider=provider,
-                    content=content,
-                    memory_budget=memory_budget,
-                    event_budget=event_budget,
-                    continuity_runtime=continuity_runtime,
-                    cognitive_budget=cognitive_budget,
-                )
+                if cognition_mode is CognitionExecutionMode.TWO_PASS:
+                    assert cognition_execution_runtime is not None
+                    result = await run_user_turn_two_pass(
+                        character=character,
+                        provider=provider,
+                        content=content,
+                        execution_runtime=cognition_execution_runtime,
+                        memory_budget=memory_budget,
+                        event_budget=event_budget,
+                        continuity_runtime=continuity_runtime,
+                        cognitive_budget=None,
+                        pass1_request=pass1_request,
+                        pass2_request=pass2_request,
+                    )
+                else:
+                    result = await run_user_turn(
+                        character=character,
+                        provider=provider,
+                        content=content,
+                        memory_budget=memory_budget,
+                        event_budget=event_budget,
+                        continuity_runtime=continuity_runtime,
+                        cognitive_budget=cognitive_budget,
+                    )
             except ProviderProtocolError as exc:
-                raise HTTPException(status_code=502, detail="upstream cognitive provider failed") from exc
+                raise HTTPException(
+                    status_code=502,
+                    detail="upstream cognitive provider failed",
+                ) from exc
             except CharacterDataError as exc:
-                raise HTTPException(status_code=500, detail="character package is invalid") from exc
+                raise HTTPException(
+                    status_code=500,
+                    detail="character package is invalid",
+                ) from exc
 
         return ChatCompletionResponse(
             id=f"chatcmpl-{uuid4().hex}",
@@ -154,6 +202,10 @@ async def _stream_chat_completion(
     *,
     character: CharacterDirectory,
     provider: CognitiveProvider,
+    cognition_mode: CognitionExecutionMode,
+    cognition_execution_runtime: CognitionExecutionRuntime | None,
+    pass1_request: CognitionPassRequest | None,
+    pass2_request: CognitionPassRequest | None,
     turn_lock: asyncio.Lock,
     content: str,
     completion_id: str,
@@ -173,16 +225,32 @@ async def _stream_chat_completion(
     async def produce() -> None:
         try:
             async with turn_lock:
-                result = await run_user_turn_streaming(
-                    character=character,
-                    provider=provider,
-                    content=content,
-                    emit_response_delta=emit_response_delta,
-                    memory_budget=memory_budget,
-                    event_budget=event_budget,
-                    continuity_runtime=continuity_runtime,
-                    cognitive_budget=cognitive_budget,
-                )
+                if cognition_mode is CognitionExecutionMode.TWO_PASS:
+                    assert cognition_execution_runtime is not None
+                    result = await run_user_turn_two_pass_streaming(
+                        character=character,
+                        provider=provider,
+                        content=content,
+                        emit_response_delta=emit_response_delta,
+                        execution_runtime=cognition_execution_runtime,
+                        memory_budget=memory_budget,
+                        event_budget=event_budget,
+                        continuity_runtime=continuity_runtime,
+                        cognitive_budget=None,
+                        pass1_request=pass1_request,
+                        pass2_request=pass2_request,
+                    )
+                else:
+                    result = await run_user_turn_streaming(
+                        character=character,
+                        provider=provider,
+                        content=content,
+                        emit_response_delta=emit_response_delta,
+                        memory_budget=memory_budget,
+                        event_budget=event_budget,
+                        continuity_runtime=continuity_runtime,
+                        cognitive_budget=cognitive_budget,
+                    )
         except asyncio.CancelledError:
             raise
         except Exception as exc:
