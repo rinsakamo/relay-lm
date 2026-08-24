@@ -1,6 +1,6 @@
 schema_version: 1
 id: actual_model_evaluation
-summary: Actual-model execution/evidence authority for Core 1.0 two-pass-reference qualification, claim-scoped qualification/regression/smoke review identity, Character-relative anomaly/product-quality review with citable turn-local Character-realization outcomes, Pass-2-only reasoning escalation on demonstrated semantic need, exact provider/model capability binding, capacity/timing evidence, citable pressure plan/evidence binding and derived-observation integrity including pressure summaries/deltas, and later optional single-pass optimization comparisons against a qualified reference.
+summary: Actual-model execution/evidence authority for Core 1.0 two-pass-reference qualification, semantic-role current vLLM screening plans with historical A/B/C compatibility only at immutable evidence boundaries, claim-scoped qualification/regression/smoke review identity, Character-relative anomaly/product-quality review with citable turn-local Character-realization outcomes, Pass-2-only reasoning escalation on demonstrated semantic need, exact provider/model capability binding, capacity/timing evidence, citable pressure plan/evidence binding and derived-observation integrity including pressure summaries/deltas, and later optional single-pass optimization comparisons against a qualified reference.
 owner_issue: 1386
 canonical_surfaces:
 - docs/reference/actual-model-character-authoring.md
@@ -17,7 +17,7 @@ canonical_surfaces:
 - docs/reference/actual-model-vllm-budget-facade.md
 - docs/reference/actual-model-vllm-capacity-acquisition.md
 - docs/reference/actual-model-stage-r-coverage.md
-- evaluation/actual_model/screenings/stage-r0-vllm-reference-v1.json
+- evaluation/actual_model/screenings/stage-r0-vllm-reference-v2.json
 implementation:
 - src/relaylm/actual_model_evaluation.py
 - src/relaylm/actual_model_artifacts.py
@@ -161,12 +161,10 @@ evidence:
 - id: actual-model-cogp5-vllm-screening-v1
   summary: >-
     Immutable historical plan containing A single-pass OFF, B two-pass OFF/OFF,
-    and C two-pass Pass-2 escalation. Current Core 1.0 policy exposes the
-    semantic `reference_baseline` role first and the optional
-    `pass2_reasoning_escalation` role only on demonstrated semantic need. The
-    bounded resolver maps those roles to immutable historical coordinates at
-    the host/evidence boundary; A/B/C names do not define current execution
-    order.
+    and C two-pass Pass-2 escalation. Current Core 1.0 policy uses semantic
+    `reference_baseline` and optional `pass2_reasoning_escalation` plan keys;
+    historical A/B/C names remain only inside this immutable evidence plan and
+    do not define current execution structure or order.
   surfaces:
   - evaluation/actual_model/screenings/cogp5-vllm-screening-v1.json
 - id: actual-model-crystallization-quality-v1
