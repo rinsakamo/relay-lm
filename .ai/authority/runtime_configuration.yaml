@@ -20,6 +20,7 @@ tests:
 - tests/unit/test_runtime_assembly.py
 - tests/unit/test_release_two_pass_wiring.py
 - tests/unit/test_runtime_provider_backend_selection.py
+- tests/unit/test_runtime_lm_studio_backend.py
 - tests/unit/test_runtime_provider_base_endpoint_admission.py
 - tests/unit/test_runtime_cli.py
 depends_on:
