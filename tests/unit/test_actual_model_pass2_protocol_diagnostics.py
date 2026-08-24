@@ -12,6 +12,12 @@ from relaylm.actual_model_evaluation import (
     ExplicitBudgetConfiguration,
     run_actual_model_scenario,
 )
+from relaylm.actual_model_pass2_protocol_diagnostics import (
+    Pass2ProtocolDiagnosticRecorder,
+    bind_pass2_protocol_diagnostic_artifact,
+    instrument_pass2_protocol_diagnostics,
+    write_pass2_protocol_diagnostic_artifact,
+)
 from relaylm.cognition_execution_evidence import (
     BUFFERED_EXECUTION_PATH,
     CognitionExecutionEvidenceIdentity,
@@ -94,6 +100,7 @@ def test_failed_pass2_retains_http_200_protocol_diagnostic_without_reusing_prior
         ensure_ascii=False,
         separators=(",", ":"),
     )
+    recorder = Pass2ProtocolDiagnosticRecorder()
 
     def handler(request: httpx.Request) -> httpx.Response:
         nonlocal extraction_calls
@@ -144,9 +151,13 @@ def test_failed_pass2_retains_http_200_protocol_diagnostic_without_reusing_prior
                 model="gemma",
                 http_client=client,
             )
+            diagnostic_provider = instrument_pass2_protocol_diagnostics(
+                provider,
+                recorder=recorder,
+            )
             return await run_actual_model_scenario(
-                character=_make_character(tmp_path),
-                provider=provider,
+                character=_make_character(tmp_path / "character"),
+                provider=diagnostic_provider,
                 manifest=_manifest(),
                 scenario=ActualModelScenario(
                     scenario_id="pass2-protocol-diagnostic-v1",
@@ -161,14 +172,19 @@ def test_failed_pass2_retains_http_200_protocol_diagnostic_without_reusing_prior
     first = evidence.turns[0].cognition_execution
     assert first is not None
     assert first.pass2_status == "committed"
-    assert first.pass2_protocol_failure is None
-
     second = evidence.turns[1].cognition_execution
     assert second is not None
     assert second.pass2_status == "failed"
     assert second.pass2_failure_reason == "pass2_failed"
-    diagnostic = second.pass2_protocol_failure
-    assert diagnostic is not None
+    assert second.pass2_raw is None
+
+    artifact = bind_pass2_protocol_diagnostic_artifact(
+        evidence=evidence,
+        recorder=recorder,
+    )
+    assert len(artifact.failures) == 1
+    diagnostic = artifact.failures[0]
+    assert diagnostic.turn_index == 2
     assert diagnostic.http_status == 200
     assert diagnostic.response_text == malformed_envelope
     assert diagnostic.message_content == malformed_content
@@ -183,3 +199,13 @@ def test_failed_pass2_retains_http_200_protocol_diagnostic_without_reusing_prior
         "provider extraction content is not valid JSON"
     )
     assert diagnostic.exception_chain[1]["type"] == "JSONDecodeError"
+
+    artifact_path = write_pass2_protocol_diagnostic_artifact(
+        artifact=artifact,
+        artifact_root=tmp_path / "artifacts",
+    )
+    assert artifact_path.read_text(encoding="utf-8") == artifact.to_json()
+    assert write_pass2_protocol_diagnostic_artifact(
+        artifact=artifact,
+        artifact_root=tmp_path / "artifacts",
+    ) == artifact_path
