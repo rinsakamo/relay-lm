@@ -257,3 +257,29 @@ Pass 1 and Pass 2 have separate output/runtime footprints but intentionally shar
 Pass 2 adds the explicit scaffold and schema suffix, so prompt tokens, completion tokens, latency and reasoning tokens must be re-qualified against the existing scenario set.
 
 #1386 owns actual-model quality/capacity/performance evidence. #1388 owns calibrated profile/default selection.
+
+If two-pass performance is problematic, first evaluate two-pass-preserving execution improvements such as streaming, prefix/KV reuse, scheduler/cache tuning, bounded Pass 2 output, lowest sufficient Pass 2 reasoning effort and backend execution-engine tuning.
+
+Do not collapse semantic responsibilities into single-pass solely because it is faster before reference-quality regression is measured.
+
+## Current implementation obligations
+
+Before Core 1.0 release:
+
+1. remove stale provider-native structured-output mode gates;
+2. preserve equivalent per-pass request carriage for buffered and streaming two-pass execution;
+3. share candidate parsing/type-construction mechanics cleanly between combined and proposal IR paths;
+4. test rapid-turn / stale / pending-extraction behavior;
+5. let #1386 qualify the two-pass reference before #1388 calibration;
+6. wire the qualified two-pass path through #1446 release runtime assembly.
+
+## Deferred
+
+- post-1.0 single-pass optimization against the qualified reference;
+- learned/selective extraction routing;
+- two concurrently resident online models;
+- execution-engine optimizations not yet exposed by current owner contracts.
+
+## Principle
+
+> Two passes are the quality architecture; runtime tuning is the first response to performance cost.
