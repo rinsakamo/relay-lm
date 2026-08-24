@@ -20,13 +20,7 @@ from relaylm.state import STATE_CLASS_DEFINITIONS
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PLAN_PATH = (
-    REPO_ROOT
-    / "evaluation"
-    / "actual_model"
-    / "screenings"
-    / "stage-r0-vllm-reference-v1.json"
-)
+PLAN_PATH = REPO_ROOT / vllm_host.CANONICAL_VLLM_HISTORICAL_SCREENING_PLAN_PATH
 PROOF_PATH = (
     REPO_ROOT
     / "evaluation"
