@@ -212,6 +212,7 @@ def _print_doctor_summary(prepared: PreparedRuntime, stdout: TextIO) -> None:
     stdout.write(f"character: {_summary_value(config.character.directory)}\n")
     stdout.write(
         f"provider: {_summary_value(config.provider.adapter)} "
+        f"backend={_summary_value(config.provider.backend.value)} "
         f"model={_summary_value(config.provider.model)} "
         f"base_url={_summary_value(config.provider.base_url)}\n"
     )
@@ -227,6 +228,7 @@ def _print_serve_summary(prepared: PreparedRuntime, stdout: TextIO) -> None:
     stdout.write(f"character: {_summary_value(config.character.directory)}\n")
     stdout.write(
         f"provider: {_summary_value(config.provider.adapter)} "
+        f"backend={_summary_value(config.provider.backend.value)} "
         f"model={_summary_value(config.provider.model)} "
         f"base_url={_summary_value(config.provider.base_url)}\n"
     )
@@ -260,6 +262,7 @@ def _runtime_layers_summary(prepared: PreparedRuntime) -> str:
     cognitive = "on" if assembly.cognitive_budget is not None else "off"
     return (
         "runtime: "
+        f"cognition={assembly.cognition_mode.value} "
         f"memory={memory} event={event} continuity={continuity} cognitive_budget={cognitive}"
     )
 
