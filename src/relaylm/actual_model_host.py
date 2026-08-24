@@ -270,7 +270,6 @@ def _main_vllm(argv: Sequence[str]) -> int:
                 "relaylm_commit": prepared.manifest.relaylm_commit,
                 "target_id": prepared.target.target_id,
                 "replicate_id": prepared.manifest.replicate_id,
-                "effective_context_window": prepared.manifest.effective_context_window,
                 "results": result_mappings,
                 "score": None,
             },
