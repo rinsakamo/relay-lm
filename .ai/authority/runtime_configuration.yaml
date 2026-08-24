@@ -1,6 +1,7 @@
 schema_version: 1
 id: runtime_configuration
-summary: Runtime configuration, provider-backend selection, assembly, preflight, and operator semantics.
+summary: Release runtime configuration, two-pass-first cognition carriage, provider-backend selection, assembly, preflight, and operator semantics.
+owner_issue: 1446
 canonical_surfaces:
 - docs/contracts/runtime-configuration.md
 - docs/contracts/runtime-assembly.md
@@ -17,6 +18,7 @@ tests:
 - tests/unit/test_runtime_config_contract.py
 - tests/unit/test_runtime_config_loader.py
 - tests/unit/test_runtime_assembly.py
+- tests/unit/test_release_two_pass_wiring.py
 - tests/unit/test_runtime_provider_backend_selection.py
 - tests/unit/test_runtime_provider_base_endpoint_admission.py
 - tests/unit/test_runtime_cli.py
