@@ -1,11 +1,13 @@
 schema_version: 1
 id: cognitive_turn
 summary: >-
-  Core 1.0 two-pass-first ordinary-turn cognition authority. Pass 1 owns visible
-  conversation, Pass 2 owns semantic proposal extraction, and RelayLM owns IR
-  parsing/type construction plus deterministic State/Continuity authority.
-  single_pass remains compatibility/future optimization rather than a Core 1.0
-  quality gate.
+  Core 1.0 two-pass-first ordinary-turn cognition authority. Pass 1 and Pass 2
+  share one canonical cognitive prefix through CognitiveInput. Pass 1 owns the
+  visible character response with a minimal suffix; Pass 2 owns a non-authoritative
+  six-field subjective turn-interpretation scaffold followed by semantic
+  State/Continuity proposals. RelayLM owns exact IR parsing/type construction plus
+  deterministic State/Continuity authority. single_pass remains compatibility/future
+  optimization rather than a Core 1.0 quality gate.
 owner_issue: 1533
 canonical_surfaces:
 - docs/contracts/cognition-execution-policy.md
@@ -41,6 +43,7 @@ tests:
 - tests/unit/test_cognition_two_pass_continuity_guard.py
 - tests/unit/test_two_pass_continuity_turn_clock.py
 - tests/unit/test_openai_compatible_two_pass.py
+- tests/unit/test_two_pass_prompt_scaffold.py
 - tests/unit/test_two_pass_completion_metadata.py
 - tests/unit/test_two_pass_source_binding.py
 - tests/unit/test_cognitive_turn.py
