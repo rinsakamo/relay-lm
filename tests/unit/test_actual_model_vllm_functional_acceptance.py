@@ -28,7 +28,6 @@ def test_functional_acceptance_has_no_fixed_repository_context_window() -> None:
 def test_shared_host_binds_screening_window_to_live_capacity_evidence(
     tmp_path: Path,
     monkeypatch,
-    capsys,
 ) -> None:
     plan = _Plan(
         screening_id="stage-r0-vllm-reference-v2",
