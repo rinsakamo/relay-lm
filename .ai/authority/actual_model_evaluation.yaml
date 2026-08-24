@@ -1,6 +1,6 @@
 schema_version: 1
 id: actual_model_evaluation
-summary: Actual-model execution/evidence authority for Core 1.0 two-pass-reference qualification, semantic-role current vLLM screening plans with bounded roomy functional-acceptance variants and historical A/B/C compatibility only at immutable evidence boundaries, claim-scoped qualification/regression/smoke review identity, Character-relative anomaly/product-quality review with citable turn-local Character-realization outcomes, Pass-2-only reasoning escalation on demonstrated semantic need, exact provider/model capability binding, capacity/timing evidence, citable pressure plan/evidence binding and derived-observation integrity including pressure summaries/deltas, and later optional single-pass optimization comparisons against a qualified reference.
+summary: Actual-model execution/evidence authority for Core 1.0 two-pass-reference qualification, semantic-role current vLLM screening with live-capacity-bound functional acceptance and historical A/B/C compatibility only at immutable evidence boundaries, claim-scoped qualification/regression/smoke review identity, Character-relative anomaly/product-quality review with citable turn-local Character-realization outcomes, Pass-2-only reasoning escalation on demonstrated semantic need, exact provider/model capability binding, capacity/timing evidence, citable pressure plan/evidence binding and derived-observation integrity including pressure summaries/deltas, and later optional single-pass optimization comparisons against a qualified reference.
 owner_issue: 1386
 canonical_surfaces:
 - docs/reference/actual-model-character-authoring.md
@@ -169,14 +169,6 @@ evidence:
     do not define current execution structure or order.
   surfaces:
   - evaluation/actual_model/screenings/cogp5-vllm-screening-v1.json
-- id: actual-model-vllm-functional-acceptance-v1
-  summary: >-
-    Repository-owned roomy Stage R functional-acceptance plan using a 4096-token
-    effective context window so the exact current two-pass path can complete and
-    be judged for product behavior. Capacity/timing observations are incidental
-    inputs for later #1388 calibration, not this plan's primary goal or a default.
-  surfaces:
-  - evaluation/actual_model/screenings/stage-r0-vllm-functional-acceptance-v1.json
 - id: actual-model-crystallization-quality-v1
   summary: >-
     Frozen Character fixture and revision identity for off-turn crystallization

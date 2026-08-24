@@ -25,7 +25,11 @@ from relaylm.actual_model_vllm_budget import (
     load_vllm_two_pass_cognitive_budget_declaration,
     prepare_vllm_screening_condition_with_budget_declaration as _prepare_vllm_screening_condition,
 )
-from relaylm.actual_model_vllm_capacity import VLLM_MODEL_RUNNER_IDS
+from relaylm.actual_model_vllm_capacity import (
+    VLLM_MODEL_RUNNER_IDS,
+    capacity_evidence_path,
+    load_vllm_runtime_capacity_evidence,
+)
 from relaylm.actual_model_vllm_capacity_acquisition import (
     VLLMCapacityAcquisitionError,
     VLLMCapacityAcquisitionFailure,
@@ -92,6 +96,14 @@ def _main_vllm(argv: Sequence[str]) -> int:
     parser.add_argument("--capacity-evidence-id")
     parser.add_argument("--capacity-evidence-root")
     parser.add_argument(
+        "--context-window-from-capacity-evidence",
+        action="store_true",
+        help=(
+            "For screening only, bind effective_context_window to the exact "
+            "observed_max_model_len in the supplied external capacity evidence."
+        ),
+    )
+    parser.add_argument(
         "--screening-plan",
         help=(
             "Repository-relative vLLM screening plan path. "
@@ -123,6 +135,10 @@ def _main_vllm(argv: Sequence[str]) -> int:
             if capacity_override:
                 raise ActualModelHostFacadeError(
                     "capacity evidence override is valid only for screening"
+                )
+            if args.context_window_from_capacity_evidence:
+                raise ActualModelHostFacadeError(
+                    "--context-window-from-capacity-evidence is valid only for screening"
                 )
             prepared = _prepare_vllm_capacity_acquisition(
                 plan=plan,
@@ -179,6 +195,26 @@ def _main_vllm(argv: Sequence[str]) -> int:
         ):
             raise ActualModelHostFacadeError(
                 "--capacity-evidence-id and --capacity-evidence-root must be supplied together"
+            )
+        if args.context_window_from_capacity_evidence:
+            if args.capacity_evidence_id is None or args.capacity_evidence_root is None:
+                raise ActualModelHostFacadeError(
+                    "--context-window-from-capacity-evidence requires external capacity evidence"
+                )
+            try:
+                live_capacity = load_vllm_runtime_capacity_evidence(
+                    capacity_evidence_path(
+                        artifact_root=args.capacity_evidence_root,
+                        evidence_id=args.capacity_evidence_id,
+                    )
+                )
+            except (OSError, TypeError, ValueError) as exc:
+                raise ActualModelHostFacadeError(
+                    f"cannot resolve live context window from capacity evidence: {exc}"
+                ) from exc
+            plan = replace(
+                plan,
+                effective_context_window=live_capacity.observed_max_model_len,
             )
         if args.capacity_evidence_id is not None:
             plan = replace(plan, capacity_evidence_id=args.capacity_evidence_id)

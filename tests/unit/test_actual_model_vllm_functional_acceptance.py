@@ -1,70 +1,39 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 
 import relaylm.actual_model_host as host_runner
-from relaylm.actual_model_vllm_host import (
-    CANONICAL_VLLM_SCREENING_PLAN_PATH,
-    load_vllm_screening_plan,
-)
 
 
 _ROOT = Path(__file__).parents[2]
-_FUNCTIONAL_PLAN = Path(
+_REMOVED_FIXED_PLAN = Path(
     "evaluation/actual_model/screenings/stage-r0-vllm-functional-acceptance-v1.json"
 )
 _REFERENCE_BASELINE = "reference_baseline"
+_LIVE_CAPACITY_ID = "amcap-" + "f" * 64
 
 
-def test_functional_acceptance_plan_preserves_reference_semantics_with_roomy_window() -> None:
-    canonical = load_vllm_screening_plan(_ROOT / CANONICAL_VLLM_SCREENING_PLAN_PATH)
-    functional = load_vllm_screening_plan(_ROOT / _FUNCTIONAL_PLAN)
-
-    assert canonical.screening_id == "stage-r0-vllm-reference-v2"
-    assert canonical.effective_context_window == 1616
-    assert canonical.capacity_evidence_id is not None
-
-    assert functional.screening_id == "stage-r0-vllm-functional-acceptance-v1"
-    assert functional.effective_context_window == 4096
-    assert functional.capacity_evidence_id is None
-    assert functional.target_id == canonical.target_id
-    assert functional.decoding_config == canonical.decoding_config
-    assert functional.decoding_capabilities == canonical.decoding_capabilities
-    assert functional.execution_path == canonical.execution_path
-    assert functional.continuity_runtime == canonical.continuity_runtime
-    assert functional.scenario_ids == canonical.scenario_ids
-    assert tuple(functional.conditions) == tuple(canonical.conditions)
-    assert {
-        key: value.to_mapping() for key, value in functional.conditions.items()
-    } == {
-        key: value.to_mapping() for key, value in canonical.conditions.items()
-    }
+@dataclass(frozen=True)
+class _Plan:
+    screening_id: str
+    effective_context_window: int
+    capacity_evidence_id: str | None = None
 
 
-def test_shared_host_can_select_repository_owned_functional_acceptance_plan(
+def test_functional_acceptance_has_no_fixed_repository_context_window() -> None:
+    assert not (_ROOT / _REMOVED_FIXED_PLAN).exists()
+
+
+def test_shared_host_binds_screening_window_to_live_capacity_evidence(
     tmp_path: Path,
     monkeypatch,
-    capsys,
 ) -> None:
-    plan = SimpleNamespace(screening_id="stage-r0-vllm-functional-acceptance-v1")
-    prepared = SimpleNamespace(
-        plan=plan,
-        screening_condition_id=_REFERENCE_BASELINE,
-        manifest=SimpleNamespace(relaylm_commit="a" * 40, replicate_id="0"),
-        target=SimpleNamespace(target_id="gemma-4-12b-it-qat-w4a16-google-vllm-v1"),
-        reasoning_capability=SimpleNamespace(
-            backend_attestation=SimpleNamespace(max_model_len=4096)
-        ),
-    )
-    artifact = SimpleNamespace(
-        to_mapping=lambda: {
-            "evidence_id": "amcap-functional",
-            "artifact_path": "/tmp/amcap-functional.json",
-            "footprint_count": 12,
-            "maximum_observed_input_tokens": 1540,
-            "complete": True,
-        }
+    plan = _Plan(
+        screening_id="stage-r0-vllm-reference-v2",
+        effective_context_window=1616,
+        capacity_evidence_id="tracked-capacity",
     )
     observed: dict[str, object] = {}
 
@@ -77,18 +46,39 @@ def test_shared_host_can_select_repository_owned_functional_acceptance_plan(
         assert role == _REFERENCE_BASELINE
         return role
 
+    def fake_load_capacity(path):
+        observed["capacity_path"] = Path(path)
+        return SimpleNamespace(observed_max_model_len=6144)
+
     def fake_prepare(**kwargs):
         observed["prepare"] = kwargs
-        return prepared
+        resolved_plan = kwargs["plan"]
+        return SimpleNamespace(
+            plan=resolved_plan,
+            screening_condition_id=_REFERENCE_BASELINE,
+            manifest=SimpleNamespace(
+                relaylm_commit="a" * 40,
+                replicate_id="0",
+                effective_context_window=resolved_plan.effective_context_window,
+            ),
+            target=SimpleNamespace(
+                target_id="gemma-4-12b-it-qat-w4a16-google-vllm-v1"
+            ),
+        )
 
     async def fake_execute(**kwargs):
         observed["execute"] = kwargs
-        return artifact
+        return ()
 
     monkeypatch.setattr(host_runner, "load_vllm_screening_plan", fake_load)
     monkeypatch.setattr(host_runner, "screening_condition_key_for_role", fake_resolve)
-    monkeypatch.setattr(host_runner, "_prepare_vllm_capacity_acquisition", fake_prepare)
-    monkeypatch.setattr(host_runner, "_execute_vllm_capacity_acquisition", fake_execute)
+    monkeypatch.setattr(
+        host_runner,
+        "load_vllm_runtime_capacity_evidence",
+        fake_load_capacity,
+    )
+    monkeypatch.setattr(host_runner, "_prepare_vllm_screening_condition", fake_prepare)
+    monkeypatch.setattr(host_runner, "_execute_vllm_host_run", fake_execute)
     monkeypatch.setattr(host_runner, "_current_repo_head", lambda _: "a" * 40)
 
     result = host_runner.main(
@@ -96,11 +86,14 @@ def test_shared_host_can_select_repository_owned_functional_acceptance_plan(
             "--backend",
             "vllm",
             "--operation",
-            "capacity",
+            "screening",
             "--condition",
             _REFERENCE_BASELINE,
-            "--screening-plan",
-            str(_FUNCTIONAL_PLAN),
+            "--context-window-from-capacity-evidence",
+            "--capacity-evidence-id",
+            _LIVE_CAPACITY_ID,
+            "--capacity-evidence-root",
+            "/tmp/relaylm-vllm-evidence",
             "--model-runner",
             "v2",
             "--repo-root",
@@ -117,8 +110,9 @@ def test_shared_host_can_select_repository_owned_functional_acceptance_plan(
     )
 
     assert result == 0
-    assert observed["plan_path"] == tmp_path / _FUNCTIONAL_PLAN
-    assert observed["prepare"]["plan"] is plan
-    output = capsys.readouterr().out
-    assert '"suite": "stage-r0-vllm-functional-acceptance-v1"' in output
-    assert '"observed_max_model_len": 4096' in output
+    prepare = observed["prepare"]
+    assert isinstance(prepare, dict)
+    prepared_plan = prepare["plan"]
+    assert isinstance(prepared_plan, _Plan)
+    assert prepared_plan.effective_context_window == 6144
+    assert prepared_plan.capacity_evidence_id == _LIVE_CAPACITY_ID
