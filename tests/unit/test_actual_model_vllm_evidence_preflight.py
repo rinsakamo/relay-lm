@@ -22,7 +22,7 @@ GOOGLE_PROOF_PATH = (
 )
 
 
-def test_clean_exact_repo_rejects_capacity_provenance_from_different_commit(
+def test_clean_exact_repo_rejects_required_capacity_provenance_from_different_commit(
     tmp_path: Path,
 ) -> None:
     repo = tmp_path / "repo"
@@ -93,17 +93,11 @@ def test_clean_exact_repo_allows_capacity_acquisition_without_prior_capacity_pro
     )
 
 
-def test_screening_preparation_carries_capacity_commit_into_exact_repo_gate(
+def test_screening_preparation_omits_measurement_commit_for_reviewed_tracked_capacity(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     plan = vllm_host.load_vllm_screening_plan(CURRENT_PLAN_PATH)
     assert plan.capacity_evidence_id is not None
-    capacity = vllm_host.load_vllm_runtime_capacity_evidence(
-        vllm_host.capacity_evidence_path(
-            artifact_root=REPO_ROOT / vllm_host.CANONICAL_VLLM_CAPACITY_EVIDENCE_ROOT,
-            evidence_id=plan.capacity_evidence_id,
-        )
-    )
     observed: dict[str, object] = {}
 
     def stop_after_repo_gate(**kwargs):
@@ -129,7 +123,7 @@ def test_screening_preparation_carries_capacity_commit_into_exact_repo_gate(
         )
 
     assert observed["expected_commit"] == "a" * 40
-    assert observed["capacity_evidence_commit"] == capacity.relaylm_commit
+    assert observed["capacity_evidence_commit"] is None
 
 
 def test_screening_facade_can_bind_fresh_external_capacity_without_rewriting_plan(

@@ -612,6 +612,30 @@ def acquire_vllm_reasoning_capability(
         ) from exc
 
 
+def _capacity_evidence_commit_requirement(
+    *,
+    plan: VLLMScreeningPlan,
+    capacity_evidence: VLLMRuntimeCapacityEvidence,
+    capacity_evidence_root: str | Path | None,
+) -> str | None:
+    """Return the measurement commit that must equal the screening checkout.
+
+    The current semantic format-v2 plan may deliberately cite reviewed capacity
+    evidence tracked in this repository even when that measurement predates the
+    current checkout. That reuse is admitted only through the canonical tracked
+    citation; all downstream target/runtime/counter/scenario/coverage checks
+    remain mandatory. Caller-supplied external evidence keeps exact measurement
+    commit binding so a stale override cannot bypass fresh-checkout provenance.
+    """
+
+    if (
+        plan.format_version == VLLM_SCREENING_PLAN_FORMAT_VERSION
+        and capacity_evidence_root is None
+    ):
+        return None
+    return capacity_evidence.relaylm_commit
+
+
 def prepare_vllm_screening_condition(
     *,
     plan: VLLMScreeningPlan,
@@ -701,7 +725,11 @@ def prepare_vllm_screening_condition(
     _verify_clean_exact_repo(
         root=root,
         expected_commit=relaylm_commit,
-        capacity_evidence_commit=capacity_evidence.relaylm_commit,
+        capacity_evidence_commit=_capacity_evidence_commit_requirement(
+            plan=plan,
+            capacity_evidence=capacity_evidence,
+            capacity_evidence_root=capacity_evidence_root,
+        ),
     )
     target = load_actual_model_repository_snapshot_target(
         root / CANONICAL_VLLM_TARGET_PATH
