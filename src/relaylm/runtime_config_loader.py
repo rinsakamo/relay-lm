@@ -91,6 +91,7 @@ class RuntimeConfigOverrides:
     server_host: str | None = None
     server_port: int | None = None
     profile: str | None = None
+    cognition_mode: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -311,16 +312,33 @@ def resolve_runtime_config(
         raw=raw,
     )
     runtime_policy = _parse_runtime_policy(raw.get("runtime", {}))
-    cognition_mode_source = (
-        ConfigSource.CONFIG_FILE
-        if _file_value(raw, "runtime", "cognition", "mode") is not _MISSING
-        else ConfigSource.CANONICAL_DEFAULT
-    )
-    _record(
-        provenance,
+    cognition_mode_text = _resolve_string_leaf(
         "runtime.cognition.mode",
-        runtime_policy.cognition.mode,
-        cognition_mode_source,
+        cli_value=active_overrides.cognition_mode,
+        env_name="RELAYLM_COGNITION_MODE",
+        environ=active_env,
+        file_value=_file_value(raw, "runtime", "cognition", "mode"),
+        provenance=provenance,
+        default=CognitionExecutionMode.TWO_PASS.value,
+    )
+    try:
+        cognition_mode = CognitionExecutionMode(cognition_mode_text)
+    except ValueError:
+        _invalid_value(
+            "runtime.cognition.mode",
+            "unsupported cognition execution mode",
+        )
+    runtime_policy = RuntimePolicyConfig(
+        profile=None,
+        cognition=CognitionRuntimeSettings(
+            mode=cognition_mode,
+            pass1=runtime_policy.cognition.pass1,
+            pass2=runtime_policy.cognition.pass2,
+        ),
+        memory_retrieval=runtime_policy.memory_retrieval,
+        event_retrieval=runtime_policy.event_retrieval,
+        continuity=runtime_policy.continuity,
+        cognitive_budget=runtime_policy.cognitive_budget,
     )
 
     try:
