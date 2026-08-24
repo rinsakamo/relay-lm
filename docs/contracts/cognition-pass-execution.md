@@ -48,11 +48,14 @@ Pass 1
   latency-sensitive
 
 Pass 2
+  non-authoritative subjective turn-interpretation scaffold
   semantic State/Continuity proposal extraction
   no second visible response
 ```
 
-Pass 1 and Pass 2 may use independently resolved requests.
+Pass 1 and Pass 2 reuse one canonical cognitive prompt prefix through the serialized `CognitiveInput` and diverge only after an explicit pass boundary. The canonical Pass 1 suffix is intentionally minimal: `Respond as this character.` It does not impose a RelayLM-owned visible output format that could conflict with a legitimate user request for JSON, Markdown, code, or another representation.
+
+Pass 1 and Pass 2 may use independently resolved requests after that common cognitive prefix.
 
 Pass 2 reasoning is an escalation mechanism, not an assumed default. Begin from the lowest effective explicit condition proven by the exact backend/model. Increase Pass 2 effort only when #1386 shows semantic need while Pass 1 remains controlled.
 
@@ -77,7 +80,7 @@ per-pass decoding/output controls
 Current OpenAI-compatible cognition uses ordinary provider message content and RelayLM-owned parsing/type construction for both:
 
 - single-pass combined cognitive IR; and
-- two-pass Pass 2 proposal IR.
+- two-pass Pass 2 turn-interpretation scaffold plus proposal IR.
 
 Therefore `structured_output=false` is not by itself a mode-level failure for `single_pass`, `two_pass`, or `shadow_two_pass` under the current cognition contracts.
 
@@ -139,29 +142,61 @@ Current rules:
 
 Capability declaration proves only that a request can be represented. It does not prove product quality; #1386 owns observed actual-model quality.
 
-## RelayLM-owned Pass 2 proposal IR
+## RelayLM-owned Pass 2 scaffold and proposal IR
 
-Canonical Pass 2 is:
+Canonical OpenAI-compatible Pass 2 is:
 
 ```text
 ordinary provider chat/message generation
-  -> plain content containing compact proposal IR
+  -> plain content containing turn_interpretation + proposal IR
   -> RelayLM JSON parse
-  -> exact key/shape checks
+  -> exact top-level and turn_interpretation shape checks
+  -> non-authoritative turn_interpretation is not promoted into State/Continuity authority
   -> typed StateCandidate / ContinuityCandidate construction
   -> existing deterministic validation/lifecycle
 ```
 
-The compact top-level IR contains exactly:
+The top-level IR contains exactly:
 
 ```text
+turn_interpretation
 state_candidates
 continuity_candidates
 ```
 
-Provider-native `response_format`, JSON Schema, grammar or constrained decoding is not required to define or enforce this semantic boundary.
+`turn_interpretation` is an explicit cognitive scaffold. It is generated before candidates in this order:
 
-Malformed JSON, extra/missing keys, invalid candidate shapes or invalid typed values fail closed in RelayLM and produce no proposal commit.
+```text
+user_meaning
+change_signals
+self_meaning
+assistant_effects
+unresolved
+continuity_signals
+state_candidates
+continuity_candidates
+```
+
+Every interpretation field is an array of concise non-empty semantic strings. Empty arrays are normal. Missing fields, additional fields, non-array fields, or empty/non-string array members fail closed.
+
+The fields mean:
+
+- `user_meaning` — what this character understands the user to mean through Identity, accepted State and supplied context; it is not merely a literal utterance summary;
+- `change_signals` — meaningful change relative to accepted current understanding, including correction, revocation, supersession, strengthening, weakening or new meaning;
+- `self_meaning` — what the interpreted meaning means to the character itself, including personal, emotional, relational, self-belief, self-goal or self-condition implications;
+- `assistant_effects` — meanings introduced by the Pass 1 response that may matter to continuation, such as questions, proposals, commitments or deliberately unfinished interaction;
+- `unresolved` — meanings that should not yet be decided because evidence is ambiguous, incomplete or underspecified;
+- `continuity_signals` — meanings worth carrying across upcoming turns for coherent interaction.
+
+The scaffold is not accepted State, Continuity, Memory, evidence authority, or deterministic validation input merely because the model emitted it. It structures generation and provides raw model-output evidence for diagnosis. Candidate parsing, source semantics, validation and commit remain the existing authority boundary.
+
+Interpretation is not State. Pass 2 proposes State only when an adequately grounded and sufficiently resolved meaning represents a meaningful durable change in accepted current understanding. An item in `unresolved` does not by itself require `Continuity(kind=unresolved)`; Continuity is proposed only when carrying the meaning across upcoming turns materially improves coherence.
+
+The current experiment preserves model-authored candidate `sources` and the existing Event-ID source rules. Deterministic source reconstruction is not introduced as part of this prompt/scaffold change so actual-model regressions remain causally attributable.
+
+Provider-native `response_format`, JSON Schema, grammar or constrained decoding is not required to define or enforce this semantic boundary. The OpenAI-compatible Pass 2 suffix carries a RelayLM-owned JSON Schema description as ordinary prompt content; RelayLM still performs the authoritative parse and exact-shape checks after generation.
+
+Malformed JSON, extra/missing keys, invalid interpretation shape, invalid candidate shapes or invalid typed values fail closed in RelayLM and produce no proposal commit.
 
 ## RelayLM-owned single-pass combined IR
 
@@ -181,7 +216,7 @@ The model owns language-dependent semantic judgment. RelayLM owns deterministic 
 
 Do not move correction, negation, uncertainty, transient/durable interpretation, source attribution or other free-form multilingual semantics into language-specific deterministic parsers.
 
-Do not ask the model to author mechanical metadata that RelayLM can construct deterministically.
+Do not ask the model to author mechanical metadata that RelayLM can construct deterministically. Existing candidate-source carriage is deliberately preserved for the current controlled prompt experiment and may be revisited only as a separately attributable change if actual-model evidence warrants it.
 
 ## Relationship to provider controls
 
@@ -210,7 +245,7 @@ pass1_request
 pass2_request
   -> originating-turn-bound extraction
   -> generate_extraction
-  -> RelayLM proposal-IR parse/type construction
+  -> RelayLM scaffold/proposal-IR parse and candidate type construction
 ```
 
 Buffered and streaming two-pass paths must carry equivalent resolved pass semantics. A streaming implementation that silently drops Pass 1 or Pass 2 controls is not compliant.
@@ -243,7 +278,7 @@ Completion observation does not change request serialization, generation, retrie
 
 Materially output-affecting configuration must remain distinguishable in evidence as applied, omitted or unsupported.
 
-A citable two-pass run requires the exact Pass 1/Pass 2 request identity plus the current RelayLM prompt/IR/parser contract revision and exact provider/model capability evidence.
+A citable two-pass run requires the exact Pass 1/Pass 2 request identity plus the current RelayLM common-prefix prompt/scaffold/IR/parser contract revision and exact provider/model capability evidence.
 
 ## Ownership
 
@@ -255,6 +290,8 @@ A citable two-pass run requires the exact Pass 1/Pass 2 request identity plus th
 - applied/omitted/unsupported classification;
 - fail-closed explicit unsupported behavior;
 - current mode-level capability requirements;
+- the canonical common cognitive prefix and pass-specific cognition responsibilities;
+- the non-authoritative six-field Pass 2 turn-interpretation scaffold;
 - the RelayLM Pass 2 proposal-IR ownership boundary;
 - content-free per-pass completion-observation carriage through canonical two-pass outputs and diagnostics.
 
@@ -268,6 +305,7 @@ A citable two-pass run requires the exact Pass 1/Pass 2 request identity plus th
 - language-specific semantic parsers;
 - direct model mutation of State/Continuity;
 - provider-native structured-output requirements for current cognition modes;
+- deterministic Event-ID reconstruction as part of this prompt experiment;
 - single-pass prompt optimization as a Core 1.0 gate.
 
 ## Principle

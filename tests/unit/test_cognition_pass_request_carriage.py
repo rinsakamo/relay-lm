@@ -123,6 +123,17 @@ def _make_character(root: Path) -> CharacterDirectory:
     return character
 
 
+def _empty_turn_interpretation() -> dict[str, list[str]]:
+    return {
+        "user_meaning": [],
+        "change_signals": [],
+        "self_meaning": [],
+        "assistant_effects": [],
+        "unresolved": [],
+        "continuity_signals": [],
+    }
+
+
 def _completion(schema_name: str) -> dict[str, object]:
     if schema_name == "relaylm_cognitive_output":
         content = {
@@ -131,7 +142,11 @@ def _completion(schema_name: str) -> dict[str, object]:
             "continuity_candidates": [],
         }
     elif schema_name == "relaylm_structured_cognition_output":
-        content = {"state_candidates": [], "continuity_candidates": []}
+        content = {
+            "turn_interpretation": _empty_turn_interpretation(),
+            "state_candidates": [],
+            "continuity_candidates": [],
+        }
     else:
         raise AssertionError(schema_name)
     return {"choices": [{"message": {"content": json.dumps(content)}}]}

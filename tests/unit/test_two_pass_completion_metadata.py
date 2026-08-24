@@ -46,6 +46,28 @@ def _make_character(root: Path) -> CharacterDirectory:
     return character
 
 
+def _empty_turn_interpretation() -> dict[str, list[str]]:
+    return {
+        "user_meaning": [],
+        "change_signals": [],
+        "self_meaning": [],
+        "assistant_effects": [],
+        "unresolved": [],
+        "continuity_signals": [],
+    }
+
+
+def _empty_extraction_wire() -> str:
+    return json.dumps(
+        {
+            "turn_interpretation": _empty_turn_interpretation(),
+            "state_candidates": [],
+            "continuity_candidates": [],
+        },
+        separators=(",", ":"),
+    )
+
+
 def _completion_envelope(content: str) -> dict[str, object]:
     return {
         "choices": [
@@ -66,14 +88,10 @@ def _completion_envelope(content: str) -> dict[str, object]:
 def test_buffered_two_pass_outputs_retain_provider_completion_metadata() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
-        system_prompt = body["messages"][0]["content"]
-        if "conversation pass" in system_prompt:
+        user_prompt = body["messages"][1]["content"]
+        if "<PASS>\nCONVERSATION" in user_prompt:
             return httpx.Response(200, json=_completion_envelope("hello there"))
-        wire = json.dumps(
-            {"state_candidates": [], "continuity_candidates": []},
-            separators=(",", ":"),
-        )
-        return httpx.Response(200, json=_completion_envelope(wire))
+        return httpx.Response(200, json=_completion_envelope(_empty_extraction_wire()))
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -104,14 +122,10 @@ def test_buffered_two_pass_outputs_retain_provider_completion_metadata() -> None
 def test_two_pass_turn_results_carry_pass_completion_metadata(tmp_path: Path) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
-        system_prompt = body["messages"][0]["content"]
-        if "conversation pass" in system_prompt:
+        user_prompt = body["messages"][1]["content"]
+        if "<PASS>\nCONVERSATION" in user_prompt:
             return httpx.Response(200, json=_completion_envelope("hello there"))
-        wire = json.dumps(
-            {"state_candidates": [], "continuity_candidates": []},
-            separators=(",", ":"),
-        )
-        return httpx.Response(200, json=_completion_envelope(wire))
+        return httpx.Response(200, json=_completion_envelope(_empty_extraction_wire()))
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:

@@ -49,14 +49,33 @@ def _cognitive_input() -> CognitiveInput:
     )
 
 
+def _empty_turn_interpretation() -> dict[str, list[str]]:
+    return {
+        "user_meaning": [],
+        "change_signals": [],
+        "self_meaning": [],
+        "assistant_effects": [],
+        "unresolved": [],
+        "continuity_signals": [],
+    }
+
+
+def _empty_extraction_wire() -> dict[str, object]:
+    return {
+        "turn_interpretation": _empty_turn_interpretation(),
+        "state_candidates": [],
+        "continuity_candidates": [],
+    }
+
+
 def test_same_openai_provider_instance_uses_plain_conversation_and_relaylm_owned_extraction() -> None:
     seen: list[dict[str, object]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         seen.append(body)
-        system_prompt = body["messages"][0]["content"]
-        if "conversation pass" in system_prompt:
+        user_prompt = body["messages"][1]["content"]
+        if "<PASS>\nCONVERSATION" in user_prompt:
             return httpx.Response(
                 200,
                 json={
@@ -65,20 +84,23 @@ def test_same_openai_provider_instance_uses_plain_conversation_and_relaylm_owned
                     ]
                 },
             )
-        if "structured-cognition pass" in system_prompt:
-            wire = {
-                "state_candidates": [],
-                "continuity_candidates": [],
-            }
+        if "<PASS>\nEXTRACTION" in user_prompt:
             return httpx.Response(
                 200,
                 json={
                     "choices": [
-                        {"message": {"content": json.dumps(wire, ensure_ascii=False)}}
+                        {
+                            "message": {
+                                "content": json.dumps(
+                                    _empty_extraction_wire(),
+                                    ensure_ascii=False,
+                                )
+                            }
+                        }
                     ]
                 },
             )
-        raise AssertionError(system_prompt)
+        raise AssertionError(user_prompt)
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -107,22 +129,21 @@ def test_same_openai_provider_instance_uses_plain_conversation_and_relaylm_owned
     assert [body["model"] for body in seen] == ["gemma", "gemma"]
 
     assert "response_format" not in seen[0]
-    conversation_prompt = seen[0]["messages"][0]["content"]
-    assert "structured output" not in conversation_prompt
-    assert "StateCandidate" in conversation_prompt
-    assert "does not produce" in conversation_prompt
+    assert seen[0]["messages"][0] == seen[1]["messages"][0]
+    conversation_prompt = seen[0]["messages"][1]["content"]
+    extraction_prompt = seen[1]["messages"][1]["content"]
+    marker = "<PASS>\n"
+    assert conversation_prompt.split(marker, 1)[0] == extraction_prompt.split(marker, 1)[0]
+    assert conversation_prompt.endswith("CONVERSATION\n\nRespond as this character.")
 
     assert "response_format" not in seen[1]
-    extraction_prompt = seen[1]["messages"][0]["content"]
-    assert "interpretive context" in extraction_prompt
+    assert "turn_interpretation" in extraction_prompt
+    assert "interpretive context only" in extraction_prompt
     assert "must never self-certify" in extraction_prompt
-    assert "RelayLM proposal IR contract" in extraction_prompt
     assert "state_candidates" in extraction_prompt
     assert "continuity_candidates" in extraction_prompt
-    assert "Do not use Markdown" in extraction_prompt
-    extraction_payload = json.loads(seen[1]["messages"][1]["content"])
-    assert extraction_payload["assistant_response"] == "最近はコーヒーを飲んでるんだね。"
-    assert extraction_payload["cognitive_input"]["input"]["event_id"] == "evt-now"
+    assert '"content":"最近はコーヒーを飲んでるんだね。"' in extraction_prompt
+    assert '"event_id":"evt-now"' in extraction_prompt
 
 
 def test_buffered_conversation_rejects_multiple_upstream_choices() -> None:
@@ -144,10 +165,7 @@ def test_buffered_conversation_rejects_multiple_upstream_choices() -> None:
 
 
 def test_buffered_extraction_rejects_multiple_upstream_choices() -> None:
-    wire = json.dumps(
-        {"state_candidates": [], "continuity_candidates": []},
-        ensure_ascii=False,
-    )
+    wire = json.dumps(_empty_extraction_wire(), ensure_ascii=False)
 
     def handler(_: httpx.Request) -> httpx.Response:
         choice = {"message": {"content": wire}}
@@ -199,8 +217,11 @@ def test_extraction_without_provider_structured_output_still_fails_closed_on_inv
 
 
 def test_extraction_rejects_duplicate_state_candidate_members() -> None:
+    interpretation = json.dumps(_empty_turn_interpretation(), separators=(",", ":"))
     content = (
-        '{"state_candidates":[{"state_class":"user.preference",'
+        '{"turn_interpretation":'
+        + interpretation
+        + ',"state_candidates":[{"state_class":"user.preference",'
         '"key":"tea","key":"coffee","op":"set","value":"likes",'
         '"sources":["evt-now"]}],"continuity_candidates":[]}'
     )
@@ -230,19 +251,17 @@ def test_extraction_rejects_duplicate_state_candidate_members() -> None:
 
 
 def test_extraction_rejects_extra_state_candidate_fields_inside_relaylm() -> None:
-    wire = {
-        "state_candidates": [
-            {
-                "state_class": "user.preference",
-                "key": "coffee",
-                "op": "set",
-                "value": "likes",
-                "sources": ["evt-now"],
-                "provider_extra": "must-not-be-accepted",
-            }
-        ],
-        "continuity_candidates": [],
-    }
+    wire = _empty_extraction_wire()
+    wire["state_candidates"] = [
+        {
+            "state_class": "user.preference",
+            "key": "coffee",
+            "op": "set",
+            "value": "likes",
+            "sources": ["evt-now"],
+            "provider_extra": "must-not-be-accepted",
+        }
+    ]
 
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)

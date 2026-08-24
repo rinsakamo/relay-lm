@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -217,7 +216,8 @@ def test_ordinary_and_two_pass_builders_carry_each_resolved_request_independentl
     assert extraction["thinking_token_budget"] == 64
     assert extraction["chat_template_kwargs"] == {"enable_thinking": True}
     assert ordinary["reasoning_effort"] == ordinary_stream["reasoning_effort"]
-    assert json.loads(extraction["messages"][1]["content"])["assistant_response"] == "hello"
+    extraction_prompt = extraction["messages"][1]["content"]
+    assert '<PASS_1_RESPONSE_JSON>\n{"content":"hello"}\n</PASS_1_RESPONSE_JSON>' in extraction_prompt
 
 
 def test_body_builder_fails_closed_before_wire_for_unattested_capability() -> None:
