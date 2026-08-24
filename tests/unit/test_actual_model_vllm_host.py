@@ -31,13 +31,9 @@ PLAN_PATH = (
     / "screenings"
     / "cogp5-vllm-screening-v1.json"
 )
-CURRENT_PLAN_PATH = (
-    REPO_ROOT
-    / "evaluation"
-    / "actual_model"
-    / "screenings"
-    / "stage-r0-vllm-reference-v1.json"
-)
+CURRENT_PLAN_PATH = REPO_ROOT / vllm_host.CANONICAL_VLLM_SCREENING_PLAN_PATH
+REFERENCE_BASELINE_ROLE = "reference_baseline"
+PASS2_REASONING_ESCALATION_ROLE = "pass2_reasoning_escalation"
 PROOF_PATH = (
     REPO_ROOT
     / "evaluation"
@@ -265,10 +261,10 @@ def test_current_stage_r0_canonical_binding_uses_google_target_and_proof() -> No
     assert TARGET_PATH.is_file()
     assert PROOF_PATH.is_file()
 
-    condition_b = current_plan.conditions["B"]
-    assert condition_b.cognition_execution.mode == "two_pass"
-    assert condition_b.pass_requests.pass1.reasoning_mode is CognitionReasoningMode.OFF
-    assert condition_b.pass_requests.pass2.reasoning_mode is CognitionReasoningMode.OFF
+    reference = current_plan.conditions[REFERENCE_BASELINE_ROLE]
+    assert reference.cognition_execution.mode == "two_pass"
+    assert reference.pass_requests.pass1.reasoning_mode is CognitionReasoningMode.OFF
+    assert reference.pass_requests.pass2.reasoning_mode is CognitionReasoningMode.OFF
 
 
 def test_google_target_rejects_old_reasoning_proof_fail_closed() -> None:
@@ -314,7 +310,7 @@ def test_current_stage_r0_without_capacity_fails_before_external_work(
     ):
         vllm_host.prepare_vllm_screening_condition(
             plan=current_plan,
-            condition_id="B",
+            condition_id=REFERENCE_BASELINE_ROLE,
             proof_path=GOOGLE_PROOF_PATH,
             repo_root=REPO_ROOT,
             snapshot_root="/tmp/unused",
@@ -344,7 +340,7 @@ def test_current_stage_r0_complete_google_b_capacity_is_bound_and_validated(
         tmp_path,
         target,
         capability,
-        condition_id="B",
+        condition_id=REFERENCE_BASELINE_ROLE,
         plan_path=CURRENT_PLAN_PATH,
         model_runner="v2",
     )
@@ -359,7 +355,7 @@ def test_current_stage_r0_complete_google_b_capacity_is_bound_and_validated(
 
     prepared = vllm_host.prepare_vllm_screening_condition(
         plan=current_plan,
-        condition_id="B",
+        condition_id=REFERENCE_BASELINE_ROLE,
         proof_path=GOOGLE_PROOF_PATH,
         repo_root=REPO_ROOT,
         snapshot_root=GOOGLE_SNAPSHOT_ROOT,
@@ -371,7 +367,7 @@ def test_current_stage_r0_complete_google_b_capacity_is_bound_and_validated(
         capacity_evidence_root=tmp_path,
     )
     try:
-        assert prepared.screening_condition_id == "B"
+        assert prepared.screening_condition_id == REFERENCE_BASELINE_ROLE
         assert prepared.capacity_evidence.evidence_id == evidence.evidence_id
         assert prepared.capacity_evidence.model_runner == "v2"
         assert prepared.capacity_evidence.failed_capacity is None
@@ -399,7 +395,7 @@ def test_current_stage_r0_canonical_v3_v2_capacity_passes_preparation_gate(
 
     prepared = vllm_host.prepare_vllm_screening_condition(
         plan=current_plan,
-        condition_id="B",
+        condition_id=REFERENCE_BASELINE_ROLE,
         proof_path=GOOGLE_PROOF_PATH,
         repo_root=REPO_ROOT,
         snapshot_root=GOOGLE_SNAPSHOT_ROOT,
@@ -437,7 +433,7 @@ def test_current_stage_r0_canonical_v3_rejects_expected_v1_before_external_work(
     ):
         vllm_host.prepare_vllm_screening_condition(
             plan=current_plan,
-            condition_id="B",
+            condition_id=REFERENCE_BASELINE_ROLE,
             proof_path=GOOGLE_PROOF_PATH,
             repo_root=REPO_ROOT,
             snapshot_root=GOOGLE_SNAPSHOT_ROOT,
@@ -468,7 +464,7 @@ def test_current_stage_r0_rejects_unknown_capacity_id_before_external_work(
     ):
         vllm_host.prepare_vllm_screening_condition(
             plan=current_plan,
-            condition_id="B",
+            condition_id=REFERENCE_BASELINE_ROLE,
             proof_path=GOOGLE_PROOF_PATH,
             repo_root=REPO_ROOT,
             snapshot_root=GOOGLE_SNAPSHOT_ROOT,
@@ -499,7 +495,7 @@ def test_current_stage_r0_rejects_legacy_capacity_for_v2_runtime(
     ):
         vllm_host.prepare_vllm_screening_condition(
             plan=current_plan,
-            condition_id="B",
+            condition_id=REFERENCE_BASELINE_ROLE,
             proof_path=GOOGLE_PROOF_PATH,
             repo_root=REPO_ROOT,
             snapshot_root=GOOGLE_SNAPSHOT_ROOT,
@@ -527,7 +523,7 @@ def test_current_stage_r0_rejects_omitted_expected_runner(
     ):
         vllm_host.prepare_vllm_screening_condition(
             plan=current_plan,
-            condition_id="B",
+            condition_id=REFERENCE_BASELINE_ROLE,
             proof_path=GOOGLE_PROOF_PATH,
             repo_root=REPO_ROOT,
             snapshot_root=GOOGLE_SNAPSHOT_ROOT,
@@ -560,7 +556,7 @@ def test_current_stage_r0_rejects_capacity_runner_mismatch(
         tmp_path,
         target,
         capability,
-        condition_id="B",
+        condition_id=REFERENCE_BASELINE_ROLE,
         plan_path=CURRENT_PLAN_PATH,
         model_runner=artifact_runner,
     )
@@ -576,7 +572,7 @@ def test_current_stage_r0_rejects_capacity_runner_mismatch(
     ):
         vllm_host.prepare_vllm_screening_condition(
             plan=plan,
-            condition_id="B",
+            condition_id=REFERENCE_BASELINE_ROLE,
             proof_path=GOOGLE_PROOF_PATH,
             repo_root=REPO_ROOT,
             snapshot_root=GOOGLE_SNAPSHOT_ROOT,
@@ -618,7 +614,7 @@ def test_current_stage_r0_rejects_artifact_identity_mismatch_before_external_wor
     ):
         vllm_host.prepare_vllm_screening_condition(
             plan=current_plan,
-            condition_id="B",
+            condition_id=REFERENCE_BASELINE_ROLE,
             proof_path=GOOGLE_PROOF_PATH,
             repo_root=REPO_ROOT,
             snapshot_root="/tmp/unused",
@@ -651,7 +647,7 @@ def test_current_stage_r0_rejects_mismatched_capacity_target_identity(
         tmp_path,
         target,
         capability,
-        condition_id="B",
+        condition_id=REFERENCE_BASELINE_ROLE,
         plan_path=CURRENT_PLAN_PATH,
     )
     if mismatch == "target_id":
@@ -681,7 +677,7 @@ def test_current_stage_r0_rejects_mismatched_capacity_target_identity(
     ):
         vllm_host.prepare_vllm_screening_condition(
             plan=plan,
-            condition_id="B",
+            condition_id=REFERENCE_BASELINE_ROLE,
             proof_path=GOOGLE_PROOF_PATH,
             repo_root=REPO_ROOT,
             snapshot_root=GOOGLE_SNAPSHOT_ROOT,
@@ -817,9 +813,8 @@ def test_reasoning_probe_proof_fails_closed_on_live_version_drift() -> None:
 @pytest.mark.parametrize(
     ("condition_id", "provider_type", "mode"),
     [
-        ("A", OpenAICompatibleProvider, "single_pass"),
-        ("B", OpenAICompatibleTwoPassProvider, "two_pass"),
-        ("C", OpenAICompatibleTwoPassProvider, "two_pass"),
+        (REFERENCE_BASELINE_ROLE, OpenAICompatibleTwoPassProvider, "two_pass"),
+        (PASS2_REASONING_ESCALATION_ROLE, OpenAICompatibleTwoPassProvider, "two_pass"),
     ],
 )
 def test_prepare_screening_condition_uses_common_provider_and_binding_identity(
@@ -905,7 +900,7 @@ def test_prepare_rejects_incomplete_capacity_coverage_before_provider_constructi
         tmp_path,
         target,
         capability,
-        condition_id="B",
+        condition_id=REFERENCE_BASELINE_ROLE,
         plan_path=CURRENT_PLAN_PATH,
         drop_last=True,
     )
@@ -928,7 +923,7 @@ def test_prepare_rejects_incomplete_capacity_coverage_before_provider_constructi
     with pytest.raises(vllm_host.ActualModelVLLMHostError, match="coverage"):
         vllm_host.prepare_vllm_screening_condition(
             plan=plan,
-            condition_id="B",
+            condition_id=REFERENCE_BASELINE_ROLE,
             proof_path=GOOGLE_PROOF_PATH,
             repo_root=REPO_ROOT,
             snapshot_root=GOOGLE_SNAPSHOT_ROOT,
