@@ -19,7 +19,6 @@ canonical_surfaces:
 - docs/reference/actual-model-vllm-headroom-measurement.md
 - docs/reference/actual-model-stage-r-coverage.md
 - evaluation/actual_model/screenings/stage-r0-vllm-reference-v2.json
-- evaluation/actual_model/screenings/stage-r0-vllm-headroom-measurement-v1.json
 implementation:
 - src/relaylm/actual_model_evaluation.py
 - src/relaylm/actual_model_artifacts.py
