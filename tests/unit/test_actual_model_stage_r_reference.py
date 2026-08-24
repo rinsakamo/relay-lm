@@ -189,12 +189,14 @@ def test_stage_r_reference_reuses_complete_v3_v2_capacity_artifact() -> None:
     )
 
 
-def test_stage_r_coverage_ledger_keeps_pilot_and_follow_up_explicit() -> None:
+def test_stage_r_coverage_ledger_keeps_functional_acceptance_and_follow_up_explicit() -> None:
     ledger = (
         _ROOT / "docs" / "reference" / "actual-model-stage-r-coverage.md"
     ).read_text(encoding="utf-8")
 
-    assert "This is a Stage R0 pilot, not complete Core 1.0 qualification." in ledger
+    assert "Stage R is a **functional/product acceptance lane first**." in ledger
+    assert "This is a Stage R0 functional-acceptance pilot" in ledger
+    assert "minimizing its context window is not part of this gate" in ledger
     for required in (
         "English",
         "mixed language",
