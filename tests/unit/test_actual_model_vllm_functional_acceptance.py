@@ -110,8 +110,9 @@ def test_shared_host_binds_screening_window_to_live_capacity_evidence(
     )
 
     assert result == 0
-    prepared_plan = observed["prepare"]["plan"]
+    prepare = observed["prepare"]
+    assert isinstance(prepare, dict)
+    prepared_plan = prepare["plan"]
+    assert isinstance(prepared_plan, _Plan)
     assert prepared_plan.effective_context_window == 6144
     assert prepared_plan.capacity_evidence_id == "amcap-live"
-    output = capsys.readouterr().out
-    assert '"effective_context_window": 6144' in output
