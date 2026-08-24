@@ -221,6 +221,8 @@ class VLLMScreeningPlan:
                 "vLLM screening plan format "
                 f"{self.format_version} conditions must be exactly {expected_label} in order"
             )
+        if self.format_version == VLLM_SCREENING_PLAN_FORMAT_VERSION:
+            _validate_current_screening_role_semantics(self.conditions)
         if len(set(self.supported_decoding_controls)) != len(
             self.supported_decoding_controls
         ):
@@ -264,6 +266,68 @@ class VLLMScreeningPlan:
         if self.capacity_evidence_id is not None:
             mapping["capacity_evidence_id"] = self.capacity_evidence_id
         return mapping
+
+
+def _validate_current_screening_role_semantics(
+    conditions: Mapping[str, VLLMScreeningCondition],
+) -> None:
+    reference = conditions["reference_baseline"]
+    reference_requests = reference.pass_requests
+    reference_pass1 = reference_requests.pass1
+    reference_pass2 = reference_requests.pass2
+    if (
+        reference.cognition_execution.mode != "two_pass"
+        or reference_requests.mode != "two_pass"
+        or reference_pass1 is None
+        or reference_pass2 is None
+        or reference_pass1.reasoning_mode is not CognitionReasoningMode.OFF
+        or reference_pass2.reasoning_mode is not CognitionReasoningMode.OFF
+        or reference_pass1.reasoning_budget is not None
+        or reference_pass2.reasoning_budget is not None
+    ):
+        raise ActualModelVLLMHostError(
+            "reference_baseline must be a two-pass OFF/OFF screening condition"
+        )
+
+    escalation = conditions["pass2_reasoning_escalation"]
+    escalation_requests = escalation.pass_requests
+    escalation_pass1 = escalation_requests.pass1
+    escalation_pass2 = escalation_requests.pass2
+    if (
+        escalation.cognition_execution.mode != "two_pass"
+        or escalation_requests.mode != "two_pass"
+        or escalation_pass1 is None
+        or escalation_pass2 is None
+    ):
+        raise ActualModelVLLMHostError(
+            "pass2_reasoning_escalation must be a two-pass screening condition"
+        )
+    if escalation_pass1 != reference_pass1:
+        raise ActualModelVLLMHostError(
+            "pass2_reasoning_escalation must preserve reference_baseline Pass 1"
+        )
+    if (
+        escalation_pass2.reasoning_mode is None
+        or escalation_pass2.reasoning_mode is CognitionReasoningMode.OFF
+    ):
+        raise ActualModelVLLMHostError(
+            "pass2_reasoning_escalation must use non-OFF Pass 2 reasoning"
+        )
+    reference_non_reasoning = (
+        reference_pass2.temperature,
+        reference_pass2.top_p,
+        reference_pass2.max_output_tokens,
+    )
+    escalation_non_reasoning = (
+        escalation_pass2.temperature,
+        escalation_pass2.top_p,
+        escalation_pass2.max_output_tokens,
+    )
+    if escalation_non_reasoning != reference_non_reasoning:
+        raise ActualModelVLLMHostError(
+            "pass2_reasoning_escalation must preserve reference_baseline Pass 2 "
+            "decoding/output controls"
+        )
 
 
 @dataclass(frozen=True, slots=True)
