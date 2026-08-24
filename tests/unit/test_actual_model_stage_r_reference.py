@@ -34,6 +34,10 @@ _CANONICAL_B_CAPACITY_EVIDENCE_ID = (
 )
 
 
+def test_superseded_current_stage_r_v1_plan_is_not_retained() -> None:
+    assert not (_SCREENING_ROOT / "stage-r0-vllm-reference-v1.json").exists()
+
+
 def test_current_stage_r_plan_uses_semantic_roles_without_historical_coordinates() -> None:
     historical = load_vllm_screening_plan(
         _SCREENING_ROOT / "cogp5-vllm-screening-v1.json"
