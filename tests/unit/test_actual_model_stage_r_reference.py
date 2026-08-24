@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from relaylm.actual_model_fast_screening import (
+    PASS2_REASONING_ESCALATION_ROLE,
     REFERENCE_BASELINE_ROLE,
     reference_screening_condition_roles,
     screening_condition_key_for_role,
@@ -15,6 +16,7 @@ from relaylm.actual_model_vllm_capacity import (
 )
 from relaylm.actual_model_vllm_host import (
     CANONICAL_SCENARIO_SET_PATH,
+    CANONICAL_VLLM_SCREENING_PLAN_PATH,
     _required_capacity_coverage,
     load_actual_model_repository_snapshot_target,
     load_vllm_screening_plan,
@@ -28,19 +30,20 @@ _CANONICAL_B_CAPACITY_EVIDENCE_ID = (
 )
 
 
-def test_stage_r_reference_plan_is_separate_from_immutable_historical_plan() -> None:
+def test_current_stage_r_plan_uses_semantic_roles_without_historical_coordinates() -> None:
     historical = load_vllm_screening_plan(
         _SCREENING_ROOT / "cogp5-vllm-screening-v1.json"
     )
-    current = load_vllm_screening_plan(
-        _SCREENING_ROOT / "stage-r0-vllm-reference-v1.json"
-    )
+    current = load_vllm_screening_plan(_ROOT / CANONICAL_VLLM_SCREENING_PLAN_PATH)
 
+    assert historical.format_version == 1
     assert historical.screening_id == "cogp5-vllm-screening-v1"
     assert historical.effective_context_window == 1024
     assert historical.capacity_evidence_id is None
     assert tuple(historical.conditions) == ("A", "B", "C")
-    assert current.screening_id == "stage-r0-vllm-reference-v1"
+
+    assert current.format_version == 2
+    assert current.screening_id == "stage-r0-vllm-reference-v2"
     assert current.target_id == "gemma-4-12b-it-qat-w4a16-google-vllm-v1"
     assert current.effective_context_window == 1616
     assert current.capacity_evidence_id == _CANONICAL_B_CAPACITY_EVIDENCE_ID
@@ -48,24 +51,32 @@ def test_stage_r_reference_plan_is_separate_from_immutable_historical_plan() -> 
         "response-persona-correction-v1",
         "continuity-lifecycle-v1",
     )
+    assert tuple(current.conditions) == (
+        REFERENCE_BASELINE_ROLE,
+        PASS2_REASONING_ESCALATION_ROLE,
+    )
+    assert all(
+        condition.cognition_execution.mode == "two_pass"
+        for condition in current.conditions.values()
+    )
+    assert screening_condition_key_for_role(
+        current,
+        REFERENCE_BASELINE_ROLE,
+    ) == REFERENCE_BASELINE_ROLE
+    assert screening_condition_key_for_role(
+        current,
+        PASS2_REASONING_ESCALATION_ROLE,
+    ) == PASS2_REASONING_ESCALATION_ROLE
     assert reference_screening_condition_roles(current) == (REFERENCE_BASELINE_ROLE,)
-    reference_key = screening_condition_key_for_role(current, REFERENCE_BASELINE_ROLE)
-    assert reference_key == "B"
-    assert current.conditions[reference_key].cognition_execution.mode == "two_pass"
-    assert (
-        current.conditions[reference_key].pass_requests.pass1.reasoning_mode.value
-        == "off"
-    )
-    assert (
-        current.conditions[reference_key].pass_requests.pass2.reasoning_mode.value
-        == "off"
-    )
+
+    reference = current.conditions[REFERENCE_BASELINE_ROLE]
+    assert reference.condition_id == "stage-r0-vllm-b-two-pass-off-off"
+    assert reference.pass_requests.pass1.reasoning_mode.value == "off"
+    assert reference.pass_requests.pass2.reasoning_mode.value == "off"
 
 
-def test_stage_r_reference_cites_complete_v3_v2_capacity_artifact() -> None:
-    current = load_vllm_screening_plan(
-        _SCREENING_ROOT / "stage-r0-vllm-reference-v1.json"
-    )
+def test_stage_r_reference_reuses_complete_v3_v2_capacity_artifact() -> None:
+    current = load_vllm_screening_plan(_ROOT / CANONICAL_VLLM_SCREENING_PLAN_PATH)
     artifact = load_vllm_runtime_capacity_evidence(
         _ROOT
         / "evaluation"
@@ -80,9 +91,7 @@ def test_stage_r_reference_cites_complete_v3_v2_capacity_artifact() -> None:
         / "targets"
         / "gemma-4-12b-it-qat-w4a16-google-vllm-v1.json"
     )
-    scenario_set = load_actual_model_scenario_set(
-        _ROOT / CANONICAL_SCENARIO_SET_PATH
-    )
+    scenario_set = load_actual_model_scenario_set(_ROOT / CANONICAL_SCENARIO_SET_PATH)
     reference_key = screening_condition_key_for_role(current, REFERENCE_BASELINE_ROLE)
     required_coverage = _required_capacity_coverage(
         condition=current.conditions[reference_key],
@@ -113,8 +122,9 @@ def test_stage_r_reference_cites_complete_v3_v2_capacity_artifact() -> None:
     assert artifact.maximum_observed_input_tokens == 1533
     assert current.effective_context_window == 1616
     assert artifact.observed_max_model_len == 1616
-    assert reference_screening_condition_roles(current) == (REFERENCE_BASELINE_ROLE,)
-    assert artifact.footprints[0].condition_id == current.conditions[reference_key].condition_id
+    assert artifact.footprints[0].condition_id == (
+        current.conditions[reference_key].condition_id
+    )
 
 
 def test_stage_r_coverage_ledger_keeps_pilot_and_follow_up_explicit() -> None:
