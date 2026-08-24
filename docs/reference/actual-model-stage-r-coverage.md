@@ -24,19 +24,23 @@ acceptance and they are not the reason to run Stage R. Fine-grained capacity,
 output-reserve and runtime-default selection is downstream #1388 work after the
 product path is functionally qualified.
 
-A roomy execution window is therefore allowed for the first functional run when
-a smaller historical pilot window truncates generation. Capacity preflight in
-that run proves only that the test can execute completely; it does not qualify
-product behavior and does not select a release/default context value.
+The first functional run should therefore use the actual capacity available to
+the exact vLLM/model runtime instead of a repository-chosen context size. Start
+the backend in its auto-fit model-length mode, acquire fresh capacity evidence
+from the live attested `max_model_len`, and bind functional screening to that
+same observed window. Capacity preflight proves only that the test can execute
+completely; it does not qualify product behavior and does not select a
+release/default context value.
 
 ## Current R0 functional acceptance pilot
 
 The first bounded vLLM functional transaction uses the two existing foundation
 scenarios below with the current `reference_baseline` role: Pass 1 reasoning off
-and Pass 2 reasoning off. Use the repository-owned roomy functional-acceptance
-plan when needed to avoid generation truncation. The role resolves to the
-immutable underlying screening coordinate only at the host/evidence boundary;
-the historical coordinate name is not current Stage R policy.
+and Pass 2 reasoning off. Use the canonical Stage R semantics and fresh live
+capacity evidence so generation is not truncated by a historical pilot window.
+The role resolves to the immutable underlying screening coordinate only at the
+host/evidence boundary; the historical coordinate name is not current Stage R
+policy.
 
 | Scenario | Current R0 role | Main review dimensions |
 | --- | --- | --- |
