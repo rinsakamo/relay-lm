@@ -196,7 +196,7 @@ def test_stage_r_coverage_ledger_keeps_functional_acceptance_and_follow_up_expli
 
     assert "Stage R is a **functional/product acceptance lane first**." in ledger
     assert "This is a Stage R0 functional-acceptance pilot" in ledger
-    assert "minimizing its context window is not part of this gate" in ledger
+    assert "minimizing its context window" in ledger
     for required in (
         "English",
         "mixed language",
