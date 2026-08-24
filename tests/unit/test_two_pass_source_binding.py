@@ -31,6 +31,17 @@ def _cognitive_input() -> CognitiveInput:
     )
 
 
+def _empty_turn_interpretation() -> dict[str, list[str]]:
+    return {
+        "user_meaning": [],
+        "change_signals": [],
+        "self_meaning": [],
+        "assistant_effects": [],
+        "unresolved": [],
+        "continuity_signals": [],
+    }
+
+
 @pytest.mark.parametrize(
     ("collection", "candidate"),
     (
@@ -61,7 +72,8 @@ def test_two_pass_extraction_rejects_candidate_sources_absent_from_originating_i
     collection: str,
     candidate: dict[str, object],
 ) -> None:
-    wire = {
+    wire: dict[str, object] = {
+        "turn_interpretation": _empty_turn_interpretation(),
         "state_candidates": [],
         "continuity_candidates": [],
     }
