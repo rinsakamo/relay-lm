@@ -9,9 +9,12 @@ from relaylm.budget_enforcement import (
     TokenCountMode,
 )
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
+from relaylm.cognitive import CognitionExecutionMode
+from relaylm.cognition_execution import CognitionPassRequest
 from relaylm.continuity import ContinuityContext
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
 from relaylm.providers.openai_compatible_backend import OpenAICompatibleBackendId
+from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPassProvider
 from relaylm.providers.vllm_reasoning_capability import (
     VLLMReasoningCapabilityAttestation,
 )
@@ -26,6 +29,7 @@ from relaylm.turn import (
     EventRetrievalBudget,
     MemoryRetrievalBudget,
 )
+from relaylm.two_pass_turn import CognitionExecutionRuntime
 
 
 TokenCounterFactory = Callable[
@@ -76,6 +80,13 @@ class RuntimeAssembly:
 
     character: CharacterDirectory
     provider: OpenAICompatibleProvider = field(repr=False)
+    cognition_mode: CognitionExecutionMode = CognitionExecutionMode.TWO_PASS
+    cognition_execution_runtime: CognitionExecutionRuntime | None = field(
+        default=None,
+        repr=False,
+    )
+    pass1_request: CognitionPassRequest | None = None
+    pass2_request: CognitionPassRequest | None = None
     memory_budget: MemoryRetrievalBudget | None = None
     event_budget: EventRetrievalBudget | None = None
     continuity_runtime: ContinuityRuntime | None = None
@@ -87,6 +98,10 @@ class RuntimeAssembly:
         return {
             "character": self.character,
             "provider": self.provider,
+            "cognition_mode": self.cognition_mode,
+            "cognition_execution_runtime": self.cognition_execution_runtime,
+            "pass1_request": self.pass1_request,
+            "pass2_request": self.pass2_request,
             "memory_budget": self.memory_budget,
             "event_budget": self.event_budget,
             "continuity_runtime": self.continuity_runtime,
@@ -117,6 +132,33 @@ def assemble_runtime(
 
     config = resolved.config
     runtime = config.runtime
+    cognition = runtime.cognition
+
+    if cognition.mode in {
+        CognitionExecutionMode.AUTO,
+        CognitionExecutionMode.SHADOW_TWO_PASS,
+    }:
+        raise RuntimeAssemblyError(
+            RuntimeConfigErrorCode.INVALID_COMBINATION,
+            field="runtime.cognition.mode",
+            message=(
+                f"{cognition.mode.value} is not an ordinary release serving mode; "
+                "select two_pass or explicit single_pass"
+            ),
+        )
+
+    if (
+        cognition.mode is CognitionExecutionMode.TWO_PASS
+        and runtime.cognitive_budget is not None
+    ):
+        raise RuntimeAssemblyError(
+            RuntimeConfigErrorCode.INVALID_COMBINATION,
+            field="runtime.cognitive_budget",
+            message=(
+                "the existing Cognitive Budget is single-pass authority and cannot "
+                "be guessed into two-pass per-pass totals before #1388 calibration"
+            ),
+        )
 
     if config.provider.backend is OpenAICompatibleBackendId.VLLM:
         if vllm_reasoning_capability is None:
@@ -183,8 +225,13 @@ def assemble_runtime(
         token_counter_capabilities or {},
     )
 
+    provider_type = (
+        OpenAICompatibleTwoPassProvider
+        if cognition.mode is CognitionExecutionMode.TWO_PASS
+        else OpenAICompatibleProvider
+    )
     try:
-        provider = OpenAICompatibleProvider(
+        provider = provider_type(
             base_url=config.provider.base_url,
             model=config.provider.model,
             api_key=resolved.secrets.provider_api_key,
@@ -198,10 +245,23 @@ def assemble_runtime(
         ) from exc
 
     character = CharacterDirectory(config.character.directory)
+    cognition_execution_runtime = (
+        CognitionExecutionRuntime()
+        if cognition.mode is CognitionExecutionMode.TWO_PASS
+        else None
+    )
 
     return RuntimeAssembly(
         character=character,
         provider=provider,
+        cognition_mode=cognition.mode,
+        cognition_execution_runtime=cognition_execution_runtime,
+        pass1_request=(
+            cognition.pass1 if cognition.mode is CognitionExecutionMode.TWO_PASS else None
+        ),
+        pass2_request=(
+            cognition.pass2 if cognition.mode is CognitionExecutionMode.TWO_PASS else None
+        ),
         memory_budget=memory_budget,
         event_budget=event_budget,
         continuity_runtime=continuity_runtime,
