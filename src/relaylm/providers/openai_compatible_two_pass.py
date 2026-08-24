@@ -321,195 +321,31 @@ def _extraction_pass_suffix(extraction_input: CognitionExtractionInput) -> str:
         ensure_ascii=False,
         separators=(",", ":"),
     )
-    schema_json = json.dumps(
-        _extraction_output_schema(extraction_input.cognitive_input),
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
     return f"""EXTRACTION
 
 <PASS_1_RESPONSE_JSON>
 {response_json}
 </PASS_1_RESPONSE_JSON>
 
-Construct the structured cognition result for this originating turn.
+Interpret this originating turn as this character. Build one JSON object in this order:
+1. `user_meaning`: string[] — what the user means to this character.
+2. `change_signals`: string[] — new, corrected, revoked, superseded, strengthened, or weakened accepted understanding.
+3. `self_meaning`: string[] — what that meaning means for this character personally or relationally.
+4. `assistant_effects`: string[] — relevant question, proposal, commitment, or unfinished effect introduced by Pass 1.
+5. `unresolved`: string[] — meaning not justified yet because evidence is ambiguous or incomplete.
+6. `continuity_signals`: string[] — bounded meaning useful across upcoming turns.
+Empty arrays are valid. Then emit `state_candidates`, then `continuity_candidates`.
 
-First construct `turn_interpretation` in exactly this order:
+Projection rules:
+- Interpretation is not authority or State. Propose State only for grounded, sufficiently resolved, meaningful durable change; preserve existing class/key vocabulary.
+- State wire: `{{state_class,key,op,value,sources}}`. `state_class` must be a key in CognitiveInput.state_classes. `op` is `set` or `remove`. For `set`, value is a string or `{{"semantic":string,"degree_hint":0..1}}`; degree_hint is intensity, not confidence. For `remove`, value is null; remove only for explicit revocation, cancellation, denial, correction, or termination.
+- Continuity wire: `{{kind,key,op,value,sources,epistemic_role}}`. `kind` is `referent`, `unresolved`, or `active_task`; `op` is `set` or `resolve`; set value is finite JSON and resolve value is null; epistemic_role is `user_assertion`, `assistant_inference`, or `assistant_commitment`. Carry only when useful for upcoming coherence.
+- `sources` are non-empty Event IDs present in CognitiveInput; never invent IDs. Pass 1 response cannot establish user facts, external truth, or source provenance.
 
-1. `user_meaning`
-   What this character understands the user to mean in the current turn.
-   This is the character's subjective understanding through Identity, accepted State,
-   and the supplied context, not merely a literal summary of the user's words.
+Exact top-level shape:
+`{{"turn_interpretation":{{"user_meaning":[],"change_signals":[],"self_meaning":[],"assistant_effects":[],"unresolved":[],"continuity_signals":[]}},"state_candidates":[],"continuity_candidates":[]}}`
 
-2. `change_signals`
-   Meaningful changes relative to accepted current understanding, including new meaning,
-   correction, revocation, supersession, strengthening, weakening, or other updates.
-
-3. `self_meaning`
-   What the interpreted meaning means to this character itself, including personally,
-   emotionally, relationally, or in terms of the character's own beliefs, goals, or condition.
-
-4. `assistant_effects`
-   Meanings introduced by the Pass 1 response that may matter to cognition or continuation,
-   such as a question, proposal, commitment, or intentionally unfinished interaction.
-
-5. `unresolved`
-   Meanings that should not yet be decided because the supplied evidence leaves them
-   ambiguous, incomplete, underspecified, or open to multiple interpretations.
-
-6. `continuity_signals`
-   Meanings worth carrying across upcoming turns for coherent interaction, such as
-   a referent, unresolved thread, or active task.
-
-Each field is an array of concise semantic statements.
-Use an empty array when there is nothing meaningful to record.
-
-After constructing `turn_interpretation`, propose `state_candidates` and `continuity_candidates`.
-
-`turn_interpretation` is interpretation, not accepted State and not authority by itself.
-Propose State only when an adequately grounded and sufficiently resolved meaning represents a meaningful durable change in the character's accepted current understanding.
-Do not propose a State change merely because a meaning appears in `turn_interpretation`.
-When accepted State already establishes a State class/key vocabulary, preserve it.
-
-Use `set` when State should now exist or its semantic value should meaningfully change.
-Use `remove` only for explicit revocation, cancellation, denial, correction, or termination.
-Weakening, uncertainty, hesitation, or temporary variation alone do not imply removal.
-
-Preserve uncertainty and degree.
-Use a degree hint only when the current turn materially expresses a useful comparative or intensity relation.
-A degree hint is semantic intensity, not confidence, probability, evidence strength, authority, or salience.
-
-Propose Continuity only when carrying the meaning across upcoming turns would materially improve conversational coherence.
-An item in `unresolved` does not by itself require an `unresolved` ContinuityCandidate.
-Use Continuity for `referent`, `unresolved`, or `active_task` meaning under the supplied current context.
-
-The supplied Pass 1 response is interpretive context only.
-It must never self-certify a user fact, preference, goal, experience, external truth, prior event, or source provenance.
-
-Preserve the existing RelayLM source semantics.
-Candidate `sources` must use Event IDs available in the supplied CognitiveInput.
-Never invent Event IDs.
-A proposal has no authority merely because this pass emitted it; RelayLM validates all proposals deterministically.
-
-Construct the JSON object in this order:
-1. `turn_interpretation.user_meaning`
-2. `turn_interpretation.change_signals`
-3. `turn_interpretation.self_meaning`
-4. `turn_interpretation.assistant_effects`
-5. `turn_interpretation.unresolved`
-6. `turn_interpretation.continuity_signals`
-7. `state_candidates`
-8. `continuity_candidates`
-
-<OUTPUT_SCHEMA>
-{schema_json}
-</OUTPUT_SCHEMA>
-
-Return exactly one JSON object matching the supplied schema."""
-
-
-def _extraction_output_schema(cognitive_input: CognitiveInput) -> dict[str, Any]:
-    string_array = {
-        "type": "array",
-        "items": {"type": "string", "minLength": 1},
-    }
-    degree_hint = {
-        "type": "object",
-        "additionalProperties": False,
-        "required": ["semantic", "degree_hint"],
-        "properties": {
-            "semantic": {"type": "string", "minLength": 1},
-            "degree_hint": {
-                "type": "number",
-                "minimum": 0.0,
-                "maximum": 1.0,
-            },
-        },
-    }
-    return {
-        "type": "object",
-        "additionalProperties": False,
-        "required": [
-            "turn_interpretation",
-            "state_candidates",
-            "continuity_candidates",
-        ],
-        "properties": {
-            "turn_interpretation": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": list(TURN_INTERPRETATION_FIELDS),
-                "properties": {
-                    field: string_array for field in TURN_INTERPRETATION_FIELDS
-                },
-            },
-            "state_candidates": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "required": ["state_class", "key", "op", "value", "sources"],
-                    "properties": {
-                        "state_class": {
-                            "type": "string",
-                            "enum": list(cognitive_input.state_classes),
-                        },
-                        "key": {"type": "string", "minLength": 1},
-                        "op": {"type": "string", "enum": ["set", "remove"]},
-                        "value": {
-                            "anyOf": [
-                                {"type": "string"},
-                                degree_hint,
-                                {"type": "null"},
-                            ]
-                        },
-                        "sources": {
-                            "type": "array",
-                            "minItems": 1,
-                            "items": {"type": "string", "minLength": 1},
-                        },
-                    },
-                },
-            },
-            "continuity_candidates": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "required": [
-                        "kind",
-                        "key",
-                        "op",
-                        "value",
-                        "sources",
-                        "epistemic_role",
-                    ],
-                    "properties": {
-                        "kind": {
-                            "type": "string",
-                            "enum": ["referent", "unresolved", "active_task"],
-                        },
-                        "key": {"type": "string", "minLength": 1},
-                        "op": {"type": "string", "enum": ["set", "resolve"]},
-                        "value": {},
-                        "sources": {
-                            "type": "array",
-                            "minItems": 1,
-                            "items": {"type": "string", "minLength": 1},
-                        },
-                        "epistemic_role": {
-                            "type": "string",
-                            "enum": [
-                                "user_assertion",
-                                "assistant_inference",
-                                "assistant_commitment",
-                            ],
-                        },
-                    },
-                },
-            },
-        },
-    }
+Return exactly one JSON object with no extra keys."""
 
 
 def _parse_conversation_completion(envelope: Any) -> CognitionConversationOutput:
