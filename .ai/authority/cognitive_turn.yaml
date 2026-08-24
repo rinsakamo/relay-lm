@@ -7,13 +7,15 @@ summary: >-
   six-field subjective turn-interpretation scaffold followed by semantic
   State/Continuity proposals carried by a compact ordinary-message wire grammar.
   RelayLM owns exact IR parsing/type construction plus deterministic State/Continuity
-  authority. single_pass remains compatibility/future optimization rather than a
-  Core 1.0 quality gate.
+  authority. Provider/parser failures retain the stable pass2_failed runtime boundary;
+  actual-model raw failure diagnostics remain separate evidence. single_pass remains
+  compatibility/future optimization rather than a Core 1.0 quality gate.
 owner_issue: 1533
 canonical_surfaces:
 - docs/contracts/cognition-execution-policy.md
 - docs/contracts/cognition-pass-execution.md
 - docs/contracts/cognition-execution-evidence.md
+- docs/contracts/cognition-pass2-protocol-failure.md
 - docs/contracts/cognitive-turn.md
 - docs/architecture/cognitive-runtime.md
 - docs/reference/turn-retrieval-diagnostics.md
