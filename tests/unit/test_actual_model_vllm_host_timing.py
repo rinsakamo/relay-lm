@@ -15,6 +15,8 @@ from relaylm.actual_model_fast_screening import ScreeningCallTiming
 
 EXECUTION_ID = "amx-" + "a" * 64
 RUN_ID = "amr-" + "b" * 64
+CURRENT_SCREENING_ID = "stage-r0-vllm-reference-v2"
+REFERENCE_BASELINE_ROLE = "reference_baseline"
 
 
 class _Provider:
@@ -46,8 +48,8 @@ def _timing_artifact(
     extraction_outcome: str = "completed",
 ):
     return timing_artifacts_module.bind_fast_screening_timing_artifact(
-        screening_id="stage-r0-vllm-reference-v1",
-        condition_id="B",
+        screening_id=CURRENT_SCREENING_ID,
+        condition_id=REFERENCE_BASELINE_ROLE,
         replicate_id="r0",
         scenario_id=scenario_id,
         execution_id=EXECUTION_ID,
@@ -130,10 +132,10 @@ def test_vllm_host_carries_two_pass_timing_as_separate_sidecar(
     prepared = SimpleNamespace(
         scenario_ids=("scenario-v1",),
         plan=SimpleNamespace(
-            screening_id="stage-r0-vllm-reference-v1",
+            screening_id=CURRENT_SCREENING_ID,
             effective_context_window=1616,
         ),
-        screening_condition_id="B",
+        screening_condition_id=REFERENCE_BASELINE_ROLE,
         condition=SimpleNamespace(
             cognition_execution=SimpleNamespace(mode="two_pass"),
         ),
@@ -164,8 +166,8 @@ def test_vllm_host_carries_two_pass_timing_as_separate_sidecar(
     assert len(results) == 1
     assert len(timing_artifacts) == 1
     timing = timing_artifacts[0]
-    assert timing.screening_id == "stage-r0-vllm-reference-v1"
-    assert timing.condition_id == "B"
+    assert timing.screening_id == CURRENT_SCREENING_ID
+    assert timing.condition_id == REFERENCE_BASELINE_ROLE
     assert timing.replicate_id == "r0"
     assert timing.scenario_id == "scenario-v1"
     assert timing.execution_mode == "two_pass"
@@ -225,10 +227,10 @@ def test_vllm_host_summary_surfaces_absorbed_pass2_provider_failure(
     prepared = SimpleNamespace(
         scenario_ids=("scenario-v1",),
         plan=SimpleNamespace(
-            screening_id="stage-r0-vllm-reference-v1",
+            screening_id=CURRENT_SCREENING_ID,
             effective_context_window=1616,
         ),
-        screening_condition_id="B",
+        screening_condition_id=REFERENCE_BASELINE_ROLE,
         condition=SimpleNamespace(
             cognition_execution=SimpleNamespace(mode="two_pass"),
         ),

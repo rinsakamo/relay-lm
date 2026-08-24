@@ -71,6 +71,8 @@ SCENARIO_SET_PATH = (
 )
 FIXTURE_ROOT = ROOT / "evaluation" / "actual_model" / "characters" / "foundation-v1"
 SNAPSHOT_ROOT = Path("/tmp/relaylm-unsloth-w4a16-model")
+CURRENT_SCREENING_ID = "stage-r0-vllm-reference-v2"
+REFERENCE_BASELINE_ROLE = "reference_baseline"
 CONDITION_ID = "stage-r0-vllm-b-two-pass-off-off"
 
 
@@ -198,11 +200,11 @@ def _prepared():
                     "Plan",
                     (),
                     {
-                        "screening_id": "stage-r0-vllm-reference-v1",
+                        "screening_id": CURRENT_SCREENING_ID,
                         "effective_context_window": 1024,
                     },
                 )(),
-                "screening_condition_id": CONDITION_ID,
+                "screening_condition_id": REFERENCE_BASELINE_ROLE,
                 "condition": type(
                     "Condition",
                     (),

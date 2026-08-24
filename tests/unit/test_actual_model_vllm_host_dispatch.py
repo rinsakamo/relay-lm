@@ -6,15 +6,19 @@ from types import SimpleNamespace
 import relaylm.actual_model_host as host_runner
 
 
+CURRENT_SCREENING_ID = "stage-r0-vllm-reference-v2"
+REFERENCE_BASELINE_ROLE = "reference_baseline"
+
+
 def test_shared_host_runner_dispatches_current_vllm_reference_by_semantic_role(
     tmp_path: Path,
     monkeypatch,
     capsys,
 ) -> None:
-    plan = SimpleNamespace(screening_id="stage-r0-vllm-reference-v1")
+    plan = SimpleNamespace(screening_id=CURRENT_SCREENING_ID)
     prepared = SimpleNamespace(
         plan=plan,
-        screening_condition_id="B",
+        screening_condition_id=REFERENCE_BASELINE_ROLE,
         manifest=SimpleNamespace(relaylm_commit="a" * 40, replicate_id="0"),
         target=SimpleNamespace(target_id="gemma-4-12b-it-qat-w4a16-google-vllm-v1"),
     )
@@ -23,7 +27,8 @@ def test_shared_host_runner_dispatches_current_vllm_reference_by_semantic_role(
     def fake_resolve(plan_arg, role):
         observed["role"] = role
         assert plan_arg is plan
-        return "B"
+        assert role == REFERENCE_BASELINE_ROLE
+        return role
 
     def fake_prepare(**kwargs):
         observed["prepare"] = kwargs
@@ -56,7 +61,7 @@ def test_shared_host_runner_dispatches_current_vllm_reference_by_semantic_role(
             "--backend",
             "vllm",
             "--condition",
-            "reference_baseline",
+            REFERENCE_BASELINE_ROLE,
             "--model-runner",
             "v2",
             "--repo-root",
@@ -73,17 +78,17 @@ def test_shared_host_runner_dispatches_current_vllm_reference_by_semantic_role(
     )
 
     assert result == 0
-    assert observed["role"] == "reference_baseline"
+    assert observed["role"] == REFERENCE_BASELINE_ROLE
     assert observed["prepare"]["plan"] is plan
-    assert observed["prepare"]["condition_id"] == "B"
+    assert observed["prepare"]["condition_id"] == REFERENCE_BASELINE_ROLE
     assert observed["prepare"]["model_runner"] == "v2"
     assert observed["prepare"]["base_url"] == "http://127.0.0.1:8000/v1"
     assert observed["execute"]["snapshot_root"] == (
         "/tmp/relaylm-google-gemma4-official-attest.CKxAGh"
     )
     output = capsys.readouterr().out
-    assert '"suite": "stage-r0-vllm-reference-v1"' in output
-    assert '"condition": "reference_baseline"' in output
+    assert f'"suite": "{CURRENT_SCREENING_ID}"' in output
+    assert f'"condition": "{REFERENCE_BASELINE_ROLE}"' in output
     assert '"operation": "screening"' in output
 
 
@@ -92,10 +97,10 @@ def test_shared_host_runner_dispatches_vllm_capacity_by_semantic_role(
     monkeypatch,
     capsys,
 ) -> None:
-    plan = SimpleNamespace(screening_id="stage-r0-vllm-reference-v1")
+    plan = SimpleNamespace(screening_id=CURRENT_SCREENING_ID)
     prepared = SimpleNamespace(
         plan=plan,
-        screening_condition_id="B",
+        screening_condition_id=REFERENCE_BASELINE_ROLE,
         manifest=SimpleNamespace(relaylm_commit="a" * 40, replicate_id="0"),
         target=SimpleNamespace(target_id="gemma-4-12b-it-qat-w4a16-google-vllm-v1"),
         reasoning_capability=SimpleNamespace(
@@ -116,7 +121,8 @@ def test_shared_host_runner_dispatches_vllm_capacity_by_semantic_role(
     def fake_resolve(plan_arg, role):
         observed["role"] = role
         assert plan_arg is plan
-        return "B"
+        assert role == REFERENCE_BASELINE_ROLE
+        return role
 
     def fake_prepare(**kwargs):
         observed["prepare"] = kwargs
@@ -139,7 +145,7 @@ def test_shared_host_runner_dispatches_vllm_capacity_by_semantic_role(
             "--operation",
             "capacity",
             "--condition",
-            "reference_baseline",
+            REFERENCE_BASELINE_ROLE,
             "--model-runner",
             "v2",
             "--repo-root",
@@ -156,15 +162,15 @@ def test_shared_host_runner_dispatches_vllm_capacity_by_semantic_role(
     )
 
     assert result == 0
-    assert observed["role"] == "reference_baseline"
+    assert observed["role"] == REFERENCE_BASELINE_ROLE
     assert observed["prepare"]["plan"] is plan
-    assert observed["prepare"]["condition_id"] == "B"
+    assert observed["prepare"]["condition_id"] == REFERENCE_BASELINE_ROLE
     assert observed["prepare"]["model_runner"] == "v2"
     assert "capacity_evidence_root" not in observed["prepare"]
     assert "snapshot_root" not in observed["execute"]
     output = capsys.readouterr().out
     assert '"operation": "capacity"' in output
-    assert '"condition": "reference_baseline"' in output
+    assert f'"condition": "{REFERENCE_BASELINE_ROLE}"' in output
     assert '"observed_max_model_len": 1536' in output
     assert '"evidence_id": "amcap-1"' in output
     assert '"score"' not in output

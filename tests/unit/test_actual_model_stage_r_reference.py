@@ -32,10 +32,26 @@ _SCREENING_ROOT = _ROOT / "evaluation" / "actual_model" / "screenings"
 _CANONICAL_B_CAPACITY_EVIDENCE_ID = (
     "amcap-2e39f7fd7bf8d32b2bc2be4263d5a3ce08f079319e76e59b104f236cce2464be"
 )
+_CURRENT_STAGE_R_FIXTURE_TESTS = (
+    "tests/unit/test_actual_model_vllm_host_dispatch.py",
+    "tests/unit/test_actual_model_vllm_budget_facade.py",
+    "tests/unit/test_actual_model_vllm_host_timing.py",
+    "tests/unit/test_actual_model_vllm_bound_timing.py",
+)
 
 
 def test_superseded_current_stage_r_v1_plan_is_not_retained() -> None:
     assert not (_SCREENING_ROOT / "stage-r0-vllm-reference-v1.json").exists()
+
+
+@pytest.mark.parametrize("relative_path", _CURRENT_STAGE_R_FIXTURE_TESTS)
+def test_current_stage_r_fixture_tests_do_not_encode_historical_plan_coordinates(
+    relative_path: str,
+) -> None:
+    source = (_ROOT / relative_path).read_text(encoding="utf-8")
+
+    assert "stage-r0-vllm-reference-v1" not in source
+    assert '"B"' not in source
 
 
 def test_current_stage_r_plan_uses_semantic_roles_without_historical_coordinates() -> None:
