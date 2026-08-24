@@ -134,7 +134,7 @@ explicit --config path
   > no file
 ```
 
-Existing named scalar overrides keep leaf precedence:
+Named scalar leaves use:
 
 ```text
 CLI/programmatic override
@@ -143,9 +143,17 @@ CLI/programmatic override
   > canonical default
 ```
 
-Current named bindings include Character, provider adapter/base URL/model/secret reference, server host/port, and reserved profile selection. Complex cognition pass controls, Retrieval, Continuity, and Cognitive Budget structures are file-owned in format version 1 unless a later bounded operator transaction adds a named override.
+Current named bindings include Character, provider adapter/base URL/model/secret reference, server host/port, reserved profile selection, and cognition execution mode. Cognition mode is exposed as:
 
-There is no generic `--set key=value` surface.
+```text
+--cognition-mode MODE
+RELAYLM_COGNITION_MODE
+runtime.cognition.mode
+```
+
+All three select only the existing #1533 closed vocabulary. They do not create a new mode or numeric policy. CLI beats environment, environment beats runtime YAML, and omission falls back to canonical `two_pass`.
+
+Complex Pass 1/Pass 2 controls, Retrieval, Continuity, and Cognitive Budget structures remain file-owned in format version 1. There is no generic `--set key=value` surface.
 
 ## Current defaults
 
@@ -185,7 +193,7 @@ Secret selection remains deterministic and an explicitly selected missing/empty 
 
 ## Effective diagnostics
 
-`ResolvedRuntimeConfig.effective_diagnostics()` exposes non-secret effective values plus provenance. Current diagnostics include `runtime.cognition.mode`, so `doctor --json` can distinguish the product topology without reading Character semantic payload.
+`ResolvedRuntimeConfig.effective_diagnostics()` exposes non-secret effective values plus provenance. Current diagnostics include `runtime.cognition.mode`, so `doctor --json` can distinguish the product topology and whether it came from CLI, environment, runtime file, or the canonical default without reading Character semantic payload.
 
 Diagnostics never include API keys, secret environment-variable names, SOUL text, State values, Event/MEMORY content, Continuity semantic payload, or conversation text.
 

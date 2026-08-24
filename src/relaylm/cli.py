@@ -191,6 +191,7 @@ def _add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--host", dest="server_host")
     parser.add_argument("--port", dest="server_port", type=int)
     parser.add_argument("--profile")
+    parser.add_argument("--cognition-mode")
 
 
 def _overrides_from_args(args: argparse.Namespace) -> RuntimeConfigOverrides:
@@ -203,6 +204,7 @@ def _overrides_from_args(args: argparse.Namespace) -> RuntimeConfigOverrides:
         server_host=args.server_host,
         server_port=args.server_port,
         profile=args.profile,
+        cognition_mode=args.cognition_mode,
     )
 
 
