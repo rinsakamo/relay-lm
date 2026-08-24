@@ -17,7 +17,7 @@ _FUNCTIONAL_PLAN = Path(
 _REFERENCE_BASELINE = "reference_baseline"
 
 
-def test_functional_acceptance_plan_preserves_reference_semantics_with_roomy_window() -> None:
+def test_functional_acceptance_plan_preserves_reference_semantics_with_live_window() -> None:
     canonical = load_vllm_screening_plan(_ROOT / CANONICAL_VLLM_SCREENING_PLAN_PATH)
     functional = load_vllm_screening_plan(_ROOT / _FUNCTIONAL_PLAN)
 
@@ -26,7 +26,7 @@ def test_functional_acceptance_plan_preserves_reference_semantics_with_roomy_win
     assert canonical.capacity_evidence_id is not None
 
     assert functional.screening_id == "stage-r0-vllm-functional-acceptance-v1"
-    assert functional.effective_context_window == 4096
+    assert functional.effective_context_window is None
     assert functional.capacity_evidence_id is None
     assert functional.target_id == canonical.target_id
     assert functional.decoding_config == canonical.decoding_config
@@ -54,7 +54,7 @@ def test_shared_host_can_select_repository_owned_functional_acceptance_plan(
         manifest=SimpleNamespace(relaylm_commit="a" * 40, replicate_id="0"),
         target=SimpleNamespace(target_id="gemma-4-12b-it-qat-w4a16-google-vllm-v1"),
         reasoning_capability=SimpleNamespace(
-            backend_attestation=SimpleNamespace(max_model_len=4096)
+            backend_attestation=SimpleNamespace(max_model_len=6144)
         ),
     )
     artifact = SimpleNamespace(
@@ -121,4 +121,4 @@ def test_shared_host_can_select_repository_owned_functional_acceptance_plan(
     assert observed["prepare"]["plan"] is plan
     output = capsys.readouterr().out
     assert '"suite": "stage-r0-vllm-functional-acceptance-v1"' in output
-    assert '"observed_max_model_len": 4096' in output
+    assert '"observed_max_model_len": 6144' in output
