@@ -176,7 +176,10 @@ def assemble_runtime(
             field="provider.backend",
             message="vLLM reasoning capability requires provider.backend=vllm",
         )
-    elif config.provider.backend is not OpenAICompatibleBackendId.GENERIC:
+    elif config.provider.backend not in {
+        OpenAICompatibleBackendId.GENERIC,
+        OpenAICompatibleBackendId.LM_STUDIO,
+    }:
         raise RuntimeAssemblyError(
             RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
             field="provider.backend",
@@ -185,6 +188,33 @@ def assemble_runtime(
                 "in runtime assembly"
             ),
         )
+
+    if config.provider.backend is OpenAICompatibleBackendId.LM_STUDIO:
+        for pass_name, pass_request in (
+            ("pass1", cognition.pass1),
+            ("pass2", cognition.pass2),
+        ):
+            if pass_request.reasoning_mode is not None:
+                raise RuntimeAssemblyError(
+                    RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+                    field=f"runtime.cognition.{pass_name}.reasoning_mode",
+                    message=(
+                        "LM Studio per-request reasoning requires the unimplemented "
+                        "#1545 exact Chat Completions reasoning realizer; omit the "
+                        "reasoning override until that provider wire is proven"
+                    ),
+                )
+            if pass_request.reasoning_budget is not None:
+                raise RuntimeAssemblyError(
+                    RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+                    field=f"runtime.cognition.{pass_name}.reasoning_budget",
+                    message=(
+                        "LM Studio per-request reasoning budget requires the "
+                        "unimplemented #1545 exact Chat Completions reasoning "
+                        "realizer; omit the reasoning override until that provider "
+                        "wire is proven"
+                    ),
+                )
 
     if runtime.cognitive_budget is not None and (
         runtime.memory_retrieval is not None or runtime.event_retrieval is not None
