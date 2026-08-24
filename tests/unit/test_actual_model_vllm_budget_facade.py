@@ -8,6 +8,10 @@ import relaylm.actual_model_host as host_runner
 import relaylm.actual_model_vllm_budget as budget_bridge
 
 
+CURRENT_SCREENING_ID = "stage-r0-vllm-reference-v2"
+REFERENCE_BASELINE_ROLE = "reference_baseline"
+
+
 def _write_budget(path: Path, *, include_counter: bool = False) -> None:
     payload: dict[str, object] = {
         "format_version": 1,
@@ -53,7 +57,7 @@ def _screening_args(tmp_path: Path, budget_path: Path) -> list[str]:
         "--backend",
         "vllm",
         "--condition",
-        "reference_baseline",
+        REFERENCE_BASELINE_ROLE,
         "--model-runner",
         "v2",
         "--repo-root",
@@ -76,8 +80,8 @@ def _bind_reference_role(monkeypatch, plan) -> None:
         host_runner,
         "screening_condition_key_for_role",
         lambda plan_arg, role: (
-            "B"
-            if plan_arg is plan and role == "reference_baseline"
+            role
+            if plan_arg is plan and role == REFERENCE_BASELINE_ROLE
             else (_ for _ in ()).throw(AssertionError("unexpected screening role"))
         ),
     )
@@ -90,11 +94,11 @@ def test_vllm_screening_facade_carries_strict_two_pass_budget_declaration(
 ) -> None:
     budget_path = tmp_path / "budget.json"
     _write_budget(budget_path)
-    plan = SimpleNamespace(screening_id="stage-r0-vllm-reference-v1")
+    plan = SimpleNamespace(screening_id=CURRENT_SCREENING_ID)
     observed: dict[str, object] = {}
     prepared = SimpleNamespace(
         plan=plan,
-        screening_condition_id="B",
+        screening_condition_id=REFERENCE_BASELINE_ROLE,
         manifest=SimpleNamespace(relaylm_commit="a" * 40, replicate_id="0"),
         target=SimpleNamespace(target_id="gemma-4-12b-it-qat-w4a16-google-vllm-v1"),
     )
@@ -127,7 +131,7 @@ def test_vllm_screening_facade_carries_strict_two_pass_budget_declaration(
     result = host_runner.main(_screening_args(tmp_path, budget_path))
 
     assert result == 0
-    assert observed["condition_id"] == "B"
+    assert observed["condition_id"] == REFERENCE_BASELINE_ROLE
     declaration = observed["cognitive_budget"]
     assert type(declaration).__name__ == "VLLMTwoPassCognitiveBudgetDeclaration"
     assert declaration.pass1_total.model_context_window == 1616
@@ -136,7 +140,7 @@ def test_vllm_screening_facade_carries_strict_two_pass_budget_declaration(
     assert declaration.pass2_total.reserved_output_tokens == 64
     assert declaration.policy.steps == ()
     assert not hasattr(declaration, "token_counter")
-    assert '"condition": "reference_baseline"' in capsys.readouterr().out
+    assert f'"condition": "{REFERENCE_BASELINE_ROLE}"' in capsys.readouterr().out
 
 
 def test_vllm_budget_declaration_rejects_caller_owned_counter_identity(
@@ -146,7 +150,7 @@ def test_vllm_budget_declaration_rejects_caller_owned_counter_identity(
 ) -> None:
     budget_path = tmp_path / "budget.json"
     _write_budget(budget_path, include_counter=True)
-    plan = SimpleNamespace(screening_id="stage-r0-vllm-reference-v1")
+    plan = SimpleNamespace(screening_id=CURRENT_SCREENING_ID)
     called = False
 
     def fake_prepare(**kwargs):
@@ -174,7 +178,7 @@ def test_vllm_capacity_operation_rejects_screening_budget_declaration(
 ) -> None:
     budget_path = tmp_path / "budget.json"
     _write_budget(budget_path)
-    plan = SimpleNamespace(screening_id="stage-r0-vllm-reference-v1")
+    plan = SimpleNamespace(screening_id=CURRENT_SCREENING_ID)
     called = False
 
     def fake_capacity_prepare(**kwargs):
@@ -275,7 +279,7 @@ def test_budget_declaration_resolves_only_through_host_owned_live_counter(
 
     result = budget_bridge.prepare_vllm_screening_condition_with_budget_declaration(
         plan=plan,
-        condition_id="B",
+        condition_id=REFERENCE_BASELINE_ROLE,
         proof_path=tmp_path / "proof.json",
         repo_root=tmp_path,
         snapshot_root=tmp_path / "snapshot",
