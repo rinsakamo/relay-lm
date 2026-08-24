@@ -17,26 +17,29 @@ There is no repository-owned fixed functional-test context window.
 Keep fixed:
 
 - target: `gemma-4-12b-it-qat-w4a16-google-vllm-v1`;
+- canonical vLLM source: `70b84f0bcbb6d0a35b74b1035673a1c934089dbb` / `0.26.1rc1.dev549+g70b84f0bc`;
 - execution: buffered two-pass;
 - `reference_baseline`: Pass 1 reasoning OFF / Pass 2 reasoning OFF;
 - decoding: `temperature=0`, `top_p=1`, `seed=null`;
 - scenarios: existing `response-persona-correction-v1` and `continuity-lifecycle-v1` only;
 - current prompt/wire and State/Continuity/Event semantics.
 
-The execution window is bound from fresh external capacity evidence whose `observed_max_model_len` is the exact live vLLM value for the same checkout/runtime.
+The canonical vLLM runtime is the runtime bound by the current frozen reasoning proof, not whichever vLLM package happens to be installed globally. The local `0.27.1` runtime is not an interchangeable substitute for the frozen Google W4A16 target: prior provider evidence found that target fails to start on that runtime, while the exact `70b84f0bc...` source runtime has already reproduced model-load/server readiness with runner v2 on the current host.
+
+The execution window is bound from fresh external capacity evidence whose `observed_max_model_len` is the exact live value for the same checkout/canonical runtime.
 
 ## Hardware capability discovery
 
 Do not treat a guessed `gpu_memory_utilization` fraction or a repository-chosen context size as hardware capability.
 
-Use the exact installed vLLM build's own memory profiler in two bounded steps:
+Use the exact canonical vLLM runtime's own memory profiler in two bounded steps:
 
-1. **Probe.** Start the exact target once with normal profiling enabled and `--max-model-len auto`. This probe exists only to obtain the runtime memory facts; its configured `gpu_memory_utilization` is not the capability result.
-2. **Resolve KV capacity from free VRAM.** Retain the profiler output for startup free GPU memory, weights/model memory, peak activation memory, non-Torch memory and CUDA-graph memory. When the installed build emits its recommended `--kv-cache-memory=<bytes>` value for fully utilizing GPU memory, use that exact recommendation. That recommendation is derived from the observed startup free memory minus profiled non-KV consumption and vLLM's own redundancy buffer, rather than from a RelayLM-owned percentage.
-3. **Final capability run.** Restart the exact same target with that explicit `--kv-cache-memory=<bytes>` and `--max-model-len auto`. The explicit KV byte budget makes `gpu_memory_utilization` irrelevant to KV-cache sizing; auto-fit then resolves the maximum model length supported by that profiled KV capacity.
-4. Attest the final live `/v1/models` `max_model_len` and retain the final GPU KV-cache token capacity/startup log. That resolved `max_model_len` is the functional-test execution capability.
+1. **Probe.** Start the exact target on source `70b84f0bc...` with normal profiling enabled and `--max-model-len auto`. This probe exists only to obtain runtime memory facts; its configured `gpu_memory_utilization` is not the capability result.
+2. **Resolve KV capacity from free VRAM.** Retain the profiler output for startup free GPU memory, weights/model memory, peak activation memory, non-Torch memory and CUDA-graph memory. When the runtime emits its recommended `--kv-cache-memory-bytes=<bytes>` value for fully utilizing available GPU memory, use that exact recommendation. The canonical source contract defines explicit KV bytes as overriding `gpu_memory_utilization` for KV sizing.
+3. **Final capability run.** Restart the exact same target/runtime with that explicit `--kv-cache-memory-bytes=<bytes>` and `--max-model-len auto`. Auto-fit then resolves the maximum model length supported by the profiled KV capacity.
+4. Attest the final live `/version` and `/v1/models` identity, `max_model_len`, runner v2, model root and GPU KV-cache token capacity, and retain the exact final launch arguments/startup log.
 
-Do not invent a fallback fraction such as 0.9 or 0.92. If the exact installed vLLM build does not expose enough memory-profile evidence to derive or report the full-GPU KV byte budget, stop and report the backend-capability gap instead of substituting a guessed fixed context window.
+Do not invent a fallback fraction such as 0.9 or 0.92. If the canonical runtime does not expose enough memory-profile evidence to derive or report a defensible explicit KV byte budget, stop and report the backend-capability gap instead of substituting a guessed fixed context window.
 
 If unrelated GPU processes or display load materially change between probe and final launch, repeat the probe rather than reusing a stale byte recommendation.
 
@@ -58,7 +61,7 @@ A provider-capacity failure can prevent these questions from being observed, but
 
 ## Execution
 
-Use one clean exact RelayLM checkout throughout final capability attestation, capacity acquisition and functional screening.
+Use one clean exact RelayLM checkout throughout final capability attestation, capacity acquisition and functional screening. Use an isolated environment for the canonical vLLM source runtime; do not downgrade or otherwise mutate the user's global vLLM installation merely to satisfy the evidence identity.
 
 After the final capability run is serving, acquire fresh external capacity evidence with the canonical Stage R plan. Capacity acquisition already binds to the live attested `max_model_len`; the canonical plan's historical pilot window does not select the acquisition runtime.
 
@@ -136,8 +139,8 @@ This correction does not change:
 - reasoning escalation policy;
 - release/runtime defaults.
 
-It changes only how the functional-test execution window is selected: **profile the actual free VRAM and non-KV footprint, let vLLM resolve an explicit KV byte budget and maximum model length, use that live capacity for functional acceptance, then calibrate later**.
+It changes only the functional-test runtime/capacity authority: **use the canonical frozen-proof vLLM runtime, profile its actual free VRAM and non-KV footprint, let that runtime resolve explicit KV bytes and maximum model length, use that live capacity for functional acceptance, then calibrate later**.
 
 ## Principle
 
-> First discover the machine's usable vLLM capacity from its actual memory profile, then prove RelayLM works there. Calibrate the product profile only after that.
+> First establish the exact citable backend/runtime, then discover that runtime's usable GPU capacity and prove RelayLM works there. Calibrate the product profile only after that.
