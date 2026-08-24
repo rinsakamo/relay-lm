@@ -49,11 +49,9 @@ class _StreamingProviderStub:
         raise AssertionError((cognitive_input, emit_response_delta))
 
 
-
 def _write(path: Path, body: str) -> Path:
     path.write_text(body, encoding="utf-8")
     return path
-
 
 
 def _base_config(runtime: str = "") -> str:
@@ -68,7 +66,6 @@ provider:
 {runtime}"""
 
 
-
 def _cognitive_budget_yaml(*, include_memory: bool = False) -> str:
     memory = """
   memory_retrieval:
@@ -76,7 +73,9 @@ def _cognitive_budget_yaml(*, include_memory: bool = False) -> str:
     max_chars: 800
 """ if include_memory else ""
     return f"""\
-runtime:{memory}
+runtime:
+  cognition:
+    mode: single_pass{memory}
   cognitive_budget:
     total:
       model_context_window: 8192
@@ -114,7 +113,6 @@ runtime:{memory}
 """
 
 
-
 def test_assemble_basic_resolved_config_constructs_character_and_provider() -> None:
     resolved = resolve_runtime_config(
         environ={
@@ -136,7 +134,6 @@ def test_assemble_basic_resolved_config_constructs_character_and_provider() -> N
     assert assembly.continuity_runtime is None
     assert assembly.cognitive_budget is None
     assert "process-secret" not in repr(assembly)
-
 
 
 def test_assemble_explicit_retrieval_and_continuity_use_existing_owner_types(
@@ -172,7 +169,6 @@ runtime:
     assert assembly.continuity_runtime.lifetime_revisions == 6
 
 
-
 def test_assemble_cognitive_budget_resolves_declared_counter_capability(
     tmp_path: Path,
 ) -> None:
@@ -201,7 +197,6 @@ def test_assemble_cognitive_budget_resolves_declared_counter_capability(
     assert assembly.event_budget is None
 
 
-
 def test_missing_token_counter_capability_fails_before_runtime_use(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "runtime.yaml",
@@ -214,7 +209,6 @@ def test_missing_token_counter_capability_fails_before_runtime_use(tmp_path: Pat
 
     assert caught.value.code is RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE
     assert caught.value.field == "runtime.cognitive_budget.token_counter.capability"
-
 
 
 def test_token_counter_mode_mismatch_fails_closed(tmp_path: Path) -> None:
@@ -237,7 +231,6 @@ def test_token_counter_mode_mismatch_fails_closed(tmp_path: Path) -> None:
 
     assert caught.value.code is RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE
     assert caught.value.field == "runtime.cognitive_budget.token_counter.mode"
-
 
 
 def test_overlapping_direct_retrieval_and_cognitive_budget_fails_at_assembly(
@@ -263,7 +256,6 @@ def test_overlapping_direct_retrieval_and_cognitive_budget_fails_at_assembly(
     assert caught.value.code is RuntimeConfigErrorCode.INVALID_COMBINATION
     assert caught.value.field == "runtime.cognitive_budget"
     assert "retrieval" in str(caught.value).lower()
-
 
 
 def test_counter_factory_failure_is_reported_as_capability_unavailable(
@@ -293,7 +285,6 @@ def test_counter_factory_failure_is_reported_as_capability_unavailable(
     assert caught.value.code is RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE
     assert caught.value.field == "runtime.cognitive_budget.token_counter.capability"
     assert "tokenizer internals" not in str(caught.value)
-
 
 
 def test_buffered_openai_route_carries_all_assembled_turn_controls(monkeypatch) -> None:
@@ -334,7 +325,6 @@ def test_buffered_openai_route_carries_all_assembled_turn_controls(monkeypatch) 
     assert captured["event_budget"] is event
     assert captured["continuity_runtime"] is continuity
     assert captured["cognitive_budget"] is None
-
 
 
 def test_streaming_openai_route_carries_same_turn_controls(monkeypatch) -> None:
