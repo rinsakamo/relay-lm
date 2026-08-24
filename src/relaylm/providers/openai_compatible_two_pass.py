@@ -37,37 +37,35 @@ from relaylm.providers.vllm_reasoning_capability import (
 )
 
 
-CONVERSATION_SYSTEM_INSTRUCTION = """You are the conversation pass of a persistent character managed by RelayLM.
+COMMON_SYSTEM_INSTRUCTION = """You are the cognitive substrate of a persistent character managed by RelayLM.
 
-Use the supplied CognitiveInput JSON to produce only the complete natural-language response shown to the user.
-Identity is authoritative and immutable. State is accepted current understanding. Context, Memory, Event Evidence, and Input retain the authority/provenance roles supplied by RelayLM.
-Preserve persona, current-context coherence, uncertainty, degree, user-provided names, and normally the user's language.
-Assistant-authored material may support conversational continuity but does not prove user facts or external truth.
+Use the supplied CognitiveInput as this character's current cognitive context.
+
+Identity defines who this character is and the subjective lens through which meaning is understood.
+Identity is authoritative and immutable.
+State is the character's accepted current understanding.
+
+Context, Memory, Event Evidence, and Input retain the authority and provenance supplied by RelayLM.
+Interpret the current turn through the character's Identity and accepted State.
+
+Assistant-authored material may support interpretation and conversational continuity, but does not by itself establish user facts or external truth.
+
+Preserve uncertainty, degree, correction, negation, supersession, and source provenance.
 Do not invent history, evidence, motives, shared experiences, or supporting details.
-This pass does not produce StateCandidate or ContinuityCandidate proposals; structured extraction is a separate RelayLM pass.
+Preserve user-provided names and normally use the user's language."""
 
-Return only the complete natural-language response. Do not wrap it in JSON or add metadata."""
+CONVERSATION_PASS_SUFFIX = """CONVERSATION
 
-EXTRACTION_SYSTEM_INSTRUCTION = """You are the immediate structured-cognition pass of a persistent character managed by RelayLM.
+Respond as this character."""
 
-Produce only StateCandidate and ContinuityCandidate proposals for the supplied originating turn. There is no user-visible response in this pass.
-
-Authority ordering is strict:
-user/source evidence > accepted typed RelayLM State/Context/Continuity > assistant-response interpretation.
-The supplied `assistant_response` is interpretive context only and must never self-certify a user fact, preference, goal, experience, external truth, prior event, or source provenance.
-
-Use the exact existing State class/key vocabulary when the supplied accepted State already establishes it. Preserve correction, negation, supersession, uncertainty, degree, transient-vs-durable distinctions, and source provenance. Propose durable State only when current understanding meaningfully changes. Use Continuity for bounded referent/unresolved/active-task meaning rather than promoting short-lived dialogue state into durable State.
-Never invent source Event IDs. Candidate sources must come from Event IDs present in the supplied `cognitive_input`; the assistant response itself is not a source Event.
-A proposal has no authority merely because this pass emitted it; RelayLM validates all proposals deterministically.
-
-RelayLM proposal IR contract:
-- Return exactly one JSON object with exactly `state_candidates` and `continuity_candidates`.
-- `state_candidates` is an array. Every item has exactly `state_class`, `key`, `op`, `value`, and `sources`. `state_class` must be one of the classes supplied in `cognitive_input.state_classes`. `op` is `set` or `remove`. A `set` value is a string or exactly {`semantic`, `degree_hint`}, where `semantic` is a non-empty string and `degree_hint` is a finite number from 0.0 through 1.0. A `remove` value is null. `sources` is a non-empty array of Event IDs.
-- `continuity_candidates` is an array. Every item has exactly `kind`, `key`, `op`, `value`, `sources`, and `epistemic_role`. `kind` is `referent`, `unresolved`, or `active_task`. `op` is `set` or `resolve`. A `set` value is the JSON semantic value being proposed; a `resolve` value is null. `epistemic_role` is `user_assertion`, `assistant_inference`, or `assistant_commitment`.
-- Do not add an `utterance`, metadata, execution IDs, or explanatory fields.
-- Do not use Markdown or code fences. Return only the JSON object.
-
-RelayLM, not the provider, owns parsing, type construction, validation, and commit authority for this proposal IR."""
+TURN_INTERPRETATION_FIELDS = (
+    "user_meaning",
+    "change_signals",
+    "self_meaning",
+    "assistant_effects",
+    "unresolved",
+    "continuity_signals",
+)
 
 
 class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
@@ -240,6 +238,20 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
             raise ProviderProtocolError(f"upstream request failed: {exc}") from exc
 
 
+def _common_cognitive_prefix(cognitive_input: CognitiveInput) -> str:
+    serialized = json.dumps(
+        serialize_cognitive_input(cognitive_input),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return (
+        "<COGNITIVE_INPUT>\n"
+        f"{serialized}\n"
+        "</COGNITIVE_INPUT>\n\n"
+        "<PASS>\n"
+    )
+
+
 def _conversation_request_body(
     *,
     model: str,
@@ -252,14 +264,11 @@ def _conversation_request_body(
     body: dict[str, Any] = {
         "model": model,
         "messages": [
-            {"role": "system", "content": CONVERSATION_SYSTEM_INSTRUCTION},
+            {"role": "system", "content": COMMON_SYSTEM_INSTRUCTION},
             {
                 "role": "user",
-                "content": json.dumps(
-                    serialize_cognitive_input(cognitive_input),
-                    ensure_ascii=False,
-                    separators=(",", ":"),
-                ),
+                "content": _common_cognitive_prefix(cognitive_input)
+                + CONVERSATION_PASS_SUFFIX,
             },
         ],
         "stream": stream,
@@ -283,21 +292,14 @@ def _extraction_request_body(
     reasoning_request: OpenAICompatibleReasoningRequest | None = None,
     vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
 ) -> dict[str, Any]:
-    payload = {
-        "cognitive_input": serialize_cognitive_input(extraction_input.cognitive_input),
-        "assistant_response": extraction_input.assistant_response,
-    }
     body: dict[str, Any] = {
         "model": model,
         "messages": [
-            {"role": "system", "content": EXTRACTION_SYSTEM_INSTRUCTION},
+            {"role": "system", "content": COMMON_SYSTEM_INSTRUCTION},
             {
                 "role": "user",
-                "content": json.dumps(
-                    payload,
-                    ensure_ascii=False,
-                    separators=(",", ":"),
-                ),
+                "content": _common_cognitive_prefix(extraction_input.cognitive_input)
+                + _extraction_pass_suffix(extraction_input),
             },
         ],
         "stream": False,
@@ -311,6 +313,203 @@ def _extraction_request_body(
         )
     )
     return body
+
+
+def _extraction_pass_suffix(extraction_input: CognitionExtractionInput) -> str:
+    response_json = json.dumps(
+        {"content": extraction_input.assistant_response},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    schema_json = json.dumps(
+        _extraction_output_schema(extraction_input.cognitive_input),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return f"""EXTRACTION
+
+<PASS_1_RESPONSE_JSON>
+{response_json}
+</PASS_1_RESPONSE_JSON>
+
+Construct the structured cognition result for this originating turn.
+
+First construct `turn_interpretation` in exactly this order:
+
+1. `user_meaning`
+   What this character understands the user to mean in the current turn.
+   This is the character's subjective understanding through Identity, accepted State,
+   and the supplied context, not merely a literal summary of the user's words.
+
+2. `change_signals`
+   Meaningful changes relative to accepted current understanding, including new meaning,
+   correction, revocation, supersession, strengthening, weakening, or other updates.
+
+3. `self_meaning`
+   What the interpreted meaning means to this character itself, including personally,
+   emotionally, relationally, or in terms of the character's own beliefs, goals, or condition.
+
+4. `assistant_effects`
+   Meanings introduced by the Pass 1 response that may matter to cognition or continuation,
+   such as a question, proposal, commitment, or intentionally unfinished interaction.
+
+5. `unresolved`
+   Meanings that should not yet be decided because the supplied evidence leaves them
+   ambiguous, incomplete, underspecified, or open to multiple interpretations.
+
+6. `continuity_signals`
+   Meanings worth carrying across upcoming turns for coherent interaction, such as
+   a referent, unresolved thread, or active task.
+
+Each field is an array of concise semantic statements.
+Use an empty array when there is nothing meaningful to record.
+
+After constructing `turn_interpretation`, propose `state_candidates` and `continuity_candidates`.
+
+`turn_interpretation` is interpretation, not accepted State and not authority by itself.
+Propose State only when an adequately grounded and sufficiently resolved meaning represents a meaningful durable change in the character's accepted current understanding.
+Do not propose a State change merely because a meaning appears in `turn_interpretation`.
+When accepted State already establishes a State class/key vocabulary, preserve it.
+
+Use `set` when State should now exist or its semantic value should meaningfully change.
+Use `remove` only for explicit revocation, cancellation, denial, correction, or termination.
+Weakening, uncertainty, hesitation, or temporary variation alone do not imply removal.
+
+Preserve uncertainty and degree.
+Use a degree hint only when the current turn materially expresses a useful comparative or intensity relation.
+A degree hint is semantic intensity, not confidence, probability, evidence strength, authority, or salience.
+
+Propose Continuity only when carrying the meaning across upcoming turns would materially improve conversational coherence.
+An item in `unresolved` does not by itself require an `unresolved` ContinuityCandidate.
+Use Continuity for `referent`, `unresolved`, or `active_task` meaning under the supplied current context.
+
+The supplied Pass 1 response is interpretive context only.
+It must never self-certify a user fact, preference, goal, experience, external truth, prior event, or source provenance.
+
+Preserve the existing RelayLM source semantics.
+Candidate `sources` must use Event IDs available in the supplied CognitiveInput.
+Never invent Event IDs.
+A proposal has no authority merely because this pass emitted it; RelayLM validates all proposals deterministically.
+
+Construct the JSON object in this order:
+1. `turn_interpretation.user_meaning`
+2. `turn_interpretation.change_signals`
+3. `turn_interpretation.self_meaning`
+4. `turn_interpretation.assistant_effects`
+5. `turn_interpretation.unresolved`
+6. `turn_interpretation.continuity_signals`
+7. `state_candidates`
+8. `continuity_candidates`
+
+<OUTPUT_SCHEMA>
+{schema_json}
+</OUTPUT_SCHEMA>
+
+Return exactly one JSON object matching the supplied schema."""
+
+
+def _extraction_output_schema(cognitive_input: CognitiveInput) -> dict[str, Any]:
+    string_array = {
+        "type": "array",
+        "items": {"type": "string", "minLength": 1},
+    }
+    degree_hint = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["semantic", "degree_hint"],
+        "properties": {
+            "semantic": {"type": "string", "minLength": 1},
+            "degree_hint": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 1.0,
+            },
+        },
+    }
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "turn_interpretation",
+            "state_candidates",
+            "continuity_candidates",
+        ],
+        "properties": {
+            "turn_interpretation": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": list(TURN_INTERPRETATION_FIELDS),
+                "properties": {
+                    field: string_array for field in TURN_INTERPRETATION_FIELDS
+                },
+            },
+            "state_candidates": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["state_class", "key", "op", "value", "sources"],
+                    "properties": {
+                        "state_class": {
+                            "type": "string",
+                            "enum": list(cognitive_input.state_classes),
+                        },
+                        "key": {"type": "string", "minLength": 1},
+                        "op": {"type": "string", "enum": ["set", "remove"]},
+                        "value": {
+                            "anyOf": [
+                                {"type": "string"},
+                                degree_hint,
+                                {"type": "null"},
+                            ]
+                        },
+                        "sources": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {"type": "string", "minLength": 1},
+                        },
+                    },
+                },
+            },
+            "continuity_candidates": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": [
+                        "kind",
+                        "key",
+                        "op",
+                        "value",
+                        "sources",
+                        "epistemic_role",
+                    ],
+                    "properties": {
+                        "kind": {
+                            "type": "string",
+                            "enum": ["referent", "unresolved", "active_task"],
+                        },
+                        "key": {"type": "string", "minLength": 1},
+                        "op": {"type": "string", "enum": ["set", "resolve"]},
+                        "value": {},
+                        "sources": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {"type": "string", "minLength": 1},
+                        },
+                        "epistemic_role": {
+                            "type": "string",
+                            "enum": [
+                                "user_assertion",
+                                "assistant_inference",
+                                "assistant_commitment",
+                            ],
+                        },
+                    },
+                },
+            },
+        },
+    }
 
 
 def _parse_conversation_completion(envelope: Any) -> CognitionConversationOutput:
@@ -327,13 +526,15 @@ def _parse_extraction_completion(envelope: Any) -> CognitionExtractionOutput:
         invalid_message="provider extraction content is not valid JSON",
     )
     if not isinstance(wire, dict) or set(wire) != {
+        "turn_interpretation",
         "state_candidates",
         "continuity_candidates",
     }:
         raise ProviderProtocolError(
-            "extraction wire output must contain exactly state_candidates and "
-            "continuity_candidates"
+            "extraction wire output must contain exactly turn_interpretation, "
+            "state_candidates and continuity_candidates"
         )
+    _require_turn_interpretation(wire["turn_interpretation"])
     state_candidates, continuity_candidates = _parse_candidate_collections(
         raw_candidates=wire["state_candidates"],
         raw_continuity_candidates=wire["continuity_candidates"],
@@ -343,6 +544,24 @@ def _parse_extraction_completion(envelope: Any) -> CognitionExtractionOutput:
         continuity_candidates=continuity_candidates,
         completion=completion,
     )
+
+
+def _require_turn_interpretation(raw: object) -> None:
+    if not isinstance(raw, dict) or tuple(raw) != TURN_INTERPRETATION_FIELDS:
+        raise ProviderProtocolError(
+            "turn_interpretation must contain exactly "
+            + ", ".join(TURN_INTERPRETATION_FIELDS)
+        )
+    for field in TURN_INTERPRETATION_FIELDS:
+        values = raw[field]
+        if not isinstance(values, list):
+            raise ProviderProtocolError(
+                f"turn_interpretation.{field} must be an array"
+            )
+        if not all(isinstance(value, str) and value.strip() for value in values):
+            raise ProviderProtocolError(
+                f"turn_interpretation.{field} must contain non-empty strings"
+            )
 
 
 def _completion_content_and_metadata(
