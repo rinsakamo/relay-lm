@@ -36,7 +36,7 @@ The OpenAI-compatible two-pass adapter serializes the same common system instruc
 
 `CognitionExtractionOutput` contains only typed State/Continuity proposals. The Pass 2 `turn_interpretation` scaffold is validated at the provider-wire boundary and is not promoted into this semantic output or into State/Continuity authority.
 
-Provider-native `response_format`, JSON Schema, grammar or equivalent constrained-output support is not required. The provider transports ordinary message content; RelayLM owns the scaffold/proposal-IR grammar, parsing, exact shape checks, type construction and fail-closed behavior. The current Pass 2 suffix includes a RelayLM-owned JSON Schema description as prompt content only.
+Provider-native `response_format`, JSON Schema, grammar or equivalent constrained-output support is not required. The provider transports ordinary message content; RelayLM owns the scaffold/proposal-IR grammar, parsing, exact shape checks, type construction and fail-closed behavior. The current Pass 2 suffix carries a compact field glossary, candidate wire grammar and exact top-level example rather than a full prompt-embedded JSON Schema.
 
 ## Pass 1
 
@@ -254,7 +254,7 @@ Provider-native JSON-schema/grammar support may exist as capability truth but is
 
 Pass 1 and Pass 2 have separate output/runtime footprints but intentionally share the same token-identical cognitive prefix through the pass boundary. Actual prefix-cache reuse remains backend-dependent and must be measured rather than assumed.
 
-Pass 2 adds the explicit scaffold and schema suffix, so prompt tokens, completion tokens, latency and reasoning tokens must be re-qualified against the existing scenario set.
+Pass 2 adds the explicit scaffold and compact wire suffix, so prompt tokens, completion tokens, latency and reasoning tokens must be re-qualified against the existing scenario set.
 
 #1386 owns actual-model quality/capacity/performance evidence. #1388 owns calibrated profile/default selection.
 

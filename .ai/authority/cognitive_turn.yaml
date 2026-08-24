@@ -5,9 +5,10 @@ summary: >-
   share one canonical cognitive prefix through CognitiveInput. Pass 1 owns the
   visible character response with a minimal suffix; Pass 2 owns a non-authoritative
   six-field subjective turn-interpretation scaffold followed by semantic
-  State/Continuity proposals. RelayLM owns exact IR parsing/type construction plus
-  deterministic State/Continuity authority. single_pass remains compatibility/future
-  optimization rather than a Core 1.0 quality gate.
+  State/Continuity proposals carried by a compact ordinary-message wire grammar.
+  RelayLM owns exact IR parsing/type construction plus deterministic State/Continuity
+  authority. single_pass remains compatibility/future optimization rather than a
+  Core 1.0 quality gate.
 owner_issue: 1533
 canonical_surfaces:
 - docs/contracts/cognition-execution-policy.md

@@ -194,7 +194,7 @@ Interpretation is not State. Pass 2 proposes State only when an adequately groun
 
 The current experiment preserves model-authored candidate `sources` and the existing Event-ID source rules. Deterministic source reconstruction is not introduced as part of this prompt/scaffold change so actual-model regressions remain causally attributable.
 
-Provider-native `response_format`, JSON Schema, grammar or constrained decoding is not required to define or enforce this semantic boundary. The OpenAI-compatible Pass 2 suffix carries a RelayLM-owned JSON Schema description as ordinary prompt content; RelayLM still performs the authoritative parse and exact-shape checks after generation.
+Provider-native `response_format`, JSON Schema, grammar or constrained decoding is not required to define or enforce this semantic boundary. The OpenAI-compatible Pass 2 suffix carries a compact RelayLM-owned field glossary, candidate wire grammar and exact top-level example as ordinary prompt content rather than embedding the full JSON Schema. RelayLM remains authoritative for JSON parsing, exact scaffold/candidate shape checks and type construction after generation.
 
 Malformed JSON, extra/missing keys, invalid interpretation shape, invalid candidate shapes or invalid typed values fail closed in RelayLM and produce no proposal commit.
 
