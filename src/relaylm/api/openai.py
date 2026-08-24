@@ -202,15 +202,15 @@ async def _stream_chat_completion(
     *,
     character: CharacterDirectory,
     provider: CognitiveProvider,
-    cognition_mode: CognitionExecutionMode,
-    cognition_execution_runtime: CognitionExecutionRuntime | None,
-    pass1_request: CognitionPassRequest | None,
-    pass2_request: CognitionPassRequest | None,
     turn_lock: asyncio.Lock,
     content: str,
     completion_id: str,
     created: int,
     model: str,
+    cognition_mode: CognitionExecutionMode = CognitionExecutionMode.SINGLE_PASS,
+    cognition_execution_runtime: CognitionExecutionRuntime | None = None,
+    pass1_request: CognitionPassRequest | None = None,
+    pass2_request: CognitionPassRequest | None = None,
     memory_budget: MemoryRetrievalBudget | None = None,
     event_budget: EventRetrievalBudget | None = None,
     continuity_runtime: ContinuityRuntime | None = None,
@@ -226,7 +226,8 @@ async def _stream_chat_completion(
         try:
             async with turn_lock:
                 if cognition_mode is CognitionExecutionMode.TWO_PASS:
-                    assert cognition_execution_runtime is not None
+                    if not isinstance(cognition_execution_runtime, CognitionExecutionRuntime):
+                        raise TypeError("two_pass requires CognitionExecutionRuntime")
                     result = await run_user_turn_two_pass_streaming(
                         character=character,
                         provider=provider,
