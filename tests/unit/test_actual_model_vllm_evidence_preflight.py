@@ -8,16 +8,11 @@ import pytest
 
 import relaylm.actual_model_host as host_runner
 import relaylm.actual_model_vllm_host as vllm_host
+from relaylm.actual_model_fast_screening import REFERENCE_BASELINE_ROLE
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-CURRENT_PLAN_PATH = (
-    REPO_ROOT
-    / "evaluation"
-    / "actual_model"
-    / "screenings"
-    / "stage-r0-vllm-reference-v1.json"
-)
+CURRENT_PLAN_PATH = REPO_ROOT / vllm_host.CANONICAL_VLLM_SCREENING_PLAN_PATH
 GOOGLE_PROOF_PATH = (
     REPO_ROOT
     / "evaluation"
@@ -123,7 +118,7 @@ def test_screening_preparation_carries_capacity_commit_into_exact_repo_gate(
     ):
         vllm_host.prepare_vllm_screening_condition(
             plan=plan,
-            condition_id="B",
+            condition_id=REFERENCE_BASELINE_ROLE,
             proof_path=GOOGLE_PROOF_PATH,
             repo_root=REPO_ROOT,
             snapshot_root="/tmp/unused",
@@ -152,7 +147,7 @@ def test_screening_facade_can_bind_fresh_external_capacity_without_rewriting_pla
         plan = kwargs["plan"]
         return SimpleNamespace(
             plan=plan,
-            screening_condition_id="B",
+            screening_condition_id=REFERENCE_BASELINE_ROLE,
             manifest=SimpleNamespace(relaylm_commit="a" * 40, replicate_id="0"),
             target=SimpleNamespace(
                 target_id="gemma-4-12b-it-qat-w4a16-google-vllm-v1"
@@ -187,7 +182,7 @@ def test_screening_facade_can_bind_fresh_external_capacity_without_rewriting_pla
             "--operation",
             "screening",
             "--condition",
-            "reference_baseline",
+            REFERENCE_BASELINE_ROLE,
             "--model-runner",
             "v2",
             "--repo-root",
@@ -209,7 +204,7 @@ def test_screening_facade_can_bind_fresh_external_capacity_without_rewriting_pla
 
     assert result == 0
     prepared = observed["prepare"]
-    assert prepared["condition_id"] == "B"
+    assert prepared["condition_id"] == REFERENCE_BASELINE_ROLE
     assert prepared["plan"].capacity_evidence_id == fresh_capacity_id
     assert prepared["capacity_evidence_root"] == str(capacity_root)
     assert canonical_plan.capacity_evidence_id == canonical_capacity_id
