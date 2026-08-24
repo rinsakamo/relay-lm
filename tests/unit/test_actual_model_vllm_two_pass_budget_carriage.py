@@ -11,6 +11,7 @@ import relaylm.actual_model_fast_screening as fast_screening
 import relaylm.actual_model_fast_screening_artifacts as fast_screening_artifacts
 import relaylm.actual_model_vllm_host as vllm_host
 from relaylm.actual_model_cognitive_budget import ExplicitCognitiveBudgetConfiguration
+from relaylm.actual_model_fast_screening import REFERENCE_BASELINE_ROLE
 from relaylm.actual_model_vllm_counter import VLLMServingTokenizerCounter
 from relaylm.budget import (
     BudgetDegradationPolicy,
@@ -118,7 +119,7 @@ def _prepare(
     *,
     plan,
     runtime: TwoPassCognitiveBudgetRuntimeConfig,
-    condition_id: str = "B",
+    condition_id: str = REFERENCE_BASELINE_ROLE,
 ):
     return vllm_host.prepare_vllm_screening_condition(
         plan=plan,
@@ -184,16 +185,19 @@ def test_prepare_vllm_two_pass_rejects_counter_identity_drift(
         _prepare(plan=plan, runtime=bad_runtime)
 
 
-def test_prepare_vllm_two_pass_rejects_single_pass_condition(
+def test_prepare_vllm_two_pass_rejects_historical_single_pass_condition(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    plan, runtime = _prepared_inputs(monkeypatch)
+    _, runtime = _prepared_inputs(monkeypatch)
+    historical = vllm_host.load_vllm_screening_plan(
+        REPO_ROOT / vllm_host.CANONICAL_VLLM_HISTORICAL_SCREENING_PLAN_PATH
+    )
 
     with pytest.raises(
         vllm_host.ActualModelVLLMHostError,
         match="requires a two_pass screening condition",
     ):
-        _prepare(plan=plan, runtime=runtime, condition_id="A")
+        _prepare(plan=historical, runtime=runtime, condition_id="A")
 
 
 def test_prepare_vllm_two_pass_rejects_context_window_drift(

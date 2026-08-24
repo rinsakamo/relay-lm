@@ -73,7 +73,8 @@ from relaylm.providers.vllm_reasoning_capability import (
 )
 
 
-VLLM_SCREENING_PLAN_FORMAT_VERSION = 1
+HISTORICAL_VLLM_SCREENING_PLAN_FORMAT_VERSION = 1
+VLLM_SCREENING_PLAN_FORMAT_VERSION = 2
 VLLM_REASONING_PROBE_PROOF_FORMAT_VERSION = 1
 CANONICAL_VLLM_TARGET_PATH = Path(
     "evaluation/actual_model/targets/"
@@ -83,7 +84,7 @@ CANONICAL_VLLM_HISTORICAL_SCREENING_PLAN_PATH = Path(
     "evaluation/actual_model/screenings/cogp5-vllm-screening-v1.json"
 )
 CANONICAL_VLLM_SCREENING_PLAN_PATH = Path(
-    "evaluation/actual_model/screenings/stage-r0-vllm-reference-v1.json"
+    "evaluation/actual_model/screenings/stage-r0-vllm-reference-v2.json"
 )
 CANONICAL_VLLM_REASONING_PROOF_PATH = Path(
     "evaluation/actual_model/attestations/"
@@ -95,7 +96,11 @@ CANONICAL_SCENARIO_SET_PATH = Path(
 )
 CANONICAL_FIXTURE_PATH = Path("evaluation/actual_model/characters/foundation-v1")
 CANONICAL_STRUCTURED_OUTPUT_SCHEMA_VERSION = "relaylm-cognitive-output-v1"
-VLLM_SCREENING_CONDITION_IDS = ("A", "B", "C")
+HISTORICAL_VLLM_SCREENING_CONDITION_IDS = ("A", "B", "C")
+CURRENT_VLLM_SCREENING_CONDITION_IDS = (
+    "reference_baseline",
+    "pass2_reasoning_escalation",
+)
 VLLM_REASONING_PROOF_SOURCE_ISSUE = 1545
 VLLM_REASONING_PROOF_SOURCE_COMMENT = 5357159619
 VLLM_REASONING_PROOF_SOURCE_COMMENTS = frozenset(
@@ -159,7 +164,11 @@ class VLLMScreeningPlan:
     format_version: int = VLLM_SCREENING_PLAN_FORMAT_VERSION
 
     def __post_init__(self) -> None:
-        if self.format_version != VLLM_SCREENING_PLAN_FORMAT_VERSION:
+        if self.format_version == HISTORICAL_VLLM_SCREENING_PLAN_FORMAT_VERSION:
+            expected_conditions = HISTORICAL_VLLM_SCREENING_CONDITION_IDS
+        elif self.format_version == VLLM_SCREENING_PLAN_FORMAT_VERSION:
+            expected_conditions = CURRENT_VLLM_SCREENING_CONDITION_IDS
+        else:
             raise ActualModelVLLMHostError(
                 f"unsupported vLLM screening plan format_version: {self.format_version}"
             )
@@ -203,10 +212,17 @@ class VLLMScreeningPlan:
             raise ActualModelVLLMHostError(
                 "scenario_ids must contain non-empty strings"
             )
-        if tuple(self.conditions) != VLLM_SCREENING_CONDITION_IDS:
+        if tuple(self.conditions) != expected_conditions:
+            if self.format_version == HISTORICAL_VLLM_SCREENING_PLAN_FORMAT_VERSION:
+                expected_label = "A, B, C"
+            else:
+                expected_label = "reference_baseline, pass2_reasoning_escalation"
             raise ActualModelVLLMHostError(
-                "canonical vLLM screening conditions must be exactly A, B, C in order"
+                "vLLM screening plan format "
+                f"{self.format_version} conditions must be exactly {expected_label} in order"
             )
+        if self.format_version == VLLM_SCREENING_PLAN_FORMAT_VERSION:
+            _validate_current_screening_role_semantics(self.conditions)
         if len(set(self.supported_decoding_controls)) != len(
             self.supported_decoding_controls
         ):
@@ -250,6 +266,68 @@ class VLLMScreeningPlan:
         if self.capacity_evidence_id is not None:
             mapping["capacity_evidence_id"] = self.capacity_evidence_id
         return mapping
+
+
+def _validate_current_screening_role_semantics(
+    conditions: Mapping[str, VLLMScreeningCondition],
+) -> None:
+    reference = conditions["reference_baseline"]
+    reference_requests = reference.pass_requests
+    reference_pass1 = reference_requests.pass1
+    reference_pass2 = reference_requests.pass2
+    if (
+        reference.cognition_execution.mode != "two_pass"
+        or reference_requests.mode != "two_pass"
+        or reference_pass1 is None
+        or reference_pass2 is None
+        or reference_pass1.reasoning_mode is not CognitionReasoningMode.OFF
+        or reference_pass2.reasoning_mode is not CognitionReasoningMode.OFF
+        or reference_pass1.reasoning_budget is not None
+        or reference_pass2.reasoning_budget is not None
+    ):
+        raise ActualModelVLLMHostError(
+            "reference_baseline must be a two-pass OFF/OFF screening condition"
+        )
+
+    escalation = conditions["pass2_reasoning_escalation"]
+    escalation_requests = escalation.pass_requests
+    escalation_pass1 = escalation_requests.pass1
+    escalation_pass2 = escalation_requests.pass2
+    if (
+        escalation.cognition_execution.mode != "two_pass"
+        or escalation_requests.mode != "two_pass"
+        or escalation_pass1 is None
+        or escalation_pass2 is None
+    ):
+        raise ActualModelVLLMHostError(
+            "pass2_reasoning_escalation must be a two-pass screening condition"
+        )
+    if escalation_pass1 != reference_pass1:
+        raise ActualModelVLLMHostError(
+            "pass2_reasoning_escalation must preserve reference_baseline Pass 1"
+        )
+    if (
+        escalation_pass2.reasoning_mode is None
+        or escalation_pass2.reasoning_mode is CognitionReasoningMode.OFF
+    ):
+        raise ActualModelVLLMHostError(
+            "pass2_reasoning_escalation must use non-OFF Pass 2 reasoning"
+        )
+    reference_non_reasoning = (
+        reference_pass2.temperature,
+        reference_pass2.top_p,
+        reference_pass2.max_output_tokens,
+    )
+    escalation_non_reasoning = (
+        escalation_pass2.temperature,
+        escalation_pass2.top_p,
+        escalation_pass2.max_output_tokens,
+    )
+    if escalation_non_reasoning != reference_non_reasoning:
+        raise ActualModelVLLMHostError(
+            "pass2_reasoning_escalation must preserve reference_baseline Pass 2 "
+            "decoding/output controls"
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -379,10 +457,6 @@ def load_vllm_screening_plan(path: str | Path) -> VLLMScreeningPlan:
         "continuity_runtime",
     )
     conditions_raw = _mapping(mapping["conditions"], "conditions")
-    if tuple(conditions_raw) != VLLM_SCREENING_CONDITION_IDS:
-        raise ActualModelVLLMHostError(
-            "canonical vLLM screening conditions must be exactly A, B, C in order"
-        )
     execution_path = _string(mapping["execution_path"], "execution_path")
     conditions: dict[str, VLLMScreeningCondition] = {}
     for key, value in conditions_raw.items():
