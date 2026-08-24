@@ -86,8 +86,8 @@ runtime:
       initial_plan:
         canonical_state: {max_items: 32, floor_items: 8}
         working_context: {max_items: 16, floor_items: 2, max_chars: 12000, floor_chars: 1000}
-        retrieved_memory: {max_items: 8, floor_items: 0, max_chars: 1600, floor_chars: 0}
-        event_evidence: {max_items: 8, floor_items: 0, max_chars: 1600, floor_chars: 0}
+        retrieved_memory: {max_items: 8, floor_items: 0, max_chars: 8000, floor_chars: 0}
+        event_evidence: {max_items: 8, floor_items: 0, max_chars: 8000, floor_chars: 0}
       steps: []
     token_counter:
       capability: implementation-id
