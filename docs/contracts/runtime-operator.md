@@ -29,15 +29,18 @@ Current named CLI overrides remain bounded:
 --host HOST
 --port PORT
 --profile NAME
+--cognition-mode MODE
 ```
 
-There is no generic `--set`. Complex cognition pass controls, Retrieval, Continuity, and Cognitive Budget objects are runtime-file inputs in format version 1.
+There is no generic `--set`. Complex Pass 1/Pass 2 controls, Retrieval, Continuity, and Cognitive Budget objects are runtime-file inputs in format version 1.
 
 Existing named leaves preserve:
 
 ```text
 CLI > environment > runtime file > canonical default
 ```
+
+`--cognition-mode` selects only the existing #1533 execution-mode vocabulary and is paired with `RELAYLM_COGNITION_MODE` and `runtime.cognition.mode`. Omission resolves to the canonical `two_pass` topology default; `auto` and `shadow_two_pass` still fail ordinary serving admission later rather than being silently reinterpreted.
 
 `--profile` is reserved but every non-empty profile currently fails closed because #1388 has not published calibrated profile authority.
 
@@ -68,7 +71,7 @@ memory/event/continuity/cognitive-budget enabled flags
 
 Non-printable characters are escaped before line-oriented output. Secret material and Character semantic payload are never printed.
 
-`doctor --json` includes the content-free `effective_config` view, including `runtime.cognition.mode` and its provenance.
+`doctor --json` includes the content-free `effective_config` view, including `runtime.cognition.mode` and whether it came from CLI, environment, runtime file, or the canonical default.
 
 ## `serve`
 
@@ -132,12 +135,11 @@ The operator layer does not own:
 
 ## Remaining release-runtime work
 
-After ordinary two-pass serving and non-reasoning LM Studio assembly are wired, the remaining repository-side operator work is bounded:
+After ordinary two-pass serving, non-reasoning LM Studio assembly, and named cognition-mode selection are wired, the remaining repository-side operator work is bounded:
 
-1. add only named operator cognition overrides that are justified beyond the version-1 file contract;
-2. consume #1388 calibrated two-pass profiles/defaults once that authority exists;
-3. consume exact LM Studio reasoning capability only after #1545 proves and implements that provider wire;
-4. re-run installed release-candidate smoke when an authorized candidate exists.
+1. consume #1388 calibrated two-pass profiles/defaults once that authority exists;
+2. consume exact LM Studio reasoning capability only after #1545 proves and implements that provider wire;
+3. re-run installed release-candidate smoke when an authorized candidate exists.
 
 Actual-model Stage R qualification is deliberately outside this operator transaction.
 
