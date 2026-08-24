@@ -1,6 +1,6 @@
 {
   "format_version": 2,
-  "screening_id": "stage-r0-vllm-headroom-measurement-v1",
+  "screening_id": "stage-r0-vllm-functional-acceptance-v1",
   "target_id": "gemma-4-12b-it-qat-w4a16-google-vllm-v1",
   "effective_context_window": 4096,
   "decoding": {

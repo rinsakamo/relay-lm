@@ -11,43 +11,43 @@ from relaylm.actual_model_vllm_host import (
 
 
 _ROOT = Path(__file__).parents[2]
-_MEASUREMENT_PLAN = Path(
-    "evaluation/actual_model/screenings/stage-r0-vllm-headroom-measurement-v1.json"
+_FUNCTIONAL_PLAN = Path(
+    "evaluation/actual_model/screenings/stage-r0-vllm-functional-acceptance-v1.json"
 )
 _REFERENCE_BASELINE = "reference_baseline"
 
 
-def test_headroom_measurement_plan_preserves_reference_semantics_with_roomy_window() -> None:
+def test_functional_acceptance_plan_preserves_reference_semantics_with_roomy_window() -> None:
     canonical = load_vllm_screening_plan(_ROOT / CANONICAL_VLLM_SCREENING_PLAN_PATH)
-    measurement = load_vllm_screening_plan(_ROOT / _MEASUREMENT_PLAN)
+    functional = load_vllm_screening_plan(_ROOT / _FUNCTIONAL_PLAN)
 
     assert canonical.screening_id == "stage-r0-vllm-reference-v2"
     assert canonical.effective_context_window == 1616
     assert canonical.capacity_evidence_id is not None
 
-    assert measurement.screening_id == "stage-r0-vllm-headroom-measurement-v1"
-    assert measurement.effective_context_window == 4096
-    assert measurement.capacity_evidence_id is None
-    assert measurement.target_id == canonical.target_id
-    assert measurement.decoding_config == canonical.decoding_config
-    assert measurement.decoding_capabilities == canonical.decoding_capabilities
-    assert measurement.execution_path == canonical.execution_path
-    assert measurement.continuity_runtime == canonical.continuity_runtime
-    assert measurement.scenario_ids == canonical.scenario_ids
-    assert tuple(measurement.conditions) == tuple(canonical.conditions)
+    assert functional.screening_id == "stage-r0-vllm-functional-acceptance-v1"
+    assert functional.effective_context_window == 4096
+    assert functional.capacity_evidence_id is None
+    assert functional.target_id == canonical.target_id
+    assert functional.decoding_config == canonical.decoding_config
+    assert functional.decoding_capabilities == canonical.decoding_capabilities
+    assert functional.execution_path == canonical.execution_path
+    assert functional.continuity_runtime == canonical.continuity_runtime
+    assert functional.scenario_ids == canonical.scenario_ids
+    assert tuple(functional.conditions) == tuple(canonical.conditions)
     assert {
-        key: value.to_mapping() for key, value in measurement.conditions.items()
+        key: value.to_mapping() for key, value in functional.conditions.items()
     } == {
         key: value.to_mapping() for key, value in canonical.conditions.items()
     }
 
 
-def test_shared_host_can_select_repository_owned_measurement_plan(
+def test_shared_host_can_select_repository_owned_functional_acceptance_plan(
     tmp_path: Path,
     monkeypatch,
     capsys,
 ) -> None:
-    plan = SimpleNamespace(screening_id="stage-r0-vllm-headroom-measurement-v1")
+    plan = SimpleNamespace(screening_id="stage-r0-vllm-functional-acceptance-v1")
     prepared = SimpleNamespace(
         plan=plan,
         screening_condition_id=_REFERENCE_BASELINE,
@@ -59,8 +59,8 @@ def test_shared_host_can_select_repository_owned_measurement_plan(
     )
     artifact = SimpleNamespace(
         to_mapping=lambda: {
-            "evidence_id": "amcap-measurement",
-            "artifact_path": "/tmp/amcap-measurement.json",
+            "evidence_id": "amcap-functional",
+            "artifact_path": "/tmp/amcap-functional.json",
             "footprint_count": 12,
             "maximum_observed_input_tokens": 1540,
             "complete": True,
@@ -100,7 +100,7 @@ def test_shared_host_can_select_repository_owned_measurement_plan(
             "--condition",
             _REFERENCE_BASELINE,
             "--screening-plan",
-            str(_MEASUREMENT_PLAN),
+            str(_FUNCTIONAL_PLAN),
             "--model-runner",
             "v2",
             "--repo-root",
@@ -117,8 +117,8 @@ def test_shared_host_can_select_repository_owned_measurement_plan(
     )
 
     assert result == 0
-    assert observed["plan_path"] == tmp_path / _MEASUREMENT_PLAN
+    assert observed["plan_path"] == tmp_path / _FUNCTIONAL_PLAN
     assert observed["prepare"]["plan"] is plan
     output = capsys.readouterr().out
-    assert '"suite": "stage-r0-vllm-headroom-measurement-v1"' in output
+    assert '"suite": "stage-r0-vllm-functional-acceptance-v1"' in output
     assert '"observed_max_model_len": 4096' in output
