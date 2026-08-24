@@ -1,6 +1,6 @@
 schema_version: 1
 id: runtime_configuration
-summary: Release runtime configuration, two-pass-first cognition carriage, provider-backend selection, assembly, preflight, and operator semantics.
+summary: Release runtime configuration, two-pass-first cognition carriage, named cognition-mode precedence, provider-backend selection, assembly, preflight, and operator semantics.
 owner_issue: 1446
 canonical_surfaces:
 - docs/contracts/runtime-configuration.md
@@ -22,6 +22,7 @@ tests:
 - tests/unit/test_runtime_provider_backend_selection.py
 - tests/unit/test_runtime_lm_studio_backend.py
 - tests/unit/test_runtime_provider_base_endpoint_admission.py
+- tests/unit/test_runtime_cognition_mode_override.py
 - tests/unit/test_runtime_cli.py
 depends_on:
 - cognitive_budget
