@@ -1,182 +1,150 @@
 # Release Runtime Assembly Contract
 
-Status: RCFG3 implementation contract plus provider-backend selection fail-closed follow-up for RelayLM v1. Owning Issue: #1446.
+Status: current RelayLM v1 release assembly contract. Owning Issue: #1446.
 
-Runtime assembly consumes the validated, non-secret runtime configuration result and constructs only current owner-defined runtime objects. It does not choose cognitive semantics, calibrated numbers, provider wire behavior, backend capability meaning, or Character authority.
+Runtime assembly turns one validated `ResolvedRuntimeConfig` into the owner-defined objects used by the ordinary installed API path. It does not choose Character meaning, provider wire semantics, or #1388 calibrated numbers.
 
-## 1. Input and output boundary
-
-Input:
+## Input and output
 
 ```text
 ResolvedRuntimeConfig
   RuntimeConfig
   RuntimeSecretInputs
-  source provenance
-```
-
-Output:
-
-```text
+        |
+        v
 RuntimeAssembly
   CharacterDirectory
-  OpenAICompatibleProvider
+  provider
+  cognition_mode
+  CognitionExecutionRuntime | None
+  Pass 1 CognitionPassRequest | None
+  Pass 2 CognitionPassRequest | None
   MemoryRetrievalBudget | None
   EventRetrievalBudget | None
   ContinuityRuntime | None
   CognitiveBudgetRuntimeConfig | None
 ```
 
-Canonical implementation surface: `src/relaylm/runtime_assembly.py`.
+`RuntimeAssembly.app_kwargs()` exposes exactly the values accepted by `server.create_app`; it does not reinterpret them.
 
-`RuntimeAssembly.app_kwargs()` exposes the exact owner objects accepted by `server.create_app`; it performs no semantic transformation.
+## Cognition topology
 
-## 2. Character and provider assembly
+Assembly follows #1533 rather than selecting topology itself.
 
-`character.directory` becomes a `CharacterDirectory` root. Assembly does not read SOUL, State, Event, MEMORY, or other Character semantic payload while assembling the object. Character readability/semantic validation belongs to startup preflight/doctor.
+### `two_pass`
 
-Provider selection has two distinct identities:
+The Core 1.0 release/reference path constructs:
+
+```text
+OpenAICompatibleTwoPassProvider
++ one process-local CognitionExecutionRuntime
++ independently resolved Pass 1 / Pass 2 requests
+```
+
+The same loaded provider/model is reused sequentially. No second simultaneously resident online model is introduced.
+
+The OpenAI-compatible API then dispatches buffered and streaming turns to the existing response-first two-pass Turn owner. Pass 1 may complete visibly while Pass 2 continues under the existing stale-result, failure, and pending-extraction lifecycle.
+
+### `single_pass`
+
+Explicit `single_pass` constructs the existing `OpenAICompatibleProvider` and preserves the historical `run_user_turn` / `run_user_turn_streaming` compatibility path.
+
+### `auto` and `shadow_two_pass`
+
+`auto` is unresolved profile policy until #1388 publishes calibrated authority. `shadow_two_pass` is evidence-only. Ordinary release assembly rejects both rather than guessing a serving topology.
+
+## Pass controls
+
+Assembly carries already-resolved `CognitionPassRequest` values unchanged. Empty requests mean the controls are omitted; assembly does not invent reasoning, temperature, top-p, output-token, or budget defaults.
+
+Capability truth and exact backend serialization remain provider-owned. Requested values are not evidence that values were applied.
+
+## Provider/backend boundary
+
+Runtime configuration carries:
 
 ```text
 provider.adapter = openai_compatible
 provider.backend = generic | vllm | lm_studio
 ```
 
-The adapter identifies the API protocol family. The backend identifies the implementation/dialect selected from provider-owned `OpenAICompatibleBackendId` authority.
+Current specialized capability:
 
-Current assembly capability is intentionally narrower than the selection vocabulary:
+- `generic` — ordinary OpenAI-compatible transport without claiming a backend-specific dialect;
+- `vllm` — assembly-capable only with the explicit provider-owned reasoning capability attestation required by the current vLLM realizer;
+- `lm_studio` — still fails `capability_unavailable` in this contract until the separate LM Studio runtime-assembly transaction connects the existing provider capability surface.
 
-```text
-backend = generic
-  -> existing OpenAICompatibleProvider(base_url, model, api_key)
+A backend-specific selection never silently falls through to `generic`.
 
-backend = vllm
-  -> requires an explicit provider-owned VLLMReasoningCapabilityAttestation
-     bound to the configured request model and frozen actual-model target
-  -> OpenAICompatibleProvider with the backend-specific vLLM realizer enabled
+Raw API-key material comes only from `RuntimeSecretInputs` and is not copied into effective diagnostics or assembly representation.
 
-backend = lm_studio
-  -> capability_unavailable at provider.backend
-  -> fail before provider construction/generation
-```
+## Retrieval and Continuity
 
-The `generic` backend preserves the historical unspecialized OpenAI-compatible path. A selected backend-specific ID must never silently fall through to `generic`; doing so would falsely report a backend-specific selection without applying its dialect. vLLM assembly fails closed when the explicit attestation is absent, malformed, or bound to a different configured request model.
+Explicit retrieval and Continuity settings map directly to their existing owner types. Assembly does not rank content, reinterpret MEMORY/Event evidence, or change Continuity acceptance/lifecycle semantics.
 
-Runtime assembly consumes the provider-owned capability; it does not discover the backend, invent wire mappings, or choose a reasoning mode/budget.
+A configured `ContinuityRuntime` is a fresh process-local holder initialized from explicit capacity/lifetime inputs only.
 
-Raw API-key material comes only from `RuntimeSecretInputs`; it is not copied into `RuntimeConfig`, effective-config diagnostics, or `RuntimeAssembly` representation.
+## Cognitive Budget boundary
 
-Provider wire/schema/decoding/reasoning semantics remain owned by the provider lane.
+The existing `runtime.cognitive_budget` maps to the existing #1387 single-pass `CognitiveBudgetRuntimeConfig` through an explicit serialized-input token-counter capability.
 
-## 3. Retrieval controls
+Assembly does not provide a tokenizer heuristic or numeric default. Missing, incompatible, or failed counter capabilities are `capability_unavailable`.
 
-Explicit file controls map one-to-one into existing Turn owner types:
+Until #1388 publishes per-pass budget authority:
 
 ```text
-runtime.memory_retrieval
-  -> MemoryRetrievalBudget(max_chunks, max_chars)
-
-runtime.event_retrieval
-  -> EventRetrievalBudget(max_events, max_chars)
+two_pass + runtime.cognitive_budget -> invalid_combination
 ```
 
-Assembly does not rank, retrieve, filter, score, or reinterpret MEMORY/Event content.
+Assembly does not guess that one single-pass total should be copied into both passes.
 
-## 4. Continuity runtime
-
-Explicit Continuity settings map to:
-
-```text
-ContinuityContext(max_items=configured max_items)
-  revision = 0
-  items = ()
-
-ContinuityRuntime(
-  context=<fresh process-local context>,
-  lifetime_revisions=configured lifetime_revisions,
-)
-```
-
-This is process-local runtime initialization only. It does not redefine candidate acceptance, expiry, resolution, persistence, or lifecycle semantics owned by #1371.
-
-No Continuity capacity/lifetime default is created here.
-
-## 5. Cognitive Budget and token-counter capabilities
-
-An explicit `runtime.cognitive_budget` maps directly to existing #1387 owner types:
-
-```text
-ExplicitCognitiveBudgetConfig
-  total  ---------------------> CognitiveBudgetRuntimeConfig.total
-  policy ---------------------> CognitiveBudgetRuntimeConfig.policy
-  token_counter capability ---> registered SerializedCognitiveInputTokenCounter
-```
-
-Assembly introduces no context-window, reserve, envelope, floor, degradation-step, or profile numeric default.
-
-A configured token counter is resolved only through an explicit capability registry. A registry entry records:
-
-- capability identifier;
-- declared existing `TokenCountMode` (`exact` or `conservative_estimate`);
-- factory receiving non-secret `ProviderRuntimeConfig` and returning the existing `SerializedCognitiveInputTokenCounter` protocol.
-
-Assembly fails with `capability_unavailable` when:
-
-- the configured capability is not registered;
-- the configured mode differs from the registered capability mode;
-- the capability factory fails;
-- the factory returns an object that does not implement the existing serialized-input counter protocol.
-
-Factory-internal exceptions are not copied into release-facing assembly error text.
-
-Assembly does not provide a generic tokenizer heuristic. Concrete provider/model token-counter registrations remain explicit release/operator capabilities.
-
-## 6. Invalid overlap
-
-Current Turn semantics reject simultaneous direct MEMORY/Event budgets and `CognitiveBudgetRuntimeConfig`, because Cognitive Budget already assigns retrieval envelopes.
-
-Assembly therefore fails the same invalid combination before serving or generation:
+For explicit `single_pass`, the existing direct-retrieval overlap rule remains:
 
 ```text
 cognitive_budget + memory_retrieval -> invalid_combination
 cognitive_budget + event_retrieval  -> invalid_combination
 ```
 
-This is fail-fast carriage of an existing Turn owner invariant, not a new budget semantic rule.
+## Ordinary API wiring
 
-## 7. Ordinary API wiring
+The supported installed path is:
 
-`server.create_app` and `api.openai.create_openai_router` accept the assembled optional controls and pass them unchanged into ordinary Turn functions.
+```text
+runtime config
+  -> resolve
+  -> preflight
+  -> assemble_runtime
+  -> server.create_app(**assembly.app_kwargs())
+  -> /v1/chat/completions
+       buffered | streaming
+       -> selected cognition topology
+```
 
-The same configured MEMORY/Event/Continuity/Cognitive Budget objects are passed through both buffered and streaming paths. Assembly does not choose provider backend semantics based on semantic payload.
+For the default Core 1.0 product path, the selected topology is `two_pass`.
 
-## 8. Error boundary
+Direct Python callers of `create_app` may still explicitly/use its compatibility single-pass default; that helper compatibility does not redefine the installed `relaylm serve` product path.
 
-Assembly uses the existing release-facing taxonomy, including:
+## Error boundary
 
-- `invalid_combination` for overlapping owner controls;
-- `capability_unavailable` for an explicitly selected backend dialect whose runtime realizer is unavailable;
-- `capability_unavailable` for unavailable/incompatible token-count capability;
-- `provider_invalid` when validated generic provider configuration cannot construct the current adapter.
+Assembly uses the existing release-facing error taxonomy. Typical failures include:
 
-Errors remain configuration/capability metadata only and must not include API-key values or Character semantic payload.
+- `invalid_combination` — unresolved/evidence-only cognition mode or owner-control overlap;
+- `capability_unavailable` — unavailable selected backend realizer or token-count capability;
+- `provider_invalid` — configured provider cannot be constructed safely.
 
-## 9. Preserved invariants
+Messages contain configuration/capability metadata only, not Character semantic content or secrets.
+
+## Invariants
 
 Assembly preserves:
 
-- adapter/protocol identity separate from backend implementation identity;
-- no backend-specific selection silently falls back to generic behavior;
-- backend-specific unavailability fails before generation;
-- buffered/streaming semantic-control equivalence;
-- Retrieval semantic ownership;
-- Continuity lifecycle ownership;
-- #1387 deterministic degradation and fail-before-generation behavior;
-- Character semantic authority separation;
-- secret separation from portable Character data and generic diagnostics.
+- #1533 cognition ownership;
+- #1388 numeric/profile ownership;
+- provider capability/wire ownership;
+- no backend-specific silent generic fallback;
+- buffered/streaming two-pass policy equivalence;
+- response-first Pass 2 failure semantics;
+- Retrieval/Continuity/State authority;
+- secret separation.
 
-## 10. Remaining dependency
-
-Backend-specific runtime assembly depends on provider-owned backend realizers. The vLLM path now requires the explicit #1545 attestation and realizer; other backend-specific dialects remain unavailable until their own provider-owned capability and wire contracts exist.
-
-This contract does not add vLLM reasoning wire, LM Studio reasoning wire, automatic backend detection, calibrated cognition defaults, or GUI behavior.
+> Assembly connects owners. It does not become a new policy engine.
