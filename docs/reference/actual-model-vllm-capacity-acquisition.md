@@ -6,24 +6,24 @@ Capacity acquisition is separate from product-quality qualification and #1388 ca
 
 ## Current Core 1.0 condition policy
 
-The historical frozen plan may contain conditions A/B/C. Current Core 1.0 authority uses:
+The immutable historical format-v1 plan may contain conditions A/B/C. The current format-v2 plan instead uses semantic keys directly:
 
 ```text
-B
+reference_baseline
   two_pass reference baseline
   Pass 1 off / Pass 2 off
 
-C
+pass2_reasoning_escalation
   two_pass Pass 2 escalation
-  only when #1386 shows B has sufficient Pass 1 quality
+  only when #1386 shows reference_baseline has sufficient Pass 1 quality
   but insufficient Pass 2 semantic quality
-
-A
-  historical / optional later single-pass optimization
-  not a current capacity prerequisite merely because it exists
 ```
 
+Historical A remains historical / optional later single-pass optimization evidence and is not a current capacity prerequisite merely because an old plan contains it.
+
 Capacity acquisition operates on one explicitly selected condition at a time. It does not decide which condition is authorized; current #1386 screening authority does.
+
+Plan key and citable condition identity are deliberately distinct. Current semantic plan keys may change from historical coordinates while an already-measured condition keeps its immutable `condition_id`. Capacity artifacts bind that condition ID plus the exact topology/pass/scenario/pass-request/runtime identity, not the spelling of the plan dictionary key.
 
 ## Responsibility
 
@@ -121,15 +121,17 @@ Preparation binds current facts directly, including as applicable:
 9. canonical provider construction;
 10. matching run manifest/binding identity.
 
-The historical plan's diagnostic context-window values do not become current acquisition authority.
+Historical-plan diagnostic context-window values do not become current acquisition authority.
 
 ## Current selected-condition requirements
 
 Core 1.0 capacity work should acquire only evidence needed for the currently authorized two-pass condition.
 
-- For B: acquire complete B Pass 1 and B Pass 2 coverage over the selected reference scenarios/turns.
-- For C: acquire complete C Pass 1 and C Pass 2 coverage only after current #1386 authority justifies Pass 2 escalation.
-- Do not acquire A as a prerequisite to B/C. A is measured later only if an explicit single-pass optimization comparison is authorized.
+- For `reference_baseline`: require complete Pass 1 and Pass 2 coverage over the selected reference scenarios/turns.
+- For `pass2_reasoning_escalation`: acquire complete Pass 1 and Pass 2 coverage only after current #1386 authority justifies Pass 2 escalation.
+- Do not acquire a historical single-pass A condition as a prerequisite. It is measured later only if an explicit single-pass optimization comparison is authorized.
+
+The current Stage R0 `reference_baseline` retains the immutable condition ID `stage-r0-vllm-b-two-pass-off-off`; therefore the already-complete capacity artifact for that exact trajectory remains reusable after the plan-key migration. No remeasurement follows merely from renaming the plan key.
 
 The technical host may retain ability to replay historical condition IDs. Technical availability does not determine current evaluation order.
 
@@ -151,9 +153,9 @@ A generic provider failure is not automatically classified as input-context over
 
 The shared host facade exposes vLLM product screening and capacity acquisition as distinct operations.
 
-A capacity invocation accepts one explicitly selected condition; there is no `all` mode or Cartesian parameter search.
+A capacity invocation accepts one explicitly selected semantic role; there is no `all` mode or Cartesian parameter search.
 
-For Core 1.0 current authority, the planner should select B first and C only if justified. A may remain technically replayable but is not automatically executed.
+For Core 1.0 current authority, the planner selects `reference_baseline` first and `pass2_reasoning_escalation` only if justified. Historical A may remain replayable through historical evidence but is not a current-plan role.
 
 A capacity receipt identifies operation/condition/RelayLM commit/target/replicate/live capacity and the resulting capacity-evidence receipt without emitting semantic payload or a product-quality score.
 
@@ -172,6 +174,8 @@ Capacity completion only establishes input-demand evidence for the selected traj
 - output headroom sufficiency;
 - release defaults.
 
+The current Stage R0 effective context window remains a pilot evidence input for that exact trajectory. It is not a #1388-calibrated release/default value.
+
 After complete selected-condition capacity evidence exists, #1386 may execute the matching quality condition when current screening authority allows it. #1388 later interprets qualified quality + capacity evidence.
 
 ## Relationship to reasoning
@@ -180,7 +184,7 @@ Do not repeat reasoning parameter exploration merely because capacity acquisitio
 
 The selected request must already be valid under current provider/model capability authority.
 
-C is not acquired/run until Pass 2 escalation is justified by B quality evidence. Larger bounded budgets or effort labels are not added unless a separate current evidence question requires them.
+`pass2_reasoning_escalation` is not acquired/run until Pass 2 escalation is justified by `reference_baseline` quality evidence. Larger bounded budgets or effort labels are not added unless a separate current evidence question requires them.
 
 ## Immutability / provenance
 
@@ -195,8 +199,8 @@ This producer does not:
 - select a numeric context window, output reserve, profile or default;
 - modify #1387 degradation semantics;
 - choose single-pass versus two-pass;
-- authorize C without #1386 semantic need;
-- add A merely for topology symmetry;
+- authorize `pass2_reasoning_escalation` without #1386 semantic need;
+- add historical A merely for topology symmetry;
 - repeat backend reasoning experiments;
 - tune prompts/fixtures/model output;
 - persist product-quality review as capacity evidence;
