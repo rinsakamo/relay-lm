@@ -28,7 +28,7 @@ def _write_config(
         cognition_lines.extend(
             [
                 "    pass1:",
-                f"      reasoning_mode: {pass1_reasoning_mode}",
+                f'      reasoning_mode: "{pass1_reasoning_mode}"',
             ]
         )
     runtime = ""
