@@ -27,6 +27,8 @@ def _cognitive_input() -> CognitiveInput:
     return CognitiveInput(
         identity=Identity("# ReLM\nBe kind."),
         state_classes=STATE_CLASS_DEFINITIONS,
+        state=(),
+        context=(),
         input=Event.create(
             type="message",
             actor="user",
