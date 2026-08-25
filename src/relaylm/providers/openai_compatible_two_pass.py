@@ -67,6 +67,9 @@ TURN_INTERPRETATION_FIELDS = (
     "continuity_signals",
 )
 
+_EXTRACTION_JSON_FENCE_PREFIX = "```json\n"
+_EXTRACTION_JSON_FENCE_SUFFIX = "\n```"
+
 
 class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
     """Two-pass capability extension of the canonical OpenAI-compatible adapter."""
@@ -97,7 +100,8 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                 decoding=decoding_config.to_mapping(),
                 reasoning_request=effective_reasoning,
                 vllm_reasoning_capability=effective_capability,
-            )
+            ),
+            boundary="conversation",
         )
         return _parse_conversation_completion(envelope)
 
@@ -209,7 +213,8 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                 decoding=decoding_config.to_mapping(),
                 reasoning_request=effective_reasoning,
                 vllm_reasoning_capability=effective_capability,
-            )
+            ),
+            boundary="extraction",
         )
         output = _parse_extraction_completion(envelope)
         _require_candidate_sources_in_cognitive_input(
@@ -218,7 +223,13 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
         )
         return output
 
-    async def _post_two_pass(self, *, body: dict[str, Any]) -> Any:
+    async def _post_two_pass(
+        self,
+        *,
+        body: dict[str, Any],
+        boundary: str,
+    ) -> Any:
+        prefix = f"upstream {boundary} request failed"
         try:
             response = await self._client.post(
                 f"{self.base_url}/chat/completions",
@@ -228,14 +239,14 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
             if not response.is_success:
                 raise _provider_http_error(
                     response,
-                    prefix="upstream request failed",
+                    prefix=prefix,
                     api_key=self.api_key,
                 )
             return _load_provider_response_json(response)
         except ProviderProtocolError:
             raise
         except (httpx.HTTPError, ValueError) as exc:
-            raise ProviderProtocolError(f"upstream request failed: {exc}") from exc
+            raise ProviderProtocolError(f"{prefix}: {exc}") from exc
 
 
 def _common_cognitive_prefix(cognitive_input: CognitiveInput) -> str:
@@ -355,10 +366,22 @@ def _parse_conversation_completion(envelope: Any) -> CognitionConversationOutput
     return CognitionConversationOutput(response=content, completion=completion)
 
 
+def _normalize_extraction_json_content(content: str) -> str:
+    """Remove only the exact fenced-JSON presentation wrapper observed in Stage R."""
+
+    if content.startswith(_EXTRACTION_JSON_FENCE_PREFIX) and content.endswith(
+        _EXTRACTION_JSON_FENCE_SUFFIX
+    ):
+        return content[
+            len(_EXTRACTION_JSON_FENCE_PREFIX) : -len(_EXTRACTION_JSON_FENCE_SUFFIX)
+        ]
+    return content
+
+
 def _parse_extraction_completion(envelope: Any) -> CognitionExtractionOutput:
     content, completion = _completion_content_and_metadata(envelope)
     wire = _load_cognitive_wire_json(
-        content,
+        _normalize_extraction_json_content(content),
         invalid_message="provider extraction content is not valid JSON",
     )
     if not isinstance(wire, dict) or set(wire) != {
