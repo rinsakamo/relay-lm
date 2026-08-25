@@ -1,5 +1,7 @@
 # RelayLM 1.0
 
+**English** | [日本語](README.ja.md)
+
 RelayLM 1.0 is a greenfield persistent-character runtime. Architecturally, it acts as a model-agnostic **Cognitive Proxy Runtime** around a replaceable language model.
 
 > **Identity + Now + LM**
