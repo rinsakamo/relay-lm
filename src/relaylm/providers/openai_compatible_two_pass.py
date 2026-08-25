@@ -346,6 +346,9 @@ Interpret this originating turn as this character. Build one JSON object in this
 5. `unresolved`: string[] — meaning not justified yet because evidence is ambiguous or incomplete.
 6. `continuity_signals`: string[] — bounded meaning useful across upcoming turns.
 Empty arrays are valid. Then emit `state_candidates`, then `continuity_candidates`.
+Interpretation arrays contain text strings only; never put State/Continuity wire objects in `turn_interpretation`.
+`continuity_signals` contains only bounded meaning strings; structured Continuity records belong only in top-level `continuity_candidates`.
+Structured State records belong only in top-level `state_candidates`.
 
 Projection rules:
 - Interpretation is not authority or State. Propose State only for grounded, sufficiently resolved, meaningful durable change; preserve existing class/key vocabulary.
