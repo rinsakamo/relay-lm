@@ -1,6 +1,6 @@
 schema_version: 1
 id: provider_and_api
-summary: OpenAI-compatible provider protocol, backend identity/dialects, RelayLM-owned plain combined cognition IR transport and fail-closed parsing, decoding, reasoning control, cognition pass request carriage, exact serialized-input counting including two-pass carriage, bounded upstream HTTP error observability that excludes any configured provider API-key echo from JSON or text error detail, backend capability attestation, identity, and public API boundary.
+summary: OpenAI-compatible provider protocol, backend identity/dialects, RelayLM-owned plain combined cognition IR transport and fail-closed parsing, decoding, reasoning control, cognition pass request carriage, exact serialized-input counting including two-pass carriage, bounded upstream HTTP error observability that excludes any configured provider API-key echo from JSON or text error detail, exact Pass-2 extraction-content normalization of one complete lowercase json Markdown fence before unchanged strict JSON/shape/source validation, backend capability attestation, identity, and public API boundary.
 canonical_surfaces:
 - docs/contracts/provider-wire.md
 - docs/contracts/provider-decoding.md
@@ -9,6 +9,7 @@ canonical_surfaces:
 - docs/contracts/openai-api.md
 implementation:
 - src/relaylm/providers/openai_compatible.py
+- src/relaylm/providers/openai_compatible_two_pass.py
 - src/relaylm/providers/openai_compatible_backend.py
 - src/relaylm/providers/vllm_backend.py
 - src/relaylm/providers/vllm_reasoning.py
@@ -43,6 +44,7 @@ tests:
 - tests/unit/test_openai_compatible_decoding.py
 - tests/unit/test_openai_compatible_reasoning.py
 - tests/unit/test_openai_compatible_error_observability.py
+- tests/unit/test_openai_compatible_two_pass_fenced_json.py
 - tests/unit/test_lm_studio_reasoning_capabilities.py
 - tests/unit/test_openai_compatible_identity.py
 - tests/unit/test_openai_compatible_cognition_capabilities.py
