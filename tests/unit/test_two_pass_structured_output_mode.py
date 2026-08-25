@@ -6,6 +6,7 @@ import json
 import httpx
 import pytest
 
+from relaylm.actual_model_evaluation import ActualModelCognitionPassRequests
 from relaylm.cognitive import CognitiveInput
 from relaylm.cognition_execution import (
     CognitionExtractionInput,
@@ -189,3 +190,15 @@ def test_runtime_config_rejects_unknown_pass2_structured_output_mode() -> None:
 
     assert caught.value.code is RuntimeConfigErrorCode.INVALID_VALUE
     assert caught.value.field == "runtime.cognition.pass2.structured_output_mode"
+
+
+def test_actual_model_pass_request_identity_records_structured_output_mode() -> None:
+    mapping = ActualModelCognitionPassRequests.two_pass(
+        pass1=CognitionPassRequest(),
+        pass2=CognitionPassRequest(
+            structured_output_mode=CognitionStructuredOutputMode.NATIVE
+        ),
+    ).to_mapping()
+
+    assert mapping["pass1"]["structured_output_mode"] is None
+    assert mapping["pass2"]["structured_output_mode"] == "native"
