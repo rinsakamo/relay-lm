@@ -4,7 +4,7 @@
 
 > このファイルは利用者向けの日本語訳です。RelayLM `v1` の正本となる製品説明は [`README.md`](README.md) およびリンク先の current-authority docs です。内容に差異がある場合は、それらの英語正本を優先します。
 
-RelayLM 1.0 は、ゼロから設計された永続キャラクター・ランタイムです。アーキテクチャとしては、交換可能な言語モデルの外側に置かれる、モデル非依存の **Cognitive Proxy Runtime（認知プロキシ・ランタイム）** として動作します。
+RelayLM 1.0 は、ゼロから設計された永続キャラクター・ランタイムです。アーキテクチャとしては、交換可能な言語モデルの外側に置かれる、モデル非依存の **[Cognitive Proxy Runtime（認知プロキシ・ランタイム）](docs/architecture/core.md)** として動作します。
 
 > **Identity + Now + LM**
 
@@ -12,7 +12,7 @@ RelayLM 1.0 は、ゼロから設計された永続キャラクター・ラン�
 
 ## 1つのランタイム、2つの見方
 
-一般ユーザーにとって最も簡単な捉え方は、**対応するLMに、持続するキャラクターを与える**ことです。`SOUL.md` が安定した Identity を与え、governed State と Continuity が受理された「今」を与えます。その下で動く provider model は交換できます。
+一般ユーザーにとって最も簡単な捉え方は、**対応するLMに、持続するキャラクターを与える**ことです。[`SOUL.md`](examples/starter/SOUL.md) が安定した Identity を与え、governed State と Continuity が受理された「今」を与えます。その下で動く provider model は交換できます。
 
 ただし、RelayLM の Identity は人間らしい人格を模倣する必要はありません。同じ `SOUL.md` に、厳密な要約機、レビュアー、研究支援、構造化記録システムのような、意図的に機械的な cognitive role を記述することもできます。その意味で、**キャラクターは cognitive persona の一形態であって、RelayLM の限界ではありません。**
 
@@ -39,11 +39,11 @@ replaceable LM
 - `v1` が RelayLM 1.0 の現行 product line です。
 - RelayLM 0.x は歴史的資料・参照実装として保存されています。
 - 1.0 は、0.x の runtime / module 構造を既定では継承しません。
-- Issue #1257 と #1258 の design evidence は意図的に引き継いでいます。
+- Issue [#1257](https://github.com/rinsakamo/relay-lm/issues/1257) と [#1258](https://github.com/rinsakamo/relay-lm/issues/1258) の design evidence は意図的に引き継いでいます。
 
 ## Core 1.0 turn
 
-現在の通常リリース／参照アーキテクチャは two-pass で、同じロード済み online model を順番に再利用します。
+現在の通常リリース／参照アーキテクチャは [two-pass](docs/contracts/cognition-pass-execution.md) で、同じロード済み online model を順番に再利用します。
 
 ```text
 SOUL.md + Events + State
@@ -94,13 +94,13 @@ export RELAYLM_PROVIDER_MODEL='<provider-model-id>'
 .relaylm-runtime/bin/relaylm serve
 ```
 
-calibrated profile を選択していない場合、Core 1.0 cognition topology の既定値は `two_pass` です。この topology default が reasoning、decoding、output budget、context window の値を勝手に設定することはありません。明示的な pass control は runtime YAML から渡せます。calibrated profile の authority は引き続き #1388 です。
+calibrated profile を選択していない場合、Core 1.0 cognition topology の既定値は `two_pass` です。この topology default が reasoning、decoding、output budget、context window の値を勝手に設定することはありません。明示的な pass control は runtime YAML から渡せます。calibrated profile の authority は引き続き [#1388](https://github.com/rinsakamo/relay-lm/issues/1388) です。
 
-同等の machine / runtime 設定は、`--config PATH` または `RELAYLM_CONFIG` で選択した versioned runtime YAML からも指定できます。schema / precedence は `docs/contracts/runtime-configuration.md`、`doctor` / `serve` の動作は `docs/contracts/runtime-operator.md` を参照してください。
+同等の machine / runtime 設定は、`--config PATH` または `RELAYLM_CONFIG` で選択した versioned runtime YAML からも指定できます。schema / precedence は [`runtime-configuration.md`](docs/contracts/runtime-configuration.md)、`doctor` / `serve` の動作は [`runtime-operator.md`](docs/contracts/runtime-operator.md) を参照してください。
 
-provider authentication が必要な場合は `RELAYLM_PROVIDER_API_KEY` を使用します。server は既定で `127.0.0.1:8090` に bind し、`RELAYLM_HOST` と `RELAYLM_PORT` で上書きできます。`examples/starter` は source checkout 向けの example であり、installed artifact の runtime dependency ではありません。
+provider authentication が必要な場合は `RELAYLM_PROVIDER_API_KEY` を使用します。server は既定で `127.0.0.1:8090` に bind し、`RELAYLM_HOST` と `RELAYLM_PORT` で上書きできます。[`examples/starter`](examples/starter/) は source checkout 向けの example であり、installed artifact の runtime dependency ではありません。
 
-client endpoint は次のとおりです。
+[OpenAI互換の client endpoint](docs/contracts/openai-api.md) は次のとおりです。
 
 ```text
 POST /v1/chat/completions
@@ -116,13 +116,13 @@ buffered request と streaming request は、同じ選択済み cognition topolo
 .relaylm-runtime/bin/relaylm-eval
 ```
 
-RelayLM boundary ごとの machine-readable な invariant check を出力し、意図的に weighted composite score は持ちません。`docs/reference/evaluation.md` と #1247 を参照してください。
+RelayLM boundary ごとの machine-readable な invariant check を出力し、意図的に weighted composite score は持ちません。[`evaluation.md`](docs/reference/evaluation.md) と [#1247](https://github.com/rinsakamo/relay-lm/issues/1247) を参照してください。
 
 実モデルを使う Stage R quality / evidence は、この deterministic native suite とは別のプロセスです。
 
 ## Development workflow
 
-現在の `v1` development workflow は `docs/reference/development-workflow.md` に定義されています。
+現在の `v1` development workflow は [`development-workflow.md`](docs/reference/development-workflow.md) に定義されています。
 
 semantic change の基本順序は次のとおりです。
 
@@ -130,8 +130,8 @@ semantic change の基本順序は次のとおりです。
 
 semantic behavior change は test-first で進めます。behavior-preserving change と docs-only transaction は、それより軽量な手順を使います。1 transaction は1つの bounded responsibility を持ち、current-authority docs は deferred behavior を現在実装済みであるかのように記述してはいけません。merge は exact-head で行います。各 transaction は自身の semantic owner の authority を直接収束させ、global view は必要時に導出し、手作業では維持しません。
 
-repository 利用上の規約は `docs/reference/repository-practices.md` にあります。長期的に残す architecture decision は意図的に `docs/decisions/` 配下へ絞り、`.ai/authority/` には semantic owner ごとの owner-local validated authority declaration を1つずつ置きます。
+repository 利用上の規約は [`repository-practices.md`](docs/reference/repository-practices.md) にあります。長期的に残す architecture decision は意図的に [`docs/decisions/`](docs/decisions/) 配下へ絞り、[`.ai/authority/`](.ai/authority/) には semantic owner ごとの owner-local validated authority declaration を1つずつ置きます。
 
-`ARCHITECTURE.md` は repository authority から生成される projection です。各 transaction で手作業同期するのではなく、version / release boundary で materialize されます。
+[`ARCHITECTURE.md`](ARCHITECTURE.md) は repository authority から生成される projection です。各 transaction で手作業同期するのではなく、version / release boundary で materialize されます。
 
-詳細は `docs/architecture/core.md`、`docs/contracts/cognition-pass-execution.md`、`docs/contracts/openai-api.md`、`docs/contracts/runtime-configuration.md`、`docs/contracts/release-distribution.md`、Issue #1259 を参照してください。
+詳細は [`core.md`](docs/architecture/core.md)、[`cognition-pass-execution.md`](docs/contracts/cognition-pass-execution.md)、[`openai-api.md`](docs/contracts/openai-api.md)、[`runtime-configuration.md`](docs/contracts/runtime-configuration.md)、[`release-distribution.md`](docs/contracts/release-distribution.md)、Issue [#1259](https://github.com/rinsakamo/relay-lm/issues/1259) を参照してください。
