@@ -57,9 +57,12 @@ reasoning_budget
 temperature
 top_p
 max_output_tokens
+structured_output_mode
 ```
 
-Unresolved `auto` is invalid at this boundary.
+`structured_output_mode` is normally `null` outside Pass 2. For Pass 2 it distinguishes an explicit `plain`, `native`, or `auto` request so otherwise identical native/plain runs cannot alias in the run identity. The exact provider-effective choice for `auto` remains provider/capability evidence rather than being invented by the manifest.
+
+Unresolved reasoning `auto` is invalid at this boundary. Pass 2 structured-output `auto` is a valid explicit transport request because its conservative capability-gated resolution occurs at the provider extraction boundary.
 
 Changing an output-affecting Pass 1 or Pass 2 request changes run identity.
 
@@ -77,6 +80,7 @@ Pass 1 request
 
 Pass 2 request
   -> originating-turn-bound extraction
+  -> structured-output transport selection
   -> generate_extraction
   -> RelayLM-owned proposal IR parse/type construction
   -> raw typed proposals
@@ -129,6 +133,8 @@ LM Studio and vLLM evidence runs remain serial backend executions.
 ## Provider application remains separate authority
 
 Recording a `CognitionPassRequest` proves what RelayLM requested at the provider-neutral boundary. It does not prove that the backend applied the control or that the control had semantic effect.
+
+For Pass 2, recording `structured_output_mode=native` proves the native transport was requested. Recording `auto` proves the capability-gated policy was requested; provider capability evidence and the actual external request remain the authority for whether `auto` resolved to native or plain.
 
 Provider owners retain exact request serialization and capability truth.
 
@@ -195,7 +201,7 @@ Reference qualification independently observes:
 - failure/stale behavior;
 - timing/resource evidence where captured.
 
-JSON parse success alone is not semantic-quality sufficiency.
+JSON parse success alone is not semantic-quality sufficiency. A native structured-output run must still be evaluated for the same semantic quality as a plain run; structural validity alone does not qualify the model.
 
 ## Later single-pass optimization
 
@@ -215,11 +221,11 @@ A persisted multi-model cohort is citable only when its `cohort_id` matches the 
 
 ## Ownership
 
-#1533 owns topology/pass semantics and provider-neutral request semantics.
+#1533 owns topology/pass semantics and provider-neutral request semantics, including Pass 2 structured-output transport semantics.
 
 #1386 owns:
 
-- manifest/run identity composition;
+- manifest/run identity composition, including the exact Pass 2 structured-output request;
 - raw/deterministic execution evidence;
 - scenario/review/cohort/comparison methodology;
 - two-pass reference qualification;
@@ -231,4 +237,4 @@ Provider owners retain backend capability and applied-wire truth. #1388 owns cal
 
 ## Principle
 
-> Evidence records the exact policy that ran; it never revives a superseded screening order from an old condition name.
+> Evidence records the exact policy that ran; it never aliases plain and native extraction under one run identity.
