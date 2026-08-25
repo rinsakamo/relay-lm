@@ -4,22 +4,105 @@ import hashlib
 import json
 import math
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
 from relaylm.actual_model_fast_screening import (
     ScreeningCallOutcome,
     ScreeningCallTiming,
+    ScreeningPhase,
 )
 
 
 FAST_SCREENING_TIMING_FORMAT_VERSION = 2
+FAST_SCREENING_FAILURE_DIAGNOSTIC_FORMAT_VERSION = 1
 FastScreeningExecutionMode = Literal["single_pass", "two_pass"]
 
 
 class ActualModelFastScreeningArtifactError(ValueError):
     """Fast-screening timing evidence is malformed, ambiguous, or conflicting."""
+
+
+@dataclass(frozen=True, slots=True)
+class FastScreeningFailureDiagnostic:
+    turn_index: int
+    phase: ScreeningPhase
+    exception_type: str
+    exception_message: str | None = None
+
+    def __post_init__(self) -> None:
+        if isinstance(self.turn_index, bool) or not isinstance(self.turn_index, int):
+            raise TypeError("failure diagnostic turn_index must be an integer")
+        if self.turn_index <= 0:
+            raise ValueError("failure diagnostic turn_index must be positive")
+        if self.phase not in {"single_pass", "pass1", "pass2"}:
+            raise ValueError(f"unsupported failure diagnostic phase: {self.phase}")
+        if not isinstance(self.exception_type, str) or not self.exception_type.strip():
+            raise ValueError("failure diagnostic exception_type must be non-empty")
+        if self.exception_message is not None and (
+            not isinstance(self.exception_message, str)
+            or not self.exception_message.strip()
+        ):
+            raise ValueError(
+                "failure diagnostic exception_message must be non-empty when present"
+            )
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "turn_index": self.turn_index,
+            "phase": self.phase,
+            "exception_type": self.exception_type,
+            "exception_message": self.exception_message,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class FastScreeningFailureDiagnosticArtifact:
+    run_id: str
+    failures: tuple[FastScreeningFailureDiagnostic, ...]
+    format_version: int = FAST_SCREENING_FAILURE_DIAGNOSTIC_FORMAT_VERSION
+
+    def __post_init__(self) -> None:
+        if self.format_version != FAST_SCREENING_FAILURE_DIAGNOSTIC_FORMAT_VERSION:
+            raise ValueError(
+                "unsupported fast-screening failure diagnostic format_version: "
+                f"{self.format_version}"
+            )
+        _validate_canonical_stable_id(self.run_id, prefix="amr", label="run_id")
+        if not self.failures or not all(
+            isinstance(item, FastScreeningFailureDiagnostic) for item in self.failures
+        ):
+            raise ValueError("failure diagnostic artifact requires failure entries")
+
+    @property
+    def diagnostic_id(self) -> str:
+        payload = json.dumps(
+            self._identity_mapping(),
+            ensure_ascii=False,
+            allow_nan=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        return f"amfd-{hashlib.sha256(payload).hexdigest()}"
+
+    def _identity_mapping(self) -> dict[str, object]:
+        return {
+            "format_version": self.format_version,
+            "run_id": self.run_id,
+            "failures": [item.to_mapping() for item in self.failures],
+        }
+
+    def to_mapping(self) -> dict[str, object]:
+        return {"diagnostic_id": self.diagnostic_id, **self._identity_mapping()}
+
+    def to_json(self) -> str:
+        return json.dumps(
+            self.to_mapping(),
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=2,
+        ) + "\n"
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +174,11 @@ class FastScreeningTimingArtifact:
     scenario_elapsed_ms: float
     turns: tuple[FastScreeningTurnTiming, ...]
     format_version: int = FAST_SCREENING_TIMING_FORMAT_VERSION
+    failure_diagnostics: tuple[FastScreeningFailureDiagnostic, ...] = field(
+        default_factory=tuple,
+        repr=False,
+        compare=False,
+    )
 
     def __post_init__(self) -> None:
         if self.format_version != FAST_SCREENING_TIMING_FORMAT_VERSION:
@@ -137,6 +225,15 @@ class FastScreeningTimingArtifact:
             for turn in self.turns
         ):
             raise ValueError("two_pass timing requires extraction timing for every turn")
+        if not all(
+            isinstance(item, FastScreeningFailureDiagnostic)
+            for item in self.failure_diagnostics
+        ):
+            raise TypeError(
+                "failure_diagnostics must contain FastScreeningFailureDiagnostic values"
+            )
+        if any(item.turn_index > len(self.turns) for item in self.failure_diagnostics):
+            raise ValueError("failure diagnostic turn_index exceeds timing turn count")
         provider_total_ms = sum(turn.provider_total_ms for turn in self.turns)
         if self.scenario_elapsed_ms + 1e-6 < provider_total_ms:
             raise ActualModelFastScreeningArtifactError(
@@ -212,6 +309,7 @@ def bind_fast_screening_timing_artifact(
         )
 
     turns: list[FastScreeningTurnTiming] = []
+    diagnostics: list[FastScreeningFailureDiagnostic] = []
     offset = 0
     for turn_index in range(1, turn_count + 1):
         response = calls[offset]
@@ -225,6 +323,19 @@ def bind_fast_screening_timing_artifact(
         else:
             extraction = calls[offset + 1]
             offset += 2
+        if (
+            extraction is not None
+            and extraction.outcome == "failed"
+            and extraction.failure_exception_type is not None
+        ):
+            diagnostics.append(
+                FastScreeningFailureDiagnostic(
+                    turn_index=turn_index,
+                    phase="pass2",
+                    exception_type=extraction.failure_exception_type,
+                    exception_message=extraction.failure_exception_message,
+                )
+            )
         turns.append(
             FastScreeningTurnTiming(
                 turn_index=turn_index,
@@ -250,6 +361,7 @@ def bind_fast_screening_timing_artifact(
         execution_mode=execution_mode,
         scenario_elapsed_ms=scenario_elapsed_ms,
         turns=tuple(turns),
+        failure_diagnostics=tuple(diagnostics),
     )
 
 
@@ -269,10 +381,64 @@ def write_fast_screening_timing_artifact(
         raise ActualModelFastScreeningArtifactError(
             f"cannot create timing evidence directory: {exc}"
         ) from exc
+
+    resolved_path = path
+    if path.exists():
+        resolved_path = _resolve_existing(path=path, payload=payload)
+    else:
+        temporary = directory / (
+            f".{artifact.run_id}.{artifact.timing_id}.{os.getpid()}.tmp"
+        )
+        try:
+            with temporary.open("x", encoding="utf-8", newline="\n") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+            try:
+                os.link(temporary, path)
+            except FileExistsError:
+                resolved_path = _resolve_existing(path=path, payload=payload)
+        except OSError as exc:
+            raise ActualModelFastScreeningArtifactError(
+                f"cannot write timing evidence: {exc}"
+            ) from exc
+        finally:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    if artifact.failure_diagnostics:
+        _write_failure_diagnostic_sidecar(
+            artifact=FastScreeningFailureDiagnosticArtifact(
+                run_id=artifact.run_id,
+                failures=artifact.failure_diagnostics,
+            ),
+            artifact_root=artifact_root,
+        )
+    return resolved_path
+
+
+def _write_failure_diagnostic_sidecar(
+    *,
+    artifact: FastScreeningFailureDiagnosticArtifact,
+    artifact_root: str | Path,
+) -> Path:
+    directory = Path(artifact_root) / "screening_failure_diagnostics"
+    path = directory / f"{artifact.run_id}.json"
+    payload = artifact.to_json()
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise ActualModelFastScreeningArtifactError(
+            f"cannot create screening failure diagnostic directory: {exc}"
+        ) from exc
     if path.exists():
         return _resolve_existing(path=path, payload=payload)
 
-    temporary = directory / f".{artifact.run_id}.{artifact.timing_id}.{os.getpid()}.tmp"
+    temporary = directory / (
+        f".{artifact.run_id}.{artifact.diagnostic_id}.{os.getpid()}.tmp"
+    )
     try:
         with temporary.open("x", encoding="utf-8", newline="\n") as handle:
             handle.write(payload)
@@ -284,7 +450,7 @@ def write_fast_screening_timing_artifact(
             return _resolve_existing(path=path, payload=payload)
     except OSError as exc:
         raise ActualModelFastScreeningArtifactError(
-            f"cannot write timing evidence: {exc}"
+            f"cannot write screening failure diagnostic evidence: {exc}"
         ) from exc
     finally:
         try:
