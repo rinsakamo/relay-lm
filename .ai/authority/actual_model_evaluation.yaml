@@ -1,6 +1,6 @@
 schema_version: 1
 id: actual_model_evaluation
-summary: Actual-model execution/evidence authority for Core 1.0 two-pass-reference qualification, semantic-role current vLLM screening with live-capacity-bound functional acceptance and historical A/B/C compatibility only at immutable evidence boundaries, claim-scoped qualification/regression/smoke review identity, Character-relative anomaly/product-quality review with citable turn-local Character-realization outcomes, Pass-2-only reasoning escalation on demonstrated semantic need, exact provider/model capability binding, capacity/timing evidence, citable pressure plan/evidence binding and derived-observation integrity including pressure summaries/deltas, and later optional single-pass optimization comparisons against a qualified reference.
+summary: Actual-model execution/evidence authority for Core 1.0 two-pass-reference qualification, semantic-role current vLLM screening with live-capacity-bound functional acceptance and historical A/B/C compatibility only at immutable evidence boundaries, claim-scoped qualification/regression/smoke review identity, Character-relative anomaly/product-quality review with citable turn-local Character-realization outcomes, Pass-2-only reasoning escalation on demonstrated semantic need, exact provider/model capability binding, capacity/timing evidence with bounded sanitized provider-failure diagnostic sidecars, citable pressure plan/evidence binding and derived-observation integrity including pressure summaries/deltas, and later optional single-pass optimization comparisons against a qualified reference.
 owner_issue: 1386
 canonical_surfaces:
 - docs/reference/actual-model-character-authoring.md
@@ -59,6 +59,7 @@ tests:
 - tests/unit/test_actual_model_cognition_capability.py
 - tests/unit/test_actual_model_fast_screening.py
 - tests/unit/test_actual_model_fast_screening_artifacts.py
+- tests/unit/test_actual_model_fast_screening_failure_diagnostics.py
 - tests/unit/test_actual_model_artifacts.py
 - tests/unit/test_actual_model_restart.py
 - tests/unit/test_actual_model_comparison.py
