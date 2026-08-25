@@ -421,10 +421,8 @@ def _require_turn_interpretation(raw: object) -> None:
             raise ProviderProtocolError(
                 f"turn_interpretation.{field} must contain strings"
             )
-        # Blank-only strings carry no semantic meaning in this non-authoritative
-        # parse-and-discard scaffold. Treat them as absent rather than turning a
-        # model presentation artifact into a fatal authority boundary.
-        _ = tuple(value for value in values if value.strip())
+        # Blank-only strings are semantically absent in this non-authoritative,
+        # parse-and-discard scaffold. Candidate/source validation remains strict.
 
 
 def _completion_content_and_metadata(
