@@ -177,7 +177,7 @@ state_candidates
 continuity_candidates
 ```
 
-Every interpretation field is an array of concise non-empty semantic strings. Empty arrays are normal. Missing fields, additional fields, non-array fields, or empty/non-string array members fail closed.
+Every interpretation field is an array of strings. Empty arrays are normal. Blank or whitespace-only string members carry no semantic meaning in this non-authoritative scaffold and are treated as absent/no-op items before scaffold acceptance. Missing fields, additional fields, non-array fields, or non-string array members fail closed. Non-blank semantic strings are not trimmed, rewritten, promoted into authority, or used as a substitute for candidate/source validation.
 
 The fields mean:
 
