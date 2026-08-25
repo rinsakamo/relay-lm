@@ -219,12 +219,6 @@ class FastScreeningTimingArtifact:
             for turn in self.turns
         ):
             raise ValueError("single_pass timing must not carry extraction timing")
-        if self.execution_mode == "two_pass" and any(
-            turn.extraction_provider_ms is None
-            or turn.extraction_outcome is None
-            for turn in self.turns
-        ):
-            raise ValueError("two_pass timing requires extraction timing for every turn")
         if not all(
             isinstance(item, FastScreeningFailureDiagnostic)
             for item in self.failure_diagnostics
@@ -299,30 +293,48 @@ def bind_fast_screening_timing_artifact(
         isinstance(call, ScreeningCallTiming) for call in calls
     ):
         raise TypeError("calls must be a tuple of ScreeningCallTiming values")
-
-    expected_phases = _expected_phase_sequence(execution_mode, turn_count)
-    observed_phases = tuple(call.phase for call in calls)
-    if observed_phases != expected_phases:
-        raise ActualModelFastScreeningArtifactError(
-            "screening timing phase sequence does not match execution topology: "
-            f"expected {expected_phases}, observed {observed_phases}"
-        )
+    if execution_mode not in {"single_pass", "two_pass"}:
+        raise ValueError(f"unsupported execution_mode: {execution_mode}")
 
     turns: list[FastScreeningTurnTiming] = []
     diagnostics: list[FastScreeningFailureDiagnostic] = []
     offset = 0
     for turn_index in range(1, turn_count + 1):
+        if offset >= len(calls):
+            _raise_phase_sequence_error(
+                execution_mode=execution_mode,
+                turn_count=turn_count,
+                calls=calls,
+            )
         response = calls[offset]
+        expected_response_phase = (
+            "single_pass" if execution_mode == "single_pass" else "pass1"
+        )
+        if response.phase != expected_response_phase:
+            _raise_phase_sequence_error(
+                execution_mode=execution_mode,
+                turn_count=turn_count,
+                calls=calls,
+            )
         if response.outcome != "completed":
             raise ActualModelFastScreeningArtifactError(
                 "completed scenario timing cannot contain a failed response call"
             )
-        if execution_mode == "single_pass":
-            extraction = None
-            offset += 1
-        else:
-            extraction = calls[offset + 1]
-            offset += 2
+        offset += 1
+
+        extraction = None
+        if execution_mode == "two_pass" and offset < len(calls):
+            next_call = calls[offset]
+            if next_call.phase == "pass2":
+                extraction = next_call
+                offset += 1
+            elif next_call.phase != "pass1":
+                _raise_phase_sequence_error(
+                    execution_mode=execution_mode,
+                    turn_count=turn_count,
+                    calls=calls,
+                )
+
         if (
             extraction is not None
             and extraction.outcome == "failed"
@@ -349,6 +361,13 @@ def bind_fast_screening_timing_artifact(
                     extraction.outcome if extraction is not None else None
                 ),
             )
+        )
+
+    if offset != len(calls):
+        _raise_phase_sequence_error(
+            execution_mode=execution_mode,
+            turn_count=turn_count,
+            calls=calls,
         )
 
     return FastScreeningTimingArtifact(
@@ -475,15 +494,21 @@ def _resolve_existing(*, path: Path, payload: str) -> Path:
     )
 
 
-def _expected_phase_sequence(
+def _raise_phase_sequence_error(
+    *,
     execution_mode: FastScreeningExecutionMode,
     turn_count: int,
-) -> tuple[str, ...]:
+    calls: tuple[ScreeningCallTiming, ...],
+) -> None:
     if execution_mode == "single_pass":
-        return ("single_pass",) * turn_count
-    if execution_mode == "two_pass":
-        return ("pass1", "pass2") * turn_count
-    raise ValueError(f"unsupported execution_mode: {execution_mode}")
+        expected = ("single_pass",) * turn_count
+    else:
+        expected = "one pass1 per turn with an optional immediate pass2 provider call"
+    observed = tuple(call.phase for call in calls)
+    raise ActualModelFastScreeningArtifactError(
+        "screening timing phase sequence does not match execution topology: "
+        f"expected {expected}, observed {observed}"
+    )
 
 
 def _validate_call_outcome(value: str, label: str) -> None:
