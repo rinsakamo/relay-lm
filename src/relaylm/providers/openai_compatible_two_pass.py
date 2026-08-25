@@ -417,10 +417,12 @@ def _require_turn_interpretation(raw: object) -> None:
             raise ProviderProtocolError(
                 f"turn_interpretation.{field} must be an array"
             )
-        if not all(isinstance(value, str) and value.strip() for value in values):
+        if not all(isinstance(value, str) for value in values):
             raise ProviderProtocolError(
-                f"turn_interpretation.{field} must contain non-empty strings"
+                f"turn_interpretation.{field} must contain strings"
             )
+        # Blank-only strings are semantically absent in this non-authoritative,
+        # parse-and-discard scaffold. Candidate/source validation remains strict.
 
 
 def _completion_content_and_metadata(
