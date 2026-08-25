@@ -4,7 +4,7 @@ Status: current provider-neutral per-pass execution-option contract for RelayLM 
 
 Owner: #1533 / `cognitive_turn`.
 
-This contract defines per-pass reasoning/decoding intent and pre-generation capability resolution. It chooses no numeric defaults. Core 1.0 is two-pass first; #1388 later resolves the calibrated two-pass profile and #1446 carries it through release configuration.
+This contract defines per-pass reasoning/decoding intent, Pass 2 structured-output transport selection, and pre-generation capability resolution. It chooses no numeric defaults. Core 1.0 is two-pass first; #1388 later resolves the calibrated two-pass profile and #1446 carries it through release configuration.
 
 ## Policy intent versus effective request
 
@@ -36,7 +36,25 @@ A bounded reasoning policy may also carry a positive reasoning budget.
 - `reasoning_mode=auto` is invalid;
 - a reasoning budget requires `bounded`;
 - scalar `None` means explicit omission from the effective provider request;
-- provider-neutral validation checks only shape/finiteness/positivity; provider-specific range rules remain provider-owned.
+- provider-neutral validation checks only shape/finiteness/positivity; provider-specific range rules remain provider-owned;
+- Pass 2 may additionally carry `structured_output_mode=plain|native|auto`;
+- `structured_output_mode` is invalid on Pass 1 because Pass 1 owns unconstrained visible conversation, not extraction IR.
+
+For Pass 2 structured-output transport:
+
+```text
+plain
+  ordinary provider message content containing RelayLM-owned JSON IR
+
+native
+  OpenAI-compatible response_format=json_schema for the RelayLM extraction wire
+
+auto
+  native only when affirmative provider capability truth is available;
+  otherwise plain
+```
+
+Omitting `structured_output_mode` preserves the established `plain` behavior. Explicit `native` never silently falls back to `plain`; if the selected provider rejects the native request, generation fails closed through the provider boundary.
 
 ## Core 1.0 pass roles
 
@@ -75,14 +93,11 @@ bounded reasoning-budget control
 per-pass decoding/output controls
 ```
 
-`structured_output` remains a truthful provider capability fact because a backend may expose native JSON-schema/grammar features for other purposes. **Current RelayLM cognition modes do not require that capability merely to carry RelayLM-owned cognition IR.**
+`structured_output` is a truthful provider capability fact. It is not a prerequisite for the `two_pass` topology because Pass 2 always has a `plain` transport. It becomes relevant when `structured_output_mode=auto` decides whether provider-native JSON Schema may be used without guessing.
 
-Current OpenAI-compatible cognition uses ordinary provider message content and RelayLM-owned parsing/type construction for both:
+Current single-pass cognition continues to use ordinary provider message content and RelayLM-owned parsing/type construction. Current two-pass Pass 2 may use either ordinary provider message content or native JSON Schema constrained output; both converge on the same RelayLM parser, typed candidate construction, deterministic validation and authority boundary.
 
-- single-pass combined cognitive IR; and
-- two-pass Pass 2 turn-interpretation scaffold plus proposal IR.
-
-Therefore `structured_output=false` is not by itself a mode-level failure for `single_pass`, `two_pass`, or `shadow_two_pass` under the current cognition contracts.
+Therefore `structured_output=false` is not by itself a mode-level failure for `single_pass`, `two_pass`, or `shadow_two_pass`. It causes Pass 2 `auto` selection to remain `plain`; explicit `native` is an operator request and any provider rejection is surfaced rather than silently rewritten.
 
 `streaming=true` is still required when the selected execution path actually requests streaming.
 
@@ -105,13 +120,13 @@ top_p
 max_output_tokens
 ```
 
-Unknown values, duplicates and `auto` fail closed. Provider-level controls that COGP does not own are not promoted by spelling similarity.
+Unknown values, duplicates and reasoning `auto` fail closed. Provider-level controls that COGP does not own are not promoted by spelling similarity.
 
 The provider remains authoritative for discovery, attestation and external wire realization.
 
 ## Applied / omitted / unsupported
 
-`resolve_pass_request(...)` classifies every requested option as exactly one of:
+`resolve_pass_request(...)` classifies reasoning and scalar decoding/output options as exactly one of:
 
 ```text
 applied
@@ -125,30 +140,37 @@ unsupported
 
 Unsupported is never silently rewritten to omitted.
 
-`CognitionPassResolution.require_supported()` fails before generation when an explicit request is unsupported.
+`CognitionPassResolution.require_supported()` fails before generation when an explicit reasoning/decoding/output request is unsupported.
+
+Pass 2 structured-output transport has separate semantics: `plain` is always representable by the current OpenAI-compatible adapter; `auto` consults affirmative structured-output capability truth and otherwise chooses `plain`; explicit `native` emits the native wire exactly and lets provider rejection fail closed.
 
 A future profile-owned fallback must be explicit and auditable; it cannot be invented by the adapter or Turn layer.
 
 ## Mode-level capability gate
 
-`require_mode_capabilities(...)` checks only actual mode-level prerequisites.
+`require_mode_capabilities(...)` checks only actual topology-level prerequisites.
 
 Current rules:
 
-- `auto` must already be resolved before generation;
-- provider-native `structured_output` is **not** required by the current RelayLM-owned cognition IR paths;
+- cognition topology `auto` must already be resolved before generation;
+- provider-native `structured_output` is not required by the `two_pass` topology because Pass 2 has a plain transport;
 - a streaming request requires declared streaming support;
-- explicit unsupported pass options are handled by `resolve_pass_request(...).require_supported()`.
+- explicit unsupported reasoning/decoding/output pass options are handled by `resolve_pass_request(...).require_supported()`;
+- Pass 2 structured-output selection is handled at the extraction transport boundary, not by pretending it is a topology requirement.
 
 Capability declaration proves only that a request can be represented. It does not prove product quality; #1386 owns observed actual-model quality.
 
 ## RelayLM-owned Pass 2 scaffold and proposal IR
 
-Canonical OpenAI-compatible Pass 2 is:
+Canonical OpenAI-compatible Pass 2 has one semantic prompt contract and two selectable transport paths:
 
 ```text
-ordinary provider chat/message generation
-  -> plain content containing turn_interpretation + proposal IR
+shared CognitiveInput + Pass 1 response + semantic extraction guidance
+  -> plain
+       ordinary provider chat/message JSON generation
+     OR
+     native
+       response_format=json_schema constrained generation
   -> RelayLM JSON parse
   -> exact top-level and turn_interpretation shape checks
   -> non-authoritative turn_interpretation is not promoted into State/Continuity authority
@@ -192,11 +214,46 @@ The scaffold is not accepted State, Continuity, Memory, evidence authority, or d
 
 Interpretation is not State. Pass 2 proposes State only when an adequately grounded and sufficiently resolved meaning represents a meaningful durable change in accepted current understanding. An item in `unresolved` does not by itself require `Continuity(kind=unresolved)`; Continuity is proposed only when carrying the meaning across upcoming turns materially improves coherence.
 
-The current experiment preserves model-authored candidate `sources` and the existing Event-ID source rules. Deterministic source reconstruction is not introduced as part of this prompt/scaffold change so actual-model regressions remain causally attributable.
+### Structure versus semantics
 
-Provider-native `response_format`, JSON Schema, grammar or constrained decoding is not required to define or enforce this semantic boundary. The OpenAI-compatible Pass 2 suffix carries a compact RelayLM-owned field glossary, candidate wire grammar and exact top-level example as ordinary prompt content rather than embedding the full JSON Schema. RelayLM remains authoritative for JSON parsing, exact scaffold/candidate shape checks and type construction after generation.
+The transport schema and the semantic prompt have different responsibilities.
 
-Malformed JSON, extra/missing keys, invalid interpretation shape, invalid candidate shapes or invalid typed values fail closed in RelayLM and produce no proposal commit.
+Provider-native JSON Schema may constrain mechanical facts such as:
+
+- exact top-level members;
+- object/array/string/null shape;
+- State `op=set|remove`;
+- Continuity `kind`, `op`, and `epistemic_role` enum values;
+- required candidate fields and source-array shape.
+
+It does **not** decide semantic representation such as whether “I like coffee” is a durable preference, which stable State key should represent a meaning, whether a correction warrants `remove`, or whether an unresolved meaning deserves Continuity.
+
+The Pass 2 prompt therefore retains short semantic definitions and bounded canonical State examples. Those examples use the originating turn's real Event ID so source grammar is realistic, but they are representation examples only: the model must never copy their keys, values or claims unless the current evidence supports that exact meaning. Existing class/key vocabulary is preferred over synonymous reinvention.
+
+The current experiment preserves model-authored candidate `sources` and the existing Event-ID source rules. Deterministic source reconstruction is not introduced as part of this change so actual-model regressions remain causally attributable.
+
+### Plain transport
+
+`structured_output_mode=plain` carries a compact RelayLM-owned field glossary, candidate wire grammar and exact top-level example as ordinary prompt content. No `response_format` is sent.
+
+This is also the behavior when the Pass 2 structured-output field is omitted, preserving compatibility with the previously qualified path.
+
+### Native transport
+
+`structured_output_mode=native` sends OpenAI-compatible:
+
+```text
+response_format.type = json_schema
+response_format.json_schema.strict = true
+```
+
+with the current three-part extraction wire schema. Pass 1 never receives this field.
+
+Native constrained decoding is an additional structural guard, not a transfer of semantic or commit authority to the provider. The returned content still passes through the same RelayLM JSON parser, exact-shape checks, typed candidate construction, source checks and deterministic State/Continuity lifecycle.
+
+`structured_output_mode=auto` selects this path only when the provider capability view affirmatively declares structured output. Absence of capability evidence selects `plain`; compatibility alone is not treated as evidence.
+
+Malformed JSON, extra/missing keys, invalid interpretation shape, invalid candidate shapes or invalid typed values that reach RelayLM still fail closed and produce no proposal commit.
 
 ## RelayLM-owned single-pass combined IR
 
@@ -208,7 +265,7 @@ state_candidates
 continuity_candidates
 ```
 
-RelayLM owns parsing and typed construction here as well. The existence of a combined JSON object does not make provider-native structured output a semantic prerequisite.
+RelayLM owns parsing and typed construction here as well. Pass 2 native structured-output selection does not alter this single-pass contract.
 
 ## Semantic/mechanical split
 
@@ -226,6 +283,7 @@ Provider owners own:
 - capability discovery/attestation;
 - provider-specific value/range validation;
 - exact applied reasoning/decoding carriage;
+- native structured-output request realization;
 - transport of ordinary cognition message content.
 
 COGP uses provider-neutral intent only.
@@ -244,13 +302,14 @@ pass1_request
 
 pass2_request
   -> originating-turn-bound extraction
+  -> structured-output transport selection
   -> generate_extraction
   -> RelayLM scaffold/proposal-IR parse and candidate type construction
 ```
 
-Buffered and streaming two-pass paths must carry equivalent resolved pass semantics. A streaming implementation that silently drops Pass 1 or Pass 2 controls is not compliant.
+Buffered and streaming two-pass paths must carry equivalent resolved Pass 1 semantics. Pass 2 extraction remains buffered. A runtime that silently drops configured Pass 1 reasoning/decoding controls or Pass 2 extraction controls is not compliant.
 
-When no pass request is supplied, no layer may strengthen reasoning merely because the call is Pass 2.
+When no pass request is supplied, no layer may strengthen reasoning merely because the call is Pass 2, and Pass 2 structured-output transport remains the established plain path.
 
 ## Content-free completion observation
 
@@ -278,16 +337,17 @@ Completion observation does not change request serialization, generation, retrie
 
 Materially output-affecting configuration must remain distinguishable in evidence as applied, omitted or unsupported.
 
-A citable two-pass run requires the exact Pass 1/Pass 2 request identity plus the current RelayLM common-prefix prompt/scaffold/IR/parser contract revision and exact provider/model capability evidence.
+A citable two-pass run requires the exact Pass 1/Pass 2 request identity, including the Pass 2 structured-output transport selection, plus the current RelayLM common-prefix prompt/scaffold/IR/parser contract revision and exact provider/model capability evidence.
 
 ## Ownership
 
 #1533 owns:
 
 - per-pass provider-neutral reasoning/decoding intent;
+- Pass 2 `plain|native|auto` structured-output transport semantics;
 - `auto` versus effective omission semantics;
 - normalized capability vocabulary;
-- applied/omitted/unsupported classification;
+- applied/omitted/unsupported classification for reasoning/decoding/output controls;
 - fail-closed explicit unsupported behavior;
 - current mode-level capability requirements;
 - the canonical common cognitive prefix and pass-specific cognition responsibilities;
@@ -304,10 +364,11 @@ A citable two-pass run requires the exact Pass 1/Pass 2 request identity plus th
 - provider-specific fallback tables;
 - language-specific semantic parsers;
 - direct model mutation of State/Continuity;
-- provider-native structured-output requirements for current cognition modes;
+- making provider-native structured output a topology-level prerequisite;
+- silently falling back from explicit `native` to `plain`;
 - deterministic Event-ID reconstruction as part of this prompt experiment;
 - single-pass prompt optimization as a Core 1.0 gate.
 
 ## Principle
 
-> Resolve only real capability requirements. Do not mistake JSON inside RelayLM-owned ordinary message content for a provider-native structured-output dependency.
+> Use constrained decoding for mechanical structure when explicitly selected and supported; keep semantic representation in the prompt and authority in RelayLM.
