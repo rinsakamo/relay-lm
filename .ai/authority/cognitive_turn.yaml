@@ -46,6 +46,7 @@ tests:
 - tests/unit/test_openai_compatible_two_pass.py
 - tests/unit/test_openai_compatible_two_pass_blank_interpretation.py
 - tests/unit/test_two_pass_prompt_scaffold.py
+- tests/unit/test_two_pass_prompt_wire_disambiguation.py
 - tests/unit/test_two_pass_completion_metadata.py
 - tests/unit/test_two_pass_source_binding.py
 - tests/unit/test_cognitive_turn.py
