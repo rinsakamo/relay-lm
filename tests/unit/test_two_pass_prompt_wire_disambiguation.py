@@ -55,3 +55,20 @@ def test_pass2_prompt_keeps_continuity_kind_distinct_from_resolve_operation() ->
         'Resolve example for an active task: `{"kind":"active_task","op":"resolve",'
         '"value":null}`.' in suffix
     )
+
+
+def test_pass2_prompt_keeps_continuity_kind_distinct_from_epistemic_role() -> None:
+    suffix = _extraction_pass_suffix(_extraction_input())
+
+    assert (
+        "`kind` and `epistemic_role` are separate enum axes; `unresolved` is a `kind` "
+        "only and must never be used as `epistemic_role`." in suffix
+    )
+    assert (
+        "`epistemic_role` must be exactly `user_assertion`, `assistant_inference`, or "
+        "`assistant_commitment`." in suffix
+    )
+    assert (
+        'Unresolved Continuity example: `{"kind":"unresolved","op":"set",'
+        '"value":"which blue box","epistemic_role":"user_assertion"}`.' in suffix
+    )
