@@ -44,6 +44,7 @@ tests:
 - tests/unit/test_cognition_two_pass_continuity_guard.py
 - tests/unit/test_two_pass_continuity_turn_clock.py
 - tests/unit/test_openai_compatible_two_pass.py
+- tests/unit/test_openai_compatible_two_pass_blank_interpretation.py
 - tests/unit/test_two_pass_prompt_scaffold.py
 - tests/unit/test_two_pass_completion_metadata.py
 - tests/unit/test_two_pass_source_binding.py
