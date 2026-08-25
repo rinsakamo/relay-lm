@@ -1,10 +1,33 @@
 # RelayLM 1.0
 
-RelayLM 1.0 is a greenfield persistent-character runtime.
+RelayLM 1.0 is a greenfield persistent-character runtime. Architecturally, it acts as a model-agnostic **Cognitive Proxy Runtime** around a replaceable language model.
 
 > **Identity + Now + LM**
 
 The model is a replaceable cognitive substrate, not the character. RelayLM persists identity, evidence, accepted current state, context authority, and validated state change outside the model.
+
+## One runtime, two ways to see it
+
+For an end user, the simplest mental model is: **give a compatible LM a persistent character**. `SOUL.md` supplies a stable identity; governed State and Continuity supply the accepted "now"; the provider model can change underneath them.
+
+But a RelayLM identity does not need to imitate a person. The same stable `SOUL.md` can describe a deliberately machine-like cognitive role — for example, a strict summarizer, reviewer, research assistant, or structured record-writing system. In that sense, a character is one **cognitive persona**, not the limit of the runtime.
+
+For developers and professional deployments, RelayLM is the middleware layer that decides which stable identity or role and which governed context reach the model, then decides which proposed changes are allowed back into RelayLM-owned authority.
+
+```text
+application / user
+      |
+      v
+   RelayLM
+identity / role + governed context + State / Continuity
+      |
+      v
+replaceable LM
+```
+
+A small local model can power approachable character experimentation, while the same RelayLM-owned identity, role, and accepted state can later be presented to a larger compatible model. The model itself is not what persists or "grows"; continuity lives in RelayLM-owned artifacts and authority around it.
+
+> **Character is one cognitive persona. RelayLM is the cognitive proxy around the model.**
 
 ## Product line
 
