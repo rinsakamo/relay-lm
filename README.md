@@ -25,7 +25,7 @@ identity / role + governed context + State / Continuity
 replaceable LM
 ```
 
-A small local model can power approachable character experimentation, while the same RelayLM-owned identity, role, and accepted state can later be presented to a larger compatible model. The model itself is not what persists or "grows"; continuity lives in RelayLM-owned artifacts and authority around it.
+A small local model can power approachable character experimentation, while the same RelayLM-owned identity, role, and accepted state can later be presented to a larger compatible model. The model itself is not what persists or "grows": stable identity and accepted state remain RelayLM-owned, while bounded Continuity remains RelayLM-owned temporary authority.
 
 > **Character is one cognitive persona. RelayLM is the cognitive proxy around the model.**
 
