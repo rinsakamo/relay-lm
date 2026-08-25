@@ -42,3 +42,16 @@ def test_pass2_prompt_keeps_interpretation_strings_distinct_from_candidate_recor
     assert (
         "Structured State records belong only in top-level `state_candidates`." in suffix
     )
+
+
+def test_pass2_prompt_keeps_continuity_kind_distinct_from_resolve_operation() -> None:
+    suffix = _extraction_pass_suffix(_extraction_input())
+
+    assert (
+        "Never use `resolve` as `kind`; keep `kind` as `referent`, `unresolved`, or "
+        "`active_task`." in suffix
+    )
+    assert (
+        'Resolve example for an active task: `{"kind":"active_task","op":"resolve",'
+        '"value":null}`.' in suffix
+    )
