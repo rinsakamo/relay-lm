@@ -15,6 +15,7 @@ from relaylm.cognition_execution import (
     CognitionPassRequest,
     CognitionReasoningMode,
 )
+from relaylm.providers.openai_compatible import ProviderProtocolError
 
 
 ScreeningPhase = Literal["single_pass", "pass1", "pass2"]
@@ -44,6 +45,8 @@ class ScreeningCallTiming:
     duration_ms: float
     first_visible_ms: float | None
     outcome: ScreeningCallOutcome
+    failure_exception_type: str | None = None
+    failure_exception_message: str | None = None
 
     def __post_init__(self) -> None:
         if self.phase not in {"single_pass", "pass1", "pass2"}:
@@ -55,6 +58,26 @@ class ScreeningCallTiming:
                 raise ValueError("first_visible_ms cannot exceed duration_ms")
         if self.outcome not in {"completed", "failed"}:
             raise ValueError(f"unsupported screening call outcome: {self.outcome}")
+        if self.outcome == "completed":
+            if (
+                self.failure_exception_type is not None
+                or self.failure_exception_message is not None
+            ):
+                raise ValueError("completed screening call cannot carry failure diagnostics")
+        if self.failure_exception_type is not None:
+            if not isinstance(self.failure_exception_type, str):
+                raise TypeError("failure_exception_type must be a string or None")
+            if not self.failure_exception_type.strip():
+                raise ValueError("failure_exception_type must not be empty")
+        if self.failure_exception_message is not None:
+            if self.failure_exception_type is None:
+                raise ValueError(
+                    "failure_exception_message requires failure_exception_type"
+                )
+            if not isinstance(self.failure_exception_message, str):
+                raise TypeError("failure_exception_message must be a string or None")
+            if not self.failure_exception_message.strip():
+                raise ValueError("failure_exception_message must not be empty")
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -80,6 +103,8 @@ class ScreeningTimingRecorder:
         completed_ns: int,
         first_visible_ns: int | None,
         outcome: ScreeningCallOutcome,
+        failure_exception_type: str | None = None,
+        failure_exception_message: str | None = None,
     ) -> None:
         if completed_ns < started_ns:
             raise ValueError("screening timing clock moved backwards")
@@ -94,6 +119,8 @@ class ScreeningTimingRecorder:
                 duration_ms=(completed_ns - started_ns) / 1_000_000,
                 first_visible_ms=first_visible_ms,
                 outcome=outcome,
+                failure_exception_type=failure_exception_type,
+                failure_exception_message=failure_exception_message,
             )
         )
 
@@ -244,10 +271,15 @@ class _TimedScreeningProvider:
     async def _timed_buffered(self, phase: ScreeningPhase, call):
         started = self._recorder.clock_ns()
         outcome: ScreeningCallOutcome = "completed"
+        failure_exception_type: str | None = None
+        failure_exception_message: str | None = None
         try:
             return await call()
-        except BaseException:
+        except BaseException as exc:
             outcome = "failed"
+            failure_exception_type, failure_exception_message = (
+                _bounded_failure_diagnostic(exc)
+            )
             raise
         finally:
             completed = self._recorder.clock_ns()
@@ -257,6 +289,8 @@ class _TimedScreeningProvider:
                 completed_ns=completed,
                 first_visible_ns=None,
                 outcome=outcome,
+                failure_exception_type=failure_exception_type,
+                failure_exception_message=failure_exception_message,
             )
 
     async def _timed_streaming(
@@ -268,6 +302,8 @@ class _TimedScreeningProvider:
         started = self._recorder.clock_ns()
         first_visible: int | None = None
         outcome: ScreeningCallOutcome = "completed"
+        failure_exception_type: str | None = None
+        failure_exception_message: str | None = None
 
         async def emit(delta: str) -> None:
             nonlocal first_visible
@@ -277,8 +313,11 @@ class _TimedScreeningProvider:
 
         try:
             return await call(emit)
-        except BaseException:
+        except BaseException as exc:
             outcome = "failed"
+            failure_exception_type, failure_exception_message = (
+                _bounded_failure_diagnostic(exc)
+            )
             raise
         finally:
             completed = self._recorder.clock_ns()
@@ -288,7 +327,19 @@ class _TimedScreeningProvider:
                 completed_ns=completed,
                 first_visible_ns=first_visible,
                 outcome=outcome,
+                failure_exception_type=failure_exception_type,
+                failure_exception_message=failure_exception_message,
             )
+
+
+def _bounded_failure_diagnostic(exc: BaseException) -> tuple[str, str | None]:
+    exception_type = type(exc).__name__
+    if not isinstance(exc, ProviderProtocolError):
+        return exception_type, None
+    message = " ".join(str(exc).split())
+    if not message:
+        return exception_type, None
+    return exception_type, message[:512]
 
 
 def _reference_baseline_key(plan: VLLMScreeningPlan) -> str:
@@ -315,7 +366,7 @@ def _pass2_reasoning_escalation_key(
     baseline_key: str,
 ) -> str:
     baseline = plan.conditions[baseline_key]
-    baseline_pass1 = baseline.pass_requests.pass1
+    baseline_pass1 = baseline.condition.pass_requests.pass1 if False else baseline.pass_requests.pass1
     baseline_pass2 = baseline.pass_requests.pass2
     assert baseline_pass1 is not None
     assert baseline_pass2 is not None
