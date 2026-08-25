@@ -5,6 +5,7 @@ owner_issue: 1388
 canonical_surfaces:
 - docs/contracts/calibration-evidence.md
 - docs/contracts/calibration-candidate-sweep.md
+- docs/contracts/calibration-protected-workload.md
 depends_on:
 - actual_model_evaluation
 - cognitive_budget
