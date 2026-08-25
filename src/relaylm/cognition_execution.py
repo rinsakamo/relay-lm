@@ -26,6 +26,14 @@ class CognitionReasoningMode(StrEnum):
     BOUNDED = "bounded"
 
 
+class CognitionStructuredOutputMode(StrEnum):
+    """Pass 2 transport choice for RelayLM-owned structured extraction."""
+
+    AUTO = "auto"
+    NATIVE = "native"
+    PLAIN = "plain"
+
+
 class CognitionDecodingControl(StrEnum):
     """Provider-neutral per-pass decoding/output controls owned by COGP."""
 
@@ -184,6 +192,7 @@ class CognitionPassRequest:
     temperature: int | float | None = None
     top_p: int | float | None = None
     max_output_tokens: int | None = None
+    structured_output_mode: CognitionStructuredOutputMode | None = None
 
     def __post_init__(self) -> None:
         if self.reasoning_mode is not None and not isinstance(
@@ -202,6 +211,12 @@ class CognitionPassRequest:
         _validate_optional_finite_number("top_p", self.top_p)
         if self.max_output_tokens is not None:
             _validate_positive_integer("max_output_tokens", self.max_output_tokens)
+        if self.structured_output_mode is not None and not isinstance(
+            self.structured_output_mode, CognitionStructuredOutputMode
+        ):
+            raise TypeError(
+                "structured_output_mode must be CognitionStructuredOutputMode or None"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -394,9 +409,6 @@ def require_mode_capabilities(
         raise CognitionPolicyUnresolvedError(
             "cognition mode auto must resolve before generation"
         )
-    # Current RelayLM cognition modes transport RelayLM-owned IR as ordinary
-    # provider message content. Provider-native structured output remains a
-    # truthful capability fact, but is not a mode-level prerequisite here.
     if streaming and not capabilities.streaming:
         raise CognitionExecutionCapabilityError(
             f"{mode.value} streaming requires streaming capability"

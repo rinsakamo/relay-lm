@@ -24,7 +24,11 @@ from relaylm.budget import (
 )
 from relaylm.budget_enforcement import TokenCountMode
 from relaylm.cognitive import CognitionExecutionMode
-from relaylm.cognition_execution import CognitionPassRequest, CognitionReasoningMode
+from relaylm.cognition_execution import (
+    CognitionPassRequest,
+    CognitionReasoningMode,
+    CognitionStructuredOutputMode,
+)
 from relaylm.providers.openai_compatible_backend import (
     OpenAICompatibleBackendId,
     resolve_openai_compatible_backend,
@@ -599,8 +603,15 @@ def _parse_cognition_pass(raw: object, path: str) -> CognitionPassRequest:
             "temperature",
             "top_p",
             "max_output_tokens",
+            "structured_output_mode",
         },
     )
+    if "structured_output_mode" in mapping and path.endswith(".pass1"):
+        raise RuntimeConfigResolutionError(
+            RuntimeConfigErrorCode.INVALID_COMBINATION,
+            field=f"{path}.structured_output_mode",
+            message="structured output mode applies only to Pass 2 extraction",
+        )
     reasoning_mode = None
     if "reasoning_mode" in mapping:
         raw_mode = _string(mapping["reasoning_mode"], f"{path}.reasoning_mode")
@@ -610,6 +621,21 @@ def _parse_cognition_pass(raw: object, path: str) -> CognitionPassRequest:
             _invalid_value(
                 f"{path}.reasoning_mode",
                 "unsupported cognition reasoning mode",
+            )
+    structured_output_mode = None
+    if "structured_output_mode" in mapping:
+        raw_structured_output_mode = _string(
+            mapping["structured_output_mode"],
+            f"{path}.structured_output_mode",
+        )
+        try:
+            structured_output_mode = CognitionStructuredOutputMode(
+                raw_structured_output_mode
+            )
+        except ValueError:
+            _invalid_value(
+                f"{path}.structured_output_mode",
+                "unsupported cognition structured output mode",
             )
     reasoning_budget = (
         _integer(mapping["reasoning_budget"], f"{path}.reasoning_budget")
@@ -638,6 +664,7 @@ def _parse_cognition_pass(raw: object, path: str) -> CognitionPassRequest:
             temperature=temperature,
             top_p=top_p,
             max_output_tokens=max_output_tokens,
+            structured_output_mode=structured_output_mode,
         )
     except (TypeError, ValueError) as exc:
         _invalid_value(path, str(exc))
@@ -774,7 +801,9 @@ def _parse_budget_policy(raw: object, path: str) -> BudgetDegradationPolicy:
         except ValueError:
             _invalid_value(f"{step_path}.layer", "unsupported budget layer")
         if layer is BudgetLayer.CANONICAL_STATE:
-            target = _parse_count_envelope(step_raw["target"], f"{step_path}.target")
+            target = _parse_count_envelope(
+                step_raw["target"], f"{step_path}.target"
+            )
         else:
             target = _parse_count_character_envelope(
                 step_raw["target"],

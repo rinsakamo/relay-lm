@@ -181,6 +181,7 @@ def test_cognition_pass_requests_are_explicit_run_identity() -> None:
             "temperature": 0,
             "top_p": 1,
             "max_output_tokens": None,
+            "structured_output_mode": None,
         },
         "pass2": {
             "reasoning_mode": "bounded",
@@ -188,6 +189,7 @@ def test_cognition_pass_requests_are_explicit_run_identity() -> None:
             "temperature": 0,
             "top_p": 1,
             "max_output_tokens": None,
+            "structured_output_mode": None,
         },
     }
     assert stable_actual_model_run_id(

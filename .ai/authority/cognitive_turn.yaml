@@ -5,10 +5,11 @@ summary: >-
   share one canonical cognitive prefix through CognitiveInput. Pass 1 owns the
   visible character response with a minimal suffix; Pass 2 owns a non-authoritative
   six-field subjective turn-interpretation scaffold followed by semantic
-  State/Continuity proposals carried by a compact ordinary-message wire grammar.
-  RelayLM owns exact IR parsing/type construction plus deterministic State/Continuity
-  authority. single_pass remains compatibility/future optimization rather than a
-  Core 1.0 quality gate.
+  State/Continuity proposals. Pass 2 extraction transport is selectable between
+  RelayLM-owned ordinary-message JSON and provider-native JSON Schema constrained
+  output, while RelayLM retains exact IR parsing/type construction plus deterministic
+  State/Continuity authority. single_pass remains compatibility/future optimization
+  rather than a Core 1.0 quality gate.
 owner_issue: 1533
 canonical_surfaces:
 - docs/contracts/cognition-execution-policy.md
@@ -47,6 +48,7 @@ tests:
 - tests/unit/test_openai_compatible_two_pass_blank_interpretation.py
 - tests/unit/test_two_pass_prompt_scaffold.py
 - tests/unit/test_two_pass_prompt_wire_disambiguation.py
+- tests/unit/test_two_pass_structured_output_mode.py
 - tests/unit/test_two_pass_completion_metadata.py
 - tests/unit/test_two_pass_source_binding.py
 - tests/unit/test_cognitive_turn.py

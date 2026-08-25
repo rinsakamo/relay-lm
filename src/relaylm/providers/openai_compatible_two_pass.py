@@ -13,8 +13,10 @@ from relaylm.cognition_execution import (
     CognitionExtractionInput,
     CognitionExtractionOutput,
     CognitionPassRequest,
+    CognitionStructuredOutputMode,
 )
 from relaylm.providers.openai_compatible import (
+    WIRE_SCHEMA,
     OpenAICompatibleProvider,
     ProviderProtocolError,
     _iter_sse_data,
@@ -28,6 +30,9 @@ from relaylm.providers.openai_compatible import (
     _resolve_cognition_pass_request,
     _vllm_reasoning_fields,
     serialize_cognitive_input,
+)
+from relaylm.providers.openai_compatible_cognition import (
+    describe_openai_compatible_cognition_capabilities,
 )
 from relaylm.providers.openai_compatible_reasoning import (
     OpenAICompatibleReasoningRequest,
@@ -67,6 +72,29 @@ TURN_INTERPRETATION_FIELDS = (
     "continuity_signals",
 )
 
+EXTRACTION_WIRE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "turn_interpretation",
+        "state_candidates",
+        "continuity_candidates",
+    ],
+    "properties": {
+        "turn_interpretation": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": list(TURN_INTERPRETATION_FIELDS),
+            "properties": {
+                field: {"type": "array", "items": {"type": "string"}}
+                for field in TURN_INTERPRETATION_FIELDS
+            },
+        },
+        "state_candidates": WIRE_SCHEMA["properties"]["state_candidates"],
+        "continuity_candidates": WIRE_SCHEMA["properties"]["continuity_candidates"],
+    },
+}
+
 _EXTRACTION_JSON_FENCE_PREFIX = "```json\n"
 _EXTRACTION_JSON_FENCE_SUFFIX = "\n```"
 
@@ -82,6 +110,7 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
         reasoning_request: OpenAICompatibleReasoningRequest | None = None,
         vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
     ) -> CognitionConversationOutput:
+        _require_plain_pass1(pass_request)
         effective_capability = (
             vllm_reasoning_capability or self.vllm_reasoning_capability
         )
@@ -114,6 +143,7 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
         reasoning_request: OpenAICompatibleReasoningRequest | None = None,
         vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
     ) -> CognitionConversationOutput:
+        _require_plain_pass1(pass_request)
         effective_capability = (
             vllm_reasoning_capability or self.vllm_reasoning_capability
         )
@@ -206,6 +236,10 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
             decoding_capabilities=self.decoding_capabilities,
             vllm_reasoning_capability=effective_capability,
         )
+        structured_output_mode = _resolve_extraction_structured_output_mode(
+            pass_request=pass_request,
+            provider=self,
+        )
         envelope = await self._post_two_pass(
             body=_extraction_request_body(
                 model=self.model,
@@ -213,6 +247,7 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
                 decoding=decoding_config.to_mapping(),
                 reasoning_request=effective_reasoning,
                 vllm_reasoning_capability=effective_capability,
+                structured_output_mode=structured_output_mode,
             ),
             boundary="extraction",
         )
@@ -247,6 +282,33 @@ class OpenAICompatibleTwoPassProvider(OpenAICompatibleProvider):
             raise
         except (httpx.HTTPError, ValueError) as exc:
             raise ProviderProtocolError(f"{prefix}: {exc}") from exc
+
+
+def _require_plain_pass1(pass_request: CognitionPassRequest | None) -> None:
+    if pass_request is not None and pass_request.structured_output_mode is not None:
+        raise ValueError("structured_output_mode applies only to Pass 2 extraction")
+
+
+def _resolve_extraction_structured_output_mode(
+    *,
+    pass_request: CognitionPassRequest | None,
+    provider: OpenAICompatibleProvider,
+) -> CognitionStructuredOutputMode:
+    requested = (
+        None if pass_request is None else pass_request.structured_output_mode
+    )
+    if requested is None or requested is CognitionStructuredOutputMode.PLAIN:
+        return CognitionStructuredOutputMode.PLAIN
+    if requested is CognitionStructuredOutputMode.NATIVE:
+        return CognitionStructuredOutputMode.NATIVE
+    if requested is not CognitionStructuredOutputMode.AUTO:
+        raise TypeError("unsupported structured output mode")
+    capabilities = describe_openai_compatible_cognition_capabilities(provider)
+    return (
+        CognitionStructuredOutputMode.NATIVE
+        if capabilities.structured_output
+        else CognitionStructuredOutputMode.PLAIN
+    )
 
 
 def _common_cognitive_prefix(cognitive_input: CognitiveInput) -> str:
@@ -302,6 +364,7 @@ def _extraction_request_body(
     decoding: dict[str, int | float],
     reasoning_request: OpenAICompatibleReasoningRequest | None = None,
     vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
+    structured_output_mode: CognitionStructuredOutputMode = CognitionStructuredOutputMode.PLAIN,
 ) -> dict[str, Any]:
     body: dict[str, Any] = {
         "model": model,
@@ -315,6 +378,17 @@ def _extraction_request_body(
         ],
         "stream": False,
     }
+    if structured_output_mode is CognitionStructuredOutputMode.NATIVE:
+        body["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "relaylm_structured_cognition_output",
+                "strict": True,
+                "schema": EXTRACTION_WIRE_SCHEMA,
+            },
+        }
+    elif structured_output_mode is not CognitionStructuredOutputMode.PLAIN:
+        raise ValueError("extraction structured output mode must resolve before request")
     body.update(decoding)
     body.update(
         _vllm_reasoning_fields(
@@ -329,6 +403,40 @@ def _extraction_request_body(
 def _extraction_pass_suffix(extraction_input: CognitionExtractionInput) -> str:
     response_json = json.dumps(
         {"content": extraction_input.assistant_response},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    source_id = extraction_input.originating_event_id
+    like_example = json.dumps(
+        {
+            "state_class": "user.preference",
+            "key": "coffee",
+            "op": "set",
+            "value": "likes",
+            "sources": [source_id],
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    preferred_example = json.dumps(
+        {
+            "state_class": "user.preference",
+            "key": "preferred_beverage",
+            "op": "set",
+            "value": "coffee",
+            "sources": [source_id],
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    remove_example = json.dumps(
+        {
+            "state_class": "user.preference",
+            "key": "coffee",
+            "op": "remove",
+            "value": None,
+            "sources": [source_id],
+        },
         ensure_ascii=False,
         separators=(",", ":"),
     )
@@ -353,6 +461,11 @@ Structured State records belong only in top-level `state_candidates`.
 Projection rules:
 - Interpretation is not authority or State. Propose State only for grounded, sufficiently resolved, meaningful durable change; preserve existing class/key vocabulary.
 - State wire: `{{state_class,key,op,value,sources}}`. `state_class` must be a key in CognitiveInput.state_classes. `op` is `set` or `remove`. For `set`, value is a string or `{{"semantic":string,"degree_hint":0..1}}`; degree_hint is intensity, not confidence. For `remove`, value is null; remove only for explicit revocation, cancellation, denial, correction, or termination.
+- State `key` is the stable subject or dimension within its `state_class`; `value` is the accepted semantic value for that key. Preserve an established class/key pair when current State already provides one rather than inventing a synonym.
+- State examples demonstrate representation only; never copy example values, keys, or claims unless current evidence supports that exact meaning:
+  - Liking a subject: `{like_example}`
+  - A preference dimension whose value is the subject: `{preferred_example}`
+  - Explicit revocation of an accepted subject preference: `{remove_example}`
 - Continuity wire: `{{kind,key,op,value,sources,epistemic_role}}`. `kind` is `referent`, `unresolved`, or `active_task`; `op` is `set` or `resolve`; set value is finite JSON and resolve value is null; epistemic_role is `user_assertion`, `assistant_inference`, or `assistant_commitment`. Carry only when useful for upcoming coherence; an `unresolved` interpretation is not automatically Continuity.
 - Never use `resolve` as `kind`; keep `kind` as `referent`, `unresolved`, or `active_task`.
 - `kind` and `epistemic_role` are separate enum axes; `unresolved` is a `kind` only and must never be used as `epistemic_role`.

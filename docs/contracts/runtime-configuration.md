@@ -59,6 +59,7 @@ runtime:
       reasoning_mode: bounded
       reasoning_budget: 256
       max_output_tokens: 256
+      structured_output_mode: native  # plain | native | auto
 
   # Reserved for #1388. Any non-empty value currently fails closed.
   profile: profile-name
@@ -111,6 +112,36 @@ The topology default does **not** imply numeric pass defaults. With no explicit 
 
 Pass 1 and Pass 2 controls are independently represented. The configuration layer does not infer stronger Pass 2 reasoning simply because a request is Pass 2.
 
+### Pass 2 structured-output transport
+
+Only `runtime.cognition.pass2` may carry:
+
+```yaml
+structured_output_mode: plain  # plain | native | auto
+```
+
+The values mean:
+
+```text
+plain
+  use ordinary OpenAI-compatible message content containing RelayLM-owned JSON IR
+
+native
+  send provider-native response_format=json_schema for the current Pass 2 extraction wire
+
+auto
+  use native only when affirmative structured-output capability evidence is available;
+  otherwise use plain
+```
+
+Omitting the field preserves the previously qualified `plain` transport. This is a compatibility default, not a claim that `plain` is the eventual calibrated #1388 recommendation.
+
+`structured_output_mode` is invalid under `pass1`. Pass 1 is visible conversation and must not acquire the Pass 2 extraction schema.
+
+Explicit `native` is not silently downgraded. If the selected provider/backend rejects the native request, the provider boundary fails closed. `auto` is the conservative option when the operator wants capability-gated selection rather than a forced native request.
+
+The switch affects only how Pass 2 structure is constrained on the external provider wire. It does not change the Pass 2 semantic prompt, RelayLM JSON parsing, typed State/Continuity construction, source validation, or commit authority.
+
 ## Cognitive Budget boundary
 
 The existing `runtime.cognitive_budget` is the #1387 single-pass budget contract. RelayLM does not duplicate that one total into Pass 1 and Pass 2 by assumption.
@@ -153,7 +184,7 @@ runtime.cognition.mode
 
 All three select only the existing #1533 closed vocabulary. They do not create a new mode or numeric policy. CLI beats environment, environment beats runtime YAML, and omission falls back to canonical `two_pass`.
 
-Complex Pass 1/Pass 2 controls, Retrieval, Continuity, and Cognitive Budget structures remain file-owned in format version 1. There is no generic `--set key=value` surface.
+Complex Pass 1/Pass 2 controls, including `pass2.structured_output_mode`, Retrieval, Continuity, and Cognitive Budget structures remain file-owned in format version 1. There is no generic `--set key=value` surface.
 
 ## Current defaults
 
@@ -170,7 +201,9 @@ runtime.cognition.mode    = two_pass
 
 `runtime.cognition.mode = two_pass` comes from #1533 architecture authority. It is not a #1388 numeric calibration value.
 
-There are no defaults here for reasoning effort, decoding values, output budgets, context window, retrieval counts, Continuity lifetime/capacity, Cognitive Budget envelopes, token-counter capability, or runtime profile.
+For Pass 2 structured-output transport, omission preserves the established `plain` path. This compatibility behavior is represented by omission in the resolved request rather than by inventing a profile/default value.
+
+There are no calibrated defaults here for reasoning effort, decoding values, output budgets, context window, retrieval counts, Continuity lifetime/capacity, Cognitive Budget envelopes, token-counter capability, runtime profile, or an eventual preferred Pass 2 structured-output transport.
 
 ## Provider identity
 
@@ -185,6 +218,8 @@ The backend vocabulary is provider-owned. Runtime configuration resolves only th
 
 A known backend name does not by itself prove that every specialized capability is available. Assembly/preflight may reuse the common OpenAI-compatible transport while preserving the selected backend identity, but any requested backend-specific control still requires a proven provider-owned realizer and otherwise fails closed.
 
+The same rule applies to `structured_output_mode=auto`: backend naming or generic OpenAI compatibility is not sufficient affirmative capability evidence by itself.
+
 ## Secrets
 
 The file may persist only an environment-variable reference. Raw provider secret material may enter through the dedicated process environment but lives only in `RuntimeSecretInputs` and is excluded from representations and effective diagnostics.
@@ -193,7 +228,7 @@ Secret selection remains deterministic and an explicitly selected missing/empty 
 
 ## Effective diagnostics
 
-`ResolvedRuntimeConfig.effective_diagnostics()` exposes non-secret effective values plus provenance. Current diagnostics include `runtime.cognition.mode`, so `doctor --json` can distinguish the product topology and whether it came from CLI, environment, runtime file, or the canonical default without reading Character semantic payload.
+`ResolvedRuntimeConfig.effective_diagnostics()` exposes non-secret effective values plus provenance. Current diagnostics include file-owned Pass 2 controls through collected provenance, including an explicitly configured `runtime.cognition.pass2.structured_output_mode`, so operator evidence can distinguish a selected transport without reading Character semantic payload.
 
 Diagnostics never include API keys, secret environment-variable names, SOUL text, State values, Event/MEMORY content, Continuity semantic payload, or conversation text.
 
@@ -224,11 +259,13 @@ Errors expose safe configuration metadata only.
 Runtime configuration must preserve:
 
 - two-pass topology ownership in #1533;
+- Pass 2 structured-output semantics ownership in #1533 and external wire realization in the provider lane;
 - numeric/profile ownership in #1388;
 - provider capability/wire ownership in the provider lane;
 - Character/State/Event/MEMORY/Continuity semantic authority separation;
 - buffered/streaming cognition-policy equivalence;
 - no semantic-payload inspection for runtime-policy selection;
-- fail-closed unsupported capability behavior.
+- fail-closed unsupported capability behavior;
+- no silent fallback from explicit Pass 2 `native` to `plain`.
 
 > Configuration carries selected policy. It does not manufacture semantics or defaults.
