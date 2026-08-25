@@ -91,6 +91,31 @@ def test_two_pass_timing_artifact_separates_visible_response_from_extraction() -
     assert artifact.turns[1].provider_total_ms == 15.0
 
 
+def test_two_pass_timing_allows_budget_gated_pass2_without_provider_call() -> None:
+    artifact = bind_fast_screening_timing_artifact(
+        screening_id="screening-v1",
+        condition_id="two-pass-off-off",
+        replicate_id="near-floor",
+        scenario_id="scenario-v1",
+        execution_id=EXECUTION_ID,
+        run_id=RUN_ID,
+        execution_mode="two_pass",
+        turn_count=2,
+        scenario_elapsed_ms=30.0,
+        calls=(
+            _call("pass1", duration_ms=8.0),
+            _call("pass1", duration_ms=9.0),
+        ),
+    )
+
+    assert tuple(turn.response_outcome for turn in artifact.turns) == (
+        "completed",
+        "completed",
+    )
+    assert tuple(turn.extraction_provider_ms for turn in artifact.turns) == (None, None)
+    assert tuple(turn.extraction_outcome for turn in artifact.turns) == (None, None)
+
+
 def test_two_pass_timing_sidecar_preserves_failed_extraction_call() -> None:
     artifact = bind_fast_screening_timing_artifact(
         screening_id="screening-v1",
