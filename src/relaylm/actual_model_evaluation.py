@@ -1234,6 +1234,11 @@ def _cognition_pass_request_mapping(request: CognitionPassRequest) -> dict[str, 
         "temperature": request.temperature,
         "top_p": request.top_p,
         "max_output_tokens": request.max_output_tokens,
+        "structured_output_mode": (
+            request.structured_output_mode.value
+            if request.structured_output_mode is not None
+            else None
+        ),
     }
 
 
