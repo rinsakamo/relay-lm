@@ -366,7 +366,7 @@ def _pass2_reasoning_escalation_key(
     baseline_key: str,
 ) -> str:
     baseline = plan.conditions[baseline_key]
-    baseline_pass1 = baseline.condition.pass_requests.pass1 if False else baseline.pass_requests.pass1
+    baseline_pass1 = baseline.pass_requests.pass1
     baseline_pass2 = baseline.pass_requests.pass2
     assert baseline_pass1 is not None
     assert baseline_pass2 is not None
