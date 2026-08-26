@@ -104,30 +104,93 @@ def test_two_pass_requests_share_exact_common_prefix_before_pass_suffix() -> Non
     assert "response_format" not in extraction
 
 
-def test_pass2_prompt_grounds_continuity_transitions_in_current_turn() -> None:
+def test_pass2_prompt_defines_compact_continuity_taxonomy_and_complete_examples() -> None:
     _, extraction = _request_bodies()
     extraction_messages = extraction["messages"]
     assert isinstance(extraction_messages, list)
     extraction_content = extraction_messages[1]["content"]
     assert isinstance(extraction_content, str)
 
+    assert "Continuity meanings (classify independently):" in extraction_content
     assert (
-        "`referent`, `unresolved`, and `active_task` are independent semantic dimensions"
+        "`referent`: a specific subject or entity that upcoming dialogue may refer back to."
         in extraction_content
     )
     assert (
-        "reuse its existing `kind` + `key`" in extraction_content
-    )
-    assert (
-        "Do not re-propose an unchanged accepted Continuity item"
+        "`unresolved`: an explicit open question or unknown value that remains to be resolved."
         in extraction_content
     )
     assert (
-        "every Continuity transition caused by this turn must include the current Input Event ID `evt-now` in `sources`"
+        "`active_task`: an unfinished action, process, or goal expected to continue."
         in extraction_content
     )
     assert (
-        "Prior Continuity/context sources describe existing context but cannot substitute for current evidence of a new set/resolve transition."
+        "Emit every distinct useful Continuity meaning present; do not choose only one best kind."
+        in extraction_content
+    )
+    assert (
+        "New items use a short stable semantic `key`; exact first-introduction wording is not globally canonical."
+        in extraction_content
+    )
+    assert "changed or resolved accepted meaning -> reuse its existing lifecycle key" in extraction_content
+    assert "unchanged accepted meaning -> emit no candidate" in extraction_content
+    assert (
+        "every new set/resolve transition must include the current Input Event ID `evt-now` in `sources`"
+        in extraction_content
+    )
+
+    expected_examples = (
+        {
+            "kind": "referent",
+            "key": "current_document",
+            "op": "set",
+            "value": "the draft",
+            "sources": ["evt-now"],
+            "epistemic_role": "user_assertion",
+        },
+        {
+            "kind": "unresolved",
+            "key": "document_author",
+            "op": "set",
+            "value": "author not yet known",
+            "sources": ["evt-now"],
+            "epistemic_role": "user_assertion",
+        },
+        {
+            "kind": "active_task",
+            "key": "verify_document_author",
+            "op": "set",
+            "value": "verify the document author",
+            "sources": ["evt-now"],
+            "epistemic_role": "user_assertion",
+        },
+    )
+    for example in expected_examples:
+        assert json.dumps(example, ensure_ascii=False, separators=(",", ":")) in extraction_content
+
+    assert "which blue box" not in extraction_content
+
+
+def test_pass2_prompt_projects_continuity_as_current_turn_transitions() -> None:
+    _, extraction = _request_bodies()
+    extraction_messages = extraction["messages"]
+    assert isinstance(extraction_messages, list)
+    extraction_content = extraction_messages[1]["content"]
+    assert isinstance(extraction_content, str)
+
+    assert "Continuity transition decision:" in extraction_content
+    assert "new useful meaning -> emit `set` with a new stable key" in extraction_content
+    assert "unchanged accepted meaning -> emit no candidate" in extraction_content
+    assert "changed or resolved accepted meaning -> reuse its existing lifecycle key" in extraction_content
+    assert (
+        "newly establishes an explicit open question or unknown value" in extraction_content
+    )
+    assert (
+        "emit a new `unresolved` set when no accepted unresolved item already represents that open issue"
+        in extraction_content
+    )
+    assert (
+        "A `referent` identifies the reference target; new descriptive facts about the same target do not supersede it"
         in extraction_content
     )
 
