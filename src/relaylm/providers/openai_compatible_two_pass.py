@@ -432,7 +432,6 @@ Emit `state_candidates`, then `continuity_candidates`.
 
 Projection rules:
 - Propose State only for grounded, sufficiently resolved, meaningful durable change; preserve existing class/key vocabulary.
-- Preserve uncertainty, degree, correction, negation, and supersession from the evidence. Do not strengthen tentative evidence into a more certain claim.
 - State wire: `{{state_class,key,op,value,sources}}`. `state_class` must be a key in CognitiveInput.state_classes. `op` is `set` or `remove`. For `set`, value is a string or `{{"semantic":string,"degree_hint":0..1}}`; degree_hint is intensity, not confidence. For `remove`, value is null; remove only for explicit revocation, cancellation, denial, correction, or termination.
 - State `key` is the stable subject or dimension within its `state_class`; `value` is the accepted semantic value for that key. Preserve an established class/key pair when current State already provides one rather than inventing a synonym.
 - State examples demonstrate representation only; never copy example values, keys, or claims unless current evidence supports that exact meaning:
