@@ -43,6 +43,26 @@
           "continuity": []
         }
       ]
+    },
+    {
+      "format_version": 1,
+      "id": "preference-epistemic-strength-ja-s5-v1",
+      "family": "state_candidate_quality",
+      "version": "1",
+      "turns": [
+        "たぶん紅茶のほうが好きかも。"
+      ],
+      "required_provider_capabilities": [
+        "state_candidates"
+      ],
+      "restart_after_turn_count": null,
+      "proposal_labels": [
+        {
+          "turn_index": 1,
+          "state": [],
+          "continuity": []
+        }
+      ]
     }
   ]
 }
