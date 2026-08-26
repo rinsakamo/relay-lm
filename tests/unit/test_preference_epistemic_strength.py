@@ -7,7 +7,7 @@ from relaylm.cognitive import CognitiveInput
 from relaylm.cognition_execution import CognitionExtractionInput
 from relaylm.events import Event
 from relaylm.identity import Identity
-from relaylm.providers.openai_compatible_two_pass import _extraction_pass_suffix
+from relaylm.providers.openai_compatible_two_pass import _common_cognitive_prefix
 from relaylm.state import STATE_CLASS_DEFINITIONS
 
 
@@ -51,16 +51,16 @@ def test_user_preference_semantics_separate_epistemic_strength_from_intensity() 
     assert "does not revoke an established durable preference" in definition
 
 
-def test_pass2_prompt_contains_preference_epistemic_contrast_guidance() -> None:
-    suffix = _extraction_pass_suffix(_extraction_input())
+def test_state_owned_epistemic_contrast_is_model_facing_in_cognitive_input() -> None:
+    prefix = _common_cognitive_prefix(_extraction_input().cognitive_input)
 
-    assert "Do not strengthen tentative or uncertain preference evidence" in suffix
-    assert "do not encode confidence or probability with `degree_hint`" in suffix
-    assert "Tentative preference example" in suffix
-    assert "no durable State candidate" in suffix
-    assert "Resolved preference example" in suffix
-    assert "Temporary preference variation example" in suffix
-    assert "must not remove an established durable preference" in suffix
+    assert "degree_hint is intensity, not confidence" in prefix
+    assert "tentative ('might prefer tea; not sure') means no durable State" in prefix
+    assert "resolved ('prefer tea to coffee') may establish durable preference" in prefix
+    assert (
+        "temporary ('not in the mood for tea today; usual preference unchanged') "
+        "must not remove durable preference" in prefix
+    )
 
 
 def test_actual_model_fixture_covers_tentative_resolved_and_temporary_preference() -> None:
