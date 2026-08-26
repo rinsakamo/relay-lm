@@ -61,6 +61,18 @@ Degree values should not be compared across incompatible semantic axes. The cogn
 
 The deterministic Validator checks only the reserved envelope shape and numeric bounds. It does not infer, calibrate, normalize, or semantically reinterpret the degree.
 
+## State durability gate
+
+State represents accepted persistent current understanding. A State proposal is therefore appropriate only when the current Input presents that candidate meaning as sufficiently asserted, committed, or otherwise established for durable use.
+
+Tentative, hypothetical, merely possible, guessed, hedged, or explicitly self-uncertain meaning stays uncommitted. The cognitive model should emit no durable State for that meaning merely because a possible fact, preference, goal, condition, experience, belief, relationship quality, or commitment was mentioned.
+
+This gate is semantic and language-independent. Apply it by the meaning conveyed by the current Input regardless of language or `state_class`; do not implement it through surface keywords, grammatical-pattern lists, language-specific parsing, or deterministic phrase matching.
+
+Epistemic uncertainty must not be encoded as `degree_hint`. `degree_hint` remains semantic intensity on a compatible axis, not confidence about whether the State is established. A later sufficiently resolved assertion may establish or update State through the ordinary `set` path.
+
+The gate is model-facing projection grammar, not Validator natural-language interpretation. The deterministic Validator remains language-agnostic and accepts or rejects typed proposals according to structural, source, and current-State rules; it does not inspect hedging language or repair model semantics.
+
 ## `remove`
 
 Proposes that an existing State should no longer be active/current. It does not delete Event history.
@@ -116,28 +128,7 @@ spicy_food = dislikes
 
 Generic predicate keys such as `likes`, `dislikes`, and `preference` are invalid because they collapse multiple subjects into one State slot.
 
-### Epistemic strength and durability
-
-Preference intensity and epistemic certainty are different semantic axes. RelayLM must not encode uncertainty about whether a preference is established by lowering `degree_hint`; `degree_hint` remains preference intensity only.
-
-The cognitive model should preserve the strength of the user's evidence when deciding whether a durable preference State is justified:
-
-```text
-tentative: "might prefer tea; not sure"
-  -> no durable preference State is required
-
-resolved: "prefer tea to coffee"
-  -> a durable preference State may be proposed
-
-temporary: "not in the mood for tea today; usual preference unchanged"
-  -> do not remove the established durable preference
-```
-
-Tentative, hedged, speculative, or explicitly uncertain preference language does not by itself establish a durable preference. Leaving the evidence uncommitted is correct when that is more faithful than silently upgrading it into certainty.
-
-A later sufficiently resolved statement may establish or update the durable preference using the ordinary `set` path. Conversely, a transient mood or situational variation does not revoke durable preference unless the user actually denies, corrects, cancels, or otherwise terminates it.
-
-This is model-facing semantic grammar, not Validator natural-language interpretation. The deterministic Validator remains language-agnostic and accepts or rejects the typed proposal according to structural/source/current-State rules; it does not inspect hedging words or repair model semantics.
+Preference intensity and epistemic certainty remain different semantic axes. The global State durability gate decides whether a preference is established at all; only after that may `degree_hint` preserve a useful intensity relation.
 
 Comparative preference preserves its stated direction and degree. For example, preferring coffee over tea does not by itself mean tea became disliked and does not justify removing `tea = likes` without explicit revocation, denial, or correction.
 
