@@ -59,24 +59,33 @@ Run the current product path and review, in this order:
 
 A provider-capacity failure can prevent these questions from being observed, but minimizing context capacity is not itself a functional acceptance goal.
 
-## Focused preference epistemic regression
+## Focused State durability regression
 
 `evaluation/actual_model/scenario_sets/preference-epistemic-strength-v1.json` is a focused State-proposal regression fixture for #1903. It does not replace the primary Stage R scenario plan or by itself qualify a release.
 
-The fixture holds the ordinary State ontology and direct-candidate Pass 2 path fixed while contrasting three semantic states in English so the test is not coupled to one Japanese surface form:
+The fixture holds the ordinary State ontology and direct-candidate Pass 2 path fixed while checking two complementary surfaces:
+
+- an English sequential contrast: tentative preference -> resolved durable preference -> temporary mood;
+- the original Japanese S5 surface `たぶん紅茶のほうが好きかも。` as a black-box multilingual regression.
+
+The Japanese sentence belongs to evaluation evidence only. It must not be copied into the model-facing State grammar, provider prompt, deterministic Validator, or language-specific phrase rules. The purpose is to test whether the language-independent State durability gate generalizes by meaning rather than by memorizing one wording.
+
+Expected outcomes are:
 
 ```text
-tentative preference
-  -> no durable State proposal expected
+tentative meaning
+  -> no durable State proposal
 
-resolved durable preference
-  -> preferred_beverage=tea set expected
+resolved durable meaning
+  -> ordinary State set remains available
 
-temporary mood with durable preference explicitly unchanged
-  -> no State proposal/remove expected
+temporary variation with durable meaning unchanged
+  -> no durable remove/replace solely from the temporary variation
 ```
 
-This fixture exists to detect epistemic-strength regression after model-facing State grammar changes. It must be run against the exact current prompt/wire identity when claiming that tentative preference overcommit is improved. A repository GREEN only proves that the fixture and semantic contract are wired correctly; actual-model evidence is still required for product-quality qualification.
+The first #1906 real-model iteration is an explicit negative baseline for this gate: its English sequential contrast passed on both base and candidate heads, while the Japanese S5 created durable `user.preference/preferred_beverage=紅茶` on both heads in all 3 replicates. Therefore English-only success is not sufficient evidence for #1903. A candidate semantic fix must pass the Japanese black-box case without adding that Japanese wording to the prompt.
+
+This fixture exists to detect durability/epistemic-strength regression after model-facing State grammar changes. It must be run against the exact current prompt/wire identity when claiming that tentative overcommit is improved. A repository GREEN only proves that the fixture and semantic contract are wired correctly; actual-model evidence is still required for product-quality qualification.
 
 ## Execution
 
@@ -159,7 +168,7 @@ This acceptance contract does not change:
 
 The current Pass 2 wire projects directly to `state_candidates` / `continuity_candidates`; functional acceptance must bind and review that exact current prompt/wire identity rather than reusing evidence from the retired six-field scaffold.
 
-The focused preference fixture extends regression coverage for model-facing State semantics only. It does not introduce a language-specific deterministic parser, confidence field, or new State lifecycle rule.
+The focused durability fixture extends regression coverage for model-facing State projection semantics only. It does not introduce a language-specific deterministic parser, confidence field, fixed intermediate cognition axes, or new State lifecycle rule.
 
 The capacity correction remains: **use the canonical frozen-proof vLLM runtime, profile its actual free VRAM and non-KV footprint, let that runtime resolve explicit KV bytes and maximum model length, use that live capacity for functional acceptance, then calibrate later**.
 
