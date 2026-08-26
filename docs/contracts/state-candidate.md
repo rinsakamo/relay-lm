@@ -116,6 +116,29 @@ spicy_food = dislikes
 
 Generic predicate keys such as `likes`, `dislikes`, and `preference` are invalid because they collapse multiple subjects into one State slot.
 
+### Epistemic strength and durability
+
+Preference intensity and epistemic certainty are different semantic axes. RelayLM must not encode uncertainty about whether a preference is established by lowering `degree_hint`; `degree_hint` remains preference intensity only.
+
+The cognitive model should preserve the strength of the user's evidence when deciding whether a durable preference State is justified:
+
+```text
+tentative: "might prefer tea; not sure"
+  -> no durable preference State is required
+
+resolved: "prefer tea to coffee"
+  -> a durable preference State may be proposed
+
+temporary: "not in the mood for tea today; usual preference unchanged"
+  -> do not remove the established durable preference
+```
+
+Tentative, hedged, speculative, or explicitly uncertain preference language does not by itself establish a durable preference. Leaving the evidence uncommitted is correct when that is more faithful than silently upgrading it into certainty.
+
+A later sufficiently resolved statement may establish or update the durable preference using the ordinary `set` path. Conversely, a transient mood or situational variation does not revoke durable preference unless the user actually denies, corrects, cancels, or otherwise terminates it.
+
+This is model-facing semantic grammar, not Validator natural-language interpretation. The deterministic Validator remains language-agnostic and accepts or rejects the typed proposal according to structural/source/current-State rules; it does not inspect hedging words or repair model semantics.
+
 Comparative preference preserves its stated direction and degree. For example, preferring coffee over tea does not by itself mean tea became disliked and does not justify removing `tea = likes` without explicit revocation, denial, or correction.
 
 If the weaker subject already has an accepted positive preference State, that exact State remains current unless the current Input explicitly denies or revokes it. The cognitive model should represent the stronger subject and any supported category-level preference as separate specific keys instead of treating comparison as replacement. For example, an existing `tea = likes` plus a new statement that coffee is preferred over tea may yield `coffee = likes` or structured degree-hint values while preserving `tea = likes`.
