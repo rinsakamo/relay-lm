@@ -104,6 +104,34 @@ def test_two_pass_requests_share_exact_common_prefix_before_pass_suffix() -> Non
     assert "response_format" not in extraction
 
 
+def test_pass2_prompt_grounds_continuity_transitions_in_current_turn() -> None:
+    _, extraction = _request_bodies()
+    extraction_messages = extraction["messages"]
+    assert isinstance(extraction_messages, list)
+    extraction_content = extraction_messages[1]["content"]
+    assert isinstance(extraction_content, str)
+
+    assert (
+        "`referent`, `unresolved`, and `active_task` are independent semantic dimensions"
+        in extraction_content
+    )
+    assert (
+        "reuse its existing `kind` + `key`" in extraction_content
+    )
+    assert (
+        "Do not re-propose an unchanged accepted Continuity item"
+        in extraction_content
+    )
+    assert (
+        "every Continuity transition caused by this turn must include the current Input Event ID `evt-now` in `sources`"
+        in extraction_content
+    )
+    assert (
+        "Prior Continuity/context sources describe existing context but cannot substitute for current evidence of a new set/resolve transition."
+        in extraction_content
+    )
+
+
 def test_extraction_parser_admits_direct_candidate_wire() -> None:
     wire = {
         "state_candidates": [],
