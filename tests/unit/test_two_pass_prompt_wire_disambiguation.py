@@ -28,20 +28,12 @@ def _extraction_input() -> CognitionExtractionInput:
     )
 
 
-def test_pass2_prompt_keeps_interpretation_strings_distinct_from_candidate_records() -> None:
+def test_pass2_prompt_projects_directly_to_candidate_records() -> None:
     suffix = _extraction_pass_suffix(_extraction_input())
 
-    assert (
-        "Interpretation arrays contain text strings only; never put State/Continuity "
-        "wire objects in `turn_interpretation`." in suffix
-    )
-    assert (
-        "`continuity_signals` contains only bounded meaning strings; structured "
-        "Continuity records belong only in top-level `continuity_candidates`." in suffix
-    )
-    assert (
-        "Structured State records belong only in top-level `state_candidates`." in suffix
-    )
+    assert "Emit `state_candidates`, then `continuity_candidates`." in suffix
+    assert "turn_interpretation" not in suffix
+    assert "continuity_signals" not in suffix
 
 
 def test_pass2_prompt_keeps_continuity_kind_distinct_from_resolve_operation() -> None:
