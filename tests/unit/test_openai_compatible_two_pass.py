@@ -49,20 +49,8 @@ def _cognitive_input() -> CognitiveInput:
     )
 
 
-def _empty_turn_interpretation() -> dict[str, list[str]]:
-    return {
-        "user_meaning": [],
-        "change_signals": [],
-        "self_meaning": [],
-        "assistant_effects": [],
-        "unresolved": [],
-        "continuity_signals": [],
-    }
-
-
 def _empty_extraction_wire() -> dict[str, object]:
     return {
-        "turn_interpretation": _empty_turn_interpretation(),
         "state_candidates": [],
         "continuity_candidates": [],
     }
@@ -137,7 +125,7 @@ def test_same_openai_provider_instance_uses_plain_conversation_and_relaylm_owned
     assert conversation_prompt.endswith("CONVERSATION\n\nRespond as this character.")
 
     assert "response_format" not in seen[1]
-    assert "turn_interpretation" in extraction_prompt
+    assert "turn_interpretation" not in extraction_prompt
     assert "interpretive context only" in extraction_prompt
     assert "must never self-certify" in extraction_prompt
     assert "state_candidates" in extraction_prompt
@@ -217,11 +205,8 @@ def test_extraction_without_provider_structured_output_still_fails_closed_on_inv
 
 
 def test_extraction_rejects_duplicate_state_candidate_members() -> None:
-    interpretation = json.dumps(_empty_turn_interpretation(), separators=(",", ":"))
     content = (
-        '{"turn_interpretation":'
-        + interpretation
-        + ',"state_candidates":[{"state_class":"user.preference",'
+        '{"state_candidates":[{"state_class":"user.preference",'
         '"key":"tea","key":"coffee","op":"set","value":"likes",'
         '"sources":["evt-now"]}],"continuity_candidates":[]}'
     )
