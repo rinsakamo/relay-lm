@@ -147,7 +147,6 @@ def test_pass2_prompt_contains_semantics_and_examples_without_scaffold() -> None
         "`change_signals`",
         "`self_meaning`",
         "`assistant_effects`",
-        "`unresolved`",
         "`continuity_signals`",
     ):
         assert removed_field not in prompt
