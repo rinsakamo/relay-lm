@@ -198,6 +198,14 @@ def test_pass2_prompt_projects_continuity_as_current_turn_transitions() -> None:
         in extraction_content
     )
     assert (
+        "An explicitly maintained unknown value is itself an `unresolved` meaning"
+        in extraction_content
+    )
+    assert (
+        "Do not require a new `active_task`, a question form, or a change to an existing task before emitting it."
+        in extraction_content
+    )
+    assert (
         "A `referent` identifies the reference target; new descriptive facts about the same target do not supersede it"
         in extraction_content
     )
