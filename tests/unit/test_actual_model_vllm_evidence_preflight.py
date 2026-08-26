@@ -13,13 +13,6 @@ from relaylm.actual_model_fast_screening import REFERENCE_BASELINE_ROLE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CURRENT_PLAN_PATH = REPO_ROOT / vllm_host.CANONICAL_VLLM_SCREENING_PLAN_PATH
-GOOGLE_PROOF_PATH = (
-    REPO_ROOT
-    / "evaluation"
-    / "actual_model"
-    / "attestations"
-    / "gemma-4-12b-it-qat-w4a16-google-vllm-reasoning-v1.json"
-)
 
 
 def test_clean_exact_repo_rejects_required_capacity_provenance_from_different_commit(
@@ -87,43 +80,7 @@ def test_clean_exact_repo_allows_capacity_acquisition_without_prior_capacity_pro
         text=True,
     ).stdout.strip()
 
-    vllm_host._verify_clean_exact_repo(
-        root=repo,
-        expected_commit=head,
-    )
-
-
-def test_screening_preparation_omits_measurement_commit_for_reviewed_tracked_capacity(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    plan = vllm_host.load_vllm_screening_plan(CURRENT_PLAN_PATH)
-    assert plan.capacity_evidence_id is not None
-    observed: dict[str, object] = {}
-
-    def stop_after_repo_gate(**kwargs):
-        observed.update(kwargs)
-        raise vllm_host.ActualModelVLLMHostError("stop after exact repo gate")
-
-    monkeypatch.setattr(vllm_host, "_verify_clean_exact_repo", stop_after_repo_gate)
-
-    with pytest.raises(
-        vllm_host.ActualModelVLLMHostError,
-        match="stop after exact repo gate",
-    ):
-        vllm_host.prepare_vllm_screening_condition(
-            plan=plan,
-            condition_id=REFERENCE_BASELINE_ROLE,
-            proof_path=GOOGLE_PROOF_PATH,
-            repo_root=REPO_ROOT,
-            snapshot_root="/tmp/unused",
-            relaylm_commit="a" * 40,
-            base_url="http://127.0.0.1:8000/v1",
-            api_key=None,
-            model_runner="v2",
-        )
-
-    assert observed["expected_commit"] == "a" * 40
-    assert observed["capacity_evidence_commit"] is None
+    vllm_host._verify_clean_exact_repo(root=repo, expected_commit=head)
 
 
 def test_screening_facade_can_bind_fresh_external_capacity_without_rewriting_plan(
@@ -131,7 +88,7 @@ def test_screening_facade_can_bind_fresh_external_capacity_without_rewriting_pla
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     canonical_plan = vllm_host.load_vllm_screening_plan(CURRENT_PLAN_PATH)
-    canonical_capacity_id = canonical_plan.capacity_evidence_id
+    assert canonical_plan.capacity_evidence_id is None
     fresh_capacity_id = "amcap-" + "f" * 64
     capacity_root = tmp_path / "fresh-capacity"
     observed: dict[str, object] = {}
@@ -201,4 +158,4 @@ def test_screening_facade_can_bind_fresh_external_capacity_without_rewriting_pla
     assert prepared["condition_id"] == REFERENCE_BASELINE_ROLE
     assert prepared["plan"].capacity_evidence_id == fresh_capacity_id
     assert prepared["capacity_evidence_root"] == str(capacity_root)
-    assert canonical_plan.capacity_evidence_id == canonical_capacity_id
+    assert canonical_plan.capacity_evidence_id is None
