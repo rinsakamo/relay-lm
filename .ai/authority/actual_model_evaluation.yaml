@@ -1,6 +1,6 @@
 schema_version: 1
 id: actual_model_evaluation
-summary: Actual-model execution/evidence authority for Core 1.0 two-pass-reference qualification, exact per-pass request identity including Pass 2 structured-output transport, semantic-role current vLLM screening with live-capacity-bound functional acceptance and historical A/B/C compatibility only at immutable evidence boundaries, claim-scoped qualification/regression/smoke review identity, Character-relative anomaly/product-quality review with citable turn-local Character-realization outcomes, Pass-2-only reasoning escalation on demonstrated semantic need, exact provider/model capability binding, capacity/timing evidence with bounded sanitized provider-failure diagnostic sidecars, citable pressure plan/evidence binding and derived-observation integrity including pressure summaries/deltas, and later optional single-pass optimization comparisons against a qualified reference.
+summary: Actual-model execution/evidence authority for Core 1.0 two-pass-reference qualification, exact per-pass request identity including Pass 2 structured-output transport, a small current Stage R authority/launcher with fresh live-capacity binding, historical screening plans retained only at evidence/template boundaries, claim-scoped qualification/regression/smoke review identity, Character-relative anomaly/product-quality review with citable turn-local Character-realization outcomes, Pass-2-only reasoning escalation on demonstrated semantic need, exact provider/model capability binding, capacity/timing evidence with bounded sanitized provider-failure diagnostic sidecars, citable pressure plan/evidence binding and derived-observation integrity including pressure summaries/deltas, and later optional single-pass optimization comparisons against a qualified reference.
 owner_issue: 1386
 canonical_surfaces:
 - docs/reference/actual-model-character-authoring.md
@@ -18,7 +18,8 @@ canonical_surfaces:
 - docs/reference/actual-model-vllm-capacity-acquisition.md
 - docs/reference/actual-model-vllm-functional-acceptance.md
 - docs/reference/actual-model-stage-r-coverage.md
-- evaluation/actual_model/screenings/stage-r0-vllm-reference-v2.json
+- docs/reference/actual-model-stage-r-current.md
+- evaluation/actual_model/screenings/stage-r0-vllm-current-v1.json
 implementation:
 - src/relaylm/actual_model_evaluation.py
 - src/relaylm/actual_model_artifacts.py
@@ -43,6 +44,7 @@ implementation:
 - src/relaylm/actual_model_vllm_capacity.py
 - src/relaylm/actual_model_vllm_capacity_acquisition.py
 - src/relaylm/actual_model_host.py
+- src/relaylm/actual_model_stage_r.py
 - src/relaylm/actual_model_host_runner.py
 - src/relaylm/actual_model_reasoning.py
 - src/relaylm/actual_model_cognition_capability.py
@@ -102,6 +104,7 @@ tests:
 - tests/unit/test_actual_model_vllm_evidence_preflight.py
 - tests/unit/test_actual_model_vllm_budget_facade.py
 - tests/unit/test_actual_model_vllm_functional_acceptance.py
+- tests/unit/test_actual_model_stage_r_authority.py
 - tests/unit/test_actual_model_host_runner.py
 - tests/unit/test_actual_model_crystallization.py
 - tests/unit/test_actual_model_crystallization_reference.py
@@ -171,6 +174,14 @@ evidence:
     do not define current execution structure or order.
   surfaces:
   - evaluation/actual_model/screenings/cogp5-vllm-screening-v1.json
+- id: actual-model-stage-r-v2-execution-template
+  summary: >-
+    Historical/current-compatible v2 execution template retained for topology,
+    pass-request and scenario identity. Its numeric effective context window is
+    not current hardware/runtime authority; the current Stage R launcher always
+    binds screening capacity from fresh external evidence.
+  surfaces:
+  - evaluation/actual_model/screenings/stage-r0-vllm-reference-v2.json
 - id: actual-model-crystallization-quality-v1
   summary: >-
     Frozen Character fixture and revision identity for off-turn crystallization

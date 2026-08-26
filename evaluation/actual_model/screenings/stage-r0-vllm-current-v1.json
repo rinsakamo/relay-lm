@@ -1,0 +1,7 @@
+{
+  "format_version": 1,
+  "authority_id": "stage-r0-vllm-current-v1",
+  "execution_template_path": "evaluation/actual_model/screenings/stage-r0-vllm-reference-v2.json",
+  "context_window_source": "fresh_external_capacity_evidence",
+  "hardware_capability_source": "fresh_vllm_profiler_auto_kv"
+}
