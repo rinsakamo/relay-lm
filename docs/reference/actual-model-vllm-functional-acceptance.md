@@ -59,6 +59,25 @@ Run the current product path and review, in this order:
 
 A provider-capacity failure can prevent these questions from being observed, but minimizing context capacity is not itself a functional acceptance goal.
 
+## Focused preference epistemic regression
+
+`evaluation/actual_model/scenario_sets/preference-epistemic-strength-v1.json` is a focused State-proposal regression fixture for #1903. It does not replace the primary Stage R scenario plan or by itself qualify a release.
+
+The fixture holds the ordinary State ontology and direct-candidate Pass 2 path fixed while contrasting three semantic states in English so the test is not coupled to one Japanese surface form:
+
+```text
+tentative preference
+  -> no durable State proposal expected
+
+resolved durable preference
+  -> preferred_beverage=tea set expected
+
+temporary mood with durable preference explicitly unchanged
+  -> no State proposal/remove expected
+```
+
+This fixture exists to detect epistemic-strength regression after model-facing State grammar changes. It must be run against the exact current prompt/wire identity when claiming that tentative preference overcommit is improved. A repository GREEN only proves that the fixture and semantic contract are wired correctly; actual-model evidence is still required for product-quality qualification.
+
 ## Execution
 
 Use one clean exact RelayLM checkout throughout final capability attestation, capacity acquisition and functional screening. Use an isolated environment for the canonical vLLM source runtime; do not downgrade or otherwise mutate the user's global vLLM installation merely to satisfy the evidence identity.
@@ -132,13 +151,15 @@ A large discovered hardware capability does not imply a large release default. C
 This acceptance contract does not change:
 
 - Pass 1 / Pass 2 responsibilities;
-- State / Continuity / Event-source semantics;
+- State / Continuity / Event-source structural semantics;
 - provider parsing or `finish_reason != stop` rejection;
-- semantic scenarios or expected labels;
+- primary Stage R scenario selection;
 - reasoning escalation policy;
 - release/runtime defaults.
 
 The current Pass 2 wire projects directly to `state_candidates` / `continuity_candidates`; functional acceptance must bind and review that exact current prompt/wire identity rather than reusing evidence from the retired six-field scaffold.
+
+The focused preference fixture extends regression coverage for model-facing State semantics only. It does not introduce a language-specific deterministic parser, confidence field, or new State lifecycle rule.
 
 The capacity correction remains: **use the canonical frozen-proof vLLM runtime, profile its actual free VRAM and non-KV footprint, let that runtime resolve explicit KV bytes and maximum model length, use that live capacity for functional acceptance, then calibrate later**.
 
