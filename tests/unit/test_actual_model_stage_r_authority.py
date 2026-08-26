@@ -3,24 +3,27 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from relaylm.actual_model_vllm_host import (
-    CANONICAL_VLLM_SCREENING_PLAN_PATH,
-    load_vllm_screening_plan,
+
+_ROOT = Path(__file__).parents[2]
+_AUTHORITY_PATH = (
+    _ROOT
+    / "evaluation"
+    / "actual_model"
+    / "screenings"
+    / "stage-r0-vllm-current-v1.json"
 )
 
 
-_ROOT = Path(__file__).parents[2]
+def test_current_stage_r_authority_has_no_numeric_context_window() -> None:
+    raw = json.loads(_AUTHORITY_PATH.read_text(encoding="utf-8"))
 
-
-def test_current_stage_r_plan_declares_capacity_source_without_numeric_window() -> None:
-    path = _ROOT / CANONICAL_VLLM_SCREENING_PLAN_PATH
-    raw = json.loads(path.read_text(encoding="utf-8"))
-
-    assert raw["format_version"] == 3
-    assert raw["context_window_source"] == "capacity_evidence"
+    assert raw == {
+        "format_version": 1,
+        "authority_id": "stage-r0-vllm-current-v1",
+        "execution_template_path": (
+            "evaluation/actual_model/screenings/stage-r0-vllm-reference-v2.json"
+        ),
+        "context_window_source": "fresh_external_capacity_evidence",
+        "hardware_capability_source": "fresh_vllm_profiler_auto_kv",
+    }
     assert "effective_context_window" not in raw
-
-    plan = load_vllm_screening_plan(path)
-    assert plan.format_version == 3
-    assert plan.context_window_source == "capacity_evidence"
-    assert plan.effective_context_window is None
