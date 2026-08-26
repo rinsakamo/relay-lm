@@ -183,10 +183,18 @@ def test_pass2_prompt_projects_continuity_as_current_turn_transitions() -> None:
     assert "unchanged accepted meaning -> emit no candidate" in extraction_content
     assert "changed or resolved accepted meaning -> reuse its existing lifecycle key" in extraction_content
     assert (
+        "Before concluding there are no Continuity candidates, check `unresolved` independently"
+        in extraction_content
+    )
+    assert (
         "newly establishes an explicit open question or unknown value" in extraction_content
     )
     assert (
         "emit a new `unresolved` set when no accepted unresolved item already represents that open issue"
+        in extraction_content
+    )
+    assert (
+        "even when related accepted `referent` or `active_task` meanings are unchanged"
         in extraction_content
     )
     assert (
