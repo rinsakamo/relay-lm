@@ -12,6 +12,12 @@ import relaylm.actual_model_fast_screening_artifacts as fast_screening_artifacts
 import relaylm.actual_model_vllm_host as vllm_host
 from relaylm.actual_model_cognitive_budget import ExplicitCognitiveBudgetConfiguration
 from relaylm.actual_model_fast_screening import REFERENCE_BASELINE_ROLE
+from relaylm.actual_model_vllm_capacity import (
+    VLLMCapacityFootprintObservation,
+    VLLMRuntimeCapacityEvidence,
+    vllm_capacity_pass_request_id,
+    write_vllm_runtime_capacity_evidence,
+)
 from relaylm.actual_model_vllm_counter import VLLMServingTokenizerCounter
 from relaylm.budget import (
     BudgetDegradationPolicy,
@@ -20,6 +26,7 @@ from relaylm.budget import (
     CountEnvelope,
     TotalBudgetConfig,
 )
+from relaylm.budget_enforcement import TokenCountMode
 from relaylm.budget_runtime import TwoPassCognitiveBudgetRuntimeConfig
 from relaylm.providers.openai_compatible_budget import (
     OpenAICompatibleTwoPassSerializedInputCounter,
@@ -58,7 +65,60 @@ def _zero_plan() -> BudgetPlan:
     )
 
 
-def _prepared_inputs(monkeypatch: pytest.MonkeyPatch):
+def _write_current_capacity(
+    *,
+    root: Path,
+    plan,
+    target,
+    capability,
+    counter_identity,
+) -> VLLMRuntimeCapacityEvidence:
+    scenario_set = vllm_host.load_actual_model_scenario_set(
+        REPO_ROOT / vllm_host.CANONICAL_SCENARIO_SET_PATH
+    )
+    condition = plan.conditions[REFERENCE_BASELINE_ROLE]
+    requests = (
+        ("pass1", condition.pass_requests.pass1),
+        ("pass2", condition.pass_requests.pass2),
+    )
+    footprints: list[VLLMCapacityFootprintObservation] = []
+    for scenario_id in plan.scenario_ids:
+        definition = scenario_set.scenario(scenario_id)
+        for turn_index in range(1, len(definition.scenario.turns) + 1):
+            for pass_id, request in requests:
+                assert request is not None
+                footprints.append(
+                    VLLMCapacityFootprintObservation(
+                        condition_id=condition.condition_id,
+                        topology="two_pass",
+                        pass_id=pass_id,
+                        scenario_id=scenario_id,
+                        turn_index=turn_index,
+                        pass_request_id=vllm_capacity_pass_request_id(request),
+                        total_input_tokens=900,
+                        required_input_framing_tokens=100,
+                        count_mode=TokenCountMode.EXACT,
+                    )
+                )
+    evidence = VLLMRuntimeCapacityEvidence(
+        relaylm_commit="b" * 40,
+        target_id=target.target_id,
+        target_revision=target.revision,
+        tokenizer_identity=target.tokenizer_identity,
+        chat_template_identity=target.chat_template_identity,
+        backend_version=capability.backend_version,
+        request_model=capability.request_model,
+        observed_max_model_len=1616,
+        scenario_set_revision=scenario_set.revision,
+        counter_identity=counter_identity,
+        footprints=tuple(footprints),
+        model_runner="v2",
+    )
+    write_vllm_runtime_capacity_evidence(evidence=evidence, artifact_root=root)
+    return evidence
+
+
+def _prepared_inputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     plan = vllm_host.load_vllm_screening_plan(
         REPO_ROOT / vllm_host.CANONICAL_VLLM_SCREENING_PLAN_PATH
     )
@@ -82,6 +142,14 @@ def _prepared_inputs(monkeypatch: pytest.MonkeyPatch):
         expected_max_model_len=1616,
         post_json=lambda *_: {"count": 1, "max_model_len": 1616},
     )
+    evidence = _write_current_capacity(
+        root=tmp_path,
+        plan=plan,
+        target=target,
+        capability=capability,
+        counter_identity=serving_counter.evidence_identity,
+    )
+    plan = replace(plan, capacity_evidence_id=evidence.evidence_id)
     counter = OpenAICompatibleTwoPassSerializedInputCounter(
         model=capability.request_model,
         count_input=serving_counter.count_input,
@@ -119,6 +187,7 @@ def _prepare(
     *,
     plan,
     runtime: TwoPassCognitiveBudgetRuntimeConfig,
+    capacity_root: Path,
     condition_id: str = REFERENCE_BASELINE_ROLE,
 ):
     return vllm_host.prepare_vllm_screening_condition(
@@ -132,16 +201,18 @@ def _prepare(
         api_key=None,
         model_runner="v2",
         fetch_json=_live_fetch,
+        capacity_evidence_root=capacity_root,
         cognitive_budget=runtime,
     )
 
 
 def test_prepare_vllm_two_pass_binds_explicit_runtime_to_manifest(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    plan, runtime = _prepared_inputs(monkeypatch)
+    plan, runtime = _prepared_inputs(tmp_path, monkeypatch)
 
-    prepared = _prepare(plan=plan, runtime=runtime)
+    prepared = _prepare(plan=plan, runtime=runtime, capacity_root=tmp_path)
     try:
         assert prepared.cognitive_budget is not None
         assert prepared.cognitive_budget is not runtime
@@ -157,9 +228,7 @@ def test_prepare_vllm_two_pass_binds_explicit_runtime_to_manifest(
             != runtime.token_counter.count_input
         )
         assert prepared.manifest.cognitive_budget == (
-            ExplicitCognitiveBudgetConfiguration.from_runtime(
-                prepared.cognitive_budget
-            )
+            ExplicitCognitiveBudgetConfiguration.from_runtime(prepared.cognitive_budget)
         )
         assert prepared.binding.manifest.cognitive_budget == prepared.manifest.cognitive_budget
     finally:
@@ -167,9 +236,10 @@ def test_prepare_vllm_two_pass_binds_explicit_runtime_to_manifest(
 
 
 def test_prepare_vllm_two_pass_rejects_counter_identity_drift(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    plan, runtime = _prepared_inputs(monkeypatch)
+    plan, runtime = _prepared_inputs(tmp_path, monkeypatch)
     assert runtime.token_counter.evidence_identity is not None
     bad_identity = replace(
         runtime.token_counter.evidence_identity,
@@ -182,13 +252,14 @@ def test_prepare_vllm_two_pass_rejects_counter_identity_drift(
         vllm_host.ActualModelVLLMHostError,
         match="counter identity does not match cited capacity semantics",
     ):
-        _prepare(plan=plan, runtime=bad_runtime)
+        _prepare(plan=plan, runtime=bad_runtime, capacity_root=tmp_path)
 
 
 def test_prepare_vllm_two_pass_rejects_historical_single_pass_condition(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _, runtime = _prepared_inputs(monkeypatch)
+    _, runtime = _prepared_inputs(tmp_path, monkeypatch)
     historical = vllm_host.load_vllm_screening_plan(
         REPO_ROOT / vllm_host.CANONICAL_VLLM_HISTORICAL_SCREENING_PLAN_PATH
     )
@@ -197,13 +268,19 @@ def test_prepare_vllm_two_pass_rejects_historical_single_pass_condition(
         vllm_host.ActualModelVLLMHostError,
         match="requires a two_pass screening condition",
     ):
-        _prepare(plan=historical, runtime=runtime, condition_id="A")
+        _prepare(
+            plan=historical,
+            runtime=runtime,
+            capacity_root=tmp_path,
+            condition_id="A",
+        )
 
 
 def test_prepare_vllm_two_pass_rejects_context_window_drift(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    plan, runtime = _prepared_inputs(monkeypatch)
+    plan, runtime = _prepared_inputs(tmp_path, monkeypatch)
     bad_runtime = replace(
         runtime,
         pass2_total=TotalBudgetConfig(
@@ -216,15 +293,15 @@ def test_prepare_vllm_two_pass_rejects_context_window_drift(
         vllm_host.ActualModelVLLMHostError,
         match="context windows must match",
     ):
-        _prepare(plan=plan, runtime=bad_runtime)
+        _prepare(plan=plan, runtime=bad_runtime, capacity_root=tmp_path)
 
 
 def test_execute_vllm_host_run_forwards_host_bound_two_pass_runtime(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    plan, runtime = _prepared_inputs(monkeypatch)
-    prepared = _prepare(plan=plan, runtime=runtime)
+    plan, runtime = _prepared_inputs(tmp_path, monkeypatch)
+    prepared = _prepare(plan=plan, runtime=runtime, capacity_root=tmp_path)
     assert prepared.cognitive_budget is not None
 
     observed: list[TwoPassCognitiveBudgetRuntimeConfig | None] = []
