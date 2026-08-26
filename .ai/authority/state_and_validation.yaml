@@ -1,6 +1,6 @@
 schema_version: 1
 id: state_and_validation
-summary: Event/State separation, State candidate grammar including preference epistemic-strength versus intensity semantics, and validator acceptance.
+summary: Event/State separation, State candidate grammar including language-independent durability and epistemic-strength semantics, and validator acceptance.
 canonical_surfaces:
 - docs/architecture/events-and-state.md
 - docs/contracts/state-candidate.md
