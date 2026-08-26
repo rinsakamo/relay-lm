@@ -4,20 +4,21 @@ Status: current ordinary-turn cognition execution-policy contract for RelayLM 1.
 
 Owner: #1533 / `cognitive_turn`.
 
-Current authority is **two-pass first**. Historical topology-winner plans are available in Git/Issue history but are not part of this contract.
+Current authority is **two-pass first**. Historical topology-winner plans, the retired model-authored `turn_interpretation` scaffold, and prior fixed-axis cognition descriptions are not part of this contract.
 
 ## Core invariant
 
-Execution topology never changes semantic authority:
+Execution topology and transport never change semantic authority:
 
 ```text
 model semantic judgment
-  -> RelayLM-owned IR parsing / type construction
-  -> existing deterministic State / Continuity validation
+  -> RelayLM-owned proposal parsing / typed construction
+  -> source validation
+  -> deterministic State / Continuity validation and lifecycle
   -> RelayLM authority
 ```
 
-The model proposes meaning. RelayLM owns deterministic materialization and acceptance.
+The model proposes meaning. RelayLM owns materialization and acceptance.
 
 ## Core 1.0 product role
 
@@ -30,76 +31,59 @@ shadow_two_pass
 auto
 ```
 
-For Core 1.0 these modes have different product roles:
-
 - `two_pass` — primary release/reference architecture and the path that must be qualified before release;
-- `single_pass` — compatibility / explicit opt-in / future optimization surface; high-quality single-pass prompt tuning is not a Core 1.0 gate;
+- `single_pass` — compatibility / explicit opt-in / later optimization surface, not a Core 1.0 quality gate;
 - `shadow_two_pass` — non-authoritative evidence support;
-- `auto` — profile resolution owned by #1388 and carried by #1446. For Core 1.0 it must not silently select an unqualified single-pass optimization.
+- `auto` — profile resolution owned by #1388 and carried by #1446; it must not silently select an unqualified optimization.
 
-A later single-pass optimization must be compared against an already-qualified two-pass reference.
+Core 1.0 reuses one already-loaded online model sequentially for Pass 1 and Pass 2. Two simultaneously resident online model artifacts are not required.
 
 ## Canonical `two_pass`
 
 ### Pass 1 — conversation
 
-```text
-input
-  governed CognitiveInput
+Pass 1 receives governed `CognitiveInput` and returns the user-visible natural-language response. It owns conversation quality, Character realization, current-context coherence, language preservation and visible tempo.
 
-output
-  plain natural-language response
-```
-
-Pass 1 owns:
-
-- natural response quality;
-- persona / identity continuity;
-- current-context coherence;
-- language preservation;
-- latency-sensitive visible tempo.
-
-Pass 1 does not emit StateCandidate or ContinuityCandidate proposals in `two_pass` mode and is not required to wrap the response in JSON.
+Pass 1 does not emit StateCandidate or ContinuityCandidate proposals in `two_pass` mode. It never receives the Pass 2 structured-output control or extraction schema.
 
 ### Pass 2 — immediate semantic extraction
 
-Pass 2 receives the originating governed turn plus the accepted Pass 1 response as lower-authority interpretive context.
+Pass 2 receives the originating governed turn plus the accepted Pass 1 response as lower-authority interpretive context and directly projects:
 
 ```text
-input
-  originating CognitiveInput
-  + Pass 1 response
-
-output
-  ordinary provider message containing compact RelayLM proposal IR
-
-IR keys
-  state_candidates
-  continuity_candidates
+state_candidates
+continuity_candidates
 ```
 
-Pass 2 owns semantic judgment needed for:
+There is no canonical model-authored intermediate interpretation scaffold or fixed five/six cognition axes.
 
-- StateCandidate / ContinuityCandidate proposals;
-- correction / negation / supersession;
-- uncertainty / degree preservation where owned semantics exist;
-- canonical class/key reuse;
-- transient-versus-durable discipline;
-- subject/source attribution;
-- no-op behavior when no proposal is justified.
+Pass 2 owns language-dependent semantic judgment needed for correction, negation, supersession, uncertainty, canonical class/key reuse, transient-versus-durable discipline, source/subject attribution and justified no-op behavior.
 
-RelayLM owns:
+Current State projection preserves epistemic strength: tentative, hypothetical, guessed, hedged or explicitly self-uncertain meaning must not be silently upgraded to durable State. Deterministic validation remains language-agnostic and is not an NLU repair layer.
 
-- exact proposal-IR grammar;
-- JSON parsing;
-- exact-key / exact-shape checks;
-- typed candidate construction;
-- origin/turn binding;
-- source validation;
-- State / Continuity validation and lifecycle;
-- persistence and canonical runtime/evidence envelopes.
+RelayLM owns the exact proposal grammar, JSON parsing, exact shape checks, typed candidate construction, origin/turn binding, source validation, State/Continuity lifecycle, persistence and canonical evidence envelopes.
 
-The model does not author execution IDs, timestamps, commit status, provider identity, evidence envelopes or other mechanical structure RelayLM can construct deterministically.
+## Pass 2 structured-output transport
+
+`CognitionPassRequest.structured_output_mode` is Pass-2-only and closed to:
+
+```text
+plain
+native
+auto
+```
+
+- `plain` — ordinary OpenAI-compatible message content carrying RelayLM-owned direct proposal JSON;
+- `native` — provider-native strict structured output constraining the same direct proposal wire;
+- `auto` — native only with affirmative structured-output capability evidence, otherwise plain.
+
+Omission preserves the compatibility `plain` path. Explicit `native` fails closed if the upstream provider rejects it and never silently retries as `plain`. Pass 1 cannot carry this control.
+
+Provider-native schema owns only mechanical structure. It does not replace the semantic prompt, RelayLM parsing/type construction, source validation, lifecycle or commit authority.
+
+A provider does **not** need native structured output merely to implement RelayLM cognition: `plain` remains a valid supported transport. Conversely, an evaluation or profile may explicitly select `native` when that exact transport is the condition being measured or qualified.
+
+For the current Stage R vLLM reference, #1901 established materially stronger structural reliability for explicit native Pass 2 than for plain on the tested target class. Stage R may therefore bind its reference condition to `native` without making `native` a universal cognition prerequisite or an automatic Core 1.0 release default. #1388 owns later calibrated profile/default selection and #1446 owns release carriage.
 
 ## Authority ordering
 
@@ -113,77 +97,36 @@ user / source evidence
 
 The Pass 1 response may help interpret the turn but cannot independently establish a user fact, preference, goal, experience, external truth, prior event or provenance source.
 
-Assistant-to-user factual contamination is a model/product-quality failure even when the returned JSON is syntactically valid.
-
-## Response-first semantics
+## Response-first and stale semantics
 
 A valid Pass 1 response is independent of Pass 2 success.
 
-Successful ordinary-turn completion remains allowed to trigger deterministic owner-defined lifecycle mechanics that are not Pass 2 proposals. In particular, when a Continuity runtime is configured, the completed Pass 1 conversation consumes exactly one #1371 Continuity lifecycle revision after the Assistant Event is committed. Due expiry at that revision is turn-clock behavior, not semantic authority granted by Pass 2.
-
-If Pass 2 fails, times out, returns malformed IR, is rejected, or later becomes stale:
+If Pass 2 fails, times out, returns malformed proposals, is rejected or becomes stale:
 
 ```text
 visible Pass 1 response remains valid
-Pass 2 proposals do not commit
+Pass 2 proposals commit nothing
 State mutation from failed/stale Pass 2 = none
-Pass 2 proposal-driven Continuity mutation = none
-successful-turn Continuity lifecycle revision/expiry remains
-original Events/evidence remain preserved
-failure/staleness remains observable in content-free diagnostics/evidence
+proposal-driven Continuity mutation = none
+original Event evidence remains preserved
+failure/staleness remains observable
 ```
 
-A successful, still-current Pass 2 may apply its Continuity candidates at the lifecycle revision already reserved by that completed conversation; it must not advance the Continuity clock a second time.
+Owner-defined ordinary-turn lifecycle mechanics remain deterministic. A successful Pass 2 applies against the lifecycle revision reserved by that completed conversation and must not advance the Continuity clock a second time.
 
-Do not turn post-response extraction failure into a false failure of the already-valid conversation, and do not let extraction failure freeze an owner-defined ordinary-turn lifecycle clock.
+Every Pass 2 result is bound to its originating Event/revision and origin State/Continuity snapshots. Newer authority makes an older incompatible extraction stale. Rapid-next-turn and pending-extraction behavior remain actual-model quality dimensions under #1386.
 
-## Ordering / stale results
+## Reasoning and decoding
 
-Every Pass 2 result is bound to its originating Event and process-local execution revision.
+Pass 1 and Pass 2 may use independently resolved provider-neutral reasoning/decoding requests, but no pass gains greater semantic authority from a larger reasoning budget.
 
-Pass 2 inference does not hold the conversation or authority lock. A newer turn may advance the execution revision while an older extraction is still pending. Final application requires the originating revision/Event plus the origin State/Continuity snapshots still to match current authority under the short deterministic commit boundary.
+Pass 2 reasoning is an escalation mechanism, not an assumed default. Start from the lowest effective condition proven for the exact backend/model and increase effort only when actual-model evidence demonstrates semantic need.
 
-For Continuity, the origin snapshot used by the Pass 2 stale guard is the post-conversation lifecycle snapshot for that turn. A newer completed conversation may advance Continuity again and thereby make the older extraction stale. The stale extraction applies no candidates and performs no second lifecycle advance.
-
-A mismatch is `stale` and changes no proposal-owned authority.
-
-Pass 1 for turn N+1 should not ordinarily wait for Pass 2 from turn N merely to preserve visible conversation tempo. Rapid-next-turn and pending-extraction behavior must be evaluated under #1386.
-
-## Same-model 1.0 boundary
-
-Core 1.0 reuses one already-loaded online model sequentially for Pass 1 and Pass 2.
-
-Two simultaneously resident online model artifacts are not required.
-
-Pass 1 and Pass 2 may use independently resolved reasoning/decoding requests, but no pass gains greater semantic authority from a larger reasoning budget.
-
-## Provider structure ownership
-
-Canonical cognition does not require provider-native `response_format`, JSON Schema, grammar or constrained-decoding support.
-
-Current OpenAI-compatible realization is:
-
-```text
-two_pass Pass 1
-  ordinary provider message
-  -> visible response
-
-two_pass Pass 2
-  ordinary provider message containing RelayLM proposal IR
-  -> RelayLM parse/type construction
-
-single_pass compatibility path
-  ordinary provider message containing RelayLM combined cognitive IR
-  -> RelayLM parse/type construction
-```
-
-Provider-native structured-output capability may remain a truthful provider fact for other uses, but it is not a mode-level prerequisite for the current RelayLM cognition IR paths.
+Transport and reasoning are orthogonal identities: a reasoning escalation must not silently change `plain|native|auto` transport.
 
 ## `single_pass`
 
-`single_pass` remains an implemented compatibility/optimization surface.
-
-One model generation returns the RelayLM-owned combined cognitive IR:
+`single_pass` remains an implemented compatibility/optimization surface. One model generation returns the RelayLM-owned combined cognitive IR:
 
 ```text
 utterance
@@ -191,110 +134,52 @@ state_candidates
 continuity_candidates
 ```
 
-RelayLM parses the combined IR, constructs `CognitiveOutput`, and applies the existing deterministic commit boundary.
-
-Core 1.0 does not require single-pass to reach the same quality as the two-pass reference. A later optimization transaction may qualify it only when it demonstrates explicit performance/resource benefit while remaining within accepted conversation/semantic/grounding regression bounds relative to the frozen two-pass reference.
+RelayLM parses the combined IR and applies the same deterministic authority boundary. Core 1.0 does not require single-pass quality parity with the qualified two-pass reference.
 
 ## `shadow_two_pass`
 
-`shadow_two_pass` is evidence-only:
-
-```text
-canonical single_pass result
-  -> normal validation / commit
-
-same originating input + canonical response
-  -> Pass 2 proposal IR
-  -> raw shadow evidence only
-  -> no second State / Continuity mutation
-```
-
-Shadow failure cannot invalidate the canonical result.
-
-It is not a Core 1.0 prerequisite and must not be mistaken for the primary two-pass release path.
+`shadow_two_pass` is evidence-only. The canonical result follows its normal validation/commit path; shadow Pass 2 output is retained as evidence and cannot perform a second State/Continuity mutation or invalidate the canonical result.
 
 ## `auto`
 
-`auto` is unresolved profile policy, not an execution that happened.
+Execution-mode `auto` is unresolved profile policy, not an execution that happened. #1388 owns evidence-backed resolution and #1446 carries the resolved value/provenance. Completed evidence records identify the actual resolved mode.
 
-#1388 owns evidence-backed profile/default resolution. #1446 carries the resolved values and provenance through release configuration.
-
-A completed execution evidence record identifies the actual resolved mode, not `auto`.
-
-For Core 1.0, `auto` must resolve only to a path qualified by current #1386/#1388 evidence. An unqualified single-pass optimization must not become the implicit fallback.
-
-## Per-pass execution controls
-
-Provider-neutral per-pass reasoning/decoding intent is defined in `docs/contracts/cognition-pass-execution.md`.
-
-Pass 2 reasoning is an escalation mechanism, not an assumed default. Start from the lowest effective condition proven by the exact backend/model capability. Increase Pass 2 effort only when #1386 evidence demonstrates semantic need while Pass 1 remains controlled.
+Structured-output `auto` is separate: it resolves native only from affirmative provider capability evidence and otherwise resolves plain.
 
 ## Streaming
 
-Canonical two-pass streaming exposes Pass 1 provider content deltas directly as the visible response stream. Pass 2 starts only after the complete Pass 1 response is accepted and never emits a second user-visible response.
+Canonical two-pass streaming exposes Pass 1 provider content deltas directly as the visible response. Pass 2 starts only after the complete Pass 1 response is accepted and never emits a second user-visible response.
 
-Buffered and streaming two-pass paths must preserve equivalent resolved pass semantics. Streaming must not silently lose Pass 1/Pass 2 reasoning or decoding requests.
-
-Single-pass streaming remains a compatibility path that incrementally exposes only provable `utterance` content while withholding candidate commit until the complete combined IR has been parsed and validated.
+Buffered and streaming paths must preserve equivalent resolved pass semantics, including reasoning, decoding and structured-output identity.
 
 ## Deterministic semantic boundary
 
-RelayLM normalizes structure, not natural language.
+RelayLM normalizes structure, not natural language. Do not move correction, negation, uncertainty, temporal meaning, subject attribution or transient/durable interpretation into language-specific regex/keyword/grammar parsers merely to reduce model work.
 
-Do not move correction, negation, uncertainty, temporal meaning, subject attribution, transient/durable interpretation or similar multilingual semantics into language-specific regex/keyword/grammar parsers merely to reduce model work.
+Conversely, do not ask the model to reproduce IDs, timestamps, provider identity or evidence envelopes that RelayLM can construct deterministically.
 
-Conversely, do not ask the model to reproduce metadata, IDs or envelopes that deterministic RelayLM code can construct without language understanding.
+## Evidence / capacity identity
 
-## Performance policy
+Actual-model evidence qualifies an exact execution identity. Material changes to prompt, candidate wire, tokenizer/template, runtime or structured-output transport require fresh evidence or an explicitly scoped owner-approved waiver.
 
-A performance problem in two-pass execution is not by itself a reason to collapse semantic responsibilities.
-
-Before considering one-pass as a release optimization, evaluate two-pass-preserving improvements such as:
-
-- response-first streaming;
-- prompt-prefix / KV-cache reuse where the backend can prove it;
-- scheduler / batching / cache tuning;
-- bounded Pass 2 output;
-- lowest sufficient Pass 2 reasoning effort;
-- background / lower-priority Pass 2 execution;
-- backend/runtime execution-engine tuning.
-
-Performance evidence belongs to #1386; calibrated values/profile choices belong to #1388.
-
-## Current implementation obligations
-
-The Core 1.0 two-pass path must reconcile all current surfaces so that:
-
-1. no cognition mode falsely requires provider-native structured output when its current RelayLM-owned IR path does not;
-2. buffered and streaming two-pass paths carry equivalent per-pass resolved requests;
-3. single-pass combined IR and Pass 2 proposal IR reuse shared candidate parsing/type-construction mechanics rather than making Pass 2 depend on a synthetic single-pass wrapper;
-4. rapid-turn / stale / pending-extraction behavior is deterministically tested;
-5. #1386 qualifies two-pass first instead of forcing topology winner-selection.
+The current Stage R canonical plan must not silently inherit capacity evidence measured against an older prompt/wire/transport identity. Capacity is acquired on the exact current checkout/condition and bound explicitly into screening evidence.
 
 ## Ownership
 
-#1533 owns:
-
-- execution topology and product role;
-- Pass 1 / Pass 2 responsibilities;
-- response-first / failure / stale semantics;
-- provider-neutral per-pass intent;
-- execution-topology identity;
-- shadow semantics;
-- RelayLM cognition IR ownership boundary.
+#1533 owns execution topology, Pass 1/Pass 2 responsibilities, response-first/failure/stale semantics, provider-neutral per-pass intent, transport semantics, shadow semantics and the RelayLM cognition IR boundary.
 
 Other owners remain unchanged:
 
 - provider owners — external transport, capability truth and exact applied request carriage;
-- #1386 — actual-model quality/evidence;
-- #1388 — calibrated two-pass profile/defaults;
-- #1446 — release config/operator carriage;
+- #1386 — actual-model quality/qualification evidence;
+- #1388 — calibrated profile/default selection;
+- #1446 — release configuration/operator carriage;
 - #1449 — release integration;
 - State / Continuity / Context / Retrieval / Cognitive Budget owners — their existing semantics and deterministic authority.
 
 ## Core 1.0 acceptance
 
-This contract is release-ready when the same-loaded-model two-pass path is fully supported; Pass 1 and Pass 2 are independently observable and configurable; Pass 1 survives Pass 2 failure; stale extraction cannot overwrite newer authority; provider-native structured output is not falsely required; streaming preserves the same pass semantics; and no single-pass quality optimization is required to complete Core 1.0.
+This contract is release-ready when the same-loaded-model two-pass path is fully supported; Pass 1 and Pass 2 are independently observable/configurable; Pass 2 directly projects State/Continuity candidates; transport identity is explicit/auditable; Pass 1 survives Pass 2 failure; stale extraction cannot overwrite newer authority; buffered/streaming paths preserve resolved pass semantics; actual-model evaluation qualifies the exact current identity; and no single-pass winner selection or second simultaneously resident online model is required.
 
 ## Deferred
 
@@ -306,4 +191,4 @@ This contract is release-ready when the same-loaded-model two-pass path is fully
 
 ## Principle
 
-> First establish quality with separated conversation and semantic judgment. Optimize execution only after the reference behavior is known.
+> Keep the cognitive boundary small: model semantic judgment -> direct proposals -> deterministic RelayLM authority. Qualify that exact two-pass path before optimizing it.
