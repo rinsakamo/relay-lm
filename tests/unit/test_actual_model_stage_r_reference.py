@@ -17,7 +17,6 @@ from relaylm.actual_model_vllm_host import (
     CANONICAL_VLLM_SCREENING_PLAN_PATH,
     ActualModelVLLMHostError,
     _required_capacity_coverage,
-    load_actual_model_repository_snapshot_target,
     load_vllm_screening_plan,
 )
 from relaylm.cognition_execution import CognitionStructuredOutputMode
