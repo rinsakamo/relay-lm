@@ -33,34 +33,9 @@ def _cognitive_input() -> CognitiveInput:
     )
 
 
-def _make_character(root: Path) -> CharacterDirectory:
-    (root / "memory").mkdir(parents=True)
-    (root / "SOUL.md").write_text("# ReLM\n\nBe kind.\n", encoding="utf-8")
-    (root / "config.yaml").write_text(
-        "format_version: 1\ncharacter:\n  id: relm\n  name: ReLM\n",
-        encoding="utf-8",
-    )
-    (root / "memory" / "events.jsonl").write_text("", encoding="utf-8")
-    character = CharacterDirectory(root)
-    character.save_state(CanonicalState())
-    return character
-
-
-def _empty_turn_interpretation() -> dict[str, list[str]]:
-    return {
-        "user_meaning": [],
-        "change_signals": [],
-        "self_meaning": [],
-        "assistant_effects": [],
-        "unresolved": [],
-        "continuity_signals": [],
-    }
-
-
 def _empty_extraction_wire() -> str:
     return json.dumps(
         {
-            "turn_interpretation": _empty_turn_interpretation(),
             "state_candidates": [],
             "continuity_candidates": [],
         },
@@ -151,6 +126,19 @@ def test_two_pass_turn_results_carry_pass_completion_metadata(tmp_path: Path) ->
     assert extraction.completion.finish_reason == "stop"
     assert extraction.completion.completion_tokens == 7
     assert extraction.completion.reasoning_tokens == 3
+
+
+def _make_character(root: Path) -> CharacterDirectory:
+    (root / "memory").mkdir(parents=True)
+    (root / "SOUL.md").write_text("# ReLM\n\nBe kind.\n", encoding="utf-8")
+    (root / "config.yaml").write_text(
+        "format_version: 1\ncharacter:\n  id: relm\n  name: ReLM\n",
+        encoding="utf-8",
+    )
+    (root / "memory" / "events.jsonl").write_text("", encoding="utf-8")
+    character = CharacterDirectory(root)
+    character.save_state(CanonicalState())
+    return character
 
 
 def test_buffered_missing_usage_stays_missing() -> None:
