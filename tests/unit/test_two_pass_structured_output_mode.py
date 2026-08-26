@@ -42,14 +42,6 @@ def _cognitive_input() -> CognitiveInput:
 
 def _empty_extraction_wire() -> dict[str, object]:
     return {
-        "turn_interpretation": {
-            "user_meaning": [],
-            "change_signals": [],
-            "self_meaning": [],
-            "assistant_effects": [],
-            "unresolved": [],
-            "continuity_signals": [],
-        },
         "state_candidates": [],
         "continuity_candidates": [],
     }
@@ -108,7 +100,7 @@ def test_default_and_plain_pass2_keep_relaylm_owned_message_json_path() -> None:
     assert "response_format" not in plain_body
 
 
-def test_native_pass2_sends_strict_schema_for_current_extraction_wire() -> None:
+def test_native_pass2_sends_strict_schema_for_direct_candidate_wire() -> None:
     body = _run_extraction(CognitionStructuredOutputMode.NATIVE)
 
     response_format = body["response_format"]
@@ -121,20 +113,10 @@ def test_native_pass2_sends_strict_schema_for_current_extraction_wire() -> None:
     schema = json_schema["schema"]
     assert schema["additionalProperties"] is False
     assert schema["required"] == [
-        "turn_interpretation",
         "state_candidates",
         "continuity_candidates",
     ]
-    interpretation = schema["properties"]["turn_interpretation"]
-    assert interpretation["additionalProperties"] is False
-    assert interpretation["required"] == [
-        "user_meaning",
-        "change_signals",
-        "self_meaning",
-        "assistant_effects",
-        "unresolved",
-        "continuity_signals",
-    ]
+    assert "turn_interpretation" not in schema["properties"]
     assert schema["properties"]["state_candidates"]["items"]["properties"]["op"][
         "enum"
     ] == ["set", "remove"]
@@ -149,7 +131,7 @@ def test_auto_pass2_stays_plain_without_affirmative_native_capability() -> None:
     assert "response_format" not in body
 
 
-def test_pass2_prompt_contains_canonical_state_examples_bound_to_current_event() -> None:
+def test_pass2_prompt_contains_semantics_and_examples_without_scaffold() -> None:
     body = _run_extraction(CognitionStructuredOutputMode.NATIVE)
     prompt = body["messages"][1]["content"]
 
@@ -159,6 +141,16 @@ def test_pass2_prompt_contains_canonical_state_examples_bound_to_current_event()
     assert '"sources":["evt-now"]' in prompt
     assert "examples demonstrate representation only" in prompt
     assert "never copy example values" in prompt
+    assert "turn_interpretation" not in prompt
+    for removed_field in (
+        "`user_meaning`",
+        "`change_signals`",
+        "`self_meaning`",
+        "`assistant_effects`",
+        "`unresolved`",
+        "`continuity_signals`",
+    ):
+        assert removed_field not in prompt
 
 
 def test_runtime_config_accepts_pass2_structured_output_mode() -> None:
