@@ -50,7 +50,7 @@ The discovered maximum is a hardware/backend capability fact for this exact mach
 Run the current product path and review, in this order:
 
 1. Pass 1 conversation is coherent, Character-consistent and language-appropriate.
-2. Pass 2 completes the current protocol and produces meaningful subjective interpretation/proposals.
+2. Pass 2 completes the current protocol and produces meaningful direct State/Continuity proposals.
 3. State/Continuity proposals are grounded, correctly attributed and restrained.
 4. correction, negation, uncertainty and no-op behavior are handled without authority corruption.
 5. accepted State/Continuity affects later turns as intended.
@@ -98,7 +98,7 @@ The capacity artifact is an execution admission artifact. Passing it does not qu
 The first completed OFF/OFF run should primarily report:
 
 - Pass 1 response quality and unsupported/fabricated-history defects;
-- Pass 2 protocol success and six-field cognition/proposal quality;
+- Pass 2 protocol success and direct State/Continuity proposal quality;
 - StateCandidate / ContinuityCandidate grounding and source correctness;
 - deterministic accept/reject/materialization results;
 - resulting State/Continuity and next-turn effects;
@@ -129,18 +129,19 @@ A large discovered hardware capability does not imply a large release default. C
 
 ## Deliberate boundaries
 
-This correction does not change:
+This acceptance contract does not change:
 
 - Pass 1 / Pass 2 responsibilities;
-- the six-field Pass 2 cognition scaffold;
 - State / Continuity / Event-source semantics;
 - provider parsing or `finish_reason != stop` rejection;
 - semantic scenarios or expected labels;
 - reasoning escalation policy;
 - release/runtime defaults.
 
-It changes only the functional-test runtime/capacity authority: **use the canonical frozen-proof vLLM runtime, profile its actual free VRAM and non-KV footprint, let that runtime resolve explicit KV bytes and maximum model length, use that live capacity for functional acceptance, then calibrate later**.
+The current Pass 2 wire projects directly to `state_candidates` / `continuity_candidates`; functional acceptance must bind and review that exact current prompt/wire identity rather than reusing evidence from the retired six-field scaffold.
+
+The capacity correction remains: **use the canonical frozen-proof vLLM runtime, profile its actual free VRAM and non-KV footprint, let that runtime resolve explicit KV bytes and maximum model length, use that live capacity for functional acceptance, then calibrate later**.
 
 ## Principle
 
-> First establish the exact citable backend/runtime, then discover that runtime's usable GPU capacity and prove RelayLM works there. Calibrate the product profile only after that.
+> First establish the exact citable backend/runtime, then discover that runtime's usable GPU capacity and prove the exact current RelayLM path works there. Calibrate the product profile only after that.

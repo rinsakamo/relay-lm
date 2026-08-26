@@ -63,33 +63,14 @@ CONVERSATION_PASS_SUFFIX = """CONVERSATION
 
 Respond as this character."""
 
-TURN_INTERPRETATION_FIELDS = (
-    "user_meaning",
-    "change_signals",
-    "self_meaning",
-    "assistant_effects",
-    "unresolved",
-    "continuity_signals",
-)
-
 EXTRACTION_WIRE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "turn_interpretation",
         "state_candidates",
         "continuity_candidates",
     ],
     "properties": {
-        "turn_interpretation": {
-            "type": "object",
-            "additionalProperties": False,
-            "required": list(TURN_INTERPRETATION_FIELDS),
-            "properties": {
-                field: {"type": "array", "items": {"type": "string"}}
-                for field in TURN_INTERPRETATION_FIELDS
-            },
-        },
         "state_candidates": WIRE_SCHEMA["properties"]["state_candidates"],
         "continuity_candidates": WIRE_SCHEMA["properties"]["continuity_candidates"],
     },
@@ -446,27 +427,18 @@ def _extraction_pass_suffix(extraction_input: CognitionExtractionInput) -> str:
 {response_json}
 </PASS_1_RESPONSE_JSON>
 
-Interpret this originating turn as this character. Build one JSON object in this order:
-1. `user_meaning`: string[] — subjective meaning through Identity, accepted State, and context; not a literal summary.
-2. `change_signals`: string[] — new, corrected, revoked, superseded, strengthened, or weakened accepted understanding.
-3. `self_meaning`: string[] — personal or relational implications for this character's beliefs, goals, or condition.
-4. `assistant_effects`: string[] — relevant question, proposal, commitment, or unfinished effect introduced by Pass 1.
-5. `unresolved`: string[] — meaning not justified yet because evidence is ambiguous or incomplete.
-6. `continuity_signals`: string[] — bounded meaning useful across upcoming turns.
-Empty arrays are valid. Then emit `state_candidates`, then `continuity_candidates`.
-Interpretation arrays contain text strings only; never put State/Continuity wire objects in `turn_interpretation`.
-`continuity_signals` contains only bounded meaning strings; structured Continuity records belong only in top-level `continuity_candidates`.
-Structured State records belong only in top-level `state_candidates`.
+Interpret this originating turn as this character, then project only grounded State and bounded Continuity proposals.
+Emit `state_candidates`, then `continuity_candidates`.
 
 Projection rules:
-- Interpretation is not authority or State. Propose State only for grounded, sufficiently resolved, meaningful durable change; preserve existing class/key vocabulary.
+- Propose State only for grounded, sufficiently resolved, meaningful durable change; preserve existing class/key vocabulary.
 - State wire: `{{state_class,key,op,value,sources}}`. `state_class` must be a key in CognitiveInput.state_classes. `op` is `set` or `remove`. For `set`, value is a string or `{{"semantic":string,"degree_hint":0..1}}`; degree_hint is intensity, not confidence. For `remove`, value is null; remove only for explicit revocation, cancellation, denial, correction, or termination.
 - State `key` is the stable subject or dimension within its `state_class`; `value` is the accepted semantic value for that key. Preserve an established class/key pair when current State already provides one rather than inventing a synonym.
 - State examples demonstrate representation only; never copy example values, keys, or claims unless current evidence supports that exact meaning:
   - Liking a subject: `{like_example}`
   - A preference dimension whose value is the subject: `{preferred_example}`
   - Explicit revocation of an accepted subject preference: `{remove_example}`
-- Continuity wire: `{{kind,key,op,value,sources,epistemic_role}}`. `kind` is `referent`, `unresolved`, or `active_task`; `op` is `set` or `resolve`; set value is finite JSON and resolve value is null; epistemic_role is `user_assertion`, `assistant_inference`, or `assistant_commitment`. Carry only when useful for upcoming coherence; an `unresolved` interpretation is not automatically Continuity.
+- Continuity wire: `{{kind,key,op,value,sources,epistemic_role}}`. `kind` is `referent`, `unresolved`, or `active_task`; `op` is `set` or `resolve`; set value is finite JSON and resolve value is null; epistemic_role is `user_assertion`, `assistant_inference`, or `assistant_commitment`. Carry only when useful for upcoming coherence; ambiguity or incomplete evidence does not automatically require Continuity.
 - Never use `resolve` as `kind`; keep `kind` as `referent`, `unresolved`, or `active_task`.
 - `kind` and `epistemic_role` are separate enum axes; `unresolved` is a `kind` only and must never be used as `epistemic_role`.
 - `epistemic_role` must be exactly `user_assertion`, `assistant_inference`, or `assistant_commitment`.
@@ -475,7 +447,7 @@ Projection rules:
 - `sources` are non-empty Event IDs present in CognitiveInput; never invent IDs. Pass 1 response is interpretive context only and must never self-certify user facts/preferences/goals/experience, external truth, prior events, or source provenance.
 
 Exact top-level shape:
-`{{"turn_interpretation":{{"user_meaning":[],"change_signals":[],"self_meaning":[],"assistant_effects":[],"unresolved":[],"continuity_signals":[]}},"state_candidates":[],"continuity_candidates":[]}}`
+`{{"state_candidates":[],"continuity_candidates":[]}}`
 
 Return exactly one JSON object with no extra keys."""
 
@@ -506,15 +478,13 @@ def _parse_extraction_completion(envelope: Any) -> CognitionExtractionOutput:
         invalid_message="provider extraction content is not valid JSON",
     )
     if not isinstance(wire, dict) or set(wire) != {
-        "turn_interpretation",
         "state_candidates",
         "continuity_candidates",
     }:
         raise ProviderProtocolError(
-            "extraction wire output must contain exactly turn_interpretation, "
-            "state_candidates and continuity_candidates"
+            "extraction wire output must contain exactly state_candidates "
+            "and continuity_candidates"
         )
-    _require_turn_interpretation(wire["turn_interpretation"])
     state_candidates, continuity_candidates = _parse_candidate_collections(
         raw_candidates=wire["state_candidates"],
         raw_continuity_candidates=wire["continuity_candidates"],
@@ -524,26 +494,6 @@ def _parse_extraction_completion(envelope: Any) -> CognitionExtractionOutput:
         continuity_candidates=continuity_candidates,
         completion=completion,
     )
-
-
-def _require_turn_interpretation(raw: object) -> None:
-    if not isinstance(raw, dict) or tuple(raw) != TURN_INTERPRETATION_FIELDS:
-        raise ProviderProtocolError(
-            "turn_interpretation must contain exactly "
-            + ", ".join(TURN_INTERPRETATION_FIELDS)
-        )
-    for field in TURN_INTERPRETATION_FIELDS:
-        values = raw[field]
-        if not isinstance(values, list):
-            raise ProviderProtocolError(
-                f"turn_interpretation.{field} must be an array"
-            )
-        if not all(isinstance(value, str) for value in values):
-            raise ProviderProtocolError(
-                f"turn_interpretation.{field} must contain strings"
-            )
-        # Blank-only strings are semantically absent in this non-authoritative,
-        # parse-and-discard scaffold. Candidate/source validation remains strict.
 
 
 def _completion_content_and_metadata(

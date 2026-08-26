@@ -75,14 +75,17 @@ def test_two_pass_requests_share_exact_common_prefix_before_pass_suffix() -> Non
     assert conversation_prefix == extraction_prefix
     assert conversation_suffix == "CONVERSATION\n\nRespond as this character."
     assert extraction_suffix.startswith("EXTRACTION\n")
-
-    ordered_markers = (
+    assert "turn_interpretation" not in extraction_suffix
+    for removed_field in (
         "`user_meaning`",
         "`change_signals`",
         "`self_meaning`",
         "`assistant_effects`",
-        "`unresolved`",
         "`continuity_signals`",
+    ):
+        assert removed_field not in extraction_suffix
+
+    ordered_markers = (
         "`state_candidates`",
         "`continuity_candidates`",
     )
@@ -101,16 +104,8 @@ def test_two_pass_requests_share_exact_common_prefix_before_pass_suffix() -> Non
     assert "response_format" not in extraction
 
 
-def test_extraction_parser_admits_exact_non_authoritative_turn_interpretation() -> None:
+def test_extraction_parser_admits_direct_candidate_wire() -> None:
     wire = {
-        "turn_interpretation": {
-            "user_meaning": ["最近コーヒーを飲む頻度が増えている"],
-            "change_signals": ["飲料習慣について新しい変化が示されている"],
-            "self_meaning": [],
-            "assistant_effects": [],
-            "unresolved": ["コーヒーが好きになったかは不明"],
-            "continuity_signals": [],
-        },
         "state_candidates": [],
         "continuity_candidates": [],
     }
@@ -130,42 +125,24 @@ def test_extraction_parser_admits_exact_non_authoritative_turn_interpretation() 
 
 
 @pytest.mark.parametrize(
-    "turn_interpretation",
+    "wire",
     [
         {
-            "user_meaning": [],
-            "change_signals": [],
-            "self_meaning": [],
-            "assistant_effects": [],
-            "unresolved": [],
+            "turn_interpretation": {},
+            "state_candidates": [],
+            "continuity_candidates": [],
         },
+        {"state_candidates": []},
         {
-            "user_meaning": [],
-            "change_signals": [],
-            "self_meaning": [],
-            "assistant_effects": [],
-            "unresolved": [],
-            "continuity_signals": [],
+            "state_candidates": [],
+            "continuity_candidates": [],
             "extra": [],
-        },
-        {
-            "user_meaning": "not-an-array",
-            "change_signals": [],
-            "self_meaning": [],
-            "assistant_effects": [],
-            "unresolved": [],
-            "continuity_signals": [],
         },
     ],
 )
-def test_extraction_parser_rejects_invalid_turn_interpretation_shape(
-    turn_interpretation: object,
+def test_extraction_parser_rejects_noncanonical_top_level_shape(
+    wire: dict[str, object],
 ) -> None:
-    wire = {
-        "turn_interpretation": turn_interpretation,
-        "state_candidates": [],
-        "continuity_candidates": [],
-    }
     envelope = {
         "choices": [
             {
@@ -175,5 +152,5 @@ def test_extraction_parser_rejects_invalid_turn_interpretation_shape(
         ]
     }
 
-    with pytest.raises(ProviderProtocolError, match="turn_interpretation"):
+    with pytest.raises(ProviderProtocolError, match="state_candidates"):
         _parse_extraction_completion(envelope)
