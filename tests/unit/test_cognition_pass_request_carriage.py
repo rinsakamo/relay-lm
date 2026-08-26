@@ -7,6 +7,7 @@ from pathlib import Path
 import httpx
 import pytest
 
+from relaylm.actual_model_targets import load_actual_model_repository_snapshot_target
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
 from relaylm.cognition_execution import (
     CognitionConversationOutput,
@@ -30,7 +31,6 @@ from relaylm.providers.vllm_reasoning_capability import (
     VLLMReasoningProbeEvidence,
     attest_vllm_reasoning_capabilities,
 )
-from relaylm.actual_model_targets import load_actual_model_repository_snapshot_target
 from relaylm.state import CanonicalState, STATE_CLASS_DEFINITIONS
 from relaylm.storage.filesystem import CharacterDirectory
 from relaylm.turn import run_user_turn
@@ -123,17 +123,6 @@ def _make_character(root: Path) -> CharacterDirectory:
     return character
 
 
-def _empty_turn_interpretation() -> dict[str, list[str]]:
-    return {
-        "user_meaning": [],
-        "change_signals": [],
-        "self_meaning": [],
-        "assistant_effects": [],
-        "unresolved": [],
-        "continuity_signals": [],
-    }
-
-
 def _completion(schema_name: str) -> dict[str, object]:
     if schema_name == "relaylm_cognitive_output":
         content = {
@@ -143,7 +132,6 @@ def _completion(schema_name: str) -> dict[str, object]:
         }
     elif schema_name == "relaylm_structured_cognition_output":
         content = {
-            "turn_interpretation": _empty_turn_interpretation(),
             "state_candidates": [],
             "continuity_candidates": [],
         }
