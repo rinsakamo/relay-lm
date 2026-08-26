@@ -442,6 +442,11 @@ Projection rules:
   - A preference dimension whose value is the subject: `{preferred_example}`
   - Explicit revocation of an accepted subject preference: `{remove_example}`
 - Continuity wire: `{{kind,key,op,value,sources,epistemic_role}}`. `kind` is `referent`, `unresolved`, or `active_task`; `op` is `set` or `resolve`; set value is finite JSON and resolve value is null; epistemic_role is `user_assertion`, `assistant_inference`, or `assistant_commitment`. Carry only when useful for upcoming coherence; ambiguity or incomplete evidence does not automatically require Continuity.
+- `referent`, `unresolved`, and `active_task` are independent semantic dimensions; one subject may require multiple simultaneous Continuity items. Do not collapse them merely because they concern the same subject.
+- When CognitiveInput context contains accepted Continuity matching the meaning and this turn changes or resolves it, reuse its existing `kind` + `key` rather than inventing a synonym or new lifecycle key.
+- Do not re-propose an unchanged accepted Continuity item merely because it appears in current context; emit no candidate for an unchanged item.
+- For ordinary-turn Continuity, every Continuity transition caused by this turn must include the current Input Event ID `{source_id}` in `sources`. Prior Continuity/context sources describe existing context but cannot substitute for current evidence of a new set/resolve transition.
+- Resolve only when the current turn actually resolves or completes an existing item; reuse that item's `kind` + `key`, set value to null, and ground the resolution in the current Input Event.
 - Never use `resolve` as `kind`; keep `kind` as `referent`, `unresolved`, or `active_task`.
 - `kind` and `epistemic_role` are separate enum axes; `unresolved` is a `kind` only and must never be used as `epistemic_role`.
 - `epistemic_role` must be exactly `user_assertion`, `assistant_inference`, or `assistant_commitment`.
