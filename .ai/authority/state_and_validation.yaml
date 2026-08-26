@@ -1,6 +1,6 @@
 schema_version: 1
 id: state_and_validation
-summary: Event/State separation, State candidate grammar, and validator acceptance.
+summary: Event/State separation, State candidate grammar including preference epistemic-strength versus intensity semantics, and validator acceptance.
 canonical_surfaces:
 - docs/architecture/events-and-state.md
 - docs/contracts/state-candidate.md
@@ -18,6 +18,7 @@ tests:
 - tests/unit/test_state_preference_key_authority.py
 - tests/unit/test_state_degree_envelope_authority.py
 - tests/unit/test_state_json_value_domain.py
+- tests/unit/test_preference_epistemic_strength.py
 depends_on:
 - core_architecture
 annotations:
