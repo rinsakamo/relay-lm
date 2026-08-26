@@ -11,7 +11,7 @@
       "version": "1",
       "turns": [
         "I might prefer tea to coffee, but I'm not sure yet.",
-        "I've decided: I prefer tea to coffee.",
+        "I've decided: tea is my preferred beverage.",
         "Today I'm not in the mood for tea, but my usual preference has not changed."
       ],
       "required_provider_capabilities": [
