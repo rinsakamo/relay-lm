@@ -21,7 +21,6 @@
     "response-persona-correction-v1",
     "continuity-lifecycle-v1"
   ],
-  "capacity_evidence_id": "amcap-2e39f7fd7bf8d32b2bc2be4263d5a3ce08f079319e76e59b104f236cce2464be",
   "conditions": {
     "reference_baseline": {
       "condition_id": "stage-r0-vllm-b-two-pass-off-off",
@@ -33,14 +32,16 @@
           "reasoning_budget": null,
           "temperature": 0,
           "top_p": 1,
-          "max_output_tokens": null
+          "max_output_tokens": null,
+          "structured_output_mode": null
         },
         "pass2": {
           "reasoning_mode": "off",
           "reasoning_budget": null,
           "temperature": 0,
           "top_p": 1,
-          "max_output_tokens": null
+          "max_output_tokens": null,
+          "structured_output_mode": "native"
         }
       }
     },
@@ -54,14 +55,16 @@
           "reasoning_budget": null,
           "temperature": 0,
           "top_p": 1,
-          "max_output_tokens": null
+          "max_output_tokens": null,
+          "structured_output_mode": null
         },
         "pass2": {
           "reasoning_mode": "bounded",
           "reasoning_budget": 16,
           "temperature": 0,
           "top_p": 1,
-          "max_output_tokens": null
+          "max_output_tokens": null,
+          "structured_output_mode": "native"
         }
       }
     }

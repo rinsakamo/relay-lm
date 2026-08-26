@@ -12,26 +12,18 @@ from relaylm.actual_model_fast_screening import (
     screening_condition_key_for_role,
 )
 from relaylm.actual_model_scenarios import load_actual_model_scenario_set
-from relaylm.actual_model_vllm_capacity import (
-    load_vllm_runtime_capacity_evidence,
-    validate_capacity_coverage,
-    validate_capacity_window,
-)
 from relaylm.actual_model_vllm_host import (
     CANONICAL_SCENARIO_SET_PATH,
     CANONICAL_VLLM_SCREENING_PLAN_PATH,
     ActualModelVLLMHostError,
     _required_capacity_coverage,
-    load_actual_model_repository_snapshot_target,
     load_vllm_screening_plan,
 )
+from relaylm.cognition_execution import CognitionStructuredOutputMode
 
 
 _ROOT = Path(__file__).parents[2]
 _SCREENING_ROOT = _ROOT / "evaluation" / "actual_model" / "screenings"
-_CANONICAL_B_CAPACITY_EVIDENCE_ID = (
-    "amcap-2e39f7fd7bf8d32b2bc2be4263d5a3ce08f079319e76e59b104f236cce2464be"
-)
 _CURRENT_STAGE_R_FIXTURE_TESTS = (
     "tests/unit/test_actual_model_vllm_host_dispatch.py",
     "tests/unit/test_actual_model_vllm_budget_facade.py",
@@ -69,8 +61,7 @@ def test_current_stage_r_plan_uses_semantic_roles_without_historical_coordinates
     assert current.format_version == 2
     assert current.screening_id == "stage-r0-vllm-reference-v2"
     assert current.target_id == "gemma-4-12b-it-qat-w4a16-google-vllm-v1"
-    assert current.effective_context_window == 1616
-    assert current.capacity_evidence_id == _CANONICAL_B_CAPACITY_EVIDENCE_ID
+    assert current.capacity_evidence_id is None
     assert current.scenario_ids == (
         "response-persona-correction-v1",
         "continuity-lifecycle-v1",
@@ -97,6 +88,42 @@ def test_current_stage_r_plan_uses_semantic_roles_without_historical_coordinates
     assert reference.condition_id == "stage-r0-vllm-b-two-pass-off-off"
     assert reference.pass_requests.pass1.reasoning_mode.value == "off"
     assert reference.pass_requests.pass2.reasoning_mode.value == "off"
+    assert reference.pass_requests.pass1.structured_output_mode is None
+    assert (
+        reference.pass_requests.pass2.structured_output_mode
+        is CognitionStructuredOutputMode.NATIVE
+    )
+
+    escalation = current.conditions[PASS2_REASONING_ESCALATION_ROLE]
+    assert escalation.pass_requests.pass1.structured_output_mode is None
+    assert (
+        escalation.pass_requests.pass2.structured_output_mode
+        is CognitionStructuredOutputMode.NATIVE
+    )
+
+
+def test_current_format_v2_loader_accepts_explicit_structured_output_identity(
+    tmp_path: Path,
+) -> None:
+    raw = json.loads(
+        (_ROOT / CANONICAL_VLLM_SCREENING_PLAN_PATH).read_text(encoding="utf-8")
+    )
+    raw["capacity_evidence_id"] = None
+    for condition in raw["conditions"].values():
+        condition["pass_requests"]["pass1"]["structured_output_mode"] = None
+        condition["pass_requests"]["pass2"]["structured_output_mode"] = "native"
+    path = tmp_path / "native-reference.json"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = load_vllm_screening_plan(path)
+
+    assert loaded.capacity_evidence_id is None
+    for condition in loaded.conditions.values():
+        assert condition.pass_requests.pass1.structured_output_mode is None
+        assert (
+            condition.pass_requests.pass2.structured_output_mode
+            is CognitionStructuredOutputMode.NATIVE
+        )
 
 
 def test_current_semantic_plan_rejects_reference_role_semantic_drift(
@@ -112,6 +139,57 @@ def test_current_semantic_plan_rejects_reference_role_semantic_drift(
     path.write_text(json.dumps(raw), encoding="utf-8")
 
     with pytest.raises(ActualModelVLLMHostError, match=REFERENCE_BASELINE_ROLE):
+        load_vllm_screening_plan(path)
+
+
+def test_current_semantic_plan_rejects_reference_pass2_non_native_transport(
+    tmp_path: Path,
+) -> None:
+    raw = json.loads(
+        (_ROOT / CANONICAL_VLLM_SCREENING_PLAN_PATH).read_text(encoding="utf-8")
+    )
+    raw["conditions"][REFERENCE_BASELINE_ROLE]["pass_requests"]["pass2"][
+        "structured_output_mode"
+    ] = "plain"
+    path = tmp_path / "bad-reference-transport.json"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    with pytest.raises(ActualModelVLLMHostError, match=REFERENCE_BASELINE_ROLE):
+        load_vllm_screening_plan(path)
+
+
+def test_current_semantic_plan_rejects_pass1_structured_output_transport(
+    tmp_path: Path,
+) -> None:
+    raw = json.loads(
+        (_ROOT / CANONICAL_VLLM_SCREENING_PLAN_PATH).read_text(encoding="utf-8")
+    )
+    raw["conditions"][REFERENCE_BASELINE_ROLE]["pass_requests"]["pass1"][
+        "structured_output_mode"
+    ] = "native"
+    path = tmp_path / "bad-pass1-transport.json"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    with pytest.raises(ActualModelVLLMHostError, match=REFERENCE_BASELINE_ROLE):
+        load_vllm_screening_plan(path)
+
+
+def test_current_semantic_plan_rejects_escalation_transport_drift(
+    tmp_path: Path,
+) -> None:
+    raw = json.loads(
+        (_ROOT / CANONICAL_VLLM_SCREENING_PLAN_PATH).read_text(encoding="utf-8")
+    )
+    raw["conditions"][PASS2_REASONING_ESCALATION_ROLE]["pass_requests"]["pass2"][
+        "structured_output_mode"
+    ] = "plain"
+    path = tmp_path / "bad-escalation-transport.json"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    with pytest.raises(
+        ActualModelVLLMHostError,
+        match=PASS2_REASONING_ESCALATION_ROLE,
+    ):
         load_vllm_screening_plan(path)
 
 
@@ -137,22 +215,8 @@ def test_current_semantic_plan_rejects_escalation_role_without_reasoning_escalat
         load_vllm_screening_plan(path)
 
 
-def test_stage_r_reference_reuses_complete_v3_v2_capacity_artifact() -> None:
+def test_current_stage_r_requires_fresh_capacity_for_current_transport_identity() -> None:
     current = load_vllm_screening_plan(_ROOT / CANONICAL_VLLM_SCREENING_PLAN_PATH)
-    artifact = load_vllm_runtime_capacity_evidence(
-        _ROOT
-        / "evaluation"
-        / "actual_model"
-        / "capacity"
-        / f"{_CANONICAL_B_CAPACITY_EVIDENCE_ID}.json"
-    )
-    target = load_actual_model_repository_snapshot_target(
-        _ROOT
-        / "evaluation"
-        / "actual_model"
-        / "targets"
-        / "gemma-4-12b-it-qat-w4a16-google-vllm-v1.json"
-    )
     scenario_set = load_actual_model_scenario_set(_ROOT / CANONICAL_SCENARIO_SET_PATH)
     reference_key = screening_condition_key_for_role(current, REFERENCE_BASELINE_ROLE)
     required_coverage = _required_capacity_coverage(
@@ -161,32 +225,8 @@ def test_stage_r_reference_reuses_complete_v3_v2_capacity_artifact() -> None:
         scenario_ids=current.scenario_ids,
     )
 
-    assert current.capacity_evidence_id == _CANONICAL_B_CAPACITY_EVIDENCE_ID
-    assert artifact.format_version == 3
-    assert artifact.model_runner == "v2"
-    assert artifact.failed_capacity is None
-    assert artifact.target_id == current.target_id == target.target_id
-    assert artifact.target_revision == target.revision
-    assert artifact.tokenizer_identity == target.tokenizer_identity
-    assert artifact.chat_template_identity == target.chat_template_identity
-    assert artifact.scenario_set_revision == scenario_set.revision
-    assert len(artifact.footprints) == len(required_coverage) == 12
-    validate_capacity_coverage(
-        evidence=artifact,
-        scenario_set_revision=scenario_set.revision,
-        required_coverage=required_coverage,
-    )
-    validate_capacity_window(
-        evidence=artifact,
-        capacity_evidence_id=current.capacity_evidence_id,
-        effective_context_window=current.effective_context_window,
-    )
-    assert artifact.maximum_observed_input_tokens == 1533
-    assert current.effective_context_window == 1616
-    assert artifact.observed_max_model_len == 1616
-    assert artifact.footprints[0].condition_id == (
-        current.conditions[reference_key].condition_id
-    )
+    assert current.capacity_evidence_id is None
+    assert required_coverage
 
 
 def test_stage_r_coverage_ledger_keeps_functional_acceptance_and_follow_up_explicit() -> None:

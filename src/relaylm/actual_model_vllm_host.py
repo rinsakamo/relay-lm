@@ -44,14 +44,18 @@ from relaylm.actual_model_vllm_capacity import (
     VLLMRuntimeCapacityEvidenceError,
     capacity_evidence_path,
     load_vllm_runtime_capacity_evidence,
-    validate_vllm_model_runner,
     validate_capacity_coverage,
     validate_capacity_window,
+    validate_vllm_model_runner,
     vllm_capacity_pass_request_id,
 )
 from relaylm.actual_model_vllm_counter import VLLMServingTokenizerCounter
 from relaylm.budget_runtime import TwoPassCognitiveBudgetRuntimeConfig
-from relaylm.cognition_execution import CognitionPassRequest, CognitionReasoningMode
+from relaylm.cognition_execution import (
+    CognitionPassRequest,
+    CognitionReasoningMode,
+    CognitionStructuredOutputMode,
+)
 from relaylm.cognition_execution_evidence import CognitionExecutionEvidenceIdentity
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
 from relaylm.providers.openai_compatible_budget import (
@@ -284,9 +288,13 @@ def _validate_current_screening_role_semantics(
         or reference_pass2.reasoning_mode is not CognitionReasoningMode.OFF
         or reference_pass1.reasoning_budget is not None
         or reference_pass2.reasoning_budget is not None
+        or reference_pass1.structured_output_mode is not None
+        or reference_pass2.structured_output_mode
+        is not CognitionStructuredOutputMode.NATIVE
     ):
         raise ActualModelVLLMHostError(
-            "reference_baseline must be a two-pass OFF/OFF screening condition"
+            "reference_baseline must be a two-pass OFF/OFF condition with "
+            "plain Pass 1 and native Pass 2 transport"
         )
 
     escalation = conditions["pass2_reasoning_escalation"]
@@ -317,16 +325,18 @@ def _validate_current_screening_role_semantics(
         reference_pass2.temperature,
         reference_pass2.top_p,
         reference_pass2.max_output_tokens,
+        reference_pass2.structured_output_mode,
     )
     escalation_non_reasoning = (
         escalation_pass2.temperature,
         escalation_pass2.top_p,
         escalation_pass2.max_output_tokens,
+        escalation_pass2.structured_output_mode,
     )
     if escalation_non_reasoning != reference_non_reasoning:
         raise ActualModelVLLMHostError(
             "pass2_reasoning_escalation must preserve reference_baseline Pass 2 "
-            "decoding/output controls"
+            "decoding/output/structured-output controls"
         )
 
 
@@ -448,6 +458,7 @@ def load_vllm_screening_plan(path: str | Path) -> VLLMScreeningPlan:
         raise ActualModelVLLMHostError(
             "vLLM screening plan has unknown fields: " + ", ".join(unknown_keys)
         )
+    format_version = _integer(mapping["format_version"], "format_version")
     decoding = _mapping(mapping["decoding"], "decoding")
     _require_exact_keys(decoding, {"temperature", "top_p", "seed"}, "decoding")
     continuity = _mapping(mapping["continuity_runtime"], "continuity_runtime")
@@ -464,12 +475,13 @@ def load_vllm_screening_plan(path: str | Path) -> VLLMScreeningPlan:
             value,
             label=f"conditions.{key}",
             execution_path=execution_path,
+            format_version=format_version,
         )
     controls = _list(mapping["supported_decoding_controls"], "supported_decoding_controls")
     scenarios = _list(mapping["scenario_ids"], "scenario_ids")
     try:
         return VLLMScreeningPlan(
-            format_version=_integer(mapping["format_version"], "format_version"),
+            format_version=format_version,
             screening_id=_string(mapping["screening_id"], "screening_id"),
             target_id=_string(mapping["target_id"], "target_id"),
             effective_context_window=_integer(
@@ -501,7 +513,7 @@ def load_vllm_screening_plan(path: str | Path) -> VLLMScreeningPlan:
             conditions=conditions,
             capacity_evidence_id=(
                 _string(mapping["capacity_evidence_id"], "capacity_evidence_id")
-                if "capacity_evidence_id" in mapping
+                if mapping.get("capacity_evidence_id") is not None
                 else None
             ),
         )
@@ -620,19 +632,12 @@ def _capacity_evidence_commit_requirement(
 ) -> str | None:
     """Return the measurement commit that must equal the screening checkout.
 
-    The current semantic format-v2 plan may deliberately cite reviewed capacity
-    evidence tracked in this repository even when that measurement predates the
-    current checkout. That reuse is admitted only through the canonical tracked
-    citation; all downstream target/runtime/counter/scenario/coverage checks
-    remain mandatory. Caller-supplied external evidence keeps exact measurement
-    commit binding so a stale override cannot bypass fresh-checkout provenance.
+    Capacity evidence is an exact execution-admission artifact. Current Stage R
+    does not waive its RelayLM commit merely because the artifact is tracked in
+    the repository; material prompt/wire/transport changes require fresh evidence.
     """
 
-    if (
-        plan.format_version == VLLM_SCREENING_PLAN_FORMAT_VERSION
-        and capacity_evidence_root is None
-    ):
-        return None
+    del plan, capacity_evidence_root
     return capacity_evidence.relaylm_commit
 
 
@@ -1094,6 +1099,7 @@ def _parse_screening_condition(
     *,
     label: str,
     execution_path: str,
+    format_version: int,
 ) -> VLLMScreeningCondition:
     mapping = _mapping(value, label)
     _require_exact_keys(
@@ -1114,7 +1120,11 @@ def _parse_screening_condition(
         raise ActualModelVLLMHostError(
             f"{label}.cognition_execution must be single_pass or two_pass"
         )
-    requests = _parse_pass_requests(mapping["pass_requests"], f"{label}.pass_requests")
+    requests = _parse_pass_requests(
+        mapping["pass_requests"],
+        f"{label}.pass_requests",
+        format_version=format_version,
+    )
     return VLLMScreeningCondition(
         condition_id=_string(mapping["condition_id"], f"{label}.condition_id"),
         cognition_execution=cognition_execution,
@@ -1122,7 +1132,12 @@ def _parse_screening_condition(
     )
 
 
-def _parse_pass_requests(value: object, label: str) -> ActualModelCognitionPassRequests:
+def _parse_pass_requests(
+    value: object,
+    label: str,
+    *,
+    format_version: int,
+) -> ActualModelCognitionPassRequests:
     mapping = _mapping(value, label)
     _require_exact_keys(mapping, {"single_pass", "pass1", "pass2"}, label)
     single_raw = mapping["single_pass"]
@@ -1135,15 +1150,27 @@ def _parse_pass_requests(value: object, label: str) -> ActualModelCognitionPassR
                     f"{label} single_pass cannot coexist with pass1/pass2"
                 )
             return ActualModelCognitionPassRequests.single_pass(
-                _parse_pass_request(single_raw, f"{label}.single_pass")
+                _parse_pass_request(
+                    single_raw,
+                    f"{label}.single_pass",
+                    format_version=format_version,
+                )
             )
         if pass1_raw is None or pass2_raw is None:
             raise ActualModelVLLMHostError(
                 f"{label} must contain single_pass or both pass1/pass2"
             )
         return ActualModelCognitionPassRequests.two_pass(
-            pass1=_parse_pass_request(pass1_raw, f"{label}.pass1"),
-            pass2=_parse_pass_request(pass2_raw, f"{label}.pass2"),
+            pass1=_parse_pass_request(
+                pass1_raw,
+                f"{label}.pass1",
+                format_version=format_version,
+            ),
+            pass2=_parse_pass_request(
+                pass2_raw,
+                f"{label}.pass2",
+                format_version=format_version,
+            ),
         )
     except (TypeError, ValueError) as exc:
         if isinstance(exc, ActualModelVLLMHostError):
@@ -1151,19 +1178,23 @@ def _parse_pass_requests(value: object, label: str) -> ActualModelCognitionPassR
         raise ActualModelVLLMHostError(f"invalid {label}: {exc}") from exc
 
 
-def _parse_pass_request(value: object, label: str) -> CognitionPassRequest:
+def _parse_pass_request(
+    value: object,
+    label: str,
+    *,
+    format_version: int,
+) -> CognitionPassRequest:
     mapping = _mapping(value, label)
-    _require_exact_keys(
-        mapping,
-        {
-            "reasoning_mode",
-            "reasoning_budget",
-            "temperature",
-            "top_p",
-            "max_output_tokens",
-        },
-        label,
-    )
+    expected = {
+        "reasoning_mode",
+        "reasoning_budget",
+        "temperature",
+        "top_p",
+        "max_output_tokens",
+    }
+    if format_version == VLLM_SCREENING_PLAN_FORMAT_VERSION:
+        expected.add("structured_output_mode")
+    _require_exact_keys(mapping, expected, label)
     mode_raw = mapping["reasoning_mode"]
     mode = None
     if mode_raw is not None:
@@ -1173,6 +1204,21 @@ def _parse_pass_request(value: object, label: str) -> CognitionPassRequest:
             raise ActualModelVLLMHostError(
                 f"{label}.reasoning_mode is unsupported"
             ) from exc
+    structured_output_mode = None
+    if format_version == VLLM_SCREENING_PLAN_FORMAT_VERSION:
+        structured_raw = mapping["structured_output_mode"]
+        if structured_raw is not None:
+            try:
+                structured_output_mode = CognitionStructuredOutputMode(
+                    _string(
+                        structured_raw,
+                        f"{label}.structured_output_mode",
+                    )
+                )
+            except ValueError as exc:
+                raise ActualModelVLLMHostError(
+                    f"{label}.structured_output_mode is unsupported"
+                ) from exc
     return CognitionPassRequest(
         reasoning_mode=mode,
         reasoning_budget=_optional_integer(
@@ -1183,6 +1229,7 @@ def _parse_pass_request(value: object, label: str) -> CognitionPassRequest:
         max_output_tokens=_optional_integer(
             mapping["max_output_tokens"], f"{label}.max_output_tokens"
         ),
+        structured_output_mode=structured_output_mode,
     )
 
 
