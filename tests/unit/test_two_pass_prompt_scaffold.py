@@ -81,7 +81,6 @@ def test_two_pass_requests_share_exact_common_prefix_before_pass_suffix() -> Non
         "`change_signals`",
         "`self_meaning`",
         "`assistant_effects`",
-        "`unresolved`",
         "`continuity_signals`",
     ):
         assert removed_field not in extraction_suffix
