@@ -1,0 +1,68 @@
+{
+  "format_version": 1,
+  "scenario_set_version": "preference-epistemic-strength-v1",
+  "quality_rubric_version": "actual-model-quality-v1",
+  "character_fixture_id": "actual-model-foundation-v1",
+  "scenarios": [
+    {
+      "format_version": 1,
+      "id": "preference-epistemic-strength-v1",
+      "family": "state_candidate_quality",
+      "version": "1",
+      "turns": [
+        "I might prefer tea to coffee, but I'm not sure yet.",
+        "I've decided: tea is my preferred beverage.",
+        "Today I'm not in the mood for tea, but my usual preference has not changed."
+      ],
+      "required_provider_capabilities": [
+        "state_candidates"
+      ],
+      "restart_after_turn_count": null,
+      "proposal_labels": [
+        {
+          "turn_index": 1,
+          "state": [],
+          "continuity": []
+        },
+        {
+          "turn_index": 2,
+          "state": [
+            {
+              "state_class": "user.preference",
+              "key": "preferred_beverage",
+              "op": "set",
+              "match_value": true,
+              "value": "tea"
+            }
+          ],
+          "continuity": []
+        },
+        {
+          "turn_index": 3,
+          "state": [],
+          "continuity": []
+        }
+      ]
+    },
+    {
+      "format_version": 1,
+      "id": "preference-epistemic-strength-ja-s5-v1",
+      "family": "state_candidate_quality",
+      "version": "1",
+      "turns": [
+        "たぶん紅茶のほうが好きかも。"
+      ],
+      "required_provider_capabilities": [
+        "state_candidates"
+      ],
+      "restart_after_turn_count": null,
+      "proposal_labels": [
+        {
+          "turn_index": 1,
+          "state": [],
+          "continuity": []
+        }
+      ]
+    }
+  ]
+}
