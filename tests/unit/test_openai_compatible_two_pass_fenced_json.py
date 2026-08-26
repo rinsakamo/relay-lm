@@ -40,14 +40,6 @@ def _extraction_input() -> CognitionExtractionInput:
 
 def _wire() -> dict[str, object]:
     return {
-        "turn_interpretation": {
-            "user_meaning": ["最近コーヒーを飲んでいる"],
-            "change_signals": [],
-            "self_meaning": [],
-            "assistant_effects": [],
-            "unresolved": [],
-            "continuity_signals": [],
-        },
         "state_candidates": [],
         "continuity_candidates": [],
     }
