@@ -73,7 +73,7 @@ def test_actual_model_fixture_covers_tentative_resolved_and_temporary_preference
     assert definition.scenario.family == "state_candidate_quality"
     assert definition.scenario.turns == (
         "I might prefer tea to coffee, but I'm not sure yet.",
-        "I've decided: I prefer tea to coffee.",
+        "I've decided: tea is my preferred beverage.",
         "Today I'm not in the mood for tea, but my usual preference has not changed.",
     )
 
