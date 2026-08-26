@@ -7,7 +7,7 @@ from relaylm.cognitive import CognitiveInput
 from relaylm.cognition_execution import CognitionExtractionInput
 from relaylm.events import Event
 from relaylm.identity import Identity
-from relaylm.providers.openai_compatible_two_pass import _common_cognitive_prefix
+from relaylm.providers.openai_compatible_two_pass import _extraction_pass_suffix
 from relaylm.state import STATE_CLASS_DEFINITIONS
 
 
@@ -41,43 +41,48 @@ def _extraction_input() -> CognitionExtractionInput:
     )
 
 
-def test_user_preference_semantics_separate_epistemic_strength_from_intensity() -> None:
+def test_preference_class_keeps_intensity_semantics_but_not_language_examples() -> None:
     definition = STATE_CLASS_DEFINITIONS["user.preference"].casefold()
 
-    assert "tentative or uncertain preference" in definition
-    assert "does not by itself establish durable preference" in definition
-    assert "degree_hint is intensity, not confidence" in definition
-    assert "temporary mood or situational variation" in definition
-    assert "does not revoke an established durable preference" in definition
+    assert "degree_hint" in definition
+    assert "intensity" in definition
+    assert "confidence" in definition
+    assert "might prefer tea" not in definition
+    assert "not in the mood for tea" not in definition
 
 
-def test_state_owned_epistemic_contrast_is_model_facing_in_cognitive_input() -> None:
-    prefix = _common_cognitive_prefix(_extraction_input().cognitive_input)
+def test_global_state_durability_gate_is_model_facing_and_language_independent() -> None:
+    suffix = _extraction_pass_suffix(_extraction_input())
 
-    assert "degree_hint is intensity, not confidence" in prefix
-    assert "tentative ('might prefer tea; not sure') means no durable State" in prefix
-    assert "resolved ('prefer tea to coffee') may establish durable preference" in prefix
     assert (
-        "temporary ('not in the mood for tea today; usual preference unchanged') "
-        "must not remove durable preference" in prefix
+        "Durable State gate: emit State only when the current Input presents the candidate "
+        "meaning as sufficiently asserted, committed, or otherwise established" in suffix
     )
+    assert (
+        "Tentative, hypothetical, merely possible, guessed, hedged, or explicitly "
+        "self-uncertain meaning stays uncommitted" in suffix
+    )
+    assert "Apply this gate by meaning regardless of language or state_class" in suffix
+    assert "do not use surface keywords or grammatical patterns as the gate" in suffix
+    assert "Epistemic uncertainty is not degree_hint" in suffix
+    assert "A later resolved assertion may establish State normally" in suffix
+    assert "たぶん紅茶のほうが好きかも" not in suffix
 
 
-def test_actual_model_fixture_covers_tentative_resolved_and_temporary_preference() -> None:
+def test_actual_model_fixture_covers_english_contrast_and_japanese_black_box_s5() -> None:
     scenario_set = load_actual_model_scenario_set(_SCENARIO_PATH)
 
     assert scenario_set.scenario_set_version == "preference-epistemic-strength-v1"
-    assert len(scenario_set.scenarios) == 1
-    definition = scenario_set.scenarios[0]
-    assert definition.scenario.scenario_id == "preference-epistemic-strength-v1"
-    assert definition.scenario.family == "state_candidate_quality"
-    assert definition.scenario.turns == (
+    assert len(scenario_set.scenarios) == 2
+
+    english = scenario_set.scenario("preference-epistemic-strength-v1")
+    assert english.scenario.family == "state_candidate_quality"
+    assert english.scenario.turns == (
         "I might prefer tea to coffee, but I'm not sure yet.",
         "I've decided: tea is my preferred beverage.",
         "Today I'm not in the mood for tea, but my usual preference has not changed.",
     )
-
-    first, second, third = definition.proposal_labels
+    first, second, third = english.proposal_labels
     assert first.state == ()
     assert len(second.state) == 1
     assert second.state[0].state_class == "user.preference"
@@ -86,3 +91,9 @@ def test_actual_model_fixture_covers_tentative_resolved_and_temporary_preference
     assert second.state[0].match_value is True
     assert second.state[0].value == "tea"
     assert third.state == ()
+
+    japanese = scenario_set.scenario("preference-epistemic-strength-ja-s5-v1")
+    assert japanese.scenario.family == "state_candidate_quality"
+    assert japanese.scenario.turns == ("たぶん紅茶のほうが好きかも。",)
+    assert japanese.proposal_labels[0].state == ()
+    assert japanese.proposal_labels[0].continuity == ()
