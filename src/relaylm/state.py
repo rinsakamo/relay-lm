@@ -15,11 +15,14 @@ STATE_CLASS_DEFINITIONS = MappingProxyType(
             "the user's preferences; key names a specific subject or dimension "
             "(for example tea, coffee, spicy_food, preferred_beverage) rather than a generic "
             "predicate such as likes, dislikes, or preference; value carries the preference "
-            "relation or current dimension value; comparative preference does not by itself "
-            "imply dislike of the weaker item or revoke an existing weaker-item liking; when "
-            "the weaker subject already has a positive preference State, keep that State unless "
-            "the current Input explicitly denies or revokes it, and represent the stronger "
-            "subject and any category-level preference with separate specific keys"
+            "relation or current dimension value; a tentative or uncertain preference does "
+            "not by itself establish durable preference, and degree_hint is intensity, not "
+            "confidence; temporary mood or situational variation does not revoke an established "
+            "durable preference; comparative preference does not by itself imply dislike of the "
+            "weaker item or revoke an existing weaker-item liking; when the weaker subject already "
+            "has a positive preference State, keep that State unless the current Input explicitly "
+            "denies or revokes it, and represent the stronger subject and any category-level "
+            "preference with separate specific keys"
         ),
         "user.goal": "a goal the user currently has",
         "user.condition": "a current condition or ongoing circumstance of the user",
