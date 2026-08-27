@@ -10,6 +10,7 @@ from relaylm.actual_model_evaluation import (
 )
 
 QUALITY_RUBRIC_VERSION = "actual-model-quality-v1"
+PROPOSAL_EVALUATOR_VERSION = "actual-model-proposal-evaluator-v2"
 QualityAxis = Literal[
     "response_coherence",
     "persona_continuity",
@@ -143,9 +144,15 @@ class ProposalChannelMetrics:
 class LabeledProposalMetrics:
     state: ProposalChannelMetrics
     continuity: ProposalChannelMetrics
+    evaluator_version: str = PROPOSAL_EVALUATOR_VERSION
+
+    def __post_init__(self) -> None:
+        if self.evaluator_version != PROPOSAL_EVALUATOR_VERSION:
+            raise ValueError("proposal metrics must pin the current evaluator version")
 
     def to_mapping(self) -> dict[str, object]:
         return {
+            "evaluator_version": self.evaluator_version,
             "state": self.state.to_mapping(),
             "continuity": self.continuity.to_mapping(),
         }
@@ -195,7 +202,14 @@ def evaluate_labeled_proposals(
     evidence: ActualModelEvidence,
     labels: tuple[TurnProposalLabels, ...],
 ) -> LabeledProposalMetrics:
-    """Compute raw-proposal precision/recall with matching confined to each labeled turn."""
+    """Score raw proposals while binding Continuity labels to accepted lifecycle keys.
+
+    State labels retain exact canonical class/key matching. A Continuity label key is
+    fixture-local lifecycle identity: its first expected ``set`` may bind to a
+    different non-empty model key only when deterministic runtime evidence accepted
+    that candidate as a new item. Later transitions for that fixture lifecycle must
+    reuse the bound model key exactly.
+    """
 
     by_turn = {item.turn_index: item for item in labels}
     if len(by_turn) != len(labels):
@@ -206,6 +220,7 @@ def evaluate_labeled_proposals(
 
     state_turn_metrics: list[ProposalChannelMetrics] = []
     continuity_turn_metrics: list[ProposalChannelMetrics] = []
+    continuity_key_bindings: dict[str, str] = {}
     for turn in evidence.turns:
         turn_labels = by_turn.get(turn.turn_index)
         if turn_labels is None:
@@ -218,10 +233,11 @@ def evaluate_labeled_proposals(
             )
         )
         continuity_turn_metrics.append(
-            _match_channel(
+            _match_continuity_channel(
                 expected=list(turn_labels.continuity),
                 observed=list(turn.raw_model.continuity_candidates),
-                matcher=_continuity_matches,
+                decisions=list(turn.deterministic.continuity_decisions),
+                key_bindings=continuity_key_bindings,
             )
         )
 
@@ -276,21 +292,93 @@ def _match_channel(*, expected: list[Any], observed: list[dict[str, object]], ma
             unmatched_observed.remove(match_index)
             true_positive_count += 1
 
-    false_positive_count = len(unmatched_observed)
-    false_negative_count = len(expected) - true_positive_count
+    return _channel_metrics(
+        expected_count=len(expected),
+        observed_count=len(observed),
+        true_positive_count=true_positive_count,
+        false_positive_count=len(unmatched_observed),
+    )
+
+
+def _match_continuity_channel(
+    *,
+    expected: list[ContinuityProposalLabel],
+    observed: list[dict[str, object]],
+    decisions: list[dict[str, object]],
+    key_bindings: dict[str, str],
+) -> ProposalChannelMetrics:
+    unmatched_observed = list(range(len(observed)))
+    true_positive_count = 0
+
+    for label in expected:
+        bound_key = key_bindings.get(label.key)
+        if bound_key is None:
+            match_index = next(
+                (
+                    index
+                    for index in unmatched_observed
+                    if _continuity_first_introduction_matches(
+                        label,
+                        observed[index],
+                        decisions[index] if index < len(decisions) else None,
+                    )
+                ),
+                None,
+            )
+            if match_index is not None:
+                actual_key = observed[match_index].get("key")
+                assert isinstance(actual_key, str) and actual_key.strip()
+                key_bindings[label.key] = actual_key
+        else:
+            match_index = next(
+                (
+                    index
+                    for index in unmatched_observed
+                    if _continuity_matches(
+                        label,
+                        observed[index],
+                        expected_key=bound_key,
+                    )
+                ),
+                None,
+            )
+
+        if match_index is None:
+            continue
+        unmatched_observed.remove(match_index)
+        true_positive_count += 1
+        if label.op == "resolve":
+            key_bindings.pop(label.key, None)
+
+    return _channel_metrics(
+        expected_count=len(expected),
+        observed_count=len(observed),
+        true_positive_count=true_positive_count,
+        false_positive_count=len(unmatched_observed),
+    )
+
+
+def _channel_metrics(
+    *,
+    expected_count: int,
+    observed_count: int,
+    true_positive_count: int,
+    false_positive_count: int,
+) -> ProposalChannelMetrics:
+    false_negative_count = expected_count - true_positive_count
     precision = (
-        true_positive_count / len(observed)
-        if observed
+        true_positive_count / observed_count
+        if observed_count
         else None
     )
     recall = (
-        true_positive_count / len(expected)
-        if expected
+        true_positive_count / expected_count
+        if expected_count
         else None
     )
     return ProposalChannelMetrics(
-        expected_count=len(expected),
-        observed_count=len(observed),
+        expected_count=expected_count,
+        observed_count=observed_count,
         true_positive_count=true_positive_count,
         false_positive_count=false_positive_count,
         false_negative_count=false_negative_count,
@@ -309,12 +397,33 @@ def _state_matches(label: StateProposalLabel, observed: dict[str, object]) -> bo
     return not label.match_value or _json_equal(observed.get("value"), label.value)
 
 
+def _continuity_first_introduction_matches(
+    label: ContinuityProposalLabel,
+    observed: dict[str, object],
+    decision: dict[str, object] | None,
+) -> bool:
+    actual_key = observed.get("key")
+    if (
+        label.op != "set"
+        or not isinstance(actual_key, str)
+        or not actual_key.strip()
+        or decision is None
+        or decision.get("status") != "accepted"
+        or decision.get("action") != "admit"
+    ):
+        return False
+    return _continuity_matches(label, observed, expected_key=actual_key)
+
+
 def _continuity_matches(
-    label: ContinuityProposalLabel, observed: dict[str, object]
+    label: ContinuityProposalLabel,
+    observed: dict[str, object],
+    *,
+    expected_key: str,
 ) -> bool:
     if (
         observed.get("kind") != label.kind
-        or observed.get("key") != label.key
+        or observed.get("key") != expected_key
         or observed.get("op") != label.op
     ):
         return False
