@@ -468,6 +468,8 @@ Emit `state_candidates`, then `continuity_candidates`.
 
 Projection rules:
 - Durable State gate: emit State only when the current Input presents the candidate meaning as sufficiently asserted, committed, or otherwise established for persistent current understanding.
+- Evaluate newly established durable State independently before Continuity proposals.
+- First-introduction durable State does not require a pre-existing accepted State record.
 - Tentative, hypothetical, merely possible, guessed, hedged, or explicitly self-uncertain meaning stays uncommitted: emit no durable State for that meaning.
 - Apply this gate by meaning regardless of language or state_class; do not use surface keywords or grammatical patterns as the gate.
 - Epistemic uncertainty is not degree_hint; degree_hint remains semantic intensity only. A later resolved assertion may establish State normally.
@@ -477,6 +479,7 @@ Projection rules:
   - Liking a subject: `{like_example}`
   - A preference dimension whose value is the subject: `{preferred_example}`
   - Explicit revocation of an accepted subject preference: `{remove_example}`
+- Continuity-specific instructions, including `emit only`, apply only within `continuity_candidates` and never suppress an otherwise-grounded `state_candidates` proposal.
 - Continuity wire: `{{kind,key,op,value,sources,epistemic_role}}`. `op` is `set` or `resolve`; set value is finite JSON and resolve value is null. Carry Continuity only when it is useful for upcoming coherence.
 - Continuity meanings (classify independently):
   - `referent`: a specific subject or entity that upcoming dialogue may refer back to.
