@@ -421,6 +421,42 @@ def _extraction_pass_suffix(extraction_input: CognitionExtractionInput) -> str:
         ensure_ascii=False,
         separators=(",", ":"),
     )
+    referent_example = json.dumps(
+        {
+            "kind": "referent",
+            "key": "current_document",
+            "op": "set",
+            "value": "the draft",
+            "sources": [source_id],
+            "epistemic_role": "user_assertion",
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    unresolved_example = json.dumps(
+        {
+            "kind": "unresolved",
+            "key": "document_author",
+            "op": "set",
+            "value": "author not yet known",
+            "sources": [source_id],
+            "epistemic_role": "user_assertion",
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    active_task_example = json.dumps(
+        {
+            "kind": "active_task",
+            "key": "verify_document_author",
+            "op": "set",
+            "value": "verify the document author",
+            "sources": [source_id],
+            "epistemic_role": "user_assertion",
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
     return f"""EXTRACTION
 
 <PASS_1_RESPONSE_JSON>
@@ -441,17 +477,29 @@ Projection rules:
   - Liking a subject: `{like_example}`
   - A preference dimension whose value is the subject: `{preferred_example}`
   - Explicit revocation of an accepted subject preference: `{remove_example}`
-- Continuity wire: `{{kind,key,op,value,sources,epistemic_role}}`. `kind` is `referent`, `unresolved`, or `active_task`; `op` is `set` or `resolve`; set value is finite JSON and resolve value is null; epistemic_role is `user_assertion`, `assistant_inference`, or `assistant_commitment`. Carry only when useful for upcoming coherence; ambiguity or incomplete evidence does not automatically require Continuity.
-- `referent`, `unresolved`, and `active_task` are independent semantic dimensions; one subject may require multiple simultaneous Continuity items. Do not collapse them merely because they concern the same subject.
-- When CognitiveInput context contains accepted Continuity matching the meaning and this turn changes or resolves it, reuse its existing `kind` + `key` rather than inventing a synonym or new lifecycle key.
-- Do not re-propose an unchanged accepted Continuity item merely because it appears in current context; emit no candidate for an unchanged item.
-- For ordinary-turn Continuity, every Continuity transition caused by this turn must include the current Input Event ID `{source_id}` in `sources`. Prior Continuity/context sources describe existing context but cannot substitute for current evidence of a new set/resolve transition.
+- Continuity wire: `{{kind,key,op,value,sources,epistemic_role}}`. `op` is `set` or `resolve`; set value is finite JSON and resolve value is null. Carry Continuity only when it is useful for upcoming coherence.
+- Continuity meanings (classify independently):
+  - `referent`: a specific subject or entity that upcoming dialogue may refer back to.
+  - `unresolved`: an explicit open question or unknown value that remains to be resolved.
+  - `active_task`: an unfinished action, process, or goal expected to continue.
+- Emit every distinct useful Continuity meaning present; do not choose only one best kind.
+- New items use a short stable semantic `key`; exact first-introduction wording is not globally canonical.
+- Continuity transition decision:
+  - new useful meaning -> emit `set` with a new stable key.
+  - unchanged accepted meaning -> emit no candidate.
+  - changed or resolved accepted meaning -> reuse its existing lifecycle key.
+- Before concluding there are no Continuity candidates, check `unresolved` independently: if this turn newly establishes an explicit open question or unknown value, emit a new `unresolved` set when no accepted unresolved item already represents that open issue, even when related accepted `referent` or `active_task` meanings are unchanged.
+- An explicitly maintained unknown value is itself an `unresolved` meaning when no accepted unresolved item already represents it. Do not require a new `active_task`, a question form, or a change to an existing task before emitting it.
+- A `referent` identifies the reference target; new descriptive facts about the same target do not supersede it unless the referential target itself changes.
+- For ordinary-turn Continuity, every new set/resolve transition must include the current Input Event ID `{source_id}` in `sources`; prior Continuity/context sources describe existing context but cannot substitute for current evidence of a new transition.
 - Resolve only when the current turn actually resolves or completes an existing item; reuse that item's `kind` + `key`, set value to null, and ground the resolution in the current Input Event.
+- Continuity examples demonstrate representation only; never copy their keys, values, or claims unless current evidence supports that exact meaning:
+  - Referent: `{referent_example}`
+  - Unresolved: `{unresolved_example}`
+  - Active task: `{active_task_example}`
 - Never use `resolve` as `kind`; keep `kind` as `referent`, `unresolved`, or `active_task`.
 - `kind` and `epistemic_role` are separate enum axes; `unresolved` is a `kind` only and must never be used as `epistemic_role`.
 - `epistemic_role` must be exactly `user_assertion`, `assistant_inference`, or `assistant_commitment`.
-- Unresolved Continuity example: `{{"kind":"unresolved","op":"set","value":"which blue box","epistemic_role":"user_assertion"}}`.
-- Resolve example for an active task: `{{"kind":"active_task","op":"resolve","value":null}}`.
 - `sources` are non-empty Event IDs present in CognitiveInput; never invent IDs. Pass 1 response is interpretive context only and must never self-certify user facts/preferences/goals/experience, external truth, prior events, or source provenance.
 
 Exact top-level shape:

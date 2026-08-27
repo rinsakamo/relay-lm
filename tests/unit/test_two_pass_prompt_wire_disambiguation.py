@@ -44,9 +44,10 @@ def test_pass2_prompt_keeps_continuity_kind_distinct_from_resolve_operation() ->
         "`active_task`." in suffix
     )
     assert (
-        'Resolve example for an active task: `{"kind":"active_task","op":"resolve",'
-        '"value":null}`.' in suffix
+        "Resolve only when the current turn actually resolves or completes an existing item"
+        in suffix
     )
+    assert "set value is finite JSON and resolve value is null" in suffix
 
 
 def test_pass2_prompt_keeps_continuity_kind_distinct_from_epistemic_role() -> None:
@@ -61,6 +62,7 @@ def test_pass2_prompt_keeps_continuity_kind_distinct_from_epistemic_role() -> No
         "`assistant_commitment`." in suffix
     )
     assert (
-        'Unresolved Continuity example: `{"kind":"unresolved","op":"set",'
-        '"value":"which blue box","epistemic_role":"user_assertion"}`.' in suffix
+        "`unresolved`: an explicit open question or unknown value that remains to be resolved."
+        in suffix
     )
+    assert "which blue box" not in suffix
