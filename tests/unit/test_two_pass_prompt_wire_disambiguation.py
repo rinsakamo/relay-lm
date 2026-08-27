@@ -66,3 +66,22 @@ def test_pass2_prompt_keeps_continuity_kind_distinct_from_epistemic_role() -> No
         in suffix
     )
     assert "which blue box" not in suffix
+
+
+def test_pass2_prompt_keeps_new_unresolved_independent_of_unchanged_related_continuity() -> None:
+    suffix = _extraction_pass_suffix(_extraction_input())
+
+    assert (
+        "Unchanged accepted `referent` or `active_task` meanings do not suppress a "
+        "distinct newly established `unresolved` meaning." in suffix
+    )
+    assert (
+        "If related accepted referent/task meanings are unchanged and the current Event "
+        "newly establishes an unknown value with no accepted unresolved item, emit only "
+        "the new `unresolved` set as applicable." in suffix
+    )
+    assert "Unresolved transition example" in suffix
+    assert '"kind":"unresolved"' in suffix
+    assert '"sources":["evt-now"]' in suffix
+    assert "blue_box" not in suffix
+    assert "box_contents_question" not in suffix
