@@ -490,12 +490,14 @@ Projection rules:
   - changed or resolved accepted meaning -> reuse its existing lifecycle key.
 - Before concluding there are no Continuity candidates, check `unresolved` independently: if this turn newly establishes an explicit open question or unknown value, emit a new `unresolved` set when no accepted unresolved item already represents that open issue, even when related accepted `referent` or `active_task` meanings are unchanged.
 - An explicitly maintained unknown value is itself an `unresolved` meaning when no accepted unresolved item already represents it. Do not require a new `active_task`, a question form, or a change to an existing task before emitting it.
+- Unchanged accepted `referent` or `active_task` meanings do not suppress a distinct newly established `unresolved` meaning.
+- If related accepted referent/task meanings are unchanged and the current Event newly establishes an unknown value with no accepted unresolved item, emit only the new `unresolved` set as applicable.
 - A `referent` identifies the reference target; new descriptive facts about the same target do not supersede it unless the referential target itself changes.
 - For ordinary-turn Continuity, every new set/resolve transition must include the current Input Event ID `{source_id}` in `sources`; prior Continuity/context sources describe existing context but cannot substitute for current evidence of a new transition.
 - Resolve only when the current turn actually resolves or completes an existing item; reuse that item's `kind` + `key`, set value to null, and ground the resolution in the current Input Event.
 - Continuity examples demonstrate representation only; never copy their keys, values, or claims unless current evidence supports that exact meaning:
   - Referent: `{referent_example}`
-  - Unresolved: `{unresolved_example}`
+  - Unresolved transition example: `{unresolved_example}`
   - Active task: `{active_task_example}`
 - Never use `resolve` as `kind`; keep `kind` as `referent`, `unresolved`, or `active_task`.
 - `kind` and `epistemic_role` are separate enum axes; `unresolved` is a `kind` only and must never be used as `epistemic_role`.
