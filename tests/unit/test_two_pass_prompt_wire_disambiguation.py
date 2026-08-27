@@ -85,3 +85,22 @@ def test_pass2_prompt_keeps_new_unresolved_independent_of_unchanged_related_cont
     assert '"sources":["evt-now"]' in suffix
     assert "blue_box" not in suffix
     assert "box_contents_question" not in suffix
+
+
+def test_pass2_prompt_keeps_durable_state_independent_of_continuity_guidance() -> None:
+    suffix = _extraction_pass_suffix(_extraction_input())
+
+    assert (
+        "Evaluate newly established durable State independently before Continuity proposals."
+        in suffix
+    )
+    assert (
+        "First-introduction durable State does not require a pre-existing accepted State record."
+        in suffix
+    )
+    assert (
+        "Continuity-specific instructions, including `emit only`, apply only within "
+        "`continuity_candidates` and never suppress an otherwise-grounded "
+        "`state_candidates` proposal."
+        in suffix
+    )
