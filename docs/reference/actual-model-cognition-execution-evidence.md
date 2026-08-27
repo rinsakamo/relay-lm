@@ -99,6 +99,18 @@ A citable product-quality review must be derived only from an execution result t
 
 A citable deterministic-boundary verdict must likewise be derived only after the source execution passes canonical execution admission. That admission proves source identity and ownership only; the boundary evaluator still independently checks fixture alignment, raw-proposal-to-decision coverage, and restart boundary observations, and may correctly return `fail` when those protocol invariants are violated.
 
+## Proposal evaluator identity and Continuity lifecycle keys
+
+Current derived proposal metrics pin `actual-model-proposal-evaluator-v2` in the review payload. Historical execution evidence, raw proposals, scenario-set identities, and already-written review/score sidecars remain immutable; re-evaluating old raw evidence under a newer evaluator therefore creates new derived review identity rather than rewriting the historical result.
+
+State proposal matching remains exact on the fixture's canonical `state_class + key + op` identity, with exact value comparison where the label requests it.
+
+Continuity labels use their fixture `key` as a fixture-local lifecycle identity, not as a universal lexical spelling rule. On the first expected `set` for that lifecycle, the evaluator may bind the label to a different non-empty model key only when the corresponding deterministic Continuity decision accepted that exact proposal as a new item (`accepted/admit`). Matching still requires the expected `kind + op`, plus exact value semantics when the label requests value matching. There is no fuzzy similarity, semantic aliasing, or deterministic NLU in this path.
+
+After binding, every expected supersede or resolve transition for that lifecycle must reuse the accepted model key exactly. A later invented key therefore remains an unmatched raw proposal plus a missing expected transition. Missing expected kinds, wrong kinds/operations, duplicate or unchanged-item churn, and other extra proposals remain ordinary false negatives/false positives. A successful resolve ends that fixture-local lifecycle binding so a later genuinely new lifecycle may bind independently.
+
+This is evaluator semantics only. It does not canonicalize producer key spelling or change Continuity runtime lifecycle behavior.
+
 ## Reference-screening order
 
 The historical frozen vLLM plan contains conditions named A/B/C. Current Core 1.0 screening interprets them only through the current #1386 screening contract:
