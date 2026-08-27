@@ -43,6 +43,7 @@ implementation:
 - src/relaylm/actual_model_vllm_counter.py
 - src/relaylm/actual_model_vllm_capacity.py
 - src/relaylm/actual_model_vllm_capacity_acquisition.py
+- src/relaylm/actual_model_vllm_profiler.py
 - src/relaylm/actual_model_host.py
 - src/relaylm/actual_model_stage_r.py
 - src/relaylm/actual_model_host_runner.py
@@ -100,6 +101,7 @@ tests:
 - tests/unit/test_actual_model_vllm_counter.py
 - tests/unit/test_actual_model_vllm_capacity_acquisition.py
 - tests/unit/test_actual_model_vllm_capacity_producer.py
+- tests/unit/test_actual_model_vllm_profiler.py
 - tests/unit/test_actual_model_vllm_host_dispatch.py
 - tests/unit/test_actual_model_vllm_evidence_preflight.py
 - tests/unit/test_actual_model_vllm_budget_facade.py
