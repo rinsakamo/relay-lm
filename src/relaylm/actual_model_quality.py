@@ -408,6 +408,7 @@ def _continuity_first_introduction_matches(
         or not isinstance(actual_key, str)
         or not actual_key.strip()
         or decision is None
+        or not _json_equal(decision.get("candidate"), observed)
         or decision.get("status") != "accepted"
         or decision.get("action") != "admit"
     ):
