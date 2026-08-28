@@ -1,6 +1,6 @@
 schema_version: 1
 id: persistence
-summary: Character Package portability and the filesystem persistence boundary.
+summary: Cognitive Package portability, Character specialization, and the filesystem persistence boundary.
 canonical_surfaces:
 - docs/architecture/persistence.md
 - docs/reference/character-directory.md
@@ -9,8 +9,10 @@ references:
 implementation:
 - src/relaylm/character.py
 - src/relaylm/storage/filesystem.py
+- src/relaylm/storage/cognitive_package.py
 tests:
 - tests/unit/test_character_directory.py
+- tests/unit/test_cognitive_package_directory.py
 - tests/unit/test_event_snapshot_cache.py
 - tests/unit/test_event_discovery_index.py
 - tests/unit/test_state_persistence_source_integrity.py
