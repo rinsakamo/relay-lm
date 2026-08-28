@@ -187,8 +187,7 @@ def test_preferred_beverage_shadow_does_not_delete_separate_tea_liking_memory() 
     compiled = _compile(state=state, chunks=(stale_preferred, tea_liking))
 
     assert [item.location for item in compiled.memory] == [tea_liking.location]
-    assert compiled.state[0].key == "tea"
-    assert compiled.state[0].value == "likes"
+    assert compiled.state == ()
 
 
 def test_current_value_match_uses_tokens_not_substrings() -> None:

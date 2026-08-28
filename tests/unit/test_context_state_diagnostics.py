@@ -32,15 +32,20 @@ def _record(state_id: str, state_class: str, key: str, value: object) -> StateRe
 def _state() -> CanonicalState:
     return CanonicalState(
         states=(
-            _record("tea-secret", "user.preference", "tea", "likes"),
-            _record("coffee-secret", "user.preference", "coffee", "likes"),
-            _record("preferred-secret", "user.preference", "preferred_beverage", "coffee"),
             _record("home-secret", "user.fact", "residence_location", "Fukuoka"),
+            _record("belief-secret", "self.belief", "working_style", "candid correction"),
+            _record("identity-secret", "user.identity", "name", "Rin"),
+            _record("relationship-secret", "relationship.state", "collaboration", "iterative"),
+            _record("coffee-secret", "user.preference", "coffee", "likes"),
         )
     )
 
 
-def _compile(*, max_state_records: int | None, content: str = "Help me choose coffee today"):
+def _compile(
+    *,
+    max_state_records: int | None,
+    content: str = "Help me choose coffee today",
+):
     return compile_cognitive_input_with_diagnostics(
         identity=Identity("# ReLM\nBe grounded."),
         state=_state(),
@@ -49,27 +54,28 @@ def _compile(*, max_state_records: int | None, content: str = "Help me choose co
     )
 
 
-def test_diagnostics_report_content_free_lexical_budget_pressure() -> None:
-    result = _compile(max_state_records=2)
+def test_diagnostics_separate_relevance_culling_from_budget_eviction() -> None:
+    result = _compile(max_state_records=3)
     diagnostic = result.diagnostics[0]
 
     assert [record.key for record in result.cognitive_input.state] == [
-        "coffee",
-        "preferred_beverage",
+        "working_style",
+        "name",
+        "collaboration",
     ]
     assert asdict(diagnostic) == {
         "layer": "canonical_state",
-        "mode": "lexical_ranked",
-        "eligible_count": 4,
-        "selected_count": 2,
+        "mode": "relevance_ranked_budgeted",
+        "eligible_count": 5,
+        "selected_count": 3,
         "evicted_count": 2,
         "budget_unit": "records",
-        "budget_limit": 2,
-        "budget_used": 2,
+        "budget_limit": 3,
+        "budget_used": 3,
         "budget_pressure": True,
-        "selected_lexical_match_count": 2,
+        "selected_lexical_match_count": 0,
         "selected_fallback_count": 0,
-        "evicted_budget_limit_count": 2,
+        "evicted_budget_limit_count": 1,
         "authority_suppressed_count": 0,
         "current_event_excluded_count": 0,
         "redundancy_overlap_count": 0,
@@ -78,78 +84,82 @@ def test_diagnostics_report_content_free_lexical_budget_pressure() -> None:
         "evicted_event_window_count": 0,
         "evicted_character_budget_count": 0,
         "evicted_orphan_assistant_count": 0,
+        "relevance_admitted_count": 4,
+        "relevance_culled_count": 1,
+        "anchor_admitted_count": 1,
+        "subjective_core_admitted_count": 2,
+        "context_linked_admitted_count": 0,
+        "lexical_admitted_count": 1,
+        "budget_evicted_count": 1,
     }
 
     serialized = json.dumps(asdict(diagnostic), ensure_ascii=False)
     for forbidden in (
         "coffee",
-        "preferred_beverage",
+        "collaboration",
         "Fukuoka",
-        "tea-secret",
-        "coffee-secret",
+        "belief-secret",
+        "identity-secret",
         "source-coffee-secret",
         "current-sensitive-id",
+        "candid correction",
+        "iterative",
     ):
         assert forbidden not in serialized
 
 
-def test_diagnostics_count_zero_match_fallback_without_leaking_records() -> None:
-    diagnostic = _compile(
-        max_state_records=2,
-        content="Tell me something unrelated about weather",
-    ).diagnostics[0]
+def test_relevance_culling_without_cap_is_not_budget_pressure() -> None:
+    result = _compile(max_state_records=None)
+    diagnostic = result.diagnostics[0]
 
-    assert diagnostic.mode == "lexical_ranked"
-    assert diagnostic.selected_lexical_match_count == 0
-    assert diagnostic.selected_fallback_count == 2
-    assert diagnostic.evicted_budget_limit_count == 2
-
-
-def test_diagnostics_report_unbounded_projection_without_pressure() -> None:
-    diagnostic = _compile(max_state_records=None).diagnostics[0]
-
+    assert [record.key for record in result.cognitive_input.state] == [
+        "working_style",
+        "name",
+        "collaboration",
+        "coffee",
+    ]
     assert diagnostic.layer == "canonical_state"
-    assert diagnostic.mode == "unbounded"
-    assert diagnostic.eligible_count == 4
+    assert diagnostic.mode == "relevance_filtered"
+    assert diagnostic.eligible_count == 5
+    assert diagnostic.relevance_admitted_count == 4
+    assert diagnostic.relevance_culled_count == 1
     assert diagnostic.selected_count == 4
-    assert diagnostic.evicted_count == 0
+    assert diagnostic.evicted_count == 1
     assert diagnostic.budget_limit is None
     assert diagnostic.budget_used == 4
     assert diagnostic.budget_pressure is False
-    assert diagnostic.selected_lexical_match_count == 0
-    assert diagnostic.selected_fallback_count == 0
+    assert diagnostic.budget_evicted_count == 0
     assert diagnostic.evicted_budget_limit_count == 0
-    assert diagnostic.authority_suppressed_count == 0
-    assert diagnostic.current_event_excluded_count == 0
-    assert diagnostic.redundancy_overlap_count == 0
-    assert diagnostic.character_budget_limit is None
-    assert diagnostic.character_budget_used == 0
-    assert diagnostic.evicted_event_window_count == 0
-    assert diagnostic.evicted_character_budget_count == 0
-    assert diagnostic.evicted_orphan_assistant_count == 0
+    assert diagnostic.selected_fallback_count == 0
 
 
-def test_diagnostics_report_zero_budget_as_budget_eviction() -> None:
+def test_zero_budget_reports_relevance_and_budget_stages_separately() -> None:
     result = _compile(max_state_records=0)
     diagnostic = result.diagnostics[0]
 
     assert result.cognitive_input.state == ()
     assert diagnostic.mode == "zero_budget"
+    assert diagnostic.eligible_count == 5
+    assert diagnostic.relevance_admitted_count == 4
+    assert diagnostic.relevance_culled_count == 1
     assert diagnostic.selected_count == 0
-    assert diagnostic.evicted_count == 4
+    assert diagnostic.evicted_count == 5
     assert diagnostic.budget_used == 0
     assert diagnostic.budget_pressure is True
+    assert diagnostic.budget_evicted_count == 4
     assert diagnostic.evicted_budget_limit_count == 4
 
 
-def test_diagnostics_report_within_budget_without_ranking() -> None:
-    diagnostic = _compile(max_state_records=10).diagnostics[0]
+def test_spare_capacity_never_appears_as_zero_match_fallback() -> None:
+    diagnostic = _compile(
+        max_state_records=10,
+        content="Tell me something unrelated about weather",
+    ).diagnostics[0]
 
-    assert diagnostic.mode == "within_budget"
-    assert diagnostic.selected_count == 4
-    assert diagnostic.evicted_count == 0
-    assert diagnostic.budget_limit == 10
-    assert diagnostic.budget_pressure is False
-    assert diagnostic.selected_lexical_match_count == 0
+    assert diagnostic.mode == "relevance_filtered"
+    assert diagnostic.relevance_admitted_count == 3
+    assert diagnostic.relevance_culled_count == 2
+    assert diagnostic.selected_count == 3
     assert diagnostic.selected_fallback_count == 0
-    assert diagnostic.evicted_budget_limit_count == 0
+    assert diagnostic.budget_evicted_count == 0
+    assert diagnostic.budget_pressure is False

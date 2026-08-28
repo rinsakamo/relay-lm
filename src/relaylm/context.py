@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
-import unicodedata
 from collections import deque
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
@@ -14,12 +12,20 @@ from relaylm.events import Event
 from relaylm.identity import Identity
 from relaylm.memory_retrieval import MemoryChunk
 from relaylm.memory_shadow import memory_chunk_is_shadowed
+from relaylm.retrieval_lexical import lexical_query_terms
 from relaylm.state import CanonicalState, STATE_CLASS_DEFINITIONS, StateRecord
 
 
 DEFAULT_WORKING_CONTEXT_MAX_EVENTS = 6
 DEFAULT_WORKING_CONTEXT_MAX_CHARS = 4000
 _PROJECTED_CONTINUITY_KINDS = frozenset({"referent", "unresolved", "active_task"})
+_SUBJECTIVE_CORE_STATE_CLASSES = frozenset({"self.belief", "relationship.state"})
+_STATE_ADMISSION_PRIORITY = {
+    "anchor": 0,
+    "subjective_core": 1,
+    "context_linked": 2,
+    "lexical": 3,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,9 +53,35 @@ class ContextSelectionDiagnostics:
 
 
 @dataclass(frozen=True, slots=True)
+class StateContextSelectionDiagnostics(ContextSelectionDiagnostics):
+    relevance_admitted_count: int = 0
+    relevance_culled_count: int = 0
+    anchor_admitted_count: int = 0
+    subjective_core_admitted_count: int = 0
+    context_linked_admitted_count: int = 0
+    lexical_admitted_count: int = 0
+    budget_evicted_count: int = 0
+
+
+@dataclass(frozen=True, slots=True)
 class CognitiveCompilationResult:
     cognitive_input: CognitiveInput
     diagnostics: tuple[ContextSelectionDiagnostics, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _StateWorkingSetCandidate:
+    index: int
+    record: StateRecord
+    reason: str
+    relevance_score: int
+
+
+@dataclass(frozen=True, slots=True)
+class _StateWorkingSet:
+    eligible: tuple[StateRecord, ...]
+    admitted: tuple[_StateWorkingSetCandidate, ...]
+    selected: tuple[_StateWorkingSetCandidate, ...]
 
 
 def compile_cognitive_input(
@@ -74,17 +106,19 @@ def compile_cognitive_input(
     if max_state_records is not None and max_state_records < 0:
         raise ValueError("max_state_records must not be negative")
 
-    active_state = _select_active_state(
-        state=state,
-        current_event=current_event,
-        max_records=max_state_records,
-    )
     continuity = _project_accepted_continuity(continuity_context)
     working_context = _select_working_context(
         recent_events=recent_events,
         current_event=current_event,
         max_events=max_working_context_events,
         max_chars=max_working_context_chars,
+    )
+    active_state = _select_active_state(
+        state=state,
+        current_event=current_event,
+        continuity=continuity,
+        working_context=working_context,
+        max_records=max_state_records,
     )
     filtered_memory = _filter_retrieved_memory_against_active_state(
         retrieved_memory=retrieved_memory,
@@ -148,6 +182,8 @@ def compile_cognitive_input_with_diagnostics(
             _diagnose_active_state_selection(
                 state=state,
                 current_event=current_event,
+                continuity=projected_continuity,
+                working_context=selected_working_context,
                 max_records=max_state_records,
                 selected_state=cognitive_input.state,
             ),
@@ -176,77 +212,165 @@ def _select_active_state(
     *,
     state: CanonicalState,
     current_event: Event,
+    continuity: tuple[ContextItem, ...],
+    working_context: tuple[ContextItem, ...],
     max_records: int | None,
 ) -> tuple[StateRecord, ...]:
-    """Select eligible active State, applying lexical ranking only under an explicit cap."""
+    working_set = _build_state_working_set(
+        state=state,
+        current_event=current_event,
+        continuity=continuity,
+        working_context=working_context,
+        max_records=max_records,
+    )
+    return tuple(candidate.record for candidate in working_set.selected)
 
-    active_state = tuple(
+
+def _build_state_working_set(
+    *,
+    state: CanonicalState,
+    current_event: Event,
+    continuity: tuple[ContextItem, ...],
+    working_context: tuple[ContextItem, ...],
+    max_records: int | None,
+) -> _StateWorkingSet:
+    eligible = tuple(
         record
         for record in state.states
         if record.status == "active" and record.valid_to is None
     )
-    if max_records is None or len(active_state) <= max_records:
-        return active_state
-    if max_records == 0:
-        return ()
-
-    content = current_event.payload.get("content")
-    query = _normalize_lexical_text(content if isinstance(content, str) else "")
-    ranked = sorted(
-        enumerate(active_state),
-        key=lambda item: (-_state_lexical_score(item[1], query), item[0]),
+    current_content = current_event.payload.get("content")
+    direct_query = current_content if isinstance(current_content, str) else ""
+    context_query = "\n".join(
+        item.content for item in continuity + working_context if item.content.strip()
     )
-    selected_indices = sorted(index for index, _ in ranked[:max_records])
-    return tuple(active_state[index] for index in selected_indices)
+    context_source_ids = {
+        source
+        for item in continuity + working_context
+        for source in item.sources
+    }
+
+    admitted: list[_StateWorkingSetCandidate] = []
+    for index, record in enumerate(eligible):
+        direct_score = _state_lexical_score(record, direct_query)
+        context_score = _state_lexical_score(record, context_query)
+        if record.state_class == "user.identity":
+            reason = "anchor"
+        elif record.state_class in _SUBJECTIVE_CORE_STATE_CLASSES:
+            reason = "subjective_core"
+        elif context_source_ids.intersection(record.sources) or context_score > 0:
+            reason = "context_linked"
+        elif direct_score > 0:
+            reason = "lexical"
+        else:
+            continue
+        admitted.append(
+            _StateWorkingSetCandidate(
+                index=index,
+                record=record,
+                reason=reason,
+                relevance_score=max(direct_score, context_score),
+            )
+        )
+
+    admitted_tuple = tuple(admitted)
+    if max_records is None:
+        selected = admitted_tuple
+    elif max_records == 0:
+        selected = ()
+    elif len(admitted_tuple) <= max_records:
+        selected = admitted_tuple
+    else:
+        ranked = sorted(
+            admitted_tuple,
+            key=lambda candidate: (
+                _STATE_ADMISSION_PRIORITY[candidate.reason],
+                -candidate.relevance_score,
+                candidate.index,
+            ),
+        )
+        selected_indices = {
+            candidate.index for candidate in ranked[:max_records]
+        }
+        selected = tuple(
+            candidate
+            for candidate in admitted_tuple
+            if candidate.index in selected_indices
+        )
+
+    return _StateWorkingSet(
+        eligible=eligible,
+        admitted=admitted_tuple,
+        selected=selected,
+    )
 
 
 def _diagnose_active_state_selection(
     *,
     state: CanonicalState,
     current_event: Event,
+    continuity: tuple[ContextItem, ...],
+    working_context: tuple[ContextItem, ...],
     max_records: int | None,
     selected_state: tuple[StateRecord, ...],
-) -> ContextSelectionDiagnostics:
-    eligible_count = sum(
-        1
-        for record in state.states
-        if record.status == "active" and record.valid_to is None
+) -> StateContextSelectionDiagnostics:
+    working_set = _build_state_working_set(
+        state=state,
+        current_event=current_event,
+        continuity=continuity,
+        working_context=working_context,
+        max_records=max_records,
     )
     selected_count = len(selected_state)
-    evicted_count = eligible_count - selected_count
+    relevance_admitted_count = len(working_set.admitted)
+    relevance_culled_count = len(working_set.eligible) - relevance_admitted_count
+    budget_evicted_count = relevance_admitted_count - selected_count
+    evicted_count = relevance_culled_count + budget_evicted_count
 
-    if max_records is None:
-        mode = "unbounded"
-    elif max_records == 0:
+    if max_records == 0:
         mode = "zero_budget"
-    elif eligible_count <= max_records:
-        mode = "within_budget"
+    elif budget_evicted_count:
+        mode = "relevance_ranked_budgeted"
     else:
-        mode = "lexical_ranked"
+        mode = "relevance_filtered"
 
-    lexical_match_count = 0
-    fallback_count = 0
-    if mode == "lexical_ranked":
-        content = current_event.payload.get("content")
-        query = _normalize_lexical_text(content if isinstance(content, str) else "")
-        lexical_match_count = sum(
-            1 for record in selected_state if _state_lexical_score(record, query) > 0
-        )
-        fallback_count = selected_count - lexical_match_count
+    selected_indices = {candidate.index for candidate in working_set.selected}
+    selected_lexical_match_count = sum(
+        1
+        for candidate in working_set.admitted
+        if candidate.index in selected_indices and candidate.relevance_score > 0
+    )
 
-    return ContextSelectionDiagnostics(
+    return StateContextSelectionDiagnostics(
         layer="canonical_state",
         mode=mode,
-        eligible_count=eligible_count,
+        eligible_count=len(working_set.eligible),
         selected_count=selected_count,
         evicted_count=evicted_count,
         budget_unit="records",
         budget_limit=max_records,
         budget_used=selected_count,
-        budget_pressure=evicted_count > 0,
-        selected_lexical_match_count=lexical_match_count,
-        selected_fallback_count=fallback_count,
-        evicted_budget_limit_count=evicted_count,
+        budget_pressure=budget_evicted_count > 0,
+        selected_lexical_match_count=selected_lexical_match_count,
+        selected_fallback_count=0,
+        evicted_budget_limit_count=budget_evicted_count,
+        relevance_admitted_count=relevance_admitted_count,
+        relevance_culled_count=relevance_culled_count,
+        anchor_admitted_count=sum(
+            candidate.reason == "anchor" for candidate in working_set.admitted
+        ),
+        subjective_core_admitted_count=sum(
+            candidate.reason == "subjective_core"
+            for candidate in working_set.admitted
+        ),
+        context_linked_admitted_count=sum(
+            candidate.reason == "context_linked"
+            for candidate in working_set.admitted
+        ),
+        lexical_admitted_count=sum(
+            candidate.reason == "lexical" for candidate in working_set.admitted
+        ),
+        budget_evicted_count=budget_evicted_count,
     )
 
 
@@ -487,56 +611,39 @@ def _filter_retrieved_memory_against_active_state(
     )
 
 
-def _contains_lexical_value(content: str, value_text: str) -> bool:
-    content_terms = _lexical_terms(content)
-    value_terms = _lexical_terms(value_text)
-    if not value_terms or len(value_terms) > len(content_terms):
-        return False
-
-    width = len(value_terms)
-    return any(
-        content_terms[index : index + width] == value_terms
-        for index in range(len(content_terms) - width + 1)
-    )
-
-
 def _state_lexical_score(record: StateRecord, query: str) -> int:
-    if not query:
+    query_terms = lexical_query_terms(query)
+    if not query_terms:
         return 0
 
-    score = 0
-    if _query_contains_state_lexical_text(query, record.key):
-        score += 8
-    for term in _lexical_terms(record.key):
-        if len(term) >= 2 and _query_contains_state_lexical_text(query, term):
-            score += 4
+    key_overlap = _bounded_state_feature_overlap(query_terms, record.key)
+    if key_overlap:
+        return 100 + min(key_overlap, 9)
 
-    for value_text in _value_lexical_strings(record.value):
-        if _query_contains_state_lexical_text(query, value_text):
-            score += 3
-        for term in _lexical_terms(value_text):
-            if len(term) >= 2 and _query_contains_state_lexical_text(query, term):
-                score += 2
+    value_overlap = sum(
+        _bounded_state_feature_overlap(query_terms, value_text)
+        for value_text in _value_lexical_strings(record.value)
+    )
+    if value_overlap:
+        return 10 + min(value_overlap, 9)
 
     class_tail = record.state_class.rsplit(".", 1)[-1]
-    if _query_contains_state_lexical_text(query, class_tail):
-        score += 1
-    return score
+    class_overlap = _bounded_state_feature_overlap(query_terms, class_tail)
+    if class_overlap:
+        return 1 + min(class_overlap, 8)
+    return 0
 
 
-def _query_contains_state_lexical_text(query: str, text: str) -> bool:
-    if _contains_lexical_value(query, text):
-        return True
-
-    normalized_text = _normalize_lexical_text(text)
-    if not normalized_text or normalized_text.isascii():
-        return False
-
-    normalized_query = _normalize_lexical_text(query)
-    return (
-        normalized_text in normalized_query
-        or normalized_text.replace("_", " ") in normalized_query
-    )
+def _bounded_state_feature_overlap(query_terms: frozenset[str], text: str) -> int:
+    field_terms = lexical_query_terms(text)
+    overlap = query_terms.intersection(field_terms)
+    if not overlap:
+        return 0
+    if any(term.isascii() for term in overlap):
+        return len(overlap)
+    if len(overlap) >= 2 or overlap == field_terms:
+        return len(overlap)
+    return 0
 
 
 def _value_lexical_strings(value: Any) -> tuple[str, ...]:
@@ -559,15 +666,6 @@ def _value_lexical_strings(value: Any) -> tuple[str, ...]:
     if isinstance(value, (int, float)):
         return (str(value),)
     return ()
-
-
-def _normalize_lexical_text(text: str) -> str:
-    return unicodedata.normalize("NFKC", text).casefold()
-
-
-def _lexical_terms(text: str) -> tuple[str, ...]:
-    normalized = _normalize_lexical_text(text).replace("_", " ")
-    return tuple(term for term in re.split(r"[^\w]+", normalized) if term)
 
 
 def _select_working_context(
