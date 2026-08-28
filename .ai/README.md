@@ -103,6 +103,10 @@ implementation:
 tests:
   - tests/unit/test_context_state_selection.py
 
+qualification_inputs:
+  - docs/architecture/context-compiler.md
+  - src/relaylm/context.py
+
 depends_on:
   - persistence
 
@@ -127,6 +131,7 @@ Field roles:
 | `references` | non-owning pointers to another owner's canonical surface |
 | `implementation` | supporting write surfaces; not an authority claim |
 | `tests` | executable contracts covering this owner |
+| `qualification_inputs` | owner-selected existing local surfaces whose exact bytes participate in semantic qualification identity |
 | `depends_on` | consumer-owned dependency edges |
 | `evidence` | evidence records produced and owned here |
 | `evidence_refs` | evidence produced by another owner and only referenced here |
@@ -156,6 +161,39 @@ Production implementation coverage proves that code is attached to at least one
 semantic owner. It does not make implementation exclusive: legitimate shared
 integration surfaces remain allowed and are reviewed under the owning semantic
 contracts.
+
+## Qualification identity
+
+Semantic qualification uses the same owner graph rather than introducing a
+second central path registry. An owner may opt existing local surfaces into
+`qualification_inputs`. Each selected path must already be declared by that
+owner as a canonical, implementation, test, annotation, or produced-evidence
+surface; a `references` entry pointing at another owner's canonical document
+cannot be restated as this owner's qualification input.
+
+Given one or more qualification root owners,
+`tools.repository_authority.qualification_owner_closure(...)` follows the
+transitive `depends_on` closure. `qualification_manifest(...)` then derives a
+deterministic manifest containing the normalized roots, every owner in that
+closure, and each owner's selected inputs. There is no committed aggregate list
+of all product paths.
+
+`qualification_fingerprint(...)` hashes that manifest identity together with
+the exact bytes of the selected files. Changing selected bytes, roots,
+dependency closure, selected paths, or owner/path association changes the
+fingerprint. Shared implementation files are read once as bytes while the
+manifest still retains every owner association.
+
+Tests, evaluation fixtures, actual-model harness implementation, and other
+supporting surfaces are **not** qualification-significant merely because they
+exist. They participate only when their semantic owner explicitly names them in
+`qualification_inputs`. This prevents behavior-preserving harness work from
+invalidating semantic product evidence by default.
+
+The derived fingerprint primitive is not itself a release freeze. Selecting the
+Core 1.0 inputs and committing a machine-enforced expected-fingerprint gate are
+separate release transactions; the gate consumes this derived identity rather
+than maintaining its own path list.
 
 ## Projections
 
@@ -195,7 +233,8 @@ requires it to match generation from the exact frozen candidate commit.
 `tools/repository_authority.py` is the canonical declaration schema. It is
 executable rather than a separate schema document so the declaration contract
 cannot drift from its validator, and its meaning is frozen by
-`tests/unit/test_repository_authority_contract.py`.
+`tests/unit/test_repository_authority_contract.py` and
+`tests/unit/test_repository_qualification_fingerprint.py`.
 
 `tools/repository_code_ownership.py` deterministically enforces production
 implementation coverage against those declarations. Its boundary is frozen by
