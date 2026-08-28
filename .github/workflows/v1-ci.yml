@@ -184,8 +184,9 @@ jobs:
           printf '%s\n' 'A valid release smoke identity.' > "$CHARACTER/SOUL.md"
           cat > "$SMOKE_ROOT/runtime.yaml" <<YAML
           format_version: 1
-          character:
-            directory: $CHARACTER
+          profiles:
+            - name: release-smoke
+              root: $CHARACTER
           provider:
             adapter: openai_compatible
             base_url: http://127.0.0.1:1234/v1
