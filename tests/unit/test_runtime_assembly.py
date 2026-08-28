@@ -7,11 +7,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 import relaylm.api.openai as openai_api
-from relaylm.budget_enforcement import (
-    SerializedInputTokenCount,
-    TokenCountMode,
-)
+from relaylm.budget_enforcement import SerializedInputTokenCount, TokenCountMode
 from relaylm.cognitive import CognitiveInput
+from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.continuity import ContinuityContext
 from relaylm.runtime_assembly import (
     RuntimeAssemblyError,
@@ -21,11 +19,8 @@ from relaylm.runtime_assembly import (
 from relaylm.runtime_config import RuntimeConfigErrorCode
 from relaylm.runtime_config_loader import resolve_runtime_config
 from relaylm.server import create_app
-from relaylm.turn import (
-    ContinuityRuntime,
-    EventRetrievalBudget,
-    MemoryRetrievalBudget,
-)
+from relaylm.storage.cognitive_package import CognitivePackageDirectory
+from relaylm.turn import ContinuityRuntime, EventRetrievalBudget, MemoryRetrievalBudget
 
 
 class _ExactCounter:
@@ -42,10 +37,14 @@ class _ExactCounter:
 
 
 class _StreamingProviderStub:
-    async def generate(self, cognitive_input: CognitiveInput):  # pragma: no cover - patched path
+    async def generate(self, cognitive_input: CognitiveInput):  # pragma: no cover
         raise AssertionError(cognitive_input)
 
-    async def stream_generate(self, cognitive_input: CognitiveInput, emit_response_delta):  # pragma: no cover - patched path
+    async def stream_generate(
+        self,
+        cognitive_input: CognitiveInput,
+        emit_response_delta,
+    ):  # pragma: no cover
         raise AssertionError((cognitive_input, emit_response_delta))
 
 
@@ -57,8 +56,9 @@ def _write(path: Path, body: str) -> Path:
 def _base_config(runtime: str = "") -> str:
     return f"""\
 format_version: 1
-character:
-  directory: /characters/relm
+profiles:
+  - name: relm
+    root: /characters/relm
 provider:
   adapter: openai_compatible
   base_url: http://127.0.0.1:1234/v1
@@ -113,10 +113,29 @@ runtime:
 """
 
 
-def test_assemble_basic_resolved_config_constructs_character_and_provider() -> None:
+def _registry(
+    provider: object,
+    *,
+    continuity: ContinuityRuntime | None = None,
+) -> CognitiveProfileRegistry:
+    return CognitiveProfileRegistry(
+        (
+            CognitiveProfileRuntime(
+                name="relm",
+                package=CognitivePackageDirectory("/characters/relm"),
+                provider=provider,
+                physical_model="model-id",
+                continuity_runtime=continuity,
+            ),
+        )
+    )
+
+
+def test_assemble_basic_resolved_config_constructs_profile_and_provider() -> None:
     resolved = resolve_runtime_config(
         environ={
-            "RELAYLM_CHARACTER_DIR": "/characters/relm",
+            "RELAYLM_PROFILE_NAME": "relm",
+            "RELAYLM_PROFILE_ROOT": "/characters/relm",
             "RELAYLM_PROVIDER_BASE_URL": "http://127.0.0.1:1234/v1",
             "RELAYLM_PROVIDER_MODEL": "model-id",
             "RELAYLM_PROVIDER_API_KEY": "process-secret",
@@ -124,14 +143,17 @@ def test_assemble_basic_resolved_config_constructs_character_and_provider() -> N
     )
 
     assembly = assemble_runtime(resolved)
+    profile = assembly.profiles.resolve("relm")
 
-    assert assembly.character.root == Path("/characters/relm")
-    assert assembly.provider.base_url == "http://127.0.0.1:1234/v1"
-    assert assembly.provider.model == "model-id"
-    assert assembly.provider.api_key == "process-secret"
+    assert profile is not None
+    assert profile.package.root == Path("/characters/relm")
+    assert profile.provider.base_url == "http://127.0.0.1:1234/v1"
+    assert profile.provider.model == "model-id"
+    assert profile.provider.api_key == "process-secret"
+    assert profile.physical_model == "model-id"
     assert assembly.memory_budget is None
     assert assembly.event_budget is None
-    assert assembly.continuity_runtime is None
+    assert profile.continuity_runtime is None
     assert assembly.cognitive_budget is None
     assert "process-secret" not in repr(assembly)
 
@@ -159,14 +181,16 @@ runtime:
     resolved = resolve_runtime_config(config_path=config_path, environ={})
 
     assembly = assemble_runtime(resolved)
+    profile = assembly.profiles.resolve("relm")
 
+    assert profile is not None
     assert assembly.memory_budget == MemoryRetrievalBudget(max_chunks=3, max_chars=900)
     assert assembly.event_budget == EventRetrievalBudget(max_events=4, max_chars=1200)
-    assert isinstance(assembly.continuity_runtime, ContinuityRuntime)
-    assert assembly.continuity_runtime.context.max_items == 5
-    assert assembly.continuity_runtime.context.revision == 0
-    assert assembly.continuity_runtime.context.items == ()
-    assert assembly.continuity_runtime.lifetime_revisions == 6
+    assert isinstance(profile.continuity_runtime, ContinuityRuntime)
+    assert profile.continuity_runtime.context.max_items == 5
+    assert profile.continuity_runtime.context.revision == 0
+    assert profile.continuity_runtime.context.items == ()
+    assert profile.continuity_runtime.lifetime_revisions == 6
 
 
 def test_assemble_cognitive_budget_resolves_declared_counter_capability(
@@ -303,11 +327,9 @@ def test_buffered_openai_route_carries_all_assembled_turn_controls(monkeypatch) 
     monkeypatch.setattr(openai_api, "run_user_turn", fake_run_user_turn)
     provider = _StreamingProviderStub()
     app = create_app(
-        character=SimpleNamespace(),
-        provider=provider,
+        profiles=_registry(provider, continuity=continuity),
         memory_budget=memory,
         event_budget=event,
-        continuity_runtime=continuity,
         cognitive_budget=None,
     )
 
@@ -315,7 +337,7 @@ def test_buffered_openai_route_carries_all_assembled_turn_controls(monkeypatch) 
         response = client.post(
             "/v1/chat/completions",
             json={
-                "model": "client-label",
+                "model": "relm",
                 "messages": [{"role": "user", "content": "hello"}],
             },
         )
@@ -340,11 +362,9 @@ def test_streaming_openai_route_carries_same_turn_controls(monkeypatch) -> None:
     monkeypatch.setattr(openai_api, "run_user_turn_streaming", fake_run_user_turn_streaming)
     provider = _StreamingProviderStub()
     app = create_app(
-        character=SimpleNamespace(),
-        provider=provider,
+        profiles=_registry(provider),
         memory_budget=memory,
         event_budget=event,
-        continuity_runtime=None,
         cognitive_budget=None,
     )
 
@@ -352,7 +372,7 @@ def test_streaming_openai_route_carries_same_turn_controls(monkeypatch) -> None:
         response = client.post(
             "/v1/chat/completions",
             json={
-                "model": "client-label",
+                "model": "relm",
                 "messages": [{"role": "user", "content": "hello"}],
                 "stream": True,
             },
