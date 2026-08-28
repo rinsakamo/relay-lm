@@ -238,3 +238,5 @@ Still owned by #1260 or its explicitly delegated evaluation owner:
 - autonomous scheduling or background crystallization policy;
 - manual/external Markdown import and governed write-back;
 - richer semantic idempotence/churn evaluation across differently worded but equivalent crystallizations.
+
+Retrieval of crystallized memory into ordinary cognitive Context remains owned by #1267. The canonical `MemoryChunk` retrieval representation carries typed temporal/provenance metadata for that downstream consumer; Context Compiler authority behavior remains separately owned by #1267.
