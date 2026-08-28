@@ -9,8 +9,10 @@ from fastapi.testclient import TestClient
 
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
+from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.server import create_app
 from relaylm.state import CanonicalState
+from relaylm.storage.cognitive_package import CognitivePackageDirectory
 from relaylm.storage.filesystem import CharacterDirectory
 from relaylm.turn import (
     run_user_turn_streaming,
@@ -30,6 +32,19 @@ def _make_character(root: Path) -> CharacterDirectory:
     character = CharacterDirectory(root)
     character.save_state(CanonicalState())
     return character
+
+
+def _profiles(character: CharacterDirectory, provider: object) -> CognitiveProfileRegistry:
+    return CognitiveProfileRegistry(
+        (
+            CognitiveProfileRuntime(
+                name="relaylm",
+                package=CognitivePackageDirectory(character.root),
+                provider=provider,
+                physical_model="stream-admission-test-model",
+            ),
+        )
+    )
 
 
 class _NonCallableStreamingProvider:
@@ -52,7 +67,7 @@ def test_openai_stream_rejects_non_callable_provider_before_turn_preparation(
 ) -> None:
     character = _make_character(tmp_path)
     provider = _NonCallableStreamingProvider()
-    app = create_app(character=character, provider=provider)
+    app = create_app(profiles=_profiles(character, provider))
 
     with TestClient(app) as client:
         response = client.post(
