@@ -20,8 +20,9 @@ def _write_runtime(path: Path, character: Path, *, mode: str = "auto") -> Path:
     path.write_text(
         f"""\
 format_version: 1
-character:
-  directory: {character}
+profiles:
+  - name: mode-test
+    root: {character}
 provider:
   adapter: openai_compatible
   base_url: http://127.0.0.1:1234/v1
@@ -47,7 +48,8 @@ def _character(root: Path) -> Path:
 
 def _required_env() -> dict[str, str]:
     return {
-        "RELAYLM_CHARACTER_DIR": "/characters/relm",
+        "RELAYLM_PROFILE_NAME": "relm",
+        "RELAYLM_PROFILE_ROOT": "/characters/relm",
         "RELAYLM_PROVIDER_BASE_URL": "http://127.0.0.1:1234/v1",
         "RELAYLM_PROVIDER_MODEL": "model-id",
     }
