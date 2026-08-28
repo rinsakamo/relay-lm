@@ -6,10 +6,11 @@ from pathlib import Path
 import httpx
 
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
+from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.evaluation import EvaluationCheck, EvaluationScenarioResult
 from relaylm.server import create_app
 from relaylm.state import CanonicalState, StateCandidate
-from relaylm.storage.filesystem import CharacterDirectory
+from relaylm.storage.cognitive_package import CognitivePackageDirectory
 
 
 class _InitialContinuityProvider:
@@ -46,13 +47,10 @@ async def evaluate_restart_continuity() -> EvaluationScenarioResult:
     followup_content = "前に話した好きな飲み物、覚えてる？"
     with tempfile.TemporaryDirectory(prefix="relaylm-eval-restart-") as temporary:
         root = Path(temporary)
-        _make_character(root)
+        _make_package(root)
 
         first_provider = _InitialContinuityProvider()
-        first_app = create_app(
-            character=CharacterDirectory(root),
-            provider=first_provider,
-        )
+        first_app = create_app(profiles=_profiles(root, first_provider))
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=first_app),
             base_url="http://relaylm.test",
@@ -67,15 +65,12 @@ async def evaluate_restart_continuity() -> EvaluationScenarioResult:
                 },
             )
 
-        persisted = CharacterDirectory(root)
+        persisted = CognitivePackageDirectory(root)
         pre_restart_state = persisted.load_state()
         pre_restart_events = list(persisted.iter_events())
 
         restarted_provider = _RestartedContinuityProvider()
-        restarted_app = create_app(
-            character=CharacterDirectory(root),
-            provider=restarted_provider,
-        )
+        restarted_app = create_app(profiles=_profiles(root, restarted_provider))
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=restarted_app),
             base_url="http://relaylm.test",
@@ -218,7 +213,20 @@ async def evaluate_restart_continuity() -> EvaluationScenarioResult:
     )
 
 
-def _make_character(root: Path) -> CharacterDirectory:
+def _profiles(root: Path, provider: object) -> CognitiveProfileRegistry:
+    return CognitiveProfileRegistry(
+        (
+            CognitiveProfileRuntime(
+                name="relaylm",
+                package=CognitivePackageDirectory(root),
+                provider=provider,
+                physical_model="evaluation-model",
+            ),
+        )
+    )
+
+
+def _make_package(root: Path) -> CognitivePackageDirectory:
     (root / "memory").mkdir(parents=True)
     (root / "SOUL.md").write_text(
         "# Evaluation Character\n\nBe honest and grounded.\n",
@@ -228,6 +236,6 @@ def _make_character(root: Path) -> CharacterDirectory:
         "format_version: 1\ncharacter:\n  id: evaluation\n  name: Evaluation\n",
         encoding="utf-8",
     )
-    character = CharacterDirectory(root)
-    character.save_state(CanonicalState())
-    return character
+    package = CognitivePackageDirectory(root)
+    package.save_state(CanonicalState())
+    return package

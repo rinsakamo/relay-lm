@@ -9,6 +9,7 @@ import httpx
 from fastapi.testclient import TestClient
 
 from relaylm.cognitive import CognitiveInput, CognitiveOutput, ContextItem
+from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.events import Event
 from relaylm.identity import Identity
 from relaylm.providers.openai_compatible import (
@@ -17,6 +18,7 @@ from relaylm.providers.openai_compatible import (
 )
 from relaylm.server import create_app
 from relaylm.state import STATE_CLASS_DEFINITIONS, StateCandidate, StateRecord
+from relaylm.storage.cognitive_package import CognitivePackageDirectory
 from relaylm.storage.filesystem import CharacterDirectory
 
 
@@ -64,6 +66,19 @@ def _make_character(root: Path) -> CharacterDirectory:
         '{"format_version":1,"states":[]}', encoding="utf-8"
     )
     return CharacterDirectory(root)
+
+
+def _profile(character: CharacterDirectory, provider: object) -> CognitiveProfileRuntime:
+    return CognitiveProfileRuntime(
+        name="relaylm",
+        package=CognitivePackageDirectory(character.root),
+        provider=provider,
+        physical_model="streaming-test-model",
+    )
+
+
+def _profiles(character: CharacterDirectory, provider: object) -> CognitiveProfileRegistry:
+    return CognitiveProfileRegistry((_profile(character, provider),))
 
 
 class _ChunkedSSEStream(httpx.AsyncByteStream):
@@ -181,7 +196,7 @@ class _SuccessfulStreamingProvider:
 def test_streaming_api_exposes_text_before_committing_state(tmp_path: Path) -> None:
     character = _make_character(tmp_path)
     provider = _SuccessfulStreamingProvider(tmp_path)
-    app = create_app(character=character, provider=provider)
+    app = create_app(profiles=_profiles(character, provider))
 
     with TestClient(app) as client:
         response = client.post(
@@ -224,7 +239,7 @@ def test_truncated_stream_keeps_user_event_but_never_commits_assistant_or_state(
     tmp_path: Path,
 ) -> None:
     character = _make_character(tmp_path)
-    app = create_app(character=character, provider=_TruncatedStreamingProvider())
+    app = create_app(profiles=_profiles(character, _TruncatedStreamingProvider()))
 
     with TestClient(app) as client:
         response = client.post(
@@ -272,13 +287,11 @@ def test_downstream_stream_close_cancels_turn_before_assistant_or_state_commit(
         character = _make_character(tmp_path)
         provider = _ClientCancelledStreamingProvider()
         stream = _stream_chat_completion(
-            character=character,
-            provider=provider,
+            profile=_profile(character, provider),
             turn_lock=asyncio.Lock(),
             content="途中で切断する",
             completion_id="chatcmpl-test",
             created=0,
-            model="relaylm",
         )
 
         first_chunk = await anext(stream)

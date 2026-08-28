@@ -10,30 +10,23 @@ from fastapi import FastAPI
 from relaylm import __version__
 from relaylm.api.openai import create_openai_router
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
-from relaylm.cognitive import CognitiveProvider, CognitionExecutionMode
+from relaylm.cognitive import CognitionExecutionMode
+from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.cognition_execution import CognitionPassRequest
 from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPassProvider
 from relaylm.storage.cognitive_package import CognitivePackageDirectory
-from relaylm.storage.filesystem import CharacterDirectory
-from relaylm.turn import (
-    ContinuityRuntime,
-    EventRetrievalBudget,
-    MemoryRetrievalBudget,
-)
+from relaylm.turn import EventRetrievalBudget, MemoryRetrievalBudget
 from relaylm.two_pass_turn import CognitionExecutionRuntime
 
 
 def create_app(
     *,
-    character: CharacterDirectory,
-    provider: CognitiveProvider,
+    profiles: CognitiveProfileRegistry,
     cognition_mode: CognitionExecutionMode = CognitionExecutionMode.SINGLE_PASS,
-    cognition_execution_runtime: CognitionExecutionRuntime | None = None,
     pass1_request: CognitionPassRequest | None = None,
     pass2_request: CognitionPassRequest | None = None,
     memory_budget: MemoryRetrievalBudget | None = None,
     event_budget: EventRetrievalBudget | None = None,
-    continuity_runtime: ContinuityRuntime | None = None,
     cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
 ) -> FastAPI:
     @asynccontextmanager
@@ -41,22 +34,25 @@ def create_app(
         try:
             yield
         finally:
-            close = getattr(provider, "aclose", None)
-            if close is not None:
-                await close()
+            closed: set[int] = set()
+            for profile in profiles.profiles:
+                provider_id = id(profile.provider)
+                if provider_id in closed:
+                    continue
+                closed.add(provider_id)
+                close = getattr(profile.provider, "aclose", None)
+                if close is not None:
+                    await close()
 
     app = FastAPI(title="RelayLM", version=__version__, lifespan=lifespan)
     app.include_router(
         create_openai_router(
-            character=character,
-            provider=provider,
+            profiles=profiles,
             cognition_mode=cognition_mode,
-            cognition_execution_runtime=cognition_execution_runtime,
             pass1_request=pass1_request,
             pass2_request=pass2_request,
             memory_budget=memory_budget,
             event_budget=event_budget,
-            continuity_runtime=continuity_runtime,
             cognitive_budget=cognitive_budget,
         )
     )
@@ -69,17 +65,24 @@ def create_app(
 
 
 def create_app_from_env() -> FastAPI:
-    character_dir = Path(_required_env("RELAYLM_CHARACTER_DIR")).expanduser()
+    profile_name = _required_env("RELAYLM_PROFILE_NAME")
+    profile_root = Path(_required_env("RELAYLM_PROFILE_ROOT")).expanduser()
+    physical_model = _required_env("RELAYLM_PROVIDER_MODEL")
     provider = OpenAICompatibleTwoPassProvider(
         base_url=_required_env("RELAYLM_PROVIDER_BASE_URL"),
-        model=_required_env("RELAYLM_PROVIDER_MODEL"),
+        model=physical_model,
         api_key=os.getenv("RELAYLM_PROVIDER_API_KEY"),
     )
-    return create_app(
-        character=CognitivePackageDirectory(character_dir),
+    profile = CognitiveProfileRuntime(
+        name=profile_name,
+        package=CognitivePackageDirectory(profile_root),
         provider=provider,
-        cognition_mode=CognitionExecutionMode.TWO_PASS,
+        physical_model=physical_model,
         cognition_execution_runtime=CognitionExecutionRuntime(),
+    )
+    return create_app(
+        profiles=CognitiveProfileRegistry((profile,)),
+        cognition_mode=CognitionExecutionMode.TWO_PASS,
         pass1_request=CognitionPassRequest(),
         pass2_request=CognitionPassRequest(),
     )

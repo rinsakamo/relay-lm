@@ -15,7 +15,7 @@ from relaylm.runtime_assembly import (
 from relaylm.runtime_config import RuntimeConfigErrorCode
 from relaylm.runtime_config_loader import ResolvedRuntimeConfig
 from relaylm.storage.cognitive_package import CognitivePackageDirectory
-from relaylm.storage.filesystem import CharacterDataError, CharacterDirectory
+from relaylm.storage.filesystem import CharacterDataError
 
 
 class RuntimePreflightError(ValueError):
@@ -65,9 +65,11 @@ def prepare_runtime(
 
     _validate_server_configuration(resolved)
     _validate_provider_configuration(resolved)
-    character = CognitivePackageDirectory(resolved.config.character.directory)
-    _validate_character_readability(character)
-    _validate_persistence_writability(character)
+    for index, profile in enumerate(resolved.config.profiles):
+        package = CognitivePackageDirectory(profile.root)
+        field = f"profiles[{index}].root"
+        _validate_package_readability(package, field=field)
+        _validate_persistence_writability(package, field=field)
     assembly = assemble_runtime(
         resolved,
         token_counter_capabilities=token_counter_capabilities,
@@ -77,7 +79,7 @@ def prepare_runtime(
         assembly=assembly,
         checks={
             "configuration": "ok",
-            "character": "ok",
+            "profiles": "ok",
             "persistence": "ok",
             "provider": "ok",
             "runtime_assembly": "ok",
@@ -120,15 +122,14 @@ def _validate_server_configuration(resolved: ResolvedRuntimeConfig) -> None:
 
 def _validate_provider_configuration(resolved: ResolvedRuntimeConfig) -> None:
     provider = resolved.config.provider
-    if any(
-        ord(character) < 0x20 or ord(character) == 0x7F
-        for character in provider.model
-    ):
-        raise RuntimePreflightError(
-            RuntimeConfigErrorCode.PROVIDER_INVALID,
-            field="provider.model",
-            message="provider model must not contain ASCII control characters",
-        )
+    _validate_model_text(provider.model, field="provider.model")
+    for index, profile in enumerate(resolved.config.profiles):
+        if profile.provider.model is not None:
+            _validate_model_text(
+                profile.provider.model,
+                field=f"profiles[{index}].provider.model",
+            )
+
     try:
         parsed = urlsplit(provider.base_url)
         port = parsed.port
@@ -185,54 +186,71 @@ def _validate_provider_configuration(resolved: ResolvedRuntimeConfig) -> None:
         )
 
 
-def _validate_character_readability(character: CharacterDirectory) -> None:
-    root = character.root
+def _validate_model_text(model: str, *, field: str) -> None:
+    if any(ord(character) < 0x20 or ord(character) == 0x7F for character in model):
+        raise RuntimePreflightError(
+            RuntimeConfigErrorCode.PROVIDER_INVALID,
+            field=field,
+            message="provider model must not contain ASCII control characters",
+        )
+
+
+def _validate_package_readability(
+    package: CognitivePackageDirectory,
+    *,
+    field: str,
+) -> None:
+    root = package.root
     if not root.is_dir():
         raise RuntimePreflightError(
             RuntimeConfigErrorCode.CHARACTER_INVALID,
-            field="character.directory",
-            message="selected Character Package directory is unavailable",
+            field=field,
+            message="selected Cognitive Package root is unavailable",
         )
     try:
-        character.load_config()
-        character.load_identity()
-        character.load_state()
-        tuple(character.iter_events())
-        character.load_memory_markdown()
+        package.load_config()
+        package.load_identity()
+        package.load_state()
+        tuple(package.iter_events())
+        package.load_memory_markdown()
     except (CharacterDataError, UnicodeDecodeError) as exc:
         raise RuntimePreflightError(
             RuntimeConfigErrorCode.CHARACTER_INVALID,
-            field="character.directory",
-            message="selected Character Package is invalid or unreadable",
+            field=field,
+            message="selected Cognitive Package is invalid or unreadable",
         ) from exc
 
 
-def _validate_persistence_writability(character: CharacterDirectory) -> None:
-    root = character.root
-    memory = character.memory_path
+def _validate_persistence_writability(
+    package: CognitivePackageDirectory,
+    *,
+    field: str,
+) -> None:
+    root = package.root
+    memory = package.memory_path
     if memory.exists() and not memory.is_dir():
         raise RuntimePreflightError(
             RuntimeConfigErrorCode.CHARACTER_INVALID,
-            field="character.directory",
-            message="Character persistence path is not a directory",
+            field=field,
+            message="Cognitive Package persistence path is not a directory",
         )
 
     directory = memory if memory.exists() else root
     if not os.access(directory, os.W_OK | os.X_OK):
         raise RuntimePreflightError(
             RuntimeConfigErrorCode.CHARACTER_INVALID,
-            field="character.directory",
-            message="Character persistence directory is not writable",
+            field=field,
+            message="Cognitive Package persistence directory is not writable",
         )
 
     for path in (
-        character.events_path,
-        character.state_path,
-        character.memory_markdown_path,
+        package.events_path,
+        package.state_path,
+        package.memory_markdown_path,
     ):
         if path.exists() and not os.access(path, os.W_OK):
             raise RuntimePreflightError(
                 RuntimeConfigErrorCode.CHARACTER_INVALID,
-                field="character.directory",
-                message="an existing Character persistence file is not writable",
+                field=field,
+                message="an existing Cognitive Package persistence file is not writable",
             )

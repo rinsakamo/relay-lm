@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from relaylm.cognitive import CognitiveInput, CognitiveOutput, ContextItem
+from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.continuity import ContinuityCandidate
 from relaylm.events import Event
 from relaylm.identity import Identity
@@ -19,6 +20,7 @@ from relaylm.providers.openai_compatible import (
 )
 from relaylm.server import create_app
 from relaylm.state import STATE_CLASS_DEFINITIONS, StateRecord
+from relaylm.storage.cognitive_package import CognitivePackageDirectory
 from relaylm.storage.filesystem import CharacterDirectory
 
 
@@ -66,6 +68,19 @@ def _make_character(root: Path) -> CharacterDirectory:
         '{"format_version":1,"states":[]}', encoding="utf-8"
     )
     return CharacterDirectory(root)
+
+
+def _profiles(character: CharacterDirectory, provider: object) -> CognitiveProfileRegistry:
+    return CognitiveProfileRegistry(
+        (
+            CognitiveProfileRuntime(
+                name="relaylm",
+                package=CognitivePackageDirectory(character.root),
+                provider=provider,
+                physical_model="openai-boundary-test-model",
+            ),
+        )
+    )
 
 
 def test_provider_makes_one_request_and_normalizes_state_and_continuity_set() -> None:
@@ -204,9 +219,7 @@ def test_continuity_resolve_null_normalizes_to_semantic_resolve() -> None:
 
 
 def test_missing_continuity_channel_fails_closed() -> None:
-    with pytest.raises(
-        ProviderProtocolError, match="must contain exactly utterance"
-    ):
+    with pytest.raises(ProviderProtocolError, match="must contain exactly utterance"):
         parse_wire_output(
             {
                 "utterance": "x",
@@ -311,7 +324,7 @@ class RecordingProvider:
 
 def test_client_history_is_not_replayed(tmp_path: Path) -> None:
     provider = RecordingProvider()
-    app = create_app(character=_make_character(tmp_path), provider=provider)
+    app = create_app(profiles=_profiles(_make_character(tmp_path), provider))
 
     with TestClient(app) as client:
         response = client.post(
@@ -343,7 +356,7 @@ def test_client_history_is_not_replayed(tmp_path: Path) -> None:
 
 def test_relaylm_owned_prior_events_are_used_on_followup_request(tmp_path: Path) -> None:
     provider = RecordingProvider()
-    app = create_app(character=_make_character(tmp_path), provider=provider)
+    app = create_app(profiles=_profiles(_make_character(tmp_path), provider))
 
     with TestClient(app) as client:
         first = client.post(
@@ -366,7 +379,7 @@ def test_relaylm_owned_prior_events_are_used_on_followup_request(tmp_path: Path)
 
 def test_stream_request_is_explicitly_rejected(tmp_path: Path) -> None:
     provider = RecordingProvider()
-    app = create_app(character=_make_character(tmp_path), provider=provider)
+    app = create_app(profiles=_profiles(_make_character(tmp_path), provider))
 
     with TestClient(app) as client:
         response = client.post(
@@ -418,7 +431,7 @@ def test_http_api_drives_one_adapter_request_and_commits_state(tmp_path: Path) -
         model="gemma",
         http_client=upstream,
     )
-    app = create_app(character=_make_character(tmp_path), provider=provider)
+    app = create_app(profiles=_profiles(_make_character(tmp_path), provider))
 
     with TestClient(app) as client:
         response = client.post(

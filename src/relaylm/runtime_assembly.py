@@ -10,6 +10,7 @@ from relaylm.budget_enforcement import (
 )
 from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitionExecutionMode
+from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.cognition_execution import CognitionPassRequest
 from relaylm.continuity import ContinuityContext
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
@@ -18,17 +19,10 @@ from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPass
 from relaylm.providers.vllm_reasoning_capability import (
     VLLMReasoningCapabilityAttestation,
 )
-from relaylm.runtime_config import (
-    ProviderRuntimeConfig,
-    RuntimeConfigErrorCode,
-)
+from relaylm.runtime_config import ProviderRuntimeConfig, RuntimeConfigErrorCode
 from relaylm.runtime_config_loader import ResolvedRuntimeConfig
 from relaylm.storage.cognitive_package import CognitivePackageDirectory
-from relaylm.turn import (
-    ContinuityRuntime,
-    EventRetrievalBudget,
-    MemoryRetrievalBudget,
-)
+from relaylm.turn import ContinuityRuntime, EventRetrievalBudget, MemoryRetrievalBudget
 from relaylm.two_pass_turn import CognitionExecutionRuntime
 
 
@@ -56,13 +50,7 @@ class RuntimeAssemblyError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class TokenCounterCapability:
-    """Registered provider/model counter capability available to release assembly.
-
-    ``mode`` is capability metadata used to prove agreement with the explicit
-    configuration before any semantic content is counted. ``factory`` receives
-    only non-secret provider configuration and must return an implementation of
-    the existing #1387 serialized-input counter protocol.
-    """
+    """Registered provider/model counter capability available to release assembly."""
 
     mode: TokenCountMode
     factory: TokenCounterFactory = field(repr=False)
@@ -78,33 +66,24 @@ class TokenCounterCapability:
 class RuntimeAssembly:
     """Owner-preserving objects needed by the ordinary RelayLM API path."""
 
-    character: CognitivePackageDirectory
-    provider: OpenAICompatibleProvider = field(repr=False)
+    profiles: CognitiveProfileRegistry
     cognition_mode: CognitionExecutionMode = CognitionExecutionMode.TWO_PASS
-    cognition_execution_runtime: CognitionExecutionRuntime | None = field(
-        default=None,
-        repr=False,
-    )
     pass1_request: CognitionPassRequest | None = None
     pass2_request: CognitionPassRequest | None = None
     memory_budget: MemoryRetrievalBudget | None = None
     event_budget: EventRetrievalBudget | None = None
-    continuity_runtime: ContinuityRuntime | None = None
     cognitive_budget: CognitiveBudgetRuntimeConfig | None = None
 
     def app_kwargs(self) -> dict[str, Any]:
         """Arguments accepted by ``server.create_app`` without semantic rewriting."""
 
         return {
-            "character": self.character,
-            "provider": self.provider,
+            "profiles": self.profiles,
             "cognition_mode": self.cognition_mode,
-            "cognition_execution_runtime": self.cognition_execution_runtime,
             "pass1_request": self.pass1_request,
             "pass2_request": self.pass2_request,
             "memory_budget": self.memory_budget,
             "event_budget": self.event_budget,
-            "continuity_runtime": self.continuity_runtime,
             "cognitive_budget": self.cognitive_budget,
         }
 
@@ -115,10 +94,11 @@ def assemble_runtime(
     token_counter_capabilities: Mapping[str, TokenCounterCapability] | None = None,
     vllm_reasoning_capability: VLLMReasoningCapabilityAttestation | None = None,
 ) -> RuntimeAssembly:
-    """Construct current owner objects from one validated RCFG2 result.
+    """Construct current owner objects from one validated runtime configuration.
 
-    This function performs no Cognitive Package semantic reads, network calls,
-    provider generation, profile selection, or persistence mutation.
+    Assembly binds every public Cognitive Profile to one Cognitive Package root and
+    one effective physical provider/model without reading semantic package content,
+    performing generation, or mutating persistence.
     """
 
     if not isinstance(resolved, ResolvedRuntimeConfig):
@@ -228,6 +208,18 @@ def assemble_runtime(
             ),
         )
 
+    if runtime.cognitive_budget is not None:
+        for index, profile in enumerate(config.profiles):
+            if profile.provider.model is not None:
+                raise RuntimeAssemblyError(
+                    RuntimeConfigErrorCode.INVALID_COMBINATION,
+                    field=f"profiles[{index}].provider.model",
+                    message=(
+                        "profile-specific physical models cannot share the single-pass "
+                        "Cognitive Budget token-counter configuration"
+                    ),
+                )
+
     memory_budget = None
     if runtime.memory_retrieval is not None:
         memory_budget = MemoryRetrievalBudget(
@@ -242,13 +234,6 @@ def assemble_runtime(
             max_chars=runtime.event_retrieval.max_chars,
         )
 
-    continuity_runtime = None
-    if runtime.continuity is not None:
-        continuity_runtime = ContinuityRuntime(
-            context=ContinuityContext(max_items=runtime.continuity.max_items),
-            lifetime_revisions=runtime.continuity.lifetime_revisions,
-        )
-
     cognitive_budget = _assemble_cognitive_budget(
         config.provider,
         runtime.cognitive_budget,
@@ -260,32 +245,48 @@ def assemble_runtime(
         if cognition.mode is CognitionExecutionMode.TWO_PASS
         else OpenAICompatibleProvider
     )
-    try:
-        provider = provider_type(
-            base_url=config.provider.base_url,
-            model=config.provider.model,
-            api_key=resolved.secrets.provider_api_key,
-            vllm_reasoning_capability=vllm_reasoning_capability,
-        )
-    except (TypeError, ValueError) as exc:
-        raise RuntimeAssemblyError(
-            RuntimeConfigErrorCode.PROVIDER_INVALID,
-            field="provider",
-            message="configured provider could not be constructed",
-        ) from exc
+    profile_runtimes: list[CognitiveProfileRuntime] = []
+    for index, profile in enumerate(config.profiles):
+        physical_model = profile.provider.model or config.provider.model
+        try:
+            provider = provider_type(
+                base_url=config.provider.base_url,
+                model=physical_model,
+                api_key=resolved.secrets.provider_api_key,
+                vllm_reasoning_capability=vllm_reasoning_capability,
+            )
+        except (TypeError, ValueError) as exc:
+            raise RuntimeAssemblyError(
+                RuntimeConfigErrorCode.PROVIDER_INVALID,
+                field=f"profiles[{index}].provider",
+                message="configured profile provider could not be constructed",
+            ) from exc
 
-    character = CognitivePackageDirectory(config.character.directory)
-    cognition_execution_runtime = (
-        CognitionExecutionRuntime()
-        if cognition.mode is CognitionExecutionMode.TWO_PASS
-        else None
-    )
+        continuity_runtime = None
+        if runtime.continuity is not None:
+            continuity_runtime = ContinuityRuntime(
+                context=ContinuityContext(max_items=runtime.continuity.max_items),
+                lifetime_revisions=runtime.continuity.lifetime_revisions,
+            )
+
+        profile_runtimes.append(
+            CognitiveProfileRuntime(
+                name=profile.name,
+                package=CognitivePackageDirectory(profile.root),
+                provider=provider,
+                physical_model=physical_model,
+                continuity_runtime=continuity_runtime,
+                cognition_execution_runtime=(
+                    CognitionExecutionRuntime()
+                    if cognition.mode is CognitionExecutionMode.TWO_PASS
+                    else None
+                ),
+            )
+        )
 
     return RuntimeAssembly(
-        character=character,
-        provider=provider,
+        profiles=CognitiveProfileRegistry(tuple(profile_runtimes)),
         cognition_mode=cognition.mode,
-        cognition_execution_runtime=cognition_execution_runtime,
         pass1_request=(
             cognition.pass1 if cognition.mode is CognitionExecutionMode.TWO_PASS else None
         ),
@@ -294,7 +295,6 @@ def assemble_runtime(
         ),
         memory_budget=memory_budget,
         event_budget=event_budget,
-        continuity_runtime=continuity_runtime,
         cognitive_budget=cognitive_budget,
     )
 

@@ -87,16 +87,19 @@ def test_release_preflight_and_assembly_accept_machine_like_package(
     )
     resolved = resolve_runtime_config(
         environ={
-            "RELAYLM_CHARACTER_DIR": str(root),
+            "RELAYLM_PROFILE_NAME": "medical-soap",
+            "RELAYLM_PROFILE_ROOT": str(root),
             "RELAYLM_PROVIDER_BASE_URL": "http://127.0.0.1:1234/v1",
             "RELAYLM_PROVIDER_MODEL": "model-id",
         }
     )
 
     prepared = prepare_runtime(resolved)
+    profile = prepared.assembly.profiles.resolve("medical-soap")
 
-    assert isinstance(prepared.assembly.character, CognitivePackageDirectory)
-    assert prepared.assembly.character.load_config().package_id == "medical-soap"
+    assert profile is not None
+    assert isinstance(profile.package, CognitivePackageDirectory)
+    assert profile.package.load_config().package_id == "medical-soap"
 
 
 def test_generic_package_config_rejects_null_identity_mapping(tmp_path: Path) -> None:

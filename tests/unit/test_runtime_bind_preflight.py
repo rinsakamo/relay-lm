@@ -18,6 +18,10 @@ def _character(root: Path) -> Path:
     return root
 
 
+def _profile_args(root: Path) -> list[str]:
+    return ["--profile-name", "bind-preflight-test", "--profile-root", str(root)]
+
+
 def test_doctor_rejects_obviously_malformed_bind_host_before_startup(
     tmp_path: Path,
 ) -> None:
@@ -27,8 +31,9 @@ def test_doctor_rejects_obviously_malformed_bind_host_before_startup(
         "\n".join(
             [
                 "format_version: 1",
-                "character:",
-                f"  directory: {character}",
+                "profiles:",
+                "  - name: bind-preflight-test",
+                f"    root: {character}",
                 "provider:",
                 "  adapter: openai_compatible",
                 "  base_url: http://127.0.0.1:1234/v1",
@@ -69,8 +74,7 @@ def test_doctor_rejects_bind_host_with_ascii_control_before_startup(
     code = run_cli(
         [
             "doctor",
-            "--character",
-            str(character),
+            *_profile_args(character),
             "--provider-base-url",
             "http://127.0.0.1:1234/v1",
             "--provider-model",
@@ -102,8 +106,7 @@ def test_doctor_rejects_bind_host_with_embedded_port_before_startup(
     code = run_cli(
         [
             "doctor",
-            "--character",
-            str(character),
+            *_profile_args(character),
             "--provider-base-url",
             "http://127.0.0.1:1234/v1",
             "--provider-model",
@@ -133,8 +136,7 @@ def test_doctor_preserves_valid_ipv6_bind_host(
     code = run_cli(
         [
             "doctor",
-            "--character",
-            str(character),
+            *_profile_args(character),
             "--provider-base-url",
             "http://127.0.0.1:1234/v1",
             "--provider-model",
@@ -162,8 +164,9 @@ def test_doctor_rejects_obviously_malformed_provider_host_before_startup(
         "\n".join(
             [
                 "format_version: 1",
-                "character:",
-                f"  directory: {character}",
+                "profiles:",
+                "  - name: bind-preflight-test",
+                f"    root: {character}",
                 "provider:",
                 "  adapter: openai_compatible",
                 "  base_url: http://invalid host/v1",
@@ -207,8 +210,7 @@ def test_doctor_rejects_provider_url_port_zero_before_startup(
     code = run_cli(
         [
             "doctor",
-            "--character",
-            str(character),
+            *_profile_args(character),
             "--provider-base-url",
             base_url,
             "--provider-model",
@@ -245,8 +247,7 @@ def test_doctor_rejects_provider_url_literal_whitespace_before_startup(
     code = run_cli(
         [
             "doctor",
-            "--character",
-            str(character),
+            *_profile_args(character),
             "--provider-base-url",
             base_url,
             "--provider-model",

@@ -37,8 +37,9 @@ def _write_config(
     path.write_text(
         """\
 format_version: 1
-character:
-  directory: /characters/relm
+profiles:
+  - name: relm
+    root: /characters/relm
 provider:
   adapter: openai_compatible
   backend: lm_studio
@@ -60,12 +61,14 @@ def test_lm_studio_default_two_pass_assembles_without_backend_specific_reasoning
     )
 
     assembly = assemble_runtime(resolved)
+    profile = assembly.profiles.resolve("relm")
+    assert profile is not None
     try:
         assert assembly.cognition_mode is CognitionExecutionMode.TWO_PASS
-        assert isinstance(assembly.provider, OpenAICompatibleTwoPassProvider)
+        assert isinstance(profile.provider, OpenAICompatibleTwoPassProvider)
         assert resolved.config.provider.backend.value == "lm_studio"
     finally:
-        asyncio.run(assembly.provider.aclose())
+        asyncio.run(profile.provider.aclose())
 
 
 def test_lm_studio_explicit_single_pass_assembles_without_backend_specific_reasoning_wire(
@@ -77,13 +80,15 @@ def test_lm_studio_explicit_single_pass_assembles_without_backend_specific_reaso
     )
 
     assembly = assemble_runtime(resolved)
+    profile = assembly.profiles.resolve("relm")
+    assert profile is not None
     try:
         assert assembly.cognition_mode is CognitionExecutionMode.SINGLE_PASS
-        assert isinstance(assembly.provider, OpenAICompatibleProvider)
-        assert not isinstance(assembly.provider, OpenAICompatibleTwoPassProvider)
+        assert isinstance(profile.provider, OpenAICompatibleProvider)
+        assert not isinstance(profile.provider, OpenAICompatibleTwoPassProvider)
         assert resolved.config.provider.backend.value == "lm_studio"
     finally:
-        asyncio.run(assembly.provider.aclose())
+        asyncio.run(profile.provider.aclose())
 
 
 def test_lm_studio_explicit_reasoning_override_fails_before_generation(

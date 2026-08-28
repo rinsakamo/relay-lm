@@ -8,12 +8,14 @@ from fastapi.testclient import TestClient
 
 import relaylm.api.openai as openai_api
 from relaylm.cognitive import CognitionExecutionMode
+from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
 from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPassProvider
 from relaylm.runtime_assembly import RuntimeAssemblyError, assemble_runtime
 from relaylm.runtime_config import RuntimeConfigErrorCode
 from relaylm.runtime_config_loader import resolve_runtime_config
 from relaylm.server import create_app
+from relaylm.storage.cognitive_package import CognitivePackageDirectory
 from relaylm.two_pass_turn import CognitionExecutionRuntime
 
 
@@ -25,8 +27,9 @@ def _write(path: Path, body: str) -> Path:
 def _base_config(runtime: str = "") -> str:
     return f"""\
 format_version: 1
-character:
-  directory: /characters/relm
+profiles:
+  - name: relm
+    root: /characters/relm
 provider:
   adapter: openai_compatible
   base_url: http://127.0.0.1:1234/v1
@@ -34,10 +37,25 @@ provider:
 {runtime}"""
 
 
+def _registry(provider: object, runtime: CognitionExecutionRuntime) -> CognitiveProfileRegistry:
+    return CognitiveProfileRegistry(
+        (
+            CognitiveProfileRuntime(
+                name="relm",
+                package=CognitivePackageDirectory("/characters/relm"),
+                provider=provider,
+                physical_model="model-id",
+                cognition_execution_runtime=runtime,
+            ),
+        )
+    )
+
+
 def test_release_config_defaults_to_two_pass_without_inventing_pass_controls() -> None:
     resolved = resolve_runtime_config(
         environ={
-            "RELAYLM_CHARACTER_DIR": "/characters/relm",
+            "RELAYLM_PROFILE_NAME": "relm",
+            "RELAYLM_PROFILE_ROOT": "/characters/relm",
             "RELAYLM_PROVIDER_BASE_URL": "http://127.0.0.1:1234/v1",
             "RELAYLM_PROVIDER_MODEL": "model-id",
         }
@@ -68,26 +86,29 @@ runtime:
     assert resolved.config.runtime.cognition.mode is CognitionExecutionMode.SINGLE_PASS
 
 
-def test_two_pass_assembly_constructs_two_pass_provider_and_execution_runtime() -> None:
+def test_two_pass_assembly_constructs_profile_provider_and_execution_runtime() -> None:
     resolved = resolve_runtime_config(
         environ={
-            "RELAYLM_CHARACTER_DIR": "/characters/relm",
+            "RELAYLM_PROFILE_NAME": "relm",
+            "RELAYLM_PROFILE_ROOT": "/characters/relm",
             "RELAYLM_PROVIDER_BASE_URL": "http://127.0.0.1:1234/v1",
             "RELAYLM_PROVIDER_MODEL": "model-id",
         }
     )
 
     assembly = assemble_runtime(resolved)
+    profile = assembly.profiles.resolve("relm")
 
+    assert profile is not None
     assert assembly.cognition_mode is CognitionExecutionMode.TWO_PASS
-    assert isinstance(assembly.provider, OpenAICompatibleTwoPassProvider)
-    assert isinstance(assembly.cognition_execution_runtime, CognitionExecutionRuntime)
+    assert isinstance(profile.provider, OpenAICompatibleTwoPassProvider)
+    assert isinstance(profile.cognition_execution_runtime, CognitionExecutionRuntime)
     assert assembly.pass1_request is resolved.config.runtime.cognition.pass1
     assert assembly.pass2_request is resolved.config.runtime.cognition.pass2
     assert assembly.app_kwargs()["cognition_mode"] is CognitionExecutionMode.TWO_PASS
 
 
-def test_explicit_single_pass_assembly_preserves_legacy_provider(tmp_path: Path) -> None:
+def test_explicit_single_pass_assembly_uses_single_pass_provider(tmp_path: Path) -> None:
     path = _write(
         tmp_path / "runtime.yaml",
         _base_config(
@@ -101,11 +122,13 @@ runtime:
     resolved = resolve_runtime_config(config_path=path, environ={})
 
     assembly = assemble_runtime(resolved)
+    profile = assembly.profiles.resolve("relm")
 
+    assert profile is not None
     assert assembly.cognition_mode is CognitionExecutionMode.SINGLE_PASS
-    assert isinstance(assembly.provider, OpenAICompatibleProvider)
-    assert not isinstance(assembly.provider, OpenAICompatibleTwoPassProvider)
-    assert assembly.cognition_execution_runtime is None
+    assert isinstance(profile.provider, OpenAICompatibleProvider)
+    assert not isinstance(profile.provider, OpenAICompatibleTwoPassProvider)
+    assert profile.cognition_execution_runtime is None
 
 
 @pytest.mark.parametrize("mode", ["auto", "shadow_two_pass"])
@@ -167,7 +190,7 @@ runtime:
     assert "two-pass" in str(caught.value).lower()
 
 
-def test_buffered_openai_route_dispatches_to_two_pass_runtime(monkeypatch) -> None:
+def test_buffered_openai_route_dispatches_to_profile_two_pass_runtime(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
     async def fake_two_pass(**kwargs):
@@ -182,17 +205,15 @@ def test_buffered_openai_route_dispatches_to_two_pass_runtime(monkeypatch) -> No
     runtime = CognitionExecutionRuntime()
     provider = SimpleNamespace(aclose=None)
     app = create_app(
-        character=SimpleNamespace(),
-        provider=provider,
+        profiles=_registry(provider, runtime),
         cognition_mode=CognitionExecutionMode.TWO_PASS,
-        cognition_execution_runtime=runtime,
     )
 
     with TestClient(app) as client:
         response = client.post(
             "/v1/chat/completions",
             json={
-                "model": "client-label",
+                "model": "relm",
                 "messages": [{"role": "user", "content": "hello"}],
             },
         )
@@ -202,7 +223,7 @@ def test_buffered_openai_route_dispatches_to_two_pass_runtime(monkeypatch) -> No
     assert captured["execution_runtime"] is runtime
 
 
-def test_streaming_openai_route_dispatches_to_two_pass_runtime(monkeypatch) -> None:
+def test_streaming_openai_route_dispatches_to_profile_two_pass_runtime(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
     async def fake_two_pass_streaming(**kwargs):
@@ -222,17 +243,15 @@ def test_streaming_openai_route_dispatches_to_two_pass_runtime(monkeypatch) -> N
     runtime = CognitionExecutionRuntime()
     provider = SimpleNamespace(aclose=None, stream_generate_conversation=lambda: None)
     app = create_app(
-        character=SimpleNamespace(),
-        provider=provider,
+        profiles=_registry(provider, runtime),
         cognition_mode=CognitionExecutionMode.TWO_PASS,
-        cognition_execution_runtime=runtime,
     )
 
     with TestClient(app) as client:
         response = client.post(
             "/v1/chat/completions",
             json={
-                "model": "client-label",
+                "model": "relm",
                 "messages": [{"role": "user", "content": "hello"}],
                 "stream": True,
             },

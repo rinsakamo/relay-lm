@@ -6,7 +6,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
+from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.server import create_app
+from relaylm.storage.cognitive_package import CognitivePackageDirectory
 from relaylm.storage.filesystem import CharacterDirectory
 
 
@@ -22,6 +24,19 @@ def _make_character(root: Path) -> CharacterDirectory:
         '{"format_version":1,"states":[]}', encoding="utf-8"
     )
     return CharacterDirectory(root)
+
+
+def _profiles(character: CharacterDirectory, provider: object) -> CognitiveProfileRegistry:
+    return CognitiveProfileRegistry(
+        (
+            CognitiveProfileRuntime(
+                name="relaylm",
+                package=CognitivePackageDirectory(character.root),
+                provider=provider,
+                physical_model="stream-request-test-model",
+            ),
+        )
+    )
 
 
 class StreamingProvider:
@@ -45,7 +60,7 @@ def test_non_boolean_stream_values_fail_request_validation_before_turn(
     stream_value: object,
 ) -> None:
     provider = StreamingProvider()
-    app = create_app(character=_make_character(tmp_path), provider=provider)
+    app = create_app(profiles=_profiles(_make_character(tmp_path), provider))
 
     with TestClient(app) as client:
         response = client.post(
@@ -69,7 +84,7 @@ def test_omitted_or_false_stream_remains_buffered(
     payload: dict[str, object],
 ) -> None:
     provider = StreamingProvider()
-    app = create_app(character=_make_character(tmp_path), provider=provider)
+    app = create_app(profiles=_profiles(_make_character(tmp_path), provider))
     body = {
         "model": "relaylm",
         "messages": [{"role": "user", "content": "hi"}],
@@ -88,7 +103,7 @@ def test_omitted_or_false_stream_remains_buffered(
 
 def test_explicit_true_stream_remains_streaming(tmp_path: Path) -> None:
     provider = StreamingProvider()
-    app = create_app(character=_make_character(tmp_path), provider=provider)
+    app = create_app(profiles=_profiles(_make_character(tmp_path), provider))
 
     with TestClient(app) as client:
         response = client.post(

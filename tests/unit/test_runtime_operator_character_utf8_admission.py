@@ -23,8 +23,9 @@ def _runtime_config(path: Path, character: Path) -> Path:
         "\n".join(
             [
                 "format_version: 1",
-                "character:",
-                f"  directory: {character}",
+                "profiles:",
+                "  - name: utf8-test",
+                f"    root: {character}",
                 "provider:",
                 "  adapter: openai_compatible",
                 "  base_url: http://127.0.0.1:1234/v1",
@@ -47,7 +48,7 @@ def _runtime_config(path: Path, character: Path) -> Path:
         "memory/MEMORY.md",
     ],
 )
-def test_operator_maps_character_utf8_decode_failure_to_typed_preflight_error(
+def test_operator_maps_package_utf8_decode_failure_to_typed_preflight_error(
     tmp_path: Path,
     command: str,
     relative_path: str,
@@ -73,7 +74,7 @@ def test_operator_maps_character_utf8_decode_failure_to_typed_preflight_error(
     assert stdout.getvalue() == ""
     assert serve_calls == []
     error = stderr.getvalue()
-    assert "character_invalid: character.directory" in error
+    assert "character_invalid: profiles[0].root" in error
     assert "invalid or unreadable" in error
     assert "UnicodeDecodeError" not in error
     assert str(target) not in error

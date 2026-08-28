@@ -8,8 +8,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
+from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.continuity import ContinuityCandidate, ContinuityContext, ContinuityItem
 from relaylm.server import create_app
+from relaylm.storage.cognitive_package import CognitivePackageDirectory
 from relaylm.storage.filesystem import CharacterDirectory
 from relaylm.turn import ContinuityRuntime, run_user_turn, run_user_turn_streaming
 
@@ -300,11 +302,14 @@ def test_openai_app_threads_explicit_runtime_without_owning_budget_policy(
         context=ContinuityContext(max_items=2),
         lifetime_revisions=3,
     )
-    app = create_app(
-        character=character,
+    profile = CognitiveProfileRuntime(
+        name="relaylm",
+        package=CognitivePackageDirectory(character.root),
         provider=provider,
+        physical_model="continuity-test-model",
         continuity_runtime=runtime,
     )
+    app = create_app(profiles=CognitiveProfileRegistry((profile,)))
 
     with TestClient(app) as client:
         response = client.post(

@@ -14,6 +14,6 @@ def test_runtime_operator_contract_names_two_pass_as_current_product_path() -> N
     normalized = _normalized(text)
     remaining = text.split("## Remaining release-runtime work", maxsplit=1)[1]
 
-    assert "the no-profile release topology default is `two_pass`" in normalized
+    assert "For Core 1.0, the release topology default is `two_pass`." in normalized
     assert "historical single-pass" not in remaining
     assert "Actual-model Stage R qualification is deliberately outside" in remaining

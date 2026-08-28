@@ -22,8 +22,9 @@ def _basic_config(*, secret_env: str | None = None) -> str:
     secret = "" if secret_env is None else f"\n  api_key:\n    env: {secret_env}"
     return f"""\
 format_version: 1
-character:
-  directory: /config/character
+profiles:
+  - name: relm
+    root: /config/character
 provider:
   adapter: openai_compatible
   base_url: http://config.example/v1
@@ -47,12 +48,13 @@ def test_resolve_file_config_with_defaults_provenance_and_secret_reference(
         environ={"MODEL_API_KEY": "super-secret"},
     )
 
-    assert resolved.config.character.directory == "/config/character"
+    assert resolved.config.profiles[0].name == "relm"
+    assert resolved.config.profiles[0].root == "/config/character"
     assert resolved.config.provider.model == "config-model"
     assert resolved.config.provider.api_key is not None
     assert resolved.config.provider.api_key.env == "MODEL_API_KEY"
     assert resolved.secrets.provider_api_key == "super-secret"
-    assert resolved.source_for("character.directory") is ConfigSource.CONFIG_FILE
+    assert resolved.source_for("profiles.0.root") is ConfigSource.CONFIG_FILE
     assert resolved.source_for("server.port") is ConfigSource.CONFIG_FILE
     assert resolved.secret_effective.source is ConfigSource.CONFIG_FILE
     assert resolved.secret_effective.material_source is ConfigSource.ENV
@@ -81,24 +83,20 @@ def test_leaf_precedence_is_cli_then_env_then_file_without_sibling_erasure(
 
     resolved = resolve_runtime_config(
         config_path=config_path,
-        overrides=RuntimeConfigOverrides(
-            character_directory="/cli/character",
-            provider_model="cli-model",
-        ),
+        overrides=RuntimeConfigOverrides(provider_model="cli-model"),
         environ={
-            "RELAYLM_CHARACTER_DIR": "/env/character",
             "RELAYLM_PROVIDER_BASE_URL": "http://env.example/v1",
             "RELAYLM_PROVIDER_MODEL": "env-model",
             "RELAYLM_HOST": "127.0.0.3",
         },
     )
 
-    assert resolved.config.character.directory == "/cli/character"
+    assert resolved.config.profiles[0].root == "/config/character"
     assert resolved.config.provider.base_url == "http://env.example/v1"
     assert resolved.config.provider.model == "cli-model"
     assert resolved.config.server.host == "127.0.0.3"
     assert resolved.config.server.port == 9000
-    assert resolved.source_for("character.directory") is ConfigSource.CLI
+    assert resolved.source_for("profiles.0.root") is ConfigSource.CONFIG_FILE
     assert resolved.source_for("provider.base_url") is ConfigSource.ENV
     assert resolved.source_for("provider.model") is ConfigSource.CLI
     assert resolved.source_for("server.port") is ConfigSource.CONFIG_FILE
@@ -127,21 +125,26 @@ def test_config_discovery_prefers_explicit_cli_path_over_environment(tmp_path: P
 def test_environment_only_startup_uses_release_owned_non_cognitive_defaults() -> None:
     resolved = resolve_runtime_config(
         environ={
-            "RELAYLM_CHARACTER_DIR": "/characters/relm",
+            "RELAYLM_PROFILE_NAME": "relm",
+            "RELAYLM_PROFILE_ROOT": "/characters/relm",
             "RELAYLM_PROVIDER_BASE_URL": "http://127.0.0.1:1234/v1",
             "RELAYLM_PROVIDER_MODEL": "model-id",
         }
     )
 
     assert resolved.config.format_version == 1
+    assert resolved.config.profiles[0].name == "relm"
+    assert resolved.config.profiles[0].root == "/characters/relm"
     assert resolved.config.provider.adapter == "openai_compatible"
     assert resolved.config.server.host == "127.0.0.1"
     assert resolved.config.server.port == 8090
     assert resolved.source_for("format_version") is ConfigSource.CANONICAL_DEFAULT
+    assert resolved.source_for("profiles[0].name") is ConfigSource.ENV
+    assert resolved.source_for("profiles[0].root") is ConfigSource.ENV
     assert resolved.source_for("provider.adapter") is ConfigSource.CANONICAL_DEFAULT
     assert resolved.source_for("server.host") is ConfigSource.CANONICAL_DEFAULT
     assert resolved.source_for("server.port") is ConfigSource.CANONICAL_DEFAULT
-    assert resolved.config.runtime.profile is None
+    assert resolved.config.runtime.calibration_profile is None
     assert resolved.config.runtime.cognitive_budget is None
 
 
@@ -166,7 +169,8 @@ def test_missing_required_value_after_precedence_fails_before_assembly() -> None
     with pytest.raises(RuntimeConfigResolutionError) as caught:
         resolve_runtime_config(
             environ={
-                "RELAYLM_CHARACTER_DIR": "/characters/relm",
+                "RELAYLM_PROFILE_NAME": "relm",
+                "RELAYLM_PROFILE_ROOT": "/characters/relm",
                 "RELAYLM_PROVIDER_MODEL": "model-id",
             }
         )
@@ -217,7 +221,7 @@ def test_duplicate_yaml_key_is_rejected_instead_of_last_value_wins(
     assert "duplicate" in str(caught.value).lower()
 
 
-def test_profile_resolution_fails_closed_until_calibration_authority_exists(
+def test_legacy_runtime_profile_is_not_reinterpreted_as_cognitive_profile(
     tmp_path: Path,
 ) -> None:
     config_path = _write_config(
@@ -232,8 +236,27 @@ runtime:
     with pytest.raises(RuntimeConfigResolutionError) as caught:
         resolve_runtime_config(config_path=config_path, environ={})
 
-    assert caught.value.code is RuntimeConfigErrorCode.INVALID_COMBINATION
+    assert caught.value.code is RuntimeConfigErrorCode.UNKNOWN_FIELD
     assert caught.value.field == "runtime.profile"
+
+
+def test_calibration_profile_fails_closed_until_calibration_authority_exists(
+    tmp_path: Path,
+) -> None:
+    config_path = _write_config(
+        tmp_path / "runtime.yaml",
+        _basic_config()
+        + """\
+runtime:
+  calibration_profile: standard
+""",
+    )
+
+    with pytest.raises(RuntimeConfigResolutionError) as caught:
+        resolve_runtime_config(config_path=config_path, environ={})
+
+    assert caught.value.code is RuntimeConfigErrorCode.INVALID_COMBINATION
+    assert caught.value.field == "runtime.calibration_profile"
     assert "calibrated" in str(caught.value).lower()
 
 

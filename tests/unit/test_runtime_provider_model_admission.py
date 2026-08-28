@@ -39,7 +39,9 @@ def test_operator_rejects_provider_model_with_ascii_control_before_success(
     code = run_cli(
         [
             command,
-            "--character",
+            "--profile-name",
+            "model-admission",
+            "--profile-root",
             str(character),
             "--provider-base-url",
             "http://127.0.0.1:1234/v1",

@@ -125,7 +125,7 @@ def run_cli(
                 _print_doctor_summary(prepared, stdout)
             return 0
         finally:
-            _close_provider(prepared)
+            _close_providers(prepared)
 
     assert args.command == "serve"
     _print_serve_summary(prepared, stdout)
@@ -137,7 +137,7 @@ def run_cli(
             port=prepared.resolved.config.server.port,
         )
     finally:
-        _close_provider(prepared)
+        _close_providers(prepared)
     return 0
 
 
@@ -148,10 +148,7 @@ def _build_parser(*, stdout: TextIO, stderr: TextIO) -> _ArgumentParser:
         stdout=stdout,
         stderr=stderr,
     )
-    parser.add_argument(
-        "--version",
-        action="store_true",
-    )
+    parser.add_argument("--version", action="store_true")
     subcommands = parser.add_subparsers(
         dest="command",
         parser_class=lambda *args, **kwargs: _ArgumentParser(
@@ -183,27 +180,29 @@ def _build_parser(*, stdout: TextIO, stderr: TextIO) -> _ArgumentParser:
 
 def _add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--config")
-    parser.add_argument("--character", dest="character_directory")
+    parser.add_argument("--profile-name")
+    parser.add_argument("--profile-root")
     parser.add_argument("--provider-adapter")
     parser.add_argument("--provider-base-url")
     parser.add_argument("--provider-model")
     parser.add_argument("--provider-api-key-env")
     parser.add_argument("--host", dest="server_host")
     parser.add_argument("--port", dest="server_port", type=int)
-    parser.add_argument("--profile")
+    parser.add_argument("--calibration-profile")
     parser.add_argument("--cognition-mode")
 
 
 def _overrides_from_args(args: argparse.Namespace) -> RuntimeConfigOverrides:
     return RuntimeConfigOverrides(
-        character_directory=args.character_directory,
+        profile_name=args.profile_name,
+        profile_root=args.profile_root,
         provider_adapter=args.provider_adapter,
         provider_base_url=args.provider_base_url,
         provider_model=args.provider_model,
         provider_api_key_env=args.provider_api_key_env,
         server_host=args.server_host,
         server_port=args.server_port,
-        profile=args.profile,
+        calibration_profile=args.calibration_profile,
         cognition_mode=args.cognition_mode,
     )
 
@@ -211,33 +210,39 @@ def _overrides_from_args(args: argparse.Namespace) -> RuntimeConfigOverrides:
 def _print_doctor_summary(prepared: PreparedRuntime, stdout: TextIO) -> None:
     config = prepared.resolved.config
     stdout.write(f"RelayLM {RELAYLM_VERSION} doctor: ok\n")
-    stdout.write(f"character: {_summary_value(config.character.directory)}\n")
+    _print_profiles_summary(prepared, stdout)
     stdout.write(
         f"provider: {_summary_value(config.provider.adapter)} "
         f"backend={_summary_value(config.provider.backend.value)} "
-        f"model={_summary_value(config.provider.model)} "
+        f"default_model={_summary_value(config.provider.model)} "
         f"base_url={_summary_value(config.provider.base_url)}\n"
     )
-    stdout.write(
-        f"server: {_summary_value(config.server.host)}:{config.server.port}\n"
-    )
+    stdout.write(f"server: {_summary_value(config.server.host)}:{config.server.port}\n")
     stdout.write(_runtime_layers_summary(prepared) + "\n")
 
 
 def _print_serve_summary(prepared: PreparedRuntime, stdout: TextIO) -> None:
     config = prepared.resolved.config
     stdout.write(f"RelayLM {RELAYLM_VERSION} preflight: ok\n")
-    stdout.write(f"character: {_summary_value(config.character.directory)}\n")
+    _print_profiles_summary(prepared, stdout)
     stdout.write(
         f"provider: {_summary_value(config.provider.adapter)} "
         f"backend={_summary_value(config.provider.backend.value)} "
-        f"model={_summary_value(config.provider.model)} "
+        f"default_model={_summary_value(config.provider.model)} "
         f"base_url={_summary_value(config.provider.base_url)}\n"
     )
-    stdout.write(
-        f"listen: {_summary_value(config.server.host)}:{config.server.port}\n"
-    )
+    stdout.write(f"listen: {_summary_value(config.server.host)}:{config.server.port}\n")
     stdout.write(_runtime_layers_summary(prepared) + "\n")
+
+
+def _print_profiles_summary(prepared: PreparedRuntime, stdout: TextIO) -> None:
+    for profile in prepared.assembly.profiles.profiles:
+        stdout.write(
+            "profile: "
+            f"{_summary_value(profile.name)} "
+            f"root={_summary_value(str(profile.package.root))} "
+            f"physical_model={_summary_value(profile.physical_model)}\n"
+        )
 
 
 def _summary_value(value: str) -> str:
@@ -260,7 +265,14 @@ def _runtime_layers_summary(prepared: PreparedRuntime) -> str:
     assembly = prepared.assembly
     memory = "on" if assembly.memory_budget is not None else "off"
     event = "on" if assembly.event_budget is not None else "off"
-    continuity = "on" if assembly.continuity_runtime is not None else "off"
+    continuity = (
+        "on"
+        if any(
+            profile.continuity_runtime is not None
+            for profile in assembly.profiles.profiles
+        )
+        else "off"
+    )
     cognitive = "on" if assembly.cognitive_budget is not None else "off"
     return (
         "runtime: "
@@ -275,8 +287,13 @@ def _default_serve_runner(app: object, *, host: str, port: int) -> None:
     uvicorn.run(app, host=host, port=port)
 
 
-def _close_provider(prepared: PreparedRuntime) -> None:
-    close = getattr(prepared.assembly.provider, "aclose", None)
-    if close is None:
-        return
-    asyncio.run(close())
+def _close_providers(prepared: PreparedRuntime) -> None:
+    seen: set[int] = set()
+    for profile in prepared.assembly.profiles.profiles:
+        provider_id = id(profile.provider)
+        if provider_id in seen:
+            continue
+        seen.add(provider_id)
+        close = getattr(profile.provider, "aclose", None)
+        if close is not None:
+            asyncio.run(close())

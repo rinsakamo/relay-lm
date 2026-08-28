@@ -17,7 +17,7 @@ from relaylm.runtime_config import (
     RUNTIME_CONFIG_FORMAT_VERSION,
     RUNTIME_CONFIG_PATH_ENV,
     UNKNOWN_FIELD_POLICY,
-    CharacterRuntimeConfig,
+    CognitiveProfileConfig,
     ConfigSource,
     ContinuityRuntimeSettings,
     EffectiveConfigSecret,
@@ -84,7 +84,9 @@ def test_runtime_configuration_precedence_is_leaf_level_and_deterministic() -> N
 
 def test_runtime_config_rejects_coerced_or_unsupported_format_version() -> None:
     kwargs = {
-        "character": CharacterRuntimeConfig(directory="/characters/relm"),
+        "profiles": (
+            CognitiveProfileConfig(name="relm", root="/characters/relm"),
+        ),
         "provider": ProviderRuntimeConfig(
             adapter="openai_compatible",
             base_url="http://127.0.0.1:1234/v1",
@@ -144,7 +146,8 @@ def test_runtime_resolution_types_provider_base_url_credential_failure() -> None
     with pytest.raises(RuntimeConfigResolutionError) as caught:
         resolve_runtime_config(
             environ={
-                "RELAYLM_CHARACTER_DIR": "/characters/relm",
+                "RELAYLM_PROFILE_NAME": "relm",
+                "RELAYLM_PROFILE_ROOT": "/characters/relm",
                 "RELAYLM_PROVIDER_BASE_URL": (
                     f"https://user:{credential}@provider.example/v1"
                 ),
@@ -166,8 +169,9 @@ def test_selected_file_rejects_provider_base_url_credentials_before_override(
         "\n".join(
             [
                 "format_version: 1",
-                "character:",
-                "  directory: /config/character",
+                "profiles:",
+                "  - name: relm",
+                "    root: /config/character",
                 "provider:",
                 "  adapter: openai_compatible",
                 f"  base_url: https://user:{credential}@provider.example/v1",
@@ -195,7 +199,7 @@ def test_selected_file_rejects_provider_base_url_credentials_before_override(
 def test_runtime_policy_has_no_uncalibrated_profile_or_cognitive_defaults() -> None:
     policy = RuntimePolicyConfig()
 
-    assert policy.profile is None
+    assert policy.calibration_profile is None
     assert policy.memory_retrieval is None
     assert policy.event_retrieval is None
     assert policy.continuity is None

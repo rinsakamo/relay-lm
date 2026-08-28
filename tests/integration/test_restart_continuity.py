@@ -7,7 +7,9 @@ from fastapi.testclient import TestClient
 
 from relaylm.api.openai import create_openai_router
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
+from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.state import StateCandidate
+from relaylm.storage.cognitive_package import CognitivePackageDirectory
 from relaylm.storage.filesystem import CharacterDirectory
 
 
@@ -29,7 +31,15 @@ def _make_character(root: Path) -> None:
 
 def _make_app(*, character: CharacterDirectory, provider: object) -> FastAPI:
     app = FastAPI()
-    app.include_router(create_openai_router(character=character, provider=provider))
+    profile = CognitiveProfileRuntime(
+        name="relaylm",
+        package=CognitivePackageDirectory(character.root),
+        provider=provider,
+        physical_model="integration-test-model",
+    )
+    app.include_router(
+        create_openai_router(profiles=CognitiveProfileRegistry((profile,)))
+    )
     return app
 
 
@@ -124,8 +134,6 @@ def test_restart_uses_relaylm_owned_state_and_events_without_client_history(
     assert restarted_input.input.payload["content"] == (
         "前に話した好きな飲み物、覚えてる？"
     )
-    assert {
-        source
-        for item in restarted_input.context
-        for source in item.sources
-    } == {event.id for event in persisted_events}
+    assert {source for item in restarted_input.context for source in item.sources} == {
+        event.id for event in persisted_events
+    }

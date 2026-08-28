@@ -101,4 +101,5 @@ depends_on:
 - memory_provenance
 - persistence
 - provider_and_api
+- runtime_configuration
 - state_and_validation

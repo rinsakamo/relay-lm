@@ -34,8 +34,9 @@ def test_operator_rejects_provider_chat_completion_route_as_base_endpoint(
         "\n".join(
             [
                 "format_version: 1",
-                "character:",
-                f"  directory: {character}",
+                "profiles:",
+                "  - name: provider-base-test",
+                f"    root: {character}",
                 "provider:",
                 "  adapter: openai_compatible",
                 f"  base_url: {base_url}",
