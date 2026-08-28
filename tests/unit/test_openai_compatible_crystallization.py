@@ -527,3 +527,39 @@ def test_explicit_decoding_controls_are_carried_exactly() -> None:
     assert seen[0]["top_p"] == 0.9
     assert seen[0]["seed"] == 123
     assert effective == {"temperature": 0, "top_p": 0.9, "seed": 123}
+
+
+@pytest.mark.parametrize(
+    "choices",
+    [
+        [],
+        [
+            {"message": {"content": json.dumps(_memory_wire())}},
+            {"message": {"content": json.dumps(_memory_wire())}},
+        ],
+    ],
+    ids=["zero", "multiple"],
+)
+def test_provider_rejects_non_singleton_choice_cardinality(
+    choices: list[object],
+) -> None:
+    calls = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"choices": choices})
+
+    async def run() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = _provider_type()(
+                base_url="http://lm.test/v1",
+                model="gemma",
+                http_client=client,
+            )
+            await provider.generate(_crystallization_input())
+
+    with pytest.raises(ProviderProtocolError):
+        asyncio.run(run())
+
+    assert calls == 1
