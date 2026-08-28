@@ -36,11 +36,42 @@ def test_profiler_cli_parses_observed_backtick_recommendation(tmp_path: Path) ->
 def test_profiler_cli_parses_documented_bytes_form(tmp_path: Path) -> None:
     result = _run_parser(
         tmp_path,
-        "INFO recommendation: --kv-cache-memory-bytes=1618644685\n",
+        "INFO To fully utilize available GPU memory, use --kv-cache-memory-bytes=1618644685\n",
     )
 
     assert result.returncode == 0
     assert result.stdout == "1618644685\n"
+
+
+def test_profiler_cli_selects_fully_utilize_role_from_pinned_vllm_message(
+    tmp_path: Path,
+) -> None:
+    result = _run_parser(
+        tmp_path,
+        (
+            "INFO Replace gpu_memory_utilization config with "
+            "`--kv-cache-memory=1400000000` (1.30 GiB) to fit into requested "
+            "memory, or `--kv-cache-memory=1500000000` (1.40 GiB) to fully "
+            "utilize gpu memory. Current kv cache memory in use is 1.20 GiB.\n"
+        ),
+    )
+
+    assert result.returncode == 0
+    assert result.stdout == "1500000000\n"
+    assert result.stderr == ""
+
+
+def test_profiler_cli_rejects_requested_limit_without_fully_utilize_role(
+    tmp_path: Path,
+) -> None:
+    result = _run_parser(
+        tmp_path,
+        "INFO `--kv-cache-memory=1400000000` (1.30 GiB) to fit into requested memory.\n",
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert "not found" in result.stderr
 
 
 def test_profiler_cli_allows_repeated_identical_recommendation(tmp_path: Path) -> None:
@@ -48,8 +79,8 @@ def test_profiler_cli_allows_repeated_identical_recommendation(tmp_path: Path) -
         tmp_path,
         "\n".join(
             [
-                "INFO `--kv-cache-memory=1493352960`",
-                "INFO repeated `--kv-cache-memory-bytes=1493352960`",
+                "INFO To fully utilize available GPU memory, use `--kv-cache-memory=1493352960`.",
+                "INFO To fully utilize available GPU memory, use `--kv-cache-memory-bytes=1493352960`.",
             ]
         ),
     )
@@ -61,7 +92,12 @@ def test_profiler_cli_allows_repeated_identical_recommendation(tmp_path: Path) -
 def test_profiler_cli_rejects_conflicting_recommendations(tmp_path: Path) -> None:
     result = _run_parser(
         tmp_path,
-        "INFO `--kv-cache-memory=1493352960`\nINFO --kv-cache-memory-bytes=1493352961\n",
+        "\n".join(
+            [
+                "INFO To fully utilize available GPU memory, use `--kv-cache-memory=1493352960`.",
+                "INFO To fully utilize available GPU memory, use --kv-cache-memory-bytes=1493352961.",
+            ]
+        ),
     )
 
     assert result.returncode == 2
