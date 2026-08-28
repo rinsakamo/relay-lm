@@ -1,0 +1,178 @@
+name: v1 Starter artifact smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - v1
+  push:
+    branches:
+      - v1
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v1-starter-artifact-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  installed-starters:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact transaction head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact head
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.12"
+          check-latest: false
+
+      - name: Build wheel and sdist
+        run: |
+          python -m pip install build
+          python -m build --wheel --sdist --outdir dist
+
+      - name: Inspect Starter resources in built artifacts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import tarfile
+          import zipfile
+
+          expected = {
+              "relaylm/starters/__init__.py",
+              "relaylm/starters/characters/blank/SOUL.md",
+              "relaylm/starters/characters/blank/config.yaml",
+              "relaylm/starters/characters/relm/SOUL.md",
+              "relaylm/starters/characters/relm/config.yaml",
+              "relaylm/starters/machines/fact-summarizer/SOUL.md",
+              "relaylm/starters/machines/fact-summarizer/config.yaml",
+              "relaylm/starters/machines/medical-soap/SOUL.md",
+              "relaylm/starters/machines/medical-soap/config.yaml",
+          }
+          wheel = next(Path("dist").glob("*.whl"))
+          sdist = next(Path("dist").glob("*.tar.gz"))
+          with zipfile.ZipFile(wheel) as archive:
+              wheel_names = set(archive.namelist())
+          missing_wheel = expected - wheel_names
+          assert not missing_wheel, sorted(missing_wheel)
+
+          with tarfile.open(sdist, "r:gz") as archive:
+              sdist_names = set(archive.getnames())
+          missing_sdist = {
+              relative
+              for relative in expected
+              if not any(name.endswith(f"/src/{relative}") for name in sdist_names)
+          }
+          assert not missing_sdist, sorted(missing_sdist)
+          PY
+
+      - name: Create installed-artifact Starter smoke program
+        run: |
+          cat > "$RUNNER_TEMP/starter-smoke.py" <<'PY'
+          from __future__ import annotations
+
+          import json
+          import os
+          import subprocess
+          import sys
+          from io import StringIO
+          from pathlib import Path
+
+          from relaylm.cli import run_cli
+          from relaylm.starters import list_starter_packages, materialize_starter_package
+          from relaylm.storage.cognitive_package import CognitivePackageDirectory
+
+          expected = ["blank", "relm", "fact-summarizer", "medical-soap"]
+          assert [starter.name for starter in list_starter_packages()] == expected
+
+          workspace = Path(os.environ["GITHUB_WORKSPACE"]).resolve()
+          imported = Path(__import__("relaylm.starters", fromlist=["__file__"]).__file__).resolve()
+          assert workspace not in imported.parents, imported
+
+          smoke_kind = os.environ["SMOKE_KIND"]
+          root = Path(os.environ["RUNNER_TEMP"]) / f"relaylm-starter-{smoke_kind}"
+          root.mkdir()
+          configs: dict[str, Path] = {}
+          relaylm_executable = Path(sys.executable).with_name("relaylm")
+
+          for index, name in enumerate(expected):
+              package_root = materialize_starter_package(name, root / name)
+              package = CognitivePackageDirectory(package_root)
+              assert package.load_config().package_id == name
+              assert package.load_identity().content.strip()
+
+              config = root / f"{name}.yaml"
+              config.write_text(
+                  "\n".join(
+                      [
+                          "format_version: 1",
+                          "character:",
+                          f"  directory: {package_root}",
+                          "provider:",
+                          "  adapter: openai_compatible",
+                          "  base_url: http://127.0.0.1:1234/v1",
+                          "  model: installed-starter-smoke",
+                          "server:",
+                          "  host: 127.0.0.1",
+                          f"  port: {8090 + index}",
+                          "",
+                      ]
+                  ),
+                  encoding="utf-8",
+              )
+              configs[name] = config
+              result = subprocess.run(
+                  [str(relaylm_executable), "doctor", "--config", str(config), "--json"],
+                  cwd=root,
+                  check=False,
+                  capture_output=True,
+                  text=True,
+              )
+              assert result.returncode == 0, result.stderr
+              assert json.loads(result.stdout)["status"] == "ok"
+
+          for name in ("relm", "fact-summarizer"):
+              stdout = StringIO()
+              stderr = StringIO()
+              calls: list[tuple[object, str, int]] = []
+
+              def serve_runner(app: object, *, host: str, port: int) -> None:
+                  calls.append((app, host, port))
+
+              code = run_cli(
+                  ["serve", "--config", str(configs[name])],
+                  environ={},
+                  stdout=stdout,
+                  stderr=stderr,
+                  serve_runner=serve_runner,
+              )
+              assert code == 0, stderr.getvalue()
+              assert len(calls) == 1
+          PY
+
+      - name: Install wheel and exercise bundled Starters outside checkout
+        run: |
+          python -m venv "$RUNNER_TEMP/starter-wheel-env"
+          "$RUNNER_TEMP/starter-wheel-env/bin/python" -m pip install dist/*.whl
+          "$RUNNER_TEMP/starter-wheel-env/bin/python" -m pip check
+          cd "$RUNNER_TEMP"
+          SMOKE_KIND=wheel "$RUNNER_TEMP/starter-wheel-env/bin/python" "$RUNNER_TEMP/starter-smoke.py"
+
+      - name: Install sdist and exercise bundled Starters outside checkout
+        run: |
+          python -m venv "$RUNNER_TEMP/starter-sdist-env"
+          "$RUNNER_TEMP/starter-sdist-env/bin/python" -m pip install "$GITHUB_WORKSPACE"/dist/*.tar.gz
+          "$RUNNER_TEMP/starter-sdist-env/bin/python" -m pip check
+          cd "$RUNNER_TEMP"
+          SMOKE_KIND=sdist "$RUNNER_TEMP/starter-sdist-env/bin/python" "$RUNNER_TEMP/starter-smoke.py"

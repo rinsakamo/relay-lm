@@ -18,5 +18,6 @@ implementation:
 - src/relaylm/starters/machines/medical-soap/SOUL.md
 tests:
 - tests/unit/test_starter_packages.py
+- .github/workflows/v1-starter-package-smoke.yml
 depends_on:
 - persistence
