@@ -8,6 +8,7 @@ from threading import Lock
 from typing import Any, Iterator
 
 import yaml
+from yaml.nodes import MappingNode
 
 from relaylm.character import CharacterConfig
 from relaylm.event_retrieval import EventDiscoveryIndex
@@ -22,6 +23,25 @@ class CharacterDataError(ValueError):
 
 class StateRevisionConflictError(CharacterDataError):
     """Raised when conditional persistence observes a changed State authority."""
+
+
+class _CharacterConfigUniqueKeyLoader(yaml.SafeLoader):
+    def construct_mapping(
+        self,
+        node: MappingNode,
+        deep: bool = False,
+    ) -> dict[Any, Any]:
+        seen: set[Any] = set()
+        for key_node, _ in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            try:
+                duplicate = key in seen
+                seen.add(key)
+            except TypeError as exc:
+                raise yaml.YAMLError("config.yaml mapping key must be hashable") from exc
+            if duplicate:
+                raise yaml.YAMLError(f"duplicate YAML mapping key: {key}")
+        return super().construct_mapping(node, deep=deep)
 
 
 _STATE_WRITE_LOCKS_GUARD = Lock()
@@ -352,7 +372,10 @@ class CharacterDirectory:
     @staticmethod
     def _load_yaml_mapping(path: Path) -> dict[str, Any]:
         try:
-            raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+            raw = yaml.load(
+                path.read_text(encoding="utf-8"),
+                Loader=_CharacterConfigUniqueKeyLoader,
+            )
         except (OSError, yaml.YAMLError) as exc:
             raise CharacterDataError(f"cannot read config.yaml: {exc}") from exc
         if not isinstance(raw, dict):
