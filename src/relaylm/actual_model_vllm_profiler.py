@@ -6,8 +6,15 @@ import sys
 from pathlib import Path
 
 
-_KV_CACHE_RECOMMENDATION_PATTERN = re.compile(
-    r"--kv-cache-memory(?:-bytes)?=(?P<bytes>[1-9][0-9]*)"
+_KV_CACHE_FLAG = r"--kv-cache-memory(?:-bytes)?=(?P<bytes>[1-9][0-9]*)"
+_FULLY_UTILIZE_ROLE = r"to\s+fully\s+utilize(?:\s+available)?\s+gpu\s+memory"
+_KV_CACHE_FULLY_UTILIZE_SUFFIX_PATTERN = re.compile(
+    rf"{_KV_CACHE_FLAG}(?:(?!--kv-cache-memory)[^\r\n])*?{_FULLY_UTILIZE_ROLE}",
+    re.IGNORECASE,
+)
+_KV_CACHE_FULLY_UTILIZE_PREFIX_PATTERN = re.compile(
+    rf"{_FULLY_UTILIZE_ROLE}(?:(?!--kv-cache-memory)[^\r\n])*?{_KV_CACHE_FLAG}",
+    re.IGNORECASE,
 )
 
 
@@ -16,29 +23,36 @@ class VLLMProfilerRecommendationError(ValueError):
 
 
 def parse_vllm_kv_cache_recommendation_bytes(log_text: str) -> int:
-    """Return the exact positive KV-cache byte recommendation from vLLM output."""
+    """Return the pinned-vLLM fully-utilize GPU KV-cache recommendation."""
 
     if not isinstance(log_text, str):
         raise TypeError("log_text must be a string")
 
     recommendations = {
         int(match.group("bytes"))
-        for match in _KV_CACHE_RECOMMENDATION_PATTERN.finditer(log_text)
+        for pattern in (
+            _KV_CACHE_FULLY_UTILIZE_SUFFIX_PATTERN,
+            _KV_CACHE_FULLY_UTILIZE_PREFIX_PATTERN,
+        )
+        for match in pattern.finditer(log_text)
     }
     if not recommendations:
         raise VLLMProfilerRecommendationError(
-            "vLLM KV-cache recommendation not found"
+            "vLLM fully-utilize KV-cache recommendation not found"
         )
     if len(recommendations) != 1:
         raise VLLMProfilerRecommendationError(
-            "conflicting vLLM KV-cache recommendations"
+            "conflicting vLLM fully-utilize KV-cache recommendations"
         )
     return next(iter(recommendations))
 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Extract the exact vLLM profiler KV-cache byte recommendation."
+        description=(
+            "Extract the exact pinned-vLLM fully-utilize GPU KV-cache byte "
+            "recommendation."
+        )
     )
     parser.add_argument(
         "--log",
