@@ -10,6 +10,7 @@ tests:
 - tests/unit/test_crystallization.py
 - tests/unit/test_evaluation_crystallization.py
 - tests/unit/test_openai_compatible_crystallization.py
+- tests/unit/test_openai_compatible_crystallization_duplicate_json.py
 depends_on:
 - core_architecture
 - memory_provenance
