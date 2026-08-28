@@ -343,7 +343,7 @@ async def evaluate_state_memory_authority_filter() -> EvaluationScenarioResult:
     current = Event.create(
         type="message",
         actor="user",
-        payload={"content": "What do you remember?"},
+        payload={"content": "What do you remember about tea?"},
         event_id="current-authority-event",
         timestamp="2026-08-17T06:05:00+00:00",
     )

@@ -2,7 +2,7 @@
 
 Status: current bounded execution entrypoint for RelayLM 1.0 Stage R actual-model qualification.
 
-Long-lived Issue history is evidence, not an execution prompt. #1386 is an umbrella/evidence index. The active transaction owner is #1921 until this authority cleanup converges.
+Long-lived Issue history is evidence, not an execution prompt. #1386 is an umbrella/evidence index. The active transaction owner is the current bounded execution Issue routed from the current #1386 body; closed or completed transaction Issues are historical evidence only.
 
 ## Current entrypoint
 

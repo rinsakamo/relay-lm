@@ -169,7 +169,7 @@ async def evaluate_cognitive_budget_turn_wiring() -> EvaluationScenarioResult:
         await run_user_turn(
             character=character,
             provider=provider,
-            content="hello",
+            content="tea please",
             cognitive_budget=_runtime(counter, policy=_state_degradation_policy()),
         )
         pressure_ok = (

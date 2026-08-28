@@ -110,7 +110,7 @@ def test_context_compiler_without_recent_events_keeps_context_empty() -> None:
     )
 
     assert compiled.input is current
-    assert compiled.state == state.states
+    assert compiled.state == ()
     assert compiled.context == ()
 
 
@@ -195,11 +195,11 @@ def test_context_budget_does_not_orphan_assistant_exchange() -> None:
     ]
 
 
-def test_context_compiler_zero_working_budget_preserves_state_and_current_event() -> None:
+def test_context_compiler_zero_working_budget_preserves_relevant_state_and_current_event() -> None:
     current = Event.create(
         type="message",
         actor="user",
-        payload={"content": "current"},
+        payload={"content": "tea"},
         event_id="current",
         timestamp="2026-08-16T12:00:00+00:00",
     )
@@ -267,7 +267,7 @@ def test_second_turn_receives_prior_relaylm_events_as_working_context(tmp_path: 
     assert supplied.input.payload["content"] == "それに合うお菓子は？"
 
 
-def test_next_turn_receives_accepted_state_without_prior_events(tmp_path: Path) -> None:
+def test_next_turn_receives_relevant_accepted_state_without_prior_events(tmp_path: Path) -> None:
     initial = StateRecord(
         state_id="s1",
         state_class="user.preference",
@@ -278,12 +278,12 @@ def test_next_turn_receives_accepted_state_without_prior_events(tmp_path: Path) 
     character = _make_character(tmp_path, state=CanonicalState(states=(initial,)))
     provider = SetPreferenceProvider()
 
-    asyncio.run(run_user_turn(character=character, provider=provider, content="今日も紅茶にする"))
+    asyncio.run(run_user_turn(character=character, provider=provider, content="tea again"))
 
     supplied = provider.inputs[0]
     assert supplied.state == (initial,)
     assert supplied.context == ()
-    assert supplied.input.payload["content"] == "今日も紅茶にする"
+    assert supplied.input.payload["content"] == "tea again"
 
 
 def test_same_value_is_noop(tmp_path: Path) -> None:

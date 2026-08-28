@@ -115,27 +115,40 @@ The compiler does not resolve references from raw language, synthesize unresolve
 
 On ordinary turns, Turn supplies the accepted pre-generation Continuity Context from `ContinuityRuntime.context` to this compiler input before provider generation. Continuity lifecycle acceptance remains upstream: Turn/Continuity runtime own candidate acceptance, replacement/resolution, revision advancement, expiry, and capacity; Context Compiler only consumes and projects the accepted snapshot. This realization is process-local and does not imply durable or cross-restart Continuity.
 
-## Current active-State selection primitive
+## Current relevance-first State Working Set
 
-`compile_cognitive_input` supports an optional explicit `max_state_records` cap for large active-State sets.
+`compile_cognitive_input` transforms eligible Active State into a deterministic per-turn State Working Set before applying the optional `max_state_records` capacity envelope.
 
-Eligibility is applied before ranking: only records with `status == "active"` and no `valid_to` are candidates. The selector never changes State records or provenance.
+Eligibility is unchanged: only records with `status == "active"` and no `valid_to` are candidates. Relevance selection never mutates Canonical State, State provenance, Events, Continuity, or MEMORY.
 
-Current behavior is deliberately conservative:
+Relevance admission runs on every turn, including when `max_state_records=None`. The initial 1.0 admission order is:
 
-- `max_state_records=None` preserves the previous behavior and projects every eligible active State record;
-- if the eligible set already fits the explicit cap, order and contents are unchanged;
-- only under explicit cap pressure, deterministic lexical relevance against the Current Event is used;
-- specific State-key matches receive the strongest lexical weight, followed by matching semantic value text and then State-class text;
-- positive lexical matches are ranked before zero-match fallback records;
-- ties and fallback are deterministic by existing State order;
-- after selection, records are projected in their original Canonical State order rather than score order;
-- `max_state_records=0` removes only the State projection; Identity, Current Event, and Working Context remain independent;
+1. `user.identity` as the identity-related State anchor;
+2. `self.belief` and `relationship.state` as the initial Subjective Core;
+3. context-linked State whose source Events intersect selected Working Context or accepted Continuity sources, or whose bounded lexical content is relevant to those already-selected context layers;
+4. direct positive lexical relevance against the Current Event.
+
+No other State class is implicitly anchored. In particular, this does not class-anchor all user facts/preferences/goals or all `self.*` / `relationship.*` State.
+
+Direct/context lexical evidence reuses the shared NFKC/casefold exact-token plus bounded CJK 2/3-gram feature owner. State-specific weighting remains Context Compiler authority: specific key evidence is strongest, then semantic value evidence, then State-class-tail evidence. ASCII/Latin substrings are not features, and the State admission boundary conservatively rejects a lone accidental CJK n-gram overlap unless that overlap constitutes the complete bounded field feature set.
+
+After relevance admission:
+
+- `max_state_records=None` projects all relevance-admitted State, not every eligible Active State;
+- `max_state_records=0` explicitly projects zero State;
+- if admitted State fits the cap, no unrelated record is inserted merely to fill spare capacity;
+- under cap pressure, deterministic priority is identity anchor → Subjective Core → context-linked → direct lexical relevance, then stronger lexical evidence where applicable, then Canonical State order;
+- after selection, records are emitted in original Canonical State order for stable/cache-friendly layout;
+- anchors and Subjective Core are admission reasons, not infinite protection: both remain inside the State envelope and are evictable when the envelope cannot fit them;
 - negative caps fail explicitly.
 
-The current lexical selector is candidate selection, not authority. It does not mutate State, call an LLM, resolve contradictions, or infer truth from similarity.
+There is no zero-match fallback. A non-anchor, non-Subjective-Core, non-context-linked State with no positive lexical relevance is absent from the model-facing State projection even when spare capacity exists.
 
-The ordinary runtime does **not** impose a numeric default State cap unless a caller or calibrated runtime profile supplies one, so existing turns otherwise continue to receive all eligible active State. #1267 owns stronger semantic/multilingual State selection within any assigned envelope. The already-realized total-budget, protection, and degradation mechanics are #1387 authority; evidence-backed numeric/default calibration remains #1388 authority.
+This Working Set changes only cognitive residency. The State-over-MEMORY authority filter remains independent and compares retrieved MEMORY against the **full eligible Active Canonical State set**, including records culled from the current model-facing Working Set. State persistence/lifecycle, StateCandidate schema/validation, and provenance are unchanged.
+
+The selector is deterministic O(N) CPU work over in-RAM State. It does not call an LLM, add embeddings/vector search, create a persistent index, infer synonyms, resolve contradictions, or establish truth from relevance.
+
+The ordinary runtime still does **not** impose a numeric default State cap unless a caller or calibrated runtime profile supplies one, but relevance admission still runs without cap pressure. #1267 owns within-State relevance semantics. The already-realized total-budget, protection, and degradation mechanics are #1387 authority; evidence-backed numeric/default calibration remains #1388 authority.
 
 ### Content-free selection diagnostics
 
@@ -143,7 +156,7 @@ Callers that explicitly need selection evidence may use `compile_cognitive_input
 
 The diagnostics surface currently covers four compiler-owned layers:
 
-- `canonical_state` — active-State eligibility, selection mode, selected/evicted counts, explicit record budget, lexical-match/fallback counts, and budget-limit eviction count;
+- `canonical_state` — eligible Active State count; relevance-admitted and relevance-culled counts; anchor, Subjective Core, context-linked, and lexical admission counts; final selected count; budget-evicted count; explicit record budget; and budget pressure. Relevance culling is normal Working Set hygiene and does not itself report State-budget pressure; zero-match fallback is always absent;
 - `working_context` — eligible prior message count after Current Event exclusion, selected count, explicit Event-window and character budgets, selected character usage, Current Event exclusion count, Event-window eviction count, unmatched-assistant drop count, and character-budget eviction count;
 - `retrieved_memory` — number of already-retrieved MEMORY chunks supplied to the compiler, number projected after the active-State authority filter, and deterministic State-shadow suppression count;
 - `event_evidence` — number of already-selected Event candidates supplied to the compiler, number projected after Current Event and exact Working Context Event-ID de-duplication, Current Event exclusion count, and the count of supplied non-current Event IDs that were already resident in selected Working Context.

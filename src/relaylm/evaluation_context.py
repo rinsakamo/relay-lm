@@ -174,8 +174,8 @@ async def evaluate_state_selection_diagnostics() -> EvaluationScenarioResult:
         content="Help me choose coffee today",
         second=5,
     )
-    fallback_event = _message(
-        event_id="fallback-current-secret",
+    zero_match_event = _message(
+        event_id="zero-match-current-secret",
         actor="user",
         content="Tell me something unrelated about weather",
         second=6,
@@ -187,16 +187,16 @@ async def evaluate_state_selection_diagnostics() -> EvaluationScenarioResult:
         current_event=matched_event,
         max_state_records=2,
     )
-    fallback = compile_cognitive_input_with_diagnostics(
+    zero_match = compile_cognitive_input_with_diagnostics(
         identity=identity,
         state=state,
-        current_event=fallback_event,
+        current_event=zero_match_event,
         max_state_records=2,
     )
     matched_diagnostic = matched.diagnostics[0]
-    fallback_diagnostic = fallback.diagnostics[0]
+    zero_match_diagnostic = zero_match.diagnostics[0]
     serialized = json.dumps(
-        [asdict(matched_diagnostic), asdict(fallback_diagnostic)],
+        [asdict(matched_diagnostic), asdict(zero_match_diagnostic)],
         ensure_ascii=False,
     )
     forbidden = (
@@ -207,38 +207,45 @@ async def evaluate_state_selection_diagnostics() -> EvaluationScenarioResult:
         "coffee-secret",
         "source-coffee-secret",
         "matched-current-secret",
-        "fallback-current-secret",
+        "zero-match-current-secret",
     )
 
     checks = (
         EvaluationCheck(
-            check_id="matched_selection_reports_lexical_reason_counts",
+            check_id="matched_selection_reports_relevance_admission",
             boundary="diagnostics",
-            passed=matched_diagnostic.mode == "lexical_ranked"
+            passed=matched_diagnostic.mode == "relevance_filtered"
             and matched_diagnostic.eligible_count == 4
+            and matched_diagnostic.relevance_admitted_count == 2
+            and matched_diagnostic.relevance_culled_count == 2
+            and matched_diagnostic.lexical_admitted_count == 2
             and matched_diagnostic.selected_count == 2
-            and matched_diagnostic.evicted_count == 2
-            and matched_diagnostic.selected_lexical_match_count == 2
+            and matched_diagnostic.budget_evicted_count == 0
             and matched_diagnostic.selected_fallback_count == 0
-            and matched_diagnostic.evicted_budget_limit_count == 2,
+            and not matched_diagnostic.budget_pressure,
             expected=True,
-            observed=matched_diagnostic.selected_lexical_match_count == 2,
+            observed=matched_diagnostic.relevance_admitted_count == 2,
         ),
         EvaluationCheck(
-            check_id="zero_match_selection_reports_deterministic_fallback",
+            check_id="zero_match_selection_is_culled_without_fallback",
             boundary="diagnostics",
-            passed=fallback_diagnostic.mode == "lexical_ranked"
-            and fallback_diagnostic.selected_lexical_match_count == 0
-            and fallback_diagnostic.selected_fallback_count == 2
-            and fallback_diagnostic.evicted_budget_limit_count == 2,
-            expected=2,
-            observed=fallback_diagnostic.selected_fallback_count,
+            passed=zero_match_diagnostic.mode == "relevance_filtered"
+            and zero_match_diagnostic.eligible_count == 4
+            and zero_match_diagnostic.relevance_admitted_count == 0
+            and zero_match_diagnostic.relevance_culled_count == 4
+            and zero_match_diagnostic.selected_count == 0
+            and zero_match_diagnostic.budget_evicted_count == 0
+            and zero_match_diagnostic.selected_fallback_count == 0
+            and not zero_match_diagnostic.budget_pressure,
+            expected=0,
+            observed=zero_match_diagnostic.selected_count,
         ),
         EvaluationCheck(
             check_id="diagnostics_match_selected_state_cardinality",
             boundary="context_compiler",
             passed=matched_diagnostic.selected_count == len(matched.cognitive_input.state)
-            and fallback_diagnostic.selected_count == len(fallback.cognitive_input.state),
+            and zero_match_diagnostic.selected_count
+            == len(zero_match.cognitive_input.state),
             expected=True,
             observed=matched_diagnostic.selected_count == len(matched.cognitive_input.state),
         ),
@@ -254,10 +261,10 @@ async def evaluate_state_selection_diagnostics() -> EvaluationScenarioResult:
         scenario_id="state_selection_diagnostics",
         checks=checks,
         metrics={
-            "eligible_state_count": fallback_diagnostic.eligible_count,
-            "selected_state_count": fallback_diagnostic.selected_count,
-            "evicted_state_count": fallback_diagnostic.evicted_count,
-            "selected_fallback_count": fallback_diagnostic.selected_fallback_count,
+            "eligible_state_count": zero_match_diagnostic.eligible_count,
+            "selected_state_count": zero_match_diagnostic.selected_count,
+            "evicted_state_count": zero_match_diagnostic.evicted_count,
+            "selected_fallback_count": zero_match_diagnostic.selected_fallback_count,
         },
     )
 
