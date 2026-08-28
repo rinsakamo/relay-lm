@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import json
+from io import StringIO
 from pathlib import Path
 
 import pytest
 import yaml
 
+from relaylm.cli import run_cli
 from relaylm.storage.cognitive_package import CognitivePackageDirectory
 from relaylm.storage.filesystem import CharacterDirectory
 
@@ -21,6 +24,28 @@ def _materialize(name: str, destination: Path) -> Path:
     from relaylm.starters import materialize_starter_package
 
     return materialize_starter_package(name, destination)
+
+
+def _runtime_config(path: Path, root: Path) -> Path:
+    path.write_text(
+        "\n".join(
+            [
+                "format_version: 1",
+                "character:",
+                f"  directory: {root}",
+                "provider:",
+                "  adapter: openai_compatible",
+                "  base_url: http://127.0.0.1:1234/v1",
+                "  model: starter-test-model",
+                "server:",
+                "  host: 127.0.0.1",
+                "  port: 8090",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return path
 
 
 def test_first_party_starter_catalog_has_required_roles() -> None:
@@ -62,6 +87,52 @@ def test_machine_starters_use_general_package_identity_without_character_metadat
 
         assert config["package"]["id"] == name
         assert "character" not in config
+
+
+@pytest.mark.parametrize("name", tuple(_EXPECTED_STARTERS))
+def test_each_starter_passes_production_doctor(name: str, tmp_path: Path) -> None:
+    root = _materialize(name, tmp_path / name)
+    config = _runtime_config(tmp_path / f"{name}.yaml", root)
+    stdout = StringIO()
+    stderr = StringIO()
+
+    code = run_cli(
+        ["doctor", "--config", str(config), "--json"],
+        environ={},
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert code == 0, stderr.getvalue()
+    assert json.loads(stdout.getvalue())["status"] == "ok"
+    assert stderr.getvalue() == ""
+
+
+@pytest.mark.parametrize("name", ("relm", "fact-summarizer"))
+def test_character_and_machine_starters_reach_serve_startup(
+    name: str, tmp_path: Path
+) -> None:
+    root = _materialize(name, tmp_path / name)
+    config = _runtime_config(tmp_path / f"{name}.yaml", root)
+    stdout = StringIO()
+    stderr = StringIO()
+    calls: list[tuple[object, str, int]] = []
+
+    def serve_runner(app: object, *, host: str, port: int) -> None:
+        calls.append((app, host, port))
+
+    code = run_cli(
+        ["serve", "--config", str(config)],
+        environ={},
+        stdout=stdout,
+        stderr=stderr,
+        serve_runner=serve_runner,
+    )
+
+    assert code == 0, stderr.getvalue()
+    assert len(calls) == 1
+    assert calls[0][1:] == ("127.0.0.1", 8090)
+    assert stderr.getvalue() == ""
 
 
 def test_starters_exclude_runtime_provider_and_secret_configuration(tmp_path: Path) -> None:

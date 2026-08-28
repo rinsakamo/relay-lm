@@ -12,7 +12,9 @@ implementation:
 - src/relaylm/starters/characters/blank/SOUL.md
 - src/relaylm/starters/characters/relm/config.yaml
 - src/relaylm/starters/characters/relm/SOUL.md
+- src/relaylm/starters/machines/fact-summarizer/config.yaml
 - src/relaylm/starters/machines/fact-summarizer/SOUL.md
+- src/relaylm/starters/machines/medical-soap/config.yaml
 - src/relaylm/starters/machines/medical-soap/SOUL.md
 tests:
 - tests/unit/test_starter_packages.py
