@@ -16,7 +16,7 @@ from relaylm.memory_provenance import (
     MemoryTemporalScope,
     MemoryUnit,
 )
-from relaylm.storage.filesystem import CharacterDirectory
+from relaylm.storage.filesystem import CharacterDirectory, StateRevisionConflictError
 
 
 def _make_character(root: Path) -> CharacterDirectory:
@@ -430,3 +430,78 @@ def test_crystallization_rejects_candidate_for_slot_changed_while_in_flight(
     assert result.decisions[0].reason == "stale_state_slot"
     assert result.state == newer_state
     assert character.load_state() == newer_state
+
+
+def test_crystallization_does_not_persist_memory_after_state_moves(
+    tmp_path: Path,
+) -> None:
+    _make_character(tmp_path)
+    newer_event = Event.create(
+        type="message",
+        actor="user",
+        payload={"content": "福岡に住んでいる"},
+        event_id="residence-new",
+        timestamp="2026-08-17T00:00:01+00:00",
+    )
+    newer_state = CanonicalState(
+        states=(
+            StateRecord(
+                state_id="residence-state",
+                state_class="user.fact",
+                key="residence_location",
+                value="Fukuoka",
+                sources=(newer_event.id,),
+            ),
+        )
+    )
+
+    class StateMovingCharacterDirectory(CharacterDirectory):
+        def __init__(self, root: Path) -> None:
+            super().__init__(root)
+            self.moved = False
+
+        def save_memory_markdown(
+            self,
+            content: str,
+            *,
+            expected_state_revision: str | None = None,
+        ) -> bool:
+            if expected_state_revision is not None and not self.moved:
+                self.moved = True
+                self.append_event(newer_event)
+                self.save_state(newer_state)
+            return super().save_memory_markdown(
+                content,
+                expected_state_revision=expected_state_revision,
+            )
+
+    class MemoryOnlyCrystallizer:
+        async def generate(
+            self,
+            crystallization_input: CrystallizationInput,
+        ) -> CrystallizationOutput:
+            return CrystallizationOutput(
+                memory_units=(
+                    MemoryUnit(
+                        heading="Stable synthesis",
+                        content="This must not persist against stale State.",
+                        temporal_scope=MemoryTemporalScope.UNKNOWN,
+                    ),
+                ),
+            )
+
+    character = StateMovingCharacterDirectory(tmp_path)
+    try:
+        asyncio.run(
+            run_crystallization(
+                character=character,
+                crystallizer=MemoryOnlyCrystallizer(),
+            )
+        )
+    except StateRevisionConflictError:
+        pass
+    else:
+        raise AssertionError("stale MEMORY persistence must fail closed")
+
+    assert character.load_state() == newer_state
+    assert character.load_memory_markdown() is None
