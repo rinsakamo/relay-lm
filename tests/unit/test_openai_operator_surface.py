@@ -6,7 +6,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
+from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.server import create_app
+from relaylm.storage.cognitive_package import CognitivePackageDirectory
 from relaylm.storage.filesystem import CharacterDirectory
 
 
@@ -33,6 +35,19 @@ def _make_character(root: Path) -> CharacterDirectory:
     return CharacterDirectory(root)
 
 
+def _profiles(character: CharacterDirectory, provider: object) -> CognitiveProfileRegistry:
+    return CognitiveProfileRegistry(
+        (
+            CognitiveProfileRuntime(
+                name="relaylm",
+                package=CognitivePackageDirectory(character.root),
+                provider=provider,
+                physical_model="operator-test-model",
+            ),
+        )
+    )
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     (("temperature", 0.2), ("max_tokens", 12)),
@@ -43,7 +58,7 @@ def test_chat_completions_rejects_unsupported_top_level_controls(
     value: object,
 ) -> None:
     provider = RecordingProvider()
-    app = create_app(character=_make_character(tmp_path), provider=provider)
+    app = create_app(profiles=_profiles(_make_character(tmp_path), provider))
 
     with TestClient(app) as client:
         response = client.post(
