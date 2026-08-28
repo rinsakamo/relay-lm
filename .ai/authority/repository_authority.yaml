@@ -2,8 +2,9 @@ schema_version: 1
 id: repository_authority
 summary: >-
   Owner-local repository authority declarations, production implementation
-  ownership coverage, derived realization dependency auditing, the root agent
-  bootstrap, agent bootstrap read order, repository and upstream freshness
+  ownership coverage, derived realization dependency auditing, owner-local
+  qualification input selection and derived semantic fingerprinting, the root
+  agent bootstrap, agent bootstrap read order, repository and upstream freshness
   contracts, ephemeral projection recipes, and persistent human documentation
   projection.
 owner_issue: 1525
@@ -27,6 +28,7 @@ implementation:
 tests:
 - tests/unit/test_repository_authority_contract.py
 - tests/unit/test_repository_authority.py
+- tests/unit/test_repository_qualification_fingerprint.py
 - tests/unit/test_repository_code_ownership_contract.py
 - tests/unit/test_repository_code_ownership.py
 - tests/unit/test_repository_realization_dependencies_contract.py
