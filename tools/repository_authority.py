@@ -20,6 +20,8 @@ these declarations rather than declared a second time.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import re
 import sys
 from dataclasses import dataclass, field
@@ -60,6 +62,7 @@ _DECLARATION_FIELDS = (
     "summary",
     "owner_issue",
     *_SURFACE_FIELDS,
+    "qualification_inputs",
     "depends_on",
     "evidence",
     "evidence_refs",
@@ -97,6 +100,7 @@ class Declaration:
     implementation: tuple[str, ...] = ()
     tests: tuple[str, ...] = ()
     annotations: tuple[str, ...] = ()
+    qualification_inputs: tuple[str, ...] = ()
     depends_on: tuple[str, ...] = ()
     evidence: tuple[EvidenceRecord, ...] = ()
     evidence_refs: tuple[str, ...] = ()
@@ -196,6 +200,101 @@ def consumers_of(declarations: Sequence[Declaration]) -> dict[str, tuple[str, ..
     return {owner: tuple(sorted(consumers)) for owner, consumers in sorted(derived.items())}
 
 
+QUALIFICATION_MANIFEST_FORMAT_VERSION = 1
+
+
+def qualification_owner_closure(
+    declarations: Sequence[Declaration],
+    *,
+    roots: Sequence[str],
+) -> tuple[str, ...]:
+    """Return the deterministic transitive owner closure for qualification roots."""
+
+    owners_by_id = {declaration.id: declaration for declaration in declarations}
+    normalized_roots = tuple(sorted(set(roots)))
+    if not normalized_roots:
+        raise AuthorityError("qualification roots must not be empty")
+    for root in normalized_roots:
+        if root not in owners_by_id:
+            raise AuthorityError(f"unknown qualification root '{root}'")
+
+    closure: set[str] = set()
+
+    def walk(owner: str) -> None:
+        if owner in closure:
+            return
+        closure.add(owner)
+        for dependency in owners_by_id[owner].depends_on:
+            walk(dependency)
+
+    for root in normalized_roots:
+        walk(root)
+    return tuple(sorted(closure))
+
+
+def qualification_manifest(
+    root: Path,
+    declarations: Sequence[Declaration],
+    *,
+    roots: Sequence[str],
+) -> dict[str, object]:
+    """Derive the owner-local qualification manifest for ``roots``."""
+
+    del root  # paths were validated while declarations were loaded
+    owners_by_id = {declaration.id: declaration for declaration in declarations}
+    normalized_roots = tuple(sorted(set(roots)))
+    closure = qualification_owner_closure(declarations, roots=normalized_roots)
+    return {
+        "format_version": QUALIFICATION_MANIFEST_FORMAT_VERSION,
+        "roots": list(normalized_roots),
+        "owners": [
+            {
+                "id": owner,
+                "qualification_inputs": list(owners_by_id[owner].qualification_inputs),
+            }
+            for owner in closure
+        ],
+    }
+
+
+def qualification_fingerprint(
+    root: Path,
+    declarations: Sequence[Declaration],
+    *,
+    roots: Sequence[str],
+) -> str:
+    """Hash manifest identity and exact selected file bytes for ``roots``."""
+
+    manifest = qualification_manifest(root, declarations, roots=roots)
+    manifest_bytes = json.dumps(
+        manifest,
+        ensure_ascii=False,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    digest = hashlib.sha256()
+    digest.update(b"relaylm-qualification-fingerprint-v1\0")
+    digest.update(len(manifest_bytes).to_bytes(8, "big"))
+    digest.update(manifest_bytes)
+
+    selected_paths = sorted(
+        {
+            path
+            for owner in manifest["owners"]
+            for path in owner["qualification_inputs"]  # type: ignore[index]
+        }
+    )
+    for relative in selected_paths:
+        path_bytes = str(relative).encode("utf-8")
+        content = (root / str(relative)).read_bytes()
+        digest.update(len(path_bytes).to_bytes(8, "big"))
+        digest.update(path_bytes)
+        digest.update(len(content).to_bytes(8, "big"))
+        digest.update(content)
+    return f"sha256:{digest.hexdigest()}"
+
+
 def _parse(root: Path, path: Path) -> _Parsed:
     relative = path.relative_to(root).as_posix()
     stem = path.stem
@@ -217,7 +316,6 @@ def _validate_document(root: Path, item: _Parsed) -> None:
     assert document is not None
     prefix = item.path
     errors = item.errors
-
     for key in document:
         if key not in _DECLARATION_FIELDS:
             errors.append(f"{prefix}: unknown field '{key}'")
@@ -261,6 +359,13 @@ def _validate_document(root: Path, item: _Parsed) -> None:
         depends_on = tuple(value for value in depends_on if value != identifier)
 
     evidence = _read_evidence(root, prefix, document.get("evidence"), errors)
+    qualification_inputs = _read_paths(
+        root,
+        prefix,
+        "qualification_inputs",
+        document.get("qualification_inputs"),
+        errors,
+    )
     evidence_refs = _read_identifiers(
         prefix, "evidence_refs", document.get("evidence_refs"), errors, pattern=_EVIDENCE_ID_RE
     )
@@ -270,6 +375,25 @@ def _validate_document(root: Path, item: _Parsed) -> None:
             errors.append(
                 f"{prefix}: evidence_refs '{reference}' is already produced by this owner"
             )
+
+    if identifier is not None:
+        owned_surfaces = {
+            *surfaces["canonical_surfaces"],
+            *surfaces["implementation"],
+            *surfaces["tests"],
+            *surfaces["annotations"],
+            *(surface for record in evidence for surface in record.surfaces),
+        }
+        for qualification_input in qualification_inputs:
+            if qualification_input not in owned_surfaces:
+                errors.append(
+                    f"{prefix}: qualification input '{qualification_input}' must already"
+                    f" be declared by {identifier}"
+                )
+            elif not (root / qualification_input).is_file():
+                errors.append(
+                    f"{prefix}: qualification input '{qualification_input}' must be a file"
+                )
 
     if identifier is None:
         return
@@ -284,6 +408,7 @@ def _validate_document(root: Path, item: _Parsed) -> None:
         implementation=surfaces["implementation"],
         tests=surfaces["tests"],
         annotations=surfaces["annotations"],
+        qualification_inputs=qualification_inputs,
         depends_on=depends_on,
         evidence=evidence,
         evidence_refs=evidence_refs,
