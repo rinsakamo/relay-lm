@@ -15,6 +15,9 @@ implementation:
 - src/relaylm/cli.py
 - src/relaylm/api/openai.py
 - src/relaylm/server.py
+qualification_inputs:
+- src/relaylm/cognitive_profile.py
+- src/relaylm/api/openai.py
 tests:
 - tests/unit/test_runtime_config_contract.py
 - tests/unit/test_runtime_config_loader.py

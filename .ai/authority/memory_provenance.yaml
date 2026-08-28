@@ -6,6 +6,9 @@ references:
 implementation:
 - src/relaylm/memory_provenance.py
 - src/relaylm/memory_retrieval.py
+qualification_inputs:
+- src/relaylm/memory_provenance.py
+- src/relaylm/memory_retrieval.py
 tests:
 - tests/unit/test_memory_provenance.py
 - tests/unit/test_memory_provenance_carriage.py

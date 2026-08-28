@@ -6,3 +6,7 @@ canonical_surfaces:
 - docs/architecture/identity.md
 implementation:
 - src/relaylm/identity.py
+qualification_inputs:
+- docs/architecture/core.md
+- docs/architecture/identity.md
+- src/relaylm/identity.py

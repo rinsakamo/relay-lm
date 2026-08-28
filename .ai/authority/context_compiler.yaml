@@ -17,6 +17,18 @@ implementation:
 - src/relaylm/event_retrieval.py
 - src/relaylm/retrieval_lexical.py
 - src/relaylm/storage/filesystem.py
+qualification_inputs:
+- docs/architecture/context-compiler.md
+- docs/reference/context-compiler-semantic-boundary.md
+- docs/reference/event-retrieval-discovery.md
+- docs/reference/retrieval-lexical-relevance.md
+- docs/reference/retrieval-lexical-semantics.md
+- src/relaylm/context.py
+- src/relaylm/memory_shadow.py
+- src/relaylm/memory_retrieval.py
+- src/relaylm/event_retrieval.py
+- src/relaylm/retrieval_lexical.py
+- src/relaylm/storage/filesystem.py
 tests:
 - tests/unit/test_context_state_selection.py
 - tests/unit/test_context_state_diagnostics.py
