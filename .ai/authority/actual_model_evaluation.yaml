@@ -20,6 +20,7 @@ canonical_surfaces:
 - docs/reference/actual-model-stage-r-coverage.md
 - docs/reference/actual-model-stage-r-current.md
 - evaluation/actual_model/screenings/stage-r0-vllm-current-v1.json
+- evaluation/actual_model/qualifications/core-semantic-v1.json
 implementation:
 - src/relaylm/actual_model_evaluation.py
 - src/relaylm/actual_model_artifacts.py
@@ -113,6 +114,7 @@ tests:
 - tests/unit/test_actual_model_crystallization_host_runner.py
 - tests/unit/test_actual_model_crystallization_host_runner_reference.py
 - tests/unit/test_actual_model_crystallization_quality_fixture.py
+- tests/unit/test_actual_model_semantic_freeze.py
 evidence:
 - id: actual-model-foundation-scenarios-v1
   summary: >-
