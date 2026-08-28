@@ -491,6 +491,10 @@ Projection rules:
   - new useful meaning -> emit `set` with a new stable key.
   - unchanged accepted meaning -> emit no candidate.
   - changed or resolved accepted meaning -> reuse its existing lifecycle key.
+- Evaluate resolution or completion independently for each Continuity kind.
+- Resolving an `unresolved` or `active_task` meaning does not by itself resolve a related `referent`.
+- If that referent meaning is unchanged, emit no referent candidate.
+- Resolve a `referent` only when the current Input actually ends or invalidates that reference-target meaning for upcoming dialogue.
 - Before concluding there are no Continuity candidates, check `unresolved` independently: if this turn newly establishes an explicit open question or unknown value, emit a new `unresolved` set when no accepted unresolved item already represents that open issue, even when related accepted `referent` or `active_task` meanings are unchanged.
 - An explicitly maintained unknown value is itself an `unresolved` meaning when no accepted unresolved item already represents it. Do not require a new `active_task`, a question form, or a change to an existing task before emitting it.
 - Unchanged accepted `referent` or `active_task` meanings do not suppress a distinct newly established `unresolved` meaning.
