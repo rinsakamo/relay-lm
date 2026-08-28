@@ -199,7 +199,13 @@ Candidate write-back follows the existing deterministic Validator/State engine:
 - equal accepted values remain noops;
 - accepted changes persist through the normal Canonical State writer.
 
-The OpenAI-compatible adapter adds an earlier source-grounding check: a crystallization StateCandidate may cite only Event IDs that were actually supplied in that bounded crystallization input. The existing Validator remains the final authority gate and may still reject a source-grounded candidate for provenance, class, key, value, scope, or transition reasons.
+The State supplied to `Crystallizer.generate(...)` is a generation snapshot, not a write lease. After the asynchronous model call completes, RelayLM reloads current Canonical State before validating any candidate. A candidate may be deterministically rebased onto that fresh State only when the active record for its exact `state_class + key` is unchanged from the generation snapshot. If that exact slot changed while crystallization was in flight, the candidate is rejected with reason `stale_state_slot`; a newer accepted value or provenance record is never replaced by the older proposal merely because the proposal arrived later.
+
+Non-conflicting candidates are then validated in output order against the fresh State through the existing Validator. This preserves independent newer State updates while still allowing a supported crystallization proposal for an untouched slot to converge without a second model generation.
+
+If rebased validation changes State, persistence uses the fresh State content revision as `expected_revision`. A revision mismatch before replacement raises `StateRevisionConflictError` and aborts stale write-back. RelayLM does not retry semantic generation to obtain a commit. State persistence occurs before MEMORY persistence when State changes, and the subsequent MEMORY write is itself conditioned on the State revision used for rendering. If State moves again first, stale MEMORY is not persisted.
+
+The OpenAI-compatible adapter adds an earlier source-grounding check: a crystallization StateCandidate may cite only Event IDs that were actually supplied in that bounded crystallization input. The existing Validator remains the final authority gate and may still reject a source-grounded candidate for provenance, class, key, value, scope, transition, or stale-slot reasons.
 
 Crystallization does not reinterpret Validator rejection as success and does not promote Markdown prose into State automatically.
 
@@ -207,7 +213,9 @@ Crystallization does not reinterpret Validator rejection as success and does not
 
 `memory/MEMORY.md` is optional. Missing readable memory is represented as no prior crystallized memory.
 
-Writes use temporary-file replacement at the filesystem boundary. If the generated Markdown is byte-for-byte unchanged from the existing file, RelayLM does not rewrite it and reports `memory_changed = false`.
+The renderer uses the fresh/rebased State result described above rather than the pre-generation State snapshot. Writes use temporary-file replacement at the filesystem boundary and are guarded by that State revision. If State changed after rendering, the Markdown write fails closed instead of installing synthesis against stale State authority.
+
+If the generated Markdown is byte-for-byte unchanged from the existing file, RelayLM does not rewrite it and reports `memory_changed = false`.
 
 This stability rule avoids needless Markdown churn on unchanged crystallization output. It does not claim semantic equivalence detection between differently worded prose.
 

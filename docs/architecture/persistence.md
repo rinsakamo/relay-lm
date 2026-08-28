@@ -50,6 +50,9 @@ The current filesystem implementation intentionally keeps a small, strict contra
 - durable State values use stable JSON shapes: string, number, boolean, null, array/list, or recursively string-keyed object; Python-only shapes that JSON serialization would silently coerce, such as tuples or mappings with non-string keys, are rejected before they can become persistable accepted State;
 - `state.json` load and save use strict JSON numeric semantics: non-finite numbers such as `NaN` and positive or negative infinity are rejected rather than rehydrated or emitted;
 - `state.json` writes use a temporary file followed by atomic filesystem replacement, and a failed write attempts to remove the temporary file;
+- State may be loaded together with an opaque content revision derived from the exact persisted authority bytes; a missing State file has its own stable absent revision rather than masquerading as persisted bytes;
+- RelayLM State writers for the same root share a process-local write lock, and `save_state(..., expected_revision=...)` compares that revision under the lock before replacement; a mismatch raises `StateRevisionConflictError` before the stale writer mutates `state.json`;
+- `MEMORY.md` persistence may be conditioned on the State revision used to render it; if current State changed first, the guarded Markdown write fails closed rather than persisting synthesis against a stale State snapshot;
 - State persistence preserves accepted stable JSON State values and provenance source IDs without shape/type coercion across save/load;
 - a missing `MEMORY.md` means no prior crystallized readable memory and does not block ordinary character operation;
 - `MEMORY.md` writes also use temporary-file replacement;
@@ -58,6 +61,8 @@ The current filesystem implementation intentionally keeps a small, strict contra
 File absence and malformed existing content are deliberately different: an unmaterialized optional persistence file may have a defined empty/absent meaning, while an existing versioned file is never repaired through compatibility defaults.
 
 The process-local Event snapshot only removes repeated disk parsing of an unchanged journal within one live `CharacterDirectory`. It is not a persistent search index and does not make targeted retrieval asymptotically independent of Event count. Persistent/segmented indexing, if later justified, must remain derived from the Event Journal rather than becoming a second Event authority.
+
+The State revision guard is intentionally scoped to RelayLM writers in the current process. It prevents stale in-process write-back without adding a generation field to the portable State schema. It is not a claim of cross-process compare-and-swap or a crash-consistent multi-file transaction.
 
 These are current implementation guarantees, not a claim that the underlying filesystem is the permanent storage architecture. Crash-consistent multi-file transactions, multi-process writers, backup/restore, schema migration, package integrity tooling, and broader lifecycle operations remain deferred.
 

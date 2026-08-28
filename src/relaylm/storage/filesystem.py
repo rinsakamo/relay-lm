@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from hashlib import sha256
 import json
 import os
 from pathlib import Path
+from threading import Lock
 from typing import Any, Iterator
 
 import yaml
@@ -16,6 +18,14 @@ from relaylm.state import CanonicalState, StateRecord
 
 class CharacterDataError(ValueError):
     """Raised when a Character Package contains invalid persisted data."""
+
+
+class StateRevisionConflictError(CharacterDataError):
+    """Raised when conditional persistence observes a changed State authority."""
+
+
+_STATE_WRITE_LOCKS_GUARD = Lock()
+_STATE_WRITE_LOCKS: dict[str, Any] = {}
 
 
 class CharacterDirectory:
@@ -225,7 +235,19 @@ class CharacterDirectory:
         except OSError as exc:
             raise CharacterDataError(f"cannot read MEMORY.md: {exc}") from exc
 
-    def save_memory_markdown(self, content: str) -> bool:
+    def save_memory_markdown(
+        self,
+        content: str,
+        *,
+        expected_state_revision: str | None = None,
+    ) -> bool:
+        if expected_state_revision is None:
+            return self._save_memory_markdown(content)
+        with _state_write_lock(self.state_path):
+            self._require_state_revision(expected_state_revision)
+            return self._save_memory_markdown(content)
+
+    def _save_memory_markdown(self, content: str) -> bool:
         if not content.strip():
             raise CharacterDataError("MEMORY.md must not be empty")
         current = self.load_memory_markdown()
@@ -246,15 +268,34 @@ class CharacterDirectory:
         return True
 
     def load_state(self) -> CanonicalState:
+        state, _ = self.load_state_with_revision()
+        return state
+
+    def load_state_with_revision(self) -> tuple[CanonicalState, str]:
+        """Load State with an opaque content revision for conditional persistence."""
+
+        with _state_write_lock(self.state_path):
+            content = self._read_state_text()
+            if content is None:
+                return CanonicalState(), _state_revision(None)
+            return self._parse_state_text(content), _state_revision(content)
+
+    def _read_state_text(self) -> str | None:
+        try:
+            return self.state_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return None
+        except OSError as exc:
+            raise CharacterDataError(f"cannot read state.json: {exc}") from exc
+
+    def _parse_state_text(self, content: str) -> CanonicalState:
         try:
             raw = json.loads(
-                self.state_path.read_text(encoding="utf-8"),
+                content,
                 object_pairs_hook=_reject_duplicate_json_object_members,
                 parse_constant=_reject_non_finite_json_number,
             )
-        except FileNotFoundError:
-            return CanonicalState()
-        except (OSError, ValueError) as exc:
+        except ValueError as exc:
             raise CharacterDataError(f"cannot read state.json: {exc}") from exc
 
         if not isinstance(raw, dict):
@@ -275,25 +316,38 @@ class CharacterDirectory:
                 raise
             raise CharacterDataError(f"state.json: {exc}") from exc
 
-    def save_state(self, state: CanonicalState) -> None:
+    def _require_state_revision(self, expected_revision: str) -> None:
+        current_revision = _state_revision(self._read_state_text())
+        if current_revision != expected_revision:
+            raise StateRevisionConflictError("state revision changed before persistence")
+
+    def save_state(
+        self,
+        state: CanonicalState,
+        *,
+        expected_revision: str | None = None,
+    ) -> None:
         self.memory_path.mkdir(parents=True, exist_ok=True)
         payload = {
             "format_version": state.format_version,
             "states": [_state_record_to_mapping(record) for record in state.states],
         }
         temporary = self.state_path.with_name(f".{self.state_path.name}.tmp")
-        try:
-            temporary.write_text(
-                json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
-                encoding="utf-8",
-            )
-            os.replace(temporary, self.state_path)
-        except (OSError, TypeError, ValueError) as exc:
+        with _state_write_lock(self.state_path):
+            if expected_revision is not None:
+                self._require_state_revision(expected_revision)
             try:
-                temporary.unlink(missing_ok=True)
-            except OSError:
-                pass
-            raise CharacterDataError(f"cannot write state.json: {exc}") from exc
+                temporary.write_text(
+                    json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
+                    encoding="utf-8",
+                )
+                os.replace(temporary, self.state_path)
+            except (OSError, TypeError, ValueError) as exc:
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                raise CharacterDataError(f"cannot write state.json: {exc}") from exc
 
     @staticmethod
     def _load_yaml_mapping(path: Path) -> dict[str, Any]:
@@ -304,6 +358,23 @@ class CharacterDirectory:
         if not isinstance(raw, dict):
             raise CharacterDataError("config.yaml must contain a mapping")
         return raw
+
+
+def _state_write_lock(path: Path):
+    key = os.path.abspath(os.fspath(path))
+    with _STATE_WRITE_LOCKS_GUARD:
+        lock = _STATE_WRITE_LOCKS.get(key)
+        if lock is None:
+            lock = Lock()
+            _STATE_WRITE_LOCKS[key] = lock
+        return lock
+
+
+def _state_revision(content: str | None) -> str:
+    if content is None:
+        return "absent"
+    digest = sha256(content.encode("utf-8")).hexdigest()
+    return f"sha256:{digest}"
 
 
 def _reject_non_finite_json_number(value: str) -> None:
