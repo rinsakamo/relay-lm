@@ -23,7 +23,7 @@ from relaylm.runtime_config import (
     RuntimeConfigErrorCode,
 )
 from relaylm.runtime_config_loader import ResolvedRuntimeConfig
-from relaylm.storage.filesystem import CharacterDirectory
+from relaylm.storage.cognitive_package import CognitivePackageDirectory
 from relaylm.turn import (
     ContinuityRuntime,
     EventRetrievalBudget,
@@ -78,7 +78,7 @@ class TokenCounterCapability:
 class RuntimeAssembly:
     """Owner-preserving objects needed by the ordinary RelayLM API path."""
 
-    character: CharacterDirectory
+    character: CognitivePackageDirectory
     provider: OpenAICompatibleProvider = field(repr=False)
     cognition_mode: CognitionExecutionMode = CognitionExecutionMode.TWO_PASS
     cognition_execution_runtime: CognitionExecutionRuntime | None = field(
@@ -117,8 +117,8 @@ def assemble_runtime(
 ) -> RuntimeAssembly:
     """Construct current owner objects from one validated RCFG2 result.
 
-    This function performs no Character semantic reads, network calls, provider
-    generation, profile selection, or persistence mutation.
+    This function performs no Cognitive Package semantic reads, network calls,
+    provider generation, profile selection, or persistence mutation.
     """
 
     if not isinstance(resolved, ResolvedRuntimeConfig):
@@ -274,7 +274,7 @@ def assemble_runtime(
             message="configured provider could not be constructed",
         ) from exc
 
-    character = CharacterDirectory(config.character.directory)
+    character = CognitivePackageDirectory(config.character.directory)
     cognition_execution_runtime = (
         CognitionExecutionRuntime()
         if cognition.mode is CognitionExecutionMode.TWO_PASS
