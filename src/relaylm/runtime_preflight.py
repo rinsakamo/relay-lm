@@ -14,6 +14,7 @@ from relaylm.runtime_assembly import (
 )
 from relaylm.runtime_config import RuntimeConfigErrorCode
 from relaylm.runtime_config_loader import ResolvedRuntimeConfig
+from relaylm.storage.cognitive_package import CognitivePackageDirectory
 from relaylm.storage.filesystem import CharacterDataError, CharacterDirectory
 
 
@@ -64,7 +65,7 @@ def prepare_runtime(
 
     _validate_server_configuration(resolved)
     _validate_provider_configuration(resolved)
-    character = CharacterDirectory(resolved.config.character.directory)
+    character = CognitivePackageDirectory(resolved.config.character.directory)
     _validate_character_readability(character)
     _validate_persistence_writability(character)
     assembly = assemble_runtime(

@@ -13,6 +13,7 @@ from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
 from relaylm.cognitive import CognitiveProvider, CognitionExecutionMode
 from relaylm.cognition_execution import CognitionPassRequest
 from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPassProvider
+from relaylm.storage.cognitive_package import CognitivePackageDirectory
 from relaylm.storage.filesystem import CharacterDirectory
 from relaylm.turn import (
     ContinuityRuntime,
@@ -75,7 +76,7 @@ def create_app_from_env() -> FastAPI:
         api_key=os.getenv("RELAYLM_PROVIDER_API_KEY"),
     )
     return create_app(
-        character=CharacterDirectory(character_dir),
+        character=CognitivePackageDirectory(character_dir),
         provider=provider,
         cognition_mode=CognitionExecutionMode.TWO_PASS,
         cognition_execution_runtime=CognitionExecutionRuntime(),
