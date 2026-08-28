@@ -6,8 +6,9 @@ from pathlib import Path
 from relaylm import __version__
 from relaylm.cli import RELAYLM_VERSION
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
+from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.server import create_app
-from relaylm.storage.filesystem import CharacterDirectory
+from relaylm.storage.cognitive_package import CognitivePackageDirectory
 
 
 class _UnusedProvider:
@@ -21,9 +22,12 @@ def test_installed_distribution_and_runtime_share_version_authority() -> None:
 
 
 def test_fastapi_metadata_uses_package_version(tmp_path: Path) -> None:
-    app = create_app(
-        character=CharacterDirectory(tmp_path),
+    profile = CognitiveProfileRuntime(
+        name="relaylm",
+        package=CognitivePackageDirectory(tmp_path),
         provider=_UnusedProvider(),
+        physical_model="version-test-model",
     )
+    app = create_app(profiles=CognitiveProfileRegistry((profile,)))
 
     assert app.version == __version__
