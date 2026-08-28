@@ -38,7 +38,8 @@ from relaylm.runtime_config import (
     DEFAULT_SERVER_PORT,
     RUNTIME_CONFIG_FORMAT_VERSION,
     RUNTIME_CONFIG_PATH_ENV,
-    CharacterRuntimeConfig,
+    CognitiveProfileConfig,
+    CognitiveProfileProviderConfig,
     CognitionRuntimeSettings,
     ConfigSource,
     ContinuityRuntimeSettings,
@@ -84,9 +85,10 @@ class RuntimeConfigResolutionError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class RuntimeConfigOverrides:
-    """Named explicit CLI override inputs frozen by the RCFG1 contract."""
+    """Named explicit CLI override inputs for release runtime configuration."""
 
-    character_directory: str | None = None
+    profile_name: str | None = None
+    profile_root: str | None = None
     provider_adapter: str | None = None
     provider_backend: str | None = None
     provider_base_url: str | None = None
@@ -94,7 +96,7 @@ class RuntimeConfigOverrides:
     provider_api_key_env: str | None = field(default=None, repr=False)
     server_host: str | None = None
     server_port: int | None = None
-    profile: str | None = None
+    calibration_profile: str | None = None
     cognition_mode: str | None = None
 
 
@@ -209,12 +211,16 @@ def resolve_runtime_config(
     if selected_path is not None:
         _collect_file_provenance(raw, provenance)
         format_version = raw["format_version"]
-        _record(
-            provenance,
-            "format_version",
-            format_version,
-            ConfigSource.CONFIG_FILE,
-        )
+        _record(provenance, "format_version", format_version, ConfigSource.CONFIG_FILE)
+        profiles = _parse_profiles(raw["profiles"])
+        if _profile_override_requested(active_overrides, active_env):
+            raise RuntimeConfigResolutionError(
+                RuntimeConfigErrorCode.INVALID_COMBINATION,
+                field="profiles",
+                message=(
+                    "profile name/root overrides cannot replace a configured multi-profile registry"
+                ),
+            )
     else:
         format_version = RUNTIME_CONFIG_FORMAT_VERSION
         _record(
@@ -223,16 +229,28 @@ def resolve_runtime_config(
             format_version,
             ConfigSource.CANONICAL_DEFAULT,
         )
+        profile_name = _resolve_string_leaf(
+            "profiles[0].name",
+            cli_value=active_overrides.profile_name,
+            env_name="RELAYLM_PROFILE_NAME",
+            environ=active_env,
+            file_value=_MISSING,
+            provenance=provenance,
+            required=True,
+        )
+        profile_root = _resolve_string_leaf(
+            "profiles[0].root",
+            cli_value=active_overrides.profile_root,
+            env_name="RELAYLM_PROFILE_ROOT",
+            environ=active_env,
+            file_value=_MISSING,
+            provenance=provenance,
+            required=True,
+        )
+        profiles = (
+            CognitiveProfileConfig(name=profile_name, root=profile_root),
+        )
 
-    character_directory = _resolve_string_leaf(
-        "character.directory",
-        cli_value=active_overrides.character_directory,
-        env_name="RELAYLM_CHARACTER_DIR",
-        environ=active_env,
-        file_value=_file_value(raw, "character", "directory"),
-        provenance=provenance,
-        required=True,
-    )
     provider_adapter = _resolve_string_leaf(
         "provider.adapter",
         cli_value=active_overrides.provider_adapter,
@@ -292,18 +310,18 @@ def resolve_runtime_config(
     )
     _validate_port(server_port, "server.port")
 
-    profile = _resolve_optional_string_leaf(
-        "runtime.profile",
-        cli_value=active_overrides.profile,
-        env_name="RELAYLM_PROFILE",
+    calibration_profile = _resolve_optional_string_leaf(
+        "runtime.calibration_profile",
+        cli_value=active_overrides.calibration_profile,
+        env_name="RELAYLM_CALIBRATION_PROFILE",
         environ=active_env,
-        file_value=_file_value(raw, "runtime", "profile"),
+        file_value=_file_value(raw, "runtime", "calibration_profile"),
         provenance=provenance,
     )
-    if profile is not None:
+    if calibration_profile is not None:
         raise RuntimeConfigResolutionError(
             RuntimeConfigErrorCode.INVALID_COMBINATION,
-            field="runtime.profile",
+            field="runtime.calibration_profile",
             message=(
                 "calibrated runtime profiles are not current authority; "
                 "use explicit owner controls until #1388 publishes them"
@@ -328,12 +346,9 @@ def resolve_runtime_config(
     try:
         cognition_mode = CognitionExecutionMode(cognition_mode_text)
     except ValueError:
-        _invalid_value(
-            "runtime.cognition.mode",
-            "unsupported cognition execution mode",
-        )
+        _invalid_value("runtime.cognition.mode", "unsupported cognition execution mode")
     runtime_policy = RuntimePolicyConfig(
-        profile=None,
+        calibration_profile=None,
         cognition=CognitionRuntimeSettings(
             mode=cognition_mode,
             pass1=runtime_policy.cognition.pass1,
@@ -358,7 +373,7 @@ def resolve_runtime_config(
 
     config = RuntimeConfig(
         format_version=format_version,
-        character=CharacterRuntimeConfig(directory=character_directory),
+        profiles=profiles,
         provider=provider_config,
         server=ServerRuntimeConfig(host=server_host, port=server_port),
         runtime=runtime_policy,
@@ -370,6 +385,18 @@ def resolve_runtime_config(
         secret_effective=secret_effective,
         config_path=selected_path,
         config_path_source=selected_path_source,
+    )
+
+
+def _profile_override_requested(
+    overrides: RuntimeConfigOverrides,
+    environ: Mapping[str, str],
+) -> bool:
+    return (
+        overrides.profile_name is not None
+        or overrides.profile_root is not None
+        or "RELAYLM_PROFILE_NAME" in environ
+        or "RELAYLM_PROFILE_ROOT" in environ
     )
 
 
@@ -477,14 +504,11 @@ def _validate_file_shape(raw: dict[str, Any]) -> None:
     _reject_unknown(
         raw,
         "",
-        {"format_version", "character", "provider", "server", "runtime"},
+        {"format_version", "profiles", "provider", "server", "runtime"},
     )
-
-    if "character" in raw:
-        character = _mapping(raw["character"], "character")
-        _reject_unknown(character, "character", {"directory"})
-        if "directory" in character:
-            _string(character["directory"], "character.directory")
+    if "profiles" not in raw:
+        _missing("profiles")
+    _parse_profiles(raw["profiles"])
 
     if "provider" in raw:
         provider = _mapping(raw["provider"], "provider")
@@ -527,7 +551,7 @@ def _validate_file_shape(raw: dict[str, Any]) -> None:
             runtime,
             "runtime",
             {
-                "profile",
+                "calibration_profile",
                 "cognition",
                 "memory_retrieval",
                 "event_retrieval",
@@ -535,9 +559,51 @@ def _validate_file_shape(raw: dict[str, Any]) -> None:
                 "cognitive_budget",
             },
         )
-        if "profile" in runtime:
-            _string(runtime["profile"], "runtime.profile")
+        if "calibration_profile" in runtime:
+            _string(runtime["calibration_profile"], "runtime.calibration_profile")
         _parse_runtime_policy(runtime)
+
+
+def _parse_profiles(raw: object) -> tuple[CognitiveProfileConfig, ...]:
+    if not isinstance(raw, list):
+        _invalid_type("profiles", "must be a sequence")
+    if not raw:
+        _invalid_value("profiles", "must contain at least one Cognitive Profile")
+
+    result: list[CognitiveProfileConfig] = []
+    seen: set[str] = set()
+    for index, item in enumerate(raw):
+        path = f"profiles[{index}]"
+        mapping = _mapping(item, path)
+        _reject_unknown(mapping, path, {"name", "root", "provider"})
+        if "name" not in mapping:
+            _missing(f"{path}.name")
+        if "root" not in mapping:
+            _missing(f"{path}.root")
+        name = _string(mapping["name"], f"{path}.name")
+        root = _string(mapping["root"], f"{path}.root")
+        if name in seen:
+            _invalid_value(f"{path}.name", "duplicate Cognitive Profile name")
+        seen.add(name)
+
+        provider_override = CognitiveProfileProviderConfig()
+        if "provider" in mapping:
+            provider_path = f"{path}.provider"
+            provider = _mapping(mapping["provider"], provider_path)
+            _reject_unknown(provider, provider_path, {"model"})
+            model = None
+            if "model" in provider:
+                model = _string(provider["model"], f"{provider_path}.model")
+            provider_override = CognitiveProfileProviderConfig(model=model)
+
+        result.append(
+            CognitiveProfileConfig(
+                name=name,
+                root=root,
+                provider=provider_override,
+            )
+        )
+    return tuple(result)
 
 
 def _parse_runtime_policy(raw: object) -> RuntimePolicyConfig:
@@ -568,7 +634,7 @@ def _parse_runtime_policy(raw: object) -> RuntimePolicyConfig:
         else None
     )
     return RuntimePolicyConfig(
-        profile=None,
+        calibration_profile=None,
         cognition=cognition,
         memory_retrieval=memory,
         event_retrieval=event,
@@ -624,14 +690,12 @@ def _parse_cognition_pass(raw: object, path: str) -> CognitionPassRequest:
             )
     structured_output_mode = None
     if "structured_output_mode" in mapping:
-        raw_structured_output_mode = _string(
+        raw_mode = _string(
             mapping["structured_output_mode"],
             f"{path}.structured_output_mode",
         )
         try:
-            structured_output_mode = CognitionStructuredOutputMode(
-                raw_structured_output_mode
-            )
+            structured_output_mode = CognitionStructuredOutputMode(raw_mode)
         except ValueError:
             _invalid_value(
                 f"{path}.structured_output_mode",
@@ -801,9 +865,7 @@ def _parse_budget_policy(raw: object, path: str) -> BudgetDegradationPolicy:
         except ValueError:
             _invalid_value(f"{step_path}.layer", "unsupported budget layer")
         if layer is BudgetLayer.CANONICAL_STATE:
-            target = _parse_count_envelope(
-                step_raw["target"], f"{step_path}.target"
-            )
+            target = _parse_count_envelope(step_raw["target"], f"{step_path}.target")
         else:
             target = _parse_count_character_envelope(
                 step_raw["target"],

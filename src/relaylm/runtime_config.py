@@ -86,20 +86,35 @@ class RuntimeSecretInputs:
 
     def __post_init__(self) -> None:
         if self.provider_api_key is not None:
-            _require_non_empty_string(
-                "provider_api_key",
-                self.provider_api_key,
-            )
+            _require_non_empty_string("provider_api_key", self.provider_api_key)
 
 
 @dataclass(frozen=True, slots=True)
-class CharacterRuntimeConfig:
-    """Machine-side selection of one portable Character Package directory."""
+class CognitiveProfileProviderConfig:
+    """Profile-local physical provider overrides supported by Core 1.0."""
 
-    directory: str
+    model: str | None = None
 
     def __post_init__(self) -> None:
-        _require_non_empty_string("character.directory", self.directory)
+        if self.model is not None:
+            _require_non_empty_string("profiles[].provider.model", self.model)
+
+
+@dataclass(frozen=True, slots=True)
+class CognitiveProfileConfig:
+    """Public Cognitive Profile identity bound to one Cognitive Package root."""
+
+    name: str
+    root: str
+    provider: CognitiveProfileProviderConfig = field(
+        default_factory=CognitiveProfileProviderConfig
+    )
+
+    def __post_init__(self) -> None:
+        _require_non_empty_string("profiles[].name", self.name)
+        _require_non_empty_string("profiles[].root", self.root)
+        if not isinstance(self.provider, CognitiveProfileProviderConfig):
+            raise TypeError("profiles[].provider must be CognitiveProfileProviderConfig")
 
 
 @dataclass(frozen=True, slots=True)
@@ -120,9 +135,7 @@ class ProviderRuntimeConfig:
         _require_non_empty_string("provider.base_url", self.base_url)
         validate_provider_base_url_secret_boundary(self.base_url)
         _require_non_empty_string("provider.model", self.model)
-        if self.api_key is not None and not isinstance(
-            self.api_key, SecretEnvReference
-        ):
+        if self.api_key is not None and not isinstance(self.api_key, SecretEnvReference):
             raise TypeError("provider.api_key must be SecretEnvReference or None")
 
 
@@ -174,19 +187,12 @@ class ContinuityRuntimeSettings:
 
     def __post_init__(self) -> None:
         _require_positive_int("continuity.max_items", self.max_items)
-        _require_positive_int(
-            "continuity.lifetime_revisions", self.lifetime_revisions
-        )
+        _require_positive_int("continuity.lifetime_revisions", self.lifetime_revisions)
 
 
 @dataclass(frozen=True, slots=True)
 class TokenCounterCapabilityConfig:
-    """Declared assembly capability for #1387 serialized-input accounting.
-
-    RCFG1 freezes only the capability identity and carries the existing #1387
-    TokenCountMode unchanged. Availability and construction are assembly/preflight
-    concerns rather than configuration semantics.
-    """
+    """Declared assembly capability for #1387 serialized-input accounting."""
 
     capability: str
     mode: TokenCountMode
@@ -199,11 +205,7 @@ class TokenCounterCapabilityConfig:
 
 @dataclass(frozen=True, slots=True)
 class ExplicitCognitiveBudgetConfig:
-    """Authority-preserving carriage of existing #1387 owner types.
-
-    There are deliberately no numeric defaults here. Canonical calibrated values
-    remain owned by #1388 and are consumed only after that authority exists.
-    """
+    """Authority-preserving carriage of existing #1387 owner types."""
 
     total: TotalBudgetConfig
     policy: BudgetDegradationPolicy
@@ -215,19 +217,12 @@ class ExplicitCognitiveBudgetConfig:
         if not isinstance(self.policy, BudgetDegradationPolicy):
             raise TypeError("cognitive_budget.policy must be BudgetDegradationPolicy")
         if not isinstance(self.token_counter, TokenCounterCapabilityConfig):
-            raise TypeError(
-                "cognitive_budget.token_counter must be TokenCounterCapabilityConfig"
-            )
+            raise TypeError("cognitive_budget.token_counter must be TokenCounterCapabilityConfig")
 
 
 @dataclass(frozen=True, slots=True)
 class CognitionRuntimeSettings:
-    """Release carriage of #1533 topology and already-resolved per-pass intent.
-
-    `two_pass` is the Core 1.0 release/reference topology. The empty pass requests
-    deliberately carry no calibrated reasoning, decoding, or output defaults;
-    #1388 remains the owner of those values.
-    """
+    """Release carriage of #1533 topology and already-resolved per-pass intent."""
 
     mode: CognitionExecutionMode = CognitionExecutionMode.TWO_PASS
     pass1: CognitionPassRequest = field(default_factory=CognitionPassRequest)
@@ -244,14 +239,9 @@ class CognitionRuntimeSettings:
 
 @dataclass(frozen=True, slots=True)
 class RuntimePolicyConfig:
-    """Release configuration for existing runtime controls.
+    """Release configuration for existing runtime controls."""
 
-    Absence means no explicit numeric value at this layer. `cognition.mode` has
-    the #1533 Core 1.0 topology default, while pass controls remain omitted until
-    selected explicitly or supplied by later #1388 profile authority.
-    """
-
-    profile: str | None = None
+    calibration_profile: str | None = None
     cognition: CognitionRuntimeSettings = field(default_factory=CognitionRuntimeSettings)
     memory_retrieval: MemoryRetrievalRuntimeConfig | None = None
     event_retrieval: EventRetrievalRuntimeConfig | None = None
@@ -259,8 +249,10 @@ class RuntimePolicyConfig:
     cognitive_budget: ExplicitCognitiveBudgetConfig | None = None
 
     def __post_init__(self) -> None:
-        if self.profile is not None:
-            _require_non_empty_string("runtime.profile", self.profile)
+        if self.calibration_profile is not None:
+            _require_non_empty_string(
+                "runtime.calibration_profile", self.calibration_profile
+            )
         if not isinstance(self.cognition, CognitionRuntimeSettings):
             raise TypeError("runtime.cognition must be CognitionRuntimeSettings")
         _require_optional_type(
@@ -287,30 +279,28 @@ class RuntimePolicyConfig:
 
 @dataclass(frozen=True, slots=True)
 class RuntimeConfig:
-    """Version-1 non-secret resolved runtime configuration contract.
-
-    Loading, strict unknown-field rejection, precedence merging, environment
-    lookup, and process-local secret resolution are RCFG2 responsibilities. This
-    type is the non-secret contract they must emit for later assembly.
-    """
+    """Version-1 non-secret resolved runtime configuration contract."""
 
     format_version: int
-    character: CharacterRuntimeConfig
+    profiles: tuple[CognitiveProfileConfig, ...]
     provider: ProviderRuntimeConfig
     server: ServerRuntimeConfig = field(default_factory=ServerRuntimeConfig)
     runtime: RuntimePolicyConfig = field(default_factory=RuntimePolicyConfig)
 
     def __post_init__(self) -> None:
-        if isinstance(self.format_version, bool) or not isinstance(
-            self.format_version, int
-        ):
+        if isinstance(self.format_version, bool) or not isinstance(self.format_version, int):
             raise TypeError("runtime format_version must be integer 1")
         if self.format_version != RUNTIME_CONFIG_FORMAT_VERSION:
-            raise ValueError(
-                f"unsupported runtime format_version: {self.format_version}"
-            )
-        if not isinstance(self.character, CharacterRuntimeConfig):
-            raise TypeError("character must be CharacterRuntimeConfig")
+            raise ValueError(f"unsupported runtime format_version: {self.format_version}")
+        if not isinstance(self.profiles, tuple) or not self.profiles:
+            raise TypeError("profiles must be a non-empty tuple of CognitiveProfileConfig")
+        seen: set[str] = set()
+        for profile in self.profiles:
+            if not isinstance(profile, CognitiveProfileConfig):
+                raise TypeError("profiles must contain CognitiveProfileConfig")
+            if profile.name in seen:
+                raise ValueError(f"duplicate cognitive profile name: {profile.name}")
+            seen.add(profile.name)
         if not isinstance(self.provider, ProviderRuntimeConfig):
             raise TypeError("provider must be ProviderRuntimeConfig")
         if not isinstance(self.server, ServerRuntimeConfig):
@@ -347,9 +337,7 @@ class EffectiveConfigSecret:
         if self.material_source is not None and not isinstance(
             self.material_source, ConfigSource
         ):
-            raise TypeError(
-                "effective secret material_source must be ConfigSource or None"
-            )
+            raise TypeError("effective secret material_source must be ConfigSource or None")
 
 
 def _require_non_empty_string(name: str, value: str) -> None:
