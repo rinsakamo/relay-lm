@@ -250,7 +250,7 @@ def qualification_manifest(
         "owners": [
             {
                 "id": owner,
-                "qualification_inputs": list(owners_by_id[owner].qualification_inputs),
+                "qualification_inputs": sorted(owners_by_id[owner].qualification_inputs),
             }
             for owner in closure
         ],
