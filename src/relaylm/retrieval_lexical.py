@@ -11,7 +11,7 @@ _CJK_NGRAM_MAX = 3
 def lexical_terms(text: str) -> tuple[str, ...]:
     """Return deterministic lexical features while preserving whole-token semantics.
 
-    Existing normalized ``\w`` tokens remain exact features. Contiguous CJK runs
+    Existing normalized ``\\w`` tokens remain exact features. Contiguous CJK runs
     additionally contribute bounded 2- and 3-character n-grams so natural CJK
     phrasing differences can still share positive lexical evidence without turning
     Latin/ASCII tokens into substring matches.
