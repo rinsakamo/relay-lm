@@ -6,6 +6,8 @@ from pathlib import Path
 import pytest
 
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
+from relaylm.runtime_config_loader import resolve_runtime_config
+from relaylm.runtime_preflight import prepare_runtime
 from relaylm.state import CanonicalState, StateRecord
 from relaylm.storage.cognitive_package import (
     CognitivePackageDataError,
@@ -72,6 +74,29 @@ def test_machine_like_package_completes_normal_turn_without_character_metadata(
 
     assert result.response == "processed: fever for two days"
     assert [event.actor for event in package.iter_events()] == ["user", "assistant"]
+
+
+def test_release_preflight_and_assembly_accept_machine_like_package(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "machines" / "medical-soap"
+    _write_package(
+        root,
+        config="format_version: 1\npackage:\n  id: medical-soap\n",
+        soul="# Medical SOAP\n\nStructure clinical facts as SOAP notes.\n",
+    )
+    resolved = resolve_runtime_config(
+        environ={
+            "RELAYLM_CHARACTER_DIR": str(root),
+            "RELAYLM_PROVIDER_BASE_URL": "http://127.0.0.1:1234/v1",
+            "RELAYLM_PROVIDER_MODEL": "model-id",
+        }
+    )
+
+    prepared = prepare_runtime(resolved)
+
+    assert isinstance(prepared.assembly.character, CognitivePackageDirectory)
+    assert prepared.assembly.character.load_config().package_id == "medical-soap"
 
 
 def test_generic_package_config_rejects_ambiguous_identity_authority(
