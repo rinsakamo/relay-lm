@@ -7,7 +7,10 @@ import pytest
 
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
 from relaylm.state import CanonicalState, StateRecord
-from relaylm.storage import filesystem
+from relaylm.storage.cognitive_package import (
+    CognitivePackageDataError,
+    CognitivePackageDirectory,
+)
 from relaylm.turn import run_user_turn
 
 
@@ -44,7 +47,7 @@ def test_generic_loader_accepts_existing_character_package_specialization(
         ),
     )
 
-    package = filesystem.CognitivePackageDirectory(tmp_path)
+    package = CognitivePackageDirectory(tmp_path)
 
     assert package.load_config().package_id == "relm"
 
@@ -57,7 +60,7 @@ def test_machine_like_package_completes_normal_turn_without_character_metadata(
         config="format_version: 1\npackage:\n  id: medical-soap\n",
         soul="# Medical SOAP\n\nStructure clinical facts as SOAP notes.\n",
     )
-    package = filesystem.CognitivePackageDirectory(tmp_path)
+    package = CognitivePackageDirectory(tmp_path)
 
     result = asyncio.run(
         run_user_turn(
@@ -85,9 +88,9 @@ def test_generic_package_config_rejects_ambiguous_identity_authority(
             "  name: ReLM\n"
         ),
     )
-    package = filesystem.CognitivePackageDirectory(tmp_path)
+    package = CognitivePackageDirectory(tmp_path)
 
-    with pytest.raises(filesystem.CognitivePackageDataError, match="exactly one"):
+    with pytest.raises(CognitivePackageDataError, match="exactly one"):
         package.load_config()
 
 
@@ -103,10 +106,10 @@ def test_generic_package_config_preserves_duplicate_yaml_fail_closed(
             "  id: other\n"
         ),
     )
-    package = filesystem.CognitivePackageDirectory(tmp_path)
+    package = CognitivePackageDirectory(tmp_path)
 
     with pytest.raises(
-        filesystem.CognitivePackageDataError,
+        CognitivePackageDataError,
         match="duplicate YAML mapping key: id",
     ):
         package.load_config()
@@ -128,8 +131,8 @@ def test_cognitive_package_roots_keep_state_and_memory_isolated(tmp_path: Path) 
         right_root,
         config="format_version: 1\npackage:\n  id: medical-soap\n",
     )
-    left = filesystem.CognitivePackageDirectory(left_root)
-    right = filesystem.CognitivePackageDirectory(right_root)
+    left = CognitivePackageDirectory(left_root)
+    right = CognitivePackageDirectory(right_root)
 
     left.save_state(
         CanonicalState(
@@ -167,7 +170,7 @@ def test_cognitive_package_roots_keep_state_and_memory_isolated(tmp_path: Path) 
 
 
 def test_invalid_cognitive_package_root_fails_closed(tmp_path: Path) -> None:
-    package = filesystem.CognitivePackageDirectory(tmp_path / "missing")
+    package = CognitivePackageDirectory(tmp_path / "missing")
 
-    with pytest.raises(filesystem.CognitivePackageDataError):
+    with pytest.raises(CognitivePackageDataError):
         package.load_config()
