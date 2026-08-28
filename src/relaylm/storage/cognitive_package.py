@@ -40,17 +40,19 @@ class CognitivePackageDirectory(CharacterDirectory):
 
     def load_config(self) -> CognitivePackageConfig:
         raw = self._load_yaml_mapping(self.config_path)
-        package = raw.get("package")
-        character = raw.get("character")
-
-        if package is not None and not isinstance(package, dict):
-            raise CognitivePackageDataError("config.yaml: package must be a mapping")
-        if character is not None and not isinstance(character, dict):
-            raise CognitivePackageDataError("config.yaml: character must be a mapping")
-        if (package is None) == (character is None):
+        has_package = "package" in raw
+        has_character = "character" in raw
+        if has_package == has_character:
             raise CognitivePackageDataError(
                 "config.yaml must define exactly one package or character identity mapping"
             )
+
+        package = raw.get("package")
+        character = raw.get("character")
+        if has_package and not isinstance(package, dict):
+            raise CognitivePackageDataError("config.yaml: package must be a mapping")
+        if has_character and not isinstance(character, dict):
+            raise CognitivePackageDataError("config.yaml: character must be a mapping")
 
         try:
             format_version = _required_int(
@@ -58,14 +60,15 @@ class CognitivePackageDirectory(CharacterDirectory):
                 "format_version",
                 "config.yaml: format_version",
             )
-            if package is not None:
+            if has_package:
+                assert isinstance(package, dict)
                 package_id = _required_string(
                     package,
                     "id",
                     "config.yaml: package.id",
                 )
             else:
-                assert character is not None
+                assert isinstance(character, dict)
                 character_config = CharacterConfig(
                     format_version=format_version,
                     character_id=_required_string(
