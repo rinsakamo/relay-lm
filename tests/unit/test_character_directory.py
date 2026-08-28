@@ -90,6 +90,59 @@ def test_invalid_config_fails_closed(tmp_path: Path) -> None:
         character.load_config()
 
 
+@pytest.mark.parametrize(
+    ("config_text", "duplicate_key"),
+    [
+        (
+            "format_version: 1\n"
+            "format_version: 1\n"
+            "character:\n"
+            "  id: relm\n"
+            "  name: ReLM\n",
+            "format_version",
+        ),
+        (
+            "format_version: 1\n"
+            "character:\n"
+            "  id: relm\n"
+            "  id: other\n"
+            "  name: ReLM\n",
+            "id",
+        ),
+    ],
+)
+def test_config_rejects_duplicate_yaml_mapping_keys(
+    tmp_path: Path,
+    config_text: str,
+    duplicate_key: str,
+) -> None:
+    character = _make_character(tmp_path)
+    character.config_path.write_text(config_text, encoding="utf-8")
+
+    with pytest.raises(
+        CharacterDataError,
+        match=rf"duplicate YAML mapping key: {duplicate_key}",
+    ):
+        character.load_config()
+
+
+def test_config_preserves_safe_yaml_merge_semantics(tmp_path: Path) -> None:
+    character = _make_character(tmp_path)
+    character.config_path.write_text(
+        "format_version: 1\n"
+        "character:\n"
+        "  <<: &identity\n"
+        "    id: relm\n"
+        "    name: ReLM\n",
+        encoding="utf-8",
+    )
+
+    config = character.load_config()
+
+    assert config.character_id == "relm"
+    assert config.name == "ReLM"
+
+
 def test_config_format_version_does_not_coerce_string_compatibility(tmp_path: Path) -> None:
     character = _make_character(tmp_path)
     (tmp_path / "config.yaml").write_text(

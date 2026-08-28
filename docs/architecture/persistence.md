@@ -31,6 +31,7 @@ Filesystem format is not semantic architecture. Storage may later use segmentati
 The current filesystem implementation intentionally keeps a small, strict contract:
 
 - `config.yaml` explicitly contains integer `format_version: 1` and requires non-empty `character.id` and `character.name`; version values are not string-coerced or defaulted;
+- duplicate YAML mapping keys anywhere within `config.yaml`, including top-level and nested Character identity fields, are malformed persisted authority and loading fails closed rather than choosing one duplicate value;
 - `SOUL.md` must exist and contain non-empty Identity content;
 - `events.jsonl` stores one Event object per non-empty line and is appended in Event order;
 - Event IDs are unique within one `events.jsonl`; a later record that repeats an earlier Event ID is malformed persisted authority and loading fails closed at that duplicate line;
