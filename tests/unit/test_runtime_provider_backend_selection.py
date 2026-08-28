@@ -26,8 +26,9 @@ def _write_config(path: Path, *, backend: str | None = None) -> Path:
     path.write_text(
         """\
 format_version: 1
-character:
-  directory: /characters/relm
+profiles:
+  - name: relm
+    root: /characters/relm
 provider:
   adapter: openai_compatible
 """
@@ -92,7 +93,8 @@ def test_backend_selection_uses_leaf_precedence_before_canonicalization(
 def test_missing_backend_preserves_existing_generic_openai_compatible_path() -> None:
     resolved = resolve_runtime_config(
         environ={
-            "RELAYLM_CHARACTER_DIR": "/characters/relm",
+            "RELAYLM_PROFILE_NAME": "relm",
+            "RELAYLM_PROFILE_ROOT": "/characters/relm",
             "RELAYLM_PROVIDER_BASE_URL": "http://127.0.0.1:1234/v1",
             "RELAYLM_PROVIDER_MODEL": "model-id",
         }
@@ -176,9 +178,11 @@ def test_vllm_backend_requires_and_consumes_explicit_attested_realizer(
         resolved,
         vllm_reasoning_capability=capability,
     )
+    profile = assembly.profiles.resolve("relm")
+    assert profile is not None
     try:
-        assert assembly.provider.vllm_reasoning_capability is capability
+        assert profile.provider.vllm_reasoning_capability is capability
     finally:
         import asyncio
 
-        asyncio.run(assembly.provider.aclose())
+        asyncio.run(profile.provider.aclose())
