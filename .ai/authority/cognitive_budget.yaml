@@ -15,6 +15,14 @@ implementation:
 - src/relaylm/providers/openai_compatible_budget.py
 - src/relaylm/turn.py
 - src/relaylm/two_pass_turn.py
+qualification_inputs:
+- src/relaylm/budget.py
+- src/relaylm/budget_controls.py
+- src/relaylm/budget_enforcement.py
+- src/relaylm/budget_runtime.py
+- src/relaylm/providers/openai_compatible_budget.py
+- src/relaylm/turn.py
+- src/relaylm/two_pass_turn.py
 tests:
 - tests/unit/test_cognitive_budget_accounting.py
 - tests/unit/test_cognitive_budget_plan.py

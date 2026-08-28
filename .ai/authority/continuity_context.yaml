@@ -11,6 +11,12 @@ implementation:
 - src/relaylm/continuity_validation.py
 - src/relaylm/cognitive.py
 - src/relaylm/turn.py
+qualification_inputs:
+- docs/architecture/continuity-context.md
+- src/relaylm/continuity.py
+- src/relaylm/continuity_validation.py
+- src/relaylm/cognitive.py
+- src/relaylm/turn.py
 tests:
 - tests/unit/test_continuity.py
 - tests/unit/test_continuity_validation.py

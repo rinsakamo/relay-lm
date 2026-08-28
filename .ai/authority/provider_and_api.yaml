@@ -23,6 +23,25 @@ implementation:
 - src/relaylm/providers/openai_compatible_cognition.py
 - src/relaylm/api/openai.py
 - src/relaylm/server.py
+qualification_inputs:
+- docs/contracts/provider-wire.md
+- docs/contracts/provider-decoding.md
+- docs/contracts/provider-reasoning.md
+- docs/contracts/provider-identity.md
+- docs/contracts/openai-api.md
+- src/relaylm/providers/openai_compatible.py
+- src/relaylm/providers/openai_compatible_two_pass.py
+- src/relaylm/providers/openai_compatible_backend.py
+- src/relaylm/providers/vllm_backend.py
+- src/relaylm/providers/vllm_reasoning.py
+- src/relaylm/providers/vllm_reasoning_capability.py
+- src/relaylm/providers/vllm_reasoning_realization.py
+- src/relaylm/providers/openai_compatible_budget.py
+- src/relaylm/providers/openai_compatible_decoding.py
+- src/relaylm/providers/openai_compatible_reasoning.py
+- src/relaylm/providers/openai_compatible_identity.py
+- src/relaylm/providers/openai_compatible_cognition.py
+- src/relaylm/api/openai.py
 tests:
 - tests/unit/test_openai_boundary.py
 - tests/unit/test_openai_compatible_single_pass_structure_ownership.py

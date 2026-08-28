@@ -30,6 +30,18 @@ implementation:
 - src/relaylm/providers/openai_compatible.py
 - src/relaylm/providers/openai_compatible_two_pass.py
 - src/relaylm/providers/openai_compatible_budget.py
+qualification_inputs:
+- docs/contracts/cognition-execution-policy.md
+- docs/contracts/cognition-pass-execution.md
+- docs/contracts/cognitive-turn.md
+- docs/architecture/cognitive-runtime.md
+- src/relaylm/cognitive.py
+- src/relaylm/cognition_execution.py
+- src/relaylm/turn.py
+- src/relaylm/two_pass_turn.py
+- src/relaylm/providers/openai_compatible.py
+- src/relaylm/providers/openai_compatible_two_pass.py
+- src/relaylm/providers/openai_compatible_budget.py
 tests:
 - tests/unit/test_cognition_execution_policy.py
 - tests/unit/test_cognition_pass_execution.py

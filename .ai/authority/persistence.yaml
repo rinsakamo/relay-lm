@@ -10,6 +10,12 @@ implementation:
 - src/relaylm/character.py
 - src/relaylm/storage/filesystem.py
 - src/relaylm/storage/cognitive_package.py
+qualification_inputs:
+- docs/architecture/persistence.md
+- docs/reference/character-directory.md
+- src/relaylm/character.py
+- src/relaylm/storage/filesystem.py
+- src/relaylm/storage/cognitive_package.py
 tests:
 - tests/unit/test_character_directory.py
 - tests/unit/test_cognitive_package_directory.py

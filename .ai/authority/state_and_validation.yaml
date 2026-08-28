@@ -9,6 +9,13 @@ implementation:
 - src/relaylm/events.py
 - src/relaylm/state.py
 - src/relaylm/validation.py
+qualification_inputs:
+- docs/architecture/events-and-state.md
+- docs/contracts/state-candidate.md
+- docs/contracts/validator.md
+- src/relaylm/events.py
+- src/relaylm/state.py
+- src/relaylm/validation.py
 tests:
 - tests/unit/test_cognitive_turn.py
 - tests/unit/test_degree_hint.py
