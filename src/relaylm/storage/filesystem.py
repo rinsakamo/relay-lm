@@ -33,6 +33,8 @@ class _CharacterConfigUniqueKeyLoader(yaml.SafeLoader):
     ) -> dict[Any, Any]:
         seen: set[Any] = set()
         for key_node, _ in node.value:
+            if key_node.tag == "tag:yaml.org,2002:merge":
+                continue
             key = self.construct_object(key_node, deep=deep)
             try:
                 duplicate = key in seen
