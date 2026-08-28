@@ -27,8 +27,9 @@ def _runtime_config(path: Path, character: Path, *, host: str = "127.0.0.1") -> 
         "\n".join(
             [
                 "format_version: 1",
-                "character:",
-                f"  directory: {character}",
+                "profiles:",
+                "  - name: cli-test",
+                f"    root: {character}",
                 "provider:",
                 "  adapter: openai_compatible",
                 "  base_url: http://127.0.0.1:1234/v1",
@@ -72,9 +73,9 @@ def test_doctor_json_is_non_secret_and_reports_effective_sources(tmp_path: Path)
     report = json.loads(stdout.getvalue())
     assert report["status"] == "ok"
     assert report["checks"] == {
-        "character": "ok",
         "configuration": "ok",
         "persistence": "ok",
+        "profiles": "ok",
         "provider": "ok",
         "runtime_assembly": "ok",
     }
@@ -82,16 +83,24 @@ def test_doctor_json_is_non_secret_and_reports_effective_sources(tmp_path: Path)
         "value": "test-model",
         "source": "config_file",
     }
+    assert report["effective_config"]["values"]["profiles.0.name"] == {
+        "value": "cli-test",
+        "source": "config_file",
+    }
     rendered = stdout.getvalue() + stderr.getvalue()
     assert "never-print-this" not in rendered
     assert report["effective_config"]["secrets"]["provider.api_key"]["configured"] is True
 
 
-def test_doctor_fails_character_validation_without_mutating_character(tmp_path: Path) -> None:
+def test_doctor_fails_profile_validation_without_mutating_package(tmp_path: Path) -> None:
     character = _character(tmp_path / "character")
     (character / "SOUL.md").write_text("", encoding="utf-8")
     config = _runtime_config(tmp_path / "runtime.yaml", character)
-    before = sorted((p.relative_to(character), p.read_bytes()) for p in character.rglob("*") if p.is_file())
+    before = sorted(
+        (p.relative_to(character), p.read_bytes())
+        for p in character.rglob("*")
+        if p.is_file()
+    )
     stdout = StringIO()
     stderr = StringIO()
 
@@ -102,7 +111,11 @@ def test_doctor_fails_character_validation_without_mutating_character(tmp_path: 
         stderr=stderr,
     )
 
-    after = sorted((p.relative_to(character), p.read_bytes()) for p in character.rglob("*") if p.is_file())
+    after = sorted(
+        (p.relative_to(character), p.read_bytes())
+        for p in character.rglob("*")
+        if p.is_file()
+    )
     assert code == 2
     assert before == after
     assert stdout.getvalue() == ""
@@ -258,7 +271,8 @@ def test_named_cli_overrides_win_and_serve_uses_preflighted_runtime(tmp_path: Pa
     assert host == "127.0.0.2"
     assert port == 9001
     summary = stdout.getvalue()
-    assert "cli-model" in summary
+    assert "profile: cli-test" in summary
+    assert "physical_model=cli-model" in summary
     assert "127.0.0.2:9001" in summary
     assert stderr.getvalue() == ""
 
@@ -295,7 +309,9 @@ def test_cli_maps_typed_preflight_failure_to_exit_two(monkeypatch: pytest.Monkey
     code = run_cli(
         [
             "doctor",
-            "--character",
+            "--profile-name",
+            "relm",
+            "--profile-root",
             "/tmp/character",
             "--provider-base-url",
             "http://127.0.0.1:1234/v1",
