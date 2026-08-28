@@ -1,0 +1,8 @@
+{
+  "format_version": 1,
+  "id": "core-semantic-v1",
+  "roots": [
+    "runtime_configuration"
+  ],
+  "expected_fingerprint": "sha256:32b6474137f1863df636dfbfd96947fcb6f02144a53223c8ff2d0130fdf5d3ce"
+}
