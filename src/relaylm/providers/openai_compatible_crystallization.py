@@ -13,7 +13,10 @@ from relaylm.memory_provenance import (
     MemoryTemporalScope,
     MemoryUnit,
 )
-from relaylm.providers.openai_compatible import ProviderProtocolError
+from relaylm.providers.openai_compatible import (
+    ProviderProtocolError,
+    _reject_duplicate_json_members,
+)
 from relaylm.providers.openai_compatible_decoding import (
     OpenAICompatibleDecodingCapabilities,
     OpenAICompatibleDecodingConfig,
@@ -239,7 +242,10 @@ class OpenAICompatibleCrystallizer:
                 ),
             )
             response.raise_for_status()
-            envelope = response.json()
+            envelope = json.loads(
+                response.content,
+                object_pairs_hook=_reject_duplicate_json_members,
+            )
         except (httpx.HTTPError, TypeError, ValueError) as exc:
             raise ProviderProtocolError(f"upstream crystallization request failed: {exc}") from exc
 
@@ -353,7 +359,10 @@ def parse_crystallization_chat_completion(
             "provider crystallization message content must be a JSON string"
         )
     try:
-        wire = json.loads(content)
+        wire = json.loads(
+            content,
+            object_pairs_hook=_reject_duplicate_json_members,
+        )
     except json.JSONDecodeError as exc:
         raise ProviderProtocolError(
             "provider crystallization message content is not valid JSON"

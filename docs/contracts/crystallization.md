@@ -110,6 +110,7 @@ Rules:
 - `remove.value` is `null` on the wire and is normalized to semantic `remove` without a value;
 - candidate `sources` is non-empty and every source must be an Event ID present in the bounded `CrystallizationInput.events` supplied to that generation;
 - State IDs, Markdown headings/locations, and prior MEMORY prose cannot become StateCandidate Event sources;
+- duplicate JSON object members in either the upstream Chat Completions response envelope or the model-authored structured `message.content` are malformed and fail closed before field selection or semantic materialization;
 - unknown top-level/candidate fields, malformed values, invalid classes, invented Event sources, invalid Chat Completions envelopes, invalid JSON, and upstream HTTP failures fail closed with `ProviderProtocolError`;
 - a failed generation is not automatically retried semantically, so no partial crystallization output is returned to the existing orchestration for persistence.
 
