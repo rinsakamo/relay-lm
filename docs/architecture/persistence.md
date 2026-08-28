@@ -1,11 +1,11 @@
-# Persistence and Character Portability
+# Persistence and Cognitive Package Portability
 
-RelayLM 1.0 treats the Character Package as a portability contract rather than an incidental filesystem layout.
+RelayLM 1.0 treats the Cognitive Package root as a portability contract rather than an incidental filesystem layout. A Character Package is one specialization of this contract, not the runtime type boundary.
 
 ## Current package
 
 ```text
-<Character>/
+<CognitivePackage>/
 ├─ SOUL.md
 ├─ config.yaml
 └─ memory/
@@ -14,15 +14,17 @@ RelayLM 1.0 treats the Character Package as a portability contract rather than a
    └─ MEMORY.md        # optional crystallized readable synthesis
 ```
 
-The package can live under a default data root or any user-selected local directory.
+The package can live under a default data root or any user-selected local directory. Runtime loading does not infer a package kind from parent names such as `characters/` or `machines/`.
 
 ## Semantic ownership
 
-- `SOUL.md` — Identity authority;
+- `SOUL.md` — stable identity/role authority used by the current cognitive runtime;
 - `memory/events.jsonl` — Event persistence and occurrence/provenance history;
 - `memory/state.json` — accepted current State;
 - `memory/MEMORY.md` — optional readable crystallized semantic synthesis, not current-State authority;
 - `config.yaml` — package identity/layout/config entrypoint.
+
+Portable package data does not own provider URLs, physical provider model IDs, API keys, host/server policy, hardware selection, or other runtime secrets/configuration. Those remain outside the Cognitive Package root.
 
 Filesystem format is not semantic architecture. Storage may later use segmentation or a database while preserving these logical roles and migration guarantees.
 
@@ -30,9 +32,10 @@ Filesystem format is not semantic architecture. Storage may later use segmentati
 
 The current filesystem implementation intentionally keeps a small, strict contract:
 
-- `config.yaml` explicitly contains integer `format_version: 1` and requires non-empty `character.id` and `character.name`; version values are not string-coerced or defaulted;
-- duplicate YAML mapping keys anywhere within `config.yaml`, including top-level and nested Character identity fields, are malformed persisted authority and loading fails closed rather than choosing one duplicate value;
-- `SOUL.md` must exist and contain non-empty Identity content;
+- `config.yaml` explicitly contains integer `format_version: 1` and exactly one identity mapping: a general Cognitive Package requires non-empty `package.id`, while the existing Character specialization requires non-empty `character.id` and `character.name`; version values are not string-coerced or defaulted;
+- defining both `package` and `character` identity mappings, or defining neither, fails closed rather than guessing which package identity is authoritative;
+- duplicate YAML mapping keys anywhere within `config.yaml`, including top-level, general package, and nested Character identity fields, are malformed persisted authority and loading fails closed rather than choosing one duplicate value;
+- `SOUL.md` must exist and contain non-empty stable identity or role content; machine-like packages are not required to fabricate human persona metadata;
 - `events.jsonl` stores one Event object per non-empty line and is appended in Event order;
 - Event IDs are unique within one `events.jsonl`; a later record that repeats an earlier Event ID is malformed persisted authority and loading fails closed at that duplicate line;
 - a missing `events.jsonl` is treated as an empty Event Journal;
@@ -40,7 +43,7 @@ The current filesystem implementation intentionally keeps a small, strict contra
 - RelayLM-owned Event append requires `payload` to be an object and rejects a non-object payload before mutating the Event Journal or its process-local snapshot/discovery derivatives;
 - duplicate JSON object member names anywhere within one Event line are malformed persisted authority and loading fails closed at that line rather than choosing one duplicate value;
 - Event Journal load and RelayLM-owned append use strict standard-JSON numeric semantics: non-finite constants such as `NaN` and positive or negative infinity are rejected rather than rehydrated or emitted;
-- within one `CharacterDirectory` process, a successfully validated Event Journal snapshot may be reused while the authoritative file signature is unchanged;
+- within one Cognitive Package filesystem adapter process, a successfully validated Event Journal snapshot may be reused while the authoritative file signature is unchanged;
 - RelayLM-owned successful `append_event` calls incrementally extend an already-valid process-local snapshot when the post-append authoritative file signature can be refreshed, while detected external file changes invalidate the snapshot and force authoritative JSONL revalidation;
 - once an Event Journal append write and close succeed, failure to refresh that derived post-append signature does not retroactively fail the durable append; the process-local Event snapshot and discovery index are invalidated so the next read revalidates `events.jsonl`;
 - the Event snapshot is derived, non-persistent, and never replaces `events.jsonl` as occurrence/provenance authority; malformed external edits remain fail-closed rather than being masked by stale cached Events;
@@ -55,13 +58,15 @@ The current filesystem implementation intentionally keeps a small, strict contra
 - RelayLM State writers for the same root share a process-local write lock, and `save_state(..., expected_revision=...)` compares that revision under the lock before replacement; a mismatch raises `StateRevisionConflictError` before the stale writer mutates `state.json`;
 - `MEMORY.md` persistence may be conditioned on the State revision used to render it; if current State changed first, the guarded Markdown write fails closed rather than persisting synthesis against a stale State snapshot;
 - State persistence preserves accepted stable JSON State values and provenance source IDs without shape/type coercion across save/load;
-- a missing `MEMORY.md` means no prior crystallized readable memory and does not block ordinary character operation;
+- a missing `MEMORY.md` means no prior crystallized readable memory and does not block ordinary Cognitive Package operation;
 - `MEMORY.md` writes also use temporary-file replacement;
 - byte-for-byte unchanged crystallized Markdown is not rewritten.
 
 File absence and malformed existing content are deliberately different: an unmaterialized optional persistence file may have a defined empty/absent meaning, while an existing versioned file is never repaired through compatibility defaults.
 
-The process-local Event snapshot only removes repeated disk parsing of an unchanged journal within one live `CharacterDirectory`. It is not a persistent search index and does not make targeted retrieval asymptotically independent of Event count. Persistent/segmented indexing, if later justified, must remain derived from the Event Journal rather than becoming a second Event authority.
+State, Event Journal, and `MEMORY.md` paths are resolved relative to the selected Cognitive Package root. Distinct roots therefore remain distinct persistence authorities even when packages share one physical provider/model configuration.
+
+The process-local Event snapshot only removes repeated disk parsing of an unchanged journal within one live Cognitive Package filesystem adapter. It is not a persistent search index and does not make targeted retrieval asymptotically independent of Event count. Persistent/segmented indexing, if later justified, must remain derived from the Event Journal rather than becoming a second Event authority.
 
 The State revision guard is intentionally scoped to RelayLM writers in the current process. It prevents stale in-process write-back without adding a generation field to the portable State schema. It is not a claim of cross-process compare-and-swap or a crash-consistent multi-file transaction.
 
@@ -88,6 +93,6 @@ Crystallization write-back into current State is governed through the existing S
 
 ## Future envelope
 
-Future features may materialize `knowledge/`, `examples/`, `settings/`, `assets/`, and `cache/` only when they contain real data. Their semantics are tracked in #1262.
+Future Character-specialized features may materialize `knowledge/`, `examples/`, `settings/`, `assets/`, and `cache/` only when they contain real data. Their semantics are tracked in #1262. A machine-like Cognitive Package is not required to materialize Character-only components simply to satisfy the general loader.
 
 Richer `memory/notes/*.md` wiki organization and actual crystallizer-provider behavior remain tracked in #1260. Retrieval of crystallized memory into bounded ordinary-turn Context remains tracked in #1267.
