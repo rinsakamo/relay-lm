@@ -1,0 +1,20 @@
+schema_version: 1
+id: starter_packages
+summary: >-
+  First-party Starter Cognitive Package catalog, bundled semantic assets, and
+  installed-artifact-safe materialization semantics.
+owner_issue: 1891
+canonical_surfaces:
+- docs/reference/starter-packages.md
+implementation:
+- src/relaylm/starters/__init__.py
+- src/relaylm/starters/characters/blank/config.yaml
+- src/relaylm/starters/characters/blank/SOUL.md
+- src/relaylm/starters/characters/relm/config.yaml
+- src/relaylm/starters/characters/relm/SOUL.md
+- src/relaylm/starters/machines/fact-summarizer/SOUL.md
+- src/relaylm/starters/machines/medical-soap/SOUL.md
+tests:
+- tests/unit/test_starter_packages.py
+depends_on:
+- persistence
