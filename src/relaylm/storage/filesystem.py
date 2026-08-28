@@ -249,6 +249,7 @@ class CharacterDirectory:
         try:
             raw = json.loads(
                 self.state_path.read_text(encoding="utf-8"),
+                object_pairs_hook=_reject_duplicate_json_object_members,
                 parse_constant=_reject_non_finite_json_number,
             )
         except FileNotFoundError:

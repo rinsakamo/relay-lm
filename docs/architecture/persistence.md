@@ -45,6 +45,7 @@ The current filesystem implementation intentionally keeps a small, strict contra
 - the Event snapshot is derived, non-persistent, and never replaces `events.jsonl` as occurrence/provenance authority; malformed external edits remain fail-closed rather than being masked by stale cached Events;
 - a missing `state.json` file is treated as an empty `CanonicalState(format_version=1)`;
 - an existing `state.json` must explicitly contain integer `format_version: 1` and a `states` array; missing fields and version type coercion are rejected rather than interpreted as an older/looser format;
+- duplicate JSON object member names anywhere within `state.json`, including top-level and nested State objects, are malformed persisted authority and loading fails closed rather than choosing one duplicate value;
 - every persisted State record explicitly contains `state_id`, `state_class`, `key`, `value`, `status`, and `sources`; `sources` is a non-empty array of non-empty provenance source IDs, and only `valid_from` and `valid_to` are optional in the current record representation;
 - durable State values use stable JSON shapes: string, number, boolean, null, array/list, or recursively string-keyed object; Python-only shapes that JSON serialization would silently coerce, such as tuples or mappings with non-string keys, are rejected before they can become persistable accepted State;
 - `state.json` load and save use strict JSON numeric semantics: non-finite numbers such as `NaN` and positive or negative infinity are rejected rather than rehydrated or emitted;
