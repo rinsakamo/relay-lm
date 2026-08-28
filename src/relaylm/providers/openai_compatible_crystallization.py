@@ -343,9 +343,9 @@ def parse_crystallization_chat_completion(
 ) -> CrystallizationOutput:
     try:
         choices = _mapping(envelope, "provider crystallization response")["choices"]
-        if not isinstance(choices, list) or not choices:
+        if not isinstance(choices, list) or len(choices) != 1:
             raise ProviderProtocolError(
-                "provider crystallization response choices must be a non-empty array"
+                "provider crystallization response choices must contain exactly one item"
             )
         message = _mapping(choices[0], "provider crystallization choice")["message"]
         content = _mapping(message, "provider crystallization message")["content"]
