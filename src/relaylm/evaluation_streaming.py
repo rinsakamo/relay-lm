@@ -6,10 +6,11 @@ from pathlib import Path
 
 from relaylm.api.openai import _stream_chat_completion
 from relaylm.cognitive import CognitiveInput, CognitiveOutput
+from relaylm.cognitive_profile import CognitiveProfileRuntime
 from relaylm.evaluation import EvaluationCheck, EvaluationScenarioResult
 from relaylm.providers.openai_compatible import ProviderProtocolError
 from relaylm.state import CanonicalState, StateCandidate
-from relaylm.storage.filesystem import CharacterDirectory
+from relaylm.storage.cognitive_package import CognitivePackageDirectory
 
 
 class _SuccessfulProvider:
@@ -23,7 +24,7 @@ class _SuccessfulProvider:
 
     async def stream_generate(self, cognitive_input: CognitiveInput, emit) -> CognitiveOutput:
         await emit("紅茶")
-        snapshot = CharacterDirectory(self.root)
+        snapshot = CognitivePackageDirectory(self.root)
         self.state_during_stream = snapshot.load_state()
         self.actors_during_stream = [event.actor for event in snapshot.iter_events()]
         await emit("が好きって覚えてるよ。")
@@ -69,59 +70,53 @@ class _CancelledProvider:
 async def evaluate_streaming_safety() -> EvaluationScenarioResult:
     with tempfile.TemporaryDirectory(prefix="relaylm-eval-stream-ok-") as temporary:
         root = Path(temporary)
-        successful_character = _make_character(root)
+        _make_package(root)
         successful_provider = _SuccessfulProvider(root)
         successful_chunks = [
             chunk
             async for chunk in _stream_chat_completion(
-                character=successful_character,
-                provider=successful_provider,
+                profile=_profile(root, successful_provider),
                 turn_lock=asyncio.Lock(),
                 content="前に話した好み、覚えてる？",
                 completion_id="chatcmpl-eval-success",
                 created=0,
-                model="relaylm",
             )
         ]
-        successful_persisted = CharacterDirectory(root)
+        successful_persisted = CognitivePackageDirectory(root)
         successful_actors = [event.actor for event in successful_persisted.iter_events()]
         successful_state = successful_persisted.load_state()
 
     with tempfile.TemporaryDirectory(prefix="relaylm-eval-stream-truncated-") as temporary:
         root = Path(temporary)
-        truncated_character = _make_character(root)
+        _make_package(root)
         truncated_chunks = [
             chunk
             async for chunk in _stream_chat_completion(
-                character=truncated_character,
-                provider=_TruncatedProvider(),
+                profile=_profile(root, _TruncatedProvider()),
                 turn_lock=asyncio.Lock(),
                 content="この話を覚えて",
                 completion_id="chatcmpl-eval-truncated",
                 created=0,
-                model="relaylm",
             )
         ]
-        truncated_persisted = CharacterDirectory(root)
+        truncated_persisted = CognitivePackageDirectory(root)
         truncated_actors = [event.actor for event in truncated_persisted.iter_events()]
         truncated_state = truncated_persisted.load_state()
 
     with tempfile.TemporaryDirectory(prefix="relaylm-eval-stream-cancel-") as temporary:
         root = Path(temporary)
-        cancelled_character = _make_character(root)
+        _make_package(root)
         cancelled_provider = _CancelledProvider()
         cancelled_stream = _stream_chat_completion(
-            character=cancelled_character,
-            provider=cancelled_provider,
+            profile=_profile(root, cancelled_provider),
             turn_lock=asyncio.Lock(),
             content="途中で切断する",
             completion_id="chatcmpl-eval-cancel",
             created=0,
-            model="relaylm",
         )
         first_cancelled_chunk = await anext(cancelled_stream)
         await cancelled_stream.aclose()
-        cancelled_persisted = CharacterDirectory(root)
+        cancelled_persisted = CognitivePackageDirectory(root)
         cancelled_actors = [event.actor for event in cancelled_persisted.iter_events()]
         cancelled_state = cancelled_persisted.load_state()
 
@@ -190,7 +185,16 @@ async def evaluate_streaming_safety() -> EvaluationScenarioResult:
     )
 
 
-def _make_character(root: Path) -> CharacterDirectory:
+def _profile(root: Path, provider: object) -> CognitiveProfileRuntime:
+    return CognitiveProfileRuntime(
+        name="relaylm",
+        package=CognitivePackageDirectory(root),
+        provider=provider,
+        physical_model="evaluation-model",
+    )
+
+
+def _make_package(root: Path) -> CognitivePackageDirectory:
     (root / "memory").mkdir(parents=True)
     (root / "SOUL.md").write_text(
         "# Evaluation Character\n\nBe honest and grounded.\n",
@@ -200,6 +204,6 @@ def _make_character(root: Path) -> CharacterDirectory:
         "format_version: 1\ncharacter:\n  id: evaluation\n  name: Evaluation\n",
         encoding="utf-8",
     )
-    character = CharacterDirectory(root)
-    character.save_state(CanonicalState())
-    return character
+    package = CognitivePackageDirectory(root)
+    package.save_state(CanonicalState())
+    return package
