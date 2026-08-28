@@ -10,9 +10,9 @@ The model is a replaceable cognitive substrate, not the character. RelayLM persi
 
 ## One runtime, two ways to see it
 
-For an end user, the simplest mental model is: **give a compatible LM a persistent character**. [`SOUL.md`](examples/starter/SOUL.md) supplies a stable identity; governed State and Continuity supply the accepted "now"; the provider model can change underneath them.
+For an end user, the simplest mental model is: **give a compatible LM a persistent character**. A Cognitive Package supplies stable identity or role authority through `SOUL.md`; governed State and Continuity supply the accepted "now"; the provider model can change underneath them.
 
-But a RelayLM identity does not need to imitate a person. The same stable `SOUL.md` can describe a deliberately machine-like cognitive role — for example, a strict summarizer, reviewer, research assistant, or structured record-writing system. In that sense, a character is one **cognitive persona**, not the limit of the runtime.
+But a RelayLM identity does not need to imitate a person. The same Cognitive Package boundary can describe a deliberately machine-like cognitive role — for example, a strict summarizer or structured record-writing system. In that sense, a Character is one specialization of Cognitive Package, not the limit of the runtime.
 
 For developers and professional deployments, RelayLM is the middleware layer that decides which stable identity or role and which governed context reach the model, then decides which proposed changes are allowed back into RelayLM-owned authority.
 
@@ -29,7 +29,7 @@ replaceable LM
 
 A small local model can power approachable character experimentation, while the same RelayLM-owned identity, role, and accepted state can later be presented to a larger compatible model. The model itself is not what persists or "grows": stable identity and accepted state remain RelayLM-owned, while bounded Continuity remains RelayLM-owned temporary authority.
 
-> **Character is one cognitive persona. RelayLM is the cognitive proxy around the model.**
+> **Character is one Cognitive Package specialization. RelayLM is the cognitive proxy around the model.**
 
 ## Product line
 
@@ -37,6 +37,19 @@ A small local model can power approachable character experimentation, while the 
 - RelayLM 0.x remains preserved as historical/reference implementation material.
 - 1.0 does not inherit 0.x runtime/module structure by default.
 - Design evidence from issues [#1257](https://github.com/rinsakamo/relay-lm/issues/1257) and [#1258](https://github.com/rinsakamo/relay-lm/issues/1258) is intentionally carried forward.
+
+## Start with a first-party Starter
+
+Core 1.0 ships four small [Starter Cognitive Packages](docs/reference/starter-packages.md) as part of the installed artifact so a first run does not require authoring package files from scratch:
+
+- `blank` — minimal neutral Character starting point, intentionally easy to fork;
+- `relm` — complete Character example;
+- `fact-summarizer` — non-personal general cognitive machine;
+- `medical-soap` — domain-specific SOAP documentation structurer, not clinical decision authority.
+
+The Character and machine-like Starters use the same production Cognitive Package loader. Their files contain portable semantic package data only; provider URLs, physical model IDs, API keys, host policy, and other machine/runtime configuration stay outside the package.
+
+The build/run steps below show how to materialize a bundled Starter into an ordinary editable filesystem directory. The installed Python package is the distribution source for the first-party assets, not the place where user-owned package state is edited.
 
 ## Core 1.0 turn
 
@@ -80,10 +93,22 @@ python -m venv .relaylm-runtime
 .relaylm-runtime/bin/python -m pip install dist/relaylm-*.whl
 ```
 
-Keep the Character Package outside the installed Python package and point the runtime at its filesystem path:
+For a first run, copy a bundled Starter out of the installed artifact instead of writing a package from scratch. For example, create the complete Character Starter:
 
 ```bash
-export RELAYLM_CHARACTER_DIR=/absolute/path/to/character
+.relaylm-runtime/bin/python -c 'from relaylm.starters import materialize_starter_package; materialize_starter_package("relm", "./relm")'
+```
+
+Or create a deliberately non-personal machine-like Starter:
+
+```bash
+.relaylm-runtime/bin/python -c 'from relaylm.starters import materialize_starter_package; materialize_starter_package("fact-summarizer", "./fact-summarizer")'
+```
+
+The copied directory is normal user-owned Cognitive Package data and may be inspected or edited. The current #1446 operator schema still uses the compatibility name `character.directory` / `RELAYLM_CHARACTER_DIR` for the selected root, but since #1890 that root is opened through the general Cognitive Package loader and may be Character-like or machine-like.
+
+```bash
+export RELAYLM_CHARACTER_DIR="$PWD/relm"
 export RELAYLM_PROVIDER_BASE_URL=http://127.0.0.1:1234/v1
 export RELAYLM_PROVIDER_MODEL='<provider-model-id>'
 
@@ -91,11 +116,13 @@ export RELAYLM_PROVIDER_MODEL='<provider-model-id>'
 .relaylm-runtime/bin/relaylm serve
 ```
 
+To run `fact-summarizer` instead, point `RELAYLM_CHARACTER_DIR` at that materialized root. Public OpenAI `model` -> Cognitive Profile routing and the final `profiles[].name` + `root` configuration are owned separately by [#1889](https://github.com/rinsakamo/relay-lm/issues/1889); this README does not present that unfinished routing surface as current behavior.
+
 With no calibrated profile selected, the Core 1.0 cognition topology defaults to `two_pass`; this topology default does not manufacture reasoning, decoding, output-budget, or context-window values. Explicit pass controls may be carried through runtime YAML, while calibrated profiles remain [#1388](https://github.com/rinsakamo/relay-lm/issues/1388) authority.
 
 Equivalent machine/runtime settings can be supplied through the versioned runtime YAML selected with `--config PATH` or `RELAYLM_CONFIG`. See [`runtime-configuration.md`](docs/contracts/runtime-configuration.md) for schema/precedence and [`runtime-operator.md`](docs/contracts/runtime-operator.md) for `doctor` / `serve` behavior.
 
-Optional provider authentication uses `RELAYLM_PROVIDER_API_KEY`. The server binds to `127.0.0.1:8090` by default; `RELAYLM_HOST` and `RELAYLM_PORT` can override this runtime setting. [`examples/starter`](examples/starter/) is a source-checkout example, not an installed-artifact runtime dependency.
+Optional provider authentication uses `RELAYLM_PROVIDER_API_KEY`. The server binds to `127.0.0.1:8090` by default; `RELAYLM_HOST` and `RELAYLM_PORT` can override this runtime setting. See [`starter-packages.md`](docs/reference/starter-packages.md) for the full first-party catalog, portability boundary, and installed-artifact behavior.
 
 The [OpenAI-compatible client endpoint](docs/contracts/openai-api.md) is:
 
