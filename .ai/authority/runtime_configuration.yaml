@@ -1,6 +1,6 @@
 schema_version: 1
 id: runtime_configuration
-summary: Release runtime configuration, two-pass-first cognition carriage, Pass 2 structured-output transport selection, named cognition-mode precedence, provider-backend selection, assembly, preflight, and operator semantics.
+summary: Release runtime configuration, Cognitive Profile registry and routing carriage, two-pass-first cognition carriage, Pass 2 structured-output transport selection, named cognition-mode precedence, provider-backend selection, assembly, preflight, and operator semantics.
 owner_issue: 1446
 canonical_surfaces:
 - docs/contracts/runtime-configuration.md
@@ -11,6 +11,7 @@ implementation:
 - src/relaylm/runtime_config_loader.py
 - src/relaylm/runtime_assembly.py
 - src/relaylm/runtime_preflight.py
+- src/relaylm/cognitive_profile.py
 - src/relaylm/cli.py
 - src/relaylm/api/openai.py
 - src/relaylm/server.py
@@ -25,6 +26,8 @@ tests:
 - tests/unit/test_runtime_cognition_mode_override.py
 - tests/unit/test_runtime_cli.py
 - tests/unit/test_two_pass_structured_output_mode.py
+- tests/unit/test_cognitive_profile_config.py
+- tests/unit/test_cognitive_profile_routing.py
 depends_on:
 - cognitive_budget
 - cognitive_turn
