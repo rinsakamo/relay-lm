@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 
 from relaylm.state import CanonicalState, StateRecord
-from relaylm.storage.filesystem import CharacterDataError, CharacterDirectory
+from relaylm.storage.filesystem import (
+    CharacterDataError,
+    CharacterDirectory,
+    StateRevisionConflictError,
+)
 
 
 def _make_character(root: Path) -> CharacterDirectory:
@@ -65,3 +69,40 @@ def test_load_state_rejects_duplicate_record_authority_member(tmp_path: Path) ->
 
     with pytest.raises(CharacterDataError, match="duplicate JSON object member: value"):
         character.load_state()
+
+
+def test_conditional_state_save_rejects_stale_revision_without_overwrite(
+    tmp_path: Path,
+) -> None:
+    character = _make_character(tmp_path)
+    _, revision = character.load_state_with_revision()
+    newer = CanonicalState(
+        states=(
+            StateRecord(
+                state_id="newer",
+                state_class="user.fact",
+                key="residence_location",
+                value="Fukuoka",
+                sources=("event-newer",),
+            ),
+        )
+    )
+    stale = CanonicalState(
+        states=(
+            StateRecord(
+                state_id="stale",
+                state_class="user.preference",
+                key="tea",
+                value="likes",
+                sources=("event-stale",),
+            ),
+        )
+    )
+
+    character.save_state(newer)
+
+    with pytest.raises(StateRevisionConflictError, match="state revision changed"):
+        character.save_state(stale, expected_revision=revision)
+
+    assert character.load_state() == newer
+    assert not (tmp_path / "memory" / ".state.json.tmp").exists()
