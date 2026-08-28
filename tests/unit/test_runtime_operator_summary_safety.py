@@ -30,7 +30,9 @@ def test_human_operator_summary_escapes_control_characters_in_metadata(
     code = run_cli(
         [
             command,
-            "--character",
+            "--profile-name",
+            "summary-safety",
+            "--profile-root",
             str(character),
             "--provider-base-url",
             "http://127.0.0.1:1234/v1",
