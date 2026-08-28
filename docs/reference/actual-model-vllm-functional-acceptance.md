@@ -1,6 +1,6 @@
 # Actual-model vLLM functional acceptance
 
-Status: current #1863 transaction under #1386 actual-model product-quality authority.
+Status: launch/runtime qualification is owned by #1959; post-freeze semantic qualification is owned by #1960 under #1386 actual-model product-quality authority.
 
 Stage R exists first to answer a product question:
 
@@ -32,16 +32,25 @@ The execution window is bound from fresh external capacity evidence whose `obser
 
 Do not treat a guessed `gpu_memory_utilization` fraction or a repository-chosen context size as hardware capability.
 
-Use the exact canonical vLLM runtime's own memory profiler in two bounded steps:
+For one #1959 launch transaction, acquire fresh CUDA `free_bytes` and `total_bytes` immediately before the profiler launch and construct one `VLLMLaunchMemoryAdmission` from those bytes. The admission quantizes the fresh free-memory ratio downward to an exact three-decimal value:
 
-1. **Probe.** Start the exact target on source `70b84f0bc...` with normal profiling enabled and `--max-model-len auto`. This probe exists only to obtain runtime memory facts; its configured `gpu_memory_utilization` is not the capability result.
+```text
+utilization_millis = floor(1000 * free_bytes / total_bytes)
+gpu_memory_utilization = utilization_millis / 1000
+```
+
+The quantized value must be strictly between `0.000` and `1.000` or preparation fails closed. It is transaction-scoped startup admission, not a release/default fraction. The same immutable admission must render both profiler and final-runtime memory arguments so the final launch cannot silently fall back to a vLLM default.
+
+Use the exact canonical vLLM runtime's own memory profiler in bounded steps:
+
+1. **Probe.** Start the exact target on source `70b84f0bc...` with the transaction admission's explicit `--gpu-memory-utilization=<fresh-derived-value>`, normal profiling enabled, `--max-model-len auto`, and no explicit KV override. This probe exists only to obtain runtime memory facts; the admission fraction is not the capability result.
 2. **Resolve KV capacity from free VRAM.** Retain the profiler output for startup free GPU memory, weights/model memory, peak activation memory, non-Torch memory and CUDA-graph memory. The pinned runtime intentionally emits two distinct explicit-KV recommendation roles in the same profiling message: one value to fit into the currently requested memory envelope and another value to fully utilize currently available GPU memory. **Stage R authority is the fully-utilize GPU-memory role only.** The requested-memory-limit value is legitimate backend output but is not the final-runtime KV authority and must not be treated as a conflicting Stage R recommendation. The pinned runtime may present either role in surrounding log prose or Markdown-like backticks and may spell the evidence token as either `--kv-cache-memory=<bytes>` or `--kv-cache-memory-bytes=<bytes>`. Parse the raw profiler log with `python -m relaylm.actual_model_vllm_profiler --log <profiler-log>`; the command prints the exact positive integer only when the fully-utilize role is unambiguous, ignores the requested-limit role for this Stage R purpose, and fails closed when the fully-utilize role is missing or internally conflicting. Do not hand-parse this value with whitespace-sensitive `rg`/shell extraction. The canonical source contract defines explicit KV bytes as overriding `gpu_memory_utilization` for KV sizing.
-3. **Final capability run.** Restart the exact same target/runtime with that parsed integer supplied through the supported final-launch `--kv-cache-memory-bytes=<bytes>` control and `--max-model-len auto`. Auto-fit then resolves the maximum model length supported by the profiled KV capacity.
+3. **Final capability run.** Restart the exact same target/runtime using `VLLMLaunchMemoryAdmission.final_memory_args(...)`: the final launch must carry the exact same transaction `--gpu-memory-utilization` value, the fresh parsed `--kv-cache-memory-bytes=<bytes>` value, and `--max-model-len auto`. Explicit KV remains the KV-sizing authority; repeating the admission value preserves pinned-vLLM startup admission parity rather than sizing KV a second time. Auto-fit then resolves the maximum model length supported by the profiled KV capacity.
 4. Attest the final live `/version` and `/v1/models` identity, `max_model_len`, runner v2, model root and GPU KV-cache token capacity, and retain the exact final launch arguments/startup log.
 
-Do not invent a fallback fraction such as 0.9 or 0.92. If the canonical runtime does not expose enough memory-profile evidence to derive or report a defensible explicit KV byte budget, stop and report the backend-capability gap instead of substituting a guessed fixed context window.
+Do not invent or reuse a fallback fraction such as 0.9, 0.92, or a prior transaction's derived value. If the canonical runtime does not expose enough fresh memory-profile evidence to derive a valid admission or an unambiguous explicit KV byte budget, stop and report the backend-capability gap instead of substituting a guessed fixed context window.
 
-If unrelated GPU processes or display load materially change between probe and final launch, repeat the probe rather than reusing a stale byte recommendation.
+If unrelated GPU processes or display load materially change between probe and final launch, repeat the probe rather than reusing stale transaction admission or KV evidence.
 
 The discovered maximum is a hardware/backend capability fact for this exact machine/runtime state. It is not a release/default recommendation.
 
@@ -170,8 +179,8 @@ The current Pass 2 wire projects directly to `state_candidates` / `continuity_ca
 
 The focused durability fixture extends regression coverage for model-facing State projection semantics only. It does not introduce a language-specific deterministic parser, confidence field, fixed intermediate cognition axes, or new State lifecycle rule.
 
-The capacity correction remains: **use the canonical frozen-proof vLLM runtime, profile its actual free VRAM and non-KV footprint, let that runtime resolve explicit KV bytes and maximum model length, use that live capacity for functional acceptance, then calibrate later**.
+The capacity correction remains: **use the canonical frozen-proof vLLM runtime, derive one fresh transaction startup admission, carry that same admission through profiler and final launch, profile actual free VRAM and non-KV footprint, let the runtime resolve explicit KV bytes and maximum model length, use that live capacity for functional acceptance, then calibrate later**.
 
 ## Principle
 
-> First establish the exact citable backend/runtime, then discover that runtime's usable GPU capacity and prove the exact current RelayLM path works there. Calibrate the product profile only after that.
+> Qualify launch admission and live capacity without inventing defaults, then prove the exact frozen semantic product on that separately qualified runtime before Calibration.
