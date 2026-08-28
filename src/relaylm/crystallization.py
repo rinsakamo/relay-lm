@@ -84,7 +84,7 @@ async def run_crystallization(
     )
 
     current_state, current_revision = character.load_state_with_revision()
-    event_by_id = {event.id: event for event in character.iter_events()}
+    event_by_id = {event.id: event for event in all_events}
     validation = _apply_crystallization_state_candidates(
         origin_state=origin_state,
         current_state=current_state,
