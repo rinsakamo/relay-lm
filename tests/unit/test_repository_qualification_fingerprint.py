@@ -176,6 +176,49 @@ def test_manifest_is_derived_from_closure_without_central_path_list(tmp_path: Pa
     }
 
 
+def test_manifest_normalizes_qualification_input_order(tmp_path: Path) -> None:
+    declaration = _owner(tmp_path, "context_compiler")
+    semantic = declaration["canonical_surfaces"][0]  # type: ignore[index]
+    implementation = declaration["implementation"][0]  # type: ignore[index]
+    declaration["qualification_inputs"] = [implementation, semantic]
+    _write(tmp_path, declaration)
+
+    first_declarations = load_declarations(tmp_path)
+    first_manifest = qualification_manifest(
+        tmp_path,
+        first_declarations,
+        roots=("context_compiler",),
+    )
+    first_fingerprint = qualification_fingerprint(
+        tmp_path,
+        first_declarations,
+        roots=("context_compiler",),
+    )
+
+    declaration["qualification_inputs"] = [semantic, implementation]
+    _write(tmp_path, declaration)
+    second_declarations = load_declarations(tmp_path)
+    second_manifest = qualification_manifest(
+        tmp_path,
+        second_declarations,
+        roots=("context_compiler",),
+    )
+    second_fingerprint = qualification_fingerprint(
+        tmp_path,
+        second_declarations,
+        roots=("context_compiler",),
+    )
+
+    assert first_manifest == second_manifest
+    assert first_manifest["owners"] == [
+        {
+            "id": "context_compiler",
+            "qualification_inputs": [semantic, implementation],
+        }
+    ]
+    assert first_fingerprint == second_fingerprint
+
+
 def test_fingerprint_changes_with_exact_selected_file_bytes(tmp_path: Path) -> None:
     declaration = _owner(tmp_path, "context_compiler")
     selected = declaration["implementation"][0]  # type: ignore[index]
