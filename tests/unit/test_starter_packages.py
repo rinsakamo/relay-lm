@@ -31,8 +31,9 @@ def _runtime_config(path: Path, root: Path) -> Path:
         "\n".join(
             [
                 "format_version: 1",
-                "character:",
-                f"  directory: {root}",
+                "profiles:",
+                f"  - name: {root.name}",
+                f"    root: {root}",
                 "provider:",
                 "  adapter: openai_compatible",
                 "  base_url: http://127.0.0.1:1234/v1",
