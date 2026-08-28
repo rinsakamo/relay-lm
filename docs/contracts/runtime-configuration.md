@@ -2,25 +2,30 @@
 
 Status: current RelayLM v1 release configuration contract. Owning Issue: #1446.
 
-Runtime configuration carries machine/operator policy into existing semantic owners. It does not become Character authority, provider-wire authority, or #1388 calibration authority.
+Runtime configuration carries machine/operator policy and public Cognitive Profile bindings into existing semantic owners. It does not become Cognitive Package authority, provider-wire authority, or #1388 calibration authority.
 
 ## Boundary
 
 ```text
-portable Character Package
+portable Cognitive Package
         !=
-runtime configuration
+Cognitive Profile binding
+        !=
+runtime / physical provider configuration
         !=
 semantic authority
 ```
+
+A Character Package is one valid Cognitive Package specialization. Runtime configuration may bind Character-like or machine-like roots without changing package semantics.
 
 Canonical implementation:
 
 - `src/relaylm/runtime_config.py`
 - `src/relaylm/runtime_config_loader.py`
 - `src/relaylm/runtime_assembly.py`
+- `src/relaylm/cognitive_profile.py`
 
-The Character Package contains portable character data. Provider endpoints, backend identity, secrets, server bind settings, cognition topology, pass controls, token counters, and machine-specific paths belong to runtime configuration instead.
+Cognitive Packages contain portable cognitive data. Public Profile names, provider endpoints, backend identity, secrets, server bind settings, cognition topology, pass controls, token counters, and other machine-specific policy belong to runtime configuration instead.
 
 ## Format
 
@@ -31,14 +36,20 @@ Current shape:
 ```yaml
 format_version: 1
 
-character:
-  directory: /path/to/Character
+profiles:
+  - name: relm
+    root: /path/to/characters/relm
+
+  - name: medical-soap
+    root: /path/to/machines/medical-soap
+    provider:
+      model: specialist-physical-model
 
 provider:
   adapter: openai_compatible
   backend: generic          # generic | vllm | lm_studio
   base_url: http://127.0.0.1:1234/v1
-  model: model-id
+  model: default-physical-model
   api_key:                  # optional reference only
     env: OPENAI_API_KEY
 
@@ -61,8 +72,8 @@ runtime:
       max_output_tokens: 256
       structured_output_mode: native  # plain | native | auto
 
-  # Reserved for #1388. Any non-empty value currently fails closed.
-  profile: profile-name
+  # Reserved for #1388 execution/calibration policy. This is not a Cognitive Profile.
+  calibration_profile: profile-name
 
   memory_retrieval:
     max_chunks: 4
@@ -97,6 +108,44 @@ runtime:
 
 Numbers in the example are examples, not release defaults.
 
+## Cognitive Profiles
+
+`profiles[]` is the public request-routing registry for Core 1.0.
+
+Each entry requires:
+
+```text
+name
+  non-empty unique public Cognitive Profile ID
+  exact value accepted in OpenAI request `model`
+
+root
+  one Cognitive Package root
+  may be Character-like or machine-like
+
+provider.model
+  optional physical-model override for this Profile
+```
+
+The global `provider` block remains the machine/runtime default. A Profile may override only explicitly supported leaves; Core 1.0 currently supports the physical `model` leaf. Provider hosts, backend identity, API keys, server settings, and secrets do not move into Cognitive Packages.
+
+Public Profile identity and physical provider-model identity are intentionally different concepts. Multiple Profiles may share the same physical model. A request selects exactly one Profile before semantic turn preparation; unknown Profile IDs fail before Event/State mutation.
+
+Each Profile root owns its own State/Event/MEMORY persistence boundary. Runtime configuration must never use one Profile selection to read or mutate another Profile root.
+
+### Environment and CLI binding
+
+The bounded single-Profile CLI/environment convenience surface is:
+
+```text
+--profile-name NAME
+--profile-root PATH
+RELAYLM_PROFILE_NAME
+RELAYLM_PROFILE_ROOT
+```
+
+These values construct one `profiles[]` entry when no runtime-file list supplies the registry. They are not aliases for the removed Character-only runtime schema.
+
 ## Cognition carriage
 
 #1533 owns cognition semantics. Configuration only carries them.
@@ -106,11 +155,15 @@ For Core 1.0:
 - `two_pass` is the release/reference topology and the canonical topology default;
 - `single_pass` remains an explicit compatibility/experimental mode;
 - `shadow_two_pass` is evidence-only and ordinary release assembly rejects it;
-- `auto` requires future #1388 profile resolution and ordinary release assembly rejects it while unresolved.
+- `auto` requires future #1388 calibration-profile resolution and ordinary release assembly rejects it while unresolved.
 
 The topology default does **not** imply numeric pass defaults. With no explicit pass controls, both `CognitionPassRequest` values contain omitted reasoning/decoding/output controls. Provider behavior must therefore remain truthful about what was requested, omitted, unsupported, or applied.
 
 Pass 1 and Pass 2 controls are independently represented. The configuration layer does not infer stronger Pass 2 reasoning simply because a request is Pass 2.
+
+### Calibration-profile naming
+
+`runtime.calibration_profile` belongs to #1388 execution/default policy and is distinct from `profiles[].name` Cognitive Profiles. An old `runtime.profile` value is not silently reinterpreted as a Cognitive Profile or calibration profile.
 
 ### Pass 2 structured-output transport
 
@@ -153,7 +206,7 @@ two_pass + runtime.cognitive_budget -> invalid_combination
 single_pass + runtime.cognitive_budget -> existing #1387 behavior
 ```
 
-This is deliberate fail-closed behavior, not a missing hidden default.
+A single-pass Cognitive Budget also cannot currently be shared across Profile-specific physical-model overrides because its token-counter configuration is global. That combination fails closed rather than guessing cross-model accounting.
 
 ## Discovery and precedence
 
@@ -174,7 +227,7 @@ CLI/programmatic override
   > canonical default
 ```
 
-Current named bindings include Character, provider adapter/base URL/model/secret reference, server host/port, reserved profile selection, and cognition execution mode. Cognition mode is exposed as:
+Current named bindings include single-Profile name/root convenience inputs, provider adapter/base URL/model/secret reference, server host/port, calibration-profile selection, and cognition execution mode. Cognition mode is exposed as:
 
 ```text
 --cognition-mode MODE
@@ -184,7 +237,7 @@ runtime.cognition.mode
 
 All three select only the existing #1533 closed vocabulary. They do not create a new mode or numeric policy. CLI beats environment, environment beats runtime YAML, and omission falls back to canonical `two_pass`.
 
-Complex Pass 1/Pass 2 controls, including `pass2.structured_output_mode`, Retrieval, Continuity, and Cognitive Budget structures remain file-owned in format version 1. There is no generic `--set key=value` surface.
+Complex multi-Profile registries, Profile-local provider mappings, Pass 1/Pass 2 controls, including `pass2.structured_output_mode`, Retrieval, Continuity, and Cognitive Budget structures remain file-owned in format version 1. There is no generic `--set key=value` surface.
 
 ## Current defaults
 
@@ -199,11 +252,13 @@ server.port               = 8090
 runtime.cognition.mode    = two_pass
 ```
 
+There is no default public Cognitive Profile name or root: at least one Profile binding is required.
+
 `runtime.cognition.mode = two_pass` comes from #1533 architecture authority. It is not a #1388 numeric calibration value.
 
-For Pass 2 structured-output transport, omission preserves the established `plain` path. This compatibility behavior is represented by omission in the resolved request rather than by inventing a profile/default value.
+For Pass 2 structured-output transport, omission preserves the established `plain` path. This compatibility behavior is represented by omission in the resolved request rather than by inventing a calibration/default value.
 
-There are no calibrated defaults here for reasoning effort, decoding values, output budgets, context window, retrieval counts, Continuity lifetime/capacity, Cognitive Budget envelopes, token-counter capability, runtime profile, or an eventual preferred Pass 2 structured-output transport.
+There are no calibrated defaults here for reasoning effort, decoding values, output budgets, context window, retrieval counts, Continuity lifetime/capacity, Cognitive Budget envelopes, token-counter capability, `runtime.calibration_profile`, or an eventual preferred Pass 2 structured-output transport.
 
 ## Provider identity
 
@@ -228,7 +283,9 @@ Secret selection remains deterministic and an explicitly selected missing/empty 
 
 ## Effective diagnostics
 
-`ResolvedRuntimeConfig.effective_diagnostics()` exposes non-secret effective values plus provenance. Current diagnostics include file-owned Pass 2 controls through collected provenance, including an explicitly configured `runtime.cognition.pass2.structured_output_mode`, so operator evidence can distinguish a selected transport without reading Character semantic payload.
+`ResolvedRuntimeConfig.effective_diagnostics()` exposes non-secret effective values plus provenance. Profile names, roots, and effective physical-model mappings are content-free runtime metadata and may be reported; semantic package payload is not.
+
+Current diagnostics also include file-owned Pass 2 controls through collected provenance, including an explicitly configured `runtime.cognition.pass2.structured_output_mode`, so operator evidence can distinguish a selected transport without reading Cognitive Package semantic payload.
 
 Diagnostics never include API keys, secret environment-variable names, SOUL text, State values, Event/MEMORY content, Continuity semantic payload, or conversation text.
 
@@ -252,20 +309,26 @@ character_invalid
 provider_invalid
 ```
 
+`character_invalid` is the retained release error-code spelling for invalid portable package data; it does not mean runtime roots are restricted to Character Packages.
+
 Errors expose safe configuration metadata only.
 
 ## Invariants
 
 Runtime configuration must preserve:
 
+- one request selects exactly one configured Cognitive Profile before semantic turn preparation;
+- Profile names are unique public IDs and Profile roots keep State/Event/MEMORY authority isolated;
+- public Profile identity remains distinct from physical provider/model identity;
+- Character remains one Cognitive Package specialization rather than the runtime root type;
 - two-pass topology ownership in #1533;
 - Pass 2 structured-output semantics ownership in #1533 and external wire realization in the provider lane;
-- numeric/profile ownership in #1388;
+- numeric/calibration-profile ownership in #1388;
 - provider capability/wire ownership in the provider lane;
-- Character/State/Event/MEMORY/Continuity semantic authority separation;
-- buffered/streaming cognition-policy equivalence;
+- State/Event/MEMORY/Continuity semantic authority separation;
+- buffered/streaming cognition and Profile-selection equivalence;
 - no semantic-payload inspection for runtime-policy selection;
 - fail-closed unsupported capability behavior;
 - no silent fallback from explicit Pass 2 `native` to `plain`.
 
-> Configuration carries selected policy. It does not manufacture semantics or defaults.
+> Configuration binds public Cognitive Profiles to portable roots and carries selected runtime policy. It does not manufacture semantics or defaults.
