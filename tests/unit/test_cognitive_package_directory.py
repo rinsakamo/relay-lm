@@ -99,6 +99,17 @@ def test_release_preflight_and_assembly_accept_machine_like_package(
     assert prepared.assembly.character.load_config().package_id == "medical-soap"
 
 
+def test_generic_package_config_rejects_null_identity_mapping(tmp_path: Path) -> None:
+    _write_package(
+        tmp_path,
+        config="format_version: 1\npackage:\n",
+    )
+    package = CognitivePackageDirectory(tmp_path)
+
+    with pytest.raises(CognitivePackageDataError, match="package must be a mapping"):
+        package.load_config()
+
+
 def test_generic_package_config_rejects_ambiguous_identity_authority(
     tmp_path: Path,
 ) -> None:
