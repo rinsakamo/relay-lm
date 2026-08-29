@@ -1,6 +1,6 @@
 schema_version: 1
 id: runtime_configuration
-summary: Release runtime configuration, Cognitive Profile registry and routing carriage, two-pass-first cognition carriage, Pass 2 structured-output transport selection, named cognition-mode precedence, provider-backend selection, assembly, preflight, and operator semantics.
+summary: Release runtime configuration, Cognitive Profile registry and routing carriage, two-pass-first cognition carriage, Pass 2 structured-output transport selection, bounded stale-extraction scheduling consumption, explicit single-pass/two-pass Cognitive Budget carriage with provider hard-output-limit safety validation, named cognition-mode precedence, provider-backend selection, assembly, preflight, and operator semantics.
 owner_issue: 1446
 canonical_surfaces:
 - docs/contracts/runtime-configuration.md
@@ -23,6 +23,7 @@ tests:
 - tests/unit/test_runtime_config_loader.py
 - tests/unit/test_runtime_assembly.py
 - tests/unit/test_release_two_pass_wiring.py
+- tests/unit/test_release_two_pass_budget.py
 - tests/unit/test_runtime_provider_backend_selection.py
 - tests/unit/test_runtime_lm_studio_backend.py
 - tests/unit/test_runtime_provider_base_endpoint_admission.py

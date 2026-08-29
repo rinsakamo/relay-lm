@@ -5,8 +5,15 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 
-OpenAICompatibleDecodingControl = Literal["temperature", "top_p", "seed"]
-OPENAI_COMPATIBLE_DECODING_CONTROLS = frozenset({"temperature", "top_p", "seed"})
+OpenAICompatibleDecodingControl = Literal[
+    "temperature",
+    "top_p",
+    "seed",
+    "max_output_tokens",
+]
+OPENAI_COMPATIBLE_DECODING_CONTROLS = frozenset(
+    {"temperature", "top_p", "seed", "max_output_tokens"}
+)
 
 
 class ProviderCapabilityError(ValueError):
@@ -15,11 +22,19 @@ class ProviderCapabilityError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class OpenAICompatibleDecodingConfig:
-    """Explicit output-affecting request controls with no numeric defaults."""
+    """Explicit output-affecting request controls with no numeric defaults.
+
+    ``max_output_tokens`` is the provider-neutral RelayLM control name. The current
+    canonical Chat Completions wire realizes it as ``max_tokens`` because both
+    supported vLLM and LM Studio backend contracts accept that field. Capability
+    declaration remains explicit, so a generic/unknown endpoint is never assumed
+    to support the limit merely because the field is common.
+    """
 
     temperature: int | float | None = None
     top_p: int | float | None = None
     seed: int | None = None
+    max_output_tokens: int | None = None
 
     def __post_init__(self) -> None:
         _validate_optional_finite_number("temperature", self.temperature)
@@ -28,6 +43,13 @@ class OpenAICompatibleDecodingConfig:
             isinstance(self.seed, bool) or not isinstance(self.seed, int)
         ):
             raise TypeError("seed must be an integer when provided")
+        if self.max_output_tokens is not None:
+            if isinstance(self.max_output_tokens, bool) or not isinstance(
+                self.max_output_tokens, int
+            ):
+                raise TypeError("max_output_tokens must be an integer when provided")
+            if self.max_output_tokens <= 0:
+                raise ValueError("max_output_tokens must be positive when provided")
 
     @property
     def requested_controls(self) -> frozenset[OpenAICompatibleDecodingControl]:
@@ -38,6 +60,8 @@ class OpenAICompatibleDecodingConfig:
             controls.add("top_p")
         if self.seed is not None:
             controls.add("seed")
+        if self.max_output_tokens is not None:
+            controls.add("max_output_tokens")
         return frozenset(controls)
 
     def to_mapping(self) -> dict[str, int | float]:
@@ -50,6 +74,8 @@ class OpenAICompatibleDecodingConfig:
             mapping["top_p"] = self.top_p
         if self.seed is not None:
             mapping["seed"] = self.seed
+        if self.max_output_tokens is not None:
+            mapping["max_tokens"] = self.max_output_tokens
         return mapping
 
 

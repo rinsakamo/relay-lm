@@ -12,7 +12,9 @@ from relaylm.providers.vllm_reasoning_capability import (
 )
 
 OPENAI_COMPATIBLE_COGNITION_CAPABILITY_FACTS_FORMAT_VERSION = 1
-_COGNITION_PER_PASS_DECODING_CONTROLS = frozenset({"temperature", "top_p"})
+_COGNITION_PER_PASS_DECODING_CONTROLS = frozenset(
+    {"temperature", "top_p", "max_output_tokens"}
+)
 
 
 class OpenAICompatibleCognitionCapabilitySource(Protocol):
@@ -24,9 +26,9 @@ class OpenAICompatibleCognitionCapabilityFacts:
     """Provider-owned facts consumable by cognition-policy capability resolution.
 
     This is intentionally separate from the stable P4 provider identity so adding
-    a consumer-facing capability view does not rewrite historical provider/run
-    identity. The values describe the current canonical Chat Completions adapter;
-    they do not add request behavior.
+    a consumer-facing capability view does not rewrite historical provider identity.
+    The values describe the current canonical Chat Completions adapter; they do not
+    add request behavior.
     """
 
     structured_output: bool

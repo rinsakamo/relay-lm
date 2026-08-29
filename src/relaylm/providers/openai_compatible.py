@@ -501,6 +501,7 @@ def _resolve_cognition_pass_request(
         temperature=pass_request.temperature,
         top_p=pass_request.top_p,
         seed=decoding_config.seed,
+        max_output_tokens=pass_request.max_output_tokens,
     )
     decoding_capabilities.require(effective_decoding)
 

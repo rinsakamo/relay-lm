@@ -8,13 +8,20 @@ from relaylm.budget_enforcement import (
     SerializedCognitiveInputTokenCounter,
     TokenCountMode,
 )
-from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
+from relaylm.budget_runtime import (
+    CognitiveBudgetRuntimeConfig,
+    TwoPassCognitiveBudgetRuntimeConfig,
+    TwoPassSerializedInputTokenCounter,
+)
 from relaylm.cognitive import CognitionExecutionMode
 from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.cognition_execution import CognitionPassRequest
 from relaylm.continuity import ContinuityContext
 from relaylm.providers.openai_compatible import OpenAICompatibleProvider
-from relaylm.providers.openai_compatible_backend import OpenAICompatibleBackendId
+from relaylm.providers.openai_compatible_backend import (
+    OpenAICompatibleBackendId,
+    decoding_capabilities_for_backend,
+)
 from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPassProvider
 from relaylm.providers.vllm_reasoning_capability import (
     VLLMReasoningCapabilityAttestation,
@@ -26,10 +33,8 @@ from relaylm.turn import ContinuityRuntime, EventRetrievalBudget, MemoryRetrieva
 from relaylm.two_pass_turn import CognitionExecutionRuntime
 
 
-TokenCounterFactory = Callable[
-    [ProviderRuntimeConfig],
-    SerializedCognitiveInputTokenCounter,
-]
+TokenCounterFactory = Callable[[ProviderRuntimeConfig], object]
+CognitiveBudgetRuntime = CognitiveBudgetRuntimeConfig | TwoPassCognitiveBudgetRuntimeConfig
 
 
 class RuntimeAssemblyError(ValueError):
@@ -72,7 +77,7 @@ class RuntimeAssembly:
     pass2_request: CognitionPassRequest | None = None
     memory_budget: MemoryRetrievalBudget | None = None
     event_budget: EventRetrievalBudget | None = None
-    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None
+    cognitive_budget: CognitiveBudgetRuntime | None = None
 
     def app_kwargs(self) -> dict[str, Any]:
         """Arguments accepted by ``server.create_app`` without semantic rewriting."""
@@ -127,19 +132,6 @@ def assemble_runtime(
             ),
         )
 
-    if (
-        cognition.mode is CognitionExecutionMode.TWO_PASS
-        and runtime.cognitive_budget is not None
-    ):
-        raise RuntimeAssemblyError(
-            RuntimeConfigErrorCode.INVALID_COMBINATION,
-            field="runtime.cognitive_budget",
-            message=(
-                "the existing Cognitive Budget is single-pass authority and cannot "
-                "be guessed into two-pass per-pass totals before #1388 calibration"
-            ),
-        )
-
     if config.provider.backend is OpenAICompatibleBackendId.VLLM:
         if vllm_reasoning_capability is None:
             raise RuntimeAssemblyError(
@@ -168,6 +160,10 @@ def assemble_runtime(
                 "in runtime assembly"
             ),
         )
+
+    provider_decoding_capabilities = decoding_capabilities_for_backend(
+        config.provider.backend
+    )
 
     if config.provider.backend is OpenAICompatibleBackendId.LM_STUDIO:
         for pass_name, pass_request in (
@@ -215,8 +211,8 @@ def assemble_runtime(
                     RuntimeConfigErrorCode.INVALID_COMBINATION,
                     field=f"profiles[{index}].provider.model",
                     message=(
-                        "profile-specific physical models cannot share the single-pass "
-                        "Cognitive Budget token-counter configuration"
+                        "profile-specific physical models cannot share one configured "
+                        "Cognitive Budget token-counter capability"
                     ),
                 )
 
@@ -238,6 +234,13 @@ def assemble_runtime(
         config.provider,
         runtime.cognitive_budget,
         token_counter_capabilities or {},
+        cognition_mode=cognition.mode,
+        pass1_request=cognition.pass1,
+        pass2_request=cognition.pass2,
+        provider_supports_output_limit=(
+            "max_output_tokens"
+            in provider_decoding_capabilities.supported_controls
+        ),
     )
 
     provider_type = (
@@ -253,6 +256,7 @@ def assemble_runtime(
                 base_url=config.provider.base_url,
                 model=physical_model,
                 api_key=resolved.secrets.provider_api_key,
+                decoding_capabilities=provider_decoding_capabilities,
                 vllm_reasoning_capability=vllm_reasoning_capability,
             )
         except (TypeError, ValueError) as exc:
@@ -303,7 +307,12 @@ def _assemble_cognitive_budget(
     provider_config: ProviderRuntimeConfig,
     explicit_config: object,
     capabilities: Mapping[str, TokenCounterCapability],
-) -> CognitiveBudgetRuntimeConfig | None:
+    *,
+    cognition_mode: CognitionExecutionMode,
+    pass1_request: CognitionPassRequest,
+    pass2_request: CognitionPassRequest,
+    provider_supports_output_limit: bool,
+) -> CognitiveBudgetRuntime | None:
     if explicit_config is None:
         return None
 
@@ -336,15 +345,75 @@ def _assemble_cognitive_budget(
             message="configured serialized-input counter capability could not be constructed",
         ) from exc
 
+    if cognition_mode is CognitionExecutionMode.TWO_PASS:
+        _require_budgeted_pass_output_limit(
+            pass_name="pass1",
+            request=pass1_request,
+            reserved_output_tokens=explicit_config.total.reserved_output_tokens,
+            provider_supports_output_limit=provider_supports_output_limit,
+        )
+        _require_budgeted_pass_output_limit(
+            pass_name="pass2",
+            request=pass2_request,
+            reserved_output_tokens=explicit_config.total.reserved_output_tokens,
+            provider_supports_output_limit=provider_supports_output_limit,
+        )
+        if not isinstance(counter, TwoPassSerializedInputTokenCounter):
+            raise RuntimeAssemblyError(
+                RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+                field="runtime.cognitive_budget.token_counter.capability",
+                message=(
+                    "two-pass cognition requires a two-pass serialized-input counter capability"
+                ),
+            )
+        return TwoPassCognitiveBudgetRuntimeConfig(
+            pass1_total=explicit_config.total,
+            pass2_total=explicit_config.total,
+            policy=explicit_config.policy,
+            token_counter=counter,
+        )
+
     if not isinstance(counter, SerializedCognitiveInputTokenCounter):
         raise RuntimeAssemblyError(
             RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
             field="runtime.cognitive_budget.token_counter.capability",
             message="registered token-counter factory returned an incompatible implementation",
         )
-
     return CognitiveBudgetRuntimeConfig(
         total=explicit_config.total,
         policy=explicit_config.policy,
         token_counter=counter,
     )
+
+
+def _require_budgeted_pass_output_limit(
+    *,
+    pass_name: str,
+    request: CognitionPassRequest,
+    reserved_output_tokens: int,
+    provider_supports_output_limit: bool,
+) -> None:
+    limit = request.max_output_tokens
+    field = f"runtime.cognition.{pass_name}.max_output_tokens"
+    if limit is None:
+        raise RuntimeAssemblyError(
+            RuntimeConfigErrorCode.INVALID_COMBINATION,
+            field=field,
+            message=(
+                "budgeted two-pass cognition requires an explicit provider hard output limit"
+            ),
+        )
+    if not provider_supports_output_limit:
+        raise RuntimeAssemblyError(
+            RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE,
+            field=field,
+            message="configured provider backend cannot attest hard output-limit carriage",
+        )
+    if limit > reserved_output_tokens:
+        raise RuntimeAssemblyError(
+            RuntimeConfigErrorCode.INVALID_COMBINATION,
+            field=field,
+            message=(
+                "max_output_tokens must not exceed cognitive_budget.total.reserved_output_tokens"
+            ),
+        )

@@ -90,7 +90,13 @@ class TwoPassTurnResult:
 
 @dataclass(slots=True)
 class CognitionExecutionRuntime:
-    """Process-local ordering holder for response-first two-pass execution."""
+    """Process-local ordering holder for response-first two-pass execution.
+
+    A newly reserved turn makes all older extraction work semantically stale. Core
+    1.0 also cancels and joins those obsolete local Pass 2 tasks before the newer
+    turn begins provider generation, so response-first execution does not silently
+    accumulate overlapping stale provider requests.
+    """
 
     revision: int = 0
     latest_turn_event_id: str | None = None
@@ -116,6 +122,15 @@ class CognitionExecutionRuntime:
         self.revision += 1
         self.latest_turn_event_id = None
         return self.revision
+
+    async def _cancel_superseded_extractions(self) -> None:
+        """Cancel and join obsolete Pass 2 tasks before newer provider work starts."""
+
+        pending = tuple(task for task in self._pending_extractions if not task.done())
+        for task in pending:
+            task.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
 
     def _bind_turn(self, *, revision: int, event_id: str) -> None:
         if revision != self.revision:
@@ -178,6 +193,7 @@ async def run_user_turn_two_pass(
     async with execution_runtime._conversation_lock:
         async with execution_runtime._authority_lock:
             execution_revision = execution_runtime._reserve_turn()
+        await execution_runtime._cancel_superseded_extractions()
         user_event, state, cognitive_input = _prepare_two_pass_user_turn(
             character=character,
             content=content,
@@ -263,6 +279,7 @@ async def run_user_turn_two_pass_streaming(
     async with execution_runtime._conversation_lock:
         async with execution_runtime._authority_lock:
             execution_revision = execution_runtime._reserve_turn()
+        await execution_runtime._cancel_superseded_extractions()
         user_event, state, cognitive_input = _prepare_two_pass_user_turn(
             character=character,
             content=content,
@@ -547,6 +564,16 @@ async def _complete_extraction(
                 completion=completion,
             )
     except asyncio.CancelledError:
+        if not execution_runtime._is_current(
+            revision=execution_revision,
+            event_id=event_id,
+        ):
+            return TwoPassExtractionResult(
+                status=TwoPassExtractionStatus.STALE,
+                originating_event_id=event_id,
+                state=character.load_state(),
+                completion=completion,
+            )
         raise
     except Exception:
         return TwoPassExtractionResult(
