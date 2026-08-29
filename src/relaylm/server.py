@@ -9,7 +9,10 @@ from fastapi import FastAPI
 
 from relaylm import __version__
 from relaylm.api.openai import create_openai_router
-from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
+from relaylm.budget_runtime import (
+    CognitiveBudgetRuntimeConfig,
+    TwoPassCognitiveBudgetRuntimeConfig,
+)
 from relaylm.cognitive import CognitionExecutionMode
 from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.cognition_execution import CognitionPassRequest
@@ -17,6 +20,9 @@ from relaylm.providers.openai_compatible_two_pass import OpenAICompatibleTwoPass
 from relaylm.storage.cognitive_package import CognitivePackageDirectory
 from relaylm.turn import EventRetrievalBudget, MemoryRetrievalBudget
 from relaylm.two_pass_turn import CognitionExecutionRuntime
+
+
+CognitiveBudgetRuntime = CognitiveBudgetRuntimeConfig | TwoPassCognitiveBudgetRuntimeConfig
 
 
 def create_app(
@@ -27,7 +33,7 @@ def create_app(
     pass2_request: CognitionPassRequest | None = None,
     memory_budget: MemoryRetrievalBudget | None = None,
     event_budget: EventRetrievalBudget | None = None,
-    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
+    cognitive_budget: CognitiveBudgetRuntime | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
