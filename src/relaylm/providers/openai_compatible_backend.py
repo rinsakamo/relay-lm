@@ -3,6 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from relaylm.providers.openai_compatible_decoding import (
+    OpenAICompatibleDecodingCapabilities,
+)
+
 
 class OpenAICompatibleBackendId(StrEnum):
     """Canonical machine-facing backend identities under the OpenAI-compatible adapter."""
@@ -82,3 +86,25 @@ def resolve_openai_compatible_backend(value: str) -> OpenAICompatibleBackend:
     if backend_id is None:
         raise ValueError(f"unsupported OpenAI-compatible backend: {value}")
     return _BACKEND_BY_ID[backend_id]
+
+
+def decoding_capabilities_for_backend(
+    backend_id: OpenAICompatibleBackendId,
+) -> OpenAICompatibleDecodingCapabilities:
+    """Return provider-owned request controls proven by the selected backend dialect.
+
+    Generic OpenAI-compatible endpoints remain capability-unknown. The current
+    explicit vLLM and LM Studio dialects both admit the standard temperature,
+    top-p, and hard ``max_tokens`` Chat Completions controls represented inside
+    RelayLM as ``max_output_tokens``.
+    """
+
+    if not isinstance(backend_id, OpenAICompatibleBackendId):
+        raise TypeError("backend_id must be OpenAICompatibleBackendId")
+    if backend_id is OpenAICompatibleBackendId.GENERIC:
+        return OpenAICompatibleDecodingCapabilities()
+    return OpenAICompatibleDecodingCapabilities(
+        supported_controls=frozenset(
+            {"temperature", "top_p", "max_output_tokens"}
+        )
+    )
