@@ -203,6 +203,6 @@ runtime:
     )
     with pytest.raises(RuntimeConfigResolutionError) as caught_current:
         resolve_runtime_config(config_path=current, environ={})
-    assert caught_current.value.code is RuntimeConfigErrorCode.INVALID_COMBINATION
+    assert caught_current.value.code is RuntimeConfigErrorCode.INVALID_VALUE
     assert caught_current.value.field == "runtime.calibration_profile"
-    assert "calibrated" in str(caught_current.value).lower()
+    assert "unsupported calibration profile" in str(caught_current.value)

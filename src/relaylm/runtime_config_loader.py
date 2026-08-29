@@ -37,6 +37,8 @@ from relaylm.runtime_config import (
     DEFAULT_SERVER_HOST,
     DEFAULT_SERVER_PORT,
     RUNTIME_CONFIG_FORMAT_VERSION,
+    CALIBRATION_PROFILES,
+    CalibrationProfile,
     RUNTIME_CONFIG_PATH_ENV,
     CognitiveProfileConfig,
     CognitiveProfileProviderConfig,
@@ -110,6 +112,7 @@ class ResolvedRuntimeConfig:
     secret_effective: EffectiveConfigSecret
     config_path: Path | None
     config_path_source: ConfigSource | None
+    calibration_profile: CalibrationProfile | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "provenance", MappingProxyType(dict(self.provenance)))
@@ -204,12 +207,24 @@ def resolve_runtime_config(
         environ=active_env,
     )
     raw = _load_config_mapping(selected_path) if selected_path is not None else {}
-    if selected_path is not None:
-        _validate_file_shape(raw)
 
     provenance: dict[str, EffectiveConfigValue] = {}
     if selected_path is not None:
         _collect_file_provenance(raw, provenance)
+    calibration_profile_name = _resolve_optional_string_leaf(
+        "runtime.calibration_profile",
+        cli_value=active_overrides.calibration_profile,
+        env_name="RELAYLM_CALIBRATION_PROFILE",
+        environ=active_env,
+        file_value=_file_value(raw, "runtime", "calibration_profile"),
+        provenance=provenance,
+    )
+    calibration_profile = _resolve_calibration_profile(calibration_profile_name)
+    if calibration_profile is not None:
+        _record_calibration_profile_provenance(provenance, calibration_profile)
+
+    if selected_path is not None:
+        _validate_file_shape(raw, calibration_profile=calibration_profile)
         format_version = raw["format_version"]
         _record(provenance, "format_version", format_version, ConfigSource.CONFIG_FILE)
         profiles = _parse_profiles(raw["profiles"])
@@ -310,30 +325,17 @@ def resolve_runtime_config(
     )
     _validate_port(server_port, "server.port")
 
-    calibration_profile = _resolve_optional_string_leaf(
-        "runtime.calibration_profile",
-        cli_value=active_overrides.calibration_profile,
-        env_name="RELAYLM_CALIBRATION_PROFILE",
-        environ=active_env,
-        file_value=_file_value(raw, "runtime", "calibration_profile"),
-        provenance=provenance,
-    )
-    if calibration_profile is not None:
-        raise RuntimeConfigResolutionError(
-            RuntimeConfigErrorCode.INVALID_COMBINATION,
-            field="runtime.calibration_profile",
-            message=(
-                "calibrated runtime profiles are not current authority; "
-                "use explicit owner controls until #1388 publishes them"
-            ),
-        )
-
     provider_api_key_ref, secrets, secret_effective = _resolve_provider_secret(
         overrides=active_overrides,
         environ=active_env,
         raw=raw,
     )
-    runtime_policy = _parse_runtime_policy(raw.get("runtime", {}))
+    runtime_policy = _parse_runtime_policy(
+        raw.get("runtime", {}), calibration_profile=calibration_profile
+    )
+    _record_calibrated_budget_provenance(
+        raw, calibration_profile=calibration_profile, provenance=provenance
+    )
     cognition_mode_text = _resolve_string_leaf(
         "runtime.cognition.mode",
         cli_value=active_overrides.cognition_mode,
@@ -348,7 +350,9 @@ def resolve_runtime_config(
     except ValueError:
         _invalid_value("runtime.cognition.mode", "unsupported cognition execution mode")
     runtime_policy = RuntimePolicyConfig(
-        calibration_profile=None,
+        calibration_profile=(
+            None if calibration_profile is None else calibration_profile.name
+        ),
         cognition=CognitionRuntimeSettings(
             mode=cognition_mode,
             pass1=runtime_policy.cognition.pass1,
@@ -385,6 +389,7 @@ def resolve_runtime_config(
         secret_effective=secret_effective,
         config_path=selected_path,
         config_path_source=selected_path_source,
+        calibration_profile=calibration_profile,
     )
 
 
@@ -488,7 +493,11 @@ def _load_config_mapping(path: Path) -> dict[str, Any]:
     return loaded
 
 
-def _validate_file_shape(raw: dict[str, Any]) -> None:
+def _validate_file_shape(
+    raw: dict[str, Any],
+    *,
+    calibration_profile: CalibrationProfile | None,
+) -> None:
     if "format_version" not in raw:
         _missing("format_version")
     version = raw["format_version"]
@@ -561,7 +570,7 @@ def _validate_file_shape(raw: dict[str, Any]) -> None:
         )
         if "calibration_profile" in runtime:
             _string(runtime["calibration_profile"], "runtime.calibration_profile")
-        _parse_runtime_policy(runtime)
+        _parse_runtime_policy(runtime, calibration_profile=calibration_profile)
 
 
 def _parse_profiles(raw: object) -> tuple[CognitiveProfileConfig, ...]:
@@ -606,7 +615,11 @@ def _parse_profiles(raw: object) -> tuple[CognitiveProfileConfig, ...]:
     return tuple(result)
 
 
-def _parse_runtime_policy(raw: object) -> RuntimePolicyConfig:
+def _parse_runtime_policy(
+    raw: object,
+    *,
+    calibration_profile: CalibrationProfile | None = None,
+) -> RuntimePolicyConfig:
     runtime = _mapping(raw, "runtime")
     cognition = (
         _parse_cognition(runtime["cognition"])
@@ -629,7 +642,9 @@ def _parse_runtime_policy(raw: object) -> RuntimePolicyConfig:
         else None
     )
     cognitive_budget = (
-        _parse_cognitive_budget(runtime["cognitive_budget"])
+        _parse_cognitive_budget(
+            runtime["cognitive_budget"], calibration_profile=calibration_profile
+        )
         if "cognitive_budget" in runtime
         else None
     )
@@ -773,25 +788,39 @@ def _parse_continuity(raw: object) -> ContinuityRuntimeSettings:
         _invalid_value(path, str(exc))
 
 
-def _parse_cognitive_budget(raw: object) -> ExplicitCognitiveBudgetConfig:
+def _parse_cognitive_budget(
+    raw: object,
+    *,
+    calibration_profile: CalibrationProfile | None = None,
+) -> ExplicitCognitiveBudgetConfig:
     path = "runtime.cognitive_budget"
     mapping = _mapping(raw, path)
-    _require_exact_keys(mapping, path, {"total", "policy", "token_counter"})
+    _reject_unknown(mapping, path, {"total", "policy", "token_counter"})
+    for required in ("policy", "token_counter"):
+        if required not in mapping:
+            _missing(f"{path}.{required}")
 
     total_path = f"{path}.total"
-    total_raw = _mapping(mapping["total"], total_path)
-    _require_exact_keys(
+    if "total" not in mapping:
+        if calibration_profile is None:
+            _missing(total_path)
+        total_raw = {}
+    else:
+        total_raw = _mapping(mapping["total"], total_path)
+        _reject_unknown(
+            total_raw,
+            total_path,
+            {"model_context_window", "reserved_output_tokens"},
+        )
+    model_context_window = _calibrated_total_leaf(
         total_raw,
-        total_path,
-        {"model_context_window", "reserved_output_tokens"},
+        "model_context_window",
+        calibration_profile=calibration_profile,
     )
-    model_context_window = _integer(
-        total_raw["model_context_window"],
-        f"{total_path}.model_context_window",
-    )
-    reserved_output_tokens = _integer(
-        total_raw["reserved_output_tokens"],
-        f"{total_path}.reserved_output_tokens",
+    reserved_output_tokens = _calibrated_total_leaf(
+        total_raw,
+        "reserved_output_tokens",
+        calibration_profile=calibration_profile,
     )
     try:
         total = TotalBudgetConfig(
@@ -809,6 +838,24 @@ def _parse_cognitive_budget(raw: object) -> ExplicitCognitiveBudgetConfig:
             f"{path}.token_counter",
         ),
     )
+
+
+def _calibrated_total_leaf(
+    total: dict[str, Any],
+    name: str,
+    *,
+    calibration_profile: CalibrationProfile | None,
+) -> int:
+    path = f"runtime.cognitive_budget.total.{name}"
+    if name in total:
+        return _integer(total[name], path)
+    if calibration_profile is None:
+        _missing(path)
+    if name == "model_context_window":
+        return calibration_profile.target_window
+    if name == "reserved_output_tokens":
+        return calibration_profile.output_allowance
+    raise AssertionError(f"unsupported calibrated total leaf: {name}")
 
 
 def _parse_budget_policy(raw: object, path: str) -> BudgetDegradationPolicy:
@@ -1086,6 +1133,70 @@ def _resolve_optional_string_leaf(
     resolved = _string(value, path)
     _record(provenance, path, resolved, source)
     return resolved
+
+
+def _resolve_calibration_profile(name: str | None) -> CalibrationProfile | None:
+    if name is None:
+        return None
+    profile = CALIBRATION_PROFILES.get(name)
+    if profile is None:
+        _invalid_value("runtime.calibration_profile", "unsupported calibration profile")
+    return profile
+
+
+def _record_calibration_profile_provenance(
+    provenance: dict[str, EffectiveConfigValue],
+    profile: CalibrationProfile,
+) -> None:
+    source = ConfigSource.CANONICAL_DEFAULT
+    _record(
+        provenance,
+        "runtime.calibration_profile.target_window",
+        profile.target_window,
+        source,
+    )
+    _record(
+        provenance,
+        "runtime.calibration_profile.output_allowance",
+        profile.output_allowance,
+        source,
+    )
+    _record(
+        provenance,
+        "runtime.calibration_profile.authority",
+        profile.authority,
+        source,
+    )
+
+
+def _record_calibrated_budget_provenance(
+    raw: dict[str, Any],
+    *,
+    calibration_profile: CalibrationProfile | None,
+    provenance: dict[str, EffectiveConfigValue],
+) -> None:
+    if calibration_profile is None:
+        return
+    cognitive_budget = _file_value(raw, "runtime", "cognitive_budget")
+    if not isinstance(cognitive_budget, dict):
+        return
+    total = cognitive_budget.get("total")
+    if not isinstance(total, dict):
+        total = {}
+    for name in ("model_context_window", "reserved_output_tokens"):
+        if name in total:
+            continue
+        value = (
+            calibration_profile.target_window
+            if name == "model_context_window"
+            else calibration_profile.output_allowance
+        )
+        _record(
+            provenance,
+            f"runtime.cognitive_budget.total.{name}",
+            value,
+            ConfigSource.CANONICAL_DEFAULT,
+        )
 
 
 def _resolve_int_leaf(

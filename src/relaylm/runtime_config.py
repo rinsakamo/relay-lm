@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from enum import Enum
+from types import MappingProxyType
 from urllib.parse import urlsplit
 
 from relaylm.budget import BudgetDegradationPolicy, TotalBudgetConfig
@@ -362,3 +363,35 @@ def _require_positive_int(name: str, value: int) -> None:
 def _require_optional_type(name: str, value: object, expected: type[object]) -> None:
     if value is not None and not isinstance(value, expected):
         raise TypeError(f"{name} must be {expected.__name__} or None")
+
+
+@dataclass(frozen=True, slots=True)
+class CalibrationProfile:
+    """Auditable #1388 values carried by one named runtime selection."""
+
+    name: str
+    target_window: int
+    output_allowance: int
+    authority: str
+
+    def __post_init__(self) -> None:
+        _require_non_empty_string("calibration_profile.name", self.name)
+        _require_positive_int(
+            "calibration_profile.target_window", self.target_window
+        )
+        _require_positive_int(
+            "calibration_profile.output_allowance", self.output_allowance
+        )
+        _require_non_empty_string("calibration_profile.authority", self.authority)
+
+
+FASTCAL_V1_CALIBRATION_PROFILE = CalibrationProfile(
+    name="fastcal-v1",
+    target_window=4096,
+    output_allowance=512,
+    authority="#1388 FastCal v1",
+)
+
+CALIBRATION_PROFILES = MappingProxyType(
+    {FASTCAL_V1_CALIBRATION_PROFILE.name: FASTCAL_V1_CALIBRATION_PROFILE}
+)

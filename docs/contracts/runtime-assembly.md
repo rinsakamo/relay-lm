@@ -79,7 +79,7 @@ Explicit `single_pass` constructs one `OpenAICompatibleProvider` per Profile and
 
 ### `auto` and `shadow_two_pass`
 
-`auto` is unresolved calibration policy until #1388 publishes calibrated authority. `shadow_two_pass` is evidence-only. Ordinary release assembly rejects both rather than guessing a serving topology.
+`auto` remains unresolved cognition-profile policy even after #1388 publishes the numeric `fastcal-v1` authority; calibration values do not choose a serving topology. `shadow_two_pass` is evidence-only. Ordinary release assembly rejects both rather than guessing a serving topology.
 
 ## Pass controls
 
