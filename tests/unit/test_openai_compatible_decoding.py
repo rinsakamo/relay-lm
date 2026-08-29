@@ -75,7 +75,9 @@ def _sse_chunk(*, content: str | None = None, finish_reason: str | None = None) 
 
 def _all_capabilities() -> OpenAICompatibleDecodingCapabilities:
     return OpenAICompatibleDecodingCapabilities(
-        supported_controls=frozenset({"temperature", "top_p", "seed"})
+        supported_controls=frozenset(
+            {"temperature", "top_p", "seed", "max_output_tokens"}
+        )
     )
 
 
@@ -85,6 +87,7 @@ def test_explicit_decoding_controls_are_carried_exactly_on_buffered_and_streamin
         temperature=0,
         top_p=0.875,
         seed=12345,
+        max_output_tokens=256,
     )
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -133,7 +136,13 @@ def test_explicit_decoding_controls_are_carried_exactly_on_buffered_and_streamin
         assert body["temperature"] == 0
         assert body["top_p"] == 0.875
         assert body["seed"] == 12345
-    assert effective == {"temperature": 0, "top_p": 0.875, "seed": 12345}
+        assert body["max_tokens"] == 256
+    assert effective == {
+        "temperature": 0,
+        "top_p": 0.875,
+        "seed": 12345,
+        "max_tokens": 256,
+    }
     assert "secret-not-identity" not in repr(effective)
     assert "".join(emitted) == "了解。"
 
@@ -162,7 +171,10 @@ def test_absent_decoding_controls_remain_absent_from_provider_request() -> None:
 
     assert effective == {}
     assert len(seen) == 1
-    assert all(control not in seen[0] for control in ("temperature", "top_p", "seed"))
+    assert all(
+        control not in seen[0]
+        for control in ("temperature", "top_p", "seed", "max_tokens")
+    )
 
 
 @pytest.mark.parametrize(
@@ -171,6 +183,11 @@ def test_absent_decoding_controls_remain_absent_from_provider_request() -> None:
         (OpenAICompatibleDecodingConfig(temperature=0.2), frozenset(), "temperature"),
         (OpenAICompatibleDecodingConfig(top_p=0.9), frozenset({"temperature"}), "top_p"),
         (OpenAICompatibleDecodingConfig(seed=7), frozenset({"temperature", "top_p"}), "seed"),
+        (
+            OpenAICompatibleDecodingConfig(max_output_tokens=128),
+            frozenset({"temperature", "top_p", "seed"}),
+            "max_output_tokens",
+        ),
     ],
 )
 def test_unsupported_requested_control_fails_before_network(
@@ -213,6 +230,10 @@ def test_unsupported_requested_control_fails_before_network(
         {"top_p": float("-inf")},
         {"seed": True},
         {"seed": 1.5},
+        {"max_output_tokens": True},
+        {"max_output_tokens": 1.5},
+        {"max_output_tokens": 0},
+        {"max_output_tokens": -1},
     ],
 )
 def test_decoding_config_rejects_untyped_or_non_finite_values(kwargs: dict[str, object]) -> None:
@@ -221,7 +242,12 @@ def test_decoding_config_rejects_untyped_or_non_finite_values(kwargs: dict[str, 
 
 
 def test_serialized_counter_can_use_the_same_explicit_decoding_request_shape() -> None:
-    config = OpenAICompatibleDecodingConfig(temperature=0.1, top_p=0.95, seed=99)
+    config = OpenAICompatibleDecodingConfig(
+        temperature=0.1,
+        top_p=0.95,
+        seed=99,
+        max_output_tokens=320,
+    )
     counted: list[dict[str, object]] = []
     sent: list[dict[str, object]] = []
 
@@ -268,3 +294,4 @@ def test_serialized_counter_can_use_the_same_explicit_decoding_request_shape() -
     assert counted[0]["temperature"] == 0.1
     assert counted[0]["top_p"] == 0.95
     assert counted[0]["seed"] == 99
+    assert counted[0]["max_tokens"] == 320
