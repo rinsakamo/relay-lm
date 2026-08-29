@@ -1,6 +1,6 @@
 # OpenAI-compatible provider decoding contract
 
-Status: #1456 P3 provider-owned explicit decoding carriage for RelayLM v1.
+Status: #1456 P3 provider-owned explicit decoding carriage plus #1977 hard output-limit carriage for RelayLM v1.
 
 This contract defines only the OpenAI-compatible cognitive provider request controls that RelayLM can explicitly carry. It does not choose model-quality settings, calibration defaults, release-configuration precedence, or Actual-model Evaluation methodology.
 
@@ -10,25 +10,31 @@ Actual-model evidence must be able to distinguish a decoding value that was actu
 
 The canonical provider therefore exposes typed explicit request configuration and requires an explicit provider/model support declaration before a requested decoding control can be used.
 
-## Initial explicit controls
+For Cognitive Budget safety, an output reservation is useful only when the corresponding generation can also be hard-bounded. The provider boundary therefore carries the existing provider-neutral `max_output_tokens` cognition control as an actual Chat Completions request limit when that capability is explicitly declared.
 
-P3 carries exactly these OpenAI-compatible request fields:
+## Explicit controls
+
+The provider-owned decoding configuration carries these controls:
 
 - `temperature` — explicit finite numeric value;
 - `top_p` — explicit finite numeric value;
-- `seed` — explicit integer value.
+- `seed` — explicit integer value;
+- `max_output_tokens` — explicit positive integer generation limit, realized on the current canonical Chat Completions wire as `max_tokens`.
 
 These are carriage fields, not RelayLM defaults.
+
+The `max_output_tokens` semantic name is intentionally distinct from its current wire spelling. Current supported vLLM and LM Studio Chat Completions contracts accept `max_tokens`; RelayLM still requires an explicit capability declaration and does not assume that every generic OpenAI-compatible endpoint accepts it.
 
 No numeric value is supplied by RelayLM when the caller omits it:
 
 ```text
-absent temperature -> no `temperature` request field
-absent top_p       -> no `top_p` request field
-absent seed        -> no `seed` request field
+absent temperature       -> no `temperature` request field
+absent top_p             -> no `top_p` request field
+absent seed              -> no `seed` request field
+absent max_output_tokens -> no `max_tokens` request field
 ```
 
-P3 intentionally does not invent provider/model-specific numeric ranges. The adapter rejects non-numeric or non-finite values locally, while any narrower model/provider range remains an upstream capability/validation concern.
+The adapter rejects non-numeric/non-finite sampling values and non-positive/untyped output limits locally. Any narrower model/provider range remains an upstream capability/validation concern.
 
 ## Typed request configuration
 
@@ -36,33 +42,35 @@ P3 intentionally does not invent provider/model-specific numeric ranges. The ada
 
 `OpenAICompatibleProvider.effective_decoding_configuration` returns that same exact mapping after capability validation. It contains no API key, prompt text, State, Continuity, MEMORY, Event, or user content.
 
-The mapping is request authority only because both buffered and streaming generation call the same provider request serializer with the validated configuration.
+The mapping is request authority only because buffered and streaming generation call the same provider request serialization boundary with validated configuration.
+
+When a fully resolved `CognitionPassRequest` is supplied, its `temperature`, `top_p`, and `max_output_tokens` values become that pass's effective provider decoding controls; provider-level `seed` remains the reproducibility control already carried across passes. Unsupported explicit pass controls fail before network use.
 
 ## Capability declaration and fail-closed behavior
 
-`OpenAICompatibleDecodingCapabilities` declares which of the initial controls the selected upstream provider/model supports.
+`OpenAICompatibleDecodingCapabilities` declares which decoding controls the selected upstream provider/model supports.
 
-Every explicitly requested control must be present in that declaration. Otherwise provider construction raises `ProviderCapabilityError` before any network request.
+Every explicitly requested control must be present in that declaration. Otherwise provider construction or per-pass capability resolution fails before any network request.
 
 An empty or omitted decoding configuration needs no decoding capability declaration and preserves existing provider behavior.
 
 This is deliberately conservative: RelayLM does not silently send a control merely because another OpenAI-compatible implementation commonly accepts the same field name.
 
-P3 does not yet define the broader stable provider capability/config identity required by #1456 P4. It only creates the typed support boundary necessary to prevent unsupported requested decoding values from being recorded as though they were applied.
+The capability boundary prevents a requested output limit from being recorded as applied when it was not actually carried upstream.
 
 ## Reasoning boundary
 
 Reasoning controls are outside this decoding contract. Current provider reasoning capability, backend-specific attestation, exact realization, and request carriage are defined by `docs/contracts/provider-reasoning.md`.
 
-`OpenAICompatibleDecodingConfig` therefore remains limited to decoding controls; the absence of reasoning fields from that type neither implies reasoning support nor reasoning unavailability for the canonical provider request path.
+`OpenAICompatibleDecodingConfig` therefore remains limited to decoding/output controls; the absence of reasoning fields from that type neither implies reasoning support nor reasoning unavailability for the canonical provider request path.
 
 ## Machine-readable cognition capability facts
 
 `OpenAICompatibleCognitionCapabilityFacts` exposes the current adapter facts needed by the COGP consumer boundary without changing the stable P4 provider identity or its historical serialization.
 
-This decoding contract owns only the decoding-control projection in that facts view. The provider decoding controls with an exact current COGP per-pass semantic match are `temperature` and `top_p` when they are declared supported by `OpenAICompatibleDecodingCapabilities`.
+This decoding contract owns only the decoding-control projection in that facts view. The provider decoding controls with exact current COGP per-pass semantic matches are `temperature`, `top_p`, and `max_output_tokens` when they are declared supported by `OpenAICompatibleDecodingCapabilities`.
 
-`seed` remains provider-level reproducibility configuration and is deliberately not promoted into the current per-pass COGP vocabulary. `max_output_tokens` is not currently carried by this decoding adapter and is therefore not reported as a supported per-pass decoding control.
+`seed` remains provider-level reproducibility configuration and is deliberately not promoted into the current per-pass COGP vocabulary.
 
 Reasoning-related fields in `OpenAICompatibleCognitionCapabilityFacts` are governed by `docs/contracts/provider-reasoning.md`, not by this decoding contract.
 
@@ -72,18 +80,21 @@ The provider owner supplies these facts; COGP remains responsible for mapping th
 
 ## Buffered / streaming parity
 
-The same validated decoding mapping is added to both buffered and streaming Chat Completions request bodies. Streaming does not alter decoding configuration and does not introduce a second semantic generation.
+The same validated decoding mapping is added to buffered and streaming Chat Completions request bodies. Streaming does not alter decoding configuration and does not introduce a second semantic generation.
 
-The structured semantic output contract remains independent of these controls:
+The two-pass provider uses the same resolved per-pass decoding configuration for buffered Pass 1, streaming Pass 1, and buffered Pass 2, so distinct explicit output limits remain distinct request facts.
+
+## Cognitive Budget relationship
+
+This provider contract does not choose `reserved_output_tokens`; #1387 owns Cognitive Budget arithmetic and #1388 owns calibrated recommendation policy.
+
+For a budgeted pass, downstream runtime assembly may rely on the following safety relationship only after it has resolved both values:
 
 ```text
-one request
-  + explicit decoding fields
-  + strict structured output
-        |
-        v
-CognitiveOutput
+reserved_output_tokens >= applied provider hard output limit
 ```
+
+The provider side of that comparison is the actual applied `max_tokens` request value produced here, not a value merely requested in metadata. Exact runtime validation/carriage remains #1446 ownership.
 
 ## Serialized-input accounting
 
@@ -93,18 +104,20 @@ This does not change Cognitive Budget semantics or claim that a decoding field c
 
 ## Consumer boundary
 
-Actual-model Evaluation (#1386) may use the provider's applied decoding mapping as evidence authority, but P3 does not change `ActualModelRunManifest`, scoring, scenarios, cohorts, or evidence methodology.
+Actual-model Evaluation (#1386) may use the provider's applied decoding mapping as evidence authority, but this contract does not change scoring, scenarios, cohorts, or evidence methodology.
 
-Release Runtime / Configuration (#1446) may later carry these provider-owned typed inputs, but P3 does not add YAML fields, environment variables, CLI options, discovery, precedence, or loader/assembly rules.
+Release Runtime / Configuration (#1446) may carry these provider-owned typed inputs, but this provider contract does not add YAML fields, environment variables, CLI options, discovery, precedence, or loader/assembly rules.
 
-Calibration (#1388) remains the sole owner of any future canonical numeric decoding choice if such a choice is ever established.
+Calibration (#1388) remains the sole owner of any canonical numeric output allowance or recommendation.
 
 ## Invariants
 
 - no hidden or invented numeric defaults;
 - omitted means omitted;
 - unsupported requested controls fail before network use;
-- buffered and streaming requests carry identical explicit decoding controls;
+- `max_output_tokens` is a positive provider-neutral control and current wire `max_tokens` is inspectable request authority;
+- buffered and streaming requests carry identical explicit decoding semantics;
+- distinct Pass 1 / Pass 2 output limits remain distinct;
 - effective decoding evidence contains no secrets or semantic payload;
 - cognition execution topology remains owned by `cognitive_turn`, not this decoding contract;
 - reasoning capability and carriage remain owned by `docs/contracts/provider-reasoning.md`, not this decoding contract;
