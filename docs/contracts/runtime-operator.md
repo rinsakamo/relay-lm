@@ -83,7 +83,7 @@ It verifies, where applicable:
 - persistence writability without creating semantic files;
 - provider URL/model/backend configuration and supported Profile-local physical-model mappings;
 - selected cognition topology can be assembled for ordinary serving;
-- selected token-counter capability when the existing single-pass Cognitive Budget is configured;
+- selected token-counter capability and, for budgeted two-pass serving, explicit provider hard output limits compatible with the configured reserve;
 - safe server bind-target syntax.
 
 It does not probe model output, append Events, save State, rewrite MEMORY, or claim provider reachability merely from a configured URL.
@@ -120,17 +120,31 @@ For Core 1.0, the release topology default is `two_pass`. Profile selection occu
 
 Explicit `single_pass` remains a compatibility/experimental cognition mode. Unresolved `auto` and evidence-only `shadow_two_pass` fail before serving.
 
-Pass 1 and Pass 2 requests are carried independently. Omitted pass controls remain omitted; the operator layer does not manufacture reasoning/decoding/output values.
+Pass 1 and Pass 2 requests are carried independently. Omitted pass controls remain omitted unless the operator also enables a two-pass Cognitive Budget, in which case each pass must explicitly provide a hard `max_output_tokens` bound that the selected backend can realize and that does not exceed the configured reserve.
 
-Streaming resolves the same Cognitive Profile as buffered execution and exposes Pass 1 text through the existing two-pass streaming owner. The operator layer does not define a separate streaming routing or cognition policy.
+Streaming resolves the same Cognitive Profile as buffered execution and exposes Pass 1 text through the existing two-pass streaming owner. The same assembled two-pass Cognitive Budget is passed to buffered and streaming execution; the operator layer does not define a separate streaming budget policy.
 
-Global turn serialization may remain in Core 1.0. Profile routing does not imply group-chat orchestration or concurrent multi-profile scheduling; the required property is deterministic one-request -> one-Profile execution with isolated Profile-root authority.
+Global turn serialization may remain in Core 1.0. In addition, #1978 makes obsolete response-first Pass 2 work single-flight at RelayLM's local request boundary: a newly admitted turn cancels and joins an older pending extraction before its new provider generation begins. This is not a claim about stronger remote scheduler behavior than the selected backend actually guarantees.
 
 ## Cognitive Budget
 
-The current explicit `runtime.cognitive_budget` is single-pass #1387 authority. Until #1388 publishes two-pass per-pass budget/profile values, `two_pass + runtime.cognitive_budget` fails closed rather than copying one total into both passes.
+`runtime.cognitive_budget` carries #1387 total-budget semantics and no numeric defaults. In explicit `single_pass`, it constructs the existing single-pass budget runtime.
 
-The current global single-pass token-counter configuration also cannot safely cover a Profile-local physical-model override. That combination fails closed rather than assuming cross-model counting equivalence.
+In `two_pass`, #1979 uses the one explicitly configured coarse total as the safety envelope for both real generation passes while preserving separate serialized-input counting for Pass 1 and Pass 2. The operator is not claiming that both prompts consume the same number of tokens; both must independently fit the same configured envelope.
+
+Budgeted two-pass serving additionally requires:
+
+```text
+Pass 1 max_output_tokens is explicit
+Pass 2 max_output_tokens is explicit
+selected backend can truthfully carry the hard output limit
+both hard limits <= cognitive_budget.total.reserved_output_tokens
+registered token counter supports both two-pass serialized request shapes
+```
+
+Any missing or unsupported prerequisite fails before serving. The numerical recommendation itself remains #1388 authority.
+
+The current global token-counter configuration also cannot safely cover a Profile-local physical-model override. That combination fails closed rather than assuming cross-model counting equivalence.
 
 ## Provider backends
 
@@ -138,11 +152,11 @@ Backend names are provider-owned identities. Operator configuration does not sil
 
 At this boundary:
 
-- generic OpenAI-compatible serving is available;
-- vLLM specialized assembly requires its explicit provider-owned capability attestation;
+- generic OpenAI-compatible serving is available, but generic compatibility alone does not attest specialized controls such as hard output-limit carriage;
+- vLLM specialized assembly requires its explicit provider-owned reasoning capability attestation where reasoning controls are used;
 - LM Studio is assembly-capable through the common OpenAI-compatible transport when no unsupported LM Studio-specific reasoning override is requested. Its resolved backend identity and diagnostics remain `lm_studio`.
 
-Exact provider-specific reasoning realization remains provider-owned. Unsupported explicit reasoning controls fail during assembly/preflight before serving; the operator layer does not guess or silently drop them.
+Exact provider-specific reasoning and output-limit realization remain provider-owned. Unsupported explicit controls fail during assembly/preflight before serving; the operator layer does not guess or silently drop them.
 
 ## Installed-artifact gate
 
@@ -164,7 +178,9 @@ The operator layer does not own:
 
 - Cognitive Package semantics or Character specialization semantics;
 - Pass 1 / Pass 2 semantics (#1533);
+- stale extraction scheduling semantics (#1978);
 - #1388 numeric calibration/default selection;
+- #1387 Cognitive Budget arithmetic/degradation semantics;
 - provider-specific capability/wire truth;
 - Retrieval/Context/Continuity/State semantics;
 - Identity/Event/MEMORY authority;
@@ -174,12 +190,8 @@ The operator layer does not own:
 
 ## Remaining release-runtime work
 
-After Cognitive Profile routing, ordinary two-pass serving, non-reasoning LM Studio assembly, and named cognition-mode selection are wired, the remaining repository-side operator work is bounded:
-
-1. consume #1388 calibrated two-pass profile/default authority once published;
-2. consume provider-specific reasoning capability only after its provider owner proves and implements the wire;
-3. re-run installed release-candidate smoke when an authorized candidate exists.
+After Cognitive Profile routing, ordinary two-pass serving, bounded stale extraction scheduling, explicit two-pass Cognitive Budget carriage, non-reasoning LM Studio assembly, and named cognition-mode selection are wired, remaining repository-side operator work is limited to consuming any later #1388-selected calibrated recommendation/default authority and provider-specific capabilities that their owners explicitly qualify.
 
 Actual-model Stage R qualification is deliberately outside this operator transaction.
 
-> The operator path binds public Cognitive Profiles to portable cognitive roots and carries release cognition policy faithfully; it does not redefine either.
+> The operator path binds public Cognitive Profiles to portable cognitive roots and carries release cognition/safety policy faithfully; it does not redefine either.
