@@ -61,6 +61,8 @@ Pass 2 owns language-dependent semantic judgment needed for correction, negation
 
 Current State projection preserves epistemic strength: tentative, hypothetical, guessed, hedged or explicitly self-uncertain meaning must not be silently upgraded to durable State. Deterministic validation remains language-agnostic and is not an NLU repair layer.
 
+Continuity transition semantics are kind-local. Resolving or completing an `unresolved` or `active_task` meaning does not by itself resolve a related `referent`. A referent remains unchanged when work about it completes, new facts about it are learned, or immediate follow-up becomes unlikely; a referent resolve is justified only when the current turn replaces, dismisses, or invalidates the reference target itself. Deterministic validation must not infer these language-dependent conditions after the model has proposed a transition.
+
 RelayLM owns the exact proposal grammar, JSON parsing, exact shape checks, typed candidate construction, origin/turn binding, source validation, State/Continuity lifecycle, persistence and canonical evidence envelopes.
 
 ## Pass 2 structured-output transport
