@@ -152,6 +152,7 @@ class VLLMServingTokenizerCounter:
             "temperature",
             "top_p",
             "seed",
+            "max_tokens",
             "response_format",
             "reasoning_effort",
             "thinking_token_budget",
