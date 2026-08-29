@@ -155,7 +155,7 @@ runtime:
     assert caught.value.field == "runtime.cognition.mode"
 
 
-def test_existing_single_pass_cognitive_budget_is_not_guessed_into_two_pass(
+def test_two_pass_cognitive_budget_requires_registered_counter_capability(
     tmp_path: Path,
 ) -> None:
     path = _write(
@@ -185,9 +185,8 @@ runtime:
     with pytest.raises(RuntimeAssemblyError) as caught:
         assemble_runtime(resolved)
 
-    assert caught.value.code is RuntimeConfigErrorCode.INVALID_COMBINATION
-    assert caught.value.field == "runtime.cognitive_budget"
-    assert "two-pass" in str(caught.value).lower()
+    assert caught.value.code is RuntimeConfigErrorCode.CAPABILITY_UNAVAILABLE
+    assert caught.value.field == "runtime.cognitive_budget.token_counter.capability"
 
 
 def test_buffered_openai_route_dispatches_to_profile_two_pass_runtime(monkeypatch) -> None:
