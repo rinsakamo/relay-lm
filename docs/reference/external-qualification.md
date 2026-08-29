@@ -1,0 +1,172 @@
+# Exact-RC external qualification harness
+
+Status: preparation contract for #1981 under the bounded Core 1.0 release gate in #1449.
+
+> **Prepare the ring before the contender is frozen; benchmark the exact contender only after it exists.**
+
+This surface defines the repository-owned harness contract for external benchmark qualification. It is outside RelayLM Core semantic authority: benchmark adapters translate public benchmark cases into executions, but they do not change State, Continuity, MEMORY, Context, prompts, provider semantics, Cognitive Budget, or task routing.
+
+## Ownership decision
+
+Three existing authorities were evaluated before creating this owner.
+
+1. `evaluation` (#1247) owns deterministic RelayLM-native evaluation and merge/report invariants. External public benchmark execution is not a deterministic product-semantic registry, so placing the harness there would broaden that owner incorrectly.
+2. `actual_model_evaluation` (#1386) already proves exact model/runtime identity, stable run identity, immutable evidence, and separately reviewable execution evidence. Its current run manifests are intentionally Stage-R/Core-reference specific: they include RelayLM Character fixtures, cognition execution identity, pass requests, Cognitive Budget identity, and #1386 review semantics. Reusing those types as the common comparator manifest would make every external system pretend to be a RelayLM Stage R run.
+3. `release_engineering` (#1447) owns the exact release manifest that binds version/tag/commit to wheel and sdist hashes. The external harness consumes that manifest directly for citable release qualification rather than inventing a second RC identity.
+
+Therefore #1981 has one small external-qualification owner. It reuses the established identity/evidence primitives at their natural boundaries instead of creating a parallel release identity or pushing research comparison into Stage R.
+
+## Reused primitives
+
+The harness intentionally reuses existing repository behavior in two ways.
+
+- `tools/release_identity.py manifest` remains the source of exact RC artifact identity. `validate_release_identity(...)` validates and embeds that REL2/REL3-shaped identity for the RelayLM slot.
+- `actual_model_artifacts.write_actual_model_evidence(...)` already demonstrates the repository's run-id-addressed immutable-evidence pattern: a stable identity is hashed before execution results are persisted, identical rewrites are idempotent, and different evidence under the same run id fails closed. The external harness uses the same proven pattern with a separate schema because Stage R's evidence type is not architecture-neutral.
+
+No new product qualification fingerprint input is added. The harness owner depends on release engineering, but Core semantic owners do not depend on this owner.
+
+## Evidence purposes and RC gate
+
+Every manifest declares one purpose:
+
+```text
+dry_run
+  synthetic/deterministic adapter and serialization validation
+  non-citable
+
+prequalification_smoke
+  moving-build harness debugging only
+  non-citable
+
+release_qualification
+  bounded #1449 execution
+  citable only when an exact #1447 RC/final release manifest is supplied
+```
+
+`release_qualification` fails closed without the exact release identity. A pre-RC purpose rejects a citable release identity instead of allowing a moving build to masquerade as the release contender.
+
+This harness does not itself decide that Core 1.0 passes #1449. It records reproducible case evidence and the bounded classification that #1449 later consumes.
+
+## Common case contract
+
+The common benchmark-case mapping is benchmark-name agnostic. Each case records:
+
+- stable case id;
+- architecture-relevant axis;
+- benchmark id and repository;
+- exact benchmark revision;
+- benchmark license observed for the execution;
+- exact dataset revision and dataset license;
+- adapter-local case reference.
+
+The `axis` is an open string rather than a benchmark-specific enum. Preparation tests prove at least two materially distinct shapes: conflict/update/temporal validity and personalization/accurate retrieval. Execution-time benchmark names, versions, datasets, and licenses must be freshly verified upstream.
+
+## Architecture slots
+
+Every manifest represents the same canonical slots in order:
+
+```text
+A same_model_direct
+B simple_baseline
+C serious_comparator
+D relaylm_exact_rc
+```
+
+System/product names are not part of the permanent slot contract.
+
+- A is the same physical model/tokenizer/quantization as D under citable qualification. The harness rejects a citable manifest that violates that physical-model match.
+- B may be explicitly omitted when a simple retrieval/full-history condition is not scientifically meaningful. Omission is an evidence fact and requires a reason; fake implementation identity is prohibited.
+- C must be enabled for citable qualification and identifies the contemporary comparator implementation, source revision, version, deployment, license, model/runtime, hardware, retry policy, and unavoidable condition differences.
+- D must be enabled for citable qualification. Its source revision and package version must match the exact #1447 release identity.
+
+A, C, and D are mandatory in `release_qualification`; B is representable and may be omitted with justification.
+
+## Execution identity
+
+Each manifest first records the exact harness identity/revision and adapter identity/revision; both revisions are exact Git commits so a citable run cannot float with a moving adapter. Each enabled participant then records separately:
+
+- implementation name;
+- exact source revision;
+- implementation/version identity;
+- deployment identity;
+- license;
+- physical model artifact;
+- tokenizer;
+- quantization;
+- provider/backend/runtime;
+- context capacity;
+- decoding controls;
+- reasoning controls;
+- GPU, CPU, and offload identity;
+- failure/retry policy;
+- matched-condition differences.
+
+Judge identity and judge policy are manifest-level because the common case should use the same judge policy where the benchmark allows it. If a condition cannot be matched, the difference is recorded instead of hidden.
+
+## Result evidence
+
+Each participant result preserves four measurement groups rather than collapsing them into one aggregate:
+
+```text
+quality
+  benchmark-native numeric metrics
+
+tokens
+  model-facing input tokens
+  model output tokens
+  model-call count
+
+latency
+  TTFT when available
+  fair query latency when available
+  end-to-end latency when available
+
+resources
+  peak GPU memory when available
+  peak CPU memory when available
+  persistent storage when available
+  bounded notes
+```
+
+Unknown/unavailable observations remain `null`; they are not fabricated as zero.
+
+Known limitations and an optional bounded failure detail are stored per participant. A failed execution may therefore preserve partial token/latency/resource observations instead of disappearing as an exception. Benchmark-native metrics remain benchmark-native keys rather than being projected into a RelayLM-only score.
+
+## Classification
+
+One case evidence record carries exactly one bounded classification for later #1449 reconciliation:
+
+- `reproducible_competitive_result`;
+- `specialist_deferred_capability_loss`;
+- `generalizable_core_defect_candidate`;
+- `benchmark_adapter_mismatch`;
+- `non_reproducible_workload`;
+- `resource_impracticality`;
+- `comparison_condition_mismatch`.
+
+Classification is evidence, not mutation authorization. A `generalizable_core_defect_candidate` still returns to the normal semantic/runtime owner before any product change. A benchmark-specific loss does not authorize test-set tuning or task detection.
+
+## Runner boundary
+
+`run_case(...)` executes one validated benchmark-case mapping through enabled A/B/C/D participant plans using caller-supplied executors. A benchmark adapter therefore owns only translation between the public benchmark and this common execution contract.
+
+The runner does not import RelayLM cognition, State, Continuity, MEMORY, Context, provider routing, or Stage R execution types. A serious comparator adapter can be added or replaced without adding a comparator-specific subsystem to RelayLM.
+
+Stable run identity hashes the full manifest and case before observations. `replicate_id` is part of that manifest identity. Repeating a stochastic condition therefore requires a distinct replicate id; attempting to write different results under the same run id fails closed.
+
+## Preparation acceptance
+
+The deterministic tests cover:
+
+- two materially distinct benchmark axes;
+- all A/B/C/D slots;
+- justified B omission;
+- exact RC blocking before a #1447 release identity exists;
+- exact D release version/commit binding;
+- A/D physical-model matching;
+- non-citable pre-RC evidence;
+- separate quality/token/call/latency/resource serialization;
+- all seven result classifications;
+- deterministic stable ids and immutable evidence collision behavior.
+
+No public benchmark result or #1449 verdict is produced by this preparation transaction.
