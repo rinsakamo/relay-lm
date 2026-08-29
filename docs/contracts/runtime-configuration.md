@@ -47,7 +47,7 @@ profiles:
 
 provider:
   adapter: openai_compatible
-  backend: generic          # generic | vllm | lm_studio
+  backend: lm_studio        # generic | vllm | lm_studio
   base_url: http://127.0.0.1:1234/v1
   model: default-physical-model
   api_key:                  # optional reference only
@@ -61,7 +61,7 @@ runtime:
   # Core 1.0 topology default is two_pass when this block is omitted.
   cognition:
     mode: two_pass          # two_pass | single_pass | shadow_two_pass | auto
-    pass1:                  # optional; omitted values stay omitted
+    pass1:                  # optional normally; hard limit required with two-pass budget
       reasoning_mode: "off" # off | bounded; quote "off" because YAML treats bare off as bool
       temperature: 0
       top_p: 1
@@ -87,9 +87,8 @@ runtime:
     max_items: 8
     lifetime_revisions: 4
 
-  # Existing #1387 single-pass Cognitive Budget carriage. Until #1388
-  # publishes per-pass release budget authority, this is valid only with
-  # explicit cognition.mode: single_pass.
+  # #1387 total-budget semantics. In two_pass, this one explicit coarse total
+  # is applied to both real passes while their serialized inputs are counted separately.
   cognitive_budget:
     total:
       model_context_window: 32768
@@ -106,7 +105,7 @@ runtime:
       mode: exact
 ```
 
-Numbers in the example are examples, not release defaults.
+Numbers in the example are examples, not release defaults. The example uses a backend with declared hard output-limit carriage because a budgeted two-pass path requires that capability.
 
 ## Cognitive Profiles
 
@@ -161,6 +160,8 @@ The topology default does **not** imply numeric pass defaults. With no explicit 
 
 Pass 1 and Pass 2 controls are independently represented. The configuration layer does not infer stronger Pass 2 reasoning simply because a request is Pass 2.
 
+When `two_pass` is combined with `runtime.cognitive_budget`, omission semantics become intentionally stricter for output limits: both `pass1.max_output_tokens` and `pass2.max_output_tokens` must be explicit because the configured reserve must dominate a real provider-side hard generation bound for each pass.
+
 ### Calibration-profile naming
 
 `runtime.calibration_profile` belongs to #1388 execution/default policy and is distinct from `profiles[].name` Cognitive Profiles. An old `runtime.profile` value is not silently reinterpreted as a Cognitive Profile or calibration profile.
@@ -197,16 +198,36 @@ The switch affects only how Pass 2 structure is constrained on the external prov
 
 ## Cognitive Budget boundary
 
-The existing `runtime.cognitive_budget` is the #1387 single-pass budget contract. RelayLM does not duplicate that one total into Pass 1 and Pass 2 by assumption.
+`runtime.cognitive_budget` carries the existing #1387 total-budget equation, deterministic degradation policy, and token-counter capability selection. Configuration does not choose calibrated numeric values.
 
-Until #1388 publishes calibrated two-pass budget/profile authority:
+For explicit `single_pass`, the structure maps to the existing single-pass `CognitiveBudgetRuntimeConfig`.
+
+For `two_pass`, #1979 deliberately reuses the same configuration shape rather than adding a second budget schema. The one explicitly configured total is a coarse safety envelope applied to both real passes:
 
 ```text
-two_pass + runtime.cognitive_budget -> invalid_combination
-single_pass + runtime.cognitive_budget -> existing #1387 behavior
+runtime.cognitive_budget.total
+        -> Pass 1 total equation
+        -> Pass 2 total equation
 ```
 
-A single-pass Cognitive Budget also cannot currently be shared across Profile-specific physical-model overrides because its token-counter configuration is global. That combination fails closed rather than guessing cross-model accounting.
+Pass 1 and Pass 2 still count their distinct serialized request shapes independently. Reusing the coarse total does not assert that the two prompt sizes are equal and does not create a numeric default.
+
+Budgeted two-pass release admission requires all of the following:
+
+```text
+pass1.max_output_tokens is explicit
+pass2.max_output_tokens is explicit
+selected backend truthfully supports provider hard output-limit carriage
+pass1.max_output_tokens <= cognitive_budget.total.reserved_output_tokens
+pass2.max_output_tokens <= cognitive_budget.total.reserved_output_tokens
+token-counter capability implements both two-pass serialized request counters
+```
+
+Missing or unsupported prerequisites fail before generation. `generic` OpenAI compatibility alone is not affirmative hard-limit capability evidence.
+
+A Cognitive Budget cannot currently be shared across Profile-specific physical-model overrides because its token-counter configuration is global. That combination fails closed rather than guessing cross-model accounting.
+
+Direct `memory_retrieval` / `event_retrieval` budgets also remain mutually exclusive with Cognitive Budget because the Cognitive Budget policy already owns those layer envelopes.
 
 ## Discovery and precedence
 
@@ -273,7 +294,7 @@ The backend vocabulary is provider-owned. Runtime configuration resolves only th
 
 A known backend name does not by itself prove that every specialized capability is available. Assembly/preflight may reuse the common OpenAI-compatible transport while preserving the selected backend identity, but any requested backend-specific control still requires a proven provider-owned realizer and otherwise fails closed.
 
-The same rule applies to `structured_output_mode=auto`: backend naming or generic OpenAI compatibility is not sufficient affirmative capability evidence by itself.
+The same rule applies to hard output limits and `structured_output_mode=auto`: backend naming or generic OpenAI compatibility is not sufficient affirmative capability evidence by itself. Assembly consumes provider-owned capability truth; it does not infer support from field spelling.
 
 ## Secrets
 
@@ -285,7 +306,7 @@ Secret selection remains deterministic and an explicitly selected missing/empty 
 
 `ResolvedRuntimeConfig.effective_diagnostics()` exposes non-secret effective values plus provenance. Profile names, roots, and effective physical-model mappings are content-free runtime metadata and may be reported; semantic package payload is not.
 
-Current diagnostics also include file-owned Pass 2 controls through collected provenance, including an explicitly configured `runtime.cognition.pass2.structured_output_mode`, so operator evidence can distinguish a selected transport without reading Cognitive Package semantic payload.
+Current diagnostics include file-owned pass controls and Cognitive Budget leaves through collected provenance, so operator evidence can distinguish explicit output limits and total/reserve settings without reading Cognitive Package semantic payload.
 
 Diagnostics never include API keys, secret environment-variable names, SOUL text, State values, Event/MEMORY content, Continuity semantic payload, or conversation text.
 
@@ -321,14 +342,16 @@ Runtime configuration must preserve:
 - Profile names are unique public IDs and Profile roots keep State/Event/MEMORY authority isolated;
 - public Profile identity remains distinct from physical provider/model identity;
 - Character remains one Cognitive Package specialization rather than the runtime root type;
-- two-pass topology ownership in #1533;
+- two-pass topology ownership in #1533 and stale-extraction scheduling ownership in #1978;
 - Pass 2 structured-output semantics ownership in #1533 and external wire realization in the provider lane;
+- Cognitive Budget arithmetic/degradation ownership in #1387;
 - numeric/calibration-profile ownership in #1388;
 - provider capability/wire ownership in the provider lane;
+- budgeted two-pass hard output limits never exceed the configured output reservation;
 - State/Event/MEMORY/Continuity semantic authority separation;
-- buffered/streaming cognition and Profile-selection equivalence;
+- buffered/streaming cognition, Profile-selection, and two-pass budget equivalence;
 - no semantic-payload inspection for runtime-policy selection;
 - fail-closed unsupported capability behavior;
 - no silent fallback from explicit Pass 2 `native` to `plain`.
 
-> Configuration binds public Cognitive Profiles to portable roots and carries selected runtime policy. It does not manufacture semantics or defaults.
+> Configuration binds public Cognitive Profiles to portable roots and carries selected runtime policy. It does not manufacture semantics or calibrated defaults.
