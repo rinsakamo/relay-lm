@@ -6,14 +6,14 @@ from typing import Any
 
 import pytest
 
-from relaylm.actual_model_llama_cpp import (
+from relaylm.budget_enforcement import TokenCountMode
+from tools.llama_cpp_preparation import (
     LLAMA_CPP_CHAT_COUNTER_CAPABILITY,
     LlamaCppChatInputCounter,
     LlamaCppInputCounterError,
     LlamaCppRuntimeAttestationError,
     attest_llama_cpp_runtime,
 )
-from relaylm.budget_enforcement import TokenCountMode
 
 
 UPSTREAM_REVISION = "c841aeeb8bb2fe417038dadfa9b007cf1a9ef950"
