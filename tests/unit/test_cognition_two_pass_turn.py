@@ -153,7 +153,7 @@ class _StreamingTwoPassProvider:
         return CognitionExtractionOutput()
 
 
-def test_next_pass1_does_not_wait_for_prior_pending_pass2_and_old_result_is_stale(
+def test_next_pass1_cancels_prior_pending_pass2_and_old_result_is_stale(
     tmp_path: Path,
 ) -> None:
     async def run() -> None:
@@ -188,13 +188,8 @@ def test_next_pass1_does_not_wait_for_prior_pending_pass2_and_old_result_is_stal
 
         assert second.response == "reply-2"
         assert len(provider.conversation_inputs) == 2
-        assert first.extraction.done() is False
-        assert execution_runtime.pending_extraction_count == 2
-
-        provider.extraction_release[0].set()
-        first_extraction = await first.extraction
-        await asyncio.sleep(0)
-        assert first_extraction.status is TwoPassExtractionStatus.STALE
+        assert first.extraction.done() is True
+        assert (await first.extraction).status is TwoPassExtractionStatus.STALE
         assert execution_runtime.pending_extraction_count == 1
         assert CharacterDirectory(tmp_path).load_state().states == ()
 
