@@ -46,6 +46,10 @@ def test_pass2_prompt_keeps_continuity_resolve_kind_local() -> None:
         in content
     )
     assert (
-        "Resolve a `referent` only when the current Input actually ends or invalidates that reference-target meaning for upcoming dialogue."
+        "Completion or resolution of work about a referent, discovery of new facts about it, or an expectation that it may not be mentioned next does not end the referent."
+        in content
+    )
+    assert (
+        "Resolve a `referent` only when the current Input explicitly replaces, dismisses, or invalidates the reference target itself; do not infer referent resolution from completion of related `unresolved` or `active_task` meanings."
         in content
     )
