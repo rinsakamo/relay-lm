@@ -73,8 +73,11 @@ def _executable_name(value: str) -> str:
     return Path(value).name
 
 
-def _is_canonical_vllm_server(process: HostProcess) -> bool:
+def _is_canonical_vllm_process(process: HostProcess) -> bool:
     argv = process.argv
+    if argv[0] == "VLLM::EngineCore":
+        return True
+
     executable = _executable_name(argv[0])
     if executable == "vllm" and len(argv) >= 2 and argv[1] == "serve":
         return True
@@ -95,7 +98,7 @@ def find_stale_vllm_processes(
     for process in processes:
         if not isinstance(process, HostProcess):
             raise TypeError("processes must contain HostProcess values")
-        if _is_canonical_vllm_server(process):
+        if _is_canonical_vllm_process(process):
             stale.append(process)
     return tuple(stale)
 
@@ -121,7 +124,7 @@ def snapshot_vllm_processes(
 def _build_parser() -> argparse.ArgumentParser:
     return argparse.ArgumentParser(
         description=(
-            "Fail closed when a canonical stale vLLM server process is present "
+            "Fail closed when a canonical stale vLLM process is present "
             "before a bounded actual-model launch transaction."
         )
     )
@@ -137,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if stale:
         for process in stale:
-            print(f"stale vLLM server process: pid={process.pid}", file=sys.stderr)
+            print(f"stale vLLM process: pid={process.pid}", file=sys.stderr)
         return 2
 
     print("vLLM process preflight: clean")
