@@ -52,8 +52,16 @@ def _write_config(
     pass2_limit: int | None = 128,
     reserve: int = 512,
 ) -> Path:
-    pass1 = "" if pass1_limit is None else f"      max_output_tokens: {pass1_limit}\n"
-    pass2 = "" if pass2_limit is None else f"      max_output_tokens: {pass2_limit}\n"
+    pass1 = (
+        "    pass1: {}\n"
+        if pass1_limit is None
+        else f"    pass1:\n      max_output_tokens: {pass1_limit}\n"
+    )
+    pass2 = (
+        "    pass2: {}\n"
+        if pass2_limit is None
+        else f"    pass2:\n      max_output_tokens: {pass2_limit}\n"
+    )
     path.write_text(
         f"""\
 format_version: 1
@@ -68,9 +76,7 @@ provider:
 runtime:
   cognition:
     mode: two_pass
-    pass1:
-{pass1}    pass2:
-{pass2}  cognitive_budget:
+{pass1}{pass2}  cognitive_budget:
     total:
       model_context_window: 4096
       reserved_output_tokens: {reserve}
@@ -104,9 +110,12 @@ def test_release_assembly_carries_one_coarse_budget_to_both_two_pass_totals(
 
     budget = assembly.cognitive_budget
     assert isinstance(budget, TwoPassCognitiveBudgetRuntimeConfig)
+    assert resolved.config.runtime.cognitive_budget is not None
     assert budget.pass1_total == resolved.config.runtime.cognitive_budget.total
     assert budget.pass2_total == resolved.config.runtime.cognitive_budget.total
     assert assembly.app_kwargs()["cognitive_budget"] is budget
+    assert assembly.pass1_request is not None
+    assert assembly.pass2_request is not None
     assert assembly.pass1_request.max_output_tokens == 256
     assert assembly.pass2_request.max_output_tokens == 128
 
