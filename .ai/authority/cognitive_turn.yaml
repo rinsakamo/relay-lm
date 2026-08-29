@@ -5,15 +5,18 @@ summary: >-
   share one canonical cognitive prefix through CognitiveInput. Pass 1 owns the
   visible character response with a minimal suffix; Pass 2 projects semantic
   State/Continuity proposals directly, without a model-authored interpretation
-  scaffold. Pass 2 extraction transport is selectable between RelayLM-owned
-  ordinary-message JSON and provider-native JSON Schema constrained output,
-  while RelayLM retains exact IR parsing/type construction plus deterministic
-  State/Continuity authority. single_pass remains compatibility/future optimization
-  rather than a Core 1.0 quality gate.
+  scaffold. Response-first scheduling proactively cancels and joins obsolete
+  stale Pass 2 local tasks before a newer Pass 1 begins provider generation.
+  Pass 2 extraction transport is selectable between RelayLM-owned ordinary-message
+  JSON and provider-native JSON Schema constrained output, while RelayLM retains
+  exact IR parsing/type construction plus deterministic State/Continuity authority.
+  single_pass remains compatibility/future optimization rather than a Core 1.0
+  quality gate.
 owner_issue: 1533
 canonical_surfaces:
 - docs/contracts/cognition-execution-policy.md
 - docs/contracts/cognition-pass-execution.md
+- docs/contracts/two-pass-scheduling.md
 - docs/contracts/cognition-execution-evidence.md
 - docs/contracts/cognitive-turn.md
 - docs/architecture/cognitive-runtime.md
@@ -33,6 +36,7 @@ implementation:
 qualification_inputs:
 - docs/contracts/cognition-execution-policy.md
 - docs/contracts/cognition-pass-execution.md
+- docs/contracts/two-pass-scheduling.md
 - docs/contracts/cognitive-turn.md
 - docs/architecture/cognitive-runtime.md
 - src/relaylm/cognitive.py
@@ -53,6 +57,7 @@ tests:
 - tests/unit/test_openai_compatible_shadow_two_pass.py
 - tests/unit/test_cognition_two_pass_turn.py
 - tests/unit/test_two_pass_stale_disposition.py
+- tests/unit/test_two_pass_provider_single_flight.py
 - tests/unit/test_cognition_two_pass_guards.py
 - tests/unit/test_cognition_two_pass_continuity_guard.py
 - tests/unit/test_two_pass_continuity_turn_clock.py
