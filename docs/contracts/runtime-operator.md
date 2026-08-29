@@ -2,7 +2,7 @@
 
 Status: current RelayLM v1 installed operator contract. Owning Issue: #1446.
 
-The supported product entrypoint is `relaylm`. It resolves runtime configuration, runs non-generative preflight, assembles configured Cognitive Profiles, and starts the OpenAI-compatible service. It does not choose Cognitive Package semantics or calibrated numeric defaults.
+The supported product entrypoint is `relaylm`. It resolves runtime configuration, runs non-generative preflight, assembles configured Cognitive Profiles, and starts the OpenAI-compatible service. It does not choose Cognitive Package semantics or invent calibrated numeric defaults; it carries an explicitly selected #1388 authority.
 
 ## Commands
 
@@ -50,9 +50,9 @@ Existing named leaves preserve:
 CLI > environment > runtime file > canonical default
 ```
 
-`--cognition-mode` selects only the existing #1533 execution-mode vocabulary and is paired with `RELAYLM_COGNITION_MODE` and `runtime.cognition.mode`. Omission resolves to the canonical `two_pass` topology default; `auto` and `shadow_two_pass` still fail ordinary serving admission later rather than being silently reinterpreted.
+`--cognition-mode` selects only the existing #1533 execution-mode vocabulary and is paired with `RELAYLM_COGNITION_MODE` and `runtime.cognition.mode`. Omission resolves to the canonical `two_pass` topology default; `auto` and `shadow_two_pass` still fail ordinary serving admission later rather than being silently reinterpreted. Calibration selection does not rewrite this cognition mode.
 
-`--calibration-profile` / `runtime.calibration_profile` is reserved for #1388 execution/default policy. It is a different concept from a Cognitive Profile name and is never used to resolve the OpenAI request `model`.
+`--calibration-profile` / `runtime.calibration_profile` selects the current named #1388 authority `fastcal-v1`. It carries desired `target_window=4096`, `output_allowance=512`, and authority `#1388 FastCal v1`; it is a different concept from a Cognitive Profile name and is never used to resolve the OpenAI request `model`. Unsupported names fail closed, and transient VRAM/admission observations are not part of the calibration identity.
 
 ## Cognitive Profile operator boundary
 
@@ -82,6 +82,7 @@ It verifies, where applicable:
 - Character-like and machine-like Cognitive Package readability;
 - persistence writability without creating semantic files;
 - provider URL/model/backend configuration and supported Profile-local physical-model mappings;
+- selected calibration profile, desired target window/output allowance, and #1388 provenance;
 - selected cognition topology can be assembled for ordinary serving;
 - selected token-counter capability and, for budgeted two-pass serving, explicit provider hard output limits compatible with the configured reserve;
 - safe server bind-target syntax.
@@ -99,7 +100,7 @@ memory/event/continuity/cognitive-budget enabled flags
 
 Non-printable characters are escaped before line-oriented output. Secret material and Cognitive Package semantic payload are never printed.
 
-`doctor --json` includes the content-free `effective_config` view and provenance for resolved runtime leaves. Profile routing metadata remains separate from SOUL, State, Event, MEMORY, Continuity, and conversation content.
+`doctor --json` includes the content-free `effective_config` view and provenance for resolved runtime leaves. When selected, calibration identity, desired target window, output allowance, and authority are included as non-secret values. Profile routing metadata remains separate from SOUL, State, Event, MEMORY, Continuity, and conversation content.
 
 ## `serve`
 
@@ -128,7 +129,7 @@ Global turn serialization may remain in Core 1.0. In addition, #1978 makes obsol
 
 ## Cognitive Budget
 
-`runtime.cognitive_budget` carries #1387 total-budget semantics and no numeric defaults. In explicit `single_pass`, it constructs the existing single-pass budget runtime.
+`runtime.cognitive_budget` carries #1387 total-budget semantics. With an explicit `fastcal-v1` selection, omitted total-window/reserved-output leaves use the selected #1388 values, while explicit total leaves win. In explicit `single_pass`, it constructs the existing single-pass budget runtime.
 
 In `two_pass`, #1979 uses the one explicitly configured coarse total as the safety envelope for both real generation passes while preserving separate serialized-input counting for Pass 1 and Pass 2. The operator is not claiming that both prompts consume the same number of tokens; both must independently fit the same configured envelope.
 
@@ -142,7 +143,7 @@ both hard limits <= cognitive_budget.total.reserved_output_tokens
 registered token counter supports both two-pass serialized request shapes
 ```
 
-Any missing or unsupported prerequisite fails before serving. The numerical recommendation itself remains #1388 authority.
+Any missing or unsupported prerequisite fails before serving. In particular, calibration selection does not synthesize #1387 policy, degradation steps, token-counter capability, or pass output limits. The numerical recommendation remains auditable #1388 authority.
 
 The current global token-counter configuration also cannot safely cover a Profile-local physical-model override. That combination fails closed rather than assuming cross-model counting equivalence.
 
@@ -190,7 +191,7 @@ The operator layer does not own:
 
 ## Remaining release-runtime work
 
-After Cognitive Profile routing, ordinary two-pass serving, bounded stale extraction scheduling, explicit two-pass Cognitive Budget carriage, non-reasoning LM Studio assembly, and named cognition-mode selection are wired, remaining repository-side operator work is limited to consuming any later #1388-selected calibrated recommendation/default authority and provider-specific capabilities that their owners explicitly qualify.
+The current `fastcal-v1` #1388 recommendation/default authority is carried through runtime configuration with explicit selection and provenance. Remaining repository-side operator work is limited to provider-specific capabilities and later owner-qualified changes; this contract does not add physical VRAM/KV guarantees or new cognition semantics.
 
 Actual-model Stage R qualification is deliberately outside this operator transaction.
 

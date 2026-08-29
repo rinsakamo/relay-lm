@@ -35,6 +35,46 @@ server:
 """
 
 
+def _calibrated_budget_runtime(
+    *,
+    total: tuple[int | None, int | None] | None = None,
+    include_policy: bool = True,
+    include_token_counter: bool = True,
+) -> str:
+    lines = [
+        "runtime:",
+        "  calibration_profile: fastcal-v1",
+        "  cognitive_budget:",
+    ]
+    if total is not None:
+        lines.append("    total:")
+        if total[0] is not None:
+            lines.append(f"      model_context_window: {total[0]}")
+        if total[1] is not None:
+            lines.append(f"      reserved_output_tokens: {total[1]}")
+    if include_policy:
+        lines.extend(
+            [
+                "    policy:",
+                "      initial_plan:",
+                "        canonical_state: {max_items: 0, floor_items: 0}",
+                "        working_context: {max_items: 0, floor_items: 0, max_chars: 0, floor_chars: 0}",
+                "        retrieved_memory: {max_items: 0, floor_items: 0, max_chars: 0, floor_chars: 0}",
+                "        event_evidence: {max_items: 0, floor_items: 0, max_chars: 0, floor_chars: 0}",
+                "      steps: []",
+            ]
+        )
+    if include_token_counter:
+        lines.extend(
+            [
+                "    token_counter:",
+                "      capability: test.counter",
+                "      mode: exact",
+            ]
+        )
+    return "\n".join(lines) + "\n"
+
+
 def test_resolve_file_config_with_defaults_provenance_and_secret_reference(
     tmp_path: Path,
 ) -> None:
@@ -240,7 +280,7 @@ runtime:
     assert caught.value.field == "runtime.profile"
 
 
-def test_calibration_profile_fails_closed_until_calibration_authority_exists(
+def test_current_fastcal_profile_resolves_with_auditable_authority(
     tmp_path: Path,
 ) -> None:
     config_path = _write_config(
@@ -248,16 +288,207 @@ def test_calibration_profile_fails_closed_until_calibration_authority_exists(
         _basic_config()
         + """\
 runtime:
-  calibration_profile: standard
+  calibration_profile: fastcal-v1
+""",
+    )
+
+    resolved = resolve_runtime_config(config_path=config_path, environ={})
+
+    assert resolved.config.runtime.calibration_profile == "fastcal-v1"
+    assert resolved.calibration_profile is not None
+    assert resolved.calibration_profile.name == "fastcal-v1"
+    assert resolved.calibration_profile.target_window == 4096
+    assert resolved.calibration_profile.output_allowance == 512
+    assert resolved.calibration_profile.authority == "#1388 FastCal v1"
+    assert resolved.source_for("runtime.calibration_profile") is ConfigSource.CONFIG_FILE
+    assert resolved.source_for(
+        "runtime.calibration_profile.target_window"
+    ) is ConfigSource.CANONICAL_DEFAULT
+
+    values = resolved.effective_diagnostics()["values"]
+    assert values["runtime.calibration_profile"] == {
+        "value": "fastcal-v1",
+        "source": "config_file",
+    }
+    assert values["runtime.calibration_profile.target_window"] == {
+        "value": 4096,
+        "source": "canonical_default",
+    }
+    assert values["runtime.calibration_profile.output_allowance"] == {
+        "value": 512,
+        "source": "canonical_default",
+    }
+    assert values["runtime.calibration_profile.authority"] == {
+        "value": "#1388 FastCal v1",
+        "source": "canonical_default",
+    }
+    assert resolved.config.runtime.cognitive_budget is None
+
+
+def test_unsupported_calibration_profile_fails_closed(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path / "runtime.yaml",
+        _basic_config()
+        + """\
+runtime:
+  calibration_profile: future-profile
 """,
     )
 
     with pytest.raises(RuntimeConfigResolutionError) as caught:
         resolve_runtime_config(config_path=config_path, environ={})
 
-    assert caught.value.code is RuntimeConfigErrorCode.INVALID_COMBINATION
+    assert caught.value.code is RuntimeConfigErrorCode.INVALID_VALUE
     assert caught.value.field == "runtime.calibration_profile"
-    assert "calibrated" in str(caught.value).lower()
+    assert "unsupported calibration profile" in str(caught.value)
+
+
+def test_calibration_profile_selection_preserves_cli_precedence(tmp_path: Path) -> None:
+    config_path = _write_config(
+        tmp_path / "runtime.yaml",
+        _basic_config()
+        + """
+runtime:
+  calibration_profile: fastcal-v1
+""",
+    )
+
+    resolved = resolve_runtime_config(
+        config_path=config_path,
+        overrides=RuntimeConfigOverrides(calibration_profile="fastcal-v1"),
+        environ={"RELAYLM_CALIBRATION_PROFILE": "future-profile"},
+    )
+
+    assert resolved.config.runtime.calibration_profile == "fastcal-v1"
+    assert resolved.source_for("runtime.calibration_profile") is ConfigSource.CLI
+
+
+def test_calibrated_total_defaults_require_explicit_1387_policy_and_counter(
+    tmp_path: Path,
+) -> None:
+    config_path = _write_config(
+        tmp_path / "runtime.yaml",
+        _basic_config() + _calibrated_budget_runtime(),
+    )
+
+    resolved = resolve_runtime_config(config_path=config_path, environ={})
+    budget = resolved.config.runtime.cognitive_budget
+
+    assert budget is not None
+    assert budget.total.model_context_window == 4096
+    assert budget.total.reserved_output_tokens == 512
+    assert resolved.source_for(
+        "runtime.cognitive_budget.total.model_context_window"
+    ) is ConfigSource.CANONICAL_DEFAULT
+    assert resolved.source_for(
+        "runtime.cognitive_budget.total.reserved_output_tokens"
+    ) is ConfigSource.CANONICAL_DEFAULT
+
+
+def test_explicit_cognitive_budget_total_beats_calibrated_defaults(
+    tmp_path: Path,
+) -> None:
+    config_path = _write_config(
+        tmp_path / "runtime.yaml",
+        _basic_config() + _calibrated_budget_runtime(total=(8192, 1024)),
+    )
+
+    resolved = resolve_runtime_config(config_path=config_path, environ={})
+    budget = resolved.config.runtime.cognitive_budget
+
+    assert budget is not None
+    assert budget.total.model_context_window == 8192
+    assert budget.total.reserved_output_tokens == 1024
+    assert resolved.source_for(
+        "runtime.cognitive_budget.total.model_context_window"
+    ) is ConfigSource.CONFIG_FILE
+    assert resolved.source_for(
+        "runtime.cognitive_budget.total.reserved_output_tokens"
+    ) is ConfigSource.CONFIG_FILE
+    assert resolved.calibration_profile is not None
+    assert resolved.calibration_profile.target_window == 4096
+
+
+def test_explicit_cognitive_budget_total_precedence_is_leaf_level(
+    tmp_path: Path,
+) -> None:
+    config_path = _write_config(
+        tmp_path / "runtime.yaml",
+        _basic_config() + _calibrated_budget_runtime(total=(8192, None)),
+    )
+
+    resolved = resolve_runtime_config(config_path=config_path, environ={})
+    budget = resolved.config.runtime.cognitive_budget
+
+    assert budget is not None
+    assert budget.total.model_context_window == 8192
+    assert budget.total.reserved_output_tokens == 512
+    assert resolved.source_for(
+        "runtime.cognitive_budget.total.model_context_window"
+    ) is ConfigSource.CONFIG_FILE
+    assert resolved.source_for(
+        "runtime.cognitive_budget.total.reserved_output_tokens"
+    ) is ConfigSource.CANONICAL_DEFAULT
+
+
+@pytest.mark.parametrize("missing", ["policy", "token_counter"])
+def test_calibration_profile_does_not_invent_1387_requirements(
+    tmp_path: Path,
+    missing: str,
+) -> None:
+    config_path = _write_config(
+        tmp_path / "runtime.yaml",
+        _basic_config()
+        + _calibrated_budget_runtime(
+            include_policy=missing != "policy",
+            include_token_counter=missing != "token_counter",
+        ),
+    )
+
+    with pytest.raises(RuntimeConfigResolutionError) as caught:
+        resolve_runtime_config(config_path=config_path, environ={})
+
+    assert caught.value.code is RuntimeConfigErrorCode.MISSING_REQUIRED
+    assert caught.value.field == f"runtime.cognitive_budget.{missing}"
+
+
+def test_calibration_and_cognitive_profile_names_are_separate_namespaces(
+    tmp_path: Path,
+) -> None:
+    config_path = _write_config(
+        tmp_path / "runtime.yaml",
+        _basic_config().replace("- name: relm", "- name: fastcal-v1")
+        + """
+runtime:
+  calibration_profile: fastcal-v1
+""",
+    )
+
+    resolved = resolve_runtime_config(config_path=config_path, environ={})
+
+    assert resolved.config.profiles[0].name == "fastcal-v1"
+    assert resolved.config.runtime.calibration_profile == "fastcal-v1"
+    assert resolved.calibration_profile is not None
+    assert resolved.calibration_profile.name == "fastcal-v1"
+
+
+def test_calibration_selection_does_not_rewrite_auto_cognition_mode(
+    tmp_path: Path,
+) -> None:
+    config_path = _write_config(
+        tmp_path / "runtime.yaml",
+        _basic_config()
+        + """
+runtime:
+  calibration_profile: fastcal-v1
+  cognition:
+    mode: auto
+""",
+    )
+
+    resolved = resolve_runtime_config(config_path=config_path, environ={})
+
+    assert resolved.config.runtime.cognition.mode.value == "auto"
 
 
 def test_raw_secret_environment_override_beats_config_reference_and_stays_redacted(

@@ -72,8 +72,8 @@ runtime:
       max_output_tokens: 256
       structured_output_mode: native  # plain | native | auto
 
-  # Reserved for #1388 execution/calibration policy. This is not a Cognitive Profile.
-  calibration_profile: profile-name
+  # Explicit #1388 execution/calibration selection. This is not a Cognitive Profile.
+  calibration_profile: fastcal-v1
 
   memory_retrieval:
     max_chunks: 4
@@ -105,7 +105,7 @@ runtime:
       mode: exact
 ```
 
-Numbers in the example are examples, not release defaults. The example uses a backend with declared hard output-limit carriage because a budgeted two-pass path requires that capability.
+Numbers in the example are examples, not release defaults. The `fastcal-v1` selection below is the one current named #1388 calibration authority; it is not selected unless the operator configures it. The example uses a backend with declared hard output-limit carriage because a budgeted two-pass path requires that capability.
 
 ## Cognitive Profiles
 
@@ -154,7 +154,7 @@ For Core 1.0:
 - `two_pass` is the release/reference topology and the canonical topology default;
 - `single_pass` remains an explicit compatibility/experimental mode;
 - `shadow_two_pass` is evidence-only and ordinary release assembly rejects it;
-- `auto` requires future #1388 calibration-profile resolution and ordinary release assembly rejects it while unresolved.
+- `auto` remains reserved for a future cognition-profile resolution and ordinary release assembly rejects it while unresolved. Selecting a calibration profile does not rewrite the cognition topology.
 
 The topology default does **not** imply numeric pass defaults. With no explicit pass controls, both `CognitionPassRequest` values contain omitted reasoning/decoding/output controls. Provider behavior must therefore remain truthful about what was requested, omitted, unsupported, or applied.
 
@@ -164,7 +164,7 @@ When `two_pass` is combined with `runtime.cognitive_budget`, omission semantics 
 
 ### Calibration-profile naming
 
-`runtime.calibration_profile` belongs to #1388 execution/default policy and is distinct from `profiles[].name` Cognitive Profiles. An old `runtime.profile` value is not silently reinterpreted as a Cognitive Profile or calibration profile.
+`runtime.calibration_profile` belongs to #1388 execution/default policy and is distinct from `profiles[].name` Cognitive Profiles. The current supported selection is `fastcal-v1`, whose auditable values are `target_window: 4096`, `output_allowance: 512`, and authority `#1388 FastCal v1`. The target is a desired Cognitive Budget window, not a physical VRAM/KV guarantee; transient free VRAM, profiler admission, and one launch's effective KV capacity are runtime/operator observations. An old `runtime.profile` value is not silently reinterpreted as a Cognitive Profile or calibration profile. Unsupported calibration names fail closed.
 
 ### Pass 2 structured-output transport
 
@@ -198,7 +198,7 @@ The switch affects only how Pass 2 structure is constrained on the external prov
 
 ## Cognitive Budget boundary
 
-`runtime.cognitive_budget` carries the existing #1387 total-budget equation, deterministic degradation policy, and token-counter capability selection. Configuration does not choose calibrated numeric values.
+`runtime.cognitive_budget` carries the existing #1387 total-budget equation, deterministic degradation policy, and token-counter capability selection. When an explicit Cognitive Budget is present together with `calibration_profile: fastcal-v1`, omitted `total.model_context_window` and `total.reserved_output_tokens` resolve to the #1388 values `4096` and `512`. Explicit total leaves remain higher precedence and are not overwritten. The calibration selection alone never creates a Cognitive Budget; `policy` and `token_counter` remain required and are never synthesized.
 
 For explicit `single_pass`, the structure maps to the existing single-pass `CognitiveBudgetRuntimeConfig`.
 
@@ -262,7 +262,7 @@ Complex multi-Profile registries, Profile-local provider mappings, Pass 1/Pass 2
 
 ## Current defaults
 
-Only owner-approved startup/topology defaults exist here:
+Only owner-approved startup/topology defaults exist here, plus the explicitly selectable named calibration authority:
 
 ```text
 format_version            = 1
@@ -275,11 +275,13 @@ runtime.cognition.mode    = two_pass
 
 There is no default public Cognitive Profile name or root: at least one Profile binding is required.
 
+`runtime.calibration_profile` has no default selection. If explicitly selected, `fastcal-v1` exposes `target_window = 4096`, `output_allowance = 512`, and `authority = #1388 FastCal v1` through effective configuration diagnostics. It does not provide reasoning/decoding values, retrieval or Continuity controls, a BudgetPlan/degradation policy, a token-counter implementation, provider capability, or a physical memory guarantee.
+
 `runtime.cognition.mode = two_pass` comes from #1533 architecture authority. It is not a #1388 numeric calibration value.
 
 For Pass 2 structured-output transport, omission preserves the established `plain` path. This compatibility behavior is represented by omission in the resolved request rather than by inventing a calibration/default value.
 
-There are no calibrated defaults here for reasoning effort, decoding values, output budgets, context window, retrieval counts, Continuity lifetime/capacity, Cognitive Budget envelopes, token-counter capability, `runtime.calibration_profile`, or an eventual preferred Pass 2 structured-output transport.
+There are no calibrated defaults here for reasoning effort, decoding values, retrieval counts, Continuity lifetime/capacity, Cognitive Budget envelopes, token-counter capability, or an eventual preferred Pass 2 structured-output transport. The only current calibration-owned numeric carriage is the explicitly selected `fastcal-v1` total-window/output-reserve pair described above.
 
 ## Provider identity
 
@@ -306,7 +308,7 @@ Secret selection remains deterministic and an explicitly selected missing/empty 
 
 `ResolvedRuntimeConfig.effective_diagnostics()` exposes non-secret effective values plus provenance. Profile names, roots, and effective physical-model mappings are content-free runtime metadata and may be reported; semantic package payload is not.
 
-Current diagnostics include file-owned pass controls and Cognitive Budget leaves through collected provenance, so operator evidence can distinguish explicit output limits and total/reserve settings without reading Cognitive Package semantic payload.
+Current diagnostics include file-owned pass controls and Cognitive Budget leaves through collected provenance, plus selected calibration identity, desired target window, output allowance, and `#1388 FastCal v1` authority. Operator evidence can distinguish calibrated defaults from explicit total/reserve settings without reading Cognitive Package semantic payload.
 
 Diagnostics never include API keys, secret environment-variable names, SOUL text, State values, Event/MEMORY content, Continuity semantic payload, or conversation text.
 

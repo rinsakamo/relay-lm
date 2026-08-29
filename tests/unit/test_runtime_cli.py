@@ -92,6 +92,48 @@ def test_doctor_json_is_non_secret_and_reports_effective_sources(tmp_path: Path)
     assert report["effective_config"]["secrets"]["provider.api_key"]["configured"] is True
 
 
+def test_doctor_json_reports_selected_fastcal_values_and_authority(
+    tmp_path: Path,
+) -> None:
+    character = _character(tmp_path / "character")
+    config = _runtime_config(tmp_path / "runtime.yaml", character)
+    config.write_text(
+        config.read_text(encoding="utf-8")
+        + "runtime:\n  calibration_profile: fastcal-v1\n",
+        encoding="utf-8",
+    )
+    stdout = StringIO()
+    stderr = StringIO()
+
+    code = run_cli(
+        ["doctor", "--config", str(config), "--json"],
+        environ={},
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert code == 0
+    report = json.loads(stdout.getvalue())
+    values = report["effective_config"]["values"]
+    assert values["runtime.calibration_profile"] == {
+        "value": "fastcal-v1",
+        "source": "config_file",
+    }
+    assert values["runtime.calibration_profile.target_window"] == {
+        "value": 4096,
+        "source": "canonical_default",
+    }
+    assert values["runtime.calibration_profile.output_allowance"] == {
+        "value": 512,
+        "source": "canonical_default",
+    }
+    assert values["runtime.calibration_profile.authority"] == {
+        "value": "#1388 FastCal v1",
+        "source": "canonical_default",
+    }
+    assert stderr.getvalue() == ""
+
+
 def test_doctor_fails_profile_validation_without_mutating_package(tmp_path: Path) -> None:
     character = _character(tmp_path / "character")
     (character / "SOUL.md").write_text("", encoding="utf-8")
