@@ -205,7 +205,7 @@ class TokenCounterCapabilityConfig:
 
 @dataclass(frozen=True, slots=True)
 class ExplicitCognitiveBudgetConfig:
-    """Authority-preserving carriage of existing #1387 owner types."""
+    """Authority-preserving single-pass carriage of existing #1387 owner types."""
 
     total: TotalBudgetConfig
     policy: BudgetDegradationPolicy
@@ -218,6 +218,31 @@ class ExplicitCognitiveBudgetConfig:
             raise TypeError("cognitive_budget.policy must be BudgetDegradationPolicy")
         if not isinstance(self.token_counter, TokenCounterCapabilityConfig):
             raise TypeError("cognitive_budget.token_counter must be TokenCounterCapabilityConfig")
+
+
+@dataclass(frozen=True, slots=True)
+class ExplicitTwoPassCognitiveBudgetConfig:
+    """Release carriage for distinct calibrated Pass 1 / Pass 2 #1387 totals."""
+
+    pass1_total: TotalBudgetConfig
+    pass2_total: TotalBudgetConfig
+    policy: BudgetDegradationPolicy
+    token_counter: TokenCounterCapabilityConfig
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.pass1_total, TotalBudgetConfig):
+            raise TypeError("cognitive_budget.pass1 must be TotalBudgetConfig")
+        if not isinstance(self.pass2_total, TotalBudgetConfig):
+            raise TypeError("cognitive_budget.pass2 must be TotalBudgetConfig")
+        if not isinstance(self.policy, BudgetDegradationPolicy):
+            raise TypeError("cognitive_budget.policy must be BudgetDegradationPolicy")
+        if not isinstance(self.token_counter, TokenCounterCapabilityConfig):
+            raise TypeError("cognitive_budget.token_counter must be TokenCounterCapabilityConfig")
+
+
+ExplicitRuntimeCognitiveBudgetConfig = (
+    ExplicitCognitiveBudgetConfig | ExplicitTwoPassCognitiveBudgetConfig
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -246,7 +271,7 @@ class RuntimePolicyConfig:
     memory_retrieval: MemoryRetrievalRuntimeConfig | None = None
     event_retrieval: EventRetrievalRuntimeConfig | None = None
     continuity: ContinuityRuntimeSettings | None = None
-    cognitive_budget: ExplicitCognitiveBudgetConfig | None = None
+    cognitive_budget: ExplicitRuntimeCognitiveBudgetConfig | None = None
 
     def __post_init__(self) -> None:
         if self.calibration_profile is not None:
@@ -270,11 +295,13 @@ class RuntimePolicyConfig:
             self.continuity,
             ContinuityRuntimeSettings,
         )
-        _require_optional_type(
-            "runtime.cognitive_budget",
+        if self.cognitive_budget is not None and not isinstance(
             self.cognitive_budget,
-            ExplicitCognitiveBudgetConfig,
-        )
+            (ExplicitCognitiveBudgetConfig, ExplicitTwoPassCognitiveBudgetConfig),
+        ):
+            raise TypeError(
+                "runtime.cognitive_budget must be an explicit single-pass or two-pass budget config"
+            )
 
 
 @dataclass(frozen=True, slots=True)
