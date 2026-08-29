@@ -11,7 +11,10 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
-from relaylm.budget_runtime import CognitiveBudgetRuntimeConfig
+from relaylm.budget_runtime import (
+    CognitiveBudgetRuntimeConfig,
+    TwoPassCognitiveBudgetRuntimeConfig,
+)
 from relaylm.cognitive import CognitionExecutionMode
 from relaylm.cognitive_profile import CognitiveProfileRegistry, CognitiveProfileRuntime
 from relaylm.cognition_execution import CognitionPassRequest
@@ -23,6 +26,9 @@ from relaylm.two_pass_turn import (
     run_user_turn_two_pass,
     run_user_turn_two_pass_streaming,
 )
+
+
+CognitiveBudgetRuntime = CognitiveBudgetRuntimeConfig | TwoPassCognitiveBudgetRuntimeConfig
 
 
 class ChatMessage(BaseModel):
@@ -67,12 +73,30 @@ def create_openai_router(
     pass2_request: CognitionPassRequest | None = None,
     memory_budget: MemoryRetrievalBudget | None = None,
     event_budget: EventRetrievalBudget | None = None,
-    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
+    cognitive_budget: CognitiveBudgetRuntime | None = None,
 ) -> APIRouter:
     if not isinstance(profiles, CognitiveProfileRegistry):
         raise TypeError("profiles must be CognitiveProfileRegistry")
     if not isinstance(cognition_mode, CognitionExecutionMode):
         raise TypeError("cognition_mode must be CognitionExecutionMode")
+
+    if cognition_mode is CognitionExecutionMode.TWO_PASS:
+        if cognitive_budget is not None and not isinstance(
+            cognitive_budget,
+            TwoPassCognitiveBudgetRuntimeConfig,
+        ):
+            raise TypeError("two_pass requires TwoPassCognitiveBudgetRuntimeConfig")
+        two_pass_budget = cognitive_budget
+        single_pass_budget = None
+    else:
+        if cognitive_budget is not None and not isinstance(
+            cognitive_budget,
+            CognitiveBudgetRuntimeConfig,
+        ):
+            raise TypeError("single_pass requires CognitiveBudgetRuntimeConfig")
+        two_pass_budget = None
+        single_pass_budget = cognitive_budget
+
     for profile in profiles.profiles:
         if cognition_mode is CognitionExecutionMode.TWO_PASS:
             if not isinstance(profile.cognition_execution_runtime, CognitionExecutionRuntime):
@@ -131,7 +155,7 @@ def create_openai_router(
                 created=created,
                 memory_budget=memory_budget,
                 event_budget=event_budget,
-                cognitive_budget=cognitive_budget,
+                cognitive_budget=(two_pass_budget or single_pass_budget),
             )
             try:
                 first_chunk = await anext(stream)
@@ -163,7 +187,7 @@ def create_openai_router(
                         memory_budget=memory_budget,
                         event_budget=event_budget,
                         continuity_runtime=profile.continuity_runtime,
-                        cognitive_budget=None,
+                        cognitive_budget=two_pass_budget,
                         pass1_request=pass1_request,
                         pass2_request=pass2_request,
                     )
@@ -175,7 +199,7 @@ def create_openai_router(
                         memory_budget=memory_budget,
                         event_budget=event_budget,
                         continuity_runtime=profile.continuity_runtime,
-                        cognitive_budget=cognitive_budget,
+                        cognitive_budget=single_pass_budget,
                     )
             except ProviderProtocolError as exc:
                 raise HTTPException(
@@ -223,9 +247,26 @@ async def _stream_chat_completion(
     pass2_request: CognitionPassRequest | None = None,
     memory_budget: MemoryRetrievalBudget | None = None,
     event_budget: EventRetrievalBudget | None = None,
-    cognitive_budget: CognitiveBudgetRuntimeConfig | None = None,
+    cognitive_budget: CognitiveBudgetRuntime | None = None,
 ):
     queue: asyncio.Queue[tuple[str, object]] = asyncio.Queue()
+
+    if cognition_mode is CognitionExecutionMode.TWO_PASS:
+        if cognitive_budget is not None and not isinstance(
+            cognitive_budget,
+            TwoPassCognitiveBudgetRuntimeConfig,
+        ):
+            raise TypeError("two_pass requires TwoPassCognitiveBudgetRuntimeConfig")
+        two_pass_budget = cognitive_budget
+        single_pass_budget = None
+    else:
+        if cognitive_budget is not None and not isinstance(
+            cognitive_budget,
+            CognitiveBudgetRuntimeConfig,
+        ):
+            raise TypeError("single_pass requires CognitiveBudgetRuntimeConfig")
+        two_pass_budget = None
+        single_pass_budget = cognitive_budget
 
     async def emit_response_delta(text: str) -> None:
         if text:
@@ -247,7 +288,7 @@ async def _stream_chat_completion(
                         memory_budget=memory_budget,
                         event_budget=event_budget,
                         continuity_runtime=profile.continuity_runtime,
-                        cognitive_budget=None,
+                        cognitive_budget=two_pass_budget,
                         pass1_request=pass1_request,
                         pass2_request=pass2_request,
                     )
@@ -260,7 +301,7 @@ async def _stream_chat_completion(
                         memory_budget=memory_budget,
                         event_budget=event_budget,
                         continuity_runtime=profile.continuity_runtime,
-                        cognitive_budget=cognitive_budget,
+                        cognitive_budget=single_pass_budget,
                     )
         except asyncio.CancelledError:
             raise
