@@ -232,6 +232,39 @@ def test_binding_matches_runtime_target_provider_and_manifest() -> None:
     assert binding.runtime_identity.chat_template_sha256 == "ab" * 32
 
 
+def test_binding_accepts_q4_k_medium_runtime_dialect_for_q4_k_m_target() -> None:
+    provider = _Provider()
+    target = _target()
+    assert target.quantization == "Q4_K_M"
+    runtime = _runtime_identity(model_ftype="Q4_K - Medium")
+    manifest = _manifest(provider, runtime)
+
+    binding = bind_llama_cpp_execution_condition(
+        runtime_identity=runtime,
+        target=target,
+        artifact_verification=_verification(),
+        provider=provider,
+        manifest=manifest,
+    )
+
+    assert binding.runtime_identity.model_ftype == "Q4_K - Medium"
+    assert '"model_ftype":"Q4_K - Medium"' in binding.manifest.provider_identity
+
+
+def test_binding_rejects_unmapped_runtime_ftype() -> None:
+    provider = _Provider()
+    runtime = _runtime_identity(model_ftype="Q4_K - Unknown")
+
+    with pytest.raises(ActualModelLlamaCppBindingError, match="quantization"):
+        bind_llama_cpp_execution_condition(
+            runtime_identity=runtime,
+            target=_target(),
+            artifact_verification=_verification(),
+            provider=provider,
+            manifest=_manifest(provider, runtime),
+        )
+
+
 def test_binding_rejects_runtime_artifact_mismatch() -> None:
     provider = _Provider()
     runtime = _runtime_identity(artifact_sha256="cd" * 32)
