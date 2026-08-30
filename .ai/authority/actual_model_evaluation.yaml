@@ -39,6 +39,7 @@ implementation:
 - src/relaylm/actual_model_lm_studio.py
 - src/relaylm/actual_model_lm_studio_counter.py
 - src/relaylm/actual_model_llama_cpp.py
+- src/relaylm/actual_model_llama_cpp_execution.py
 - src/relaylm/actual_model_vllm.py
 - src/relaylm/actual_model_vllm_host.py
 - src/relaylm/actual_model_vllm_budget.py
@@ -94,6 +95,7 @@ tests:
 - tests/unit/test_actual_model_lm_studio.py
 - tests/unit/test_actual_model_lm_studio_counter.py
 - tests/unit/test_actual_model_llama_cpp.py
+- tests/unit/test_actual_model_llama_cpp_execution.py
 - tests/unit/test_actual_model_vllm.py
 - tests/unit/test_actual_model_vllm_execution_artifacts.py
 - tests/unit/test_actual_model_vllm_host.py
